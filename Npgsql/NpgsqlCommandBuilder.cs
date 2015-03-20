@@ -137,7 +137,7 @@ namespace Npgsql
 
         private static void DoDeriveParameters(NpgsqlCommand command)
         {
-            // See http://www.postgresql.org/docs/9.3/static/catalog-pg-proc.html
+            // See http://www.postgresql.org/docs/current/static/catalog-pg-proc.html
             command.Parameters.Clear();
             // Updated after 0.99.3 to support the optional existence of a name qualifying schema and case insensitivity when the schema ror procedure name do not contain a quote.
             // This fixed an incompatibility with NpgsqlCommand.CheckFunctionReturn(String ReturnType)

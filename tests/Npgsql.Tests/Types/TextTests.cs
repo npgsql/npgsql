@@ -14,7 +14,7 @@ namespace Npgsql.Tests.Types
     /// Tests on PostgreSQL text
     /// </summary>
     /// <remarks>
-    /// http://www.postgresql.org/docs/9.4/static/datatype-character.html
+    /// http://www.postgresql.org/docs/current/static/datatype-character.html
     /// </remarks>
     public class TextTests : TestBase
     {

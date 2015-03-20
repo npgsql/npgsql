@@ -14,7 +14,7 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     /// Type handler for the PostgreSQL geometric line segment type.
     /// </summary>
     /// <remarks>
-    /// http://www.postgresql.org/docs/9.4/static/datatype-geometric.html
+    /// http://www.postgresql.org/docs/current/static/datatype-geometric.html
     /// </remarks>
     [TypeMapping("lseg", NpgsqlDbType.LSeg, typeof(NpgsqlLSeg))]
     internal class LineSegmentHandler : TypeHandler<NpgsqlLSeg>,

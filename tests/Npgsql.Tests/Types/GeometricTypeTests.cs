@@ -14,7 +14,7 @@ namespace Npgsql.Tests.Types
     /// Tests on PostgreSQL geometric types
     /// </summary>
     /// <remarks>
-    /// http://www.postgresql.org/docs/9.4/static/datatype-geometric.html
+    /// http://www.postgresql.org/docs/current/static/datatype-geometric.html
     /// </remarks>
     class GeometricTypeTests : TestBase
     {

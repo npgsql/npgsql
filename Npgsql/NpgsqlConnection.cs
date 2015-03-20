@@ -975,7 +975,7 @@ namespace Npgsql
         /// <param name="copyFromCommand">A COPY FROM STDIN SQL command</param>
         /// <returns>A <see cref="NpgsqlBinaryImporter"/> which can be used to write rows and columns</returns>
         /// <remarks>
-        /// See http://www.postgresql.org/docs/9.4/static/sql-copy.html.
+        /// See http://www.postgresql.org/docs/current/static/sql-copy.html.
         /// </remarks>
         public NpgsqlBinaryImporter BeginBinaryImport(string copyFromCommand)
         {
@@ -997,7 +997,7 @@ namespace Npgsql
         /// <param name="copyToCommand">A COPY TO STDIN SQL command</param>
         /// <returns>A <see cref="NpgsqlBinaryExporter"/> which can be used to read rows and columns</returns>
         /// <remarks>
-        /// See http://www.postgresql.org/docs/9.4/static/sql-copy.html.
+        /// See http://www.postgresql.org/docs/current/static/sql-copy.html.
         /// </remarks>
         public NpgsqlBinaryExporter BeginBinaryExport(string copyToCommand)
         {
@@ -1022,7 +1022,7 @@ namespace Npgsql
         /// <returns>
         /// A TextWriter that can be used to send textual data.</returns>
         /// <remarks>
-        /// See http://www.postgresql.org/docs/9.4/static/sql-copy.html.
+        /// See http://www.postgresql.org/docs/current/static/sql-copy.html.
         /// </remarks>
         public TextWriter BeginTextImport(string copyFromCommand)
         {
@@ -1047,7 +1047,7 @@ namespace Npgsql
         /// <returns>
         /// A TextReader that can be used to read textual data.</returns>
         /// <remarks>
-        /// See http://www.postgresql.org/docs/9.4/static/sql-copy.html.
+        /// See http://www.postgresql.org/docs/current/static/sql-copy.html.
         /// </remarks>
         public TextReader BeginTextExport(string copyToCommand)
         {
@@ -1072,7 +1072,7 @@ namespace Npgsql
         /// <param name="copyCommand">A COPY FROM STDIN or COPY TO STDIN SQL command</param>
         /// <returns>A <see cref="NpgsqlRawCopyStream"/> that can be used to read or write raw binary data.</returns>
         /// <remarks>
-        /// See http://www.postgresql.org/docs/9.4/static/sql-copy.html.
+        /// See http://www.postgresql.org/docs/current/static/sql-copy.html.
         /// </remarks>
         public NpgsqlRawCopyStream BeginRawBinaryCopy(string copyCommand)
         {

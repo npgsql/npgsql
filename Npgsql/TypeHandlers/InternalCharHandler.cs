@@ -12,7 +12,7 @@ namespace Npgsql.TypeHandlers
     /// Type handler for the Postgresql "char" type, used only internally
     /// </summary>
     /// <remarks>
-    /// http://www.postgresql.org/docs/9.3/static/datatype-character.html
+    /// http://www.postgresql.org/docs/current/static/datatype-character.html
     /// </remarks>
     [TypeMapping("char", NpgsqlDbType.SingleChar)]
     internal class InternalCharHandler : TypeHandler<char>,

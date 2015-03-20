@@ -5,7 +5,7 @@ using NpgsqlTypes;
 namespace Npgsql.TypeHandlers.DateTimeHandlers
 {
     /// <remarks>
-    /// http://www.postgresql.org/docs/9.3/static/datatype-datetime.html
+    /// http://www.postgresql.org/docs/current/static/datatype-datetime.html
     /// </remarks>
     [TypeMapping("timetz", NpgsqlDbType.TimeTZ)]
     internal class TimeTzHandler : TypeHandler<DateTimeOffset>,

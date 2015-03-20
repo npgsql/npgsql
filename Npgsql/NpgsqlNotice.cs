@@ -13,7 +13,7 @@ namespace Npgsql
     /// backend-side event).
     /// </summary>
     /// <remarks>
-    /// http://www.postgresql.org/docs/9.4/static/protocol-flow.html#PROTOCOL-ASYNC
+    /// http://www.postgresql.org/docs/current/static/protocol-flow.html#PROTOCOL-ASYNC
     /// </remarks>
     public class NpgsqlNotice
     {
@@ -32,7 +32,7 @@ namespace Npgsql
         /// </summary>
         /// <remarks>
         /// Always present.
-        /// See http://www.postgresql.org/docs/9.4/static/errcodes-appendix.html
+        /// See http://www.postgresql.org/docs/current/static/errcodes-appendix.html
         /// </remarks>
         public string Code { get { return _msg.Code; } }
 

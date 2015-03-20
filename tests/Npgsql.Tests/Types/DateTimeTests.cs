@@ -15,7 +15,7 @@ namespace Npgsql.Tests.Types
     /// Tests on PostgreSQL date/time types
     /// </summary>
     /// <remarks>
-    /// http://www.postgresql.org/docs/9.4/static/datatype-datetime.html
+    /// http://www.postgresql.org/docs/current/static/datatype-datetime.html
     /// </remarks>
     class DateTimeTests : TestBase
     {

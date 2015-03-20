@@ -14,7 +14,7 @@ namespace Npgsql
     /// a PostgreSQL table. Initiated by <see cref="NpgsqlConnection.BeginRawBinaryCopy"/>
     /// </summary>
     /// <remarks>
-    /// See http://www.postgresql.org/docs/9.4/static/sql-copy.html.
+    /// See http://www.postgresql.org/docs/current/static/sql-copy.html.
     /// </remarks>
     public class NpgsqlRawCopyStream : Stream
     {
@@ -301,7 +301,7 @@ namespace Npgsql
     /// Writer for a text import, initiated by <see cref="NpgsqlConnection.BeginTextImport"/>.
     /// </summary>
     /// <remarks>
-    /// See http://www.postgresql.org/docs/9.4/static/sql-copy.html.
+    /// See http://www.postgresql.org/docs/current/static/sql-copy.html.
     /// </remarks>
     public class NpgsqlCopyTextWriter : StreamWriter
     {
@@ -325,7 +325,7 @@ namespace Npgsql
     /// Reader for a text export, initiated by <see cref="NpgsqlConnection.BeginTextExport"/>.
     /// </summary>
     /// <remarks>
-    /// See http://www.postgresql.org/docs/9.4/static/sql-copy.html.
+    /// See http://www.postgresql.org/docs/current/static/sql-copy.html.
     /// </remarks>
     public class NpgsqlCopyTextReader : StreamReader
     {

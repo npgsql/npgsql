@@ -15,7 +15,7 @@ using System.Data;
 namespace Npgsql.TypeHandlers
 {
     /// <remarks>
-    /// http://www.postgresql.org/docs/9.4/static/datatype-binary.html
+    /// http://www.postgresql.org/docs/current/static/datatype-binary.html
     /// </remarks>
     [TypeMapping("bytea", NpgsqlDbType.Bytea, DbType.Binary, typeof(byte[]))]
     internal class ByteaHandler : TypeHandler<byte[]>,

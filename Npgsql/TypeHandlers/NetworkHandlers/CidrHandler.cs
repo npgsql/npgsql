@@ -11,7 +11,7 @@ using NpgsqlTypes;
 namespace Npgsql.TypeHandlers.NetworkHandlers
 {
     /// <remarks>
-    /// http://www.postgresql.org/docs/9.4/static/datatype-net-types.html
+    /// http://www.postgresql.org/docs/current/static/datatype-net-types.html
     /// </remarks>
     [TypeMapping("cidr", NpgsqlDbType.Cidr)]
     internal class CidrHandler : TypeHandler<NpgsqlInet>,

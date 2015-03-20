@@ -10,7 +10,7 @@ using System.Data;
 namespace Npgsql.TypeHandlers.NumericHandlers
 {
     /// <remarks>
-    /// http://www.postgresql.org/docs/9.3/static/datatype-numeric.html
+    /// http://www.postgresql.org/docs/current/static/datatype-numeric.html
     /// </remarks>
     [TypeMapping("int4", NpgsqlDbType.Integer, DbType.Int32, typeof(int))]
     internal class Int32Handler : TypeHandler<int>,

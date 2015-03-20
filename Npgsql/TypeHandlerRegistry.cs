@@ -615,7 +615,7 @@ namespace Npgsql
 
     /// <summary>
     /// Specifies the type of a type, as represented in the PostgreSQL typtype column of the pg_type table.
-    /// See http://www.postgresql.org/docs/9.4/static/catalog-pg-type.html
+    /// See http://www.postgresql.org/docs/current/static/catalog-pg-type.html
     /// </summary>
     enum BackendTypeType
     {

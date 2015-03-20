@@ -10,7 +10,7 @@ using System.Data;
 namespace Npgsql.TypeHandlers.NumericHandlers
 {
     /// <remarks>
-    /// http://www.postgresql.org/docs/9.3/static/datatype-numeric.html
+    /// http://www.postgresql.org/docs/current/static/datatype-numeric.html
     /// </remarks>
     [TypeMapping("float4", NpgsqlDbType.Real, DbType.Single, typeof(float))]
     internal class SingleHandler : TypeHandler<float>,

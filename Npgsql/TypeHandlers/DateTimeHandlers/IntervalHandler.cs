@@ -6,7 +6,7 @@ using System.Data;
 namespace Npgsql.TypeHandlers.DateTimeHandlers
 {
     /// <remarks>
-    /// http://www.postgresql.org/docs/9.3/static/datatype-datetime.html
+    /// http://www.postgresql.org/docs/current/static/datatype-datetime.html
     /// </remarks>
     [TypeMapping("interval", NpgsqlDbType.Interval, typeof(TimeSpan))]
     internal class IntervalHandler : TypeHandlerWithPsv<TimeSpan, NpgsqlTimeSpan>,

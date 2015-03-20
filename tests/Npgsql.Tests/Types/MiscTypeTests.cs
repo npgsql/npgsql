@@ -18,7 +18,7 @@ namespace Npgsql.Tests.Types
     class MiscTypeTests : TestBase
     {
         /// <summary>
-        /// http://www.postgresql.org/docs/9.4/static/datatype-boolean.html
+        /// http://www.postgresql.org/docs/current/static/datatype-boolean.html
         /// </summary>
         /// <param name="prepare"></param>
         [Test, Description("Roundtrips a bool")]
@@ -55,7 +55,7 @@ namespace Npgsql.Tests.Types
         }
 
         /// <summary>
-        /// http://www.postgresql.org/docs/9.4/static/datatype-money.html
+        /// http://www.postgresql.org/docs/current/static/datatype-money.html
         /// </summary>
         [Test]
         public void ReadMoney()
@@ -73,7 +73,7 @@ namespace Npgsql.Tests.Types
         }
 
         /// <summary>
-        /// http://www.postgresql.org/docs/9.4/static/datatype-uuid.html
+        /// http://www.postgresql.org/docs/current/static/datatype-uuid.html
         /// </summary>
         [Test, Description("Roundtrips a UUID")]
         public void Uuid()

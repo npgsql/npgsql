@@ -15,7 +15,7 @@ namespace Npgsql.TypeHandlers
     /// Base class for all type handlers which handle PostgreSQL arrays.
     /// </summary>
     /// <remarks>
-    /// http://www.postgresql.org/docs/9.3/static/arrays.html
+    /// http://www.postgresql.org/docs/current/static/arrays.html
     /// </remarks>
     internal abstract class ArrayHandler : TypeHandler<Array>
     {
@@ -470,7 +470,7 @@ namespace Npgsql.TypeHandlers
     }
 
     /// <remarks>
-    /// http://www.postgresql.org/docs/9.3/static/arrays.html
+    /// http://www.postgresql.org/docs/current/static/arrays.html
     /// </remarks>
     /// <typeparam name="TElement">The .NET type contained as an element within this array</typeparam>
     internal class ArrayHandler<TElement> : ArrayHandler,
@@ -519,7 +519,7 @@ namespace Npgsql.TypeHandlers
     }
 
     /// <remarks>
-    /// http://www.postgresql.org/docs/9.4/static/arrays.html
+    /// http://www.postgresql.org/docs/current/static/arrays.html
     /// </remarks>
     /// <typeparam name="TNormal">The .NET type contained as an element within this array</typeparam>
     /// <typeparam name="TPsv">The .NET provider-specific type contained as an element within this array</typeparam>

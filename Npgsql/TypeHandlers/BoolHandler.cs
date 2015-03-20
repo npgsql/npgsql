@@ -9,7 +9,7 @@ using System.Data;
 namespace Npgsql.TypeHandlers
 {
     /// <remarks>
-    /// http://www.postgresql.org/docs/9.3/static/datatype-boolean.html
+    /// http://www.postgresql.org/docs/current/static/datatype-boolean.html
     /// </remarks>
     [TypeMapping("bool", NpgsqlDbType.Boolean, DbType.Boolean, typeof(bool))]
     internal class BoolHandler : TypeHandler<bool>,

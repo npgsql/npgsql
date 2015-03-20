@@ -7,7 +7,7 @@ using System.Data;
 namespace Npgsql.TypeHandlers.DateTimeHandlers
 {
     /// <remarks>
-    /// http://www.postgresql.org/docs/9.4/static/datatype-datetime.html
+    /// http://www.postgresql.org/docs/current/static/datatype-datetime.html
     /// </remarks>
     [TypeMapping("time", NpgsqlDbType.Time, DbType.Time)]
     internal class TimeHandler : TypeHandler<TimeSpan>, ISimpleTypeReader<TimeSpan>, ISimpleTypeWriter

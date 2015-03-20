@@ -14,7 +14,7 @@ using System.Data;
 namespace Npgsql.TypeHandlers
 {
     /// <remarks>
-    /// http://www.postgresql.org/docs/9.3/static/datatype-uuid.html
+    /// http://www.postgresql.org/docs/current/static/datatype-uuid.html
     /// </remarks>
     [TypeMapping("uuid", NpgsqlDbType.Uuid, DbType.Guid, typeof(Guid))]
     internal class UuidHandler : TypeHandler<Guid>,

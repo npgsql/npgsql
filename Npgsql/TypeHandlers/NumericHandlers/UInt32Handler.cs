@@ -9,7 +9,7 @@ using NpgsqlTypes;
 namespace Npgsql.TypeHandlers.NumericHandlers
 {
     /// <remarks>
-    /// http://www.postgresql.org/docs/9.3/static/datatype-oid.html
+    /// http://www.postgresql.org/docs/current/static/datatype-oid.html
     /// </remarks>
     [TypeMapping("oid", NpgsqlDbType.Oid)]
     [TypeMapping("xid", NpgsqlDbType.Xid)]

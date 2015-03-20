@@ -8,7 +8,7 @@ using Npgsql.BackendMessages;
 namespace Npgsql.TypeHandlers.FullTextSearchHandlers
 {
     /// <summary>
-    /// http://www.postgresql.org/docs/9.4/static/datatype-textsearch.html
+    /// http://www.postgresql.org/docs/current/static/datatype-textsearch.html
     /// </summary>
     [TypeMapping("tsvector", NpgsqlDbType.TsVector, typeof(NpgsqlTsVector))]
     internal class TsVectorHandler : TypeHandler<NpgsqlTsVector>, IChunkingTypeReader<NpgsqlTsVector>, IChunkingTypeWriter

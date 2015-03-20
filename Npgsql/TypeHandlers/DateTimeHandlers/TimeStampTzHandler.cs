@@ -7,7 +7,7 @@ using System.Runtime.Remoting.Channels;
 namespace Npgsql.TypeHandlers.DateTimeHandlers
 {
     /// <remarks>
-    /// http://www.postgresql.org/docs/9.3/static/datatype-datetime.html
+    /// http://www.postgresql.org/docs/current/static/datatype-datetime.html
     /// </remarks>
     [TypeMapping("timestamptz", NpgsqlDbType.TimestampTZ, DbType.DateTimeOffset, typeof(DateTimeOffset))]
     internal class TimeStampTzHandler : TimeStampHandler, ISimpleTypeReader<NpgsqlDateTime>, ISimpleTypeReader<DateTimeOffset>

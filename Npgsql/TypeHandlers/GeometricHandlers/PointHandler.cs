@@ -14,7 +14,7 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     /// Type handler for the PostgreSQL geometric point type.
     /// </summary>
     /// <remarks>
-    /// http://www.postgresql.org/docs/9.4/static/datatype-geometric.html
+    /// http://www.postgresql.org/docs/current/static/datatype-geometric.html
     /// </remarks>
     [TypeMapping("point", NpgsqlDbType.Point, typeof(NpgsqlPoint))]
     internal class PointHandler : TypeHandler<NpgsqlPoint>,

@@ -14,7 +14,7 @@ namespace Npgsql.Tests.Types
     /// Tests on PostgreSQL numeric types
     /// </summary>
     /// <remarks>
-    /// http://www.postgresql.org/docs/9.4/static/datatype-net-types.html
+    /// http://www.postgresql.org/docs/current/static/datatype-net-types.html
     /// </remarks>
     class NetworkTypeTests : TestBase
     {

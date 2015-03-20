@@ -17,7 +17,7 @@ namespace Npgsql.TypeHandlers
     /// (see discussion https://github.com/npgsql/npgsql/pull/362#issuecomment-59622101).
     /// </summary>
     /// <remarks>
-    /// http://www.postgresql.org/docs/9.4/static/datatype-bit.html
+    /// http://www.postgresql.org/docs/current/static/datatype-bit.html
     /// </remarks>
     [TypeMapping("varbit", NpgsqlDbType.Varbit, typeof(BitArray))]
     [TypeMapping("bit", NpgsqlDbType.Bit)]

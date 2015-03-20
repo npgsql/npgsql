@@ -9,7 +9,7 @@ using System.Text;
 namespace Npgsql.TypeHandlers.FullTextSearchHandlers
 {
     /// <summary>
-    /// http://www.postgresql.org/docs/9.4/static/datatype-textsearch.html
+    /// http://www.postgresql.org/docs/current/static/datatype-textsearch.html
     /// </summary>
     [TypeMapping("tsquery", NpgsqlDbType.TsQuery, new DbType[0], new[] {
         typeof(NpgsqlTsQuery), typeof(NpgsqlTsQueryAnd), typeof(NpgsqlTsQueryEmpty),

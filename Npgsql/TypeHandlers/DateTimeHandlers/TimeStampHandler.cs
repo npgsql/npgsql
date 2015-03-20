@@ -6,7 +6,7 @@ using System.Data;
 namespace Npgsql.TypeHandlers.DateTimeHandlers
 {
     /// <remarks>
-    /// http://www.postgresql.org/docs/9.3/static/datatype-datetime.html
+    /// http://www.postgresql.org/docs/current/static/datatype-datetime.html
     /// </remarks>
     [TypeMapping("timestamp", NpgsqlDbType.Timestamp, new[] { DbType.DateTime, DbType.DateTime2 }, new [] { typeof(NpgsqlDateTime), typeof(DateTime) })]
     internal class TimeStampHandler : TypeHandlerWithPsv<DateTime, NpgsqlDateTime>,
