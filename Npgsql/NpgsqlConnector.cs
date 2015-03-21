@@ -684,7 +684,7 @@ namespace Npgsql
                         // through our buffer
                         if (directBuf.Buffer != null)
                         {
-                            Buffer.Underlying.Write(directBuf.Buffer, 0, directBuf.Size == 0 ? directBuf.Buffer.Length : directBuf.Size);
+                            Buffer.Underlying.Write(directBuf.Buffer, directBuf.Offset, directBuf.Size == 0 ? directBuf.Buffer.Length : directBuf.Size);
                             directBuf.Buffer = null;
                             directBuf.Size = 0;
                         }

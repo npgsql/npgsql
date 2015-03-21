@@ -248,6 +248,7 @@ namespace Npgsql
     struct DirectBuffer
     {
         public byte[] Buffer;
+        public int Offset;
         public int Size;
     }
 

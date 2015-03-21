@@ -174,7 +174,7 @@ namespace Npgsql
                         len = directBuf.Size == 0 ? directBuf.Buffer.Length : directBuf.Size;
                         _buf.WriteInt32(len);
                         Flush();
-                        _buf.Underlying.Write(directBuf.Buffer, 0, len);
+                        _buf.Underlying.Write(directBuf.Buffer, directBuf.Offset, len);
                         directBuf.Buffer = null;
                         directBuf.Size = 0;
                     }

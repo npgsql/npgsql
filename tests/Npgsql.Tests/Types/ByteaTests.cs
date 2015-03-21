@@ -397,6 +397,46 @@ namespace Npgsql.Tests.Types
             Assert.AreEqual(-1, result);
         }
 
+        [Test]
+        public void ArraySegment()
+        {
+            using (var cmd = new NpgsqlCommand("select :bytearr", Conn))
+            {
+                var arr = new byte[20000];
+                for (var i = 0; i < arr.Length; i++)
+                {
+                    arr[i] = (byte)(i & 0xff);
+                }
+                
+                // Big value, should go through "direct buffer"
+                var segment = new ArraySegment<byte>(arr, 17, 18000);
+                cmd.Parameters.Add(new NpgsqlParameter("bytearr", DbType.Binary) { Value = segment });
+                var returned = (byte[])cmd.ExecuteScalar();
+                Assert.That(segment.SequenceEqual(returned));
+
+                cmd.Parameters[0].Size = 17000;
+                returned = (byte[])cmd.ExecuteScalar();
+                Assert.That(returned.SequenceEqual(new ArraySegment<byte>(segment.Array, segment.Offset, 17000)));
+
+                // Small value, should be written normally through the NpgsqlBuffer
+                segment = new ArraySegment<byte>(arr, 6, 10);
+                cmd.Parameters[0].Value = segment;
+                returned = (byte[])cmd.ExecuteScalar();
+                Assert.That(segment.SequenceEqual(returned));
+
+                cmd.Parameters[0].Size = 2;
+                returned = (byte[])cmd.ExecuteScalar();
+                Assert.That(returned.SequenceEqual(new ArraySegment<byte>(segment.Array, segment.Offset, 2)));
+            }
+
+            using (var cmd = new NpgsqlCommand("select :bytearr", Conn))
+            {
+                var segment = new ArraySegment<byte>(new byte[] { 1, 2, 3 }, 1, 2);
+                cmd.Parameters.AddWithValue("bytearr", segment);
+                Assert.That(segment.SequenceEqual((byte[])cmd.ExecuteScalar()));
+            }
+        }
+
         #region Utilities
 
         /// <summary>
