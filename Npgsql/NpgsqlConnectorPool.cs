@@ -323,9 +323,6 @@ namespace Npgsql
             {
 
                 Connector.ProvideClientCertificatesCallback += Connection.ProvideClientCertificatesCallbackDelegate;
-                Connector.CertificateSelectionCallback += Connection.CertificateSelectionCallbackDelegate;
-                Connector.CertificateValidationCallback += Connection.CertificateValidationCallbackDelegate;
-                Connector.PrivateKeySelectionCallback += Connection.PrivateKeySelectionCallbackDelegate;
                 Connector.ValidateRemoteCertificateCallback += Connection.ValidateRemoteCertificateCallbackDelegate;
 
                 try
@@ -356,17 +353,11 @@ namespace Npgsql
                             NpgsqlConnector Spare = new NpgsqlConnector(Connection);
 
                             Spare.ProvideClientCertificatesCallback += Connection.ProvideClientCertificatesCallbackDelegate;
-                            Spare.CertificateSelectionCallback += Connection.CertificateSelectionCallbackDelegate;
-                            Spare.CertificateValidationCallback += Connection.CertificateValidationCallbackDelegate;
-                            Spare.PrivateKeySelectionCallback += Connection.PrivateKeySelectionCallbackDelegate;
                             Spare.ValidateRemoteCertificateCallback += Connection.ValidateRemoteCertificateCallbackDelegate;
 
                             Spare.Open();
 
                             Spare.ProvideClientCertificatesCallback -= Connection.ProvideClientCertificatesCallbackDelegate;
-                            Spare.CertificateSelectionCallback -= Connection.CertificateSelectionCallbackDelegate;
-                            Spare.CertificateValidationCallback -= Connection.CertificateValidationCallbackDelegate;
-                            Spare.PrivateKeySelectionCallback -= Connection.PrivateKeySelectionCallbackDelegate;
                             Spare.ValidateRemoteCertificateCallback -= Connection.ValidateRemoteCertificateCallbackDelegate;
 
                             Queue.Available.Enqueue(Spare);
@@ -399,12 +390,6 @@ namespace Npgsql
                 Connector.Close(); // Release connection to postgres
                 return; // Queue may be emptied by connection problems. See ClearPool below.
             }
-
-            Connector.ProvideClientCertificatesCallback -= Connection.ProvideClientCertificatesCallbackDelegate;
-            Connector.CertificateSelectionCallback -= Connection.CertificateSelectionCallbackDelegate;
-            Connector.CertificateValidationCallback -= Connection.CertificateValidationCallbackDelegate;
-            Connector.PrivateKeySelectionCallback -= Connection.PrivateKeySelectionCallbackDelegate;
-            Connector.ValidateRemoteCertificateCallback -= Connection.ValidateRemoteCertificateCallbackDelegate;
 
             /*bool inQueue = false;
 
@@ -482,6 +467,8 @@ namespace Npgsql
                     queue.Busy.Remove(Connector);
                 }
 
+            Connector.ProvideClientCertificatesCallback -= Connection.ProvideClientCertificatesCallbackDelegate;
+            Connector.ValidateRemoteCertificateCallback -= Connection.ValidateRemoteCertificateCallbackDelegate;
         }
 
         private static void ClearQueue(ConnectorQueue Queue)
