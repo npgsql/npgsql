@@ -182,7 +182,7 @@ namespace TlsClientStream
         // Constructs H table
         static ulong[] Construct(ulong h1, ulong h2)
         {
-            var tbl = new ulong[32 * 16 * 2];
+            var tbl = new ulong[32 * 16 * 2 + 2];
             for (var i = 31; i >= 0; i--)
             {
                 for (var j = 0; j < 16; j++)
@@ -199,6 +199,9 @@ namespace TlsClientStream
                     tbl[32 * 16 + i * 16 + j] = out2;
                 }
             }
+            // Also fill in the original h1 and h2 values
+            tbl[tbl.Length - 2] = h1;
+            tbl[tbl.Length - 1] = h2;
             return tbl;
         }
 
@@ -235,9 +238,15 @@ namespace TlsClientStream
         static void CalcHash(ICryptoTransform key, byte[] iv, byte[] data, int offset, int len, ulong seqNum, ulong header, ulong[] h, byte[] temp512)
         {
             ulong s1 = 0, s2 = 0;
-            MulWithTable(h, s1, s2, seqNum, header, ref s1, ref s2);
+
+            // Additional data
+            // Don't use table-based multiplication for the first block to avoid potential timing-attack vulnerabilities as described in
+            // http://udspace.udel.edu/bitstream/handle/19716/9765/Bonan_Huang_thesis.pdf (Cache-collision timing attacks against AES-GCM)
+            Mul(h[h.Length - 2], h[h.Length - 1], s1, s2, seqNum, header, ref s1, ref s2);
+
+            // Ciphertext
             var end = offset + len / 16 * 16;
-            for (var pos = offset; pos < end;)
+            for (var pos = offset; pos < end; )
             {
                 MulWithTable2(h, s1, s2, data, pos, ref s1, ref s2);
                 pos += 16;
@@ -255,7 +264,11 @@ namespace TlsClientStream
                 }
                 MulWithTable(h, s1, s2, x1, x2, ref s1, ref s2);
             }
+
+            // Length of additional data and ciphertext data
             MulWithTable(h, s1, s2, 13 * 8, (ulong)(len * 8), ref s1, ref s2);
+
+            // Put the hash at the end of the data stream and encrypt it
             Utils.WriteUInt64(data, offset + len, s1);
             Utils.WriteUInt64(data, offset + len + 8, s2);
             Encrypt(data, offset + len, 16, key, iv, 1, temp512);
