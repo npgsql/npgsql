@@ -307,6 +307,8 @@
     <Compile Include="BackendMessages\RowDescriptionMessage.cs" />
     <Compile Include="BackendMessages\DataRowSequentialMessage.cs" />
     <Compile Include="FrontendMessages\CopyFailMessage.cs" />
+    <Compile Include="NpgsqlLargeObjectManager.cs" />
+    <Compile Include="NpgsqlLargeObjectStream.cs" />
     <Compile Include="NpgsqlBinaryExporter.cs" />
     <Compile Include="NpgsqlBinaryImporter.cs" />
     <Compile Include="NpgsqlNotice.cs" />

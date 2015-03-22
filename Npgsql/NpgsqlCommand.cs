@@ -562,13 +562,16 @@ namespace Npgsql
 
         void ProcessRawQuery()
         {
-            string query;
             switch (CommandType) {
             case CommandType.Text:
-                query = CommandText;
+                ParseRawQuery(CommandText);
+                if (_queries.Count > 1 && _parameters.Any(p => p.IsOutputDirection)) {
+                    throw new NotSupportedException("Commands with multiple queries cannot have out parameters");
+                }
                 break;
             case CommandType.TableDirect:
-                query = "SELECT * FROM " + CommandText;
+                _queries.Clear();
+                _queries.Add(new QueryDetails("SELECT * FROM " + CommandText, new List<NpgsqlParameter>()));
                 break;
             case CommandType.StoredProcedure:
                 var numInput = _parameters.Count(p => p.IsInputDirection);
@@ -584,15 +587,11 @@ namespace Npgsql
                     }
                 }
                 sb.Append(')');
-                query = sb.ToString();
+                _queries.Clear();
+                _queries.Add(new QueryDetails(sb.ToString(), _parameters.Where(p => p.IsInputDirection).ToList()));
                 break;
             default:
                 throw PGUtil.ThrowIfReached();
-            }
-
-            ParseRawQuery(query);
-            if (_queries.Count > 1 && _parameters.Any(p => p.IsOutputDirection)) {
-                throw new NotSupportedException("Commands with multiple queries cannot have out parameters");
             }
         }
 

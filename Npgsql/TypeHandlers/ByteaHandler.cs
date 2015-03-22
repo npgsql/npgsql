@@ -17,7 +17,7 @@ namespace Npgsql.TypeHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-binary.html
     /// </remarks>
-    [TypeMapping("bytea", NpgsqlDbType.Bytea, DbType.Binary, typeof(byte[]))]
+    [TypeMapping("bytea", NpgsqlDbType.Bytea, DbType.Binary, new Type[] { typeof(byte[]), typeof(ArraySegment<byte>) })]
     internal class ByteaHandler : TypeHandler<byte[]>,
         IChunkingTypeReader<byte[]>, IChunkingTypeWriter
     {
@@ -69,24 +69,51 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        byte[] _value;
-        int _size;
+        ArraySegment<byte> _value;
 
         public int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
-            var bytea = (byte[])value;
-            return parameter == null || parameter.Size == 0 || parameter.Size >= bytea.Length
-                ? bytea.Length
-                : parameter.Size;
+            if (value is ArraySegment<byte>)
+            {
+                var arraySegment = (ArraySegment<byte>)value;
+
+                if (arraySegment.Array == null)
+                    throw new InvalidCastException("Array in ArraySegment<byte> is null");
+
+                return parameter == null || parameter.Size <= 0 || parameter.Size >= arraySegment.Count
+                    ? arraySegment.Count
+                    : parameter.Size;
+            }
+            else
+            {
+                var array = (byte[])value;
+
+                return parameter == null || parameter.Size <= 0 || parameter.Size >= array.Length
+                    ? array.Length
+                    : parameter.Size;
+            }
         }
 
         public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             _buf = buf;
-            _value = (byte[])value;
-            _size = parameter == null || parameter.Size == 0 || parameter.Size >= _value.Length
-                ? _value.Length
-                : parameter.Size;
+
+            if (value is ArraySegment<byte>)
+            {
+                _value = (ArraySegment<byte>)value;
+                if (!(parameter == null || parameter.Size <= 0 || parameter.Size >= _value.Count))
+                {
+                     _value = new ArraySegment<byte>(_value.Array, _value.Offset, parameter.Size);
+                }
+            }
+            else
+            {
+                var array = (byte[])value;
+                var len = parameter == null || parameter.Size <= 0 || parameter.Size >= array.Length
+                    ? array.Length
+                    : parameter.Size;
+                _value = new ArraySegment<byte>(array, 0, len);
+            }
         }
 
         // ReSharper disable once RedundantAssignment
@@ -94,16 +121,17 @@ namespace Npgsql.TypeHandlers
         {
             // If the entire array fits in our buffer, copy it as usual.
             // Otherwise, switch to direct write from the user-provided buffer
-            if (_size <= _buf.WriteSpaceLeft)
+            if (_value.Count <= _buf.WriteSpaceLeft)
             {
-                _buf.WriteBytesSimple(_value, 0, _size);
+                _buf.WriteBytesSimple(_value.Array, _value.Offset, _value.Count);
                 return true;
             }
 
             if (!_returnedBuffer)
             {
-                directBuf.Buffer = _value;
-                directBuf.Size = _size;
+                directBuf.Buffer = _value.Array;
+                directBuf.Offset = _value.Offset;
+                directBuf.Size = _value.Count;
                 _returnedBuffer = true;
                 return false;
             }
