@@ -212,10 +212,14 @@ namespace Npgsql.Tests.Types
         public void UnrecognizedBinary()
         {
             CheckUnrecognizedType();
-            var cmd = new NpgsqlCommand("SELECT typinput FROM pg_type WHERE typname='bool'", Conn);
-            var reader = cmd.ExecuteReader();
-            reader.Read();
-            Assert.That(() => reader.GetValue(0), Throws.Exception.TypeOf<NotSupportedException>());
+            using (var cmd = new NpgsqlCommand("SELECT typinput FROM pg_type WHERE typname='bool'", Conn))
+            using (var reader = cmd.ExecuteReader(CommandBehavior.SequentialAccess))
+            {
+                reader.Read();
+                Assert.That(() => reader.GetValue(0), Throws.Exception.TypeOf<NotSupportedException>());
+            }
+
+            Assert.That(ExecuteScalar("SELECT 1"), Is.EqualTo(1));
         }
 
         [Test, Description("Retrieves a type as an unknown type, i.e. untreated string")]
