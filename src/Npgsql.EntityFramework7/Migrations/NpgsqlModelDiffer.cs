@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using EntityFramework.Npgsql.Extensions;
+using EntityFramework.Npgsql.Metadata;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity;
 using Microsoft.Data.Entity.Metadata;
@@ -50,7 +51,7 @@ namespace EntityFramework.Npgsql.Migrations
             model != null
             && model.Npgsql().DefaultSequenceName == null
             && (model.Npgsql().ValueGenerationStrategy == NpgsqlValueGenerationStrategy.Sequence
-                || model.EntityTypes.SelectMany(t => t.Properties).Any(
+                || model.EntityTypes.SelectMany(t => t.GetProperties()).Any(
                     p => p.Npgsql().ValueGenerationStrategy == NpgsqlValueGenerationStrategy.Sequence
                          && p.Npgsql().SequenceName == null));
 
@@ -122,13 +123,7 @@ namespace EntityFramework.Npgsql.Migrations
         }
 
         // TODO: Move to metadata API?
-        // See Issue #1271: Principal keys need to generate values on add, but the database should only have one Identity column.
-        private NpgsqlValueGenerationStrategy? GetValueGenerationStrategy(IProperty property) =>
-            property.Npgsql().ValueGenerationStrategy
-            ?? property.EntityType.Model.Npgsql().ValueGenerationStrategy
-            ?? (property.GenerateValueOnAdd && property.PropertyType.IsInteger() && property.IsPrimaryKey()
-                ? NpgsqlValueGenerationStrategy.Identity
-                : default(NpgsqlValueGenerationStrategy?));
+        private NpgsqlValueGenerationStrategy? GetValueGenerationStrategy(IProperty property) => property.Npgsql().ValueGenerationStrategy;
 
         #endregion
 

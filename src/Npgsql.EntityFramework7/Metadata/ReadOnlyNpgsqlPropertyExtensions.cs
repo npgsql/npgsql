@@ -3,7 +3,7 @@ using JetBrains.Annotations;
 using Microsoft.Data.Entity.Metadata;
 using Microsoft.Data.Entity.Relational.Metadata;
 
-namespace EntityFramework.Npgsql.Extensions
+namespace EntityFramework.Npgsql.Metadata
 {
     public class ReadOnlyNpgsqlPropertyExtensions : ReadOnlyRelationalPropertyExtensions, INpgsqlPropertyExtensions
     {
@@ -23,58 +23,51 @@ namespace EntityFramework.Npgsql.Extensions
         }
 
         public override string Column
-        {
-            get { return Property[NpgsqlNameAnnotation] ?? base.Column; }
-        }
+            => Property[NpgsqlNameAnnotation] as string
+               ?? base.Column;
 
         public override string ColumnType
-        {
-            get { return Property[NpgsqlColumnTypeAnnotation] ?? base.ColumnType; }
-        }
+            => Property[NpgsqlColumnTypeAnnotation] as string
+               ?? base.ColumnType;
 
         public override string DefaultExpression
-        {
-            get { return Property[NpgsqlDefaultExpressionAnnotation] ?? base.DefaultExpression; }
-        }
+            => Property[NpgsqlDefaultExpressionAnnotation] as string
+               ?? base.DefaultExpression;
 
         public override object DefaultValue
-        {
-            get
-            {
-                return new TypedAnnotation(Property[NpgsqlDefaultValueTypeAnnotation], Property[NpgsqlDefaultValueAnnotation]).Value
-                       ?? base.DefaultValue;
-            }
-        }
+            => new TypedAnnotation(
+                Property[NpgsqlDefaultValueTypeAnnotation] as string,
+                Property[NpgsqlDefaultValueAnnotation] as string).Value
+                         ?? base.DefaultValue;
 
-		public virtual string ComputedExpression => Property[NpgsqlComputedExpressionAnnotation];
+        public virtual string ComputedExpression
+            => Property[NpgsqlComputedExpressionAnnotation] as string;
 
-		public virtual NpgsqlValueGenerationStrategy? ValueGenerationStrategy
+        public virtual NpgsqlValueGenerationStrategy? ValueGenerationStrategy
         {
             get
             {
                 // TODO: Issue #777: Non-string annotations
-                var value = Property[NpgsqlValueGenerationAnnotation];
-                return value == null ? null : (NpgsqlValueGenerationStrategy?)Enum.Parse(typeof(NpgsqlValueGenerationStrategy), value);
+                var value = Property[NpgsqlValueGenerationAnnotation] as string;
+
+                var strategy = value == null
+                    ? null
+                    : (NpgsqlValueGenerationStrategy?)Enum.Parse(typeof(NpgsqlValueGenerationStrategy), value);
+
+                return strategy == NpgsqlValueGenerationStrategy.Default
+                    ? Property.EntityType.Model.Npgsql().ValueGenerationStrategy
+                    : strategy;
             }
         }
 
-        public virtual string SequenceName
-        {
-            get { return Property[NpgsqlSequenceNameAnnotation]; }
-        }
-
-        public virtual string SequenceSchema
-        {
-            get { return Property[NpgsqlSequenceSchemaAnnotation]; }
-        }
+        public virtual string SequenceName => Property[NpgsqlSequenceNameAnnotation] as string;
+        public virtual string SequenceSchema => Property[NpgsqlSequenceSchemaAnnotation] as string;
 
         public virtual Sequence TryGetSequence()
         {
             var modelExtensions = Property.EntityType.Model.Npgsql();
 
-            if (ValueGenerationStrategy != NpgsqlValueGenerationStrategy.Sequence
-                && (ValueGenerationStrategy != null
-                    || modelExtensions.ValueGenerationStrategy != NpgsqlValueGenerationStrategy.Sequence))
+            if (ValueGenerationStrategy != NpgsqlValueGenerationStrategy.Sequence)
             {
                 return null;
             }

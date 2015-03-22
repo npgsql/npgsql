@@ -1,12 +1,13 @@
-﻿using JetBrains.Annotations;
+﻿using System;
+using JetBrains.Annotations;
 using Microsoft.Data.Entity;
 using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Storage;
 using Microsoft.Data.Entity.Utilities;
-using System;
 using Microsoft.Framework.DependencyInjection;
+using EntityFramework.Npgsql.Extensions;
 
-namespace EntityFramework.Npgsql.Extensions
+namespace EntityFramework.Npgsql
 {
     public class NpgsqlDataStoreSource : DataStoreSource<NpgsqlDataStore,NpgsqlDataStoreServices, NpgsqlOptionsExtension>
     {

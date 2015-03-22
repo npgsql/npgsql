@@ -1,10 +1,11 @@
 ﻿using System.Data.Common;
+using EntityFramework.Npgsql.Extensions;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity;
 using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Utilities;
 
-namespace EntityFramework.Npgsql.Extensions
+namespace EntityFramework.Npgsql
 {
     public static class NpgsqlDbContextOptionsExtensions
     {
@@ -54,7 +55,11 @@ namespace EntityFramework.Npgsql.Extensions
 //        }
         
         private static NpgsqlOptionsExtension GetOrCreateExtension(DbContextOptionsBuilder optionsBuilder)
-            => optionsBuilder.Options.FindExtension<NpgsqlOptionsExtension>()
-               ?? new NpgsqlOptionsExtension(optionsBuilder.Options);
+        {
+            var existing = optionsBuilder.Options.FindExtension<NpgsqlOptionsExtension>();
+            return existing != null
+                ? new NpgsqlOptionsExtension(existing)
+                : new NpgsqlOptionsExtension();
+        }
     }
 }

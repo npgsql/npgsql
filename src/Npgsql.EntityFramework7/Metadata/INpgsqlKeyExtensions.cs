@@ -1,7 +1,7 @@
 ﻿using JetBrains.Annotations;
 using Microsoft.Data.Entity.Relational.Metadata;
 
-namespace EntityFramework.Npgsql.Extensions
+namespace EntityFramework.Npgsql.Metadata
 {
     public interface INpgsqlKeyExtensions : IRelationalKeyExtensions
     {

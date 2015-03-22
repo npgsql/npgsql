@@ -5,10 +5,11 @@ using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Relational;
 using Microsoft.Framework.Logging;
 using Npgsql;
+using EntityFramework.Npgsql.Extensions;
 
-namespace EntityFramework.Npgsql.Extensions
+namespace EntityFramework.Npgsql
 {
-    public class NpgsqlEntityFrameworkConnection : RelationalConnection
+    public class NpgsqlEntityFrameworkConnection : RelationalConnection, INpgsqlConnection
     {
     	private readonly ILoggerFactory _loggerFactory;
     	
@@ -25,7 +26,7 @@ namespace EntityFramework.Npgsql.Extensions
             return new NpgsqlConnection(ConnectionString);
         }
 
-        public virtual NpgsqlEntityFrameworkConnection CreateMasterConnection()
+        public virtual INpgsqlConnection CreateMasterConnection()
         {
             var builder = new NpgsqlConnectionStringBuilder { ConnectionString = ConnectionString };
             //builder.InitialCatalog = "master";

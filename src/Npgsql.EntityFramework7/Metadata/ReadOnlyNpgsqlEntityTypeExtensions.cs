@@ -2,7 +2,7 @@
 using Microsoft.Data.Entity.Metadata;
 using Microsoft.Data.Entity.Relational.Metadata;
 
-namespace EntityFramework.Npgsql.Extensions
+namespace EntityFramework.Npgsql.Metadata
 {
     public class ReadOnlyNpgsqlEntityTypeExtensions : ReadOnlyRelationalEntityTypeExtensions, INpgsqlEntityTypeExtensions
     {
@@ -15,13 +15,11 @@ namespace EntityFramework.Npgsql.Extensions
         }
 
         public override string Table
-        {
-            get { return EntityType[NpgsqlTableAnnotation] ?? base.Table; }
-        }
+            => EntityType[NpgsqlTableAnnotation] as string
+               ?? base.Table;
 
         public override string Schema
-        {
-            get { return EntityType[NpgsqlSchemaAnnotation] ?? base.Schema; }
-        }
+            => EntityType[NpgsqlSchemaAnnotation] as string
+               ?? base.Schema;
     }
 }

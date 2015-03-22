@@ -5,7 +5,7 @@ using Microsoft.Data.Entity.Relational;
 using Microsoft.Data.Entity.Relational.Migrations;
 using Microsoft.Framework.Logging;
 
-namespace EntityFramework.Npgsql.Extensions
+namespace EntityFramework.Npgsql
 {
 	public class NpgsqlDatabase : RelationalDatabase
     {

@@ -1,0 +1,13 @@
+{
+    "dependencies": {
+        "EntityFramework.Relational.FunctionalTests": "1.0.0-*",
+        "Npgsql.EntityFramework7": "3.0.0-alpha-*",
+        "xunit.runner.aspnet": "2.0.0-aspnet-*"
+    },
+    "commands": {
+        "test": "xunit.runner.aspnet"
+    },
+    "frameworks": {
+        "dnx451": { }
+    }
+}

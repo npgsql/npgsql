@@ -1,0 +1,3 @@
+[submodule "external/EntityFramework"]
+	path = external/EntityFramework
+	url = git@github.com:aspnet/EntityFramework.git

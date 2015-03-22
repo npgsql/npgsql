@@ -3,7 +3,7 @@
 //using Microsoft.Data.Entity.Metadata;
 //using Microsoft.Data.Entity.Relational.Migrations.Operations;
 
-//namespace EntityFramework.Npgsql.Extensions
+//namespace EntityFramework.Npgsql
 //{
 //	public class NpgsqlMigrationOperationFactory : MigrationOperationFactory
 //    {

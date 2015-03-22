@@ -7,57 +7,38 @@ using Microsoft.Data.Entity.Storage;
 using Microsoft.Data.Entity.Utilities;
 using Microsoft.Data.Entity.ValueGeneration;
 
-namespace EntityFramework.Npgsql.Extensions
+namespace EntityFramework.Npgsql
 {
 	public class NpgsqlSequenceValueGenerator<TValue> : HiLoValueGenerator<TValue>
     {
 		private readonly SqlStatementExecutor _executor;
-		private readonly NpgsqlEntityFrameworkConnection _connection;
+		private readonly INpgsqlConnection _connection;
 		private readonly string _sequenceName;
 		
 		public NpgsqlSequenceValueGenerator(
 			[NotNull] SqlStatementExecutor executor,
-			[NotNull] NpgsqlEntityFrameworkConnection connection,
-			[NotNull] string sequenceName,
-			[NotNull] HiLoValueGeneratorState generatorState)
+            [NotNull] NpgsqlSequenceValueGeneratorState generatorState,
+            [NotNull] INpgsqlConnection connection)
             : base(generatorState)
         {
-			Check.NotNull(executor, nameof(executor));
-			Check.NotEmpty(sequenceName, nameof(sequenceName));
+            Check.NotNull(executor, nameof(executor));
+            Check.NotNull(generatorState, nameof(generatorState));
+            Check.NotNull(connection, nameof(connection));
 
-			_sequenceName = sequenceName;
-
-			_executor = executor;
-			_connection = connection;
-			_sequenceName = sequenceName;
+            _sequenceName = generatorState.SequenceName;
+            _executor = executor;
+            _connection = connection;
 		}
 
-		public virtual string SequenceName
-		{
-			get
-			{
-				return _sequenceName;
-			}
-		}
+        protected override long GetNewLowValue()
+        {
+            // TODO: Parameterize query and/or delimit identifier without using SqlServerMigrationOperationSqlGenerator
+            var sql = string.Format(CultureInfo.InvariantCulture, "SELECT NEXT VALUE FOR {0}", _sequenceName);
+            var nextValue = _executor.ExecuteScalar(_connection, _connection.DbTransaction, sql);
 
-		protected override long GetNewLowValue()
-		{
-			var commandInfo = PrepareCommand(_connection);
-			var nextValue = _executor.ExecuteScalar(commandInfo.Item1, commandInfo.Item1.DbTransaction, commandInfo.Item2);
+            return (long)Convert.ChangeType(nextValue, typeof(long), CultureInfo.InvariantCulture);
+        }
 
-			return (long)Convert.ChangeType(nextValue, typeof(long), CultureInfo.InvariantCulture);
-		}
-		
-		private Tuple<RelationalConnection, string> PrepareCommand(RelationalConnection connection)
-		{
-			// TODO: Parameterize query and/or delimit identifier without using SqlServerMigrationOperationSqlGenerator
-			var sql = string.Format(
-				CultureInfo.InvariantCulture,
-				"SELECT NEXT VALUE FOR {0}", _sequenceName);
-
-			return Tuple.Create(connection, sql);
-		}
-		
-		public override bool GeneratesTemporaryValues => false;
+        public override bool GeneratesTemporaryValues => false;
 	}
 }

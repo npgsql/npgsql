@@ -6,7 +6,7 @@ using Microsoft.Data.Entity.Relational.Query.Expressions;
 using Microsoft.Data.Entity.Relational.Query.Sql;
 using Microsoft.Data.Entity.Utilities;
 
-namespace EntityFramework.Npgsql.Extensions
+namespace EntityFramework.Npgsql.Query
 {
     public class NpgsqlQueryGenerator : DefaultSqlQueryGenerator
     {

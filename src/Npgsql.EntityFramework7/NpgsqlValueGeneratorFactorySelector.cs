@@ -4,7 +4,7 @@
 //using Microsoft.Data.Entity.Utilities;
 //using Microsoft.Data.Entity.ValueGeneration;
 
-//namespace EntityFramework.Npgsql.Extensions
+//namespace EntityFramework.Npgsql
 //{
 //	public class NpgsqlValueGeneratorFactorySelector : ValueGeneratorFactorySelector
 //    {

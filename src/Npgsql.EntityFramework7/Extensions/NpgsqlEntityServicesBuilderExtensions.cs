@@ -1,12 +1,13 @@
-﻿using EntityFramework.Npgsql.Migrations;
+﻿using EntityFramework.Npgsql;
+using EntityFramework.Npgsql.Migrations;
+using EntityFramework.Npgsql.Update;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Relational;
 using Microsoft.Data.Entity.Storage;
 using Microsoft.Data.Entity.Utilities;
-using Microsoft.Framework.DependencyInjection;
 
-namespace EntityFramework.Npgsql.Extensions
+namespace Microsoft.Framework.DependencyInjection
 {
 	public static class NpgsqlEntityServicesBuilderExtensions
     {

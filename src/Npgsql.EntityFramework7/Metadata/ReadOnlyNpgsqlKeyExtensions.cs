@@ -2,7 +2,7 @@
 using Microsoft.Data.Entity.Metadata;
 using Microsoft.Data.Entity.Relational.Metadata;
 
-namespace EntityFramework.Npgsql.Extensions
+namespace EntityFramework.Npgsql.Metadata
 {
     public class ReadOnlyNpgsqlKeyExtensions : ReadOnlyRelationalKeyExtensions, INpgsqlKeyExtensions
     {
@@ -15,9 +15,8 @@ namespace EntityFramework.Npgsql.Extensions
         }
 
         public override string Name
-        {
-            get { return Key[NpgsqlNameAnnotation] ?? base.Name; }
-        }
+            => Key[NpgsqlNameAnnotation] as string
+               ?? base.Name;
 
         public virtual bool? IsClustered
         {
@@ -25,7 +24,7 @@ namespace EntityFramework.Npgsql.Extensions
             {
                 // TODO: Issue #777: Non-string annotations
                 // TODO: Issue #700: Annotate associated index object instead
-                var value = Key[NpgsqlClusteredAnnotation];
+                var value = Key[NpgsqlClusteredAnnotation] as string;
                 return value == null ? null : (bool?)bool.Parse(value);
             }
         }

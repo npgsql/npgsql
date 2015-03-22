@@ -4,7 +4,7 @@ using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Relational.Update;
 using Microsoft.Framework.Logging;
 
-namespace EntityFramework.Npgsql.Extensions
+namespace EntityFramework.Npgsql.Update
 {
     public class NpgsqlBatchExecutor : BatchExecutor
     {

@@ -2,13 +2,18 @@
 using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Relational;
 using Microsoft.Data.Entity.Utilities;
+using Microsoft.Framework.DependencyInjection;
 
-namespace EntityFramework.Npgsql.Extensions
+namespace EntityFramework.Npgsql
 {
 	public class NpgsqlOptionsExtension : RelationalOptionsExtension
     {
-    	public NpgsqlOptionsExtension([NotNull] IDbContextOptions options)
-            : base(options)
+        public NpgsqlOptionsExtension()
+        {
+        }
+
+        public NpgsqlOptionsExtension([NotNull] NpgsqlOptionsExtension copyFrom)
+            : base(copyFrom)
         {
         }
         

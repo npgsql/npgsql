@@ -4,7 +4,7 @@ using System.Globalization;
 using System.Reflection;
 using System.Resources;
 
-namespace EntityFramework.Npgsql.Extensions
+namespace EntityFramework.Npgsql
 {
     public static class Strings
     {

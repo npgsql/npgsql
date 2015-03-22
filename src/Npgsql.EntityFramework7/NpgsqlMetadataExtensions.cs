@@ -1,12 +1,13 @@
-﻿using JetBrains.Annotations;
+﻿using EntityFramework.Npgsql.Metadata;
+using JetBrains.Annotations;
 using Microsoft.Data.Entity.Metadata;
 using Microsoft.Data.Entity.Utilities;
 
-namespace EntityFramework.Npgsql.Extensions
+namespace EntityFramework.Npgsql
 {
     public static class NpgsqlMetadataExtensions
     {
-        public static INpgsqlPropertyExtensions Npgsql([NotNull] this Property property)
+        public static NpgsqlPropertyExtensions Npgsql([NotNull] this Property property)
         {
             Check.NotNull(property, "property");
 

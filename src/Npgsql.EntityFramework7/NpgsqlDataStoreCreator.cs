@@ -9,7 +9,7 @@ using Microsoft.Data.Entity.Relational;
 using Microsoft.Data.Entity.Relational.Migrations.Operations;
 using Microsoft.Data.Entity.Utilities;
 
-namespace EntityFramework.Npgsql.Extensions
+namespace EntityFramework.Npgsql
 {
 	public class NpgsqlDataStoreCreator : RelationalDataStoreCreator
     {

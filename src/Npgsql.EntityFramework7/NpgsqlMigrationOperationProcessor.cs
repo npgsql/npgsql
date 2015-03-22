@@ -8,7 +8,7 @@
 //using Microsoft.Data.Entity.Relational.Migrations.Operations;
 //using Microsoft.Data.Entity.Utilities;
 
-//namespace EntityFramework.Npgsql.Extensions
+//namespace EntityFramework.Npgsql
 //{
 //    public class NpgsqlMigrationOperationProcessor : MigrationOperationProcessor
 //    {

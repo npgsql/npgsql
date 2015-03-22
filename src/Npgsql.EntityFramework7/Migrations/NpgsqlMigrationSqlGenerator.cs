@@ -1,4 +1,5 @@
 using EntityFramework.Npgsql.Extensions;
+using EntityFramework.Npgsql.Metadata;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity.Metadata;
 using Microsoft.Data.Entity.Relational;
@@ -8,8 +9,16 @@ using Microsoft.Data.Entity.Utilities;
 
 namespace EntityFramework.Npgsql.Migrations
 {
-    public class NpgsqlMigrationSqlGenerator : MigrationSqlGenerator
+    public class NpgsqlMigrationSqlGenerator : MigrationSqlGenerator, INpgsqlMigrationSqlGenerator
     {
+        private readonly INpgsqlSqlGenerator _sql;
+
+        public NpgsqlMigrationSqlGenerator([NotNull] INpgsqlSqlGenerator sqlGenerator)
+            : base(Check.NotNull(sqlGenerator, nameof(sqlGenerator)))
+        {
+            _sql = sqlGenerator;
+        }
+
         public virtual void Generate(
             [NotNull] CreateDatabaseOperation operation,
             [CanBeNull] IModel model,
@@ -20,10 +29,10 @@ namespace EntityFramework.Npgsql.Migrations
 
             builder
                 .Append("CREATE DATABASE ")
-                .Append(DelimitIdentifier(operation.Name))
+                .Append(_sql.DelimitIdentifier(operation.Name))
                 .EndBatch()
                 .Append("IF SERVERPROPERTY('EngineEdition') <> 5 EXECUTE sp_executesql N'ALTER DATABASE ")
-                .Append(DelimitIdentifier(operation.Name))
+                .Append(_sql.DelimitIdentifier(operation.Name))
                 .Append(" SET READ_COMMITTED_SNAPSHOT ON';");
         }
 
@@ -37,11 +46,11 @@ namespace EntityFramework.Npgsql.Migrations
 
             builder
                 .Append("IF SERVERPROPERTY('EngineEdition') <> 5 EXECUTE sp_executesql N'ALTER DATABASE ")
-                .Append(DelimitIdentifier(operation.Name))
+                .Append(_sql.DelimitIdentifier(operation.Name))
                 .Append(" SET SINGLE_USER WITH ROLLBACK IMMEDIATE'")
                 .EndBatch()
                 .Append("DROP DATABASE ")
-                .Append(DelimitIdentifier(operation.Name))
+                .Append(_sql.DelimitIdentifier(operation.Name))
                 .Append(";");
         }
 
@@ -91,7 +100,7 @@ namespace EntityFramework.Npgsql.Migrations
             }
 
             builder
-                .Append(DelimitIdentifier(column.Name))
+                .Append(_sql.DelimitIdentifier(column.Name))
                 .Append(" ")
                 .Append("AS ")
                 .Append(computedSql);
@@ -103,7 +112,7 @@ namespace EntityFramework.Npgsql.Migrations
             Check.NotNull(builder, nameof(builder));
 
             GenerateRename(
-                EscapeLiteral(operation.Table) + "." + EscapeLiteral(operation.Name),
+                _sql.EscapeLiteral(operation.Table) + "." + _sql.EscapeLiteral(operation.Name),
                 operation.Schema,
                 operation.NewName,
                 "COLUMN",
@@ -127,15 +136,12 @@ namespace EntityFramework.Npgsql.Migrations
             Check.NotNull(builder, nameof(builder));
 
             GenerateRename(
-                EscapeLiteral(operation.Table) + "." + EscapeLiteral(operation.Name),
+                _sql.EscapeLiteral(operation.Table) + "." + _sql.EscapeLiteral(operation.Name),
                 operation.Schema,
                 operation.NewName,
                 "INDEX",
                 builder);
         }
-
-        protected override string DelimitIdentifier(string identifier) => "[" + EscapeIdentifier(identifier) + "]";
-        protected override string EscapeIdentifier(string identifier) => identifier.Replace("]", "]]");
 
         protected override void GenerateColumnTraits(ColumnModel column, SqlBatchBuilder builder)
         {
@@ -172,16 +178,16 @@ namespace EntityFramework.Npgsql.Migrations
             if (!string.IsNullOrWhiteSpace(schema))
             {
                 builder
-                    .Append(Literal(schema))
+                    .Append(_sql.GenerateLiteral(schema))
                     .Append(".");
             }
 
             builder
-                .Append(Literal(name))
+                .Append(_sql.GenerateLiteral(name))
                 .Append(", @newname = N")
-                .Append(Literal(newName))
+                .Append(_sql.GenerateLiteral(newName))
                 .Append(", @objtype = N")
-                .Append(Literal(objectType))
+                .Append(_sql.GenerateLiteral(objectType))
                 .Append(";");
         }
 
@@ -192,9 +198,9 @@ namespace EntityFramework.Npgsql.Migrations
             [NotNull] SqlBatchBuilder builder) =>
                 builder
                     .Append("ALTER SCHEMA ")
-                    .Append(DelimitIdentifier(newSchema))
+                    .Append(_sql.DelimitIdentifier(newSchema))
                     .Append(" TRANSFER ")
-                    .Append(DelimitIdentifier(name, schema))
+                    .Append(_sql.DelimitIdentifier(name, schema))
                     .Append(";");
     }
 }

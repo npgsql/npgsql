@@ -6,7 +6,7 @@ using Microsoft.Data.Entity.Relational;
 using Microsoft.Data.Entity.Relational.Update;
 using Microsoft.Data.Entity.Utilities;
 
-namespace EntityFramework.Npgsql.Extensions
+namespace EntityFramework.Npgsql
 {
     public class NpgsqlSqlGenerator : SqlGenerator
     {

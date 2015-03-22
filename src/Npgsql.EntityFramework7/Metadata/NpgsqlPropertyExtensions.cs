@@ -3,7 +3,7 @@ using JetBrains.Annotations;
 using Microsoft.Data.Entity.Metadata;
 using Microsoft.Data.Entity.Utilities;
 
-namespace EntityFramework.Npgsql.Extensions
+namespace EntityFramework.Npgsql.Metadata
 {
     public class NpgsqlPropertyExtensions : ReadOnlyNpgsqlPropertyExtensions
     {
@@ -118,7 +118,7 @@ namespace EntityFramework.Npgsql.Extensions
                 }
                 else
                 {
-                    var propertyType = Property.PropertyType;
+                    var propertyType = Property.ClrType;
 
                     if (value == NpgsqlValueGenerationStrategy.Identity
                         && (!propertyType.IsInteger()

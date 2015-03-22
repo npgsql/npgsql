@@ -3,7 +3,7 @@ using System.Data;
 using System.Linq;
 using Microsoft.Data.Entity.Relational;
 
-namespace EntityFramework.Npgsql.Extensions
+namespace EntityFramework.Npgsql
 {
     public class NpgsqlTypeMapper : RelationalTypeMapper
     {

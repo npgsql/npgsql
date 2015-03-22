@@ -2,11 +2,11 @@
 using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Internal;
 
-namespace EntityFramework.Npgsql.Extensions
+namespace EntityFramework.Npgsql
 {
-	public class NpgsqlModelSource : ModelSource
-	{
-		public NpgsqlModelSource([NotNull] DbSetFinder setFinder, [NotNull] ModelValidator modelValidator)
+	public class NpgsqlModelSource : ModelSource, INpgsqlModelSource
+    {
+		public NpgsqlModelSource([NotNull] IDbSetFinder setFinder, [NotNull] IModelValidator modelValidator)
 			: base(setFinder, modelValidator)
 		{ }
 	}

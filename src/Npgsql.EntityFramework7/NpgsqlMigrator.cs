@@ -4,7 +4,7 @@
 //using Microsoft.Data.Entity.Relational.Migrations.Infrastructure;
 //using Microsoft.Framework.Logging;
 
-//namespace EntityFramework.Npgsql.Extensions
+//namespace EntityFramework.Npgsql
 //{
 //    public class NpgsqlMigrator : Migrator
 //    {

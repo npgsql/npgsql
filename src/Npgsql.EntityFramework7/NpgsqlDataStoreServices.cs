@@ -2,6 +2,7 @@
 using JetBrains.Annotations;
 using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Metadata;
+using Microsoft.Data.Entity.Metadata.Builders;
 using Microsoft.Data.Entity.Relational;
 using Microsoft.Data.Entity.Relational.Migrations.History;
 using Microsoft.Data.Entity.Relational.Migrations.Infrastructure;
@@ -11,11 +12,11 @@ using Microsoft.Data.Entity.Utilities;
 using Microsoft.Data.Entity.ValueGeneration;
 using Microsoft.Data.Entity.Query;
 
-namespace EntityFramework.Npgsql.Extensions
+namespace EntityFramework.Npgsql
 {
 	public class NpgsqlDataStoreServices : IRelationalDataStoreServices
     {
-		private readonly NpgsqlDataStore _store;
+        private readonly NpgsqlDataStore _store;
 		private readonly NpgsqlDataStoreCreator _creator;
 		private readonly NpgsqlEntityFrameworkConnection _connection;
 		private readonly NpgsqlValueGeneratorSelector _valueGeneratorSelector;
@@ -79,5 +80,7 @@ namespace EntityFramework.Npgsql.Extensions
 		public virtual IDatabaseFactory DatabaseFactory { get; }
 
 		public virtual IModelSource ModelSource => _modelSource;
-	}
+
+        public virtual ISqlGenerator SqlGenerator { get; }
+    }
 }

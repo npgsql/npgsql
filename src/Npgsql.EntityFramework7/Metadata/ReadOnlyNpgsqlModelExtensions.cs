@@ -1,10 +1,12 @@
 ﻿using System;
+using System.Linq;
+using System.Collections.Generic;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity.Metadata;
 using Microsoft.Data.Entity.Relational.Metadata;
 using Microsoft.Data.Entity.Utilities;
 
-namespace EntityFramework.Npgsql.Extensions
+namespace EntityFramework.Npgsql.Metadata
 {
     public class ReadOnlyNpgsqlModelExtensions : ReadOnlyRelationalModelExtensions, INpgsqlModelExtensions
     {
@@ -23,19 +25,32 @@ namespace EntityFramework.Npgsql.Extensions
             get
             {
                 // TODO: Issue #777: Non-string annotations
-                var value = Model[NpgsqlValueGenerationAnnotation];
-                return value == null ? null : (NpgsqlValueGenerationStrategy?)Enum.Parse(typeof(NpgsqlValueGenerationStrategy), value);
+                var value = Model[NpgsqlValueGenerationAnnotation] as string;
+
+                return value == null
+                    ? null
+                    : (NpgsqlValueGenerationStrategy?)Enum.Parse(typeof(NpgsqlValueGenerationStrategy), value);
             }
         }
 
-        public virtual string DefaultSequenceName
-        {
-            get { return Model[NpgsqlDefaultSequenceNameAnnotation]; }
-        }
+        public virtual string DefaultSequenceName => Model[NpgsqlDefaultSequenceNameAnnotation] as string;
+        public virtual string DefaultSequenceSchema => Model[NpgsqlDefaultSequenceSchemaAnnotation] as string;
 
-        public virtual string DefaultSequenceSchema
+        public override IReadOnlyList<Sequence> Sequences
         {
-            get { return Model[NpgsqlDefaultSequenceSchemaAnnotation]; }
+            get
+            {
+                var sqlServerSequences = (
+                    from a in Model.Annotations
+                    where a.Name.StartsWith(NpgsqlSequenceAnnotation)
+                    select Sequence.Deserialize((string)a.Value))
+                    .ToList();
+
+                return base.Sequences
+                    .Where(rs => !sqlServerSequences.Any(ss => ss.Name == rs.Name && ss.Schema == rs.Schema))
+                    .Concat(sqlServerSequences)
+                    .ToList();
+            }
         }
 
         public override Sequence TryGetSequence(string name, string schema = null)
@@ -43,7 +58,8 @@ namespace EntityFramework.Npgsql.Extensions
             Check.NotEmpty(name, "name");
             Check.NullButNotEmpty(schema, "schema");
 
-            return FindSequence(NpgsqlSequenceAnnotation + schema + "." + name) ?? base.TryGetSequence(name, schema);
+            return FindSequence(NpgsqlSequenceAnnotation + schema + "." + name)
+                   ?? base.TryGetSequence(name, schema);
         }
     }
 }

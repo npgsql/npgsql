@@ -2,7 +2,7 @@
 //using Microsoft.Data.Entity.Metadata;
 //using Microsoft.Data.Entity.Relational.Metadata;
 
-//namespace EntityFramework.Npgsql.Extensions
+//namespace EntityFramework.Npgsql.Metadata
 //{
 //    public class NpgsqlMetadataExtensionProvider : IRelationalMetadataExtensionProvider
 //    {

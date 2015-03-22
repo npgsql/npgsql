@@ -8,7 +8,7 @@ using Microsoft.Data.Entity.Relational.Metadata;
 using Microsoft.Data.Entity.Relational.Update;
 using Microsoft.Data.Entity.Utilities;
 
-namespace EntityFramework.Npgsql.Extensions
+namespace EntityFramework.Npgsql.Update
 {
     public class NpgsqlModificationCommandBatch : ReaderModificationCommandBatch
     {

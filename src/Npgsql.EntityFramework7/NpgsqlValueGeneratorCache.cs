@@ -1,11 +1,12 @@
 ﻿using System;
+using EntityFramework.Npgsql.Extensions;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity.Metadata;
 using Microsoft.Data.Entity.Relational;
 using Microsoft.Data.Entity.Utilities;
 using Microsoft.Data.Entity.ValueGeneration;
 
-namespace EntityFramework.Npgsql.Extensions
+namespace EntityFramework.Npgsql
 {
 	public class NpgsqlValueGeneratorCache : ValueGeneratorCache
     {

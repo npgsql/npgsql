@@ -1,7 +1,10 @@
-﻿using JetBrains.Annotations;
+﻿using EntityFramework.Npgsql.Query;
+using EntityFramework.Npgsql.Update;
+using JetBrains.Annotations;
 using Microsoft.Data.Entity.ChangeTracking.Internal;
 using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Metadata;
+using Microsoft.Data.Entity.Metadata.Internal;
 using Microsoft.Data.Entity.Query;
 using Microsoft.Data.Entity.Relational;
 using Microsoft.Data.Entity.Relational.Query;
@@ -9,14 +12,14 @@ using Microsoft.Data.Entity.Relational.Query.Methods;
 using Microsoft.Data.Entity.Utilities;
 using Microsoft.Framework.Logging;
 
-namespace EntityFramework.Npgsql.Extensions
+namespace EntityFramework.Npgsql
 {
 	public class NpgsqlDataStore : RelationalDataStore
     {
         public NpgsqlDataStore(
             [NotNull] IModel model,
-            [NotNull] EntityKeyFactorySource entityKeyFactorySource,
-            [NotNull] EntityMaterializerSource entityMaterializerSource,
+            [NotNull] IEntityKeyFactorySource entityKeyFactorySource,
+            [NotNull] IEntityMaterializerSource entityMaterializerSource,
             [NotNull] NpgsqlEntityFrameworkConnection connection,
             [NotNull] NpgsqlCommandBatchPreparer batchPreparer,
             [NotNull] NpgsqlBatchExecutor batchExecutor,

@@ -1,10 +1,11 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Relational.Update;
 using Microsoft.Data.Entity.Utilities;
 
-namespace EntityFramework.Npgsql.Extensions
+namespace EntityFramework.Npgsql.Update
 {
     public class NpgsqlModificationCommandBatchFactory : ModificationCommandBatchFactory
     {

@@ -1,4 +1,4 @@
-﻿namespace EntityFramework.Npgsql.Extensions
+﻿namespace EntityFramework.Npgsql.Metadata
 {
     public static class NpgsqlAnnotationNames
     {
