@@ -760,14 +760,14 @@ namespace Npgsql
         private void AppendValue(DateTime value, StringBuilder sql)
         {
             sql.Append("'");
-            sql.Append(((NpgsqlTypes.NpgsqlDateTime)value).ToString());
+            sql.Append(new NpgsqlTypes.NpgsqlDateTime(value));
             sql.Append("'");
         }
 
         private void AppendValue(DateTimeOffset value, StringBuilder sql)
         {
             sql.Append("'");
-            sql.Append(((NpgsqlTypes.NpgsqlTimeStampTZ)value).ToString());
+            sql.Append(new NpgsqlTypes.NpgsqlDateTime(value.UtcDateTime));
             sql.Append("'");
         }
 
