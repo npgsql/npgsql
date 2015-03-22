@@ -519,6 +519,11 @@ namespace Npgsql
                 return NpgsqlDbType.Range | ToNpgsqlDbType(type.GetGenericArguments()[0]);
             }
 
+            if (type == typeof(DBNull))
+            {
+                return NpgsqlDbType.Unknown;
+            }
+
             throw new NotSupportedException("Can't infer NpgsqlDbType for type " + type);
         }
 
