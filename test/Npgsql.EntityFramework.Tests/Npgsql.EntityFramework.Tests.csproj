@@ -1,8 +1,8 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
   <PropertyGroup>
-    <ProjectGuid>{E9C258D7-0D8E-4E6A-9857-5C6438591755}</ProjectGuid>
-    <RootNamespace>Npgsql.Tests</RootNamespace>
+    <ProjectGuid>{4A0A42DE-C8B8-11E4-8EC9-005056A163A4}</ProjectGuid>
+    <RootNamespace>Npgsql.EntityFramework.Tests</RootNamespace>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <SignAssembly>true</SignAssembly>
@@ -14,7 +14,6 @@
     </UpgradeBackupLocation>
     <IsWebBootstrapper>true</IsWebBootstrapper>
     <TargetFrameworkProfile />
-    <PublishUrl>http://localhost/NpgsqlTests/</PublishUrl>
     <Install>true</Install>
     <InstallFrom>Web</InstallFrom>
     <UpdateEnabled>true</UpdateEnabled>
@@ -31,7 +30,7 @@
     <ProductVersion>10.0.0</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
     <OutputType>Library</OutputType>
-    <AssemblyName>Npgsql.Tests</AssemblyName>
+    <AssemblyName>Npgsql.EntityFramework.Tests</AssemblyName>
     <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\..\</SolutionDir>
     <RestorePackages>true</RestorePackages>
   </PropertyGroup>
@@ -45,7 +44,8 @@
     <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
     <WarningLevel>4</WarningLevel>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
-    <DefineConstants>TRACE;DEBUG</DefineConstants>
+    <DefineConstants>
+    </DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release-net40|AnyCPU' ">
     <OutputPath>bin\Release-net40\</OutputPath>
@@ -68,7 +68,7 @@
     <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
     <WarningLevel>4</WarningLevel>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
-    <DefineConstants>TRACE;DEBUG;NET45</DefineConstants>
+    <DefineConstants>NET45</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release-net45|AnyCPU' ">
     <OutputPath>bin\Release-net45\</OutputPath>
@@ -90,7 +90,7 @@
     <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
     <WarningLevel>4</WarningLevel>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
-    <DefineConstants>TRACE;DEBUG;NET45</DefineConstants>
+    <DefineConstants>NET45</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release-net45-EF6|AnyCPU' ">
     <OutputPath>bin\Release-net45-EF6\</OutputPath>
@@ -118,10 +118,10 @@
     <Reference Include="NLog">
       <HintPath>..\..\packages\NLog.3.1.0.0\lib\net40\NLog.dll</HintPath>
     </Reference>
-    <Reference Include="nunit.framework, Version=2.6.4.14350, Culture=neutral, PublicKeyToken=96d09a1eb7f44a77, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
+    <Reference Include="nunit.framework">
       <HintPath>..\..\packages\NUnit.2.6.4\lib\nunit.framework.dll</HintPath>
     </Reference>
+    <Reference Include="System.ComponentModel.DataAnnotations" />
     <Reference Include="System.Core">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
     </Reference>
@@ -135,7 +135,15 @@
     <Reference Include="System.Configuration" />
     <Reference Include="System.Xml" />
   </ItemGroup>
+  <ItemGroup Condition="'$(Configuration)' == 'Release-net45' Or '$(Configuration)' == 'Debug-net45'">
+    <Reference Include="EntityFramework">
+      <HintPath>..\..\packages\EntityFramework.6.1.3\lib\net45\EntityFramework.dll</HintPath>
+    </Reference>
+  </ItemGroup>
   <ItemGroup Condition="'$(Configuration)' == 'Release-net40' Or '$(Configuration)' == 'Debug-net40'">
+    <Reference Include="EntityFramework">
+      <HintPath>..\..\packages\EntityFramework.6.1.3\lib\net40\EntityFramework.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.Threading.Tasks">
       <HintPath>..\..\packages\Microsoft.Bcl.Async.1.0.168\lib\net40\Microsoft.Threading.Tasks.dll</HintPath>
     </Reference>
@@ -157,77 +165,36 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="LargeObjectTests.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="TransactionTests.cs" />
-    <Compile Include="Types\ArrayTests.cs" />
-    <Compile Include="AsyncTests.cs" />
-    <Compile Include="Types\BitStringTests.cs" />
-    <Compile Include="Types\ByteaTests.cs" />
-    <Compile Include="CopyTests.cs" />
-    <Compile Include="Types\DateTimeTests.cs" />
-    <Compile Include="FunctionTests.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="NpgsqlBufferedStreamTests.cs" />
-    <Compile Include="SecurityTests.cs" />
-    <Compile Include="Types\EnumTests.cs" />
-    <Compile Include="Types\GeometricTypeTests.cs" />
-    <Compile Include="Types\NetworkTypeTests.cs" />
-    <Compile Include="Types\NumericTypeTests.cs" />
-    <Compile Include="TestMetrics.cs" />
-    <Compile Include="TestBase.cs" />
-    <Compile Include="CommandTests.cs" />
-    <Compile Include="ConnectionTests.cs" />
-    <Compile Include="DataAdapterTests.cs" />
-    <Compile Include="ReaderTests.cs" />
-    <Compile Include="ExceptionTests.cs" />
-    <Compile Include="SpeedTests.cs" />
-    <Compile Include="NpgsqlParameterTests.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="PrepareTests.cs" />
-    <Compile Include="SystemTransactionsTest.cs" />
-    <Compile Include="TestUtil.cs" />
-    <Compile Include="Types\MiscTypeTests.cs" />
-    <Compile Include="Types\TextTests.cs" />
-    <Compile Include="TypesTests.cs" />
+    <Compile Include="EntityFrameworkBasicTests.cs" />
+    <Compile Include="EntityFrameworkMigrationTests.cs" />
+    <Compile Include="xmlModel\XmlTest.ObjectLayer.cs" />
+    <Compile Include="xmlModel\XmlTest.Views.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
     <None Include="packages.config" />
+    <None Include="xmlModel\XmlTest.csdl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="xmlModel\XmlTest.msl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="xmlModel\XmlTest.ssdl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <ItemGroup>
-    <BootstrapperPackage Include="Microsoft.Net.Client.3.5">
-      <Visible>False</Visible>
-      <ProductName>.NET Framework 3.5 SP1 Client Profile</ProductName>
-      <Install>false</Install>
-    </BootstrapperPackage>
-    <BootstrapperPackage Include="Microsoft.Net.Framework.2.0">
-      <Visible>False</Visible>
-      <ProductName>.NET Framework 2.0 %28x86%29</ProductName>
-      <Install>true</Install>
-    </BootstrapperPackage>
-    <BootstrapperPackage Include="Microsoft.Net.Framework.3.0">
-      <Visible>False</Visible>
-      <ProductName>.NET Framework 3.0 %28x86%29</ProductName>
-      <Install>false</Install>
-    </BootstrapperPackage>
-    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5">
-      <Visible>False</Visible>
-      <ProductName>.NET Framework 3.5</ProductName>
-      <Install>false</Install>
-    </BootstrapperPackage>
-    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5.SP1">
-      <Visible>False</Visible>
-      <ProductName>.NET Framework 3.5 SP1</ProductName>
-      <Install>false</Install>
-    </BootstrapperPackage>
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\..\Npgsql\Npgsql.csproj">
+    <ProjectReference Include="..\..\src\Npgsql.EntityFramework\Npgsql.EntityFramework.csproj">
+      <Project>{3ec85cba-5b79-11e3-8104-0022198ab089}</Project>
+      <Name>Npgsql.EntityFramework</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\src\Npgsql\Npgsql.csproj">
       <Project>{9D13B739-62B1-4190-B386-7A9547304EB3}</Project>
       <Name>Npgsql</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Npgsql.Tests\Npgsql.Tests.csproj">
+      <Project>{e9c258d7-0d8e-4e6a-9857-5c6438591755}</Project>
+      <Name>Npgsql.Tests</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.Targets" />

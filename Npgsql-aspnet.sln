@@ -10,13 +10,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		global.json = global.json
 	EndProjectSection
 EndProject
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Npgsql", "Npgsql\Npgsql.kproj", "{9D13B739-62B1-4190-B386-7A9547304EB3}"
+Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Npgsql", "src\Npgsql\Npgsql.kproj", "{9D13B739-62B1-4190-B386-7A9547304EB3}"
 EndProject
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Npgsql.EntityFramework7", "Npgsql.EntityFramework7\Npgsql.EntityFramework7.kproj", "{8FD04E24-CDDF-41CA-940D-2021BD62FB87}"
+Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Npgsql.EntityFramework7", "src\Npgsql.EntityFramework7\Npgsql.EntityFramework7.kproj", "{8FD04E24-CDDF-41CA-940D-2021BD62FB87}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{802E669C-6885-4E60-9CFB-8CFB47EAF16A}"
 EndProject
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Npgsql.Tests", "tests\Npgsql.Tests\Npgsql.Tests.kproj", "{E9C258D7-0D8E-4E6A-9857-5C6438591755}"
+Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Npgsql.Tests", "test\Npgsql.Tests\Npgsql.Tests.kproj", "{E9C258D7-0D8E-4E6A-9857-5C6438591755}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
