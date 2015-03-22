@@ -40,6 +40,12 @@ namespace Npgsql
         }
 
         /// <summary>
+        /// Since PostgreSQL 9.3, large objects larger than 2GB can be handled, up to 4TB.
+        /// This property returns true whether the PostgreSQL version is >= 9.3.
+        /// </summary>
+        public bool Has64BitSupport { get { return _manager._connection.PostgreSqlVersion >= new Version(9, 3); } }
+
+        /// <summary>
         /// Reads <i>count</i> bytes from the large object. The only case when fewer bytes are read is when end of stream is reached.
         /// </summary>
         /// <param name="buffer">The buffer where read data should be stored.</param>
@@ -203,7 +209,7 @@ namespace Npgsql
         {
             if (origin < SeekOrigin.Begin || origin > SeekOrigin.End)
                 throw new ArgumentException("Invalid origin");
-            if (!_manager.Has64BitSupport && offset != (long)(int)offset)
+            if (!Has64BitSupport && offset != (long)(int)offset)
                 throw new ArgumentOutOfRangeException("offset", "offset must fit in 32 bits for PostgreSQL versions older than 9.3");
             Contract.EndContractBlock();
 
