@@ -730,6 +730,7 @@ namespace Npgsql
             }
             catch (NpgsqlException)
             {
+                State = ConnectorState.Ready;
                 throw;
             }
             catch

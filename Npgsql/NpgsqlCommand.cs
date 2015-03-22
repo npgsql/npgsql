@@ -1205,10 +1205,6 @@ namespace Npgsql
                 reader = new NpgsqlDataReader(this, behavior, _queries);
 
                 return reader;
-            } catch (NpgsqlException) {
-                // TODO: Should probably happen inside ReadSingleMessage()
-                _connector.State = ConnectorState.Ready;
-                throw;
             } finally {
                 if (reader == null && _notificationBlock != null) {
                     _notificationBlock.Dispose();
