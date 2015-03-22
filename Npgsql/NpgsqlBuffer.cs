@@ -563,6 +563,7 @@ namespace Npgsql
 
         public NpgsqlBuffer WriteBytesNullTerminated(byte[] buf)
         {
+            Contract.Requires(WriteSpaceLeft >= buf.Length + 1);
             WriteBytes(buf);
             WriteByte(0);
 

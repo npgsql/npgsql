@@ -30,7 +30,7 @@ namespace Npgsql.FrontendMessages
 
         internal override int Length
         {
-            get { return 1 + 4 + Portal.Length + 4; }
+            get { return 1 + 4 + (Portal.Length + 1) + 4; }
         }
 
         internal override void Write(NpgsqlBuffer buf)
@@ -41,7 +41,7 @@ namespace Npgsql.FrontendMessages
             var portalNameBytes = Encoding.ASCII.GetBytes(Portal);
             buf
                 .WriteByte(Code)
-                .WriteInt32(Length)
+                .WriteInt32(Length - 1)
                 .WriteBytesNullTerminated(portalNameBytes)
                 .WriteInt32(MaxRows);
         }

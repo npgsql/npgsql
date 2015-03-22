@@ -26,14 +26,14 @@ namespace Npgsql.FrontendMessages
             return this;
         }
 
-        internal override int Length { get { return 1 + 4 + 1 + Name.Length; } }
+        internal override int Length { get { return 1 + 4 + 1 + (Name.Length + 1); } }
 
         internal override void Write(NpgsqlBuffer buf)
         {
             Contract.Requires(Name != null && Name.All(c => c < 128));
 
             buf.WriteByte(Code);
-            buf.WriteInt32(Length);
+            buf.WriteInt32(Length - 1);
             buf.WriteByte((byte)StatementOrPortal);
             buf.WriteBytesNullTerminated(Encoding.ASCII.GetBytes(Name));
         }

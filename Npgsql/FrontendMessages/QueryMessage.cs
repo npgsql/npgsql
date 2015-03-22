@@ -29,7 +29,7 @@ namespace Npgsql.FrontendMessages
 
         internal override int Length
         {
-            get { return 5 + Query.Length; }
+            get { return 1 + 4 + (Query.Length + 1); }
         }
 
         internal override void Write(NpgsqlBuffer buf)
@@ -37,7 +37,7 @@ namespace Npgsql.FrontendMessages
             Contract.Requires(Query != null && Query.All(c => c < 128));
 
             buf.WriteByte(Code);
-            buf.WriteInt32(Length);
+            buf.WriteInt32(Length - 1);
             buf.WriteBytesNullTerminated(Encoding.ASCII.GetBytes(Query));
         }
 

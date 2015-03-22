@@ -71,12 +71,12 @@ namespace Npgsql.FrontendMessages
             Password = password;
         }
 
-        internal override int Length { get { return 4 + Password.Length; } }
+        internal override int Length { get { return 1 + 4 + Password.Length; } }
 
         internal override void Write(NpgsqlBuffer buf)
         {
             buf.WriteByte(Code);
-            buf.WriteInt32(Length);
+            buf.WriteInt32(Length - 1);
             buf.WriteBytes(Password);
         }
 

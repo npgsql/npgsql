@@ -13,7 +13,7 @@ namespace Npgsql.FrontendMessages
 
         TerminateMessage() { }
 
-        internal override int Length { get { return 5; } }
+        internal override int Length { get { return 1 + 4; } }
 
         internal override void Write(NpgsqlBuffer buf)
         {
