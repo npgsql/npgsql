@@ -438,6 +438,9 @@
     <Compile Include="TypeHandlerRegistry.cs" />
     <Compile Include="TypeHandlers\UnrecognizedTypeHandler.cs" />
   </ItemGroup>
+  <ItemGroup Condition="'$(Configuration)' == 'Release-net40' Or '$(Configuration)' == 'Debug-net40'">
+    <Compile Include="ContractExtensions.cs" />
+  </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="NpgsqlMetaData.xml" />
   </ItemGroup>
