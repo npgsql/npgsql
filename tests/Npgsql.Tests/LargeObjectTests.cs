@@ -26,7 +26,7 @@ namespace Npgsql.Tests
                     stream.Write(buf, 0, buf.Length);
                     stream.Seek(0, System.IO.SeekOrigin.Begin);
                     var buf2 = new byte[buf.Length];
-                    stream.ReadAll(buf2, 0, buf2.Length);
+                    stream.Read(buf2, 0, buf2.Length);
                     Assert.That(buf.SequenceEqual(buf2));
 
                     Assert.AreEqual(5, stream.Position);
@@ -41,7 +41,7 @@ namespace Npgsql.Tests
                     stream.Write(buf, 0, buf.Length);
                     stream.Seek(-5, System.IO.SeekOrigin.End);
                     var buf3 = new byte[100];
-                    Assert.AreEqual(5, stream.ReadAll(buf3, 0, 100));
+                    Assert.AreEqual(5, stream.Read(buf3, 0, 100));
                     Assert.That(buf.SequenceEqual(buf3.Take(5)));
 
                     stream.SetLength(43);

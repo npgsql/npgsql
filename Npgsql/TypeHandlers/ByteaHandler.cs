@@ -77,7 +77,7 @@ namespace Npgsql.TypeHandlers
             {
                 var arraySegment = (ArraySegment<byte>)value;
 
-                if (arraySegment == null)
+                if (arraySegment.Array == null)
                     throw new InvalidCastException("Array in ArraySegment<byte> is null");
 
                 return parameter == null || parameter.Size <= 0 || parameter.Size >= arraySegment.Count
@@ -100,11 +100,11 @@ namespace Npgsql.TypeHandlers
 
             if (value is ArraySegment<byte>)
             {
-                var arraySegment = (ArraySegment<byte>)value;
-                var len = parameter == null || parameter.Size <= 0 || parameter.Size >= arraySegment.Count
-                    ? arraySegment.Count
-                    : parameter.Size;
-                _value = new ArraySegment<byte>(arraySegment.Array, arraySegment.Offset, len);
+                _value = (ArraySegment<byte>)value;
+                if (!(parameter == null || parameter.Size <= 0 || parameter.Size >= _value.Count))
+                {
+                     _value = new ArraySegment<byte>(_value.Array, _value.Offset, parameter.Size);
+                }
             }
             else
             {

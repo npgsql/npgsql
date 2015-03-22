@@ -40,44 +40,14 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Reads up to <i>count</i> bytes from the large object into the buffer.
-        /// A return value of 0 indicates end of file.
+        /// Reads <i>count</i> bytes from the large object. The only case when fewer bytes are read is when end of stream is reached.
         /// </summary>
         /// <param name="buffer">The buffer where read data should be stored.</param>
-        /// <param name="offset">The offset in the buffer where the first byte should be stored.</param>
+        /// <param name="offset">The offset in the buffer where the first byte should be read.</param>
         /// <param name="count">The maximum number of bytes that should be read.</param>
         /// <returns>How many bytes actually read, or 0 if end of file was already reached.</returns>
         [GenerateAsync]
         public override int Read(byte[] buffer, int offset, int count)
-        {
-            if (buffer == null)
-                throw new ArgumentNullException("buffer");
-            if (offset < 0)
-                throw new ArgumentOutOfRangeException("offset");
-            if (count < 0)
-                throw new ArgumentOutOfRangeException("count");
-            if (buffer.Length - offset < count)
-                throw new ArgumentException("Invalid offset or count for this buffer");
-            Contract.EndContractBlock();
-
-            CheckDisposed();
-
-            count = Math.Min(count, _manager.MaxTransferBlockSize);
-
-            var bytesRead = _manager.ExecuteFunctionGetBytes("loread", buffer, offset, count, _fd, count);
-            _pos += bytesRead;
-            return bytesRead;
-        }
-
-        /// <summary>
-        /// Reads <i>count</i> bytes from the large object. The only case when fewer bytes are read is when end of stream is reached.
-        /// </summary>
-        /// <param name="buffer">The buffer where read data should be stored.</param>
-        /// <param name="offset">The offset in the buffer where the first byte should be stored.</param>
-        /// <param name="count">The maximum number of bytes that should be read.</param>
-        /// <returns>How many bytes actually read, or 0 if end of file was already reached.</returns>
-        [GenerateAsync]
-        public int ReadAll(byte[] buffer, int offset, int count)
         {
             if (buffer == null)
                 throw new ArgumentNullException("buffer");
@@ -153,7 +123,7 @@ namespace Npgsql
         {
             get
             {
-                return false; // TODO
+                return false; // TODO?
             }
         }
 
@@ -205,7 +175,7 @@ namespace Npgsql
             get { return GetLengthInternal(); }
         }
 
-        // TODO: uncomment this
+        // TODO: uncomment this when finally implementing async
         /*public Task<long> GetLengthAsync()
         {
             return GetLengthInternalAsync();
