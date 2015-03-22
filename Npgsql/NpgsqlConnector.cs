@@ -354,17 +354,12 @@ namespace Npgsql
                     startupMessage.SearchPath = _settings.SearchPath;
                 }
 
-                var len = startupMessage.Length;
-                if (len >= Buffer.Size) {  // Should really never happen, just in case
-                    throw new Exception(String.Format("Buffer ({0} bytes) not big enough to contain Startup message ({1} bytes)", Buffer.Size, len));
-                }
                 startupMessage.Prepare();
-                if (startupMessage.Length > Buffer.Size) {
+                if (startupMessage.Length > Buffer.Size) {  // Should really never happen, just in case
                     throw new Exception("Startup message bigger than buffer");
                 }
                 startupMessage.Write(Buffer);
-                // TODO: Possible optimization: send settings like ssl_renegotiation in the same packet,
-                // reduce one roundtrip
+
                 Buffer.Flush();
                 HandleAuthentication();
             }
