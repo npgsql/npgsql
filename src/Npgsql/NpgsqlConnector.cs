@@ -121,16 +121,6 @@ namespace Npgsql
         /// </summary>
         List<string> _deferredCommands;
 
-        /// <summary>
-        /// Whether the backend is an AWS Redshift instance
-        /// </summary>
-        bool? _isRedshift;
-
-        // For IsValid test
-        readonly RNGCryptoServiceProvider _rng = new RNGCryptoServiceProvider();
-
-        string _initQueries;
-
         internal SSPIHandler SSPI { get; set; }
 
         static readonly ILog _log = LogManager.GetCurrentClassLogger();
@@ -202,7 +192,6 @@ namespace Npgsql
         internal int DefaultCommandTimeout { get { return _settings.CommandTimeout; } }
         internal bool Enlist { get { return _settings.Enlist; } }
         internal bool IntegratedSecurity { get { return _settings.IntegratedSecurity; } }
-        internal Version CompatVersion { get { return _settings.Compatible; } }
 
         #endregion Configuration settings
 
@@ -348,13 +337,15 @@ namespace Npgsql
             {
                 var startupMessage = new StartupMessage(Database, UserName);
                 if (!string.IsNullOrEmpty(_settings.ApplicationName)) {
-                    startupMessage.ApplicationName = _settings.ApplicationName;
+                    startupMessage["application_name"] = _settings.ApplicationName;
                 }
                 if (!string.IsNullOrEmpty(_settings.SearchPath)) {
-                    startupMessage.SearchPath = _settings.SearchPath;
+                    startupMessage["search_path"] = _settings.SearchPath;
+                }
+                if (!IsRedshift) {
+                    startupMessage["ssl_renegotiation_limit"] = "0";
                 }
 
-                startupMessage.Prepare();
                 if (startupMessage.Length > Buffer.Size) {  // Should really never happen, just in case
                     throw new Exception("Startup message bigger than buffer");
                 }
@@ -379,36 +370,8 @@ namespace Npgsql
             // After attachment, the stream will close the connector (this) when the stream gets disposed.
             BaseStream.AttachConnector(this);
 
-            // Fall back to the old way, SELECT VERSION().
-            // This should not happen for protocol version 3+.
-            if (ServerVersion == null)
-            {
-                //NpgsqlCommand command = new NpgsqlCommand("set DATESTYLE TO ISO;select version();", this);
-                //ServerVersion = new Version(PGUtil.ExtractServerVersion((string) command.ExecuteScalar()));
-                using (var command = new NpgsqlCommand("set DATESTYLE TO ISO;select version();", this))
-                {
-                    ServerVersion = new Version(PGUtil.ExtractServerVersion((string)command.ExecuteScalar()));
-                }
-            }
-
             ProcessServerVersion();
-
-            // Some connection parameters for protocol 3 had been sent in the startup packet.
-            // The rest will be setted here.
-            if (SupportsSslRenegotiationLimit && IsSecure)
-            {
-                _initQueries = "SET ssl_renegotiation_limit=0;";
-                ExecuteBlind(_initQueries);
-            }
-
             TypeHandlerRegistry.Setup(this);
-
-            // Make a shallow copy of the type mapping that the connector will own.
-            // It is possible that the connector may add types to its private
-            // mapping that will not be valid to another connector, even
-            // if connected to the same backend version.
-            //NativeToBackendTypeConverterOptions.OidToNameMapping = NpgsqlTypesHelper.CreateAndLoadInitialTypesMapping(this).Clone();
-
             State = ConnectorState.Ready;
 
             if (_settings.SyncNotification)
@@ -596,7 +559,6 @@ namespace Npgsql
                 default:
                     throw new NotSupportedException(String.Format("Authentication method not supported (Received: {0})", msg.AuthRequestType));
             }
-            passwordMessage.Prepare();
             passwordMessage.Write(Buffer);
             Buffer.Flush();
         }
@@ -1351,18 +1313,7 @@ namespace Npgsql
         /// </summary>
         internal bool IsRedshift
         {
-            get
-            {
-                if (!_isRedshift.HasValue)
-                {
-                    using (var cmd = new NpgsqlCommand("SELECT version()", this))
-                    {
-                        var versionStr = (string)cmd.ExecuteScalar();
-                        _isRedshift = versionStr.ToLower().Contains("redshift");
-                    }
-                }
-                return _isRedshift.Value;
-            }
+            get { return _settings.ServerCompatibilityMode == ServerCompatibilityMode.Redshift; }
         }
 
         #endregion Supported features
@@ -1536,44 +1487,6 @@ namespace Npgsql
         const string PreparedStatementNamePrefix = "s";
 
         /// <summary>
-        /// This method checks if the connector is still ok.
-        /// We try to send a simple query text, select 1 as ConnectionTest;
-        /// </summary>
-        internal Boolean IsValid()
-        {
-            try
-            {
-                // Here we use a fake NpgsqlCommand, just to send the test query string.
-
-                // Get random test value.
-                var testBytes = new Byte[2];
-                _rng.GetNonZeroBytes(testBytes);
-                var testValue = String.Format("Npgsql{0}{1}", testBytes[0], testBytes[1]);
-
-                //Query(new NpgsqlCommand("select 1 as ConnectionTest", this));
-                var compareValue = string.Empty;
-                var sql = "select '" + testValue + "'";
-                // restore initial connection parameters resetted by "Discard ALL"
-                sql = _initQueries + sql;
-                using (var cmd = new NpgsqlCommand(sql, this))
-                {
-                    compareValue = (string)cmd.ExecuteScalar();
-                }
-
-                if (compareValue != testValue)
-                {
-                    return false;
-                }
-            }
-            catch
-            {
-                return false;
-            }
-
-            return true;
-        }
-
-        /// <summary>
         /// Executes the command immediately if the connector is ready, otherwise schedules the command for
         /// execution at the earliest possible convenience.
         /// </summary>
@@ -1667,6 +1580,8 @@ namespace Npgsql
         #endregion
     }
 
+    #region Enums
+
     /// <summary>
     /// Expresses the exact state of a connector.
     /// </summary>
@@ -1747,6 +1662,22 @@ namespace Npgsql
         Skip
     }
 
+    internal enum ServerCompatibilityMode
+    {
+        /// <summary>
+        /// No special server compatibility mode is active
+        /// </summary>
+        None,
+        /// <summary>
+        /// The server is an Amazon Redshift instance.
+        /// </summary>
+        Redshift,
+    }
+
+    #endregion
+
+    #region Delegates
+
     /// <summary>
     /// Represents the method that allows the application to provide a certificate collection to be used for SSL clien authentication
     /// </summary>
@@ -1760,4 +1691,6 @@ namespace Npgsql
     /// <param name="chain">The certificate chain containing the certificate's CA and any intermediate authorities</param>
     /// <param name="errors">Any errors that were detected</param>
     public delegate bool ValidateRemoteCertificateCallback(X509Certificate cert, X509Chain chain, SslPolicyErrors errors);
+
+    #endregion
 }

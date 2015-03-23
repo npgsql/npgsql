@@ -1089,7 +1089,6 @@ namespace Npgsql
                 } else if (i == 0 && UnknownResultTypeList != null) {
                     bindMessage.UnknownResultTypeList = UnknownResultTypeList;
                 }
-                bindMessage.Prepare();
                 _connector.AddMessage(bindMessage);
             }
 
@@ -1128,7 +1127,6 @@ namespace Npgsql
                 } else if (i == 0 && UnknownResultTypeList != null) {
                     bindMessage.UnknownResultTypeList = UnknownResultTypeList;
                 }
-                bindMessage.Prepare();
                 _connector.AddMessage(bindMessage);
                 _connector.AddMessage(executeMessage.Populate("", (behavior & CommandBehavior.SingleRow) != 0 ? 1 : 0));
             }

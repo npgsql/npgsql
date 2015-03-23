@@ -522,6 +522,14 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, Description("Makes sure that ssl_renegotiation_limit is always 0, renegotiation is buggy")]
+        public void NoSslRenegotiation()
+        {
+            Assert.That(ExecuteScalar("SHOW ssl_renegotiation_limit"), Is.EqualTo("0"));
+            ExecuteNonQuery("DISCARD ALL");
+            Assert.That(ExecuteScalar("SHOW ssl_renegotiation_limit"), Is.EqualTo("0"));
+        }
+
         #region GetSchema
 
         [Test]

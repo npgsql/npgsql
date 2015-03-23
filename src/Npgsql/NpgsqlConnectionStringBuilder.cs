@@ -186,11 +186,14 @@ namespace Npgsql
             valueDescriptions.Add(Keywords.SyncNotification, new ValueDescription(typeof(bool)));
             valueDescriptions.Add(Keywords.CommandTimeout, new ValueDescription(NpgsqlCommand.DefaultTimeout));
             valueDescriptions.Add(Keywords.Enlist, new ValueDescription(typeof(bool)));
-            valueDescriptions.Add(Keywords.PreloadReader, new ValueDescription(typeof(bool)));
             valueDescriptions.Add(Keywords.IntegratedSecurity, new ValueDescription(typeof(bool)));
             valueDescriptions.Add(Keywords.IncludeRealm, new ValueDescription(typeof(bool)));
-            valueDescriptions.Add(Keywords.Compatible, new ValueDescription(THIS_VERSION));
             valueDescriptions.Add(Keywords.ApplicationName, new ValueDescription(typeof(string)));
+            valueDescriptions.Add(Keywords.ServerCompatibility, new ValueDescription(typeof(string)));
+
+            // No longer supported
+            valueDescriptions.Add(Keywords.PreloadReader, new ValueDescription(typeof(bool)));
+            valueDescriptions.Add(Keywords.Compatible, new ValueDescription(typeof(string)));
         }
 
         public NpgsqlConnectionStringBuilder()
@@ -230,8 +233,6 @@ namespace Npgsql
                 throw new ArgumentOutOfRangeException(
                     key, String.Format("Numeric value {0} in ConnectionString exceeds maximum value {1}", key, MaxPoolSize));
             }
-            if (Compatible != THIS_VERSION)
-                throw new NotSupportedException("No compatibility modes supported in this Npgsql version");
             if (IntegratedSecurity && Type.GetType("Mono.Runtime") != null)
                 throw new NotSupportedException("IntegratedSecurity isn't supported on mono");
         }
@@ -752,22 +753,6 @@ namespace Npgsql
             set { SetValue(GetKeyName(Keywords.IncludeRealm), Keywords.IncludeRealm, value); }
         }
 
-        private Version _compatible;
-
-        private static readonly Version THIS_VERSION =
-            MethodBase.GetCurrentMethod().DeclaringType.Assembly.GetName().Version;
-
-        /// <summary>
-        /// Compatibilty version. When possible, behaviour caused by breaking changes will be preserved
-        /// if this version is less than that where the breaking change was introduced.
-        /// </summary>
-        [Browsable(false)]
-        public Version Compatible
-        {
-            get { return _compatible; }
-            set { SetValue(GetKeyName(Keywords.Compatible), Keywords.Compatible, value); }
-        }
-        
         private string _application_name;
         /// <summary>
         /// Gets or sets the ootional application name parameter to be sent to the backend during connection initiation.
@@ -782,6 +767,8 @@ namespace Npgsql
             get { return _application_name; }
             set { SetValue(GetKeyName(Keywords.ApplicationName), Keywords.ApplicationName, value); }
         }
+
+        internal ServerCompatibilityMode ServerCompatibilityMode;
 
         #endregion
 
@@ -847,6 +834,9 @@ namespace Npgsql
                     return Keywords.Compatible;
                 case "APPLICATIONNAME":
                     return Keywords.ApplicationName;
+                case "SERVERCOMPATIBILITY":
+                case "SERVER COMPATIBILITY":
+                    return Keywords.ServerCompatibility;
                 default:
                     throw new ArgumentException("key=value argument incorrect in ConnectionString", key);
             }
@@ -890,18 +880,21 @@ namespace Npgsql
                     return "COMMANDTIMEOUT";
                 case Keywords.Enlist:
                     return "ENLIST";
-                case Keywords.PreloadReader:
-                    return "PRELOADREADER";
-                case Keywords.UseExtendedTypes:
-                    return "USEEXTENDEDTYPES";
                 case Keywords.IntegratedSecurity:
                     return "INTEGRATED SECURITY";
                 case Keywords.IncludeRealm:
                     return "INCLUDEREALM";
-                case Keywords.Compatible:
-                    return "COMPATIBLE";
                 case Keywords.ApplicationName:
                     return "APPLICATIONNAME";
+                case Keywords.ServerCompatibility:
+                    return "SERVERCOMPATIBILITY";
+                // No longer supported
+                case Keywords.PreloadReader:
+                    return "PRELOADREADER";
+                case Keywords.UseExtendedTypes:
+                    return "USEEXTENDEDTYPES";
+                case Keywords.Compatible:
+                    return "COMPATIBLE";
                 default:
                     return keyword.ToString().ToUpperInvariant();
             }
@@ -1039,14 +1032,6 @@ namespace Npgsql
                         return this._command_timeout = Convert.ToInt32(value);
                     case Keywords.Enlist:
                         return this._enlist = ToBoolean(value);
-                    case Keywords.PreloadReader:
-                        if (ToBoolean(value))
-                            throw new NotSupportedException("The PreloadReader parameter is no longer supported. Please see https://github.com/npgsql/Npgsql/wiki/PreloadReader-Removal");
-                        return false;
-                    case Keywords.UseExtendedTypes:
-                        if (ToBoolean(value))
-                            throw new NotSupportedException("The UseExtendedTypes parameter is no longer supported. Please see https://github.com/npgsql/Npgsql/wiki/UseExtendedTypes-Removal");
-                        return false;
                     case Keywords.IntegratedSecurity:
                         bool iS = ToIntegratedSecurity(value);
                         if (iS == true)
@@ -1055,17 +1040,31 @@ namespace Npgsql
                         }
 
                         return this._integrated_security = ToIntegratedSecurity(iS);
-
                     case Keywords.IncludeRealm:
                         return this._includeRealm = ToBoolean(value);
-                    case Keywords.Compatible:
-                        Version ver = new Version(value.ToString());
-                        if (ver > THIS_VERSION)
-                            throw new ArgumentException("Attempt to set compatibility with version " + value +
-                                                        " when using version " + THIS_VERSION);
-                        return _compatible = ver;
                     case Keywords.ApplicationName:
                         return this._application_name = Convert.ToString(value);
+                    case Keywords.ServerCompatibility:
+                        var strValue = (string) value;
+                        if (String.IsNullOrWhiteSpace(strValue))
+                            ServerCompatibilityMode = ServerCompatibilityMode.None;
+                        else if (!Enum.TryParse(strValue, true, out ServerCompatibilityMode))
+                            throw new Exception("Invalid server compatibility value: " + strValue);
+                        return strValue;
+
+                    // No longer supported
+                    case Keywords.PreloadReader:
+                        if (ToBoolean(value))
+                            throw new NotSupportedException("The PreloadReader parameter is no longer supported. Please see https://github.com/npgsql/Npgsql/wiki/PreloadReader-Removal");
+                        return false;
+                    case Keywords.UseExtendedTypes:
+                        if (ToBoolean(value))
+                            throw new NotSupportedException("The UseExtendedTypes parameter is no longer supported. Please see https://github.com/npgsql/Npgsql/wiki/UseExtendedTypes-Removal");
+                        return false;
+                    case Keywords.Compatible:
+                        if (!String.IsNullOrWhiteSpace(Convert.ToString(value)))
+                            throw new NotSupportedException("The Compatible parameter is no longer supported.");
+                        return value;
                 }
             }
             catch (InvalidCastException exception)
@@ -1149,10 +1148,10 @@ namespace Npgsql
                     return this._integrated_security;
                 case Keywords.IncludeRealm:
                     return this._includeRealm;
-                case Keywords.Compatible:
-                    return _compatible;
                 case Keywords.ApplicationName:
                     return this._application_name;
+                case Keywords.ServerCompatibility:
+                    return ServerCompatibilityMode.ToString();
                 default:
                     throw new Exception("Unknown keyword: " + keyword);
             }
@@ -1188,6 +1187,7 @@ namespace Npgsql
         Timeout,
         SearchPath,
         BufferSize,
+        ServerCompatibility,
         // These are for the connection pool
         Pooling,
         ConnectionLifeTime,
@@ -1199,13 +1199,13 @@ namespace Npgsql
         // These are for the resource manager
         Enlist,
         IntegratedSecurity,
-        Compatible,
         ApplicationName,
         IncludeRealm,
 
         // No longer supported, throw an exception
         PreloadReader,
         UseExtendedTypes,
+        Compatible,
     }
 
     public enum SslMode

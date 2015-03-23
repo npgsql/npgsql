@@ -402,14 +402,6 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Compatibility version.
-        /// </summary>
-        public Version NpgsqlCompatibilityVersion
-        {
-            get { return _settings.Compatible; }
-        }
-
-        /// <summary>
         /// User name.
         /// </summary>
         internal string UserName
@@ -833,11 +825,7 @@ namespace Npgsql
             }
         }
 
-        /// <summary>
-        /// Whether the backend is an AWS Redshift instance
-        /// </summary>
-        [Browsable(false)]
-        public bool IsRedshift
+        internal bool IsRedshift
         {
             get
             {

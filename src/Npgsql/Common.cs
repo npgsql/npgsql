@@ -45,13 +45,7 @@ namespace Npgsql
     /// <summary>
     /// Base class for all classes which represent a message sent to the PostgreSQL backend.
     /// </summary>
-    internal abstract class FrontendMessage
-    {
-        /// <summary>
-        /// Called to prepare a message before writing to the buffer. Maybe through validation exceptions.
-        /// </summary>
-        internal virtual void Prepare() { }
-    }
+    internal abstract class FrontendMessage {}
 
     /// <summary>
     /// Represents a simple frontend message which is typically small and fits well within
