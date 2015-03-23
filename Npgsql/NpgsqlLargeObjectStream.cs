@@ -239,7 +239,7 @@ namespace Npgsql
         {
             if (value < 0)
                 throw new ArgumentOutOfRangeException("value");
-            if (!_manager.Has64BitSupport && value != (long)(int)value)
+            if (!Has64BitSupport && value != (long)(int)value)
                 throw new ArgumentOutOfRangeException("value", "offset must fit in 32 bits for PostgreSQL versions older than 9.3");
             Contract.EndContractBlock();
 
