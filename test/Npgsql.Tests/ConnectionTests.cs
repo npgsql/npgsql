@@ -202,36 +202,6 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void ConnectionMinPoolSize()
-        {
-            var conn = new NpgsqlConnection(ConnectionString + ";MinPoolSize=30;MaxPoolSize=30");
-            conn.Open();
-            conn.Close();
-
-            conn = new NpgsqlConnection(ConnectionString + ";MaxPoolSize=30;MinPoolSize=30");
-            conn.Open();
-            conn.Close();
-        }
-
-        [Test]
-        [ExpectedException(typeof(ArgumentOutOfRangeException))]
-        public void ConnectionMinPoolSizeLargeThanMaxPoolSize()
-        {
-            var conn = new NpgsqlConnection(ConnectionString + ";MinPoolSize=2;MaxPoolSize=1");
-            conn.Open();
-            conn.Close();
-        }
-
-        [Test]
-        [ExpectedException(typeof(ArgumentOutOfRangeException))]
-        public void ConnectionMinPoolSizeLargeThanPoolSizeLimit()
-        {
-            var conn = new NpgsqlConnection(ConnectionString + ";MinPoolSize=1025;");
-            conn.Open();
-            conn.Close();
-        }
-
-        [Test]
         public void SearchPathSupport()
         {
             using (var conn = new NpgsqlConnection(ConnectionString + ";searchpath=public"))
@@ -260,64 +230,6 @@ namespace Npgsql.Tests
                     command.ExecuteScalar();
                     command.Transaction.Commit();
                 }
-            }
-        }
-
-        [Test]
-        public void UseAllConnectionsInPool()
-        {
-            // As this method uses a lot of connections, clear all connections from all pools before starting.
-            // This is needed in order to not reach the max connections allowed and start to raise errors.
-
-            NpgsqlConnection.ClearAllPools();
-            try
-            {
-                var openedConnections = new List<NpgsqlConnection>();
-                // repeat test to exersize pool
-                for (var i = 0; i < 10; ++i)
-                {
-                    try
-                    {
-                        // 18 since base class opens two and the default pool size is 20
-                        for (var j = 0; j < 18; ++j)
-                        {
-                            var connection = new NpgsqlConnection(ConnectionString);
-                            connection.Open();
-                            openedConnections.Add(connection);
-                        }
-                    }
-                    finally
-                    {
-                        openedConnections.ForEach(delegate(NpgsqlConnection con) { con.Dispose(); });
-                        openedConnections.Clear();
-                    }
-                }
-            }
-            finally
-            {
-                NpgsqlConnection.ClearAllPools();
-            }
-        }
-
-        [Test]
-        [ExpectedException]
-        public void ExceedConnectionsInPool()
-        {
-            var openedConnections = new List<NpgsqlConnection>();
-            try
-            {
-                // exceed default pool size of 20
-                for (var i = 0; i < 21; ++i)
-                {
-                    var connection = new NpgsqlConnection(ConnectionString + ";Timeout=1");
-                    connection.Open();
-                    openedConnections.Add(connection);
-                }
-            }
-            finally
-            {
-                openedConnections.ForEach(delegate(NpgsqlConnection con) { con.Dispose(); });
-                NpgsqlConnection.ClearAllPools();
             }
         }
 
@@ -366,35 +278,6 @@ namespace Npgsql.Tests
             var csb2 = new NpgsqlConnectionStringBuilder(cs1);
             var cs2 = csb2.ToString();
             Assert.IsTrue(cs1 == cs2);
-        }
-
-        [Test]
-        public void Bug1011241_DiscardAll()
-        {
-
-            var connection = new NpgsqlConnection(ConnectionString + ";SearchPath=public");
-            connection.Open();
-
-            using (var command = connection.CreateCommand())
-            {
-                command.CommandText = "SHOW SEARCH_PATH";
-                Assert.AreEqual("public", command.ExecuteScalar());
-
-                command.CommandText = "SET SEARCH_PATH = \"$user\"";
-                command.ExecuteNonQuery();
-                command.CommandText = "SHOW SEARCH_PATH";
-                Assert.AreEqual("\"$user\"", command.ExecuteScalar());
-            }
-            connection.Close();
-
-            connection.Open();
-            using (var command = connection.CreateCommand())
-            {
-                command.CommandText = "SHOW SEARCH_PATH";
-                Assert.AreEqual("public", command.ExecuteScalar());
-            }
-            connection.Close();
-
         }
 
         [Test]

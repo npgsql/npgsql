@@ -33,6 +33,7 @@ using System.Net.Sockets;
 using System.Reflection;
 using System.Resources;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
@@ -1070,7 +1071,7 @@ namespace Npgsql
 
         #endregion Cancel
 
-        #region Close
+        #region Close / Reset
 
         /// <summary>
         /// Closes the physical connection to the server.
@@ -1113,56 +1114,46 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// This method is responsible for releasing all resources associated with this Connector.
+        /// Resets the connector back to its initial state after connection, releasing server-side sources (i.e. prepared statements)
+        /// and resetting parameters to their defaults.
         /// </summary>
-        internal void ReleaseResources()
+        internal void Reset()
         {
-            if (State != ConnectorState.Closed)
+            Contract.Requires(State == ConnectorState.Ready);
+
+            switch (State)
             {
-                if (SupportsDiscard)
-                {
-                    ReleaseWithDiscard();
-                }
-                else
-                {
-                    ReleasePlansPortals();
-                    ReleaseRegisteredListen();
-                }
+            case ConnectorState.Ready:
+                break;
+            case ConnectorState.Closed:
+            case ConnectorState.Broken:
+                _log.WarnFormat("Reset() called on connector with state {0}, ignoring", State);
+                return;
+            case ConnectorState.Connecting:
+            case ConnectorState.Executing:
+            case ConnectorState.Fetching:
+            case ConnectorState.Copy:
+                throw new InvalidOperationException("Reset() called on connector with state " + State);
+            default:
+                throw PGUtil.ThrowIfReached();
             }
-        }
 
-        internal void ReleaseWithDiscard()
-        {
-            ExecuteBlind(PregeneratedMessage.DiscardAll);
-
-            // The initial connection parameters will be restored via IsValid() when get connector from pool later 
-        }
-
-        internal void ReleaseRegisteredListen()
-        {
-            ExecuteBlind(PregeneratedMessage.UnlistenAll);
-        }
-
-        /// <summary>
-        /// This method is responsible to release all portals used by this Connector.
-        /// </summary>
-        internal void ReleasePlansPortals()
-        {
-            if (_preparedStatementIndex > 0)
+            if (SupportsDiscard)
             {
-                for (var i = 1; i <= _preparedStatementIndex; i++)
-                {
-                    try
-                    {
-                        ExecuteBlind(String.Format("DEALLOCATE \"{0}{1}\";", PreparedStatementNamePrefix, i));
+                PrependMessage(PregeneratedMessage.DiscardAll);
+            }
+            else
+            {
+                PrependMessage(PregeneratedMessage.UnlistenAll);
+                if (_preparedStatementIndex > 0) {
+                    for (var i = 1; i <= _preparedStatementIndex; i++) {
+                        PrependMessage(new QueryMessage(String.Format("DEALLOCATE \"{0}{1}\";", PreparedStatementNamePrefix, i)));
                     }
-                    // Ignore any error which may occur when releasing portals as this portal name may not be valid anymore. i.e.: the portal name was used on a prepared query which had errors.
-                    catch { }
                 }
-            }
 
-            _portalIndex = 0;
-            _preparedStatementIndex = 0;
+                _portalIndex = 0;
+                _preparedStatementIndex = 0;
+            }
         }
 
         #endregion Close

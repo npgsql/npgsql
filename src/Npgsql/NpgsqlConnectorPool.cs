@@ -417,7 +417,7 @@ namespace Npgsql
                     // Release all resources associated with this connector.
                     try
                     {
-                        Connector.ReleaseResources();
+                        Connector.Reset();
                     }
                     catch (Exception)
                     {
