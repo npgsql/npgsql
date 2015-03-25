@@ -204,14 +204,14 @@ namespace Npgsql.TypeHandlers
         {
             var asString = value as string;
             if (asString != null) {
-                return parameter == null || parameter.Size == 0 || parameter.Size >= asString.Length
+                return parameter == null || parameter.Size <= 0 || parameter.Size >= asString.Length
                   ? Encoding.UTF8.GetByteCount(asString)
                   : Encoding.UTF8.GetByteCount(asString.ToCharArray(), 0, parameter.Size);
             }
 
             var asCharArray = value as char[];
             if (asCharArray != null) {
-                return parameter == null || parameter.Size == 0 || parameter.Size >= asCharArray.Length
+                return parameter == null || parameter.Size <= 0 || parameter.Size >= asCharArray.Length
                   ? Encoding.UTF8.GetByteCount(asCharArray)
                   : Encoding.UTF8.GetByteCount(asCharArray, 0, parameter.Size);
             }
@@ -228,14 +228,14 @@ namespace Npgsql.TypeHandlers
             _str = value as string;
             if (_str != null)
             {
-                _charLen = parameter == null ||parameter.Size == 0 || parameter.Size >= _str.Length ? _str.Length : parameter.Size;
+                _charLen = parameter == null || parameter.Size <= 0 || parameter.Size >= _str.Length ? _str.Length : parameter.Size;
                 return;
             }
 
             _chars = value as char[];
             if (_chars != null)
             {
-                _charLen = parameter == null || parameter.Size == 0 || parameter.Size >= _chars.Length ? _chars.Length : parameter.Size;
+                _charLen = parameter == null || parameter.Size <= 0 || parameter.Size >= _chars.Length ? _chars.Length : parameter.Size;
                 return;
             }
 

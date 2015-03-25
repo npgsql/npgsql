@@ -229,9 +229,15 @@ namespace Npgsql.Tests.Types
             p.Value = data2;
             Assert.That(cmd.ExecuteScalar(), Is.EqualTo(data2.Substring(0, 4)));
 
-            // NpgsqlParameter.Size larger than the value size should mean the value size
+            // NpgsqlParameter.Size larger than the value size should mean the value size, as well as 0 and -1
             p.Size = data2.Length + 10;
             Assert.That(cmd.ExecuteScalar(), Is.EqualTo(data2));
+            p.Size = 0;
+            Assert.That(cmd.ExecuteScalar(), Is.EqualTo(data2));
+            p.Size = -1;
+            Assert.That(cmd.ExecuteScalar(), Is.EqualTo(data2));
+
+            Assert.That(() => p.Size = -2, Throws.Exception.TypeOf<ArgumentException>());
         }
 
         [Test]
