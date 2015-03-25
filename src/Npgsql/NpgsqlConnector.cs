@@ -95,7 +95,10 @@ namespace Npgsql
 
         internal TypeHandlerRegistry TypeHandlerRegistry { get; set; }
 
-        TransactionStatus _txStatus;
+        /// <summary>
+        /// The current transaction status for this connector.
+        /// </summary>
+        internal TransactionStatus TransactionStatus { get; set; }
         NpgsqlTransaction _tx;
 
         /// <summary>
@@ -164,7 +167,7 @@ namespace Npgsql
         public NpgsqlConnector(NpgsqlConnectionStringBuilder connectionString, bool pooled)
         {
             State = ConnectorState.Closed;
-            _txStatus = TransactionStatus.Idle;
+            TransactionStatus = TransactionStatus.Idle;
             _settings = connectionString;
             Pooled = pooled;
             BackendParams = new Dictionary<string, string>();
@@ -771,7 +774,7 @@ namespace Npgsql
                     return _commandCompleteMessage.Load(buf, len);
                 case BackendMessageCode.ReadyForQuery:
                     var rfq = _readyForQueryMessage.Load(buf);
-                    TransactionStatus = rfq.TransactionStatusIndicator;
+                    ProcessNewTransactionStatus(rfq.TransactionStatusIndicator);
                     return rfq;
                 case BackendMessageCode.EmptyQueryResponse:
                     return EmptyQueryMessage.Instance;
@@ -914,36 +917,39 @@ namespace Npgsql
         #region Transactions
 
         /// <summary>
-        /// The current transaction status for this connector.
+        /// Handles a new transaction indicator received on a ReadyForQuery message
         /// </summary>
-        internal TransactionStatus TransactionStatus
+        void ProcessNewTransactionStatus(TransactionStatus newStatus)
         {
-            get { return _txStatus; }
-            private set
-            {
-                if (value == _txStatus) { return; }
+            if (newStatus == TransactionStatus) { return; }
 
-                switch (value) {
-                    case TransactionStatus.Idle:
-                        ClearTransaction();
-                        break;
-                    case TransactionStatus.InTransactionBlock:
-                    case TransactionStatus.InFailedTransactionBlock:
-                        break;
-                    case TransactionStatus.Pending:
-                        throw new Exception("Invalid TransactionStatus (should be frontend-only)");
-                    default:
-                        throw PGUtil.ThrowIfReached();
+            switch (newStatus) {
+            case TransactionStatus.Idle:
+                if (TransactionStatus == TransactionStatus.Pending) {
+                    // The transaction status must go from Pending through InTransactionBlock to Idle.
+                    // And Idle received during Pending means that the transaction BEGIN message was prepended by another
+                    // message (e.g. DISCARD ALL), whose RFQ had the (irrelevant) indicator Idle.
+                    return;
                 }
-                _txStatus = value;
+                ClearTransaction();
+                break;
+            case TransactionStatus.InTransactionBlock:
+            case TransactionStatus.InFailedTransactionBlock:
+                Contract.Assert(Transaction != null);
+                break;
+            case TransactionStatus.Pending:
+                throw new Exception("Invalid TransactionStatus (should be frontend-only)");
+            default:
+                throw PGUtil.ThrowIfReached();
             }
+            TransactionStatus = newStatus;
         }
 
         /// <summary>
         /// The transaction currently in progress, if any.
         /// Note that this doesn't mean a transaction request has actually been sent to the backend - for
         /// efficiency we defer sending the request to the first query after BeginTransaction is called.
-        /// See <see cref="TransactionStatus"/> for the actual backend transaction status.
+        /// See <see cref="TransactionStatus"/> for the actual transaction status.
         /// </summary>
         internal NpgsqlTransaction Transaction
         {
@@ -952,16 +958,16 @@ namespace Npgsql
             {
                 Contract.Requires(TransactionStatus == TransactionStatus.Idle);
                 _tx = value;
-                _txStatus = TransactionStatus.Pending;
+                TransactionStatus = TransactionStatus.Pending;
             }
         }
 
         internal void ClearTransaction()
         {
-            if (_txStatus == TransactionStatus.Idle) { return; }
+            if (TransactionStatus == TransactionStatus.Idle) { return; }
             _tx.Connection = null;
             _tx = null;
-            _txStatus = TransactionStatus.Idle;
+            TransactionStatus = TransactionStatus.Idle;
         }
 
         #endregion

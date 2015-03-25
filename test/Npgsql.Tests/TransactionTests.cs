@@ -114,6 +114,19 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/555")]
+        public void TransactionOnRecycledConnection()
+        {
+            var conn = new NpgsqlConnection(ConnectionString);
+            conn.Open();
+            conn.Close();
+            conn.Open();
+            var tx = conn.BeginTransaction();
+            ExecuteScalar("SELECT 1", conn);
+            tx.Commit();
+        }
+
         // Older tests
 
         [Test]
