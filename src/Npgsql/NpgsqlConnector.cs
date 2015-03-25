@@ -216,30 +216,13 @@ namespace Npgsql
                     return;
                 Interlocked.Exchange(ref _state, newState);
 
-                switch (value)
+                if (value == ConnectorState.Ready)
                 {
-                    case ConnectorState.Ready:
-                        ExecuteDeferredCommands();
-                        if (CurrentReader != null) {
-                            CurrentReader.Command.State = CommandState.Idle;
-                            CurrentReader = null;
-                        }
-                        break;
-                    case ConnectorState.Closed:
-                    case ConnectorState.Broken:
-                        if (CurrentReader != null) {
-                            CurrentReader.Command.State = CommandState.Idle;
-                            CurrentReader = null;
-                        }
-                        ClearTransaction();
-                        break;
-                    case ConnectorState.Connecting:
-                    case ConnectorState.Executing:
-                    case ConnectorState.Fetching:
-                    case ConnectorState.Copy:
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException("value");
+                    ExecuteDeferredCommands();
+                    if (CurrentReader != null) {
+                        CurrentReader.Command.State = CommandState.Idle;
+                        CurrentReader = null;
+                    }
                 }
             }
         }
@@ -323,6 +306,8 @@ namespace Npgsql
         /// Method of the connection pool manager.</remarks>
         internal void Open()
         {
+            Contract.Ensures(State == ConnectorState.Ready);
+
             if (State != ConnectorState.Closed) {
                 throw new InvalidOperationException("Can't open, state is " + State);
             }
@@ -657,7 +642,7 @@ namespace Npgsql
             }
             catch
             {
-                State = ConnectorState.Broken;
+                Break();
                 throw;
             }
         }
@@ -696,7 +681,7 @@ namespace Npgsql
             }
             catch
             {
-                State = ConnectorState.Broken;
+                Break();
                 throw;
             }
         }
@@ -906,7 +891,7 @@ namespace Npgsql
             var asExpected = msg as T;
             if (asExpected == null)
             {
-                State = ConnectorState.Broken;
+                Break();
                 throw new Exception(String.Format("Unexpected message received when expecting {0}: {1}", typeof(T), msg.Code));
             }
             return asExpected;
@@ -1088,40 +1073,58 @@ namespace Npgsql
 
             switch (State)
             {
+                case ConnectorState.Broken:
                 case ConnectorState.Closed:
                     return;
                 case ConnectorState.Ready:
-                    try
-                    {
-                        SendSingleMessage(TerminateMessage.Instance);
+                    try { SendSingleMessage(TerminateMessage.Instance); } catch {
+                        // ignored
                     }
-                    catch { }
-                    break;
+                break;
             }
 
-            try
-            {
-                Stream.Close();
-            }
-            catch { }
+            State = ConnectorState.Closed;
+            Cleanup();
+        }
 
-            try
-            {
-                RemoveNotificationListener();
-            }
-            catch { }
+        internal void Break()
+        {
+            State = ConnectorState.Broken;
+            Cleanup();
+        }
 
+        /// <summary>
+        /// Closes the socket and cleans up client-side resources associated with this connector.
+        /// </summary>
+        void Cleanup()
+        {
+            try { Stream.Close(); } catch {
+                // ignored
+            }
+
+            try { RemoveNotificationListener(); } catch {
+                // ignored
+            }
+
+            if (CurrentReader != null) {
+                CurrentReader.Command.State = CommandState.Idle;
+                CurrentReader.Close();
+                CurrentReader = null;
+            }
+
+            ClearTransaction();
             Stream = null;
             BaseStream = null;
             Buffer = null;
             BackendParams.Clear();
             ServerVersion = null;
-            State = ConnectorState.Closed;
         }
 
         /// <summary>
-        /// Resets the connector back to its initial state after connection, releasing server-side sources (i.e. prepared statements)
-        /// and resetting parameters to their defaults.
+        /// Called when a pooled connection is closed, and its connector is returned to the pool.
+        /// Resets the connector back to its initial state, releasing server-side sources
+        /// (e.g. prepared statements), resetting parameters to their defaults, and resetting client-side
+        /// state
         /// </summary>
         internal void Reset()
         {

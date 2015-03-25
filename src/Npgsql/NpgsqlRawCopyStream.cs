@@ -68,7 +68,7 @@ namespace Npgsql
                     _canRead = true;
                     break;
                 default:
-                    _connector.State = ConnectorState.Broken;
+                    _connector.Break();
                     throw new Exception("Unexpected message received when expecting CopyInResponse or CopyOutResponse: " + msg.Code);
             }
             _connector.State = ConnectorState.Copy;
@@ -167,7 +167,7 @@ namespace Npgsql
                         _isConsumed = true;
                         goto done;
                     default:
-                        _connector.State = ConnectorState.Broken;
+                        _connector.Break();
                         throw new Exception("Received unexpected message type in COPY OUT: " + msg.Code);
                     }
                 }
@@ -203,7 +203,7 @@ namespace Npgsql
                 try
                 {
                     var msg = _connector.ReadSingleMessage();
-                    _connector.State = ConnectorState.Broken;
+                    _connector.Break();
                     throw new Exception("Expected ErrorResponse when cancelling COPY but got: " + msg.Code);
                 }
                 catch (NpgsqlException e)

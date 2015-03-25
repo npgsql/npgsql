@@ -45,7 +45,7 @@ namespace Npgsql
             // TODO: Failure will break the connection (e.g. if we get CopyOutResponse), handle more gracefully
             var copyOutResponse = _connector.ReadExpecting<CopyOutResponseMessage>();
             if (!copyOutResponse.IsBinary) {
-                _connector.State = ConnectorState.Broken;
+                _connector.Break();
                 throw new ArgumentException("copyToCommand triggered a text transfer, only binary is allowed", "copyToCommand");
             }
             NumColumns = copyOutResponse.NumColumns;

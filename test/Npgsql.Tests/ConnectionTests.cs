@@ -169,6 +169,28 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, Description("Tests closing a connector while a reader is open")]
+        [TestCase(true, TestName = "Pooled")]
+        [TestCase(false, TestName = "NonPooled")]
+        public void CloseDuringRead(bool pooled)
+        {
+            var conn = new NpgsqlConnection(ConnectionString + (pooled ? "" : ";Pooling=false"));
+            conn.Open();
+            using (var cmd = new NpgsqlCommand("SELECT 1", conn))
+            using (var reader = cmd.ExecuteReader())
+            {
+                reader.Read();
+                conn.Close();
+                Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
+                Assert.That(reader.IsClosed);
+            }
+
+            // Make sure we can reuse the pooled connector
+            conn.Open();
+            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
+            Assert.That(ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+        }
+
         [Test]
         [Ignore("Fails in a non-determinstic manner and only on the build server... investigate...")]
         public void InvalidUserId()

@@ -28,11 +28,12 @@ namespace Npgsql
         readonly NpgsqlConnection _connection;
         readonly CommandBehavior _behavior;
 
-        // TODO: Protect with Interlocked?
-        internal ReaderState State {
-            get { return _state; }
-            private set { _state = value; }
-        }
+        ReaderState State { get; set; }
+
+        /// <summary>
+        /// See <see cref="FakeClose"/>.
+        /// </summary>
+        bool _fakeClosed;
 
         /// <summary>
         /// Holds the list of RowDescription messages for each of the resultsets this reader is to process.
@@ -372,7 +373,7 @@ namespace Npgsql
         /// </summary>
         public override bool IsClosed
         {
-            get { return State == ReaderState.Closed; }
+            get { return State == ReaderState.Closed || _fakeClosed; }
         }
 
         public override int RecordsAffected
@@ -499,16 +500,23 @@ namespace Npgsql
 
         public override void Close()
         {
-            if (_connector.State == ConnectorState.Broken)
+            if (State == ReaderState.Closed) { return; }
+
+            switch (_connector.State)
             {
+            case ConnectorState.Broken:
+            case ConnectorState.Closed:
                 // This may have happen because an I/O error while reading a value, or some non-safe
-                // exception thrown from a type handler
+                // exception thrown from a type handler. Or if the connection was closed while the reader
+                // was still open
                 State = ReaderState.Closed;
                 if (ReaderClosed != null) {
                     ReaderClosed(this, EventArgs.Empty);
                 }
                 return;
             }
+            Contract.Assert(_connector.State != ConnectorState.Ready);
+
             Consume();
             if (Command._notificationBlock != null) {
                 Command._notificationBlock.Dispose();
@@ -521,6 +529,22 @@ namespace Npgsql
             _connector.State = ConnectorState.Ready;
             if (ReaderClosed != null) {
                 ReaderClosed(this, EventArgs.Empty);
+                ReaderClosed = null;
+            }
+        }
+
+        /// <summary>
+        /// Places the reader in special state signifying that it is still consuming rows internally,
+        /// but that as far as users are concerned it is already closed.
+        /// This is needed when pooled connections are closed with an open reader:
+        /// the reader is consumed asynchronously, but the users should see it as closed via <see cref="IsClosed"/>.
+        /// </summary>
+        internal void FakeClose()
+        {
+            _fakeClosed = true;
+            if (ReaderClosed != null) {
+                ReaderClosed(this, EventArgs.Empty);
+                ReaderClosed = null;
             }
         }
 
@@ -959,7 +983,7 @@ namespace Npgsql
             } catch (SafeReadException e) {
                 throw e.InnerException;
             } catch {
-                _connector.State = ConnectorState.Broken;
+                _connector.Break();
                 throw;
             }
 
@@ -1043,7 +1067,7 @@ namespace Npgsql
             } catch (SafeReadException e) {
                 throw e.InnerException;
             } catch {
-                _connector.State = ConnectorState.Broken;
+                _connector.Break();
                 throw;
             }
 
@@ -1154,7 +1178,7 @@ namespace Npgsql
             }
             catch
             {
-                _connector.State = ConnectorState.Broken;
+                _connector.Break();
                 throw;
             }
         }
@@ -1600,20 +1624,24 @@ namespace Npgsql
         }
 
         #endregion
-    }
 
-    enum ReaderState
-    {
-        InResult,
-        BetweenResults,
-        Consumed,
-        Closed
-    }
+        #region Enums
 
-    enum ReadResult
-    {
-        RowRead,
-        RowNotRead,
-        ReadAgain,
+        enum ReaderState
+        {
+            InResult,
+            BetweenResults,
+            Consumed,
+            Closed,
+        }
+
+        enum ReadResult
+        {
+            RowRead,
+            RowNotRead,
+            ReadAgain,
+        }
+
+        #endregion
     }
 }

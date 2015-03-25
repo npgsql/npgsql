@@ -29,6 +29,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics.Contracts;
 using System.Threading;
 using System.Timers;
 using Timer = System.Timers.Timer;
@@ -168,6 +169,8 @@ namespace Npgsql
         /// <returns>A connector object.</returns>
         public NpgsqlConnector RequestConnector(NpgsqlConnection Connection)
         {
+            Contract.Ensures(Contract.Result<NpgsqlConnector>().State == ConnectorState.Ready, "Pool returned a connector with state ");
+
             NpgsqlConnector Connector;
             Int32 timeoutMilliseconds = Connection.Timeout * 1000;
 
@@ -223,11 +226,6 @@ namespace Npgsql
             }
         }
 
-        private void CleanUpConnector(NpgsqlConnection Connection, NpgsqlConnector Connector)
-        {
-            new CleanUpConnectorDel(CleanUpConnectorMethod).BeginInvoke(Connection, Connector, null, null);
-        }
-
         /// <summary>
         /// Releases a connector, possibly back to the pool for future use.
         /// </summary>
@@ -242,7 +240,11 @@ namespace Npgsql
             //If it has then we need to just close it (ReleasePooledConnector will do this for an aborted thread)
             if (Connector.CurrentReader != null && (Thread.CurrentThread.ThreadState & (ThreadState.Aborted | ThreadState.AbortRequested)) == 0)
             {
-                CleanUpConnector(Connection, Connector);
+                // Consume the open reader asynchronously, returning to the user immediately.
+                // However, synchronously "fake close" the reader, this emits the closed event and causes
+                // NpgsqlDataReader.IsClosed to return true
+                Connector.CurrentReader.FakeClose();
+                new CleanUpConnectorDel(CleanUpConnectorMethod).BeginInvoke(Connection, Connector, null, null);
             }
             else
             {
@@ -359,6 +361,9 @@ namespace Npgsql
         /// <param name="Connector">Connector to pool</param>
         private void UngetConnector(NpgsqlConnection Connection, NpgsqlConnector Connector)
         {
+            Contract.Requires(Connector.State == ConnectorState.Ready ||
+                              Connector.State == ConnectorState.Broken);
+
             ConnectorQueue queue;
 
             // Find the queue.
@@ -383,7 +388,9 @@ namespace Npgsql
             }
             */
 
-            if (!Connector.IsConnected)
+            bool inQueue = queue.Busy.ContainsKey(Connector);
+
+            if (Connector.State == ConnectorState.Broken)
             {
                 if (Connector.Transaction != null)
                 {
@@ -391,45 +398,26 @@ namespace Npgsql
                 }
 
                 Connector.Close();
+                inQueue = false;
             }
             else
             {
-                if (Connector.Transaction != null)
-                {
-                    try
-                    {
-                        Connector.Transaction.Rollback();
-                    }
-                    catch
-                    {
-                        Connector.Close();
-                    }
-                }
-            }
+                Contract.Assert(Connector.State == ConnectorState.Ready);
 
-            bool inQueue = queue.Busy.ContainsKey(Connector);
-
-            if (Connector.State == ConnectorState.Ready)
-            {
                 //If thread is good
                 if ((Thread.CurrentThread.ThreadState & (ThreadState.Aborted | ThreadState.AbortRequested)) == 0)
                 {
                     // Release all resources associated with this connector.
-                    try
-                    {
+                    try {
+                        if (Connector.Transaction != null) {
+                            Connector.Transaction.Rollback();
+                        }
                         Connector.Reset();
-                    }
-                    catch (Exception)
-                    {
-                        //If the connector fails to release its resources then it is probably broken, so make sure we don't add it to the queue.
-                        // Usually it already won't be in the queue as it would of broken earlier
-                        inQueue = false;
+                    } catch {
                         Connector.Close();
+                        inQueue = false;
                     }
-
-                }
-                else
-                {
+                } else {
                     //Thread is being aborted, this connection is possibly broken. So kill it rather than returning it to the pool
                     inQueue = false;
                     Connector.Close();
