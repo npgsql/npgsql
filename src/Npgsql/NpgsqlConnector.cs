@@ -1518,53 +1518,6 @@ namespace Npgsql
             }
         }
 
-        // Unused, can be deleted?
-        internal void TestConnector()
-        {
-            SyncMessage.Instance.Write(Buffer);
-            Buffer.Flush();
-            var buffer = new Queue<int>();
-            //byte[] compareBuffer = new byte[6];
-            int[] messageSought = { 'Z', 0, 0, 0, 5 };
-            for (; ; )
-            {
-                var newByte = (int)Buffer.ReadByte();
-                switch (newByte)
-                {
-                    case -1:
-                        throw new EndOfStreamException();
-                    case 'E':
-                    case 'I':
-                    case 'T':
-                        if (buffer.Count > 4)
-                        {
-                            bool match = true;
-                            int i = 0;
-                            foreach (byte cmp in buffer)
-                            {
-                                if (cmp != messageSought[i++])
-                                {
-                                    match = false;
-                                    break;
-                                }
-                            }
-                            if (match)
-                            {
-                                return;
-                            }
-                        }
-                        break;
-                    default:
-                        buffer.Enqueue(newByte);
-                        if (buffer.Count > 5)
-                        {
-                            buffer.Dequeue();
-                        }
-                        break;
-                }
-            }
-        }
-
         #endregion Misc
 
         #region Invariants
