@@ -3,6 +3,8 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Text;
+using Npgsql;
+
 #pragma warning disable 1591
 
 // ReSharper disable once CheckNamespace
@@ -14,6 +16,7 @@ namespace NpgsqlTypes
     {
         //Number of days since January 1st CE (January 1st EV). 1 Jan 1 CE = 0, 2 Jan 1 CE = 1, 31 Dec 1 BCE = -1, etc.
         readonly int _daysSinceEra;
+        readonly InternalType _type;
 
         #region Constants
 
@@ -37,6 +40,9 @@ namespace NpgsqlTypes
         public static readonly NpgsqlDate MaxCalculableValue = new NpgsqlDate(MaxYear, 12, 31);
         public static readonly NpgsqlDate MinCalculableValue = new NpgsqlDate(MinYear, 11, 24);
 
+        public static readonly NpgsqlDate Infinity = new NpgsqlDate(InternalType.Infinity);
+        public static readonly NpgsqlDate NegativeInfinity = new NpgsqlDate(InternalType.NegativeInfinity);
+
         const int DaysInYear = 365; //Common years
         const int DaysIn4Years = 4 * DaysInYear + 1; //Leap year every 4 years.
         const int DaysInCentury = 25 * DaysIn4Years - 1; //Except no leap year every 100.
@@ -46,8 +52,15 @@ namespace NpgsqlTypes
 
         #region Constructors
 
-        public NpgsqlDate(int days)
+        NpgsqlDate(InternalType type)
         {
+            _type = type;
+            _daysSinceEra = 0;
+        }
+
+        internal NpgsqlDate(int days)
+        {
+            _type = InternalType.Finite;
             _daysSinceEra = days;
         }
 
@@ -57,6 +70,7 @@ namespace NpgsqlTypes
 
         public NpgsqlDate(int year, int month, int day)
         {
+            _type = InternalType.Finite;
             if (year == 0 || year < MinYear || year > MaxYear || month < 1 || month > 12 || day < 1 ||
                 (day > (IsLeap(year) ? 366 : 365)))
             {
@@ -72,10 +86,18 @@ namespace NpgsqlTypes
 
         public override string ToString()
         {
-            //Format of yyyy-MM-dd with " BC" for BCE and optional " AD" for CE which we omit here.
-            return
-                new StringBuilder(Math.Abs(Year).ToString("D4")).Append('-').Append(Month.ToString("D2")).Append('-').Append(
-                    Day.ToString("D2")).Append(_daysSinceEra < 0 ? " BC" : "").ToString();
+            switch (_type)
+            {
+            case InternalType.Infinity:
+                return "infinity";
+            case InternalType.NegativeInfinity:
+                return "-infinity";
+            default:
+                //Format of yyyy-MM-dd with " BC" for BCE and optional " AD" for CE which we omit here.
+                return
+                    new StringBuilder(Math.Abs(Year).ToString("D4")).Append('-').Append(Month.ToString("D2")).Append('-').Append(
+                        Day.ToString("D2")).Append(_daysSinceEra < 0 ? " BC" : "").ToString();
+            }
         }
 
         public static NpgsqlDate Parse(string str)
@@ -85,13 +107,11 @@ namespace NpgsqlTypes
                 throw new ArgumentNullException("str");
             }
 
-            // Handle -infinity and infinity special values.
+            if (str == "infinity")
+                return Infinity;
 
             if (str == "-infinity")
-                return new NpgsqlDate(DateTime.MinValue);
-
-            if (str == "infinity")
-                return new NpgsqlDate(DateTime.MaxValue);
+                return NegativeInfinity;
 
             str = str.Trim();
             try {
@@ -218,12 +238,33 @@ namespace NpgsqlTypes
         [Pure]
         public NpgsqlDate AddDays(int days)
         {
-            return new NpgsqlDate(_daysSinceEra + days);
+            switch (_type)
+            {
+            case InternalType.Infinity:
+                return Infinity;
+            case InternalType.NegativeInfinity:
+                return NegativeInfinity;
+            case InternalType.Finite:
+                return new NpgsqlDate(_daysSinceEra + days);
+            default:
+                throw PGUtil.ThrowIfReached();
+            }
         }
 
         [Pure]
         public NpgsqlDate AddYears(int years)
         {
+            switch (_type) {
+            case InternalType.Infinity:
+                return Infinity;
+            case InternalType.NegativeInfinity:
+                return NegativeInfinity;
+            case InternalType.Finite:
+                break;
+            default:
+                throw PGUtil.ThrowIfReached();
+            }
+
             int newYear = Year + years;
             if (newYear >= 0 && _daysSinceEra < 0) //cross 1CE/1BCE divide going up
             {
@@ -239,6 +280,17 @@ namespace NpgsqlTypes
         [Pure]
         public NpgsqlDate AddMonths(int months)
         {
+            switch (_type) {
+            case InternalType.Infinity:
+                return Infinity;
+            case InternalType.NegativeInfinity:
+                return NegativeInfinity;
+            case InternalType.Finite:
+                break;
+            default:
+                throw PGUtil.ThrowIfReached();
+            }
+
             int newYear = Year;
             int newMonth = Month + months;
 
@@ -261,12 +313,34 @@ namespace NpgsqlTypes
         [Pure]
         public NpgsqlDate Add(NpgsqlTimeSpan interval)
         {
+            switch (_type) {
+            case InternalType.Infinity:
+                return Infinity;
+            case InternalType.NegativeInfinity:
+                return NegativeInfinity;
+            case InternalType.Finite:
+                break;
+            default:
+                throw PGUtil.ThrowIfReached();
+            }
+
             return AddMonths(interval.Months).AddDays(interval.Days);
         }
 
         [Pure]
         internal NpgsqlDate Add(NpgsqlTimeSpan interval, int carriedOverflow)
         {
+            switch (_type) {
+            case InternalType.Infinity:
+                return Infinity;
+            case InternalType.NegativeInfinity:
+                return NegativeInfinity;
+            case InternalType.Finite:
+                break;
+            default:
+                throw PGUtil.ThrowIfReached();
+            }
+
             return AddMonths(interval.Months).AddDays(interval.Days + carriedOverflow);
         }
 
@@ -298,7 +372,14 @@ namespace NpgsqlTypes
 
         public bool Equals(NpgsqlDate other)
         {
-            return _daysSinceEra == other._daysSinceEra;
+            switch (_type) {
+            case InternalType.Infinity:
+                return other._type == InternalType.Infinity;
+            case InternalType.NegativeInfinity:
+                return other._type == InternalType.NegativeInfinity;
+            default:
+                return _daysSinceEra == other._daysSinceEra;
+            }
         }
 
         public override bool Equals(object obj)
@@ -308,7 +389,21 @@ namespace NpgsqlTypes
 
         public int CompareTo(NpgsqlDate other)
         {
-            return _daysSinceEra.CompareTo(other._daysSinceEra);
+            switch (_type) {
+            case InternalType.Infinity:
+                return other._type == InternalType.Infinity ? 0 : 1;
+            case InternalType.NegativeInfinity:
+                return other._type == InternalType.NegativeInfinity ? 0 : -1;
+            default:
+                switch (other._type) {
+                case InternalType.Infinity:
+                    return -1;
+                case InternalType.NegativeInfinity:
+                    return 1;
+                default:
+                    return _daysSinceEra.CompareTo(other._daysSinceEra);
+                }
+            }
         }
 
         public int CompareTo(object obj)
@@ -345,33 +440,36 @@ namespace NpgsqlTypes
 
         public static bool operator <(NpgsqlDate x, NpgsqlDate y)
         {
-            return x._daysSinceEra < y._daysSinceEra;
+            return x.CompareTo(y) < 0;
         }
 
         public static bool operator >(NpgsqlDate x, NpgsqlDate y)
         {
-            return x._daysSinceEra > y._daysSinceEra;
+            return x.CompareTo(y) > 0;
         }
 
         public static bool operator <=(NpgsqlDate x, NpgsqlDate y)
         {
-            return x._daysSinceEra <= y._daysSinceEra;
+            return x.CompareTo(y) <= 0;
         }
 
         public static bool operator >=(NpgsqlDate x, NpgsqlDate y)
         {
-            return x._daysSinceEra >= y._daysSinceEra;
+            return x.CompareTo(y) >= 0;
         }
 
         public static explicit operator DateTime(NpgsqlDate date)
         {
-            try
+            switch (date._type)
             {
-                return new DateTime(date._daysSinceEra*NpgsqlTimeSpan.TicksPerDay);
-            }
-            catch
-            {
-                throw new InvalidCastException();
+            case InternalType.Infinity:
+            case InternalType.NegativeInfinity:
+                throw new InvalidCastException("Infinity values can't be cast to DateTime");
+            case InternalType.Finite:
+                try { return new DateTime(date._daysSinceEra*NpgsqlTimeSpan.TicksPerDay); }
+                catch { throw new InvalidCastException(); }
+            default:
+                throw PGUtil.ThrowIfReached();
             }
         }
 
@@ -397,9 +495,19 @@ namespace NpgsqlTypes
 
         public static NpgsqlTimeSpan operator -(NpgsqlDate dateX, NpgsqlDate dateY)
         {
+            if (dateX._type != InternalType.Finite || dateY._type != InternalType.Finite)
+                throw new ArgumentException("Can't subtract infinity date values");
+
             return new NpgsqlTimeSpan(0, dateX._daysSinceEra - dateY._daysSinceEra, 0);
         }
 
         #endregion
+
+        enum InternalType
+        {
+            Finite,
+            Infinity,
+            NegativeInfinity
+        }
     }
 }

@@ -52,7 +52,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             if (value == long.MaxValue)
                 return NpgsqlDateTime.Infinity;
             if (value == long.MinValue)
-                return NpgsqlDateTime.MinusInfinity;
+                return NpgsqlDateTime.NegativeInfinity;
             if (value >= 0) {
                 int date = (int)(value / 86400000000L);
                 long time = value % 86400000000L;

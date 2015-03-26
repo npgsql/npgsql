@@ -62,6 +62,26 @@ namespace Npgsql.Tests.Types
             }
         }
 
+        static readonly TestCaseData[] DateSpecialCases = {
+            new TestCaseData(NpgsqlDate.Infinity).SetName("Infinity"),
+            new TestCaseData(NpgsqlDate.NegativeInfinity).SetName("NegativeInfinity"),
+            new TestCaseData(new NpgsqlDate(-5, 3, 3)).SetName("BC"),
+        };
+
+        [Test, TestCaseSource("DateSpecialCases")]
+        public void DateSpecial(NpgsqlDate value)
+        {
+            using (var cmd = new NpgsqlCommand("SELECT @p", Conn)) {
+                cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Value = value });
+                using (var reader = cmd.ExecuteReader()) {
+                    reader.Read();
+                    Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(value));
+                    Assert.That(() => reader.GetDateTime(0), Throws.Exception);
+                }
+                Assert.That(ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+            }
+        }
+
         #endregion
 
         #region Time
@@ -207,7 +227,7 @@ namespace Npgsql.Tests.Types
 
         static readonly TestCaseData[] TimeStampSpecialCases = {
             new TestCaseData(NpgsqlDateTime.Infinity).SetName("Infinity"),
-            new TestCaseData(NpgsqlDateTime.MinusInfinity).SetName("NegativeInfinity"),
+            new TestCaseData(NpgsqlDateTime.NegativeInfinity).SetName("NegativeInfinity"),
             new TestCaseData(new NpgsqlDateTime(-5, 3, 3, 1, 0, 0)).SetName("BC"),
         };
 
@@ -221,6 +241,7 @@ namespace Npgsql.Tests.Types
                     Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(value));
                     Assert.That(() => reader.GetDateTime(0), Throws.Exception);
                 }
+                Assert.That(ExecuteScalar("SELECT 1"), Is.EqualTo(1));
             }
         }
 

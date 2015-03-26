@@ -35,7 +35,7 @@ namespace NpgsqlTypes
         public static readonly NpgsqlDateTime Infinity =
             new NpgsqlDateTime(InternalType.Infinity, NpgsqlDate.Era, TimeSpan.Zero);
 
-        public static readonly NpgsqlDateTime MinusInfinity =
+        public static readonly NpgsqlDateTime NegativeInfinity =
             new NpgsqlDateTime(InternalType.NegativeInfinity, NpgsqlDate.Era, TimeSpan.Zero);
 
         #endregion
@@ -203,7 +203,7 @@ namespace NpgsqlTypes
             case "infinity":
                 return Infinity;
             case "-infinity":
-                return MinusInfinity;
+                return NegativeInfinity;
             default:
                 try {
                     int idxSpace = str.IndexOf(' ');

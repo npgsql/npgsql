@@ -18,7 +18,12 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         public DateTime Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             // TODO: Convert directly to DateTime without passing through NpgsqlDate?
-            return (System.DateTime) ((ISimpleTypeReader<NpgsqlDate>) this).Read(buf, len, fieldDescription);
+            var npgsqlDate = ((ISimpleTypeReader<NpgsqlDate>) this).Read(buf, len, fieldDescription);
+            try {
+                return (DateTime)npgsqlDate;
+            } catch (Exception e) {
+                throw new SafeReadException(e);
+            }
         }
 
         /// <remarks>
@@ -28,54 +33,42 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         {
             var binDate = buf.ReadInt32();
 
-            if (binDate == int.MaxValue)
-                return new NpgsqlDate(DateTime.MaxValue);
-            if (binDate == int.MinValue)
-                return new NpgsqlDate(DateTime.MinValue);
-
-            // TODO: Is this really necessary? binDate is the number of days since 2000-01-01 and NpgsqlDate stores the number of days since 0001-01-01,
-            // so we should just shift the integer by the number of days between 0001-01-01 and 2000-01-01?
-
-            var julian = (uint)(binDate + PostgresEpochJdate);
-            uint quad;
-            uint extra;
-            uint y;
-
-            julian += 32044;
-            quad = julian / 146097;
-            extra = (julian - quad * 146097) * 4 + 3;
-            julian += 60 + quad * 3 + extra / 146097;
-            quad = julian / 1461;
-            julian -= quad * 1461;
-            y = julian * 4 / 1461;
-            julian = ((y != 0) ? ((julian + 305) % 365) : ((julian + 306) % 366))
-                    + 123;
-            y += quad * 4;
-            var year = y - 4800;
-            quad = julian * 2141 / 65536;
-            var day = julian - 7834 * quad / 256;
-            var month = (quad + 10) % MonthsPerYear + 1;
-
-            return new NpgsqlDate((int)year, (int)month, (int)day);
+            switch (binDate)
+            {
+            case int.MaxValue:
+                return NpgsqlDate.Infinity;
+            case int.MinValue:
+                return NpgsqlDate.NegativeInfinity;
+            default:
+                return new NpgsqlDate(binDate + 730119);
+            }
         }
 
         public int ValidateAndGetLength(object value) { return 4; }
 
         public void Write(object value, NpgsqlBuffer buf)
         {
-            if (value is DateTime)
+            NpgsqlDate dt;
+            if (value is NpgsqlDate)
             {
-                value = new NpgsqlDate((DateTime)value);
+                dt = (NpgsqlDate)value;
+            }
+            else if (value is DateTime)
+            {
+                dt = new NpgsqlDate((DateTime)value);
             }
             else if (value is string)
             {
-                value = NpgsqlDate.Parse((string)value);
+                dt = NpgsqlDate.Parse((string) value);
+            }
+            else
+            {
+                throw new InvalidCastException();
             }
 
-            var dt = (NpgsqlDate)value;
-            if (dt == new NpgsqlDate(DateTime.MinValue))
+            if (dt == NpgsqlDate.NegativeInfinity)
                 buf.WriteInt32(int.MinValue);
-            else if (dt == new NpgsqlDate(DateTime.MaxValue))
+            else if (dt == NpgsqlDate.Infinity)
                 buf.WriteInt32(int.MaxValue);
             else
                 buf.WriteInt32(dt.DaysSinceEra - 730119);
