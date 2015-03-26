@@ -116,6 +116,56 @@ namespace Npgsql.Tests
             }
         }
 
+        #region Connection Errors
+
+        [Test]
+        [TestCase(true,  TestName = "Pooled")]
+        [TestCase(false, TestName = "NonPooled")]
+        public void ConnectionRefused(bool pooled)
+        {
+            using (var conn = new NpgsqlConnection("Server=127.0.0.1;Port=44444;User Id=x;Password=y" + (pooled ? "" : ";Pooling=false"))) {
+                Assert.That(() => conn.Open(), Throws.Exception.TypeOf<SocketException>());
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
+            }
+        }
+
+        [Test]
+        [Ignore("Fails in a non-determinstic manner and only on the build server... investigate...")]
+        public void InvalidUserId()
+        {
+            using (var conn = new NpgsqlConnection(ConnectionString + ";userid=npgsql_tes;pooling=false"))
+            {
+                Assert.That(conn.Open, Throws.Exception
+                    .TypeOf<NpgsqlException>()
+                    .With.Property("Code").EqualTo("28P01")
+                );
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
+            }
+        }
+
+        [Test]
+        public void InvalidConnectionString()
+        {
+            Assert.That(() => new NpgsqlConnection("Server=127.0.0.1;User Id=npgsql_tests;Pooling:false"),
+                Throws.Exception.TypeOf<ArgumentException>());
+        }
+
+        [Test, Description("Connects with a bad password to ensure the proper error is thrown")]
+        public void AuthenticationFailure()
+        {
+            var badConnString = Regex.Replace(ConnectionString, @"Password=\w+", "Password=bad_password");
+            using (var conn = new NpgsqlConnection(badConnString))
+            {
+                Assert.That(() => conn.Open(), Throws.Exception
+                    .TypeOf<NpgsqlException>()
+                    .With.Property("Code").EqualTo("28P01")
+                );
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
+            }
+        }
+
+        #endregion
+
         [Test]
         public void ChangeDatabase()
         {
@@ -160,15 +210,6 @@ namespace Npgsql.Tests
             Conn.BeginTransaction();
         }
 
-        [Test]
-        [ExpectedException(typeof(SocketException))]
-        public void ConnectionRefused()
-        {
-            using (var conn = new NpgsqlConnection("Server=127.0.0.1;Port=44444;User Id=npgsql_tets;Password=j")) {
-                conn.Open();
-            }
-        }
-
         [Test, Description("Tests closing a connector while a reader is open")]
         [TestCase(true, TestName = "Pooled")]
         [TestCase(false, TestName = "NonPooled")]
@@ -189,38 +230,6 @@ namespace Npgsql.Tests
             conn.Open();
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
             Assert.That(ExecuteScalar("SELECT 1"), Is.EqualTo(1));
-        }
-
-        [Test]
-        [Ignore("Fails in a non-determinstic manner and only on the build server... investigate...")]
-        public void InvalidUserId()
-        {
-            using (var conn = new NpgsqlConnection(ConnectionString + ";userid=npgsql_tes;pooling=false"))
-            {
-                Assert.That(conn.Open, Throws.Exception
-                    .TypeOf<NpgsqlException>()
-                    .With.Property("Code").EqualTo("28P01")
-                );
-            }
-        }
-
-        [Test]
-        [ExpectedException(typeof(ArgumentException))]
-        public void InvalidConnectionString()
-        {
-            var conn = new NpgsqlConnection("Server=127.0.0.1;User Id=npgsql_tests;Pooling:false");
-            conn.Open();
-        }
-
-        [Test, Description("Connects with a bad password to ensure the proper error is thrown")]
-        public void AuthenticationFailure()
-        {
-            var badConnString = Regex.Replace(ConnectionString, @"Password=\w+", "Password=bad_password");
-            var conn = new NpgsqlConnection(badConnString);
-            Assert.That(() => conn.Open(),
-                Throws.Exception.TypeOf<NpgsqlException>()
-                .With.Property("Code").EqualTo("28P01")
-            );
         }
 
         [Test]

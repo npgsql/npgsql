@@ -316,12 +316,11 @@ namespace Npgsql
                 }
                 catch
                 {
+                    Contract.Assert(Connector.State == ConnectorState.Closed);
                     lock (Queue)
                     {
                         Queue.Busy.Remove(Connector);
                     }
-
-                    Connector.Close();
 
                     throw;
                 }

@@ -305,6 +305,8 @@ namespace Npgsql
         internal void Open()
         {
             Contract.Ensures(State == ConnectorState.Ready);
+            Contract.EnsuresOnThrow<IOException>(State == ConnectorState.Closed);
+            Contract.EnsuresOnThrow<SocketException>(State == ConnectorState.Closed);
 
             if (State != ConnectorState.Closed) {
                 throw new InvalidOperationException("Can't open, state is " + State);
@@ -318,10 +320,10 @@ namespace Npgsql
             // this allows us to still respect the caller's timeout expectation.
             var connectTimeRemaining = ConnectionTimeout * 1000;
 
-            // Get a raw connection, possibly SSL...
-            RawOpen(connectTimeRemaining);
-            try
-            {
+            try {
+                // Get a raw connection, possibly SSL...
+                RawOpen(connectTimeRemaining);
+
                 var startupMessage = new StartupMessage(Database, UserName);
                 if (!string.IsNullOrEmpty(_settings.ApplicationName)) {
                     startupMessage["application_name"] = _settings.ApplicationName;
@@ -340,30 +342,25 @@ namespace Npgsql
 
                 Buffer.Flush();
                 HandleAuthentication();
+
+                // After attachment, the stream will close the connector (this) when the stream gets disposed.
+                BaseStream.AttachConnector(this);
+
+                ProcessServerVersion();
+                TypeHandlerRegistry.Setup(this);
+                State = ConnectorState.Ready;
+
+                if (_settings.SyncNotification) {
+                    AddNotificationListener();
+                }
             }
             catch
             {
-                if (Stream != null)
-                {
-                    try {
-                        Stream.Dispose();
-                    }
-                    catch {}
+                try { Close(); }
+                catch {
+                    // ignored
                 }
-
                 throw;
-            }
-
-            // After attachment, the stream will close the connector (this) when the stream gets disposed.
-            BaseStream.AttachConnector(this);
-
-            ProcessServerVersion();
-            TypeHandlerRegistry.Setup(this);
-            State = ConnectorState.Ready;
-
-            if (_settings.SyncNotification)
-            {
-                AddNotificationListener();
             }
         }
 
@@ -1097,7 +1094,7 @@ namespace Npgsql
         /// </summary>
         void Cleanup()
         {
-            try { Stream.Close(); } catch {
+            try { if (Stream != null) Stream.Close(); } catch {
                 // ignored
             }
 
