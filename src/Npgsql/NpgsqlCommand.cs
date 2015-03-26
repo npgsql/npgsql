@@ -189,7 +189,7 @@ namespace Npgsql
             {
                 // [TODO] Validate commandtext.
                 _commandText = value;
-                DeallocatePreparedStatements();
+                DeallocatePrepared();
                 _functionChecksDone = false;
             }
         }
@@ -483,7 +483,7 @@ namespace Npgsql
 
             using (_connector.BlockNotifications())
             {
-                DeallocatePreparedStatements();
+                DeallocatePrepared();
                 ProcessRawQuery();
 
                 for (var i = 0; i < _queries.Count; i++)
@@ -540,19 +540,15 @@ namespace Npgsql
             }
         }
 
-        void DeallocatePreparedStatements()
+        void DeallocatePrepared()
         {
             if (!IsPrepared) { return; }
 
-            // TODO: Reimplement this with protocol Close commands rather than DEALLOCATE SQL
-            var sb = new StringBuilder();
-            foreach (var query in _queries)
-            {
-                sb.Append("DEALLOCATE ");
-                sb.Append(query.PreparedStatementName);
-                sb.Append(';');
+
+            foreach (var query in _queries) {
+                _connector.PrependMessage(new CloseMessage(StatementOrPortal.Statement, query.PreparedStatementName));
             }
-            _connector.ExecuteBlind(sb.ToString());
+            _connector.PrependMessage(SyncMessage.Instance);
             IsPrepared = false;
         }
 
@@ -1586,16 +1582,9 @@ namespace Npgsql
                 // window, but this isn't trivial (should not occur in transactions because of possible exceptions,
                 // etc.).
 
-                // TODO: Total duplication with DeallocatePreparedStatements
                 if (IsPrepared)
                 {
-                    var sb = new StringBuilder();
-                    foreach (var query in _queries) {
-                        sb.Append("DEALLOCATE ");
-                        sb.Append(query.PreparedStatementName);
-                        sb.Append(';');
-                    }
-                    _connector.ExecuteOrDefer(sb.ToString());
+                    DeallocatePrepared();
                 }
             }
             Transaction = null;

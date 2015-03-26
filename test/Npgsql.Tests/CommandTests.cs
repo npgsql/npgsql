@@ -346,15 +346,54 @@ namespace Npgsql.Tests
             //Assert.AreEqual(-1, command.Parameters["p"].Value); //Which is better, not filling this or filling this with an unmapped value?
         }
 
-        [Test]
-        public void ListenNotifySupport()
+        #region Notification
+
+        [Test, Description("Simple synchronous LISTEN/NOTIFY scenario")]
+        public void NotificationSync()
         {
             var receivedNotification = false;
-            ExecuteNonQuery("listen notifytest");
+            ExecuteNonQuery("LISTEN notifytest");
             Conn.Notification += (o, e) => receivedNotification = true;
-            ExecuteNonQuery("notify notifytest");
+            ExecuteNonQuery("NOTIFY notifytest");
             Assert.IsTrue(receivedNotification);
         }
+
+        [Test, Description("An asynchronous LISTEN/NOTIFY scenario")]
+        [Timeout(10000)]
+        public void NotificationAsync()
+        {
+            var mre = new ManualResetEvent(false);
+            using (var listeningConn = new NpgsqlConnection(ConnectionString + ";SyncNotification=true"))
+            {
+                listeningConn.Open();
+                ExecuteNonQuery("LISTEN notifytest2", listeningConn);
+
+                // Send notify via the other connection
+                listeningConn.Notification += (o, e) => mre.Set();
+                ExecuteNonQuery("NOTIFY notifytest2");
+                mre.WaitOne();
+            }
+        }
+
+        [Test, Description("Receive an asynchronous notification when a message has already been prepended")]
+        [Timeout(10000)]
+        public void NotificationAsyncWithPrepend()
+        {
+            var mre = new ManualResetEvent(false);
+            using (var listeningConn = new NpgsqlConnection(ConnectionString + ";SyncNotification=true"))
+            {
+                listeningConn.Open();
+                ExecuteNonQuery("LISTEN notifytest2", listeningConn);
+                listeningConn.BeginTransaction();
+
+                // Send notify via the other connection
+                listeningConn.Notification += (o, e) => mre.Set();
+                ExecuteNonQuery("NOTIFY notifytest2");
+                mre.WaitOne();
+            }
+        }
+
+        #endregion
 
         #region Multiquery
 

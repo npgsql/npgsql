@@ -102,14 +102,21 @@ namespace Npgsql
         NpgsqlTransaction _tx;
 
         /// <summary>
-        /// The number of messages that were prepended to the current message chain.
+        /// The number of messages that were prepended to the current message chain, but not yet sent.
+        /// Note that this only tracks messages which produce a ReadyForQuery message
         /// </summary>
-        byte _prependedMessages;
+        byte _pendingRfqPrependedMessages;
+
+        /// <summary>
+        /// The number of messages that were prepended and sent to the last message chain.
+        /// Note that this only tracks messages which produce a ReadyForQuery message
+        /// </summary>
+        byte _sentRfqPrependedMessages;
 
         /// <summary>
         /// A chain of messages to be sent to the backend.
         /// </summary>
-        List<FrontendMessage> _messagesToSend;
+        readonly List<FrontendMessage> _messagesToSend;
 
         internal NpgsqlDataReader CurrentReader;
 
@@ -117,13 +124,6 @@ namespace Npgsql
         /// Holds all run-time parameters received from the backend (via ParameterStatus messages)
         /// </summary>
         internal Dictionary<string, string> BackendParams;
-
-        /// <summary>
-        /// Commands to be executed when the reader is done.
-        /// Current usage is for when a prepared command is disposed while its reader is still open; the
-        /// actual DEALLOCATE message must be deferred.
-        /// </summary>
-        List<string> _deferredCommands;
 
         internal SSPIHandler SSPI { get; set; }
 
@@ -174,7 +174,6 @@ namespace Npgsql
             _messagesToSend = new List<FrontendMessage>();
             _preparedStatementIndex = 0;
             _portalIndex = 0;
-            _deferredCommands = new List<string>();
         }
 
         #region Configuration settings
@@ -218,7 +217,6 @@ namespace Npgsql
 
                 if (value == ConnectorState.Ready)
                 {
-                    ExecuteDeferredCommands();
                     if (CurrentReader != null) {
                         CurrentReader.Command.State = CommandState.Idle;
                         CurrentReader = null;
@@ -566,13 +564,21 @@ namespace Npgsql
         /// </summary>
         internal void PrependMessage(FrontendMessage msg)
         {
-            _prependedMessages++;
+            if (msg is QueryMessage || msg is PregeneratedMessage || msg is SyncMessage)
+            {
+                // These messages produce a ReadyForQuery response, which we will be looking for when
+                // processing the message chain results
+                _pendingRfqPrependedMessages++;
+            }
             _messagesToSend.Add(msg);
         }
 
         [GenerateAsync]
         internal void SendAllMessages()
         {
+            _sentRfqPrependedMessages = _pendingRfqPrependedMessages;
+            _pendingRfqPrependedMessages = 0;
+
             try
             {
                 foreach (var msg in _messagesToSend)
@@ -657,18 +663,11 @@ namespace Npgsql
             try
             {
                 // First read the responses of any prepended messages
-                while (_prependedMessages > 0)
+                while (_sentRfqPrependedMessages > 0)
                 {
                     var msg = DoReadSingleMessage(DataRowLoadingMode.Skip);
-                    switch (msg.Code)
-                    {
-                    case BackendMessageCode.CompletedResponse:
-                        continue;
-                    case BackendMessageCode.ReadyForQuery:
-                        _prependedMessages--;
-                        break;
-                    default:
-                        throw new Exception(String.Format("Unexpected message received when processing prepended command: " + msg.Code));
+                    if (msg is ReadyForQueryMessage) {
+                        _sentRfqPrependedMessages--;
                     }
                 }
 
@@ -1154,11 +1153,14 @@ namespace Npgsql
             else
             {
                 PrependMessage(PregeneratedMessage.UnlistenAll);
+                /*
+                 * Problem: we can't just deallocate for all the below since some may have already been deallocated
+                 * Not sure if we should keep supporting this for < 8.3. If so fix along with #483
                 if (_preparedStatementIndex > 0) {
                     for (var i = 1; i <= _preparedStatementIndex; i++) {
                         PrependMessage(new QueryMessage(String.Format("DEALLOCATE \"{0}{1}\";", PreparedStatementNamePrefix, i)));
                     }
-                }
+                }*/
 
                 _portalIndex = 0;
                 _preparedStatementIndex = 0;
@@ -1485,38 +1487,6 @@ namespace Npgsql
 
         int _preparedStatementIndex;
         const string PreparedStatementNamePrefix = "s";
-
-        /// <summary>
-        /// Executes the command immediately if the connector is ready, otherwise schedules the command for
-        /// execution at the earliest possible convenience.
-        /// </summary>
-        /// <param name="cmd"></param>
-        internal void ExecuteOrDefer(string cmd)
-        {
-            if (State == ConnectorState.Ready) {
-                ExecuteBlind(cmd);
-            } else {
-                _deferredCommands.Add(cmd);
-            }
-        }
-
-        internal void ExecuteDeferredCommands()
-        {
-            if (!_deferredCommands.Any()) { return; }
-
-            // TODO: Not optimal, but with the current state implementation ExecuteBlind() below sets the state
-            // back to Ready, which recursively attempts to... execute deferred commands
-            var deferredCommands = _deferredCommands.ToArray();
-            _deferredCommands.Clear();
-            foreach (var cmd in deferredCommands)
-            {
-                try {
-                    ExecuteBlind(cmd);
-                } catch (Exception e) {
-                    _log.Error(String.Format("Error executing deferred command {0}", cmd), e);
-                }
-            }
-        }
 
         #endregion Misc
 
