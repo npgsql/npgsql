@@ -31,7 +31,7 @@ using System;
 using System.Data;
 using System.Data.Common;
 using System.Reflection;
-using Common.Logging;
+using Npgsql.Logging;
 
 namespace Npgsql
 {
@@ -65,7 +65,7 @@ namespace Npgsql
         /// </summary>
         public event NpgsqlRowUpdatingEventHandler RowUpdating;
 
-        static readonly ILog _log = LogManager.GetCurrentClassLogger();
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         /// <summary>
         /// Default constructor.
@@ -80,7 +80,7 @@ namespace Npgsql
         /// <param name="selectCommand"></param>
         public NpgsqlDataAdapter(NpgsqlCommand selectCommand)
         {
-            _log.Trace("Create NpgsqlDataAdapter");
+            Log.Trace("Create NpgsqlDataAdapter");
             SelectCommand = selectCommand;
         }
 
@@ -116,7 +116,7 @@ namespace Npgsql
                                                                      StatementType statementType,
                                                                      DataTableMapping tableMapping)
         {
-            _log.Trace("CreateRowUpdatedEvent");
+            Log.Trace("CreateRowUpdatedEvent");
             return new NpgsqlRowUpdatedEventArgs(dataRow, command, statementType, tableMapping);
         }
 
@@ -132,7 +132,7 @@ namespace Npgsql
                                                                        StatementType statementType,
                                                                        DataTableMapping tableMapping)
         {
-            _log.Trace("CreateRowUpdatingEvent");
+            Log.Trace("CreateRowUpdatingEvent");
             return new NpgsqlRowUpdatingEventArgs(dataRow, command, statementType, tableMapping);
         }
 
@@ -142,7 +142,7 @@ namespace Npgsql
         /// <param name="value"></param>
         protected override void OnRowUpdated(RowUpdatedEventArgs value)
         {
-            _log.Trace("OnRowUpdated");
+            Log.Trace("OnRowUpdated");
             //base.OnRowUpdated(value);
             if ((RowUpdated != null) && (value is NpgsqlRowUpdatedEventArgs))
             {
@@ -156,7 +156,7 @@ namespace Npgsql
         /// <param name="value"></param>
         protected override void OnRowUpdating(RowUpdatingEventArgs value)
         {
-            _log.Trace("OnRowUpdating");
+            Log.Trace("OnRowUpdating");
             if ((RowUpdating != null) && (value is NpgsqlRowUpdatingEventArgs))
             {
                 RowUpdating(this, (NpgsqlRowUpdatingEventArgs) value);

@@ -120,11 +120,14 @@ namespace Npgsql.Tests
         {
             var conn = new NpgsqlConnection(ConnectionString);
             conn.Open();
+            var prevConnectorId = conn.Connector.Id;
             conn.Close();
             conn.Open();
+            Assert.That(conn.Connector.Id, Is.EqualTo(prevConnectorId), "Connection pool returned a different connector, can't test");
             var tx = conn.BeginTransaction();
             ExecuteScalar("SELECT 1", conn);
             tx.Commit();
+            conn.Close();
         }
 
         // Older tests

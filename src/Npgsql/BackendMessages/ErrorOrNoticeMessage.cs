@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Diagnostics.Contracts;
-using Common.Logging;
+using Npgsql.Logging;
 
 namespace Npgsql.BackendMessages
 {
     class ErrorOrNoticeMessage
     {
-        static readonly ILog Log = LogManager.GetCurrentClassLogger();
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         internal ErrorSeverity Severity { get; private set; }
         internal string Code { get; private set; }

@@ -254,12 +254,6 @@
     <CodeContractsAnalysisWarningLevel>0</CodeContractsAnalysisWarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Common.Logging">
-      <HintPath>..\..\packages\Common.Logging.2.2.0\lib\net40\Common.Logging.dll</HintPath>
-    </Reference>
-    <Reference Include="Common.Logging.Core">
-      <HintPath>..\..\packages\Common.Logging.Core.2.2.0\lib\net40\Common.Logging.Core.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Data" />
@@ -307,6 +301,11 @@
     <Compile Include="BackendMessages\RowDescriptionMessage.cs" />
     <Compile Include="BackendMessages\DataRowSequentialMessage.cs" />
     <Compile Include="FrontendMessages\CopyFailMessage.cs" />
+    <Compile Include="Logging\NoOpLoggingProvider.cs" />
+    <Compile Include="Logging\NpgsqlLogger.cs" />
+    <Compile Include="Logging\INpgsqlLoggingProvider.cs" />
+    <Compile Include="Logging\NpgsqlLogManager.cs" />
+    <Compile Include="Logging\NpgsqlLogLevel.cs" />
     <Compile Include="NpgsqlLargeObjectManager.cs" />
     <Compile Include="NpgsqlLargeObjectStream.cs" />
     <Compile Include="NpgsqlBinaryExporter.cs" />

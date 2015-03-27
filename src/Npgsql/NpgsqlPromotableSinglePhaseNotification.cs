@@ -25,7 +25,7 @@
 using System;
 using System.Reflection;
 using System.Transactions;
-using Common.Logging;
+using Npgsql.Logging;
 
 namespace Npgsql
 {
@@ -39,7 +39,7 @@ namespace Npgsql
         private bool _inTransaction;
         internal bool InLocalTransaction { get { return _npgsqlTx != null;  } }
 
-        static readonly ILog _log = LogManager.GetCurrentClassLogger();
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         public NpgsqlPromotableSinglePhaseNotification(NpgsqlConnection connection)
         {
@@ -48,7 +48,7 @@ namespace Npgsql
 
         public void Enlist(Transaction tx)
         {
-            _log.Debug("Enlist");
+            Log.Debug("Enlist");
             if (tx != null)
             {
                 _isolationLevel = tx.IsolationLevel;
@@ -75,7 +75,7 @@ namespace Npgsql
         /// </summary>
         public void Prepare()
         {
-            _log.Debug("Prepare");
+            Log.Debug("Prepare");
             if (_inTransaction)
             {
                 // may not be null if Promote or Enlist is called first
@@ -100,14 +100,14 @@ namespace Npgsql
 
         public void Initialize()
         {
-            _log.Debug("Initialize");
+            Log.Debug("Initialize");
             _npgsqlTx = _connection.BeginTransaction(ConvertIsolationLevel(_isolationLevel));
             _inTransaction = true;
         }
 
         public void Rollback(SinglePhaseEnlistment singlePhaseEnlistment)
         {
-            _log.Debug("Rollback");
+            Log.Debug("Rollback");
             // try to rollback the transaction with either the
             // ADO.NET transaction or the callbacks that managed the
             // two phase commit transaction.
@@ -138,7 +138,7 @@ namespace Npgsql
 
         public void SinglePhaseCommit(SinglePhaseEnlistment singlePhaseEnlistment)
         {
-            _log.Debug("Single Phase Commit");
+            Log.Debug("Single Phase Commit");
             if (_npgsqlTx != null)
             {
                 _npgsqlTx.Commit();
@@ -170,7 +170,7 @@ namespace Npgsql
 
         public byte[] Promote()
         {
-            _log.Debug("Promote");
+            Log.Debug("Promote");
             _rm = CreateResourceManager();
             // may not be null if Prepare or Enlist is called first
             if (_callbacks == null)

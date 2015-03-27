@@ -5,12 +5,10 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.IO;
-using Common.Logging;
-using Common.Logging.Configuration;
-using Common.Logging.Simple;
 using NUnit.Framework;
 
 using Npgsql;
+using Npgsql.Logging;
 using NpgsqlTypes;
 
 namespace Npgsql.Tests
@@ -541,7 +539,7 @@ namespace Npgsql.Tests
         protected override void SetupLogging()
         {
             // Disable logging because it impacts performance
-            LogManager.Adapter = new NoOpLoggerFactoryAdapter();
+            NpgsqlLogManager.Provider = new NoOpLoggingProvider();
         }
 
         #endregion

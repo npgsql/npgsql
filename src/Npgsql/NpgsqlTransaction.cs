@@ -30,12 +30,8 @@ using System;
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics.Contracts;
-using System.Reflection;
-using System.Resources;
-using System.Text;
-using System.Threading;
-using Common.Logging;
 using Npgsql.FrontendMessages;
+using Npgsql.Logging;
 
 namespace Npgsql
 {
@@ -75,7 +71,7 @@ namespace Npgsql
         }
         readonly IsolationLevel _isolationLevel;
 
-        static readonly ILog _log = LogManager.GetCurrentClassLogger();
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         #endregion
 
@@ -127,7 +123,7 @@ namespace Npgsql
         {
             CheckReady();
 
-            _log.Debug("Commit transaction");
+            Log.Debug("Commit transaction", Connection.Connector.Id);
 
             Connection.Connector.ExecuteBlind(PregeneratedMessage.CommitTransaction);
             Dispose();
@@ -140,7 +136,7 @@ namespace Npgsql
         {
             CheckReady();
 
-            _log.Debug("Rollback transaction");
+            Log.Debug("Rollback transaction", Connection.Connector.Id);
 
             Connection.Connector.ExecuteBlindSuppressTimeout(PregeneratedMessage.RollbackTransaction);
             Dispose();

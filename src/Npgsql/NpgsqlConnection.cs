@@ -32,15 +32,11 @@ using System.Data;
 using System.Data.Common;
 using System.Diagnostics.Contracts;
 using System.IO;
-using System.Linq;
 using System.Net.Security;
-using System.Reflection;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Transactions;
-using Common.Logging;
-using Npgsql.BackendMessages;
-using Npgsql.FrontendMessages;
+using Npgsql.Logging;
 using IsolationLevel = System.Data.IsolationLevel;
 
 namespace Npgsql
@@ -89,7 +85,7 @@ namespace Npgsql
         // A cached copy of the result of `settings.ConnectionString`
         string _connectionString;
 
-        static readonly ILog _log = LogManager.GetCurrentClassLogger();
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         #endregion Fields
 
@@ -153,7 +149,7 @@ namespace Npgsql
 
             CheckConnectionClosed();
 
-            _log.Debug("Opening connnection");
+            Log.Debug("Opening connnection");
 
             // Check if there is any missing argument.
             if (!_settings.ContainsKey(Keywords.Host))
@@ -271,11 +267,11 @@ namespace Npgsql
 
             RefreshConnectionString();
 
-            if (_log.IsTraceEnabled)
+            if (Log.IsEnabled(NpgsqlLogLevel.Trace))
             {
                 foreach (string key in _settings.Keys)
                 {
-                    _log.TraceFormat("Connstring dump {0}={1}", key, _settings[key]);
+                    Log.Trace(String.Format("Connstring dump {0}={1}", key, _settings[key]));
                 }
             }
         }
@@ -578,7 +574,7 @@ namespace Npgsql
                 throw new NotSupportedException("Nested/Concurrent transactions aren't supported.");
             }
 
-            _log.Debug("Beginning transaction with isolation level " + level);
+            Log.Debug("Beginning transaction with isolation level " + level, Connector.Id);
 
             return new NpgsqlTransaction(this, level);
         }
@@ -622,7 +618,7 @@ namespace Npgsql
             if (Connector == null)
                 return;
 
-            _log.Debug("Closing connection");
+            Log.Debug("Closing connection", Connector.Id);
 
             if (_promotable != null && _promotable.InLocalTransaction)
             {
@@ -635,7 +631,7 @@ namespace Npgsql
 
         void ReallyClose()
         {
-            _log.Trace("Really closing connection");
+            Log.Trace("Really closing connection", Connector.Id);
             _postponingClose = false;
 
             // clear the way for another promotable transaction
@@ -1235,8 +1231,8 @@ namespace Npgsql
         /// <param name="dbName">The name of the database to use in place of the current database.</param>
         public override void ChangeDatabase(String dbName)
         {
-            _log.Debug("Changing database to " + dbName);
             CheckNotDisposed();
+            Log.Debug("Changing database to " + dbName, Connector.Id);
 
             if (dbName == null)
             {

@@ -36,7 +36,6 @@ using System.ComponentModel;
 using System.Data.Common;
 using System.Reflection;
 using System.Resources;
-using Common.Logging;
 using NpgsqlTypes;
 
 #if WITHDESIGN

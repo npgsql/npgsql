@@ -29,14 +29,11 @@ using System.Configuration;
 using System.Diagnostics;
 using System.Reflection;
 using System.Threading.Tasks;
-using Common.Logging;
-using Common.Logging.Configuration;
-using Common.Logging.NLog;
 using NLog.Config;
 using NLog.Targets;
 using System.Text;
 using Npgsql;
-
+using Npgsql.Logging;
 using NpgsqlTypes;
 
 using NUnit.Framework;
@@ -311,7 +308,7 @@ namespace Npgsql.Tests
             config.LoggingRules.Add(rule);
             NLog.LogManager.Configuration = config;
 
-            LogManager.Adapter = new NLogLoggerFactoryAdapter(new NameValueCollection());
+            NpgsqlLogManager.Provider = new NLogLoggingProvider();
         }
 
         #endregion

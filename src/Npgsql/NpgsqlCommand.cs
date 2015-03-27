@@ -37,11 +37,10 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Common.Logging;
-using Npgsql.BackendMessages;
-using NpgsqlTypes;
 using System.Diagnostics.Contracts;
+using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
+using Npgsql.Logging;
 
 namespace Npgsql
 {
@@ -92,7 +91,7 @@ namespace Npgsql
         /// </summary>
         int _prepareConnectionOpenId;
 
-        static readonly ILog _log = LogManager.GetCurrentClassLogger();
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         internal NpgsqlConnector.NotificationBlock _notificationBlock;
 
@@ -479,7 +478,7 @@ namespace Npgsql
         public override void Prepare()
         {
             Prechecks();
-            _log.Debug("Prepare command");
+            Log.Debug("Prepare command", Connector.Id);
 
             using (_connector.BlockNotifications())
             {
@@ -1161,8 +1160,6 @@ namespace Npgsql
         [GenerateAsync]
         internal NpgsqlDataReader Execute(CommandBehavior behavior = CommandBehavior.Default)
         {
-            Prechecks();
-
             foreach (NpgsqlParameter p in Parameters.Where(p => p.IsInputDirection)) {
                 p.Bind(_connector.TypeHandlerRegistry);
                 if (p.LengthCache != null) {
@@ -1289,7 +1286,9 @@ namespace Npgsql
         [GenerateAsync]
         int ExecuteNonQueryInternal()
         {
-            _log.Debug("ExecuteNonQuery");
+            Prechecks();
+            Log.Debug("ExecuteNonQuery", Connector.Id);
+
             NpgsqlDataReader reader;
             using (reader = Execute()) {
                 while (reader.NextResult()) ;
@@ -1461,7 +1460,7 @@ namespace Npgsql
         /// </summary>
         protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior)
         {
-            _log.Debug("ExecuteReader with CommandBehavior=" + behavior);
+            Log.Debug("ExecuteReader with CommandBehavior=" + behavior);
             return ExecuteDbDataReaderInternal(behavior);
         }
 
@@ -1536,12 +1535,17 @@ namespace Npgsql
         /// <remarks>As per the specs, no exception will be thrown by this method in case of failure</remarks>
         public override void Cancel()
         {
+            if (State == CommandState.Disposed)
+                throw new ObjectDisposedException(GetType().FullName);
+            if (Connector== null)
+                throw new InvalidOperationException("Connection property has not been initialized.");
+
             if (State != CommandState.InProgress) {
-                _log.DebugFormat("Skipping cancel because command is in state {0}", State);
+                Log.Debug(String.Format("Skipping cancel because command is in state {0}", State), _connector.Id);
                 return;
             }
 
-            _log.Debug("Cancelling command");
+            Log.Debug("Cancelling command", _connector.Id);
             try
             {
                 // get copy for thread safety of null test
@@ -1557,7 +1561,7 @@ namespace Npgsql
             }
             catch (Exception e)
             {
-                _log.Warn("Exception caught while attempting to cancel command", e);
+                Log.Warn("Exception caught while attempting to cancel command", e, _connector.BackendProcessId);
             }
         }
 

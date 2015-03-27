@@ -25,7 +25,7 @@
 using System;
 using System.Data;
 using System.Reflection;
-using Common.Logging;
+using Npgsql.Logging;
 using Npgsql.FrontendMessages;
 
 namespace Npgsql
@@ -45,7 +45,7 @@ namespace Npgsql
         private bool _closeConnectionRequired;
         private bool _prepared;
         private readonly string _txName = Guid.NewGuid().ToString();
-        private static readonly ILog _log = LogManager.GetCurrentClassLogger();
+        private static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         public NpgsqlTransactionCallbacks(NpgsqlConnection connection)
         {
@@ -86,8 +86,8 @@ namespace Npgsql
 
         public void CommitTransaction()
         {
-            _log.Debug("Commit transaction");
-            NpgsqlConnection connection = GetConnection();
+            Log.Debug("Commit transaction");
+            var connection = GetConnection();
 
             if (_prepared)
             {
@@ -103,7 +103,7 @@ namespace Npgsql
         {
             if (!_prepared)
             {
-                _log.Debug("Prepare transaction");
+                Log.Debug("Prepare transaction");
                 NpgsqlConnection connection = GetConnection();
                 connection.Connector.ExecuteBlind(string.Format("PREPARE TRANSACTION '{0}'", _txName));
                 _prepared = true;
@@ -112,7 +112,7 @@ namespace Npgsql
 
         public void RollbackTransaction()
         {
-            _log.Debug("Rollback transaction");
+            Log.Debug("Rollback transaction");
             NpgsqlConnection connection = GetConnection();
 
             if (_prepared)

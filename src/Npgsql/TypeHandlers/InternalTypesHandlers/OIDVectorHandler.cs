@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using Common.Logging;
+using Npgsql.Logging;
 using Npgsql.BackendMessages;
 using Npgsql.TypeHandlers.NumericHandlers;
 
@@ -16,7 +16,7 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
     [TypeMapping("oidvector", NpgsqlDbType.Oidvector)]
     internal class OIDVectorHandler : ArrayHandler<uint>
     {
-        static readonly ILog _log = LogManager.GetCurrentClassLogger();
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         public OIDVectorHandler(TypeHandlerRegistry registry) : base(new UInt32Handler())
         {
@@ -24,7 +24,7 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
             var oidHandler = registry[NpgsqlDbType.Oid];
             if (oidHandler == registry.UnrecognizedTypeHandler)
             {
-                _log.Warn("oid type not present when setting up oidvector type. oidvector will not work.");
+                Log.Warn("oid type not present when setting up oidvector type. oidvector will not work.");
                 return;
             }
             LowerBound = 0;

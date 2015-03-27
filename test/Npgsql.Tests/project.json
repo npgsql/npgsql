@@ -2,9 +2,6 @@
     "version": "0.0.0-*",
     "dependencies": {
         "System.Data.Common": "4.0.0-beta-22616",
-        "Common.Logging": "2.2.0",
-        "Common.Logging.Core": "2.2.0",
-        "Common.Logging.NLog20": "2.2.0",
         "Mono.Security": "3.2.3.0",
         "NUnit": "2.6.3",
         "NLog": "3.1.0.0",

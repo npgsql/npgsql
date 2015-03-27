@@ -24,26 +24,18 @@ using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
-using System.Reflection;
-using System.Resources;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
-using Common.Logging;
 using Npgsql.BackendMessages;
+using Npgsql.FrontendMessages;
 using Npgsql.TypeHandlers;
 using NpgsqlTypes;
-using System.Text;
-using System.Text.RegularExpressions;
-using Npgsql.FrontendMessages;
+using Npgsql.Logging;
 
 namespace Npgsql
 {
@@ -84,12 +76,17 @@ namespace Npgsql
         /// <summary>
         /// The secret key of the backend for this connector, used for query cancellation.
         /// </summary>
-        internal int BackendSecretKey { get; set; }
+        internal int BackendSecretKey { get; private set; }
 
         /// <summary>
         /// The process ID of the backend for this connector.
         /// </summary>
-        internal int BackendProcessId { get; set; }
+        internal int BackendProcessId { get; private set; }
+
+        /// <summary>
+        /// A unique ID identifying this connector, used for logging. Currently mapped to BackendProcessId
+        /// </summary>
+        internal int Id { get { return BackendProcessId; } }
 
         internal bool Pooled { get; private set; }
 
@@ -127,7 +124,7 @@ namespace Npgsql
 
         internal SSPIHandler SSPI { get; set; }
 
-        static readonly ILog _log = LogManager.GetCurrentClassLogger();
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         SemaphoreSlim _notificationSemaphore;
         static readonly byte[] EmptyBuffer = new byte[0];
@@ -388,7 +385,7 @@ namespace Npgsql
             // time we have left between all the remaining ip's in the list.
             for (var i = 0; i < ips.Length; i++)
             {
-                _log.Trace("Attempting to connect to " + ips[i]);
+                Log.Trace("Attempting to connect to " + ips[i], Id);
                 var ep = new IPEndPoint(ips[i], Port);
                 socket = new Socket(ep.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
                 attemptStart = DateTime.Now;
@@ -409,7 +406,7 @@ namespace Npgsql
                 }
                 catch (Exception e)
                 {
-                    _log.Warn("Failed to connect to " + ips[i]);
+                    Log.Warn("Failed to connect to " + ips[i]);
                     timeout -= Convert.ToInt32((DateTime.Now - attemptStart).TotalMilliseconds);
                     lastSocketException = e;
 
@@ -472,12 +469,12 @@ namespace Npgsql
             //Stream = new BufferedStream(sslStream ?? baseStream, 8192);
             Stream = sslStream ?? BaseStream;
             Buffer = new NpgsqlBuffer(Stream, BufferSize, PGUtil.UTF8Encoding);
-            _log.DebugFormat("Connected to {0}:{1 }", Host, Port);
+            Log.Debug(String.Format("Connected to {0}:{1}", Host, Port));
         }
 
         void HandleAuthentication()
         {
-            _log.Trace("Authenticating...");
+            Log.Debug("Authenticating...", Id);
             while (true)
             {
                 var msg = ReadSingleMessage();
@@ -607,7 +604,7 @@ namespace Npgsql
         {
             try
             {
-                _log.DebugFormat("Sending: {0}", msg);
+                Log.Trace(String.Format("Sending: {0}", msg), Id);
 
                 var asSimple = msg as SimpleFrontendMessage;
                 if (asSimple != null)
@@ -781,7 +778,7 @@ namespace Npgsql
 
                 case BackendMessageCode.AuthenticationRequest:
                     var authType = (AuthenticationRequestType)buf.ReadInt32();
-                    _log.Trace("Received AuthenticationRequest of type " + authType);
+                    Log.Trace("Received AuthenticationRequest of type " + authType, Id);
                     switch (authType)
                     {
                         case AuthenticationRequestType.AuthenticationOk:
@@ -1065,7 +1062,7 @@ namespace Npgsql
         /// </summary>
         internal void Close()
         {
-            _log.Debug("Close connector");
+            Log.Debug("Close connector", Id);
 
             switch (State)
             {
@@ -1132,7 +1129,7 @@ namespace Npgsql
                 break;
             case ConnectorState.Closed:
             case ConnectorState.Broken:
-                _log.WarnFormat("Reset() called on connector with state {0}, ignoring", State);
+                Log.Warn(String.Format("Reset() called on connector with state {0}, ignoring", State), Id);
                 return;
             case ConnectorState.Connecting:
             case ConnectorState.Executing:

@@ -8,7 +8,7 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests
 {
-    class NpgsqlBufferedStreamTests
+    class NpgsqlBufferTests
     {
         [Test]
         public void Skip()

@@ -9,7 +9,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
-using Common.Logging;
+using Npgsql.Logging;
 using Npgsql.TypeHandlers;
 using NpgsqlTypes;
 using System.Diagnostics.Contracts;
@@ -46,7 +46,7 @@ namespace Npgsql
 
         static ConcurrentDictionary<string, TypeHandler> _globalEnumRegistrations;
 
-        static readonly ILog Log = LogManager.GetCurrentClassLogger();
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         #endregion
 
@@ -123,7 +123,7 @@ namespace Npgsql
                             {
                                 backendType.Type = BackendTypeType.Array;
                                 if (!byOID.TryGetValue(elementOID, out backendType.Element)) {
-                                    Log.ErrorFormat("Array type '{0}' refers to unknown element with OID {1}, skipping", backendType.Name, elementOID);
+                                    Log.Error(String.Format("Array type '{0}' refers to unknown element with OID {1}, skipping", backendType.Name, elementOID), connector.Id);
                                     continue;
                                 }
                                 backendType.Element.Array = backendType;
@@ -138,7 +138,7 @@ namespace Npgsql
                             backendType.Type = BackendTypeType.Range;
                             elementOID = Convert.ToUInt32(dr[4]);
                             if (!byOID.TryGetValue(elementOID, out backendType.Element)) {
-                                Log.ErrorFormat("Range type '{0}' refers to unknown subtype with OID {1}, skipping", backendType.Name, elementOID);
+                                Log.Error(String.Format("Range type '{0}' refers to unknown subtype with OID {1}, skipping", backendType.Name, elementOID), connector.Id);
                                 continue;
                             }
                             break;
@@ -180,7 +180,7 @@ namespace Npgsql
                     }
                     continue;
                 default:
-                    Log.Error("Unknown type of type encountered, skipping: " + backendType);
+                    Log.Error("Unknown type of type encountered, skipping: " + backendType, Connector.Id);
                     continue;
                 }
             }
@@ -399,7 +399,7 @@ namespace Npgsql
                     throw new NotSupportedException("This enum array type is not supported (have you registered it in Npsql and set the EnumType property of NpgsqlParameter?)");
                 }
 
-                throw new NotImplementedException("This NpgsqlDbType hasn't been implemented yet in Npgsql: " + npgsqlDbType);
+                throw new NotSupportedException("This NpgsqlDbType isn't supported in Npgsql yet: " + npgsqlDbType);
             }
         }
 

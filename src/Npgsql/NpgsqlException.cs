@@ -33,8 +33,6 @@ using System.Data.Common;
 using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Reflection;
-using System.Text;
-using Common.Logging;
 using Npgsql.BackendMessages;
 
 namespace Npgsql
