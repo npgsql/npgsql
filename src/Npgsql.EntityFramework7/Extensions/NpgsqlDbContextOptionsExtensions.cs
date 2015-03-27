@@ -1,59 +1,49 @@
-﻿using System.Data.Common;
-using EntityFramework.Npgsql.Extensions;
+// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
+using System.Data.Common;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity;
 using Microsoft.Data.Entity.Infrastructure;
+using Npgsql.EntityFramework7;
+using Npgsql.EntityFramework7.Extensions;
 using Microsoft.Data.Entity.Utilities;
 
-namespace EntityFramework.Npgsql
+// ReSharper disable once CheckNamespace
+
+namespace Microsoft.Data.Entity
 {
     public static class NpgsqlDbContextOptionsExtensions
     {
-        public static NpgsqlDbContextOptionsBuilder UseNpgsql([NotNull] this DbContextOptionsBuilder optionsBuilder)
-        {
-            Check.NotNull(optionsBuilder, "optionsBuilder");
-
-            ((IOptionsBuilderExtender)optionsBuilder).AddOrUpdateExtension<NpgsqlOptionsExtension>(GetOrCreateExtension(optionsBuilder));
-
-            return new NpgsqlDbContextOptionsBuilder(optionsBuilder);
-        }
-
         public static NpgsqlDbContextOptionsBuilder UseNpgsql([NotNull] this DbContextOptionsBuilder optionsBuilder, [NotNull] string connectionString)
         {
-            Check.NotNull(optionsBuilder, "optionsBuilder");
-            Check.NotEmpty(connectionString, "connectionString");
-            
+            Check.NotNull(optionsBuilder, nameof(optionsBuilder));
+            Check.NotEmpty(connectionString, nameof(connectionString));
+
             var extension = GetOrCreateExtension(optionsBuilder);
+
             extension.ConnectionString = connectionString;
 
-            ((IOptionsBuilderExtender)optionsBuilder).AddOrUpdateExtension<NpgsqlOptionsExtension>(extension);
+            ((IOptionsBuilderExtender)optionsBuilder).AddOrUpdateExtension(extension);
 
             return new NpgsqlDbContextOptionsBuilder(optionsBuilder);
         }
 
-//        public static NpgsqlDbContextOptions UseNpgsql<T>([NotNull] this DbContextOptions<T> options, [NotNull] string connectionString)
-//        {
-//            return UseNpgsql((DbContextOptions)options, connectionString);
-//        }
-
+        // Note: Decision made to use DbConnection not SqlConnection: Issue #772
         public static NpgsqlDbContextOptionsBuilder UseNpgsql([NotNull] this DbContextOptionsBuilder optionsBuilder, [NotNull] DbConnection connection)
         {
-            Check.NotNull(optionsBuilder, "optionsBuilder");
-            Check.NotNull(connection, "connection");
-            
+            Check.NotNull(optionsBuilder, nameof(optionsBuilder));
+            Check.NotNull(connection, nameof(connection));
+
             var extension = GetOrCreateExtension(optionsBuilder);
+
             extension.Connection = connection;
 
-            ((IOptionsBuilderExtender)optionsBuilder).AddOrUpdateExtension<NpgsqlOptionsExtension>(extension);
+            ((IOptionsBuilderExtender)optionsBuilder).AddOrUpdateExtension(extension);
 
             return new NpgsqlDbContextOptionsBuilder(optionsBuilder);
         }
 
-//        public static NpgsqlDbContextOptions UseNpgsql<T>([NotNull] this DbContextOptions<T> options, [NotNull] DbConnection connection)
-//        {
-//            return UseNpgsql((DbContextOptions)options, connection);
-//        }
-        
         private static NpgsqlOptionsExtension GetOrCreateExtension(DbContextOptionsBuilder optionsBuilder)
         {
             var existing = optionsBuilder.Options.FindExtension<NpgsqlOptionsExtension>();

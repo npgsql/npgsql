@@ -4,6 +4,7 @@
         "EntityFramework.Relational": "7.0.0-*", 
         "Npgsql": "3.0.0-alpha-*"
     },
+    "compile": "..\\..\\external\\EntityFramework\\src\\Shared\\*",
     "frameworks": {
         "net451": {
         	"frameworkAssemblies": {

@@ -1,9 +1,12 @@
-﻿using System;
+﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
+using System;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity.Metadata;
 using Microsoft.Data.Entity.Utilities;
 
-namespace EntityFramework.Npgsql.Metadata
+namespace Npgsql.EntityFramework7.Metadata
 {
     public class NpgsqlPropertyExtensions : ReadOnlyNpgsqlPropertyExtensions
     {
@@ -63,20 +66,20 @@ namespace EntityFramework.Npgsql.Metadata
             }
         }
 
-		[CanBeNull]
-		public new virtual string ComputedExpression
-		{
-			get { return base.ComputedExpression; }
-			[param: CanBeNull]
-			set
-			{
-				Check.NullButNotEmpty(value, nameof(value));
+        [CanBeNull]
+        public new virtual string ComputedExpression
+        {
+            get { return base.ComputedExpression; }
+            [param: CanBeNull]
+            set
+            {
+                Check.NullButNotEmpty(value, nameof(value));
 
-				( (Property)Property )[NpgsqlComputedExpressionAnnotation] = value;
-			}
-		}
+                ((Property)Property)[NpgsqlComputedExpressionAnnotation] = value;
+            }
+        }
 
-		[CanBeNull]
+        [CanBeNull]
         public new virtual string SequenceName
         {
             get { return base.SequenceName; }
@@ -125,13 +128,15 @@ namespace EntityFramework.Npgsql.Metadata
                             || propertyType == typeof(byte)
                             || propertyType == typeof(byte?)))
                     {
-                        throw new ArgumentException(String.Format("Identity value generation cannot be used for the property '{0}' on entity type '{1}' because the property type is '{2}'.Identity value generation can only be used with signed integer properties.", Property.Name, Property.EntityType.Name, propertyType.Name));
+                        throw new ArgumentException(Strings.IdentityBadType(
+                            Property.Name, Property.EntityType.Name, propertyType.Name));
                     }
 
                     if (value == NpgsqlValueGenerationStrategy.Sequence
                         && !propertyType.IsInteger())
                     {
-                        throw new ArgumentException(String.Format("PostgreSQL sequences cannot be used to generate values for the property '{0}' on entity type '{1}' because the property type is '{2}'. Sequences can only be used with integer properties.", Property.Name, Property.EntityType.Name, propertyType.Name));
+                        throw new ArgumentException(Strings.SequenceBadType(
+                            Property.Name, Property.EntityType.Name, propertyType.Name));
                     }
 
                     // TODO: Issue #777: Non-string annotations

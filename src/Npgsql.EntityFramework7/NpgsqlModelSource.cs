@@ -1,13 +1,16 @@
-﻿using JetBrains.Annotations;
-using Microsoft.Data.Entity.Infrastructure;
+// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
+using JetBrains.Annotations;
 using Microsoft.Data.Entity.Internal;
 
-namespace EntityFramework.Npgsql
+namespace Npgsql.EntityFramework7
 {
-	public class NpgsqlModelSource : ModelSource, INpgsqlModelSource
+    public class NpgsqlModelSource : ModelSource, INpgsqlModelSource
     {
-		public NpgsqlModelSource([NotNull] IDbSetFinder setFinder, [NotNull] IModelValidator modelValidator)
-			: base(setFinder, modelValidator)
-		{ }
-	}
+        public NpgsqlModelSource([NotNull] IDbSetFinder setFinder, [NotNull] IModelValidator modelValidator)
+            : base(setFinder, modelValidator)
+        {
+        }
+    }
 }

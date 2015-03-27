@@ -1,12 +1,15 @@
-﻿using System;
-using System.Linq;
+// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity.Metadata;
 using Microsoft.Data.Entity.Relational.Metadata;
 using Microsoft.Data.Entity.Utilities;
 
-namespace EntityFramework.Npgsql.Metadata
+namespace Npgsql.EntityFramework7.Metadata
 {
     public class ReadOnlyNpgsqlModelExtensions : ReadOnlyRelationalModelExtensions, INpgsqlModelExtensions
     {
@@ -55,8 +58,8 @@ namespace EntityFramework.Npgsql.Metadata
 
         public override Sequence TryGetSequence(string name, string schema = null)
         {
-            Check.NotEmpty(name, "name");
-            Check.NullButNotEmpty(schema, "schema");
+            Check.NotEmpty(name, nameof(name));
+            Check.NullButNotEmpty(schema, nameof(schema));
 
             return FindSequence(NpgsqlSequenceAnnotation + schema + "." + name)
                    ?? base.TryGetSequence(name, schema);

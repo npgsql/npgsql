@@ -1,86 +1,60 @@
-﻿using EntityFramework.Npgsql.Migrations;
+// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
+using System;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Metadata;
 using Microsoft.Data.Entity.Metadata.Builders;
+using Microsoft.Data.Entity.Query;
 using Microsoft.Data.Entity.Relational;
 using Microsoft.Data.Entity.Relational.Migrations.History;
 using Microsoft.Data.Entity.Relational.Migrations.Infrastructure;
 using Microsoft.Data.Entity.Relational.Migrations.Sql;
+using Npgsql.EntityFramework7.Migrations;
+using Npgsql.EntityFramework7.Query;
 using Microsoft.Data.Entity.Storage;
 using Microsoft.Data.Entity.Utilities;
 using Microsoft.Data.Entity.ValueGeneration;
-using Microsoft.Data.Entity.Query;
+using Microsoft.Framework.DependencyInjection;
 
-namespace EntityFramework.Npgsql
+namespace Npgsql.EntityFramework7
 {
-	public class NpgsqlDataStoreServices : IRelationalDataStoreServices
+    public class NpgsqlDataStoreServices : INpgsqlDataStoreServices
     {
-        private readonly NpgsqlDataStore _store;
-		private readonly NpgsqlDataStoreCreator _creator;
-		private readonly NpgsqlEntityFrameworkConnection _connection;
-		private readonly NpgsqlValueGeneratorSelector _valueGeneratorSelector;
-		private readonly NpgsqlDatabase _database;
-		private readonly NpgsqlModelBuilderFactory _modelBuilderFactory;
-		private readonly NpgsqlModelSource _modelSource;
+        private readonly IServiceProvider _serviceProvider;
 
-		public NpgsqlDataStoreServices(
-			[NotNull] NpgsqlDataStore store,
-			[NotNull] NpgsqlDataStoreCreator creator,
-			[NotNull] NpgsqlEntityFrameworkConnection connection,
-			[NotNull] NpgsqlValueGeneratorSelector valueGeneratorSelector,
-			[NotNull] NpgsqlDatabase database,
-			[NotNull] NpgsqlModelBuilderFactory modelBuilderFactory,
-			[NotNull] NpgsqlModelDiffer modelDiffer,
-			[NotNull] NpgsqlHistoryRepository historyRepository,
-			[NotNull] NpgsqlMigrationSqlGenerator migrationSqlGenerator,
-			[NotNull] NpgsqlModelSource modelSource)
-		{
-			Check.NotNull(store, "store");
-			Check.NotNull(creator, "creator");
-			Check.NotNull(connection, "connection");
-			Check.NotNull(valueGeneratorSelector, "valueGeneratorSelector");
-			Check.NotNull(database, "database");
-			Check.NotNull(modelBuilderFactory, "modelBuilderFactory");
-			Check.NotNull(modelDiffer, nameof(modelDiffer));
-			Check.NotNull(historyRepository, nameof(historyRepository));
-			Check.NotNull(migrationSqlGenerator, nameof(migrationSqlGenerator));
-			Check.NotNull(modelSource, "migrator");
+        public NpgsqlDataStoreServices([NotNull] IServiceProvider serviceProvider)
+        {
+            Check.NotNull(serviceProvider, nameof(serviceProvider));
 
-			_store = store;
-			_creator = creator;
-			_connection = connection;
-			_valueGeneratorSelector = valueGeneratorSelector;
-			_database = database;
-			_modelBuilderFactory = modelBuilderFactory;
-			ModelDiffer = modelDiffer;
-			HistoryRepository = historyRepository;
-			MigrationSqlGenerator = migrationSqlGenerator;
-			_modelSource = modelSource;
-		}
+            _serviceProvider = serviceProvider;
+        }
 
-		public virtual IDataStore Store => _store;
+        public virtual IDataStore Store => _serviceProvider.GetRequiredService<INpgsqlDataStore>();
 
-		public virtual IDataStoreCreator Creator => _creator;
+        public virtual IQueryContextFactory QueryContextFactory => _serviceProvider.GetRequiredService<INpgsqlQueryContextFactory>();
 
-		public virtual IRelationalConnection RelationalConnection => _connection;
-		public virtual IDataStoreConnection Connection => _connection;
-		
-		public virtual IValueGeneratorSelector ValueGeneratorSelector => _valueGeneratorSelector;
+        public virtual IDataStoreCreator Creator => _serviceProvider.GetRequiredService<INpgsqlDataStoreCreator>();
 
-		public virtual Database Database => _database;
+        public virtual IDataStoreConnection Connection => _serviceProvider.GetRequiredService<INpgsqlConnection>();
 
-		public virtual IModelBuilderFactory ModelBuilderFactory => _modelBuilderFactory;
+        public virtual IRelationalConnection RelationalConnection => _serviceProvider.GetRequiredService<INpgsqlConnection>();
 
-		public virtual IModelDiffer ModelDiffer { get; }
-		public virtual IHistoryRepository HistoryRepository { get; }
-		public virtual IMigrationSqlGenerator MigrationSqlGenerator { get; }
-		
-		public virtual IQueryContextFactory QueryContextFactory { get; }
-		public virtual IDatabaseFactory DatabaseFactory { get; }
+        public virtual IValueGeneratorSelector ValueGeneratorSelector => _serviceProvider.GetRequiredService<INpgsqlValueGeneratorSelector>();
 
-		public virtual IModelSource ModelSource => _modelSource;
+        public virtual IDatabaseFactory DatabaseFactory => _serviceProvider.GetRequiredService<INpgsqlDatabaseFactory>();
 
-        public virtual ISqlGenerator SqlGenerator { get; }
+        public virtual IModelBuilderFactory ModelBuilderFactory => _serviceProvider.GetRequiredService<INpgsqlModelBuilderFactory>();
+
+        public virtual IModelDiffer ModelDiffer => _serviceProvider.GetRequiredService<INpgsqlModelDiffer>();
+
+        public virtual IHistoryRepository HistoryRepository => _serviceProvider.GetRequiredService<INpgsqlHistoryRepository>();
+
+        public virtual IMigrationSqlGenerator MigrationSqlGenerator => _serviceProvider.GetRequiredService<INpgsqlMigrationSqlGenerator>();
+
+        public virtual IModelSource ModelSource => _serviceProvider.GetRequiredService<INpgsqlModelSource>();
+
+        public virtual ISqlGenerator SqlGenerator => _serviceProvider.GetRequiredService<INpgsqlSqlGenerator>();
     }
 }

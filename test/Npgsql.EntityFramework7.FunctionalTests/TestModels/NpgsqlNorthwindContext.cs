@@ -1,17 +1,19 @@
-﻿using System;
-using System.Security.Cryptography.X509Certificates;
-using System.Threading.Tasks;
-using Microsoft.Data.Entity.Infrastructure;
-using Microsoft.Data.Entity.FunctionalTests.TestModels.Northwind;
+// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-namespace Npgsql.EntityFramework7.FunctionalTests.TestModels
+using System;
+using System.Threading.Tasks;
+using Microsoft.Data.Entity.FunctionalTests.TestModels.Northwind;
+using Microsoft.Data.Entity.Infrastructure;
+
+namespace Microsoft.Data.Entity.SqlServer.FunctionalTests.TestModels
 {
-    public class NpgsqlNorthwindContext : NorthwindContext
+    public class SqlServerNorthwindContext : NorthwindContext
     {
         public static readonly string DatabaseName = StoreName;
-        public static readonly string ConnectionString = NpgsqlTestStore.CreateConnectionString(DatabaseName);
+        public static readonly string ConnectionString = SqlServerTestStore.CreateConnectionString(DatabaseName);
 
-        public NpgsqlNorthwindContext(IServiceProvider serviceProvider, DbContextOptions options)
+        public SqlServerNorthwindContext(IServiceProvider serviceProvider, DbContextOptions options)
             : base(serviceProvider, options)
         {
         }
@@ -19,18 +21,18 @@ namespace Npgsql.EntityFramework7.FunctionalTests.TestModels
         /// <summary>
         ///     A transactional test database, pre-populated with Northwind schema/data
         /// </summary>
-        public static Task<NpgsqlTestStore> GetSharedStoreAsync()
+        public static Task<SqlServerTestStore> GetSharedStoreAsync()
         {
-            return NpgsqlTestStore.GetOrCreateSharedAsync(
+            return SqlServerTestStore.GetOrCreateSharedAsync(
                 DatabaseName,
-                () => NpgsqlTestStore.CreateDatabaseIfNotExistsAsync(DatabaseName, scriptPath: @"..\..\Northwind.sql")); // relative from bin/<config>
+                () => SqlServerTestStore.CreateDatabaseIfNotExistsAsync(DatabaseName, scriptPath: @"..\..\Northwind.sql")); // relative from bin/<config>
         }
 
-        public static NpgsqlTestStore GetSharedStore()
+        public static SqlServerTestStore GetSharedStore()
         {
-            return NpgsqlTestStore.GetOrCreateShared(
+            return SqlServerTestStore.GetOrCreateShared(
                 DatabaseName,
-                () => NpgsqlTestStore.CreateDatabaseIfNotExists(DatabaseName, scriptPath: @"..\..\Northwind.sql")); // relative from bin/<config>
+                () => SqlServerTestStore.CreateDatabaseIfNotExists(DatabaseName, scriptPath: @"..\..\Northwind.sql")); // relative from bin/<config>
         }
     }
 }

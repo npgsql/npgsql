@@ -1,9 +1,13 @@
-﻿using System;
+// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
+using System;
 using JetBrains.Annotations;
+using Microsoft.Data.Entity;
 using Microsoft.Data.Entity.Metadata;
 using Microsoft.Data.Entity.Relational.Metadata;
 
-namespace EntityFramework.Npgsql.Metadata
+namespace Npgsql.EntityFramework7.Metadata
 {
     public class ReadOnlyNpgsqlPropertyExtensions : ReadOnlyRelationalPropertyExtensions, INpgsqlPropertyExtensions
     {
@@ -11,8 +15,8 @@ namespace EntityFramework.Npgsql.Metadata
         protected const string NpgsqlColumnTypeAnnotation = NpgsqlAnnotationNames.Prefix + RelationalAnnotationNames.ColumnType;
         protected const string NpgsqlDefaultExpressionAnnotation = NpgsqlAnnotationNames.Prefix + RelationalAnnotationNames.ColumnDefaultExpression;
         protected const string NpgsqlValueGenerationAnnotation = NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.ValueGeneration;
-		protected const string NpgsqlComputedExpressionAnnotation = NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.ColumnComputedExpression;
-		protected const string NpgsqlSequenceNameAnnotation = NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.SequenceName;
+        protected const string NpgsqlComputedExpressionAnnotation = NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.ColumnComputedExpression;
+        protected const string NpgsqlSequenceNameAnnotation = NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.SequenceName;
         protected const string NpgsqlSequenceSchemaAnnotation = NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.SequenceSchema;
         protected const string NpgsqlDefaultValueAnnotation = NpgsqlAnnotationNames.Prefix + RelationalAnnotationNames.ColumnDefaultValue;
         protected const string NpgsqlDefaultValueTypeAnnotation = NpgsqlAnnotationNames.Prefix + RelationalAnnotationNames.ColumnDefaultValueType;

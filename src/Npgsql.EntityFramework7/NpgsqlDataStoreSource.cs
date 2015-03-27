@@ -1,24 +1,15 @@
-﻿using System;
-using JetBrains.Annotations;
+// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
 using Microsoft.Data.Entity;
-using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Storage;
-using Microsoft.Data.Entity.Utilities;
-using Microsoft.Framework.DependencyInjection;
-using EntityFramework.Npgsql.Extensions;
 
-namespace EntityFramework.Npgsql
+namespace Npgsql.EntityFramework7
 {
-    public class NpgsqlDataStoreSource : DataStoreSource<NpgsqlDataStore,NpgsqlDataStoreServices, NpgsqlOptionsExtension>
+    public class NpgsqlDataStoreSource : DataStoreSource<NpgsqlDataStore, INpgsqlDataStoreServices, NpgsqlOptionsExtension>
     {
-        public override string Name
-        {
-            get { return typeof(NpgsqlDataStore).Name; }
-        }
-
         public override void AutoConfigure(DbContextOptionsBuilder optionsBuilder)
         {
-            optionsBuilder.UseNpgsql();
         }
     }
 }

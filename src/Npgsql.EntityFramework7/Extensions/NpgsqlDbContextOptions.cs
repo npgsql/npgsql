@@ -1,18 +1,20 @@
-﻿using System.Data.Common;
+﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
 using System.Diagnostics;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity;
 using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Relational;
-using Microsoft.Data.Entity.Utilities;
 
-namespace EntityFramework.Npgsql.Extensions
+namespace Npgsql.EntityFramework7.Extensions
 {
-	public class NpgsqlDbContextOptionsBuilder : RelationalDbContextOptionsBuilder
+    public class NpgsqlDbContextOptionsBuilder : RelationalDbContextOptionsBuilder
     {
         public NpgsqlDbContextOptionsBuilder([NotNull] DbContextOptionsBuilder optionsBuilder)
             : base(optionsBuilder)
-        { }
+        {
+        }
 
         public virtual NpgsqlDbContextOptionsBuilder MaxBatchSize(int maxBatchSize)
         {
@@ -20,8 +22,8 @@ namespace EntityFramework.Npgsql.Extensions
             Debug.Assert(extension != null);
 
             extension.MaxBatchSize = maxBatchSize;
-            
-            ((IOptionsBuilderExtender)OptionsBuilder).AddOrUpdateExtension<NpgsqlOptionsExtension>(extension);
+
+            ((IOptionsBuilderExtender)OptionsBuilder).AddOrUpdateExtension(extension);
 
             return this;
         }
@@ -32,8 +34,8 @@ namespace EntityFramework.Npgsql.Extensions
             Debug.Assert(extension != null);
 
             extension.CommandTimeout = commandTimeout;
-            
-            ((IOptionsBuilderExtender)OptionsBuilder).AddOrUpdateExtension<NpgsqlOptionsExtension>(extension);
+
+            ((IOptionsBuilderExtender)OptionsBuilder).AddOrUpdateExtension(extension);
 
             return this;
         }

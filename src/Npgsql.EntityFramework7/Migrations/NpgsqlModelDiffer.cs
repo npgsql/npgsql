@@ -4,19 +4,18 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using EntityFramework.Npgsql.Extensions;
-using EntityFramework.Npgsql.Metadata;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity;
 using Microsoft.Data.Entity.Metadata;
 using Microsoft.Data.Entity.Relational.Metadata;
 using Microsoft.Data.Entity.Relational.Migrations.Infrastructure;
 using Microsoft.Data.Entity.Relational.Migrations.Operations;
+using Npgsql.EntityFramework7.Metadata;
 using Microsoft.Data.Entity.Utilities;
 
-namespace EntityFramework.Npgsql.Migrations
+namespace Npgsql.EntityFramework7.Migrations
 {
-    public class NpgsqlModelDiffer : ModelDiffer
+    public class NpgsqlModelDiffer : ModelDiffer, INpgsqlModelDiffer
     {
         public NpgsqlModelDiffer([NotNull] NpgsqlTypeMapper typeMapper)
             : base(typeMapper)

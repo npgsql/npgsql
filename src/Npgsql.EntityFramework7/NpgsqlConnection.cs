@@ -1,0 +1,43 @@
+// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
+using System;
+using System.Data.Common;
+using System.Data.SqlClient;
+using JetBrains.Annotations;
+using Microsoft.Data.Entity;
+using Microsoft.Data.Entity.Infrastructure;
+using Microsoft.Data.Entity.Relational;
+using Microsoft.Data.Entity.Utilities;
+using Microsoft.Framework.Logging;
+
+namespace Npgsql.EntityFramework7
+{
+    public class NpgsqlConnection : RelationalConnection, INpgsqlConnection
+    {
+        private readonly ILoggerFactory _loggerFactory;
+
+        public NpgsqlConnection([NotNull] IDbContextOptions options, [NotNull] ILoggerFactory loggerFactory)
+            : base(options, loggerFactory)
+        {
+            Check.NotNull(loggerFactory, nameof(loggerFactory));
+
+            _loggerFactory = loggerFactory;
+        }
+
+        // TODO: Consider using DbProviderFactory to create connection instance
+        // Issue #774
+        protected override DbConnection CreateDbConnection() => new SqlConnection(ConnectionString);
+
+        public virtual INpgsqlConnection CreateMasterConnection()
+        {
+            var builder = new SqlConnectionStringBuilder { ConnectionString = ConnectionString, InitialCatalog = "master" };
+
+            // TODO use clone connection method once implimented see #1406
+            var optionsBuilder = new DbContextOptionsBuilder();
+            optionsBuilder.UseNpgsql(builder.ConnectionString).CommandTimeout(CommandTimeout);
+
+            return new NpgsqlConnection(optionsBuilder.Options, _loggerFactory);
+        }
+    }
+}

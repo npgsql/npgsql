@@ -1,29 +1,29 @@
-﻿using System;
-using Microsoft.Data.Entity;
+// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
+using System;
 using Microsoft.Data.Entity.FunctionalTests;
 using Microsoft.Data.Entity.Internal;
 using Microsoft.Data.Entity.Metadata;
 using Microsoft.Data.Entity.Metadata.Builders;
 using Microsoft.Framework.DependencyInjection;
-using EntityFramework.Npgsql;
-using EntityFramework.Npgsql.Extensions;
 
-namespace Npgsql.EntityFramework7.FunctionalTests
+namespace Microsoft.Data.Entity.SqlServer.FunctionalTests
 {
-    public class TestNpgsqlModelSource : NpgsqlModelSource
+    public class TestSqlServerModelSource : SqlServerModelSource
     {
         private readonly TestModelSource _testModelSource;
 
-        public TestNpgsqlModelSource(Action<ModelBuilder> onModelCreating, IDbSetFinder setFinder, IModelValidator modelValidator)
+        public TestSqlServerModelSource(Action<ModelBuilder> onModelCreating, IDbSetFinder setFinder, IModelValidator modelValidator)
             : base(setFinder, modelValidator)
         {
             _testModelSource = new TestModelSource(onModelCreating, setFinder);
         }
 
-        public override IModel GetModel(DbContext context, IModelBuilderFactory modelBuilderFactory)
+        public override IModel GetModel(DbContext context, IModelBuilderFactory modelBuilderFactory) 
             => _testModelSource.GetModel(context, modelBuilderFactory);
 
-        public static Func<IServiceProvider, INpgsqlModelSource> GetFactory(Action<ModelBuilder> onModelCreating)
-            => p => new TestNpgsqlModelSource(onModelCreating, p.GetRequiredService<IDbSetFinder>(), p.GetRequiredService<IModelValidator>());
+        public static Func<IServiceProvider, ISqlServerModelSource> GetFactory(Action<ModelBuilder> onModelCreating) 
+            => p => new TestSqlServerModelSource(onModelCreating, p.GetRequiredService<IDbSetFinder>(), p.GetRequiredService<IModelValidator>());
     }
 }

@@ -1,4 +1,7 @@
-﻿using System;
+// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
+using System;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Data.SqlClient;
@@ -8,58 +11,57 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Data.Entity.Relational.FunctionalTests;
-using Npgsql;
 
-namespace Npgsql.EntityFramework7.FunctionalTests
+namespace Microsoft.Data.Entity.SqlServer.FunctionalTests
 {
-    public class NpgsqlTestStore : RelationalTestStore
+    public class SqlServerTestStore : RelationalTestStore
     {
         public const int CommandTimeout = 30;
 
         private static int _scratchCount;
 
-        public static Task<NpgsqlTestStore> GetOrCreateSharedAsync(string name, Func<Task> initializeDatabase)
+        public static Task<SqlServerTestStore> GetOrCreateSharedAsync(string name, Func<Task> initializeDatabase)
         {
-            return new NpgsqlTestStore(name).CreateSharedAsync(initializeDatabase);
+            return new SqlServerTestStore(name).CreateSharedAsync(initializeDatabase);
         }
 
-        public static NpgsqlTestStore GetOrCreateShared(string name, Action initializeDatabase)
+        public static SqlServerTestStore GetOrCreateShared(string name, Action initializeDatabase)
         {
-            return new NpgsqlTestStore(name).CreateShared(initializeDatabase);
+            return new SqlServerTestStore(name).CreateShared(initializeDatabase);
         }
 
         /// <summary>
         ///     A non-transactional, transient, isolated test database. Use this in the case
         ///     where transactions are not appropriate.
         /// </summary>
-        public static Task<NpgsqlTestStore> CreateScratchAsync(bool createDatabase = true)
+        public static Task<SqlServerTestStore> CreateScratchAsync(bool createDatabase = true)
         {
             var name = "Microsoft.Data.SqlServer.Scratch_" + Interlocked.Increment(ref _scratchCount);
-            return new NpgsqlTestStore(name).CreateTransientAsync(createDatabase);
+            return new SqlServerTestStore(name).CreateTransientAsync(createDatabase);
         }
 
-        public static NpgsqlTestStore CreateScratch(bool createDatabase = true)
+        public static SqlServerTestStore CreateScratch(bool createDatabase = true)
         {
             var name = "Microsoft.Data.SqlServer.Scratch_" + Interlocked.Increment(ref _scratchCount);
-            return new NpgsqlTestStore(name).CreateTransient(createDatabase);
+            return new SqlServerTestStore(name).CreateTransient(createDatabase);
         }
 
-        private NpgsqlConnection _connection;
-        private NpgsqlTransaction _transaction;
+        private SqlConnection _connection;
+        private SqlTransaction _transaction;
         private readonly string _name;
         private bool _deleteDatabase;
 
         // Use async static factory method
-        private NpgsqlTestStore(string name)
+        private SqlServerTestStore(string name)
         {
             _name = name;
         }
 
-        private async Task<NpgsqlTestStore> CreateSharedAsync(Func<Task> initializeDatabase)
+        private async Task<SqlServerTestStore> CreateSharedAsync(Func<Task> initializeDatabase)
         {
-            await CreateSharedAsync(typeof(NpgsqlTestStore).Name + _name, initializeDatabase);
+            await CreateSharedAsync(typeof(SqlServerTestStore).Name + _name, initializeDatabase);
 
-            _connection = new NpgsqlConnection(CreateConnectionString(_name));
+            _connection = new SqlConnection(CreateConnectionString(_name));
 
             await _connection.OpenAsync();
 
@@ -68,11 +70,11 @@ namespace Npgsql.EntityFramework7.FunctionalTests
             return this;
         }
 
-        private NpgsqlTestStore CreateShared(Action initializeDatabase)
+        private SqlServerTestStore CreateShared(Action initializeDatabase)
         {
-            CreateShared(typeof(NpgsqlTestStore).Name + _name, initializeDatabase);
+            CreateShared(typeof(SqlServerTestStore).Name + _name, initializeDatabase);
 
-            _connection = new NpgsqlConnection(CreateConnectionString(_name));
+            _connection = new SqlConnection(CreateConnectionString(_name));
 
             _connection.Open();
 
@@ -83,7 +85,7 @@ namespace Npgsql.EntityFramework7.FunctionalTests
 
         public static async Task CreateDatabaseIfNotExistsAsync(string name, string scriptPath = null)
         {
-            using (var master = new NpgsqlConnection(CreateAdminConnectionString()))
+            using (var master = new SqlConnection(CreateConnectionString("master")))
             {
                 await master.OpenAsync();
 
@@ -91,39 +93,48 @@ namespace Npgsql.EntityFramework7.FunctionalTests
                 {
                     command.CommandTimeout = CommandTimeout;
                     command.CommandText
-                        = string.Format(@"SELECT COUNT(*) FROM pg_database WHERE name = '{0}'", name);
+                        = string.Format(@"SELECT COUNT(*) FROM sys.databases WHERE name = N'{0}'", name);
 
-                    var exists = (long)await command.ExecuteScalarAsync() > 0;
+                    var exists = (int)await command.ExecuteScalarAsync() > 0;
 
-                    if (exists) { return; }
-
-                    command.CommandText = string.Format(@"CREATE DATABASE {0}", name);
-                    await command.ExecuteNonQueryAsync();
-
-                    if (scriptPath != null)
+                    if (!exists)
                     {
-                        // HACK: Probe for script file as current dir
-                        // is different between k build and VS run.
-
-                        if (!File.Exists(scriptPath))
+                        if (scriptPath == null)
                         {
-                            var appBase = Environment.GetEnvironmentVariable("DNX_APPBASE");
-
-                            if (appBase != null)
-                            {
-                                scriptPath = Path.Combine(appBase, Path.GetFileName(scriptPath));
-                            }
-                        }
-
-                        var script = File.ReadAllText(scriptPath);
-
-                        foreach (var batch
-                            in new Regex("^GO", RegexOptions.IgnoreCase | RegexOptions.Multiline)
-                                .Split(script))
-                        {
-                            command.CommandText = batch;
+                            command.CommandText = string.Format(@"CREATE DATABASE [{0}]", name);
 
                             await command.ExecuteNonQueryAsync();
+
+                            using (var newConnection = new SqlConnection(CreateConnectionString(name)))
+                            {
+                                await WaitForExistsAsync(newConnection);
+                            }
+                        }
+                        else
+                        {
+                            // HACK: Probe for script file as current dir
+                            // is different between k build and VS run.
+
+                            if (!File.Exists(scriptPath))
+                            {
+                                var appBase = Environment.GetEnvironmentVariable("DNX_APPBASE");
+
+                                if (appBase != null)
+                                {
+                                    scriptPath = Path.Combine(appBase, Path.GetFileName(scriptPath));
+                                }
+                            }
+
+                            var script = File.ReadAllText(scriptPath);
+
+                            foreach (var batch
+                                in new Regex("^GO", RegexOptions.IgnoreCase | RegexOptions.Multiline)
+                                    .Split(script))
+                            {
+                                command.CommandText = batch;
+
+                                await command.ExecuteNonQueryAsync();
+                            }
                         }
                     }
                 }
@@ -132,7 +143,7 @@ namespace Npgsql.EntityFramework7.FunctionalTests
 
         public static void CreateDatabaseIfNotExists(string name, string scriptPath = null)
         {
-            using (var master = new NpgsqlConnection(CreateAdminConnectionString()))
+            using (var master = new SqlConnection(CreateConnectionString("master")))
             {
                 master.Open();
 
@@ -140,54 +151,55 @@ namespace Npgsql.EntityFramework7.FunctionalTests
                 {
                     command.CommandTimeout = CommandTimeout;
                     command.CommandText
-                        = string.Format(@"SELECT COUNT(*) FROM pg_database WHERE datname = lower('{0}')", name);
+                        = string.Format(@"SELECT COUNT(*) FROM sys.databases WHERE name = N'{0}'", name);
 
-                    var exists = (long)command.ExecuteScalar() > 0;
-                    Console.WriteLine("*** Check {0} exists={1}", name, exists);
-                    if (exists) { return; }
+                    var exists = (int)command.ExecuteScalar() > 0;
 
-                    command.CommandText = string.Format(@"CREATE DATABASE {0}", name);
-                    command.ExecuteNonQuery();
-                }
-            }
-
-            using (var conn = new NpgsqlConnection(CreateConnectionString(name)))
-            {
-                conn.Open();
-
-                using (var command = conn.CreateCommand())
-                {
-                    if (scriptPath != null)
+                    if (!exists)
                     {
-                        // HACK: Probe for script file as current dir
-                        // is different between k build and VS run.
-
-                        if (!File.Exists(scriptPath))
+                        if (scriptPath == null)
                         {
-                            var appBase = Environment.GetEnvironmentVariable("DNX_APPBASE");
-
-                            if (appBase != null)
-                            {
-                                scriptPath = Path.Combine(appBase, Path.GetFileName(scriptPath));
-                            }
-                        }
-
-                        var script = File.ReadAllText(scriptPath);
-
-                        foreach (var batch
-                            in new Regex("^GO", RegexOptions.IgnoreCase | RegexOptions.Multiline)
-                                .Split(script))
-                        {
-                            command.CommandText = batch;
+                            command.CommandText = string.Format(@"CREATE DATABASE [{0}]", name);
 
                             command.ExecuteNonQuery();
+
+                            using (var newConnection = new SqlConnection(CreateConnectionString(name)))
+                            {
+                                WaitForExists(newConnection);
+                            }
+                        }
+                        else
+                        {
+                            // HACK: Probe for script file as current dir
+                            // is different between k build and VS run.
+
+                            if (!File.Exists(scriptPath))
+                            {
+                                var appBase = Environment.GetEnvironmentVariable("DNX_APPBASE");
+
+                                if (appBase != null)
+                                {
+                                    scriptPath = Path.Combine(appBase, Path.GetFileName(scriptPath));
+                                }
+                            }
+
+                            var script = File.ReadAllText(scriptPath);
+
+                            foreach (var batch
+                                in new Regex("^GO", RegexOptions.IgnoreCase | RegexOptions.Multiline)
+                                    .Split(script))
+                            {
+                                command.CommandText = batch;
+
+                                command.ExecuteNonQuery();
+                            }
                         }
                     }
                 }
             }
         }
 
-        private static async Task WaitForExistsAsync(NpgsqlConnection connection)
+        private static async Task WaitForExistsAsync(SqlConnection connection)
         {
             var retryCount = 0;
             while (true)
@@ -208,14 +220,14 @@ namespace Npgsql.EntityFramework7.FunctionalTests
                         throw;
                     }
 
-                    // TODO: SqlConnection.ClearPool(connection);
+                    SqlConnection.ClearPool(connection);
 
                     Thread.Sleep(100);
                 }
             }
         }
 
-        private static void WaitForExists(NpgsqlConnection connection)
+        private static void WaitForExists(SqlConnection connection)
         {
             var retryCount = 0;
             while (true)
@@ -236,27 +248,27 @@ namespace Npgsql.EntityFramework7.FunctionalTests
                         throw;
                     }
 
-                    //TODO: SqlConnection.ClearPool(connection);
+                    SqlConnection.ClearPool(connection);
 
                     Thread.Sleep(100);
                 }
             }
         }
 
-        private async Task<NpgsqlTestStore> CreateTransientAsync(bool createDatabase)
+        private async Task<SqlServerTestStore> CreateTransientAsync(bool createDatabase)
         {
             await DeleteDatabaseAsync(_name);
 
-            _connection = new NpgsqlConnection(CreateConnectionString(_name));
+            _connection = new SqlConnection(CreateConnectionString(_name));
 
             if (createDatabase)
             {
-                using (var master = new NpgsqlConnection(CreateAdminConnectionString()))
+                using (var master = new SqlConnection(CreateConnectionString("master")))
                 {
                     await master.OpenAsync();
                     using (var command = master.CreateCommand())
                     {
-                        command.CommandText = string.Format("{0}CREATE DATABASE {1}", Environment.NewLine, _name);
+                        command.CommandText = string.Format("{0}CREATE DATABASE [{1}]", Environment.NewLine, _name);
 
                         await command.ExecuteNonQueryAsync();
 
@@ -270,20 +282,20 @@ namespace Npgsql.EntityFramework7.FunctionalTests
             return this;
         }
 
-        private NpgsqlTestStore CreateTransient(bool createDatabase)
+        private SqlServerTestStore CreateTransient(bool createDatabase)
         {
             DeleteDatabase(_name);
 
-            _connection = new NpgsqlConnection(CreateConnectionString(_name));
+            _connection = new SqlConnection(CreateConnectionString(_name));
 
             if (createDatabase)
             {
-                using (var master = new NpgsqlConnection(CreateAdminConnectionString()))
+                using (var master = new SqlConnection(CreateConnectionString("master")))
                 {
                     master.Open();
                     using (var command = master.CreateCommand())
                     {
-                        command.CommandText = string.Format("{0}CREATE DATABASE {1}", Environment.NewLine, _name);
+                        command.CommandText = string.Format("{0}CREATE DATABASE [{1}]", Environment.NewLine, _name);
 
                         command.ExecuteNonQuery();
 
@@ -299,7 +311,7 @@ namespace Npgsql.EntityFramework7.FunctionalTests
 
         private async Task DeleteDatabaseAsync(string name)
         {
-            using (var master = new NpgsqlConnection(CreateAdminConnectionString()))
+            using (var master = new SqlConnection(CreateConnectionString("master")))
             {
                 await master.OpenAsync().WithCurrentCulture();
 
@@ -308,22 +320,38 @@ namespace Npgsql.EntityFramework7.FunctionalTests
                     command.CommandTimeout = CommandTimeout; // Query will take a few seconds if (and only if) there are active connections
 
                     // SET SINGLE_USER will close any open connections that would prevent the drop
-                    // TODO: ALTER DATABASE '{0}' SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
                     command.CommandText
-                        = string.Format(@"IF EXISTS (SELECT * FROM pg_database WHERE datname = {0})
+                        = string.Format(@"IF EXISTS (SELECT * FROM sys.databases WHERE name = N'{0}')
                                           BEGIN
-                                              DROP DATABASE {0};
+                                              ALTER DATABASE [{0}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+                                              DROP DATABASE [{0}];
                                           END", name);
 
                     await command.ExecuteNonQueryAsync().WithCurrentCulture();
 
+                    var userFolder = Environment.GetEnvironmentVariable("USERPROFILE");
+                    try
+                    {
+                        File.Delete(Path.Combine(userFolder, name + ".mdf"));
+                    }
+                    catch (Exception)
+                    {
+                    }
+
+                    try
+                    {
+                        File.Delete(Path.Combine(userFolder, name + "_log.ldf"));
+                    }
+                    catch (Exception)
+                    {
+                    }
                 }
             }
         }
 
         private void DeleteDatabase(string name)
         {
-            using (var master = new NpgsqlConnection(CreateAdminConnectionString()))
+            using (var master = new SqlConnection(CreateConnectionString("master")))
             {
                 master.Open();
 
@@ -332,14 +360,31 @@ namespace Npgsql.EntityFramework7.FunctionalTests
                     command.CommandTimeout = CommandTimeout; // Query will take a few seconds if (and only if) there are active connections
 
                     // SET SINGLE_USER will close any open connections that would prevent the drop
-                    // TODO: ALTER DATABASE '{0}' SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
                     command.CommandText
-                        = string.Format(@"IF EXISTS (SELECT * FROM pg_database WHERE datname = {0})
+                        = string.Format(@"IF EXISTS (SELECT * FROM sys.databases WHERE name = N'{0}')
                                           BEGIN
-                                              DROP DATABASE {0};
+                                              ALTER DATABASE [{0}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+                                              DROP DATABASE [{0}];
                                           END", name);
 
                     command.ExecuteNonQuery();
+
+                    var userFolder = Environment.GetEnvironmentVariable("USERPROFILE");
+                    try
+                    {
+                        File.Delete(Path.Combine(userFolder, name + ".mdf"));
+                    }
+                    catch (Exception)
+                    {
+                    }
+
+                    try
+                    {
+                        File.Delete(Path.Combine(userFolder, name + "_log.ldf"));
+                    }
+                    catch (Exception)
+                    {
+                    }
                 }
             }
         }
@@ -419,24 +464,23 @@ namespace Npgsql.EntityFramework7.FunctionalTests
 
             if (_deleteDatabase)
             {
-                DeleteDatabaseAsync(_name).Wait();
+                DeleteDatabase(_name);
             }
         }
 
         public static string CreateConnectionString(string name)
         {
-            return new NpgsqlConnectionStringBuilder
-            {
-                Host="localhost",
-                UserName="npgsql_tests",
-                Password="npgsql_tests",
-                Database=name.ToLower(),
-            }.ConnectionString;
-        }
-
-        static string CreateAdminConnectionString()
-        {
-            return CreateConnectionString("template1");
+            return new SqlConnectionStringBuilder
+                {
+                    DataSource = @"(localdb)\MSSQLLocalDB",
+                    // TODO: Currently nested queries are run while processing the results of outer queries
+                    // This either requires MARS or creation of a new connection for each query. Currently using
+                    // MARS since cloning connections is known to be problematic.
+                    MultipleActiveResultSets = true,
+                    InitialCatalog = name,
+                    IntegratedSecurity = true,
+                    ConnectTimeout = 30
+                }.ConnectionString;
         }
     }
 }

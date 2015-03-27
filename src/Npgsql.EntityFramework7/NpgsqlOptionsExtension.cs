@@ -1,12 +1,15 @@
-﻿using JetBrains.Annotations;
+// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
+using JetBrains.Annotations;
 using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Relational;
 using Microsoft.Data.Entity.Utilities;
 using Microsoft.Framework.DependencyInjection;
 
-namespace EntityFramework.Npgsql
+namespace Npgsql.EntityFramework7
 {
-	public class NpgsqlOptionsExtension : RelationalOptionsExtension
+    public class NpgsqlOptionsExtension : RelationalOptionsExtension
     {
         public NpgsqlOptionsExtension()
         {
@@ -16,12 +19,12 @@ namespace EntityFramework.Npgsql
             : base(copyFrom)
         {
         }
-        
-		public override void ApplyServices(EntityFrameworkServicesBuilder builder)
-		{
-			Check.NotNull(builder, "builder");
 
-			builder.AddNpgsql();
-		}
-	}
+        public override void ApplyServices(EntityFrameworkServicesBuilder builder)
+        {
+            Check.NotNull(builder, nameof(builder));
+
+            builder.AddNpgsql();
+        }
+    }
 }

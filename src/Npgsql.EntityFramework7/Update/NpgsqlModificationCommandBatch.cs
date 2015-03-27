@@ -1,4 +1,7 @@
-﻿using System;
+// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
+using System;
 using System.Collections.Generic;
 using System.Text;
 using JetBrains.Annotations;
@@ -7,8 +10,9 @@ using Microsoft.Data.Entity.Metadata;
 using Microsoft.Data.Entity.Relational.Metadata;
 using Microsoft.Data.Entity.Relational.Update;
 using Microsoft.Data.Entity.Utilities;
+using RelationalStrings = Microsoft.Data.Entity.Relational.Strings;
 
-namespace EntityFramework.Npgsql.Update
+namespace Npgsql.EntityFramework7.Update
 {
     public class NpgsqlModificationCommandBatch : ReaderModificationCommandBatch
     {
@@ -30,13 +34,13 @@ namespace EntityFramework.Npgsql.Update
         {
         }
 
-        public NpgsqlModificationCommandBatch([NotNull] NpgsqlSqlGenerator sqlGenerator, [CanBeNull] int? maxBatchSize)
+        public NpgsqlModificationCommandBatch([NotNull] INpgsqlSqlGenerator sqlGenerator, [CanBeNull] int? maxBatchSize)
             : base(sqlGenerator)
         {
             if (maxBatchSize.HasValue
                 && maxBatchSize.Value <= 0)
             {
-                throw new ArgumentOutOfRangeException("maxBatchSize", Strings.MaxBatchSizeMustBePositive);
+                throw new ArgumentOutOfRangeException("maxBatchSize", RelationalStrings.InvalidCommandTimeout);
             }
 
             _maxBatchSize = Math.Min(maxBatchSize ?? Int32.MaxValue, MaxRowCount);
@@ -116,7 +120,7 @@ namespace EntityFramework.Npgsql.Update
             }
 
             var stringBuilder = new StringBuilder();
-            var grouping = ((NpgsqlSqlGenerator)SqlGenerator).AppendBulkInsertOperation(stringBuilder, _bulkInsertCommands);
+            var grouping = ((INpgsqlSqlGenerator)SqlGenerator).AppendBulkInsertOperation(stringBuilder, _bulkInsertCommands);
             for (var i = lastIndex - _bulkInsertCommands.Count; i < lastIndex; i++)
             {
                 ResultSetEnds[i] = grouping == NpgsqlSqlGenerator.ResultsGrouping.OneCommandPerResultSet;
@@ -133,10 +137,10 @@ namespace EntityFramework.Npgsql.Update
 
             if (newModificationCommand.EntityState == EntityState.Added)
             {
-				if ( _bulkInsertCommands.Count > 0
-					&& !( string.Equals(_bulkInsertCommands[0].TableName, newModificationCommand.TableName)
-							&& string.Equals(_bulkInsertCommands[0].SchemaName, newModificationCommand.SchemaName) ) )
-				{
+                if (_bulkInsertCommands.Count > 0
+                    && !(string.Equals(_bulkInsertCommands[0].TableName, newModificationCommand.TableName)
+                            && string.Equals(_bulkInsertCommands[0].SchemaName, newModificationCommand.SchemaName)))
+                {
                     CachedCommandText.Append(GetBulkInsertCommandText(commandPosition));
                     _bulkInsertCommands.Clear();
                 }
@@ -155,7 +159,7 @@ namespace EntityFramework.Npgsql.Update
 
         public override IRelationalPropertyExtensions GetPropertyExtensions(IProperty property)
         {
-            Check.NotNull(property, "property");
+            Check.NotNull(property, nameof(property));
 
             return property.Npgsql();
         }

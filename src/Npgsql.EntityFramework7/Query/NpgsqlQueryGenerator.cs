@@ -1,64 +1,31 @@
-﻿using System;
-using System.Linq;
+﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
 using System.Linq.Expressions;
-using JetBrains.Annotations;
 using Microsoft.Data.Entity.Relational.Query.Expressions;
 using Microsoft.Data.Entity.Relational.Query.Sql;
 using Microsoft.Data.Entity.Utilities;
 
-namespace EntityFramework.Npgsql.Query
+namespace Npgsql.EntityFramework7.Query
 {
     public class NpgsqlQueryGenerator : DefaultSqlQueryGenerator
     {
-        protected override string ConcatOperator
+        protected override string DelimitIdentifier(string identifier)
         {
-            get
-            {
-                return "||";
-            }
+            return "[" + identifier.Replace("]", "]]") + "]";
         }
 
-        protected override void GenerateTop([NotNull]SelectExpression selectExpression)
+        public override Expression VisitCountExpression(CountExpression countExpression)
         {
-            // No TOP in postgres
-        }
+            Check.NotNull(countExpression, nameof(countExpression));
 
-        public override Expression VisitSelectExpression(SelectExpression selectExpression)
-        {
-            var expression = base.VisitSelectExpression(selectExpression);
-
-            // add LIMIT if requested
-            if ( selectExpression.Limit != null && selectExpression.Offset == null )
+            if (countExpression.Type == typeof(long))
             {
-                Sql.Append(" LIMIT ")
-                    .Append(selectExpression.Limit)
-                    .Append(" ");
+                Sql.Append("COUNT_BIG(*)");
+                return countExpression;
             }
-			
-            return expression;
-        }
 
-        protected override void GenerateLimitOffset([NotNull]SelectExpression selectExpression)
-        {
-            Check.NotNull(selectExpression, "selectExpression");
-
-            if ( selectExpression.Offset != null )
-            {
-                if ( !selectExpression.OrderBy.Any() )
-                {
-                    throw new InvalidOperationException(Strings.SkipNeedsOrderBy);
-                }
-
-                if ( selectExpression.Limit != null )
-                {
-                    Sql.Append(" LIMIT ")
-                        .Append(selectExpression.Limit);
-                }
-
-                Sql.Append(" OFFSET ")
-                    .Append(selectExpression.Offset);
-
-            }
+            return base.VisitCountExpression(countExpression);
         }
     }
 }

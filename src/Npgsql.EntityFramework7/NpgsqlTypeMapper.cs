@@ -1,9 +1,12 @@
-﻿using System;
+// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
+using System;
 using System.Data;
 using System.Linq;
 using Microsoft.Data.Entity.Relational;
 
-namespace EntityFramework.Npgsql
+namespace Npgsql.EntityFramework7
 {
     public class NpgsqlTypeMapper : RelationalTypeMapper
     {
@@ -47,28 +50,28 @@ namespace EntityFramework.Npgsql
             propertyType = propertyType.UnwrapNullableType();
 
             var mapping = _simpleMappings.FirstOrDefault(m => m.Item1 == propertyType);
-            if ( mapping != null )
+            if (mapping != null)
             {
                 return mapping.Item2;
             }
 
-            if ( propertyType == typeof(string) )
+            if (propertyType == typeof(string))
             {
-                if ( isKey )
+                if (isKey)
                 {
                     return _keyStringMapping;
                 }
                 return _nonKeyStringMapping;
             }
 
-            if ( propertyType == typeof(byte[]) )
+            if (propertyType == typeof(byte[]))
             {
-                if ( isKey )
+                if (isKey)
                 {
                     return _keyByteArrayMapping;
                 }
 
-                if ( isConcurrencyToken )
+                if (isConcurrencyToken)
                 {
                     return _rowVersionMapping;
                 }
