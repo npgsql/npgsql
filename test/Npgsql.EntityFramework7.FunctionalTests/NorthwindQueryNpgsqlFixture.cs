@@ -2,36 +2,37 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using Microsoft.Data.Entity;
 using Microsoft.Data.Entity.FunctionalTests;
 using Microsoft.Data.Entity.FunctionalTests.TestModels.Northwind;
 using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Relational.FunctionalTests;
-using Microsoft.Data.Entity.SqlServer.FunctionalTests.TestModels;
 using Microsoft.Framework.DependencyInjection;
 using Microsoft.Framework.Logging;
+using Npgsql.EntityFramework7.FunctionalTests.TestModels;
 
-namespace Microsoft.Data.Entity.SqlServer.FunctionalTests
+namespace Npgsql.EntityFramework7.FunctionalTests
 {
-    public class NorthwindQuerySqlServerFixture : NorthwindQueryRelationalFixture, IDisposable
+    public class NorthwindQueryNpgsqlFixture : NorthwindQueryRelationalFixture, IDisposable
     {
         private readonly IServiceProvider _serviceProvider;
         private readonly DbContextOptions _options;
-        private readonly SqlServerTestStore _testStore;
+        private readonly NpgsqlTestStore _testStore;
 
-        public NorthwindQuerySqlServerFixture()
+        public NorthwindQueryNpgsqlFixture()
         {
-            _testStore = SqlServerNorthwindContext.GetSharedStore();
+            _testStore = NpgsqlNorthwindContext.GetSharedStore();
 
             _serviceProvider = new ServiceCollection()
                 .AddEntityFramework()
-                .AddSqlServer()
+                .AddNpgsql()
                 .ServiceCollection()
-                .AddSingleton(TestSqlServerModelSource.GetFactory(OnModelCreating))
+                .AddSingleton(TestNpgsqlModelSource.GetFactory(OnModelCreating))
                 .AddInstance<ILoggerFactory>(new TestSqlLoggerFactory())
                 .BuildServiceProvider();
 
             var optionsBuilder = new DbContextOptionsBuilder();
-            optionsBuilder.UseSqlServer(_testStore.Connection.ConnectionString);
+            optionsBuilder.UseNpgsql(_testStore.Connection.ConnectionString);
             _options = optionsBuilder.Options;
 
             _serviceProvider.GetRequiredService<ILoggerFactory>()
@@ -40,7 +41,7 @@ namespace Microsoft.Data.Entity.SqlServer.FunctionalTests
 
         public override NorthwindContext CreateContext()
         {
-            return new SqlServerNorthwindContext(_serviceProvider, _options);
+            return new NpgsqlNorthwindContext(_serviceProvider, _options);
         }
 
         public void Dispose()

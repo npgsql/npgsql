@@ -12,38 +12,38 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Data.Entity.Relational.FunctionalTests;
 
-namespace Microsoft.Data.Entity.SqlServer.FunctionalTests
+namespace Npgsql.EntityFramework7.FunctionalTests
 {
-    public class SqlServerTestStore : RelationalTestStore
+    public class NpgsqlTestStore : RelationalTestStore
     {
         public const int CommandTimeout = 30;
 
         private static int _scratchCount;
 
-        public static Task<SqlServerTestStore> GetOrCreateSharedAsync(string name, Func<Task> initializeDatabase)
+        public static Task<NpgsqlTestStore> GetOrCreateSharedAsync(string name, Func<Task> initializeDatabase)
         {
-            return new SqlServerTestStore(name).CreateSharedAsync(initializeDatabase);
+            return new NpgsqlTestStore(name).CreateSharedAsync(initializeDatabase);
         }
 
-        public static SqlServerTestStore GetOrCreateShared(string name, Action initializeDatabase)
+        public static NpgsqlTestStore GetOrCreateShared(string name, Action initializeDatabase)
         {
-            return new SqlServerTestStore(name).CreateShared(initializeDatabase);
+            return new NpgsqlTestStore(name).CreateShared(initializeDatabase);
         }
 
         /// <summary>
         ///     A non-transactional, transient, isolated test database. Use this in the case
         ///     where transactions are not appropriate.
         /// </summary>
-        public static Task<SqlServerTestStore> CreateScratchAsync(bool createDatabase = true)
+        public static Task<NpgsqlTestStore> CreateScratchAsync(bool createDatabase = true)
         {
-            var name = "Microsoft.Data.SqlServer.Scratch_" + Interlocked.Increment(ref _scratchCount);
-            return new SqlServerTestStore(name).CreateTransientAsync(createDatabase);
+            var name = "Microsoft.Data.Npgsql.Scratch_" + Interlocked.Increment(ref _scratchCount);
+            return new NpgsqlTestStore(name).CreateTransientAsync(createDatabase);
         }
 
-        public static SqlServerTestStore CreateScratch(bool createDatabase = true)
+        public static NpgsqlTestStore CreateScratch(bool createDatabase = true)
         {
-            var name = "Microsoft.Data.SqlServer.Scratch_" + Interlocked.Increment(ref _scratchCount);
-            return new SqlServerTestStore(name).CreateTransient(createDatabase);
+            var name = "Microsoft.Data.Npgsql.Scratch_" + Interlocked.Increment(ref _scratchCount);
+            return new NpgsqlTestStore(name).CreateTransient(createDatabase);
         }
 
         private SqlConnection _connection;
@@ -52,14 +52,14 @@ namespace Microsoft.Data.Entity.SqlServer.FunctionalTests
         private bool _deleteDatabase;
 
         // Use async static factory method
-        private SqlServerTestStore(string name)
+        private NpgsqlTestStore(string name)
         {
             _name = name;
         }
 
-        private async Task<SqlServerTestStore> CreateSharedAsync(Func<Task> initializeDatabase)
+        private async Task<NpgsqlTestStore> CreateSharedAsync(Func<Task> initializeDatabase)
         {
-            await CreateSharedAsync(typeof(SqlServerTestStore).Name + _name, initializeDatabase);
+            await CreateSharedAsync(typeof(NpgsqlTestStore).Name + _name, initializeDatabase);
 
             _connection = new SqlConnection(CreateConnectionString(_name));
 
@@ -70,9 +70,9 @@ namespace Microsoft.Data.Entity.SqlServer.FunctionalTests
             return this;
         }
 
-        private SqlServerTestStore CreateShared(Action initializeDatabase)
+        private NpgsqlTestStore CreateShared(Action initializeDatabase)
         {
-            CreateShared(typeof(SqlServerTestStore).Name + _name, initializeDatabase);
+            CreateShared(typeof(NpgsqlTestStore).Name + _name, initializeDatabase);
 
             _connection = new SqlConnection(CreateConnectionString(_name));
 
@@ -255,7 +255,7 @@ namespace Microsoft.Data.Entity.SqlServer.FunctionalTests
             }
         }
 
-        private async Task<SqlServerTestStore> CreateTransientAsync(bool createDatabase)
+        private async Task<NpgsqlTestStore> CreateTransientAsync(bool createDatabase)
         {
             await DeleteDatabaseAsync(_name);
 
@@ -282,7 +282,7 @@ namespace Microsoft.Data.Entity.SqlServer.FunctionalTests
             return this;
         }
 
-        private SqlServerTestStore CreateTransient(bool createDatabase)
+        private NpgsqlTestStore CreateTransient(bool createDatabase)
         {
             DeleteDatabase(_name);
 

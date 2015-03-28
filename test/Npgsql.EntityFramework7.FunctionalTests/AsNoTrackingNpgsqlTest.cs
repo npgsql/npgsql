@@ -3,11 +3,11 @@
 
 using Microsoft.Data.Entity.FunctionalTests;
 
-namespace Microsoft.Data.Entity.SqlServer.FunctionalTests
+namespace Npgsql.EntityFramework7.FunctionalTests
 {
-    public class AsNoTrackingSqlServerTest : AsNoTrackingTestBase<NorthwindQuerySqlServerFixture>
+    public class AsNoTrackingNpgsqlTest : AsNoTrackingTestBase<NorthwindQueryNpgsqlFixture>
     {
-        public AsNoTrackingSqlServerTest(NorthwindQuerySqlServerFixture fixture)
+        public AsNoTrackingNpgsqlTest(NorthwindQueryNpgsqlFixture fixture)
             : base(fixture)
         {
         }
