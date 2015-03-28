@@ -550,7 +550,7 @@ namespace Npgsql
         /// </remarks>
         public new NpgsqlTransaction BeginTransaction()
         {
-            return BeginTransaction(IsolationLevel.ReadCommitted);
+            return BeginTransaction(IsolationLevel.Unspecified);
         }
 
         /// <summary>
@@ -565,13 +565,17 @@ namespace Npgsql
         /// </remarks>
         public new NpgsqlTransaction BeginTransaction(IsolationLevel level)
         {
-            if (level == IsolationLevel.Chaos || level == IsolationLevel.Unspecified)
+            if (level == IsolationLevel.Chaos)
                 throw new NotSupportedException("Unsupported IsolationLevel: " + level);
             CheckConnectionReady();
             Contract.EndContractBlock();
 
             if (Connector.Transaction != null) {
                 throw new NotSupportedException("Nested/Concurrent transactions aren't supported.");
+            }
+
+            if (level == IsolationLevel.Unspecified) {
+                level = IsolationLevel.ReadCommitted;
             }
 
             Log.Debug("Beginning transaction with isolation level " + level, Connector.Id);

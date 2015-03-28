@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Data.Common;
 using System.Linq;
 using System.Text;
 using Npgsql;
@@ -94,6 +95,15 @@ namespace Npgsql.Tests
             var transaction = Conn.BeginTransaction();
             transaction.Rollback();
             Assert.That(() => transaction.Rollback(), Throws.Exception.TypeOf<InvalidOperationException>());
+        }
+
+        [Test, Description("Makes sure the creating a transaction via DbConnection sets the proper isolation level")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/559")]
+        public void DbConnectionDefaultIsolation()
+        {
+            var dbConn = (DbConnection)Conn;
+            var tx = dbConn.BeginTransaction();
+            Assert.That(tx.IsolationLevel, Is.EqualTo(IsolationLevel.ReadCommitted));
         }
 
         [Test, Description("If a custom command timeout is set, a failed transaction could not be rollbacked to a previous savepoint")]
