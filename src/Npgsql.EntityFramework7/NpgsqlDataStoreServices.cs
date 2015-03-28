@@ -37,9 +37,9 @@ namespace Npgsql.EntityFramework7
 
         public virtual IDataStoreCreator Creator => _serviceProvider.GetRequiredService<INpgsqlDataStoreCreator>();
 
-        public virtual IDataStoreConnection Connection => _serviceProvider.GetRequiredService<INpgsqlConnection>();
+        public virtual IDataStoreConnection Connection => _serviceProvider.GetRequiredService<INpgsqlEFConnection>();
 
-        public virtual IRelationalConnection RelationalConnection => _serviceProvider.GetRequiredService<INpgsqlConnection>();
+        public virtual IRelationalConnection RelationalConnection => _serviceProvider.GetRequiredService<INpgsqlEFConnection>();
 
         public virtual IValueGeneratorSelector ValueGeneratorSelector => _serviceProvider.GetRequiredService<INpgsqlValueGeneratorSelector>();
 

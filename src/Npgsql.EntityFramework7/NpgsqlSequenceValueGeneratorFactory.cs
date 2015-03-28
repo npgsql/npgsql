@@ -25,7 +25,7 @@ namespace Npgsql.EntityFramework7
         public virtual ValueGenerator Create(
             [NotNull] IProperty property, 
             [NotNull] NpgsqlSequenceValueGeneratorState generatorState, 
-            [NotNull] INpgsqlConnection connection)
+            [NotNull] INpgsqlEFConnection connection)
         {
             Check.NotNull(property, nameof(property));
             Check.NotNull(generatorState, nameof(generatorState));

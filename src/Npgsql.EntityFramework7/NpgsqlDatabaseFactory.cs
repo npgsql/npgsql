@@ -14,14 +14,14 @@ namespace Npgsql.EntityFramework7
     {
         private readonly DbContext _context;
         private readonly INpgsqlDataStoreCreator _dataStoreCreator;
-        private readonly INpgsqlConnection _connection;
+        private readonly INpgsqlEFConnection _connection;
         private readonly Migrator _migrator;
         private readonly ILoggerFactory _loggerFactory;
 
         public NpgsqlDatabaseFactory(
             [NotNull] DbContext context,
             [NotNull] INpgsqlDataStoreCreator dataStoreCreator,
-            [NotNull] INpgsqlConnection connection,
+            [NotNull] INpgsqlEFConnection connection,
             [NotNull] Migrator migrator,
             [NotNull] ILoggerFactory loggerFactory)
         {

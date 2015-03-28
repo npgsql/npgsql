@@ -5,8 +5,8 @@ using Microsoft.Data.Entity.Relational;
 
 namespace Npgsql.EntityFramework7
 {
-    public interface INpgsqlConnection : IRelationalConnection
+    public interface INpgsqlEFConnection : IRelationalConnection
     {
-        INpgsqlConnection CreateMasterConnection();
+        INpgsqlEFConnection CreateMasterConnection();
     }
 }

@@ -16,13 +16,13 @@ namespace Npgsql.EntityFramework7
 {
     public class NpgsqlDataStoreCreator : RelationalDataStoreCreator, INpgsqlDataStoreCreator
     {
-        private readonly INpgsqlConnection _connection;
+        private readonly INpgsqlEFConnection _connection;
         private readonly INpgsqlModelDiffer _modelDiffer;
         private readonly INpgsqlMigrationSqlGenerator _sqlGenerator;
         private readonly SqlStatementExecutor _statementExecutor;
 
         public NpgsqlDataStoreCreator(
-            [NotNull] INpgsqlConnection connection,
+            [NotNull] INpgsqlEFConnection connection,
             [NotNull] INpgsqlModelDiffer modelDiffer,
             [NotNull] INpgsqlMigrationSqlGenerator sqlGenerator,
             [NotNull] SqlStatementExecutor statementExecutor)

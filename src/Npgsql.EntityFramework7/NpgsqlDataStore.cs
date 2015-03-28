@@ -23,7 +23,7 @@ namespace Npgsql.EntityFramework7
             [NotNull] IModel model,
             [NotNull] IEntityKeyFactorySource entityKeyFactorySource,
             [NotNull] IEntityMaterializerSource entityMaterializerSource,
-            [NotNull] INpgsqlConnection connection,
+            [NotNull] INpgsqlEFConnection connection,
             [NotNull] NpgsqlCommandBatchPreparer batchPreparer,
             [NotNull] NpgsqlBatchExecutor batchExecutor,
             [NotNull] IDbContextOptions options,

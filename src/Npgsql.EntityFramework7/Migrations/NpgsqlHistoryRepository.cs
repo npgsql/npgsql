@@ -16,13 +16,13 @@ namespace Npgsql.EntityFramework7.Migrations
     // TODO: Log
     public class NpgsqlHistoryRepository : INpgsqlHistoryRepository
     {
-        private readonly INpgsqlConnection _connection;
+        private readonly INpgsqlEFConnection _connection;
         private readonly INpgsqlDataStoreCreator _creator;
         private readonly Type _contextType;
         private readonly INpgsqlSqlGenerator _sql;
 
         public NpgsqlHistoryRepository(
-            [NotNull] INpgsqlConnection connection,
+            [NotNull] INpgsqlEFConnection connection,
             [NotNull] INpgsqlDataStoreCreator creator,
             [NotNull] DbContext context,
             [NotNull] INpgsqlSqlGenerator sqlGenerator)

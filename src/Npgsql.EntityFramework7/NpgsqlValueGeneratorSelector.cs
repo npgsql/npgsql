@@ -19,12 +19,12 @@ namespace Npgsql.EntityFramework7
         private readonly ValueGeneratorFactory<SequentialGuidValueGenerator> _sequentialGuidFactory 
             = new ValueGeneratorFactory<SequentialGuidValueGenerator>();
 
-        private readonly INpgsqlConnection _connection;
+        private readonly INpgsqlEFConnection _connection;
 
         public NpgsqlValueGeneratorSelector(
             [NotNull] INpgsqlValueGeneratorCache cache,
             [NotNull] NpgsqlSequenceValueGeneratorFactory sequenceFactory,
-            [NotNull] INpgsqlConnection connection)
+            [NotNull] INpgsqlEFConnection connection)
         {
             Check.NotNull(cache, nameof(cache));
             Check.NotNull(sequenceFactory, nameof(sequenceFactory));

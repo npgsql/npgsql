@@ -14,13 +14,13 @@ namespace Npgsql.EntityFramework7
         public NpgsqlDatabase(
             [NotNull] DbContext context,
             [NotNull] INpgsqlDataStoreCreator dataStoreCreator,
-            [NotNull] INpgsqlConnection connection,
+            [NotNull] INpgsqlEFConnection connection,
             [NotNull] Migrator migrator,
             [NotNull] ILoggerFactory loggerFactory)
             : base(context, dataStoreCreator, connection, migrator, loggerFactory)
         {
         }
 
-        public new virtual INpgsqlConnection Connection => (INpgsqlConnection)base.Connection;
+        public new virtual INpgsqlEFConnection Connection => (INpgsqlEFConnection)base.Connection;
     }
 }

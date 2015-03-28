@@ -13,13 +13,13 @@ namespace Npgsql.EntityFramework7
     public class NpgsqlSequenceValueGenerator<TValue> : HiLoValueGenerator<TValue>
     {
         private readonly SqlStatementExecutor _executor;
-        private readonly INpgsqlConnection _connection;
+        private readonly INpgsqlEFConnection _connection;
         private readonly string _sequenceName;
 
         public NpgsqlSequenceValueGenerator(
             [NotNull] SqlStatementExecutor executor,
             [NotNull] NpgsqlSequenceValueGeneratorState generatorState,
-            [NotNull] INpgsqlConnection connection)
+            [NotNull] INpgsqlEFConnection connection)
             : base(generatorState)
         {
             Check.NotNull(executor, nameof(executor));
