@@ -90,7 +90,11 @@ namespace Npgsql.EntityFramework7
             => _sqlGenerator.Generate(_modelDiffer.GetDifferences(null, model), model);
 
         private string CreateHasTablesCommand()
-            => "IF EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES) SELECT 1 ELSE SELECT 0";
+            => @"
+                 SELECT CASE WHEN COUNT(*) = 0 THEN 0 ELSE 1 END
+                 FROM information_schema.tables
+                 WHERE table_type = 'BASE TABLE' AND table_schema NOT IN ('pg_catalog', 'information_schema')
+               ";
 
         private IEnumerable<SqlBatch> CreateCreateOperations()
             => _sqlGenerator.Generate(new[] { new CreateDatabaseOperation(_connection.DbConnection.Database) });

@@ -10,6 +10,7 @@ using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Relational;
 using Microsoft.Data.Entity.Utilities;
 using Microsoft.Framework.Logging;
+using Npgsql;
 
 namespace Npgsql.EntityFramework7
 {
@@ -27,11 +28,11 @@ namespace Npgsql.EntityFramework7
 
         // TODO: Consider using DbProviderFactory to create connection instance
         // Issue #774
-        protected override DbConnection CreateDbConnection() => new SqlConnection(ConnectionString);
+        protected override DbConnection CreateDbConnection() => new NpgsqlConnection(ConnectionString);
 
         public virtual INpgsqlEFConnection CreateMasterConnection()
         {
-            var builder = new SqlConnectionStringBuilder { ConnectionString = ConnectionString, InitialCatalog = "master" };
+            var builder = new NpgsqlConnectionStringBuilder { ConnectionString = ConnectionString };
 
             // TODO use clone connection method once implimented see #1406
             var optionsBuilder = new DbContextOptionsBuilder();
