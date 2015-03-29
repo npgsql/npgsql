@@ -56,6 +56,8 @@ namespace Npgsql
 
         NpgsqlConnector Connector { get { return Connection.Connector; } }
 
+        bool _isDisposed;
+
         /// <summary>
         /// Specifies the <see cref="System.Data.IsolationLevel">IsolationLevel</see> for this transaction.
         /// </summary>
@@ -65,7 +67,7 @@ namespace Npgsql
         {
             get
             {
-                CheckDisposed();
+                CheckReady();
                 return _isolationLevel;
             }
         }
@@ -126,7 +128,7 @@ namespace Npgsql
             Log.Debug("Commit transaction", Connection.Connector.Id);
 
             Connection.Connector.ExecuteBlind(PregeneratedMessage.CommitTransaction);
-            Dispose();
+            Connection = null;
         }
 
         /// <summary>
@@ -139,7 +141,7 @@ namespace Npgsql
             Log.Debug("Rollback transaction", Connection.Connector.Id);
 
             Connection.Connector.ExecuteBlindSuppressTimeout(PregeneratedMessage.RollbackTransaction);
-            Dispose();
+            Connection = null;
         }
 
         #endregion
@@ -197,15 +199,13 @@ namespace Npgsql
         /// <param name="disposing"></param>
         protected override void Dispose(bool disposing)
         {
-            if (Connection == null) { return; }
+            if (_isDisposed) { return; }
 
             if (disposing && Connection != null) {
-                if (Connection.Connector.Transaction != null) {
-                    Rollback();
-                }
+                Rollback();
             }
 
-            Connection = null;
+            _isDisposed = true;
             base.Dispose(disposing);
         }
 
@@ -213,18 +213,25 @@ namespace Npgsql
 
         #region Checks
 
-        [ContractArgumentValidator]
         void CheckReady()
         {
             CheckDisposed();
+            CheckCompleted();
             Connection.CheckConnectionReady();
+        }
+
+        [ContractArgumentValidator]
+        void CheckCompleted()
+        {
+            if (Connection == null)
+                throw new InvalidOperationException("This NpgsqlTransaction has completed; it is no longer usable.");
             Contract.EndContractBlock();
         }
 
         [ContractArgumentValidator]
         void CheckDisposed()
         {
-            if (Connection == null)
+            if (_isDisposed)
                 throw new ObjectDisposedException(typeof(NpgsqlTransaction).Name);
             Contract.EndContractBlock();
         }
