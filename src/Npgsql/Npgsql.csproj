@@ -378,7 +378,6 @@
     <Compile Include="CachedValue.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Cache.cs" />
-    <Compile Include="ASCIIBytes.cs" />
     <Compile Include="NpgsqlCommand.cs" />
     <Compile Include="NpgsqlCommand.Async.cs">
       <DependentUpon>NpgsqlCommand.cs</DependentUpon>
