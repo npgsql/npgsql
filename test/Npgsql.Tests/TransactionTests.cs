@@ -70,6 +70,7 @@ namespace Npgsql.Tests
         public void IsolationLevels()
         {
             foreach (var level in new[] {
+               IsolationLevel.Unspecified,
                IsolationLevel.ReadCommitted,
                IsolationLevel.ReadUncommitted,
                IsolationLevel.RepeatableRead,
@@ -82,7 +83,6 @@ namespace Npgsql.Tests
 
             foreach (var level in new[] {
                IsolationLevel.Chaos,
-               IsolationLevel.Unspecified,
             }) {
                 var level2 = level;
                 Assert.That(() => Conn.BeginTransaction(level2), Throws.Exception.TypeOf<NotSupportedException>());
