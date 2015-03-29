@@ -64,6 +64,7 @@ namespace Npgsql.FrontendMessages
                     var formatCodeListLength = formatCodesSum == 0 ? 0 : formatCodesSum == InputParameters.Count ? 1 : InputParameters.Count;
 
                     var headerLength =
+                        1 +                        // Message code
                         4 +                        // Message length
                         Portal.Length + 1 +
                         Statement.Length + 1 +
@@ -85,7 +86,7 @@ namespace Npgsql.FrontendMessages
                         2 * (UnknownResultTypeList == null ? 1 : UnknownResultTypeList.Length);  // Result format codes
 
                     buf.WriteByte(Code);
-                    buf.WriteInt32(messageLength);
+                    buf.WriteInt32(messageLength-1);
                     buf.WriteBytesNullTerminated(Encoding.ASCII.GetBytes(Portal));
                     buf.WriteBytesNullTerminated(Encoding.ASCII.GetBytes(Statement));
 

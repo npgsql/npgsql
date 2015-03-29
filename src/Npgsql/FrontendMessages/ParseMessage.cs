@@ -62,6 +62,7 @@ namespace Npgsql.FrontendMessages
                     }
 
                     var messageLength =
+                        1 +                         // Message code
                         4 +                         // Length
                         _statementNameBytes.Length +
                         1 +                         // Null terminator
@@ -71,7 +72,7 @@ namespace Npgsql.FrontendMessages
                         ParameterTypeOIDs.Count * 4;
 
                     buf.WriteByte(Code);
-                    buf.WriteInt32(messageLength);
+                    buf.WriteInt32(messageLength - 1);
                     buf.WriteBytesNullTerminated(_statementNameBytes);
                     goto case State.WroteHeader;
 
