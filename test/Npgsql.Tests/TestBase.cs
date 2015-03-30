@@ -34,6 +34,7 @@ using NLog.Targets;
 using System.Text;
 using Npgsql;
 using Npgsql.Logging;
+using Npgsql.Tests;
 using NpgsqlTypes;
 
 using NUnit.Framework;
@@ -308,7 +309,8 @@ namespace Npgsql.Tests
             config.LoggingRules.Add(rule);
             NLog.LogManager.Configuration = config;
 
-            NpgsqlLogManager.Provider = new NLogLoggingProvider();
+            if (!(NpgsqlLogManager.Provider is NLogLoggingProvider))
+                NpgsqlLogManager.Provider = new NLogLoggingProvider();
         }
 
         #endregion
