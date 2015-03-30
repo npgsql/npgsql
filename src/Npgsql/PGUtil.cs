@@ -158,35 +158,6 @@ namespace Npgsql
         Binary = 1
     }
 
-    internal class NpgsqlNetworkStream : NetworkStream
-    {
-        NpgsqlConnector mContext = null;
-
-        public NpgsqlNetworkStream(Socket socket, Boolean owner)
-            : base(socket, owner)
-        {
-        }
-
-        public void AttachConnector(NpgsqlConnector context)
-        {
-            mContext = context;
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            if (!disposing)
-            {
-                if (mContext != null)
-                {
-                    mContext.Close();
-                    mContext = null;
-                }
-            }
-
-            base.Dispose(disposing);
-        }
-    }
-
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
     internal class GenerateAsync : Attribute
     {

@@ -63,7 +63,7 @@ namespace Npgsql
 
         /// <value>Unique static instance of the connector pool
         /// mamager.</value>
-        internal static NpgsqlConnectorPool ConnectorPoolMgr = new NpgsqlConnectorPool();
+        internal static NpgsqlConnectorPool ConnectorPoolMgr;
 
         private object locker = new object();
 
@@ -495,6 +495,13 @@ namespace Npgsql
                 }
                 PooledConnectors.Clear();
             }
+        }
+
+        static NpgsqlConnectorPool()
+        {
+            ConnectorPoolMgr = new NpgsqlConnectorPool();
+            AppDomain.CurrentDomain.DomainUnload += (sender, args) => ConnectorPoolMgr.ClearAllPools();
+            AppDomain.CurrentDomain.ProcessExit += (sender, args) => ConnectorPoolMgr.ClearAllPools();
         }
     }
 }

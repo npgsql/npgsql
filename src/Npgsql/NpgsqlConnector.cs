@@ -53,14 +53,13 @@ namespace Npgsql
         internal Socket Socket { get; set; }
 
         /// <summary>
-        /// The physical connection stream to the backend.
+        /// The physical connection stream to the backend, without anything on top.
         /// </summary>
-        internal NpgsqlNetworkStream BaseStream { get; set; }
+        internal NetworkStream BaseStream { get; set; }
 
-        // The top level stream to the backend.
-        // This is a BufferedStream.
-        // With SSL, this stream sits on top of the SSL stream, which sits on top of _baseStream.
-        // Otherwise, this stream sits directly on top of _baseStream.
+        /// <summary>
+        /// The physical connection stream to the backend, layered with an SSL/TLS stream if in secure mode.
+        /// </summary>
         internal Stream Stream { get; set; }
 
         /// <summary>
@@ -340,9 +339,6 @@ namespace Npgsql
                 Buffer.Flush();
                 HandleAuthentication();
 
-                // After attachment, the stream will close the connector (this) when the stream gets disposed.
-                BaseStream.AttachConnector(this);
-
                 ProcessServerVersion();
                 TypeHandlerRegistry.Setup(this);
                 State = ConnectorState.Ready;
@@ -363,113 +359,133 @@ namespace Npgsql
 
         public void RawOpen(int timeout)
         {
-            // Keep track of time remaining; Even though there may be multiple timeout-able calls,
-            // this allows us to still respect the caller's timeout expectation.
-            var attemptStart = DateTime.Now;
-            var result = Dns.BeginGetHostAddresses(Host, null, null);
-
-            if (!result.AsyncWaitHandle.WaitOne(timeout, true))
+            try
             {
-                // Timeout was used up attempting the Dns lookup
-                throw new TimeoutException("Dns hostname lookup timeout. Increase Timeout value in ConnectionString.");
-            }
+                // Keep track of time remaining; Even though there may be multiple timeout-able calls,
+                // this allows us to still respect the caller's timeout expectation.
+                var attemptStart = DateTime.Now;
+                var result = Dns.BeginGetHostAddresses(Host, null, null);
 
-            timeout -= Convert.ToInt32((DateTime.Now - attemptStart).TotalMilliseconds);
-
-            var ips = Dns.EndGetHostAddresses(result);
-            Socket socket = null;
-            Exception lastSocketException = null;
-
-            // try every ip address of the given hostname, use the first reachable one
-            // make sure not to exceed the caller's timeout expectation by splitting the
-            // time we have left between all the remaining ip's in the list.
-            for (var i = 0; i < ips.Length; i++)
-            {
-                Log.Trace("Attempting to connect to " + ips[i], Id);
-                var ep = new IPEndPoint(ips[i], Port);
-                socket = new Socket(ep.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-                attemptStart = DateTime.Now;
-
-                try
+                if (!result.AsyncWaitHandle.WaitOne(timeout, true))
                 {
-                    result = socket.BeginConnect(ep, null, null);
+                    // Timeout was used up attempting the Dns lookup
+                    throw new TimeoutException("Dns hostname lookup timeout. Increase Timeout value in ConnectionString.");
+                }
 
-                    if (!result.AsyncWaitHandle.WaitOne(timeout / (ips.Length - i), true))
+                timeout -= Convert.ToInt32((DateTime.Now - attemptStart).TotalMilliseconds);
+
+                var ips = Dns.EndGetHostAddresses(result);
+
+                // try every ip address of the given hostname, use the first reachable one
+                // make sure not to exceed the caller's timeout expectation by splitting the
+                // time we have left between all the remaining ip's in the list.
+                for (var i = 0; i < ips.Length; i++)
+                {
+                    Log.Trace("Attempting to connect to " + ips[i], Id);
+                    var ep = new IPEndPoint(ips[i], Port);
+                    Socket = new Socket(ep.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+                    attemptStart = DateTime.Now;
+
+                    try
                     {
-                        throw new TimeoutException("Connection establishment timeout. Increase Timeout value in ConnectionString.");
+                        result = Socket.BeginConnect(ep, null, null);
+
+                        if (!result.AsyncWaitHandle.WaitOne(timeout / (ips.Length - i), true)) {
+                            throw new TimeoutException("Connection establishment timeout. Increase Timeout value in ConnectionString.");
+                        }
+
+                        Socket.EndConnect(result);
+
+                        // connect was successful, leave the loop
+                        break;
                     }
+                    catch (TimeoutException)
+                    {
+                        throw;
+                    }
+                    catch
+                    {
+                        Log.Warn("Failed to connect to " + ips[i]);
+                        timeout -= Convert.ToInt32((DateTime.Now - attemptStart).TotalMilliseconds);
 
-                    socket.EndConnect(result);
-
-                    // connect was successful, leave the loop
-                    break;
-                }
-                catch (Exception e)
-                {
-                    Log.Warn("Failed to connect to " + ips[i]);
-                    timeout -= Convert.ToInt32((DateTime.Now - attemptStart).TotalMilliseconds);
-                    lastSocketException = e;
-
-                    socket.Close();
-                    socket = null;
-                }
-            }
-
-            if (socket == null)
-            {
-                throw lastSocketException;
-            }
-
-            var baseStream = new NpgsqlNetworkStream(socket, true);
-            Stream sslStream = null;
-
-            // If the PostgreSQL server has SSL connectors enabled Open SslClientStream if (response == 'S') {
-            if (SSL || (SslMode == SslMode.Require) || (SslMode == SslMode.Prefer))
-            {
-                baseStream
-                    .WriteInt32(8)
-                    .WriteInt32(80877103);
-
-                // Receive response
-                var response = (Char)baseStream.ReadByte();
-
-                if (response != 'S')
-                {
-                    if (SslMode == SslMode.Require) {
-                        throw new InvalidOperationException("Ssl connection requested. No Ssl enabled connection from this host is configured.");
+                        if (i == ips.Length - 1) {
+                            throw;
+                        }
                     }
                 }
-                else
+
+                Contract.Assert(Socket != null);
+                BaseStream = new NetworkStream(Socket, true);
+                Stream = BaseStream;
+
+                // If the PostgreSQL server has SSL connectors enabled Open SslClientStream if (response == 'S') {
+                if (SSL || (SslMode == SslMode.Require) || (SslMode == SslMode.Prefer))
                 {
-                    //create empty collection
-                    var clientCertificates = new X509CertificateCollection();
+                    Stream
+                        .WriteInt32(8)
+                        .WriteInt32(80877103);
 
-                    //trigger the callback to fetch some certificates
-                    DefaultProvideClientCertificatesCallback(clientCertificates);
+                    // Receive response
+                    var response = (Char)Stream.ReadByte();
 
-                    if (!UseSslStream)
+                    if (response != 'S')
                     {
-                        var sslStreamPriv = new TlsClientStream.TlsClientStream(baseStream);
-                        sslStreamPriv.PerformInitialHandshake(Host, clientCertificates, DefaultValidateRemoteCertificateCallback, false);
-                        sslStream = sslStreamPriv;
-                        IsSecure = true;
+                        if (SslMode == SslMode.Require) {
+                            throw new InvalidOperationException("Ssl connection requested. No Ssl enabled connection from this host is configured.");
+                        }
                     }
                     else
                     {
-                        var sslStreamPriv = new SslStream(baseStream, true, DefaultValidateRemoteCertificateCallback);
-                        sslStreamPriv.AuthenticateAsClient(Host, clientCertificates, System.Security.Authentication.SslProtocols.Default, false);
-                        sslStream = sslStreamPriv;
+                        //create empty collection
+                        var clientCertificates = new X509CertificateCollection();
+
+                        //trigger the callback to fetch some certificates
+                        DefaultProvideClientCertificatesCallback(clientCertificates);
+
+                        if (!UseSslStream)
+                        {
+                            var sslStream = new TlsClientStream.TlsClientStream(Stream);
+                            sslStream.PerformInitialHandshake(Host, clientCertificates, DefaultValidateRemoteCertificateCallback, false);
+                            Stream = sslStream;
+                        }
+                        else
+                        {
+                            var sslStream = new SslStream(Stream, false, DefaultValidateRemoteCertificateCallback);
+                            sslStream.AuthenticateAsClient(Host, clientCertificates, System.Security.Authentication.SslProtocols.Default, false);
+                            Stream = sslStream;
+                        }
                         IsSecure = true;
                     }
                 }
-            }
 
-            Socket = socket;
-            BaseStream = baseStream;
-            //Stream = new BufferedStream(sslStream ?? baseStream, 8192);
-            Stream = sslStream ?? BaseStream;
-            Buffer = new NpgsqlBuffer(Stream, BufferSize, PGUtil.UTF8Encoding);
-            Log.Debug(String.Format("Connected to {0}:{1}", Host, Port));
+                Buffer = new NpgsqlBuffer(Stream, BufferSize, PGUtil.UTF8Encoding);
+                Log.Debug(String.Format("Connected to {0}:{1}", Host, Port));
+            }
+            catch
+            {
+                if (Stream != null)
+                {
+                    try { Stream.Close(); } catch {
+                        // ignored
+                    }
+                    Stream = null;
+                }
+                if (BaseStream != null)
+                {
+                    try { BaseStream.Close(); } catch {
+                        // ignored
+                    }
+                    BaseStream = null;
+                }
+                if (Socket != null)
+                {
+                    try { Socket.Close(); } catch {
+                        // ignored
+                    }
+                    Socket = null;
+                }
+                throw;
+            }
         }
 
         void HandleAuthentication()
@@ -1489,8 +1505,9 @@ namespace Npgsql
         [ContractInvariantMethod]
         void ObjectInvariants()
         {
-            Contract.Invariant(TransactionStatus == TransactionStatus.Idle || Transaction != null);
-            Contract.Invariant(TransactionStatus != TransactionStatus.Idle || Transaction == null);
+            Contract.Invariant((Stream == null && BaseStream == null) || (Stream != null && BaseStream != null));
+            Contract.Invariant((BaseStream == null && Socket == null) || (BaseStream != null && Socket!= null));
+            Contract.Invariant((TransactionStatus == TransactionStatus.Idle && Transaction == null) || (TransactionStatus != TransactionStatus.Idle && Transaction != null));
             Contract.Invariant(Transaction == null || Transaction.Connection.Connector == this);
         }
 
