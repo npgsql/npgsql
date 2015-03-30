@@ -1505,8 +1505,6 @@ namespace Npgsql
         [ContractInvariantMethod]
         void ObjectInvariants()
         {
-            Contract.Invariant((Stream == null && BaseStream == null) || (Stream != null && BaseStream != null));
-            Contract.Invariant((BaseStream == null && Socket == null) || (BaseStream != null && Socket!= null));
             Contract.Invariant((TransactionStatus == TransactionStatus.Idle && Transaction == null) || (TransactionStatus != TransactionStatus.Idle && Transaction != null));
             Contract.Invariant(Transaction == null || Transaction.Connection.Connector == this);
         }
