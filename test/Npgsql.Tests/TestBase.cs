@@ -74,6 +74,7 @@ namespace Npgsql.Tests
         protected virtual string ConnectionString { get { return _connectionString; } }
         private string _connectionString;
 
+        bool _loggingSetUp;
 
         /// <summary>
         /// New ConectionString property crafted to change the database name from original TestBase.ConnectionString to append a "_ef" suffix.
@@ -309,8 +310,11 @@ namespace Npgsql.Tests
             config.LoggingRules.Add(rule);
             NLog.LogManager.Configuration = config;
 
-            if (!(NpgsqlLogManager.Provider is NLogLoggingProvider))
+            if (!_loggingSetUp)
+            {
                 NpgsqlLogManager.Provider = new NLogLoggingProvider();
+                _loggingSetUp = true;
+            }
         }
 
         #endregion
