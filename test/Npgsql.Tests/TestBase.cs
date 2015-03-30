@@ -74,7 +74,7 @@ namespace Npgsql.Tests
         protected virtual string ConnectionString { get { return _connectionString; } }
         private string _connectionString;
 
-        bool _loggingSetUp;
+        static bool _loggingSetUp;
 
         /// <summary>
         /// New ConectionString property crafted to change the database name from original TestBase.ConnectionString to append a "_ef" suffix.
