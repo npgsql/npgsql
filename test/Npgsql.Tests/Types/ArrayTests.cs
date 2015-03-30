@@ -75,19 +75,24 @@ namespace Npgsql.Tests.Types
             cmd.Dispose();
         }
 
-        [Test, Description("Roundtrips a simple, one-dimensional array of strings, including a null")]
+        [Test, Description("Roundtrips a long, one-dimensional array of strings, including a null")]
         public void StringsWithNull()
         {
-            var expected = new[] { "value1", null, "value2" };
-            var cmd = new NpgsqlCommand("SELECT @p", Conn);
-            var p = new NpgsqlParameter("p", NpgsqlDbType.Array | NpgsqlDbType.Text) { Value = expected };
-            cmd.Parameters.Add(p);
-            var reader = cmd.ExecuteReader();
-            reader.Read();
-            Assert.That(reader.GetValue(0), Is.EqualTo(expected));
-            Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(expected));
-            Assert.That(reader.GetFieldValue<string[]>(0), Is.EqualTo(expected));
-            cmd.Dispose();
+            var largeString = new StringBuilder();
+            largeString.Append('a', Conn.BufferSize);
+            var expected = new[] { "value1", null, largeString.ToString(), "val3" };
+            using (var cmd = new NpgsqlCommand("SELECT @p", Conn))
+            {
+                var p = new NpgsqlParameter("p", NpgsqlDbType.Array | NpgsqlDbType.Text) { Value = expected };
+                cmd.Parameters.Add(p);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetValue(0), Is.EqualTo(expected));
+                    Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(expected));
+                    Assert.That(reader.GetFieldValue<string[]>(0), Is.EqualTo(expected));
+                }
+            }
         }
 
         [Test, Description("Roundtrips a zero-dimensional array of ints, should return empty one-dimensional")]
