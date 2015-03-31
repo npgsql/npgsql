@@ -1122,7 +1122,9 @@ namespace Npgsql
 
             if (CurrentReader != null) {
                 CurrentReader.Command.State = CommandState.Idle;
-                CurrentReader.Close();
+                try { CurrentReader.Close(); } catch {
+                    // ignored
+                }
                 CurrentReader = null;
             }
 
