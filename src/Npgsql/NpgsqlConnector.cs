@@ -269,6 +269,8 @@ namespace Npgsql
             }
         }
 
+        internal bool IsBroken { get { return State == ConnectorState.Broken; } }
+
         internal void CheckReadyState()
         {
             switch (State)
@@ -1192,7 +1194,7 @@ namespace Npgsql
 
             public void Dispose()
             {
-                if (_connector != null)
+                if (_connector != null && _connector.IsBroken)
                 {
                     if (--_connector._notificationBlockRecursionDepth == 0)
                     {

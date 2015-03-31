@@ -361,7 +361,7 @@ namespace Npgsql
         private void UngetConnector(NpgsqlConnection Connection, NpgsqlConnector Connector)
         {
             Contract.Requires(Connector.State == ConnectorState.Ready ||
-                              Connector.State == ConnectorState.Broken);
+                              Connector.IsBroken);
 
             ConnectorQueue queue;
 
@@ -389,7 +389,7 @@ namespace Npgsql
 
             bool inQueue = queue.Busy.ContainsKey(Connector);
 
-            if (Connector.State == ConnectorState.Broken)
+            if (Connector.IsBroken)
             {
                 if (Connector.Transaction != null)
                 {
