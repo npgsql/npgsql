@@ -106,6 +106,15 @@ namespace Npgsql.Tests
             Assert.That(tx.IsolationLevel, Is.EqualTo(IsolationLevel.ReadCommitted));
         }
 
+        [Test, Description("Makes sure that transactions started in SQL work")]
+        public void ViaSql()
+        {
+            ExecuteNonQuery("BEGIN");
+            ExecuteNonQuery("INSERT INTO data (field_text) VALUES ('X')");
+            ExecuteNonQuery("ROLLBACK");
+            Assert.That(ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
+        }
+
         [Test, Description("If a custom command timeout is set, a failed transaction could not be rollbacked to a previous savepoint")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/363")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/184")]

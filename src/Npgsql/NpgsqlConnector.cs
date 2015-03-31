@@ -931,7 +931,6 @@ namespace Npgsql
                 break;
             case TransactionStatus.InTransactionBlock:
             case TransactionStatus.InFailedTransactionBlock:
-                Contract.Assert(Transaction != null);
                 break;
             case TransactionStatus.Pending:
                 throw new Exception("Invalid TransactionStatus (should be frontend-only)");
@@ -961,8 +960,12 @@ namespace Npgsql
         internal void ClearTransaction()
         {
             if (TransactionStatus == TransactionStatus.Idle) { return; }
-            _tx.Connection = null;
-            _tx = null;
+            // We may not have an NpgsqlTransaction for the transaction (i.e. user executed BEGIN)
+            if (_tx != null)
+            {
+                _tx.Connection = null;
+                _tx = null;
+            }
             TransactionStatus = TransactionStatus.Idle;
         }
 
@@ -1507,7 +1510,6 @@ namespace Npgsql
         [ContractInvariantMethod]
         void ObjectInvariants()
         {
-            Contract.Invariant((TransactionStatus == TransactionStatus.Idle && Transaction == null) || (TransactionStatus != TransactionStatus.Idle && Transaction != null));
             Contract.Invariant(Transaction == null || Transaction.Connection.Connector == this);
         }
 
