@@ -672,6 +672,15 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test]
+        public void ConsecutiveSemicolons()
+        {
+            using (var cmd = new NpgsqlCommand(";;SELECT 1", Conn))
+            {
+                Assert.That(cmd.ExecuteScalar(), Is.EqualTo(1));
+            }
+        }
+
         #endregion
 
         [Test]
