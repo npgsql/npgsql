@@ -437,7 +437,7 @@ namespace Npgsql.EntityFramework7.FunctionalTests
 
         static string CreateAdminConnectionString()
         {
-            return CreateConnectionString("template1");
+            return CreateConnectionString("postgres");
         }
     }
 }
