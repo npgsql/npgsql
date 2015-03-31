@@ -36,7 +36,9 @@ namespace Npgsql.EntityFramework7.Update
 
             var maxBatchSize = optionsExtension?.MaxBatchSize;
 
-            return new NpgsqlModificationCommandBatch((INpgsqlSqlGenerator)SqlGenerator, maxBatchSize);
+            // TODO: Batch size disabled for now
+            return new NpgsqlModificationCommandBatch((INpgsqlSqlGenerator)SqlGenerator);
+            //return new NpgsqlModificationCommandBatch((INpgsqlSqlGenerator)SqlGenerator, maxBatchSize);
         }
     }
 }
