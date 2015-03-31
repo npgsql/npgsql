@@ -269,7 +269,6 @@ namespace Npgsql
             arrayHandler.PgName = "array";
             arrayHandler.OID = backendType.OID;
             _oidIndex[backendType.OID] = arrayHandler;
-            _byNpgsqlDbType[NpgsqlDbType.Array | elementHandler.NpgsqlDbType] = arrayHandler;
 
             if (elementHandler is IEnumHandler)
             {
@@ -279,6 +278,10 @@ namespace Npgsql
                 var enumType = elementHandler.GetType().GetGenericArguments()[0];
                 Contract.Assert(enumType.IsEnum);
                 _byEnumTypeAsArray[enumType] = arrayHandler;
+            }
+            else
+            {
+                _byNpgsqlDbType[NpgsqlDbType.Array | elementHandler.NpgsqlDbType] = arrayHandler;
             }
         }
 

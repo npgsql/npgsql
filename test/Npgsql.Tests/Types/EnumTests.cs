@@ -39,6 +39,19 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
+        public void DualEnums()
+        {
+            Conn.RegisterEnum<Mood>("mood");
+            Conn.RegisterEnum<TestEnum>("test_enum");
+            var cmd = new NpgsqlCommand("SELECT @p1", Conn);
+            var expected = new Mood[] { Mood.Ok, Mood.Sad };
+            var p = new NpgsqlParameter("p1", NpgsqlDbType.Enum | NpgsqlDbType.Array) { EnumType = typeof(Mood), Value = expected };
+            cmd.Parameters.Add(p);
+            var result = cmd.ExecuteScalar();
+            Assert.AreEqual(expected, result);
+        }
+
+        [Test]
         public void GlobalRegistration()
         {
             NpgsqlConnection.RegisterEnumGlobally<Mood>();
