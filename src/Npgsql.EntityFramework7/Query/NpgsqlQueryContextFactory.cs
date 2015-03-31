@@ -24,6 +24,6 @@ namespace Npgsql.EntityFramework7.Query
         {
         }
 
-        protected override RelationalValueReaderFactory ValueReaderFactory => new RelationalObjectArrayValueReaderFactory();
+        protected override RelationalValueReaderFactory ValueReaderFactory => new NpgsqlRelationalObjectArrayValueReaderFactory();
     }
 }
