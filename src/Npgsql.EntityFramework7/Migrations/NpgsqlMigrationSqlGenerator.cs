@@ -159,17 +159,6 @@ namespace Npgsql.EntityFramework7
             }
         }
 
-        protected override void GeneratePrimaryKeyTraits(AddPrimaryKeyOperation operation, SqlBatchBuilder builder)
-        {
-            Check.NotNull(operation, nameof(operation));
-            Check.NotNull(builder, nameof(builder));
-
-            if (operation[NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.Clustered] != bool.TrueString)
-            {
-                builder.Append(" NONCLUSTERED");
-            }
-        }
-
         protected override void Generate(DropIndexOperation operation, IModel model, SqlBatchBuilder builder)
         {
             Check.NotNull(operation, nameof(operation));
@@ -215,5 +204,42 @@ namespace Npgsql.EntityFramework7
                     .Append(" TRANSFER ")
                     .Append(_sql.DelimitIdentifier(name, schema))
                     .Append(";");
+
+        #region Npgsql additions
+
+        protected override void Generate(
+            [NotNull] CreateSequenceOperation operation,
+            [CanBeNull] IModel model,
+            [NotNull] SqlBatchBuilder builder)
+        {
+            Check.NotNull(operation, nameof(operation));
+            Check.NotNull(builder, nameof(builder));
+
+            builder
+                .Append("CREATE SEQUENCE ")
+                .Append(_sql.DelimitIdentifier(operation.Name, operation.Schema))
+                .Append(" START WITH ")
+                .Append(operation.StartValue)
+                .Append(" INCREMENT BY ")
+                .Append(operation.IncrementBy);
+
+            if (operation.MinValue.HasValue)
+            {
+                builder
+                    .Append(" MINVALUE ")
+                    .Append(operation.MinValue.Value);
+            }
+
+            if (operation.MaxValue.HasValue)
+            {
+                builder
+                    .Append(" MAXVALUE ")
+                    .Append(operation.MaxValue.Value);
+            }
+
+            builder.Append(";");
+        }
+
+        #endregion
     }
 }

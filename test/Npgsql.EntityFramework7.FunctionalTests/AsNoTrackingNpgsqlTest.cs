@@ -3,6 +3,7 @@
 
 using Microsoft.Data.Entity.FunctionalTests;
 
+#if NOT_YET
 namespace Npgsql.EntityFramework7.FunctionalTests
 {
     public class AsNoTrackingNpgsqlTest : AsNoTrackingTestBase<NorthwindQueryNpgsqlFixture>
@@ -13,3 +14,4 @@ namespace Npgsql.EntityFramework7.FunctionalTests
         }
     }
 }
+#endif

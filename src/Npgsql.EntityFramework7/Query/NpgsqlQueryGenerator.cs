@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System.Linq.Expressions;
+using JetBrains.Annotations;
 using Microsoft.Data.Entity.Relational.Query.Expressions;
 using Microsoft.Data.Entity.Relational.Query.Sql;
 using Microsoft.Data.Entity.Utilities;
@@ -12,7 +13,12 @@ namespace Npgsql.EntityFramework7.Query
     {
         protected override string DelimitIdentifier(string identifier)
         {
-            return "[" + identifier.Replace("]", "]]") + "]";
+            return "\"" + identifier.Replace("\"", "\"\"") + "\"";
+        }
+
+        protected override void GenerateTop([NotNull]SelectExpression selectExpression)
+        {
+            // No TOP in postgres
         }
 
         public override Expression VisitCountExpression(CountExpression countExpression)

@@ -62,11 +62,11 @@ namespace Npgsql.EntityFramework7
                     AppendValues(commandStringBuilder, modificationCommands[j].ColumnModifications.Where(o => o.IsWrite).ToArray());
                 }
                 commandStringBuilder.Append(BatchCommandSeparator).AppendLine();
-
+                /*
                 if (readOperations.Length == 0)
                 {
                     AppendSelectAffectedCountCommand(commandStringBuilder, tableName, schemaName);
-                }
+                }*/
             }
 
             return defaultValuesOnly
@@ -97,10 +97,11 @@ namespace Npgsql.EntityFramework7
             AppendWhereClause(commandStringBuilder, conditionOperations);
             commandStringBuilder.Append(BatchCommandSeparator).AppendLine();
 
+            /*
             if (readOperations.Length == 0)
             {
                 AppendSelectAffectedCountCommand(commandStringBuilder, tableName, schemaName);
-            }
+            }*/
         }
 
         // ReSharper disable once ParameterTypeCanBeEnumerable.Local
@@ -116,21 +117,21 @@ namespace Npgsql.EntityFramework7
 
         public override void AppendSelectAffectedCountCommand(StringBuilder commandStringBuilder, string tableName, string schemaName)
         {
+            /*
             Check.NotNull(commandStringBuilder, nameof(commandStringBuilder));
             Check.NotEmpty(tableName, nameof(tableName));
 
             commandStringBuilder
                 .Append("SELECT @@ROWCOUNT")
                 .Append(BatchCommandSeparator).AppendLine();
+            */
         }
 
         public override void AppendBatchHeader(StringBuilder commandStringBuilder)
         {
             Check.NotNull(commandStringBuilder, nameof(commandStringBuilder));
 
-            commandStringBuilder
-                .Append("SET NOCOUNT OFF")
-                .Append(BatchCommandSeparator).AppendLine();
+            // TODO: Npgsql
         }
 
         protected override void AppendIdentityWhereCondition(StringBuilder commandStringBuilder, ColumnModification columnModification)
@@ -155,14 +156,14 @@ namespace Npgsql.EntityFramework7
         {
             Check.NotEmpty(identifier, nameof(identifier));
 
-            return "[" + EscapeIdentifier(identifier) + "]";
+            return '"' + EscapeIdentifier(identifier) + '"';
         }
 
         public override string EscapeIdentifier(string identifier)
         {
             Check.NotEmpty(identifier, nameof(identifier));
 
-            return identifier.Replace("]", "]]");
+            return identifier.Replace("\"", "\"\"");
         }
 
         public override string GenerateLiteral(byte[] literal)

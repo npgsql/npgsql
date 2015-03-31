@@ -15,34 +15,17 @@ namespace Npgsql.EntityFramework7
         // type is used (e.g. in keys), then add custom mapping below.
         private readonly Tuple<Type, RelationalTypeMapping>[] _simpleMappings =
             {
-                Tuple.Create(typeof(int), new RelationalTypeMapping("int", DbType.Int32)),
-                Tuple.Create(typeof(DateTime), new RelationalTypeMapping("datetime2", DbType.DateTime2)),
-                Tuple.Create(typeof(Guid), new RelationalTypeMapping("uniqueidentifier", DbType.Guid)),
-                Tuple.Create(typeof(bool), new RelationalTypeMapping("bit", DbType.Boolean)),
-                Tuple.Create(typeof(byte), new RelationalTypeMapping("tinyint", DbType.Byte)),
-                Tuple.Create(typeof(double), new RelationalTypeMapping("float", DbType.Double)),
-                Tuple.Create(typeof(DateTimeOffset), new RelationalTypeMapping("datetimeoffset", DbType.DateTimeOffset)),
-                Tuple.Create(typeof(char), new RelationalTypeMapping("int", DbType.Int32)),
+                Tuple.Create(typeof(string), new RelationalTypeMapping("text", DbType.String)),
+                Tuple.Create(typeof(DateTime), new RelationalTypeMapping("timestamp", DbType.DateTime2)),
+                Tuple.Create(typeof(Guid), new RelationalTypeMapping("uuid", DbType.Guid)),
+                Tuple.Create(typeof(byte), new RelationalTypeMapping("smallint", DbType.Byte)),
+                //Tuple.Create(typeof(char), new RelationalTypeMapping("int", DbType.Int32)),
                 Tuple.Create(typeof(sbyte), new RelationalTypeMapping("smallint", DbType.SByte)),
                 Tuple.Create(typeof(ushort), new RelationalTypeMapping("int", DbType.UInt16)),
                 Tuple.Create(typeof(uint), new RelationalTypeMapping("bigint", DbType.UInt32)),
-                Tuple.Create(typeof(ulong), new RelationalTypeMapping("numeric(20, 0)", DbType.UInt64))
+                Tuple.Create(typeof(ulong), new RelationalTypeMapping("numeric(20, 0)", DbType.UInt64)),
+                Tuple.Create(typeof(byte[]), new RelationalTypeMapping("bytea", DbType.Binary)),
             };
-
-        private readonly RelationalTypeMapping _nonKeyStringMapping
-            = new RelationalTypeMapping("nvarchar(max)", DbType.String);
-
-        private readonly RelationalTypeMapping _keyStringMapping
-            = new RelationalSizedTypeMapping("nvarchar(450)", DbType.String, 900);
-
-        private readonly RelationalTypeMapping _nonKeyByteArrayMapping
-            = new RelationalTypeMapping("varbinary(max)", DbType.Binary);
-
-        private readonly RelationalTypeMapping _keyByteArrayMapping
-            = new RelationalSizedTypeMapping("varbinary(900)", DbType.Binary, 900);
-
-        private readonly RelationalTypeMapping _rowVersionMapping
-            = new RelationalSizedTypeMapping("rowversion", DbType.Binary, 8);
 
         public override RelationalTypeMapping GetTypeMapping(
             string specifiedType, string storageName, Type propertyType, bool isKey, bool isConcurrencyToken)
@@ -55,29 +38,7 @@ namespace Npgsql.EntityFramework7
                 return mapping.Item2;
             }
 
-            if (propertyType == typeof(string))
-            {
-                if (isKey)
-                {
-                    return _keyStringMapping;
-                }
-                return _nonKeyStringMapping;
-            }
-
-            if (propertyType == typeof(byte[]))
-            {
-                if (isKey)
-                {
-                    return _keyByteArrayMapping;
-                }
-
-                if (isConcurrencyToken)
-                {
-                    return _rowVersionMapping;
-                }
-
-                return _nonKeyByteArrayMapping;
-            }
+            // TODO: DateTime based on kind...
 
             return base.GetTypeMapping(specifiedType, storageName, propertyType, isKey, isConcurrencyToken);
         }
