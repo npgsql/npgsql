@@ -1,43 +1,45 @@
-﻿using System;
-using EntityFramework.Npgsql.Metadata;
+// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
+using System;
 using JetBrains.Annotations;
+using Microsoft.Data.Entity;
 using Microsoft.Data.Entity.Metadata;
 using Microsoft.Data.Entity.Utilities;
 using Microsoft.Data.Entity.ValueGeneration;
+using Npgsql.EntityFramework7.Metadata;
 
-namespace EntityFramework.Npgsql
+namespace Npgsql.EntityFramework7
 {
-	public class NpgsqlValueGeneratorSelector : ValueGeneratorSelector
+    public class NpgsqlValueGeneratorSelector : ValueGeneratorSelector, INpgsqlValueGeneratorSelector
     {
         private readonly INpgsqlValueGeneratorCache _cache;
         private readonly NpgsqlSequenceValueGeneratorFactory _sequenceFactory;
-        private readonly ValueGeneratorFactory<SequentialGuidValueGenerator> _sequentialGuidFactory;
-        private readonly NpgsqlEntityFrameworkConnection _connection;
+
+        private readonly ValueGeneratorFactory<SequentialGuidValueGenerator> _sequentialGuidFactory 
+            = new ValueGeneratorFactory<SequentialGuidValueGenerator>();
+
+        private readonly INpgsqlEFConnection _connection;
 
         public NpgsqlValueGeneratorSelector(
             [NotNull] INpgsqlValueGeneratorCache cache,
             [NotNull] NpgsqlSequenceValueGeneratorFactory sequenceFactory,
-            [NotNull] ValueGeneratorFactory<SequentialGuidValueGenerator> sequentialGuidFactory,
-            [NotNull] NpgsqlEntityFrameworkConnection connection
-            )
+            [NotNull] INpgsqlEFConnection connection)
         {
             Check.NotNull(cache, nameof(cache));
-            Check.NotNull(sequenceFactory, "sequenceFactory");
-            Check.NotNull(sequentialGuidFactory, "sequentialGuidFactory");
-            Check.NotNull(connection, "connection");
+            Check.NotNull(sequenceFactory, nameof(sequenceFactory));
+            Check.NotNull(connection, nameof(connection));
 
             _cache = cache;
             _sequenceFactory = sequenceFactory;
-            _sequentialGuidFactory = sequentialGuidFactory;
             _connection = connection;
         }
 
         public override ValueGenerator Select(IProperty property)
         {
-            Check.NotNull(property, "property");
+            Check.NotNull(property, nameof(property));
 
-            var strategy = property.Npgsql().ValueGenerationStrategy
-                           ?? property.EntityType.Model.Npgsql().ValueGenerationStrategy;
+            var strategy = property.Npgsql().ValueGenerationStrategy;
 
             if (property.ClrType.IsInteger()
                 && strategy == NpgsqlValueGenerationStrategy.Sequence)
@@ -45,12 +47,16 @@ namespace EntityFramework.Npgsql
                 return _sequenceFactory.Create(property, _cache.GetOrAddSequenceState(property), _connection);
             }
 
-            if (property.ClrType == typeof(Guid))
-            {
-                return _sequentialGuidFactory.Create(property);
-            }
-
             return _cache.GetOrAdd(property, Create);
+        }
+
+        public override ValueGenerator Create(IProperty property)
+        {
+            Check.NotNull(property, nameof(property));
+
+            return property.ClrType == typeof(Guid) 
+                ? _sequentialGuidFactory.Create(property) 
+                : base.Create(property);
         }
     }
 }

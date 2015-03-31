@@ -5,7 +5,7 @@ using JetBrains.Annotations;
 using Microsoft.Data.Entity.Relational;
 using Microsoft.Data.Entity.Relational.Update;
 
-namespace EntityFramework.Npgsql
+namespace Npgsql.EntityFramework7
 {
     public interface INpgsqlSqlGenerator : ISqlGenerator
     {

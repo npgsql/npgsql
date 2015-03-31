@@ -1,27 +1,26 @@
-﻿using JetBrains.Annotations;
+// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
+using JetBrains.Annotations;
 using Microsoft.Data.Entity;
-using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Relational;
 using Microsoft.Data.Entity.Relational.Migrations;
 using Microsoft.Framework.Logging;
 
-namespace EntityFramework.Npgsql
+namespace Npgsql.EntityFramework7
 {
-	public class NpgsqlDatabase : RelationalDatabase
+    public class NpgsqlDatabase : RelationalDatabase
     {
         public NpgsqlDatabase(
             [NotNull] DbContext context,
-            [NotNull] NpgsqlDataStoreCreator dataStoreCreator,
-            [NotNull] NpgsqlEntityFrameworkConnection connection,
+            [NotNull] INpgsqlDataStoreCreator dataStoreCreator,
+            [NotNull] INpgsqlEFConnection connection,
             [NotNull] Migrator migrator,
             [NotNull] ILoggerFactory loggerFactory)
             : base(context, dataStoreCreator, connection, migrator, loggerFactory)
         {
         }
 
-        public new virtual NpgsqlEntityFrameworkConnection Connection
-        {
-            get { return (NpgsqlEntityFrameworkConnection)base.Connection; }
-        }
+        public new virtual INpgsqlEFConnection Connection => (INpgsqlEFConnection)base.Connection;
     }
 }

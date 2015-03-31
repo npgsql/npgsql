@@ -1,13 +1,17 @@
-using EntityFramework.Npgsql.Extensions;
-using EntityFramework.Npgsql.Metadata;
+// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
 using JetBrains.Annotations;
+using Microsoft.Data.Entity;
 using Microsoft.Data.Entity.Metadata;
 using Microsoft.Data.Entity.Relational;
 using Microsoft.Data.Entity.Relational.Migrations.Operations;
 using Microsoft.Data.Entity.Relational.Migrations.Sql;
+using Npgsql.EntityFramework7.Metadata;
+using Npgsql.EntityFramework7.Migrations;
 using Microsoft.Data.Entity.Utilities;
 
-namespace EntityFramework.Npgsql.Migrations
+namespace Npgsql.EntityFramework7
 {
     public class NpgsqlMigrationSqlGenerator : MigrationSqlGenerator, INpgsqlMigrationSqlGenerator
     {
@@ -112,7 +116,7 @@ namespace EntityFramework.Npgsql.Migrations
             Check.NotNull(builder, nameof(builder));
 
             GenerateRename(
-                _sql.EscapeLiteral(operation.Table) + "." + _sql.EscapeLiteral(operation.Name),
+                operation.Table + "." + operation.Name,
                 operation.Schema,
                 operation.NewName,
                 "COLUMN",
@@ -136,7 +140,7 @@ namespace EntityFramework.Npgsql.Migrations
             Check.NotNull(builder, nameof(builder));
 
             GenerateRename(
-                _sql.EscapeLiteral(operation.Table) + "." + _sql.EscapeLiteral(operation.Name),
+                operation.Table + "." + operation.Name,
                 operation.Schema,
                 operation.NewName,
                 "INDEX",
@@ -155,15 +159,17 @@ namespace EntityFramework.Npgsql.Migrations
             }
         }
 
-        protected override void GeneratePrimaryKeyTraits(AddPrimaryKeyOperation operation, SqlBatchBuilder builder)
+        protected override void Generate(DropIndexOperation operation, IModel model, SqlBatchBuilder builder)
         {
             Check.NotNull(operation, nameof(operation));
             Check.NotNull(builder, nameof(builder));
 
-            if (operation[NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.Clustered] != bool.TrueString)
-            {
-                builder.Append(" NONCLUSTERED");
-            }
+            builder
+                .Append("DROP INDEX ")
+                .Append(_sql.DelimitIdentifier(operation.Name))
+                .Append(" ON ")
+                .Append(_sql.DelimitIdentifier(operation.Table, operation.Schema))
+                .Append(";");
         }
 
         private void GenerateRename(
@@ -173,17 +179,13 @@ namespace EntityFramework.Npgsql.Migrations
             [NotNull] string objectType,
             [NotNull] SqlBatchBuilder builder)
         {
-            builder.Append("EXECUTE sp_rename @objname = N");
-
-            if (!string.IsNullOrWhiteSpace(schema))
-            {
-                builder
-                    .Append(_sql.GenerateLiteral(schema))
-                    .Append(".");
-            }
+            var objname = !string.IsNullOrWhiteSpace(schema)
+                ? schema + "." + name
+                : name;
 
             builder
-                .Append(_sql.GenerateLiteral(name))
+                .Append("EXECUTE sp_rename @objname = N")
+                .Append(_sql.GenerateLiteral(objname))
                 .Append(", @newname = N")
                 .Append(_sql.GenerateLiteral(newName))
                 .Append(", @objtype = N")
@@ -202,5 +204,42 @@ namespace EntityFramework.Npgsql.Migrations
                     .Append(" TRANSFER ")
                     .Append(_sql.DelimitIdentifier(name, schema))
                     .Append(";");
+
+        #region Npgsql additions
+
+        protected override void Generate(
+            [NotNull] CreateSequenceOperation operation,
+            [CanBeNull] IModel model,
+            [NotNull] SqlBatchBuilder builder)
+        {
+            Check.NotNull(operation, nameof(operation));
+            Check.NotNull(builder, nameof(builder));
+
+            builder
+                .Append("CREATE SEQUENCE ")
+                .Append(_sql.DelimitIdentifier(operation.Name, operation.Schema))
+                .Append(" START WITH ")
+                .Append(operation.StartValue)
+                .Append(" INCREMENT BY ")
+                .Append(operation.IncrementBy);
+
+            if (operation.MinValue.HasValue)
+            {
+                builder
+                    .Append(" MINVALUE ")
+                    .Append(operation.MinValue.Value);
+            }
+
+            if (operation.MaxValue.HasValue)
+            {
+                builder
+                    .Append(" MAXVALUE ")
+                    .Append(operation.MaxValue.Value);
+            }
+
+            builder.Append(";");
+        }
+
+        #endregion
     }
 }

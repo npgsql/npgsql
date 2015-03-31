@@ -34,13 +34,13 @@ namespace Npgsql.EntityFramework7.FunctionalTests
         /// </summary>
         public static Task<NpgsqlTestStore> CreateScratchAsync(bool createDatabase = true)
         {
-            var name = "Microsoft.Data.SqlServer.Scratch_" + Interlocked.Increment(ref _scratchCount);
+            var name = "Npgsql.Scratch_" + Interlocked.Increment(ref _scratchCount);
             return new NpgsqlTestStore(name).CreateTransientAsync(createDatabase);
         }
 
         public static NpgsqlTestStore CreateScratch(bool createDatabase = true)
         {
-            var name = "Microsoft.Data.SqlServer.Scratch_" + Interlocked.Increment(ref _scratchCount);
+            var name = "Npgsql.Scratch_" + Interlocked.Increment(ref _scratchCount);
             return new NpgsqlTestStore(name).CreateTransient(createDatabase);
         }
 
@@ -97,7 +97,7 @@ namespace Npgsql.EntityFramework7.FunctionalTests
 
                     if (exists) { return; }
 
-                    command.CommandText = string.Format(@"CREATE DATABASE {0}", name);
+                    command.CommandText = string.Format(@"CREATE DATABASE ""{0}""", name);
                     await command.ExecuteNonQueryAsync();
 
                     if (scriptPath != null)
@@ -140,13 +140,12 @@ namespace Npgsql.EntityFramework7.FunctionalTests
                 {
                     command.CommandTimeout = CommandTimeout;
                     command.CommandText
-                        = string.Format(@"SELECT COUNT(*) FROM pg_database WHERE datname = lower('{0}')", name);
+                        = string.Format(@"SELECT COUNT(*) FROM pg_database WHERE datname = '{0}'", name);
 
                     var exists = (long)command.ExecuteScalar() > 0;
-                    Console.WriteLine("*** Check {0} exists={1}", name, exists);
                     if (exists) { return; }
 
-                    command.CommandText = string.Format(@"CREATE DATABASE {0}", name);
+                    command.CommandText = string.Format(@"CREATE DATABASE ""{0}""", name);
                     command.ExecuteNonQuery();
                 }
             }
@@ -256,7 +255,7 @@ namespace Npgsql.EntityFramework7.FunctionalTests
                     await master.OpenAsync();
                     using (var command = master.CreateCommand())
                     {
-                        command.CommandText = string.Format("{0}CREATE DATABASE {1}", Environment.NewLine, _name);
+                        command.CommandText = string.Format(@"{0}CREATE DATABASE ""{1}""", Environment.NewLine, _name);
 
                         await command.ExecuteNonQueryAsync();
 
@@ -283,7 +282,7 @@ namespace Npgsql.EntityFramework7.FunctionalTests
                     master.Open();
                     using (var command = master.CreateCommand())
                     {
-                        command.CommandText = string.Format("{0}CREATE DATABASE {1}", Environment.NewLine, _name);
+                        command.CommandText = string.Format(@"{0}CREATE DATABASE ""{1}""", Environment.NewLine, _name);
 
                         command.ExecuteNonQuery();
 
@@ -307,16 +306,16 @@ namespace Npgsql.EntityFramework7.FunctionalTests
                 {
                     command.CommandTimeout = CommandTimeout; // Query will take a few seconds if (and only if) there are active connections
 
-                    // SET SINGLE_USER will close any open connections that would prevent the drop
-                    // TODO: ALTER DATABASE '{0}' SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
-                    command.CommandText
-                        = string.Format(@"IF EXISTS (SELECT * FROM pg_database WHERE datname = {0})
-                                          BEGIN
-                                              DROP DATABASE {0};
-                                          END", name);
-
+                    // Kill all connection to the database
+                    // TODO: Pre-9.2 PG has column name procid instead of pid
+                    command.CommandText = String.Format(@"
+                      SELECT pg_terminate_backend (pg_stat_activity.pid)
+                      FROM pg_stat_activity
+                      WHERE pg_stat_activity.datname = '{0}'", name);
                     await command.ExecuteNonQueryAsync().WithCurrentCulture();
 
+                    command.CommandText = string.Format(@"DROP DATABASE IF EXISTS ""{0}""", name);
+                    await command.ExecuteNonQueryAsync().WithCurrentCulture();
                 }
             }
         }
@@ -331,13 +330,15 @@ namespace Npgsql.EntityFramework7.FunctionalTests
                 {
                     command.CommandTimeout = CommandTimeout; // Query will take a few seconds if (and only if) there are active connections
 
-                    // SET SINGLE_USER will close any open connections that would prevent the drop
-                    // TODO: ALTER DATABASE '{0}' SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
-                    command.CommandText
-                        = string.Format(@"IF EXISTS (SELECT * FROM pg_database WHERE datname = {0})
-                                          BEGIN
-                                              DROP DATABASE {0};
-                                          END", name);
+                    // Kill all connection to the database
+                    // TODO: Pre-9.2 PG has column name procid instead of pid
+                    command.CommandText = String.Format(@"
+                      SELECT pg_terminate_backend (pg_stat_activity.pid)
+                      FROM pg_stat_activity
+                      WHERE pg_stat_activity.datname = '{0}'", name);
+                    command.ExecuteNonQuery();
+
+                    command.CommandText = string.Format(@"DROP DATABASE IF EXISTS ""{0}""", name);
 
                     command.ExecuteNonQuery();
                 }
@@ -430,7 +431,7 @@ namespace Npgsql.EntityFramework7.FunctionalTests
                 Host="localhost",
                 UserName="npgsql_tests",
                 Password="npgsql_tests",
-                Database=name.ToLower(),
+                Database=name,
             }.ConnectionString;
         }
 

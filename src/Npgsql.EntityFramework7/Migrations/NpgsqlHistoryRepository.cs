@@ -1,36 +1,41 @@
-﻿using System;
+﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
+using System;
 using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Text;
-using EntityFramework.Npgsql.Extensions;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity;
-using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Relational.Migrations.History;
 using Microsoft.Data.Entity.Relational.Migrations.Operations;
 using Microsoft.Data.Entity.Utilities;
 
-namespace EntityFramework.Npgsql.Migrations
+namespace Npgsql.EntityFramework7.Migrations
 {
     // TODO: Log
-    public class NpgsqlHistoryRepository : IHistoryRepository
+    public class NpgsqlHistoryRepository : INpgsqlHistoryRepository
     {
-        private readonly NpgsqlEntityFrameworkConnection _connection;
-        private readonly NpgsqlDataStoreCreator _creator;
+        private readonly INpgsqlEFConnection _connection;
+        private readonly INpgsqlDataStoreCreator _creator;
         private readonly Type _contextType;
+        private readonly INpgsqlSqlGenerator _sql;
 
         public NpgsqlHistoryRepository(
-            [NotNull] NpgsqlEntityFrameworkConnection connection,
-            [NotNull] NpgsqlDataStoreCreator creator,
-            [NotNull] DbContext context)
+            [NotNull] INpgsqlEFConnection connection,
+            [NotNull] INpgsqlDataStoreCreator creator,
+            [NotNull] DbContext context,
+            [NotNull] INpgsqlSqlGenerator sqlGenerator)
         {
             Check.NotNull(connection, nameof(connection));
             Check.NotNull(creator, nameof(creator));
             Check.NotNull(context, nameof(context));
+            Check.NotNull(sqlGenerator, nameof(sqlGenerator));
 
             _connection = connection;
             _creator = creator;
             _contextType = context.GetType();
+            _sql = sqlGenerator;
         }
 
         public virtual bool Exists()
@@ -95,26 +100,42 @@ WHERE [ContextKey] = @ContextKey ORDER BY [MigrationId]";
             return rows;
         }
 
-        public virtual MigrationOperation GetCreateOperation()
+        public virtual string Create(bool ifNotExists)
         {
-            return new SqlOperation(
-                @"CREATE TABLE [dbo].[__MigrationHistory] (
-    [MigrationId] nvarchar(150) NOT NULL,
-    [ContextKey] nvarchar(300) NOT NULL,
-    [ProductVersion] nvarchar(32) NOT NULL,
-    CONSTRAINT [PK_MigrationHistory] PRIMARY KEY ([MigrationId], [ContextKey])
-)",
-                suppressTransaction: false);
+            var builder = new IndentedStringBuilder();
+
+            if (ifNotExists)
+            {
+                builder.AppendLine("IF NOT EXISTS(SELECT * FROM [INFORMATION_SCHEMA].[TABLES] WHERE[TABLE_SCHEMA] = N'dbo' AND[TABLE_NAME] = '__MigrationHistory' AND[TABLE_TYPE] = 'BASE TABLE')");
+                builder.IncrementIndent();
+            }
+
+            builder
+                .AppendLine("CREATE TABLE [dbo].[__MigrationHistory] (");
+            using (builder.Indent())
+            {
+                builder
+                    .AppendLine("[MigrationId] nvarchar(150) NOT NULL,")
+                    .AppendLine("[ContextKey] nvarchar(300) NOT NULL,")
+                    .AppendLine("[ProductVersion] nvarchar(32) NOT NULL,")
+                    .AppendLine("CONSTRAINT [PK_MigrationHistory] PRIMARY KEY ([MigrationId], [ContextKey])");
+            }
+            builder.Append(");");
+
+            return builder.ToString();
         }
 
         public virtual MigrationOperation GetDeleteOperation(string migrationId)
         {
             Check.NotEmpty(migrationId, nameof(migrationId));
 
-            // TODO: Escape. Can we parameterize?
             return new SqlOperation(
-                @"DELETE FROM [dbo].[__MigrationHistory]
-WHERE [MigrationId] = '" + migrationId + "' AND [ContextKey] = '" + _contextType.FullName + "'",
+                new StringBuilder()
+                    .AppendLine("DELETE FROM [dbo].[__MigrationHistory]")
+                    .Append("WHERE [MigrationId] = '").Append(_sql.EscapeLiteral(migrationId))
+                        .Append("' AND [ContextKey] = '").Append(_sql.EscapeLiteral(_contextType.FullName))
+                        .AppendLine("';")
+                    .ToString(),
                 suppressTransaction: false);
         }
 
@@ -122,43 +143,36 @@ WHERE [MigrationId] = '" + migrationId + "' AND [ContextKey] = '" + _contextType
         {
             Check.NotNull(row, nameof(row));
 
-            // TODO: Escape. Can we parameterize?
             return new SqlOperation(
-                @"INSERT INTO [dbo].[__MigrationHistory] ([MigrationId], [ContextKey], [ProductVersion])
-VALUES ('" + row.MigrationId + "', '" + _contextType.FullName + "', '" + row.ProductVersion + "')",
+                new StringBuilder()
+                    .AppendLine("INSERT INTO [dbo].[__MigrationHistory] ([MigrationId], [ContextKey], [ProductVersion])")
+                    .Append("VALUES ('").Append(_sql.EscapeLiteral(row.MigrationId)).Append("', '")
+                        .Append(_sql.EscapeLiteral(_contextType.FullName)).Append("', '")
+                        .Append(_sql.EscapeLiteral(row.ProductVersion)).AppendLine("');")
+                    .ToString(),
                 suppressTransaction: false);
         }
-        
-        public virtual string Create(bool ifNotExists)
-        {
-            if(!ifNotExists || (ifNotExists && !Exists()))
-            {
-            	return ((SqlOperation)GetCreateOperation()).Sql;
-            }
-            
-            return string.Empty;
-        }
-        
+
         public virtual string BeginIfNotExists(string migrationId)
         {
             Check.NotEmpty(migrationId, nameof(migrationId));
 
-            // TODO: Escape
             return new StringBuilder()
                 .Append("IF NOT EXISTS(SELECT * FROM [dbo].[__MigrationHistory] WHERE [MigrationId] = '")
-                    .Append(migrationId).Append("' AND [ContextKey] = '").Append(_contextType.FullName).AppendLine("')")
+                    .Append(_sql.EscapeLiteral(migrationId)).Append("' AND [ContextKey] = '")
+                    .Append(_sql.EscapeLiteral(_contextType.FullName)).AppendLine("')")
                 .Append("BEGIN")
                 .ToString();
         }
-        
+
         public virtual string BeginIfExists(string migrationId)
         {
             Check.NotEmpty(migrationId, nameof(migrationId));
 
-            // TODO: Escape
             return new StringBuilder()
                 .Append("IF EXISTS(SELECT * FROM [dbo].[__MigrationHistory] WHERE [MigrationId] = '")
-                    .Append(migrationId).Append("' AND [ContextKey] = '").Append(_contextType.FullName).AppendLine("')")
+                    .Append(_sql.EscapeLiteral(migrationId)).Append("' AND [ContextKey] = '")
+                    .Append(_sql.EscapeLiteral(_contextType.FullName)).AppendLine("')")
                 .Append("BEGIN")
                 .ToString();
         }
@@ -167,6 +181,5 @@ VALUES ('" + row.MigrationId + "', '" + _contextType.FullName + "', '" + row.Pro
         {
             return "END";
         }
-
     }
 }

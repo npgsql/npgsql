@@ -1,161 +1,148 @@
-﻿using System;
+// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
+using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Diagnostics;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity;
+using Microsoft.Data.Entity.Update;
 using Microsoft.Data.Entity.Metadata;
+using Microsoft.Data.Entity.Relational;
 using Microsoft.Data.Entity.Relational.Metadata;
 using Microsoft.Data.Entity.Relational.Update;
 using Microsoft.Data.Entity.Utilities;
+using Microsoft.Data.Entity.ChangeTracking.Internal;
+using Microsoft.Framework.Logging;
+using RelationalStrings = Microsoft.Data.Entity.Relational.Strings;
 
-namespace EntityFramework.Npgsql.Update
+namespace Npgsql.EntityFramework7.Update
 {
+    // We heavily override ModificationCommandBatch.
+    // This is probably a temporary situation; we do this because ReaderModificationCommandBatch
+    // is geared towards the SqlServer method of retrieving affected rows (i.e. by appending
+    // SELECT @@ROWCOUNT).
+    // Specifically missing from NpgsqlModificationCommandBatch at the moment is propagated results
+    // handling
     public class NpgsqlModificationCommandBatch : ReaderModificationCommandBatch
     {
-        private const int DefaultNetworkPacketSizeBytes = 4096;
-        private const int MaxScriptLength = 65536 * DefaultNetworkPacketSizeBytes / 2;
-        private const int MaxParameterCount = 2100;
-        private const int MaxRowCount = 1000;
-        private int _parameterCount = 1; // Implicit parameter for the command text
-        private readonly int _maxBatchSize;
-        private readonly List<ModificationCommand> _bulkInsertCommands = new List<ModificationCommand>();
-        private int _commandsLeftToLengthCheck = 50;
+        #region Constructors
 
         /// <summary>
         ///     This constructor is intended only for use when creating test doubles that will override members
         ///     with mocked or faked behavior. Use of this constructor for other purposes may result in unexpected
         ///     behavior including but not limited to throwing <see cref="NullReferenceException" />.
         /// </summary>
-        protected NpgsqlModificationCommandBatch()
-        {
-        }
+        protected NpgsqlModificationCommandBatch() { }
 
-        public NpgsqlModificationCommandBatch([NotNull] NpgsqlSqlGenerator sqlGenerator, [CanBeNull] int? maxBatchSize)
-            : base(sqlGenerator)
-        {
-            if (maxBatchSize.HasValue
-                && maxBatchSize.Value <= 0)
-            {
-                throw new ArgumentOutOfRangeException("maxBatchSize", Strings.MaxBatchSizeMustBePositive);
-            }
+        public NpgsqlModificationCommandBatch([NotNull] INpgsqlSqlGenerator sqlGenerator) : base(sqlGenerator) { }
 
-            _maxBatchSize = Math.Min(maxBatchSize ?? Int32.MaxValue, MaxRowCount);
-        }
+        #endregion
 
-        protected override bool CanAddCommand(ModificationCommand modificationCommand)
-        {
-            if (_maxBatchSize <= ModificationCommands.Count)
-            {
-                return false;
-            }
-
-            var additionalParameterCount = CountParameters(modificationCommand);
-
-            if (_parameterCount + additionalParameterCount >= MaxParameterCount)
-            {
-                return false;
-            }
-
-            _parameterCount += additionalParameterCount;
-            return true;
-        }
-
+        protected override bool CanAddCommand([NotNull] ModificationCommand modificationCommand)
+        { return true; }
         protected override bool IsCommandTextValid()
-        {
-            if (--_commandsLeftToLengthCheck < 0)
-            {
-                var commandTextLength = GetCommandText().Length;
-                if (commandTextLength >= MaxScriptLength)
-                {
-                    return false;
-                }
-
-                var avarageCommandLength = commandTextLength / ModificationCommands.Count;
-                var expectedAdditionalCommandCapacity = (MaxScriptLength - commandTextLength) / avarageCommandLength;
-                _commandsLeftToLengthCheck = Math.Max(1, expectedAdditionalCommandCapacity / 4);
-            }
-
-            return true;
-        }
-
-        private int CountParameters(ModificationCommand modificationCommand)
-        {
-            var parameterCount = 0;
-            foreach (var columnModification in modificationCommand.ColumnModifications)
-            {
-                if (columnModification.ParameterName != null)
-                {
-                    parameterCount++;
-                }
-
-                if (columnModification.OriginalParameterName != null)
-                {
-                    parameterCount++;
-                }
-            }
-
-            return parameterCount;
-        }
-
-        protected override void ResetCommandText()
-        {
-            base.ResetCommandText();
-            _bulkInsertCommands.Clear();
-        }
+        { return true; }
 
         protected override string GetCommandText()
         {
-            return base.GetCommandText() + GetBulkInsertCommandText(ModificationCommands.Count);
-        }
-
-        private string GetBulkInsertCommandText(int lastIndex)
-        {
-            if (_bulkInsertCommands.Count == 0)
+            var sb = new StringBuilder();
+            foreach (var cmd in ModificationCommands)
             {
-                return string.Empty;
-            }
-
-            var stringBuilder = new StringBuilder();
-            var grouping = ((NpgsqlSqlGenerator)SqlGenerator).AppendBulkInsertOperation(stringBuilder, _bulkInsertCommands);
-            for (var i = lastIndex - _bulkInsertCommands.Count; i < lastIndex; i++)
-            {
-                ResultSetEnds[i] = grouping == NpgsqlSqlGenerator.ResultsGrouping.OneCommandPerResultSet;
-            }
-
-            ResultSetEnds[lastIndex - 1] = true;
-
-            return stringBuilder.ToString();
-        }
-
-        protected override void UpdateCachedCommandText(int commandPosition)
-        {
-            var newModificationCommand = ModificationCommands[commandPosition];
-
-            if (newModificationCommand.EntityState == EntityState.Added)
-            {
-				if ( _bulkInsertCommands.Count > 0
-					&& !( string.Equals(_bulkInsertCommands[0].TableName, newModificationCommand.TableName)
-							&& string.Equals(_bulkInsertCommands[0].SchemaName, newModificationCommand.SchemaName) ) )
-				{
-                    CachedCommandText.Append(GetBulkInsertCommandText(commandPosition));
-                    _bulkInsertCommands.Clear();
+                switch (cmd.EntityState)
+                {
+                    case EntityState.Added:
+                        SqlGenerator.AppendInsertOperation(sb, cmd);
+                        break;
+                    case EntityState.Modified:
+                        SqlGenerator.AppendUpdateOperation(sb, cmd);
+                        break;
+                    case EntityState.Deleted:
+                        SqlGenerator.AppendDeleteOperation(sb, cmd);
+                        break;
                 }
-                _bulkInsertCommands.Add(newModificationCommand);
-
-                LastCachedCommandIndex = commandPosition;
             }
-            else
+            return sb.ToString();
+        }
+
+        public override int Execute(
+            [NotNull] RelationalTransaction transaction,
+            [NotNull] RelationalTypeMapper typeMapper,
+            [NotNull] DbContext context,
+            [NotNull] ILogger logger)
+        {
+            Check.NotNull(transaction, nameof(transaction));
+            Check.NotNull(typeMapper, nameof(typeMapper));
+            Check.NotNull(context, nameof(context));
+            Check.NotNull(logger, nameof(logger));
+
+            var commandText = GetCommandText();
+
+            using (var storeCommand = CreateStoreCommand(commandText, transaction.DbTransaction, typeMapper, transaction.Connection?.CommandTimeout))
             {
-                CachedCommandText.Append(GetBulkInsertCommandText(commandPosition));
-                _bulkInsertCommands.Clear();
+                if (logger.IsEnabled(LogLevel.Verbose))
+                {
+                    // RelationalLoggerExtensions.LogCommand can't be called because the class
+                    // is internal...
+                    //logger.LogCommand(storeCommand);
+                }
 
-                base.UpdateCachedCommandText(commandPosition);
+                try
+                {
+                    using (var reader = storeCommand.ExecuteReader())
+                    {
+                        var actualResultSetCount = 0;
+                        do
+                        {
+                            actualResultSetCount++;
+                        }
+                        while (reader.NextResult());
+
+                        Debug.Assert(actualResultSetCount == ModificationCommands.Count, "Expected " + ModificationCommands.Count + " results, got " + actualResultSetCount);
+
+                        if (reader.RecordsAffected != ModificationCommands.Count)
+                        {
+                             throw new DbUpdateConcurrencyException(
+                                 Microsoft.Data.Entity.Relational.Strings.UpdateConcurrencyException(ModificationCommands.Count, reader.RecordsAffected),
+                                 context,
+                                 new List<InternalEntityEntry>()  // TODO
+                             );
+                        }
+                    }
+                }
+                catch (DbUpdateException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    throw new DbUpdateException(
+                        Microsoft.Data.Entity.Relational.Strings.UpdateStoreException,
+                        context,
+                        ex,
+                        new InternalEntityEntry[0]);
+                }
             }
+
+            return ModificationCommands.Count;
+        }
+
+        public override Task<int> ExecuteAsync(
+            [NotNull] RelationalTransaction transaction,
+            [NotNull] RelationalTypeMapper typeMapper,
+            [NotNull] DbContext context,
+            [NotNull] ILogger logger,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            throw new NotImplementedException("No async here yet");
         }
 
         public override IRelationalPropertyExtensions GetPropertyExtensions(IProperty property)
         {
-            Check.NotNull(property, "property");
+            Check.NotNull(property, nameof(property));
 
             return property.Npgsql();
         }
