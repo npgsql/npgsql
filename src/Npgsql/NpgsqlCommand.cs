@@ -1549,10 +1549,6 @@ namespace Npgsql
                     connector.CancelRequest();
                 }
             }
-            catch (IOException)
-            {
-                Connection.ClearPool();
-            }
             catch (Exception e)
             {
                 Log.Warn("Exception caught while attempting to cancel command", e, _connector.BackendProcessId);
