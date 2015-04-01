@@ -1532,7 +1532,6 @@ namespace Npgsql
                 throw new ObjectDisposedException(GetType().FullName);
             if (Connection == null)
                 throw new InvalidOperationException("Connection property has not been initialized.");
-            Contract.EndContractBlock();
 
             if (State != CommandState.InProgress) {
                 Log.Debug(String.Format("Skipping cancel because command is in state {0}", State), _connector.Id);
