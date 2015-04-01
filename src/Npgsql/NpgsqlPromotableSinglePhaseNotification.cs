@@ -1,3 +1,4 @@
+#if !DNXCORE50
 // NpgsqlPromotableSinglePhaseNotification.cs
 //
 // Author:
@@ -236,3 +237,4 @@ namespace Npgsql
         }
     }
 }
+#endif

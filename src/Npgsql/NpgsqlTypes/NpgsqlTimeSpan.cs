@@ -32,7 +32,9 @@ namespace NpgsqlTypes
     /// <seealso cref="JustifyDays"/>
     /// <seealso cref="JustifyMonths"/>
     /// <seealso cref="Canonicalize()"/>
+#if !DNXCORE50
     [Serializable]
+#endif
     public struct NpgsqlTimeSpan : IComparable, IComparer, IEquatable<NpgsqlTimeSpan>, IComparable<NpgsqlTimeSpan>,
                                    IComparer<NpgsqlTimeSpan>
     {

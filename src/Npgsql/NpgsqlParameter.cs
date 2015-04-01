@@ -31,8 +31,6 @@ using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics.Contracts;
-using System.Reflection;
-using System.Resources;
 using NpgsqlTypes;
 
 #if WITHDESIGN
@@ -47,7 +45,11 @@ namespace Npgsql
 #if WITHDESIGN
     [TypeConverter(typeof(NpgsqlParameterConverter))]
 #endif
+#if DNXCORE50
+    public sealed class NpgsqlParameter : DbParameter
+#else
     public sealed class NpgsqlParameter : DbParameter, ICloneable
+#endif
     {
         // Fields to implement IDbDataParameter interface.
         byte _precision;
@@ -78,7 +80,9 @@ namespace Npgsql
         {
             SourceColumn = String.Empty;
             Direction = ParameterDirection.Input;
+#if !DNXCORE50
             SourceVersion = DataRowVersion.Current;
+#endif
         }
 
         /// <summary>
@@ -176,6 +180,7 @@ namespace Npgsql
             SourceColumn = sourceColumn;
         }
 
+#if !DNXCORE50
         /// <summary>
         /// Initializes a new instance of the <see cref="NpgsqlParameter">NpgsqlParameter</see>.
         /// </summary>
@@ -243,6 +248,7 @@ namespace Npgsql
 
             DbType = parameterType;
         }
+#endif
 
         #endregion
 
@@ -253,7 +259,9 @@ namespace Npgsql
         /// </summary>
         /// <value>An <see cref="System.Object">Object</see> that is the value of the parameter.
         /// The default value is null.</value>
+#if !DNXCORE50
         [TypeConverter(typeof(StringConverter)), Category("Data")]
+#endif
         public override object Value
         {
             get
@@ -273,7 +281,10 @@ namespace Npgsql
         /// </summary>
         /// <value>An <see cref="System.Object">Object</see> that is the value of the parameter.
         /// The default value is null.</value>
-        [TypeConverter(typeof(StringConverter)), Category("Data")]
+#if !DNXCORE50
+        [Category("Data")]
+#endif
+        [TypeConverter(typeof(StringConverter))]
         public object NpgsqlValue
         {
             get { return _npgsqlValue; }
@@ -292,7 +303,10 @@ namespace Npgsql
         /// </summary>
         /// <value>One of the <see cref="System.Data.ParameterDirection">ParameterDirection</see>
         /// values. The default is <b>Input</b>.</value>
-        [Category("Data"), DefaultValue(ParameterDirection.Input)]
+        [DefaultValue(ParameterDirection.Input)]
+#if !DNXCORE50
+        [Category("Data")]
+#endif
         public override ParameterDirection Direction { get; set; }
 
         // Implementation of IDbDataParameter
@@ -304,7 +318,10 @@ namespace Npgsql
         /// <see cref="NpgsqlParameter.Value">Value</see> property.
         /// The default value is 0, which indicates that the data provider
         /// sets the precision for <b>Value</b>.</value>
-        [Category("Data"), DefaultValue((Byte)0)]
+        [DefaultValue((Byte)0)]
+#if !DNXCORE50
+        [Category("Data")]
+#endif
         public byte Precision
         {
             get { return _precision; }
@@ -321,7 +338,10 @@ namespace Npgsql
         /// </summary>
         /// <value>The number of decimal places to which
         /// <see cref="NpgsqlParameter.Value">Value</see> is resolved. The default is 0.</value>
-        [Category("Data"), DefaultValue((Byte)0)]
+        [DefaultValue((Byte)0)]
+#if !DNXCORE50
+        [Category("Data")]
+#endif
         public byte Scale
         {
             get { return _scale; }
@@ -337,7 +357,10 @@ namespace Npgsql
         /// </summary>
         /// <value>The maximum size, in bytes, of the data within the column.
         /// The default value is inferred from the parameter value.</value>
-        [Category("Data"), DefaultValue(0)]
+        [DefaultValue(0)]
+#if !DNXCORE50
+        [Category("Data")]
+#endif
         public override int Size
         {
             get { return _size; }
@@ -356,7 +379,10 @@ namespace Npgsql
         /// Gets or sets the <see cref="System.Data.DbType">DbType</see> of the parameter.
         /// </summary>
         /// <value>One of the <see cref="System.Data.DbType">DbType</see> values. The default is <b>Object</b>.</value>
-        [Category("Data"), RefreshProperties(RefreshProperties.All), DefaultValue(DbType.Object)]
+        [DefaultValue(DbType.Object)]
+#if !DNXCORE50
+        [Category("Data"), RefreshProperties(RefreshProperties.All)]
+#endif
         public override DbType DbType
         {
             get
@@ -383,7 +409,10 @@ namespace Npgsql
         /// Gets or sets the <see cref="NpgsqlTypes.NpgsqlDbType">NpgsqlDbType</see> of the parameter.
         /// </summary>
         /// <value>One of the <see cref="NpgsqlTypes.NpgsqlDbType">NpgsqlDbType</see> values. The default is <b>Unknown</b>.</value>
-        [Category("Data"), RefreshProperties(RefreshProperties.All), DefaultValue(NpgsqlDbType.Unknown)]
+        [DefaultValue(NpgsqlDbType.Unknown)]
+#if !DNXCORE50
+        [Category("Data"), RefreshProperties(RefreshProperties.All)]
+#endif
         public NpgsqlDbType NpgsqlDbType
         {
             get
@@ -458,9 +487,13 @@ namespace Npgsql
         /// </summary>
         /// <value>The name of the source column that is mapped to the
         /// <see cref="System.Data.DataSet">DataSet</see>. The default is an empty string.</value>
-        [Category("Data"), DefaultValue("")]
+        [DefaultValue("")]
+#if !DNXCORE50
+        [Category("Data")]
+#endif
         public override String SourceColumn { get; set; }
 
+#if !DNXCORE50
         /// <summary>
         /// Gets or sets the <see cref="System.Data.DataRowVersion">DataRowVersion</see>
         /// to use when loading <see cref="NpgsqlParameter.Value">Value</see>.
@@ -469,6 +502,7 @@ namespace Npgsql
         /// The default is <b>Current</b>.</value>
         [Category("Data"), DefaultValue(DataRowVersion.Current)]
         public override DataRowVersion SourceVersion { get; set; }
+#endif
 
         /// <summary>
         /// Source column mapping.
@@ -648,7 +682,9 @@ namespace Npgsql
             clone.IsNullable = IsNullable;
             clone._name = _name;
             clone.SourceColumn = SourceColumn;
+#if !DNXCORE50
             clone.SourceVersion = SourceVersion;
+#endif
             clone._value = _value;
             clone._npgsqlValue = _npgsqlValue;
             clone.SourceColumnNullMapping = SourceColumnNullMapping;
@@ -656,9 +692,11 @@ namespace Npgsql
             return clone;
         }
 
+#if !DNXCORE50
         object ICloneable.Clone()
         {
             return Clone();
         }
+#endif
     }
 }

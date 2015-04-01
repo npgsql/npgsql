@@ -1,3 +1,4 @@
+#if !DNXCORE50
 // NpgsqlTransactionCallbacks.cs
 //
 // Author:
@@ -141,3 +142,4 @@ namespace Npgsql
         #endregion
     }
 }
+#endif

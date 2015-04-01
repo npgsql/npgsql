@@ -1,3 +1,4 @@
+#if !DNXCORE50
 // NpgsqlResourceManager.cs
 //
 // Author:
@@ -175,3 +176,4 @@ namespace Npgsql
         }
     }
 }
+#endif

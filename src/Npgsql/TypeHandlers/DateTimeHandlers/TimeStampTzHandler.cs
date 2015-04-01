@@ -2,7 +2,6 @@
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
-using System.Runtime.Remoting.Channels;
 
 namespace Npgsql.TypeHandlers.DateTimeHandlers
 {

@@ -51,8 +51,12 @@ namespace Npgsql
 #if WITHDESIGN
     [System.Drawing.ToolboxBitmapAttribute(typeof(NpgsqlCommand)), ToolboxItem(true)]
 #endif
+#if DNXCORE50
+    public sealed partial class NpgsqlCommand : DbCommand
+#else
     [System.ComponentModel.DesignerCategory("")]    
     public sealed partial class NpgsqlCommand : DbCommand, ICloneable
+#endif
     {
         #region Fields
 
@@ -168,7 +172,10 @@ namespace Npgsql
         /// Gets or sets the SQL statement or function (stored procedure) to execute at the data source.
         /// </summary>
         /// <value>The Transact-SQL statement or stored procedure to execute. The default is an empty string.</value>
-        [Category("Data"), DefaultValue("")]
+        [DefaultValue("")]
+#if !DNXCORE50
+        [Category("Data")]
+#endif
         public override String CommandText
         {
             get { return _commandText; }
@@ -213,7 +220,10 @@ namespace Npgsql
         /// <see cref="NpgsqlCommand.CommandText">CommandText</see> property is to be interpreted.
         /// </summary>
         /// <value>One of the <see cref="System.Data.CommandType">CommandType</see> values. The default is <see cref="System.Data.CommandType">CommandType.Text</see>.</value>
-        [Category("Data"), DefaultValue(CommandType.Text)]
+        [DefaultValue(CommandType.Text)]
+#if !DNXCORE50
+        [Category("Data")]
+#endif
         public override CommandType CommandType { get; set; }
 
         /// <summary>
@@ -230,7 +240,10 @@ namespace Npgsql
         /// used by this instance of the <see cref="NpgsqlCommand">NpgsqlCommand</see>.
         /// </summary>
         /// <value>The connection to a data source. The default value is a null reference.</value>
-        [Category("Behavior"), DefaultValue(null)]
+        [DefaultValue(null)]
+#if !DNXCORE50
+        [Category("Behavior")]
+#endif
         public new NpgsqlConnection Connection
         {
             get { return _connection; }
@@ -1623,6 +1636,7 @@ namespace Npgsql
             Contract.Assume(_connector.Buffer.WritePosition == 0, "WritePosition should be 0");
         }
 
+#if !DNXCORE50
         /// <summary>
         /// Create a new command based on this one.
         /// </summary>
@@ -1631,6 +1645,7 @@ namespace Npgsql
         {
             return Clone();
         }
+#endif
 
         /// <summary>
         /// Create a new command based on this one.

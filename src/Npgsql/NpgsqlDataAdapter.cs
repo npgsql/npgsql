@@ -1,3 +1,4 @@
+#if !DNXCORE50
 // created on 1/8/2002 at 23:02
 //
 // Npgsql.NpgsqlDataAdapter.cs
@@ -238,3 +239,4 @@ namespace Npgsql
 
 #pragma warning restore 1591
 }
+#endif

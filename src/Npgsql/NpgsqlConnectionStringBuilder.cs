@@ -29,17 +29,14 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data.Common;
 using System.Diagnostics;
+#if !DNXCORE50
 using System.DirectoryServices;
-using System.Reflection;
-using System.Resources;
-using System.Runtime.Versioning;
+#endif
 using System.Security.Principal;
-using System.Text;
 
 // Keep the xml comment warning quiet for this file.
 #pragma warning disable 1591
@@ -338,12 +335,14 @@ namespace Npgsql
         /// <summary>
         /// Gets or sets the backend server host name.
         /// </summary>
+#if !DNXCORE50
         [Category("DataCategory_Source")]
         [NpgsqlConnectionStringKeyword(Keywords.Host)]
         [NpgsqlConnectionStringAcceptableKeyword("SERVER")]
         [DisplayName("ConnectionProperty_Display_Host")]
         [Description("ConnectionProperty_Description_Host")]
         [RefreshProperties(RefreshProperties.All)]
+#endif
         public string Host
         {
             get { return _host; }
@@ -354,12 +353,14 @@ namespace Npgsql
         /// <summary>
         /// Gets or sets the backend server port.
         /// </summary>
+#if !DNXCORE50
         [Category("DataCategory_Source")]
         [NpgsqlConnectionStringKeyword(Keywords.Port)]
         [DisplayName("ConnectionProperty_Display_Port")]
         [Description("ConnectionProperty_Description_Port")]
         [RefreshProperties(RefreshProperties.All)]
         [DefaultValue(5432)]
+#endif
         public int Port
         {
             get { return _port; }
@@ -372,19 +373,23 @@ namespace Npgsql
         /// </summary>
         /// <value>The name of the database to be
         /// used after a connection is opened.</value>
+#if !DNXCORE50
         [Category("DataCategory_Source")]
         [NpgsqlConnectionStringKeyword(Keywords.Database)]
         [NpgsqlConnectionStringAcceptableKeyword("DB")]
         [DisplayName("ConnectionProperty_Display_Database")]
         [Description("ConnectionProperty_Description_Database")]
         [RefreshProperties(RefreshProperties.All)]
+#endif
         public string Database
         {
             get { return _database; }
             set { SetValue(GetKeyName(Keywords.Database), Keywords.Database, value); }
         }
 
-    #region Integrated security
+        #region Integrated security
+#if !DNXCORE50
+
         class CachedUpn {
             public string Upn;
             public DateTime ExpiryTimeUtc;
@@ -473,12 +478,15 @@ namespace Npgsql
                 return identity.Name.Split('\\')[1];
             }
         }
-    #endregion
+
+#endif
+        #endregion
 
         private string _username;
         /// <summary>
         /// Gets or sets the login user name.
         /// </summary>
+#if !DNXCORE50
         [Category("DataCategory_Security")]
         [NpgsqlConnectionStringKeyword(Keywords.UserName, "USER ID")]
         [NpgsqlConnectionStringAcceptableKeyword("USER NAME")]
@@ -488,14 +496,17 @@ namespace Npgsql
         [DisplayName("ConnectionProperty_Display_UserName")]
         [Description("ConnectionProperty_Description_UserName")]
         [RefreshProperties(RefreshProperties.All)]
+#endif
         public string UserName
         {
             get
             {
+#if !DNXCORE50
                 if ((_integrated_security) && (String.IsNullOrEmpty(_username)))
                 {
                     _username = GetIntegratedUserName();
                 }
+#endif
 
                 return _username;
             }
@@ -507,6 +518,7 @@ namespace Npgsql
         /// <summary>
         /// Sets the login password as a string.
         /// </summary>
+#if !DNXCORE50
         [Category("DataCategory_Security")]
         [NpgsqlConnectionStringKeyword(Keywords.Password)]
         [NpgsqlConnectionStringAcceptableKeyword("PSW")]
@@ -515,6 +527,7 @@ namespace Npgsql
         [Description("ConnectionProperty_Description_Password")]
         [RefreshProperties(RefreshProperties.All)]
         [PasswordPropertyText(true)]
+#endif
         public string Password
         {
             get { return _password; }
@@ -525,12 +538,14 @@ namespace Npgsql
         /// <summary>
         /// Gets or sets a value indicating whether to attempt to use SSL.
         /// </summary>
+#if !DNXCORE50
         [Category("DataCategory_Advanced")]
         [NpgsqlConnectionStringKeyword(Keywords.SSL)]
         [DisplayName("ConnectionProperty_Display_SSL")]
         [Description("ConnectionProperty_Description_SSL")]
         [RefreshProperties(RefreshProperties.All)]
         [DefaultValue(false)]
+#endif
         public bool SSL
         {
             get { return _ssl; }
@@ -541,7 +556,9 @@ namespace Npgsql
         /// <summary>
         /// Gets or sets a value indicating whether to attempt to use SSL.
         /// </summary>
+#if !DNXCORE50
         [Browsable(false)]
+#endif
         public SslMode SslMode
         {
             get { return _sslmode; }
@@ -554,12 +571,14 @@ namespace Npgsql
         /// before terminating the attempt and generating an error.
         /// </summary>
         /// <value>The time (in seconds) to wait for a connection to open. The default value is 15 seconds.</value>
+#if !DNXCORE50
         [Category("DataCategory_Initialization")]
         [NpgsqlConnectionStringKeyword(Keywords.Timeout)]
         [DisplayName("ConnectionProperty_Display_Timeout")]
         [Description("ConnectionProperty_Description_Timeout")]
         [RefreshProperties(RefreshProperties.All)]
         [DefaultValue(15)]
+#endif
         public int Timeout
         {
             get { return _timeout; }
@@ -570,11 +589,13 @@ namespace Npgsql
         /// <summary>
         /// Gets or sets the schema search path.
         /// </summary>
+#if !DNXCORE50
         [Category("DataCategory_Context")]
         [NpgsqlConnectionStringKeyword(Keywords.SearchPath)]
         [DisplayName("ConnectionProperty_Display_SearchPath")]
         [Description("ConnectionProperty_Description_SearchPath")]
         [RefreshProperties(RefreshProperties.All)]
+#endif
         public string SearchPath
         {
             get { return _searchpath; }
@@ -585,12 +606,14 @@ namespace Npgsql
         /// <summary>
         /// Gets or sets the buffer size.
         /// </summary>
+#if !DNXCORE50
         [Category("DataCategory_Advanced")]
         [NpgsqlConnectionStringKeyword(Keywords.BufferSize)]
         [DisplayName("ConnectionProperty_Display_BufferSize")]
         [Description("ConnectionProperty_Description_BufferSize")]
         [RefreshProperties(RefreshProperties.All)]
         [DefaultValue(NpgsqlBuffer.DefaultBufferSize)]
+#endif
         public int BufferSize
         {
             get { return _bufferSize; }
@@ -601,12 +624,14 @@ namespace Npgsql
         /// <summary>
         /// Gets or sets a value indicating whether connection pooling should be used.
         /// </summary>
+#if !DNXCORE50
         [Category("DataCategory_Pooling")]
         [NpgsqlConnectionStringKeyword(Keywords.Pooling)]
         [DisplayName("ConnectionProperty_Display_Pooling")]
         [Description("ConnectionProperty_Description_Pooling")]
         [RefreshProperties(RefreshProperties.All)]
         [DefaultValue(true)]
+#endif
         public bool Pooling
         {
             get { return _pooling; }
@@ -625,12 +650,14 @@ namespace Npgsql
         /// This strategy provide smooth change of connection count in the pool.
         /// </remarks>
         /// <value>The time (in seconds) to wait. The default value is 15 seconds.</value>
+#if !DNXCORE50
         [Category("DataCategory_Pooling")]
         [NpgsqlConnectionStringKeyword(Keywords.ConnectionLifeTime)]
         [DisplayName("ConnectionProperty_Display_ConnectionLifeTime")]
         [Description("ConnectionProperty_Description_ConnectionLifeTime")]
         [RefreshProperties(RefreshProperties.All)]
         [DefaultValue(15)]
+#endif
         public int ConnectionLifeTime
         {
             get { return _connection_life_time; }
@@ -641,12 +668,14 @@ namespace Npgsql
         /// <summary>
         /// Gets or sets the minimum connection pool size.
         /// </summary>
+#if !DNXCORE50
         [Category("DataCategory_Pooling")]
         [NpgsqlConnectionStringKeyword(Keywords.MinPoolSize)]
         [DisplayName("ConnectionProperty_Display_MinPoolSize")]
         [Description("ConnectionProperty_Description_MinPoolSize")]
         [RefreshProperties(RefreshProperties.All)]
         [DefaultValue(1)]
+#endif
         public int MinPoolSize
         {
             get { return _min_pool_size; }
@@ -657,12 +686,14 @@ namespace Npgsql
         /// <summary>
         /// Gets or sets the maximum connection pool size.
         /// </summary>
+#if !DNXCORE50
         [Category("DataCategory_Pooling")]
         [NpgsqlConnectionStringKeyword(Keywords.MaxPoolSize)]
         [DisplayName("ConnectionProperty_Display_MaxPoolSize")]
         [Description("ConnectionProperty_Description_MaxPoolSize")]
         [RefreshProperties(RefreshProperties.All)]
         [DefaultValue(20)]
+#endif
         public int MaxPoolSize
         {
             get { return _max_pool_size; }
@@ -673,12 +704,14 @@ namespace Npgsql
         /// <summary>
         /// Gets or sets a value indicating whether to listen for notifications and report them between command activity.
         /// </summary>
+#if !DNXCORE50
         [Category("DataCategory_Advanced")]
         [NpgsqlConnectionStringKeyword(Keywords.SyncNotification)]
         [DisplayName("ConnectionProperty_Display_SyncNotification")]
         [Description("ConnectionProperty_Description_SyncNotification")]
         [RefreshProperties(RefreshProperties.All)]
         [DefaultValue(false)]
+#endif
         public bool SyncNotification
         {
             get { return _sync_notification; }
@@ -691,12 +724,14 @@ namespace Npgsql
         /// before terminating the attempt and generating an error.
         /// </summary>
         /// <value>The time (in seconds) to wait for a command to complete. The default value is 20 seconds.</value>
+#if !DNXCORE50
         [Category("DataCategory_Initialization")]
         [NpgsqlConnectionStringKeyword(Keywords.CommandTimeout)]
         [DisplayName("ConnectionProperty_Display_CommandTimeout")]
         [Description("ConnectionProperty_Description_CommandTimeout")]
         [RefreshProperties(RefreshProperties.All)]
         [DefaultValue(20)]
+#endif
         public int CommandTimeout
         {
             get { return _command_timeout; }
@@ -704,12 +739,14 @@ namespace Npgsql
         }
 
         private bool _enlist;
+#if !DNXCORE50
         [Category("DataCategory_Pooling")]
         [NpgsqlConnectionStringKeyword(Keywords.Enlist)]
         [DisplayName("ConnectionProperty_Display_Enlist")]
         [Description("ConnectionProperty_Description_Enlist")]
         [RefreshProperties(RefreshProperties.All)]
         [DefaultValue(true)]
+#endif
         public bool Enlist
         {
             get { return _enlist; }
@@ -717,6 +754,7 @@ namespace Npgsql
         }
 
         private bool _integrated_security;
+#if !DNXCORE50
         [Category("DataCategory_Security")]
         [NpgsqlConnectionStringKeyword(Keywords.IntegratedSecurity)]
         [NpgsqlConnectionStringAcceptableKeyword("INTEGRATED SECURITY")]
@@ -724,6 +762,7 @@ namespace Npgsql
         [Description("ConnectionProperty_Description_IntegratedSecurity")]
         [RefreshProperties(RefreshProperties.All)]
         [DefaultValue(false)]
+#endif
         public bool IntegratedSecurity
         {
             get { return _integrated_security; }
@@ -757,11 +796,13 @@ namespace Npgsql
         /// <summary>
         /// Gets or sets the ootional application name parameter to be sent to the backend during connection initiation.
         /// </summary>
+#if !DNXCORE50
         [Category("DataCategory_Context")]
         [NpgsqlConnectionStringKeyword(Keywords.ApplicationName)]
         [DisplayName("ConnectionProperty_Display_ApplicationName")]
         [Description("ConnectionProperty_Description_ApplicationName")]
         [RefreshProperties(RefreshProperties.All)]
+#endif
         public string ApplicationName
         {
             get { return _application_name; }

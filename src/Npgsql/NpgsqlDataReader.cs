@@ -3,15 +3,11 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
-using System.Data.SqlClient;
-using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.TypeHandlers;
 using Npgsql.TypeHandlers.NumericHandlers;
@@ -69,10 +65,12 @@ namespace Npgsql
         /// </summary>
         IBackendMessage _pendingMessage;
 
+#if !DNXCORE50
         /// <summary>
         /// If <see cref="GetSchemaTable"/> has been called, its results are cached here.
         /// </summary>
         DataTable _cachedSchemaTable;
+#endif
 
         /// <summary>
         /// Is raised whenever Close() is called.
@@ -264,7 +262,9 @@ namespace Npgsql
 
                 Contract.Assert(State == ReaderState.BetweenResults);
                 _hasRows = null;
+#if !DNXCORE50
                 _cachedSchemaTable = null;
+#endif
 
                 if ((_behavior & CommandBehavior.SingleResult) != 0) {
                     Consume();
@@ -1096,10 +1096,12 @@ namespace Npgsql
             return count;
         }
 
+#if !DNXCORE50
         public override IEnumerator GetEnumerator()
         {
             return new DbEnumerator(this);
         }
+#endif
 
         /// <summary>
         /// The first row in a stored procedure command that has output parameters needs to be traversed twice -
@@ -1205,6 +1207,7 @@ namespace Npgsql
         }
 
         #region Schema metadata table
+#if !DNXCORE50
 
         /// <summary>
         /// Returns a System.Data.DataTable that describes the column metadata of the DataReader.
@@ -1587,6 +1590,7 @@ namespace Npgsql
             }
         }
 
+#endif
         #endregion Schema metadata table
 
         #region Checks

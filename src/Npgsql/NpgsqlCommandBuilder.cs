@@ -1,4 +1,5 @@
-﻿// NpgsqlCommandBuilder.cs
+﻿#if !DNXCORE50
+// NpgsqlCommandBuilder.cs
 //
 // Author:
 //   Pedro Martínez Juliá (yoros@wanadoo.es)
@@ -520,3 +521,4 @@ namespace Npgsql
         }
     }
 }
+#endif

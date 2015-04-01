@@ -3,12 +3,8 @@
     "compilationOptions": {
       "define": [ "KPROJ" ]
     },
-    "dependencies": {
-        "System.Data.Common": "4.0.0-beta-22616",
-        "Mono.Security": "3.2.3.0"
-    },
     "frameworks": {
-        "net451": {
+        "net45": {
             "dependencies": {},
             "frameworkAssemblies": {
                 "System.Diagnostics.Contracts": "4.0.0.0",
@@ -18,6 +14,47 @@
                 "System.Numerics": "4.0.0.0",
                 "System.Xml": "4.0.0.0"
             }
-        }
+        },
+        "dnx451_commented": { },
+            "frameworkAssemblies": {
+                "System.Diagnostics.Contracts": "4.0.0.0",
+                "System.Transactions": "4.0.0.0",
+                "System.DirectoryServices": "4.0.0.0",
+                "System.Data": "4.0.0.0",
+                "System.Numerics": "4.0.0.0",
+                "System.Xml": "4.0.0.0"
+            },        
+        },
+        "dnxcore50_commented": {
+            "dependencies": {
+                "System.Collections.Concurrent": "4.0.10-beta-*",
+                "System.ComponentModel": "4.0.0-beta-*",
+                "System.ComponentModel.TypeConverter": "4.0.0-beta-*",
+                "System.Data.Common": "4.0.0-beta-*",
+                "System.Diagnostics.Contracts": "4.0.0-beta-*",
+                "System.Diagnostics.Tools": "4.0.0-beta-*",
+                "System.Globalization": "4.0.10-beta-*",
+                "System.Linq": "4.0.0-beta-*",
+                "System.Net.NameResolution": "4.0.0-beta-*",
+                "System.Net.Primitives": "4.0.10-beta-*",
+                "System.Net.Sockets": "4.0.0-beta-*",
+                "System.Net.Security": "4.0.0-beta-*",
+                "System.Net.NetworkInformation": "4.0.10-beta-*",
+                "System.Runtime": "4.0.20-beta-*",
+                "System.Runtime.Extensions": "4.0.10-beta-*",
+                "System.Runtime.InteropServices": "4.0.10-beta-*",
+                "System.Runtime.Numerics": "4.0.0-beta-*",
+                "System.Reflection": "4.0.10-beta-*",
+                "System.Reflection.TypeExtensions": "4.0.0-beta-*",
+                "System.Security.Cryptography.Encryption": "4.0.0-beta-*",
+                "System.Security.Cryptography.Hashing": "4.0.0-beta-*",
+                "System.Security.Cryptography.RandomNumberGenerator": "4.0.0-beta-*",
+                "System.Security.Principal": "4.0.0-beta-*",
+                "System.Text.Encoding.Extensions": "4.0.10-beta-*",
+                "System.Text.RegularExpressions": "4.0.10-beta-*",
+                "System.Threading": "4.0.10-beta-*",
+                "System.Threading.Thread": "4.0.0-beta-*",
+            }
+       }
     }
 }

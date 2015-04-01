@@ -1,3 +1,4 @@
+#if !DNXCORE50
 // Npgsql.NpgsqlCommand.cs
 //
 // Author:
@@ -617,3 +618,4 @@ and n.nspname not in ('pg_catalog', 'pg_toast')");
         }
     }
 }
+#endif

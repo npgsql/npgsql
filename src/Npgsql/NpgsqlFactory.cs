@@ -34,7 +34,9 @@ namespace Npgsql
     /// <summary>
     /// A factory to create instances of various Npgsql objects.
     /// </summary>
+#if !DNXCORE50
     [Serializable]
+#endif
     public sealed class NpgsqlFactory : DbProviderFactory, IServiceProvider
     {
         public static NpgsqlFactory Instance = new NpgsqlFactory();
@@ -51,20 +53,11 @@ namespace Npgsql
             return new NpgsqlCommand();
         }
 
-        public override DbCommandBuilder CreateCommandBuilder()
-        {
-            return new NpgsqlCommandBuilder();
-        }
-
         public override DbConnection CreateConnection()
         {
             return new NpgsqlConnection();
         }
 
-        public override DbDataAdapter CreateDataAdapter()
-        {
-            return new NpgsqlDataAdapter();
-        }
 
         public override DbParameter CreateParameter()
         {
@@ -75,6 +68,18 @@ namespace Npgsql
         {
             return new NpgsqlConnectionStringBuilder();
         }
+
+#if !DNXCORE50
+        public override DbCommandBuilder CreateCommandBuilder()
+        {
+            return new NpgsqlCommandBuilder();
+        }
+
+        public override DbDataAdapter CreateDataAdapter()
+        {
+            return new NpgsqlDataAdapter();
+        }
+#endif
 
         #region IServiceProvider Members
 

@@ -500,8 +500,10 @@ namespace Npgsql
         static NpgsqlConnectorPool()
         {
             ConnectorPoolMgr = new NpgsqlConnectorPool();
+#if !DNXCORE50
             AppDomain.CurrentDomain.DomainUnload += (sender, args) => ConnectorPoolMgr.ClearAllPools();
             AppDomain.CurrentDomain.ProcessExit += (sender, args) => ConnectorPoolMgr.ClearAllPools();
+#endif
         }
     }
 }

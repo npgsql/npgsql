@@ -1,3 +1,4 @@
+#if !DNXCORE50
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -307,3 +308,4 @@ namespace Npgsql
         #endregion
     }
 }
+#endif

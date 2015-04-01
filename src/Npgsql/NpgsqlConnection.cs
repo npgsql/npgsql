@@ -35,7 +35,9 @@ using System.IO;
 using System.Net.Security;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+#if !DNXCORE50
 using System.Transactions;
+#endif
 using Npgsql.Logging;
 using IsolationLevel = System.Data.IsolationLevel;
 
@@ -47,8 +49,12 @@ namespace Npgsql
 #if WITHDESIGN
     [System.Drawing.ToolboxBitmapAttribute(typeof(NpgsqlConnection))]
 #endif
+#if DNXCORE50
+    public sealed class NpgsqlConnection : DbConnection
+#else
     [System.ComponentModel.DesignerCategory("")]
     public sealed class NpgsqlConnection : DbConnection, ICloneable
+#endif
     {
         #region Fields
 
@@ -80,7 +86,13 @@ namespace Npgsql
         /// </summary>
         internal int OpenCounter { get; private set; }
 
+#if !DNXCORE50
+        NpgsqlPromotableSinglePhaseNotification Promotable
+        {
+            get { return _promotable ?? (_promotable = new NpgsqlPromotableSinglePhaseNotification(this)); }
+        }
         NpgsqlPromotableSinglePhaseNotification _promotable;
+#endif
 
         // A cached copy of the result of `settings.ConnectionString`
         string _connectionString;
@@ -129,11 +141,13 @@ namespace Npgsql
             ProvideClientCertificatesCallbackDelegate = DefaultProvideClientCertificatesCallback;
             ValidateRemoteCertificateCallbackDelegate = DefaultValidateRemoteCertificateCallback;
 
+#if !DNXCORE50
             // Fix authentication problems. See https://bugzilla.novell.com/show_bug.cgi?id=MONO77559 and
             // http://pgfoundry.org/forum/message.php?msg_id=1002377 for more info.
             RSACryptoServiceProvider.UseMachineKeyStore = true;
 
             _promotable = new NpgsqlPromotableSinglePhaseNotification(this);
+#endif
         }
 
         /// <summary>
@@ -184,10 +198,12 @@ namespace Npgsql
                 
             }*/
 
+#if !DNXCORE50
             if (Enlist)
             {
                 Promotable.Enlist(Transaction.Current);
             }
+#endif
 
             OpenCounter++;
             OnStateChange(new StateChangeEventArgs(ConnectionState.Closed, ConnectionState.Open));
@@ -292,7 +308,9 @@ namespace Npgsql
         /// <summary>
         /// Backend server host name.
         /// </summary>
+#if !DNXCORE50
         [Browsable(true)]
+#endif
         public string Host
         {
             get { return _settings.Host; }
@@ -301,7 +319,9 @@ namespace Npgsql
         /// <summary>
         /// Backend server port.
         /// </summary>
+#if !DNXCORE50
         [Browsable(true)]
+#endif
         public int Port
         {
             get { return _settings.Port; }
@@ -310,7 +330,9 @@ namespace Npgsql
         /// <summary>
         /// If true, the connection will attempt to use SSL.
         /// </summary>
+#if !DNXCORE50
         [Browsable(true)]
+#endif
         public bool SSL
         {
             get { return _settings.SSL; }
@@ -446,7 +468,9 @@ namespace Npgsql
         /// Gets the current state of the connection.
         /// </summary>
         /// <value>A bitwise combination of the <see cref="System.Data.ConnectionState">ConnectionState</see> values. The default is <b>Closed</b>.</value>
+#if !DNXCORE50
         [Browsable(false)]
+#endif
         public ConnectionState FullState
         {
             get
@@ -482,7 +506,9 @@ namespace Npgsql
         /// Gets whether the current state of the connection is Open or Closed
         /// </summary>
         /// <value>ConnectionState.Open, ConnectionState.Closed or ConnectionState.Connecting</value>
+#if !DNXCORE50
         [Browsable(false)]
+#endif
         public override ConnectionState State
         {
             get
@@ -595,6 +621,7 @@ namespace Npgsql
                 ReallyClose();
         }
 
+#if !DNXCORE50
         /// <summary>
         /// Enlist transation.
         /// </summary>
@@ -603,6 +630,7 @@ namespace Npgsql
         {
             Promotable.Enlist(transaction);
         }
+#endif
 
         #endregion
 
@@ -624,11 +652,13 @@ namespace Npgsql
 
             Log.Debug("Closing connection", Connector.Id);
 
+#if !DNXCORE50
             if (_promotable != null && _promotable.InLocalTransaction)
             {
                 _postponingClose = true;
                 return;
             }
+#endif
 
             ReallyClose();
         }
@@ -792,7 +822,9 @@ namespace Npgsql
         /// Version of the PostgreSQL backend.
         /// This can only be called when there is an active connection.
         /// </summary>
+#if !DNXCORE50
         [Browsable(false)]
+#endif
         public Version PostgreSqlVersion
         {
             get
@@ -815,7 +847,9 @@ namespace Npgsql
         /// This can only be called when there is an active connection.
         /// Always retuna Version3
         /// </summary>
+#if !DNXCORE50
         [Browsable(false)]
+#endif
         public ProtocolVersion BackendProtocolVersion
         {
             get
@@ -839,7 +873,9 @@ namespace Npgsql
         /// Process id of backend server.
         /// This can only be called when there is an active connection.
         /// </summary>
+#if !DNXCORE50
         [Browsable(false)]
+#endif
         // ReSharper disable once InconsistentNaming
         public int ProcessID
         {
@@ -856,7 +892,9 @@ namespace Npgsql
         /// In version 8.2, Postgres began supporting standard conformant strings, but defaulted this flag to false.
         /// As of version 9.1, this flag defaults to true.
         /// </summary>
+#if !DNXCORE50
         [Browsable(false)]
+#endif
         public bool UseConformantStrings
         {
             get
@@ -869,7 +907,9 @@ namespace Npgsql
         /// <summary>
         /// Report whether the backend understands the string literal E prefix (>= 8.1).
         /// </summary>
+#if !DNXCORE50
         [Browsable(false)]
+#endif
         public bool Supports_E_StringPrefix
         {
             get
@@ -882,7 +922,9 @@ namespace Npgsql
         /// <summary>
         /// Report whether the backend understands the hex byte format (>= 9.0).
         /// </summary>
+#if !DNXCORE50
         [Browsable(false)]
+#endif
         public bool SupportsHexByteFormat
         {
             get
@@ -1085,11 +1127,6 @@ namespace Npgsql
 
         #region State checks
 
-        NpgsqlPromotableSinglePhaseNotification Promotable
-        {
-            get { return _promotable ?? (_promotable = new NpgsqlPromotableSinglePhaseNotification(this)); }
-        }
-
         void CheckConnectionOpen()
         {
             if (_disposed) {
@@ -1153,7 +1190,7 @@ namespace Npgsql
         #endregion State checks
 
         #region Schema operations
-
+#if !DNXCORE50
         /// <summary>
         /// Returns the supported collections
         /// </summary>
@@ -1224,6 +1261,7 @@ namespace Npgsql
             }
         }
 
+#endif
         #endregion Schema operations
 
         #region Misc
@@ -1258,6 +1296,7 @@ namespace Npgsql
             Open();
         }
 
+#if !DNXCORE50
         /// <summary>
         /// Create a new connection based on this one.
         /// </summary>
@@ -1266,6 +1305,7 @@ namespace Npgsql
         {
             return Clone();
         }
+#endif
 
         /// <summary>
         /// Create a new connection based on this one.
@@ -1286,6 +1326,7 @@ namespace Npgsql
             return clone;
         }
 
+#if !DNXCORE50
         /// <summary>
         /// DB provider factory.
         /// </summary>
@@ -1293,6 +1334,7 @@ namespace Npgsql
         {
             get { return NpgsqlFactory.Instance; }
         }
+#endif
 
         /// <summary>
         /// Clear connection pool.

@@ -136,7 +136,9 @@ namespace Npgsql
         /// </summary>
         internal Dictionary<string, string> BackendParams;
 
+#if !DNXCORE50
         internal SSPIHandler SSPI { get; set; }
+#endif
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
@@ -465,9 +467,13 @@ namespace Npgsql
 
                         if (!UseSslStream)
                         {
+#if DNXCORE50
+                            throw new NotSupportedException("TLS implementation not yet supported with .NET Core");
+#else
                             var sslStream = new TlsClientStream.TlsClientStream(Stream);
                             sslStream.PerformInitialHandshake(Host, clientCertificates, DefaultValidateRemoteCertificateCallback, false);
                             Stream = sslStream;
+#endif
                         }
                         else
                         {
@@ -550,22 +556,33 @@ namespace Npgsql
                     if (!IntegratedSecurity) {
                         throw new Exception("GSS authentication but IntegratedSecurity not enabled");
                     }
+#if DNXCORE50
+                    throw new NotSupportedException("SSPI not yet supported in .NET Core");
+#else
                     // For GSSAPI we have to use the supplied hostname
                     SSPI = new SSPIHandler(Host, "POSTGRES", true);
                     passwordMessage = new PasswordMessage(SSPI.Continue(null));
                     break;
+#endif
 
                 case AuthenticationRequestType.AuthenticationSSPI:
                     if (!IntegratedSecurity) {
                         throw new Exception("SSPI authentication but IntegratedSecurity not enabled");
                     }
+#if DNXCORE50
+                    throw new NotSupportedException("SSPI not yet supported in .NET Core");
+#else
                     // For SSPI we have to get the IP-Address (hostname doesn't work)
                     var ipAddressString = ((IPEndPoint)Socket.RemoteEndPoint).Address.ToString();
                     SSPI = new SSPIHandler(ipAddressString, "POSTGRES", false);
                     passwordMessage = new PasswordMessage(SSPI.Continue(null));
                     break;
+#endif
 
                 case AuthenticationRequestType.AuthenticationGSSContinue:
+#if DNXCORE50
+                    throw new NotSupportedException("SSPI not yet supported in .NET Core");
+#else
                     var passwdRead = SSPI.Continue(((AuthenticationGSSContinueMessage)msg).AuthenticationData);
                     if (passwdRead.Length != 0)
                     {
@@ -573,6 +590,7 @@ namespace Npgsql
                         break;
                     }
                     return;
+#endif
 
                 default:
                     throw new NotSupportedException(String.Format("Authentication method not supported (Received: {0})", msg.AuthRequestType));
@@ -861,7 +879,6 @@ namespace Npgsql
                     return CopyDoneMessage.Instance;
 
                 case BackendMessageCode.PortalSuspended:
-                    Debug.Fail("Unimplemented message: " + code);
                     throw new NotImplementedException("Unimplemented message: " + code);
                 case BackendMessageCode.ErrorResponse:
                     return null;
@@ -1225,7 +1242,11 @@ namespace Npgsql
                 {
                     if (--_connector._notificationBlockRecursionDepth == 0)
                     {
-                        while (_connector.Buffer.ReadBytesLeft > 0 || _connector.Stream is TlsClientStream.TlsClientStream && ((TlsClientStream.TlsClientStream)_connector.Stream).HasBufferedReadData(false))
+                        while (_connector.Buffer.ReadBytesLeft > 0
+#if !DNXCORE50
+                            || _connector.Stream is TlsClientStream.TlsClientStream && ((TlsClientStream.TlsClientStream)_connector.Stream).HasBufferedReadData(false)
+#endif
+                        )
                         {
                             var msg = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential, false);
                             if (msg != null)
@@ -1278,7 +1299,11 @@ namespace Npgsql
                 semaphore.WaitAsync().ContinueWith(t => {
                     try
                     {
-                        while (Buffer.ReadBytesLeft > 0 || Stream is TlsClientStream.TlsClientStream && ((TlsClientStream.TlsClientStream)Stream).HasBufferedReadData(true) || !IsSecure && BaseStream.DataAvailable)
+                        while (Buffer.ReadBytesLeft > 0
+#if !DNXCORE50
+                            || Stream is TlsClientStream.TlsClientStream && ((TlsClientStream.TlsClientStream)Stream).HasBufferedReadData(true) || !IsSecure && BaseStream.DataAvailable
+#endif
+                        )
                         {
                             var msg = ReadSingleMessage(DataRowLoadingMode.NonSequential, false);
                             if (msg != null)

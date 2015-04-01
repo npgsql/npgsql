@@ -1,4 +1,5 @@
-﻿#undef CHECK_ARGUMENTS
+﻿#if !DNXCORE50
+#undef CHECK_ARGUMENTS
 
 using System;
 using System.Collections.Generic;
@@ -2062,3 +2063,4 @@ namespace TlsClientStream
         }
     }
 }
+#endif

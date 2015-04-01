@@ -10,7 +10,9 @@ using Npgsql;
 // ReSharper disable once CheckNamespace
 namespace NpgsqlTypes
 {
+#if !DNXCORE50
     [Serializable]
+#endif
     public struct NpgsqlDate : IEquatable<NpgsqlDate>, IComparable<NpgsqlDate>, IComparable, IComparer<NpgsqlDate>,
                                IComparer
     {

@@ -160,7 +160,7 @@ namespace Npgsql
                 default:
                     throw new ArgumentOutOfRangeException("origin");
             }
-            Debug.Assert(absoluteOffset >= 0 && absoluteOffset <= _filledBytes);
+            Contract.Assert(absoluteOffset >= 0 && absoluteOffset <= _filledBytes);
 
             ReadPosition = absoluteOffset;
         }

@@ -2,7 +2,6 @@
 using System.Runtime.CompilerServices;
 using System.Security;
 using System.Reflection;
-using System.Resources;
 
 // Additional assembly attributes are defined in GlobalAssemblyInfo.cs
 

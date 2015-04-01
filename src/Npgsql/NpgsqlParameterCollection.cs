@@ -34,8 +34,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data.Common;
-using System.Reflection;
-using System.Resources;
 using NpgsqlTypes;
 
 #if WITHDESIGN
@@ -426,10 +424,12 @@ namespace Npgsql
 
         #region IList Member
 
+#if !DNXCORE50
         /// <summary>
         /// Report whether the collection is read only.  Always false.
         /// </summary>
         public override bool IsReadOnly { get { return false; } }
+#endif
 
         /// <summary>
         /// Removes the specified <see cref="NpgsqlParameter">NpgsqlParameter</see> from the collection using a specific index.
@@ -562,19 +562,23 @@ namespace Npgsql
             return Count - 1;
         }
 
+#if !DNXCORE50
         /// <summary>
         /// Report whether the collection is fixed size.  Always false.
         /// </summary>
         public override bool IsFixedSize { get { return false; } }
+#endif
 
         #endregion
 
         #region ICollection Member
 
+#if !DNXCORE50
         /// <summary>
         /// Report whether the collection is synchronized.
         /// </summary>
         public override bool IsSynchronized { get { return (InternalList as ICollection).IsSynchronized; } }
+#endif
 
         /// <summary>
         /// Gets the number of <see cref="NpgsqlParameter">NpgsqlParameter</see> objects in the collection.
