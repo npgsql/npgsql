@@ -388,23 +388,6 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test]
-        public void MultipleRefCursorSupport()
-        {
-            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION testmultcurfunc() RETURNS SETOF refcursor AS 'DECLARE ref1 refcursor; ref2 refcursor; BEGIN OPEN ref1 FOR SELECT 1; RETURN NEXT ref1; OPEN ref2 FOR SELECT 2; RETURN next ref2; RETURN; END;' LANGUAGE 'plpgsql';");
-            using (Conn.BeginTransaction()) {
-                var command = new NpgsqlCommand("testmultcurfunc", Conn);
-                command.CommandType = CommandType.StoredProcedure;
-                using (var dr = command.ExecuteReader()) {
-                    dr.Read();
-                    Assert.That(dr.GetInt32(0), Is.EqualTo(1));
-                    dr.NextResult();
-                    dr.Read();
-                    Assert.That(dr.GetInt32(0), Is.EqualTo(2));
-                }
-            }
-        }
-
         #endregion
 
         [Test, Description("Makes sure writing an unset parameter isn't allowed")]
