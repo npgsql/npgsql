@@ -515,7 +515,6 @@ namespace Npgsql
                 }
                 return;
             }
-            Contract.Assert(_connector.State != ConnectorState.Ready);
 
             Consume();
             if (Command._notificationBlock != null) {
