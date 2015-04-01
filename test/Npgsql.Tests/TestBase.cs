@@ -339,7 +339,7 @@ namespace Npgsql.Tests
                 return cmd.ExecuteScalar();
         }
 
-#if NET45 || NET451
+#if !NET40
         protected async Task<int> ExecuteNonQueryAsync(string sql, NpgsqlConnection conn = null, NpgsqlTransaction tx = null)
         {
             if (conn == null)

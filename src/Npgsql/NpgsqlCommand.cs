@@ -1253,10 +1253,10 @@ namespace Npgsql
         /// </summary>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
         /// <returns>A task representing the asynchronous operation, with the number of rows affected if known; -1 otherwise.</returns>
-#if NET45
-        public override async Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken)
-#else
+#if NET40
         public async Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken)
+#else
+        public override async Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken)
 #endif
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -1273,14 +1273,14 @@ namespace Npgsql
             }
         }
 
-#if !NET45
+#if NET40
         public Task<int> ExecuteNonQueryAsync()
         {
             return ExecuteNonQueryAsync(CancellationToken.None);
         }
 #endif
 
-#if NET45
+#if !NET40
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
 #endif
         [GenerateAsync]
@@ -1317,10 +1317,10 @@ namespace Npgsql
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
         /// <returns>A task representing the asynchronous operation, with the first column of the
         /// first row in the result set, or a null reference if the result set is empty.</returns>
-#if NET45
-        public override async Task<object> ExecuteScalarAsync(CancellationToken cancellationToken)
-#else
+#if NET40
         public async Task<object> ExecuteScalarAsync(CancellationToken cancellationToken)
+#else
+        public override async Task<object> ExecuteScalarAsync(CancellationToken cancellationToken)
 #endif
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -1337,14 +1337,14 @@ namespace Npgsql
             }
         }
 
-#if !NET45
+#if NET40
         public Task<object> ExecuteScalarAsync()
         {
             return ExecuteScalarAsync(CancellationToken.None);
         }
 #endif
 
-#if NET45
+#if !NET40
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
 #endif
         [GenerateAsync]
@@ -1390,23 +1390,7 @@ namespace Npgsql
             return (NpgsqlDataReader)base.ExecuteReader(behavior);
         }
 
-#if NET45
-        protected async override Task<DbDataReader> ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            cancellationToken.Register(Cancel);
-            try
-            {
-                return await ExecuteDbDataReaderInternalAsync(behavior);
-            }
-            catch (NpgsqlException e)
-            {
-                if (e.Code == "57014")
-                    throw new TaskCanceledException(e.Message);
-                throw;
-            }
-        }
-#else
+#if NET40
         /// <summary>
         /// Executes the CommandText against the Connection, and returns an DbDataReader using one
         /// of the CommandBehavior values.
@@ -1416,12 +1400,9 @@ namespace Npgsql
         {
             cancellationToken.ThrowIfCancellationRequested();
             cancellationToken.Register(Cancel);
-            try
-            {
+            try {
                 return await ExecuteDbDataReaderInternalAsync(behavior);
-            }
-            catch (NpgsqlException e)
-            {
+            } catch (NpgsqlException e) {
                 if (e.Code == "57014")
                     throw new TaskCanceledException(e.Message);
                 throw;
@@ -1456,6 +1437,22 @@ namespace Npgsql
         {
             return ExecuteReaderAsync(CommandBehavior.Default, CancellationToken.None);
         }
+#else
+        protected async override Task<DbDataReader> ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            cancellationToken.Register(Cancel);
+            try
+            {
+                return await ExecuteDbDataReaderInternalAsync(behavior);
+            }
+            catch (NpgsqlException e)
+            {
+                if (e.Code == "57014")
+                    throw new TaskCanceledException(e.Message);
+                throw;
+            }
+        }
 #endif
 
         /// <summary>
@@ -1467,7 +1464,7 @@ namespace Npgsql
             return ExecuteDbDataReaderInternal(behavior);
         }
 
-#if NET45
+#if !NET40
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
 #endif
         [GenerateAsync]

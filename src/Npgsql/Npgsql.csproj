@@ -149,7 +149,7 @@
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>bin\Debug-net40\</OutputPath>
-    <DefineConstants>TRACE;DEBUG;ENTITIES</DefineConstants>
+    <DefineConstants>TRACE;DEBUG;NET40;ENTITIES</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <DocumentationFile>bin\Debug-net40\Npgsql.xml</DocumentationFile>
@@ -204,7 +204,7 @@
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release-net40\</OutputPath>
-    <DefineConstants>TRACE;ENTITIES</DefineConstants>
+    <DefineConstants>TRACE;NET40;ENTITIES</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <DocumentationFile>bin\Release-net40\Npgsql.xml</DocumentationFile>

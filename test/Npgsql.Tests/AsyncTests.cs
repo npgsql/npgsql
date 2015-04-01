@@ -1,4 +1,4 @@
-﻿#if NET45
+﻿#if !NET40
 // Unsurprisingly, NUnit doesn't properly run async tests under .NET 4.0
 using System.Data;
 using System;

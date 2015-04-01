@@ -818,10 +818,10 @@ namespace Npgsql
             return handler.GetBytes(row, (int)dataOffset, buffer, bufferOffset, length, fieldDescription);
         }
 
-#if NET45
-        public override Stream GetStream(int ordinal)
-#else
+#if NET40
         public Stream GetStream(int ordinal)
+#else
+        public override Stream GetStream(int ordinal)
 #endif
         {
             CheckRowAndOrdinal(ordinal);
@@ -868,10 +868,10 @@ namespace Npgsql
             return handler.GetChars(row, (int)dataOffset, buffer, bufferOffset, length, fieldDescription);
         }
 
-#if NET45
-        public override TextReader GetTextReader(int ordinal)
-#else
+#if NET40
         public TextReader GetTextReader(int ordinal)
+#else
+        public override TextReader GetTextReader(int ordinal)
 #endif
         {
             CheckRowAndOrdinal(ordinal);
@@ -995,10 +995,10 @@ namespace Npgsql
             return result;
         }
 
-#if NET45
-        public override T GetFieldValue<T>(int ordinal)
-#else
+#if NET40
         public T GetFieldValue<T>(int ordinal)
+#else
+        public override T GetFieldValue<T>(int ordinal)
 #endif
         {
             CheckRowAndOrdinal(ordinal);
@@ -1161,7 +1161,7 @@ namespace Npgsql
             }
         }
 
-#if NET45
+#if !NET40
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
 #endif
         T ReadColumnWithoutCache<T>(int ordinal)
@@ -1184,7 +1184,7 @@ namespace Npgsql
             }
         }
 
-#if NET45
+#if !NET40
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
 #endif
         T ReadColumn<T>(int ordinal)

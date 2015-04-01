@@ -33,7 +33,7 @@ namespace Npgsql.Tests
             }
         }
 
-#if NET45
+#if !NET40
         [Test, Description("A minimal, simple, non-query scenario in async")]
         public async void ExecuteUpdateNonQueryAsync()
         {
@@ -61,7 +61,7 @@ namespace Npgsql.Tests
             }
         }
 
-#if NET45
+#if !NET40
         [Test, Description("A minimal, simple, scalar scenario in async")]
         public async void ExecuteScalarAsync()
         {
@@ -95,7 +95,7 @@ namespace Npgsql.Tests
             }
         }
 
-#if NET45
+#if !NET40
         [Test, Description("A minimal, simple reader scenario in async")]
         [TestCase(100)]
         public async void ExecuteReaderAsync(int rows)

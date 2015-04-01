@@ -28,7 +28,7 @@ namespace Npgsql
             {
                 xmlReader = CreateXmlReaderForResource("Npgsql.NpgsqlSchema.ssdl");
             }
-#if NET45
+#if !NET40
             else if (informationType == StoreSchemaDefinitionVersion3)
             {
                 xmlReader = CreateXmlReaderForResource("Npgsql.NpgsqlSchemaV3.ssdl");

@@ -788,8 +788,10 @@ namespace Npgsql
             get { return _integrated_security; }
             set
             {
+#if !NET40
                 if (value == true)
                     CheckIntegratedSecuritySupport();
+#endif
                 SetValue(GetKeyName(Keywords.IntegratedSecurity), Keywords.IntegratedSecurity, value);
             }
         }
@@ -798,7 +800,6 @@ namespace Npgsql
         /// No integrated security if we're on mono and .NET 4.5 because of ClaimsIdentity,
         /// see https://github.com/npgsql/Npgsql/issues/133
         /// </summary>
-        [Conditional("NET45")]
         private static void CheckIntegratedSecuritySupport()
         {
             if (Type.GetType("Mono.Runtime") != null)
