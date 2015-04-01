@@ -1199,7 +1199,7 @@ namespace Npgsql
 
             public void Dispose()
             {
-                if (_connector != null && _connector.IsBroken)
+                if (_connector != null && !_connector.IsBroken)
                 {
                     if (--_connector._notificationBlockRecursionDepth == 0)
                     {
