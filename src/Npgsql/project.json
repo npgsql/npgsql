@@ -5,7 +5,6 @@
     },
     "frameworks": {
         "net45": {
-            "dependencies": {},
             "frameworkAssemblies": {
                 "System.Diagnostics.Contracts": "4.0.0.0",
                 "System.Transactions": "4.0.0.0",
@@ -15,7 +14,7 @@
                 "System.Xml": "4.0.0.0"
             }
         },
-        "dnx451_commented": { },
+        "dnx451_commented": {
             "frameworkAssemblies": {
                 "System.Diagnostics.Contracts": "4.0.0.0",
                 "System.Transactions": "4.0.0.0",
