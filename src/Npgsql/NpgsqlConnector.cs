@@ -573,9 +573,7 @@ namespace Npgsql
 #if DNXCORE50
                     throw new NotSupportedException("SSPI not yet supported in .NET Core");
 #else
-                    // For SSPI we have to get the IP-Address (hostname doesn't work)
-                    var ipAddressString = ((IPEndPoint)Socket.RemoteEndPoint).Address.ToString();
-                    SSPI = new SSPIHandler(ipAddressString, Krbsrvname, false);
+                    SSPI = new SSPIHandler(Host, Krbsrvname, false);
                     passwordMessage = new PasswordMessage(SSPI.Continue(null));
                     break;
 #endif
