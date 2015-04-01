@@ -202,6 +202,7 @@ namespace Npgsql
         internal string Database { get { return _settings.ContainsKey(Keywords.Database) ? _settings.Database : _settings.UserName; } }
         internal string UserName { get { return _settings.UserName; } }
         internal string Password { get { return _settings.Password; } }
+        internal string Krbsrvname { get { return _settings.Krbsrvname; } }
         internal bool SSL { get { return _settings.SSL; } }
         internal SslMode SslMode { get { return _settings.SslMode; } }
         internal int BufferSize { get { return _settings.BufferSize; } }
@@ -560,7 +561,7 @@ namespace Npgsql
                     throw new NotSupportedException("SSPI not yet supported in .NET Core");
 #else
                     // For GSSAPI we have to use the supplied hostname
-                    SSPI = new SSPIHandler(Host, "POSTGRES", true);
+                    SSPI = new SSPIHandler(Host, Krbsrvname, true);
                     passwordMessage = new PasswordMessage(SSPI.Continue(null));
                     break;
 #endif
@@ -574,7 +575,7 @@ namespace Npgsql
 #else
                     // For SSPI we have to get the IP-Address (hostname doesn't work)
                     var ipAddressString = ((IPEndPoint)Socket.RemoteEndPoint).Address.ToString();
-                    SSPI = new SSPIHandler(ipAddressString, "POSTGRES", false);
+                    SSPI = new SSPIHandler(ipAddressString, Krbsrvname, false);
                     passwordMessage = new PasswordMessage(SSPI.Continue(null));
                     break;
 #endif

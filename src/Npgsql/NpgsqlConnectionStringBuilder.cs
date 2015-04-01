@@ -171,6 +171,7 @@ namespace Npgsql
             valueDescriptions.Add(Keywords.Database, new ValueDescription(typeof(string)));
             valueDescriptions.Add(Keywords.UserName, new ValueDescription(typeof(string)));
             valueDescriptions.Add(Keywords.Password, new ValueDescription(typeof(string)));
+            valueDescriptions.Add(Keywords.Krbsrvname, new ValueDescription("POSTGRES"));
             valueDescriptions.Add(Keywords.SSL, new ValueDescription(typeof(bool)));
             valueDescriptions.Add(Keywords.SslMode, new ValueDescription(typeof(SslMode)));
             valueDescriptions.Add(Keywords.Timeout, new ValueDescription((Int32)15));
@@ -534,6 +535,25 @@ namespace Npgsql
             set { SetValue(GetKeyName(Keywords.Password), Keywords.Password, value); }
         }
 
+        private string _krbsrvname;
+        /// <summary>
+        /// Sets the krbsrvname.
+        /// </summary>
+#if !DNXCORE50
+        [Category("DataCategory_Security")]
+        [NpgsqlConnectionStringKeyword(Keywords.Krbsrvname)]
+        [NpgsqlConnectionStringAcceptableKeyword("KRBSRVNAME")]
+        [DisplayName("ConnectionProperty_Display_Krbsrvname")]
+        [Description("ConnectionProperty_Description_Krbsrvname")]
+        [RefreshProperties(RefreshProperties.All)]
+        [PasswordPropertyText(true)]
+#endif
+        public string Krbsrvname
+        {
+            get { return _krbsrvname; }
+            set { SetValue(GetKeyName(Keywords.Krbsrvname), Keywords.Krbsrvname, value); }
+        }
+
         private bool _ssl;
         /// <summary>
         /// Gets or sets a value indicating whether to attempt to use SSL.
@@ -836,6 +856,8 @@ namespace Npgsql
                 case "PSW":
                 case "PWD":
                     return Keywords.Password;
+                case "KRBSRVNAME":
+                    return Keywords.Krbsrvname;
                 case "SSL":
                     return Keywords.SSL;
                 case "SSLMODE":
@@ -897,6 +919,8 @@ namespace Npgsql
                     return "USER ID";
                 case Keywords.Password:
                     return "PASSWORD";
+                case Keywords.Krbsrvname:
+                    return "KRBSRVNAME";
                 case Keywords.SSL:
                     return "SSL";
                 case Keywords.SslMode:
@@ -1049,6 +1073,8 @@ namespace Npgsql
                         return this._username = Convert.ToString(value);
                     case Keywords.Password:
                         return this._password = value as string;
+                    case Keywords.Krbsrvname:
+                        return this._krbsrvname = Convert.ToString(value);
                     case Keywords.SSL:
                         return this._ssl = ToBoolean(value);
                     case Keywords.SslMode:
@@ -1161,6 +1187,8 @@ namespace Npgsql
                     return this._username;
                 case Keywords.Password:
                     return this._password;
+                case Keywords.Krbsrvname:
+                    return this._krbsrvname;
                 case Keywords.SSL:
                     return this._ssl;
                 case Keywords.SslMode:
@@ -1223,6 +1251,7 @@ namespace Npgsql
         Database,
         UserName,
         Password,
+        Krbsrvname,
         SSL,
         SslMode,
         Timeout,
