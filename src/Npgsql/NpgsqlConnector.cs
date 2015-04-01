@@ -739,7 +739,6 @@ namespace Npgsql
             }
             catch (NpgsqlException)
             {
-                State = ConnectorState.Ready;
                 throw;
             }
             catch
@@ -796,7 +795,6 @@ namespace Npgsql
                     if (State == ConnectorState.Connecting) {
                         // During the startup/authentication phase, an ErrorResponse isn't followed by
                         // an RFQ. Instead, the server closes the connection immediately
-                        State = ConnectorState.Closed;
                         throw error;
                     }
 
