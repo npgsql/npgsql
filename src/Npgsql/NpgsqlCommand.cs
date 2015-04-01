@@ -261,7 +261,7 @@ namespace Npgsql
                 // This this.Connector != null check was added to remove the nullreferenceexception in case
                 // of the previous connection has been closed which makes Connector null and so the last check would fail.
                 // See bug 1000581 for more details.
-                if (_transaction != null && _connection != null && _connection.Connector != null && _connection.Connector.Transaction != null)
+                if (_transaction != null && _connection != null && _connection.Connector != null && _connection.Connector.InTransaction)
                 {
                     throw new InvalidOperationException("The Connection property can't be changed with an uncommited transaction.");
                 }

@@ -93,7 +93,23 @@ namespace Npgsql
         /// The current transaction status for this connector.
         /// </summary>
         internal TransactionStatus TransactionStatus { get; set; }
-        NpgsqlTransaction _tx;
+
+        /// <summary>
+        /// The transaction currently in progress, if any.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// Note that this doesn't mean a transaction request has actually been sent to the backend - for
+        /// efficiency we defer sending the request to the first query after BeginTransaction is called.
+        /// See <see cref="TransactionStatus"/> for the actual transaction status.
+        /// </para>
+        /// <para>
+        /// Also, the user can initiate a transaction in SQL (i.e. BEGIN), in which case there will be no
+        /// NpgsqlTransaction instance. As a result, never check <see cref="Transaction"/> to know whether
+        /// a transaction is in progress, check <see cref="TransactionStatus"/> instead.
+        /// </para>
+        /// </remarks>
+        internal NpgsqlTransaction Transaction { private get; set; }
 
         /// <summary>
         /// The NpgsqlConnection that (currently) owns this connector. Null if the connector isn't
@@ -947,6 +963,23 @@ namespace Npgsql
 
         #region Transactions
 
+        internal bool InTransaction
+        {
+            get
+            {
+                switch (TransactionStatus)
+                {
+                case TransactionStatus.Idle:
+                    return false;
+                case TransactionStatus.Pending:
+                case TransactionStatus.InTransactionBlock:
+                case TransactionStatus.InFailedTransactionBlock:
+                    return true;
+                default:
+                    throw PGUtil.ThrowIfReached();
+                }
+            }
+        }
         /// <summary>
         /// Handles a new transaction indicator received on a ReadyForQuery message
         /// </summary>
@@ -975,31 +1008,14 @@ namespace Npgsql
             TransactionStatus = newStatus;
         }
 
-        /// <summary>
-        /// The transaction currently in progress, if any.
-        /// Note that this doesn't mean a transaction request has actually been sent to the backend - for
-        /// efficiency we defer sending the request to the first query after BeginTransaction is called.
-        /// See <see cref="TransactionStatus"/> for the actual transaction status.
-        /// </summary>
-        internal NpgsqlTransaction Transaction
-        {
-            get { return _tx; }
-            set
-            {
-                Contract.Requires(TransactionStatus == TransactionStatus.Idle);
-                _tx = value;
-                TransactionStatus = TransactionStatus.Pending;
-            }
-        }
-
         internal void ClearTransaction()
         {
             if (TransactionStatus == TransactionStatus.Idle) { return; }
             // We may not have an NpgsqlTransaction for the transaction (i.e. user executed BEGIN)
-            if (_tx != null)
+            if (Transaction != null)
             {
-                _tx.Connection = null;
-                _tx = null;
+                Transaction.Connection = null;
+                Transaction = null;
             }
             TransactionStatus = TransactionStatus.Idle;
         }
@@ -1199,6 +1215,13 @@ namespace Npgsql
                 throw new InvalidOperationException("Reset() called on connector with state " + State);
             default:
                 throw PGUtil.ThrowIfReached();
+            }
+
+            // Must rollback transaction before sending DISCARD ALL
+            if (InTransaction)
+            {
+                PrependMessage(PregeneratedMessage.RollbackTransaction);
+                ClearTransaction();
             }
 
             if (SupportsDiscard)
@@ -1558,7 +1581,6 @@ namespace Npgsql
         [ContractInvariantMethod]
         void ObjectInvariants()
         {
-            Contract.Invariant(Transaction == null || Transaction.Connection.Connector == this);
         }
 
         #endregion

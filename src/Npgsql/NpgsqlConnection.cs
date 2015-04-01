@@ -596,7 +596,7 @@ namespace Npgsql
             CheckConnectionReady();
             Contract.EndContractBlock();
 
-            if (Connector.Transaction != null) {
+            if (Connector.InTransaction) {
                 throw new NotSupportedException("Nested/Concurrent transactions aren't supported.");
             }
 
@@ -685,12 +685,6 @@ namespace Npgsql
             }
             else
             {
-
-                if (Connector.Transaction != null)
-                {
-                    Connector.ClearTransaction();
-                }
-
                 Connector.Close();
 
                 Connector.ProvideClientCertificatesCallback -= ProvideClientCertificatesCallbackDelegate;

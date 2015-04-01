@@ -43,6 +43,20 @@ namespace Npgsql.Tests
             Assert.That(ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
         }
 
+        [Test]
+        public void RollbackOnClose()
+        {
+            NpgsqlTransaction tx;
+            using (var conn = new NpgsqlConnection(ConnectionString))
+            {
+                conn.Open();
+                tx = conn.BeginTransaction();
+                ExecuteNonQuery("INSERT INTO data (field_text) VALUES ('X')", conn, tx);
+            }
+            Assert.That(tx.Connection, Is.Null);
+            Assert.That(ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
+        }
+
         [Test, Description("Intentionally generates an error, putting us in a failed transaction block. Rolls back.")]
         public void RollbackFailed()
         {

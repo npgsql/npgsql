@@ -391,7 +391,7 @@ namespace Npgsql
 
             if (Connector.IsBroken || Connector.IsClosed)
             {
-                if (Connector.Transaction != null)
+                if (Connector.InTransaction)
                 {
                     Connector.ClearTransaction();
                 }
@@ -408,9 +408,6 @@ namespace Npgsql
                 {
                     // Release all resources associated with this connector.
                     try {
-                        if (Connector.Transaction != null) {
-                            Connector.Transaction.Rollback();
-                        }
                         Connector.Reset();
                     } catch {
                         Connector.Close();

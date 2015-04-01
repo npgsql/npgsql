@@ -92,6 +92,7 @@ namespace Npgsql
             Connection = conn;
             _isolationLevel = isolationLevel;
             Connector.Transaction = this;
+            Connector.TransactionStatus = TransactionStatus.Pending;
 
             switch (isolationLevel) {
                 case IsolationLevel.RepeatableRead:
@@ -239,7 +240,6 @@ namespace Npgsql
         [ContractInvariantMethod]
         void ObjectInvariants()
         {
-            Contract.Invariant(Connection == null || Connection.Connector.Transaction == this);
         }
 
         #endregion
