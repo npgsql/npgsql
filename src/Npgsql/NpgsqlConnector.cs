@@ -269,6 +269,8 @@ namespace Npgsql
             }
         }
 
+        internal bool IsReady  { get { return State == ConnectorState.Ready;  } }
+        internal bool IsClosed { get { return State == ConnectorState.Closed; } }
         internal bool IsBroken { get { return State == ConnectorState.Broken; } }
 
         internal void CheckReadyState()

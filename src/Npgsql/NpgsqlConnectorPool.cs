@@ -360,8 +360,7 @@ namespace Npgsql
         /// <param name="Connector">Connector to pool</param>
         private void UngetConnector(NpgsqlConnection Connection, NpgsqlConnector Connector)
         {
-            Contract.Requires(Connector.State == ConnectorState.Ready ||
-                              Connector.IsBroken);
+            Contract.Requires(Connector.IsReady || Connector.IsClosed || Connector.IsBroken);
 
             ConnectorQueue queue;
 
@@ -389,7 +388,7 @@ namespace Npgsql
 
             bool inQueue = queue.Busy.ContainsKey(Connector);
 
-            if (Connector.IsBroken)
+            if (Connector.IsBroken || Connector.IsClosed)
             {
                 if (Connector.Transaction != null)
                 {
@@ -401,7 +400,7 @@ namespace Npgsql
             }
             else
             {
-                Contract.Assert(Connector.State == ConnectorState.Ready);
+                Contract.Assert(Connector.IsReady);
 
                 //If thread is good
                 if ((Thread.CurrentThread.ThreadState & (ThreadState.Aborted | ThreadState.AbortRequested)) == 0)
