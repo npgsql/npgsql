@@ -71,7 +71,7 @@ namespace Npgsql
         /// <summary>
         /// The connector object connected to the backend.
         /// </summary>
-        internal NpgsqlConnector Connector { get; private set; }
+        internal NpgsqlConnector Connector { get; set; }
 
         /// <summary>
         /// A counter that gets incremented every time the connection is (re-)opened.

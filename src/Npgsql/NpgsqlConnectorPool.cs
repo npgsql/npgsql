@@ -344,6 +344,7 @@ namespace Npgsql
                             Spare.ProvideClientCertificatesCallback -= Connection.ProvideClientCertificatesCallbackDelegate;
                             Spare.ValidateRemoteCertificateCallback -= Connection.ValidateRemoteCertificateCallbackDelegate;
 
+                            Spare.Connection = null;
                             Queue.Available.Enqueue(Spare);
                         }
                     }

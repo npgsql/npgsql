@@ -57,6 +57,9 @@ namespace Npgsql
         #region Fields
 
         NpgsqlConnection _connection;
+        /// <summary>
+        /// Cached version of _connection.Connector, for performance
+        /// </summary>
         NpgsqlConnector _connector;
         NpgsqlTransaction _transaction;
         String _commandText;
@@ -148,21 +151,6 @@ namespace Npgsql
             Init(cmdText);
             Connection = connection;
             Transaction = transaction;
-        }
-
-        /// <summary>
-        /// Used to execute internal commands.
-        /// </summary>
-        internal NpgsqlCommand(string cmdText, NpgsqlConnector connector, int commandTimeout = 20)
-        {
-            Init(cmdText);
-            _connector = connector;
-            CommandTimeout = commandTimeout;
-
-            // Removed this setting. It was causing too much problem.
-            // Do internal commands really need different timeout setting?
-            // Internal commands aren't affected by command timeout value provided by user.
-            // timeout = 20;
         }
 
         void Init(string cmdText)
@@ -260,7 +248,7 @@ namespace Npgsql
                 // This this.Connector != null check was added to remove the nullreferenceexception in case
                 // of the previous connection has been closed which makes Connector null and so the last check would fail.
                 // See bug 1000581 for more details.
-                if (_transaction != null && _connection != null && Connector != null && Connector.Transaction != null)
+                if (_transaction != null && _connection != null && _connection.Connector != null && _connection.Connector.Transaction != null)
                 {
                     throw new InvalidOperationException("The Connection property can't be changed with an uncommited transaction.");
                 }
@@ -268,7 +256,6 @@ namespace Npgsql
                 IsPrepared = false;
                 _connection = value;
                 Transaction = null;
-                _connector = _connection == null ? null : _connection.Connector;
             }
         }
 
@@ -478,7 +465,7 @@ namespace Npgsql
         public override void Prepare()
         {
             Prechecks();
-            Log.Debug("Prepare command", Connector.Id);
+            Log.Debug("Prepare command", _connector.Id);
 
             using (_connector.BlockNotifications())
             {
@@ -1287,7 +1274,7 @@ namespace Npgsql
         int ExecuteNonQueryInternal()
         {
             Prechecks();
-            Log.Debug("ExecuteNonQuery", Connector.Id);
+            Log.Debug("ExecuteNonQuery", _connector.Id);
 
             NpgsqlDataReader reader;
             using (reader = Execute()) {
@@ -1350,6 +1337,9 @@ namespace Npgsql
         [GenerateAsync]
         object ExecuteScalarInternal()
         {
+            Prechecks();
+            Log.Debug("ExecuteNonScalar", _connector.Id);
+
             using (var reader = Execute(CommandBehavior.SequentialAccess | CommandBehavior.SingleRow))
             {
                 return reader.Read() && reader.FieldCount != 0 ? reader.GetValue(0) : null;
@@ -1470,6 +1460,9 @@ namespace Npgsql
         [GenerateAsync]
         NpgsqlDataReader ExecuteDbDataReaderInternal(CommandBehavior behavior)
         {
+            Prechecks();
+            Log.Debug("ExecuteReader", _connector.Id);
+
             // Close connection if requested even when there is an error.
             try
             {
@@ -1537,19 +1530,20 @@ namespace Npgsql
         {
             if (State == CommandState.Disposed)
                 throw new ObjectDisposedException(GetType().FullName);
-            if (Connector== null)
+            if (Connection == null)
                 throw new InvalidOperationException("Connection property has not been initialized.");
+            Contract.EndContractBlock();
 
             if (State != CommandState.InProgress) {
                 Log.Debug(String.Format("Skipping cancel because command is in state {0}", State), _connector.Id);
                 return;
             }
 
-            Log.Debug("Cancelling command", _connector.Id);
+            var connector = Connection.Connector;
+            Log.Debug("Cancelling command", connector.Id);
             try
             {
                 // get copy for thread safety of null test
-                var connector = Connector;
                 if (connector != null)
                 {
                     connector.CancelRequest();
@@ -1624,26 +1618,14 @@ namespace Npgsql
         {
             if (State == CommandState.Disposed)
                 throw new ObjectDisposedException(GetType().FullName);
-            if (Connector == null)
+            if (Connection == null)
                 throw new InvalidOperationException("Connection property has not been initialized.");
+            _connector = Connection.Connector;
 
-            Connector.CheckReadyState();
+            _connector.CheckReadyState();
 
             Contract.Assume(_connector.Buffer.ReadBytesLeft == 0, "The read buffer should be read completely before sending Parse message");
             Contract.Assume(_connector.Buffer.WritePosition == 0, "WritePosition should be 0");
-        }
-
-        internal NpgsqlConnector Connector
-        {
-            get
-            {
-                if (_connection != null)
-                {
-                    _connector = _connection.Connector;
-                }
-
-                return _connector;
-            }
         }
 
         /// <summary>

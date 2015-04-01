@@ -93,8 +93,8 @@ namespace Npgsql
         internal NpgsqlDataReader(NpgsqlCommand command, CommandBehavior behavior, List<QueryDetails> queries)
         {
             Command = command;
-            _connector = command.Connector;
             _connection = command.Connection;
+            _connector = _connection.Connector;
             _behavior = behavior;
             _recordsAffected = null;
 

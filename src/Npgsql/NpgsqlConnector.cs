@@ -87,8 +87,6 @@ namespace Npgsql
         /// </summary>
         internal int Id { get { return BackendProcessId; } }
 
-        internal bool Pooled { get; private set; }
-
         internal TypeHandlerRegistry TypeHandlerRegistry { get; set; }
 
         /// <summary>
@@ -96,6 +94,23 @@ namespace Npgsql
         /// </summary>
         internal TransactionStatus TransactionStatus { get; set; }
         NpgsqlTransaction _tx;
+
+        /// <summary>
+        /// The NpgsqlConnection that (currently) owns this connector. Null if the connector isn't
+        /// owned (i.e. idle in the pool)
+        /// </summary>
+        internal NpgsqlConnection Connection
+        {
+            get { return _conn; }
+            set
+            {
+                Contract.Requires((value != null && Connection == null) || (value == null && Connection != null));
+                _conn = value;
+            }
+        }
+
+        NpgsqlConnection _conn;
+
 
         /// <summary>
         /// The number of messages that were prepended to the current message chain, but not yet sent.
@@ -151,21 +166,22 @@ namespace Npgsql
 
         #endregion
 
-        public NpgsqlConnector(NpgsqlConnection connection)
-            : this(connection.CopyConnectionStringBuilder(), connection.Pooling)
-        {}
+        internal NpgsqlConnector(NpgsqlConnection connection)
+            : this(connection.CopyConnectionStringBuilder())
+        {
+            Connection = connection;
+            Connection.Connector = this;
+        }
 
         /// <summary>
-        /// Constructor.
+        /// Creates a new connector with the given connection string.
         /// </summary>
-        /// <param name="connectionString">Connection string.</param>
-        /// <param name="pooled">Pooled</param>
-        public NpgsqlConnector(NpgsqlConnectionStringBuilder connectionString, bool pooled)
+        /// <param name="connectionString">The connection string.</param>
+        NpgsqlConnector(NpgsqlConnectionStringBuilder connectionString)
         {
             State = ConnectorState.Closed;
             TransactionStatus = TransactionStatus.Idle;
             _settings = connectionString;
-            Pooled = pooled;
             BackendParams = new Dictionary<string, string>();
             _messagesToSend = new List<FrontendMessage>();
             _preparedStatementIndex = 0;
@@ -304,6 +320,7 @@ namespace Npgsql
         /// Method of the connection pool manager.</remarks>
         internal void Open()
         {
+            Contract.Requires(Connection != null && Connection.Connector == this);
             Contract.Ensures(State == ConnectorState.Ready);
             Contract.EnsuresOnThrow<IOException>(State == ConnectorState.Closed);
             Contract.EnsuresOnThrow<SocketException>(State == ConnectorState.Closed);
@@ -1063,7 +1080,7 @@ namespace Npgsql
         /// </summary>
         internal void CancelRequest()
         {
-            var cancelConnector = new NpgsqlConnector(_settings, false);
+            var cancelConnector = new NpgsqlConnector(_settings);
 
             try
             {
@@ -1134,6 +1151,7 @@ namespace Npgsql
             Stream = null;
             BaseStream = null;
             Buffer = null;
+            _conn = null;
             BackendParams.Clear();
             ServerVersion = null;
         }
@@ -1147,6 +1165,8 @@ namespace Npgsql
         internal void Reset()
         {
             Contract.Requires(State == ConnectorState.Ready);
+
+            Connection = null;
 
             switch (State)
             {

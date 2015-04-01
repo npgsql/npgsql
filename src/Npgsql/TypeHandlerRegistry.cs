@@ -94,7 +94,7 @@ namespace Npgsql
                 @"ORDER BY ord";
 
             var types = new List<BackendType>();
-            using (var command = new NpgsqlCommand(query, connector))
+            using (var command = new NpgsqlCommand(query, connector.Connection))
             {
                 command.AllResultTypesAreUnknown = true;
                 using (var dr = command.ExecuteReader(CommandBehavior.SequentialAccess))

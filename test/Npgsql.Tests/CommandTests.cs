@@ -1067,6 +1067,17 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, Description("CreateCommand before connection open")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/565")]
+        public void CreateCommandBeforeConnectionOpen()
+        {
+            using (var conn = new NpgsqlConnection(ConnectionString)) {
+                var cmd = new NpgsqlCommand("SELECT 1", conn);
+                conn.Open();
+                Assert.That(cmd.ExecuteScalar(), Is.EqualTo(1));
+            }
+        }
+
         [Test]
         [IssueLink("https://github.com/npgsql/npgsql/issues/395")]
         public void DefaultCommandTimeout()

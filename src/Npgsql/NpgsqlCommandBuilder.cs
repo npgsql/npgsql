@@ -1,4 +1,4 @@
-// NpgsqlCommandBuilder.cs
+﻿// NpgsqlCommandBuilder.cs
 //
 // Author:
 //   Pedro Martínez Juliá (yoros@wanadoo.es)
@@ -140,7 +140,7 @@ namespace Npgsql
             command.Parameters.Clear();
             // Updated after 0.99.3 to support the optional existence of a name qualifying schema and case insensitivity when the schema ror procedure name do not contain a quote.
             // This fixed an incompatibility with NpgsqlCommand.CheckFunctionReturn(String ReturnType)
-            var serverVersion = command.Connector.ServerVersion;
+            var serverVersion = command.Connection.Connector.ServerVersion;
             String query = null;
             string procedureName = null;
             string schemaName = null;
