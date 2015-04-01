@@ -1628,6 +1628,9 @@ namespace Npgsql
                 throw new ObjectDisposedException(GetType().FullName);
             if (Connection == null)
                 throw new InvalidOperationException("Connection property has not been initialized.");
+            if (Connection.State != ConnectionState.Open)
+                throw new InvalidOperationException("The connection isn't open.");
+
             _connector = Connection.Connector;
 
             _connector.CheckReadyState();

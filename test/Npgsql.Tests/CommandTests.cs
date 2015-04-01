@@ -1079,6 +1079,19 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        public void BadConnection()
+        {
+            var cmd = new NpgsqlCommand("SELECT 1");
+            Assert.That(() => cmd.ExecuteScalar(), Throws.Exception.TypeOf<InvalidOperationException>());
+
+            using (var conn = new NpgsqlConnection(ConnectionString))
+            {
+                cmd = new NpgsqlCommand("SELECT 1", conn);
+                Assert.That(() => cmd.ExecuteScalar(), Throws.Exception.TypeOf<InvalidOperationException>());
+            }
+        }
+
+        [Test]
         [IssueLink("https://github.com/npgsql/npgsql/issues/395")]
         public void DefaultCommandTimeout()
         {
