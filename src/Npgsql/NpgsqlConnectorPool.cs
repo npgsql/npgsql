@@ -498,8 +498,8 @@ namespace Npgsql
         {
             ConnectorPoolMgr = new NpgsqlConnectorPool();
 #if !DNXCORE50
-            AppDomain.CurrentDomain.DomainUnload += (sender, args) => ConnectorPoolMgr.ClearAllPools();
-            AppDomain.CurrentDomain.ProcessExit += (sender, args) => ConnectorPoolMgr.ClearAllPools();
+            AppDomain.CurrentDomain.DomainUnload += (sender, args) => { Thread.Sleep(3); ConnectorPoolMgr.ClearAllPools(); };
+            AppDomain.CurrentDomain.ProcessExit += (sender, args) => { Thread.Sleep(3); ConnectorPoolMgr.ClearAllPools(); };
 #endif
         }
     }
