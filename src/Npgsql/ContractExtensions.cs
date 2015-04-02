@@ -1,3 +1,4 @@
+#if NET40
 //
 //  Include this file in your project if your project uses
 //  ContractArgumentValidator or ContractAbbreviator methods
@@ -42,4 +43,4 @@ namespace System.Diagnostics.Contracts
     public ContractOptionAttribute(string category, string setting, string value) { }
   }
 }
-
+#endif
