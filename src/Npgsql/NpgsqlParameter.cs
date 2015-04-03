@@ -548,6 +548,15 @@ namespace Npgsql
         }
 
         /// <summary>
+        /// Returns whether this parameter has had its type set explicitly via DbType or NpgsqlDbType
+        /// (and not via type inference)
+        /// </summary>
+        internal bool IsTypeExplicitlySet
+        {
+            get { return _npgsqlDbType.HasValue || _dbType.HasValue; }
+        }
+
+        /// <summary>
         /// Used in combination with NpgsqlDbType.Enum or NpgsqlDbType.Array | NpgsqlDbType.Enum to indicate the enum type.
         /// For other NpgsqlDbTypes, this field is not used.
         /// </summary>

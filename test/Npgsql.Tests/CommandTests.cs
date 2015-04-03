@@ -960,6 +960,17 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, Description("Checks that prepares requires all params to have explicitly set types (NpgsqlDbType or DbType)")]
+        public void PrepareRequiresParamTypesSet()
+        {
+            using (var cmd = new NpgsqlCommand("SELECT @p", Conn))
+            {
+                var p = new NpgsqlParameter("p", 8);
+                cmd.Parameters.Add(p);
+                Assert.That(() => cmd.Prepare(), Throws.InvalidOperationException);
+            }
+        }
+
         #region Cancel
 
         [Test, Description("Basic cancellation scenario")]
