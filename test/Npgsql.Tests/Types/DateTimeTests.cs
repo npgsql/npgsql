@@ -91,12 +91,14 @@ namespace Npgsql.Tests.Types
         {
             var expected = new TimeSpan(0, 10, 45, 34, 500);
 
-            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", Conn))
+            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", Conn))
             {
                 var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Time);
                 var p2 = new NpgsqlParameter("p2", DbType.Time);
+                var p3 = new NpgsqlParameter("p3", expected);
                 cmd.Parameters.Add(p1);
                 cmd.Parameters.Add(p2);
+                cmd.Parameters.Add(p3);
                 cmd.Prepare();
                 p1.Value = p2.Value = expected;
                 using (var reader = cmd.ExecuteReader())
@@ -313,23 +315,33 @@ namespace Npgsql.Tests.Types
         {
             var expectedNpgsqlInterval = new NpgsqlTimeSpan(1, 2, 3, 4, 5);
             var expectedTimeSpan = new TimeSpan(1, 2, 3, 4, 5);
-            using (var cmd = new NpgsqlCommand("SELECT '1 days 2 hours 3 minutes 4 seconds 5 milliseconds'::INTERVAL", Conn))
-            using (var reader = cmd.ExecuteReader())
+
+            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", Conn))
             {
-                reader.Read();
+                var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Interval);
+                var p2 = new NpgsqlParameter("p2", expectedNpgsqlInterval);
+                cmd.Parameters.Add(p1);
+                cmd.Parameters.Add(p2);
+                cmd.Prepare();
+                p2.Value = expectedTimeSpan;
 
-                // Regular type (TimeSpan)
-                Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(TimeSpan)));
-                Assert.That(reader.GetTimeSpan(0), Is.EqualTo(expectedTimeSpan));
-                Assert.That(reader.GetFieldValue<TimeSpan>(0), Is.EqualTo(expectedTimeSpan));
-                Assert.That(reader[0], Is.EqualTo(expectedTimeSpan));
-                Assert.That(reader.GetValue(0), Is.EqualTo(expectedTimeSpan));
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
 
-                // Provider-specific type (NpgsqlInterval)
-                Assert.That(reader.GetInterval(0), Is.EqualTo(expectedNpgsqlInterval));
-                Assert.That(reader.GetProviderSpecificFieldType(0), Is.EqualTo(typeof(NpgsqlTimeSpan)));
-                Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(expectedNpgsqlInterval));
-                Assert.That(reader.GetFieldValue<NpgsqlTimeSpan>(0), Is.EqualTo(expectedNpgsqlInterval));
+                    // Regular type (TimeSpan)
+                    Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof (TimeSpan)));
+                    Assert.That(reader.GetTimeSpan(0), Is.EqualTo(expectedTimeSpan));
+                    Assert.That(reader.GetFieldValue<TimeSpan>(0), Is.EqualTo(expectedTimeSpan));
+                    Assert.That(reader[0], Is.EqualTo(expectedTimeSpan));
+                    Assert.That(reader.GetValue(0), Is.EqualTo(expectedTimeSpan));
+
+                    // Provider-specific type (NpgsqlInterval)
+                    Assert.That(reader.GetInterval(0), Is.EqualTo(expectedNpgsqlInterval));
+                    Assert.That(reader.GetProviderSpecificFieldType(0), Is.EqualTo(typeof (NpgsqlTimeSpan)));
+                    Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(expectedNpgsqlInterval));
+                    Assert.That(reader.GetFieldValue<NpgsqlTimeSpan>(0), Is.EqualTo(expectedNpgsqlInterval));
+                }
             }
         }
 

@@ -9,7 +9,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-datetime.html
     /// </remarks>
-    [TypeMapping("time", NpgsqlDbType.Time, DbType.Time)]
+    [TypeMapping("time", NpgsqlDbType.Time, DbType.Time, typeof(TimeSpan))]
     internal class TimeHandler : TypeHandler<TimeSpan>, ISimpleTypeReader<TimeSpan>, ISimpleTypeWriter
     {
         /// <summary>
