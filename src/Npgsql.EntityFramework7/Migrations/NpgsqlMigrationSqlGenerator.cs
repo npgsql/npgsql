@@ -1,8 +1,10 @@
 // Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System.Text;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity;
+using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Metadata;
 using Microsoft.Data.Entity.Relational;
 using Microsoft.Data.Entity.Relational.Migrations.Operations;
@@ -23,6 +25,121 @@ namespace Npgsql.EntityFramework7
             _sql = sqlGenerator;
         }
 
+        public override void Generate(
+            [NotNull] AlterColumnOperation operation,
+            [CanBeNull] IModel model,
+            [NotNull] SqlBatchBuilder builder)
+        {
+            Check.NotNull(operation, nameof(operation));
+            Check.NotNull(builder, nameof(builder));
+
+            // TODO: Test default value/expression
+            builder
+                .Append("ALTER TABLE ")
+                .Append(_sql.DelimitIdentifier(operation.Table, operation.Schema))
+                .Append(" ALTER COLUMN ");
+            ColumnDefinition(operation, model, builder);
+        }
+
+        public override void Generate(
+            [NotNull] RenameIndexOperation operation,
+            [CanBeNull] IModel model,
+            [NotNull] SqlBatchBuilder builder)
+        {
+            Check.NotNull(operation, nameof(operation));
+            Check.NotNull(builder, nameof(builder));
+
+            if (operation.NewName != null)
+            {
+                var qualifiedName = new StringBuilder();
+                if (operation.Schema != null)
+                {
+                    qualifiedName
+                        .Append(operation.Schema)
+                        .Append(".");
+                }
+                qualifiedName
+                    .Append(operation.Table)
+                    .Append(".")
+                    .Append(operation.Name);
+
+                Rename(qualifiedName.ToString(), operation.NewName, "INDEX", builder);
+            }
+        }
+
+        public override void Generate(RenameSequenceOperation operation, IModel model, SqlBatchBuilder builder)
+        {
+            Check.NotNull(operation, nameof(operation));
+            Check.NotNull(builder, nameof(builder));
+
+            var separate = false;
+            var name = operation.Name;
+            if (operation.NewName != null)
+            {
+                var qualifiedName = new StringBuilder();
+                if (operation.Schema != null)
+                {
+                    qualifiedName
+                        .Append(operation.Schema)
+                        .Append(".");
+                }
+                qualifiedName.Append(operation.Name);
+
+                Rename(qualifiedName.ToString(), operation.NewName, builder);
+
+                separate = true;
+                name = operation.NewName;
+            }
+
+            if (operation.NewSchema != null)
+            {
+                if (separate)
+                {
+                    builder.AppendLine(_sql.BatchCommandSeparator);
+                }
+
+                Transfer(operation.NewSchema, operation.Schema, name, builder);
+            }
+        }
+
+        public override void Generate(
+            [NotNull] RenameTableOperation operation,
+            [CanBeNull] IModel model,
+            [NotNull] SqlBatchBuilder builder)
+        {
+            Check.NotNull(operation, nameof(operation));
+            Check.NotNull(builder, nameof(builder));
+
+            var separate = false;
+            var name = operation.Name;
+            if (operation.NewName != null)
+            {
+                var qualifiedName = new StringBuilder();
+                if (operation.Schema != null)
+                {
+                    qualifiedName
+                        .Append(operation.Schema)
+                        .Append(".");
+                }
+                qualifiedName.Append(operation.Name);
+
+                Rename(qualifiedName.ToString(), operation.NewName, builder);
+
+                separate = true;
+                name = operation.NewName;
+            }
+
+            if (operation.NewSchema != null)
+            {
+                if (separate)
+                {
+                    builder.AppendLine(_sql.BatchCommandSeparator);
+                }
+
+                Transfer(operation.NewSchema, operation.Schema, name, builder);
+            }
+        }
+
         public virtual void Generate(
             [NotNull] CreateDatabaseOperation operation,
             [CanBeNull] IModel model,
@@ -37,7 +154,7 @@ namespace Npgsql.EntityFramework7
                 .EndBatch()
                 .Append("IF SERVERPROPERTY('EngineEdition') <> 5 EXECUTE sp_executesql N'ALTER DATABASE ")
                 .Append(_sql.DelimitIdentifier(operation.Name))
-                .Append(" SET READ_COMMITTED_SNAPSHOT ON';");
+                .Append(" SET READ_COMMITTED_SNAPSHOT ON'");
         }
 
         public virtual void Generate(
@@ -54,112 +171,13 @@ namespace Npgsql.EntityFramework7
                 .Append(" SET SINGLE_USER WITH ROLLBACK IMMEDIATE'")
                 .EndBatch()
                 .Append("DROP DATABASE ")
-                .Append(_sql.DelimitIdentifier(operation.Name))
-                .Append(";");
+                .Append(_sql.DelimitIdentifier(operation.Name));
         }
 
-        protected override void Generate(RenameSequenceOperation operation, IModel model, SqlBatchBuilder builder)
-        {
-            Check.NotNull(operation, nameof(operation));
-            Check.NotNull(builder, nameof(builder));
-
-            GenerateRename(operation.Name, operation.Schema, operation.NewName, "OBJECT", builder);
-        }
-
-        protected override void Generate(MoveSequenceOperation operation, IModel model, SqlBatchBuilder builder)
-        {
-            Check.NotNull(operation, nameof(operation));
-            Check.NotNull(builder, nameof(builder));
-
-            GenerateMove(operation.Name, operation.Schema, operation.NewSchema, builder);
-        }
-
-        protected override void Generate(RenameTableOperation operation, IModel model, SqlBatchBuilder builder)
-        {
-            Check.NotNull(operation, nameof(operation));
-            Check.NotNull(builder, nameof(builder));
-
-            GenerateRename(operation.Name, operation.Schema, operation.NewName, "OBJECT", builder);
-        }
-
-        protected override void Generate(MoveTableOperation operation, IModel model, SqlBatchBuilder builder)
-        {
-            Check.NotNull(operation, nameof(operation));
-            Check.NotNull(builder, nameof(builder));
-
-            GenerateMove(operation.Name, operation.Schema, operation.NewSchema, builder);
-        }
-
-        protected override void GenerateColumn([NotNull] ColumnModel column, [NotNull] SqlBatchBuilder builder)
-        {
-            Check.NotNull(column, nameof(column));
-            Check.NotNull(builder, nameof(builder));
-
-            var computedSql = column[NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.ColumnComputedExpression];
-            if (computedSql == null)
-            {
-                base.GenerateColumn(column, builder);
-
-                return;
-            }
-
-            builder
-                .Append(_sql.DelimitIdentifier(column.Name))
-                .Append(" ")
-                .Append("AS ")
-                .Append(computedSql);
-        }
-
-        protected override void Generate(RenameColumnOperation operation, IModel model, SqlBatchBuilder builder)
-        {
-            Check.NotNull(operation, nameof(operation));
-            Check.NotNull(builder, nameof(builder));
-
-            GenerateRename(
-                operation.Table + "." + operation.Name,
-                operation.Schema,
-                operation.NewName,
-                "COLUMN",
-                builder);
-        }
-
-        protected override void GenerateIndexTraits(CreateIndexOperation operation, SqlBatchBuilder builder)
-        {
-            Check.NotNull(operation, nameof(operation));
-            Check.NotNull(builder, nameof(builder));
-
-            if (operation[NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.Clustered] == bool.TrueString)
-            {
-                builder.Append("CLUSTERED ");
-            }
-        }
-
-        protected override void Generate(RenameIndexOperation operation, IModel model, SqlBatchBuilder builder)
-        {
-            Check.NotNull(operation, nameof(operation));
-            Check.NotNull(builder, nameof(builder));
-
-            GenerateRename(
-                operation.Table + "." + operation.Name,
-                operation.Schema,
-                operation.NewName,
-                "INDEX",
-                builder);
-        }
-
-        protected override void GenerateColumnTraits(ColumnModel column, SqlBatchBuilder builder)
-        {
-            Check.NotNull(column, nameof(column));
-            Check.NotNull(builder, nameof(builder));
-
-            if (column[NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.ValueGeneration] ==
-                NpgsqlValueGenerationStrategy.Identity.ToString())
-            {
-                builder.Append(" IDENTITY");
-            }
-        }
-
-        protected override void Generate(DropIndexOperation operation, IModel model, SqlBatchBuilder builder)
+        public override void Generate(
+            [NotNull] DropIndexOperation operation,
+            [CanBeNull] IModel model,
+            [NotNull] SqlBatchBuilder builder)
         {
             Check.NotNull(operation, nameof(operation));
             Check.NotNull(builder, nameof(builder));
@@ -168,46 +186,171 @@ namespace Npgsql.EntityFramework7
                 .Append("DROP INDEX ")
                 .Append(_sql.DelimitIdentifier(operation.Name))
                 .Append(" ON ")
-                .Append(_sql.DelimitIdentifier(operation.Table, operation.Schema))
-                .Append(";");
+                .Append(_sql.DelimitIdentifier(operation.Table, operation.Schema));
         }
 
-        private void GenerateRename(
-            [NotNull] string name,
-            [CanBeNull] string schema,
-            [NotNull] string newName,
-            [NotNull] string objectType,
+        public override void Generate(
+            [NotNull] RenameColumnOperation operation,
+            [CanBeNull] IModel model,
             [NotNull] SqlBatchBuilder builder)
         {
-            var objname = !string.IsNullOrWhiteSpace(schema)
-                ? schema + "." + name
-                : name;
+            Check.NotNull(operation, nameof(operation));
+            Check.NotNull(builder, nameof(builder));
 
-            builder
-                .Append("EXECUTE sp_rename @objname = N")
-                .Append(_sql.GenerateLiteral(objname))
-                .Append(", @newname = N")
-                .Append(_sql.GenerateLiteral(newName))
-                .Append(", @objtype = N")
-                .Append(_sql.GenerateLiteral(objectType))
-                .Append(";");
+            var qualifiedName = new StringBuilder();
+            if (operation.Schema != null)
+            {
+                qualifiedName
+                    .Append(operation.Schema)
+                    .Append(".");
+            }
+            qualifiedName
+                .Append(operation.Table)
+                .Append(".")
+                .Append(operation.Name);
+
+            Rename(qualifiedName.ToString(), operation.NewName, "COLUMN", builder);
         }
 
-        private void GenerateMove(
-            [NotNull] string name,
-            [CanBeNull] string schema,
-            [NotNull] string newSchema,
-            [NotNull] SqlBatchBuilder builder) =>
+        public override void ColumnDefinition(
+            string schema,
+            string table,
+            string name,
+            string type,
+            bool nullable,
+            object defaultValue,
+            string defaultExpression,
+            IAnnotatable annotatable,
+            IModel model,
+            SqlBatchBuilder builder)
+        {
+            Check.NotEmpty(name, nameof(name));
+            Check.NotEmpty(type, nameof(type));
+            Check.NotNull(annotatable, nameof(annotatable));
+            Check.NotNull(builder, nameof(builder));
+
+            var computedExpression = annotatable[NpgsqlAnnotationNames.Prefix
+                + NpgsqlAnnotationNames.ColumnComputedExpression];
+            if (computedExpression != null)
+            {
                 builder
-                    .Append("ALTER SCHEMA ")
-                    .Append(_sql.DelimitIdentifier(newSchema))
-                    .Append(" TRANSFER ")
-                    .Append(_sql.DelimitIdentifier(name, schema))
-                    .Append(";");
+                    .Append(_sql.DelimitIdentifier(name))
+                    .Append(" AS ")
+                    .Append(computedExpression);
+
+                return;
+            }
+
+            base.ColumnDefinition(
+                schema,
+                table,
+                name,
+                type,
+                nullable,
+                defaultValue,
+                defaultExpression,
+                annotatable,
+                model,
+                builder);
+
+            var valueGeneration = (string)annotatable[NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.ValueGeneration];
+            if (valueGeneration == "Identity")
+            {
+                builder.Append(" IDENTITY");
+            }
+        }
+
+        public virtual void Rename(
+            [NotNull] string name,
+            [NotNull] string newName,
+            [NotNull] SqlBatchBuilder builder) => Rename(name, newName, /*type:*/ null, builder);
+
+        public virtual void Rename(
+            [NotNull] string name,
+            [NotNull] string newName,
+            [CanBeNull] string type,
+            [NotNull] SqlBatchBuilder builder)
+        {
+            Check.NotEmpty(name, nameof(name));
+            Check.NotEmpty(newName, nameof(newName));
+            Check.NotNull(builder, nameof(builder));
+
+            builder
+                .Append("EXECUTE sp_rename ")
+                .Append(_sql.GenerateLiteral(name))
+                .Append(", ")
+                .Append(_sql.GenerateLiteral(newName));
+
+            if (type != null)
+            {
+                builder
+                    .Append(", ")
+                    .Append(_sql.GenerateLiteral(type));
+            }
+        }
+
+        public virtual void Transfer(
+            [NotNull] string newSchema,
+            [CanBeNull] string schema,
+            [NotNull] string name,
+            [NotNull] SqlBatchBuilder builder)
+        {
+            Check.NotEmpty(newSchema, nameof(newSchema));
+            Check.NotEmpty(name, nameof(name));
+            Check.NotNull(builder, nameof(builder));
+
+            builder
+                .Append("ALTER SCHEMA ")
+                .Append(_sql.DelimitIdentifier(newSchema))
+                .Append(" TRANSFER ")
+                .Append(_sql.DelimitIdentifier(name, schema));
+        }
+
+        public virtual void ColumnDefinition(
+            [NotNull] AlterColumnOperation operation,
+            [CanBeNull] IModel model,
+            [NotNull] SqlBatchBuilder builder) =>
+            ColumnDefinition(
+                operation.Schema,
+                operation.Table,
+                operation.Name,
+                operation.Type,
+                operation.IsNullable,
+                operation.DefaultValue,
+                operation.DefaultExpression,
+                operation,
+                model,
+                builder);
+
+        public override void IndexTraits(MigrationOperation operation, IModel model, SqlBatchBuilder builder)
+        {
+            Check.NotNull(operation, nameof(operation));
+            Check.NotNull(builder, nameof(builder));
+
+            var clustered = (string)operation[NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.Clustered];
+            if (clustered != null)
+            {
+                builder.Append(clustered == "True" ? "CLUSTERED " : "NONCLUSTERED ");
+            }
+        }
+
+        public override void ForeignKeyAction(ReferentialAction referentialAction, SqlBatchBuilder builder)
+        {
+            Check.NotNull(builder, nameof(builder));
+
+            if (referentialAction == ReferentialAction.Restrict)
+            {
+                builder.Append("NO ACTION");
+            }
+            else
+            {
+                base.ForeignKeyAction(referentialAction, builder);
+            }
+        }
 
         #region Npgsql additions
 
-        protected override void Generate(
+        public virtual void Generate(
             [NotNull] CreateSequenceOperation operation,
             [CanBeNull] IModel model,
             [NotNull] SqlBatchBuilder builder)
@@ -217,27 +360,12 @@ namespace Npgsql.EntityFramework7
 
             builder
                 .Append("CREATE SEQUENCE ")
-                .Append(_sql.DelimitIdentifier(operation.Name, operation.Schema))
+                .Append(_sql.DelimitIdentifier(operation.Name, operation.Schema));
+
+            builder
                 .Append(" START WITH ")
-                .Append(operation.StartValue)
-                .Append(" INCREMENT BY ")
-                .Append(operation.IncrementBy);
-
-            if (operation.MinValue.HasValue)
-            {
-                builder
-                    .Append(" MINVALUE ")
-                    .Append(operation.MinValue.Value);
-            }
-
-            if (operation.MaxValue.HasValue)
-            {
-                builder
-                    .Append(" MAXVALUE ")
-                    .Append(operation.MaxValue.Value);
-            }
-
-            builder.Append(";");
+                .Append(_sql.GenerateLiteral(operation.StartWith));
+            SequenceOptions(operation, model, builder);
         }
 
         #endregion

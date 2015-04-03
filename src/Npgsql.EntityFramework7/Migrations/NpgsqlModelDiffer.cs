@@ -1,7 +1,6 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
@@ -70,15 +69,16 @@ namespace Npgsql.EntityFramework7.Migrations
                 && (source.Npgsql().ComputedExpression != target.Npgsql().ComputedExpression
                     || sourceValueGenerationStrategy != targetValueGenerationStrategy))
             {
-                alterColumnOperation = new AlterColumnOperation(
-                    source.EntityType.Relational().Table,
-                    source.EntityType.Relational().Schema,
-                    new ColumnModel(
-                        source.Relational().Column,
-                        TypeMapper.GetTypeMapping(target).StoreTypeName,
-                        target.IsNullable,
-                        target.Relational().DefaultValue,
-                        target.Relational().DefaultExpression));
+                alterColumnOperation = new AlterColumnOperation
+                {
+                    Schema = source.EntityType.Relational().Schema,
+                    Table = source.EntityType.Relational().Table,
+                    Name = source.Relational().Column,
+                    Type = TypeMapper.GetTypeMapping(target).StoreTypeName,
+                    IsNullable = target.IsNullable,
+                    DefaultValue = target.Relational().DefaultValue,
+                    DefaultExpression = target.Relational().DefaultExpression
+                };
                 operations.Add(alterColumnOperation);
             }
 
@@ -86,13 +86,13 @@ namespace Npgsql.EntityFramework7.Migrations
             {
                 if (targetValueGenerationStrategy == NpgsqlValueGenerationStrategy.Identity)
                 {
-                    alterColumnOperation.Column[NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.ValueGeneration] =
+                    alterColumnOperation[NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.ValueGeneration] =
                         targetValueGenerationStrategy.ToString();
                 }
 
                 if (target.Npgsql().ComputedExpression != null)
                 {
-                    alterColumnOperation.Column[NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.ColumnComputedExpression] =
+                    alterColumnOperation[NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.ColumnComputedExpression] =
                         target.Npgsql().ComputedExpression;
                 }
             }
@@ -108,13 +108,13 @@ namespace Npgsql.EntityFramework7.Migrations
 
             if (targetValueGenerationStrategy == NpgsqlValueGenerationStrategy.Identity)
             {
-                operation.Column[NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.ValueGeneration] =
+                operation[NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.ValueGeneration] =
                     targetValueGenerationStrategy.ToString();
             }
 
             if (target.Npgsql().ComputedExpression != null)
             {
-                operation.Column[NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.ColumnComputedExpression] =
+                operation[NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.ColumnComputedExpression] =
                     target.Npgsql().ComputedExpression;
             }
 
@@ -183,12 +183,14 @@ namespace Npgsql.EntityFramework7.Migrations
             {
                 operations.AddRange(Remove(source));
 
-                createIndexOperation = new CreateIndexOperation(
-                    target.Relational().Name,
-                    target.EntityType.Relational().Table,
-                    target.EntityType.Relational().Schema,
-                    target.Properties.Select(p => p.Relational().Column).ToArray(),
-                    target.IsUnique);
+                createIndexOperation = new CreateIndexOperation
+                {
+                    Name = target.Relational().Name,
+                    Schema = target.EntityType.Relational().Schema,
+                    Table = target.EntityType.Relational().Table,
+                    Columns = target.Properties.Select(p => p.Relational().Column).ToArray(),
+                    IsUnique = target.IsUnique
+                };
                 operations.Add(createIndexOperation);
             }
 

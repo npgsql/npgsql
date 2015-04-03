@@ -31,7 +31,8 @@ namespace Npgsql.EntityFramework7.Metadata
                 increment,
                 _sequence.MinValue,
                 _sequence.MaxValue,
-                _sequence.Type);
+                _sequence.Type,
+                _sequence.Cycle);
 
             model.Npgsql().AddOrReplaceSequence(_sequence);
 
@@ -49,7 +50,8 @@ namespace Npgsql.EntityFramework7.Metadata
                 _sequence.IncrementBy,
                 _sequence.MinValue,
                 _sequence.MaxValue,
-                _sequence.Type);
+                _sequence.Type,
+                _sequence.Cycle);
 
             model.Npgsql().AddOrReplaceSequence(_sequence);
 
@@ -67,7 +69,8 @@ namespace Npgsql.EntityFramework7.Metadata
                 _sequence.IncrementBy,
                 _sequence.MinValue,
                 _sequence.MaxValue,
-                typeof(T));
+                typeof(T),
+                _sequence.Cycle);
 
             model.Npgsql().AddOrReplaceSequence(_sequence);
 
@@ -85,7 +88,8 @@ namespace Npgsql.EntityFramework7.Metadata
                 _sequence.IncrementBy,
                 _sequence.MinValue,
                 maximum,
-                _sequence.Type);
+                _sequence.Type,
+                _sequence.Cycle);
 
             model.Npgsql().AddOrReplaceSequence(_sequence);
 
@@ -103,7 +107,27 @@ namespace Npgsql.EntityFramework7.Metadata
                 _sequence.IncrementBy,
                 minimum,
                 _sequence.MaxValue,
-                _sequence.Type);
+                _sequence.Type,
+                _sequence.Cycle);
+
+            model.Npgsql().AddOrReplaceSequence(_sequence);
+
+            return this;
+        }
+
+        public virtual NpgsqlSequenceBuilder Cycle(bool cycle = true)
+        {
+            var model = (Model)_sequence.Model;
+
+            _sequence = new Sequence(
+                _sequence.Name,
+                _sequence.Schema,
+                _sequence.StartValue,
+                _sequence.IncrementBy,
+                _sequence.MinValue,
+                _sequence.MaxValue,
+                _sequence.Type,
+                cycle);
 
             model.Npgsql().AddOrReplaceSequence(_sequence);
 
