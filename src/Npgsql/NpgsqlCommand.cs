@@ -1547,24 +1547,20 @@ namespace Npgsql
             if (Connection == null)
                 throw new InvalidOperationException("Connection property has not been initialized.");
 
+            var connector = Connection.Connector;
             if (State != CommandState.InProgress) {
-                Log.Debug(String.Format("Skipping cancel because command is in state {0}", State), _connector.Id);
+                Log.Debug(String.Format("Skipping cancel because command is in state {0}", State), connector.Id);
                 return;
             }
 
-            var connector = Connection.Connector;
             Log.Debug("Cancelling command", connector.Id);
             try
             {
-                // get copy for thread safety of null test
-                if (connector != null)
-                {
-                    connector.CancelRequest();
-                }
+                connector.CancelRequest();
             }
             catch (Exception e)
             {
-                Log.Warn("Exception caught while attempting to cancel command", e, _connector.BackendProcessId);
+                Log.Warn("Exception caught while attempting to cancel command", e, connector.BackendProcessId);
             }
         }
 
