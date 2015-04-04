@@ -68,6 +68,7 @@ namespace Npgsql
             _byNpgsqlDbType = new Dictionary<NpgsqlDbType, TypeHandler>();
             _byType = new Dictionary<Type, TypeHandler>();
             UnrecognizedTypeHandler = new UnrecognizedTypeHandler();
+            _byNpgsqlDbType[NpgsqlDbType.Unknown] = UnrecognizedTypeHandler;
         }
 
         static List<BackendType> LoadBackendTypes(NpgsqlConnector connector)

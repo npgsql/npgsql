@@ -14,7 +14,7 @@ namespace Npgsql.TypeHandlers
     /// representations of the types registered here).
     /// Note that this handler is also used in the very initial query that loads the OID mappings
     /// (chicken and egg problem).
-    /// Also used for sending null parameters with unknown types.
+    /// Also used for sending parameters with unknown types (OID=0)
     /// </summary>
     internal class UnrecognizedTypeHandler : TextHandler
     {

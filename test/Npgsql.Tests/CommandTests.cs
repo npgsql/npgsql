@@ -935,27 +935,18 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void Unknown([Values(true, false)] bool prepareCommand)
+        public void SendUnknown([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
         {
             using (var cmd = Conn.CreateCommand())
             {
-                cmd.CommandText = "Select :p1::timestamp, :p2::timestamp, :p3::int4";
-                cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.Unknown) { Value = "2008-1-1" });
-                cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p2", Value = null });
-                cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p3", Value = "3" });
-                if (prepareCommand)
-                {
+                cmd.CommandText = "SELECT @p::TIMESTAMP";
+                cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType.Unknown) { Value = "2008-1-1" });
+                if (prepare == PrepareOrNot.Prepared)
                     cmd.Prepare();
-
-                    Assert.AreEqual(NpgsqlDbType.Timestamp, cmd.Parameters[1].NpgsqlDbType); // Should be inferred by context
-                    Assert.AreEqual(NpgsqlDbType.Text, cmd.Parameters[2].NpgsqlDbType); // Is inferred from the parametert value and not context
-                }
-                cmd.Parameters[1].Value = new DateTime(2008, 1, 1);
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();
-                    Assert.AreEqual(new DateTime(2008, 1, 1), reader.GetValue(0));
-                    Assert.AreEqual(new DateTime(2008, 1, 1), reader.GetValue(1));
+                    Assert.That(reader.GetValue(0), Is.EqualTo(new DateTime(2008, 1, 1)));
                 }
             }
         }
