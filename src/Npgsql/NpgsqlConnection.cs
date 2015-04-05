@@ -1333,9 +1333,9 @@ namespace Npgsql
         /// <summary>
         /// Clear connection pool.
         /// </summary>
-        public void ClearPool()
+        public static void ClearPool(NpgsqlConnection connection)
         {
-            NpgsqlConnectorPool.ConnectorPoolMgr.ClearPool(this);
+            NpgsqlConnectorPool.ConnectorPoolMgr.ClearPool(connection);
         }
 
         /// <summary>
