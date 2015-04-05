@@ -24,8 +24,8 @@ namespace Npgsql.Tests
             // Preload some data into the table
             using (var cmd = new NpgsqlCommand("INSERT INTO data (field_text, field_int4) VALUES (@p1, @p2)", Conn))
             {
-                cmd.Parameters.Add(new NpgsqlParameter("p1", "HELLO"));
-                cmd.Parameters.Add(new NpgsqlParameter("p2", 8));
+                cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Text, "HELLO");
+                cmd.Parameters.AddWithValue("p2", NpgsqlDbType.Integer, 8);
                 cmd.Prepare();
                 for (var i = 0; i < iterations; i++)
                 {
