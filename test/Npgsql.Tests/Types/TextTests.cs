@@ -18,22 +18,23 @@ namespace Npgsql.Tests.Types
     /// </remarks>
     public class TextTests : TestBase
     {
-        public TextTests(string backendVersion) : base(backendVersion) {}
-
         [Test, Description("Roundtrips a string")]
         public void Roundtrip()
         {
             const string expected = "Something";
-            var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", Conn);
+            var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4", Conn);
             var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Text);
-            var p2 = new NpgsqlParameter("p2", DbType.String);
-            var p3 = new NpgsqlParameter { ParameterName = "p3", Value = expected };
+            var p2 = new NpgsqlParameter("p2", NpgsqlDbType.Varchar);
+            var p3 = new NpgsqlParameter("p3", DbType.String);
+            var p4 = new NpgsqlParameter { ParameterName = "p4", Value = expected };
+            Assert.That(p2.DbType, Is.EqualTo(DbType.String));
             Assert.That(p3.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Text));
             Assert.That(p3.DbType, Is.EqualTo(DbType.String));
             cmd.Parameters.Add(p1);
             cmd.Parameters.Add(p2);
             cmd.Parameters.Add(p3);
-            p1.Value = p2.Value = expected;
+            cmd.Parameters.Add(p4);
+            p1.Value = p2.Value = p3.Value = expected;
             var reader = cmd.ExecuteReader();
             reader.Read();
 
@@ -386,5 +387,7 @@ namespace Npgsql.Tests.Types
                 }
             }
         }
+
+        public TextTests(string backendVersion) : base(backendVersion) { }
     }
 }
