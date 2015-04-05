@@ -185,12 +185,10 @@ namespace Npgsql.Tests
                 command.CommandType = CommandType.StoredProcedure;
                 using (var dr = command.ExecuteReader()) {
                     dr.Read();
-                    var one = dr.GetInt32(0);
+                    Assert.That(dr.GetInt32(0), Is.EqualTo(1));
                     dr.NextResult();
                     dr.Read();
-                    var two = dr.GetInt32(0);
-                    Assert.AreEqual(1, one);
-                    Assert.AreEqual(2, two);
+                    Assert.That(dr.GetInt32(0), Is.EqualTo(2));
                 }
             }
         }

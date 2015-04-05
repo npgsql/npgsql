@@ -167,6 +167,8 @@ namespace Npgsql
             {
                 var asChunkingReader = this as IChunkingTypeReader<T>;
                 if (asChunkingReader == null) {
+                    if (fieldDescription == null)
+                        throw new InvalidCastException("Can't cast database type to " + typeof(T).Name);
                     throw new InvalidCastException(String.Format("Can't cast database type {0} to {1}", fieldDescription.Handler.PgName, typeof(T).Name));
                 }
 

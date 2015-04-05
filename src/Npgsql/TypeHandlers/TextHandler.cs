@@ -11,15 +11,16 @@ using System.Data;
 
 namespace Npgsql.TypeHandlers
 {
-    [TypeMapping("text",    NpgsqlDbType.Text,
+    [TypeMapping("text",      NpgsqlDbType.Text,
       new[] { DbType.String, DbType.StringFixedLength, DbType.AnsiString, DbType.AnsiStringFixedLength },
       new[] { typeof(string), typeof(char[]) }
     )]
-    [TypeMapping("varchar", NpgsqlDbType.Varchar)]
-    [TypeMapping("bpchar",  NpgsqlDbType.Char, typeof(char))]
-    [TypeMapping("name",    NpgsqlDbType.Name)]
-    [TypeMapping("xml",     NpgsqlDbType.Xml, DbType.Xml)]
-    [TypeMapping("json",    NpgsqlDbType.Json)]
+    [TypeMapping("varchar",   NpgsqlDbType.Varchar)]
+    [TypeMapping("bpchar",    NpgsqlDbType.Char, typeof(char))]
+    [TypeMapping("name",      NpgsqlDbType.Name)]
+    [TypeMapping("xml",       NpgsqlDbType.Xml, DbType.Xml)]
+    [TypeMapping("json",      NpgsqlDbType.Json)]
+    [TypeMapping("refcursor", NpgsqlDbType.Refcursor)]
     [TypeMapping("unknown")]
     internal class TextHandler : TypeHandler<string>,
         IChunkingTypeWriter,
