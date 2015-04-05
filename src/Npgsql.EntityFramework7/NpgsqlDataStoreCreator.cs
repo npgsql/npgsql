@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
-using System.Data.SqlClient;
 using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
@@ -45,8 +45,6 @@ namespace Npgsql.EntityFramework7
                 _statementExecutor.ExecuteNonQuery(masterConnection, null, CreateCreateOperations());
                 ClearPool();
             }
-
-            Exists(retryOnNotExists: true);
         }
 
         public override async Task CreateAsync(CancellationToken cancellationToken = default(CancellationToken))
@@ -58,8 +56,6 @@ namespace Npgsql.EntityFramework7
                     .WithCurrentCulture();
                 ClearPool();
             }
-
-            await ExistsAsync(retryOnNotExists: true, cancellationToken: cancellationToken).WithCurrentCulture();
         }
 
         public override void CreateTables(IModel model)
@@ -100,94 +96,45 @@ namespace Npgsql.EntityFramework7
             => _sqlGenerator.Generate(new[] { new CreateDatabaseOperation { Name = _connection.DbConnection.Database } });
 
         public override bool Exists()
-            => Exists(retryOnNotExists: false);
-
-        private bool Exists(bool retryOnNotExists)
         {
-            var retryCount = 0;
-            while (true)
+            try
             {
-                try
+                _connection.Open();
+                _connection.Close();
+                return true;
+            }
+            catch (NpgsqlException e)
+            {
+                if (IsDoesNotExist(e))
                 {
-                    _connection.Open();
-                    _connection.Close();
-                    return true;
+                    return false;
                 }
-                catch (SqlException e)
-                {
-                    if (!retryOnNotExists
-                        && IsDoesNotExist(e))
-                    {
-                        return false;
-                    }
 
-                    if (!RetryOnExistsFailure(e, ref retryCount))
-                    {
-                        throw;
-                    }
-                }
+                throw;
             }
         }
 
-        public override Task<bool> ExistsAsync(CancellationToken cancellationToken = default(CancellationToken))
-            => ExistsAsync(retryOnNotExists: false, cancellationToken: cancellationToken);
-
-        private async Task<bool> ExistsAsync(bool retryOnNotExists, CancellationToken cancellationToken)
+        public override async Task<bool> ExistsAsync(CancellationToken cancellationToken = default(CancellationToken))
         {
-            var retryCount = 0;
-            while (true)
+            try
             {
-                try
+                await _connection.OpenAsync(cancellationToken).WithCurrentCulture();
+                _connection.Close();
+                return true;
+            }
+            catch (NpgsqlException e)
+            {
+                if (IsDoesNotExist(e))
                 {
-                    await _connection.OpenAsync(cancellationToken).WithCurrentCulture();
-                    _connection.Close();
-                    return true;
+                    return false;
                 }
-                catch (SqlException e)
-                {
-                    if (!retryOnNotExists
-                        && IsDoesNotExist(e))
-                    {
-                        return false;
-                    }
 
-                    if (!RetryOnExistsFailure(e, ref retryCount))
-                    {
-                        throw;
-                    }
-                }
+                throw;
             }
         }
 
         // Login failed is thrown when database does not exist (See Issue #776)
-        private static bool IsDoesNotExist(SqlException exception) => exception.Number == 4060;
-
-        // See Issue #985
-        private bool RetryOnExistsFailure(SqlException exception, ref int retryCount)
-        {
-            // This is to handle the case where Open throws (Number 233):
-            //   System.Data.SqlClient.SqlException: A connection was successfully established with the
-            //   server, but then an error occurred during the login process. (provider: Named Pipes
-            //   Provider, error: 0 - No process is on the other end of the pipe.)
-            // It appears that this happens when the database has just been created but has not yet finished
-            // opening or is auto-closing when using the AUTO_CLOSE option. The workaround is to flush the pool
-            // for the connection and then retry the Open call.
-            // Also handling (Number -2):
-            //   System.Data.SqlClient.SqlException: Connection Timeout Expired.  The timeout period elapsed while
-            //   attempting to consume the pre-login handshake acknowledgement.  This could be because the pre-login
-            //   handshake failed or the server was unable to respond back in time.
-            // And (Number 4060):
-            //   System.Data.SqlClient.SqlException: Cannot open database "X" requested by the login. The
-            //   login failed.
-            if ((exception.Number == 233 || exception.Number == -2 || exception.Number == 4060)
-                && ++retryCount < 30)
-            {
-                ClearPool();
-                Thread.Sleep(100);
-                return true;
-            }
-            return false;
-        }
+        private static bool IsDoesNotExist(NpgsqlException exception) => exception.Code == "3D000";
 
         public override void Delete()
         {
@@ -225,10 +172,10 @@ namespace Npgsql.EntityFramework7
         }
 
         // Clear connection pools in case there are active connections that are pooled
-        private static void ClearAllPools() => SqlConnection.ClearAllPools();
+        private static void ClearAllPools() => NpgsqlConnection.ClearAllPools();
 
         // Clear connection pool for the database connection since after the 'create database' call, a previously
         // invalid connection may now be valid.
-        private void ClearPool() => SqlConnection.ClearPool((SqlConnection)_connection.DbConnection);
+        private void ClearPool() => NpgsqlConnection.ClearPool((NpgsqlConnection)_connection.DbConnection);
     }
 }

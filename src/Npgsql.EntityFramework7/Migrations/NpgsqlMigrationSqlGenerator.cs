@@ -350,7 +350,7 @@ namespace Npgsql.EntityFramework7
 
         #region Npgsql additions
 
-        public virtual void Generate(
+        public override void Generate(
             [NotNull] CreateSequenceOperation operation,
             [CanBeNull] IModel model,
             [NotNull] SqlBatchBuilder builder)
