@@ -220,7 +220,7 @@ namespace Npgsql
                                         if (context.IntegratedSecurity)
                                         {
                                             // For GSSAPI we have to use the supplied hostname
-                                            context.SSPI = new SSPIHandler(context.Host, "POSTGRES", true);
+                                            context.SSPI = new SSPIHandler(context.Host, context.Krbsrvname, true);
                                             ChangeState(context, NpgsqlStartupState.Instance);
                                             context.Authenticate(context.SSPI.Continue(null));
                                             break;
@@ -236,9 +236,7 @@ namespace Npgsql
                                     {
                                         if (context.IntegratedSecurity)
                                         {
-                                            // For SSPI we have to get the IP-Address (hostname doesn't work)
-                                            string ipAddressString = ((IPEndPoint)context.Socket.RemoteEndPoint).Address.ToString();
-                                            context.SSPI = new SSPIHandler(ipAddressString, "POSTGRES", false);
+                                            context.SSPI = new SSPIHandler(context.Host, context.Krbsrvname, false);
                                             ChangeState(context, NpgsqlStartupState.Instance);
                                             context.Authenticate(context.SSPI.Continue(null));
                                             break;

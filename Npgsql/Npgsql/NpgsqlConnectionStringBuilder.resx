@@ -189,6 +189,12 @@
   <data name="ConnectionProperty_Display_Password" xml:space="preserve">
     <value>Password</value>
   </data>
+  <data name="ConnectionProperty_Description_Krbsrvname" xml:space="preserve">
+    <value>Krbsrvname</value>
+  </data>
+  <data name="ConnectionProperty_Display_Krbsrvname" xml:space="preserve">
+    <value>Krbsrvname</value>
+  </data>
   <data name="ConnectionProperty_Description_SSL" xml:space="preserve">
     <value>SSL</value>
   </data>

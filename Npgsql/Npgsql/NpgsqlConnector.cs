@@ -253,6 +253,11 @@ namespace Npgsql
             get { return settings.PasswordAsByteArray; }
         }
 
+        internal String Krbsrvname
+        {
+            get { return settings.Krbsrvname; }
+        }
+
         internal Boolean SSL
         {
             get { return settings.SSL; }
