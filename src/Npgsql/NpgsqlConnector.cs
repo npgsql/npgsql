@@ -115,18 +115,7 @@ namespace Npgsql
         /// The NpgsqlConnection that (currently) owns this connector. Null if the connector isn't
         /// owned (i.e. idle in the pool)
         /// </summary>
-        internal NpgsqlConnection Connection
-        {
-            get { return _conn; }
-            set
-            {
-                Contract.Requires((value != null && Connection == null) || (value == null && Connection != null));
-                _conn = value;
-            }
-        }
-
-        NpgsqlConnection _conn;
-
+        internal NpgsqlConnection Connection { get; set; }
 
         /// <summary>
         /// The number of messages that were prepended to the current message chain, but not yet sent.
@@ -1181,7 +1170,7 @@ namespace Npgsql
             Stream = null;
             BaseStream = null;
             Buffer = null;
-            _conn = null;
+            Connection = null;
             BackendParams.Clear();
             ServerVersion = null;
         }
