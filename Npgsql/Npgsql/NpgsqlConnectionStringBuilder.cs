@@ -212,6 +212,7 @@ namespace Npgsql
             valueDescriptions.Add(Keywords.Database, new ValueDescription(typeof(string)));
             valueDescriptions.Add(Keywords.UserName, new ValueDescription(typeof(string)));
             valueDescriptions.Add(Keywords.Password, new ValueDescription(typeof(string)));
+            valueDescriptions.Add(Keywords.Krbsrvname, new ValueDescription("POSTGRES"));
             valueDescriptions.Add(Keywords.SSL, new ValueDescription(typeof(bool)));
             valueDescriptions.Add(Keywords.SslMode, new ValueDescription(typeof(SslMode)));
 #pragma warning disable 618
