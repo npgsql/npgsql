@@ -125,7 +125,7 @@ namespace Npgsql
         {
             if (disposing && this._conn != null)
             {
-                if (_conn.Connector.Transaction != null)
+                if (_conn.Connector != null && _conn.Connector.Transaction != null)
                 {
                     if ((Thread.CurrentThread.ThreadState & (ThreadState.Aborted | ThreadState.AbortRequested)) != 0)
                     {
