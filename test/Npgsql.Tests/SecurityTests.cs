@@ -11,13 +11,28 @@ namespace Npgsql.Tests
     {
         public SecurityTests(string backendVersion) : base(backendVersion) {}
 
-        [Test, Description("Establishes an SSL connection")]
+        [Test, Description("Establishes an SSL connection, assuming a self-signed server certificate")]
         public void BasicSsl()
         {
             using (var conn = new NpgsqlConnection(ConnectionString + ";SSL=true;SslMode=Require"))
             {
+                conn.ValidateRemoteCertificateCallback += (cert, chain, errors) => true;
                 conn.Open();
                 Assert.That(conn.IsSecure, Is.True);
+            }
+        }
+
+        [Test, Description("Makes sure a certificate whose root CA isn't known isn't accepted")]
+        public void SelfSignedCertificate()
+        {
+            using (var conn = new NpgsqlConnection(ConnectionString + ";SSL=true;SslMode=Require"))
+            {
+                // The following is necessary since a pooled connector may exist from a previous
+                // SSL test
+                NpgsqlConnection.ClearPool(conn);
+
+                // TODO: Specific exception, align with SslStream
+                Assert.That(() => conn.Open(), Throws.Exception);
             }
         }
 
