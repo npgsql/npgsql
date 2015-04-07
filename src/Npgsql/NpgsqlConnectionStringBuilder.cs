@@ -174,6 +174,7 @@ namespace Npgsql
             valueDescriptions.Add(Keywords.Krbsrvname, new ValueDescription("POSTGRES"));
             valueDescriptions.Add(Keywords.SSL, new ValueDescription(typeof(bool)));
             valueDescriptions.Add(Keywords.SslMode, new ValueDescription(typeof(SslMode)));
+            valueDescriptions.Add(Keywords.UseSslStream, new ValueDescription(typeof(bool)));
             valueDescriptions.Add(Keywords.Timeout, new ValueDescription((Int32)15));
             valueDescriptions.Add(Keywords.SearchPath, new ValueDescription(typeof(string)));
             valueDescriptions.Add(Keywords.BufferSize, new ValueDescription(NpgsqlBuffer.DefaultBufferSize));
@@ -585,6 +586,24 @@ namespace Npgsql
             set { SetValue(GetKeyName(Keywords.SslMode), Keywords.SslMode, value); }
         }
 
+        private bool _useSslStream;
+        /// <summary>
+        /// Gets or sets a value indicating whether to attempt to use SSL.
+        /// </summary>
+#if !DNXCORE50
+        [Category("DataCategory_Advanced")]
+        [NpgsqlConnectionStringKeyword(Keywords.UseSslStream)]
+        [DisplayName("ConnectionProperty_Display_UseSslStream")]
+        [Description("ConnectionProperty_Description_SSL")]
+        [RefreshProperties(RefreshProperties.All)]
+        [DefaultValue(false)]
+#endif
+        public bool UseSslStream
+        {
+            get { return _useSslStream; }
+            set { SetValue(GetKeyName(Keywords.UseSslStream), Keywords.UseSslStream, value); }
+        }
+
         private int _timeout;
         /// <summary>
         /// Gets or sets the time to wait while trying to establish a connection
@@ -863,6 +882,8 @@ namespace Npgsql
                     return Keywords.SSL;
                 case "SSLMODE":
                     return Keywords.SslMode;
+                case "USESSLSTREAM":
+                    return Keywords.UseSslStream;
                 case "TIMEOUT":
                     return Keywords.Timeout;
                 case "SEARCHPATH":
@@ -926,6 +947,8 @@ namespace Npgsql
                     return "SSL";
                 case Keywords.SslMode:
                     return "SSLMODE";
+                case Keywords.UseSslStream:
+                    return "USESSLSTREAM";
                 case Keywords.Timeout:
                     return "TIMEOUT";
                 case Keywords.SearchPath:
@@ -1080,6 +1103,8 @@ namespace Npgsql
                         return this._ssl = ToBoolean(value);
                     case Keywords.SslMode:
                         return this._sslmode = ToSslMode(value);
+                    case Keywords.UseSslStream:
+                        return this._useSslStream = ToBoolean(value);
                     case Keywords.Timeout:
                         return this._timeout = ToInt32(value, 0, TIMEOUT_LIMIT, keyword);
                     case Keywords.SearchPath:
@@ -1150,6 +1175,7 @@ namespace Npgsql
                         exception_template = "expecting {0}=[Numeric] value in ConnectionString";
                         break;
                     case Keywords.SSL:
+                    case Keywords.UseSslStream:
                     case Keywords.Pooling:
                     case Keywords.SyncNotification:
                         exception_template = "expecting {0}=[True/False] value in ConnectionString";
@@ -1194,6 +1220,8 @@ namespace Npgsql
                     return this._ssl;
                 case Keywords.SslMode:
                     return this._sslmode;
+                case Keywords.UseSslStream:
+                    return this._useSslStream;
                 case Keywords.Timeout:
                     return this._timeout;
                 case Keywords.SearchPath:
@@ -1255,6 +1283,7 @@ namespace Npgsql
         Krbsrvname,
         SSL,
         SslMode,
+        UseSslStream,
         Timeout,
         SearchPath,
         BufferSize,

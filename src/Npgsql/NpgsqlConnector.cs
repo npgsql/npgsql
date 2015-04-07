@@ -200,7 +200,6 @@ namespace Npgsql
         /// <summary>
         /// Return Connection String.
         /// </summary>
-        internal static bool UseSslStream = false;
         internal string ConnectionString { get { return _settings.ConnectionString; } }
         internal string Host { get { return _settings.Host; } }
         internal int Port { get { return _settings.Port; } }
@@ -210,6 +209,7 @@ namespace Npgsql
         internal string Krbsrvname { get { return _settings.Krbsrvname; } }
         internal bool SSL { get { return _settings.SSL; } }
         internal SslMode SslMode { get { return _settings.SslMode; } }
+        internal bool UseSslStream { get { return _settings.UseSslStream; } }
         internal int BufferSize { get { return _settings.BufferSize; } }
         internal int ConnectionTimeout { get { return _settings.Timeout; } }
         internal int DefaultCommandTimeout { get { return _settings.CommandTimeout; } }

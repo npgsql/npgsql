@@ -340,8 +340,8 @@ namespace Npgsql
         /// </summary>
         public bool UseSslStream
         {
-            get { return NpgsqlConnector.UseSslStream; }
-            set { NpgsqlConnector.UseSslStream = value; }
+            get { return _settings.UseSslStream; }
+            set { _settings.UseSslStream = value; }
         }
 
         /// <summary>

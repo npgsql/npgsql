@@ -12,9 +12,11 @@ namespace Npgsql.Tests
         public SecurityTests(string backendVersion) : base(backendVersion) {}
 
         [Test, Description("Establishes an SSL connection, assuming a self-signed server certificate")]
-        public void BasicSsl()
+        [TestCase(false, TestName = "TlsClientStream")]
+        [TestCase(true,  TestName = "SslStream")]
+        public void BasicSsl(bool useSslStream)
         {
-            using (var conn = new NpgsqlConnection(ConnectionString + ";SSL=true;SslMode=Require"))
+            using (var conn = new NpgsqlConnection(ConnectionString + ";SSL=true;SslMode=Require" + (useSslStream ? ";UseSslStream=true" : "")))
             {
                 conn.UserCertificateValidationCallback = (sender, certificate, chain, errors) => true;
                 conn.Open();
@@ -23,9 +25,11 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Makes sure a certificate whose root CA isn't known isn't accepted")]
-        public void RejectSelfSignedCertificate()
+        [TestCase(false, TestName = "TlsClientStream")]
+        [TestCase(true,  TestName = "SslStream")]
+        public void RejectSelfSignedCertificate(bool useSslStream)
         {
-            using (var conn = new NpgsqlConnection(ConnectionString + ";SSL=true;SslMode=Require"))
+            using (var conn = new NpgsqlConnection(ConnectionString + ";SSL=true;SslMode=Require" + (useSslStream ? ";UseSslStream=true" : "")))
             {
                 // The following is necessary since a pooled connector may exist from a previous
                 // SSL test
