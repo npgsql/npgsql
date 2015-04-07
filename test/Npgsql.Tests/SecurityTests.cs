@@ -16,14 +16,14 @@ namespace Npgsql.Tests
         {
             using (var conn = new NpgsqlConnection(ConnectionString + ";SSL=true;SslMode=Require"))
             {
-                conn.ValidateRemoteCertificateCallback += (cert, chain, errors) => true;
+                conn.UserCertificateValidationCallback = (sender, certificate, chain, errors) => true;
                 conn.Open();
                 Assert.That(conn.IsSecure, Is.True);
             }
         }
 
         [Test, Description("Makes sure a certificate whose root CA isn't known isn't accepted")]
-        public void SelfSignedCertificate()
+        public void RejectSelfSignedCertificate()
         {
             using (var conn = new NpgsqlConnection(ConnectionString + ";SSL=true;SslMode=Require"))
             {

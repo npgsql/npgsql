@@ -306,9 +306,8 @@ namespace Npgsql
 
             if (Connector != null)
             {
-
-                Connector.ProvideClientCertificatesCallback += Connection.ProvideClientCertificatesCallbackDelegate;
-                Connector.ValidateRemoteCertificateCallback += Connection.ValidateRemoteCertificateCallbackDelegate;
+                Connector.ProvideClientCertificatesCallback = Connection.ProvideClientCertificatesCallback;
+                Connector.UserCertificateValidationCallback = Connection.UserCertificateValidationCallback;
 
                 try
                 {
@@ -334,18 +333,19 @@ namespace Npgsql
 
                         while (Queue.Available.Count + Queue.Busy.Count < Connection.MinPoolSize)
                         {
-                            NpgsqlConnector Spare = new NpgsqlConnector(Connection);
+                            NpgsqlConnector spare = new NpgsqlConnector(Connection) {
+                                ProvideClientCertificatesCallback = Connection.ProvideClientCertificatesCallback,
+                                UserCertificateValidationCallback = Connection.UserCertificateValidationCallback
+                            };
 
-                            Spare.ProvideClientCertificatesCallback += Connection.ProvideClientCertificatesCallbackDelegate;
-                            Spare.ValidateRemoteCertificateCallback += Connection.ValidateRemoteCertificateCallbackDelegate;
 
-                            Spare.Open();
+                            spare.Open();
 
-                            Spare.ProvideClientCertificatesCallback -= Connection.ProvideClientCertificatesCallbackDelegate;
-                            Spare.ValidateRemoteCertificateCallback -= Connection.ValidateRemoteCertificateCallbackDelegate;
+                            spare.ProvideClientCertificatesCallback = null;
+                            spare.UserCertificateValidationCallback = null;
 
-                            Spare.Connection = null;
-                            Queue.Available.Enqueue(Spare);
+                            spare.Connection = null;
+                            Queue.Available.Enqueue(spare);
                         }
                     }
                 }
@@ -434,8 +434,8 @@ namespace Npgsql
                     queue.Busy.Remove(Connector);
                 }
 
-            Connector.ProvideClientCertificatesCallback -= Connection.ProvideClientCertificatesCallbackDelegate;
-            Connector.ValidateRemoteCertificateCallback -= Connection.ValidateRemoteCertificateCallbackDelegate;
+            Connector.ProvideClientCertificatesCallback = null;
+            Connector.UserCertificateValidationCallback = null;
         }
 
         private static void ClearQueue(ConnectorQueue Queue)

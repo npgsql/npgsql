@@ -138,9 +138,6 @@ namespace Npgsql
             NoticeDelegate = OnNotice;
             NotificationDelegate = OnNotification;
 
-            ProvideClientCertificatesCallbackDelegate = DefaultProvideClientCertificatesCallback;
-            ValidateRemoteCertificateCallbackDelegate = DefaultValidateRemoteCertificateCallback;
-
 #if !DNXCORE50
             // Fix authentication problems. See https://bugzilla.novell.com/show_bug.cgi?id=MONO77559 and
             // http://pgfoundry.org/forum/message.php?msg_id=1002377 for more info.
@@ -182,10 +179,10 @@ namespace Npgsql
             }
             else
             {
-                Connector = new NpgsqlConnector(this);
-
-                Connector.ProvideClientCertificatesCallback += ProvideClientCertificatesCallbackDelegate;
-                Connector.ValidateRemoteCertificateCallback += ValidateRemoteCertificateCallbackDelegate;
+                Connector = new NpgsqlConnector(this) {
+                    ProvideClientCertificatesCallback = ProvideClientCertificatesCallback,
+                    UserCertificateValidationCallback = UserCertificateValidationCallback
+                };
 
                 Connector.Open();
             }
@@ -687,8 +684,8 @@ namespace Npgsql
             {
                 Connector.Close();
 
-                Connector.ProvideClientCertificatesCallback -= ProvideClientCertificatesCallbackDelegate;
-                Connector.ValidateRemoteCertificateCallback -= ValidateRemoteCertificateCallbackDelegate;
+                Connector.ProvideClientCertificatesCallback = null;
+                Connector.UserCertificateValidationCallback = null;
             }
 
             Connector = null;
@@ -774,39 +771,20 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Called to provide client certificates for SSL handshake.
+        /// Selects the local Secure Sockets Layer (SSL) certificate used for authentication.
         /// </summary>
-        public event ProvideClientCertificatesCallback ProvideClientCertificatesCallback;
-
-        internal ProvideClientCertificatesCallback ProvideClientCertificatesCallbackDelegate;
+        /// <remarks>
+        /// See <see href="https://msdn.microsoft.com/en-us/library/system.net.security.localcertificateselectioncallback(v=vs.110).aspx"/>
+        /// </remarks>
+        public ProvideClientCertificatesCallback ProvideClientCertificatesCallback { get; set; }
 
         /// <summary>
-        /// Called to validate server's certificate during SSL handshake
+        /// Verifies the remote Secure Sockets Layer (SSL) certificate used for authentication.
         /// </summary>
-        public event ValidateRemoteCertificateCallback ValidateRemoteCertificateCallback;
-
-        internal ValidateRemoteCertificateCallback ValidateRemoteCertificateCallbackDelegate;
-
-        /// <summary>
-        /// Default SSL ProvideClientCertificatesCallback implementation.
-        /// </summary>
-        internal void DefaultProvideClientCertificatesCallback(X509CertificateCollection certificates)
-        {
-            if (ProvideClientCertificatesCallback != null) {
-                ProvideClientCertificatesCallback(certificates);
-            }
-        }
-
-        /// <summary>
-        /// Default SSL ValidateRemoteCertificateCallback implementation.
-        /// </summary>
-        internal bool DefaultValidateRemoteCertificateCallback(X509Certificate cert, X509Chain chain, SslPolicyErrors errors)
-        {
-            if (ValidateRemoteCertificateCallback != null)
-                return ValidateRemoteCertificateCallback(cert, chain, errors);
-            else
-                return errors == SslPolicyErrors.None;
-        }
+        /// <remarks>
+        /// See <see href="https://msdn.microsoft.com/en-us/library/system.net.security.remotecertificatevalidationcallback(v=vs.110).aspx"/>
+        /// </remarks>
+        public RemoteCertificateValidationCallback UserCertificateValidationCallback { get; set; }
 
         #endregion SSL
 
@@ -1349,6 +1327,8 @@ namespace Npgsql
         #endregion Misc    
     }
 
+    #region Delegates
+
     /// <summary>
     /// Represents the method that handles the <see cref="NpgsqlConnection.Notification">Notice</see> events.
     /// </summary>
@@ -1362,4 +1342,12 @@ namespace Npgsql
     /// <param name="sender">The source of the event.</param>
     /// <param name="e">A <see cref="NpgsqlNotificationEventArgs">NpgsqlNotificationEventArgs</see> that contains the event data.</param>
     public delegate void NotificationEventHandler(Object sender, NpgsqlNotificationEventArgs e);
+
+    /// <summary>
+    /// Represents the method that allows the application to provide a certificate collection to be used for SSL client authentication
+    /// </summary>
+    /// <param name="certificates">A <see cref="System.Security.Cryptography.X509Certificates.X509CertificateCollection">X509CertificateCollection</see> to be filled with one or more client certificates.</param>
+    public delegate void ProvideClientCertificatesCallback(X509CertificateCollection certificates);
+
+    #endregion
 }

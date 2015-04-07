@@ -465,25 +465,25 @@ namespace Npgsql
                     }
                     else
                     {
-                        //create empty collection
                         var clientCertificates = new X509CertificateCollection();
+                        if (ProvideClientCertificatesCallback != null) {
+                            ProvideClientCertificatesCallback(clientCertificates);
+                        }
 
-                        //trigger the callback to fetch some certificates
-                        DefaultProvideClientCertificatesCallback(clientCertificates);
-
+                        var certificateValidationCallback = UserCertificateValidationCallback ?? DefaultUserCertificateValidationCallback;
                         if (!UseSslStream)
                         {
 #if DNXCORE50
                             throw new NotSupportedException("TLS implementation not yet supported with .NET Core");
 #else
                             var sslStream = new TlsClientStream.TlsClientStream(Stream);
-                            sslStream.PerformInitialHandshake(Host, clientCertificates, DefaultValidateRemoteCertificateCallback, false);
+                            sslStream.PerformInitialHandshake(Host, clientCertificates, certificateValidationCallback, false);
                             Stream = sslStream;
 #endif
                         }
                         else
                         {
-                            var sslStream = new SslStream(Stream, false, DefaultValidateRemoteCertificateCallback);
+                            var sslStream = new SslStream(Stream, false, certificateValidationCallback);
                             sslStream.AuthenticateAsClient(Host, clientCertificates, System.Security.Authentication.SslProtocols.Default, false);
                             Stream = sslStream;
                         }
@@ -1058,37 +1058,27 @@ namespace Npgsql
         #region SSL
 
         /// <summary>
-        /// Default SSL ProvideClientCertificatesCallback implementation.
-        /// </summary>
-        internal void DefaultProvideClientCertificatesCallback(X509CertificateCollection certificates)
-        {
-            if (ProvideClientCertificatesCallback != null) {
-                ProvideClientCertificatesCallback(certificates);
-            }
-        }
-
-        /// <summary>
-        /// Default SSL ValidateRemoteCertificateCallback implementation.
-        /// </summary>
-        internal bool DefaultValidateRemoteCertificateCallback(object sender, X509Certificate cert, X509Chain chain, SslPolicyErrors errors)
-        {
-            return ValidateRemoteCertificateCallback != null && ValidateRemoteCertificateCallback(cert, chain, errors);
-        }
-
-        /// <summary>
         /// Returns whether SSL is being used for the connection
         /// </summary>
         internal bool IsSecure { get; private set; }
 
         /// <summary>
-        /// Called to provide client certificates for SSL handshake.
+        /// Represents the method that allows the application to provide a certificate collection to be used for SSL client authentication
         /// </summary>
-        internal event ProvideClientCertificatesCallback ProvideClientCertificatesCallback;
+        internal ProvideClientCertificatesCallback ProvideClientCertificatesCallback { get; set; }
 
         /// <summary>
-        /// Called to validate server's certificate during SSL handshake
+        /// Verifies the remote Secure Sockets Layer (SSL) certificate used for authentication.
         /// </summary>
-        internal event ValidateRemoteCertificateCallback ValidateRemoteCertificateCallback;
+        /// <remarks>
+        /// See <see href="https://msdn.microsoft.com/en-us/library/system.net.security.remotecertificatevalidationcallback(v=vs.110).aspx"/>
+        /// </remarks>
+        public RemoteCertificateValidationCallback UserCertificateValidationCallback { get; set; }
+
+        static bool DefaultUserCertificateValidationCallback(object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
+        {
+            return sslPolicyErrors == SslPolicyErrors.None;
+        }
 
         #endregion SSL
 
@@ -1666,24 +1656,6 @@ namespace Npgsql
         /// </summary>
         Redshift,
     }
-
-    #endregion
-
-    #region Delegates
-
-    /// <summary>
-    /// Represents the method that allows the application to provide a certificate collection to be used for SSL clien authentication
-    /// </summary>
-    /// <param name="certificates">A <see cref="System.Security.Cryptography.X509Certificates.X509CertificateCollection">X509CertificateCollection</see> to be filled with one or more client certificates.</param>
-    public delegate void ProvideClientCertificatesCallback(X509CertificateCollection certificates);
-
-    /// <summary>
-    /// Represents the method that is called to validate the certificate provided by the server during an SSL handshake
-    /// </summary>
-    /// <param name="cert">The server's certificate</param>
-    /// <param name="chain">The certificate chain containing the certificate's CA and any intermediate authorities</param>
-    /// <param name="errors">Any errors that were detected</param>
-    public delegate bool ValidateRemoteCertificateCallback(X509Certificate cert, X509Chain chain, SslPolicyErrors errors);
 
     #endregion
 }
