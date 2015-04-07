@@ -189,6 +189,7 @@ namespace Npgsql
             valueDescriptions.Add(Keywords.IncludeRealm, new ValueDescription(typeof(bool)));
             valueDescriptions.Add(Keywords.ApplicationName, new ValueDescription(typeof(string)));
             valueDescriptions.Add(Keywords.ServerCompatibility, new ValueDescription(typeof(string)));
+            valueDescriptions.Add(Keywords.ConvertInfinityDateTime, new ValueDescription(typeof(bool)));
 
             // No longer supported
             valueDescriptions.Add(Keywords.PreloadReader, new ValueDescription(typeof(bool)));
@@ -851,6 +852,22 @@ namespace Npgsql
 
         internal ServerCompatibilityMode ServerCompatibilityMode;
 
+        private bool _convertInfinityDateTime;
+        /// <summary>
+        /// Gets or sets a value indicating whether to attempt to use SSL.
+        /// </summary>
+#if !DNXCORE50
+        [Category("DataCategory_Advanced")]
+        [NpgsqlConnectionStringKeyword(Keywords.ConvertInfinityDateTime)]
+        [RefreshProperties(RefreshProperties.All)]
+        [DefaultValue(false)]
+#endif
+        public bool ConvertInfinityDateTime
+        {
+            get { return _convertInfinityDateTime; }
+            set { SetValue(GetKeyName(Keywords.ConvertInfinityDateTime), Keywords.ConvertInfinityDateTime, value); }
+        }
+
         #endregion
 
         private static Keywords GetKey(string key)
@@ -922,6 +939,8 @@ namespace Npgsql
                 case "SERVERCOMPATIBILITY":
                 case "SERVER COMPATIBILITY":
                     return Keywords.ServerCompatibility;
+                case "CONVERTINFINITYDATETIME":
+                    return Keywords.ConvertInfinityDateTime;
                 default:
                     throw new ArgumentException("key=value argument incorrect in ConnectionString", key);
             }
@@ -977,6 +996,8 @@ namespace Npgsql
                     return "APPLICATIONNAME";
                 case Keywords.ServerCompatibility:
                     return "SERVERCOMPATIBILITY";
+                case Keywords.ConvertInfinityDateTime:
+                    return "CONVERTINFINITYDATETIME";
                 // No longer supported
                 case Keywords.PreloadReader:
                     return "PRELOADREADER";
@@ -1144,6 +1165,8 @@ namespace Npgsql
                         else if (!Enum.TryParse(strValue, true, out ServerCompatibilityMode))
                             throw new Exception("Invalid server compatibility value: " + strValue);
                         return strValue;
+                    case Keywords.ConvertInfinityDateTime:
+                        return this._convertInfinityDateTime = ToBoolean(value);
 
                     // No longer supported
                     case Keywords.PreloadReader:
@@ -1178,6 +1201,7 @@ namespace Npgsql
                     case Keywords.UseSslStream:
                     case Keywords.Pooling:
                     case Keywords.SyncNotification:
+                    case Keywords.ConvertInfinityDateTime:
                         exception_template = "expecting {0}=[True/False] value in ConnectionString";
                         break;
                 }
@@ -1250,6 +1274,8 @@ namespace Npgsql
                     return this._application_name;
                 case Keywords.ServerCompatibility:
                     return ServerCompatibilityMode.ToString();
+                case Keywords.ConvertInfinityDateTime:
+                    return this._convertInfinityDateTime;
                 default:
                     throw new Exception("Unknown keyword: " + keyword);
             }
@@ -1301,6 +1327,7 @@ namespace Npgsql
         IntegratedSecurity,
         ApplicationName,
         IncludeRealm,
+        ConvertInfinityDateTime,
 
         // No longer supported, throw an exception
         PreloadReader,

@@ -197,9 +197,6 @@ namespace Npgsql
 
         #region Configuration settings
 
-        /// <summary>
-        /// Return Connection String.
-        /// </summary>
         internal string ConnectionString { get { return _settings.ConnectionString; } }
         internal string Host { get { return _settings.Host; } }
         internal int Port { get { return _settings.Port; } }
@@ -215,6 +212,7 @@ namespace Npgsql
         internal int DefaultCommandTimeout { get { return _settings.CommandTimeout; } }
         internal bool Enlist { get { return _settings.Enlist; } }
         internal bool IntegratedSecurity { get { return _settings.IntegratedSecurity; } }
+        internal bool ConvertInfinityDateTime { get { return _settings.ConvertInfinityDateTime; } }
 
         #endregion Configuration settings
 

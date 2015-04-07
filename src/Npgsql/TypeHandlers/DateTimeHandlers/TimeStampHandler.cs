@@ -18,9 +18,16 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         /// </summary>
         readonly bool _integerFormat;
 
+        /// <summary>
+        /// Whether to convert positive and negative infinity values to DateTime.{Max,Min}Value when
+        /// a DateTime is requested
+        /// </summary>
+        readonly bool _convertInfinityDateTime;
+
         public TimeStampHandler(TypeHandlerRegistry registry)
         {
             _integerFormat = registry.Connector.BackendParams["integer_datetimes"] == "on";
+            _convertInfinityDateTime = registry.Connector.ConvertInfinityDateTime;
         }
 
         public virtual DateTime Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
@@ -29,7 +36,13 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             var ts = ReadTimeStamp(buf, len, fieldDescription);
             try
             {
-                return ts.DateTime;
+                if (ts.IsFinite)
+                    return ts.DateTime;
+                if (!_convertInfinityDateTime)
+                    throw new InvalidCastException("Can't convert infinite timestamp values to DateTime");
+                if (ts.IsInfinity)
+                    return DateTime.MaxValue;
+                return DateTime.MinValue;
             }
             catch (Exception e)
             {
@@ -94,7 +107,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                         return;
                     }
 
-                    if (ts.IsMinusInfinity)
+                    if (ts.IsNegativeInfinity)
                     {
                         buf.WriteInt64(Int64.MinValue);
                         return;

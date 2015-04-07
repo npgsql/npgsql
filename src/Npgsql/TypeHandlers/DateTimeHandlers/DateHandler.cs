@@ -15,12 +15,29 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         internal const int PostgresEpochJdate = 2451545; // == date2j(2000, 1, 1)
         internal const int MonthsPerYear = 12;
 
+        /// <summary>
+        /// Whether to convert positive and negative infinity values to DateTime.{Max,Min}Value when
+        /// a DateTime is requested
+        /// </summary>
+        readonly bool _convertInfinityDateTime;
+
+        public DateHandler(TypeHandlerRegistry registry)
+        {
+            _convertInfinityDateTime = registry.Connector.ConvertInfinityDateTime;
+        }
+
         public DateTime Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             // TODO: Convert directly to DateTime without passing through NpgsqlDate?
             var npgsqlDate = ((ISimpleTypeReader<NpgsqlDate>) this).Read(buf, len, fieldDescription);
             try {
-                return (DateTime)npgsqlDate;
+                if (npgsqlDate.IsFinite)
+                    return (DateTime)npgsqlDate;
+                if (!_convertInfinityDateTime)
+                    throw new InvalidCastException("Can't convert infinite date values to DateTime");
+                if (npgsqlDate.IsInfinity)
+                    return DateTime.MaxValue;
+                return DateTime.MinValue;
             } catch (Exception e) {
                 throw new SafeReadException(e);
             }

@@ -91,7 +91,7 @@ namespace NpgsqlTypes
         public int Minutes { get { return _time.Minutes; } }
         public int Hours { get { return _time.Hours; } }
         public bool IsInfinity { get { return _type == InternalType.Infinity; } }
-        public bool IsMinusInfinity { get { return _type == InternalType.NegativeInfinity; } }
+        public bool IsNegativeInfinity { get { return _type == InternalType.NegativeInfinity; } }
 
         public bool IsFinite
         {

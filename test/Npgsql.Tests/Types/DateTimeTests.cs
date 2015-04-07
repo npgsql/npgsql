@@ -37,7 +37,6 @@ namespace Npgsql.Tests.Types
                 cmd.Parameters.Add(p1);
                 cmd.Parameters.Add(p2);
                 cmd.Parameters.Add(p3);
-                cmd.Prepare();
                 p1.Value = p2.Value = npgsqlDate;
                 using (var reader = cmd.ExecuteReader())
                 {
@@ -82,6 +81,23 @@ namespace Npgsql.Tests.Types
             }
         }
 
+        [Test, Description("Makes sure that when ConvertInfinityDateTime is true, infinity values are properly converted")]
+        public void DateConvertInfinity()
+        {
+            using (var conn = new NpgsqlConnection(ConnectionString + ";ConvertInfinityDateTime=true")) {
+                conn.Open();
+                using (var cmd = new NpgsqlCommand("SELECT 'infinity'::DATE, '-infinity'::DATE", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetDateTime(0), Is.EqualTo(DateTime.MaxValue));
+                    Assert.That(reader.GetDateTime(1), Is.EqualTo(DateTime.MinValue));
+                    Assert.That(reader.GetFieldValue<NpgsqlDate>(0), Is.EqualTo(NpgsqlDate.Infinity));
+                    Assert.That(reader.GetFieldValue<NpgsqlDate>(1), Is.EqualTo(NpgsqlDate.NegativeInfinity));
+                }
+            }
+        }
+
         #endregion
 
         #region Time
@@ -99,7 +115,6 @@ namespace Npgsql.Tests.Types
                 cmd.Parameters.Add(p1);
                 cmd.Parameters.Add(p2);
                 cmd.Parameters.Add(p3);
-                cmd.Prepare();
                 p1.Value = p2.Value = expected;
                 using (var reader = cmd.ExecuteReader())
                 {
@@ -197,7 +212,6 @@ namespace Npgsql.Tests.Types
                 cmd.Parameters.Add(p4);
                 cmd.Parameters.Add(p5);
                 cmd.Parameters.Add(p6);
-                cmd.Prepare();
                 p1.Value = p2.Value = p3.Value = npgsqlTimeStamp;
                 p6.Value = dateTimeOffset;
                 using (var reader = cmd.ExecuteReader())
@@ -244,6 +258,24 @@ namespace Npgsql.Tests.Types
                     Assert.That(() => reader.GetDateTime(0), Throws.Exception);
                 }
                 Assert.That(ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+            }
+        }
+
+        [Test, Description("Makes sure that when ConvertInfinityDateTime is true, infinity values are properly converted")]
+        public void TimeStampConvertInfinity()
+        {
+            using (var conn = new NpgsqlConnection(ConnectionString + ";ConvertInfinityDateTime=true"))
+            {
+                conn.Open();
+                using (var cmd = new NpgsqlCommand("SELECT 'infinity'::TIMESTAMP, '-infinity'::TIMESTAMP", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();;
+                    Assert.That(reader.GetDateTime(0), Is.EqualTo(DateTime.MaxValue));
+                    Assert.That(reader.GetDateTime(1), Is.EqualTo(DateTime.MinValue));
+                    Assert.That(reader.GetFieldValue<NpgsqlDateTime>(0), Is.EqualTo(NpgsqlDateTime.Infinity));
+                    Assert.That(reader.GetFieldValue<NpgsqlDateTime>(1), Is.EqualTo(NpgsqlDateTime.NegativeInfinity));
+                }
             }
         }
 
@@ -322,7 +354,6 @@ namespace Npgsql.Tests.Types
                 var p2 = new NpgsqlParameter("p2", expectedNpgsqlInterval);
                 cmd.Parameters.Add(p1);
                 cmd.Parameters.Add(p2);
-                cmd.Prepare();
                 p2.Value = expectedTimeSpan;
 
                 using (var reader = cmd.ExecuteReader())

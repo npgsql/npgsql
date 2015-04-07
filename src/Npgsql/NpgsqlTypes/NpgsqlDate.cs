@@ -205,6 +205,25 @@ namespace NpgsqlTypes
 
         public bool IsLeapYear { get { return IsLeap(Year); } }
 
+        public bool IsInfinity { get { return _type == InternalType.Infinity; } }
+        public bool IsNegativeInfinity { get { return _type == InternalType.NegativeInfinity; } }
+
+        public bool IsFinite
+        {
+            get
+            {
+                switch (_type) {
+                case InternalType.Finite:
+                    return true;
+                case InternalType.Infinity:
+                case InternalType.NegativeInfinity:
+                    return false;
+                default:
+                    throw PGUtil.ThrowIfReached();
+                }
+            }
+        }
+
         #endregion
 
         #region Internals
