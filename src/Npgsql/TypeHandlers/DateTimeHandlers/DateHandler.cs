@@ -65,30 +65,49 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
 
         public void Write(object value, NpgsqlBuffer buf)
         {
-            NpgsqlDate dt;
+            NpgsqlDate date;
             if (value is NpgsqlDate)
             {
-                dt = (NpgsqlDate)value;
+                date = (NpgsqlDate)value;
             }
             else if (value is DateTime)
             {
-                dt = new NpgsqlDate((DateTime)value);
+                var dt = (DateTime)value;
+                if (_convertInfinityDateTime)
+                {
+                    if (dt == DateTime.MaxValue)
+                    {
+                        date = NpgsqlDate.Infinity;
+                    }
+                    else if (dt == DateTime.MinValue)
+                    {
+                        date = NpgsqlDate.NegativeInfinity;
+                    }
+                    else
+                    {
+                        date = new NpgsqlDate(dt);
+                    }
+                }
+                else
+                {
+                    date = new NpgsqlDate(dt);
+                }
             }
             else if (value is string)
             {
-                dt = NpgsqlDate.Parse((string) value);
+                date = NpgsqlDate.Parse((string) value);
             }
             else
             {
                 throw new InvalidCastException();
             }
 
-            if (dt == NpgsqlDate.NegativeInfinity)
+            if (date == NpgsqlDate.NegativeInfinity)
                 buf.WriteInt32(int.MinValue);
-            else if (dt == NpgsqlDate.Infinity)
+            else if (date == NpgsqlDate.Infinity)
                 buf.WriteInt32(int.MaxValue);
             else
-                buf.WriteInt32(dt.DaysSinceEra - 730119);
+                buf.WriteInt32(date.DaysSinceEra - 730119);
         }
     }
 }

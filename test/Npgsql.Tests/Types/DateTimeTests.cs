@@ -84,16 +84,20 @@ namespace Npgsql.Tests.Types
         [Test, Description("Makes sure that when ConvertInfinityDateTime is true, infinity values are properly converted")]
         public void DateConvertInfinity()
         {
-            using (var conn = new NpgsqlConnection(ConnectionString + ";ConvertInfinityDateTime=true")) {
+            using (var conn = new NpgsqlConnection(ConnectionString + ";ConvertInfinityDateTime=true"))
+            {
                 conn.Open();
-                using (var cmd = new NpgsqlCommand("SELECT 'infinity'::DATE, '-infinity'::DATE", conn))
-                using (var reader = cmd.ExecuteReader())
-                {
-                    reader.Read();
-                    Assert.That(reader.GetDateTime(0), Is.EqualTo(DateTime.MaxValue));
-                    Assert.That(reader.GetDateTime(1), Is.EqualTo(DateTime.MinValue));
-                    Assert.That(reader.GetFieldValue<NpgsqlDate>(0), Is.EqualTo(NpgsqlDate.Infinity));
-                    Assert.That(reader.GetFieldValue<NpgsqlDate>(1), Is.EqualTo(NpgsqlDate.NegativeInfinity));
+
+                using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn)) {
+                    cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Date, DateTime.MaxValue);
+                    cmd.Parameters.AddWithValue("p2", NpgsqlDbType.Date, DateTime.MinValue);
+                    using (var reader = cmd.ExecuteReader()) {
+                        reader.Read();
+                        Assert.That(reader.GetFieldValue<NpgsqlDate>(0), Is.EqualTo(NpgsqlDate.Infinity));
+                        Assert.That(reader.GetFieldValue<NpgsqlDate>(1), Is.EqualTo(NpgsqlDate.NegativeInfinity));
+                        Assert.That(reader.GetDateTime(0), Is.EqualTo(DateTime.MaxValue));
+                        Assert.That(reader.GetDateTime(1), Is.EqualTo(DateTime.MinValue));
+                    }
                 }
             }
         }
@@ -267,14 +271,19 @@ namespace Npgsql.Tests.Types
             using (var conn = new NpgsqlConnection(ConnectionString + ";ConvertInfinityDateTime=true"))
             {
                 conn.Open();
-                using (var cmd = new NpgsqlCommand("SELECT 'infinity'::TIMESTAMP, '-infinity'::TIMESTAMP", conn))
-                using (var reader = cmd.ExecuteReader())
+
+                using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn))
                 {
-                    reader.Read();;
-                    Assert.That(reader.GetDateTime(0), Is.EqualTo(DateTime.MaxValue));
-                    Assert.That(reader.GetDateTime(1), Is.EqualTo(DateTime.MinValue));
-                    Assert.That(reader.GetFieldValue<NpgsqlDateTime>(0), Is.EqualTo(NpgsqlDateTime.Infinity));
-                    Assert.That(reader.GetFieldValue<NpgsqlDateTime>(1), Is.EqualTo(NpgsqlDateTime.NegativeInfinity));
+                    cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Timestamp, DateTime.MaxValue);
+                    cmd.Parameters.AddWithValue("p2", NpgsqlDbType.Timestamp, DateTime.MinValue);
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        reader.Read();
+                        Assert.That(reader.GetFieldValue<NpgsqlDateTime>(0), Is.EqualTo(NpgsqlDateTime.Infinity));
+                        Assert.That(reader.GetFieldValue<NpgsqlDateTime>(1), Is.EqualTo(NpgsqlDateTime.NegativeInfinity));
+                        Assert.That(reader.GetDateTime(0), Is.EqualTo(DateTime.MaxValue));
+                        Assert.That(reader.GetDateTime(1), Is.EqualTo(DateTime.MinValue));
+                    }
                 }
             }
         }

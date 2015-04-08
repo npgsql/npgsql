@@ -118,7 +118,21 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             }
             else if (value is DateTime)
             {
-                ts = new NpgsqlDateTime((DateTime)value);
+                var dt = (DateTime)value;
+                if (_convertInfinityDateTime)
+                {
+                    if (dt == DateTime.MaxValue)
+                    {
+                        buf.WriteInt64(Int64.MaxValue);
+                        return;
+                    }
+                    else if (dt == DateTime.MinValue)
+                    {
+                        buf.WriteInt64(Int64.MinValue);
+                        return;
+                    }
+                }
+                ts = new NpgsqlDateTime(dt);
             }
             else if (value is DateTimeOffset)
             {
