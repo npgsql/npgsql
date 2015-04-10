@@ -191,7 +191,7 @@ namespace NpgsqlTypes
         /// 
         /// See http://www.postgresql.org/docs/current/static/datatype-text.html
         /// </remarks>
-        SingleChar = 38,
+        InternalChar = 38,
 
         #endregion
 

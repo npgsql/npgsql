@@ -14,20 +14,50 @@ namespace Npgsql.TypeHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-character.html
     /// </remarks>
-    [TypeMapping("char", NpgsqlDbType.SingleChar)]
+    [TypeMapping("char", NpgsqlDbType.InternalChar)]
     internal class InternalCharHandler : TypeHandler<char>,
-        ISimpleTypeReader<char>, ISimpleTypeWriter
+        ISimpleTypeReader<char>, ISimpleTypeWriter,
+        ISimpleTypeReader<byte>, ISimpleTypeReader<short>, ISimpleTypeReader<int>, ISimpleTypeReader<long>
     {
+        #region Read
+
         public char Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
-            return buf.ReadString(1)[0];
+            return (char)buf.ReadByte();
         }
+
+        byte ISimpleTypeReader<byte>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        {
+            return buf.ReadByte();
+        }
+
+        short ISimpleTypeReader<short>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        {
+            return buf.ReadByte();
+        }
+
+        int ISimpleTypeReader<int>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        {
+            return buf.ReadByte();
+        }
+
+        long ISimpleTypeReader<long>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        {
+            return buf.ReadByte();
+        }
+
+        #endregion
+
+        #region Write
 
         public int ValidateAndGetLength(object value) { return 1; }
 
         public void Write(object value, NpgsqlBuffer buf)
         {
-            buf.WriteByte((byte)(char)value);
+            var b = GetIConvertibleValue<byte>(value);
+            buf.WriteByte(b);
         }
+
+        #endregion
     }
 }
