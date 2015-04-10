@@ -542,10 +542,7 @@ namespace Npgsql
             }
         }
 
-        internal bool IsNull
-        {
-            get { return _value == null || _value is DBNull; }
-        }
+        internal bool IsNull { get { return _value is DBNull; } }
 
         /// <summary>
         /// Returns whether this parameter has had its type set explicitly via DbType or NpgsqlDbType
@@ -625,6 +622,10 @@ namespace Npgsql
 
         internal int ValidateAndGetLength()
         {
+            if (_value == null) {
+                throw new InvalidOperationException(string.Format("Parameter '{0}' must have its value set", ParameterName));
+            }
+
             if (IsNull) {
                 return 0;
             }

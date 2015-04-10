@@ -658,6 +658,16 @@ namespace Npgsql.Tests
 
         #endregion
 
+        [Test, Description("Makes sure writing an unset parameter isn't allowed")]
+        public void ParameterUnset()
+        {
+            using (var cmd = new NpgsqlCommand("SELECT @p", Conn))
+            {
+                cmd.Parameters.Add(new NpgsqlParameter("@p", NpgsqlDbType.Integer));
+                Assert.That(() => cmd.ExecuteScalar(), Throws.Exception);
+            }
+        }
+
         [Test]
         public void ParametersGetName()
         {
@@ -753,15 +763,15 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Basic prepared system scenario. Checks proper backend deallocation of the statement.")]
-        public void PreparedStatementInsert()
+        public void Prepare()
         {
             Assert.That(ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(0));
 
             using (var cmd = new NpgsqlCommand("INSERT INTO data (field_text) VALUES (:p0);", Conn))
             {
                 cmd.Parameters.Add(new NpgsqlParameter("p0", NpgsqlDbType.Text));
-                cmd.Parameters["p0"].Value = "test";
                 cmd.Prepare();
+                cmd.Parameters["p0"].Value = "test";
                 using (var dr = cmd.ExecuteReader())
                 {
                     Assert.IsNotNull(dr);
