@@ -68,8 +68,7 @@ namespace Npgsql
                     _canRead = true;
                     break;
                 default:
-                    _connector.Break();
-                    throw new Exception("Unexpected message received when expecting CopyInResponse or CopyOutResponse: " + msg.Code);
+                    throw _connector.UnexpectedMessageReceived(msg.Code);
             }
             _connector.State = ConnectorState.Copy;
         }
@@ -167,8 +166,7 @@ namespace Npgsql
                         _isConsumed = true;
                         goto done;
                     default:
-                        _connector.Break();
-                        throw new Exception("Received unexpected message type in COPY OUT: " + msg.Code);
+                        throw _connector.UnexpectedMessageReceived(msg.Code);
                     }
                 }
 
@@ -203,6 +201,7 @@ namespace Npgsql
                 try
                 {
                     var msg = _connector.ReadSingleMessage();
+                    // The CopyFail should immediately trigger an exception from the read above.
                     _connector.Break();
                     throw new Exception("Expected ErrorResponse when cancelling COPY but got: " + msg.Code);
                 }

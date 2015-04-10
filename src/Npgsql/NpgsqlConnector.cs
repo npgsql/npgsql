@@ -147,6 +147,21 @@ namespace Npgsql
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
+        /// <summary>
+        /// Contain the current value of the statement_timeout parameter at the backend,
+        /// used to determine whether we need to change it when commands are sent.
+        /// </summary>
+        /// <remarks>
+        /// 0 means means no timeout.
+        /// -1 means that the current value is unknown.
+        /// </remarks>
+        internal int BackendTimeout { get; set; }
+
+        /// <summary>
+        /// The minimum timeout that can be set on internal commands such as COMMIT, ROLLBACK.
+        /// </summary>
+        internal const int MinimumInternalCommandTimeout = 3;
+
         SemaphoreSlim _notificationSemaphore;
         static readonly byte[] EmptyBuffer = new byte[0];
         int _notificationBlockRecursionDepth;
@@ -209,7 +224,7 @@ namespace Npgsql
         internal bool UseSslStream { get { return _settings.UseSslStream; } }
         internal int BufferSize { get { return _settings.BufferSize; } }
         internal int ConnectionTimeout { get { return _settings.Timeout; } }
-        internal int DefaultCommandTimeout { get { return _settings.CommandTimeout; } }
+        internal int InternalCommandTimeout { get { return _settings.InternalCommandTimeout ?? _settings.CommandTimeout; } }
         internal bool Enlist { get { return _settings.Enlist; } }
         internal bool IntegratedSecurity { get { return _settings.IntegratedSecurity; } }
         internal bool ConvertInfinityDateTime { get { return _settings.ConvertInfinityDateTime; } }
@@ -613,8 +628,11 @@ namespace Npgsql
         /// <summary>
         /// Prepends a message to be sent at the beginning of the next message chain.
         /// </summary>
-        internal void PrependMessage(FrontendMessage msg)
+        internal void PrependInternalMessage(FrontendMessage msg)
         {
+            // Set backend timeout if needed.
+            PrependTimeoutMessage(InternalCommandTimeout);
+
             if (msg is QueryMessage || msg is PregeneratedMessage || msg is SyncMessage)
             {
                 // These messages produce a ReadyForQuery response, which we will be looking for when
@@ -624,9 +642,47 @@ namespace Npgsql
             _messagesToSend.Add(msg);
         }
 
+        internal void PrependTimeoutMessage(int timeout)
+        {
+            if (BackendTimeout == timeout || timeout < 0) {
+                return;
+            }
+
+            BackendTimeout = timeout;
+            _pendingRfqPrependedMessages++;
+
+            switch (timeout) {
+            case 10:
+                _messagesToSend.Add(PregeneratedMessage.SetStmtTimeout10Sec);
+                return;
+            case 20:
+                _messagesToSend.Add(PregeneratedMessage.SetStmtTimeout20Sec);
+                return;
+            case 30:
+                _messagesToSend.Add(PregeneratedMessage.SetStmtTimeout30Sec);
+                return;
+            case 60:
+                _messagesToSend.Add(PregeneratedMessage.SetStmtTimeout60Sec);
+                return;
+            case 90:
+                _messagesToSend.Add(PregeneratedMessage.SetStmtTimeout90Sec);
+                return;
+            case 120:
+                _messagesToSend.Add(PregeneratedMessage.SetStmtTimeout120Sec);
+                return;
+            default:
+                _messagesToSend.Add(new QueryMessage(string.Format("SET statement_timeout = {0}", timeout * 1000)));
+                return;
+            }
+        }
+
         [GenerateAsync]
         internal void SendAllMessages()
         {
+            if (!_messagesToSend.Any()) {
+                return;
+            }
+
             _sentRfqPrependedMessages = _pendingRfqPrependedMessages;
             _pendingRfqPrependedMessages = 0;
 
@@ -711,17 +767,28 @@ namespace Npgsql
         [GenerateAsync]
         internal IBackendMessage ReadSingleMessage(DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential, bool ignoreNotifications = true)
         {
+            // First read the responses of any prepended messages.
+            // Exceptions shouldn't happen here, we break the connector if they do
             try
             {
-                // First read the responses of any prepended messages
                 while (_sentRfqPrependedMessages > 0)
                 {
                     var msg = DoReadSingleMessage(DataRowLoadingMode.Skip);
-                    if (msg is ReadyForQueryMessage) {
+                    if (msg is ReadyForQueryMessage)
+                    {
                         _sentRfqPrependedMessages--;
                     }
                 }
+            }
+            catch
+            {
+                Break();
+                throw;
+            }
 
+            // Now read a non-prepended message
+            try
+            {
                 return DoReadSingleMessage(dataRowLoadingMode, ignoreNotifications);
             }
             catch (NpgsqlException)
@@ -939,7 +1006,8 @@ namespace Npgsql
             if (asExpected == null)
             {
                 Break();
-                throw new Exception(String.Format("Unexpected message received when expecting {0}: {1}", typeof(T), msg.Code));
+                throw new Exception(string.Format("Received backend message {0} while expecting {1}. Please file a bug.",
+                                                  msg.Code, typeof(T).Name));
             }
             return asExpected;
         }
@@ -1127,6 +1195,16 @@ namespace Npgsql
             Cleanup();
         }
 
+        /// <summary>
+        /// Called when an unexpected message has been received during an action. Breaks the
+        /// connector and returns the appropriate message.
+        /// </summary>
+        internal Exception UnexpectedMessageReceived(BackendMessageCode received)
+        {
+            Break();
+            return new Exception(string.Format("Received unexpected backend message {0}. Please file a bug.", received));
+        }
+
         internal void Break()
         {
             State = ConnectorState.Broken;
@@ -1195,20 +1273,20 @@ namespace Npgsql
             // Must rollback transaction before sending DISCARD ALL
             if (InTransaction)
             {
-                PrependMessage(PregeneratedMessage.RollbackTransaction);
+                PrependInternalMessage(PregeneratedMessage.RollbackTransaction);
                 ClearTransaction();
             }
 
             if (SupportsDiscard)
             {
-                PrependMessage(PregeneratedMessage.DiscardAll);
+                PrependInternalMessage(PregeneratedMessage.DiscardAll);
             }
             else
             {
-                PrependMessage(PregeneratedMessage.UnlistenAll);
+                PrependInternalMessage(PregeneratedMessage.UnlistenAll);
                 /*
-                 * Problem: we can't just deallocate for all the below since some may have already been deallocated
-                 * Not sure if we should keep supporting this for < 8.3. If so fix along with #483
+                 TODO: Problem: we can't just deallocate for all the below since some may have already been deallocated
+                 Not sure if we should keep supporting this for < 8.3. If so fix along with #483
                 if (_preparedStatementIndex > 0) {
                     for (var i = 1; i <= _preparedStatementIndex; i++) {
                         PrependMessage(new QueryMessage(String.Format("DEALLOCATE \"{0}{1}\";", PreparedStatementNamePrefix, i)));
@@ -1218,6 +1296,9 @@ namespace Npgsql
                 _portalIndex = 0;
                 _preparedStatementIndex = 0;
             }
+
+            // DISCARD ALL may have changed the value of statement_value, set to unknown
+            BackendTimeout = -1;
         }
 
         #endregion Close
@@ -1381,105 +1462,27 @@ namespace Npgsql
 
         #endregion Supported features
 
-        #region Execute blind
+        #region Execute internal command
 
-        /// <summary>
-        /// Internal query shortcut for use in cases where the number
-        /// of affected rows is of no interest.
-        /// </summary>
-        [GenerateAsync]
-        internal void ExecuteBlind(string query)
+        internal void ExecuteInternalCommand(string query, bool withTimeout=true)
         {
-            using (BlockNotifications())
-            {
-                SetBackendCommandTimeout(20);
-                SendSingleMessage(new QueryMessage(query));
-                SkipUntil(BackendMessageCode.ReadyForQuery);
-                State = ConnectorState.Ready;
+            ExecuteInternalCommand(new QueryMessage(query), withTimeout);
+        }
+
+        internal void ExecuteInternalCommand(SimpleFrontendMessage message, bool withTimeout=true)
+        {
+            if (withTimeout) {
+                PrependTimeoutMessage(InternalCommandTimeout);
+            }
+            AddMessage(message);
+            using (BlockNotifications()) {
+                SendAllMessages();
+                ReadExpecting<CommandCompleteMessage>();
+                ReadExpecting<ReadyForQueryMessage>();
             }
         }
 
-        [GenerateAsync]
-        internal void ExecuteBlind(SimpleFrontendMessage message)
-        {
-            using (BlockNotifications())
-            {
-                SetBackendCommandTimeout(20);
-                SendSingleMessage(message);
-                SkipUntil(BackendMessageCode.ReadyForQuery);
-                State = ConnectorState.Ready;
-            }
-        }
-
-        [GenerateAsync]
-        internal void ExecuteBlindSuppressTimeout(string query)
-        {
-            using (BlockNotifications())
-            {
-                SendSingleMessage(new QueryMessage(query));
-                SkipUntil(BackendMessageCode.ReadyForQuery);
-                State = ConnectorState.Ready;
-            }
-        }
-
-        [GenerateAsync]
-        internal void ExecuteBlindSuppressTimeout(PregeneratedMessage message)
-        {
-            // Block the notification thread before writing anything to the wire.
-            using (BlockNotifications())
-            {
-                SendSingleMessage(message);
-                SkipUntil(BackendMessageCode.ReadyForQuery);
-                State = ConnectorState.Ready;
-            }
-        }
-
-        /// <summary>
-        /// Special adaptation of ExecuteBlind() that sets statement_timeout.
-        /// This exists to prevent Connector.SetBackendCommandTimeout() from calling Command.ExecuteBlind(),
-        /// which will cause an endless recursive loop.
-        /// </summary>
-        /// <param name="timeout">Timeout in seconds.</param>
-        [GenerateAsync]
-        internal void ExecuteSetStatementTimeoutBlind(int timeout)
-        {
-            // Optimize for a few common timeout values.
-            switch (timeout)
-            {
-                case 10:
-                    SendSingleMessage(PregeneratedMessage.SetStmtTimeout10Sec);
-                    break;
-
-                case 20:
-                    SendSingleMessage(PregeneratedMessage.SetStmtTimeout20Sec);
-                    break;
-
-                case 30:
-                    SendSingleMessage(PregeneratedMessage.SetStmtTimeout30Sec);
-                    break;
-
-                case 60:
-                    SendSingleMessage(PregeneratedMessage.SetStmtTimeout60Sec);
-                    break;
-
-                case 90:
-                    SendSingleMessage(PregeneratedMessage.SetStmtTimeout90Sec);
-                    break;
-
-                case 120:
-                    SendSingleMessage(PregeneratedMessage.SetStmtTimeout120Sec);
-                    break;
-
-                default:
-                    SendSingleMessage(new QueryMessage(string.Format("SET statement_timeout = {0}", timeout * 1000)));
-                    break;
-
-            }
-            SkipUntil(BackendMessageCode.ReadyForQuery);
-            State = ConnectorState.Ready;
-        }
-
-        #endregion Execute blind
+        #endregion
 
         #region Misc
 

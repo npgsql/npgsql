@@ -106,7 +106,7 @@ namespace Npgsql
 
         #region Constants
 
-        internal const int DefaultTimeout = 20;
+        internal const int DefaultTimeout = 30;
 
         /// <summary>
         /// Specifies the maximum number of queries we allow in a multiquery, separated by semicolons.
@@ -189,11 +189,9 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Gets or sets the wait time before terminating the attempt
-        /// to execute a command and generating an error.
+        /// Gets or sets the wait time before terminating the attempt  to execute a command and generating an error.
         /// </summary>
-        /// <value>The time (in seconds) to wait for the command to execute.
-        /// The default is 20 seconds.</value>
+        /// <value>The time (in seconds) to wait for the command to execute. The default value is 30 seconds.</value>
         [DefaultValue(DefaultTimeout)]
         public override int CommandTimeout
         {
@@ -537,7 +535,7 @@ namespace Npgsql
                             IsPrepared = true;
                             return;
                         default:
-                            throw new ArgumentOutOfRangeException("Unexpected message of type " + msg.Code);
+                            throw _connector.UnexpectedMessageReceived(msg.Code);
                     }            
                 }
             }
@@ -549,9 +547,9 @@ namespace Npgsql
 
 
             foreach (var query in _queries) {
-                _connector.PrependMessage(new CloseMessage(StatementOrPortal.Statement, query.PreparedStatementName));
+                _connector.PrependInternalMessage(new CloseMessage(StatementOrPortal.Statement, query.PreparedStatementName));
             }
-            _connector.PrependMessage(SyncMessage.Instance);
+            _connector.PrependInternalMessage(SyncMessage.Instance);
             IsPrepared = false;
         }
 
@@ -1023,20 +1021,29 @@ namespace Npgsql
 
         #region Frontend message creation
 
-        void CreateMessages(CommandBehavior behavior)
+        internal void ValidateAndCreateMessages(CommandBehavior behavior = CommandBehavior.Default)
         {
-            if (IsPrepared)
-            {
-                if ((behavior & CommandBehavior.SchemaOnly) != 0)
-                {
-                    // For prepared SchemaOnly queries, we already have the RowDescriptions from the Prepare phase.
-                    // No need to send anything
-                    return;
+            foreach (NpgsqlParameter p in Parameters.Where(p => p.IsInputDirection)) {
+                p.Bind(_connector.TypeHandlerRegistry);
+                if (p.LengthCache != null) {
+                    p.LengthCache.Clear();
                 }
-                CreateMessagesPrepared(behavior);
+                p.ValidateAndGetLength();
             }
-            else
-            {
+
+            // For prepared SchemaOnly queries, we already have the RowDescriptions from the Prepare phase.
+            // No need to send anything
+            if (IsPrepared && (behavior & CommandBehavior.SchemaOnly) != 0) {
+                return;
+            }
+
+            // Set backend timeout if needed
+            _connector.PrependTimeoutMessage(CommandTimeout);
+
+            // Create actual messages depending on scenario
+            if (IsPrepared) {
+                CreateMessagesPrepared(behavior);
+            } else {
                 if ((behavior & CommandBehavior.SchemaOnly) == 0) {
                     CreateMessagesNonPrepared(behavior);
                 } else {
@@ -1164,30 +1171,14 @@ namespace Npgsql
         [GenerateAsync]
         internal NpgsqlDataReader Execute(CommandBehavior behavior = CommandBehavior.Default)
         {
-            foreach (NpgsqlParameter p in Parameters.Where(p => p.IsInputDirection)) {
-                p.Bind(_connector.TypeHandlerRegistry);
-                if (p.LengthCache != null) {
-                    p.LengthCache.Clear();
-                }
-                p.ValidateAndGetLength();
-            }
-
-            CreateMessages(behavior);
-
-            NpgsqlDataReader reader = null;
-
             _queryIndex = 0;
 
             // Block the notification thread before writing anything to the wire.
             _notificationBlock = _connector.BlockNotifications();
-            //using (_connector.BlockNotificationThread())
             try {
                 State = CommandState.InProgress;
 
-                if (!(IsPrepared && (behavior & CommandBehavior.SchemaOnly) != 0)) {
-                    //_connector.SetBackendCommandTimeout(CommandTimeout);
-                    _connector.SendAllMessages();
-                }
+                _connector.SendAllMessages();
 
                 if (!IsPrepared) {
                     IBackendMessage msg;
@@ -1196,13 +1187,10 @@ namespace Npgsql
                     } while (!ProcessMessageForUnprepared(msg, behavior));
                 }
 
-                reader = new NpgsqlDataReader(this, behavior, _queries);
-
-                return reader;
-            } finally {
-                if (reader == null && _notificationBlock != null) {
-                    _notificationBlock.Dispose();
-                }
+                return new NpgsqlDataReader(this, behavior, _queries);
+            } catch {
+                _notificationBlock.Dispose();
+                throw;
             }
         }
 
@@ -1235,7 +1223,7 @@ namespace Npgsql
                 Contract.Assume((behavior & CommandBehavior.SchemaOnly) != 0);
                 return true;  // End of a SchemaOnly command
             default:
-                throw new ArgumentOutOfRangeException("Unexpected message of type " + msg.Code);
+                throw _connector.UnexpectedMessageReceived(msg.Code);
             }
         }
 
@@ -1293,6 +1281,7 @@ namespace Npgsql
             Prechecks();
             Log.Debug("ExecuteNonQuery", _connector.Id);
 
+            ValidateAndCreateMessages();
             NpgsqlDataReader reader;
             using (reader = Execute()) {
                 while (reader.NextResult()) ;
@@ -1357,7 +1346,9 @@ namespace Npgsql
             Prechecks();
             Log.Debug("ExecuteNonScalar", _connector.Id);
 
-            using (var reader = Execute(CommandBehavior.SequentialAccess | CommandBehavior.SingleRow))
+            var behavior = CommandBehavior.SequentialAccess | CommandBehavior.SingleRow;
+            ValidateAndCreateMessages(behavior);
+            using (var reader = Execute(behavior))
             {
                 return reader.Read() && reader.FieldCount != 0 ? reader.GetValue(0) : null;
             }
@@ -1480,6 +1471,7 @@ namespace Npgsql
             // Close connection if requested even when there is an error.
             try
             {
+                ValidateAndCreateMessages(behavior);
                 var reader = Execute(behavior);
 
                 // Transparently dereference cursors returned from functions

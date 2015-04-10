@@ -184,6 +184,7 @@ namespace Npgsql
             valueDescriptions.Add(Keywords.MaxPoolSize, new ValueDescription((Int32)20));
             valueDescriptions.Add(Keywords.SyncNotification, new ValueDescription(typeof(bool)));
             valueDescriptions.Add(Keywords.CommandTimeout, new ValueDescription(NpgsqlCommand.DefaultTimeout));
+            valueDescriptions.Add(Keywords.InternalCommandTimeout, new ValueDescription(typeof(int?)));
             valueDescriptions.Add(Keywords.Enlist, new ValueDescription(typeof(bool)));
             valueDescriptions.Add(Keywords.IntegratedSecurity, new ValueDescription(typeof(bool)));
             valueDescriptions.Add(Keywords.IncludeRealm, new ValueDescription(typeof(bool)));
@@ -233,6 +234,8 @@ namespace Npgsql
                 throw new ArgumentOutOfRangeException(
                     key, String.Format("Numeric value {0} in ConnectionString exceeds maximum value {1}", key, MaxPoolSize));
             }
+            if (InternalCommandTimeout > 0 && InternalCommandTimeout < NpgsqlConnector.MinimumInternalCommandTimeout)
+                throw new ArgumentOutOfRangeException("InternalCommandTimeout must be <= 0 or >= " + NpgsqlConnector.MinimumInternalCommandTimeout);
             if (IntegratedSecurity && Type.GetType("Mono.Runtime") != null)
                 throw new NotSupportedException("IntegratedSecurity isn't supported on mono");
         }
@@ -770,12 +773,31 @@ namespace Npgsql
         [DisplayName("ConnectionProperty_Display_CommandTimeout")]
         [Description("ConnectionProperty_Description_CommandTimeout")]
         [RefreshProperties(RefreshProperties.All)]
-        [DefaultValue(20)]
+        [DefaultValue(NpgsqlCommand.DefaultTimeout)]
 #endif
         public int CommandTimeout
         {
             get { return _command_timeout; }
             set { SetValue(GetKeyName(Keywords.CommandTimeout), Keywords.CommandTimeout, value); }
+        }
+
+        private int? _internalCommandTimeout;
+        /// <summary>
+        /// Gets the time to wait while trying to execute a an internal command before terminating the attempt and generating an error.
+        /// </summary>
+        /// <value>The time (in seconds) to wait for a command to complete. The default value is <see cref="CommandTimeout"/>.</value>
+#if !DNXCORE50
+        [Category("DataCategory_Advanced")]
+        [NpgsqlConnectionStringKeyword(Keywords.InternalCommandTimeout)]
+        [DisplayName("ConnectionProperty_Display_InternalCommandTimeout")]
+        [Description("ConnectionProperty_Description_InternalCommandTimeout")]
+        [RefreshProperties(RefreshProperties.All)]
+        [DefaultValue(null)]
+#endif
+        public int? InternalCommandTimeout
+        {
+            get { return _internalCommandTimeout; }
+            set { SetValue(GetKeyName(Keywords.InternalCommandTimeout), Keywords.InternalCommandTimeout, value); }
         }
 
         private bool _enlist;
@@ -919,6 +941,8 @@ namespace Npgsql
                     return Keywords.SyncNotification;
                 case "COMMANDTIMEOUT":
                     return Keywords.CommandTimeout;
+                case "INTERNALCOMMANDTIMEOUT":
+                    return Keywords.InternalCommandTimeout;
                 case "ENLIST":
                     return Keywords.Enlist;
                 case "PRELOADREADER":
@@ -986,6 +1010,8 @@ namespace Npgsql
                     return "SYNCNOTIFICATION";
                 case Keywords.CommandTimeout:
                     return "COMMANDTIMEOUT";
+                case Keywords.InternalCommandTimeout:
+                    return "INTERNALCOMMANDTIMEOUT";
                 case Keywords.Enlist:
                     return "ENLIST";
                 case Keywords.IntegratedSecurity:
@@ -1144,6 +1170,13 @@ namespace Npgsql
                         return this._sync_notification = ToBoolean(value);
                     case Keywords.CommandTimeout:
                         return this._command_timeout = Convert.ToInt32(value);
+                    case Keywords.InternalCommandTimeout:
+                        if (value == null)
+                            return this._internalCommandTimeout = null;
+                        var internalCommandTimeout = Convert.ToInt32(value);
+                        if (InternalCommandTimeout > 0 && InternalCommandTimeout < NpgsqlConnector.MinimumInternalCommandTimeout)
+                            throw new ArgumentOutOfRangeException("InternalCommandTimeout must be <= 0 or >= " + NpgsqlConnector.MinimumInternalCommandTimeout);
+                        return this._internalCommandTimeout = internalCommandTimeout;
                     case Keywords.Enlist:
                         return this._enlist = ToBoolean(value);
                     case Keywords.IntegratedSecurity:
@@ -1195,6 +1228,7 @@ namespace Npgsql
                     case Keywords.MinPoolSize:
                     case Keywords.MaxPoolSize:
                     case Keywords.CommandTimeout:
+                    case Keywords.InternalCommandTimeout:
                         exception_template = "expecting {0}=[Numeric] value in ConnectionString";
                         break;
                     case Keywords.SSL:
@@ -1264,6 +1298,8 @@ namespace Npgsql
                     return this._sync_notification;
                 case Keywords.CommandTimeout:
                     return this._command_timeout;
+                case Keywords.InternalCommandTimeout:
+                    return this._internalCommandTimeout;
                 case Keywords.Enlist:
                     return this._enlist;
                 case Keywords.IntegratedSecurity:
@@ -1314,6 +1350,7 @@ namespace Npgsql
         SearchPath,
         BufferSize,
         ServerCompatibility,
+        InternalCommandTimeout,
         // These are for the connection pool
         Pooling,
         ConnectionLifeTime,

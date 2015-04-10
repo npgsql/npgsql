@@ -12,7 +12,7 @@ namespace Npgsql.Tests
     public class TransactionTests : TestBase
     {
         [Test, Description("Basic insert within a committed transaction")]
-        public void TransactionCommit()
+        public void Commit()
         {
             var tx = Conn.BeginTransaction();
             ExecuteNonQuery("INSERT INTO data (field_text) VALUES ('X')", tx: tx);
@@ -129,20 +129,43 @@ namespace Npgsql.Tests
             Assert.That(ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
         }
 
+        [Test]
+        public void RollbackFailedTransactionWithTimeout()
+        {
+            var tx = Conn.BeginTransaction();
+            using (var cmd = new NpgsqlCommand("BAD QUERY", Conn, tx))
+            {
+                Assert.That(cmd.CommandTimeout != 1);
+                cmd.CommandTimeout = 1;
+                try
+                {
+                    cmd.ExecuteScalar();
+                    Assert.Fail();
+                }
+                catch (NpgsqlException)
+                {
+                    // Timeout at the backend is now 1
+                    tx.Rollback();
+                    Assert.That(ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+                }
+            }
+        }
+
         [Test, Description("If a custom command timeout is set, a failed transaction could not be rollbacked to a previous savepoint")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/363")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/184")]
         public void FailedTransactionCantRollbackToSavepointWithCustomTimeout()
         {
             var transaction = Conn.BeginTransaction();
-            transaction.Save("TestSavePoint");
+            transaction.CreateSavepoint("TestSavePoint");
 
             using (var command = new NpgsqlCommand("SELECT unknown_thing", Conn)) {
                 command.CommandTimeout = 1;
                 try {
                     command.ExecuteScalar();
                 } catch (NpgsqlException) {
-                    transaction.Rollback("TestSavePoint");
+                    transaction.RollbackToSavepoint("TestSavePoint");
+                    Assert.That(ExecuteScalar("SELECT 1"), Is.EqualTo(1));
                 }
             }
         }
@@ -163,46 +186,36 @@ namespace Npgsql.Tests
             conn.Close();
         }
 
+        [Test]
+        public void Savepoint()
+        {
+            const string name = "theSavePoint";
+
+            using (var tx = Conn.BeginTransaction())
+            {
+                tx.CreateSavepoint(name);
+
+                ExecuteNonQuery("INSERT INTO data (field_text) VALUES ('savepointtest')", tx: tx);
+                Assert.That(ExecuteScalar("SELECT COUNT(*) FROM data", tx: tx), Is.EqualTo(1));
+                tx.RollbackToSavepoint(name);
+                Assert.That(ExecuteScalar("SELECT COUNT(*) FROM data", tx: tx), Is.EqualTo(0));
+                ExecuteNonQuery("INSERT INTO data (field_text) VALUES ('savepointtest')", tx: tx);
+                tx.ReleaseSavepoint(name);
+                Assert.That(ExecuteScalar("SELECT COUNT(*) FROM data", tx: tx), Is.EqualTo(1));
+
+                tx.Commit();
+            }
+            Assert.That(ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(1));
+        }
+
+        [Test]
+        public void SavepointWithSemicolon()
+        {
+            using (var tx = Conn.BeginTransaction())
+                Assert.That(() => tx.CreateSavepoint("a;b"), Throws.Exception.TypeOf<ArgumentException>());
+        }
+
         // Older tests
-
-        [Test]
-        public void TestSavePoint()
-        {
-            const String theSavePoint = "theSavePoint";
-
-            using (var transaction = Conn.BeginTransaction()) {
-                transaction.Save(theSavePoint);
-
-                ExecuteNonQuery("INSERT INTO data (field_text) VALUES ('savepointtest')");
-                var result = ExecuteScalar("SELECT COUNT(*) FROM data WHERE field_text = 'savepointtest'");
-                Assert.AreEqual(1, result);
-
-                transaction.Rollback(theSavePoint);
-
-                result = ExecuteScalar("SELECT COUNT(*) FROM data WHERE field_text = 'savepointtest'");
-                Assert.AreEqual(0, result);
-            }
-        }
-
-        [Test]
-        [ExpectedException(typeof(InvalidOperationException))]
-        public void TestSavePointWithSemicolon()
-        {
-            const String theSavePoint = "theSavePoint;";
-
-            using (var transaction = Conn.BeginTransaction()) {
-                transaction.Save(theSavePoint);
-
-                ExecuteNonQuery("INSERT INTO data (field_text) VALUES ('savepointtest')");
-                var result = ExecuteScalar("SELECT COUNT(*) FROM data WHERE field_text = 'savepointtest'");
-                Assert.AreEqual(1, result);
-
-                transaction.Rollback(theSavePoint);
-
-                result = ExecuteScalar("SELECT COUNT(*) FROM data WHERE field_text = 'savepointtest'");
-                Assert.AreEqual(0, result);
-            }
-        }
 
         [Test]
         public void Bug184RollbackFailsOnAbortedTransaction()

@@ -92,11 +92,11 @@ namespace Npgsql
 
             if (_prepared)
             {
-                connection.Connector.ExecuteBlind(string.Format("COMMIT PREPARED '{0}'", _txName));
+                connection.Connector.ExecuteInternalCommand(string.Format("COMMIT PREPARED '{0}'", _txName));
             }
             else
             {
-                connection.Connector.ExecuteBlind(PregeneratedMessage.CommitTransaction);
+                connection.Connector.ExecuteInternalCommand(PregeneratedMessage.CommitTransaction);
             }
         }
 
@@ -106,7 +106,7 @@ namespace Npgsql
             {
                 Log.Debug("Prepare transaction");
                 NpgsqlConnection connection = GetConnection();
-                connection.Connector.ExecuteBlind(string.Format("PREPARE TRANSACTION '{0}'", _txName));
+                connection.Connector.ExecuteInternalCommand(string.Format("PREPARE TRANSACTION '{0}'", _txName));
                 _prepared = true;
             }
         }
@@ -116,13 +116,21 @@ namespace Npgsql
             Log.Debug("Rollback transaction");
             NpgsqlConnection connection = GetConnection();
 
-            if (_prepared)
+            try
             {
-                connection.Connector.ExecuteBlind(string.Format("ROLLBACK PREPARED '{0}'", _txName));
+                if (_prepared)
+                {
+                    connection.Connector.ExecuteInternalCommand(string.Format("ROLLBACK PREPARED '{0}'", _txName));
+                }
+                else
+                {
+                    connection.Connector.ExecuteInternalCommand(PregeneratedMessage.RollbackTransaction);
+                }
             }
-            else
+            finally
             {
-                connection.Connector.ExecuteBlind(PregeneratedMessage.RollbackTransaction);
+                // The rollback may change the value of statement_value, set to unknown
+                connection.Connector.BackendTimeout = -1;
             }
         }
 

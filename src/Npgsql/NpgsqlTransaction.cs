@@ -30,6 +30,7 @@ using System;
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics.Contracts;
+using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
 using Npgsql.Logging;
 
@@ -96,19 +97,19 @@ namespace Npgsql
 
             switch (isolationLevel) {
                 case IsolationLevel.RepeatableRead:
-                    Connector.PrependMessage(PregeneratedMessage.BeginTransRepeatableRead);
+                    Connector.PrependInternalMessage(PregeneratedMessage.BeginTransRepeatableRead);
                     break;
                 case IsolationLevel.Serializable:
                 case IsolationLevel.Snapshot:
-                    Connector.PrependMessage(PregeneratedMessage.BeginTransSerializable);
+                    Connector.PrependInternalMessage(PregeneratedMessage.BeginTransSerializable);
                     break;
                 case IsolationLevel.ReadUncommitted:
                     // PG doesn't really support ReadUncommitted, it's the same as ReadCommitted. But we still
                     // send as if.
-                    Connector.PrependMessage(PregeneratedMessage.BeginTransReadUncommitted);
+                    Connector.PrependInternalMessage(PregeneratedMessage.BeginTransReadUncommitted);
                     break;
                 case IsolationLevel.ReadCommitted:
-                    Connector.PrependMessage(PregeneratedMessage.BeginTransReadCommitted);
+                    Connector.PrependInternalMessage(PregeneratedMessage.BeginTransReadCommitted);
                     break;
                 default:
                     throw new NotSupportedException("Isolation level not supported: " + isolationLevel);
@@ -125,10 +126,8 @@ namespace Npgsql
         public override void Commit()
         {
             CheckReady();
-
             Log.Debug("Commit transaction", Connection.Connector.Id);
-
-            Connection.Connector.ExecuteBlind(PregeneratedMessage.CommitTransaction);
+            Connector.ExecuteInternalCommand(PregeneratedMessage.CommitTransaction);
             Connection = null;
         }
 
@@ -141,7 +140,20 @@ namespace Npgsql
 
             Log.Debug("Rollback transaction", Connection.Connector.Id);
 
-            Connection.Connector.ExecuteBlindSuppressTimeout(PregeneratedMessage.RollbackTransaction);
+            var connector = Connector;
+
+            try
+            {
+                // If we're in a failed transaction we can't set the timeout
+                var withTimeout = connector.TransactionStatus != TransactionStatus.InFailedTransactionBlock;
+                connector.ExecuteInternalCommand(PregeneratedMessage.RollbackTransaction, withTimeout);
+            }
+            finally
+            {
+                // The rollback may change the value of statement_value, set to unknown
+                connector.BackendTimeout = -1;
+            }
+
             Connection = null;
         }
 
@@ -150,44 +162,68 @@ namespace Npgsql
         #region Savepoints
 
         /// <summary>
-        /// Rolls back a transaction from a pending savepoint state.
+        /// Creates a transaction save point.
         /// </summary>
-        public void Rollback(string savePointName)
+        public void CreateSavepoint(string name)
         {
+            if (name == null)
+                throw new ArgumentNullException("name");
+            if (string.IsNullOrWhiteSpace(name))
+                throw new ArgumentException("name can't be empty", "name");
+            if (name.Contains(";"))
+                throw new ArgumentException("name can't contain a semicolon");
+            Contract.EndContractBlock();
+
             CheckReady();
-
-            if (!Connection.Connector.SupportsSavepoint)
-            {
-                throw new InvalidOperationException("Savepoint is not supported by backend.");
-            }
-
-            if (savePointName.Contains(";"))
-            {
-                throw new InvalidOperationException("Savepoint name cannot have semicolon.");
-            }
-
-            Connection.Connector.ExecuteBlindSuppressTimeout(string.Format("ROLLBACK TO SAVEPOINT {0}", savePointName));
+            Log.Debug("Create savepoint", Connection.Connector.Id);
+            Connector.ExecuteInternalCommand(new QueryMessage(string.Format("SAVEPOINT {0}", name)));
         }
 
         /// <summary>
-        /// Creates a transaction save point.
+        /// Rolls back a transaction from a pending savepoint state.
         /// </summary>
-        public void Save(String savePointName)
+        public void RollbackToSavepoint(string name)
         {
+            if (name == null)
+                throw new ArgumentNullException("name");
+            if (string.IsNullOrWhiteSpace(name))
+                throw new ArgumentException("name can't be empty", "name");
+            if (name.Contains(";"))
+                throw new ArgumentException("name can't contain a semicolon");
+            Contract.EndContractBlock();
+
             CheckReady();
 
-            if (!Connection.Connector.SupportsSavepoint)
-            {
-                throw new InvalidOperationException("Savepoint is not supported by backend.");
+            Log.Debug("Rollback savepoint", Connection.Connector.Id);
+
+            try {
+                // If we're in a failed transaction we can't set the timeout
+                var withTimeout = Connector.TransactionStatus != TransactionStatus.InFailedTransactionBlock;
+                Connector.ExecuteInternalCommand(new QueryMessage(string.Format("ROLLBACK TO SAVEPOINT {0}", name)), withTimeout);
+            } finally {
+                // The rollback may change the value of statement_value, set to unknown
+                Connection.Connector.BackendTimeout = -1;
             }
+        }
 
-            if (savePointName.Contains(";"))
-            {
-                throw new InvalidOperationException("Savepoint name cannot have semicolon.");
+        /// <summary>
+        /// Rolls back a transaction from a pending savepoint state.
+        /// </summary>
+        public void ReleaseSavepoint(string name)
+        {
+            if (name == null)
+                throw new ArgumentNullException("name");
+            if (string.IsNullOrWhiteSpace(name))
+                throw new ArgumentException("name can't be empty", "name");
+            if (name.Contains(";"))
+                throw new ArgumentException("name can't contain a semicolon");
+            Contract.EndContractBlock();
 
-            }
+            CheckReady();
 
-            Connection.Connector.ExecuteBlind(string.Format("SAVEPOINT {0}", savePointName));
+            Log.Debug("Release savepoint", Connection.Connector.Id);
+
+            Connector.ExecuteInternalCommand(new QueryMessage(string.Format("RELEASE SAVEPOINT {0}", name)));
         }
 
         #endregion
