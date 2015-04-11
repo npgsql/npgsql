@@ -114,6 +114,8 @@ namespace Npgsql.Tests
             command.Parameters.AddWithValue(":param1", 1);
 
             if (prepare) {
+                // Prepared commands need all parameter types to be set.
+                command.Parameters[0].DbType = DbType.Int32;
                 command.Prepare();
             }
 
