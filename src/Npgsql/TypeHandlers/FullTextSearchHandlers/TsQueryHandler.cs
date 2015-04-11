@@ -11,9 +11,10 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
     /// <summary>
     /// http://www.postgresql.org/docs/current/static/datatype-textsearch.html
     /// </summary>
-    [TypeMapping("tsquery", NpgsqlDbType.TsQuery, new DbType[0], new[] {
+    [TypeMapping("tsquery", NpgsqlDbType.TsQuery, new[] {
         typeof(NpgsqlTsQuery), typeof(NpgsqlTsQueryAnd), typeof(NpgsqlTsQueryEmpty),
-        typeof(NpgsqlTsQueryLexeme), typeof(NpgsqlTsQueryNot), typeof(NpgsqlTsQueryOr), typeof(NpgsqlTsQueryBinOp) })]
+        typeof(NpgsqlTsQueryLexeme), typeof(NpgsqlTsQueryNot), typeof(NpgsqlTsQueryOr), typeof(NpgsqlTsQueryBinOp) })
+    ]
     internal class TsQueryHandler : TypeHandler<NpgsqlTsQuery>, IChunkingTypeReader<NpgsqlTsQuery>, IChunkingTypeWriter
     {
         // 1 (type) + 1 (weight) + 1 (is prefix search) + 2046 (max str len) + 1 (null terminator)

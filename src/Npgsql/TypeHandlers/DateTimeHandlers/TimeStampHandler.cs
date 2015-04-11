@@ -8,7 +8,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-datetime.html
     /// </remarks>
-    [TypeMapping("timestamp", NpgsqlDbType.Timestamp, new[] { DbType.DateTime, DbType.DateTime2 }, new [] { typeof(NpgsqlDateTime), typeof(DateTime) })]
+    [TypeMapping("timestamp", NpgsqlDbType.Timestamp, new[] { DbType.DateTime, DbType.DateTime2 }, new [] { typeof(NpgsqlDateTime), typeof(DateTime) }, DbType.DateTime)]
     internal class TimeStampHandler : TypeHandlerWithPsv<DateTime, NpgsqlDateTime>,
         ISimpleTypeReader<DateTime>, ISimpleTypeReader<NpgsqlDateTime>, ISimpleTypeWriter
     {

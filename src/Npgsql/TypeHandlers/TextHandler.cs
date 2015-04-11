@@ -13,14 +13,16 @@ namespace Npgsql.TypeHandlers
 {
     [TypeMapping("text",      NpgsqlDbType.Text,
       new[] { DbType.String, DbType.StringFixedLength, DbType.AnsiString, DbType.AnsiStringFixedLength },
-      new[] { typeof(string), typeof(char[]) }
+      new[] { typeof(string), typeof(char[]) },
+      DbType.String
     )]
-    [TypeMapping("varchar",   NpgsqlDbType.Varchar)]
-    [TypeMapping("bpchar",    NpgsqlDbType.Char, typeof(char))]
-    [TypeMapping("name",      NpgsqlDbType.Name)]
-    [TypeMapping("xml",       NpgsqlDbType.Xml, DbType.Xml)]
-    [TypeMapping("json",      NpgsqlDbType.Json)]
-    [TypeMapping("refcursor", NpgsqlDbType.Refcursor)]
+    [TypeMapping("xml",       NpgsqlDbType.Xml, dbType: DbType.Xml)]
+
+    [TypeMapping("varchar",   NpgsqlDbType.Varchar,            inferredDbType: DbType.String)]
+    [TypeMapping("bpchar",    NpgsqlDbType.Char, typeof(char), inferredDbType: DbType.String)]
+    [TypeMapping("name",      NpgsqlDbType.Name,               inferredDbType: DbType.String)]
+    [TypeMapping("json",      NpgsqlDbType.Json,               inferredDbType: DbType.String)]
+    [TypeMapping("refcursor", NpgsqlDbType.Refcursor,          inferredDbType: DbType.String)]
     [TypeMapping("unknown")]
     internal class TextHandler : TypeHandler<string>,
         IChunkingTypeWriter,

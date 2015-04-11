@@ -568,18 +568,20 @@ namespace Npgsql
                     }
                     var npgsqlDbType = m.NpgsqlDbType.Value;
 
-                    if (m.DbTypes.Any())
-                    {
-                        NpgsqlDbTypeToDbType[npgsqlDbType] = m.DbTypes.FirstOrDefault();
+                    var inferredDbType = m.InferredDbType;
+
+                    if (inferredDbType != null) {
+                        NpgsqlDbTypeToDbType[npgsqlDbType] = inferredDbType.Value;
                     }
-                    foreach (var dbType in m.DbTypes)
-                    {
+                    foreach (var dbType in m.DbTypes) {
                         DbTypeToNpgsqlDbType[dbType] = npgsqlDbType;
                     }
                     foreach (var type in m.Types)
                     {
                         TypeToNpgsqlDbType[type] = npgsqlDbType;
-                        TypeToDbType[type] = m.DbTypes.Any() ? m.DbTypes.First() : DbType.Object;
+                        if (inferredDbType != null) {
+                            TypeToDbType[type] = inferredDbType.Value;
+                        }
                     }
                 }
             }
