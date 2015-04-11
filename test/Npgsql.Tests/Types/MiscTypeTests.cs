@@ -137,8 +137,7 @@ namespace Npgsql.Tests.Types
         public void Null()
         {
             var cmd = new NpgsqlCommand("SELECT @p::INT4", Conn);
-            var p = new NpgsqlParameter("p", NpgsqlDbType.Integer);
-            cmd.Parameters.Add(p);
+            cmd.Parameters.AddWithValue("p", DBNull.Value);
             var reader = cmd.ExecuteReader();
             reader.Read();
             Assert.That(reader.IsDBNull(0));
