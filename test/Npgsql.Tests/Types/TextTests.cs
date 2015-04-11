@@ -281,7 +281,7 @@ namespace Npgsql.Tests.Types
             }
         }
 
-        [Test]
+        [Test, Description("Tests the PostgreSQL internal \"char\" type")]
         public void InternalChar([Values(true, false)] bool prepareCommand)
         {
             using (var cmd = Conn.CreateCommand()) {
@@ -313,71 +313,19 @@ namespace Npgsql.Tests.Types
             }
         }
 
-        // Older tests from here
-
         [Test]
-        public void CharParameterValueSupport()
+        public void Char()
         {
-            const String query = @"create temp table test ( tc char(1) );
-                                   insert into test values(' ');
-                                   select * from test where tc=:charparam";
-            var command = new NpgsqlCommand(query, Conn);
-            var sqlParam = command.CreateParameter();
-            sqlParam.ParameterName = "charparam";
-
-            // Exception Can't cast System.Char into any valid DbType.
-            sqlParam.Value = ' ';
-            command.Parameters.Add(sqlParam);
-            var res = (String)command.ExecuteScalar();
-
-            Assert.AreEqual(" ", res);
-        }
-
-        [Test]
-        public void TestCharParameterLength()
-        {
-            const string sql = "insert into data(field_char5) values ( :a );";
-            const string aValue = "atest";
-            var command = new NpgsqlCommand(sql, Conn);
-            command.Parameters.Add(new NpgsqlParameter(":a", NpgsqlDbType.Char));
-            command.Parameters[":a"].Value = aValue;
-            command.Parameters[":a"].Size = 5;
-            var rowsAdded = command.ExecuteNonQuery();
-            Assert.AreEqual(rowsAdded, 1);
-
-            var command2 = new NpgsqlCommand("select field_char5 from data where field_serial = (select max(field_serial) from data)", Conn);
-            using (var dr = command2.ExecuteReader()) {
-                dr.Read();
-                String a = dr.GetString(0);
-                Assert.AreEqual(aValue, a);
-            }
-        }
-
-        [Test]
-        public void GetCharsOld()
-        {
-            ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('Random text')");
-            var command = new NpgsqlCommand("SELECT field_text FROM DATA", Conn);
-            using (var dr = command.ExecuteReader())
+            var expected = 'f';
+            using (var cmd = new NpgsqlCommand("SELECT @p", Conn))
             {
-                dr.Read();
-                var result = new Char[6];
-                dr.GetChars(0, 0, result, 0, 6);
-                Assert.AreEqual("Random", new String(result));
-            }
-        }
-
-        [Test]
-        public void GetCharsSequential()
-        {
-            ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('Random text')");
-            var command = new NpgsqlCommand("SELECT field_text FROM data;", Conn);
-            using (var dr = command.ExecuteReader(CommandBehavior.SequentialAccess))
-            {
-                dr.Read();
-                var result = new Char[6];
-                dr.GetChars(0, 0, result, 0, 6);
-                Assert.AreEqual("Random", new String(result));
+                cmd.Parameters.AddWithValue("p", expected);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetString(0), Is.EqualTo(expected.ToString()));
+                    Assert.That(() => reader.GetChar(0), Throws.Exception);
+                }
             }
         }
 

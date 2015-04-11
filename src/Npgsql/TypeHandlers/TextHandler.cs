@@ -13,13 +13,13 @@ namespace Npgsql.TypeHandlers
 {
     [TypeMapping("text",      NpgsqlDbType.Text,
       new[] { DbType.String, DbType.StringFixedLength, DbType.AnsiString, DbType.AnsiStringFixedLength },
-      new[] { typeof(string), typeof(char[]) },
+      new[] { typeof(string), typeof(char[]), typeof(char) },
       DbType.String
     )]
     [TypeMapping("xml",       NpgsqlDbType.Xml, dbType: DbType.Xml)]
 
     [TypeMapping("varchar",   NpgsqlDbType.Varchar,            inferredDbType: DbType.String)]
-    [TypeMapping("bpchar",    NpgsqlDbType.Char, typeof(char), inferredDbType: DbType.String)]
+    [TypeMapping("bpchar",    NpgsqlDbType.Char,               inferredDbType: DbType.String)]
     [TypeMapping("name",      NpgsqlDbType.Name,               inferredDbType: DbType.String)]
     [TypeMapping("json",      NpgsqlDbType.Json,               inferredDbType: DbType.String)]
     [TypeMapping("refcursor", NpgsqlDbType.Refcursor,          inferredDbType: DbType.String)]
@@ -37,6 +37,8 @@ namespace Npgsql.TypeHandlers
         byte[] _tempBuf;
         int _byteLen, _charLen, _bytePos, _charPos;
         NpgsqlBuffer _buf;
+
+        char[] _singleCharArray = new char[1];
 
         #endregion
 
@@ -208,15 +210,20 @@ namespace Npgsql.TypeHandlers
             var asString = value as string;
             if (asString != null) {
                 return parameter == null || parameter.Size <= 0 || parameter.Size >= asString.Length
-                  ? Encoding.UTF8.GetByteCount(asString)
-                  : Encoding.UTF8.GetByteCount(asString.ToCharArray(), 0, parameter.Size);
+                  ? PGUtil.UTF8Encoding.GetByteCount(asString)
+                  : PGUtil.UTF8Encoding.GetByteCount(asString.ToCharArray(), 0, parameter.Size);
             }
 
             var asCharArray = value as char[];
             if (asCharArray != null) {
                 return parameter == null || parameter.Size <= 0 || parameter.Size >= asCharArray.Length
-                  ? Encoding.UTF8.GetByteCount(asCharArray)
-                  : Encoding.UTF8.GetByteCount(asCharArray, 0, parameter.Size);
+                  ? PGUtil.UTF8Encoding.GetByteCount(asCharArray)
+                  : PGUtil.UTF8Encoding.GetByteCount(asCharArray, 0, parameter.Size);
+            }
+
+            if (value is char) {
+                _singleCharArray[0] = (char)value;
+                return PGUtil.UTF8Encoding.GetByteCount(_singleCharArray);
             }
 
             throw new InvalidCastException("Can't write type as text: " + value.GetType());
@@ -239,6 +246,14 @@ namespace Npgsql.TypeHandlers
             if (_chars != null)
             {
                 _charLen = parameter == null || parameter.Size <= 0 || parameter.Size >= _chars.Length ? _chars.Length : parameter.Size;
+                return;
+            }
+
+            if (value is char)
+            {
+                _singleCharArray[0] = (char)value;
+                _chars = _singleCharArray;
+                _charLen = 1;
                 return;
             }
 
