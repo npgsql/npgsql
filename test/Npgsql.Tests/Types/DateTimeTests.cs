@@ -361,9 +361,11 @@ namespace Npgsql.Tests.Types
             {
                 var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Interval);
                 var p2 = new NpgsqlParameter("p2", expectedNpgsqlInterval);
+                Assert.That(p2.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Interval));
+                Assert.That(p2.DbType, Is.EqualTo(DbType.Object));
                 cmd.Parameters.Add(p1);
                 cmd.Parameters.Add(p2);
-                p2.Value = expectedTimeSpan;
+                p1.Value = expectedNpgsqlInterval;
 
                 using (var reader = cmd.ExecuteReader())
                 {
