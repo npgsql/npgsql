@@ -1571,7 +1571,7 @@ namespace Npgsql
             }
             catch (Exception e)
             {
-                Log.Warn("Exception caught while attempting to cancel command", e, connector.BackendProcessId);
+                Log.Warn("Exception caught while attempting to cancel command", e, connector.Id);
             }
         }
 

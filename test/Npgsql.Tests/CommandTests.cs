@@ -513,10 +513,23 @@ namespace Npgsql.Tests
                 conn.Open();
                 using (var cmd = new NpgsqlCommand("SELECT pg_sleep(10)", conn))
                 {
-                    cmd.CommandTimeout = 1;
                     Assert.That(() => cmd.ExecuteNonQuery(), Throws.Exception.TypeOf<IOException>());
                     Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
                 }
+            }
+        }
+
+        [Test, Description("Makes sure the frontend socket timeout is set to 0 (infinite) for async notification reads")]
+        public void TimeoutFrontendWithAsyncNotification()
+        {
+            using (var conn = new NpgsqlConnection(ConnectionString + ";CommandTimeout=1;BackendTimeouts=false"))
+            {
+                conn.Open();
+
+                ExecuteNonQuery("SELECT 1", conn);
+                // Socket timeout is now 1 second
+
+
             }
         }
 

@@ -50,17 +50,17 @@ namespace Npgsql
         /// <summary>
         /// The physical connection socket to the backend.
         /// </summary>
-        internal Socket Socket { get; set; }
+        Socket _socket;
 
         /// <summary>
         /// The physical connection stream to the backend, without anything on top.
         /// </summary>
-        internal NetworkStream BaseStream { get; set; }
+        NetworkStream _baseStream;
 
         /// <summary>
         /// The physical connection stream to the backend, layered with an SSL/TLS stream if in secure mode.
         /// </summary>
-        internal Stream Stream { get; set; }
+        Stream _stream;
 
         /// <summary>
         /// Buffer used for reading data.
@@ -75,7 +75,7 @@ namespace Npgsql
         /// <summary>
         /// The secret key of the backend for this connector, used for query cancellation.
         /// </summary>
-        internal int BackendSecretKey { get; private set; }
+        int _backendSecretKey;
 
         /// <summary>
         /// The process ID of the backend for this connector.
@@ -448,18 +448,18 @@ namespace Npgsql
                 {
                     Log.Trace("Attempting to connect to " + ips[i], Id);
                     var ep = new IPEndPoint(ips[i], Port);
-                    Socket = new Socket(ep.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+                    _socket = new Socket(ep.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
                     attemptStart = DateTime.Now;
 
                     try
                     {
-                        result = Socket.BeginConnect(ep, null, null);
+                        result = _socket.BeginConnect(ep, null, null);
 
                         if (!result.AsyncWaitHandle.WaitOne(timeout / (ips.Length - i), true)) {
                             throw new TimeoutException("Connection establishment timeout. Increase Timeout value in ConnectionString.");
                         }
 
-                        Socket.EndConnect(result);
+                        _socket.EndConnect(result);
 
                         // connect was successful, leave the loop
                         break;
@@ -479,19 +479,19 @@ namespace Npgsql
                     }
                 }
 
-                Contract.Assert(Socket != null);
-                BaseStream = new NetworkStream(Socket, true);
-                Stream = BaseStream;
+                Contract.Assert(_socket != null);
+                _baseStream = new NetworkStream(_socket, true);
+                _stream = _baseStream;
 
                 // If the PostgreSQL server has SSL connectors enabled Open SslClientStream if (response == 'S') {
                 if (SSL || (SslMode == SslMode.Require) || (SslMode == SslMode.Prefer))
                 {
-                    Stream
+                    _stream
                         .WriteInt32(8)
                         .WriteInt32(80877103);
 
                     // Receive response
-                    var response = (Char)Stream.ReadByte();
+                    var response = (Char)_stream.ReadByte();
 
                     if (response != 'S')
                     {
@@ -512,46 +512,46 @@ namespace Npgsql
 #if DNXCORE50
                             throw new NotSupportedException("TLS implementation not yet supported with .NET Core");
 #else
-                            var sslStream = new TlsClientStream.TlsClientStream(Stream);
+                            var sslStream = new TlsClientStream.TlsClientStream(_stream);
                             sslStream.PerformInitialHandshake(Host, clientCertificates, certificateValidationCallback, false);
-                            Stream = sslStream;
+                            _stream = sslStream;
 #endif
                         }
                         else
                         {
-                            var sslStream = new SslStream(Stream, false, certificateValidationCallback);
+                            var sslStream = new SslStream(_stream, false, certificateValidationCallback);
                             sslStream.AuthenticateAsClient(Host, clientCertificates, System.Security.Authentication.SslProtocols.Default, false);
-                            Stream = sslStream;
+                            _stream = sslStream;
                         }
                         IsSecure = true;
                     }
                 }
 
-                Buffer = new NpgsqlBuffer(Stream, BufferSize, PGUtil.UTF8Encoding);
+                Buffer = new NpgsqlBuffer(_stream, BufferSize, PGUtil.UTF8Encoding);
                 Log.Debug(String.Format("Connected to {0}:{1}", Host, Port));
             }
             catch
             {
-                if (Stream != null)
+                if (_stream != null)
                 {
-                    try { Stream.Close(); } catch {
+                    try { _stream.Close(); } catch {
                         // ignored
                     }
-                    Stream = null;
+                    _stream = null;
                 }
-                if (BaseStream != null)
+                if (_baseStream != null)
                 {
-                    try { BaseStream.Close(); } catch {
+                    try { _baseStream.Close(); } catch {
                         // ignored
                     }
-                    BaseStream = null;
+                    _baseStream = null;
                 }
-                if (Socket != null)
+                if (_socket != null)
                 {
-                    try { Socket.Close(); } catch {
+                    try { _socket.Close(); } catch {
                         // ignored
                     }
-                    Socket = null;
+                    _socket = null;
                 }
                 throw;
             }
@@ -948,7 +948,7 @@ namespace Npgsql
 
                 case BackendMessageCode.BackendKeyData:
                     BackendProcessId = buf.ReadInt32();
-                    BackendSecretKey = buf.ReadInt32();
+                    _backendSecretKey = buf.ReadInt32();
                     return null;
 
                 case BackendMessageCode.CopyInResponse:
@@ -1002,7 +1002,7 @@ namespace Npgsql
                 timeout = userTimeout * 1000;
 
             if (timeout != _frontendTimeout) {
-                Socket.ReceiveTimeout = _frontendTimeout = timeout;
+                _socket.ReceiveTimeout = _frontendTimeout = timeout;
             }
         }
 
@@ -1209,7 +1209,7 @@ namespace Npgsql
             try
             {
                 cancelConnector.RawOpen(cancelConnector.ConnectionTimeout*1000);
-                cancelConnector.SendSingleMessage(new CancelRequestMessage(BackendProcessId, BackendSecretKey));
+                cancelConnector.SendSingleMessage(new CancelRequestMessage(BackendProcessId, _backendSecretKey));
             }
             finally
             {
@@ -1265,7 +1265,7 @@ namespace Npgsql
         /// </summary>
         void Cleanup()
         {
-            try { if (Stream != null) Stream.Close(); } catch {
+            try { if (_stream != null) _stream.Close(); } catch {
                 // ignored
             }
 
@@ -1282,8 +1282,8 @@ namespace Npgsql
             }
 
             ClearTransaction();
-            Stream = null;
-            BaseStream = null;
+            _stream = null;
+            _baseStream = null;
             Buffer = null;
             Connection = null;
             BackendParams.Clear();
@@ -1371,7 +1371,7 @@ namespace Npgsql
                     {
                         while (_connector.Buffer.ReadBytesLeft > 0
 #if !DNXCORE50
-                            || _connector.Stream is TlsClientStream.TlsClientStream && ((TlsClientStream.TlsClientStream)_connector.Stream).HasBufferedReadData(false)
+                            || _connector._stream is TlsClientStream.TlsClientStream && ((TlsClientStream.TlsClientStream)_connector._stream).HasBufferedReadData(false)
 #endif
                         )
                         {
@@ -1403,7 +1403,7 @@ namespace Npgsql
         internal void AddNotificationListener()
         {
             _notificationSemaphore = new SemaphoreSlim(1);
-            var task = BaseStream.ReadAsync(EmptyBuffer, 0, 0);
+            var task = _baseStream.ReadAsync(EmptyBuffer, 0, 0);
             task.ContinueWith(NotificationHandler);
         }
 
@@ -1428,7 +1428,7 @@ namespace Npgsql
                     {
                         while (Buffer.ReadBytesLeft > 0
 #if !DNXCORE50
-                            || Stream is TlsClientStream.TlsClientStream && ((TlsClientStream.TlsClientStream)Stream).HasBufferedReadData(true) || !IsSecure && BaseStream.DataAvailable
+                            || _stream is TlsClientStream.TlsClientStream && ((TlsClientStream.TlsClientStream)_stream).HasBufferedReadData(true) || !IsSecure && _baseStream.DataAvailable
 #endif
                         )
                         {
@@ -1447,7 +1447,7 @@ namespace Npgsql
                         semaphore.Release();
                         try
                         {
-                            BaseStream.ReadAsync(EmptyBuffer, 0, 0).ContinueWith(NotificationHandler);
+                            _baseStream.ReadAsync(EmptyBuffer, 0, 0).ContinueWith(NotificationHandler);
                         }
                         catch { }
                     }
