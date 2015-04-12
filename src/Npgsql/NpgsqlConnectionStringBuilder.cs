@@ -185,6 +185,7 @@ namespace Npgsql
             valueDescriptions.Add(Keywords.SyncNotification, new ValueDescription(typeof(bool)));
             valueDescriptions.Add(Keywords.CommandTimeout, new ValueDescription(NpgsqlCommand.DefaultTimeout));
             valueDescriptions.Add(Keywords.InternalCommandTimeout, new ValueDescription(typeof(int?)));
+            valueDescriptions.Add(Keywords.BackendTimeouts, new ValueDescription(true));
             valueDescriptions.Add(Keywords.Enlist, new ValueDescription(typeof(bool)));
             valueDescriptions.Add(Keywords.IntegratedSecurity, new ValueDescription(typeof(bool)));
             valueDescriptions.Add(Keywords.IncludeRealm, new ValueDescription(typeof(bool)));
@@ -234,8 +235,8 @@ namespace Npgsql
                 throw new ArgumentOutOfRangeException(
                     key, String.Format("Numeric value {0} in ConnectionString exceeds maximum value {1}", key, MaxPoolSize));
             }
-            if (InternalCommandTimeout > 0 && InternalCommandTimeout < NpgsqlConnector.MinimumInternalCommandTimeout)
-                throw new ArgumentOutOfRangeException("InternalCommandTimeout must be <= 0 or >= " + NpgsqlConnector.MinimumInternalCommandTimeout);
+            if (InternalCommandTimeout.HasValue && InternalCommandTimeout < NpgsqlConnector.MinimumInternalCommandTimeout && InternalCommandTimeout != 0)
+                throw new ArgumentOutOfRangeException(string.Format("InternalCommandTimeout must be >= {0} or 0 (infinite)", NpgsqlConnector.MinimumInternalCommandTimeout));
             if (IntegratedSecurity && Type.GetType("Mono.Runtime") != null)
                 throw new NotSupportedException("IntegratedSecurity isn't supported on mono");
         }
@@ -800,6 +801,25 @@ namespace Npgsql
             set { SetValue(GetKeyName(Keywords.InternalCommandTimeout), Keywords.InternalCommandTimeout, value); }
         }
 
+        private bool _backendTimeouts;
+        /// <summary>
+        /// Whether to have the backend enforce <see cref="CommandTimeout"/> and <see cref="InternalCommandTimeout"/>
+        /// via the statement_timeout variable. Defaults to true.
+        /// </summary>
+#if !DNXCORE50
+        [Category("DataCategory_Advanced")]
+        [NpgsqlConnectionStringKeyword(Keywords.InternalCommandTimeout)]
+        [DisplayName("ConnectionProperty_Display_BackendTimeouts")]
+        [Description("ConnectionProperty_Description_BackendTimeouts")]
+        [RefreshProperties(RefreshProperties.All)]
+        [DefaultValue(true)]
+#endif
+        public bool BackendTimeouts
+        {
+            get { return _backendTimeouts; }
+            set { SetValue(GetKeyName(Keywords.BackendTimeouts), Keywords.BackendTimeouts, value); }
+        }
+
         private bool _enlist;
 #if !DNXCORE50
         [Category("DataCategory_Pooling")]
@@ -943,6 +963,8 @@ namespace Npgsql
                     return Keywords.CommandTimeout;
                 case "INTERNALCOMMANDTIMEOUT":
                     return Keywords.InternalCommandTimeout;
+                case "BACKENDTIMEOUTS":
+                    return Keywords.BackendTimeouts;
                 case "ENLIST":
                     return Keywords.Enlist;
                 case "PRELOADREADER":
@@ -1012,6 +1034,8 @@ namespace Npgsql
                     return "COMMANDTIMEOUT";
                 case Keywords.InternalCommandTimeout:
                     return "INTERNALCOMMANDTIMEOUT";
+                case Keywords.BackendTimeouts:
+                    return "BACKENDTIMEOUTS";
                 case Keywords.Enlist:
                     return "ENLIST";
                 case Keywords.IntegratedSecurity:
@@ -1169,14 +1193,19 @@ namespace Npgsql
                     case Keywords.SyncNotification:
                         return this._sync_notification = ToBoolean(value);
                     case Keywords.CommandTimeout:
-                        return this._command_timeout = Convert.ToInt32(value);
+                        var commandTimeout = Convert.ToInt32(value);
+                        if (commandTimeout < 0)
+                            throw new ArgumentOutOfRangeException("CommandTimeout can't be negative");
+                        return this._command_timeout = commandTimeout;
                     case Keywords.InternalCommandTimeout:
                         if (value == null)
                             return this._internalCommandTimeout = null;
                         var internalCommandTimeout = Convert.ToInt32(value);
-                        if (InternalCommandTimeout > 0 && InternalCommandTimeout < NpgsqlConnector.MinimumInternalCommandTimeout)
-                            throw new ArgumentOutOfRangeException("InternalCommandTimeout must be <= 0 or >= " + NpgsqlConnector.MinimumInternalCommandTimeout);
+                        if (InternalCommandTimeout < NpgsqlConnector.MinimumInternalCommandTimeout && InternalCommandTimeout != 0)
+                            throw new ArgumentOutOfRangeException(string.Format("InternalCommandTimeout must be >= {0} or 0 (infinite)", NpgsqlConnector.MinimumInternalCommandTimeout));
                         return this._internalCommandTimeout = internalCommandTimeout;
+                    case Keywords.BackendTimeouts:
+                        return this._backendTimeouts = ToBoolean(value);
                     case Keywords.Enlist:
                         return this._enlist = ToBoolean(value);
                     case Keywords.IntegratedSecurity:
@@ -1233,6 +1262,7 @@ namespace Npgsql
                         break;
                     case Keywords.SSL:
                     case Keywords.UseSslStream:
+                    case Keywords.BackendTimeouts:
                     case Keywords.Pooling:
                     case Keywords.SyncNotification:
                     case Keywords.ConvertInfinityDateTime:
@@ -1300,6 +1330,8 @@ namespace Npgsql
                     return this._command_timeout;
                 case Keywords.InternalCommandTimeout:
                     return this._internalCommandTimeout;
+                case Keywords.BackendTimeouts:
+                    return this._backendTimeouts;
                 case Keywords.Enlist:
                     return this._enlist;
                 case Keywords.IntegratedSecurity:
@@ -1351,6 +1383,7 @@ namespace Npgsql
         BufferSize,
         ServerCompatibility,
         InternalCommandTimeout,
+        BackendTimeouts,
         // These are for the connection pool
         Pooling,
         ConnectionLifeTime,

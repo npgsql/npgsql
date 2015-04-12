@@ -151,7 +151,7 @@ namespace Npgsql
             finally
             {
                 // The rollback may change the value of statement_value, set to unknown
-                connector.BackendTimeout = -1;
+                connector.SetBackendTimeoutToUnknown();
             }
 
             Connection = null;
@@ -202,7 +202,7 @@ namespace Npgsql
                 Connector.ExecuteInternalCommand(new QueryMessage(string.Format("ROLLBACK TO SAVEPOINT {0}", name)), withTimeout);
             } finally {
                 // The rollback may change the value of statement_value, set to unknown
-                Connection.Connector.BackendTimeout = -1;
+                Connection.Connector.SetBackendTimeoutToUnknown();
             }
         }
 

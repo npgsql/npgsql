@@ -130,7 +130,7 @@ namespace Npgsql
             finally
             {
                 // The rollback may change the value of statement_value, set to unknown
-                connection.Connector.BackendTimeout = -1;
+                connection.Connector.SetBackendTimeoutToUnknown();
             }
         }
 

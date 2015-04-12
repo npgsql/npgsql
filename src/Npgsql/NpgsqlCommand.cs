@@ -1037,8 +1037,10 @@ namespace Npgsql
                 return;
             }
 
-            // Set backend timeout if needed
-            _connector.PrependTimeoutMessage(CommandTimeout);
+            // Set the frontend timeout
+            _connector.UserCommandFrontendTimeout = CommandTimeout;
+            // If needed, prepend a "SET statement_timeout" message to set the backend timeout
+            _connector.PrependBackendTimeoutMessage(CommandTimeout);
 
             // Create actual messages depending on scenario
             if (IsPrepared) {

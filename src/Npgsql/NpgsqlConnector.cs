@@ -145,17 +145,33 @@ namespace Npgsql
         internal SSPIHandler SSPI { get; set; }
 #endif
 
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+        /// <summary>
+        /// Number of seconds added as a margin to the backend timeout to yield the frontend timeout.
+        /// We prefer the backend to timeout - it's a clean error which doesn't break the connector.
+        /// </summary>
+        const int FrontendTimeoutMargin = 3;
 
         /// <summary>
-        /// Contain the current value of the statement_timeout parameter at the backend,
+        /// The frontend timeout for reading messages that are part of the user's command
+        /// (i.e. which aren't internal prepended commands).
+        /// </summary>
+        internal int UserCommandFrontendTimeout { get; set; }
+
+        /// <summary>
+        /// Contains the current value of the statement_timeout parameter at the backend,
         /// used to determine whether we need to change it when commands are sent.
         /// </summary>
         /// <remarks>
         /// 0 means means no timeout.
         /// -1 means that the current value is unknown.
         /// </remarks>
-        internal int BackendTimeout { get; set; }
+        int _backendTimeout;
+
+        /// <summary>
+        /// Contains the current value of the socket's ReceiveTimeout, used to determine whether
+        /// we need to change it when commands are received.
+        /// </summary>
+        int _frontendTimeout;
 
         /// <summary>
         /// The minimum timeout that can be set on internal commands such as COMMIT, ROLLBACK.
@@ -165,6 +181,8 @@ namespace Npgsql
         SemaphoreSlim _notificationSemaphore;
         static readonly byte[] EmptyBuffer = new byte[0];
         int _notificationBlockRecursionDepth;
+
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         #region Reusable Message Objects
 
@@ -188,6 +206,8 @@ namespace Npgsql
 
         #endregion
 
+        #region Constructors
+
         internal NpgsqlConnector(NpgsqlConnection connection)
             : this(connection.CopyConnectionStringBuilder())
         {
@@ -210,6 +230,8 @@ namespace Npgsql
             _portalIndex = 0;
         }
 
+        #endregion
+
         #region Configuration settings
 
         internal string ConnectionString { get { return _settings.ConnectionString; } }
@@ -225,6 +247,7 @@ namespace Npgsql
         internal int BufferSize { get { return _settings.BufferSize; } }
         internal int ConnectionTimeout { get { return _settings.Timeout; } }
         internal int InternalCommandTimeout { get { return _settings.InternalCommandTimeout ?? _settings.CommandTimeout; } }
+        internal bool BackendTimeouts { get { return _settings.BackendTimeouts; } }
         internal bool Enlist { get { return _settings.Enlist; } }
         internal bool IntegratedSecurity { get { return _settings.IntegratedSecurity; } }
         internal bool ConvertInfinityDateTime { get { return _settings.ConvertInfinityDateTime; } }
@@ -631,7 +654,7 @@ namespace Npgsql
         internal void PrependInternalMessage(FrontendMessage msg)
         {
             // Set backend timeout if needed.
-            PrependTimeoutMessage(InternalCommandTimeout);
+            PrependBackendTimeoutMessage(InternalCommandTimeout);
 
             if (msg is QueryMessage || msg is PregeneratedMessage || msg is SyncMessage)
             {
@@ -642,13 +665,13 @@ namespace Npgsql
             _messagesToSend.Add(msg);
         }
 
-        internal void PrependTimeoutMessage(int timeout)
+        internal void PrependBackendTimeoutMessage(int timeout)
         {
-            if (BackendTimeout == timeout || timeout < 0) {
+            if (_backendTimeout == timeout || !BackendTimeouts) {
                 return;
             }
 
-            BackendTimeout = timeout;
+            _backendTimeout = timeout;
             _pendingRfqPrependedMessages++;
 
             switch (timeout) {
@@ -764,31 +787,35 @@ namespace Npgsql
 
         #region Backend message processing
 
-        [GenerateAsync]
         internal IBackendMessage ReadSingleMessage(DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential, bool ignoreNotifications = true)
         {
             // First read the responses of any prepended messages.
             // Exceptions shouldn't happen here, we break the connector if they do
-            try
+            if (_sentRfqPrependedMessages > 0)
             {
-                while (_sentRfqPrependedMessages > 0)
+                try
                 {
-                    var msg = DoReadSingleMessage(DataRowLoadingMode.Skip);
-                    if (msg is ReadyForQueryMessage)
+                    SetFrontendTimeout(InternalCommandTimeout);
+                    while (_sentRfqPrependedMessages > 0)
                     {
-                        _sentRfqPrependedMessages--;
+                        var msg = DoReadSingleMessage(DataRowLoadingMode.Skip);
+                        if (msg is ReadyForQueryMessage)
+                        {
+                            _sentRfqPrependedMessages--;
+                        }
                     }
                 }
-            }
-            catch
-            {
-                Break();
-                throw;
+                catch
+                {
+                    Break();
+                    throw;
+                }
             }
 
             // Now read a non-prepended message
             try
             {
+                SetFrontendTimeout(UserCommandFrontendTimeout);
                 return DoReadSingleMessage(dataRowLoadingMode, ignoreNotifications);
             }
             catch (NpgsqlException)
@@ -954,6 +981,28 @@ namespace Npgsql
                     throw new Exception("Unexpected backend message: " + code);
                 default:
                     throw PGUtil.ThrowIfReached("Unknown backend message code: " + code);
+            }
+        }
+
+        /// <summary>
+        /// Given a user timeout in seconds, sets the socket's ReceiveTimeout (if needed).
+        /// Note that if backend timeouts are enabled, we add a few seconds of margin to allow
+        /// the backend timeout to happen first.
+        /// </summary>
+        void SetFrontendTimeout(int userTimeout)
+        {
+            // TODO: Socket.ReceiveTimeout doesn't work for async.
+
+            int timeout;
+            if (userTimeout == 0)
+                timeout = 0;
+            else if (BackendTimeouts)
+                timeout = (userTimeout + FrontendTimeoutMargin) * 1000;
+            else
+                timeout = userTimeout * 1000;
+
+            if (timeout != _frontendTimeout) {
+                Socket.ReceiveTimeout = _frontendTimeout = timeout;
             }
         }
 
@@ -1298,7 +1347,7 @@ namespace Npgsql
             }
 
             // DISCARD ALL may have changed the value of statement_value, set to unknown
-            BackendTimeout = -1;
+            SetBackendTimeoutToUnknown();
         }
 
         #endregion Close
@@ -1472,7 +1521,7 @@ namespace Npgsql
         internal void ExecuteInternalCommand(SimpleFrontendMessage message, bool withTimeout=true)
         {
             if (withTimeout) {
-                PrependTimeoutMessage(InternalCommandTimeout);
+                PrependBackendTimeoutMessage(InternalCommandTimeout);
             }
             AddMessage(message);
             using (BlockNotifications()) {
@@ -1485,6 +1534,13 @@ namespace Npgsql
         #endregion
 
         #region Misc
+
+        /// <summary>
+        /// Called in various cases to indicate that the backend's statement_timeout parameter
+        /// may have changed and is currently unknown. It will be set the next time a command
+        /// is sent.
+        /// </summary>
+        internal void SetBackendTimeoutToUnknown() { _backendTimeout = -1; }
 
         void HandleParameterStatus(string name, string value)
         {
@@ -1512,22 +1568,6 @@ namespace Npgsql
             if (name == "standard_conforming_strings") {
                 UseConformantStrings = (value == "on");
             }
-        }
-
-        /// <summary>
-        /// Modify the backend statement_timeout value if needed.
-        /// </summary>
-        /// <param name="timeout">New timeout</param>
-        [GenerateAsync]
-        internal void SetBackendCommandTimeout(int timeout)
-        {
-            /*
-            if (Mediator.BackendCommandTimeout == -1 || Mediator.BackendCommandTimeout != timeout)
-            {
-                ExecuteSetStatementTimeoutBlind(timeout);
-                Mediator.BackendCommandTimeout = timeout;
-            }
-             */
         }
 
         ///<summary>

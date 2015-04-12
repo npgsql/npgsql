@@ -36,6 +36,8 @@ using NUnit.Framework;
 using System.Data;
 using System.IO;
 using System.Net;
+using System.Net.Configuration;
+using System.Net.Sockets;
 using NpgsqlTypes;
 using System.Resources;
 using System.Threading;
@@ -483,42 +485,38 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test, Description("When CommandTimeout is negative, timeout setting is disabled entirely")]
+        [Test, Description("Test disabling backend timeouts altogether")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/351")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/350")]
         public void TimeoutDisable()
         {
-            using (var conn = new NpgsqlConnection(ConnectionString + ";CommandTimeout=-1"))
+            using (var conn = new NpgsqlConnection(ConnectionString + ";BackendTimeouts=false"))
             {
                 conn.Open();
                 Assert.That(ExecuteScalar("SHOW statement_timeout", conn), Is.EqualTo("0"));
                 using (var tx = conn.BeginTransaction())
                 {
-                    // If command timeout has been properly disabled, statement_timeout should
+                    // If backend timeouts has been properly disabled, statement_timeout should
                     // still be the PostgreSQL default, which is 0
                     Assert.That(ExecuteScalar("SHOW statement_timeout", conn, tx), Is.EqualTo("0"));
                 }
             }
         }
 
-        [Test, Description("Checks that the client socket timeout works as a last resort even when the backend timeout doesn't")]
+        [Test, Description("Checks that the client socket timeout works as a last resort even when there's no backend timeout")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/327")]
-        [Timeout(10000), Ignore]
+        [Timeout(10000)]
         public void TimeoutFrontend()
         {
-            throw new NotImplementedException();
-            using (var conn = new NpgsqlConnection(ConnectionString + ";CommandTimeout=1"))
+            using (var conn = new NpgsqlConnection(ConnectionString + ";CommandTimeout=1;BackendTimeouts=false"))
             {
                 conn.Open();
-
-                // Note: the following deliberately puts Npgsql out of sync with the backend with
-                // regards to the backend timeout. This should never be done in regular programming:
-                // timeouts should only be modified through the API and never with SET
-                ExecuteNonQuery("SET statement_timeout=90000", conn);
-
-                // The backend timeout is now 90 seconds, although Npgsql thinks it's 1
-                Assert.That(() => ExecuteNonQuery("SELECT pg_sleep(10)"),
-                    Throws.Exception.TypeOf<IOException>());
+                using (var cmd = new NpgsqlCommand("SELECT pg_sleep(10)", conn))
+                {
+                    cmd.CommandTimeout = 1;
+                    Assert.That(() => cmd.ExecuteNonQuery(), Throws.Exception.TypeOf<IOException>());
+                    Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+                }
             }
         }
 
