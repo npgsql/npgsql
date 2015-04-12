@@ -262,7 +262,7 @@ namespace Npgsql.Tests.Types
         public void UnrecognizedNull()
         {
             var cmd = new NpgsqlCommand("SELECT @p::TEXT", Conn);
-            var p = new NpgsqlParameter("p", null);
+            var p = new NpgsqlParameter("p", DBNull.Value);
             cmd.Parameters.Add(p);
             var reader = cmd.ExecuteReader();
             reader.Read();

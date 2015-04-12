@@ -63,11 +63,12 @@ namespace Npgsql
         TypeHandlerRegistry(NpgsqlConnector connector)
         {
             Connector = connector;
+            UnrecognizedTypeHandler = new UnrecognizedTypeHandler();
             _oidIndex = new Dictionary<uint, TypeHandler>();
             _byDbType = new Dictionary<DbType, TypeHandler>();
             _byNpgsqlDbType = new Dictionary<NpgsqlDbType, TypeHandler>();
             _byType = new Dictionary<Type, TypeHandler>();
-            UnrecognizedTypeHandler = new UnrecognizedTypeHandler();
+            _byType[typeof(DBNull)] = UnrecognizedTypeHandler;
             _byNpgsqlDbType[NpgsqlDbType.Unknown] = UnrecognizedTypeHandler;
         }
 
@@ -407,6 +408,8 @@ namespace Npgsql
         {
             get
             {
+                Contract.Ensures(Contract.Result<TypeHandler>() != null);
+
                 TypeHandler handler;
                 if (!_byDbType.TryGetValue(dbType, out handler)) {
                     throw new NotSupportedException("This DbType is not supported in Npgsql: " + dbType);
@@ -419,7 +422,8 @@ namespace Npgsql
         {
             get
             {
-                Contract.Requires(value != null && !(value is DBNull));
+                Contract.Requires(value != null);
+                Contract.Ensures(Contract.Result<TypeHandler>() != null);
 
                 if (value is DateTime)
                 {
@@ -442,6 +446,8 @@ namespace Npgsql
         {
             get
             {
+                Contract.Ensures(Contract.Result<TypeHandler>() != null);
+
                 TypeHandler handler;
                 if (_byType.TryGetValue(type, out handler)) {
                     return handler;

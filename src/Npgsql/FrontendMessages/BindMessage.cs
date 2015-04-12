@@ -144,7 +144,7 @@ namespace Npgsql.FrontendMessages
 
                 if (!_wroteParamLen)
                 {
-                    if (param.IsNull)
+                    if (param.Value is DBNull)
                     {
                         if (buf.WriteSpaceLeft < 4) { return false; }
                         buf.WriteInt32(-1);

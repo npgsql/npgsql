@@ -542,8 +542,6 @@ namespace Npgsql
             }
         }
 
-        internal bool IsNull { get { return _value is DBNull; } }
-
         /// <summary>
         /// Returns whether this parameter has had its type set explicitly via DbType or NpgsqlDbType
         /// (and not via type inference)
@@ -600,13 +598,13 @@ namespace Npgsql
             {
                 Handler = registry[_dbType.Value];
             }
-            else if (!IsNull)
+            else if (_value != null)
             {
                 Handler = registry[_value];
             }
             else
             {
-                Handler = registry.UnrecognizedTypeHandler;
+                throw new InvalidOperationException(string.Format("Parameter '{0}' must have its value set", ParameterName));
             }
         }
 
@@ -622,11 +620,7 @@ namespace Npgsql
 
         internal int ValidateAndGetLength()
         {
-            if (_value == null) {
-                throw new InvalidOperationException(string.Format("Parameter '{0}' must have its value set", ParameterName));
-            }
-
-            if (IsNull) {
+            if (_value is DBNull) {
                 return 0;
             }
 
