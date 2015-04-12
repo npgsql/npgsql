@@ -76,15 +76,16 @@ namespace Npgsql
         {
             var byOID = new Dictionary<uint, BackendType>();
 
-            // Select all types (base, array which is also base, enum, range). Note that arrays are distinguished
-            // from primitive types through them having typelem != 0 and typlen == -1.
+            // Select all types (base, array which is also base, enum, range).
+            // Note that arrays are distinguished from primitive types through them having typreceive=array_recv.
             // Order by primitives first, container later.
             // For arrays and ranges, join in the element OID and type (to filter out arrays of unhandled
             // types).
             var query =
-                @"SELECT a.typname, a.oid, a.typtype, a.typlen, CASE " +
-                (connector.SupportsRangeTypes ? @"WHEN a.typtype='r' THEN rngsubtype " : "") +
-                @"WHEN a.typlen = -1 THEN a.typelem ELSE 0 END AS ord " +
+                @"SELECT a.typname, a.oid, " +
+                @"CASE WHEN a.typreceive::TEXT='array_recv' THEN 'a' ELSE a.typtype END AS type, " +
+                @"CASE WHEN a.typreceive::TEXT='array_recv' THEN a.typelem WHEN a.typtype='r' THEN rngsubtype ELSE 0 END AS elemoid, " +
+                @"CASE WHEN a.typreceive::TEXT='array_recv' OR a.typtype='r' THEN 1 ELSE 0 END AS ord " +
                 @"FROM pg_type AS a " +
                 @"LEFT OUTER JOIN pg_type AS b ON (b.oid = a.typelem) " +
                 (connector.SupportsRangeTypes ? @"LEFT OUTER JOIN pg_range ON (pg_range.rngtypid = a.oid) " : "") +
@@ -112,29 +113,26 @@ namespace Npgsql
                         var typeChar = dr.GetString(2)[0];
                         switch (typeChar)
                         {
-                        case 'b':
-                            // We can't use pg_type.typarray to identify array types because that appeared only in PG 8.3.
-                            // But "True" arrays have typelem != 0 and typlen == -1
-                            var typeLen = Convert.ToInt16(dr[3]);
-                            elementOID = Convert.ToUInt32(dr[4]);
-                            if (elementOID != 0 && typeLen == -1)
-                            {
-                                backendType.Type = BackendTypeType.Array;
-                                if (!byOID.TryGetValue(elementOID, out backendType.Element)) {
-                                    Log.Error(String.Format("Array type '{0}' refers to unknown element with OID {1}, skipping", backendType.Name, elementOID), connector.Id);
-                                    continue;
-                                }
-                                backendType.Element.Array = backendType;
-                            } else {
-                                backendType.Type = BackendTypeType.Base;
-                            }
+                        case 'b':  // Normal base type
+                            backendType.Type = BackendTypeType.Base;
                             break;
-                        case 'e':
+                        case 'a':   // Array
+                            backendType.Type = BackendTypeType.Array;
+                            elementOID = Convert.ToUInt32(dr[3]);
+                            Contract.Assume(elementOID > 0);
+                            if (!byOID.TryGetValue(elementOID, out backendType.Element)) {
+                                Log.Error(string.Format("Array type '{0}' refers to unknown element with OID {1}, skipping", backendType.Name, elementOID), connector.Id);
+                                continue;
+                            }
+                            backendType.Element.Array = backendType;
+                            break;
+                        case 'e':   // Enum
                             backendType.Type = BackendTypeType.Enum;
                             break;
-                        case 'r':
+                        case 'r':   // Range
                             backendType.Type = BackendTypeType.Range;
-                            elementOID = Convert.ToUInt32(dr[4]);
+                            elementOID = Convert.ToUInt32(dr[3]);
+                            Contract.Assume(elementOID > 0);
                             if (!byOID.TryGetValue(elementOID, out backendType.Element)) {
                                 Log.Error(String.Format("Range type '{0}' refers to unknown subtype with OID {1}, skipping", backendType.Name, elementOID), connector.Id);
                                 continue;
