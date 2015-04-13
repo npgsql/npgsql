@@ -88,7 +88,7 @@ namespace Npgsql
             }
             else if ((function = commandTree as DbFunctionCommandTree) != null)
             {
-                sqlGenerator = new SqlFunctionGenerator(function);
+                sqlGenerator = new SqlFunctionGenerator(function, providerManifest);
             }
             else
             {

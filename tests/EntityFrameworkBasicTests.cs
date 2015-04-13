@@ -43,13 +43,16 @@ namespace NpgsqlTests
             
 
             // Create functions for ExecuteFunction test.
+            using (var createFunc = new NpgsqlConnection(ConnectionStringEF))
             {
+                createFunc.Open();
                 ExecuteNonQuery(""
                     + "CREATE OR REPLACE FUNCTION pass_thru_int(p integer) "
                     + "  RETURNS integer AS "
                     + "'select $1;' "
                     + "  LANGUAGE sql STABLE "
                     + "  COST 100; "
+                    , createFunc
                     );
                 ExecuteNonQuery(""
                     + "CREATE OR REPLACE FUNCTION pass_thru_str(p character varying) "
@@ -57,6 +60,7 @@ namespace NpgsqlTests
                     + "'select $1;' "
                     + "  LANGUAGE sql STABLE "
                     + "  COST 100; "
+                    , createFunc
                     );
             }
 
@@ -503,7 +507,7 @@ namespace NpgsqlTests
             EntityConnectionStringBuilder entityBuilder = new EntityConnectionStringBuilder();
 
             entityBuilder.Provider = "Npgsql";
-            entityBuilder.ProviderConnectionString = Conn.ConnectionString;
+            entityBuilder.ProviderConnectionString = ConnectionStringEF;
             entityBuilder.Metadata = csdl + "|" + ssdl + "|" + msl;
 
             using (var context = new ObjectContext(new EntityConnection(entityBuilder.ToString()), true))
@@ -524,7 +528,7 @@ namespace NpgsqlTests
             EntityConnectionStringBuilder entityBuilder = new EntityConnectionStringBuilder();
 
             entityBuilder.Provider = "Npgsql";
-            entityBuilder.ProviderConnectionString = Conn.ConnectionString;
+            entityBuilder.ProviderConnectionString = ConnectionStringEF;
             entityBuilder.Metadata = csdl + "|" + ssdl + "|" + msl;
 
             using (var context = new ObjectContext(new EntityConnection(entityBuilder.ToString()), true))

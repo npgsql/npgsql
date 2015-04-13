@@ -12,7 +12,8 @@ namespace Npgsql.SqlGenerators {
     internal class SqlFunctionGenerator : SqlBaseGenerator {
         private DbFunctionCommandTree _commandTree;
 
-        public SqlFunctionGenerator(DbFunctionCommandTree commandTree) {
+        public SqlFunctionGenerator(DbFunctionCommandTree commandTree, NpgsqlProviderManifest providerManifest)
+            : base(providerManifest) {
             _commandTree = commandTree;
         }
 
@@ -67,7 +68,10 @@ namespace Npgsql.SqlGenerators {
                             break;
                     }
 
-                    pgParm.DbType = NpgsqlProviderManifest.GetDbType((funcParm.TypeUsage.EdmType as PrimitiveType).PrimitiveTypeKind);
+                    NpgsqlTypes.NpgsqlBackendTypeInfo typeInfo;
+                    if (NpgsqlTypes.NpgsqlTypesHelper.TryGetBackendTypeInfo(funcParm.TypeName, out typeInfo)) {
+                        pgParm.DbType = typeInfo.DbType;
+                    }
 
                     command.Parameters.Add(pgParm);
                 }
