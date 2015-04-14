@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Text;
+using AsyncRewriter;
 
 namespace Npgsql
 {
@@ -38,7 +39,7 @@ namespace Npgsql
         /// <param name="function"></param>
         /// <param name="arguments"></param>
         /// <returns></returns>
-        [GenerateAsync]
+        [RewriteAsync]
         internal T ExecuteFunction<T>(string function, params object[] arguments)
         {
             using (var command = new NpgsqlCommand(function, _connection))
@@ -59,7 +60,7 @@ namespace Npgsql
         /// <param name="function"></param>
         /// <param name="arguments"></param>
         /// <returns></returns>
-        [GenerateAsync]
+        [RewriteAsync]
         internal int ExecuteFunctionGetBytes(string function, byte[] buffer, int offset, int len, params object[] arguments)
         {
             using (var command = new NpgsqlCommand(function, _connection))
@@ -83,7 +84,7 @@ namespace Npgsql
         /// <param name="preferredOid">A preferred oid, or specify 0 if one should be automatically assigned</param>
         /// <returns>The oid for the large object created</returns>
         /// <exception cref="NpgsqlException">If an oid is already in use</exception>
-        [GenerateAsync]
+        [RewriteAsync]
         [CLSCompliant(false)]
         public uint Create(uint preferredOid = 0)
         {
@@ -99,7 +100,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="oid">Oid of the object</param>
         /// <returns>An NpgsqlLargeObjectStream</returns>
-        [GenerateAsync]
+        [RewriteAsync]
         public NpgsqlLargeObjectStream OpenRead(uint oid)
         {
             var fd = ExecuteFunction<int>("lo_open", (int)oid, INV_READ);
@@ -112,7 +113,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="oid">Oid of the object</param>
         /// <returns>An NpgsqlLargeObjectStream</returns>
-        [GenerateAsync]
+        [RewriteAsync]
         public NpgsqlLargeObjectStream OpenReadWrite(uint oid)
         {
             var fd = ExecuteFunction<int>("lo_open", (int)oid, INV_READ | INV_WRITE);
@@ -123,7 +124,7 @@ namespace Npgsql
         /// Deletes a large object on the backend.
         /// </summary>
         /// <param name="oid">Oid of the object to delete</param>
-        [GenerateAsync]
+        [RewriteAsync]
         public void Unlink(uint oid)
         {
             ExecuteFunction<object>("lo_unlink", (int)oid);
@@ -134,7 +135,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="oid">Oid of the object to export</param>
         /// <param name="path">Path to write the file on the backend</param>
-        [GenerateAsync]
+        [RewriteAsync]
         public void ExportRemote(uint oid, string path)
         {
             ExecuteFunction<object>("lo_export", (int)oid, path);
@@ -145,7 +146,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="path">Path to read the file on the backend</param>
         /// <param name="oid">A preferred oid, or specify 0 if one should be automatically assigned</param>
-        [GenerateAsync]
+        [RewriteAsync]
         public void ImportRemote(string path, uint oid = 0)
         {
             ExecuteFunction<object>("lo_import", path, (int)oid);

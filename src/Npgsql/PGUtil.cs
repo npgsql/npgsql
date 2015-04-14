@@ -35,6 +35,7 @@ using System.Net;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
+using AsyncRewriter;
 
 namespace Npgsql
 {
@@ -89,7 +90,7 @@ namespace Npgsql
         /// <summary>
         /// Write a 32-bit integer to the given stream in the correct byte order.
         /// </summary>
-        [GenerateAsync]
+        [RewriteAsync]
         public static Stream WriteInt32(this Stream stream, Int32 value)
         {
             stream.Write(BitConverter.GetBytes(IPAddress.HostToNetworkOrder(value)), 0, 4);
@@ -161,11 +162,5 @@ namespace Npgsql
         {
             return string.Join(separator, values);
         }
-    }
-
-    [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
-    internal class GenerateAsync : Attribute
-    {
-        public GenerateAsync(string transformedName=null, bool withOverride=false) {}
     }
 }

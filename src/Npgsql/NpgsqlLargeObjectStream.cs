@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using AsyncRewriter;
 
 namespace Npgsql
 {
@@ -52,7 +53,7 @@ namespace Npgsql
         /// <param name="offset">The offset in the buffer where the first byte should be read.</param>
         /// <param name="count">The maximum number of bytes that should be read.</param>
         /// <returns>How many bytes actually read, or 0 if end of file was already reached.</returns>
-        [GenerateAsync]
+        [RewriteAsync]
         public override int Read(byte[] buffer, int offset, int count)
         {
             if (buffer == null)
@@ -89,7 +90,7 @@ namespace Npgsql
         /// <param name="buffer">The buffer to write data from.</param>
         /// <param name="offset">The offset in the buffer at which to begin copying bytes.</param>
         /// <param name="count">The number of bytes to write.</param>
-        [GenerateAsync]
+        [RewriteAsync]
         public override void Write(byte[] buffer, int offset, int count)
         {
             if (buffer == null)
@@ -187,7 +188,7 @@ namespace Npgsql
             return GetLengthInternalAsync();
         }*/
 
-        [GenerateAsync]
+        [RewriteAsync]
         long GetLengthInternal()
         {
             CheckDisposed();
@@ -204,7 +205,7 @@ namespace Npgsql
         /// <param name="offset">A byte offset relative to the <i>origin</i> parameter.</param>
         /// <param name="origin">A value of type SeekOrigin indicating the reference point used to obtain the new position.</param>
         /// <returns></returns>
-        [GenerateAsync]
+        [RewriteAsync]
         public override long Seek(long offset, SeekOrigin origin)
         {
             if (origin < SeekOrigin.Begin || origin > SeekOrigin.End)
@@ -224,7 +225,7 @@ namespace Npgsql
         /// <summary>
         /// Does nothing.
         /// </summary>
-        [GenerateAsync]
+        [RewriteAsync]
         public override void Flush()
         {
         }
@@ -234,7 +235,7 @@ namespace Npgsql
         /// For PostgreSQL versions earlier than 9.3, the value must fit in an Int32.
         /// </summary>
         /// <param name="value">Number of bytes to either truncate or enlarge the large object.</param>
-        [GenerateAsync]
+        [RewriteAsync]
         public override void SetLength(long value)
         {
             if (value < 0)

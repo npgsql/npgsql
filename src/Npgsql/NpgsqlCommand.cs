@@ -38,6 +38,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Diagnostics.Contracts;
+using AsyncRewriter;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
 using Npgsql.Logging;
@@ -710,7 +711,7 @@ namespace Npgsql
 
         #region Execute
 
-        [GenerateAsync]
+        [RewriteAsync]
         internal NpgsqlDataReader Execute(CommandBehavior behavior = CommandBehavior.Default)
         {
             State = CommandState.InProgress;
@@ -818,7 +819,7 @@ namespace Npgsql
 #if !NET40
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
 #endif
-        [GenerateAsync]
+        [RewriteAsync]
         int ExecuteNonQueryInternal()
         {
             Prechecks();
@@ -886,7 +887,7 @@ namespace Npgsql
 #if !NET40
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
 #endif
-        [GenerateAsync]
+        [RewriteAsync]
         object ExecuteScalarInternal()
         {
             Prechecks();
@@ -1010,7 +1011,7 @@ namespace Npgsql
 #if !NET40
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
 #endif
-        [GenerateAsync]
+        [RewriteAsync]
         NpgsqlDataReader ExecuteDbDataReaderInternal(CommandBehavior behavior)
         {
             Prechecks();

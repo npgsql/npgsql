@@ -10,6 +10,7 @@ using System.Runtime.CompilerServices;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using AsyncRewriter;
 using Npgsql.BackendMessages;
 using Npgsql.TypeHandlers;
 using Npgsql.TypeHandlers.NumericHandlers;
@@ -331,7 +332,7 @@ namespace Npgsql
             return _connector.ReadSingleMessage(IsSequential ? DataRowLoadingMode.Sequential : DataRowLoadingMode.NonSequential);
         }
 
-        [GenerateAsync]
+        [RewriteAsync]
         IBackendMessage SkipUntil(BackendMessageCode stopAt)
         {
             if (_pendingMessage != null)

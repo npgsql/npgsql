@@ -36,6 +36,7 @@
     <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\..\</SolutionDir>
     <RestorePackages>true</RestorePackages>
     <CodeContractsAssemblyMode>0</CodeContractsAssemblyMode>
+    <NuGetPackageImportStamp>e6d58def</NuGetPackageImportStamp>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug-net45|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -285,6 +286,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AsyncRewriterHelpers.cs" />
     <Compile Include="BackendMessages\CopyMessages.cs" />
     <Compile Include="BackendMessages\DataRowNonSequentialMessage.cs" />
     <Compile Include="BackendMessages\CloseCompletedMessage.cs" />
@@ -330,7 +332,7 @@
     <Compile Include="NpgsqlBuffer.cs" />
     <Compile Include="NpgsqlBuffer.Async.cs">
       <DependentUpon>NpgsqlBuffer.cs</DependentUpon>
-      <Generator>AsyncGenerator</Generator>
+      <Generator>AsyncRewriter</Generator>
     </Compile>
     <Compile Include="NpgsqlTypes\NpgsqlTimeSpan.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlRange.cs" />
@@ -383,7 +385,7 @@
     <Compile Include="NpgsqlCommand.cs" />
     <Compile Include="NpgsqlCommand.Async.cs">
       <DependentUpon>NpgsqlCommand.cs</DependentUpon>
-      <Generator>AsyncGenerator</Generator>
+      <Generator>AsyncRewriter</Generator>
     </Compile>
     <Compile Include="NpgsqlCommandBuilder.cs" />
     <Compile Include="NpgsqlConnection.cs" />
@@ -391,14 +393,14 @@
     <Compile Include="NpgsqlConnector.cs" />
     <Compile Include="NpgsqlConnector.Async.cs">
       <DependentUpon>NpgsqlConnector.cs</DependentUpon>
-      <Generator>AsyncGenerator</Generator>
+      <Generator>AsyncRewriter</Generator>
     </Compile>
     <Compile Include="NpgsqlConnectorPool.cs" />
     <Compile Include="NpgsqlDataAdapter.cs" />
     <Compile Include="NpgsqlDataReader.cs" />
     <Compile Include="NpgsqlDataReader.Async.cs">
       <DependentUpon>NpgsqlDataReader.cs</DependentUpon>
-      <Generator>AsyncGenerator</Generator>
+      <Generator>AsyncRewriter</Generator>
     </Compile>
     <Compile Include="NpgsqlException.cs" />
     <Compile Include="NpgsqlFactory.cs" />
@@ -478,19 +480,13 @@
     <Error Condition="!Exists('..\..\packages\Microsoft.Bcl.Build.1.0.14\tools\Microsoft.Bcl.Build.targets')" Text="This project references NuGet package(s) that are missing on this computer. Enable NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=317567." HelpKeyword="BCLBUILD2001" />
     <Error Condition="Exists('..\..\packages\Microsoft.Bcl.Build.1.0.14\tools\Microsoft.Bcl.Build.targets')" Text="The build restored NuGet packages. Build the project again to include these packages in the build. For more information, see http://go.microsoft.com/fwlink/?LinkID=317568." HelpKeyword="BCLBUILD2002" />
   </Target>
-  <UsingTask TaskName="AsyncGenerator.GenerateAsync" AssemblyFile="..\AsyncGenerator\bin\Release\AsyncGenerator.dll" />
-  <Target Name="BuildAsyncGenerator" Condition="!Exists('..\AsyncGenerator\bin\Release\AsyncGenerator.dll')">
-    <MSBuild Projects="..\AsyncGenerator\AsyncGenerator.csproj" Properties="Configuration=Release;SolutionDir=..\AsyncGenerator\" />
+  <Import Project="..\..\packages\AsyncRewriter.0.5.1-beta\build\AsyncRewriter.targets" Condition="Exists('..\..\packages\AsyncRewriter.0.5.1-beta\build\AsyncRewriter.targets')" />
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Enable NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('..\..\packages\AsyncRewriter.0.5.1-beta\build\AsyncRewriter.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\AsyncRewriter.0.5.1-beta\build\AsyncRewriter.targets'))" />
   </Target>
-  <Target Name="GenerateAsync" DependsOnTargets="BuildAsyncGenerator">
-    <ItemGroup>
-      <AsyncList Include="%(Compile.DependentUpon)" Condition="'%(Compile.Generator)' == 'AsyncGenerator'" />
-    </ItemGroup>
-    <GenerateAsync InputFiles="@(AsyncList)" />
-  </Target>
-  <PropertyGroup>
-    <CompileDependsOn>GenerateAsync;$(CompileDependsOn)</CompileDependsOn>
-  </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">

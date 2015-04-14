@@ -32,7 +32,7 @@ using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
-using System.Threading.Tasks;
+using AsyncRewriter;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
 using Npgsql.TypeHandlers;
@@ -689,7 +689,7 @@ namespace Npgsql
             }
         }
 
-        [GenerateAsync]
+        [RewriteAsync]
         internal void SendAllMessages()
         {
             if (!_messagesToSend.Any()) {
@@ -730,7 +730,7 @@ namespace Npgsql
             SendAllMessages();
         }
 
-        [GenerateAsync]
+        [RewriteAsync]
         void SendMessage(FrontendMessage msg)
         {
             Log.Trace(String.Format("Sending: {0}", msg), Id);
@@ -774,7 +774,7 @@ namespace Npgsql
 
         #region Backend message processing
 
-        [GenerateAsync]
+        [RewriteAsync]
         internal IBackendMessage ReadSingleMessage(DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential, bool returnNullForAsyncMessage = false)
         {
             // First read the responses of any prepended messages.
@@ -818,7 +818,7 @@ namespace Npgsql
             }
         }
 
-        [GenerateAsync]
+        [RewriteAsync]
         IBackendMessage DoReadSingleMessage(DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential, bool returnNullForAsyncMessage = false)
         {
             Contract.Ensures(returnNullForAsyncMessage || Contract.Result<IBackendMessage>() != null);
@@ -1043,7 +1043,7 @@ namespace Npgsql
         /// Reads backend messages and discards them, stopping only after a message of the given type has
         /// been seen.
         /// </summary>
-        [GenerateAsync]
+        [RewriteAsync]
         internal IBackendMessage SkipUntil(BackendMessageCode stopAt)
         {
             Contract.Requires(stopAt != BackendMessageCode.DataRow, "Shouldn't be used for rows, doesn't know about sequential");

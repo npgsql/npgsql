@@ -8,6 +8,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using AsyncRewriter;
 
 namespace Npgsql
 {
@@ -71,7 +72,7 @@ namespace Npgsql
 
         #endregion
 
-        [GenerateAsync]
+        [RewriteAsync]
         internal void Ensure(int count)
         {
             Contract.Requires(count <= Size);
@@ -96,7 +97,7 @@ namespace Npgsql
             }
         }
 
-        [GenerateAsync]
+        [RewriteAsync]
         internal void ReadMore()
         {
             Ensure(ReadBytesLeft + 1);
@@ -472,7 +473,7 @@ namespace Npgsql
             }
         }
 
-        [GenerateAsync]
+        [RewriteAsync]
         internal void Skip(long len)
         {
             Contract.Requires(len >= 0);
@@ -505,7 +506,7 @@ namespace Npgsql
             _writePosition += count;
         }
 
-        [GenerateAsync]
+        [RewriteAsync]
         public void Write(byte[] buf, int offset, int count)
         {
             if (count <= WriteSpaceLeft)
@@ -536,7 +537,7 @@ namespace Npgsql
             }
         }
         
-        [GenerateAsync]
+        [RewriteAsync]
         public void Flush()
         {
             if (_writePosition != 0)
@@ -554,7 +555,7 @@ namespace Npgsql
             TotalBytesFlushed = 0;
         }
 
-        [GenerateAsync]
+        [RewriteAsync]
         public NpgsqlBuffer WriteBytes(byte[] buf)
         {
             Write(buf, 0, buf.Length);
