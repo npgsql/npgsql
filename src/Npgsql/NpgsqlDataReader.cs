@@ -1555,11 +1555,18 @@ namespace Npgsql
 
         Dictionary<string, Column> GetColumns()
         {
-            var sb = new StringBuilder();
+            var columnsFilter = _rowDescription.Fields
+                .Where(f => f.TableOID != 0)
+                .Select(f => string.Format("(a.attrelid={0} AND a.attnum={1})", f.TableOID, f.ColumnAttributeNumber))
+                .Join(" OR ");
+
+            if (columnsFilter == "") {
+                return null;  // No (real) columns
+            }
 
             // the column index is used to find data.
             // any changes to the order of the columns needs to be reflected in struct Columns
-            sb.Append(@"SELECT a.attname AS column_name, a.attnotnull AS column_notnull, a.attrelid AS table_id, a.attnum AS column_num, ad.adsrc as column_default
+            var query = string.Format(@"SELECT a.attname AS column_name, a.attnotnull AS column_notnull, a.attrelid AS table_id, a.attnum AS column_num, ad.adsrc as column_default
 , CAST(CASE WHEN c.relkind = 'r' OR
                           (c.relkind IN ('v', 'f') AND
                            pg_column_is_updatable(c.oid, a.attnum, false))
@@ -1571,34 +1578,11 @@ WHERE a.attnum > 0
 	AND c.relkind in ('r', 'v', 'f')
     AND (pg_has_role(c.relowner, 'USAGE')
         OR has_column_privilege(c.oid, a.attnum, 'SELECT, INSERT, UPDATE, REFERENCES'))
-    AND (");
-            var first = true;
-            for (var i = 0; i < _rowDescription.NumFields; ++i)
-            {
-                if (_rowDescription[i].TableOID == 0) { continue; }
-                if (!first)
-                {
-                    sb.Append(" OR ");
-                }
-                else
-                {
-                    first = false;
-                }
-
-                sb.AppendFormat("(a.attrelid={0} AND a.attnum={1})", _rowDescription[i].TableOID,
-                    _rowDescription[i].ColumnAttributeNumber);
-            }
-            sb.Append(')');
-
-            // if the loop ended without setting first to false, then there will be no results from the query
-            if (first)
-            {
-                return null;
-            }
+    AND ({0})", columnsFilter);
 
             using (var connection = _connection.Clone())
             {
-                using (var command = new NpgsqlCommand(sb.ToString(), connection))
+                using (var command = new NpgsqlCommand(query, connection))
                 {
                     using (var reader = command.ExecuteReader(CommandBehavior.SequentialAccess | CommandBehavior.SingleResult))
                     {

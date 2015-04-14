@@ -17,20 +17,20 @@ namespace Npgsql.BackendMessages
     /// </remarks>
     internal sealed class RowDescriptionMessage : IBackendMessage
     {
-        readonly List<FieldDescription> _fields;
+        public List<FieldDescription> Fields { get; private set; }
         readonly Dictionary<string, int> _nameIndex;
         readonly Dictionary<string, int> _caseInsensitiveNameIndex;
 
         internal RowDescriptionMessage()
         {
-            _fields = new List<FieldDescription>();
+            Fields = new List<FieldDescription>();
             _nameIndex = new Dictionary<string, int>(KanaWidthInsensitiveComparer.Instance);
             _caseInsensitiveNameIndex = new Dictionary<string, int>(KanaWidthCaseInsensitiveComparer.Instance);
         }
 
         internal RowDescriptionMessage Load(NpgsqlBuffer buf, TypeHandlerRegistry typeHandlerRegistry)
         {
-            _fields.Clear();
+            Fields.Clear();
             _nameIndex.Clear();
             _caseInsensitiveNameIndex.Clear();
 
@@ -51,7 +51,7 @@ namespace Npgsql.BackendMessages
                 // If we get the exact unknown type in return, it was a literal string written in the query string
                 field.Handler = typeHandlerRegistry[field.OID];
 
-                _fields.Add(field);
+                Fields.Add(field);
                 if (!_nameIndex.ContainsKey(field.Name))
                 {
                     _nameIndex.Add(field.Name, i);
@@ -66,12 +66,12 @@ namespace Npgsql.BackendMessages
 
         internal FieldDescription this[int index]
         {
-            get { return _fields[index]; }
+            get { return Fields[index]; }
         }
 
         internal int NumFields
         {
-            get { return _fields.Count; }
+            get { return Fields.Count; }
         }
 
         /// <summary>

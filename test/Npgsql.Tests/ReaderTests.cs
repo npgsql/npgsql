@@ -23,6 +23,7 @@
 
 using System;
 using System.Data;
+using System.Linq;
 using System.Web.UI.WebControls;
 
 using Npgsql;
@@ -479,7 +480,7 @@ namespace Npgsql.Tests
         public void PrimaryKeyFieldsMetadataSupport()
         {
             ExecuteNonQuery("DROP TABLE IF EXISTS DATA2 CASCADE");
-            ExecuteNonQuery(@"CREATE TABLE DATA2 (
+            ExecuteNonQuery(@"CREATE TEMPORARY TABLE DATA2 (
                                 field_pk1                      INT2 NOT NULL,
                                 field_pk2                      INT2 NOT NULL,
                                 field_serial                   SERIAL,
@@ -491,37 +492,12 @@ namespace Npgsql.Tests
                 using (var dr = command.ExecuteReader(CommandBehavior.KeyInfo))
                 {
                     dr.Read();
-                    var metadata = dr.GetSchemaTable();
-                    int keyCount = 0;
-
-                    foreach (DataRow r in metadata.Rows)
-                    {
-                        if ((Boolean)r["IsKey"])
-                        {
-                            switch (keyCount)
-                            {
-                                case 0:
-                                    Assert.AreEqual("field_pk1", r["ColumnName"]);
-                                    break;
-                                case 1:
-                                    Assert.AreEqual("field_pk2", r["ColumnName"]);
-                                    break;
-                                default:
-                                    break;
-                            }
-
-                            keyCount++;
-                        }
-
-                    }
-                    if (keyCount == 0)
-                        Assert.Fail("No primary key found!");
-                    else if (keyCount != 2)
-                        Assert.Fail(string.Format("Expected 2 primary keys but {0} were found.", keyCount));
+                    var keyColumns = dr.GetSchemaTable().Rows.Cast<DataRow>().Where(r => (bool)r["IsKey"]).ToArray();
+                    Assert.That(keyColumns, Has.Length.EqualTo(2));
+                    Assert.That(keyColumns.Count(c => (string)c["ColumnName"] == "field_pk1"), Is.EqualTo(1));
+                    Assert.That(keyColumns.Count(c => (string)c["ColumnName"] == "field_pk2"), Is.EqualTo(1));
                 }
             }
-
-            ExecuteNonQuery("DROP TABLE IF EXISTS DATA2 CASCADE");
         }
 
         [Test]
@@ -533,19 +509,8 @@ namespace Npgsql.Tests
                 {
                     dr.Read();
                     var metadata = dr.GetSchemaTable();
-                    var keyfound = false;
-
-                    foreach (DataRow r in metadata.Rows)
-                    {
-                        if ((Boolean)r["IsKey"])
-                        {
-                            Assert.AreEqual("field_pk", r["ColumnName"]);
-                            keyfound = true;
-                        }
-
-                    }
-                    if (!keyfound)
-                        Assert.Fail("No primary key found!");
+                    var key = metadata.Rows.Cast<DataRow>().Single(r => (bool) r["IsKey"]);
+                    Assert.That(key["ColumnName"], Is.EqualTo("field_pk"));
                 }
             }
         }
@@ -558,20 +523,9 @@ namespace Npgsql.Tests
             using (var dr = command.ExecuteReader(CommandBehavior.KeyInfo))
             {
                 var metadata = dr.GetSchemaTable();
-
-                foreach (DataRow r in metadata.Rows)
-                {
-                    switch ((string)r["ColumnName"])
-                    {
-                        case "field_serial":
-                        case "field_bigserial":
-                        case "field_smallserial":
-                            Assert.IsTrue((bool)r["IsAutoIncrement"]);
-                            break;
-                        default:
-                            break;
-                    }
-                }
+                Assert.That(metadata.Rows.Cast<DataRow>()
+                    .Where(r => ((string)r["ColumnName"]).Contains("serial"))
+                    .All(r => (bool)r["IsAutoIncrement"]));
             }
         }
 

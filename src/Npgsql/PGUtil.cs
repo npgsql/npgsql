@@ -27,6 +27,8 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.IO;
 using System.Net;
@@ -151,6 +153,14 @@ namespace Npgsql
     {
         Text = 0,
         Binary = 1
+    }
+
+    internal static class EnumerableExtensions
+    {
+        internal static string Join(this IEnumerable<string> values, string separator)
+        {
+            return string.Join(separator, values);
+        }
     }
 
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
