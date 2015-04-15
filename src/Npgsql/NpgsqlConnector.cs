@@ -565,12 +565,17 @@ namespace Npgsql
                 var msg = ReadSingleMessage();
                 switch (msg.Code)
                 {
-                    case BackendMessageCode.ReadyForQuery:
-                        State = ConnectorState.Ready;
-                        return;
                     case BackendMessageCode.AuthenticationRequest:
                         ProcessAuthenticationMessage((AuthenticationRequestMessage)msg);
                         continue;
+                    case BackendMessageCode.BackendKeyData:
+                        var backendKeyDataMsg = (BackendKeyDataMessage) msg;
+                        BackendProcessId = backendKeyDataMsg.BackendProcessId;
+                        _backendSecretKey = backendKeyDataMsg.BackendSecretKey;
+                        continue;
+                    case BackendMessageCode.ReadyForQuery:
+                        State = ConnectorState.Ready;
+                        return;
                     default:
                         throw new Exception("Unexpected message received while authenticating: " + msg.Code);
                 }
@@ -787,7 +792,7 @@ namespace Npgsql
 
         #region Backend message processing
 
-        internal IBackendMessage ReadSingleMessage(DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential, bool ignoreNotifications = true)
+        internal IBackendMessage ReadSingleMessage(DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential, bool returnNullForAsyncMessage = false)
         {
             // First read the responses of any prepended messages.
             // Exceptions shouldn't happen here, we break the connector if they do
@@ -816,7 +821,7 @@ namespace Npgsql
             try
             {
                 SetFrontendTimeout(UserCommandFrontendTimeout);
-                return DoReadSingleMessage(dataRowLoadingMode, ignoreNotifications);
+                return DoReadSingleMessage(dataRowLoadingMode, returnNullForAsyncMessage);
             }
             catch (NpgsqlException)
             {
@@ -830,8 +835,10 @@ namespace Npgsql
         }
 
         [GenerateAsync]
-        IBackendMessage DoReadSingleMessage(DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential, bool ignoreNotifications = true)
+        IBackendMessage DoReadSingleMessage(DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential, bool returnNullForAsyncMessage = false)
         {
+            Contract.Ensures(returnNullForAsyncMessage || Contract.Result<IBackendMessage>() != null);
+
             NpgsqlException error = null;
 
             while (true)
@@ -858,17 +865,11 @@ namespace Npgsql
                 }
 
                 var msg = ParseServerMessage(buf, messageCode, len, dataRowLoadingMode);
-                if (msg != null || !ignoreNotifications && (messageCode == BackendMessageCode.NoticeResponse || messageCode == BackendMessageCode.NotificationResponse))
-                {
-                    if (error != null)
-                    {
-                        Contract.Assert(messageCode == BackendMessageCode.ReadyForQuery, "Expected ReadyForQuery after ErrorResponse");
-                        throw error;
-                    }
-                    return msg;
-                }
-                else if (messageCode == BackendMessageCode.ErrorResponse)
-                {
+
+                switch (messageCode) {
+                case BackendMessageCode.ErrorResponse:
+                    Contract.Assert(msg == null);
+
                     // An ErrorResponse is (almost) always followed by a ReadyForQuery. Save the error
                     // and throw it as an exception when the ReadyForQuery is received (next).
                     error = new NpgsqlException(buf);
@@ -880,7 +881,27 @@ namespace Npgsql
                     }
 
                     State = ConnectorState.Ready;
+                    continue;
+
+                case BackendMessageCode.ReadyForQuery:
+                    if (error != null) {
+                        throw error;   
+                    }
+                    break;
+
+                // Asynchronous messages
+                case BackendMessageCode.NoticeResponse:
+                case BackendMessageCode.NotificationResponse:
+                case BackendMessageCode.ParameterStatus:
+                    Contract.Assert(msg == null);
+                    if (!returnNullForAsyncMessage) {
+                        continue;
+                    }
+                    return null;
                 }
+
+                Contract.Assert(msg != null, "Message is null for code: " + messageCode);
+                return msg;
             }
         }
 
@@ -947,9 +968,7 @@ namespace Npgsql
                     }
 
                 case BackendMessageCode.BackendKeyData:
-                    BackendProcessId = buf.ReadInt32();
-                    _backendSecretKey = buf.ReadInt32();
-                    return null;
+                    return new BackendKeyDataMessage(buf);
 
                 case BackendMessageCode.CopyInResponse:
                     if (_copyInResponseMessage == null) {
@@ -1003,6 +1022,21 @@ namespace Npgsql
 
             if (timeout != _frontendTimeout) {
                 _socket.ReceiveTimeout = _frontendTimeout = timeout;
+            }
+        }
+
+        void DrainRemainingMessages()
+        {
+            while (Buffer.ReadBytesLeft > 0 || (_stream is NetworkStream && ((NetworkStream)_stream).DataAvailable)
+#if !DNXCORE50
+               || (_stream is TlsClientStream.TlsClientStream && ((TlsClientStream.TlsClientStream)_stream).HasBufferedReadData(false))
+#endif
+            )
+            {
+                var msg = ReadSingleMessage(DataRowLoadingMode.NonSequential, true);
+                if (msg != null) {
+                    throw new Exception(string.Format("Got unexpected non-async message with code {0} while draining: {1}", msg.Code, msg));
+                }
             }
         }
 
@@ -1369,18 +1403,7 @@ namespace Npgsql
                 {
                     if (--_connector._notificationBlockRecursionDepth == 0)
                     {
-                        while (_connector.Buffer.ReadBytesLeft > 0
-#if !DNXCORE50
-                            || _connector._stream is TlsClientStream.TlsClientStream && ((TlsClientStream.TlsClientStream)_connector._stream).HasBufferedReadData(false)
-#endif
-                        )
-                        {
-                            var msg = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential, false);
-                            if (msg != null)
-                            {
-                                Contract.Assert(msg == null, "Expected null after processing a notification");
-                            }
-                        }
+                        _connector.DrainRemainingMessages();
                         if (_connector._notificationSemaphore != null)
                         {
                             _connector._notificationSemaphore.Release();
@@ -1426,18 +1449,7 @@ namespace Npgsql
                 semaphore.WaitAsync().ContinueWith(t => {
                     try
                     {
-                        while (Buffer.ReadBytesLeft > 0
-#if !DNXCORE50
-                            || _stream is TlsClientStream.TlsClientStream && ((TlsClientStream.TlsClientStream)_stream).HasBufferedReadData(true) || !IsSecure && _baseStream.DataAvailable
-#endif
-                        )
-                        {
-                            var msg = ReadSingleMessage(DataRowLoadingMode.NonSequential, false);
-                            if (msg != null)
-                            {
-                                Contract.Assert(msg == null, "Expected null after processing a notification");
-                            }
-                        }
+                        DrainRemainingMessages();
                     }
                     catch
                     {
