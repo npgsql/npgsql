@@ -669,6 +669,42 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, Description("Generates a notification that arrives after reader data that is already being read")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/252")]
+        public void NotificationAfterData()
+        {
+            var receivedNotification = false;
+            using (var cmd = Conn.CreateCommand())
+            {
+                cmd.CommandText = "LISTEN notifytest1";
+                cmd.ExecuteNonQuery();
+                Conn.Notification += (o, e) => receivedNotification = true;
+
+                cmd.CommandText = "SELECT generate_series(1,10000)";
+                using (var reader = cmd.ExecuteReader())
+                {
+
+                    //After "notify notifytest1", a notification message will be sent to client, 
+                    //And so the notification message will stick with the last response message of "select generate_series(1,10000)" in Npgsql's tcp receiving buffer.
+                    using (var connection = new NpgsqlConnection(ConnectionString))
+                    {
+                        connection.Open();
+                        using (var command = connection.CreateCommand())
+                        {
+                            command.CommandText = "NOTIFY notifytest1";
+                            command.ExecuteNonQuery();
+                        }
+                    }
+
+                    Assert.IsTrue(reader.Read());
+                    Assert.AreEqual(1, reader.GetValue(0));
+                }
+
+                Assert.That(ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+                Assert.IsTrue(receivedNotification);
+            }
+        }
+
         #endregion
 
         [Test, Description("Makes sure writing an unset parameter isn't allowed")]
