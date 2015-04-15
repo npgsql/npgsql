@@ -497,5 +497,41 @@ namespace Npgsql.Tests
                 conn.Open();
             }
         }
+
+        [Test]
+        //A bug reproduce test case for https://github.com/npgsql/Npgsql/issues/252
+        public void Bug252_BufferedStream()
+        {
+            var receivedNotification = false;
+            var Cmd = Conn.CreateCommand();
+            Cmd.CommandText = "listen notifytest1";
+            Cmd.ExecuteNonQuery();
+            Conn.Notification += (o, e) => receivedNotification = true;
+
+            Cmd.CommandText = "select generate_series(1,10000)";
+            var reader = Cmd.ExecuteReader();
+
+            //After "notify notifytest1", a notification message will be sent to client, 
+            //And so the notification message will stick with the last response message of "select generate_series(1,10000)" in Npgsql's tcp receiving buffer.
+            using (var connection = new NpgsqlConnection(ConnectionString))
+            {
+                connection.Open();
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = "notify notifytest1";
+                    command.ExecuteNonQuery();
+                }
+            }
+
+            Assert.IsTrue(reader.Read());
+            Assert.AreEqual(1, reader.GetValue(0));
+            reader.Close();
+
+            Cmd.CommandText = "select 1";
+            Assert.AreEqual(1, Cmd.ExecuteScalar());//A System.NotSupportedException from BufferedStream will occurs here!
+
+            Assert.IsTrue(receivedNotification);
+
+        }
     }
 }
