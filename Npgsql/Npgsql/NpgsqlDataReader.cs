@@ -616,12 +616,12 @@ namespace Npgsql
                 }
                 row["IsAliased"] = string.CompareOrdinal((string) row["ColumnName"], baseColumnName) != 0;
                 row["IsExpression"] = false;
-                row["IsIdentity"] = false;
                 row["IsAutoIncrement"] = IsAutoIncrement(columnLookup, i);
+                row["IsIdentity"] = false; // TODO - PostgreSQL doesn't define an identity type.  The following could be used to set this to act like SQL Server: (((bool)row["IsAutoIncrement"]) && (field.Handler.NpgsqlDbType == NpgsqlDbType.Integer || field.Handler.NpgsqlDbType == NpgsqlDbType.Bigint || field.Handler.NpgsqlDbType == NpgsqlDbType.Smallint));
                 row["IsRowVersion"] = false;
                 row["IsHidden"] = false;
-                row["IsLong"] = false;
-                row["IsReadOnly"] = false;
+                row["IsLong"] = false;   // TODO - Large object aren't stored as columns so this should always be false.
+                row["IsReadOnly"] = IsReadOnly(columnLookup, i);
 
                 schema.Rows.Add(row);
             }
@@ -694,57 +694,57 @@ namespace Npgsql
 
         private KeyLookup GetKeys(Int32 tableOid)
         {
-            string getKeys =
+            const string getKeys =
                 "select a.attname, ci.relname, i.indisprimary from pg_catalog.pg_class ct, pg_catalog.pg_class ci, pg_catalog.pg_attribute a, pg_catalog.pg_index i WHERE ct.oid=i.indrelid AND ci.oid=i.indexrelid AND a.attrelid=ci.oid AND i.indisunique AND ct.oid = :tableOid order by ci.relname";
 
             KeyLookup lookup = new KeyLookup();
 
             using (NpgsqlConnection metadataConn = _connection.Clone())
             {
-                NpgsqlCommand c = new NpgsqlCommand(getKeys, metadataConn);
-                c.Parameters.Add(new NpgsqlParameter("tableOid", NpgsqlDbType.Integer)).Value = tableOid;
-
-                using (NpgsqlDataReader dr = c.GetReader(CommandBehavior.SequentialAccess | CommandBehavior.SingleResult))
+                using (NpgsqlCommand c = new NpgsqlCommand(getKeys, metadataConn))
                 {
-                    string previousKeyName = null;
-                    string possiblyUniqueColumn = null;
-                    string columnName;
-                    string currentKeyName;
-                    // loop through adding any column that is primary to the primary key list
-                    // add any column that is the only column for that key to the unique list
-                    // unique here doesn't mean general unique constraint (with possibly multiple columns)
-                    // it means all values in this single column must be unique
-                    while (dr.Read())
+                    c.Parameters.Add(new NpgsqlParameter("tableOid", NpgsqlDbType.Integer)).Value = tableOid;
+
+                    using (NpgsqlDataReader dr = c.GetReader(CommandBehavior.SequentialAccess | CommandBehavior.SingleResult))
                     {
-                        columnName = dr.GetString(0);
-                        currentKeyName = dr.GetString(1);
-                        // if i.indisprimary
-                        if (dr.GetBoolean(2))
+                        string previousKeyName = null;
+                        string possiblyUniqueColumn = null;
+                        // loop through adding any column that is primary to the primary key list
+                        // add any column that is the only column for that key to the unique list
+                        // unique here doesn't mean general unique constraint (with possibly multiple columns)
+                        // it means all values in this single column must be unique
+                        while (dr.Read())
                         {
-                            // add column name as part of the primary key
-                            lookup.primaryKey.Add(columnName);
-                        }
-                        if (currentKeyName != previousKeyName)
-                        {
-                            if (possiblyUniqueColumn != null)
+                            String columnName = dr.GetString(0);
+                            String currentKeyName = dr.GetString(1);
+                            // if i.indisprimary
+                            if (dr.GetBoolean(2))
                             {
-                                lookup.uniqueColumns.Add(possiblyUniqueColumn);
+                                // add column name as part of the primary key
+                                lookup.primaryKey.Add(columnName);
                             }
-                            possiblyUniqueColumn = columnName;
+                            if (currentKeyName != previousKeyName)
+                            {
+                                if (possiblyUniqueColumn != null)
+                                {
+                                    lookup.uniqueColumns.Add(possiblyUniqueColumn);
+                                }
+                                possiblyUniqueColumn = columnName;
+                            }
+                            else
+                            {
+                                possiblyUniqueColumn = null;
+                            }
+                            previousKeyName = currentKeyName;
                         }
-                        else
+                        // if finished reading and have a possiblyUniqueColumn name that is
+                        // not null, then it is the name of a unique column
+                        if (possiblyUniqueColumn != null)
                         {
-                            possiblyUniqueColumn = null;
+                            lookup.uniqueColumns.Add(possiblyUniqueColumn);
                         }
-                        previousKeyName = currentKeyName;
+                        return lookup;
                     }
-                    // if finished reading and have a possiblyUniqueColumn name that is
-                    // not null, then it is the name of a unique column
-                    if (possiblyUniqueColumn != null)
-                    {
-                        lookup.uniqueColumns.Add(possiblyUniqueColumn);
-                    }
-                    return lookup;
                 }
             }
         }
@@ -786,6 +786,21 @@ namespace Npgsql
                 columnLookup.TryGetValue(lookupKey, out col)
                     ? col.ColumnDefault is string && col.ColumnDefault.ToString().StartsWith("nextval(")
                     : true;
+        }
+
+        private bool IsReadOnly(Dictionary<string, Column> columnLookup, int fieldIndex)
+        {
+            if (columnLookup == null || CurrentDescription[fieldIndex].TableOID == 0)
+            {
+                return false;
+            }
+
+            String lookupKey = string.Format("{0},{1}", CurrentDescription[fieldIndex].TableOID, CurrentDescription[fieldIndex].ColumnAttributeNumber);
+            Column col;
+            return
+                columnLookup.TryGetValue(lookupKey, out col)
+                    ? !col.IsUpdateable
+                    : false;
         }
 
         ///<summary>
@@ -842,30 +857,16 @@ namespace Npgsql
 
             // the column index is used to find data.
             // any changes to the order of the columns needs to be reflected in struct Tables
-            StringBuilder sb =
-                new StringBuilder(
-                    "SELECT current_database(), nc.nspname, c.relname, c.oid FROM pg_namespace nc, pg_class c WHERE c.relnamespace = nc.oid AND (c.relkind = 'r' OR c.relkind = 'v') AND c.oid IN (");
-            bool first = true;
-            foreach (int oid in oids)
-            {
-                if (!first)
-                {
-                    sb.Append(',');
-                }
-                sb.Append(oid);
-                first = false;
-            }
-            sb.Append(')');
+            string commandText = string.Concat("SELECT current_database(), nc.nspname, c.relname, c.oid FROM pg_namespace nc, pg_class c WHERE c.relnamespace = nc.oid AND (c.relkind = 'r' OR c.relkind = 'v') AND c.oid IN (",
+                string.Join(",", oids), ")");
 
             using (NpgsqlConnection connection = _connection.Clone())
             {
-                using (NpgsqlCommand command = new NpgsqlCommand(sb.ToString(), connection))
+                using (NpgsqlCommand command = new NpgsqlCommand(commandText, connection))
                 {
-                    using (NpgsqlDataReader reader = command.GetReader(CommandBehavior.SequentialAccess | CommandBehavior.SingleResult)
-                        )
+                    using (NpgsqlDataReader reader = command.GetReader(CommandBehavior.SequentialAccess | CommandBehavior.SingleResult))
                     {
                         Dictionary<long, Table> oidLookup = new Dictionary<long, Table>(oids.Count);
-                        int columnCount = reader.FieldCount;
                         while (reader.Read())
                         {
                             Table t = new Table(reader);
@@ -884,6 +885,7 @@ namespace Npgsql
             public readonly int TableId;
             public readonly short ColumnNum;
             public readonly object ColumnDefault;
+            public readonly bool IsUpdateable;
 
             public string Key
             {
@@ -897,6 +899,7 @@ namespace Npgsql
                 TableId = rdr.GetInt32(2);
                 ColumnNum = rdr.GetInt16(3);
                 ColumnDefault = rdr.GetValue(4);
+                IsUpdateable = rdr.GetBoolean(5);
             }
         }
 
@@ -906,23 +909,39 @@ namespace Npgsql
 
             // the column index is used to find data.
             // any changes to the order of the columns needs to be reflected in struct Columns
-            sb.Append(
-                "SELECT a.attname AS column_name, a.attnotnull AS column_notnull, a.attrelid AS table_id, a.attnum AS column_num, d.adsrc as column_default");
-            sb.Append(
-                " FROM pg_attribute a LEFT OUTER JOIN pg_attrdef d ON a.attrelid = d.adrelid AND a.attnum = d.adnum WHERE a.attnum > 0 AND (");
+            sb.Append(@"SELECT 
+    a.attname AS column_name, 
+    a.attnotnull AS column_notnull, 
+    a.attrelid AS table_id, 
+    a.attnum AS column_num, 
+    ad.adsrc as column_default, 
+    CAST(CASE WHEN i.is_updatable = 'YES'
+              THEN 1 ELSE 0 END AS bit) AS is_updatable
+    FROM (pg_attribute a LEFT JOIN pg_attrdef ad ON attrelid = adrelid AND attnum = adnum)
+    JOIN (pg_class c JOIN pg_namespace nc ON (c.relnamespace = nc.oid)) ON a.attrelid = c.oid
+    JOIN information_schema.columns i ON i.table_schema = nc.nspname
+        AND i.table_name = c.relname AND i.column_name = a.attname
+    WHERE a.attnum > 0
+    AND NOT a.attisdropped
+    AND c.relkind in ('r', 'v', 'f')
+    AND (pg_has_role(c.relowner, 'USAGE')
+        OR has_column_privilege(c.oid, a.attnum, 'SELECT, INSERT, UPDATE, REFERENCES'))
+    AND (");
             bool first = true;
             for (int i = 0; i < CurrentDescription.NumFields; ++i)
             {
-                if (CurrentDescription[i].TableOID != 0)
+                if (CurrentDescription[i].TableOID == 0) { continue; }
+                if (!first)
                 {
-                    if (!first)
-                    {
-                        sb.Append(" OR ");
-                    }
-                    sb.AppendFormat("(a.attrelid={0} AND a.attnum={1})", CurrentDescription[i].TableOID,
-                                    CurrentDescription[i].ColumnAttributeNumber);
+                    sb.Append(" OR ");
+                }
+                else
+                {
                     first = false;
                 }
+
+                sb.AppendFormat("(a.attrelid={0} AND a.attnum={1})", CurrentDescription[i].TableOID,
+                    CurrentDescription[i].ColumnAttributeNumber);
             }
             sb.Append(')');
 
