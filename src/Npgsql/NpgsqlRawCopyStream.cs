@@ -53,6 +53,7 @@ namespace Npgsql
             _connector = connector;
             _buf = connector.Buffer;
 
+            _connector.State = ConnectorState.Copy;
             _connector.SendSingleMessage(new QueryMessage(copyCommand));
             var msg = _connector.ReadSingleMessage();
             switch (msg.Code)
@@ -70,7 +71,6 @@ namespace Npgsql
                 default:
                     throw _connector.UnexpectedMessageReceived(msg.Code);
             }
-            _connector.State = ConnectorState.Copy;
         }
 
         #endregion
@@ -343,5 +343,4 @@ namespace Npgsql
             ((NpgsqlRawCopyStream)BaseStream).Cancel();
         }
     }
-
 }

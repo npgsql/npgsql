@@ -644,9 +644,14 @@ namespace Npgsql.Tests
             using (var listeningConn = new NpgsqlConnection(ConnectionString + ";SyncNotification=true")) {
                 listeningConn.Open();
                 ExecuteNonQuery("LISTEN notifytest2", listeningConn);
+                listeningConn.Notification += (o, e) => mre.Set();
 
                 // Send notify via the other connection
-                listeningConn.Notification += (o, e) => mre.Set();
+                ExecuteNonQuery("NOTIFY notifytest2");
+                mre.WaitOne();
+
+                // And again
+                mre.Reset();
                 ExecuteNonQuery("NOTIFY notifytest2");
                 mre.WaitOne();
             }

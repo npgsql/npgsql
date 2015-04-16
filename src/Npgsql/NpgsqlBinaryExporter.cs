@@ -40,6 +40,7 @@ namespace Npgsql
             _columnLen = int.MinValue;   // Mark that the (first) column length hasn't been read yet
             _column = -1;
 
+            _connector.State = ConnectorState.Copy;
             _connector.SendSingleMessage(new QueryMessage(copyToCommand));
 
             // TODO: Failure will break the connection (e.g. if we get CopyOutResponse), handle more gracefully
@@ -50,7 +51,6 @@ namespace Npgsql
             }
             NumColumns = copyOutResponse.NumColumns;
             ReadHeader();
-            _connector.State = ConnectorState.Copy;
         }
 
         void ReadHeader()

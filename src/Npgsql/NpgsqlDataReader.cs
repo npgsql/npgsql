@@ -97,7 +97,6 @@ namespace Npgsql
             _recordsAffected = null;
 
             State = IsSchemaOnly ? ReaderState.BetweenResults : ReaderState.InResult;
-            _connector.State = ConnectorState.Executing;
 
             if (IsCaching) {
                 _rowCache = new RowCache();
@@ -169,7 +168,7 @@ namespace Npgsql
             }
             catch (NpgsqlException)
             {
-                CleanUpDueToException();
+                State = ReaderState.Consumed;
                 throw;
             }
         }
@@ -294,7 +293,7 @@ namespace Npgsql
             }
             catch (NpgsqlException)
             {
-                CleanUpDueToException();
+                State = ReaderState.Consumed;
                 throw;
             }
         }
@@ -517,10 +516,6 @@ namespace Npgsql
             }
 
             Consume();
-            if (Command._notificationBlock != null) {
-                Command._notificationBlock.Dispose();
-                Command._notificationBlock = null;
-            }
             if ((_behavior & CommandBehavior.CloseConnection) != 0) {
                 _connection.Close();
             }
@@ -545,17 +540,6 @@ namespace Npgsql
                 ReaderClosed(this, EventArgs.Empty);
                 ReaderClosed = null;
             }
-        }
-
-        private void CleanUpDueToException()
-        {
-            // The ReadyForQuery message that is sent after the ErrorResponse has already been consumed
-            if (Command._notificationBlock != null)
-            {
-                Command._notificationBlock.Dispose();
-                Command._notificationBlock = null;
-            }
-            State = ReaderState.Consumed;
         }
 
         #endregion

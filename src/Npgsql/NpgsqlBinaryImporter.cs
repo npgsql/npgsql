@@ -49,6 +49,7 @@ namespace Npgsql
             _lengthCache = new LengthCache();
             _column = -1;
 
+            _connector.State = ConnectorState.Copy;
             _connector.SendSingleMessage(new QueryMessage(copyFromCommand));
 
             // TODO: Failure will break the connection (e.g. if we get CopyOutResponse), handle more gracefully
@@ -59,7 +60,6 @@ namespace Npgsql
             }
             NumColumns = copyInResponse.NumColumns;
             WriteHeader();
-            _connector.State = ConnectorState.Copy;
         }
 
         void WriteHeader()

@@ -100,8 +100,6 @@ namespace Npgsql
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
-        internal NpgsqlConnector.NotificationBlock _notificationBlock;
-
         #endregion Fields
 
         #region Constants
@@ -482,61 +480,60 @@ namespace Npgsql
                 throw new InvalidOperationException("NpgsqlCommand.Prepare method requires all parameters to have an explicitly set type.");
             }
 
-            using (_connector.BlockNotifications())
+            DeallocatePrepared();
+            ProcessRawQuery();
+
+            for (var i = 0; i < _queries.Count; i++)
             {
-                DeallocatePrepared();
-                ProcessRawQuery();
-
-                for (var i = 0; i < _queries.Count; i++)
+                var query = _queries[i];
+                ParseMessage parseMessage;
+                DescribeMessage describeMessage;
+                if (i == 0)
                 {
-                    var query = _queries[i];
-                    ParseMessage parseMessage;
-                    DescribeMessage describeMessage;
-                    if (i == 0)
-                    {
-                        parseMessage = _connector.ParseMessage;
-                        describeMessage = _connector.DescribeMessage;
-                    }
-                    else
-                    {
-                        parseMessage = new ParseMessage();
-                        describeMessage = new DescribeMessage();
-                    }
-
-                    query.PreparedStatementName = _connector.NextPreparedStatementName();
-                    _connector.AddMessage(parseMessage.Populate(query, _connector.TypeHandlerRegistry));
-                    _connector.AddMessage(describeMessage.Populate(StatementOrPortal.Statement, query.PreparedStatementName));
+                    parseMessage = _connector.ParseMessage;
+                    describeMessage = _connector.DescribeMessage;
+                }
+                else
+                {
+                    parseMessage = new ParseMessage();
+                    describeMessage = new DescribeMessage();
                 }
 
-                _connector.AddMessage(SyncMessage.Instance);
-                _connector.SendAllMessages();
+                query.PreparedStatementName = _connector.NextPreparedStatementName();
+                _connector.AddMessage(parseMessage.Populate(query, _connector.TypeHandlerRegistry));
+                _connector.AddMessage(describeMessage.Populate(StatementOrPortal.Statement, query.PreparedStatementName));
+            }
 
-                _queryIndex = 0;
+            _connector.AddMessage(SyncMessage.Instance);
+            _connector.State = ConnectorState.Executing;
+            _connector.SendAllMessages();
 
-                while (true)
+            _queryIndex = 0;
+
+            while (true)
+            {
+                var msg = _connector.ReadSingleMessage();
+                switch (msg.Code)
                 {
-                    var msg = _connector.ReadSingleMessage();
-                    switch (msg.Code)
-                    {
-                        case BackendMessageCode.CompletedResponse:  // prepended messages, e.g. begin transaction
-                        case BackendMessageCode.ParseComplete:
-                        case BackendMessageCode.ParameterDescription:
-                            continue;
-                        case BackendMessageCode.RowDescription:
-                            var description = (RowDescriptionMessage) msg;
-                            FixupRowDescription(description, _queryIndex == 0);
-                            _queries[_queryIndex++].Description = description;
-                            continue;
-                        case BackendMessageCode.NoData:
-                            _queries[_queryIndex++].Description = null;
-                            continue;
-                        case BackendMessageCode.ReadyForQuery:
-                            Contract.Assume(_queryIndex == _queries.Count);
-                            IsPrepared = true;
-                            return;
-                        default:
-                            throw _connector.UnexpectedMessageReceived(msg.Code);
-                    }            
+                    case BackendMessageCode.CompletedResponse:  // prepended messages, e.g. begin transaction
+                    case BackendMessageCode.ParseComplete:
+                    case BackendMessageCode.ParameterDescription:
+                        continue;
+                    case BackendMessageCode.RowDescription:
+                        var description = (RowDescriptionMessage) msg;
+                        FixupRowDescription(description, _queryIndex == 0);
+                        _queries[_queryIndex++].Description = description;
+                        continue;
+                    case BackendMessageCode.NoData:
+                        _queries[_queryIndex++].Description = null;
+                        continue;
+                    case BackendMessageCode.ReadyForQuery:
+                        Contract.Assume(_queryIndex == _queries.Count);
+                        IsPrepared = true;
+                        _connector.State = ConnectorState.Ready;
+                        return;
+                    default:
+                        throw _connector.UnexpectedMessageReceived(msg.Code);
                 }
             }
         }
@@ -1173,27 +1170,19 @@ namespace Npgsql
         [GenerateAsync]
         internal NpgsqlDataReader Execute(CommandBehavior behavior = CommandBehavior.Default)
         {
+            _connector.State = ConnectorState.Executing;
+            State = CommandState.InProgress;
             _queryIndex = 0;
+            _connector.SendAllMessages();
 
-            // Block the notification thread before writing anything to the wire.
-            _notificationBlock = _connector.BlockNotifications();
-            try {
-                State = CommandState.InProgress;
-
-                _connector.SendAllMessages();
-
-                if (!IsPrepared) {
-                    IBackendMessage msg;
-                    do {
-                        msg = _connector.ReadSingleMessage();
-                    } while (!ProcessMessageForUnprepared(msg, behavior));
-                }
-
-                return new NpgsqlDataReader(this, behavior, _queries);
-            } catch {
-                _notificationBlock.Dispose();
-                throw;
+            if (!IsPrepared) {
+                IBackendMessage msg;
+                do {
+                    msg = _connector.ReadSingleMessage();
+                } while (!ProcessMessageForUnprepared(msg, behavior));
             }
+
+            return new NpgsqlDataReader(this, behavior, _queries);
         }
 
         bool ProcessMessageForUnprepared(IBackendMessage msg, CommandBehavior behavior)

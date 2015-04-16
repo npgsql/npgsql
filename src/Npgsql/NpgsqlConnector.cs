@@ -29,8 +29,10 @@ using System.Linq;
 using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
+using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
 using Npgsql.TypeHandlers;
@@ -180,7 +182,6 @@ namespace Npgsql
 
         SemaphoreSlim _notificationSemaphore;
         static readonly byte[] EmptyBuffer = new byte[0];
-        int _notificationBlockRecursionDepth;
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
@@ -228,6 +229,9 @@ namespace Npgsql
             _messagesToSend = new List<FrontendMessage>();
             _preparedStatementIndex = 0;
             _portalIndex = 0;
+            if (SyncNotification) {
+                _notificationSemaphore = new SemaphoreSlim(0, 1);
+            }
         }
 
         #endregion
@@ -251,12 +255,13 @@ namespace Npgsql
         internal bool Enlist { get { return _settings.Enlist; } }
         internal bool IntegratedSecurity { get { return _settings.IntegratedSecurity; } }
         internal bool ConvertInfinityDateTime { get { return _settings.ConvertInfinityDateTime; } }
+        internal bool SyncNotification { get { return _settings.SyncNotification; } }
 
         #endregion Configuration settings
 
         #region State management
 
-        volatile int _state;
+        int _state;
 
         /// <summary>
         /// Gets the current state of the connector
@@ -266,18 +271,40 @@ namespace Npgsql
             get { return (ConnectorState)_state; }
             set
             {
-                var newState = (int) value;
+                var newState = (int)value;
                 if (newState == _state)
                     return;
-                Interlocked.Exchange(ref _state, newState);
 
-                if (value == ConnectorState.Ready)
+                switch (value)
                 {
+                case ConnectorState.Ready:
                     if (CurrentReader != null) {
                         CurrentReader.Command.State = CommandState.Idle;
                         CurrentReader = null;
                     }
+                    DrainBufferedMessages();
+                    if (SyncNotification)
+                    {
+                        _notificationSemaphore.Release();
+                        try {
+                            _baseStream.ReadAsync(EmptyBuffer, 0, 0).ContinueWith(HandleAsyncRead);
+                        } catch {
+                            Break();
+                            throw;
+                        }
+                    }
+                    break;
+
+                case ConnectorState.Executing:
+                case ConnectorState.Fetching:
+                case ConnectorState.Copy:
+                    if (SyncNotification && State == ConnectorState.Ready) {
+                        _notificationSemaphore.Wait();
+                    }
+                    break;
                 }
+
+                Interlocked.Exchange(ref _state, newState);
             }
         }
 
@@ -407,10 +434,6 @@ namespace Npgsql
                 ProcessServerVersion();
                 TypeHandlerRegistry.Setup(this);
                 State = ConnectorState.Ready;
-
-                if (_settings.SyncNotification) {
-                    AddNotificationListener();
-                }
             }
             catch
             {
@@ -880,11 +903,11 @@ namespace Npgsql
                         throw error;
                     }
 
-                    State = ConnectorState.Ready;
                     continue;
 
                 case BackendMessageCode.ReadyForQuery:
                     if (error != null) {
+                        State = ConnectorState.Ready;
                         throw error;   
                     }
                     break;
@@ -1025,16 +1048,32 @@ namespace Npgsql
             }
         }
 
-        void DrainRemainingMessages()
+        bool HasDataInBuffers
         {
-            while (Buffer.ReadBytesLeft > 0 || (_stream is NetworkStream && ((NetworkStream)_stream).DataAvailable)
+            get
+            {
+                return Buffer.ReadBytesLeft > 0 ||
+                       (_stream is NetworkStream && ((NetworkStream) _stream).DataAvailable)
 #if !DNXCORE50
-               || (_stream is TlsClientStream.TlsClientStream && ((TlsClientStream.TlsClientStream)_stream).HasBufferedReadData(false))
+                       || (_stream is TlsClientStream.TlsClientStream && ((TlsClientStream.TlsClientStream) _stream).HasBufferedReadData(false))
 #endif
-            )
+                    ;
+            }
+        }
+
+        /// <summary>
+        /// Reads and processes any messages that are already in our buffers (either Npgsql or TCP).
+        /// Handles asynchronous messages (Notification, Notice, ParameterStatus) that may after a
+        /// ReadyForQuery, as well as async notification mode.
+        /// </summary>
+        void DrainBufferedMessages()
+        {
+            while (HasDataInBuffers)
             {
                 var msg = ReadSingleMessage(DataRowLoadingMode.NonSequential, true);
-                if (msg != null) {
+                if (msg != null)
+                {
+                    Break();
                     throw new Exception(string.Format("Got unexpected non-async message with code {0} while draining: {1}", msg.Code, msg));
                 }
             }
@@ -1303,10 +1342,6 @@ namespace Npgsql
                 // ignored
             }
 
-            try { RemoveNotificationListener(); } catch {
-                // ignored
-            }
-
             if (CurrentReader != null) {
                 CurrentReader.Command.State = CommandState.Idle;
                 try { CurrentReader.Close(); } catch {
@@ -1388,82 +1423,44 @@ namespace Npgsql
 
         #region Sync notification
 
-        internal class NotificationBlock : IDisposable
+        internal void HandleAsyncRead(Task<int> task)
         {
-            NpgsqlConnector _connector;
-
-            public NotificationBlock(NpgsqlConnector connector)
-            {
-                _connector = connector;
-            }
-
-            public void Dispose()
-            {
-                if (_connector != null && !_connector.IsBroken)
-                {
-                    if (--_connector._notificationBlockRecursionDepth == 0)
-                    {
-                        _connector.DrainRemainingMessages();
-                        if (_connector._notificationSemaphore != null)
-                        {
-                            _connector._notificationSemaphore.Release();
-                        }
-                    }
-                }
-                _connector = null;
-            }
-        }
-
-        [GenerateAsync]
-        internal NotificationBlock BlockNotifications()
-        {
-            var n = new NotificationBlock(this);
-            if (++_notificationBlockRecursionDepth == 1 && _notificationSemaphore != null)
-                _notificationSemaphore.Wait();
-            return n;
-        }
-
-        internal void AddNotificationListener()
-        {
-            _notificationSemaphore = new SemaphoreSlim(1);
-            var task = _baseStream.ReadAsync(EmptyBuffer, 0, 0);
-            task.ContinueWith(NotificationHandler);
-        }
-
-        internal void RemoveNotificationListener()
-        {
-            _notificationSemaphore = null;
-        }
-
-        internal void NotificationHandler(System.Threading.Tasks.Task<int> task)
-        {
-            if (task.Exception != null || task.Result != 0)
+            if (task.Exception != null || task.Result != 0 || IsClosed || IsBroken)
             {
                 // The stream is dead
                 return;
             }
 
-            var semaphore = _notificationSemaphore; // To avoid problems when closing the connection
-            if (semaphore != null)
+            if (!_notificationSemaphore.Wait(0)) {
+                // The semaphore has already been acquired by a user action.
+                // The incoming message probably isn't an async one, in any case exit and let
+                // the user thread handle it.
+                return;
+            }
+
+            try
             {
-                semaphore.WaitAsync().ContinueWith(t => {
+                DrainBufferedMessages();
+            }
+            catch
+            {
+                Contract.Assert(IsBroken);
+            }
+            finally
+            {
+                _notificationSemaphore.Release();
+                if (!IsBroken && !IsClosed)
+                {
                     try
                     {
-                        DrainRemainingMessages();
+                        _baseStream.ReadAsync(EmptyBuffer, 0, 0).ContinueWith(HandleAsyncRead);
                     }
-                    catch
+                    catch (Exception e)
                     {
+                        Log.Error("Exception in notification ReadAsync", e);
+                        Break();
                     }
-                    finally
-                    {
-                        semaphore.Release();
-                        try
-                        {
-                            _baseStream.ReadAsync(EmptyBuffer, 0, 0).ContinueWith(NotificationHandler);
-                        }
-                        catch { }
-                    }
-                });
+                }
             }
         }
 
@@ -1536,11 +1533,11 @@ namespace Npgsql
                 PrependBackendTimeoutMessage(InternalCommandTimeout);
             }
             AddMessage(message);
-            using (BlockNotifications()) {
-                SendAllMessages();
-                ReadExpecting<CommandCompleteMessage>();
-                ReadExpecting<ReadyForQueryMessage>();
-            }
+            State = ConnectorState.Executing;
+            SendAllMessages();
+            ReadExpecting<CommandCompleteMessage>();
+            ReadExpecting<ReadyForQueryMessage>();
+            State = ConnectorState.Ready;
         }
 
         #endregion
@@ -1611,6 +1608,8 @@ namespace Npgsql
         [ContractInvariantMethod]
         void ObjectInvariants()
         {
+            Contract.Invariant(!IsReady || !HasDataInBuffers, "Connector in Ready state but has data in buffer");
+            Contract.Invariant((_settings.SyncNotification && _notificationSemaphore != null) || (!_settings.SyncNotification && _notificationSemaphore == null));
         }
 
         #endregion
