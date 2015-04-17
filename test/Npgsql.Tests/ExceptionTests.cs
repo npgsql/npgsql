@@ -72,17 +72,6 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void ProblemSqlInsideException()
-        {
-            const string sql = "selec 1 as test";
-            Assert.That(
-                () => ExecuteScalar(sql),
-                Throws.Exception.TypeOf<NpgsqlException>()
-                  .With.Property("ErrorSql").EqualTo(sql)
-            );
-        }
-
-        [Test]
         [MinPgVersion(9, 3, 0, "5 error fields haven't been added yet")]
         public void ExceptionFieldsArePopulated()
         {

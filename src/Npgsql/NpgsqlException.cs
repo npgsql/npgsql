@@ -169,11 +169,6 @@ namespace Npgsql
 
         #endregion
 
-        /// <summary>
-        /// String containing the SQL sent which produced this error.
-        /// </summary>
-        public String ErrorSql { get; private set; }
-
         internal NpgsqlException(NpgsqlBuffer buf)
         {
             _msg = new ErrorOrNoticeMessage(buf);
