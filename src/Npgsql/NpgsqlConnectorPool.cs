@@ -166,24 +166,24 @@ namespace Npgsql
         /// <summary>
         /// Searches the pooled connector lists for a matching connector object or creates a new one.
         /// </summary>
-        /// <param name="Connection">The NpgsqlConnection that is requesting
+        /// <param name="connection">The NpgsqlConnection that is requesting
         /// the connector. Its ConnectionString will be used to search the
         /// pool for available connectors.</param>
         /// <returns>A connector object.</returns>
-        public NpgsqlConnector RequestConnector(NpgsqlConnection Connection)
+        public NpgsqlConnector RequestConnector(NpgsqlConnection connection)
         {
             Contract.Ensures(Contract.Result<NpgsqlConnector>().State == ConnectorState.Ready, "Pool returned a connector with state ");
 
-            NpgsqlConnector Connector;
-            Int32 timeoutMilliseconds = Connection.Timeout * 1000;
+            NpgsqlConnector connector;
+            Int32 timeoutMilliseconds = connection.Timeout * 1000;
 
             // No need for this lock anymore
             //lock (this)
             {
-                Connector = GetPooledConnector(Connection);
+                connector = GetPooledConnector(connection);
             }
 
-            while (Connector == null && timeoutMilliseconds > 0)
+            while (connector == null && timeoutMilliseconds > 0)
             {
 
                 Int32 ST = timeoutMilliseconds > 1000 ? 1000 : timeoutMilliseconds;
@@ -193,13 +193,13 @@ namespace Npgsql
 
                 //lock (this)
                 {
-                    Connector = GetPooledConnector(Connection);
+                    connector = GetPooledConnector(connection);
                 }
             }
 
-            if (Connector == null)
+            if (connector == null)
             {
-                if (Connection.Timeout > 0)
+                if (connection.Timeout > 0)
                 {
                     throw new Exception("Timeout while getting a connection from pool.");
                 }
@@ -209,9 +209,11 @@ namespace Npgsql
                 }
             }
 
+            connector.Connection = connection;
+
             StartTimer();
 
-            return Connector;
+            return connector;
         }
 
         /// <summary>

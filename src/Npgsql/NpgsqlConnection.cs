@@ -86,6 +86,8 @@ namespace Npgsql
         /// </summary>
         internal int OpenCounter { get; private set; }
 
+        internal bool WasBroken { get; set; }
+
 #if !DNXCORE50
         NpgsqlPromotableSinglePhaseNotification Promotable
         {
@@ -172,6 +174,7 @@ namespace Npgsql
                 throw new ArgumentException("Connection string argument missing", Keywords.UserName.ToString());
             }
 
+            WasBroken = false;
             // Get a Connector, either from the pool or creating one ourselves.
             if (Pooling)
             {
@@ -474,7 +477,7 @@ namespace Npgsql
             {
                 if (Connector == null || _disposed)
                 {
-                    return ConnectionState.Closed;
+                    return WasBroken ? ConnectionState.Broken : ConnectionState.Closed;
                 }
 
                 switch (Connector.State)
@@ -667,7 +670,7 @@ namespace Npgsql
             ReallyClose();
         }
 
-        void ReallyClose()
+        internal void ReallyClose()
         {
             Log.Trace("Really closing connection", Connector.Id);
             _postponingClose = false;
@@ -677,11 +680,6 @@ namespace Npgsql
 
             Connector.Notification -= NotificationDelegate;
             Connector.Notice -= NoticeDelegate;
-
-            /*if (SyncNotification)
-            {
-                
-            }*/
 
             if (Pooling)
             {

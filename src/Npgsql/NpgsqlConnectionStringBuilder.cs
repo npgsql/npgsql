@@ -186,6 +186,7 @@ namespace Npgsql
             valueDescriptions.Add(Keywords.CommandTimeout, new ValueDescription(NpgsqlCommand.DefaultTimeout));
             valueDescriptions.Add(Keywords.InternalCommandTimeout, new ValueDescription(typeof(int?)));
             valueDescriptions.Add(Keywords.BackendTimeouts, new ValueDescription(true));
+            valueDescriptions.Add(Keywords.KeepAlive, new ValueDescription(0));
             valueDescriptions.Add(Keywords.Enlist, new ValueDescription(typeof(bool)));
             valueDescriptions.Add(Keywords.IntegratedSecurity, new ValueDescription(typeof(bool)));
             valueDescriptions.Add(Keywords.IncludeRealm, new ValueDescription(typeof(bool)));
@@ -237,6 +238,8 @@ namespace Npgsql
             }
             if (InternalCommandTimeout.HasValue && InternalCommandTimeout < NpgsqlConnector.MinimumInternalCommandTimeout && InternalCommandTimeout != 0)
                 throw new ArgumentOutOfRangeException(string.Format("InternalCommandTimeout must be >= {0} or 0 (infinite)", NpgsqlConnector.MinimumInternalCommandTimeout));
+            if (KeepAlive < 0)
+                throw new ArgumentOutOfRangeException(string.Format("KeepAlive must be >= 0"));
             if (IntegratedSecurity && Type.GetType("Mono.Runtime") != null)
                 throw new NotSupportedException("IntegratedSecurity isn't supported on mono");
         }
@@ -820,6 +823,25 @@ namespace Npgsql
             set { SetValue(GetKeyName(Keywords.BackendTimeouts), Keywords.BackendTimeouts, value); }
         }
 
+        private int _keepAlive;
+        /// <summary>
+        /// The number of seconds of connection inactivity before Npgsql sends a keepalive query.
+        /// Set to 0 (the default) to disable.
+        /// </summary>
+#if !DNXCORE50
+        [Category("DataCategory_Initialization")]
+        [NpgsqlConnectionStringKeyword(Keywords.KeepAlive)]
+        [DisplayName("ConnectionProperty_Display_KeepAlive")]
+        [Description("ConnectionProperty_Description_KeepAlive")]
+        [RefreshProperties(RefreshProperties.All)]
+        [DefaultValue(0)]
+#endif
+        public int KeepAlive
+        {
+            get { return _keepAlive; }
+            set { SetValue(GetKeyName(Keywords.KeepAlive), Keywords.KeepAlive, value); }
+        }
+
         private bool _enlist;
 #if !DNXCORE50
         [Category("DataCategory_Pooling")]
@@ -965,6 +987,8 @@ namespace Npgsql
                     return Keywords.InternalCommandTimeout;
                 case "BACKENDTIMEOUTS":
                     return Keywords.BackendTimeouts;
+                case "KEEPALIVE":
+                    return Keywords.KeepAlive;
                 case "ENLIST":
                     return Keywords.Enlist;
                 case "PRELOADREADER":
@@ -1037,7 +1061,8 @@ namespace Npgsql
                 case Keywords.BackendTimeouts:
                     return "BACKENDTIMEOUTS";
                 case Keywords.Enlist:
-                    return "ENLIST";
+                case Keywords.KeepAlive:
+                    return "KEEPALIVE";
                 case Keywords.IntegratedSecurity:
                     return "INTEGRATED SECURITY";
                 case Keywords.IncludeRealm:
@@ -1204,6 +1229,11 @@ namespace Npgsql
                         if (InternalCommandTimeout < NpgsqlConnector.MinimumInternalCommandTimeout && InternalCommandTimeout != 0)
                             throw new ArgumentOutOfRangeException(string.Format("InternalCommandTimeout must be >= {0} or 0 (infinite)", NpgsqlConnector.MinimumInternalCommandTimeout));
                         return this._internalCommandTimeout = internalCommandTimeout;
+                    case Keywords.KeepAlive:
+                        var keepAlive = Convert.ToInt32(value);
+                        if (keepAlive < 0)
+                            throw new ArgumentOutOfRangeException("KeepAlive can't be negative");
+                        return this._keepAlive = keepAlive;
                     case Keywords.BackendTimeouts:
                         return this._backendTimeouts = ToBoolean(value);
                     case Keywords.Enlist:
@@ -1258,6 +1288,7 @@ namespace Npgsql
                     case Keywords.MaxPoolSize:
                     case Keywords.CommandTimeout:
                     case Keywords.InternalCommandTimeout:
+                    case Keywords.KeepAlive:
                         exception_template = "expecting {0}=[Numeric] value in ConnectionString";
                         break;
                     case Keywords.SSL:
@@ -1332,6 +1363,8 @@ namespace Npgsql
                     return this._internalCommandTimeout;
                 case Keywords.BackendTimeouts:
                     return this._backendTimeouts;
+                case Keywords.KeepAlive:
+                    return this._keepAlive;
                 case Keywords.Enlist:
                     return this._enlist;
                 case Keywords.IntegratedSecurity:
@@ -1384,6 +1417,7 @@ namespace Npgsql
         ServerCompatibility,
         InternalCommandTimeout,
         BackendTimeouts,
+        KeepAlive,
         // These are for the connection pool
         Pooling,
         ConnectionLifeTime,

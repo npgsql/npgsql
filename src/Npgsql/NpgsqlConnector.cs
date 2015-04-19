@@ -184,6 +184,7 @@ namespace Npgsql
         SemaphoreSlim _asyncLock;
 
         readonly UserAction _userAction;
+        readonly Timer _keepAliveTimer;
 
         static readonly byte[] EmptyBuffer = new byte[0];
 
@@ -237,6 +238,10 @@ namespace Npgsql
             _userLock = new SemaphoreSlim(1, 1);
             _asyncLock = new SemaphoreSlim(1, 1);
             _userAction = new UserAction(this);
+
+            if (KeepAlive > 0) {
+                _keepAliveTimer = new Timer(PerformKeepAlive);
+            }
         }
 
         #endregion
@@ -257,6 +262,7 @@ namespace Npgsql
         internal int ConnectionTimeout { get { return _settings.Timeout; } }
         internal int InternalCommandTimeout { get { return _settings.InternalCommandTimeout ?? _settings.CommandTimeout; } }
         internal bool BackendTimeouts { get { return _settings.BackendTimeouts; } }
+        internal int KeepAlive { get { return _settings.KeepAlive; } }
         internal bool Enlist { get { return _settings.Enlist; } }
         internal bool IntegratedSecurity { get { return _settings.IntegratedSecurity; } }
         internal bool ConvertInfinityDateTime { get { return _settings.ConvertInfinityDateTime; } }
@@ -386,6 +392,10 @@ namespace Npgsql
                 ProcessServerVersion();
                 TypeHandlerRegistry.Setup(this);
                 State = ConnectorState.Ready;
+
+                if (SyncNotification) {
+                    HandleAsyncMessages();
+                }
             }
             catch
             {
@@ -697,6 +707,11 @@ namespace Npgsql
                 }
                 Buffer.Flush();
             }
+            catch
+            {
+                Break();
+                throw;
+            }
             finally
             {
                 _messagesToSend.Clear();
@@ -718,49 +733,41 @@ namespace Npgsql
         [GenerateAsync]
         void SendMessage(FrontendMessage msg)
         {
-            try
+            Log.Trace(String.Format("Sending: {0}", msg), Id);
+
+            var asSimple = msg as SimpleFrontendMessage;
+            if (asSimple != null)
             {
-                Log.Trace(String.Format("Sending: {0}", msg), Id);
-
-                var asSimple = msg as SimpleFrontendMessage;
-                if (asSimple != null)
+                if (asSimple.Length > Buffer.WriteSpaceLeft)
                 {
-                    if (asSimple.Length > Buffer.WriteSpaceLeft)
-                    {
-                        Buffer.Flush();
-                    }
-                    Contract.Assume(Buffer.WriteSpaceLeft >= asSimple.Length);
-                    asSimple.Write(Buffer);
-                    return;
+                    Buffer.Flush();
                 }
-
-                var asComplex = msg as ChunkingFrontendMessage;
-                if (asComplex != null)
-                {
-                    var directBuf = new DirectBuffer();
-                    while (!asComplex.Write(Buffer, ref directBuf))
-                    {
-                        Buffer.Flush();
-
-                        // The following is an optimization hack for writing large byte arrays without passing
-                        // through our buffer
-                        if (directBuf.Buffer != null)
-                        {
-                            Buffer.Underlying.Write(directBuf.Buffer, directBuf.Offset, directBuf.Size == 0 ? directBuf.Buffer.Length : directBuf.Size);
-                            directBuf.Buffer = null;
-                            directBuf.Size = 0;
-                        }
-                    }
-                    return;
-                }
-
-                throw PGUtil.ThrowIfReached();
+                Contract.Assume(Buffer.WriteSpaceLeft >= asSimple.Length);
+                asSimple.Write(Buffer);
+                return;
             }
-            catch
+
+            var asComplex = msg as ChunkingFrontendMessage;
+            if (asComplex != null)
             {
-                Break();
-                throw;
+                var directBuf = new DirectBuffer();
+                while (!asComplex.Write(Buffer, ref directBuf))
+                {
+                    Buffer.Flush();
+
+                    // The following is an optimization hack for writing large byte arrays without passing
+                    // through our buffer
+                    if (directBuf.Buffer != null)
+                    {
+                        Buffer.Underlying.Write(directBuf.Buffer, directBuf.Offset, directBuf.Size == 0 ? directBuf.Buffer.Length : directBuf.Size);
+                        directBuf.Buffer = null;
+                        directBuf.Size = 0;
+                    }
+                }
+                return;
             }
+
+            throw PGUtil.ThrowIfReached();
         }
 
         #endregion
@@ -1287,7 +1294,14 @@ namespace Npgsql
             if (State == ConnectorState.Broken)
                 return;
             State = ConnectorState.Broken;
+            var conn = Connection;
             Cleanup();
+            if (conn != null)
+            {
+                // We have no connection if we're broken by a keepalive occuring while the connector is in the pool
+                conn.WasBroken = true;
+                conn.ReallyClose();
+            }
         }
 
         /// <summary>
@@ -1430,6 +1444,11 @@ namespace Npgsql
                 throw new InvalidOperationException();
             }
 
+            // Disable keepalive
+            if (KeepAlive > 0) {
+                _keepAliveTimer.Change(Timeout.Infinite, Timeout.Infinite);
+            }
+
             Contract.Assume(IsReady);
             Contract.Assume(Buffer.ReadBytesLeft == 0, "The read buffer should be read completely before sending Parse message");
             Contract.Assume(Buffer.WritePosition == 0, "WritePosition should be 0");
@@ -1464,29 +1483,20 @@ namespace Npgsql
                 // both reading and writing, and since we want to process these messages early,
                 // we drain any remaining buffered messages.
                 DrainBufferedMessages();
+
+                if (KeepAlive > 0)
+                {
+                    var keepAlive = KeepAlive*1000;
+                    _keepAliveTimer.Change(keepAlive, keepAlive);
+                }
+
+                State = ConnectorState.Ready;
             }
             finally
             {
                 _asyncLock.Release();
                 _userLock.Release();
             }
-
-            // Must happen after the locks are released, otherwise if HandleAsyncRead is called when
-            // the user lock is (already) taken it will exit immediately.
-            if (SyncNotification)
-            {
-                try
-                {
-                    _baseStream.ReadAsync(EmptyBuffer, 0, 0).ContinueWith(HandleAsyncRead);
-                }
-                catch
-                {
-                    Break();
-                    throw;
-                }
-            }
-
-            State = ConnectorState.Ready;
         }
 
         internal bool IsInUserAction
@@ -1515,50 +1525,79 @@ namespace Npgsql
 
         #endregion
 
-        #region Sync notification
+        #region Async message handling
 
-        internal void HandleAsyncRead(Task<int> task)
+        internal async void HandleAsyncMessages()
         {
-            if (task.Exception != null || task.Result != 0 || IsClosed || IsBroken)
-            {
-                // The stream is dead
-                return;
-            }
-
-            if (!_asyncLock.Wait(0)) {
-                // The semaphore has already been acquired by a user action.
-                // The incoming message probably isn't an async one, in any case exit and let
-                // the user thread handle it.
-                return;
-            }
-
             try
             {
-                DrainBufferedMessages();
-            }
-            catch
-            {
-                Contract.Assert(IsBroken);
-            }
-            finally
-            {
-                _asyncLock.Release();
-                if (!IsBroken && !IsClosed)
+                while (true)
                 {
+                    await _baseStream.ReadAsync(EmptyBuffer, 0, 0);
+
+                    if (_asyncLock == null) {
+                        return;
+                    }
+
+                    // If the semaphore is disposed while we're (async) waiting on it, the continuation
+                    // never gets called and this method doesn't continue
+                    await _asyncLock.WaitAsync();
+
                     try
                     {
-                        _baseStream.ReadAsync(EmptyBuffer, 0, 0).ContinueWith(HandleAsyncRead);
+                        DrainBufferedMessages();
                     }
-                    catch (Exception e)
+                    finally
                     {
-                        Log.Error("Exception in ReadAsync", e);
-                        Break();
+                        if (_asyncLock != null) {
+                            _asyncLock.Release();
+                        }
                     }
                 }
             }
+            catch (Exception e)
+            {
+                Log.Error("Exception while handling async messages", e, Id);
+            }
         }
 
-        #endregion Sync notification
+        #endregion
+
+        #region Keepalive
+
+        void PerformKeepAlive(object state)
+        {
+            if (_asyncLock == null) { return; }
+
+            if (!_asyncLock.Wait(0)) {
+                // The async semaphore has already been acquired, either by a user action,
+                // or an async notification being handled, or, improbably, by a previous keepalive.
+                // Whatever the case, exit immediately, no need to perform a keepalive.
+                return;
+            }
+
+            if (!IsConnected) { return; }
+
+            try
+            {
+                // Note: we can't use a regular command to execute the SQL query, because that would
+                // acquire the user lock (and prevent real user queries from running).
+                if (TransactionStatus != TransactionStatus.InFailedTransactionBlock)
+                {
+                    PrependBackendTimeoutMessage(InternalCommandTimeout);
+                }
+                SendSingleMessage(PregeneratedMessage.KeepAlive);
+                SkipUntil(BackendMessageCode.ReadyForQuery);
+                _asyncLock.Release();
+            }
+            catch (Exception e)
+            {
+                Log.Fatal("Keepalive failure", e, Id);
+                Break();
+            }
+        }
+
+        #endregion
 
         #region Supported features
 
@@ -1705,6 +1744,7 @@ namespace Npgsql
         {
             Contract.Invariant(!IsReady || !IsInUserAction);
             Contract.Invariant(!IsReady || !HasDataInBuffers, "Connector in Ready state but has data in buffer");
+            Contract.Invariant((KeepAlive == 0 && _keepAliveTimer == null) || (KeepAlive > 0 && _keepAliveTimer != null));
         }
 
         #endregion

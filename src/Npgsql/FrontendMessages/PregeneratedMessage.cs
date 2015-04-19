@@ -55,6 +55,7 @@ namespace Npgsql.FrontendMessages
             RollbackTransaction       = BuildQuery("ROLLBACK");
             DiscardAll                = BuildQuery("DISCARD ALL");
             UnlistenAll               = BuildQuery("UNLISTEN *");
+            KeepAlive                 = BuildQuery("SELECT NULL");
             SetStmtTimeout10Sec       = BuildQuery("SET statement_timeout = 10000");
             SetStmtTimeout20Sec       = BuildQuery("SET statement_timeout = 20000");
             SetStmtTimeout30Sec       = BuildQuery("SET statement_timeout = 30000");
@@ -86,6 +87,7 @@ namespace Npgsql.FrontendMessages
         internal static readonly PregeneratedMessage RollbackTransaction;
         internal static readonly PregeneratedMessage DiscardAll;
         internal static readonly PregeneratedMessage UnlistenAll;
+        internal static readonly PregeneratedMessage KeepAlive;
         internal static readonly PregeneratedMessage SetStmtTimeout10Sec;
         internal static readonly PregeneratedMessage SetStmtTimeout20Sec;
         internal static readonly PregeneratedMessage SetStmtTimeout30Sec;

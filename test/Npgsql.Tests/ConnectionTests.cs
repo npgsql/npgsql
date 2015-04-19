@@ -30,6 +30,7 @@ using System.Data;
 using System.Resources;
 using NUnit.Framework;
 using System.Collections.Generic;
+using System.IO;
 using System.Text.RegularExpressions;
 using NpgsqlTypes;
 
@@ -46,7 +47,7 @@ namespace Npgsql.Tests
         {
             using (var conn = new NpgsqlConnection(ConnectionString))
             {
-                bool eventOpen = false, eventClosed = false;
+                bool eventOpen = false, eventClosed = false, eventBroken = false;
                 conn.StateChange += (s, e) =>
                 {
                     if (e.OriginalState == ConnectionState.Closed && e.CurrentState == ConnectionState.Open)
@@ -112,7 +113,18 @@ namespace Npgsql.Tests
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
                 Assert.That(conn.Connector.State, Is.EqualTo(ConnectorState.Ready));
 
-                // TODO: Broken, when implemented
+                // Use another connection to kill our connection
+                ExecuteNonQuery(string.Format("SELECT pg_terminate_backend({0})", conn.ProcessID));
+
+                conn.StateChange += (sender, args) =>
+                {
+                    if (args.CurrentState == ConnectionState.Closed)
+                        eventBroken = true;
+                };
+                Assert.That(() => ExecuteScalar("SELECT 1", conn), Throws.Exception.TypeOf<IOException>());
+                Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+                Assert.That(eventBroken, Is.True);
             }
         }
 
@@ -272,6 +284,57 @@ namespace Npgsql.Tests
         }
 
         #endregion
+
+        #region Keepalive
+
+        [Test, Description("Makes sure that if keepalive is enabled, broken connections are detected")]
+        [Timeout(10000)]
+        public void Keepalive()
+        {
+            var mre = new ManualResetEvent(false);
+            using (var conn = new NpgsqlConnection(ConnectionString + ";KeepAlive=1;SyncNotification=true"))
+            {
+                conn.Open();
+
+                conn.StateChange += (sender, args) =>
+                {
+                    if (args.CurrentState == ConnectionState.Closed)
+                        mre.Set();
+                };
+
+                // Use another connection to kill our keepalive connection
+                ExecuteNonQuery(string.Format("SELECT pg_terminate_backend({0})", conn.ProcessID));
+                mre.WaitOne();
+                Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+            }
+        }
+
+        #endregion
+
+        [Test, Description("Breaks a connector while it's in the pool, without a keepalive and without")]
+        [TestCase(false, TestName = "WithoutKeepAlive")]
+        [TestCase(false, TestName = "WithKeepAlive")]
+        public void BreakConnectorInPool(bool keepAlive)
+        {
+            using (var conn = new NpgsqlConnection(ConnectionString + ";MaxPoolSize=1" + (keepAlive ? ";KeepAlive=1" : "")))
+            {
+                conn.Open();
+                var connectorId = conn.ProcessID;
+                conn.Close();
+
+                // Use another connection to kill the connector currently in the pool
+                ExecuteNonQuery(string.Format("SELECT pg_terminate_backend({0})", connectorId));
+
+                conn.Open();
+                Assert.That(conn.ProcessID, Is.EqualTo(connectorId));
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
+                if (keepAlive)
+                    Assert.That(ExecuteScalar("SELECT 1", conn), Is.EqualTo(1));
+                else
+                    Assert.That(() => ExecuteScalar("SELECT 1", conn), Throws.Exception);
+            }
+        }
 
         [Test]
         public void ChangeDatabase()
