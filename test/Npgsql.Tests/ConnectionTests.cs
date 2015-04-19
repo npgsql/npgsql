@@ -322,8 +322,9 @@ namespace Npgsql.Tests
         [TestCase(false, TestName = "NonPooled")]
         public void CloseDuringRead(bool pooled)
         {
-            var conn = new NpgsqlConnection(ConnectionString + (pooled ? "" : ";Pooling=false"));
+            var conn = new NpgsqlConnection(ConnectionString + ";" + (pooled ? "MaxPoolSize=1" : "Pooling=false"));
             conn.Open();
+            var connectorId = conn.ProcessID;
             using (var cmd = new NpgsqlCommand("SELECT 1", conn))
             using (var reader = cmd.ExecuteReader())
             {
@@ -333,8 +334,9 @@ namespace Npgsql.Tests
                 Assert.That(reader.IsClosed);
             }
 
-            // Make sure we can reuse the pooled connector
             conn.Open();
+            if (pooled)   // Make sure we can reuse the pooled connector
+                Assert.That(conn.ProcessID, Is.EqualTo(connectorId));
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
             Assert.That(ExecuteScalar("SELECT 1"), Is.EqualTo(1));
         }

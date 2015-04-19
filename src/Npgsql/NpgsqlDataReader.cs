@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.TypeHandlers;
 using Npgsql.TypeHandlers.NumericHandlers;
@@ -16,7 +17,7 @@ using NpgsqlTypes;
 
 namespace Npgsql
 {
-    public class NpgsqlDataReader : DbDataReader
+    public partial class NpgsqlDataReader : DbDataReader
     {
         private ReaderState _state;
         internal NpgsqlCommand Command { get; private set; }
@@ -25,11 +26,6 @@ namespace Npgsql
         readonly CommandBehavior _behavior;
 
         ReaderState State { get; set; }
-
-        /// <summary>
-        /// See <see cref="FakeClose"/>.
-        /// </summary>
-        bool _fakeClosed;
 
         /// <summary>
         /// Holds the list of RowDescription messages for each of the resultsets this reader is to process.
@@ -265,8 +261,11 @@ namespace Npgsql
                 _cachedSchemaTable = null;
 #endif
 
-                if ((_behavior & CommandBehavior.SingleResult) != 0) {
-                    Consume();
+                if ((_behavior & CommandBehavior.SingleResult) != 0)
+                {
+                    if (State == ReaderState.BetweenResults) {
+                        Consume();
+                    }
                     return false;
                 }
 
@@ -331,6 +330,7 @@ namespace Npgsql
             return _connector.ReadSingleMessage(IsSequential ? DataRowLoadingMode.Sequential : DataRowLoadingMode.NonSequential);
         }
 
+        [GenerateAsync]
         IBackendMessage SkipUntil(BackendMessageCode stopAt)
         {
             if (_pendingMessage != null)
@@ -372,7 +372,7 @@ namespace Npgsql
         /// </summary>
         public override bool IsClosed
         {
-            get { return State == ReaderState.Closed || _fakeClosed; }
+            get { return State == ReaderState.Closed; }
         }
 
         public override int RecordsAffected
@@ -458,15 +458,8 @@ namespace Npgsql
         /// Consumes all result sets for this reader, leaving the connector ready for sending and processing further
         /// queries
         /// </summary>
-        private void Consume()
+        void Consume()
         {
-            switch (State)
-            {
-                case ReaderState.Consumed:
-                case ReaderState.Closed:
-                    return;
-            }
-
             if (IsSchemaOnly)
             {
                 State = ReaderState.Consumed;
@@ -515,12 +508,18 @@ namespace Npgsql
                 return;
             }
 
-            Consume();
+            if (State != ReaderState.Consumed) {
+                Consume();
+            }
             if ((_behavior & CommandBehavior.CloseConnection) != 0) {
                 _connection.Close();
             }
+
             State = ReaderState.Closed;
+            Command.State = CommandState.Idle;
+            _connector.CurrentReader = null;
             _connector.EndUserAction();
+
             if (ReaderClosed != null) {
                 ReaderClosed(this, EventArgs.Empty);
                 ReaderClosed = null;
@@ -528,18 +527,22 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Places the reader in special state signifying that it is still consuming rows internally,
-        /// but that as far as users are concerned it is already closed.
-        /// This is needed when pooled connections are closed with an open reader:
-        /// the reader is consumed asynchronously, but the users should see it as closed via <see cref="IsClosed"/>.
+        /// Special version of close used when a connection is closed with an open reader.
+        /// We don't want to simply close because that would block the user until the open reader
+        /// is consumed, potentially a long process.
         /// </summary>
-        internal void FakeClose()
+        internal async Task AsyncClose()
         {
-            _fakeClosed = true;
+            State = ReaderState.Closed;
+            Command.State = CommandState.Idle;
+            _connector.CurrentReader = null;
+
             if (ReaderClosed != null) {
                 ReaderClosed(this, EventArgs.Empty);
                 ReaderClosed = null;
             }
+            await SkipUntilAsync(BackendMessageCode.ReadyForQuery);
+            _connector.EndUserAction();
         }
 
         #endregion

@@ -767,6 +767,7 @@ namespace Npgsql
 
         #region Backend message processing
 
+        [GenerateAsync]
         internal IBackendMessage ReadSingleMessage(DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential, bool returnNullForAsyncMessage = false)
         {
             // First read the responses of any prepended messages.
@@ -1035,6 +1036,7 @@ namespace Npgsql
         /// Reads backend messages and discards them, stopping only after a message of the given type has
         /// been seen.
         /// </summary>
+        [GenerateAsync]
         internal IBackendMessage SkipUntil(BackendMessageCode stopAt)
         {
             Contract.Requires(stopAt != BackendMessageCode.DataRow, "Shouldn't be used for rows, doesn't know about sequential");
@@ -1457,12 +1459,6 @@ namespace Npgsql
 
             try
             {
-                // TODO: Shouldn't be here
-                if (CurrentReader != null) {
-                    CurrentReader.Command.State = CommandState.Idle;
-                    CurrentReader = null;
-                }
-
                 // Asynchronous messages (Notification, Notice, ParameterStatus) may have arrived
                 // during the user action, and may be in our buffer. Since we have one buffer for
                 // both reading and writing, and since we want to process these messages early,

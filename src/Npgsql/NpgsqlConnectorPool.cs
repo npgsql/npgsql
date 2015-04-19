@@ -32,6 +32,7 @@ using System.Data;
 using System.Diagnostics.Contracts;
 using System.Threading;
 using System.Timers;
+using Npgsql.Logging;
 using Timer = System.Timers.Timer;
 
 namespace Npgsql
@@ -64,6 +65,8 @@ namespace Npgsql
         /// <value>Unique static instance of the connector pool
         /// mamager.</value>
         internal static NpgsqlConnectorPool ConnectorPoolMgr;
+
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         private object locker = new object();
 
@@ -211,48 +214,33 @@ namespace Npgsql
             return Connector;
         }
 
-        private delegate void CleanUpConnectorDel(NpgsqlConnection Connection, NpgsqlConnector Connector);
-
-        private void CleanUpConnectorMethod(NpgsqlConnection Connection, NpgsqlConnector Connector)
-        {
-            try
-            {
-                Connector.CurrentReader.Close();
-                Connector.CurrentReader = null;
-                ReleaseConnector(Connection, Connector);
-            }
-            catch
-            {
-            }
-        }
-
         /// <summary>
         /// Releases a connector, possibly back to the pool for future use.
         /// </summary>
         /// <remarks>
         /// Pooled connectors will be put back into the pool if there is room.
         /// </remarks>
-        /// <param name="Connection">Connection to which the connector is leased.</param>
-        /// <param name="Connector">The connector to release.</param>
-        public void ReleaseConnector(NpgsqlConnection Connection, NpgsqlConnector Connector)
+        /// <param name="connection">Connection to which the connector is leased.</param>
+        /// <param name="connector">The connector to release.</param>
+        public async void ReleaseConnector(NpgsqlConnection connection, NpgsqlConnector connector)
         {
             //We can only clean up a connector with a reader if the current thread hasn't been aborted
             //If it has then we need to just close it (ReleasePooledConnector will do this for an aborted thread)
-            if (Connector.CurrentReader != null && (Thread.CurrentThread.ThreadState & (ThreadState.Aborted | ThreadState.AbortRequested)) == 0)
+            if (connector.CurrentReader != null && (Thread.CurrentThread.ThreadState & (ThreadState.Aborted | ThreadState.AbortRequested)) == 0)
             {
                 // Consume the open reader asynchronously, returning to the user immediately.
                 // However, synchronously "fake close" the reader, this emits the closed event and causes
                 // NpgsqlDataReader.IsClosed to return true
-                Connector.CurrentReader.FakeClose();
-                new CleanUpConnectorDel(CleanUpConnectorMethod).BeginInvoke(Connection, Connector, null, null);
-            }
-            else
-            {
-                //lock (this)
+                try
                 {
-                    UngetConnector(Connection, Connector);
+                    await connector.CurrentReader.AsyncClose();
+                }
+                catch (Exception e)
+                {
+                    Log.Warn("Error while performing async close on connector", e);
                 }
             }
+            UngetConnector(connection, connector);
         }
 
         /// <summary>

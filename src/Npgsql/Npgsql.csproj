@@ -395,6 +395,10 @@
     <Compile Include="NpgsqlConnectorPool.cs" />
     <Compile Include="NpgsqlDataAdapter.cs" />
     <Compile Include="NpgsqlDataReader.cs" />
+    <Compile Include="NpgsqlDataReader.Async.cs">
+      <DependentUpon>NpgsqlDataReader.cs</DependentUpon>
+      <Generator>AsyncGenerator</Generator>
+    </Compile>
     <Compile Include="NpgsqlException.cs" />
     <Compile Include="NpgsqlFactory.cs" />
     <Compile Include="Common.cs" />
