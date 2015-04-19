@@ -89,6 +89,7 @@ namespace Npgsql
         internal NpgsqlTransaction(NpgsqlConnection conn, IsolationLevel isolationLevel)
         {
             Contract.Requires(conn != null);
+            Contract.Requires(isolationLevel != IsolationLevel.Chaos);
 
             Connection = conn;
             _isolationLevel = isolationLevel;
@@ -112,7 +113,7 @@ namespace Npgsql
                     Connector.PrependInternalMessage(PregeneratedMessage.BeginTransReadCommitted);
                     break;
                 default:
-                    throw new NotSupportedException("Isolation level not supported: " + isolationLevel);
+                    throw PGUtil.ThrowIfReached("Isolation level not supported: " + isolationLevel);
             }
         }
 
@@ -254,7 +255,7 @@ namespace Npgsql
         {
             CheckDisposed();
             CheckCompleted();
-            Connection.CheckConnectionReady();
+            Connection.CheckReady();
         }
 
         [ContractArgumentValidator]

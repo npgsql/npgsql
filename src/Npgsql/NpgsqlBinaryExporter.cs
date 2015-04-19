@@ -40,17 +40,23 @@ namespace Npgsql
             _columnLen = int.MinValue;   // Mark that the (first) column length hasn't been read yet
             _column = -1;
 
-            _connector.State = ConnectorState.Copy;
-            _connector.SendSingleMessage(new QueryMessage(copyToCommand));
+            try
+            {
+                _connector.SendSingleMessage(new QueryMessage(copyToCommand));
 
-            // TODO: Failure will break the connection (e.g. if we get CopyOutResponse), handle more gracefully
-            var copyOutResponse = _connector.ReadExpecting<CopyOutResponseMessage>();
-            if (!copyOutResponse.IsBinary) {
-                _connector.Break();
-                throw new ArgumentException("copyToCommand triggered a text transfer, only binary is allowed", "copyToCommand");
+                // TODO: Failure will break the connection (e.g. if we get CopyOutResponse), handle more gracefully
+                var copyOutResponse = _connector.ReadExpecting<CopyOutResponseMessage>();
+                if (!copyOutResponse.IsBinary) {
+                    throw new ArgumentException("copyToCommand triggered a text transfer, only binary is allowed", "copyToCommand");
+                }
+                NumColumns = copyOutResponse.NumColumns;
+                ReadHeader();
             }
-            NumColumns = copyOutResponse.NumColumns;
-            ReadHeader();
+            catch
+            {
+                _connector.Break();
+                throw;
+            }
         }
 
         void ReadHeader()

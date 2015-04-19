@@ -49,17 +49,24 @@ namespace Npgsql
             _lengthCache = new LengthCache();
             _column = -1;
 
-            _connector.State = ConnectorState.Copy;
-            _connector.SendSingleMessage(new QueryMessage(copyFromCommand));
+            try
+            {
+                _connector.SendSingleMessage(new QueryMessage(copyFromCommand));
 
-            // TODO: Failure will break the connection (e.g. if we get CopyOutResponse), handle more gracefully
-            var copyInResponse = _connector.ReadExpecting<CopyInResponseMessage>();
-            if (!copyInResponse.IsBinary) {
-                _connector.Break();
-                throw new ArgumentException("copyFromCommand triggered a text transfer, only binary is allowed", "copyFromCommand");
+                // TODO: Failure will break the connection (e.g. if we get CopyOutResponse), handle more gracefully
+                var copyInResponse = _connector.ReadExpecting<CopyInResponseMessage>();
+                if (!copyInResponse.IsBinary)
+                {
+                    throw new ArgumentException("copyFromCommand triggered a text transfer, only binary is allowed", "copyFromCommand");
+                }
+                NumColumns = copyInResponse.NumColumns;
+                WriteHeader();
             }
-            NumColumns = copyInResponse.NumColumns;
-            WriteHeader();
+            catch
+            {
+                _connector.Break();
+                throw;
+            }
         }
 
         void WriteHeader()
@@ -287,8 +294,7 @@ namespace Npgsql
             _connector.SendSingleMessage(CopyDoneMessage.Instance);
             _connector.ReadExpecting<CommandCompleteMessage>();
             _connector.ReadExpecting<ReadyForQueryMessage>();
-
-            _connector.State = ConnectorState.Ready;
+            _connector.EndUserAction();
 
             _connector = null;
             _registry = null;

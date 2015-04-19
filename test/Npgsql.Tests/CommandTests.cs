@@ -657,6 +657,27 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, Description("A notification arriving while we have an open Reader")]
+        [Timeout(10000)]
+        public void NotificationDuringReader()
+        {
+            var receivedNotification = false;
+            using (var listeningConn = new NpgsqlConnection(ConnectionString + ";SyncNotification=true"))
+            {
+                listeningConn.Open();
+                ExecuteNonQuery("LISTEN notifytest2", listeningConn);
+                listeningConn.Notification += (o, e) => receivedNotification = true;
+
+                using (var cmd = new NpgsqlCommand("SELECT 1", listeningConn))
+                using (cmd.ExecuteReader())
+                {
+                    // Send notify via the other connection
+                    ExecuteNonQuery("NOTIFY notifytest2");
+                }
+            }
+            Assert.That(receivedNotification, Is.True);
+        }
+
         [Test, Description("Receive an asynchronous notification when a message has already been prepended")]
         [Timeout(10000)]
         public void NotificationAsyncWithPrepend()

@@ -590,20 +590,27 @@ namespace Npgsql
         {
             if (level == IsolationLevel.Chaos)
                 throw new NotSupportedException("Unsupported IsolationLevel: " + level);
-            CheckConnectionReady();
             Contract.EndContractBlock();
 
-            if (Connector.InTransaction) {
-                throw new NotSupportedException("Nested/Concurrent transactions aren't supported.");
+            // Note that beginning a transaction doesn't actually send anything to the backend
+            // (only prepends), so strictly speaking we don't have to start a user action.
+            // However, we do this for consistency as if we did (for the checks and exceptions)
+            using (Connector.StartUserAction())
+            {
+                if (Connector.InTransaction)
+                {
+                    throw new NotSupportedException("Nested/Concurrent transactions aren't supported.");
+                }
+
+                if (level == IsolationLevel.Unspecified)
+                {
+                    level = IsolationLevel.ReadCommitted;
+                }
+
+                Log.Debug("Beginning transaction with isolation level " + level, Connector.Id);
+
+                return new NpgsqlTransaction(this, level);
             }
-
-            if (level == IsolationLevel.Unspecified) {
-                level = IsolationLevel.ReadCommitted;
-            }
-
-            Log.Debug("Beginning transaction with isolation level " + level, Connector.Id);
-
-            return new NpgsqlTransaction(this, level);
         }
 
         /// <summary>
@@ -927,9 +934,16 @@ namespace Npgsql
             Contract.EndContractBlock();
 
             CheckConnectionOpen();
-            Connector.CheckReadyState();
-
-            return new NpgsqlBinaryImporter(Connector, copyFromCommand);
+            Connector.StartUserAction(ConnectorState.Copy);
+            try
+            {
+                return new NpgsqlBinaryImporter(Connector, copyFromCommand);
+            }
+            catch
+            {
+                Connector.EndUserAction();
+                throw;
+            }
         }
 
         /// <summary>
@@ -949,9 +963,16 @@ namespace Npgsql
             Contract.EndContractBlock();
 
             CheckConnectionOpen();
-            Connector.CheckReadyState();
-
-            return new NpgsqlBinaryExporter(Connector, copyToCommand);
+            Connector.StartUserAction(ConnectorState.Copy);
+            try
+            {
+                return new NpgsqlBinaryExporter(Connector, copyToCommand);
+            }
+            catch
+            {
+                Connector.EndUserAction();
+                throw;
+            }
         }
 
         /// <summary>
@@ -974,8 +995,7 @@ namespace Npgsql
             Contract.EndContractBlock();
 
             CheckConnectionOpen();
-            Connector.CheckReadyState();
-
+            Connector.StartUserAction(ConnectorState.Copy);
             return new NpgsqlCopyTextWriter(new NpgsqlRawCopyStream(Connector, copyFromCommand));
         }
 
@@ -999,8 +1019,7 @@ namespace Npgsql
             Contract.EndContractBlock();
 
             CheckConnectionOpen();
-            Connector.CheckReadyState();
-
+            Connector.StartUserAction(ConnectorState.Copy);
             return new NpgsqlCopyTextReader(new NpgsqlRawCopyStream(Connector, copyToCommand));
         }
 
@@ -1024,13 +1043,23 @@ namespace Npgsql
             Contract.EndContractBlock();
 
             CheckConnectionOpen();
-            Connector.CheckReadyState();
-
-            var stream = new NpgsqlRawCopyStream(Connector, copyCommand);
-            if (!stream.IsBinary) {
-                throw new ArgumentException("copyToCommand triggered a text transfer, only binary is allowed", "copyCommand");
+            Connector.StartUserAction(ConnectorState.Copy);
+            try
+            {
+                var stream = new NpgsqlRawCopyStream(Connector, copyCommand);
+                if (!stream.IsBinary)
+                {
+                    // TODO: Stop the COPY operation gracefully, no breaking
+                    Connector.Break();
+                    throw new ArgumentException("copyToCommand triggered a text transfer, only binary is allowed", "copyCommand");
+                }
+                return stream;
             }
-            return stream;
+            catch
+            {
+                Connector.EndUserAction();
+                throw;
+            }
         }
 
         #endregion
@@ -1145,8 +1174,7 @@ namespace Npgsql
             }
         }
 
-        [ContractArgumentValidator]
-        internal void CheckConnectionReady()
+        internal void CheckReady()
         {
             if (_disposed) {
                 throw new ObjectDisposedException(typeof(NpgsqlConnection).Name);
@@ -1155,8 +1183,6 @@ namespace Npgsql
             if (Connector == null) {
                 throw new InvalidOperationException("Connection is not open");
             }
-
-            Connector.CheckReadyState();
         }
 
         #endregion State checks

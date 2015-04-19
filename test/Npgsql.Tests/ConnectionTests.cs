@@ -444,6 +444,14 @@ namespace Npgsql.Tests
             Assert.That(ExecuteScalar("SHOW ssl_renegotiation_limit"), Is.EqualTo("0"));
         }
 
+        [Test, Description("Makes sure that concurrent use of the connection throws an exception")]
+        public void ConcurrentUse()
+        {
+            using (var cmd = new NpgsqlCommand("SELECT 1", Conn))
+            using (cmd.ExecuteReader())
+                Assert.That(() => ExecuteScalar("SELECT 1", Conn), Throws.Exception.TypeOf<InvalidOperationException>());
+        }
+
         #region GetSchema
 
         [Test]

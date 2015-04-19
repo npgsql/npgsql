@@ -41,7 +41,6 @@ namespace Npgsql
         [GenerateAsync]
         internal T ExecuteFunction<T>(string function, params object[] arguments)
         {
-            _connection.CheckConnectionReady();
             using (var command = new NpgsqlCommand(function, _connection))
             {
                 command.CommandType = CommandType.StoredProcedure;
@@ -63,7 +62,6 @@ namespace Npgsql
         [GenerateAsync]
         internal int ExecuteFunctionGetBytes(string function, byte[] buffer, int offset, int len, params object[] arguments)
         {
-            _connection.CheckConnectionReady();
             using (var command = new NpgsqlCommand(function, _connection))
             {
                 command.CommandType = CommandType.StoredProcedure;

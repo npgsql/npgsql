@@ -52,24 +52,22 @@ namespace Npgsql
         {
             _connector = connector;
             _buf = connector.Buffer;
-
-            _connector.State = ConnectorState.Copy;
             _connector.SendSingleMessage(new QueryMessage(copyCommand));
             var msg = _connector.ReadSingleMessage();
             switch (msg.Code)
             {
-                case BackendMessageCode.CopyInResponse:
-                    var copyInResponse = (CopyInResponseMessage) msg;
-                    IsBinary = copyInResponse.IsBinary;
-                    _canWrite = true;
-                    break;
-                case BackendMessageCode.CopyOutResponse:
-                    var copyOutResponse = (CopyOutResponseMessage) msg;
-                    IsBinary = copyOutResponse.IsBinary;
-                    _canRead = true;
-                    break;
-                default:
-                    throw _connector.UnexpectedMessageReceived(msg.Code);
+            case BackendMessageCode.CopyInResponse:
+                var copyInResponse = (CopyInResponseMessage) msg;
+                IsBinary = copyInResponse.IsBinary;
+                _canWrite = true;
+                break;
+            case BackendMessageCode.CopyOutResponse:
+                var copyOutResponse = (CopyOutResponseMessage) msg;
+                IsBinary = copyOutResponse.IsBinary;
+                _canRead = true;
+                break;
+            default:
+                throw _connector.UnexpectedMessageReceived(msg.Code);
             }
         }
 
@@ -240,8 +238,7 @@ namespace Npgsql
                 }
             }
 
-            _connector.State = ConnectorState.Ready;
-
+            _connector.EndUserAction();
             _connector = null;
             _buf = null;
             _isDisposed = true;

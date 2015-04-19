@@ -474,48 +474,51 @@ namespace Npgsql
         public override void Prepare()
         {
             Prechecks();
-            Log.Debug("Prepare command", _connector.Id);
-
             if (Parameters.Any(p => !p.IsTypeExplicitlySet)) {
                 throw new InvalidOperationException("NpgsqlCommand.Prepare method requires all parameters to have an explicitly set type.");
             }
 
-            DeallocatePrepared();
-            ProcessRawQuery();
+            _connector = Connection.Connector;
+            Log.Debug("Prepare command", _connector.Id);
 
-            for (var i = 0; i < _queries.Count; i++)
+            using (_connector.StartUserAction())
             {
-                var query = _queries[i];
-                ParseMessage parseMessage;
-                DescribeMessage describeMessage;
-                if (i == 0)
+                DeallocatePrepared();
+                ProcessRawQuery();
+
+                for (var i = 0; i < _queries.Count; i++)
                 {
-                    parseMessage = _connector.ParseMessage;
-                    describeMessage = _connector.DescribeMessage;
+                    var query = _queries[i];
+                    ParseMessage parseMessage;
+                    DescribeMessage describeMessage;
+                    if (i == 0)
+                    {
+                        parseMessage = _connector.ParseMessage;
+                        describeMessage = _connector.DescribeMessage;
+                    }
+                    else
+                    {
+                        parseMessage = new ParseMessage();
+                        describeMessage = new DescribeMessage();
+                    }
+
+                    query.PreparedStatementName = _connector.NextPreparedStatementName();
+                    _connector.AddMessage(parseMessage.Populate(query, _connector.TypeHandlerRegistry));
+                    _connector.AddMessage(describeMessage.Populate(StatementOrPortal.Statement,
+                        query.PreparedStatementName));
                 }
-                else
+
+                _connector.AddMessage(SyncMessage.Instance);
+                _connector.SendAllMessages();
+
+                _queryIndex = 0;
+
+                while (true)
                 {
-                    parseMessage = new ParseMessage();
-                    describeMessage = new DescribeMessage();
-                }
-
-                query.PreparedStatementName = _connector.NextPreparedStatementName();
-                _connector.AddMessage(parseMessage.Populate(query, _connector.TypeHandlerRegistry));
-                _connector.AddMessage(describeMessage.Populate(StatementOrPortal.Statement, query.PreparedStatementName));
-            }
-
-            _connector.AddMessage(SyncMessage.Instance);
-            _connector.State = ConnectorState.Executing;
-            _connector.SendAllMessages();
-
-            _queryIndex = 0;
-
-            while (true)
-            {
-                var msg = _connector.ReadSingleMessage();
-                switch (msg.Code)
-                {
-                    case BackendMessageCode.CompletedResponse:  // prepended messages, e.g. begin transaction
+                    var msg = _connector.ReadSingleMessage();
+                    switch (msg.Code)
+                    {
+                    case BackendMessageCode.CompletedResponse: // prepended messages, e.g. begin transaction
                     case BackendMessageCode.ParseComplete:
                     case BackendMessageCode.ParameterDescription:
                         continue;
@@ -530,10 +533,10 @@ namespace Npgsql
                     case BackendMessageCode.ReadyForQuery:
                         Contract.Assume(_queryIndex == _queries.Count);
                         IsPrepared = true;
-                        _connector.State = ConnectorState.Ready;
                         return;
                     default:
                         throw _connector.UnexpectedMessageReceived(msg.Code);
+                    }
                 }
             }
         }
@@ -541,7 +544,6 @@ namespace Npgsql
         void DeallocatePrepared()
         {
             if (!IsPrepared) { return; }
-
 
             foreach (var query in _queries) {
                 _connector.PrependInternalMessage(new CloseMessage(StatementOrPortal.Statement, query.PreparedStatementName));
@@ -1020,6 +1022,7 @@ namespace Npgsql
 
         internal void ValidateAndCreateMessages(CommandBehavior behavior = CommandBehavior.Default)
         {
+            _connector = Connection.Connector;
             foreach (NpgsqlParameter p in Parameters.Where(p => p.IsInputDirection)) {
                 p.Bind(_connector.TypeHandlerRegistry);
                 if (p.LengthCache != null) {
@@ -1170,19 +1173,28 @@ namespace Npgsql
         [GenerateAsync]
         internal NpgsqlDataReader Execute(CommandBehavior behavior = CommandBehavior.Default)
         {
-            _connector.State = ConnectorState.Executing;
             State = CommandState.InProgress;
-            _queryIndex = 0;
-            _connector.SendAllMessages();
+            try
+            {
+                _queryIndex = 0;
+                _connector.SendAllMessages();
 
-            if (!IsPrepared) {
-                IBackendMessage msg;
-                do {
-                    msg = _connector.ReadSingleMessage();
-                } while (!ProcessMessageForUnprepared(msg, behavior));
+                if (!IsPrepared)
+                {
+                    IBackendMessage msg;
+                    do
+                    {
+                        msg = _connector.ReadSingleMessage();
+                    } while (!ProcessMessageForUnprepared(msg, behavior));
+                }
+
+                return new NpgsqlDataReader(this, behavior, _queries);
             }
-
-            return new NpgsqlDataReader(this, behavior, _queries);
+            catch
+            {
+                State = CommandState.Idle;
+                throw;
+            }
         }
 
         bool ProcessMessageForUnprepared(IBackendMessage msg, CommandBehavior behavior)
@@ -1270,14 +1282,17 @@ namespace Npgsql
         int ExecuteNonQueryInternal()
         {
             Prechecks();
-            Log.Debug("ExecuteNonQuery", _connector.Id);
-
-            ValidateAndCreateMessages();
-            NpgsqlDataReader reader;
-            using (reader = Execute()) {
-                while (reader.NextResult()) ;
+            Log.Debug("ExecuteNonQuery", Connection.Connector.Id);
+            using (Connection.Connector.StartUserAction())
+            {
+                ValidateAndCreateMessages();
+                NpgsqlDataReader reader;
+                using (reader = Execute())
+                {
+                    while (reader.NextResult()) ;
+                }
+                return reader.RecordsAffected;
             }
-            return reader.RecordsAffected;
         }
 
         #endregion Execute Non Query
@@ -1335,13 +1350,15 @@ namespace Npgsql
         object ExecuteScalarInternal()
         {
             Prechecks();
-            Log.Debug("ExecuteNonScalar", _connector.Id);
-
-            var behavior = CommandBehavior.SequentialAccess | CommandBehavior.SingleRow;
-            ValidateAndCreateMessages(behavior);
-            using (var reader = Execute(behavior))
+            Log.Debug("ExecuteNonScalar", Connection.Connector.Id);
+            using (Connection.Connector.StartUserAction())
             {
-                return reader.Read() && reader.FieldCount != 0 ? reader.GetValue(0) : null;
+                var behavior = CommandBehavior.SequentialAccess | CommandBehavior.SingleRow;
+                ValidateAndCreateMessages(behavior);
+                using (var reader = Execute(behavior))
+                {
+                    return reader.Read() && reader.FieldCount != 0 ? reader.GetValue(0) : null;
+                }
             }
         }
 
@@ -1457,9 +1474,10 @@ namespace Npgsql
         NpgsqlDataReader ExecuteDbDataReaderInternal(CommandBehavior behavior)
         {
             Prechecks();
-            Log.Debug("ExecuteReader", _connector.Id);
 
-            // Close connection if requested even when there is an error.
+            Log.Debug("ExecuteReader", Connection.Connector.Id);
+
+            Connection.Connector.StartUserAction();
             try
             {
                 ValidateAndCreateMessages(behavior);
@@ -1482,8 +1500,11 @@ namespace Npgsql
 
                 return reader;
             }
-            catch (Exception e)
+            catch
             {
+                Connection.Connector.EndUserAction();
+
+                // Close connection if requested even when there is an error.
                 if ((behavior & CommandBehavior.CloseConnection) == CommandBehavior.CloseConnection)
                 {
                     _connection.Close();
@@ -1625,15 +1646,7 @@ namespace Npgsql
                 throw new ObjectDisposedException(GetType().FullName);
             if (Connection == null)
                 throw new InvalidOperationException("Connection property has not been initialized.");
-            if (Connection.State != ConnectionState.Open)
-                throw new InvalidOperationException("The connection isn't open.");
-
-            _connector = Connection.Connector;
-
-            _connector.CheckReadyState();
-
-            Contract.Assume(_connector.Buffer.ReadBytesLeft == 0, "The read buffer should be read completely before sending Parse message");
-            Contract.Assume(_connector.Buffer.WritePosition == 0, "WritePosition should be 0");
+            Connection.CheckReady();
         }
 
 #if !DNXCORE50

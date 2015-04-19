@@ -520,7 +520,7 @@ namespace Npgsql
                 _connection.Close();
             }
             State = ReaderState.Closed;
-            _connector.State = ConnectorState.Ready;
+            _connector.EndUserAction();
             if (ReaderClosed != null) {
                 ReaderClosed(this, EventArgs.Empty);
                 ReaderClosed = null;
