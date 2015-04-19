@@ -166,6 +166,113 @@ namespace Npgsql.Tests
 
         #endregion
 
+        #region Notification
+
+        [Test, Description("Simple synchronous LISTEN/NOTIFY scenario")]
+        public void NotificationSync()
+        {
+            var receivedNotification = false;
+            ExecuteNonQuery("LISTEN notifytest");
+            Conn.Notification += (o, e) => receivedNotification = true;
+            ExecuteNonQuery("NOTIFY notifytest");
+            Assert.IsTrue(receivedNotification);
+        }
+
+        [Test, Description("An asynchronous LISTEN/NOTIFY scenario")]
+        [Timeout(10000)]
+        public void NotificationAsync()
+        {
+            var mre = new ManualResetEvent(false);
+            using (var listeningConn = new NpgsqlConnection(ConnectionString + ";SyncNotification=true"))
+            {
+                listeningConn.Open();
+                ExecuteNonQuery("LISTEN notifytest2", listeningConn);
+                listeningConn.Notification += (o, e) => mre.Set();
+
+                // Send notify via the other connection
+                ExecuteNonQuery("NOTIFY notifytest2");
+                mre.WaitOne();
+
+                // And again
+                mre.Reset();
+                ExecuteNonQuery("NOTIFY notifytest2");
+                mre.WaitOne();
+            }
+        }
+
+        [Test, Description("A notification arriving while we have an open Reader")]
+        [Timeout(10000)]
+        public void NotificationDuringReader()
+        {
+            var receivedNotification = false;
+            using (var listeningConn = new NpgsqlConnection(ConnectionString + ";SyncNotification=true"))
+            {
+                listeningConn.Open();
+                ExecuteNonQuery("LISTEN notifytest2", listeningConn);
+                listeningConn.Notification += (o, e) => receivedNotification = true;
+
+                using (var cmd = new NpgsqlCommand("SELECT 1", listeningConn))
+                using (cmd.ExecuteReader()) {
+                    // Send notify via the other connection
+                    ExecuteNonQuery("NOTIFY notifytest2");
+                }
+            }
+            Assert.That(receivedNotification, Is.True);
+        }
+
+        [Test, Description("Receive an asynchronous notification when a message has already been prepended")]
+        [Timeout(10000)]
+        public void NotificationAsyncWithPrepend()
+        {
+            var mre = new ManualResetEvent(false);
+            using (var listeningConn = new NpgsqlConnection(ConnectionString + ";SyncNotification=true"))
+            {
+                listeningConn.Open();
+                ExecuteNonQuery("LISTEN notifytest2", listeningConn);
+                listeningConn.BeginTransaction();
+
+                // Send notify via the other connection
+                listeningConn.Notification += (o, e) => mre.Set();
+                ExecuteNonQuery("NOTIFY notifytest2");
+                mre.WaitOne();
+            }
+        }
+
+        [Test, Description("Generates a notification that arrives after reader data that is already being read")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/252")]
+        public void NotificationAfterData()
+        {
+            var receivedNotification = false;
+            using (var cmd = Conn.CreateCommand())
+            {
+                cmd.CommandText = "LISTEN notifytest1";
+                cmd.ExecuteNonQuery();
+                Conn.Notification += (o, e) => receivedNotification = true;
+
+                cmd.CommandText = "SELECT generate_series(1,10000)";
+                using (var reader = cmd.ExecuteReader()) {
+
+                    //After "notify notifytest1", a notification message will be sent to client, 
+                    //And so the notification message will stick with the last response message of "select generate_series(1,10000)" in Npgsql's tcp receiving buffer.
+                    using (var connection = new NpgsqlConnection(ConnectionString)) {
+                        connection.Open();
+                        using (var command = connection.CreateCommand()) {
+                            command.CommandText = "NOTIFY notifytest1";
+                            command.ExecuteNonQuery();
+                        }
+                    }
+
+                    Assert.IsTrue(reader.Read());
+                    Assert.AreEqual(1, reader.GetValue(0));
+                }
+
+                Assert.That(ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+                Assert.IsTrue(receivedNotification);
+            }
+        }
+
+        #endregion
+
         [Test]
         public void ChangeDatabase()
         {
