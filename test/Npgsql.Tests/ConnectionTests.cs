@@ -135,7 +135,7 @@ namespace Npgsql.Tests
         [TestCase(false, TestName = "NonPooled")]
         public void ConnectionRefused(bool pooled)
         {
-            using (var conn = new NpgsqlConnection("Server=127.0.0.1;Port=44444;User Id=x;Password=y" + (pooled ? "" : ";Pooling=false"))) {
+            using (var conn = new NpgsqlConnection("Server=127.0.0.1;Port=44444;Database=d;User Id=x;Password=y" + (pooled ? "" : ";Pooling=false"))) {
                 Assert.That(() => conn.Open(), Throws.Exception.TypeOf<SocketException>());
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
             }
@@ -155,13 +155,6 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test]
-        public void InvalidConnectionString()
-        {
-            Assert.That(() => new NpgsqlConnection("Server=127.0.0.1;User Id=npgsql_tests;Pooling:false"),
-                Throws.Exception.TypeOf<ArgumentException>());
-        }
-
         [Test, Description("Connects with a bad password to ensure the proper error is thrown")]
         public void AuthenticationFailure()
         {
@@ -174,6 +167,13 @@ namespace Npgsql.Tests
                 );
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
             }
+        }
+
+        [Test, Description("Tests that mandatory connection string parameters are indeed mandatory")]
+        public void MandatoryConnectionStringParams()
+        {
+            Assert.That(() => new NpgsqlConnection("User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests").Open(), Throws.Exception.TypeOf<ArgumentException>());
+            Assert.That(() => new NpgsqlConnection("Server=localhost;User ID=npgsql_tests;Password=npgsql_tests").Open(), Throws.Exception.TypeOf<ArgumentException>());
         }
 
         #endregion
@@ -668,14 +668,5 @@ namespace Npgsql.Tests
         }
 
         #endregion
-
-        [Test, Description("Makes sure the preload connstring param triggers the right exception")]
-        [ExpectedException(typeof(NotSupportedException))]
-        public void PreloadReaderNotSupported()
-        {
-            using (var conn = new NpgsqlConnection(ConnectionString + ";PRELOADREADER=true")) {
-                conn.Open();
-            }
-        }
     }
 }

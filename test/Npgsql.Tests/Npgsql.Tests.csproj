@@ -145,6 +145,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ConnectionPoolTests.cs" />
+    <Compile Include="ConnectionStringBuilderTests.cs" />
     <Compile Include="LargeObjectTests.cs" />
     <Compile Include="NLogLoggingProvider.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

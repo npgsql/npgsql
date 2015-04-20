@@ -198,7 +198,7 @@ namespace Npgsql
                 return _timeout ?? (
                     _connection != null
                       ? _connection.CommandTimeout
-                      : (int)NpgsqlConnectionStringBuilder.GetDefaultValue(Keywords.CommandTimeout)
+                      : DefaultTimeout
                 );
             }
             set

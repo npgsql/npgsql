@@ -66,6 +66,11 @@ namespace Npgsql
         /// mamager.</value>
         internal static NpgsqlConnectorPool ConnectorPoolMgr;
 
+        /// <summary>
+        /// Maximum number of possible connections in the pool.
+        /// </summary>
+        internal const int PoolSizeLimit = 1024;
+
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         private object locker = new object();
@@ -172,6 +177,8 @@ namespace Npgsql
         /// <returns>A connector object.</returns>
         public NpgsqlConnector RequestConnector(NpgsqlConnection connection)
         {
+            if (connection.MaxPoolSize < connection.MinPoolSize)
+                throw new ArgumentException(string.Format("Connection can't have MaxPoolSize {0} under MinPoolSize {1}", connection.MaxPoolSize, connection.MinPoolSize));
             Contract.Ensures(Contract.Result<NpgsqlConnector>().State == ConnectorState.Ready, "Pool returned a connector with state ");
 
             NpgsqlConnector connector;

@@ -99,6 +99,16 @@ namespace Npgsql
         // A cached copy of the result of `settings.ConnectionString`
         string _connectionString;
 
+        /// <summary>
+        /// The default TCP/IP port for PostgreSQL.
+        /// </summary>
+        public const int DefaultPort = 5432;
+
+        /// <summary>
+        /// Maximum value for connection timeout.
+        /// </summary>
+        internal const int TimeoutLimit = 1024;
+
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         #endregion Fields
@@ -155,6 +165,14 @@ namespace Npgsql
         /// </summary>
         public override void Open()
         {
+            if (string.IsNullOrWhiteSpace(Host))
+                throw new ArgumentException("Host can't be null");
+            if (string.IsNullOrWhiteSpace(Database))
+                throw new ArgumentException("Database can't be null");
+            if (string.IsNullOrWhiteSpace(UserName) && !IntegratedSecurity)
+                throw new ArgumentException("Either Username must be specified or IntegratedSecurity must be on");
+            Contract.EndContractBlock();
+
             // If we're postponing a close (see doc on this variable), the connection is already
             // open and can be silently reused
             if (_postponingClose)
@@ -163,16 +181,6 @@ namespace Npgsql
             CheckConnectionClosed();
 
             Log.Debug("Opening connnection");
-
-            // Check if there is any missing argument.
-            if (!_settings.ContainsKey(Keywords.Host))
-            {
-                throw new ArgumentException("Connection string argument missing", Keywords.Host.ToString());
-            }
-            if (!_settings.ContainsKey(Keywords.UserName) && !_settings.ContainsKey(Keywords.IntegratedSecurity))
-            {
-                throw new ArgumentException("Connection string argument missing", Keywords.UserName.ToString());
-            }
 
             WasBroken = false;
             // Get a Connector, either from the pool or creating one ourselves.
@@ -225,7 +233,7 @@ namespace Npgsql
         [NpgsqlSysDescription("Description_ConnectionString", typeof(NpgsqlConnection)), Category("Data")]
         [Editor(typeof(ConnectionStringEditor), typeof(System.Drawing.Design.UITypeEditor))]
 #endif
-        public override String ConnectionString
+        public override string ConnectionString
         {
             get
             {
@@ -279,7 +287,7 @@ namespace Npgsql
 
             // Set the UserName explicitly to freeze any Integrated Security-determined names
             if (_settings.IntegratedSecurity)
-                _settings.UserName = _settings.UserName;
+                _settings.Username = _settings.Username;
 
             RefreshConnectionString();
 
@@ -311,10 +319,7 @@ namespace Npgsql
 #if !DNXCORE50
         [Browsable(true)]
 #endif
-        public string Host
-        {
-            get { return _settings.Host; }
-        }
+        public string Host { get { return _settings.Host; } }
 
         /// <summary>
         /// Backend server port.
@@ -322,10 +327,7 @@ namespace Npgsql
 #if !DNXCORE50
         [Browsable(true)]
 #endif
-        public int Port
-        {
-            get { return _settings.Port; }
-        }
+        public int Port { get { return _settings.Port; } }
 
         /// <summary>
         /// If true, the connection will attempt to use SSL.
@@ -333,19 +335,12 @@ namespace Npgsql
 #if !DNXCORE50
         [Browsable(true)]
 #endif
-        public bool SSL
-        {
-            get { return _settings.SSL; }
-        }
+        public bool SSL { get { return _settings.SSL; } }
 
         /// <summary>
         /// If true, the connection will attempt to use SslStream instead of an internal TlsClientStream.
         /// </summary>
-        public bool UseSslStream
-        {
-            get { return _settings.UseSslStream; }
-            set { _settings.UseSslStream = value; }
-        }
+        public bool UseSslStream { get { return _settings.UseSslStream; } }
 
         /// <summary>
         /// Gets the time to wait while trying to establish a connection
@@ -357,20 +352,14 @@ namespace Npgsql
         [NpgsqlSysDescription("Description_ConnectionTimeout", typeof(NpgsqlConnection))]
 #endif
 
-        public override int ConnectionTimeout
-        {
-            get { return _settings.Timeout; }
-        }
+        public override int ConnectionTimeout { get { return _settings.Timeout; } }
 
         /// <summary>
         /// Gets the time to wait while trying to execute a command
         /// before terminating the attempt and generating an error.
         /// </summary>
         /// <value>The time (in seconds) to wait for a command to complete. The default value is 20 seconds.</value>
-        public int CommandTimeout
-        {
-            get { return _settings.CommandTimeout; }
-        }
+        public int CommandTimeout { get { return _settings.CommandTimeout; } }
 
         /// <summary>
         /// Gets the time to wait before closing unused connections in the pool if the count
@@ -383,10 +372,7 @@ namespace Npgsql
         /// This strategy provide smooth change of connection count in the pool.
         /// </remarks>
         /// <value>The time (in seconds) to wait. The default value is 15 seconds.</value>
-        public int ConnectionLifeTime
-        {
-            get { return _settings.ConnectionLifeTime; }
-        }
+        public int ConnectionLifeTime { get { return _settings.ConnectionLifeTime; } }
 
         ///<summary>
         /// Gets the name of the current database or the database to be used after a connection is opened.
@@ -397,68 +383,39 @@ namespace Npgsql
         [NpgsqlSysDescription("Description_Database", typeof(NpgsqlConnection))]
 #endif
 
-        public override string Database
-        {
-            get { return _settings.Database; }
-        }
+        public override string Database { get { return _settings.Database; } }
 
         /// <summary>
         /// Gets the database server name.
         /// </summary>
-        public override string DataSource
-        {
-            get { return _settings.Host; }
-        }
+        public override string DataSource { get { return _settings.Host; } }
 
         /// <summary>
         /// Gets flag indicating if we are using Synchronous notification or not.
         /// The default value is false.
         /// </summary>
-        public bool SyncNotification
-        {
-            get { return _settings.SyncNotification; }
-        }
+        public bool SyncNotification { get { return _settings.SyncNotification; } }
+
+        /// <summary>
+        /// Whether to use Windows integrated security to log in.
+        /// </summary>
+        public bool IntegratedSecurity { get { return _settings.IntegratedSecurity; } }
 
         /// <summary>
         /// User name.
         /// </summary>
-        internal string UserName
-        {
-            get { return _settings.UserName; }
-        }
+        public string UserName { get { return _settings.Username; } }
 
         /// <summary>
         /// Determine if connection pooling will be used for this connection.
         /// </summary>
-        internal bool Pooling
-        {
-            get { return (_settings.Pooling && (_settings.MaxPoolSize > 0)); }
-        }
+        internal bool Pooling { get { return _settings.Pooling; } }
 
-        internal int MinPoolSize
-        {
-            get { return _settings.MinPoolSize; }
-        }
-
-        internal int MaxPoolSize
-        {
-            get { return _settings.MaxPoolSize; }
-        }
-
-        internal int Timeout
-        {
-            get { return _settings.Timeout; }
-        }
-
-        internal bool Enlist
-        {
-            get { return _settings.Enlist; }
-        }
-
-        public int BufferSize
-        {
-            get { return _settings.BufferSize; }
-        }
+        internal int MinPoolSize { get { return _settings.MinPoolSize; } }
+        internal int MaxPoolSize { get { return _settings.MaxPoolSize; } }
+        internal int Timeout { get { return _settings.Timeout; } }
+        internal bool Enlist { get { return _settings.Enlist; } }
+        internal int BufferSize { get { return _settings.BufferSize; } }
 
         #endregion Configuration settings
 
@@ -1286,7 +1243,7 @@ namespace Npgsql
 
             // Mutating the current `settings` object would invalidate the cached instance, so work on a copy instead.
             _settings = _settings.Clone();
-            _settings[Keywords.Database] = dbName;
+            _settings.Database = dbName;
             _connectionString = null;
 
             Open();

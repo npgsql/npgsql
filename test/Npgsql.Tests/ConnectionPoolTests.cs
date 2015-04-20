@@ -21,7 +21,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        [ExpectedException(typeof(ArgumentOutOfRangeException))]
+        [ExpectedException(typeof(ArgumentException))]
         public void MinPoolSizeLargeThanMaxPoolSize()
         {
             var conn = new NpgsqlConnection(ConnectionString + ";MinPoolSize=2;MaxPoolSize=1");
@@ -30,7 +30,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        [ExpectedException(typeof(ArgumentOutOfRangeException))]
+        [ExpectedException(typeof(ArgumentException))]
         public void MinPoolSizeLargeThanPoolSizeLimit()
         {
             var conn = new NpgsqlConnection(ConnectionString + ";MinPoolSize=1025;");

@@ -1,411 +1,881 @@
-// created on 29/11/2007
-
-// Npgsql.NpgsqlConnectionStringBuilder.cs
-//
-// Author:
-//    Glen Parker (glenebob@gmail.com)
-//    Ben Sagal (bensagal@gmail.com)
-//    Tao Wang (dancefire@gmail.com)
-//
-//    Copyright (C) 2007 The Npgsql Development Team
-//    npgsql-general@gborg.postgresql.org
-//    http://gborg.postgresql.org/project/npgsql/projdisplay.php
-//
-// Permission to use, copy, modify, and distribute this software and its
-// documentation for any purpose, without fee, and without a written
-// agreement is hereby granted, provided that the above copyright notice
-// and this paragraph and the following two paragraphs appear in all copies.
-// 
-// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
-// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
-// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
-// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
-// THE POSSIBILITY OF SUCH DAMAGE.
-// 
-// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
-// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
-// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
-// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
-// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data.Common;
-using System.Diagnostics;
-#if !DNXCORE50
+using System.Diagnostics.Contracts;
 using System.DirectoryServices;
-#endif
+using System.Linq;
+using System.Reflection;
 using System.Security.Principal;
-
-// Keep the xml comment warning quiet for this file.
-#pragma warning disable 1591
 
 namespace Npgsql
 {
-    public sealed class NpgsqlConnectionStringBuilder : DbConnectionStringBuilder
+    /// <summary>
+    /// Provides a simple way to create and manage the contents of connection strings used by
+    /// the <see cref="NpgsqlConnection"/> class.
+    /// </summary>
+    public sealed class NpgsqlConnectionStringBuilder : DbConnectionStringBuilder, ICloneable
     {
-        [AttributeUsage(AttributeTargets.Property)]
-        private sealed class NpgsqlConnectionStringKeywordAttribute : Attribute {
-            public Keywords Keyword;
-            public string UnderlyingConnectionKeyword;
-            public bool IsInternal = false;
-            public NpgsqlConnectionStringKeywordAttribute(Keywords keyword, bool is_internal = false) {
-                this.Keyword = keyword;
-                this.UnderlyingConnectionKeyword = keyword.ToString().ToUpperInvariant();
-                this.IsInternal = is_internal;
-            }
-            public NpgsqlConnectionStringKeywordAttribute(Keywords keyword, string underlying_connection_keyword) {
-                this.Keyword = keyword;
-                this.UnderlyingConnectionKeyword = underlying_connection_keyword;
-            }
-        }
+        #region Fields
 
-        [AttributeUsage(AttributeTargets.Property, AllowMultiple = true)]
-        private sealed class NpgsqlConnectionStringAcceptableKeywordAttribute : Attribute {
-            public string Keyword;
-            public NpgsqlConnectionStringAcceptableKeywordAttribute(string keyword) {
-                this.Keyword = keyword;
-            }
-        }
+        static readonly Dictionary<string, PropertyInfo> _propertiesByKeyword;
+        static readonly Dictionary<PropertyInfo, object> _propertyDefaults;
 
-        private sealed class NpgsqlEnumConverter<T> : EnumConverter {
-            public NpgsqlEnumConverter() : base(typeof(T)) { }
-            public override object ConvertFrom(ITypeDescriptorContext context, System.Globalization.CultureInfo culture, object value) {
-                return value.ToString();
-            }
-            public override object ConvertTo(ITypeDescriptorContext context, System.Globalization.CultureInfo culture, object value, Type destinationType) {
-                return (value != null) ? value.ToString() : String.Empty;
-            }
-        }
-
-        private delegate string ValueNativeToString(object value);
-
-        private class ValueDescription
-        {
-            internal readonly IComparable ImplicitDefault;
-            internal readonly IComparable ExplicitDefault;
-            internal readonly bool DefaultsDiffer;
-            internal readonly bool StoreInBase;
-            private readonly ValueNativeToString NativeToString;
-
-            /// <summary>
-            /// Set both ImplicitDefault and ExplicitDefault to the <paramref name="t"/>'s default value.
-            /// </summary>
-            /// <param name="t"></param>
-            /// <param name="storeInBase"></param>
-            /// <param name="nativeToString"></param>
-            internal ValueDescription(Type t, bool storeInBase = true, ValueNativeToString nativeToString = null)
-            {
-                ImplicitDefault = GetImplicitDefault(t);
-                ExplicitDefault = ImplicitDefault;
-                DefaultsDiffer = false;
-                StoreInBase = storeInBase;
-                NativeToString = nativeToString;
-            }
-
-            /// <summary>
-            /// Set ImplicitDefault to the default value of <paramref name="explicitDefault"/>'s type,
-            /// and ExplicitDefault to <paramref name="explicitDefault"/>.
-            /// </summary>
-            /// <param name="explicitDefault"></param>
-            /// <param name="storeInBase"></param>
-            /// <param name="nativeToString"></param>
-            internal ValueDescription(IComparable explicitDefault, bool storeInBase = true, ValueNativeToString nativeToString = null)
-            {
-                ImplicitDefault = GetImplicitDefault(explicitDefault.GetType());
-                ExplicitDefault = explicitDefault;
-                DefaultsDiffer = (ImplicitDefault.CompareTo(ExplicitDefault) != 0);
-                StoreInBase = storeInBase;
-                NativeToString = nativeToString;
-            }
-
-            private static IComparable GetImplicitDefault(Type t)
-            {
-                if (t == typeof(string))
-                {
-                    return string.Empty;
-                }
-                else
-                {
-                    return (IComparable)Activator.CreateInstance(t);
-                }
-            }
-
-            internal string ConvertNativeToString(object value)
-            {
-                string asString = value as string;
-
-                if (asString != null)
-                {
-                    return asString.Trim();
-                }
-                else if (NativeToString != null)
-                {
-                    return NativeToString(value);
-                }
-                else
-                {
-                    return value.ToString();
-                }
-            }
-        }
-
-        private static readonly Dictionary<Keywords, ValueDescription> valueDescriptions = new Dictionary<Keywords, ValueDescription>();
-
-        private string originalConnectionString;
-
-        private const int POOL_SIZE_LIMIT = 1024;
-        private const int TIMEOUT_LIMIT = 1024;
+        #endregion
 
         #region Constructors
 
-        static NpgsqlConnectionStringBuilder()
-        {
-            // Set up value descriptions.
-            // All connection string values have an implicit default (its type's default value),
-            // and an explicit default which can be different from its
-            // implicit default.
-            valueDescriptions.Add(Keywords.Host, new ValueDescription(typeof(string)));
-            valueDescriptions.Add(Keywords.Port, new ValueDescription((Int32)5432));
-            valueDescriptions.Add(Keywords.Database, new ValueDescription(typeof(string)));
-            valueDescriptions.Add(Keywords.UserName, new ValueDescription(typeof(string)));
-            valueDescriptions.Add(Keywords.Password, new ValueDescription(typeof(string)));
-            valueDescriptions.Add(Keywords.Krbsrvname, new ValueDescription("POSTGRES"));
-            valueDescriptions.Add(Keywords.SSL, new ValueDescription(typeof(bool)));
-            valueDescriptions.Add(Keywords.SslMode, new ValueDescription(typeof(SslMode)));
-            valueDescriptions.Add(Keywords.UseSslStream, new ValueDescription(typeof(bool)));
-            valueDescriptions.Add(Keywords.Timeout, new ValueDescription((Int32)15));
-            valueDescriptions.Add(Keywords.SearchPath, new ValueDescription(typeof(string)));
-            valueDescriptions.Add(Keywords.BufferSize, new ValueDescription(NpgsqlBuffer.DefaultBufferSize));
-            valueDescriptions.Add(Keywords.Pooling, new ValueDescription(true));
-            valueDescriptions.Add(Keywords.ConnectionLifeTime, new ValueDescription(typeof(Int32)));
-            valueDescriptions.Add(Keywords.MinPoolSize, new ValueDescription((Int32)1));
-            valueDescriptions.Add(Keywords.MaxPoolSize, new ValueDescription((Int32)20));
-            valueDescriptions.Add(Keywords.SyncNotification, new ValueDescription(typeof(bool)));
-            valueDescriptions.Add(Keywords.CommandTimeout, new ValueDescription(NpgsqlCommand.DefaultTimeout));
-            valueDescriptions.Add(Keywords.InternalCommandTimeout, new ValueDescription(typeof(int?)));
-            valueDescriptions.Add(Keywords.BackendTimeouts, new ValueDescription(true));
-            valueDescriptions.Add(Keywords.KeepAlive, new ValueDescription(0));
-            valueDescriptions.Add(Keywords.Enlist, new ValueDescription(typeof(bool)));
-            valueDescriptions.Add(Keywords.IntegratedSecurity, new ValueDescription(typeof(bool)));
-            valueDescriptions.Add(Keywords.IncludeRealm, new ValueDescription(typeof(bool)));
-            valueDescriptions.Add(Keywords.ApplicationName, new ValueDescription(typeof(string)));
-            valueDescriptions.Add(Keywords.ServerCompatibility, new ValueDescription(typeof(string)));
-            valueDescriptions.Add(Keywords.ConvertInfinityDateTime, new ValueDescription(typeof(bool)));
+        /// <summary>
+        /// Initializes a new instance of the NpgsqlConnectionStringBuilder class.
+        /// </summary>
+        public NpgsqlConnectionStringBuilder() { Init(); }
 
-            // No longer supported
-            valueDescriptions.Add(Keywords.PreloadReader, new ValueDescription(typeof(bool)));
-            valueDescriptions.Add(Keywords.Compatible, new ValueDescription(typeof(string)));
-        }
+        /// <summary>
+        /// Initializes a new instance of the NpgsqlConnectionStringBuilder class, optionally using ODBC rules for quoting values.
+        /// </summary>
+        /// <param name="useOdbcRules">true to use {} to delimit fields; false to use quotation marks.</param>
+        public NpgsqlConnectionStringBuilder(bool useOdbcRules) : base(useOdbcRules) { Init(); }
 
-        public NpgsqlConnectionStringBuilder()
-        {
-            this.Clear();
-        }
-
+        /// <summary>
+        /// Initializes a new instance of the NpgsqlConnectionStringBuilder class and sets its <see cref="DbConnectionStringBuilder.ConnectionString"/>.
+        /// </summary>
         public NpgsqlConnectionStringBuilder(string connectionString)
         {
-            this.originalConnectionString = connectionString;
-            base.ConnectionString = connectionString;
-            CheckValues();
+            Init();
+            ConnectionString = connectionString;
+        }
+
+        void Init()
+        {
+            foreach (var kv in _propertyDefaults) {
+                kv.Key.SetValue(this, kv.Value);
+                base.Clear();
+            }
         }
 
         #endregion
 
-        /// <summary>
-        /// Return an exact copy of this NpgsqlConnectionString.
-        /// </summary>
-        public NpgsqlConnectionStringBuilder Clone()
+        #region Static initialization
+
+        static NpgsqlConnectionStringBuilder()
         {
-            NpgsqlConnectionStringBuilder builder = new NpgsqlConnectionStringBuilder();
+            var properties = typeof(NpgsqlConnectionStringBuilder)
+                .GetProperties()
+                .Where(p => p.GetCustomAttribute<NpgsqlConnectionStringPropertyAttribute>() != null)
+                .ToArray();
 
-            foreach (string key in this.Keys)
-            {
-                builder[key] = this[key];
-            }
+            Contract.Assume(properties.All(p => p.CanRead && p.CanWrite));
 
-            return builder;
+            _propertiesByKeyword = (
+                from p in properties
+                from t in new[] { p.Name }.Concat(p.GetCustomAttribute<NpgsqlConnectionStringPropertyAttribute>().AlternateNames).Select(
+                    k => new { Property = p, Keyword = k }
+                )
+                select t
+            ).ToDictionary(t => t.Keyword.ToUpperInvariant(), t => t.Property);
+
+            _propertyDefaults = properties
+                .Where(p => p.GetCustomAttribute<ObsoleteAttribute>() == null)
+                .ToDictionary(
+                p => p,
+                p => p.GetCustomAttribute<DefaultValueAttribute>() != null
+                    ? p.GetCustomAttribute<DefaultValueAttribute>().Value
+                    : (p.PropertyType.IsValueType ? Activator.CreateInstance(p.PropertyType) : null)
+            );
         }
 
-        private void CheckValues()
+        #endregion
+
+        #region Non-static property handling
+
+        public override object this[string keyword]
         {
-            if ((MaxPoolSize > 0) && (MinPoolSize > MaxPoolSize))
+            get
             {
-                string key = GetKeyName(Keywords.MinPoolSize);
-                throw new ArgumentOutOfRangeException(
-                    key, String.Format("Numeric value {0} in ConnectionString exceeds maximum value {1}", key, MaxPoolSize));
+                var value = GetProperty(keyword).GetValue(this);
+                return value ?? "";
             }
-            if (InternalCommandTimeout.HasValue && InternalCommandTimeout < NpgsqlConnector.MinimumInternalCommandTimeout && InternalCommandTimeout != 0)
-                throw new ArgumentOutOfRangeException(string.Format("InternalCommandTimeout must be >= {0} or 0 (infinite)", NpgsqlConnector.MinimumInternalCommandTimeout));
-            if (KeepAlive < 0)
-                throw new ArgumentOutOfRangeException(string.Format("KeepAlive must be >= 0"));
-            if (IntegratedSecurity && Type.GetType("Mono.Runtime") != null)
-                throw new NotSupportedException("IntegratedSecurity isn't supported on mono");
-        }
-
-        #region Parsing Functions
-
-        private static SslMode ToSslMode(object value)
-        {
-            if (value is SslMode)
+            set
             {
-                return (SslMode) value;
-            }
-            else
-            {
-                return (SslMode) Enum.Parse(typeof (SslMode), value.ToString(), true);
-            }
-        }
+                if (value == null) {
+                    Remove(keyword);
+                    return;
+                }
 
-        private static int ToInt32(object value, int min, int max, Keywords keyword)
-        {
-            int v = Convert.ToInt32(value);
-
-            if (v < min)
-            {
-                string key = GetKeyName(keyword);
-
-                throw new ArgumentOutOfRangeException(
-                    key, String.Format("Numeric value {0} in ConnectionString is below minimum value {1}", key, min));
-            }
-            else if (v > max)
-            {
-                string key = GetKeyName(keyword);
-
-                throw new ArgumentOutOfRangeException(
-                    key, String.Format("Numeric value {0} in ConnectionString exceeds maximum value {1}", key, max));
-            }
-
-            return v;
-        }
-
-        private static Boolean ToBoolean(object value)
-        {
-            string text = value as string;
-
-            if (text != null)
-            {
-                switch (text.ToLowerInvariant())
-                {
-                    case "t":
-                    case "true":
-                    case "y":
-                    case "yes":
-                        return true;
-                    case "f":
-                    case "false":
-                    case "n":
-                    case "no":
-                        return false;
-                    default:
-                        throw new InvalidCastException(value.ToString());
+                var p = GetProperty(keyword);
+                try {
+                    object convertedValue;
+                    if (p.PropertyType.IsEnum && value is string) {
+                        convertedValue = Enum.Parse(p.PropertyType, (string)value);
+                    } else {
+                        convertedValue = Convert.ChangeType(value, Type.GetTypeCode(p.PropertyType));
+                    }
+                    p.SetValue(this, convertedValue);
+                } catch (Exception e) {
+                    throw new ArgumentException("Couldn't set " + keyword, keyword, e);
                 }
             }
-            else
-            {
-                return Convert.ToBoolean(value);
+        }
+
+        public override bool Remove(string keyword)
+        {
+            var p = GetProperty(keyword);
+            var removed = base.ContainsKey(p.Name);
+            // Note that string property setters call SetValue, which itself calls base.Remove().
+            p.SetValue(this, _propertyDefaults[p]);
+            base.Remove(p.Name);
+            return removed;
+        }
+
+        public override void Clear()
+        {
+            Contract.Assert(Keys != null);
+            foreach (var k in Keys.Cast<string>().ToArray()) {
+                Remove(k);
             }
         }
 
-        private Boolean ToIntegratedSecurity(object value)
+        public override bool ContainsKey(string keyword)
         {
-            string text = value as string;
-            if (text != null)
-            {
-                switch (text.ToLowerInvariant())
-                {
-                    case "t":
-                    case "true":
-                    case "y":
-                    case "yes":
-                    case "sspi":
-                        return true;
+            if (keyword == null)
+                throw new ArgumentNullException("keyword");
+            Contract.EndContractBlock();
 
-                    case "f":
-                    case "false":
-                    case "n":
-                    case "no":
-                        return false;
+            return _propertiesByKeyword.ContainsKey(keyword.ToUpperInvariant());
+        }
 
-                    default:
-                        throw new InvalidCastException(value.ToString());
-                }
+        PropertyInfo GetProperty(string keyword)
+        {
+            PropertyInfo p;
+            if (!_propertiesByKeyword.TryGetValue(keyword.ToUpperInvariant(), out p)) {
+                throw new ArgumentException("Keyword not supported: " + keyword, "keyword");
             }
-            else
-            {
-                return Convert.ToBoolean(value);
+            return p;
+        }
+
+        void SetValue(string keyword, object value)
+        {
+            if (value == null) {
+                base.Remove(keyword);
+            } else {
+                base[keyword] = value;
             }
         }
 
         #endregion
-        #region Properties
 
-        private string _host;
+        #region Properties - Connection
+
         /// <summary>
-        /// Gets or sets the backend server host name.
+        /// The hostname or IP address of the PostgreSQL server to connect to.
         /// </summary>
 #if !DNXCORE50
-        [Category("DataCategory_Source")]
-        [NpgsqlConnectionStringKeyword(Keywords.Host)]
-        [NpgsqlConnectionStringAcceptableKeyword("SERVER")]
-        [DisplayName("ConnectionProperty_Display_Host")]
-        [Description("ConnectionProperty_Description_Host")]
-        [RefreshProperties(RefreshProperties.All)]
+        [Category("Connection")]
+        [DisplayName("Host")]
+        [Description("The hostname or IP address of the PostgreSQL server to connect to")]
 #endif
+        [NpgsqlConnectionStringProperty("Server")]
         public string Host
         {
             get { return _host; }
-            set { SetValue(GetKeyName(Keywords.Host), Keywords.Host, value); }
+            set
+            {
+                _host = value;
+                // TODO: Replace literal name with nameof operator in C# 6.0
+                SetValue("Server", value);
+            }
         }
+        string _host;
 
-        private int _port;
         /// <summary>
-        /// Gets or sets the backend server port.
+        /// The TCP/IP port of the PostgreSQL server.
         /// </summary>
 #if !DNXCORE50
-        [Category("DataCategory_Source")]
-        [NpgsqlConnectionStringKeyword(Keywords.Port)]
-        [DisplayName("ConnectionProperty_Display_Port")]
-        [Description("ConnectionProperty_Description_Port")]
-        [RefreshProperties(RefreshProperties.All)]
-        [DefaultValue(5432)]
+        [Category("Connection")]
+        [DisplayName("Port")]
+        [Description("The TCP/IP port of the PostgreSQL server")]
+        [DefaultValue(NpgsqlConnection.DefaultPort)]
 #endif
+        [NpgsqlConnectionStringProperty]
         public int Port
         {
             get { return _port; }
-            set { SetValue(GetKeyName(Keywords.Port), Keywords.Port, value); }
-        }
+            set
+            {
+                if (value <= 0)
+                    throw new ArgumentOutOfRangeException("value", value, "Invalid port: " + value);
+                Contract.EndContractBlock();
 
-        private string _database;
+                _port = value;
+                // TODO: Replace literal name with nameof operator in C# 6.0
+                SetValue("Port", value);
+            }
+        }
+        int _port;
+
         ///<summary>
-        /// Gets or sets the name of the database to be used after a connection is opened.
+        /// The PostgreSQL database to connect to.
         /// </summary>
-        /// <value>The name of the database to be
-        /// used after a connection is opened.</value>
 #if !DNXCORE50
-        [Category("DataCategory_Source")]
-        [NpgsqlConnectionStringKeyword(Keywords.Database)]
-        [NpgsqlConnectionStringAcceptableKeyword("DB")]
-        [DisplayName("ConnectionProperty_Display_Database")]
-        [Description("ConnectionProperty_Description_Database")]
-        [RefreshProperties(RefreshProperties.All)]
+        [Category("Connection")]
+        [DisplayName("Database")]
+        [Description("The PostgreSQL database to connect to")]
 #endif
+        [NpgsqlConnectionStringProperty("DB")]
         public string Database
         {
             get { return _database; }
-            set { SetValue(GetKeyName(Keywords.Database), Keywords.Database, value); }
+            set
+            {
+                _database = value;
+                // TODO: Replace literal name with nameof operator in C# 6.0
+                SetValue("Database", value);
+            }
+        }
+        string _database;
+
+        /// <summary>
+        /// The username to connect with. Not required if using IntegratedSecurity.
+        /// </summary>
+#if !DNXCORE50
+        [Category("Connection")]
+        [DisplayName("Username")]
+        [Description("The username to connect with. Not required if using IntegratedSecurity.")]
+#endif
+        [NpgsqlConnectionStringProperty("User Name", "UserId", "User Id", "UID")]
+        public string Username
+        {
+            get
+            {
+#if !DNXCORE50
+                if ((_integratedSecurity) && (String.IsNullOrEmpty(_username))) {
+                    _username = GetIntegratedUserName();
+                }
+#endif
+
+                return _username;
+            }
+
+            set
+            {
+                _username = value;
+                // TODO: Replace literal name with nameof operator in C# 6.0
+                SetValue("Username", value);
+            }
+        }
+        string _username;
+
+        /// <summary>
+        /// The password to connect with. Not required if using IntegratedSecurity.
+        /// </summary>
+#if !DNXCORE50
+        [Category("Connection")]
+        [DisplayName("Password")]
+        [Description("The password to connect with. Not required if using IntegratedSecurity.")]
+        [PasswordPropertyText(true)]
+#endif
+        [NpgsqlConnectionStringProperty("PSW", "PWD")]
+        public string Password
+        {
+            get { return _password; }
+            set
+            {
+                _password = value;
+                // TODO: Replace literal name with nameof operator in C# 6.0
+                SetValue("Password", value);
+            }
+        }
+        string _password;
+
+        /// <summary>
+        /// Whether to enlist in an ambient TransactionScope.
+        /// </summary>
+#if !DNXCORE50
+        [Category("Connection")]
+        [DisplayName("Enlist")]
+        [Description("Whether to enlist in an ambient TransactionScope")]
+#endif
+        [NpgsqlConnectionStringProperty]
+        public bool Enlist
+        {
+            get { return _enlist; }
+            set
+            {
+                _enlist = value;
+                // TODO: Replace literal name with nameof operator in C# 6.0
+                SetValue("Enlist", value);
+            }
+        }
+        bool _enlist;
+
+        /// <summary>
+        /// The optional application name parameter to be sent to the backend during connection initiation.
+        /// </summary>
+#if !DNXCORE50
+        [Category("Connection")]
+        [DisplayName("Application Name")]
+        [Description("The optional application name parameter to be sent to the backend during connection initiation")]
+#endif
+        [NpgsqlConnectionStringProperty]
+        public string ApplicationName
+        {
+            get { return _applicationName; }
+            set
+            {
+                _applicationName = value;
+                // TODO: Replace literal name with nameof operator in C# 6.0
+                SetValue("ApplicationName", value);
+            }
+        }
+        string _applicationName;
+
+        /// <summary>
+        /// Gets or sets the schema search path.
+        /// </summary>
+#if !DNXCORE50
+        [Category("Connection")]
+        [DisplayName("Search Path")]
+        [Description("Gets or sets the schema search path.")]
+#endif
+        [NpgsqlConnectionStringProperty]
+        public string SearchPath
+        {
+            get { return _searchpath; }
+            set
+            {
+                _searchpath = value;
+                // TODO: Replace literal name with nameof operator in C# 6.0
+                SetValue("SearchPath", value);
+            }
+        }
+        string _searchpath;
+
+        #endregion
+
+        #region Properties - Security
+
+        /// <summary>
+        /// Whether to use SSL/TLS to encrypt the connection.
+        /// </summary>
+#if !DNXCORE50
+        [Category("Security")]
+        [DisplayName("SSL")]
+        [Description("Whether to use SSL/TLS to encrypt the connection")]
+#endif
+        [NpgsqlConnectionStringProperty]
+        public bool SSL
+        {
+            get { return _ssl; }
+            set
+            {
+                _ssl = value;
+                // TODO: Replace literal name with nameof operator in C# 6.0
+                SetValue("SSL", value);
+            }
+        }
+        bool _ssl;
+
+        /// <summary>
+        /// Controls whether SSL is required, preferred, allowed or disabled, depending on server support.
+        /// </summary>
+#if !DNXCORE50
+        [Category("Security")]
+        [DisplayName("SSLMode")]
+        [Description("Controls whether SSL is required, preferred, allowed or disabled, depending on server support")]
+#endif
+        [NpgsqlConnectionStringProperty]
+        public SslMode SslMode
+        {
+            get { return _sslmode; }
+            set
+            {
+                _sslmode = value;
+                // TODO: Replace literal name with nameof operator in C# 6.0
+                SetValue("SslMode", value);
+            }
+        }
+        SslMode _sslmode;
+
+        /// <summary>
+        /// Npgsql uses its own internal implementation of TLS/SSL. Turn this on to use .NET SslStream instead.
+        /// </summary>
+#if !DNXCORE50
+        [Category("Security")]
+        [DisplayName("Use SSL Stream")]
+        [Description("Npgsql uses its own internal implementation of TLS/SSL. Turn this on to use .NET SslStream instead.")]
+#endif
+        [NpgsqlConnectionStringProperty]
+        public bool UseSslStream
+        {
+            get { return _useSslStream; }
+            set
+            {
+                _useSslStream = value;
+                // TODO: Replace literal name with nameof operator in C# 6.0
+                SetValue("UseSslStream", value);
+            }
+        }
+        bool _useSslStream;
+
+        /// <summary>
+        /// Whether to use Windows integrated security to log in.
+        /// </summary>
+#if !DNXCORE50
+        [Category("Security")]
+        [DisplayName("Integrated Security")]
+        [Description("Whether to use Windows integrated security to log in")]
+#endif
+        [NpgsqlConnectionStringProperty("Integrated Security")]
+        public bool IntegratedSecurity
+        {
+            get { return _integratedSecurity; }
+            set
+            {
+#if !NET40
+                if (value)
+                    CheckIntegratedSecuritySupport();
+#endif
+                _integratedSecurity = value;
+                // TODO: Replace literal name with nameof operator in C# 6.0
+                SetValue("IntegratedSecurity", value);
+            }
+        }
+        bool _integratedSecurity;
+
+        /// <summary>
+        /// The Kerberos service name to be used for authentication.
+        /// </summary>
+#if !DNXCORE50
+        [Category("Security")]
+        [DisplayName("Kerberos Service Name")]
+        [Description("The Kerberos service name to be used for authentication")]
+#endif
+        [NpgsqlConnectionStringProperty("Krbsrvname")]
+        public string KerberosServiceName
+        {
+            get { return _kerberosServiceName; }
+            set
+            {
+                _kerberosServiceName = value;
+                // TODO: Replace literal name with nameof operator in C# 6.0
+                SetValue("KerberosServiceName", value);
+            }
+        }
+        string _kerberosServiceName;
+
+        /// <summary>
+        /// The Kerberos realm to be used for authentication.
+        /// </summary>
+#if !DNXCORE50
+        [Category("Security")]
+        [DisplayName("Include Realm")]
+        [Description("The Kerberos realm to be used for authentication")]
+#endif
+        [NpgsqlConnectionStringProperty]
+        public bool IncludeRealm
+        {
+            get { return _includeRealm; }
+            set
+            {
+                _includeRealm = value;
+                // TODO: Replace literal name with nameof operator in C# 6.0
+                SetValue("IncludeRealm", value);
+            }
+        }
+        bool _includeRealm;
+
+        #endregion
+
+        #region Properties - Pooling
+
+        /// <summary>
+        /// Whether connection pooling should be used.
+        /// </summary>
+#if !DNXCORE50
+        [Category("Pooling")]
+        [DisplayName("Pooling")]
+        [Description("Whether connection pooling should be used")]
+        [DefaultValue(true)]
+#endif
+        [NpgsqlConnectionStringProperty]
+        public bool Pooling
+        {
+            get { return _pooling; }
+            set
+            {
+                _pooling = true;
+                // TODO: Replace literal name with nameof operator in C# 6.0
+                SetValue("Pooling", value);
+            }
+        }
+        bool _pooling;
+
+        /// <summary>
+        /// The minimum connection pool size.
+        /// </summary>
+#if !DNXCORE50
+        [Category("Pooling")]
+        [DisplayName("Minimum Pool Size")]
+        [Description("The minimum connection pool size")]
+        [DefaultValue(1)]
+#endif
+        [NpgsqlConnectionStringProperty]
+        public int MinPoolSize
+        {
+            get { return _minPoolSize; }
+            set
+            {
+                if (value < 0 || value > NpgsqlConnectorPool.PoolSizeLimit)
+                    throw new ArgumentOutOfRangeException("value", value, "MinPoolSize must be between 0 and " + NpgsqlConnectorPool.PoolSizeLimit);
+                Contract.EndContractBlock();
+
+                _minPoolSize = value;
+                // TODO: Replace literal name with nameof operator in C# 6.0
+                SetValue("MinPoolSize", value);
+            }
+        }
+        int _minPoolSize;
+
+        /// <summary>
+        /// The maximum connection pool size.
+        /// </summary>
+#if !DNXCORE50
+        [Category("Pooling")]
+        [DisplayName("Maximum Pool Size")]
+        [Description("The maximum connection pool size")]
+        [DefaultValue(20)]
+#endif
+        [NpgsqlConnectionStringProperty]
+        public int MaxPoolSize
+        {
+            get { return _maxPoolSize; }
+            set
+            {
+                if (value < 0 || value > NpgsqlConnectorPool.PoolSizeLimit)
+                    throw new ArgumentOutOfRangeException("value", value, "MaxPoolSize must be between 0 and " + NpgsqlConnectorPool.PoolSizeLimit);
+                Contract.EndContractBlock();
+
+                _maxPoolSize = value;
+                // TODO: Replace literal name with nameof operator in C# 6.0
+                SetValue("MaxPoolSize", value);
+            }
+        }
+        int _maxPoolSize;
+
+        /// <summary>
+        /// The time to wait before closing unused connections in the pool if the count
+        /// of all connections exeeds MinPoolSize.
+        /// </summary>
+        /// <remarks>
+        /// If connection pool contains unused connections for ConnectionLifeTime seconds,
+        /// the half of them will be closed. If there will be unused connections in a second
+        /// later then again the half of them will be closed and so on.
+        /// This strategy provide smooth change of connection count in the pool.
+        /// </remarks>
+        /// <value>The time (in seconds) to wait. The default value is 15 seconds.</value>
+#if !DNXCORE50
+        [Category("Pooling")]
+        [DisplayName("Connection Lifetime")]
+        [Description("The time to wait before closing unused connections in the pool if the count of all connections exeeds MinPoolSize.")]
+        [DefaultValue(15)]
+#endif
+        [NpgsqlConnectionStringProperty]
+        public int ConnectionLifeTime
+        {
+            get { return _connectionLifeTime; }
+            set
+            {
+                _connectionLifeTime = value;
+                // TODO: Replace literal name with nameof operator in C# 6.0
+                SetValue("ConnectionLifeTime", value);
+            }
+        }
+        int _connectionLifeTime;
+
+        #endregion
+
+        #region Properties - Timeouts
+
+        /// <summary>
+        /// The time to wait (in seconds) while trying to establish a connection before terminating the attempt and generating an error.
+        /// Defaults to 15 seconds.
+        /// </summary>
+#if !DNXCORE50
+        [Category("Timeouts")]
+        [DisplayName("Timeout")]
+        [Description("The time to wait (in seconds) while trying to establish a connection before terminating the attempt and generating an error.")]
+        [DefaultValue(15)]
+#endif
+        [NpgsqlConnectionStringProperty]
+        public int Timeout
+        {
+            get { return _timeout; }
+            set
+            {
+                if (value < 0 || value > NpgsqlConnection.TimeoutLimit)
+                    throw new ArgumentOutOfRangeException("value", value, "Timeout must be between 0 and " + NpgsqlConnection.TimeoutLimit);
+                Contract.EndContractBlock();
+
+                _timeout = value;
+                // TODO: Replace literal name with nameof operator in C# 6.0
+                SetValue("Timeout", value);
+            }
+        }
+        int _timeout;
+
+        /// <summary>
+        /// The time to wait (in seconds) while trying to execute a command before terminating the attempt and generating an error.
+        /// Defaults to 20 seconds.
+        /// </summary>
+#if !DNXCORE50
+        [Category("Timeouts")]
+        [DisplayName("Command Timeout")]
+        [Description("The time to wait (in seconds) while trying to execute a command before terminating the attempt and generating an error")]
+        [DefaultValue(NpgsqlCommand.DefaultTimeout)]
+#endif
+        [NpgsqlConnectionStringProperty]
+        public int CommandTimeout
+        {
+            get { return _commandTimeout; }
+            set
+            {
+                if (value < 0)
+                    throw new ArgumentOutOfRangeException("value", value, "CommandTimeout can't be negative");
+                Contract.EndContractBlock();
+
+                _commandTimeout = value;
+                // TODO: Replace literal name with nameof operator in C# 6.0
+                SetValue("CommandTimeout", value);
+            }
+        }
+        int _commandTimeout;
+
+        /// <summary>
+        /// The time to wait (in seconds) while trying to execute a an internal command before terminating the attempt and generating an error.
+        /// </summary>
+#if !DNXCORE50
+        [Category("Timeouts")]
+        [DisplayName("Internal Command Timeout")]
+        [Description("The time to wait (in seconds) while trying to execute a an internal command before terminating the attempt and generating an error")]
+#endif
+        [NpgsqlConnectionStringProperty]
+        public int? InternalCommandTimeout
+        {
+            get { return _internalCommandTimeout; }
+            set
+            {
+                if (value.HasValue && value < NpgsqlConnector.MinimumInternalCommandTimeout && InternalCommandTimeout != 0)
+                    throw new ArgumentOutOfRangeException("value", value, string.Format("InternalCommandTimeout must be null, >= {0} or 0 (infinite)", NpgsqlConnector.MinimumInternalCommandTimeout));
+                Contract.EndContractBlock();
+
+                _internalCommandTimeout = value;
+                // TODO: Replace literal name with nameof operator in C# 6.0
+                SetValue("InternalCommandTimeout", value);
+            }
+        }
+        int? _internalCommandTimeout;
+
+        /// <summary>
+        /// Whether to have the backend enforce <see cref="CommandTimeout"/> and <see cref="InternalCommandTimeout"/>
+        /// via the statement_timeout variable. Defaults to true.
+        /// </summary>
+#if !DNXCORE50
+        [Category("Timeouts")]
+        [DisplayName("Backend Timeouts")]
+        [Description("Whether to have the backend enforce CommandTimeout and InternalCommandTimeout via the statement_timeout variable.")]
+        [DefaultValue(true)]
+#endif
+        [NpgsqlConnectionStringProperty]
+        public bool BackendTimeouts
+        {
+            get { return _backendTimeouts; }
+            set
+            {
+                _backendTimeouts = value;
+                // TODO: Replace literal name with nameof operator in C# 6.0
+                SetValue("BackendTimeouts", value);
+            }
+        }
+        bool _backendTimeouts;
+
+        #endregion
+
+        #region Properties - Advanced
+
+        /// <summary>
+        /// Whether to listen for notifications and report them between command activity.
+        /// </summary>
+#if !DNXCORE50
+        [Category("Advanced")]
+        [DisplayName("Sync Notification")]
+        [Description("Whether to listen for notifications and report them between command activity.")]
+#endif
+        [NpgsqlConnectionStringProperty]
+        public bool SyncNotification
+        {
+            get { return _syncNotification; }
+            set
+            {
+                _syncNotification = value;
+                // TODO: Replace literal name with nameof operator in C# 6.0
+                SetValue("SyncNotification", value);
+            }
+        }
+        bool _syncNotification;
+
+        /// <summary>
+        /// The number of seconds of connection inactivity before Npgsql sends a keepalive query.
+        /// Set to 0 (the default) to disable.
+        /// </summary>
+#if !DNXCORE50
+        [Category("Advanced")]
+        [DisplayName("Keepalive")]
+        [Description("The number of seconds of connection inactivity before Npgsql sends a keepalive query.")]
+#endif
+        [NpgsqlConnectionStringProperty]
+        public int KeepAlive
+        {
+            get { return _keepAlive; }
+            set
+            {
+                if (value < 0)
+                    throw new ArgumentOutOfRangeException("value", value, "KeepAlive can't be negative");
+                Contract.EndContractBlock();
+
+                _keepAlive = value;
+                // TODO: Replace literal name with nameof operator in C# 6.0
+                SetValue("KeepAlive", value);
+            }
+        }
+        int _keepAlive;
+
+        /// <summary>
+        /// Gets or sets the buffer size.
+        /// </summary>
+#if !DNXCORE50
+        [Category("Advanced")]
+        [DisplayName("Buffer Size")]
+        [Description("Determines the size of the internal buffer Npgsql uses when reading or writing. Increasing may improve performance if transferring large values from the database.")]
+        [DefaultValue(NpgsqlBuffer.DefaultBufferSize)]
+#endif
+        [NpgsqlConnectionStringProperty]
+        public int BufferSize
+        {
+            get { return _bufferSize; }
+            set
+            {
+                _bufferSize = value;
+                // TODO: Replace literal name with nameof operator in C# 6.0
+                SetValue("BufferSize", value);
+            }
+        }
+        int _bufferSize;
+
+        #endregion
+
+        #region Properties - Compatibility
+
+        /// <summary>
+        /// A compatibility mode for special PostgreSQL server types.
+        /// </summary>
+#if !DNXCORE50
+        [Category("Compatibility")]
+        [DisplayName("Server Compatibility Mode")]
+        [Description("A compatibility mode for special PostgreSQL server types")]
+#endif
+        [NpgsqlConnectionStringProperty]
+        public ServerCompatibilityMode ServerCompatibilityMode
+        {
+            get { return _serverCompatibilityMode; }
+            set
+            {
+                _serverCompatibilityMode = value;
+                // TODO: Replace literal name with nameof operator in C# 6.0
+                SetValue("ServerCompatibilityMode", value);
+            }
+        }
+        ServerCompatibilityMode _serverCompatibilityMode;
+
+        /// <summary>
+        /// Makes MaxValue and MinValue timestamps and dates readable as infinity and negative infinity.
+        /// </summary>
+#if !DNXCORE50
+        [Category("Compatibility")]
+        [DisplayName("Convert Infinity DateTime")]
+        [Description("Makes MaxValue and MinValue timestamps and dates readable as infinity and negative infinity")]
+#endif
+        [NpgsqlConnectionStringProperty]
+        public bool ConvertInfinityDateTime
+        {
+            get { return _convertInfinityDateTime; }
+            set
+            {
+                _convertInfinityDateTime = value;
+                // TODO: Replace literal name with nameof operator in C# 6.0
+                SetValue("ConvertInfinityDateTime", value);
+            }
+        }
+        bool _convertInfinityDateTime;
+
+        #endregion
+
+        #region Properties - Obsolete
+
+        /// <summary>
+        /// Obsolete, see https://github.com/npgsql/Npgsql/wiki/PreloadReader-Removal
+        /// </summary>
+#if !DNXCORE50
+        [Category("Obsolete")]
+        [DisplayName("Preload Reader")]
+        [Description("Obsolete, see https://github.com/npgsql/Npgsql/wiki/PreloadReader-Removal")]
+#endif
+        [NpgsqlConnectionStringProperty]
+        [Obsolete]
+        public bool PreloadReader
+        {
+            get { return false; }
+            set { throw new NotSupportedException("The PreloadReader parameter is no longer supported. Please see https://github.com/npgsql/Npgsql/wiki/PreloadReader-Removal"); }
         }
 
-        #region Integrated security
+        /// <summary>
+        /// Obsolete, see https://github.com/npgsql/Npgsql/wiki/UseExtendedTypes-Removal
+        /// </summary>
+#if !DNXCORE50
+        [Category("Obsolete")]
+        [DisplayName("Use Extended Types")]
+        [Description("Obsolete, see https://github.com/npgsql/Npgsql/wiki/UseExtendedTypes-Removal")]
+#endif
+        [NpgsqlConnectionStringProperty]
+        [Obsolete]
+        public bool UseExtendedTypes
+        {
+            get { return false; }
+            set { throw new NotSupportedException("The UseExtendedTypes parameter is no longer supported. Please see https://github.com/npgsql/Npgsql/wiki/UseExtendedTypes-Removal"); }
+        }
+
+        #endregion
+
+        #region Integrated security support
+
+        /// <summary>
+        /// No integrated security if we're on mono and .NET 4.5 because of ClaimsIdentity,
+        /// see https://github.com/npgsql/Npgsql/issues/133
+        /// </summary>
+        static void CheckIntegratedSecuritySupport()
+        {
+            if (Type.GetType("Mono.Runtime") != null)
+                throw new NotSupportedException("IntegratedSecurity is currently unsupported on mono and .NET 4.5 (see https://github.com/npgsql/Npgsql/issues/133)");
+        }
+
 #if !DNXCORE50
 
-        class CachedUpn {
+        class CachedUpn
+        {
             public string Upn;
             public DateTime ExpiryTimeUtc;
         }
 
-        static Dictionary<SecurityIdentifier, CachedUpn> cachedUpns = new Dictionary<SecurityIdentifier,CachedUpn>();
+        static Dictionary<SecurityIdentifier, CachedUpn> cachedUpns = new Dictionary<SecurityIdentifier, CachedUpn>();
 
         private string GetIntegratedUserName()
         {
@@ -421,10 +891,8 @@ namespace Npgsql
             string upn = null;
 
             // Check to see if we already have this UPN cached
-            lock (cachedUpns)
-            {
-                if (cachedUpns.TryGetValue(identity.User, out cachedUpn))
-                {
+            lock (cachedUpns) {
+                if (cachedUpns.TryGetValue(identity.User, out cachedUpn)) {
                     if (cachedUpn.ExpiryTimeUtc > DateTime.UtcNow)
                         upn = cachedUpn.Upn;
                     else
@@ -432,8 +900,7 @@ namespace Npgsql
                 }
             }
 
-            try
-            {
+            try {
                 if (upn == null) {
                     // Try to get the user's UPN in its correct case; this is what the
                     // server will need to verify against a Kerberos/SSPI ticket
@@ -441,48 +908,39 @@ namespace Npgsql
                     // First, find a domain server we can talk to
                     string domainHostName;
 
-                    using (DirectoryEntry rootDse = new DirectoryEntry("LDAP://rootDSE") { AuthenticationType = AuthenticationTypes.Secure })
-                    {
-                        domainHostName = (string) rootDse.Properties["dnsHostName"].Value;
+                    using (DirectoryEntry rootDse = new DirectoryEntry("LDAP://rootDSE") { AuthenticationType = AuthenticationTypes.Secure }) {
+                        domainHostName = (string)rootDse.Properties["dnsHostName"].Value;
                     }
 
                     // Query the domain server by the current user's SID
-                    using (DirectoryEntry entry = new DirectoryEntry("LDAP://" + domainHostName) { AuthenticationType = AuthenticationTypes.Secure })
-                    {
+                    using (DirectoryEntry entry = new DirectoryEntry("LDAP://" + domainHostName) { AuthenticationType = AuthenticationTypes.Secure }) {
                         DirectorySearcher search = new DirectorySearcher(entry,
                             "(objectSid=" + identity.User.Value + ")", new string[] { "userPrincipalName" });
 
                         SearchResult result = search.FindOne();
 
-                        upn = (string) result.Properties["userPrincipalName"][0];
+                        upn = (string)result.Properties["userPrincipalName"][0];
                     }
                 }
 
-                if (cachedUpn == null)
-                {
+                if (cachedUpn == null) {
                     // Save this value
-                    cachedUpn = new CachedUpn() { Upn = upn, ExpiryTimeUtc = DateTime.UtcNow.AddHours( 3.0 ) };
+                    cachedUpn = new CachedUpn() { Upn = upn, ExpiryTimeUtc = DateTime.UtcNow.AddHours(3.0) };
 
-                    lock (cachedUpns)
-                    {
+                    lock (cachedUpns) {
                         cachedUpns[identity.User] = cachedUpn;
                     }
                 }
 
                 string[] upnParts = upn.Split('@');
 
-                if(_includeRealm)
-                {
+                if (_includeRealm) {
                     // Make it Kerberos-y by uppercasing the realm part
                     return upnParts[0] + "@" + upnParts[1].ToUpperInvariant();
-                }
-                else
-                {
+                } else {
                     return upnParts[0];
                 }
-            }
-            catch
-            {
+            } catch {
                 // Querying the directory failed, so return the SAM name
                 // (which probably won't work, but it's better than nothing)
                 return identity.Name.Split('\\')[1];
@@ -490,962 +948,66 @@ namespace Npgsql
         }
 
 #endif
+
         #endregion
 
-        private string _username;
-        /// <summary>
-        /// Gets or sets the login user name.
-        /// </summary>
-#if !DNXCORE50
-        [Category("DataCategory_Security")]
-        [NpgsqlConnectionStringKeyword(Keywords.UserName, "USER ID")]
-        [NpgsqlConnectionStringAcceptableKeyword("USER NAME")]
-        [NpgsqlConnectionStringAcceptableKeyword("USERID")]
-        [NpgsqlConnectionStringAcceptableKeyword("USER ID")]
-        [NpgsqlConnectionStringAcceptableKeyword("UID")]
-        [DisplayName("ConnectionProperty_Display_UserName")]
-        [Description("ConnectionProperty_Description_UserName")]
-        [RefreshProperties(RefreshProperties.All)]
-#endif
-        public string UserName
+        #region Misc
+
+        object ICloneable.Clone()
         {
-            get
-            {
-#if !DNXCORE50
-                if ((_integrated_security) && (String.IsNullOrEmpty(_username)))
-                {
-                    _username = GetIntegratedUserName();
-                }
-#endif
-
-                return _username;
-            }
-
-            set { SetValue(GetKeyName(Keywords.UserName), Keywords.UserName, value); }
+            return Clone();
         }
 
-        private string _password;
-        /// <summary>
-        /// Sets the login password as a string.
-        /// </summary>
-#if !DNXCORE50
-        [Category("DataCategory_Security")]
-        [NpgsqlConnectionStringKeyword(Keywords.Password)]
-        [NpgsqlConnectionStringAcceptableKeyword("PSW")]
-        [NpgsqlConnectionStringAcceptableKeyword("PWD")]
-        [DisplayName("ConnectionProperty_Display_Password")]
-        [Description("ConnectionProperty_Description_Password")]
-        [RefreshProperties(RefreshProperties.All)]
-        [PasswordPropertyText(true)]
-#endif
-        public string Password
+        public NpgsqlConnectionStringBuilder Clone()
         {
-            get { return _password; }
-            set { SetValue(GetKeyName(Keywords.Password), Keywords.Password, value); }
-        }
-
-        private string _krbsrvname;
-        /// <summary>
-        /// Sets the krbsrvname.
-        /// </summary>
-#if !DNXCORE50
-        [Category("DataCategory_Security")]
-        [NpgsqlConnectionStringKeyword(Keywords.Krbsrvname)]
-        [NpgsqlConnectionStringAcceptableKeyword("KRBSRVNAME")]
-        [DisplayName("ConnectionProperty_Display_Krbsrvname")]
-        [Description("ConnectionProperty_Description_Krbsrvname")]
-        [RefreshProperties(RefreshProperties.All)]
-        [PasswordPropertyText(true)]
-#endif
-        public string Krbsrvname
-        {
-            get { return _krbsrvname; }
-            set { SetValue(GetKeyName(Keywords.Krbsrvname), Keywords.Krbsrvname, value); }
-        }
-
-        private bool _ssl;
-        /// <summary>
-        /// Gets or sets a value indicating whether to attempt to use SSL.
-        /// </summary>
-#if !DNXCORE50
-        [Category("DataCategory_Advanced")]
-        [NpgsqlConnectionStringKeyword(Keywords.SSL)]
-        [DisplayName("ConnectionProperty_Display_SSL")]
-        [Description("ConnectionProperty_Description_SSL")]
-        [RefreshProperties(RefreshProperties.All)]
-        [DefaultValue(false)]
-#endif
-        public bool SSL
-        {
-            get { return _ssl; }
-            set { SetValue(GetKeyName(Keywords.SSL), Keywords.SSL, value); }
-        }
-
-        private SslMode _sslmode;
-        /// <summary>
-        /// Gets or sets a value indicating whether to attempt to use SSL.
-        /// </summary>
-#if !DNXCORE50
-        [Browsable(false)]
-#endif
-        public SslMode SslMode
-        {
-            get { return _sslmode; }
-            set { SetValue(GetKeyName(Keywords.SslMode), Keywords.SslMode, value); }
-        }
-
-        private bool _useSslStream;
-        /// <summary>
-        /// Gets or sets a value indicating whether to attempt to use SSL.
-        /// </summary>
-#if !DNXCORE50
-        [Category("DataCategory_Advanced")]
-        [NpgsqlConnectionStringKeyword(Keywords.UseSslStream)]
-        [DisplayName("ConnectionProperty_Display_UseSslStream")]
-        [Description("ConnectionProperty_Description_SSL")]
-        [RefreshProperties(RefreshProperties.All)]
-        [DefaultValue(false)]
-#endif
-        public bool UseSslStream
-        {
-            get { return _useSslStream; }
-            set { SetValue(GetKeyName(Keywords.UseSslStream), Keywords.UseSslStream, value); }
-        }
-
-        private int _timeout;
-        /// <summary>
-        /// Gets or sets the time to wait while trying to establish a connection
-        /// before terminating the attempt and generating an error.
-        /// </summary>
-        /// <value>The time (in seconds) to wait for a connection to open. The default value is 15 seconds.</value>
-#if !DNXCORE50
-        [Category("DataCategory_Initialization")]
-        [NpgsqlConnectionStringKeyword(Keywords.Timeout)]
-        [DisplayName("ConnectionProperty_Display_Timeout")]
-        [Description("ConnectionProperty_Description_Timeout")]
-        [RefreshProperties(RefreshProperties.All)]
-        [DefaultValue(15)]
-#endif
-        public int Timeout
-        {
-            get { return _timeout; }
-            set { SetValue(GetKeyName(Keywords.Timeout), Keywords.Timeout, value); }
-        }
-
-        private string _searchpath;
-        /// <summary>
-        /// Gets or sets the schema search path.
-        /// </summary>
-#if !DNXCORE50
-        [Category("DataCategory_Context")]
-        [NpgsqlConnectionStringKeyword(Keywords.SearchPath)]
-        [DisplayName("ConnectionProperty_Display_SearchPath")]
-        [Description("ConnectionProperty_Description_SearchPath")]
-        [RefreshProperties(RefreshProperties.All)]
-#endif
-        public string SearchPath
-        {
-            get { return _searchpath; }
-            set { SetValue(GetKeyName(Keywords.SearchPath), Keywords.SearchPath, value); }
-        }
-
-        private int _bufferSize;
-        /// <summary>
-        /// Gets or sets the buffer size.
-        /// </summary>
-#if !DNXCORE50
-        [Category("DataCategory_Advanced")]
-        [NpgsqlConnectionStringKeyword(Keywords.BufferSize)]
-        [DisplayName("ConnectionProperty_Display_BufferSize")]
-        [Description("ConnectionProperty_Description_BufferSize")]
-        [RefreshProperties(RefreshProperties.All)]
-        [DefaultValue(NpgsqlBuffer.DefaultBufferSize)]
-#endif
-        public int BufferSize
-        {
-            get { return _bufferSize; }
-            set { SetValue(GetKeyName(Keywords.BufferSize), Keywords.BufferSize, value); }
-        }
-
-        private bool _pooling;
-        /// <summary>
-        /// Gets or sets a value indicating whether connection pooling should be used.
-        /// </summary>
-#if !DNXCORE50
-        [Category("DataCategory_Pooling")]
-        [NpgsqlConnectionStringKeyword(Keywords.Pooling)]
-        [DisplayName("ConnectionProperty_Display_Pooling")]
-        [Description("ConnectionProperty_Description_Pooling")]
-        [RefreshProperties(RefreshProperties.All)]
-        [DefaultValue(true)]
-#endif
-        public bool Pooling
-        {
-            get { return _pooling; }
-            set { SetValue(GetKeyName(Keywords.Pooling), Keywords.Pooling, value); }
-        }
-
-        private int _connection_life_time;
-        /// <summary>
-        /// Gets or sets the time to wait before closing unused connections in the pool if the count
-        /// of all connections exeeds MinPoolSize.
-        /// </summary>
-        /// <remarks>
-        /// If connection pool contains unused connections for ConnectionLifeTime seconds,
-        /// the half of them will be closed. If there will be unused connections in a second
-        /// later then again the half of them will be closed and so on.
-        /// This strategy provide smooth change of connection count in the pool.
-        /// </remarks>
-        /// <value>The time (in seconds) to wait. The default value is 15 seconds.</value>
-#if !DNXCORE50
-        [Category("DataCategory_Pooling")]
-        [NpgsqlConnectionStringKeyword(Keywords.ConnectionLifeTime)]
-        [DisplayName("ConnectionProperty_Display_ConnectionLifeTime")]
-        [Description("ConnectionProperty_Description_ConnectionLifeTime")]
-        [RefreshProperties(RefreshProperties.All)]
-        [DefaultValue(15)]
-#endif
-        public int ConnectionLifeTime
-        {
-            get { return _connection_life_time; }
-            set { SetValue(GetKeyName(Keywords.ConnectionLifeTime), Keywords.ConnectionLifeTime, value); }
-        }
-
-        private int _min_pool_size;
-        /// <summary>
-        /// Gets or sets the minimum connection pool size.
-        /// </summary>
-#if !DNXCORE50
-        [Category("DataCategory_Pooling")]
-        [NpgsqlConnectionStringKeyword(Keywords.MinPoolSize)]
-        [DisplayName("ConnectionProperty_Display_MinPoolSize")]
-        [Description("ConnectionProperty_Description_MinPoolSize")]
-        [RefreshProperties(RefreshProperties.All)]
-        [DefaultValue(1)]
-#endif
-        public int MinPoolSize
-        {
-            get { return _min_pool_size; }
-            set { SetValue(GetKeyName(Keywords.MinPoolSize), Keywords.MinPoolSize, value); }
-        }
-
-        private int _max_pool_size;
-        /// <summary>
-        /// Gets or sets the maximum connection pool size.
-        /// </summary>
-#if !DNXCORE50
-        [Category("DataCategory_Pooling")]
-        [NpgsqlConnectionStringKeyword(Keywords.MaxPoolSize)]
-        [DisplayName("ConnectionProperty_Display_MaxPoolSize")]
-        [Description("ConnectionProperty_Description_MaxPoolSize")]
-        [RefreshProperties(RefreshProperties.All)]
-        [DefaultValue(20)]
-#endif
-        public int MaxPoolSize
-        {
-            get { return _max_pool_size; }
-            set { SetValue(GetKeyName(Keywords.MaxPoolSize), Keywords.MaxPoolSize, value); }
-        }
-
-        private bool _sync_notification;
-        /// <summary>
-        /// Gets or sets a value indicating whether to listen for notifications and report them between command activity.
-        /// </summary>
-#if !DNXCORE50
-        [Category("DataCategory_Advanced")]
-        [NpgsqlConnectionStringKeyword(Keywords.SyncNotification)]
-        [DisplayName("ConnectionProperty_Display_SyncNotification")]
-        [Description("ConnectionProperty_Description_SyncNotification")]
-        [RefreshProperties(RefreshProperties.All)]
-        [DefaultValue(false)]
-#endif
-        public bool SyncNotification
-        {
-            get { return _sync_notification; }
-            set { SetValue(GetKeyName(Keywords.SyncNotification), Keywords.SyncNotification, value); }
-        }
-
-        private int _command_timeout;
-        /// <summary>
-        /// Gets the time to wait while trying to execute a command
-        /// before terminating the attempt and generating an error.
-        /// </summary>
-        /// <value>The time (in seconds) to wait for a command to complete. The default value is 20 seconds.</value>
-#if !DNXCORE50
-        [Category("DataCategory_Initialization")]
-        [NpgsqlConnectionStringKeyword(Keywords.CommandTimeout)]
-        [DisplayName("ConnectionProperty_Display_CommandTimeout")]
-        [Description("ConnectionProperty_Description_CommandTimeout")]
-        [RefreshProperties(RefreshProperties.All)]
-        [DefaultValue(NpgsqlCommand.DefaultTimeout)]
-#endif
-        public int CommandTimeout
-        {
-            get { return _command_timeout; }
-            set { SetValue(GetKeyName(Keywords.CommandTimeout), Keywords.CommandTimeout, value); }
-        }
-
-        private int? _internalCommandTimeout;
-        /// <summary>
-        /// Gets the time to wait while trying to execute a an internal command before terminating the attempt and generating an error.
-        /// </summary>
-        /// <value>The time (in seconds) to wait for a command to complete. The default value is <see cref="CommandTimeout"/>.</value>
-#if !DNXCORE50
-        [Category("DataCategory_Advanced")]
-        [NpgsqlConnectionStringKeyword(Keywords.InternalCommandTimeout)]
-        [DisplayName("ConnectionProperty_Display_InternalCommandTimeout")]
-        [Description("ConnectionProperty_Description_InternalCommandTimeout")]
-        [RefreshProperties(RefreshProperties.All)]
-        [DefaultValue(null)]
-#endif
-        public int? InternalCommandTimeout
-        {
-            get { return _internalCommandTimeout; }
-            set { SetValue(GetKeyName(Keywords.InternalCommandTimeout), Keywords.InternalCommandTimeout, value); }
-        }
-
-        private bool _backendTimeouts;
-        /// <summary>
-        /// Whether to have the backend enforce <see cref="CommandTimeout"/> and <see cref="InternalCommandTimeout"/>
-        /// via the statement_timeout variable. Defaults to true.
-        /// </summary>
-#if !DNXCORE50
-        [Category("DataCategory_Advanced")]
-        [NpgsqlConnectionStringKeyword(Keywords.InternalCommandTimeout)]
-        [DisplayName("ConnectionProperty_Display_BackendTimeouts")]
-        [Description("ConnectionProperty_Description_BackendTimeouts")]
-        [RefreshProperties(RefreshProperties.All)]
-        [DefaultValue(true)]
-#endif
-        public bool BackendTimeouts
-        {
-            get { return _backendTimeouts; }
-            set { SetValue(GetKeyName(Keywords.BackendTimeouts), Keywords.BackendTimeouts, value); }
-        }
-
-        private int _keepAlive;
-        /// <summary>
-        /// The number of seconds of connection inactivity before Npgsql sends a keepalive query.
-        /// Set to 0 (the default) to disable.
-        /// </summary>
-#if !DNXCORE50
-        [Category("DataCategory_Initialization")]
-        [NpgsqlConnectionStringKeyword(Keywords.KeepAlive)]
-        [DisplayName("ConnectionProperty_Display_KeepAlive")]
-        [Description("ConnectionProperty_Description_KeepAlive")]
-        [RefreshProperties(RefreshProperties.All)]
-        [DefaultValue(0)]
-#endif
-        public int KeepAlive
-        {
-            get { return _keepAlive; }
-            set { SetValue(GetKeyName(Keywords.KeepAlive), Keywords.KeepAlive, value); }
-        }
-
-        private bool _enlist;
-#if !DNXCORE50
-        [Category("DataCategory_Pooling")]
-        [NpgsqlConnectionStringKeyword(Keywords.Enlist)]
-        [DisplayName("ConnectionProperty_Display_Enlist")]
-        [Description("ConnectionProperty_Description_Enlist")]
-        [RefreshProperties(RefreshProperties.All)]
-        [DefaultValue(true)]
-#endif
-        public bool Enlist
-        {
-            get { return _enlist; }
-            set { SetValue(GetKeyName(Keywords.Enlist), Keywords.Enlist, value); }
-        }
-
-        private bool _integrated_security;
-#if !DNXCORE50
-        [Category("DataCategory_Security")]
-        [NpgsqlConnectionStringKeyword(Keywords.IntegratedSecurity)]
-        [NpgsqlConnectionStringAcceptableKeyword("INTEGRATED SECURITY")]
-        [DisplayName("ConnectionProperty_Display_IntegratedSecurity")]
-        [Description("ConnectionProperty_Description_IntegratedSecurity")]
-        [RefreshProperties(RefreshProperties.All)]
-        [DefaultValue(false)]
-#endif
-        public bool IntegratedSecurity
-        {
-            get { return _integrated_security; }
-            set
-            {
-#if !NET40
-                if (value == true)
-                    CheckIntegratedSecuritySupport();
-#endif
-                SetValue(GetKeyName(Keywords.IntegratedSecurity), Keywords.IntegratedSecurity, value);
-            }
-        }
-
-        /// <summary>
-        /// No integrated security if we're on mono and .NET 4.5 because of ClaimsIdentity,
-        /// see https://github.com/npgsql/Npgsql/issues/133
-        /// </summary>
-        private static void CheckIntegratedSecuritySupport()
-        {
-            if (Type.GetType("Mono.Runtime") != null)
-                throw new NotSupportedException("IntegratedSecurity is currently unsupported on mono and .NET 4.5 (see https://github.com/npgsql/Npgsql/issues/133)");
-        }
-
-        private bool _includeRealm;
-        public bool IncludeRealm
-        {
-            get { return _includeRealm; }
-            set { SetValue(GetKeyName(Keywords.IncludeRealm), Keywords.IncludeRealm, value); }
-        }
-
-        private string _application_name;
-        /// <summary>
-        /// Gets or sets the ootional application name parameter to be sent to the backend during connection initiation.
-        /// </summary>
-#if !DNXCORE50
-        [Category("DataCategory_Context")]
-        [NpgsqlConnectionStringKeyword(Keywords.ApplicationName)]
-        [DisplayName("ConnectionProperty_Display_ApplicationName")]
-        [Description("ConnectionProperty_Description_ApplicationName")]
-        [RefreshProperties(RefreshProperties.All)]
-#endif
-        public string ApplicationName
-        {
-            get { return _application_name; }
-            set { SetValue(GetKeyName(Keywords.ApplicationName), Keywords.ApplicationName, value); }
-        }
-
-        internal ServerCompatibilityMode ServerCompatibilityMode;
-
-        private bool _convertInfinityDateTime;
-        /// <summary>
-        /// Gets or sets a value indicating whether to attempt to use SSL.
-        /// </summary>
-#if !DNXCORE50
-        [Category("DataCategory_Advanced")]
-        [NpgsqlConnectionStringKeyword(Keywords.ConvertInfinityDateTime)]
-        [RefreshProperties(RefreshProperties.All)]
-        [DefaultValue(false)]
-#endif
-        public bool ConvertInfinityDateTime
-        {
-            get { return _convertInfinityDateTime; }
-            set { SetValue(GetKeyName(Keywords.ConvertInfinityDateTime), Keywords.ConvertInfinityDateTime, value); }
+            return new NpgsqlConnectionStringBuilder(ConnectionString);
         }
 
         #endregion
 
-        private static Keywords GetKey(string key)
+        #region Attributes
+
+        [AttributeUsage(AttributeTargets.Property)]
+        class NpgsqlConnectionStringPropertyAttribute : Attribute
         {
-            switch (key.ToUpperInvariant())
+            internal string[] AlternateNames { get; private set; }
+            static string[] Empty = new string[0];
+
+            internal NpgsqlConnectionStringPropertyAttribute()
             {
-                case "HOST":
-                case "SERVER":
-                    return Keywords.Host;
-                case "PORT":
-                    return Keywords.Port;
-                case "DATABASE":
-                case "DB":
-                    return Keywords.Database;
-                case "USERNAME":
-                case "USER NAME":
-                case "USER":
-                case "USERID":
-                case "USER ID":
-                case "UID":
-                    return Keywords.UserName;
-                case "PASSWORD":
-                case "PSW":
-                case "PWD":
-                    return Keywords.Password;
-                case "KRBSRVNAME":
-                    return Keywords.Krbsrvname;
-                case "SSL":
-                    return Keywords.SSL;
-                case "SSLMODE":
-                    return Keywords.SslMode;
-                case "USESSLSTREAM":
-                    return Keywords.UseSslStream;
-                case "TIMEOUT":
-                    return Keywords.Timeout;
-                case "SEARCHPATH":
-                    return Keywords.SearchPath;
-                case "BUFFERSIZE":
-                    return Keywords.BufferSize;
-                case "POOLING":
-                    return Keywords.Pooling;
-                case "CONNECTIONLIFETIME":
-                    return Keywords.ConnectionLifeTime;
-                case "MINPOOLSIZE":
-                    return Keywords.MinPoolSize;
-                case "MAXPOOLSIZE":
-                    return Keywords.MaxPoolSize;
-                case "SYNCNOTIFICATION":
-                    return Keywords.SyncNotification;
-                case "COMMANDTIMEOUT":
-                    return Keywords.CommandTimeout;
-                case "INTERNALCOMMANDTIMEOUT":
-                    return Keywords.InternalCommandTimeout;
-                case "BACKENDTIMEOUTS":
-                    return Keywords.BackendTimeouts;
-                case "KEEPALIVE":
-                    return Keywords.KeepAlive;
-                case "ENLIST":
-                    return Keywords.Enlist;
-                case "PRELOADREADER":
-                case "PRELOAD READER":
-                    return Keywords.PreloadReader;
-                case "USEEXTENDEDTYPES":
-                case "USE EXTENDED TYPES":
-                    return Keywords.UseExtendedTypes;
-                case "INTEGRATEDSECURITY":
-                case "INTEGRATED SECURITY":
-                    return Keywords.IntegratedSecurity;
-                case "INCLUDEREALM":
-                    return Keywords.IncludeRealm;
-                case "COMPATIBLE":
-                    return Keywords.Compatible;
-                case "APPLICATIONNAME":
-                    return Keywords.ApplicationName;
-                case "SERVERCOMPATIBILITY":
-                case "SERVER COMPATIBILITY":
-                    return Keywords.ServerCompatibility;
-                case "CONVERTINFINITYDATETIME":
-                    return Keywords.ConvertInfinityDateTime;
-                default:
-                    throw new ArgumentException("key=value argument incorrect in ConnectionString", key);
+                AlternateNames = Empty;
             }
-        }
 
-        internal static string GetKeyName(Keywords keyword)
-        {
-            switch (keyword)
+            internal NpgsqlConnectionStringPropertyAttribute(params string[] alternateNames)
             {
-                case Keywords.Host:
-                    return "HOST";
-                case Keywords.Port:
-                    return "PORT";
-                case Keywords.Database:
-                    return "DATABASE";
-                case Keywords.UserName:
-                    return "USER ID";
-                case Keywords.Password:
-                    return "PASSWORD";
-                case Keywords.Krbsrvname:
-                    return "KRBSRVNAME";
-                case Keywords.SSL:
-                    return "SSL";
-                case Keywords.SslMode:
-                    return "SSLMODE";
-                case Keywords.UseSslStream:
-                    return "USESSLSTREAM";
-                case Keywords.Timeout:
-                    return "TIMEOUT";
-                case Keywords.SearchPath:
-                    return "SEARCHPATH";
-                case Keywords.BufferSize:
-                    return "BUFFERSIZE";
-                case Keywords.Pooling:
-                    return "POOLING";
-                case Keywords.ConnectionLifeTime:
-                    return "CONNECTIONLIFETIME";
-                case Keywords.MinPoolSize:
-                    return "MINPOOLSIZE";
-                case Keywords.MaxPoolSize:
-                    return "MAXPOOLSIZE";
-                case Keywords.SyncNotification:
-                    return "SYNCNOTIFICATION";
-                case Keywords.CommandTimeout:
-                    return "COMMANDTIMEOUT";
-                case Keywords.InternalCommandTimeout:
-                    return "INTERNALCOMMANDTIMEOUT";
-                case Keywords.BackendTimeouts:
-                    return "BACKENDTIMEOUTS";
-                case Keywords.Enlist:
-                case Keywords.KeepAlive:
-                    return "KEEPALIVE";
-                case Keywords.IntegratedSecurity:
-                    return "INTEGRATED SECURITY";
-                case Keywords.IncludeRealm:
-                    return "INCLUDEREALM";
-                case Keywords.ApplicationName:
-                    return "APPLICATIONNAME";
-                case Keywords.ServerCompatibility:
-                    return "SERVERCOMPATIBILITY";
-                case Keywords.ConvertInfinityDateTime:
-                    return "CONVERTINFINITYDATETIME";
-                // No longer supported
-                case Keywords.PreloadReader:
-                    return "PRELOADREADER";
-                case Keywords.UseExtendedTypes:
-                    return "USEEXTENDEDTYPES";
-                case Keywords.Compatible:
-                    return "COMPATIBLE";
-                default:
-                    return keyword.ToString().ToUpperInvariant();
+                AlternateNames = alternateNames;
             }
         }
 
-        internal static object GetDefaultValue(Keywords keyword)
-        {
-            return valueDescriptions[keyword].ExplicitDefault;
-        }
-
-        /// <summary>
-        /// Case insensative accessor for indivual connection string values.
-        /// </summary>
-        public override object this[string keyword]
-        {
-            get { return GetValue(GetKey(keyword)); }
-            set { this[GetKey(keyword)] = value; }
-        }
-
-        public object this[Keywords keyword]
-        {
-            get { return GetValue(keyword); }
-            set { SetValue(GetKeyName(keyword), keyword, value); }
-        }
-
-        public override bool Remove(string keyword)
-        {
-            Keywords key = GetKey(keyword);
-            SetValue(key, GetDefaultValue(key));
-            return base.Remove(keyword);
-        }
-
-        public bool ContainsKey(Keywords keyword)
-        {
-            return base.ContainsKey(GetKeyName(keyword));
-        }
-
-        public override bool TryGetValue(string keyword, out object value) {
-            try {
-                value = GetValue(GetKey(keyword));
-                return true;
-            }
-            catch (ArgumentException) {
-                value = null;
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// This function will set value for known key, both private member and base[key].
-        /// </summary>
-        /// <param name="keyword"></param>
-        /// <param name="key"></param>
-        /// <param name="value"></param>
-        /// <returns>value, coerced as needed to the stored type.</returns>
-        private object SetValue(string keyword, Keywords key, object value)
-        {
-            ValueDescription description;
-
-            description = valueDescriptions[key];
-
-            if (! description.StoreInBase)
-            {
-                return value;
-            }
-
-            if (value == null)
-            {
-                Remove(keyword);
-                return value;
-            }
-
-            value = SetValue(key, value);
-
-            // If the value matches both the parameter's default and the type's default, remove it from base,
-            // otherwise convert to string and set the base value.
-            if (
-                description.DefaultsDiffer ||
-                (description.ExplicitDefault.CompareTo((IComparable)value) != 0)
-            )
-            {
-                base[keyword] = description.ConvertNativeToString(value);
-            }
-            else
-            {
-                base.Remove(keyword);
-            }
-
-            return value;
-        }
-
-        /// <summary>
-        /// The function will modify private member only, not base[key].
-        /// </summary>
-        /// <param name="keyword"></param>
-        /// <param name="value"></param>
-        /// <returns>value, coerced as needed to the stored type.</returns>
-        private object SetValue(Keywords keyword, object value)
-        {
-            try
-            {
-                switch (keyword)
-                {
-                    case Keywords.Host:
-                        return this._host = Convert.ToString(value);
-                    case Keywords.Port:
-                        return this._port = Convert.ToInt32(value);
-                    case Keywords.Database:
-                        return this._database = Convert.ToString(value);
-                    case Keywords.UserName:
-                        return this._username = Convert.ToString(value);
-                    case Keywords.Password:
-                        return this._password = value as string;
-                    case Keywords.Krbsrvname:
-                        return this._krbsrvname = Convert.ToString(value);
-                    case Keywords.SSL:
-                        return this._ssl = ToBoolean(value);
-                    case Keywords.SslMode:
-                        return this._sslmode = ToSslMode(value);
-                    case Keywords.UseSslStream:
-                        return this._useSslStream = ToBoolean(value);
-                    case Keywords.Timeout:
-                        return this._timeout = ToInt32(value, 0, TIMEOUT_LIMIT, keyword);
-                    case Keywords.SearchPath:
-                        return this._searchpath = Convert.ToString(value);
-                    case Keywords.BufferSize:
-                        return this._bufferSize = Convert.ToInt32(value);
-                    case Keywords.Pooling:
-                        return this._pooling = ToBoolean(value);
-                    case Keywords.ConnectionLifeTime:
-                        return this._connection_life_time = Convert.ToInt32(value);
-                    case Keywords.MinPoolSize:
-                        return this._min_pool_size = ToInt32(value, 0, POOL_SIZE_LIMIT, keyword);
-                    case Keywords.MaxPoolSize:
-                        return this._max_pool_size = ToInt32(value, 0, POOL_SIZE_LIMIT, keyword);
-                    case Keywords.SyncNotification:
-                        return this._sync_notification = ToBoolean(value);
-                    case Keywords.CommandTimeout:
-                        var commandTimeout = Convert.ToInt32(value);
-                        if (commandTimeout < 0)
-                            throw new ArgumentOutOfRangeException("CommandTimeout can't be negative");
-                        return this._command_timeout = commandTimeout;
-                    case Keywords.InternalCommandTimeout:
-                        if (value == null)
-                            return this._internalCommandTimeout = null;
-                        var internalCommandTimeout = Convert.ToInt32(value);
-                        if (InternalCommandTimeout < NpgsqlConnector.MinimumInternalCommandTimeout && InternalCommandTimeout != 0)
-                            throw new ArgumentOutOfRangeException(string.Format("InternalCommandTimeout must be >= {0} or 0 (infinite)", NpgsqlConnector.MinimumInternalCommandTimeout));
-                        return this._internalCommandTimeout = internalCommandTimeout;
-                    case Keywords.KeepAlive:
-                        var keepAlive = Convert.ToInt32(value);
-                        if (keepAlive < 0)
-                            throw new ArgumentOutOfRangeException("KeepAlive can't be negative");
-                        return this._keepAlive = keepAlive;
-                    case Keywords.BackendTimeouts:
-                        return this._backendTimeouts = ToBoolean(value);
-                    case Keywords.Enlist:
-                        return this._enlist = ToBoolean(value);
-                    case Keywords.IntegratedSecurity:
-                        bool iS = ToIntegratedSecurity(value);
-                        if (iS == true)
-                        {
-                            CheckIntegratedSecuritySupport();
-                        }
-
-                        return this._integrated_security = ToIntegratedSecurity(iS);
-                    case Keywords.IncludeRealm:
-                        return this._includeRealm = ToBoolean(value);
-                    case Keywords.ApplicationName:
-                        return this._application_name = Convert.ToString(value);
-                    case Keywords.ServerCompatibility:
-                        var strValue = (string) value;
-                        if (String.IsNullOrWhiteSpace(strValue))
-                            ServerCompatibilityMode = ServerCompatibilityMode.None;
-                        else if (!Enum.TryParse(strValue, true, out ServerCompatibilityMode))
-                            throw new Exception("Invalid server compatibility value: " + strValue);
-                        return strValue;
-                    case Keywords.ConvertInfinityDateTime:
-                        return this._convertInfinityDateTime = ToBoolean(value);
-
-                    // No longer supported
-                    case Keywords.PreloadReader:
-                        if (ToBoolean(value))
-                            throw new NotSupportedException("The PreloadReader parameter is no longer supported. Please see https://github.com/npgsql/Npgsql/wiki/PreloadReader-Removal");
-                        return false;
-                    case Keywords.UseExtendedTypes:
-                        if (ToBoolean(value))
-                            throw new NotSupportedException("The UseExtendedTypes parameter is no longer supported. Please see https://github.com/npgsql/Npgsql/wiki/UseExtendedTypes-Removal");
-                        return false;
-                    case Keywords.Compatible:
-                        if (!String.IsNullOrWhiteSpace(Convert.ToString(value)))
-                            throw new NotSupportedException("The Compatible parameter is no longer supported.");
-                        return value;
-                }
-            }
-            catch (InvalidCastException exception)
-            {
-                string exception_template = string.Empty;
-
-                switch (keyword)
-                {
-                    case Keywords.Port:
-                    case Keywords.Timeout:
-                    case Keywords.ConnectionLifeTime:
-                    case Keywords.MinPoolSize:
-                    case Keywords.MaxPoolSize:
-                    case Keywords.CommandTimeout:
-                    case Keywords.InternalCommandTimeout:
-                    case Keywords.KeepAlive:
-                        exception_template = "expecting {0}=[Numeric] value in ConnectionString";
-                        break;
-                    case Keywords.SSL:
-                    case Keywords.UseSslStream:
-                    case Keywords.BackendTimeouts:
-                    case Keywords.Pooling:
-                    case Keywords.SyncNotification:
-                    case Keywords.ConvertInfinityDateTime:
-                        exception_template = "expecting {0}=[True/False] value in ConnectionString";
-                        break;
-                }
-
-                if (!string.IsNullOrEmpty(exception_template))
-                {
-                    string key_name = GetKeyName(keyword);
-
-                    throw new ArgumentException(string.Format(exception_template, key_name), key_name, exception);
-                }
-
-                throw;
-            }
-
-            return null;
-        }
-
-        /// <summary>
-        /// The function will access private member only, not base[key].
-        /// </summary>
-        /// <param name="keyword"></param>
-        /// <returns>value.</returns>
-        private object GetValue(Keywords keyword)
-        {
-            switch (keyword)
-            {
-                case Keywords.Host:
-                    return this._host;
-                case Keywords.Port:
-                    return this._port;
-                case Keywords.Database:
-                    return this._database;
-                case Keywords.UserName:
-                    return this._username;
-                case Keywords.Password:
-                    return this._password;
-                case Keywords.Krbsrvname:
-                    return this._krbsrvname;
-                case Keywords.SSL:
-                    return this._ssl;
-                case Keywords.SslMode:
-                    return this._sslmode;
-                case Keywords.UseSslStream:
-                    return this._useSslStream;
-                case Keywords.Timeout:
-                    return this._timeout;
-                case Keywords.SearchPath:
-                    return this._searchpath;
-                case Keywords.BufferSize:
-                    return this._bufferSize;
-                case Keywords.Pooling:
-                    return this._pooling;
-                case Keywords.ConnectionLifeTime:
-                    return this._connection_life_time;
-                case Keywords.MinPoolSize:
-                    return this._min_pool_size;
-                case Keywords.MaxPoolSize:
-                    return this._max_pool_size;
-                case Keywords.SyncNotification:
-                    return this._sync_notification;
-                case Keywords.CommandTimeout:
-                    return this._command_timeout;
-                case Keywords.InternalCommandTimeout:
-                    return this._internalCommandTimeout;
-                case Keywords.BackendTimeouts:
-                    return this._backendTimeouts;
-                case Keywords.KeepAlive:
-                    return this._keepAlive;
-                case Keywords.Enlist:
-                    return this._enlist;
-                case Keywords.IntegratedSecurity:
-                    return this._integrated_security;
-                case Keywords.IncludeRealm:
-                    return this._includeRealm;
-                case Keywords.ApplicationName:
-                    return this._application_name;
-                case Keywords.ServerCompatibility:
-                    return ServerCompatibilityMode.ToString();
-                case Keywords.ConvertInfinityDateTime:
-                    return this._convertInfinityDateTime;
-                default:
-                    throw new Exception("Unknown keyword: " + keyword);
-            }
-        }
-
-
-        /// <summary>
-        /// Clear the member and assign them to the default value.
-        /// </summary>
-        public override void Clear()
-        {
-            base.Clear();
-
-            foreach (KeyValuePair<Keywords, ValueDescription> kvp in valueDescriptions)
-            {
-                if (kvp.Value.StoreInBase)
-                {
-                    SetValue(GetKeyName(kvp.Key), kvp.Key, kvp.Value.ExplicitDefault);
-                }
-            }
-        }
+        #endregion
     }
 
-    public enum Keywords
-    {
-        Host,
-        Port,
-        Database,
-        UserName,
-        Password,
-        Krbsrvname,
-        SSL,
-        SslMode,
-        UseSslStream,
-        Timeout,
-        SearchPath,
-        BufferSize,
-        ServerCompatibility,
-        InternalCommandTimeout,
-        BackendTimeouts,
-        KeepAlive,
-        // These are for the connection pool
-        Pooling,
-        ConnectionLifeTime,
-        MinPoolSize,
-        MaxPoolSize,
-        SyncNotification,
-        // These are for the command
-        CommandTimeout,
-        // These are for the resource manager
-        Enlist,
-        IntegratedSecurity,
-        ApplicationName,
-        IncludeRealm,
-        ConvertInfinityDateTime,
+    #region Enums
 
-        // No longer supported, throw an exception
-        PreloadReader,
-        UseExtendedTypes,
-        Compatible,
+    public enum ServerCompatibilityMode
+    {
+        /// <summary>
+        /// No special server compatibility mode is active
+        /// </summary>
+        None,
+        /// <summary>
+        /// The server is an Amazon Redshift instance.
+        /// </summary>
+        Redshift,
     }
 
     public enum SslMode
     {
-        Disable = 1 << 0,
-        Allow = 1 << 1,
-        Prefer = 1 << 2,
-        Require = 1 << 3
+        Disable,
+        Allow,
+        Prefer,
+        Require,
     }
-}
 
-#pragma warning restore 1591
+    #endregion
+}

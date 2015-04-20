@@ -251,10 +251,10 @@ namespace Npgsql
         internal string ConnectionString { get { return _settings.ConnectionString; } }
         internal string Host { get { return _settings.Host; } }
         internal int Port { get { return _settings.Port; } }
-        internal string Database { get { return _settings.ContainsKey(Keywords.Database) ? _settings.Database : _settings.UserName; } }
-        internal string UserName { get { return _settings.UserName; } }
+        internal string Database { get { return _settings.Database; } }
+        internal string UserName { get { return _settings.Username; } }
         internal string Password { get { return _settings.Password; } }
-        internal string Krbsrvname { get { return _settings.Krbsrvname; } }
+        internal string KerberosServiceName { get { return _settings.KerberosServiceName; } }
         internal bool SSL { get { return _settings.SSL; } }
         internal SslMode SslMode { get { return _settings.SslMode; } }
         internal bool UseSslStream { get { return _settings.UseSslStream; } }
@@ -592,7 +592,7 @@ namespace Npgsql
                     throw new NotSupportedException("SSPI not yet supported in .NET Core");
 #else
                     // For GSSAPI we have to use the supplied hostname
-                    SSPI = new SSPIHandler(Host, Krbsrvname, true);
+                    SSPI = new SSPIHandler(Host, KerberosServiceName, true);
                     passwordMessage = new PasswordMessage(SSPI.Continue(null));
                     break;
 #endif
@@ -604,7 +604,7 @@ namespace Npgsql
 #if DNXCORE50
                     throw new NotSupportedException("SSPI not yet supported in .NET Core");
 #else
-                    SSPI = new SSPIHandler(Host, Krbsrvname, false);
+                    SSPI = new SSPIHandler(Host, KerberosServiceName, false);
                     passwordMessage = new PasswordMessage(SSPI.Continue(null));
                     break;
 #endif
@@ -1830,18 +1830,6 @@ namespace Npgsql
         /// Skip DataRow messages altogether
         /// </summary>
         Skip
-    }
-
-    internal enum ServerCompatibilityMode
-    {
-        /// <summary>
-        /// No special server compatibility mode is active
-        /// </summary>
-        None,
-        /// <summary>
-        /// The server is an Amazon Redshift instance.
-        /// </summary>
-        Redshift,
     }
 
     #endregion
