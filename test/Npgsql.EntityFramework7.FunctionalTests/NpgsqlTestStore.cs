@@ -429,7 +429,7 @@ namespace Npgsql.EntityFramework7.FunctionalTests
             return new NpgsqlConnectionStringBuilder
             {
                 Host="localhost",
-                UserName="npgsql_tests",
+                Username="npgsql_tests",
                 Password="npgsql_tests",
                 Database=name,
             }.ConnectionString;
