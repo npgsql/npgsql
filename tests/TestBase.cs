@@ -240,6 +240,7 @@ namespace NpgsqlTests
             {
                 sb.Append(",").AppendLine();
                 sb.Append(@"field_serial                  SERIAL,
+                            field_bigserial               BIGSERIAL,
                             field_bit                     BIT,
                             field_time                    TIME,
                             field_timestamp_with_timezone TIMESTAMP WITH TIME ZONE,
@@ -261,6 +262,8 @@ namespace NpgsqlTests
                 if (Conn.PostgreSqlVersion >= new Version(9, 2)) {
                     sb.Append(",").AppendLine();
                     sb.Append(@"field_json JSON");
+                    sb.Append(",").AppendLine();
+                    sb.Append(@"field_smallserial SMALLSERIAL");
                 }
 
                 if (Conn.PostgreSqlVersion >= new Version(9, 4)) {
