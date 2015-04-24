@@ -47,13 +47,18 @@ namespace Npgsql.EntityFramework7.Query
         {
             Check.NotNull(countExpression, nameof(countExpression));
 
+            // Note that PostgreSQL COUNT(*) is BIGINT (64-bit). For 32-bit Count() expressions we cast.
             if (countExpression.Type == typeof(long))
             {
-                Sql.Append("COUNT_BIG(*)");
-                return countExpression;
+                Sql.Append("COUNT(*)");
             }
+            else if (countExpression.Type == typeof(int))
+            {
+                Sql.Append("COUNT(*)::INT4");
+            }
+            else throw new NotSupportedException(string.Format("Count expression with type {0} not supported", countExpression.Type));
 
-            return base.VisitCountExpression(countExpression);
+            return countExpression;
         }
     }
 }
