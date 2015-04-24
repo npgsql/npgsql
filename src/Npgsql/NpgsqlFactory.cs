@@ -95,7 +95,7 @@ namespace Npgsql
                     return _legacyEntityFrameworkServices;
 
                 // First time, attempt to find the Npgsql.EntityFrameworkLegacy assembly and load the type via reflection
-                var assemblyName = typeof(NpgsqlFactory).Assembly.GetName();
+                var assemblyName = typeof(NpgsqlFactory).GetTypeInfo().Assembly.GetName();
                 assemblyName.Name = "Npgsql.EntityFrameworkLegacy";
                 Assembly npgsqlEfAssembly;
                 try {

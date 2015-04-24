@@ -55,7 +55,7 @@ namespace Npgsql
     public sealed partial class NpgsqlCommand : DbCommand
 #else
     [System.ComponentModel.DesignerCategory("")]    
-    public sealed partial class NpgsqlCommand : DbCommand, ICloneable
+    public sealed partial class NpgsqlCommand : DbCommand
 #endif
     {
         #region Fields
@@ -1649,43 +1649,7 @@ namespace Npgsql
             Connection.CheckReady();
         }
 
-#if !DNXCORE50
-        /// <summary>
-        /// Create a new command based on this one.
-        /// </summary>
-        /// <returns>A new NpgsqlCommand object.</returns>
-        Object ICloneable.Clone()
-        {
-            return Clone();
-        }
-#endif
-
-        /// <summary>
-        /// Create a new command based on this one.
-        /// </summary>
-        /// <returns>A new NpgsqlCommand object.</returns>
-        public NpgsqlCommand Clone()
-        {
-            // TODO: Add consistency checks.
-
-            var clone = new NpgsqlCommand(CommandText, Connection, Transaction)
-            {
-                CommandTimeout = CommandTimeout,
-                CommandType = CommandType,
-                DesignTimeVisible = DesignTimeVisible
-            };
-            if (ExpectedTypes != null)
-            {
-                clone.ExpectedTypes = (Type[])ExpectedTypes.Clone();
-            }
-            foreach (NpgsqlParameter parameter in Parameters)
-            {
-                clone.Parameters.Add(parameter.Clone());
-            }
-            return clone;
-        }
-
-        #endregion Misc
+        #endregion
 
         #region Invariants
 

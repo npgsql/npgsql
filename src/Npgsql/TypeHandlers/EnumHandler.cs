@@ -19,7 +19,7 @@ namespace Npgsql.TypeHandlers
 
         public EnumHandler()
         {
-            Contract.Requires(typeof(TEnum).IsEnum, "EnumHandler instantiated for non-enum type");
+            Contract.Requires(typeof(TEnum).GetTypeInfo().IsEnum, "EnumHandler instantiated for non-enum type");
 
             // Reflect on our enum type to find any explicit mappings
             if (!typeof(TEnum).GetFields(BindingFlags.Static | BindingFlags.Public).Any(t => t.GetCustomAttributes(typeof(EnumLabelAttribute), false).Any())) {

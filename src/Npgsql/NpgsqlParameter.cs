@@ -31,6 +31,7 @@ using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics.Contracts;
+using System.Reflection;
 using NpgsqlTypes;
 
 #if WITHDESIGN
@@ -566,9 +567,9 @@ namespace Npgsql
                 if ((!_npgsqlDbType.HasValue || _npgsqlDbType == NpgsqlDbType.Enum) && _value != null)
                 {
                     var type = _value.GetType();
-                    if (type.IsEnum)
+                    if (type.GetTypeInfo().IsEnum)
                         return type;
-                    if (type.IsArray && type.GetElementType().IsEnum)
+                    if (type.IsArray && type.GetElementType().GetTypeInfo().IsEnum)
                         return type.GetElementType();
                 }
                 return null;
@@ -577,7 +578,7 @@ namespace Npgsql
             {
                 if (value != null)
                 {
-                    if (!value.IsEnum)
+                    if (!value.GetTypeInfo().IsEnum)
                         throw new ArgumentException("The type is not an enum type", "value");
                     _enumType = value;
                 }

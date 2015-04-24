@@ -272,7 +272,7 @@ namespace Npgsql
                     _byEnumTypeAsArray = new Dictionary<Type, TypeHandler>();
                 }
                 var enumType = elementHandler.GetType().GetGenericArguments()[0];
-                Contract.Assert(enumType.IsEnum);
+                Contract.Assert(enumType.GetTypeInfo().IsEnum);
                 _byEnumTypeAsArray[enumType] = arrayHandler;
             }
             else
@@ -454,7 +454,7 @@ namespace Npgsql
                 if (type.IsArray)
                 {
                     var elementType = type.GetElementType();
-                    if (elementType.IsEnum) {
+                    if (elementType.GetTypeInfo().IsEnum) {
                         if (_byEnumTypeAsArray != null && _byEnumTypeAsArray.TryGetValue(elementType, out handler)) {
                             return handler;
                         }
@@ -467,9 +467,11 @@ namespace Npgsql
                     return this[NpgsqlDbType.Array | handler.NpgsqlDbType];
                 }
 
+                var typeInfo = type.GetTypeInfo();
+
                 if (typeof(IList).IsAssignableFrom(type))
                 {
-                    if (type.IsGenericType)
+                    if (typeInfo.IsGenericType)
                     {
                         if (!_byType.TryGetValue(type.GetGenericArguments()[0], out handler)) {
                             throw new NotSupportedException("This .NET type is not supported in Npgsql or your PostgreSQL: " + type);
@@ -479,11 +481,11 @@ namespace Npgsql
                     throw new NotSupportedException("Non-generic IList is a supported parameter, but the NpgsqlDbType parameter must be set on the parameter");
                 }
 
-                if (type.IsEnum) {
+                if (typeInfo.IsEnum) {
                     throw new Exception("Enums must be registered with Npgsql via Connection.RegisterEnumType or RegisterEnumTypeGlobally");
                 }
 
-                if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(NpgsqlRange<>))
+                if (typeInfo.IsGenericType && type.GetGenericTypeDefinition() == typeof(NpgsqlRange<>))
                 {
                     if (!_byType.TryGetValue(type.GetGenericArguments()[0], out handler)) {
                         throw new NotSupportedException("This .NET range type is not supported in your PostgreSQL: " + type);
@@ -515,11 +517,13 @@ namespace Npgsql
                 return NpgsqlDbType.Array | ToNpgsqlDbType(type.GetElementType());
             }
 
-            if (type.IsEnum) {
+            var typeInfo = type.GetTypeInfo();
+
+            if (typeInfo.IsEnum) {
                 return NpgsqlDbType.Enum;
             }
 
-            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(NpgsqlRange<>)) {
+            if (typeInfo.IsGenericType && type.GetGenericTypeDefinition() == typeof(NpgsqlRange<>)) {
                 return NpgsqlDbType.Range | ToNpgsqlDbType(type.GetGenericArguments()[0]);
             }
 

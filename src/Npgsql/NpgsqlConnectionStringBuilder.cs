@@ -14,7 +14,7 @@ namespace Npgsql
     /// Provides a simple way to create and manage the contents of connection strings used by
     /// the <see cref="NpgsqlConnection"/> class.
     /// </summary>
-    public sealed class NpgsqlConnectionStringBuilder : DbConnectionStringBuilder, ICloneable
+    public sealed class NpgsqlConnectionStringBuilder : DbConnectionStringBuilder
     {
         #region Fields
 
@@ -953,12 +953,7 @@ namespace Npgsql
 
         #region Misc
 
-        object ICloneable.Clone()
-        {
-            return Clone();
-        }
-
-        public NpgsqlConnectionStringBuilder Clone()
+        internal NpgsqlConnectionStringBuilder Clone()
         {
             return new NpgsqlConnectionStringBuilder(ConnectionString);
         }

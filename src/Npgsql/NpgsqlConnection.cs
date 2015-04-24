@@ -33,6 +33,7 @@ using System.Data.Common;
 using System.Diagnostics.Contracts;
 using System.IO;
 using System.Net.Security;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 #if !DNXCORE50
@@ -53,7 +54,7 @@ namespace Npgsql
     public sealed class NpgsqlConnection : DbConnection
 #else
     [System.ComponentModel.DesignerCategory("")]
-    public sealed class NpgsqlConnection : DbConnection, ICloneable
+    public sealed class NpgsqlConnection : DbConnection
 #endif
     {
         #region Fields
@@ -632,8 +633,10 @@ namespace Npgsql
             Log.Trace("Really closing connection", Connector.Id);
             _postponingClose = false;
 
+#if !DNXCORE50
             // clear the way for another promotable transaction
             _promotable = null;
+#endif
 
             Connector.Notification -= NotificationDelegate;
             Connector.Notice -= NoticeDelegate;
@@ -1041,7 +1044,7 @@ namespace Npgsql
         /// <typeparam name="TEnum">The .NET enum type to be registered</typeparam>
         public void RegisterEnum<TEnum>(string pgName = null) where TEnum : struct
         {
-            if (!typeof(TEnum).IsEnum)
+            if (!typeof(TEnum).GetTypeInfo().IsEnum)
                 throw new ArgumentException("An enum type must be provided");
             if (pgName != null && pgName.Trim() == "")
                 throw new ArgumentException("pgName can't be empty", "pgName");
@@ -1070,7 +1073,7 @@ namespace Npgsql
         /// <typeparam name="TEnum">The .NET enum type to be associated</typeparam>
         public static void RegisterEnumGlobally<TEnum>(string pgName = null) where TEnum : struct
         {
-            if (!typeof(TEnum).IsEnum)
+            if (!typeof(TEnum).GetTypeInfo().IsEnum)
                 throw new ArgumentException("An enum type must be provided");
             if (pgName != null && pgName.Trim() == "")
                 throw new ArgumentException("pgName can't be empty", "pgName");
@@ -1247,36 +1250,6 @@ namespace Npgsql
             _connectionString = null;
 
             Open();
-        }
-
-#if !DNXCORE50
-        /// <summary>
-        /// Create a new connection based on this one.
-        /// </summary>
-        /// <returns>A new NpgsqlConnection object.</returns>
-        Object ICloneable.Clone()
-        {
-            return Clone();
-        }
-#endif
-
-        /// <summary>
-        /// Create a new connection based on this one.
-        /// </summary>
-        /// <returns>A new NpgsqlConnection object.</returns>
-        public NpgsqlConnection Clone()
-        {
-            CheckNotDisposed();
-
-            var clone = new NpgsqlConnection(ConnectionString);
-            clone.Notice += Notice;
-
-            if (Connector != null)
-            {
-                clone.Open();
-            }
-
-            return clone;
         }
 
 #if !DNXCORE50

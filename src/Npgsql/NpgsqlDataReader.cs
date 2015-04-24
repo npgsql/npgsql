@@ -7,6 +7,7 @@ using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
@@ -1407,8 +1408,10 @@ namespace Npgsql
 
             var lookup = new KeyLookup();
 
-            using (var metadataConn = _connection.Clone())
+            using (var metadataConn = new NpgsqlConnection(_connection.ConnectionString))
             {
+                metadataConn.Open();
+
                 using (var c = new NpgsqlCommand(getKeys, metadataConn))
                 {
                     c.Parameters.Add(new NpgsqlParameter("tableOid", NpgsqlDbType.Integer)).Value = tableOid;
@@ -1497,8 +1500,10 @@ namespace Npgsql
             string commandText = string.Concat("SELECT current_database(), nc.nspname, c.relname, c.oid FROM pg_namespace nc, pg_class c WHERE c.relnamespace = nc.oid AND (c.relkind = 'r' OR c.relkind = 'v') AND c.oid IN (",
                 string.Join(",", oids), ")");
 
-            using (var connection = _connection.Clone())
+            using (var connection = new NpgsqlConnection(_connection.ConnectionString))
             {
+                connection.Open();
+
                 using (var command = new NpgsqlCommand(commandText, connection))
                 {
                     using (var reader = command.ExecuteReader(CommandBehavior.SequentialAccess | CommandBehavior.SingleResult))
@@ -1567,8 +1572,9 @@ WHERE a.attnum > 0
         OR has_column_privilege(c.oid, a.attnum, 'SELECT, INSERT, UPDATE, REFERENCES'))
     AND ({0})", columnsFilter);
 
-            using (var connection = _connection.Clone())
+            using (var connection = new NpgsqlConnection(_connection.ConnectionString))
             {
+                connection.Open();
                 using (var command = new NpgsqlCommand(query, connection))
                 {
                     using (var reader = command.ExecuteReader(CommandBehavior.SequentialAccess | CommandBehavior.SingleResult))

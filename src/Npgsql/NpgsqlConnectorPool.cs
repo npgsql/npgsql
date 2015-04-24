@@ -31,9 +31,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics.Contracts;
 using System.Threading;
-using System.Timers;
 using Npgsql.Logging;
-using Timer = System.Timers.Timer;
 
 namespace Npgsql
 {
@@ -79,20 +77,18 @@ namespace Npgsql
         {
             PooledConnectors = new Dictionary<string, ConnectorQueue>();
 
-            Timer = new Timer(1000);
-            Timer.AutoReset = false;
-            Timer.Elapsed += new ElapsedEventHandler(TimerElapsedHandler);
+            _timer = new Timer(TimerElapsedHandler, null, Timeout.Infinite, Timeout.Infinite);
         }
 
         private void StartTimer()
         {
             lock (locker)
             {
-                Timer.Start();
+                _timer.Change(TimerInterval, Timeout.Infinite);
             }
         }
 
-        private void TimerElapsedHandler(object sender, ElapsedEventArgs e)
+        private void TimerElapsedHandler(object sender)
         {
             NpgsqlConnector Connector;
             var activeConnectionsExist = false;
@@ -150,9 +146,7 @@ namespace Npgsql
                 finally
                 {
                     if (activeConnectionsExist)
-                        Timer.Start();
-                    else
-                        Timer.Stop();
+                        _timer.Change(TimerInterval, Timeout.Infinite);
                 }
             }
         }
@@ -163,10 +157,9 @@ namespace Npgsql
         /// This key will hold a list of queues of pooled connectors available to be used.</remarks>
         private readonly Dictionary<string, ConnectorQueue> PooledConnectors;
 
-        /// <value>Timer for tracking unused connections in pools.</value>
-        // I used System.Timers.Timer because of bad experience with System.Threading.Timer
-        // on Windows - it's going mad sometimes and don't respect interval was set.
-        private Timer Timer;
+        readonly Timer _timer;
+
+        const int TimerInterval = 1000;
 
         /// <summary>
         /// Searches the pooled connector lists for a matching connector object or creates a new one.

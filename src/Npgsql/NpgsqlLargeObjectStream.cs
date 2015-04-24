@@ -257,8 +257,11 @@ namespace Npgsql
         /// <summary>
         /// Releases resources at the backend allocated for this stream.
         /// </summary>
-        [GenerateAsync]
+#if DNXCORE50
+        void Close()
+#else
         public override void Close()
+#endif
         {
             if (!_disposed)
             {

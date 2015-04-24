@@ -240,7 +240,7 @@ namespace Npgsql
             _userAction = new UserAction(this);
 
             if (KeepAlive > 0) {
-                _keepAliveTimer = new Timer(PerformKeepAlive);
+                _keepAliveTimer = new Timer(PerformKeepAlive, null, Timeout.Infinite, Timeout.Infinite);
             }
         }
 
@@ -519,21 +519,21 @@ namespace Npgsql
             {
                 if (_stream != null)
                 {
-                    try { _stream.Close(); } catch {
+                    try { _stream.Dispose(); } catch {
                         // ignored
                     }
                     _stream = null;
                 }
                 if (_baseStream != null)
                 {
-                    try { _baseStream.Close(); } catch {
+                    try { _baseStream.Dispose(); } catch {
                         // ignored
                     }
                     _baseStream = null;
                 }
                 if (_socket != null)
                 {
-                    try { _socket.Close(); } catch {
+                    try { _socket.Dispose(); } catch {
                         // ignored
                     }
                     _socket = null;
@@ -1309,7 +1309,7 @@ namespace Npgsql
         /// </summary>
         void Cleanup()
         {
-            try { if (_stream != null) _stream.Close(); } catch {
+            try { if (_stream != null) _stream.Dispose(); } catch {
                 // ignored
             }
 
