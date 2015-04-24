@@ -15,6 +15,10 @@ namespace Npgsql.EntityFramework7.Query
     {
         protected override string ConcatOperator => "||";
 
+        protected override string TrueLiteral => "TRUE";
+
+        protected override string FalseLiteral => "FALSE";
+
         protected override string DelimitIdentifier(string identifier)
         {
             return "\"" + identifier.Replace("\"", "\"\"") + "\"";
