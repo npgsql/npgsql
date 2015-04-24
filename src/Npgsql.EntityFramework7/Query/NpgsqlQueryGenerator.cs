@@ -66,5 +66,28 @@ namespace Npgsql.EntityFramework7.Query
 
             return countExpression;
         }
+
+        public override Expression VisitSumExpression(SumExpression sumExpression)
+        {
+            base.VisitSumExpression(sumExpression);
+
+            // In PostgreSQL SUM() doesn't return the same type as its argument for smallint, int and bigint.
+            // Cast to get the same type.
+            // http://www.postgresql.org/docs/current/static/functions-aggregate.html
+            switch (Type.GetTypeCode(sumExpression.Expression.Type))
+            {
+                case TypeCode.Int16:
+                    Sql.Append("::INT2");
+                    break;
+                case TypeCode.Int32:
+                    Sql.Append("::INT4");
+                    break;
+                case TypeCode.Int64:
+                    Sql.Append("::INT8");
+                    break;
+            }
+
+            return sumExpression;
+        }
     }
 }
