@@ -13,7 +13,7 @@ namespace Npgsql.EntityFramework7.FunctionalTests
         {
         }
 
-        [Fact(Skip = "Fails because of https://github.com/xunit/xunit/pull/383")]
+        [Fact]
         public override void Multiple_entities_can_revert()
         { }
     }
