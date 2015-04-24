@@ -13,6 +13,8 @@ namespace Npgsql.EntityFramework7.Query
 {
     public class NpgsqlQueryGenerator : DefaultSqlQueryGenerator
     {
+        protected override string ConcatOperator => "||";
+
         protected override string DelimitIdentifier(string identifier)
         {
             return "\"" + identifier.Replace("\"", "\"\"") + "\"";
