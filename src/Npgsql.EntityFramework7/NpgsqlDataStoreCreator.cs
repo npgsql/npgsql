@@ -40,7 +40,6 @@ namespace Npgsql.EntityFramework7
 
         public override void Create()
         {
-            Console.WriteLine("CREATE " + );
             using (var masterConnection = _connection.CreateMasterConnection())
             {
                 _statementExecutor.ExecuteNonQuery(masterConnection, null, CreateCreateOperations());
