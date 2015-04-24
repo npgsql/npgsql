@@ -10,33 +10,33 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		global.json = global.json
 	EndProjectSection
 EndProject
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Npgsql", "src\Npgsql\Npgsql.kproj", "{9D13B739-62B1-4190-B386-7A9547304EB3}"
+Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Npgsql", "src\Npgsql\Npgsql.xproj", "{9D13B739-62B1-4190-B386-7A9547304EB3}"
 EndProject
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Npgsql.EntityFramework7", "src\Npgsql.EntityFramework7\Npgsql.EntityFramework7.kproj", "{8FD04E24-CDDF-41CA-940D-2021BD62FB87}"
+Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Npgsql.EntityFramework7", "src\Npgsql.EntityFramework7\Npgsql.EntityFramework7.xproj", "{8FD04E24-CDDF-41CA-940D-2021BD62FB87}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{802E669C-6885-4E60-9CFB-8CFB47EAF16A}"
 EndProject
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Npgsql.Tests", "test\Npgsql.Tests\Npgsql.Tests.kproj", "{E9C258D7-0D8E-4E6A-9857-5C6438591755}"
+Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Npgsql.Tests", "test\Npgsql.Tests\Npgsql.Tests.xproj", "{E9C258D7-0D8E-4E6A-9857-5C6438591755}"
 EndProject
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Npgsql.EntityFramework7.FunctionalTests", "test\Npgsql.EntityFramework7.FunctionalTests\Npgsql.EntityFramework7.FunctionalTests.kproj", "{57133FED-98D5-4A73-8D88-779A19214A68}"
+Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Npgsql.EntityFramework7.FunctionalTests", "test\Npgsql.EntityFramework7.FunctionalTests\Npgsql.EntityFramework7.FunctionalTests.xproj", "{57133FED-98D5-4A73-8D88-779A19214A68}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "external", "external", "{ECB857E9-81EB-4B59-8D43-A31A89C510E1}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "EntityFramework", "EntityFramework", "{6CD208A1-CE9F-43D6-A6F6-C4965D5D6D9E}"
 EndProject
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "EntityFramework.Relational.FunctionalTests", "external\EntityFramework\test\EntityFramework.Relational.FunctionalTests\EntityFramework.Relational.FunctionalTests.kproj", "{37E904FD-F53B-4124-9FF3-82CF63218039}"
+Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "EntityFramework.Relational.FunctionalTests", "external\EntityFramework\test\EntityFramework.Relational.FunctionalTests\EntityFramework.Relational.FunctionalTests.xproj", "{37E904FD-F53B-4124-9FF3-82CF63218039}"
 EndProject
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "EntityFramework.Core.Tests", "external\EntityFramework\test\EntityFramework.Core.Tests\EntityFramework.Core.Tests.kproj", "{90F12E2E-B572-4092-98EC-3700DCFDA2E5}"
+Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "EntityFramework.Core.Tests", "external\EntityFramework\test\EntityFramework.Core.Tests\EntityFramework.Core.Tests.xproj", "{90F12E2E-B572-4092-98EC-3700DCFDA2E5}"
 EndProject
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "EntityFramework.Core.FunctionalTests", "external\EntityFramework\test\EntityFramework.Core.FunctionalTests\EntityFramework.Core.FunctionalTests.kproj", "{14F10214-5218-46E1-8A33-FF39DABDC238}"
+Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "EntityFramework.Core.FunctionalTests", "external\EntityFramework\test\EntityFramework.Core.FunctionalTests\EntityFramework.Core.FunctionalTests.xproj", "{14F10214-5218-46E1-8A33-FF39DABDC238}"
 EndProject
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "EntityFramework.Relational", "external\EntityFramework\src\EntityFramework.Relational\EntityFramework.Relational.kproj", "{ED4C27F3-A2F3-4727-A6FD-C1EC4207B077}"
+Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "EntityFramework.Relational", "external\EntityFramework\src\EntityFramework.Relational\EntityFramework.Relational.xproj", "{ED4C27F3-A2F3-4727-A6FD-C1EC4207B077}"
 EndProject
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "EntityFramework.InMemory", "external\EntityFramework\src\EntityFramework.InMemory\EntityFramework.InMemory.kproj", "{A49D37AE-6CD1-41AE-82E7-6AB88DD1D768}"
+Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "EntityFramework.InMemory", "external\EntityFramework\src\EntityFramework.InMemory\EntityFramework.InMemory.xproj", "{A49D37AE-6CD1-41AE-82E7-6AB88DD1D768}"
 EndProject
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "EntityFramework.Core", "external\EntityFramework\src\EntityFramework.Core\EntityFramework.Core.kproj", "{46346D05-9EC1-409C-ACC9-A6BF565892C3}"
+Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "EntityFramework.Core", "external\EntityFramework\src\EntityFramework.Core\EntityFramework.Core.xproj", "{46346D05-9EC1-409C-ACC9-A6BF565892C3}"
 EndProject
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "EntityFramework.SqlServer", "external\EntityFramework\src\EntityFramework.SqlServer\EntityFramework.SqlServer.kproj", "{89E526E1-B9AF-4943-B332-881290087918}"
+Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "EntityFramework.SqlServer", "external\EntityFramework\src\EntityFramework.SqlServer\EntityFramework.SqlServer.xproj", "{89E526E1-B9AF-4943-B332-881290087918}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
