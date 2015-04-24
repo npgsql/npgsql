@@ -14,11 +14,11 @@ using Npgsql;
 
 namespace Npgsql.EntityFramework7
 {
-    public class NpgsqlEFConnection : RelationalConnection, INpgsqlEFConnection
+    public class NpgsqlRelationalConnection : RelationalConnection, INpgsqlEFConnection
     {
         private readonly ILoggerFactory _loggerFactory;
 
-        public NpgsqlEFConnection([NotNull] IDbContextOptions options, [NotNull] ILoggerFactory loggerFactory)
+        public NpgsqlRelationalConnection([NotNull] IDbContextOptions options, [NotNull] ILoggerFactory loggerFactory)
             : base(options, loggerFactory)
         {
             Check.NotNull(loggerFactory, nameof(loggerFactory));
@@ -38,7 +38,7 @@ namespace Npgsql.EntityFramework7
             var optionsBuilder = new DbContextOptionsBuilder();
             optionsBuilder.UseNpgsql(builder.ConnectionString).CommandTimeout(CommandTimeout);
 
-            return new NpgsqlEFConnection(optionsBuilder.Options, _loggerFactory);
+            return new NpgsqlRelationalConnection(optionsBuilder.Options, _loggerFactory);
         }
     }
 }
