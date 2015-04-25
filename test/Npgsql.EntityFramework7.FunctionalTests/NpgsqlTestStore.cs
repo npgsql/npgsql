@@ -424,15 +424,15 @@ namespace Npgsql.EntityFramework7.FunctionalTests
             }
         }
 
+        const string DefaultConnectionString = "Server=localhost;User ID=npgsql_tests;Password=npgsql_tests";
+
         public static string CreateConnectionString(string name)
         {
-            return new NpgsqlConnectionStringBuilder
-            {
-                Host="localhost",
-                Username="npgsql_tests",
-                Password="npgsql_tests",
-                Database=name,
-            }.ConnectionString;
+            // TODO: Clean all this up, unify with NpgsqlTests.TestBase somehow
+            // Temporary hack to get tests running on the build server
+            var csb = new NpgsqlConnectionStringBuilder(Environment.GetEnvironmentVariable("NPGSQL_TEST_DB_9.4") ?? DefaultConnectionString);
+            csb.Database = name;
+            return csb.ConnectionString;
         }
 
         static string CreateAdminConnectionString()
