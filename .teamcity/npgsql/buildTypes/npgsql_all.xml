@@ -68,12 +68,6 @@ Npgsql.EntityFramework/Npgsql.EntityFrameworkLegacy.nuspec]]></param>
       </dependency>
     </artifact-dependencies>
     <dependencies>
-      <depend-on sourceBuildTypeId="npgsql_net40">
-        <options>
-          <option name="take-started-build-with-same-revisions" value="true" />
-          <option name="take-successful-builds-only" value="true" />
-        </options>
-      </depend-on>
       <depend-on sourceBuildTypeId="npgsql_net45">
         <options>
           <option name="take-started-build-with-same-revisions" value="true" />
