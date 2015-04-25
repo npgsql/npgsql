@@ -58,43 +58,37 @@ Npgsql.EntityFramework/Npgsql.EntityFrameworkLegacy.nuspec]]></param>
       </extension>
     </build-extensions>
     <artifact-dependencies>
-      <dependency sourceBuildTypeId="npgsql_net20" cleanDestination="false">
+      <dependency sourceBuildTypeId="npgsql_net20_2_2" cleanDestination="false">
         <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
         <artifact sourcePath="**" />
       </dependency>
-      <dependency sourceBuildTypeId="npgsql_net35" cleanDestination="false">
+      <dependency sourceBuildTypeId="npgsql_net35_2_2" cleanDestination="false">
         <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
         <artifact sourcePath="**" />
       </dependency>
-      <dependency sourceBuildTypeId="npgsql_net40" cleanDestination="false">
+      <dependency sourceBuildTypeId="npgsql_net40_2_2" cleanDestination="false">
         <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
         <artifact sourcePath="**" />
       </dependency>
-      <dependency sourceBuildTypeId="npgsql_net45" cleanDestination="false">
+      <dependency sourceBuildTypeId="npgsql_Net45_2_2" cleanDestination="false">
         <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
         <artifact sourcePath="**" />
       </dependency>
     </artifact-dependencies>
     <dependencies>
-      <depend-on sourceBuildTypeId="npgsql_net20">
+      <depend-on sourceBuildTypeId="npgsql_net20_2_2">
         <options>
           <option name="take-started-build-with-same-revisions" value="true" />
           <option name="take-successful-builds-only" value="true" />
         </options>
       </depend-on>
-      <depend-on sourceBuildTypeId="npgsql_net35">
+      <depend-on sourceBuildTypeId="npgsql_net35_2_2">
         <options>
           <option name="take-started-build-with-same-revisions" value="true" />
           <option name="take-successful-builds-only" value="true" />
         </options>
       </depend-on>
-      <depend-on sourceBuildTypeId="npgsql_net40">
-        <options>
-          <option name="take-started-build-with-same-revisions" value="true" />
-          <option name="take-successful-builds-only" value="true" />
-        </options>
-      </depend-on>
-      <depend-on sourceBuildTypeId="npgsql_net45">
+      <depend-on sourceBuildTypeId="npgsql_net40_2_2">
         <options>
           <option name="take-started-build-with-same-revisions" value="true" />
           <option name="take-successful-builds-only" value="true" />
@@ -102,6 +96,13 @@ Npgsql.EntityFramework/Npgsql.EntityFrameworkLegacy.nuspec]]></param>
       </depend-on>
       <depend-on sourceBuildTypeId="npgsql_mono45">
         <options>
+          <option name="take-started-build-with-same-revisions" value="true" />
+          <option name="take-successful-builds-only" value="true" />
+        </options>
+      </depend-on>
+      <depend-on sourceBuildTypeId="npgsql_Net45_2_2">
+        <options>
+          <option name="run-build-if-dependency-failed" value="RUN_ADD_PROBLEM" />
           <option name="take-started-build-with-same-revisions" value="true" />
           <option name="take-successful-builds-only" value="true" />
         </options>

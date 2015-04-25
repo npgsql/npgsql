@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <build-type xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="f00fa273-f922-4b8b-b976-24cdac8cc9b4" xsi:noNamespaceSchemaLocation="http://www.jetbrains.com/teamcity/schemas/9.0/project-config.xsd">
-  <name>.NET 4.0</name>
-  <description>Npgsql targetting.NET 4.0</description>
+  <name>.NET 4.0 (2.2)</name>
+  <description>Npgsql 2.2 targeting .NET 4.0</description>
   <settings ref="npgsql_dotnet_build">
     <options>
       <option name="allowExternalStatus" value="true" />

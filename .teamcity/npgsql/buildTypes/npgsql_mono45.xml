@@ -6,6 +6,9 @@
     <options>
       <option name="allowExternalStatus" value="true" />
     </options>
+    <disabled-settings>
+      <setting-ref ref="RUNNER_5" />
+    </disabled-settings>
     <parameters>
       <param name="env.MSBuild" value="%MONO_PREFIX%\lib\mono\4.5" />
       <param name="env.NPGSQL_TEST_DB" value="Server=localhost;port=5493;User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;syncnotification=false" />

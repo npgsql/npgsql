@@ -5,7 +5,7 @@
   <settings>
     <options>
       <option name="allowExternalStatus" value="true" />
-      <option name="artifactRules" value="LICENSE.txt =&gt; Npgsql-net40.zip&#xA;README.* =&gt; Npgsql-net40.zip&#xA;LICENSE.txt =&gt; Npgsql-net45.zip&#xA;README.* =&gt; Npgsql-net45.zip&#xA;LICENSE.txt =&gt; Npgsql-net40.tar.gz&#xA;README.* =&gt; Npgsql-net40.tar.gz&#xA;LICENSE.txt =&gt; Npgsql-net45.tar.gz&#xA;README.* =&gt; Npgsql-net45.tar.gz&#xA;Npgsql/bin/Release-net40/** =&gt; Npgsql-net40.zip&#xA;Npgsql.EntityFramework/bin/Release-net40/Npgsql.EntityFramework* =&gt; Npgsql-net40.zip&#xA;Npgsql.EntityFramework/bin/Legacy-Release-net40/Npgsql.EntityFramework* =&gt; Npgsql-net40.zip&#xA;Npgsql/bin/Release-net45/** =&gt; Npgsql-net45.zip&#xA;Npgsql.EntityFramework/bin/Release-net45/Npgsql.EntityFramework* =&gt; Npgsql-net45.zip&#xA;Npgsql.EntityFramework/bin/Legacy-Release-net45/Npgsql.EntityFramework* =&gt; Npgsql-net45.zip&#xA;Npgsql/bin/Release-net40/** =&gt; Npgsql-net40.tar.gz&#xA;Npgsql.EntityFramework/bin/Release-net40/Npgsql.EntityFramework* =&gt; Npgsql-net40.tar.gz&#xA;Npgsql.EntityFramework/bin/Legacy-Release-net40/Npgsql.EntityFramework* =&gt; Npgsql-net40.tar.gz&#xA;Npgsql/bin/Release-net45/** =&gt; Npgsql-net45.tar.gz&#xA;Npgsql.EntityFramework/bin/Release-net45/Npgsql.EntityFramework* =&gt; Npgsql-net45.tar.gz&#xA;Npgsql.EntityFramework/bin/Legacy-Release-net45/Npgsql.EntityFramework* =&gt; Npgsql-net45.tar.gz&#xA;NpgsqlDdexProvider/bin/Release/NpgsqlDdexProvider* =&gt; NpgsqlDdexProvider-VS2010.zip&#xA;NpgsqlDdexProvider/bin/Release-net45/NpgsqlDdexProvider* =&gt; NpgsqlDdexProvider-VS2013.zip&#xA;docs/api/** =&gt; docs.zip" />
+      <option name="artifactRules" value="LICENSE.txt =&gt; Npgsql-net40.zip&#xA;README.* =&gt; Npgsql-net40.zip&#xA;LICENSE.txt =&gt; Npgsql-net45.zip&#xA;README.* =&gt; Npgsql-net45.zip&#xA;LICENSE.txt =&gt; Npgsql-net40.tar.gz&#xA;README.* =&gt; Npgsql-net40.tar.gz&#xA;LICENSE.txt =&gt; Npgsql-net45.tar.gz&#xA;README.* =&gt; Npgsql-net45.tar.gz&#xA;src/Npgsql/bin/Release-net40/** =&gt; Npgsql-net40.zip&#xA;src/Npgsql.EntityFramework/bin/Release-net40/Npgsql.EntityFramework* =&gt; Npgsql-net40.zip&#xA;src/Npgsql.EntityFramework/bin/Legacy-Release-net40/Npgsql.EntityFramework* =&gt; Npgsql-net40.zip&#xA;src/Npgsql/bin/Release-net45/** =&gt; Npgsql-net45.zip&#xA;src/Npgsql.EntityFramework/bin/Release-net45/Npgsql.EntityFramework* =&gt; Npgsql-net45.zip&#xA;src/Npgsql.EntityFramework/bin/Legacy-Release-net45/Npgsql.EntityFramework* =&gt; Npgsql-net45.zip&#xA;src/Npgsql/bin/Release-net40/** =&gt; Npgsql-net40.tar.gz&#xA;src/Npgsql.EntityFramework/bin/Release-net40/Npgsql.EntityFramework* =&gt; Npgsql-net40.tar.gz&#xA;src/Npgsql.EntityFramework/bin/Legacy-Release-net40/Npgsql.EntityFramework* =&gt; Npgsql-net40.tar.gz&#xA;src/Npgsql/bin/Release-net45/** =&gt; Npgsql-net45.tar.gz&#xA;src/Npgsql.EntityFramework/bin/Release-net45/Npgsql.EntityFramework* =&gt; Npgsql-net45.tar.gz&#xA;src/Npgsql.EntityFramework/bin/Legacy-Release-net45/Npgsql.EntityFramework* =&gt; Npgsql-net45.tar.gz&#xA;src/NpgsqlDdexProvider/bin/Release/NpgsqlDdexProvider* =&gt; NpgsqlDdexProvider-VS2010.zip&#xA;src/NpgsqlDdexProvider/bin/Release-net45/NpgsqlDdexProvider* =&gt; NpgsqlDdexProvider-VS2013.zip&#xA;src/Npgsql.EntityFramework7/bin/Release/*.nupkg&#xA;docs/api/** =&gt; docs.zip" />
     </options>
     <disabled-settings>
       <setting-ref ref="RUNNER_3" />
@@ -27,6 +27,15 @@ src\Npgsql.EntityFramework\Npgsql.EntityFrameworkLegacy.nuspec]]></param>
           <param name="nugetCustomPath" value="?NuGet.CommandLine.DEFAULT.nupkg" />
           <param name="nugetPathSelector" value="?NuGet.CommandLine.DEFAULT.nupkg" />
           <param name="teamcity.step.mode" value="default" />
+        </parameters>
+      </runner>
+      <runner id="RUNNER_13" name="NuGet Pack EF7" type="simpleRunner">
+        <parameters>
+          <param name="script.content"><![CDATA[set path=%%path%%;C:\Windows\System32\WindowsPowerShell\v1.0
+c:\users\teamcity_agent\.dnx\bin\dnvm.cmd exec default dnu pack --configuration Release]]></param>
+          <param name="teamcity.build.workingDir" value="src/Npgsql.EntityFramework7" />
+          <param name="teamcity.step.mode" value="default" />
+          <param name="use.custom.script" value="true" />
         </parameters>
       </runner>
       <runner id="RUNNER_3" name="Generate documentation" type="simpleRunner">
