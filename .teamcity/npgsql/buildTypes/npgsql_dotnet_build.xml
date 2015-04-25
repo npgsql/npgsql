@@ -61,6 +61,7 @@
           <param name="dotNetCoverage.PartCover.platformBitness" value="x86" />
           <param name="dotNetCoverage.PartCover.platformVersion" value="v2.0" />
           <param name="dotNetTestRunner.Type" value="NUnit" />
+          <param name="nunit_categery_exclude" value="TodoFor3.0" />
           <param name="nunit_enabled" value="checked" />
           <param name="nunit_environment" value="v4.0" />
           <param name="nunit_include" value="tests/bin/%system.Configuration%/*Tests.dll" />
