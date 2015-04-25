@@ -25,9 +25,6 @@
     </dependencies>
   </metadata>
   <files>
-    <file src="bin\Release-net40\**\*.dll" target="lib\net40" exclude="**\policy.*" />
-    <file src="bin\Release-net40\*.pdb" target="lib\net40"/>
-    <file src="bin\Release-net40\*.xml" target="lib\net40"/>
     <file src="bin\Release-net45\**\*.dll" target="lib\net45" exclude="**\policy.*" />
     <file src="bin\Release-net45\*.pdb" target="lib\net45"/>
     <file src="bin\Release-net45\*.xml" target="lib\net45"/>

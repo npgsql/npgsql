@@ -21,9 +21,6 @@
     </dependencies>
   </metadata>
   <files>
-    <file src="bin\Release-net40\Npgsql.EntityFramework.dll" target="lib\net40"/>
-    <file src="bin\Release-net40\Npgsql.EntityFramework.pdb" target="lib\net40"/>
-    <file src="bin\Release-net40\Npgsql.EntityFramework.xml" target="lib\net40"/>
     <file src="bin\Release-net45\Npgsql.EntityFramework.dll" target="lib\net45"/>
     <file src="bin\Release-net45\Npgsql.EntityFramework.pdb" target="lib\net45"/>
     <file src="bin\Release-net45\Npgsql.EntityFramework.xml" target="lib\net45"/>
