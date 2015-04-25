@@ -58,10 +58,6 @@ Npgsql.EntityFramework/Npgsql.EntityFrameworkLegacy.nuspec]]></param>
       </extension>
     </build-extensions>
     <artifact-dependencies>
-      <dependency sourceBuildTypeId="npgsql_net40" cleanDestination="false">
-        <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
-        <artifact sourcePath="**" />
-      </dependency>
       <dependency sourceBuildTypeId="npgsql_net45" cleanDestination="false">
         <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
         <artifact sourcePath="**" />
