@@ -3,19 +3,19 @@
   <metadata xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
     <id>Npgsql.EntityFramework</id>
     <title>Npgsql for Entity Framework</title>
-    <version>3.0.0-beta1</version>
+    <version>3.0.0-alpha</version>
     <authors>Francisco Figueiredo Jr., Josh Cooley, Dave Page, Jon Asher, Brar Piening, Chris Morgan, Hiroshi Saito, Jon Hanna, Federico Di Gregorio, Glen Parker, Shay Rojansky</authors>
     <owners>Francisco Figueiredo Jr., Josh Cooley, Shay Rojansky</owners>
     <licenseUrl>https://github.com/npgsql/Npgsql/wiki/License</licenseUrl>
     <projectUrl>https://github.com/npgsql/Npgsql</projectUrl>
     <copyright>Copyright 2002 - 2014 Npgsql Development Team</copyright>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
-    <description>Postgresql provider for Entity Framework 6 and above</description>
-    <summary>Postgresql provider for Entity Framework 6 and above</summary>
+    <description>PostgreSQL provider for Entity Framework 6 and above</description>
+    <summary>PostgreSQL provider for Entity Framework 6 and above</summary>
     <language>en-US</language>
     <tags>Npgsql postgres data database Postgresql entity framework ef</tags>
     <dependencies>
-      <dependency id="Npgsql" version="[3.0.0-beta1]" />
+      <dependency id="Npgsql" version="[3.0.0-alpha]" />
       <dependency id="EntityFramework" version="6.0.0" />
       <dependency id="Common.Logging" version="2.2.0" />
     </dependencies>

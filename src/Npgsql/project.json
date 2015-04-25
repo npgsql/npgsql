@@ -1,5 +1,19 @@
 ﻿{
     "version": "3.0.0-alpha-*",
+    "authors": [
+      "Francisco Figueiredo Jr.",
+      "Josh Cooley",
+      "Dave Page",
+      "Jon Asher",
+      "Brar Piening",
+      "Chris Morgan",
+      "Hiroshi Saito",
+      "Jon Hanna",
+      "Federico Di Gregorio",
+      "Glen Parker",
+      "Shay Rojansky"
+    ],
+    "description" : "Npgsql is a .NET data provider for PostgreSQL, 100% implemented in C# code. PostgreSQL 9.x and above is officially supported, other versions may work.",
     "compilationOptions": {
       "define": [ "KPROJ" ]
     },
