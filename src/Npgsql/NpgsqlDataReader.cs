@@ -1559,15 +1559,15 @@ namespace Npgsql
             // the column index is used to find data.
             // any changes to the order of the columns needs to be reflected in struct Columns
             var query = string.Format(@"SELECT a.attname AS column_name, a.attnotnull AS column_notnull, a.attrelid AS table_id, a.attnum AS column_num, ad.adsrc as column_default
-, CAST(CASE WHEN c.relkind = 'r' OR
-                          (c.relkind IN ('v', 'f') AND
-                           pg_column_is_updatable(c.oid, a.attnum, false))
-                THEN 1 ELSE 0 END AS bit) AS is_updatable
+, CAST(CASE WHEN i.is_updatable = 'YES'
+       THEN 1 ELSE 0 END AS bit) AS is_updatable
 FROM (pg_attribute a LEFT JOIN pg_attrdef ad ON attrelid = adrelid AND attnum = adnum)
 JOIN (pg_class c JOIN pg_namespace nc ON (c.relnamespace = nc.oid)) ON a.attrelid = c.oid
+JOIN information_schema.columns i ON i.table_schema = nc.nspname
+    AND i.table_name = c.relname AND i.column_name = a.attname
 WHERE a.attnum > 0
-	AND NOT a.attisdropped
-	AND c.relkind in ('r', 'v', 'f')
+    AND NOT a.attisdropped
+    AND c.relkind in ('r', 'v', 'f')
     AND (pg_has_role(c.relowner, 'USAGE')
         OR has_column_privilege(c.oid, a.attnum, 'SELECT, INSERT, UPDATE, REFERENCES'))
     AND ({0})", columnsFilter);
