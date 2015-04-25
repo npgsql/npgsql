@@ -5,9 +5,9 @@ using Microsoft.Data.Entity.FunctionalTests;
 
 namespace Npgsql.EntityFramework7.FunctionalTests
 {
-    public class BuiltInDataTypesSqlServerTest : BuiltInDataTypesTestBase<NpgsqlTestStore, BuiltInDataTypesNpgsqlFixture>
+    public class BuiltInDataTypesNpgsqlTest : BuiltInDataTypesTestBase<NpgsqlTestStore, BuiltInDataTypesNpgsqlFixture>
     {
-        public BuiltInDataTypesSqlServerTest(BuiltInDataTypesNpgsqlFixture fixture)
+        public BuiltInDataTypesNpgsqlTest(BuiltInDataTypesNpgsqlFixture fixture)
             : base(fixture)
         {
         }
