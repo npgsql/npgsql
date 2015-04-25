@@ -12,30 +12,34 @@ namespace Npgsql.EntityFramework7
 {
     public class NpgsqlSequenceValueGenerator<TValue> : HiLoValueGenerator<TValue>
     {
-        private readonly SqlStatementExecutor _executor;
+        private readonly ISqlStatementExecutor _executor;
+        private readonly INpgsqlSqlGenerator _sqlGenerator;
         private readonly INpgsqlEFConnection _connection;
         private readonly string _sequenceName;
 
         public NpgsqlSequenceValueGenerator(
-            [NotNull] SqlStatementExecutor executor,
+            [NotNull] ISqlStatementExecutor executor,
+            [NotNull] INpgsqlSqlGenerator sqlGenerator,
             [NotNull] NpgsqlSequenceValueGeneratorState generatorState,
             [NotNull] INpgsqlEFConnection connection)
-            : base(generatorState)
+            : base(Check.NotNull(generatorState, nameof(generatorState)))
         {
             Check.NotNull(executor, nameof(executor));
-            Check.NotNull(generatorState, nameof(generatorState));
+            Check.NotNull(sqlGenerator, nameof(sqlGenerator));
             Check.NotNull(connection, nameof(connection));
 
             _sequenceName = generatorState.SequenceName;
             _executor = executor;
+            _sqlGenerator = sqlGenerator;
             _connection = connection;
         }
 
         protected override long GetNewLowValue()
         {
-            // TODO: Parameterize query and/or delimit identifier without using NpgsqlMigrationOperationSqlGenerator
-            var sql = string.Format(CultureInfo.InvariantCulture, "SELECT NEXT VALUE FOR {0}", _sequenceName);
-            var nextValue = _executor.ExecuteScalar(_connection, _connection.DbTransaction, sql);
+            var nextValue = _executor.ExecuteScalar(
+                _connection,
+                _connection.DbTransaction,
+                _sqlGenerator.GenerateNextSequenceValueOperation(_sequenceName));
 
             return (long)Convert.ChangeType(nextValue, typeof(long), CultureInfo.InvariantCulture);
         }

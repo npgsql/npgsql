@@ -17,14 +17,14 @@ namespace Microsoft.Data.Entity
         {
             Check.NotNull(database, nameof(database));
 
-            var sqlServerDatabase = database as NpgsqlDatabase;
+            var npgsqlDatabase = database as NpgsqlDatabase;
 
-            if (sqlServerDatabase == null)
+            if (npgsqlDatabase == null)
             {
                 throw new InvalidOperationException(Strings.NpgsqlNotInUse);
             }
 
-            return sqlServerDatabase;
+            return npgsqlDatabase;
         }
     }
 }

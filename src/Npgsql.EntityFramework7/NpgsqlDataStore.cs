@@ -24,10 +24,11 @@ namespace Npgsql.EntityFramework7
             [NotNull] IEntityKeyFactorySource entityKeyFactorySource,
             [NotNull] IEntityMaterializerSource entityMaterializerSource,
             [NotNull] INpgsqlEFConnection connection,
-            [NotNull] NpgsqlCommandBatchPreparer batchPreparer,
-            [NotNull] NpgsqlBatchExecutor batchExecutor,
+            [NotNull] INpgsqlCommandBatchPreparer batchPreparer,
+            [NotNull] INpgsqlBatchExecutor batchExecutor,
             [NotNull] IDbContextOptions options,
-            [NotNull] ILoggerFactory loggerFactory)
+            [NotNull] ILoggerFactory loggerFactory,
+            [NotNull] INpgsqlValueReaderFactoryFactory valueReaderFactoryFactory)
             : base(
                 Check.NotNull(model, nameof(model)),
                 Check.NotNull(entityKeyFactorySource, nameof(entityKeyFactorySource)),
@@ -36,7 +37,8 @@ namespace Npgsql.EntityFramework7
                 Check.NotNull(batchPreparer, nameof(batchPreparer)),
                 Check.NotNull(batchExecutor, nameof(batchExecutor)),
                 Check.NotNull(options, nameof(options)),
-                Check.NotNull(loggerFactory, nameof(loggerFactory)))
+                Check.NotNull(loggerFactory, nameof(loggerFactory)),
+                Check.NotNull(valueReaderFactoryFactory, nameof(valueReaderFactoryFactory)))
         {
         }
 
@@ -59,7 +61,8 @@ namespace Npgsql.EntityFramework7
                 EntityMaterializerSource,
                 EntityKeyFactorySource,
                 enumerableMethodProvider,
-                methodCallTranslator);
+                methodCallTranslator,
+                (INpgsqlValueReaderFactoryFactory)ValueReaderFactoryFactory);
         }
     }
 }

@@ -16,7 +16,7 @@ namespace Npgsql.EntityFramework7.Migrations
 {
     public class NpgsqlModelDiffer : ModelDiffer, INpgsqlModelDiffer
     {
-        public NpgsqlModelDiffer([NotNull] NpgsqlTypeMapper typeMapper)
+        public NpgsqlModelDiffer([NotNull] INpgsqlTypeMapper typeMapper)
             : base(typeMapper)
         {
         }

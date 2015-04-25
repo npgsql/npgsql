@@ -24,6 +24,11 @@ namespace Npgsql.EntityFramework7.Query
             return "\"" + identifier.Replace("\"", "\"\"") + "\"";
         }
 
+        public NpgsqlQueryGenerator([NotNull] SelectExpression selectExpression)
+            : base(Check.NotNull(selectExpression, nameof(selectExpression)))
+        {
+        }
+
         protected override void GenerateTop([NotNull]SelectExpression selectExpression)
         {
             // No TOP() in PostgreSQL, see GenerateLimitOffset

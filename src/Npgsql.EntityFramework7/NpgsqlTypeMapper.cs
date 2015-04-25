@@ -8,7 +8,7 @@ using Microsoft.Data.Entity.Relational;
 
 namespace Npgsql.EntityFramework7
 {
-    public class NpgsqlTypeMapper : RelationalTypeMapper
+    public class NpgsqlTypeMapper : RelationalTypeMapper, INpgsqlTypeMapper
     {
         // This dictionary is for invariant mappings from a sealed CLR type to a single
         // store type. If the CLR type is unsealed or if the mapping varies based on how the

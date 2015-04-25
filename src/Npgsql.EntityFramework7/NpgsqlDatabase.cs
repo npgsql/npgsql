@@ -15,7 +15,7 @@ namespace Npgsql.EntityFramework7
             [NotNull] DbContext context,
             [NotNull] INpgsqlDataStoreCreator dataStoreCreator,
             [NotNull] INpgsqlEFConnection connection,
-            [NotNull] Migrator migrator,
+            [NotNull] IMigrator migrator,
             [NotNull] ILoggerFactory loggerFactory)
             : base(context, dataStoreCreator, connection, migrator, loggerFactory)
         {

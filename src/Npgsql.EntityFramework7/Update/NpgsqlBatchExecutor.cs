@@ -9,19 +9,10 @@ using Microsoft.Framework.Logging;
 
 namespace Npgsql.EntityFramework7.Update
 {
-    public class NpgsqlBatchExecutor : BatchExecutor
+    public class NpgsqlBatchExecutor : BatchExecutor, INpgsqlBatchExecutor
     {
-        /// <summary>
-        ///     This constructor is intended only for use when creating test doubles that will override members
-        ///     with mocked or faked behavior. Use of this constructor for other purposes may result in unexpected
-        ///     behavior including but not limited to throwing <see cref="NullReferenceException" />.
-        /// </summary>
-        protected NpgsqlBatchExecutor()
-        {
-        }
-
         public NpgsqlBatchExecutor(
-            [NotNull] NpgsqlTypeMapper typeMapper,
+            [NotNull] INpgsqlTypeMapper typeMapper,
             [NotNull] DbContext context,
             [NotNull] ILoggerFactory loggerFactory)
             : base(typeMapper, context, loggerFactory)

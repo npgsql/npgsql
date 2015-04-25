@@ -29,18 +29,7 @@ namespace Npgsql.EntityFramework7.Update
     // handling
     public class NpgsqlModificationCommandBatch : ReaderModificationCommandBatch
     {
-        #region Constructors
-
-        /// <summary>
-        ///     This constructor is intended only for use when creating test doubles that will override members
-        ///     with mocked or faked behavior. Use of this constructor for other purposes may result in unexpected
-        ///     behavior including but not limited to throwing <see cref="NullReferenceException" />.
-        /// </summary>
-        protected NpgsqlModificationCommandBatch() { }
-
         public NpgsqlModificationCommandBatch([NotNull] INpgsqlSqlGenerator sqlGenerator) : base(sqlGenerator) { }
-
-        #endregion
 
         protected override bool CanAddCommand([NotNull] ModificationCommand modificationCommand)
         { return true; }
@@ -70,7 +59,7 @@ namespace Npgsql.EntityFramework7.Update
 
         public override int Execute(
             [NotNull] RelationalTransaction transaction,
-            [NotNull] RelationalTypeMapper typeMapper,
+            [NotNull] IRelationalTypeMapper typeMapper,
             [NotNull] DbContext context,
             [NotNull] ILogger logger)
         {
@@ -132,7 +121,7 @@ namespace Npgsql.EntityFramework7.Update
 
         public override Task<int> ExecuteAsync(
             [NotNull] RelationalTransaction transaction,
-            [NotNull] RelationalTypeMapper typeMapper,
+            [NotNull] IRelationalTypeMapper typeMapper,
             [NotNull] DbContext context,
             [NotNull] ILogger logger,
             CancellationToken cancellationToken = default(CancellationToken))

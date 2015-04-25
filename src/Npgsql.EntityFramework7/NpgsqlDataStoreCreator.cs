@@ -19,13 +19,13 @@ namespace Npgsql.EntityFramework7
         private readonly INpgsqlEFConnection _connection;
         private readonly INpgsqlModelDiffer _modelDiffer;
         private readonly INpgsqlMigrationSqlGenerator _sqlGenerator;
-        private readonly SqlStatementExecutor _statementExecutor;
+        private readonly ISqlStatementExecutor _statementExecutor;
 
         public NpgsqlDataStoreCreator(
             [NotNull] INpgsqlEFConnection connection,
             [NotNull] INpgsqlModelDiffer modelDiffer,
             [NotNull] INpgsqlMigrationSqlGenerator sqlGenerator,
-            [NotNull] SqlStatementExecutor statementExecutor)
+            [NotNull] ISqlStatementExecutor statementExecutor)
         {
             Check.NotNull(connection, nameof(connection));
             Check.NotNull(modelDiffer, nameof(modelDiffer));

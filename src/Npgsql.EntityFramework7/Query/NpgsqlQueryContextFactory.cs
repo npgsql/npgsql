@@ -20,10 +20,14 @@ namespace Npgsql.EntityFramework7.Query
             [NotNull] IClrAccessorSource<IClrPropertySetter> propertySetterSource,
             [NotNull] INpgsqlEFConnection connection,
             [NotNull] ILoggerFactory loggerFactory)
-            : base(stateManager, entityKeyFactorySource, collectionAccessorSource, propertySetterSource, connection, loggerFactory)
+            : base(
+                  stateManager,
+                  entityKeyFactorySource,
+                  collectionAccessorSource,
+                  propertySetterSource,
+                  connection,
+                  loggerFactory)
         {
         }
-
-        protected override RelationalValueReaderFactory ValueReaderFactory => new NpgsqlRelationalObjectArrayValueReaderFactory();
     }
 }

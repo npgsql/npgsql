@@ -14,7 +14,7 @@ namespace Npgsql.EntityFramework7
     public class NpgsqlValueGeneratorSelector : ValueGeneratorSelector, INpgsqlValueGeneratorSelector
     {
         private readonly INpgsqlValueGeneratorCache _cache;
-        private readonly NpgsqlSequenceValueGeneratorFactory _sequenceFactory;
+        private readonly INpgsqlSequenceValueGeneratorFactory _sequenceFactory;
 
         private readonly ValueGeneratorFactory<SequentialGuidValueGenerator> _sequentialGuidFactory 
             = new ValueGeneratorFactory<SequentialGuidValueGenerator>();
@@ -23,7 +23,7 @@ namespace Npgsql.EntityFramework7
 
         public NpgsqlValueGeneratorSelector(
             [NotNull] INpgsqlValueGeneratorCache cache,
-            [NotNull] NpgsqlSequenceValueGeneratorFactory sequenceFactory,
+            [NotNull] INpgsqlSequenceValueGeneratorFactory sequenceFactory,
             [NotNull] INpgsqlEFConnection connection)
         {
             Check.NotNull(cache, nameof(cache));

@@ -8,6 +8,7 @@ using Microsoft.Data.Entity.Metadata;
 using Microsoft.Data.Entity.Metadata.Internal;
 using Microsoft.Data.Entity.Query;
 using Microsoft.Data.Entity.Relational.Query;
+using Microsoft.Data.Entity.Relational.Query.Expressions;
 using Microsoft.Data.Entity.Relational.Query.Methods;
 using Microsoft.Data.Entity.Relational.Query.Sql;
 using Microsoft.Data.Entity.Utilities;
@@ -25,7 +26,8 @@ namespace Npgsql.EntityFramework7.Query
             [NotNull] IEntityMaterializerSource entityMaterializerSource,
             [NotNull] IEntityKeyFactorySource entityKeyFactorySource,
             [NotNull] IQueryMethodProvider queryMethodProvider,
-            [NotNull] IMethodCallTranslator methodCallTranslator)
+            [NotNull] IMethodCallTranslator methodCallTranslator,
+            [NotNull] INpgsqlValueReaderFactoryFactory valueReaderFactoryFactory)
             : base(
                 Check.NotNull(model, nameof(model)),
                 Check.NotNull(logger, nameof(logger)),
@@ -34,13 +36,16 @@ namespace Npgsql.EntityFramework7.Query
                 Check.NotNull(entityMaterializerSource, nameof(entityMaterializerSource)),
                 Check.NotNull(entityKeyFactorySource, nameof(entityKeyFactorySource)),
                 Check.NotNull(queryMethodProvider, nameof(queryMethodProvider)),
-                Check.NotNull(methodCallTranslator, nameof(methodCallTranslator)))
+                Check.NotNull(methodCallTranslator, nameof(methodCallTranslator)),
+                Check.NotNull(valueReaderFactoryFactory, nameof(valueReaderFactoryFactory)))
         {
         }
 
-        public override ISqlQueryGenerator CreateSqlQueryGenerator()
+        public override ISqlQueryGenerator CreateSqlQueryGenerator(SelectExpression selectExpression)
         {
-            return new NpgsqlQueryGenerator();
+            Check.NotNull(selectExpression, nameof(selectExpression));
+
+            return new NpgsqlQueryGenerator(selectExpression);
         }
 
         public override string GetTableName(IEntityType entityType)

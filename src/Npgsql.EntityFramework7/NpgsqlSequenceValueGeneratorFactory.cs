@@ -11,21 +11,23 @@ using Microsoft.Data.Entity.ValueGeneration;
 
 namespace Npgsql.EntityFramework7
 {
-    public class NpgsqlSequenceValueGeneratorFactory
+    public class NpgsqlSequenceValueGeneratorFactory : INpgsqlSequenceValueGeneratorFactory
     {
-        private readonly SqlStatementExecutor _executor;
+        private readonly ISqlStatementExecutor _executor;
+        private readonly INpgsqlSqlGenerator _sqlGenerator;
 
-        public NpgsqlSequenceValueGeneratorFactory([NotNull] SqlStatementExecutor executor)
+        public NpgsqlSequenceValueGeneratorFactory(
+            [NotNull] ISqlStatementExecutor executor,
+            [NotNull] INpgsqlSqlGenerator sqlGenerator)
         {
             Check.NotNull(executor, nameof(executor));
+            Check.NotNull(sqlGenerator, nameof(sqlGenerator));
 
             _executor = executor;
+            _sqlGenerator = sqlGenerator;
         }
 
-        public virtual ValueGenerator Create(
-            [NotNull] IProperty property, 
-            [NotNull] NpgsqlSequenceValueGeneratorState generatorState, 
-            [NotNull] INpgsqlEFConnection connection)
+        public virtual ValueGenerator Create(IProperty property, NpgsqlSequenceValueGeneratorState generatorState, INpgsqlEFConnection connection)
         {
             Check.NotNull(property, nameof(property));
             Check.NotNull(generatorState, nameof(generatorState));
@@ -33,42 +35,42 @@ namespace Npgsql.EntityFramework7
 
             if (property.ClrType.UnwrapNullableType() == typeof(long))
             {
-                return new NpgsqlSequenceValueGenerator<long>(_executor, generatorState, connection);
+                return new NpgsqlSequenceValueGenerator<long>(_executor, _sqlGenerator, generatorState, connection);
             }
 
             if (property.ClrType.UnwrapNullableType() == typeof(int))
             {
-                return new NpgsqlSequenceValueGenerator<int>(_executor, generatorState, connection);
+                return new NpgsqlSequenceValueGenerator<int>(_executor, _sqlGenerator, generatorState, connection);
             }
 
             if (property.ClrType.UnwrapNullableType() == typeof(short))
             {
-                return new NpgsqlSequenceValueGenerator<short>(_executor, generatorState, connection);
+                return new NpgsqlSequenceValueGenerator<short>(_executor, _sqlGenerator, generatorState, connection);
             }
 
             if (property.ClrType.UnwrapNullableType() == typeof(byte))
             {
-                return new NpgsqlSequenceValueGenerator<byte>(_executor, generatorState, connection);
+                return new NpgsqlSequenceValueGenerator<byte>(_executor, _sqlGenerator, generatorState, connection);
             }
 
             if (property.ClrType.UnwrapNullableType() == typeof(ulong))
             {
-                return new NpgsqlSequenceValueGenerator<ulong>(_executor, generatorState, connection);
+                return new NpgsqlSequenceValueGenerator<ulong>(_executor, _sqlGenerator, generatorState, connection);
             }
 
             if (property.ClrType.UnwrapNullableType() == typeof(uint))
             {
-                return new NpgsqlSequenceValueGenerator<uint>(_executor, generatorState, connection);
+                return new NpgsqlSequenceValueGenerator<uint>(_executor, _sqlGenerator, generatorState, connection);
             }
 
             if (property.ClrType.UnwrapNullableType() == typeof(ushort))
             {
-                return new NpgsqlSequenceValueGenerator<ushort>(_executor, generatorState, connection);
+                return new NpgsqlSequenceValueGenerator<ushort>(_executor, _sqlGenerator, generatorState, connection);
             }
 
             if (property.ClrType.UnwrapNullableType() == typeof(sbyte))
             {
-                return new NpgsqlSequenceValueGenerator<sbyte>(_executor, generatorState, connection);
+                return new NpgsqlSequenceValueGenerator<sbyte>(_executor, _sqlGenerator, generatorState, connection);
             }
 
             throw new ArgumentException(Microsoft.Data.Entity.Internal.Strings.InvalidValueGeneratorFactoryProperty(
