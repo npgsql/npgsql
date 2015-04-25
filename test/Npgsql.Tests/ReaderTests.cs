@@ -545,7 +545,16 @@ namespace Npgsql.Tests
                     switch ((string)r["ColumnName"])
                     {
                         case "field_pk":
-                            Assert.IsFalse((bool)r["IsReadonly"]);
+                            if (Conn.PostgreSqlVersion < new Version("9.4"))
+                            {
+                                // 9.3 and earlier: IsUpdatable = False
+                                Assert.IsTrue((bool)r["IsReadonly"], "field_pk");
+                            }
+                            else
+                            {
+                                // 9.4: IsUpdatable = True
+                                Assert.IsFalse((bool)r["IsReadonly"], "field_pk");
+                            }
                             break;
                         case "field_int2":
                             Assert.IsTrue((bool)r["IsReadonly"]);
