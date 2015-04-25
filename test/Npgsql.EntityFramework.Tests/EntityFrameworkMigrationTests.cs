@@ -43,6 +43,7 @@ using Npgsql.Tests;
 namespace Npgsql.EntityFramework.Tests
 {
     [TestFixture]
+    [Category("TodoFor3.0")]
     public class EntityFrameworkMigrationTests : TestBase
     {
         public EntityFrameworkMigrationTests(string backendVersion) : base(backendVersion) { }

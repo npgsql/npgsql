@@ -13,6 +13,7 @@ namespace Npgsql.Tests
     /// A fixture for tests which interact with functions. All functions are dropped from the
     /// database before each test starts.
     /// </summary>
+    [Category("TodoFor3.0")]
     public class FunctionTests : TestBase
     {
         public FunctionTests(string backendVersion) : base(backendVersion) {}

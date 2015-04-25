@@ -265,6 +265,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        [Category("TodoFor3.0")]
         public void NpgsqlTimeConstructors()
         {
             throw new NotImplementedException();
@@ -337,6 +338,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        [Category("TodoFor3.0")]
         public void NpgsqlTimeToString()
         {
             throw new NotImplementedException();
@@ -525,6 +527,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        [Category("TodoFor3.0")]
         public void NpgsqlTimeTzConvert()
         {
             throw new NotImplementedException();
