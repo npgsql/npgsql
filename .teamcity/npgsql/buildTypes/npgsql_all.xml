@@ -53,7 +53,8 @@ c:\users\teamcity_agent\.dnx\bin\dnvm.cmd exec default dnu pack --configuration 
     <build-triggers>
       <build-trigger id="vcsTrigger" type="vcsTrigger">
         <parameters>
-          <param name="branchFilter" value="+:refs/heads/*" />
+          <param name="branchFilter"><![CDATA[+:refs/heads/*
+-:refs/heads/2.2]]></param>
           <param name="quietPeriodMode" value="DO_NOT_USE" />
         </parameters>
       </build-trigger>
