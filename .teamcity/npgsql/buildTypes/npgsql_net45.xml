@@ -8,7 +8,6 @@
       <option name="artifactRules" value="src/Npgsql/bin/%system.Configuration%/**/*.dll =&gt; Npgsql/bin/%system.Configuration%&#xA;src/Npgsql/bin/%system.Configuration%/**/*.pdb =&gt; Npgsql/bin/%system.Configuration%&#xA;src/Npgsql/bin/%system.Configuration%/**/*.xml =&gt; Npgsql/bin/%system.Configuration%&#xA;src/Npgsql.EntityFramework/bin/%system.Configuration%/Npgsql.EntityFramework.dll =&gt; Npgsql.EntityFramework/bin/%system.Configuration%&#xA;src/Npgsql.EntityFramework/bin/%system.Configuration%/Npgsql.EntityFramework.pdb =&gt; Npgsql.EntityFramework/bin/%system.Configuration%&#xA;src/Npgsql.EntityFramework/bin/%system.Configuration%/Npgsql.EntityFramework.xml =&gt; Npgsql.EntityFramework/bin/%system.Configuration%&#xA;src/Npgsql.EntityFramework/bin/Legacy-%system.Configuration%/Npgsql.EntityFrameworkLegacy.dll =&gt; Npgsql.EntityFramework/bin/Legacy-%system.Configuration%&#xA;src/Npgsql.EntityFramework/bin/Legacy-%system.Configuration%/Npgsql.EntityFrameworkLegacy.pdb =&gt; Npgsql.EntityFramework/bin/Legacy-%system.Configuration%&#xA;src/Npgsql.EntityFramework/bin/Legacy-%system.Configuration%/Npgsql.EntityFrameworkLegacy.xml =&gt; Npgsql.EntityFramework/bin/Legacy-%system.Configuration%&#xA;test/** =&gt; test/" />
     </options>
     <disabled-settings>
-      <setting-ref ref="RUNNER_1" />
       <setting-ref ref="RUNNER_11" />
     </disabled-settings>
     <parameters>
