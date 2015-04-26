@@ -480,7 +480,7 @@ namespace NpgsqlTypes
                                             null,
                                             BasicBackendToNativeTypeConverter.TextBinaryToString);
 
-            yield return new NpgsqlBackendTypeInfo(0, "bpchar", NpgsqlDbType.Text, DbType.String, typeof(String),
+            yield return new NpgsqlBackendTypeInfo(0, "bpchar", NpgsqlDbType.Char, DbType.String, typeof(String),
                                             null,
                                             BasicBackendToNativeTypeConverter.TextBinaryToString);
 

@@ -135,7 +135,7 @@ namespace NpgsqlTests
             da.Fill(ds);
 
             //## Insert a new row with id = 1
-            ds.Tables[0].Rows.Add(new Object[] {0.4, 0.5});
+            ds.Tables[0].Rows.Add(new Object[] { 0.4, 0.5 });
             da.Update(ds);
 
             //## change id from 1 to 2
@@ -454,6 +454,66 @@ namespace NpgsqlTests
             var quoted = cb.QuoteIdentifier(orig);
             Assert.That(quoted, Is.EqualTo("\"some\"\"column\""));
             Assert.That(cb.UnquoteIdentifier(quoted), Is.EqualTo(orig));
+        }
+
+        [Test, Description("NpgsqlCommandBuilder.ApplyParameterInfo will adjust NpgsqlDbType and Size parameters")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/549")]
+        public void IfNpgsqlCommandBuilderCastsTextToChar1()
+        {
+            var da = new NpgsqlDataAdapter("select field_char,field_pk from data", Conn);
+            var builder = new NpgsqlCommandBuilder(da);
+
+            DataTable dt = new DataTable();
+            da.Fill(dt);
+
+            DataRow dr = dt.NewRow();
+            dr["field_char"] = "1";
+            dr["field_pk"] = 101; // pk ignored for insert
+            dt.Rows.Add(dr);
+
+            dr.AcceptChanges(); // treat as inserted
+
+            new NpgsqlCommand("insert into data (field_char,field_pk) values('1', 101)", Conn).ExecuteNonQuery();
+
+            dr[0] = " ";
+
+            da.Update(dt); // do update
+
+            dr.Delete();
+
+            da.Update(dt); // do delete
+        }
+
+        [Test, Description("NpgsqlCommandBuilder.ApplyParameterInfo will adjust NpgsqlDbType and Size parameters")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/549")]
+        public void IfNpgsqlCommandBuilderCastsTextToChar5()
+        {
+            var da = new NpgsqlDataAdapter("select field_char5,field_pk from data", Conn);
+            var builder = new NpgsqlCommandBuilder(da);
+
+            DataTable dt = new DataTable();
+            da.Fill(dt);
+
+            DataRow dr = dt.NewRow();
+            dr["field_char5"] = "1    ";
+            dr["field_pk"] = 102; // pk ignored for insert
+            dt.Rows.Add(dr);
+
+            dr.AcceptChanges(); // treat as inserted
+
+            new NpgsqlCommand("insert into data (field_char5,field_pk) values('1    ', 102)", Conn).ExecuteNonQuery();
+
+            dr[0] = "123";
+
+            da.Update(dt); // do update
+
+            dr[0] = "abcde";
+
+            da.Update(dt); // do update once more
+
+            dr.Delete();
+
+            da.Update(dt); // do delete
         }
     }
     /*

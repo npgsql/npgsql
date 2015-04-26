@@ -388,8 +388,22 @@ namespace Npgsql
                 parameter.SourceColumn = "";
             }
             else
+            {
+                NpgsqlBackendTypeInfo typeInfo;
+                if (row[SchemaTableColumn.ProviderType] != null
+                    && NpgsqlTypesHelper.TryGetBackendTypeInfo((String)row[SchemaTableColumn.ProviderType], out typeInfo)
+                ) {
+                    parameter.NpgsqlDbType = typeInfo.NpgsqlDbType;
+                }
+                else {
+                    parameter.NpgsqlDbType = NpgsqlTypesHelper.GetNativeTypeInfo((Type)row[SchemaTableColumn.DataType]).NpgsqlDbType;
+                }
 
-                parameter.NpgsqlDbType = NpgsqlTypesHelper.GetNativeTypeInfo((Type)row[SchemaTableColumn.DataType]).NpgsqlDbType;
+                if (row[SchemaTableColumn.ColumnSize] is int)
+                {
+                    parameter.Size = (int)row[SchemaTableColumn.ColumnSize];
+                }
+            }
 
         }
 

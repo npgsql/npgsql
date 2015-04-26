@@ -224,6 +224,7 @@ namespace NpgsqlTests
             sb.AppendFormat(@"CREATE TABLE data (
                                 field_pk                      {0},
                                 field_text                    TEXT,
+                                field_char                    CHAR,
                                 field_char5                   CHAR(5),
                                 field_varchar5                VARCHAR(5),
                                 field_int2                    INT2,
