@@ -115,7 +115,7 @@ namespace Npgsql.Tests
         {
             SetupLogging();
 
-            var connStringEnvVar = "NPGSQL_TEST_DB_" + BackendVersion;
+            var connStringEnvVar = "NPGSQL_TEST_DB_" + BackendVersion.ToString().Replace(".", "_");
             _connectionString = Environment.GetEnvironmentVariable(connStringEnvVar);
             if (_connectionString == null)
             {
