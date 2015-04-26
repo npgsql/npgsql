@@ -21,40 +21,60 @@ namespace Npgsql.EntityFramework7.FunctionalTests
         #region Skipped tests (TODO)
 
         [Fact(Skip = "TODO")]
-        public override void Take_Distinct() {}
+        public override void Where_bool_member_compared_to_binary_expression() { }
 
         [Fact(Skip = "TODO")]
-        public override void Where_query_composition() {}
-
-        [Fact(Skip = "TODO")]
-        public override void Where_bool_parameter_compared_to_binary_expression() {}
-
-        [Fact(Skip = "TODO")]
-        public override void Where_bool_member_and_parameter_compared_to_binary_expression_nested() { }
+        public override void Where_bool_parameter_compared_to_binary_expression() { }
 
         [Fact(Skip = "TODO")]
         public override void Where_not_bool_member_compared_to_binary_expression() { }
 
         [Fact(Skip = "TODO")]
-        public override void Where_bool_member_compared_to_binary_expression() { }
-        
+        public override void Where_bool_member_and_parameter_compared_to_binary_expression_nested() { }
+
+        [Fact(Skip = "TODO")]
+        public override void Projection_when_arithmetic_mixed_subqueries() { }
+
         [Fact(Skip = "TODO")]
         public override void Projection_when_arithmetic_mixed() { }
 
         [Fact(Skip = "TODO")]
-        public override void Projection_when_arithmetic_mixed_subqueries() {}
-
-        [Fact(Skip = "TODO")]
         public override void Projection_when_arithmetic_expressions() { }
 
-        [Fact(Skip = "TODO")]
-        public override void Select_subquery_recursive_trivial() {}
+        [Fact(Skip = "https://github.com/aspnet/EntityFramework/issues/2071")]
+        public override void Take_Distinct() { }
+
+        #region Operation already in progress (MARS)
 
         [Fact(Skip = "TODO")]
-        public override void Where_subquery_anon() {}
+        public override void All_top_level_subquery() { }
 
         [Fact(Skip = "TODO")]
-        public override void SelectMany_mixed() {}
+        public override void OrderBy_SelectMany() { }
+
+        [Fact(Skip = "TODO")]
+        public override void Contains_with_subquery() { }
+
+        [Fact(Skip = "TODO")]
+        public override void Where_query_composition() { }
+
+        [Fact(Skip = "TODO")]
+        public override void Where_shadow_subquery_first() { }
+
+        [Fact(Skip = "TODO")]
+        public override void Where_subquery_anon() { }
+
+        [Fact(Skip = "TODO")]
+        public override void Where_subquery_recursive_trivial() { }
+
+        [Fact(Skip = "TODO")]
+        public override void Select_subquery_recursive_trivial() { }
+
+        [Fact(Skip = "TODO")]
+        public override void Select_nested_collection_deep() { }
+
+        [Fact(Skip = "TODO")]
+        public override void SelectMany_mixed() { }
 
         [Fact(Skip = "TODO")]
         public override void SelectMany_correlated_subquery_hard() { }
@@ -68,23 +88,7 @@ namespace Npgsql.EntityFramework7.FunctionalTests
         [Fact(Skip = "TODO")]
         public override void SelectMany_primitive_select_subquery() { }
 
-        [Fact(Skip = "TODO")]
-        public override void Select_nested_collection_deep() { }
-
-        [Fact(Skip = "TODO")]
-        public override void Where_subquery_recursive_trivial() { }
-
-        [Fact(Skip = "TODO")]
-        public override void Where_shadow_subquery_first() { }
-
-        [Fact(Skip = "TODO")]
-        public override void All_top_level_subquery() { }
-
-        [Fact(Skip = "TODO")]
-        public override void OrderBy_SelectMany() { }
-
-        [Fact(Skip = "TODO")]
-        public override void Contains_with_subquery() { }
+        #endregion
 
         #endregion
     }
