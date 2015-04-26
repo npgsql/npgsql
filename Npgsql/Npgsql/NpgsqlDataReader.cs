@@ -858,7 +858,7 @@ namespace Npgsql
             // the column index is used to find data.
             // any changes to the order of the columns needs to be reflected in struct Tables
             string commandText = string.Concat("SELECT current_database(), nc.nspname, c.relname, c.oid FROM pg_namespace nc, pg_class c WHERE c.relnamespace = nc.oid AND (c.relkind = 'r' OR c.relkind = 'v') AND c.oid IN (",
-                string.Join(",", oids), ")");
+                string.Join(",", oids.Select(o => o.ToString()).ToArray()), ")");
 
             using (NpgsqlConnection connection = _connection.Clone())
             {
