@@ -503,7 +503,7 @@ namespace Npgsql
             get { return _pooling; }
             set
             {
-                _pooling = true;
+                _pooling = value;
                 // TODO: Replace literal name with nameof operator in C# 6.0
                 SetValue("Pooling", value);
             }
