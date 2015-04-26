@@ -184,36 +184,39 @@ namespace Npgsql
             Log.Debug("Opening connnection");
 
             WasBroken = false;
-            // Get a Connector, either from the pool or creating one ourselves.
-            if (Pooling)
-            {
-                Connector = NpgsqlConnectorPool.ConnectorPoolMgr.RequestConnector(this);
-            }
-            else
-            {
-                Connector = new NpgsqlConnector(this) {
-                    ProvideClientCertificatesCallback = ProvideClientCertificatesCallback,
-                    UserCertificateValidationCallback = UserCertificateValidationCallback
-                };
 
-                Connector.Open();
-            }
-
-            Connector.Notice += NoticeDelegate;
-            Connector.Notification += NotificationDelegate;
-
-            /*if (SyncNotification)
+            try
             {
-                
-            }*/
+                // Get a Connector, either from the pool or creating one ourselves.
+                if (Pooling)
+                {
+                    Connector = NpgsqlConnectorPool.ConnectorPoolMgr.RequestConnector(this);
+                }
+                else
+                {
+                    Connector = new NpgsqlConnector(this) {
+                        ProvideClientCertificatesCallback = ProvideClientCertificatesCallback,
+                        UserCertificateValidationCallback = UserCertificateValidationCallback
+                    };
+
+                    Connector.Open();
+                }
+
+                Connector.Notice += NoticeDelegate;
+                Connector.Notification += NotificationDelegate;
 
 #if !DNXCORE50
-            if (Enlist)
-            {
-                Promotable.Enlist(Transaction.Current);
-            }
+                if (Enlist)
+                {
+                    Promotable.Enlist(Transaction.Current);
+                }
 #endif
-
+            }
+            catch
+            {
+                Connector = null;
+                throw;
+            }
             OpenCounter++;
             OnStateChange(new StateChangeEventArgs(ConnectionState.Closed, ConnectionState.Open));
         }

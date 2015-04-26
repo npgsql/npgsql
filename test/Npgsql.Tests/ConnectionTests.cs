@@ -176,6 +176,38 @@ namespace Npgsql.Tests
             Assert.That(() => new NpgsqlConnection("Server=localhost;User ID=npgsql_tests;Password=npgsql_tests").Open(), Throws.Exception.TypeOf<ArgumentException>());
         }
 
+        [Test, Description("Reuses the same connection instance for a failed connection, then a successful one")]
+        public void FailConnectThenSucceed()
+        {
+            ExecuteNonQuery("DROP DATABASE IF EXISTS foo");
+            try
+            {
+                var csb = new NpgsqlConnectionStringBuilder(ConnectionString) {
+                    Database = "foo",
+                    Pooling = false
+                };
+
+                using (var conn = new NpgsqlConnection(csb))
+                {
+                    Assert.That(() => conn.Open(),
+                        Throws.Exception.TypeOf<NpgsqlException>()
+                        .With.Property("Code").EqualTo("3D000") // database doesn't exist
+                    );
+                    Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
+
+                    // Create the database with the other connection
+                    ExecuteNonQuery("CREATE DATABASE foo");
+
+                    conn.Open();
+                    conn.Close();
+                }
+            }
+            finally
+            {
+                ExecuteNonQuery("DROP DATABASE IF EXISTS foo");
+            }
+        }
+
         #endregion
 
         #region Notification
