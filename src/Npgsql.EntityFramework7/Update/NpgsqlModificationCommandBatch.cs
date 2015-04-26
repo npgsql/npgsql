@@ -83,14 +83,7 @@ namespace Npgsql.EntityFramework7.Update
                 {
                     using (var reader = storeCommand.ExecuteReader())
                     {
-                        var actualResultSetCount = 0;
-                        do
-                        {
-                            actualResultSetCount++;
-                        }
-                        while (reader.NextResult());
-
-                        Debug.Assert(actualResultSetCount == ModificationCommands.Count, "Expected " + ModificationCommands.Count + " results, got " + actualResultSetCount);
+                        while (reader.NextResult()) ;
 
                         if (reader.RecordsAffected != ModificationCommands.Count)
                         {

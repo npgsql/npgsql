@@ -193,5 +193,16 @@ namespace Npgsql.EntityFramework7
             OneResultSet,
             OneCommandPerResultSet
         }
+
+        #region Npsql-specific
+
+        public override string GenerateNextSequenceValueOperation(string sequenceName)
+        {
+            Check.NotNull(sequenceName, nameof(sequenceName));
+
+            return string.Format("SELECT nextval('{0}')", DelimitIdentifier(sequenceName));
+        }
+
+        #endregion
     }
 }

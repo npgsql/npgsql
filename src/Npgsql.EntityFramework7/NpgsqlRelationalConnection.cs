@@ -34,6 +34,9 @@ namespace Npgsql.EntityFramework7
         {
             var builder = new NpgsqlConnectionStringBuilder { ConnectionString = ConnectionString };
 
+            // TODO: See #566
+            builder.Database = "postgres";
+
             // TODO use clone connection method once implimented see #1406
             var optionsBuilder = new DbContextOptionsBuilder();
             optionsBuilder.UseNpgsql(builder.ConnectionString).CommandTimeout(CommandTimeout);
