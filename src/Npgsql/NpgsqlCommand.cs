@@ -80,7 +80,6 @@ namespace Npgsql
 
         UpdateRowSource _updateRowSource = UpdateRowSource.Both;
 
-        static readonly Array ParamNameCharTable;
         internal Type[] ExpectedTypes { get; set; }
 
         FormatCode[] _resultFormatCodes;
@@ -112,17 +111,11 @@ namespace Npgsql
         /// replies with ParseComplete and BindComplete messages which we do not read until we finished sending
         /// all messages. Once our buffer gets full the backend will get stuck writing, and then so will we.
         /// </summary>
-        const int MaxQueriesInMultiquery = 5000;
+        internal const int MaxQueriesInMultiquery = 5000;
 
         #endregion
 
         #region Constructors
-
-        // Constructors
-        static NpgsqlCommand()
-        {
-            ParamNameCharTable = BuildParameterNameCharacterTable();
-        }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="NpgsqlCommand">NpgsqlCommand</see> class.
@@ -437,33 +430,6 @@ namespace Npgsql
 
         public new NpgsqlParameterCollection Parameters { get { return _parameters; } }
 
-        static Array BuildParameterNameCharacterTable()
-        {
-            // Table has lower bound of (int)'.';
-            var paramNameCharTable = Array.CreateInstance(typeof(byte), new[] { 'z' - '.' + 1 }, new int[] { '.' });
-
-            paramNameCharTable.SetValue((byte)'.', (int)'.');
-
-            for (int i = '0'; i <= '9'; i++)
-            {
-                paramNameCharTable.SetValue((byte)i, i);
-            }
-
-            for (int i = 'A'; i <= 'Z'; i++)
-            {
-                paramNameCharTable.SetValue((byte)i, i);
-            }
-
-            paramNameCharTable.SetValue((byte)'_', (int)'_');
-
-            for (int i = 'a'; i <= 'z'; i++)
-            {
-                paramNameCharTable.SetValue((byte)i, i);
-            }
-
-            return paramNameCharTable;
-        }
-
         #endregion
 
         #region Prepare
@@ -558,15 +524,15 @@ namespace Npgsql
 
         void ProcessRawQuery()
         {
+            _queries.Clear();
             switch (CommandType) {
             case CommandType.Text:
-                ParseRawQuery(CommandText);
+                SqlQueryParser.ParseRawQuery(CommandText, _connection == null || _connection.UseConformantStrings, _parameters, _queries);
                 if (_queries.Count > 1 && _parameters.Any(p => p.IsOutputDirection)) {
                     throw new NotSupportedException("Commands with multiple queries cannot have out parameters");
                 }
                 break;
             case CommandType.TableDirect:
-                _queries.Clear();
                 _queries.Add(new QueryDetails("SELECT * FROM " + CommandText, new List<NpgsqlParameter>()));
                 break;
             case CommandType.StoredProcedure:
@@ -583,437 +549,11 @@ namespace Npgsql
                     }
                 }
                 sb.Append(')');
-                _queries.Clear();
                 _queries.Add(new QueryDetails(sb.ToString(), _parameters.Where(p => p.IsInputDirection).ToList()));
                 break;
             default:
                 throw PGUtil.ThrowIfReached();
             }
-        }
-
-        /// <summary>
-        /// Receives a raw SQL query as passed in by the user, and performs some processing necessary
-        /// before sending to the backend.
-        /// This includes doing parameter placebolder processing (@p => $1), and splitting the query
-        /// up by semicolons if needed (SELECT 1; SELECT 2)
-        /// </summary>
-        /// <param name="src">Raw user-provided query</param>
-        /// <returns>The queries contained in the raw text</returns>
-        void ParseRawQuery(string src)
-        {
-            var standardConformantStrings = _connection == null || _connection.UseConformantStrings;
-
-            var currCharOfs = 0;
-            var end = src.Length;
-            var ch = '\0';
-            var lastChar = '\0';
-            var dollarTagStart = 0;
-            var dollarTagEnd = 0;
-            var currTokenBeg = 0;
-            var blockCommentLevel = 0;
-
-            _queries.Clear();
-            // TODO: Recycle
-            var paramIndexMap = new Dictionary<string, int>();
-            var currentSql = new StringWriter();
-            var currentParameters = new List<NpgsqlParameter>();
-
-        None:
-            if (currCharOfs >= end)
-            {
-                goto Finish;
-            }
-            lastChar = ch;
-            ch = src[currCharOfs++];
-        NoneContinue:
-            for (; ; lastChar = ch, ch = src[currCharOfs++])
-            {
-                switch (ch)
-                {
-                    case '/': goto BlockCommentBegin;
-                    case '-': goto LineCommentBegin;
-                    case '\'': if (standardConformantStrings) goto Quoted; else goto Escaped;
-                    case '$': if (!IsIdentifier(lastChar)) goto DollarQuotedStart; else break;
-                    case '"': goto DoubleQuoted;
-                    case ':': if (lastChar != ':') goto ParamStart; else break;
-                    case '@': if (lastChar != '@') goto ParamStart; else break;
-                    case ';': goto SemiColon;
-
-                    case 'e':
-                    case 'E': if (!IsLetter(lastChar)) goto EscapedStart; else break;
-                }
-
-                if (currCharOfs >= end)
-                {
-                    goto Finish;
-                }
-            }
-
-        ParamStart:
-            if (currCharOfs < end)
-            {
-                lastChar = ch;
-                ch = src[currCharOfs];
-                if (IsParamNameChar(ch))
-                {
-                    if (currCharOfs - 1 > currTokenBeg)
-                    {
-                        currentSql.Write(src.Substring(currTokenBeg, currCharOfs - 1 - currTokenBeg));
-                    }
-                    currTokenBeg = currCharOfs++ - 1;
-                    goto Param;
-                }
-                else
-                {
-                    currCharOfs++;
-                    goto NoneContinue;
-                }
-            }
-            goto Finish;
-
-        Param:
-            // We have already at least one character of the param name
-            for (; ; )
-            {
-                lastChar = ch;
-                if (currCharOfs >= end || !IsParamNameChar(ch = src[currCharOfs]))
-                {
-                    var paramName = src.Substring(currTokenBeg, currCharOfs - currTokenBeg);
-
-                    int index;
-                    if (!paramIndexMap.TryGetValue(paramName, out index))
-                    {
-                        // Parameter hasn't been seen before in this query
-                        NpgsqlParameter parameter;
-                        if (!_parameters.TryGetValue(paramName, out parameter)) {
-                            throw new Exception(String.Format("Parameter '{0}' referenced in SQL but not found in parameter list", paramName));
-                        }
-
-                        if (!parameter.IsInputDirection) {
-                            throw new Exception(String.Format("Parameter '{0}' referenced in SQL but is an out-only parameter", paramName));
-                        }
-
-                        currentParameters.Add(parameter);
-                        index = paramIndexMap[paramName] = currentParameters.Count;
-                    }
-                    currentSql.Write('$');
-                    currentSql.Write(index);
-                    currTokenBeg = currCharOfs;
-
-                    if (currCharOfs >= end)
-                    {
-                        goto Finish;
-                    }
-
-                    currCharOfs++;
-                    goto NoneContinue;
-                }
-                else
-                {
-                    currCharOfs++;
-                }
-            }
-
-        Quoted:
-            while (currCharOfs < end)
-            {
-                if (src[currCharOfs++] == '\'')
-                {
-                    ch = '\0';
-                    goto None;
-                }
-            }
-            goto Finish;
-
-        DoubleQuoted:
-            while (currCharOfs < end)
-            {
-                if (src[currCharOfs++] == '"')
-                {
-                    ch = '\0';
-                    goto None;
-                }
-            }
-            goto Finish;
-
-        EscapedStart:
-            if (currCharOfs < end)
-            {
-                lastChar = ch;
-                ch = src[currCharOfs++];
-                if (ch == '\'')
-                {
-                    goto Escaped;
-                }
-                goto NoneContinue;
-            }
-            goto Finish;
-
-        Escaped:
-            while (currCharOfs < end)
-            {
-                ch = src[currCharOfs++];
-                if (ch == '\'')
-                {
-                    goto MaybeConcatenatedEscaped;
-                }
-                if (ch == '\\')
-                {
-                    if (currCharOfs >= end)
-                    {
-                        goto Finish;
-                    }
-                    currCharOfs++;
-                }
-            }
-            goto Finish;
-
-        MaybeConcatenatedEscaped:
-            while (currCharOfs < end)
-            {
-                ch = src[currCharOfs++];
-                if (ch == '\r' || ch == '\n')
-                {
-                    goto MaybeConcatenatedEscaped2;
-                }
-                if (ch != ' ' && ch != '\t' && ch != '\f')
-                {
-                    lastChar = '\0';
-                    goto NoneContinue;
-                }
-            }
-            goto Finish;
-
-        MaybeConcatenatedEscaped2:
-            while (currCharOfs < end)
-            {
-                ch = src[currCharOfs++];
-                if (ch == '\'')
-                {
-                    goto Escaped;
-                }
-                if (ch == '-')
-                {
-                    if (currCharOfs >= end)
-                    {
-                        goto Finish;
-                    }
-                    ch = src[currCharOfs++];
-                    if (ch == '-')
-                    {
-                        goto MaybeConcatenatedEscapeAfterComment;
-                    }
-                    lastChar = '\0';
-                    goto NoneContinue;
-
-                }
-                if (ch != ' ' && ch != '\t' && ch != '\n' & ch != '\r' && ch != '\f')
-                {
-                    lastChar = '\0';
-                    goto NoneContinue;
-                }
-            }
-            goto Finish;
-
-        MaybeConcatenatedEscapeAfterComment:
-            while (currCharOfs < end)
-            {
-                ch = src[currCharOfs++];
-                if (ch == '\r' || ch == '\n')
-                {
-                    goto MaybeConcatenatedEscaped2;
-                }
-            }
-            goto Finish;
-
-        DollarQuotedStart:
-            if (currCharOfs < end)
-            {
-                ch = src[currCharOfs];
-                if (ch == '$')
-                {
-                    // Empty tag
-                    dollarTagStart = dollarTagEnd = currCharOfs;
-                    currCharOfs++;
-                    goto DollarQuoted;
-                }
-                if (IsIdentifierStart(ch))
-                {
-                    dollarTagStart = currCharOfs;
-                    currCharOfs++;
-                    goto DollarQuotedInFirstDelim;
-                }
-                lastChar = '$';
-                currCharOfs++;
-                goto NoneContinue;
-            }
-            goto Finish;
-
-        DollarQuotedInFirstDelim:
-            while (currCharOfs < end)
-            {
-                lastChar = ch;
-                ch = src[currCharOfs++];
-                if (ch == '$')
-                {
-                    dollarTagEnd = currCharOfs - 1;
-                    goto DollarQuoted;
-                }
-                if (!IsDollarTagIdentifier(ch))
-                {
-                    goto NoneContinue;
-                }
-            }
-            goto Finish;
-
-        DollarQuoted:
-            {
-                var tag = src.Substring(dollarTagStart - 1, dollarTagEnd - dollarTagStart + 2);
-                var pos = src.IndexOf(tag, dollarTagEnd + 1); // Not linear time complexity, but that's probably not a problem, since PostgreSQL backend's isn't either
-                if (pos == -1)
-                {
-                    currCharOfs = end;
-                    goto Finish;
-                }
-                currCharOfs = pos + dollarTagEnd - dollarTagStart + 2;
-                ch = '\0';
-                goto None;
-            }
-
-        LineCommentBegin:
-            if (currCharOfs < end)
-            {
-                ch = src[currCharOfs++];
-                if (ch == '-')
-                {
-                    goto LineComment;
-                }
-                lastChar = '\0';
-                goto NoneContinue;
-            }
-            goto Finish;
-
-        LineComment:
-            while (currCharOfs < end)
-            {
-                ch = src[currCharOfs++];
-                if (ch == '\r' || ch == '\n')
-                {
-                    goto None;
-                }
-            }
-            goto Finish;
-
-        BlockCommentBegin:
-            while (currCharOfs < end)
-            {
-                ch = src[currCharOfs++];
-                if (ch == '*')
-                {
-                    blockCommentLevel++;
-                    goto BlockComment;
-                }
-                if (ch != '/')
-                {
-                    if (blockCommentLevel > 0)
-                    {
-                        goto BlockComment;
-                    }
-                    lastChar = '\0';
-                    goto NoneContinue;
-                }
-            }
-            goto Finish;
-
-        BlockComment:
-            while (currCharOfs < end)
-            {
-                ch = src[currCharOfs++];
-                if (ch == '*')
-                {
-                    goto BlockCommentEnd;
-                }
-                if (ch == '/')
-                {
-                    goto BlockCommentBegin;
-                }
-            }
-            goto Finish;
-
-        BlockCommentEnd:
-            while (currCharOfs < end)
-            {
-                ch = src[currCharOfs++];
-                if (ch == '/')
-                {
-                    if (--blockCommentLevel > 0)
-                    {
-                        goto BlockComment;
-                    }
-                    goto None;
-                }
-                if (ch != '*')
-                {
-                    goto BlockComment;
-                }
-            }
-            goto Finish;
-
-        SemiColon:
-            currentSql.Write(src.Substring(currTokenBeg, currCharOfs - currTokenBeg - 1));
-            _queries.Add(new QueryDetails(currentSql.ToString(), currentParameters));
-            while (currCharOfs < end)
-            {
-                ch = src[currCharOfs];
-                if (Char.IsWhiteSpace(ch))
-                {
-                    currCharOfs++;
-                    continue;
-                }
-                // TODO: Handle end of line comment? Although psql doesn't seem to handle them...
-
-                currTokenBeg = currCharOfs;
-                paramIndexMap.Clear();
-                if (_queries.Count > MaxQueriesInMultiquery) {
-                    throw new NotSupportedException(String.Format("A single command cannot contain more than {0} queries", MaxQueriesInMultiquery));
-                }
-                currentSql = new StringWriter();
-                currentParameters = new List<NpgsqlParameter>();
-                goto NoneContinue;
-            }
-            return;
-
-        Finish:
-            currentSql.Write(src.Substring(currTokenBeg, end - currTokenBeg));
-            _queries.Add(new QueryDetails(currentSql.ToString(), currentParameters));
-        }
-
-        static bool IsParamNameChar(char ch)
-        {
-            if (ch < '.' || ch > 'z') {
-                return false;
-            }
-            return ((byte)ParamNameCharTable.GetValue(ch) != 0);
-        }
-
-        static bool IsLetter(char ch)
-        {
-            return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z';
-        }
-
-        static bool IsIdentifierStart(char ch)
-        {
-            return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || ch == '_' || 128 <= ch && ch <= 255;
-        }
-
-        static bool IsDollarTagIdentifier(char ch)
-        {
-            return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || '0' <= ch && ch <= '9' || ch == '_' || 128 <= ch && ch <= 255;
-        }
-
-        static bool IsIdentifier(char ch)
-        {
-            return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || '0' <= ch && ch <= '9' || ch == '_' || ch == '$' || 128 <= ch && ch <= 255;
         }
 
         #endregion

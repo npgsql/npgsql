@@ -338,6 +338,7 @@
     <Compile Include="NpgsqlTypes\NpgsqlTsQuery.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlTsVector.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlUserTypes.cs" />
+    <Compile Include="SqlQueryParser.cs" />
     <Compile Include="TlsClientStream\CipherSuiteInfo.cs" />
     <Compile Include="TlsClientStream\ClientAlertException.cs" />
     <Compile Include="TlsClientStream\ConnectionState.cs" />
