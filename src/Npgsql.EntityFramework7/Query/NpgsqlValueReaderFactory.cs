@@ -10,11 +10,6 @@ namespace Npgsql.EntityFramework7.Query
 {
     public class NpgsqlValueReaderFactory : IRelationalValueReaderFactory
     {
-        public virtual IValueReader CreateValueReader(DbDataReader dataReader)
-        {
-            Debug.Assert(dataReader != null); // hot path
-
-            return new NpgsqlRelationalObjectArrayValueReader(dataReader);
-        }
+        public virtual IValueReader CreateValueReader(DbDataReader dataReader) => new NpgsqlRelationalTypedValueReader(dataReader);
     }
 }

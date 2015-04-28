@@ -6,11 +6,11 @@ using Microsoft.Data.Entity.Metadata;
 using Microsoft.Data.Entity.Storage;
 using Microsoft.Data.Entity.Relational;
 
-namespace Npgsql.EntityFramework7.Query
+namespace Npgsql.EntityFramework7
 {
-    public class NpgsqlRelationalObjectArrayValueReader : RelationalObjectArrayValueReader
+    public class NpgsqlRelationalTypedValueReader : RelationalTypedValueReader
     {
-        public NpgsqlRelationalObjectArrayValueReader([NotNull] DbDataReader dataReader)
+        public NpgsqlRelationalTypedValueReader([NotNull] DbDataReader dataReader)
             : base(dataReader) {}
 
         public override T ReadValue<T>(int index)
