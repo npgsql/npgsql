@@ -21,18 +21,6 @@ namespace Npgsql.EntityFramework7.FunctionalTests
         #region Skipped tests (TODO)
 
         [Fact(Skip = "TODO")]
-        public override void Where_bool_member_compared_to_binary_expression() { }
-
-        [Fact(Skip = "TODO")]
-        public override void Where_bool_parameter_compared_to_binary_expression() { }
-
-        [Fact(Skip = "TODO")]
-        public override void Where_not_bool_member_compared_to_binary_expression() { }
-
-        [Fact(Skip = "TODO")]
-        public override void Where_bool_member_and_parameter_compared_to_binary_expression_nested() { }
-
-        [Fact(Skip = "TODO")]
         public override void Projection_when_arithmetic_mixed_subqueries() { }
 
         [Fact(Skip = "TODO")]

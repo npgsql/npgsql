@@ -14,10 +14,10 @@ namespace Npgsql.EntityFramework7.Query
     public class NpgsqlQueryGenerator : DefaultSqlQueryGenerator
     {
         protected override string ConcatOperator => "||";
-
         protected override string TrueLiteral => "TRUE";
-
         protected override string FalseLiteral => "FALSE";
+        protected override string TypedTrueLiteral => "TRUE::bool";
+        protected override string TypedFalseLiteral => "FALSE::bool";
 
         protected override string DelimitIdentifier(string identifier)
         {
