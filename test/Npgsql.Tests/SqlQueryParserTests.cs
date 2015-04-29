@@ -11,14 +11,6 @@ namespace Npgsql.Tests
     class SqlQueryParserTests
     {
         [Test]
-        [Category("TodoFor3.0")]
-        public void TrimWhitespace()
-        {
-            SqlQueryParser.ParseRawQuery("   SELECT 1\t", true, _params, _queries);
-            Assert.That(_queries.Single().Sql, Is.EqualTo("SELECT 1"));
-        }
-
-        [Test]
         public void ParamSimple()
         {
             _params.AddWithValue(":p1", "foo");
@@ -28,11 +20,10 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        [Category("TodoFor3.0")]
         public void ConsecutiveSemicolons()
         {
             SqlQueryParser.ParseRawQuery(";;SELECT 1", true, _params, _queries);
-            Assert.That(_queries, Has.Count.EqualTo(1));
+            Assert.That(_queries, Has.Count.EqualTo(3));
         }
 
         [Test]
@@ -121,6 +112,15 @@ namespace Npgsql.Tests
             _params.Add(p);
             Assert.That(() => SqlQueryParser.ParseRawQuery("SELECT @p", true, _params, _queries), Throws.Exception);
         }
+
+#if TODO
+        [Test]
+        public void TrimWhitespace()
+        {
+            SqlQueryParser.ParseRawQuery("   SELECT 1\t", true, _params, _queries);
+            Assert.That(_queries.Single().Sql, Is.EqualTo("SELECT 1"));
+        }
+#endif
 
         #region Setup / Teardown / Utils
 

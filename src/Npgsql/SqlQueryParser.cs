@@ -370,7 +370,7 @@ namespace Npgsql
                 }
                 currentSql = new StringWriter();
                 currentParameters = new List<NpgsqlParameter>();
-                goto NoneContinue;
+                goto None;
             }
             return;
 
