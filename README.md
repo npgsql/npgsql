@@ -1,6 +1,8 @@
 Npgsql - .NET Data Provider for PostgreSQL
 =============
 
+[![Join the chat at https://gitter.im/npgsql/npsgl](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/npgsql/npgsql)
+
 ###What Is Npgsql?
 
 Npgsql is a .Net Data Provider for PostgreSQL. It allows you to connect and interact with PostgreSQL server using .NET.
