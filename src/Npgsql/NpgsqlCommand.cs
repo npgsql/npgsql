@@ -75,15 +75,9 @@ namespace Npgsql
 
         int _queryIndex;
 
-        // locals about function support so we don`t need to check it everytime a function is called.
-        bool _functionChecksDone;
-        bool _functionNeedsColumnListDefinition; // Functions don't return record by default.
-
         UpdateRowSource _updateRowSource = UpdateRowSource.Both;
 
         internal Type[] ExpectedTypes { get; set; }
-
-        FormatCode[] _resultFormatCodes;
 
         /// <summary>
         /// Indicates whether this command has been prepared.
@@ -176,7 +170,6 @@ namespace Npgsql
                 // [TODO] Validate commandtext.
                 _commandText = value;
                 DeallocatePrepared();
-                _functionChecksDone = false;
             }
         }
 
@@ -374,7 +367,7 @@ namespace Npgsql
 
         #region State management
 
-        volatile int _state;
+        int _state;
 
         /// <summary>
         /// Gets the current state of the connector
@@ -934,6 +927,12 @@ namespace Npgsql
             return (NpgsqlDataReader)base.ExecuteReader(behavior);
         }
 
+        /// <summary>
+        /// Executes the command text against the connection.
+        /// </summary>
+        /// <param name="behavior">An instance of <see cref="CommandBehavior"/>.</param>
+        /// <param name="cancellationToken">A task representing the operation.</param>
+        /// <returns></returns>
 #if NET40
         /// <summary>
         /// Executes the CommandText against the Connection, and returns an DbDataReader using one

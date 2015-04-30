@@ -291,7 +291,7 @@ namespace Npgsql.TypeHandlers
         public BitStringArrayHandler(BitStringHandler elementHandler)
             : base(elementHandler) {}
 
-        public new void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             base.PrepareRead(buf, fieldDescription, len);
             _fieldDescription = fieldDescription;

@@ -644,8 +644,10 @@ namespace TlsClientStream
 
             // Cipher suites
             var supportedCipherSuites = CipherSuiteInfo.Supported;
+            /*
             if (HighestTlsVersionSupported != TlsVersion.TLSv1_2)
                 supportedCipherSuites = supportedCipherSuites.Where(cs => cs.IsAllowedBefore1_2).ToArray();
+            */
             offset += Utils.WriteUInt16(_buf, offset, (ushort)(supportedCipherSuites.Length * sizeof(ushort)));
             foreach (var suite in supportedCipherSuites)
             {

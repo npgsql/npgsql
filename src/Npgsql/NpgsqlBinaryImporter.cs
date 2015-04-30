@@ -277,6 +277,9 @@ namespace Npgsql
             }
         }
 
+        /// <summary>
+        /// Completes that binary import and sets the connection back to idle state
+        /// </summary>
         public void Dispose() { Close(); }
 
         /// <summary>

@@ -174,11 +174,17 @@ namespace Npgsql
             _msg = new ErrorOrNoticeMessage(buf);
         }
 
+        /// <summary>
+        /// Gets a the PostgreSQL error message and code.
+        /// </summary>
         public override string Message
         {
             get { return Code + ": " + MessageText; }
         }
 
+        /// <summary>
+        /// Gets a collection of key/value pairs that provide additional PostgreSQL fields about the exception.
+        /// </summary>
         public override IDictionary Data
         {
             get

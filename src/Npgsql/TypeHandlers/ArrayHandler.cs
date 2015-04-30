@@ -44,7 +44,6 @@ namespace Npgsql.TypeHandlers
         /// <summary>
         /// The array currently being written
         /// </summary>
-        bool _hasNulls;
         bool _wroteElementLen;
 
         #endregion
@@ -300,7 +299,7 @@ namespace Npgsql.TypeHandlers
                         return false;
                     }
                     _buf.WriteInt32(_dimensions);
-                    _buf.WriteInt32(_hasNulls ? 1 : 0); // Actually not used by backend
+                    _buf.WriteInt32(1);  // HasNulls=1. Not actually used by the backend.
                     _buf.WriteInt32((int)ElementHandler.OID);
                     var asArray = _writeValue as Array;
                     if (asArray != null)
@@ -497,7 +496,7 @@ namespace Npgsql.TypeHandlers
         public ArrayHandler(TypeHandler elementHandler)
             : base(elementHandler) { }
 
-        public new void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             base.PrepareRead(buf, fieldDescription, len);
         }

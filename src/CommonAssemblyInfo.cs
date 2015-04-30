@@ -6,7 +6,7 @@ using System.Resources;
 
 // Contains assembly attributes shared by all Npgsql projects
 
-[assembly: CLSCompliantAttribute(true)]
+[assembly: CLSCompliant(false)]
 [assembly: AllowPartiallyTrustedCallersAttribute()]
 [assembly: SecurityRules(SecurityRuleSet.Level1)]
 [assembly: AssemblyCompanyAttribute("Npgsql Development Team")]

@@ -97,7 +97,6 @@ namespace Npgsql
             }
         }
 
-        [RewriteAsync]
         internal void ReadMore()
         {
             Ensure(ReadBytesLeft + 1);
@@ -377,10 +376,6 @@ namespace Npgsql
             ReadPosition += len;
         }
 
-        /// <summary>
-        /// </summary>
-        /// <param name="readAll">whether to loop internally until all bytes are read,
-        /// or return after a single read to the underlying stream</param>
         internal int ReadBytes(byte[] output, int outputOffset, int len, bool readAll=false)
         {
             if (len <= ReadBytesLeft)
@@ -414,6 +409,8 @@ namespace Npgsql
         /// <param name="charCount">number of character to be read into the output buffer</param>
         /// <param name="byteCount">number of bytes left in the field. This method will not read bytes
         /// beyond this count</param>
+        /// <param name="bytesRead">The number of bytes actually read.</param>
+        /// <param name="charsRead">The number of characters actually read.</param>
         /// <returns>the number of bytes read</returns>
         internal void ReadChars(char[] output, int outputOffset, int charCount, int byteCount, out int bytesRead, out int charsRead)
         {
@@ -460,6 +457,8 @@ namespace Npgsql
         /// int.MaxValue means all available characters (limited only by <paramref name="byteCount"/>).
         /// </param>
         /// <param name="byteCount">the maximal number of bytes to process</param>
+        /// <param name="bytesSkipped">The number of bytes actually skipped.</param>
+        /// <param name="charsSkipped">The number of characters actually skipped.</param>
         /// <returns>the number of bytes read</returns>
         internal void SkipChars(int charCount, int byteCount, out int bytesSkipped, out int charsSkipped)
         {

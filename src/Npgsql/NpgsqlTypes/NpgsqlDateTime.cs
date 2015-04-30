@@ -514,7 +514,6 @@ namespace NpgsqlTypes
                 return InternalType.FiniteUtc;
             case DateTimeKind.Local:
                 return InternalType.FiniteLocal;
-                break;
             default:
                 throw PGUtil.ThrowIfReached();
             }            

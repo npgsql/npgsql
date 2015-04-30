@@ -55,8 +55,7 @@ namespace Npgsql
     internal abstract class SimpleFrontendMessage : FrontendMessage
     {
         /// <summary>
-        /// Returns the number of bytes needed to write this message. Can only be called after
-        /// <see cref="FrontendMessage.Prepare"/> has been called.
+        /// Returns the number of bytes needed to write this message.
         /// </summary>
         internal abstract int Length { get; }
 

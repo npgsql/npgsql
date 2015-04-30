@@ -19,9 +19,11 @@ using NpgsqlTypes;
 
 namespace Npgsql
 {
+    /// <summary>
+    /// Reads a forward-only stream of rows from a data source.
+    /// </summary>
     public partial class NpgsqlDataReader : DbDataReader
     {
-        private ReaderState _state;
         internal NpgsqlCommand Command { get; private set; }
         readonly NpgsqlConnector _connector;
         readonly NpgsqlConnection _connection;
@@ -120,6 +122,10 @@ namespace Npgsql
 
         #region Read
 
+        /// <summary>
+        /// Advances the reader to the next record in a result set.
+        /// </summary>
+        /// <returns></returns>
         public override bool Read()
         {
             if (_row != null) {
@@ -221,6 +227,10 @@ namespace Npgsql
 
         #region NextResult
 
+        /// <summary>
+        /// Advances the reader to the next result when reading the results of a batch of statements.
+        /// </summary>
+        /// <returns></returns>
         public override sealed bool NextResult()
         {
             return IsSchemaOnly ? NextResultSchemaOnly() : NextResultInternal();
@@ -377,6 +387,9 @@ namespace Npgsql
             get { return State == ReaderState.Closed; }
         }
 
+        /// <summary>
+        /// Gets the number of rows changed, inserted, or deleted by execution of the SQL statement.
+        /// </summary>
         public override int RecordsAffected
         {
             get { return _recordsAffected.HasValue ? (int)_recordsAffected.Value : -1; }
@@ -388,6 +401,9 @@ namespace Npgsql
         /// </summary>
         public uint LastInsertedOID { get; private set; }
 
+        /// <summary>
+        /// Gets a value that indicates whether this DbDataReader contains one or more rows.
+        /// </summary>
         public override bool HasRows
         {
             get
@@ -431,6 +447,11 @@ namespace Npgsql
         /// </summary>
         public bool IsOnRow { get { return _row != null; } }
 
+        /// <summary>
+        /// Gets the name of the column, given the zero-based column ordinal.
+        /// </summary>
+        /// <param name="ordinal">The zero-based column ordinal.</param>
+        /// <returns>The name of the specified column.</returns>
         public override string GetName(int ordinal)
         {
             CheckResultSet();
@@ -492,6 +513,9 @@ namespace Npgsql
             }
         }
 
+        /// <summary>
+        /// Closes the <see cref="NpgsqlDataReader"/> object.
+        /// </summary>
         public override void Close()
         {
             if (State == ReaderState.Closed) { return; }
@@ -565,6 +589,11 @@ namespace Npgsql
 
         #region Simple value getters
 
+        /// <summary>
+        /// Gets the value of the specified column as a Boolean.
+        /// </summary>
+        /// <param name="ordinal">The zero-based column ordinal.</param>
+        /// <returns>The value of the specified column.</returns>
         public override bool GetBoolean(int ordinal)
         {
             CheckRowAndOrdinal(ordinal);
@@ -573,6 +602,11 @@ namespace Npgsql
             return ReadColumnWithoutCache<bool>(ordinal);
         }
 
+        /// <summary>
+        /// Gets the value of the specified column as a byte.
+        /// </summary>
+        /// <param name="ordinal">The zero-based column ordinal.</param>
+        /// <returns>The value of the specified column.</returns>
         public override byte GetByte(int ordinal)
         {
             CheckRowAndOrdinal(ordinal);
@@ -581,6 +615,11 @@ namespace Npgsql
             return ReadColumnWithoutCache<byte>(ordinal);
         }
 
+        /// <summary>
+        /// Gets the value of the specified column as a single character.
+        /// </summary>
+        /// <param name="ordinal">The zero-based column ordinal.</param>
+        /// <returns>The value of the specified column.</returns>
         public override char GetChar(int ordinal)
         {
             CheckRowAndOrdinal(ordinal);
@@ -589,6 +628,11 @@ namespace Npgsql
             return ReadColumnWithoutCache<char>(ordinal);
         }
 
+        /// <summary>
+        /// Gets the value of the specified column as a 16-bit signed integer.
+        /// </summary>
+        /// <param name="ordinal">The zero-based column ordinal.</param>
+        /// <returns>The value of the specified column.</returns>
         public override short GetInt16(int ordinal)
         {
             CheckRowAndOrdinal(ordinal);
@@ -597,6 +641,11 @@ namespace Npgsql
             return ReadColumn<short>(ordinal);
         }
 
+        /// <summary>
+        /// Gets the value of the specified column as a 32-bit signed integer.
+        /// </summary>
+        /// <param name="ordinal">The zero-based column ordinal.</param>
+        /// <returns>The value of the specified column.</returns>
         public override int GetInt32(int ordinal)
         {
             CheckRowAndOrdinal(ordinal);
@@ -605,6 +654,11 @@ namespace Npgsql
             return ReadColumn<int>(ordinal);
         }
 
+        /// <summary>
+        /// Gets the value of the specified column as a 64-bit signed integer.
+        /// </summary>
+        /// <param name="ordinal">The zero-based column ordinal.</param>
+        /// <returns>The value of the specified column.</returns>
         public override long GetInt64(int ordinal)
         {
             CheckRowAndOrdinal(ordinal);
@@ -613,6 +667,11 @@ namespace Npgsql
             return ReadColumn<long>(ordinal);
         }
 
+        /// <summary>
+        /// Gets the value of the specified column as a <see cref="DateTime"/> object.
+        /// </summary>
+        /// <param name="ordinal">The zero-based column ordinal.</param>
+        /// <returns>The value of the specified column.</returns>
         public override DateTime GetDateTime(int ordinal)
         {
             CheckRowAndOrdinal(ordinal);
@@ -621,6 +680,11 @@ namespace Npgsql
             return ReadColumn<DateTime>(ordinal);
         }
 
+        /// <summary>
+        /// Gets the value of the specified column as an instance of <see cref="string"/>.
+        /// </summary>
+        /// <param name="ordinal">The zero-based column ordinal.</param>
+        /// <returns>The value of the specified column.</returns>
         public override string GetString(int ordinal)
         {
             CheckRowAndOrdinal(ordinal);
@@ -629,6 +693,11 @@ namespace Npgsql
             return ReadColumn<string>(ordinal);
         }
 
+        /// <summary>
+        /// Gets the value of the specified column as a <see cref="decimal"/> object.
+        /// </summary>
+        /// <param name="ordinal">The zero-based column ordinal.</param>
+        /// <returns>The value of the specified column.</returns>
         public override decimal GetDecimal(int ordinal)
         {
             CheckRowAndOrdinal(ordinal);
@@ -637,6 +706,11 @@ namespace Npgsql
             return ReadColumn<decimal>(ordinal);
         }
 
+        /// <summary>
+        /// Gets the value of the specified column as a double-precision floating point number.
+        /// </summary>
+        /// <param name="ordinal">The zero-based column ordinal.</param>
+        /// <returns>The value of the specified column.</returns>
         public override double GetDouble(int ordinal)
         {
             CheckRowAndOrdinal(ordinal);
@@ -645,6 +719,11 @@ namespace Npgsql
             return ReadColumn<double>(ordinal);
         }
 
+        /// <summary>
+        /// Gets the value of the specified column as a single-precision floating point number.
+        /// </summary>
+        /// <param name="ordinal">The zero-based column ordinal.</param>
+        /// <returns>The value of the specified column.</returns>
         public override float GetFloat(int ordinal)
         {
             CheckRowAndOrdinal(ordinal);
@@ -653,6 +732,11 @@ namespace Npgsql
             return ReadColumn<float>(ordinal);
         }
 
+        /// <summary>
+        /// Gets the value of the specified column as a globally-unique identifier (GUID).
+        /// </summary>
+        /// <param name="ordinal">The zero-based column ordinal.</param>
+        /// <returns>The value of the specified column.</returns>
         public override Guid GetGuid(int ordinal)
         {
             CheckRowAndOrdinal(ordinal);
@@ -661,6 +745,11 @@ namespace Npgsql
             return ReadColumn<Guid>(ordinal);
         }
 
+        /// <summary>
+        /// Populates an array of objects with the column values of the current row.
+        /// </summary>
+        /// <param name="values">An array of Object into which to copy the attribute columns.</param>
+        /// <returns>The number of instances of <see cref="object"/> in the array.</returns>
         public override int GetValues(object[] values)
         {
             #region Contracts
@@ -677,6 +766,11 @@ namespace Npgsql
             return count;
         }
 
+        /// <summary>
+        /// Gets the value of the specified column as an instance of <see cref="object"/>.
+        /// </summary>
+        /// <param name="ordinal">The zero-based column ordinal.</param>
+        /// <returns>The value of the specified column.</returns>
         public override object this[int ordinal]
         {
             get
@@ -782,6 +876,15 @@ namespace Npgsql
 
         #region Special binary getters
 
+        /// <summary>
+        /// Reads a stream of bytes from the specified column, starting at location indicated by dataOffset, into the buffer, starting at the location indicated by bufferOffset.
+        /// </summary>
+        /// <param name="ordinal">The zero-based column ordinal.</param>
+        /// <param name="dataOffset">The index within the row from which to begin the read operation.</param>
+        /// <param name="buffer">The buffer into which to copy the data.</param>
+        /// <param name="bufferOffset">The index with the buffer to which the data will be copied.</param>
+        /// <param name="length">The maximum number of characters to read.</param>
+        /// <returns>The actual number of bytes read.</returns>
         public override long GetBytes(int ordinal, long dataOffset, byte[] buffer, int bufferOffset, int length)
         {
             #region Contracts
@@ -807,6 +910,11 @@ namespace Npgsql
             return handler.GetBytes(row, (int)dataOffset, buffer, bufferOffset, length, fieldDescription);
         }
 
+        /// <summary>
+        /// Retrieves data as a <see cref="Stream"/>.
+        /// </summary>
+        /// <param name="ordinal">The zero-based column ordinal.</param>
+        /// <returns>The returned object.</returns>
 #if NET40
         public Stream GetStream(int ordinal)
 #else
@@ -832,6 +940,15 @@ namespace Npgsql
 
         #region Special text getters
 
+        /// <summary>
+        /// Reads a stream of characters from the specified column, starting at location indicated by dataOffset, into the buffer, starting at the location indicated by bufferOffset.
+        /// </summary>
+        /// <param name="ordinal">The zero-based column ordinal.</param>
+        /// <param name="dataOffset">The index within the row from which to begin the read operation.</param>
+        /// <param name="buffer">The buffer into which to copy the data.</param>
+        /// <param name="bufferOffset">The index with the buffer to which the data will be copied.</param>
+        /// <param name="length">The maximum number of characters to read.</param>
+        /// <returns>The actual number of characters read.</returns>
         public override long GetChars(int ordinal, long dataOffset, char[] buffer, int bufferOffset, int length)
         {
             #region Contracts
@@ -857,6 +974,11 @@ namespace Npgsql
             return handler.GetChars(row, (int)dataOffset, buffer, bufferOffset, length, fieldDescription);
         }
 
+        /// <summary>
+        /// Retrieves data as a <see cref="TextReader"/>.
+        /// </summary>
+        /// <param name="ordinal">The zero-based column ordinal.</param>
+        /// <returns>The returned object.</returns>
 #if NET40
         public TextReader GetTextReader(int ordinal)
 #else
@@ -882,6 +1004,11 @@ namespace Npgsql
 
         #endregion
 
+        /// <summary>
+        /// Gets a value that indicates whether the column contains nonexistent or missing values.
+        /// </summary>
+        /// <param name="ordinal">The zero-based column ordinal.</param>
+        /// <returns><b>true</b> if the specified column is equivalent to <see cref="DBNull"/>; otherwise <b>false</b>.</returns>
         public override bool IsDBNull(int ordinal)
         {
             CheckRowAndOrdinal(ordinal);
@@ -891,11 +1018,21 @@ namespace Npgsql
             return _row.IsColumnNull;
         }
 
+        /// <summary>
+        /// Gets the value of the specified column as an instance of <see cref="object"/>.
+        /// </summary>
+        /// <param name="name">The name of the column.</param>
+        /// <returns>The value of the specified column.</returns>
         public override object this[string name]
         {
             get { return GetValue(GetOrdinal(name)); }
         }
 
+        /// <summary>
+        /// Gets the column ordinal given the name of the column.
+        /// </summary>
+        /// <param name="name">The name of the column.</param>
+        /// <returns>The zero-based column ordinal.</returns>
         public override int GetOrdinal(string name)
         {
             #region Contracts
@@ -923,6 +1060,11 @@ namespace Npgsql
             return _rowDescription[ordinal].Handler.PgName;
         }
 
+        /// <summary>
+        /// Gets the data type of the specified column.
+        /// </summary>
+        /// <param name="ordinal">The zero-based column ordinal.</param>
+        /// <returns>The data type of the specified column.</returns>
         public override Type GetFieldType(int ordinal)
         {
             CheckResultSet();
@@ -933,6 +1075,11 @@ namespace Npgsql
             return fieldDescription.Handler.GetFieldType(fieldDescription);
         }
 
+        /// <summary>
+        /// Returns the provider-specific field type of the specified column.
+        /// </summary>
+        /// <param name="ordinal">The zero-based column ordinal.</param>
+        /// <returns>The Type object that describes the data type of the specified column.</returns>
         public override Type GetProviderSpecificFieldType(int ordinal)
         {
             CheckResultSet();
@@ -943,6 +1090,11 @@ namespace Npgsql
             return fieldDescription.Handler.GetProviderSpecificFieldType(fieldDescription);
         }
 
+        /// <summary>
+        /// Gets the value of the specified column as an instance of <see cref="object"/>.
+        /// </summary>
+        /// <param name="ordinal">The zero-based column ordinal.</param>
+        /// <returns>The value of the specified column.</returns>
         public override object GetValue(int ordinal)
         {
             CheckRowAndOrdinal(ordinal);
@@ -984,6 +1136,12 @@ namespace Npgsql
             return result;
         }
 
+        /// <summary>
+        /// Synchronously gets the value of the specified column as a type.
+        /// </summary>
+        /// <typeparam name="T">Synchronously gets the value of the specified column as a type.</typeparam>
+        /// <param name="ordinal">The column to be retrieved.</param>
+        /// <returns>The column to be retrieved.</returns>
 #if NET40
         public T GetFieldValue<T>(int ordinal)
 #else
@@ -1027,6 +1185,11 @@ namespace Npgsql
             throw new InvalidCastException(String.Format("Can't cast database type {0} to {1}", handler.PgName, typeof(T).Name));
         }
 
+        /// <summary>
+        /// Gets the value of the specified column as an instance of <see cref="object"/>.
+        /// </summary>
+        /// <param name="ordinal">The zero-based column ordinal.</param>
+        /// <returns>The value of the specified column.</returns>
         public override object GetProviderSpecificValue(int ordinal)
         {
             CheckRowAndOrdinal(ordinal);
@@ -1068,6 +1231,11 @@ namespace Npgsql
             return result;
         }
 
+        /// <summary>
+        /// Gets all provider-specific attribute columns in the collection for the current row.
+        /// </summary>
+        /// <param name="values">An array of Object into which to copy the attribute columns.</param>
+        /// <returns>The number of instances of <see cref="object"/> in the array.</returns>
         public override int GetProviderSpecificValues(object[] values)
         {
             #region Contracts
@@ -1085,6 +1253,10 @@ namespace Npgsql
             return count;
         }
 
+        /// <summary>
+        /// Returns an <see cref="IEnumerator"/> that can be used to iterate through the rows in the data reader.
+        /// </summary>
+        /// <returns>An <see cref="IEnumerator"/> that can be used to iterate through the rows in the data reader.</returns>
 #if !DNXCORE50
         public override IEnumerator GetEnumerator()
         {

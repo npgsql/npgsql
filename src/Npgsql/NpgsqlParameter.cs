@@ -296,6 +296,9 @@ namespace Npgsql
             }
         }
 
+        /// <summary>
+        /// Gets or sets a value that indicates whether the parameter accepts null values.
+        /// </summary>
         public override bool IsNullable { get; set; }
 
         /// <summary>
@@ -443,15 +446,6 @@ namespace Npgsql
                 _dbType = TypeHandlerRegistry.ToDbType(value);
             }
         }
-
-        /// <summary>
-        /// Gets or sets a value indicating whether the parameter accepts null values.
-        /// </summary>
-        /// <value><b>true</b> if null values are accepted; otherwise, <b>false</b>. The default is <b>false</b>.</value>
-
-#if WITHDESIGN
-        [EditorBrowsable(EditorBrowsableState.Advanced), Browsable(false), DefaultValue(false), DesignOnly(true)]
-#endif
 
         /// <summary>
         /// Gets or sets The name of the <see cref="NpgsqlParameter">NpgsqlParameter</see>.

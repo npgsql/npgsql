@@ -146,7 +146,9 @@ namespace Npgsql
     /// </summary>
     public enum ProtocolVersion
     {
-        Unknown  = 0,
+        /// <summary>
+        /// Protocol version 3 (the current version).
+        /// </summary>
         Version3 = 3
     }
 

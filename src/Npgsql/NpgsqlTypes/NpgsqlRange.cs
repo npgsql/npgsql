@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Text;
+#pragma warning disable 1591
 
 namespace NpgsqlTypes
 {

@@ -232,6 +232,9 @@ namespace Npgsql
 
         #region Close / Dispose
 
+        /// <summary>
+        /// Completes that binary export and sets the connection back to idle state
+        /// </summary>
         public void Dispose()
         {
             if (_isDisposed) { return; }

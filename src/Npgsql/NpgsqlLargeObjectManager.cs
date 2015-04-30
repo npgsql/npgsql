@@ -57,8 +57,6 @@ namespace Npgsql
         /// <summary>
         /// Execute a function that returns a byte array
         /// </summary>
-        /// <param name="function"></param>
-        /// <param name="arguments"></param>
         /// <returns></returns>
         [RewriteAsync]
         internal int ExecuteFunctionGetBytes(string function, byte[] buffer, int offset, int len, params object[] arguments)

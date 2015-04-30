@@ -88,6 +88,11 @@ namespace Npgsql
 
         #region Non-static property handling
 
+        /// <summary>
+        /// Gets or sets the value associated with the specified key.
+        /// </summary>
+        /// <param name="keyword">The key of the item to get or set.</param>
+        /// <returns>The value associated with the specified key.</returns>
         public override object this[string keyword]
         {
             get
@@ -117,6 +122,11 @@ namespace Npgsql
             }
         }
 
+        /// <summary>
+        /// Removes the entry with the specified key from the DbConnectionStringBuilder instance.
+        /// </summary>
+        /// <param name="keyword">The key of the key/value pair to be removed from the connection string in this DbConnectionStringBuilder.</param>
+        /// <returns><b>true</b> if the key existed within the connection string and was removed; <b>false</b> if the key did not exist.</returns>
         public override bool Remove(string keyword)
         {
             var p = GetProperty(keyword);
@@ -127,6 +137,9 @@ namespace Npgsql
             return removed;
         }
 
+        /// <summary>
+        /// Clears the contents of the <see cref="NpgsqlConnectionStringBuilder"/> instance.
+        /// </summary>
         public override void Clear()
         {
             Contract.Assert(Keys != null);
@@ -135,6 +148,11 @@ namespace Npgsql
             }
         }
 
+        /// <summary>
+        /// Determines whether the <see cref="NpgsqlConnectionStringBuilder"/> contains a specific key.
+        /// </summary>
+        /// <param name="keyword">The key to locate in the <see cref="NpgsqlConnectionStringBuilder"/>.</param>
+        /// <returns><b>true</b> if the <see cref="NpgsqlConnectionStringBuilder"/> contains an entry with the specified key; otherwise <b>false</b>.</returns>
         public override bool ContainsKey(string keyword)
         {
             if (keyword == null)
@@ -984,6 +1002,9 @@ namespace Npgsql
 
     #region Enums
 
+    /// <summary>
+    /// An option specified in the connection string that activates special compatibility features.
+    /// </summary>
     public enum ServerCompatibilityMode
     {
         /// <summary>
@@ -996,11 +1017,26 @@ namespace Npgsql
         Redshift,
     }
 
+    /// <summary>
+    /// Specifies how to manage SSL.
+    /// </summary>
     public enum SslMode
     {
+        /// <summary>
+        /// SSL is disabled. If the server requires SSL, the connection will fail.
+        /// </summary>
         Disable,
+        /// <summary>
+        /// Allow SSL connections if the server requires them.
+        /// </summary>
         Allow,
+        /// <summary>
+        /// Prefer SSL connections if the server allows them, but allow connections without SSL.
+        /// </summary>
         Prefer,
+        /// <summary>
+        /// Fail the connection if the server doesn't suppotr SSL.
+        /// </summary>
         Require,
     }
 

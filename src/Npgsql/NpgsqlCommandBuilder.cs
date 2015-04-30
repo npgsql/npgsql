@@ -137,6 +137,8 @@ namespace Npgsql
 
         private static void DoDeriveParameters(NpgsqlCommand command)
         {
+            throw new NotImplementedException();
+#if IMPLEMENT
             // See http://www.postgresql.org/docs/current/static/catalog-pg-proc.html
             command.Parameters.Clear();
             // Updated after 0.99.3 to support the optional existence of a name qualifying schema and case insensitivity when the schema ror procedure name do not contain a quote.
@@ -251,6 +253,7 @@ namespace Npgsql
                      */
                 }
             }
+#endif
         }
 
         /// <summary>

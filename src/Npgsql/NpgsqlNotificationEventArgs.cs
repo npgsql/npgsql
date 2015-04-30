@@ -45,6 +45,9 @@ namespace Npgsql
         /// </summary>
         public readonly string Condition;
 
+        /// <summary>
+        /// Additional information.
+        /// </summary>
         public readonly string AdditionalInformation;
 
         internal NpgsqlNotificationEventArgs(NpgsqlBuffer buf)

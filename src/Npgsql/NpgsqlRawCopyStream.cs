@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
+#pragma warning disable 1591
 
 namespace Npgsql
 {
