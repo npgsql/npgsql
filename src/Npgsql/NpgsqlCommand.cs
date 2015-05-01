@@ -782,11 +782,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
         /// <returns>A task representing the asynchronous operation, with the number of rows affected if known; -1 otherwise.</returns>
-#if NET40
-        public async Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken)
-#else
         public override async Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken)
-#endif
         {
             cancellationToken.ThrowIfCancellationRequested();
             cancellationToken.Register(Cancel);
@@ -802,16 +798,7 @@ namespace Npgsql
             }
         }
 
-#if NET40
-        public Task<int> ExecuteNonQueryAsync()
-        {
-            return ExecuteNonQueryAsync(CancellationToken.None);
-        }
-#endif
-
-#if !NET40
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-#endif
         [RewriteAsync]
         int ExecuteNonQueryInternal()
         {
@@ -850,11 +837,7 @@ namespace Npgsql
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
         /// <returns>A task representing the asynchronous operation, with the first column of the
         /// first row in the result set, or a null reference if the result set is empty.</returns>
-#if NET40
-        public async Task<object> ExecuteScalarAsync(CancellationToken cancellationToken)
-#else
         public override async Task<object> ExecuteScalarAsync(CancellationToken cancellationToken)
-#endif
         {
             cancellationToken.ThrowIfCancellationRequested();
             cancellationToken.Register(Cancel);
@@ -870,16 +853,7 @@ namespace Npgsql
             }
         }
 
-#if NET40
-        public Task<object> ExecuteScalarAsync()
-        {
-            return ExecuteScalarAsync(CancellationToken.None);
-        }
-#endif
-
-#if !NET40
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-#endif
         [RewriteAsync]
         object ExecuteScalarInternal()
         {
@@ -933,54 +907,6 @@ namespace Npgsql
         /// <param name="behavior">An instance of <see cref="CommandBehavior"/>.</param>
         /// <param name="cancellationToken">A task representing the operation.</param>
         /// <returns></returns>
-#if NET40
-        /// <summary>
-        /// Executes the CommandText against the Connection, and returns an DbDataReader using one
-        /// of the CommandBehavior values.
-        /// </summary>
-        /// <returns>A DbDataReader object.</returns>
-        public async Task<NpgsqlDataReader> ExecuteReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            cancellationToken.Register(Cancel);
-            try {
-                return await ExecuteDbDataReaderInternalAsync(behavior);
-            } catch (NpgsqlException e) {
-                if (e.Code == "57014")
-                    throw new TaskCanceledException(e.Message);
-                throw;
-            }
-        }
-
-        /// <summary>
-        /// Asynchronously executes the CommandText against the Connection, and returns an DbDataReader.
-        /// </summary>
-        /// <returns>A DbDataReader object.</returns>
-        public Task<NpgsqlDataReader> ExecuteReaderAsync(CancellationToken cancellationToken)
-        {
-            return ExecuteReaderAsync(CommandBehavior.Default, CancellationToken.None);
-        }
-
-        /// <summary>
-        /// Executes the CommandText against the Connection, and returns an DbDataReader using one
-        /// of the CommandBehavior values.
-        /// </summary>
-        /// <returns>A DbDataReader object.</returns>
-        public Task<NpgsqlDataReader> ExecuteReaderAsync(CommandBehavior behavior)
-        {
-            return ExecuteReaderAsync(behavior, CancellationToken.None);
-        }
-
-        /// <summary>
-        /// Executes the CommandText against the Connection, and returns an DbDataReader using one
-        /// of the CommandBehavior values.
-        /// </summary>
-        /// <returns>A DbDataReader object.</returns>
-        public Task<NpgsqlDataReader> ExecuteReaderAsync()
-        {
-            return ExecuteReaderAsync(CommandBehavior.Default, CancellationToken.None);
-        }
-#else
         protected async override Task<DbDataReader> ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -996,7 +922,6 @@ namespace Npgsql
                 throw;
             }
         }
-#endif
 
         /// <summary>
         /// Executes the command text against the connection.
@@ -1007,9 +932,7 @@ namespace Npgsql
             return ExecuteDbDataReaderInternal(behavior);
         }
 
-#if !NET40
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-#endif
         [RewriteAsync]
         NpgsqlDataReader ExecuteDbDataReaderInternal(CommandBehavior behavior)
         {
