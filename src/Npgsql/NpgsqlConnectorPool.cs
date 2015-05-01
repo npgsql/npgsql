@@ -305,7 +305,7 @@ namespace Npgsql
                 }
                 catch
                 {
-                    Contract.Assert(Connector.State == ConnectorState.Closed);
+                    Contract.Assert(Connector.IsBroken);
                     lock (Queue)
                     {
                         Queue.Busy.Remove(Connector);

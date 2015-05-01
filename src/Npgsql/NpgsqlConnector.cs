@@ -399,7 +399,7 @@ namespace Npgsql
             }
             catch
             {
-                try { Close(); }
+                try { Break(); }
                 catch {
                     // ignored
                 }
@@ -868,7 +868,7 @@ namespace Npgsql
 
                 case BackendMessageCode.ReadyForQuery:
                     if (error != null) {
-                        throw error;   
+                        throw error;
                     }
                     break;
 
@@ -1293,13 +1293,19 @@ namespace Npgsql
             Contract.Requires(!IsClosed);
             if (State == ConnectorState.Broken)
                 return;
+            var prevState = State;
             State = ConnectorState.Broken;
             var conn = Connection;
             Cleanup();
+
+            // We have no connection if we're broken by a keepalive occuring while the connector is in the pool
             if (conn != null)
             {
-                // We have no connection if we're broken by a keepalive occuring while the connector is in the pool
-                conn.WasBroken = true;
+                if (prevState != ConnectorState.Connecting)
+                {
+                    // A break during a connection attempt puts the connection in state closed, not broken
+                    conn.WasBroken = true;
+                }
                 conn.ReallyClose();
             }
         }
