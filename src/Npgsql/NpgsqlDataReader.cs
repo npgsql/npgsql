@@ -569,7 +569,13 @@ namespace Npgsql
                 ReaderClosed(this, EventArgs.Empty);
                 ReaderClosed = null;
             }
-            await SkipUntilAsync(BackendMessageCode.ReadyForQuery);
+
+            // TODO: Consume asynchronously?
+            if (State != ReaderState.Consumed)
+            {
+                await Task.Run(() => Consume());
+            }
+
             _connector.EndUserAction();
         }
 

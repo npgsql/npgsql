@@ -811,6 +811,19 @@ namespace Npgsql.Tests
             command.Dispose();
         }
 
+        [Test]
+        public void CloseConnectionInMiddleOfRow()
+        {
+            using (var conn = new NpgsqlConnection(ConnectionString))
+            {
+                conn.Open();
+                var cmd = new NpgsqlCommand("SELECT 1, 2", conn);
+                var reader = cmd.ExecuteReader();
+                reader.Read();
+                Console.WriteLine(reader.GetInt32(0));
+            }
+        }
+
 #if DEBUG
         [Test, Description("Tests that everything goes well when a type handler generates a SafeReadException")]
         [Timeout(5000)]
