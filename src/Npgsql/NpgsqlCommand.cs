@@ -722,7 +722,10 @@ namespace Npgsql
                     } while (!ProcessMessageForUnprepared(msg, behavior));
                 }
 
-                return new NpgsqlDataReader(this, behavior, _queries);
+                var reader = new NpgsqlDataReader(this, behavior, _queries);
+                reader.Init();
+                _connector.CurrentReader = reader;
+                return reader;
             }
             catch
             {

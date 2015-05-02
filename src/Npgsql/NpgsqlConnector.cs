@@ -1465,6 +1465,7 @@ namespace Npgsql
 
         internal void EndUserAction()
         {
+            Contract.Requires(CurrentReader == null);
             Contract.Ensures(!IsInUserAction);
             Contract.EnsuresOnThrow<NpgsqlException>(!IsInUserAction);
             Contract.EnsuresOnThrow<IOException>(!IsInUserAction);

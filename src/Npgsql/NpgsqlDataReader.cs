@@ -101,9 +101,11 @@ namespace Npgsql
             if (IsCaching) {
                 _rowCache = new RowCache();
             }
-            _connector.CurrentReader = this;
             _queries = queries;
+        }
 
+        internal void Init()
+        {
             _rowDescription = _queries[0].Description;
             if (_rowDescription == null)
             {
