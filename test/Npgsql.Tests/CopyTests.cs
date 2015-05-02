@@ -236,6 +236,13 @@ namespace Npgsql.Tests
             TextImport();
         }
 
+        [Test]
+        public void UndefinedTable()
+        {
+            Assert.That(() => Conn.BeginBinaryImport("COPY undefined_table (field_text, field_int2) FROM STDIN BINARY"),
+                Throws.Exception.TypeOf<NpgsqlException>().With.Property("Code").EqualTo("42P01"));
+        }
+
         /// <summary>
         /// Checks that the connector state is properly managed for COPY operations
         /// </summary>
@@ -244,7 +251,7 @@ namespace Npgsql.Tests
             Assert.That(Conn.Connector.State, Is.EqualTo(ConnectorState.Copy));
             Assert.That(Conn.State, Is.EqualTo(ConnectionState.Open));
             Assert.That(Conn.FullState, Is.EqualTo(ConnectionState.Open | ConnectionState.Fetching));
-            Assert.That(() => ExecuteScalar("SELECT 1"), Throws.Exception.TypeOf<InvalidOperationException>());            
+            Assert.That(() => ExecuteScalar("SELECT 1"), Throws.Exception.TypeOf<InvalidOperationException>());
         }
 
         #endregion

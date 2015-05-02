@@ -902,7 +902,9 @@ namespace Npgsql
             }
             catch
             {
-                Connector.EndUserAction();
+                if (Connector != null) {  // Connector may have been broken
+                    Connector.EndUserAction();
+                }
                 throw;
             }
         }
@@ -931,7 +933,9 @@ namespace Npgsql
             }
             catch
             {
-                Connector.EndUserAction();
+                if (Connector != null) {  // Connector may have been broken
+                    Connector.EndUserAction();
+                }
                 throw;
             }
         }
@@ -1018,7 +1022,9 @@ namespace Npgsql
             }
             catch
             {
-                Connector.EndUserAction();
+                if (Connector != null) {  // Connector may have been broken
+                    Connector.EndUserAction();
+                }
                 throw;
             }
         }
@@ -1281,7 +1287,7 @@ namespace Npgsql
             NpgsqlConnectorPool.ConnectorPoolMgr.ClearAllPools();
         }
 
-        #endregion Misc    
+        #endregion Misc
     }
 
     #region Delegates
