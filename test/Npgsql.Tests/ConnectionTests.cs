@@ -196,7 +196,7 @@ namespace Npgsql.Tests
                     Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
 
                     // Create the database with the other connection
-                    ExecuteNonQuery("CREATE DATABASE foo");
+                    ExecuteNonQuery("CREATE DATABASE foo TEMPLATE template0");
 
                     conn.Open();
                     conn.Close();
@@ -296,7 +296,7 @@ namespace Npgsql.Tests
                 cmd.CommandText = "SELECT generate_series(1,10000)";
                 using (var reader = cmd.ExecuteReader()) {
 
-                    //After "notify notifytest1", a notification message will be sent to client, 
+                    //After "notify notifytest1", a notification message will be sent to client,
                     //And so the notification message will stick with the last response message of "select generate_series(1,10000)" in Npgsql's tcp receiving buffer.
                     using (var connection = new NpgsqlConnection(ConnectionString)) {
                         connection.Open();
