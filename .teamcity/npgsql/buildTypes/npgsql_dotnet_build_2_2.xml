@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<template xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="91784168-3d1f-49c6-82a1-fd806955ceb4" xsi:noNamespaceSchemaLocation="http://www.jetbrains.com/teamcity/schemas/9.0/project-config.xsd">
-  <name>.NET Build</name>
+<template xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="80ac7f53-8076-42e5-8e00-a55d79fde425" xsi:noNamespaceSchemaLocation="http://www.jetbrains.com/teamcity/schemas/9.0/project-config.xsd">
+  <name>.NET Build for 2.2</name>
   <settings>
     <options>
       <option name="allowExternalStatus" value="true" />
@@ -64,8 +64,7 @@
           <param name="nunit_categery_exclude" value="TodoFor3.0" />
           <param name="nunit_enabled" value="checked" />
           <param name="nunit_environment" value="v4.0" />
-          <param name="nunit_include"><![CDATA[test/Npgsql.Tests/bin/%system.Configuration%/*Tests.dll
-test/Npgsql.EntityFramework.Tests/bin/%system.Configuration%/*Tests.dll]]></param>
+          <param name="nunit_include" value="tests/bin/%system.Configuration%/*Tests.dll" />
           <param name="nunit_platform" value="MSIL" />
           <param name="nunit_version" value="NUnit-2.6.4" />
           <param name="teamcity.step.mode" value="default" />
