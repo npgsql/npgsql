@@ -54,6 +54,7 @@ namespace Npgsql.Tests
         [Test]
         public void FieldCount()
         {
+            ExecuteNonQuery("CREATE TEMP TABLE data (int INTEGER)");
             var cmd = new NpgsqlCommand("SELECT 1; SELECT 2,3", Conn);
             var reader = cmd.ExecuteReader();
             Assert.That(reader.FieldCount, Is.EqualTo(1));
@@ -67,7 +68,7 @@ namespace Npgsql.Tests
             Assert.That(reader.FieldCount, Is.EqualTo(0));
             reader.Close();
 
-            cmd.CommandText = "INSERT INTO data (field_int4) VALUES (1)";
+            cmd.CommandText = "INSERT INTO data (int) VALUES (1)";
             reader = cmd.ExecuteReader();
             // Note MSDN docs that seem to say we should case -1 in this case: http://msdn.microsoft.com/en-us/library/system.data.idatarecord.fieldcount(v=vs.110).aspx
             // But SqlClient returns 0
@@ -78,7 +79,8 @@ namespace Npgsql.Tests
         [Test]
         public void RecordsAffected()
         {
-            var cmd = new NpgsqlCommand("INSERT INTO data (field_int4) VALUES (7); INSERT INTO data (field_int4) VALUES (8)", Conn);
+            ExecuteNonQuery("CREATE TEMP TABLE data (int INTEGER)");
+            var cmd = new NpgsqlCommand("INSERT INTO data (int) VALUES (7); INSERT INTO data (int) VALUES (8)", Conn);
             var reader = cmd.ExecuteReader();
             reader.Close();
             Assert.That(reader.RecordsAffected, Is.EqualTo(2));
@@ -88,7 +90,7 @@ namespace Npgsql.Tests
             reader.Close();
             Assert.That(reader.RecordsAffected, Is.EqualTo(-1));
 
-            cmd = new NpgsqlCommand("UPDATE data SET field_int4=8", Conn);
+            cmd = new NpgsqlCommand("UPDATE data SET int=8", Conn);
             reader = cmd.ExecuteReader();
             reader.Close();
             Assert.That(reader.RecordsAffected, Is.EqualTo(2));
@@ -97,7 +99,8 @@ namespace Npgsql.Tests
         [Test]
         public void LastInsertedOID()
         {
-            var insertCmd = new NpgsqlCommand("INSERT INTO data (field_text) VALUES ('a')", Conn);
+            ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT) WITH OIDS");
+            var insertCmd = new NpgsqlCommand("INSERT INTO data (name) VALUES ('a')", Conn);
             insertCmd.ExecuteNonQuery();
 
             var selectCmd = new NpgsqlCommand("SELECT MAX(oid) FROM data", Conn);
@@ -110,10 +113,11 @@ namespace Npgsql.Tests
         [Test]
         public void GetStringWithParameter()
         {
+            ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
             const string text = "Random text";
-            ExecuteNonQuery(String.Format(@"INSERT INTO data (field_text) VALUES ('{0}')", text));
+            ExecuteNonQuery(String.Format(@"INSERT INTO data (name) VALUES ('{0}')", text));
 
-            var command = new NpgsqlCommand("SELECT field_text FROM data WHERE field_text = :value;", Conn);
+            var command = new NpgsqlCommand("SELECT name FROM data WHERE name = :value;", Conn);
             var param = new NpgsqlParameter();
             param.ParameterName = "value";
             param.DbType = DbType.String;
@@ -133,10 +137,11 @@ namespace Npgsql.Tests
         [Test]
         public void GetStringWithQuoteWithParameter()
         {
-            ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('Text with '' single quote')");
+            ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
+            ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('Text with '' single quote')");
 
             const string test = "Text with ' single quote";
-            var command = new NpgsqlCommand("SELECT field_text FROM data WHERE field_text = :value;", Conn);
+            var command = new NpgsqlCommand("SELECT name FROM data WHERE name = :value;", Conn);
 
             var param = new NpgsqlParameter();
             param.ParameterName = "value";
@@ -229,7 +234,8 @@ namespace Npgsql.Tests
         [Test]
         public void ExecuteReaderGettingEmptyResultSetWithOutputParameter()
         {
-            var command = new NpgsqlCommand("select * from data where field_text = NULL;", Conn);
+            ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
+            var command = new NpgsqlCommand("SELECT * FROM data WHERE name = NULL;", Conn);
             var param = new NpgsqlParameter("some_param", NpgsqlDbType.Varchar);
             param.Direction = ParameterDirection.Output;
             command.Parameters.Add(param);
@@ -243,7 +249,8 @@ namespace Npgsql.Tests
         [ExpectedException(typeof(InvalidOperationException))]
         public void GetValueFromEmptyResultset()
         {
-            var command = new NpgsqlCommand("select * from data where field_text = :value;", Conn);
+            ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
+            var command = new NpgsqlCommand("SELECT * FROM data WHERE name = :value;", Conn);
 
             const string test = "Text single quote";
             var param = new NpgsqlParameter();
@@ -264,50 +271,16 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void TestOverlappedParameterNames()
-        {
-            var command = new NpgsqlCommand("select * from data where field_serial = :test_name or field_serial = :test_name_long", Conn);
-            command.Parameters.Add(new NpgsqlParameter("test_name", DbType.Int32, 4, "a"));
-            command.Parameters.Add(new NpgsqlParameter("test_name_long", DbType.Int32, 4, "aa"));
-
-            command.Parameters[0].Value = 2;
-            command.Parameters[1].Value = 3;
-
-            using (var dr = command.ExecuteReader())
-            {
-                Assert.IsNotNull(dr);
-            }
-        }
-
-        [Test]
-        public void TestOverlappedParameterNamesWithPrepare()
-        {
-            var command = new NpgsqlCommand("select * from data where field_serial = :test_name or field_serial = :test_name_long", Conn);
-            command.Parameters.Add(new NpgsqlParameter("test_name", DbType.Int32, 4, "abc_de"));
-            command.Parameters.Add(new NpgsqlParameter("test_name_long", DbType.Int32, 4, "abc_defg"));
-
-            command.Parameters[0].Value = 2;
-            command.Parameters[1].Value = 3;
-
-            command.Prepare();
-
-            using (var dr = command.ExecuteReader())
-            {
-                Assert.IsNotNull(dr);
-            }
-        }
-
-        [Test]
         public void NonExistentParameterName()
         {
-            var cmd = new NpgsqlCommand("SELECT * FROM data WHERE field_text=@x", Conn);
+            var cmd = new NpgsqlCommand("SELECT @x::TEXT", Conn);
             Assert.That(() => cmd.ExecuteReader(), Throws.Exception);
         }
 
         [Test]
         public void UseDataAdapter()
         {
-            var command = new NpgsqlCommand("select * from data", Conn);
+            var command = new NpgsqlCommand("SELECT 1", Conn);
             var da = new NpgsqlDataAdapter();
             da.SelectCommand = command;
             var ds = new DataSet();
@@ -318,7 +291,7 @@ namespace Npgsql.Tests
         [Test]
         public void UseDataAdapterNpgsqlConnectionConstructor()
         {
-            var command = new NpgsqlCommand("select * from data", Conn);
+            var command = new NpgsqlCommand("SELECT 1", Conn);
             command.Connection = Conn;
             var da = new NpgsqlDataAdapter(command);
             var ds = new DataSet();
@@ -329,7 +302,7 @@ namespace Npgsql.Tests
         [Test]
         public void UseDataAdapterStringNpgsqlConnectionConstructor()
         {
-            var da = new NpgsqlDataAdapter("select * from data", Conn);
+            var da = new NpgsqlDataAdapter("SELECT 1", Conn);
             var ds = new DataSet();
             da.Fill(ds);
             //ds.WriteXml("TestUseDataAdapterStringNpgsqlConnectionConstructor.xml");
@@ -338,7 +311,7 @@ namespace Npgsql.Tests
         [Test]
         public void UseDataAdapterStringStringConstructor()
         {
-            var da = new NpgsqlDataAdapter("select * from data", ConnectionString);
+            var da = new NpgsqlDataAdapter("SELECT 1", ConnectionString);
             var ds = new DataSet();
             da.Fill(ds);
             ds.WriteXml("TestUseDataAdapterStringStringConstructor.xml");
@@ -347,7 +320,7 @@ namespace Npgsql.Tests
         [Test]
         public void UseDataAdapterStringStringConstructor2()
         {
-            var da = new NpgsqlDataAdapter("select * from data", ConnectionString);
+            var da = new NpgsqlDataAdapter("SELECT 1", ConnectionString);
             var ds = new DataSet();
             da.Fill(ds);
             ds.WriteXml("TestUseDataAdapterStringStringConstructor2.xml");
@@ -356,7 +329,7 @@ namespace Npgsql.Tests
         [Test]
         public void DataGridWebControlSupport()
         {
-            var command = new NpgsqlCommand("select * from data;", Conn);
+            var command = new NpgsqlCommand("SELECT 1", Conn);
             var dr = command.ExecuteReader();
             //Console.WriteLine(dr.FieldCount);
             var dg = new DataGrid();
@@ -368,7 +341,7 @@ namespace Npgsql.Tests
         [ExpectedException(typeof(InvalidOperationException))]
         public void ReadPastDataReaderEnd()
         {
-            var command = new NpgsqlCommand("select * from data;", Conn);
+            var command = new NpgsqlCommand("SELECT 1", Conn);
             var dr = command.ExecuteReader();
             while (dr.Read()) {}
             Object o = dr[0];
@@ -376,28 +349,12 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void TypesNames()
-        {
-            var command = new NpgsqlCommand("SELECT field_int2, field_int4, field_int8, field_numeric, field_text, field_bool, field_timestamp FROM data WHERE 1 = 2;", Conn);
-            using (var dr = command.ExecuteReader())
-            {
-                dr.Read();
-                Assert.AreEqual("int2", dr.GetDataTypeName(0));
-                Assert.AreEqual("int4", dr.GetDataTypeName(1));
-                Assert.AreEqual("int8", dr.GetDataTypeName(2));
-                Assert.AreEqual("numeric", dr.GetDataTypeName(3));
-                Assert.AreEqual("text", dr.GetDataTypeName(4));
-                Assert.AreEqual("bool", dr.GetDataTypeName(5));
-                Assert.AreEqual("timestamp", dr.GetDataTypeName(6));
-            }
-        }
-
-        [Test]
         public void SchemaOnly([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
         {
+            ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
             var cmd = new NpgsqlCommand(
                 "SELECT 1 AS some_column;" +
-                "UPDATE data SET field_text='yo' WHERE 1=0;" +
+                "UPDATE data SET name='yo' WHERE 1=0;" +
                 "SELECT 1 AS some_other_column",
                 Conn);
             if (prepare == PrepareOrNot.Prepared)
@@ -429,8 +386,9 @@ namespace Npgsql.Tests
         [Test]
         public void SingleRowCommandBehaviorSupport()
         {
-            ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('X')");
-            ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('Y')");
+            ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
+            ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('X')");
+            ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('Y')");
             var command = new NpgsqlCommand(@"SELECT * FROM data", Conn);
             var reader = command.ExecuteReader(CommandBehavior.SingleRow);
             Assert.That(reader.Read(), Is.True);
@@ -439,34 +397,10 @@ namespace Npgsql.Tests
             command.Dispose();
         }
 
-        [Test]
-        public void SingleRowSequentialCommandBehaviorSupport()
-        {
-            ExecuteNonQuery(@"INSERT INTO data (field_text, field_bool) VALUES ('X', true)");
-            ExecuteNonQuery(@"INSERT INTO data (field_text, field_bool) VALUES ('Y', false)");
-            var command = new NpgsqlCommand("SELECT field_int4, field_text, field_char5, field_float4, field_date, field_bool FROM data ORDER BY field_text", Conn);
-
-            using (var dr = command.ExecuteReader(CommandBehavior.SingleRow | CommandBehavior.SequentialAccess))
-            {
-                Assert.That(dr.Read(), Is.True);
-                Assert.IsTrue(dr.IsDBNull(0));  // field_int4
-                Assert.IsFalse(dr.IsDBNull(1)); // field_text
-                Assert.That(dr.GetString(1), Is.EqualTo("X"));
-                Assert.IsTrue(dr.IsDBNull(2));  // field_char5
-                // field_float4 - do not read this field to test skip
-                Assert.IsTrue(dr.IsDBNull(4));  // field_date
-                Assert.IsFalse(dr.IsDBNull(5)); // field_bool
-                Assert.That(dr.GetValue(5), Is.True);
-
-                Assert.That(dr.Read(), Is.False);
-            }
-        }
-
         [Test, Description("In sequential access, performing a null check on a non-first field would check the first field")]
         public void SequentialNullCheckOnNonFirstField()
         {
-            ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('X')");
-            using (var cmd = new NpgsqlCommand("SELECT field_text, field_int4 FROM data", Conn))
+            using (var cmd = new NpgsqlCommand("SELECT 'X', NULL", Conn))
             using (var dr = cmd.ExecuteReader(CommandBehavior.SequentialAccess))
             {
                 dr.Read();
@@ -480,7 +414,7 @@ namespace Npgsql.Tests
         public void PrimaryKeyFieldsMetadataSupport()
         {
             ExecuteNonQuery("DROP TABLE IF EXISTS DATA2 CASCADE");
-            ExecuteNonQuery(@"CREATE TEMPORARY TABLE DATA2 (
+            ExecuteNonQuery(@"CREATE TEMP TABLE DATA2 (
                                 field_pk1                      INT2 NOT NULL,
                                 field_pk2                      INT2 NOT NULL,
                                 field_serial                   SERIAL,
@@ -503,6 +437,7 @@ namespace Npgsql.Tests
         [Test]
         public void PrimaryKeyFieldMetadataSupport()
         {
+            ExecuteNonQuery("CREATE TEMP TABLE data (id SERIAL PRIMARY KEY, serial SERIAL)");
             using (var command = new NpgsqlCommand("SELECT * FROM data", Conn))
             {
                 using (var dr = command.ExecuteReader(CommandBehavior.KeyInfo))
@@ -510,7 +445,7 @@ namespace Npgsql.Tests
                     dr.Read();
                     var metadata = dr.GetSchemaTable();
                     var key = metadata.Rows.Cast<DataRow>().Single(r => (bool) r["IsKey"]);
-                    Assert.That(key["ColumnName"], Is.EqualTo("field_pk"));
+                    Assert.That(key["ColumnName"], Is.EqualTo("id"));
                 }
             }
         }
@@ -518,6 +453,7 @@ namespace Npgsql.Tests
         [Test]
         public void IsAutoIncrementMetadataSupport()
         {
+            ExecuteNonQuery("CREATE TEMP TABLE data (id SERIAL PRIMARY KEY)");
             var command = new NpgsqlCommand("SELECT * FROM data", Conn);
 
             using (var dr = command.ExecuteReader(CommandBehavior.KeyInfo))
@@ -532,7 +468,8 @@ namespace Npgsql.Tests
         [Test]
         public void IsReadOnlyMetadataSupport()
         {
-            ExecuteNonQuery("CREATE OR REPLACE VIEW DataView (field_pk, field_int2) AS select field_pk, field_int2 + field_int2 as field_int2 from data");
+            ExecuteNonQuery("CREATE TEMP TABLE data (id SERIAL PRIMARY KEY, int2 SMALLINT)");
+            ExecuteNonQuery("CREATE OR REPLACE TEMPORARY VIEW DataView (id, int2) AS SELECT id, int2 + int2 AS int2 FROM data");
 
             var command = new NpgsqlCommand("SELECT * FROM DataView", Conn);
 
@@ -571,27 +508,16 @@ namespace Npgsql.Tests
         [Test]
         public void HasRowsWithoutResultset()
         {
-            var command = new NpgsqlCommand("delete from data where field_serial = 2000000", Conn);
+            ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
+            var command = new NpgsqlCommand("DELETE FROM data WHERE name = 'unknown'", Conn);
             var dr = command.ExecuteReader();
             Assert.IsFalse(dr.HasRows);
         }
 
         [Test]
-        public void ParameterAppearMoreThanOneTime()
-        {
-            var command = new NpgsqlCommand("select * from data where field_serial = :parameter and field_int4 = :parameter", Conn);
-            command.Parameters.Add("parameter", NpgsqlDbType.Integer);
-            command.Parameters["parameter"].Value = 1;
-            using (var dr = command.ExecuteReader())
-            {
-                Assert.IsFalse(dr.HasRows);
-            }
-        }
-
-        [Test]
         public void SchemaOnlySingleRowCommandBehaviorSupport()
         {
-            var command = new NpgsqlCommand("select * from data", Conn);
+            var command = new NpgsqlCommand("SELECT 1", Conn);
             using (var dr = command.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.SingleRow))
             {
                 var i = 0;
@@ -604,7 +530,7 @@ namespace Npgsql.Tests
         [Test]
         public void SchemaOnlyCommandBehaviorSupport()
         {
-            var command = new NpgsqlCommand("select * from data", Conn);
+            var command = new NpgsqlCommand("SELECT 1", Conn);
             using (var dr = command.ExecuteReader(CommandBehavior.SchemaOnly))
             {
                 var i = 0;
@@ -617,9 +543,9 @@ namespace Npgsql.Tests
         [Test]
         public void SchemaOnlyCommandBehaviorSupportFunctioncall()
         {
-            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION funcB() returns setof data as '
-                              select * from data;
-                              ' language 'sql';");
+            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION funcB() RETURNS SETOF integer as '
+                              SELECT 1;
+                              ' LANGUAGE 'sql';");
             var command = new NpgsqlCommand("funcb", Conn);
             command.CommandType = CommandType.StoredProcedure;
             using (var dr = command.ExecuteReader(CommandBehavior.SchemaOnly))
@@ -668,59 +594,29 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test]
-        [ExpectedException(typeof(InvalidOperationException))]
-        public void ExecuteReaderBeforeClosingReader()
+        [Test, Description("Performs some operations while a reader is still open and checks for exceptions")]
+        public void ReaderIsStillOpen()
         {
-            var cmd1 = new NpgsqlCommand("select field_serial from data", Conn);
-            using (var dr1 = cmd1.ExecuteReader())
-            using (var cmd2 = new NpgsqlCommand("select * from data", Conn))
-            using (var dr2 = cmd2.ExecuteReader())
+            using (var cmd1 = new NpgsqlCommand("SELECT 1", Conn))
+            using (var reader1 = cmd1.ExecuteReader())
             {
-            }
-        }
+                Assert.That(() => ExecuteNonQuery("SELECT 1"), Throws.Exception.TypeOf<InvalidOperationException>());
+                Assert.That(() => ExecuteScalar("SELECT 1"), Throws.Exception.TypeOf<InvalidOperationException>());
 
-        [Test]
-        [ExpectedException(typeof(InvalidOperationException))]
-        public void ExecuteScalarBeforeClosingReader()
-        {
-            var cmd1 = new NpgsqlCommand("select field_serial from data", Conn);
-
-            using (var dr1 = cmd1.ExecuteReader())
-            using (var cmd2 = new NpgsqlCommand("select * from data", Conn))
-            {
-                cmd2.ExecuteScalar();
-            }
-        }
-
-        [Test]
-        [ExpectedException(typeof(InvalidOperationException))]
-        public void ExecuteNonQueryBeforeClosingReader()
-        {
-            var cmd1 = new NpgsqlCommand("select field_serial from data", Conn);
-            using (var dr1 = cmd1.ExecuteReader())
-            using (var cmd2 = new NpgsqlCommand("select * from data", Conn))
-            {
-                cmd2.ExecuteNonQuery();
-            }
-        }
-
-        [Test]
-        [ExpectedException(typeof(InvalidOperationException))]
-        public void PrepareBeforeClosingReader()
-        {
-            var cmd1 = new NpgsqlCommand("select field_serial from data", Conn);
-            using (var dr1 = cmd1.ExecuteReader())
-            using (var cmd2 = new NpgsqlCommand("select * from data", Conn))
-            {
-                cmd2.Prepare();
+                using (var cmd2 = new NpgsqlCommand("SELECT 2", Conn))
+                {
+                    Assert.That(() => cmd2.ExecuteReader(), Throws.Exception.TypeOf<InvalidOperationException>());
+                    Assert.That(() => cmd2.Prepare(), Throws.Exception.TypeOf<InvalidOperationException>());
+                }
             }
         }
 
         [Test]
         public void LoadDataTable()
         {
-            using (var command = new NpgsqlCommand("SELECT field_char5, field_varchar5 FROM data", Conn))
+            ExecuteNonQuery("CREATE TEMP TABLE data (char5 CHAR(5), varchar5 VARCHAR(5))");
+
+            using (var command = new NpgsqlCommand("SELECT char5, varchar5 FROM data", Conn))
             using (var dr = command.ExecuteReader())
             {
                 var dt = new DataTable();
@@ -735,7 +631,7 @@ namespace Npgsql.Tests
         [Test]
         public void CleansupOkWithDisposeCalls()
         {
-            var command = new NpgsqlCommand("select * from data", Conn);
+            var command = new NpgsqlCommand("SELECT 1", Conn);
             using (var dr = command.ExecuteReader())
             {
                 dr.Read();
@@ -743,7 +639,7 @@ namespace Npgsql.Tests
 
                 using (var upd = Conn.CreateCommand())
                 {
-                    upd.CommandText = "select * from data";
+                    upd.CommandText = "SELECT 1";
                     upd.Prepare();
                 }
             }
@@ -772,7 +668,8 @@ namespace Npgsql.Tests
         [Test]
         public void HasRows()
         {
-            var command = new NpgsqlCommand("SELECT 1; SELECT * FROM data WHERE field_text='does_not_exist'", Conn);
+            ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
+            var command = new NpgsqlCommand("SELECT 1; SELECT * FROM data WHERE name='does_not_exist'", Conn);
             using (var dr = command.ExecuteReader())
             {
                 Assert.That(dr.HasRows, Is.True);

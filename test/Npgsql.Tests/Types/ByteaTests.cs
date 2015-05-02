@@ -47,7 +47,7 @@ namespace Npgsql.Tests.Types
             }
 
             reader.Close();
-            cmd.Dispose();            
+            cmd.Dispose();
         }
 
         [Test]
@@ -71,9 +71,10 @@ namespace Npgsql.Tests.Types
         {
             // TODO: This is too small to actually test any interesting sequential behavior
             byte[] expected = { 1, 2, 3, 4, 5 };
-            ExecuteNonQuery(String.Format(@"INSERT INTO data (field_bytea) VALUES ({0})", EncodeHex(expected)));
+            ExecuteNonQuery("CREATE TEMP TABLE data (bytes BYTEA)");
+            ExecuteNonQuery(String.Format(@"INSERT INTO data (bytes) VALUES ({0})", EncodeHex(expected)));
 
-            const string queryText = @"SELECT field_bytea, 'foo', field_bytea, field_bytea, field_bytea FROM data";
+            const string queryText = @"SELECT bytes, 'foo', bytes, bytes, bytes FROM data";
             var cmd = new NpgsqlCommand(queryText, Conn);
             var reader = cmd.ExecuteReader(behavior);
             reader.Read();
@@ -96,12 +97,14 @@ namespace Npgsql.Tests.Types
         [Test]
         public void GetBytes([Values(CommandBehavior.Default, CommandBehavior.SequentialAccess)] CommandBehavior behavior)
         {
+            ExecuteNonQuery("CREATE TEMP TABLE data (bytes BYTEA)");
+
             // TODO: This is too small to actually test any interesting sequential behavior
             byte[] expected = { 1, 2, 3, 4, 5 };
             var actual = new byte[expected.Length];
-            ExecuteNonQuery(String.Format(@"INSERT INTO data (field_bytea) VALUES ({0})", EncodeHex(expected)));
+            ExecuteNonQuery(String.Format(@"INSERT INTO data (bytes) VALUES ({0})", EncodeHex(expected)));
 
-            const string queryText = @"SELECT field_bytea, 'foo', field_bytea, 'bar', field_bytea, field_bytea FROM data";
+            const string queryText = @"SELECT bytes, 'foo', bytes, 'bar', bytes, bytes FROM data";
             var cmd = new NpgsqlCommand(queryText, Conn);
             var reader = cmd.ExecuteReader(behavior);
             reader.Read();
@@ -145,10 +148,10 @@ namespace Npgsql.Tests.Types
             // TODO: This is too small to actually test any interesting sequential behavior
             byte[] expected = { 1, 2, 3, 4, 5 };
             var actual = new byte[expected.Length];
-            ExecuteNonQuery(String.Format(@"INSERT INTO data (field_bytea) VALUES ({0})", EncodeHex(expected)));
+            ExecuteNonQuery("CREATE TEMP TABLE data (bytes BYTEA)");
+            ExecuteNonQuery(String.Format(@"INSERT INTO data (bytes) VALUES ({0})", EncodeHex(expected)));
 
-            const string queryText = @"SELECT field_bytea, 'foo' FROM data";
-            var cmd = new NpgsqlCommand(queryText, Conn);
+            var cmd = new NpgsqlCommand(@"SELECT bytes, 'foo' FROM data", Conn);
             var reader = cmd.ExecuteReader(behavior);
             reader.Read();
 
@@ -189,9 +192,10 @@ namespace Npgsql.Tests.Types
         [Test]
         public void GetNull([Values(CommandBehavior.Default, CommandBehavior.SequentialAccess)] CommandBehavior behavior)
         {
+            ExecuteNonQuery("CREATE TEMP TABLE data (bytes BYTEA)");
             var buf = new byte[8];
-            ExecuteNonQuery(@"INSERT INTO data (field_bytea) VALUES (NULL)");
-            var cmd = new NpgsqlCommand("SELECT field_bytea FROM data", Conn);
+            ExecuteNonQuery(@"INSERT INTO data (bytes) VALUES (NULL)");
+            var cmd = new NpgsqlCommand("SELECT bytes FROM data", Conn);
             var reader = cmd.ExecuteReader(behavior);
             reader.Read();
             Assert.That(reader.IsDBNull(0), Is.True);
@@ -315,93 +319,10 @@ namespace Npgsql.Tests.Types
         public void Insert1()
         {
             Byte[] toStore = { 0, 1, 255, 254 };
-
-            var cmd = new NpgsqlCommand("insert into data(field_bytea) values (:val)", Conn);
-            cmd.Parameters.Add(new NpgsqlParameter("val", DbType.Binary));
-            cmd.Parameters[0].Value = toStore;
-            cmd.ExecuteNonQuery();
-
-            cmd = new NpgsqlCommand("select field_bytea from data", Conn);
+            var cmd = new NpgsqlCommand("SELECT @bytes", Conn);
+            cmd.Parameters.AddWithValue("@bytes", toStore);
             var result = (Byte[])cmd.ExecuteScalar();
             Assert.AreEqual(toStore, result);
-        }
-
-        [Test]
-        public void Insert2()
-        {
-            Byte[] toStore = { 1, 2, 127, 126 };
-
-            var cmd = new NpgsqlCommand("insert into data(field_bytea) values (:val)", Conn);
-            cmd.Parameters.Add(new NpgsqlParameter("val", DbType.Binary));
-            cmd.Parameters[0].Value = toStore;
-            cmd.ExecuteNonQuery();
-
-            cmd = new NpgsqlCommand("select field_bytea from data", Conn);
-            var result = (Byte[])cmd.ExecuteScalar();
-
-            Assert.AreEqual(toStore, result);
-        }
-
-        [Test]
-        public void InsertWithPrepare1()
-        {
-            Byte[] toStore = { 0 };
-
-            var cmd = new NpgsqlCommand("insert into data(field_bytea) values (:val)", Conn);
-            cmd.Parameters.Add(new NpgsqlParameter("val", DbType.Binary));
-            cmd.Parameters[0].Value = toStore;
-            cmd.Prepare();
-            cmd.ExecuteNonQuery();
-
-            cmd = new NpgsqlCommand("select field_bytea from data", Conn);
-
-            cmd.Prepare();
-            var result = (Byte[])cmd.ExecuteScalar();
-
-            Assert.AreEqual(toStore, result);
-        }
-
-        [Test]
-        public void InsertWithPrepare2()
-        {
-            Byte[] toStore = { 1 };
-
-            var cmd = new NpgsqlCommand("insert into data(field_bytea) values (:val)", Conn);
-            cmd.Parameters.Add(new NpgsqlParameter("val", DbType.Binary));
-            cmd.Parameters[0].Value = toStore;
-            cmd.Prepare();
-            cmd.ExecuteNonQuery();
-
-            cmd = new NpgsqlCommand("select field_bytea from data", Conn);
-
-            cmd.Prepare();
-            var result = (Byte[])cmd.ExecuteScalar();
-
-            Assert.AreEqual(toStore, result);
-        }
-
-        [Test]
-        public void Parameter()
-        {
-            var command = new NpgsqlCommand("select field_bytea from data where field_bytea = :bytesData", Conn);
-            var bytes = new byte[] { 1, 2, 3, 4, 5, 34, 39, 48, 49, 50, 51, 52, 92, 127, 128, 255, 254, 253, 252, 251 };
-            command.Parameters.Add(":bytesData", NpgsqlTypes.NpgsqlDbType.Bytea);
-            command.Parameters[":bytesData"].Value = bytes;
-            Object result = command.ExecuteNonQuery();
-            Assert.AreEqual(-1, result);
-        }
-
-        [Test]
-        public void ParameterWithPrepare()
-        {
-            var command = new NpgsqlCommand("select field_bytea from data where field_bytea = :bytesData", Conn);
-
-            var bytes = new byte[] { 1, 2, 3, 4, 5, 34, 39, 48, 49, 50, 51, 52, 92, 127, 128, 255, 254, 253, 252, 251 };
-            command.Parameters.Add(":bytesData", NpgsqlTypes.NpgsqlDbType.Bytea);
-            command.Parameters[":bytesData"].Value = bytes;
-            command.Prepare();
-            Object result = command.ExecuteNonQuery();
-            Assert.AreEqual(-1, result);
         }
 
         [Test]
@@ -414,7 +335,7 @@ namespace Npgsql.Tests.Types
                 {
                     arr[i] = (byte)(i & 0xff);
                 }
-                
+
                 // Big value, should go through "direct buffer"
                 var segment = new ArraySegment<byte>(arr, 17, 18000);
                 cmd.Parameters.Add(new NpgsqlParameter("bytearr", DbType.Binary) { Value = segment });

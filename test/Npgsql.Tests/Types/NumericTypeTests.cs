@@ -54,6 +54,7 @@ namespace Npgsql.Tests.Types
                 Assert.That(reader.GetValue(i),                 Is.EqualTo(8));
                 Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(8));
                 Assert.That(reader.GetFieldType(i),             Is.EqualTo(typeof(short)));
+                Assert.That(reader.GetDataTypeName(i),          Is.EqualTo("int2"));
             }
 
             reader.Dispose();
@@ -88,6 +89,7 @@ namespace Npgsql.Tests.Types
                 Assert.That(reader.GetValue(i),                 Is.EqualTo(8));
                 Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(8));
                 Assert.That(reader.GetFieldType(i),             Is.EqualTo(typeof(int)));
+                Assert.That(reader.GetDataTypeName(i),          Is.EqualTo("int4"));
             }
 
             reader.Dispose();
@@ -135,6 +137,7 @@ namespace Npgsql.Tests.Types
                 Assert.That(reader.GetValue(i),                 Is.EqualTo(8));
                 Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(8));
                 Assert.That(reader.GetFieldType(i),             Is.EqualTo(typeof(long)));
+                Assert.That(reader.GetDataTypeName(i),          Is.EqualTo("int8"));
             }
 
             reader.Dispose();
@@ -217,7 +220,7 @@ namespace Npgsql.Tests.Types
                 for (var i = 0; i < decimals.Length; i++)
                     Assert.AreEqual(decimals[i], rdr.GetValue(i));
             }
-            
+
             cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4", Conn);
             var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Numeric);
             var p2 = new NpgsqlParameter("p2", DbType.Decimal);
@@ -243,6 +246,7 @@ namespace Npgsql.Tests.Types
                 Assert.That(reader.GetValue(i),                 Is.EqualTo(8));
                 Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(8));
                 Assert.That(reader.GetFieldType(i),             Is.EqualTo(typeof(decimal)));
+                Assert.That(reader.GetDataTypeName(i),          Is.EqualTo("numeric"));
             }
 
             reader.Dispose();
@@ -265,25 +269,9 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public void DoubleValueSupportWithExtendedQuery()
-        {
-            ExecuteNonQuery("INSERT INTO data(field_float8) VALUES (.123456789012345)");
-            using (var command = new NpgsqlCommand("select count(*) from data where field_float8 = :a", Conn))
-            {
-                command.Parameters.Add(new NpgsqlParameter(":a", NpgsqlDbType.Double));
-                command.Parameters[0].Value = 0.123456789012345D;
-                command.Prepare();
-                var rows = command.ExecuteScalar();
-                Assert.AreEqual(1, rows);
-            }
-        }
-
-        [Test]
         public void PrecisionScaleNumericSupport()
         {
-            ExecuteNonQuery("INSERT INTO data (field_numeric) VALUES (-4.3)");
-
-            using (var command = new NpgsqlCommand("SELECT field_numeric FROM data", Conn))
+            using (var command = new NpgsqlCommand("SELECT -4.3::NUMERIC", Conn))
             using (var dr = command.ExecuteReader())
             {
                 dr.Read();

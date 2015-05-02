@@ -87,7 +87,7 @@ namespace Npgsql.Tests.Types
             Assert.That(() => reader.GetBoolean(1), Throws.Exception.TypeOf<InvalidCastException>());
 
             reader.Dispose();
-            cmd.Dispose();            
+            cmd.Dispose();
         }
 
         [Test]
@@ -143,35 +143,6 @@ namespace Npgsql.Tests.Types
         }
 
         // Older tests from here
-
-        [Test]
-        public void BitTypeSupport()
-        {
-            using (var command = new NpgsqlCommand("INSERT INTO data(field_bit) VALUES (:a);", Conn))
-            {
-                var p = new NpgsqlParameter("a", NpgsqlDbType.Bit);
-                p.Value = true;
-                command.Parameters.Add(p);
-                command.ExecuteNonQuery();
-            }
-
-            Assert.IsTrue((bool)ExecuteScalar("SELECT field_bit FROM data"));
-        }
-
-        [Test]
-        public void BitTypeSupportWithPrepare()
-        {
-            using (var command = new NpgsqlCommand("INSERT INTO data(field_bit) VALUES (:a);", Conn))
-            {
-                var p = new NpgsqlParameter("a", NpgsqlDbType.Bit);
-                p.Value = true;
-                command.Parameters.Add(p);
-                command.Prepare();
-                command.ExecuteNonQuery();
-            }
-
-            Assert.IsTrue((bool)ExecuteScalar("SELECT field_bit FROM data"));
-        }
 
         // TODO: Bring this test back
 #if FIX

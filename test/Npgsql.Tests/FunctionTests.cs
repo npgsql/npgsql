@@ -21,11 +21,11 @@ namespace Npgsql.Tests
         [Test]
         public void FunctionInOutParameters()
         {
-            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION ""SomeFunction""(OUT param1 int, INOUT param2 int) RETURNS record AS 
+            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION ""SomeFunction""(OUT param1 int, INOUT param2 int) RETURNS record AS
                               '
                               BEGIN
                                       param1 = 1;
-                                      param2 = param2 + 1; 
+                                      param2 = param2 + 1;
                               END;
                               ' LANGUAGE 'plpgsql';");
 
@@ -55,7 +55,7 @@ namespace Npgsql.Tests
         public void DeriveParametersVarious()
         {
             // This function returns record because of the two Out (InOut & Out) parameters
-            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION ""func""(IN param1 INT, OUT param2 text, INOUT param3 INT) RETURNS record AS 
+            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION ""func""(IN param1 INT, OUT param2 text, INOUT param3 INT) RETURNS record AS
                               '
                               BEGIN
                                       param2 = ''sometext'';
@@ -82,7 +82,7 @@ namespace Npgsql.Tests
         public void DeriveParametersInOnly()
         {
             // This function returns record because of the two Out (InOut & Out) parameters
-            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION ""func""(IN param1 INT, IN param2 INT) RETURNS int AS 
+            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION ""func""(IN param1 INT, IN param2 INT) RETURNS int AS
                               '
                               BEGIN
                                 RETURN param1 + param2;
@@ -104,7 +104,7 @@ namespace Npgsql.Tests
         public void DeriveParametersNoParams()
         {
             // This function returns record because of the two Out (InOut & Out) parameters
-            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION ""func""() RETURNS int AS 
+            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION ""func""() RETURNS int AS
                               '
                               BEGIN
                                 RETURN 4;
@@ -737,8 +737,6 @@ namespace Npgsql.Tests
         [SetUp]
         public void Setup()
         {
-            base.SetUp();
-
             // Drop all functions in the public schema
             const string query =
                @"SELECT proname, oidvectortypes(proargtypes)

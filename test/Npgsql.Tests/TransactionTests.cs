@@ -14,8 +14,9 @@ namespace Npgsql.Tests
         [Test, Description("Basic insert within a committed transaction")]
         public void Commit()
         {
+            ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
             var tx = Conn.BeginTransaction();
-            ExecuteNonQuery("INSERT INTO data (field_text) VALUES ('X')", tx: tx);
+            ExecuteNonQuery("INSERT INTO data (name) VALUES ('X')", tx: tx);
             tx.Commit();
             Assert.That(ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(1));
         }
@@ -23,8 +24,9 @@ namespace Npgsql.Tests
         [Test, Description("Basic insert within a rolled back transaction")]
         public void Rollback([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
         {
+            ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
             var tx = Conn.BeginTransaction();
-            var cmd = new NpgsqlCommand("INSERT INTO data (field_text) VALUES ('X')", Conn, tx);
+            var cmd = new NpgsqlCommand("INSERT INTO data (name) VALUES ('X')", Conn, tx);
             if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             cmd.ExecuteNonQuery();
             Assert.That(ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(1));
@@ -36,8 +38,9 @@ namespace Npgsql.Tests
         [Test, Description("Dispose a transaction in progress, should roll back")]
         public void RollbackOnDispose()
         {
+            ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
             var tx = Conn.BeginTransaction();
-            ExecuteNonQuery("INSERT INTO data (field_text) VALUES ('X')", tx: tx);
+            ExecuteNonQuery("INSERT INTO data (name) VALUES ('X')", tx: tx);
             tx.Dispose();
             Assert.That(tx.Connection, Is.Null);
             Assert.That(ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
@@ -46,12 +49,15 @@ namespace Npgsql.Tests
         [Test]
         public void RollbackOnClose()
         {
+            ExecuteNonQuery("DROP TABLE IF EXISTS rollback_on_close");
+            ExecuteNonQuery("CREATE TEMP TABLE rollback_on_close (name TEXT)");
+
             NpgsqlTransaction tx;
             using (var conn = new NpgsqlConnection(ConnectionString))
             {
                 conn.Open();
                 tx = conn.BeginTransaction();
-                ExecuteNonQuery("INSERT INTO data (field_text) VALUES ('X')", conn, tx);
+                ExecuteNonQuery("INSERT INTO data (name) VALUES ('X')", conn, tx);
             }
             Assert.That(tx.Connection, Is.Null);
             Assert.That(ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
@@ -60,8 +66,9 @@ namespace Npgsql.Tests
         [Test, Description("Intentionally generates an error, putting us in a failed transaction block. Rolls back.")]
         public void RollbackFailed()
         {
+            ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
             var tx = Conn.BeginTransaction();
-            ExecuteNonQuery("INSERT INTO data (field_text) VALUES ('X')", tx: tx);
+            ExecuteNonQuery("INSERT INTO data (name) VALUES ('X')", tx: tx);
             Assert.That(() => ExecuteNonQuery("BAD QUERY"), Throws.Exception);
             tx.Rollback();
             Assert.That(tx.Connection, Is.Null);
@@ -123,8 +130,9 @@ namespace Npgsql.Tests
         [Test, Description("Makes sure that transactions started in SQL work")]
         public void ViaSql()
         {
+            ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
             ExecuteNonQuery("BEGIN");
-            ExecuteNonQuery("INSERT INTO data (field_text) VALUES ('X')");
+            ExecuteNonQuery("INSERT INTO data (name) VALUES ('X')");
             ExecuteNonQuery("ROLLBACK");
             Assert.That(ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
         }
@@ -189,17 +197,18 @@ namespace Npgsql.Tests
         [Test]
         public void Savepoint()
         {
+            ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
             const string name = "theSavePoint";
 
             using (var tx = Conn.BeginTransaction())
             {
                 tx.CreateSavepoint(name);
 
-                ExecuteNonQuery("INSERT INTO data (field_text) VALUES ('savepointtest')", tx: tx);
+                ExecuteNonQuery("INSERT INTO data (name) VALUES ('savepointtest')", tx: tx);
                 Assert.That(ExecuteScalar("SELECT COUNT(*) FROM data", tx: tx), Is.EqualTo(1));
                 tx.RollbackToSavepoint(name);
                 Assert.That(ExecuteScalar("SELECT COUNT(*) FROM data", tx: tx), Is.EqualTo(0));
-                ExecuteNonQuery("INSERT INTO data (field_text) VALUES ('savepointtest')", tx: tx);
+                ExecuteNonQuery("INSERT INTO data (name) VALUES ('savepointtest')", tx: tx);
                 tx.ReleaseSavepoint(name);
                 Assert.That(ExecuteScalar("SELECT COUNT(*) FROM data", tx: tx), Is.EqualTo(1));
 

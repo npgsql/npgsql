@@ -420,7 +420,8 @@ namespace Npgsql.Tests
             Assert.IsNotNull(common.SelectCommand);
         }
 
-        [Test, Description("Makes sure that the INSERT/UPDATE/DELETE commands are auto-populated on NpgsqlDataAdapter (issue #179)")]
+        [Test, Description("Makes sure that the INSERT/UPDATE/DELETE commands are auto-populated on NpgsqlDataAdapter")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/179")]
         public void AutoPopulateAdapterCommands()
         {
             var da = new NpgsqlDataAdapter("SELECT field_pk,field_int4 FROM data", Conn);
@@ -453,6 +454,20 @@ namespace Npgsql.Tests
             var quoted = cb.QuoteIdentifier(orig);
             Assert.That(quoted, Is.EqualTo("\"some\"\"column\""));
             Assert.That(cb.UnquoteIdentifier(quoted), Is.EqualTo(orig));
+        }
+
+        [SetUp]
+        public void SetUp()
+        {
+            ExecuteNonQuery("DROP TABLE IF EXISTS data");
+            ExecuteNonQuery("CREATE TABLE data (" +
+                            "field_pk SERIAL PRIMARY KEY," +
+                            "field_serial SERIAL," +
+                            "field_int2 SMALLINT," +
+                            "field_int4 INTEGER," +
+                            "field_numeric NUMERIC," +
+                            "field_timestamp TIMESTAMP" +
+                            ")");
         }
     }
 }

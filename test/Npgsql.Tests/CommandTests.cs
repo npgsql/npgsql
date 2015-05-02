@@ -63,9 +63,10 @@ namespace Npgsql.Tests
         [TestCase(new[] { true, false }, TestName = "QueryNonQuery")]
         public void Multiqueries(bool[] queries)
         {
+            ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
             var sb = new StringBuilder();
             foreach (var query in queries)
-                sb.Append(query ? "SELECT 1;" : "UPDATE data SET field_text='yo' WHERE 1=0;");
+                sb.Append(query ? "SELECT 1;" : "UPDATE data SET name='yo' WHERE 1=0;");
             var sql = sb.ToString();
             foreach (var prepare in new[] { false, true }) {
                 var cmd = new NpgsqlCommand(sql, Conn);
@@ -369,9 +370,10 @@ namespace Npgsql.Tests
         [Test]
         public void CursorStatement()
         {
+            ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
             using (var t = Conn.BeginTransaction()) {
                 for (var x = 0; x < 5; x++)
-                    ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('X')");
+                    ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('X')");
 
                 Int32 i = 0;
                 var command = new NpgsqlCommand("DECLARE TE CURSOR FOR SELECT * FROM DATA", Conn);
@@ -466,6 +468,21 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        public void SameParamMultipleTimes()
+        {
+            using (var cmd = new NpgsqlCommand("SELECT @p1, @p1", Conn))
+            {
+                cmd.Parameters.AddWithValue("@p1", 8);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader[0], Is.EqualTo(8));
+                    Assert.That(reader[1], Is.EqualTo(8));
+                }
+            }
+        }
+
+        [Test]
         public void EmptyQuery()
         {
             var command = new NpgsqlCommand(";", Conn);
@@ -485,16 +502,17 @@ namespace Npgsql.Tests
         [Test]
         public void ExecuteScalar()
         {
-            using (var command = new NpgsqlCommand("SELECT field_text FROM data", Conn))
+            ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
+            using (var command = new NpgsqlCommand("SELECT name FROM data", Conn))
             {
                 Assert.That(command.ExecuteScalar(), Is.Null);
 
-                ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES (NULL)");
+                ExecuteNonQuery(@"INSERT INTO data (name) VALUES (NULL)");
                 Assert.That(command.ExecuteScalar(), Is.EqualTo(DBNull.Value));
 
                 ExecuteNonQuery(@"TRUNCATE data");
                 for (var i = 0; i < 2; i++)
-                    ExecuteNonQuery("INSERT INTO data (field_text) VALUES ('X')");
+                    ExecuteNonQuery("INSERT INTO data (name) VALUES ('X')");
                 Assert.That(command.ExecuteScalar(), Is.EqualTo("X"));
             }
         }
@@ -523,9 +541,10 @@ namespace Npgsql.Tests
         [Test, Description("Basic prepared system scenario. Checks proper backend deallocation of the statement.")]
         public void Prepare()
         {
+            ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
             Assert.That(ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(0));
 
-            using (var cmd = new NpgsqlCommand("INSERT INTO data (field_text) VALUES (:p0);", Conn))
+            using (var cmd = new NpgsqlCommand("INSERT INTO data (name) VALUES (:p0);", Conn))
             {
                 cmd.Parameters.Add(new NpgsqlParameter("p0", NpgsqlDbType.Text));
                 cmd.Prepare();
@@ -538,14 +557,15 @@ namespace Npgsql.Tests
                 }
                 Assert.That(ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1));
             }
-            Assert.That(ExecuteScalar("SELECT COUNT(*) FROM data WHERE field_text = 'test'"), Is.EqualTo(1));
+            Assert.That(ExecuteScalar("SELECT COUNT(*) FROM data WHERE name = 'test'"), Is.EqualTo(1));
             Assert.That(ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(0), "Prepared statements are being leaked");
         }
 
         [Test]
         public void PreparedStatementWithParameters()
         {
-            var command = new NpgsqlCommand("select * from data where field_int4 = :a and field_int8 = :b;", Conn);
+            ExecuteNonQuery("CREATE TEMP TABLE data (int INTEGER, long BIGINT)");
+            var command = new NpgsqlCommand("select * from data where int = :a and long = :b;", Conn);
             command.Parameters.Add(new NpgsqlParameter("a", DbType.Int32));
             command.Parameters.Add(new NpgsqlParameter("b", DbType.Int64));
             Assert.AreEqual(2, command.Parameters.Count);
@@ -562,13 +582,14 @@ namespace Npgsql.Tests
         [Test, Description("Makes sure that calling Prepare() twice on a command deallocates the first prepared statement")]
         public void DoublePrepare()
         {
-            var cmd = new NpgsqlCommand("INSERT INTO data (field_text) VALUES (:p0)", Conn);
+            ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT, int INTEGER)");
+            var cmd = new NpgsqlCommand("INSERT INTO data (name) VALUES (:p0)", Conn);
             cmd.Parameters.Add(new NpgsqlParameter("p0", NpgsqlDbType.Text));
             cmd.Parameters["p0"].Value = "test";
             cmd.Prepare();
             cmd.ExecuteNonQuery();
 
-            cmd.CommandText = "INSERT INTO data (field_int4) VALUES (:p0)";
+            cmd.CommandText = "INSERT INTO data (int) VALUES (:p0)";
             cmd.Parameters.Clear();
             cmd.Parameters.Add(new NpgsqlParameter("p0", NpgsqlDbType.Integer));
             cmd.Parameters["p0"].Value = 8;
@@ -731,7 +752,8 @@ namespace Npgsql.Tests
             using (var conn = new NpgsqlConnection(ConnectionString))
             {
                 conn.Open();
-                var command = new NpgsqlCommand("select * from data", conn);
+                ExecuteNonQuery("CREATE TEMP TABLE data (id SERIAL PRIMARY KEY, name TEXT)", conn);
+                var command = new NpgsqlCommand("SELECT * FROM data", conn);
                 Assert.AreEqual(UpdateRowSource.Both, command.UpdatedRowSource);
 
                 var cmdBuilder = new NpgsqlCommandBuilder();
@@ -748,11 +770,12 @@ namespace Npgsql.Tests
         [Test]
         public void TableDirect()
         {
-            ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('foo')");
+            ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
+            ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('foo')");
             var cmd = new NpgsqlCommand("data", Conn) { CommandType = CommandType.TableDirect };
             var rdr = cmd.ExecuteReader();
             Assert.That(rdr.Read(), Is.True);
-            Assert.That(rdr["field_text"], Is.EqualTo("foo"));
+            Assert.That(rdr["name"], Is.EqualTo("foo"));
             rdr.Close();
             cmd.Dispose();
         }

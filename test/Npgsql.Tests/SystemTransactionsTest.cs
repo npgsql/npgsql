@@ -22,7 +22,7 @@ namespace Npgsql.Tests
                 {
                     connection.Open();
                     connection.EnlistTransaction(Transaction.Current);
-                    Assert.That(ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES('test')", connection), Is.EqualTo(1));
+                    Assert.That(ExecuteNonQuery(@"INSERT INTO data (name) VALUES('test')", connection), Is.EqualTo(1));
                     scope.Complete();
                 }
             }
@@ -39,7 +39,7 @@ namespace Npgsql.Tests
                 using (var connection = new NpgsqlConnection(connectionString))
                 {
                     connection.Open();
-                    Assert.That(ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES('test')", connection), Is.EqualTo(1));
+                    Assert.That(ExecuteNonQuery(@"INSERT INTO data (name) VALUES('test')", connection), Is.EqualTo(1));
                 }
                 scope.Complete();
             }
@@ -56,7 +56,7 @@ namespace Npgsql.Tests
                 using (var connection = new NpgsqlConnection(connectionString))
                 {
                     connection.Open();
-                    Assert.That(ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES('test')", connection), Is.EqualTo(1));
+                    Assert.That(ExecuteNonQuery(@"INSERT INTO data (name) VALUES('test')", connection), Is.EqualTo(1));
                     // No commit
                 }
             }
@@ -145,7 +145,7 @@ namespace Npgsql.Tests
                     using (var conn = new NpgsqlConnection(ConnectionString + ";enlist=true"))
                     {
                         conn.Open();
-                        var cmd = new NpgsqlCommand(@"INSERT INTO data (field_text) VALUES ('HELLO')", conn);
+                        var cmd = new NpgsqlCommand(@"INSERT INTO data (name) VALUES ('HELLO')", conn);
                         cmd.ExecuteNonQuery(); // the update operation is expected to rollback
                         System.Threading.Thread.Sleep(2000);
                     }
@@ -159,7 +159,7 @@ namespace Npgsql.Tests
         [Category("TodoFor3.0")]
         public void FunctionTestTimestamptzParameterSupport()
         {
-            ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('X')");
+            ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('X')");
             ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION testtimestamptzparameter(timestamptz) returns refcursor as
                               $BODY$
                               declare ref refcursor;
@@ -232,7 +232,7 @@ namespace Npgsql.Tests
         #region Setup
 
         [SetUp]
-        public void CheckPromotableSupport()
+        public void SetUp()
         {
             using (var s = new TransactionScope(TransactionScopeOption.RequiresNew))
             {
@@ -245,6 +245,9 @@ namespace Npgsql.Tests
                     Assert.Ignore("Promotable single phase transactions aren't supported (mono < 3.0.0?)");
                 }
             }
+
+            ExecuteNonQuery("DROP TABLE IF EXISTS data");
+            ExecuteNonQuery("CREATE TABLE data (name TEXT)");
         }
 
         class FakePromotableSinglePhaseNotification : IPromotableSinglePhaseNotification

@@ -19,11 +19,12 @@ namespace Npgsql.Tests
         [Test]
         public async void NonQuery()
         {
-            using (var cmd = new NpgsqlCommand("INSERT INTO data (field_int4) VALUES (4)", Conn))
+            ExecuteNonQuery("CREATE TEMP TABLE data (int INTEGER)");
+            using (var cmd = new NpgsqlCommand("INSERT INTO data (int) VALUES (4)", Conn))
             {
                 await cmd.ExecuteNonQueryAsync();
             }
-            Assert.That(ExecuteScalar("SELECT field_int4 FROM data"), Is.EqualTo(4));
+            Assert.That(ExecuteScalar("SELECT int FROM data"), Is.EqualTo(4));
         }
 
         [Test]
@@ -48,8 +49,7 @@ namespace Npgsql.Tests
         [Test]
         public async void Columnar()
         {
-            ExecuteNonQuery("INSERT INTO DATA (field_int4, field_text) VALUES (2, 'Some Text')");
-            using (var cmd = new NpgsqlCommand("SELECT field_int2, field_int4, field_text FROM data", Conn))
+            using (var cmd = new NpgsqlCommand("SELECT NULL, 2, 'Some Text'", Conn))
             using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess))
             {
                 await reader.ReadAsync();

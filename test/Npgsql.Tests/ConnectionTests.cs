@@ -576,7 +576,8 @@ namespace Npgsql.Tests
         [Test]
         public void GetSchemaParameterMarkerFormats()
         {
-            ExecuteNonQuery(@"INSERT INTO data (field_int4) VALUES (4)");
+            ExecuteNonQuery("DROP TABLE IF EXISTS data; CREATE TABLE data (int INTEGER);");
+            ExecuteNonQuery("INSERT INTO data (int) VALUES (4)");
             var dt = Conn.GetSchema("DataSourceInformation");
             var parameterMarkerFormat = (string)dt.Rows[0]["ParameterMarkerFormat"];
 
@@ -585,8 +586,8 @@ namespace Npgsql.Tests
                 connection.Open();
                 using (var command = connection.CreateCommand())
                 {
-                    const String parameterName = "p_field_int4";
-                    command.CommandText = "SELECT * FROM data WHERE field_int4=" + String.Format(parameterMarkerFormat, parameterName);
+                    const String parameterName = "p_int";
+                    command.CommandText = "SELECT * FROM data WHERE int=" + String.Format(parameterMarkerFormat, parameterName);
                     command.Parameters.Add(new NpgsqlParameter(parameterName, 4));
                     using (var reader = command.ExecuteReader())
                     {

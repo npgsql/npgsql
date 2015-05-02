@@ -48,7 +48,7 @@ namespace Npgsql.Tests.Types
             }
 
             reader.Close();
-            cmd.Dispose();            
+            cmd.Dispose();
         }
 
         [Test]
@@ -57,11 +57,12 @@ namespace Npgsql.Tests.Types
             var builder = new StringBuilder("ABCDEééé", Conn.BufferSize);
             builder.Append('X', Conn.BufferSize);
             var expected = builder.ToString();
-            var cmd = new NpgsqlCommand(@"INSERT INTO data (field_text) VALUES (@p)", Conn);
+            ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
+            var cmd = new NpgsqlCommand(@"INSERT INTO data (name) VALUES (@p)", Conn);
             cmd.Parameters.Add(new NpgsqlParameter("p", expected));
             cmd.ExecuteNonQuery();
 
-            const string queryText = @"SELECT field_text, 'foo', field_text, field_text, field_text, field_text FROM data";
+            const string queryText = @"SELECT name, 'foo', name, name, name, name FROM data";
             cmd = new NpgsqlCommand(queryText, Conn);
             var reader = cmd.ExecuteReader(behavior);
             reader.Read();
@@ -88,9 +89,10 @@ namespace Npgsql.Tests.Types
             const string str = "ABCDE";
             var expected = str.ToCharArray();
             var actual = new char[expected.Length];
-            ExecuteNonQuery(String.Format(@"INSERT INTO data (field_text) VALUES ('{0}')", str));
+            ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
+            ExecuteNonQuery(String.Format(@"INSERT INTO data (name) VALUES ('{0}')", str));
 
-            const string queryText = @"SELECT field_text, 3, field_text, 4, field_text, field_text, field_text FROM data";
+            const string queryText = @"SELECT name, 3, name, 4, name, name, name FROM data";
             var cmd = new NpgsqlCommand(queryText, Conn);
             var reader = cmd.ExecuteReader(behavior);
             reader.Read();
@@ -135,9 +137,9 @@ namespace Npgsql.Tests.Types
             const string str = "ABCDE";
             var expected = str.ToCharArray();
             var actual = new char[expected.Length];
-            ExecuteNonQuery(String.Format(@"INSERT INTO data (field_text) VALUES ('{0}')", str));
+            //ExecuteNonQuery(String.Format(@"INSERT INTO data (field_text) VALUES ('{0}')", str));
 
-            const string queryText = @"SELECT field_text, 'foo' FROM data";
+            string queryText = string.Format(@"SELECT '{0}', 'foo'", str);
             var cmd = new NpgsqlCommand(queryText, Conn);
             var reader = cmd.ExecuteReader(behavior);
             reader.Read();
@@ -204,8 +206,7 @@ namespace Npgsql.Tests.Types
         public void Null([Values(CommandBehavior.Default, CommandBehavior.SequentialAccess)] CommandBehavior behavior)
         {
             var buf = new char[8];
-            ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES (NULL)");
-            var cmd = new NpgsqlCommand("SELECT field_text FROM data", Conn);
+            var cmd = new NpgsqlCommand("SELECT NULL::TEXT", Conn);
             var reader = cmd.ExecuteReader(behavior);
             reader.Read();
             Assert.That(reader.IsDBNull(0), Is.True);
@@ -245,7 +246,7 @@ namespace Npgsql.Tests.Types
         [IssueLink("https://github.com/npgsql/npgsql/issues/488")]
         public void NullCharacter()
         {
-            var cmd = new NpgsqlCommand("SELECT * FROM data WHERE field_text = :p1", Conn);
+            var cmd = new NpgsqlCommand("SELECT @p1", Conn);
             cmd.Parameters.Add(new NpgsqlParameter("p1", "string with \0\0\0 null \0bytes"));
             Assert.That(() => cmd.ExecuteReader(),
                 Throws.Exception.TypeOf<NpgsqlException>()

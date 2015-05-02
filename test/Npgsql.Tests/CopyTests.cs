@@ -256,6 +256,12 @@ namespace Npgsql.Tests
 
         #endregion
 
+        [SetUp]
+        public void SetUp()
+        {
+            ExecuteNonQuery("CREATE TEMP TABLE data (field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER)");
+        }
+
         public CopyTests(string backendVersion) : base(backendVersion) { }
     }
 }
