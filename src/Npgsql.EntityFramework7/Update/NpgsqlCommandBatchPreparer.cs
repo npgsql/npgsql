@@ -19,14 +19,12 @@ namespace Npgsql.EntityFramework7.Update
             [NotNull] INpgsqlModificationCommandBatchFactory modificationCommandBatchFactory,
             [NotNull] IParameterNameGeneratorFactory parameterNameGeneratorFactory,
             [NotNull] IComparer<ModificationCommand> modificationCommandComparer,
-            [NotNull] IBoxedValueReaderSource boxedValueReaderSource,
-            [NotNull] INpgsqlValueReaderFactoryFactory valueReaderFactoryFactory)
+            [NotNull] INpgsqlValueBufferFactoryFactory valueBufferFactoryFactory)
             : base(
                   modificationCommandBatchFactory, 
                   parameterNameGeneratorFactory, 
                   modificationCommandComparer, 
-                  boxedValueReaderSource,
-                  valueReaderFactoryFactory)
+                  valueBufferFactoryFactory)
         {
         }
 

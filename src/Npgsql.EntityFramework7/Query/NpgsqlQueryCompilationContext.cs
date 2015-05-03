@@ -25,9 +25,10 @@ namespace Npgsql.EntityFramework7.Query
             [NotNull] IResultOperatorHandler resultOperatorHandler,
             [NotNull] IEntityMaterializerSource entityMaterializerSource,
             [NotNull] IEntityKeyFactorySource entityKeyFactorySource,
+            [NotNull] IClrAccessorSource<IClrPropertyGetter> clrPropertyGetterSource,
             [NotNull] IQueryMethodProvider queryMethodProvider,
             [NotNull] IMethodCallTranslator methodCallTranslator,
-            [NotNull] INpgsqlValueReaderFactoryFactory valueReaderFactoryFactory)
+            [NotNull] INpgsqlValueBufferFactoryFactory valueBufferFactoryFactory)
             : base(
                 Check.NotNull(model, nameof(model)),
                 Check.NotNull(logger, nameof(logger)),
@@ -35,9 +36,10 @@ namespace Npgsql.EntityFramework7.Query
                 Check.NotNull(resultOperatorHandler, nameof(resultOperatorHandler)),
                 Check.NotNull(entityMaterializerSource, nameof(entityMaterializerSource)),
                 Check.NotNull(entityKeyFactorySource, nameof(entityKeyFactorySource)),
+                Check.NotNull(clrPropertyGetterSource, nameof(clrPropertyGetterSource)),
                 Check.NotNull(queryMethodProvider, nameof(queryMethodProvider)),
                 Check.NotNull(methodCallTranslator, nameof(methodCallTranslator)),
-                Check.NotNull(valueReaderFactoryFactory, nameof(valueReaderFactoryFactory)))
+                Check.NotNull(valueBufferFactoryFactory, nameof(valueBufferFactoryFactory)))
         {
         }
 

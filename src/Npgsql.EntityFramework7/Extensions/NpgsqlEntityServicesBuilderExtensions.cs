@@ -33,7 +33,7 @@ namespace Microsoft.Framework.DependencyInjection
                     .AddSingleton<INpgsqlModificationCommandBatchFactory, NpgsqlModificationCommandBatchFactory>()
                     .AddSingleton<INpgsqlCommandBatchPreparer, NpgsqlCommandBatchPreparer>()
                     .AddSingleton<INpgsqlModelSource, NpgsqlModelSource>()
-                    .AddSingleton<INpgsqlValueReaderFactoryFactory, NpgsqlValueReaderFactoryFactory>()
+                    .AddSingleton<INpgsqlValueBufferFactoryFactory, NpgsqlValueBufferFactoryFactory>()
                     .AddScoped<INpgsqlQueryContextFactory, NpgsqlQueryContextFactory>()
                     .AddScoped<INpgsqlValueGeneratorSelector, NpgsqlValueGeneratorSelector>()
                     .AddScoped<INpgsqlBatchExecutor, NpgsqlBatchExecutor>()
