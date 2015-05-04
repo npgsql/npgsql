@@ -469,12 +469,8 @@ namespace NpgsqlTests
             var da = new NpgsqlDataAdapter("SELECT field_pk,field_date,field_int4 FROM data", Conn);
             da.Fill(ds, "data");
 
-            da.RowUpdating += (sender2, e2) => {
-                // this workaround needs to be before you getting NpgsqlCommandBuilder.
-                e2.Command.Parameters.Clear();
-            };
-
             var cb = new NpgsqlCommandBuilder(da as NpgsqlDataAdapter);
+            Assert.IsFalse(cb.SetAllValues);
             //cb.SetAllValues = false; // default is false
             //cb.SetAllValues = true; // System.InvalidCastException won't be raised if set to true.
             cb.ConflictOption = ConflictOption.OverwriteChanges;

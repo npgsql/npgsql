@@ -653,8 +653,26 @@ namespace Npgsql
                 }
                 else
                 {
-                    this.npgsqlValue = backendTypeInfo.ConvertToProviderType(value);
-                    this.value = backendTypeInfo.ConvertToFrameworkType(npgsqlValue);
+                    try
+                    {
+                        this.npgsqlValue = backendTypeInfo.ConvertToProviderType(value);
+                        this.value = backendTypeInfo.ConvertToFrameworkType(npgsqlValue);
+                    }
+                    catch (InvalidCastException)
+                    {
+                        if (!NpgsqlTypesHelper.TryGetNativeTypeInfo(value.GetType(), out type_info))
+                        {
+                            throw new InvalidCastException(String.Format(resman.GetString("Exception_ImpossibleToCast"), value.GetType()));
+                        }
+
+                        if (!NpgsqlTypesHelper.TryGetBackendTypeInfo(type_info.Name, out backendTypeInfo))
+                        {
+                            throw new InvalidCastException(String.Format(resman.GetString("Exception_ImpossibleToCast"), value.GetType()));
+                        }
+
+                        this.npgsqlValue = backendTypeInfo.ConvertToProviderType(value);
+                        this.value = backendTypeInfo.ConvertToFrameworkType(npgsqlValue);
+                    }
 
                     bound = false;
                 }
