@@ -9,6 +9,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Reflection;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using AsyncRewriter;
 using Npgsql.BackendMessages;
@@ -104,6 +105,7 @@ namespace Npgsql
             _queries = queries;
         }
 
+        [RewriteAsync]
         internal void Init()
         {
             _rowDescription = _queries[0].Description;
@@ -117,7 +119,8 @@ namespace Npgsql
                 }
             }
 
-            if (Command.Parameters.Any(p => p.IsOutputDirection)) {
+            if (Command.Parameters.Any(p => p.IsOutputDirection))
+            {
                 PopulateOutputParameters();
             }
         }
@@ -238,6 +241,17 @@ namespace Npgsql
             return IsSchemaOnly ? NextResultSchemaOnly() : NextResultInternal();
         }
 
+        /// <summary>
+        /// This is the asynchronous version of NextResult. The <paramref name="cancellationToken"/>
+        /// parameter is currently ignored.
+        /// </summary>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        public override async sealed Task<bool> NextResultAsync(CancellationToken cancellationToken)
+        {
+            return IsSchemaOnly ? NextResultSchemaOnly() : await NextResultInternalAsync();
+        }
+
+        [RewriteAsync]
         bool NextResultInternal()
         {
             Contract.Requires(!IsSchemaOnly);
@@ -360,6 +374,7 @@ namespace Npgsql
             return _connector.SkipUntil(stopAt);
         }
 
+        [RewriteAsync]
         IBackendMessage SkipUntil(BackendMessageCode stopAt1, BackendMessageCode stopAt2)
         {
             if (_pendingMessage != null) {
@@ -671,7 +686,7 @@ namespace Npgsql
         {
             CheckRowAndOrdinal(ordinal);
             Contract.EndContractBlock();
-            
+
             return ReadColumn<long>(ordinal);
         }
 

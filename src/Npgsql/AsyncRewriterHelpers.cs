@@ -11,6 +11,6 @@ namespace AsyncRewriter
     [AttributeUsage(AttributeTargets.Method)]
     internal class RewriteAsyncAttribute : Attribute
     {
-        public RewriteAsyncAttribute(string transformedName = null, bool withOverride = false) { }
+        public RewriteAsyncAttribute(bool withOverride = false) { }
     }
 }

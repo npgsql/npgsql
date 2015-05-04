@@ -4,11 +4,14 @@ using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
+using AsyncRewriter;
+using Npgsql;
 using Npgsql.TypeHandlers;
 
 namespace Npgsql.BackendMessages
 {
-    class DataRowSequentialMessage : DataRowMessage
+    partial class DataRowSequentialMessage : DataRowMessage
     {
         /// <summary>
         /// A stream that has been opened on this colun, and needs to be disposed of when the column is consumed.
@@ -97,13 +100,14 @@ namespace Npgsql.BackendMessages
         {
             Contract.Requires(PosInColumn == 0);
             if (_stream != null) {
-                throw new InvalidOperationException("Attempt to read a position in the column which has already been read");                
+                throw new InvalidOperationException("Attempt to read a position in the column which has already been read");
             }
             var stream = new SequentialByteaStream(this);
             _stream = stream;
             return stream;
         }
 
+        [RewriteAsync(withOverride: true)]
         internal override void Consume()
         {
             // Skip to end of column if needed

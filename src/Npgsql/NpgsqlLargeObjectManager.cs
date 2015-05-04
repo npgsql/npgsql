@@ -11,7 +11,7 @@ namespace Npgsql
     /// <summary>
     /// Large object manager. This class can be used to store very large files in a PostgreSQL database.
     /// </summary>
-    public class NpgsqlLargeObjectManager
+    public partial class NpgsqlLargeObjectManager
     {
         const int INV_WRITE = 0x00020000;
         const int INV_READ = 0x00040000;

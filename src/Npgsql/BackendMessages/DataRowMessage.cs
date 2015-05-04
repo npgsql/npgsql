@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using Npgsql.TypeHandlers;
 
 namespace Npgsql.BackendMessages
@@ -57,6 +58,11 @@ namespace Npgsql.BackendMessages
         /// Consumes the current row, allowing the reader to read in the next one.
         /// </summary>
         internal abstract void Consume();
+
+        /// <summary>
+        /// Consumes the current row asynchronously, allowing the reader to read in the next one.
+        /// </summary>
+        internal abstract Task ConsumeAsync();
 
         internal void SeekToColumnStart(int column)
         {

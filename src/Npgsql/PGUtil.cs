@@ -40,7 +40,7 @@ using AsyncRewriter;
 namespace Npgsql
 {
     // ReSharper disable once InconsistentNaming
-    internal static class PGUtil
+    internal static partial class PGUtil
     {
         internal static readonly UTF8Encoding UTF8Encoding = new UTF8Encoding(false, true);
 
@@ -124,6 +124,8 @@ namespace Npgsql
             return TaskEx.FromResult(result);
 #endif
         }
+
+        internal static Task CompletedTask = TaskFromResult(0);
 
         /// <summary>
         /// Throws an exception with the given string and also invokes a contract failure, allowing the static checker

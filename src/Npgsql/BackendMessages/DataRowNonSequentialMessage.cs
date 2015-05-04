@@ -4,6 +4,7 @@ using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace Npgsql.BackendMessages
 {
@@ -83,6 +84,12 @@ namespace Npgsql.BackendMessages
                 }
                 _streams.Clear();
             }
+        }
+
+        internal override Task ConsumeAsync()
+        {
+            Consume();
+            return PGUtil.CompletedTask;
         }
     }
 }

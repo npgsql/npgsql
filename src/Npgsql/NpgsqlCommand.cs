@@ -55,7 +55,7 @@ namespace Npgsql
 #if DNXCORE50
     public sealed partial class NpgsqlCommand : DbCommand
 #else
-    [System.ComponentModel.DesignerCategory("")]    
+    [System.ComponentModel.DesignerCategory("")]
     public sealed partial class NpgsqlCommand : DbCommand
 #endif
     {
@@ -346,7 +346,7 @@ namespace Npgsql
         /// <remarks>
         /// If the query includes several queries (e.g. SELECT 1; SELECT 2), this will only apply to the first
         /// one. The rest of the queries will be fetched and parsed as usual.
-        /// 
+        ///
         /// The array size must correspond exactly to the number of result columns the query returns, or an
         /// error will be raised.
         /// </remarks>

@@ -1062,6 +1062,7 @@ namespace Npgsql
         /// Reads backend messages and discards them, stopping only after a message of the given types has
         /// been seen.
         /// </summary>
+        [RewriteAsync]
         internal IBackendMessage SkipUntil(BackendMessageCode stopAt1, BackendMessageCode stopAt2)
         {
             Contract.Requires(stopAt1 != BackendMessageCode.DataRow, "Shouldn't be used for rows, doesn't know about sequential");
