@@ -5,7 +5,8 @@ using Microsoft.Data.Entity.Relational;
 
 namespace Npgsql.EntityFramework7.Query
 {
-    public interface INpgsqlValueReaderFactoryFactory : IRelationalValueReaderFactoryFactory
+    public class NpgsqlValueBufferFactoryFactory : TypedValueBufferFactoryFactory, INpgsqlValueBufferFactoryFactory
     {
+        //public virtual IRelationalValueBufferFactory CreateValueBufferFactory() => new NpgsqlValueBufferFactory();
     }
 }

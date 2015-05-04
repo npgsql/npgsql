@@ -200,7 +200,18 @@ namespace Npgsql.EntityFramework7
         {
             Check.NotNull(sequenceName, nameof(sequenceName));
 
-            return string.Format("SELECT nextval('{0}')", DelimitIdentifier(sequenceName));
+            //TODO:Verify implementation
+
+            //split string using '.' to extract schema and name parts
+            var parts = sequenceName.Split(new char[] {'.'});
+
+            //TODO: should we throw exceptions if parts is empty or has more than 2 components?
+
+            //synthesize the sequence name
+            //The name itself must be delimited, but the schema should not
+            var actualSequenceName = (parts.Length == 1) ? DelimitIdentifier(parts[0]) : $"{parts[0]}.{DelimitIdentifier(parts[1])}";
+
+            return string.Format("SELECT nextval('{0}')", actualSequenceName);
         }
 
         #endregion

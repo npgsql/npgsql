@@ -15,7 +15,7 @@
     ],
     "description" : "Npgsql is a .NET data provider for PostgreSQL, 100% implemented in C# code. PostgreSQL 9.x and above is officially supported, other versions may work.",
     "compilationOptions": {
-      "define": [ "KPROJ" ]
+      "define": [ "KPROJ", "ENTITIES", "__MonoCS__" ]
     },
     "frameworks": {
         "net45": {

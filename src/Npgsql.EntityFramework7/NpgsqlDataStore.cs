@@ -23,22 +23,24 @@ namespace Npgsql.EntityFramework7
             [NotNull] IModel model,
             [NotNull] IEntityKeyFactorySource entityKeyFactorySource,
             [NotNull] IEntityMaterializerSource entityMaterializerSource,
+            [NotNull] IClrAccessorSource<IClrPropertyGetter> clrPropertyGetterSource,
             [NotNull] INpgsqlEFConnection connection,
             [NotNull] INpgsqlCommandBatchPreparer batchPreparer,
             [NotNull] INpgsqlBatchExecutor batchExecutor,
             [NotNull] IDbContextOptions options,
             [NotNull] ILoggerFactory loggerFactory,
-            [NotNull] INpgsqlValueReaderFactoryFactory valueReaderFactoryFactory)
+            [NotNull] INpgsqlValueBufferFactoryFactory valueBufferFactoryFactory)
             : base(
                 Check.NotNull(model, nameof(model)),
                 Check.NotNull(entityKeyFactorySource, nameof(entityKeyFactorySource)),
                 Check.NotNull(entityMaterializerSource, nameof(entityMaterializerSource)),
+                Check.NotNull(clrPropertyGetterSource, nameof(clrPropertyGetterSource)),
                 Check.NotNull(connection, nameof(connection)),
                 Check.NotNull(batchPreparer, nameof(batchPreparer)),
                 Check.NotNull(batchExecutor, nameof(batchExecutor)),
                 Check.NotNull(options, nameof(options)),
                 Check.NotNull(loggerFactory, nameof(loggerFactory)),
-                Check.NotNull(valueReaderFactoryFactory, nameof(valueReaderFactoryFactory)))
+                Check.NotNull(valueBufferFactoryFactory, nameof(valueBufferFactoryFactory)))
         {
         }
 
@@ -60,9 +62,10 @@ namespace Npgsql.EntityFramework7
                 resultOperatorHandler,
                 EntityMaterializerSource,
                 EntityKeyFactorySource,
+                ClrPropertyGetterSource,
                 enumerableMethodProvider,
                 methodCallTranslator,
-                (INpgsqlValueReaderFactoryFactory)ValueReaderFactoryFactory);
+                (INpgsqlValueBufferFactoryFactory)ValueBufferFactoryFactory);
         }
     }
 }
