@@ -400,6 +400,8 @@ namespace Npgsql
                 {
                     throw new InvalidCastException(String.Format(resman.GetString("Exception_ImpossibleToCast"), value));
                 }
+
+                backendTypeInfo = null;
             }
         }
 

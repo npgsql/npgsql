@@ -455,6 +455,52 @@ namespace NpgsqlTests
             Assert.That(quoted, Is.EqualTo("\"some\"\"column\""));
             Assert.That(cb.UnquoteIdentifier(quoted), Is.EqualTo(orig));
         }
+
+        [Test]
+        public void Bug352() {
+            var ds = new DataSet();
+            ds.Reset();
+            // System.InvalidCastException will occur if it contains any of:
+            // field_date
+            // field_timestamp
+            // field_time
+            // field_timestamp_with_timezone
+            // field_inet
+            var da = new NpgsqlDataAdapter("SELECT field_pk,field_date,field_int4 FROM data", Conn);
+            da.Fill(ds, "data");
+
+            da.RowUpdating += (sender2, e2) => {
+                // this workaround needs to be before you getting NpgsqlCommandBuilder.
+                e2.Command.Parameters.Clear();
+            };
+
+            var cb = new NpgsqlCommandBuilder(da as NpgsqlDataAdapter);
+            //cb.SetAllValues = false; // default is false
+            //cb.SetAllValues = true; // System.InvalidCastException won't be raised if set to true.
+            cb.ConflictOption = ConflictOption.OverwriteChanges;
+            da.InsertCommand = cb.GetInsertCommand();
+            da.DeleteCommand = cb.GetDeleteCommand();
+            da.UpdateCommand = cb.GetUpdateCommand();
+            da.RowUpdated += (sender2, e2) => {
+                if (e2.StatementType == StatementType.Insert) {
+                    var cm = new NpgsqlCommand("SELECT currval('data_field_pk_seq')", Conn);
+                    e2.Row["field_pk"] = cm.ExecuteScalar(); // rewrite pk on DataTable
+                }
+            };
+            var table = ds.Tables["data"];
+
+            var row = table.NewRow();
+            row["field_int4"] = 8;
+            table.Rows.Add(row);
+
+            da.Update(ds, "data"); // insert has no problem.
+
+            row["field_int4"] = 7;
+            da.Update(ds, "data"); // <-- update has problem: System.InvalidCastException
+
+            row.Delete();
+            da.Update(ds, "data"); // delete has no problem.
+        }
     }
     /*
     [TestFixture]
