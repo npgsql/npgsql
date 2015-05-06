@@ -7,14 +7,15 @@ using System.Resources;
 // Contains assembly attributes shared by all Npgsql projects
 
 [assembly: CLSCompliant(false)]
-[assembly: AllowPartiallyTrustedCallersAttribute()]
+[assembly: AllowPartiallyTrustedCallers()]
 [assembly: SecurityRules(SecurityRuleSet.Level1)]
-[assembly: AssemblyCompanyAttribute("Npgsql Development Team")]
-[assembly: AssemblyProductAttribute("Npgsql")]
-[assembly: AssemblyCopyrightAttribute("Copyright © 2002 - 2014 Npgsql Development Team")]
-[assembly: AssemblyTrademarkAttribute("")]
-[assembly: AssemblyVersionAttribute("3.0.0")]
-[assembly: AssemblyFileVersionAttribute("3.0.0")]
-[assembly: AssemblyInformationalVersionAttribute("3.0.0-beta1")]
-[assembly: NeutralResourcesLanguageAttribute("en", UltimateResourceFallbackLocation.MainAssembly)]
+[assembly: AssemblyCompany("Npgsql Development Team")]
+[assembly: AssemblyProduct("Npgsql")]
+[assembly: AssemblyCopyright("Copyright © 2002 - 2014 Npgsql Development Team")]
+[assembly: AssemblyTrademark("")]
+[assembly: NeutralResourcesLanguage("en", UltimateResourceFallbackLocation.MainAssembly)]
 
+// The following version attributes get rewritten by GitVersion as part of the build
+[assembly: AssemblyVersion("0.0.0")]
+[assembly: AssemblyFileVersion("0.0.0")]
+[assembly: AssemblyInformationalVersion("0.0.0")]
