@@ -27,7 +27,7 @@
     <requirements />
     <build-triggers />
     <artifact-dependencies>
-      <dependency sourceBuildTypeId="npgsql_net45_2_2" cleanDestination="false">
+      <dependency sourceBuildTypeId="npgsql_Net45_2_2" cleanDestination="false">
         <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
         <artifact sourcePath="**" />
       </dependency>

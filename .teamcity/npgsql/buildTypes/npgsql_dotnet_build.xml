@@ -5,6 +5,7 @@
     <options>
       <option name="allowExternalStatus" value="true" />
       <option name="artifactRules" value="Npgsql/bin/%system.Configuration%/**/*.dll =&gt; Npgsql/bin/%system.Configuration%&#xA;Npgsql/bin/%system.Configuration%/**/*.pdb =&gt; Npgsql/bin/%system.Configuration%&#xA;Npgsql/bin/%system.Configuration%/**/*.xml =&gt; Npgsql/bin/%system.Configuration%&#xA;Npgsql.EntityFramework/bin/%system.Configuration%/Npgsql.EntityFramework.dll =&gt; Npgsql.EntityFramework/bin/%system.Configuration%&#xA;Npgsql.EntityFramework/bin/%system.Configuration%/Npgsql.EntityFramework.pdb =&gt; Npgsql.EntityFramework/bin/%system.Configuration%&#xA;Npgsql.EntityFramework/bin/%system.Configuration%/Npgsql.EntityFramework.xml =&gt; Npgsql.EntityFramework/bin/%system.Configuration%&#xA;Npgsql.EntityFramework/bin/Legacy-%system.Configuration%/Npgsql.EntityFrameworkLegacy.dll =&gt; Npgsql.EntityFramework/bin/Legacy-%system.Configuration%&#xA;Npgsql.EntityFramework/bin/Legacy-%system.Configuration%/Npgsql.EntityFrameworkLegacy.pdb =&gt; Npgsql.EntityFramework/bin/Legacy-%system.Configuration%&#xA;Npgsql.EntityFramework/bin/Legacy-%system.Configuration%/Npgsql.EntityFrameworkLegacy.xml =&gt; Npgsql.EntityFramework/bin/Legacy-%system.Configuration%" />
+      <option name="checkoutMode" value="ON_AGENT" />
     </options>
     <parameters>
       <param name="env.NPGSQL_TEST_DB" value="Server=localhost;port=5493;User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;syncnotification=false" />

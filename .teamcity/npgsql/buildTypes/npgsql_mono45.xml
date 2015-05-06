@@ -6,6 +6,9 @@
     <options>
       <option name="allowExternalStatus" value="true" />
     </options>
+    <disabled-settings>
+      <setting-ref ref="RUNNER_5" />
+    </disabled-settings>
     <parameters>
       <param name="env.MSBuild" value="%MONO_PREFIX%\lib\mono\4.5" />
       <param name="env.NPGSQL_TEST_DB" value="Server=localhost;port=5493;User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;syncnotification=false" />
@@ -16,7 +19,7 @@
       <runner id="RUNNER_5" name="Run tests under mono" type="simpleRunner">
         <parameters>
           <param name="command.executable" value="%MONO_PREFIX%\bin\mono.exe" />
-          <param name="command.parameters" value="--runtime=v4.0 %system.teamcity.dotnet.nunitlauncher% v4.0 MSIL NUnit-2.6.3 %teamcity.build.checkoutDir%\tests\bin\Release-net45\NpgsqlTests.dll" />
+          <param name="command.parameters" value="--runtime=v4.0 %system.teamcity.dotnet.nunitlauncher% v4.0 MSIL NUnit-2.6.3 %teamcity.build.checkoutDir%\test\Npgsql.Tests\bin\Release-net45\Npgsql.Tests.dll" />
           <param name="teamcity.step.mode" value="default" />
         </parameters>
       </runner>

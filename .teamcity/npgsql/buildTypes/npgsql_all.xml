@@ -6,23 +6,39 @@
     <options>
       <option name="allowExternalStatus" value="true" />
       <option name="artifactRules" value="LICENSE.txt =&gt; Npgsql-net40.zip&#xA;README.* =&gt; Npgsql-net40.zip&#xA;LICENSE.txt =&gt; Npgsql-net45.zip&#xA;README.* =&gt; Npgsql-net45.zip&#xA;LICENSE.txt =&gt; Npgsql-net40.tar.gz&#xA;README.* =&gt; Npgsql-net40.tar.gz&#xA;LICENSE.txt =&gt; Npgsql-net45.tar.gz&#xA;README.* =&gt; Npgsql-net45.tar.gz&#xA;src/Npgsql/bin/Release-net40/** =&gt; Npgsql-net40.zip&#xA;src/Npgsql.EntityFramework/bin/Release-net40/Npgsql.EntityFramework* =&gt; Npgsql-net40.zip&#xA;src/Npgsql.EntityFramework/bin/Legacy-Release-net40/Npgsql.EntityFramework* =&gt; Npgsql-net40.zip&#xA;src/Npgsql/bin/Release-net45/** =&gt; Npgsql-net45.zip&#xA;src/Npgsql.EntityFramework/bin/Release-net45/Npgsql.EntityFramework* =&gt; Npgsql-net45.zip&#xA;src/Npgsql.EntityFramework/bin/Legacy-Release-net45/Npgsql.EntityFramework* =&gt; Npgsql-net45.zip&#xA;src/Npgsql/bin/Release-net40/** =&gt; Npgsql-net40.tar.gz&#xA;src/Npgsql.EntityFramework/bin/Release-net40/Npgsql.EntityFramework* =&gt; Npgsql-net40.tar.gz&#xA;src/Npgsql.EntityFramework/bin/Legacy-Release-net40/Npgsql.EntityFramework* =&gt; Npgsql-net40.tar.gz&#xA;src/Npgsql/bin/Release-net45/** =&gt; Npgsql-net45.tar.gz&#xA;src/Npgsql.EntityFramework/bin/Release-net45/Npgsql.EntityFramework* =&gt; Npgsql-net45.tar.gz&#xA;src/Npgsql.EntityFramework/bin/Legacy-Release-net45/Npgsql.EntityFramework* =&gt; Npgsql-net45.tar.gz&#xA;src/NpgsqlDdexProvider/bin/Release/NpgsqlDdexProvider* =&gt; NpgsqlDdexProvider-VS2010.zip&#xA;src/NpgsqlDdexProvider/bin/Release-net45/NpgsqlDdexProvider* =&gt; NpgsqlDdexProvider-VS2013.zip&#xA;src/Npgsql.EntityFramework7/bin/Release/*.nupkg&#xA;docs/api/** =&gt; docs.zip" />
+      <option name="checkoutMode" value="ON_AGENT" />
     </options>
     <disabled-settings>
       <setting-ref ref="RUNNER_3" />
     </disabled-settings>
     <parameters />
     <build-runners>
+      <runner id="RUNNER_17" name="GitVersion" type="simpleRunner">
+        <parameters>
+          <param name="command.executable" value="GitVersion" />
+          <param name="command.parameters" value="/output buildserver /UpdateAssemblyInfo src\CommonAssemblyInfo.cs" />
+          <param name="teamcity.step.mode" value="default" />
+        </parameters>
+      </runner>
+      <runner id="RUNNER_16" name="Clear nupkgs" type="simpleRunner">
+        <parameters>
+          <param name="script.content" value="if not exist nupkgs mkdir nupkgs" />
+          <param name="teamcity.step.mode" value="default" />
+          <param name="use.custom.script" value="true" />
+        </parameters>
+      </runner>
       <runner id="RUNNER_6" name="" type="jb.nuget.pack">
         <parameters>
           <param name="nuget.pack.as.artifact" value="true" />
           <param name="nuget.pack.include.sources" value="true" />
           <param name="nuget.pack.output.clean" value="true" />
-          <param name="nuget.pack.output.directory" value="packages" />
+          <param name="nuget.pack.output.directory" value="nupkgs" />
           <param name="nuget.pack.project.dir" value="as_is" />
           <param name="nuget.pack.properties" value="Configuration=Release" />
           <param name="nuget.pack.specFile"><![CDATA[src\Npgsql\Npgsql.nuspec
 src\Npgsql.EntityFramework\Npgsql.EntityFramework.nuspec
 src\Npgsql.EntityFramework\Npgsql.EntityFrameworkLegacy.nuspec]]></param>
+          <param name="nuget.pack.version" value="%GitVersion.NuGetVersion%" />
           <param name="nuget.path" value="?NuGet.CommandLine.DEFAULT.nupkg" />
           <param name="nugetCustomPath" value="?NuGet.CommandLine.DEFAULT.nupkg" />
           <param name="nugetPathSelector" value="?NuGet.CommandLine.DEFAULT.nupkg" />
@@ -42,6 +58,17 @@ c:\users\teamcity_agent\.dnx\bin\dnvm.cmd exec default dnu pack --configuration 
         <parameters>
           <param name="command.executable" value="c:\dev\doxygen\bin\doxygen.exe" />
           <param name="command.parameters" value="Npgsql.doxyfile" />
+          <param name="teamcity.step.mode" value="default" />
+        </parameters>
+      </runner>
+      <runner id="RUNNER_18" name="Publish nugets to myget" type="jb.nuget.publish">
+        <parameters>
+          <param name="nuget.path" value="?NuGet.CommandLine.DEFAULT.nupkg" />
+          <param name="nuget.publish.files" value="nupkgs/*.nupkg" />
+          <param name="nuget.publish.source" value="https://www.myget.org/F/npgsql-unstable" />
+          <param name="nugetCustomPath" value="?NuGet.CommandLine.DEFAULT.nupkg" />
+          <param name="nugetPathSelector" value="?NuGet.CommandLine.DEFAULT.nupkg" />
+          <param name="secure:nuget.api.key" value="zxxca89988ce5b6f9ad529c572cd56e162ccda4fdff046b0cdb8bff3560c8e35dcbda3e64637e4ca2f1" />
           <param name="teamcity.step.mode" value="default" />
         </parameters>
       </runner>
@@ -73,20 +100,20 @@ c:\users\teamcity_agent\.dnx\bin\dnvm.cmd exec default dnu pack --configuration 
     <artifact-dependencies>
       <dependency sourceBuildTypeId="npgsql_net45" cleanDestination="false">
         <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
-        <artifact sourcePath="**" />
+        <artifact sourcePath="** =&gt; artifacts" />
       </dependency>
     </artifact-dependencies>
     <dependencies>
-      <depend-on sourceBuildTypeId="npgsql_net45">
-        <options>
-          <option name="take-started-build-with-same-revisions" value="true" />
-          <option name="take-successful-builds-only" value="true" />
-        </options>
-      </depend-on>
       <depend-on sourceBuildTypeId="npgsql_mono45">
         <options>
+          <option name="run-build-if-dependency-failed" value="RUN_ADD_PROBLEM" />
           <option name="take-started-build-with-same-revisions" value="true" />
-          <option name="take-successful-builds-only" value="true" />
+        </options>
+      </depend-on>
+      <depend-on sourceBuildTypeId="npgsql_net45">
+        <options>
+          <option name="run-build-if-dependency-failed" value="RUN_ADD_PROBLEM" />
+          <option name="take-started-build-with-same-revisions" value="true" />
         </options>
       </depend-on>
     </dependencies>
