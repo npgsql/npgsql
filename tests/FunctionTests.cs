@@ -16,6 +16,12 @@ namespace NpgsqlTests
     {
         public FunctionTests(string backendVersion) : base(backendVersion) {}
 
+        /// <summary>
+        /// Declare function names used by this test.
+        /// They are dropped at Setup().
+        /// </summary>
+        String[] funcNamesUsedbyTest = { "SomeFunction", "func" };
+
         [Test]
         public void FunctionInOutParameters()
         {
@@ -132,7 +138,13 @@ namespace NpgsqlTests
                 while (rdr.Read())
                     funcs[rdr.GetString(0)] = rdr.GetString(1);
             foreach (var func in funcs)
-                ExecuteNonQuery(String.Format(@"DROP FUNCTION ""{0}"" ({1})", func.Key, func.Value));
+                if (funcNamesUsedbyTest.Contains(func.Key))
+                    ExecuteNonQuery(String.Format(@"DROP FUNCTION ""{0}"" ({1})", func.Key, func.Value));
+
+            // We cannot remove functions introduced by PostgreSQL extensions.
+
+            // NpgsqlTests.FunctionTests("9.4").DeriveParametersInOnly:
+            // SetUp : Npgsql.NpgsqlException : ERROR: 42501: must be owner of function uuid_nil
         }
         #endregion Setup / Teardown
     }
