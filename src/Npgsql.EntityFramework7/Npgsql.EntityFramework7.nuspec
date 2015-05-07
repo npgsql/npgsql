@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<package xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <metadata xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+    <id>Npgsql.EntityFramework7</id>
+    <title>Npgsql for Entity Framework</title>
+    <version>0.0.0</version>
+    <authors>Francisco Figueiredo Jr., Josh Cooley, Dave Page, Jon Asher, Brar Piening, Chris Morgan, Hiroshi Saito, Jon Hanna, Federico Di Gregorio, Glen Parker, Shay Rojansky</authors>
+    <owners>Francisco Figueiredo Jr., Josh Cooley, Shay Rojansky</owners>
+    <licenseUrl>https://github.com/npgsql/Npgsql/wiki/License</licenseUrl>
+    <projectUrl>https://github.com/npgsql/Npgsql</projectUrl>
+    <copyright>Copyright 2002 - 2014 Npgsql Development Team</copyright>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>PostgreSQL provider for Entity Framework 7</description>
+    <summary>PostgreSQL provider for Entity Framework 7</summary>
+    <language>en-US</language>
+    <tags>Npgsql postgres data database Postgresql entity framework ef ef7</tags>
+    <dependencies>
+      <dependency id="Npgsql" version="$version$" />
+      <dependency id="EntityFramework" version="7.0.0" />
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="bin\Release\net45\Npgsql.EntityFramework7.dll" target="lib\net45"/>
+    <file src="bin\Release\net45\Npgsql.EntityFramework7.pdb" target="lib\net45"/>
+    <file src="bin\Release\net45\Npgsql.EntityFramework7.xml" target="lib\net45"/>
+    <file src="**\*.cs" target="src" />
+  </files>
+</package>
