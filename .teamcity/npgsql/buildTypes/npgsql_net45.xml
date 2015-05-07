@@ -62,7 +62,7 @@ c:\users\teamcity_agent\.dnx\bin\dnvm.cmd exec default dnx . test]]></param>
           <param name="use.custom.script" value="true" />
         </parameters>
       </runner>
-      <runner id="RUNNER_20" name="New build step" type="jb.nuget.pack">
+      <runner id="RUNNER_20" name="Nuget Pack" type="jb.nuget.pack">
         <parameters>
           <param name="nuget.pack.as.artifact" value="true" />
           <param name="nuget.pack.include.sources" value="true" />
