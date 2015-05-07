@@ -5,7 +5,7 @@
   <settings ref="npgsql_dotnet_build">
     <options>
       <option name="allowExternalStatus" value="true" />
-      <option name="artifactRules" value="src/Npgsql/bin/%system.Configuration%/**/*.dll =&gt; Npgsql/bin/%system.Configuration%&#xA;src/Npgsql/bin/%system.Configuration%/**/*.pdb =&gt; Npgsql/bin/%system.Configuration%&#xA;src/Npgsql/bin/%system.Configuration%/**/*.xml =&gt; Npgsql/bin/%system.Configuration%&#xA;src/Npgsql.EntityFramework/bin/%system.Configuration%/Npgsql.EntityFramework.dll =&gt; Npgsql.EntityFramework/bin/%system.Configuration%&#xA;src/Npgsql.EntityFramework/bin/%system.Configuration%/Npgsql.EntityFramework.pdb =&gt; Npgsql.EntityFramework/bin/%system.Configuration%&#xA;src/Npgsql.EntityFramework/bin/%system.Configuration%/Npgsql.EntityFramework.xml =&gt; Npgsql.EntityFramework/bin/%system.Configuration%&#xA;src/Npgsql.EntityFramework/bin/Legacy-%system.Configuration%/Npgsql.EntityFrameworkLegacy.dll =&gt; Npgsql.EntityFramework/bin/Legacy-%system.Configuration%&#xA;src/Npgsql.EntityFramework/bin/Legacy-%system.Configuration%/Npgsql.EntityFrameworkLegacy.pdb =&gt; Npgsql.EntityFramework/bin/Legacy-%system.Configuration%&#xA;src/Npgsql.EntityFramework/bin/Legacy-%system.Configuration%/Npgsql.EntityFrameworkLegacy.xml =&gt; Npgsql.EntityFramework/bin/Legacy-%system.Configuration%" />
+      <option name="artifactRules" value="src/Npgsql.EntityFramework7/bin/%system.Configuration%/*.nupkg" />
     </options>
     <disabled-settings>
       <setting-ref ref="RUNNER_1" />
@@ -14,7 +14,7 @@
     <parameters>
       <param name="system.Configuration" value="Release-net45" />
     </parameters>
-    <build-runners order="RUNNER_15, RUNNER_7, RUNNER_9, RUNNER_2, RUNNER_10, RUNNER_1, RUNNER_11, RUNNER_14">
+    <build-runners order="RUNNER_15, RUNNER_7, RUNNER_9, RUNNER_2, RUNNER_10, RUNNER_1, RUNNER_11, RUNNER_14, RUNNER_19, RUNNER_20, RUNNER_21, RUNNER_22">
       <runner id="RUNNER_15" name="GitVersion" type="simpleRunner">
         <parameters>
           <param name="command.executable" value="GitVersion" />
