@@ -20,7 +20,7 @@
     },
     "compile": "..\\..\\external\\EntityFramework\\src\\Shared\\*",
     "frameworks": {
-        "net451": {
+        "net45": {
         	"frameworkAssemblies": {
         		"System": "4.0.0.0",
         		"System.Runtime": "4.0.0.0"
