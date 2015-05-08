@@ -63,7 +63,7 @@ namespace Npgsql.Tests
         public void Cancel()
         {
             var cancellationSource = new CancellationTokenSource();
-            using (var cmd = new NpgsqlCommand("SELECT pg_sleep(5)", Conn))
+            using (var cmd = CreateSleepCommand(Conn, 5))
             {
                 Task.Factory.StartNew(() =>
                                         {

@@ -80,7 +80,7 @@ namespace Npgsql.Tests
                 Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
                 Assert.That(conn.Connector.State, Is.EqualTo(ConnectorState.Ready));
 
-                using (var cmd = new NpgsqlCommand("SELECT pg_sleep(1)", conn))
+                using (var cmd = CreateSleepCommand(conn, 1))
                 {
                     var exitFlag = false;
                     var pollingTask = Task.Factory.StartNew(() =>

@@ -167,9 +167,7 @@ namespace Npgsql.Tests
                 } catch {
                 }
 
-                using (var command = new NpgsqlCommand("SELECT :dummy, pg_sleep(3)", conn)) {
-                    command.Parameters.Add(new NpgsqlParameter("dummy", NpgsqlDbType.Text));
-                    command.Parameters[0].Value = "foo";
+                using (var command = CreateSleepCommand(conn, 3)) {
                     command.CommandTimeout = 1;
                     try {
                         command.ExecuteNonQuery();
@@ -180,9 +178,7 @@ namespace Npgsql.Tests
                     }
                 }
 
-                using (var command = new NpgsqlCommand("SELECT :dummy, pg_sleep(3)", conn)) {
-                    command.Parameters.Add(new NpgsqlParameter("dummy", NpgsqlDbType.Text));
-                    command.Parameters[0].Value = "foo";
+                using (var command = CreateSleepCommand(conn, 3)) {
                     command.CommandTimeout = 4;
                     try {
                         command.ExecuteNonQuery();
@@ -204,13 +200,10 @@ namespace Npgsql.Tests
             using (var conn = new NpgsqlConnection(ConnectionString)) {
                 conn.Open();
 
-                var command = new NpgsqlCommand("pg_sleep", conn);
-                command.CommandType = CommandType.StoredProcedure;
-                command.Parameters.Add(new NpgsqlParameter());
-                command.Parameters[0].NpgsqlDbType = NpgsqlDbType.Double;
-                command.Parameters[0].Value = 3d;
+                var command = CreateSleepCommand(conn, 3);
                 command.CommandTimeout = 1;
-                try {
+                try
+                {
                     command.ExecuteNonQuery();
                     Assert.Fail("3s function call survived a 1s timeout");
                 } catch (NpgsqlException) {
@@ -222,11 +215,7 @@ namespace Npgsql.Tests
             using (var conn = new NpgsqlConnection(ConnectionString)) {
                 conn.Open();
 
-                var command = new NpgsqlCommand("pg_sleep", conn);
-                command.CommandType = CommandType.StoredProcedure;
-                command.Parameters.Add(new NpgsqlParameter());
-                command.Parameters[0].NpgsqlDbType = NpgsqlDbType.Double;
-                command.Parameters[0].Value = 3d;
+                var command = CreateSleepCommand(conn, 3);
                 command.CommandTimeout = 4;
                 try {
                     command.ExecuteNonQuery();
@@ -304,7 +293,7 @@ namespace Npgsql.Tests
             using (var conn = new NpgsqlConnection(ConnectionString + ";CommandTimeout=1;BackendTimeouts=false"))
             {
                 conn.Open();
-                using (var cmd = new NpgsqlCommand("SELECT pg_sleep(10)", conn))
+                using (var cmd = CreateSleepCommand(conn, 10))
                 {
                     Assert.That(() => cmd.ExecuteNonQuery(), Throws.Exception.TypeOf<IOException>());
                     Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
@@ -334,7 +323,7 @@ namespace Npgsql.Tests
         [Timeout(6000)]
         public void Cancel()
         {
-            using (var cmd = new NpgsqlCommand("SELECT pg_sleep(5)", Conn)) {
+            using (var cmd = CreateSleepCommand(Conn, 5)) {
                 Task.Factory.StartNew(() =>
                 {
                     Thread.Sleep(300);
@@ -351,9 +340,7 @@ namespace Npgsql.Tests
         [Timeout(3000)]
         public void CancelCrossCommand()
         {
-            // In PG < 9.1 you can't do SELECT pg_sleep(2) in binary because that function returns void and PG doesn't know
-            // how to transfer that. So cast to text server-side.
-            using (var cmd1 = new NpgsqlCommand("SELECT pg_sleep(2)" + (Conn.PostgreSqlVersion < new Version(9,1,0) ? "::TEXT" : ""), Conn))
+            using (var cmd1 = CreateSleepCommand(Conn, 2))
             using (var cmd2 = new NpgsqlCommand("SELECT 1", Conn)) {
                 var cancelTask = Task.Factory.StartNew(() =>
                 {
