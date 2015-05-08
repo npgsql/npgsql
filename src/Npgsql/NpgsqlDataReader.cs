@@ -130,8 +130,27 @@ namespace Npgsql
         /// <summary>
         /// Advances the reader to the next record in a result set.
         /// </summary>
-        /// <returns></returns>
+        /// <returns><b>true</b> if there are more rows; otherwise <b>false</b>.</returns>
+        /// <remarks>
+        /// The default position of a data reader is before the first record. Therefore, you must call Read to begin accessing data.
+        /// </remarks>
         public override bool Read()
+        {
+            return ReadInternal();
+        }
+
+        /// <summary>
+        /// This is the asynchronous version of <see cref="Read"/> The cancellation token is currently ignored.
+        /// </summary>
+        /// <param name="cancellationToken">Ignored for now.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        public override async Task<bool> ReadAsync(CancellationToken cancellationToken)
+        {
+            return await ReadInternalAsync().ConfigureAwait(false);
+        }
+
+        [RewriteAsync]
+        bool ReadInternal()
         {
             if (_row != null) {
                 _row.Consume();
@@ -242,13 +261,14 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// This is the asynchronous version of NextResult. The <paramref name="cancellationToken"/>
-        /// parameter is currently ignored.
+        /// This is the asynchronous version of NextResult.
+        /// The <paramref name="cancellationToken"/> parameter is currently ignored.
         /// </summary>
+        /// <param name="cancellationToken">Currently ignored.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
         public override async sealed Task<bool> NextResultAsync(CancellationToken cancellationToken)
         {
-            return IsSchemaOnly ? NextResultSchemaOnly() : await NextResultInternalAsync();
+            return IsSchemaOnly ? NextResultSchemaOnly() : await NextResultInternalAsync().ConfigureAwait(false);
         }
 
         [RewriteAsync]
@@ -1037,6 +1057,8 @@ namespace Npgsql
 
         #endregion
 
+        #region IsDBNull
+
         /// <summary>
         /// Gets a value that indicates whether the column contains nonexistent or missing values.
         /// </summary>
@@ -1044,12 +1066,34 @@ namespace Npgsql
         /// <returns><b>true</b> if the specified column is equivalent to <see cref="DBNull"/>; otherwise <b>false</b>.</returns>
         public override bool IsDBNull(int ordinal)
         {
+            return IsDBNullInternal(ordinal);
+        }
+
+        /// <summary>
+        /// An asynchronous version of <see cref="IsDBNull"/>, which gets a value that indicates whether the column contains non-existent or missing values.
+        /// The <paramref name="cancellationToken"/> parameter is currently ignored.
+        /// </summary>
+        /// <param name="ordinal">The zero-based column to be retrieved.</param>
+        /// <param name="cancellationToken">Currently ignored.</param>
+        /// <returns><b>true</b> if the specified column value is equivalent to <see cref="DBNull"/> otherwise <b>false</b>.</returns>
+        public override async Task<bool> IsDBNullAsync(int ordinal, CancellationToken cancellationToken)
+        {
+            return await IsDBNullInternalAsync(ordinal).ConfigureAwait(false);
+        }
+
+        [RewriteAsync]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        // ReSharper disable once InconsistentNaming
+        bool IsDBNullInternal(int ordinal)
+        {
             CheckRowAndOrdinal(ordinal);
             Contract.EndContractBlock();
 
             Row.SeekToColumn(ordinal);
             return _row.IsColumnNull;
         }
+
+        #endregion
 
         /// <summary>
         /// Gets the value of the specified column as an instance of <see cref="object"/>.
@@ -1175,11 +1219,27 @@ namespace Npgsql
         /// <typeparam name="T">Synchronously gets the value of the specified column as a type.</typeparam>
         /// <param name="ordinal">The column to be retrieved.</param>
         /// <returns>The column to be retrieved.</returns>
-#if NET40
-        public T GetFieldValue<T>(int ordinal)
-#else
         public override T GetFieldValue<T>(int ordinal)
-#endif
+        {
+            return GetFieldValueInternal<T>(ordinal);
+        }
+
+        /// <summary>
+        /// Asynchronously gets the value of the specified column as a type.
+        /// The <paramref name="cancellationToken"/> parameter is currently ignored.
+        /// </summary>
+        /// <typeparam name="T">The type of the value to be returned.</typeparam>
+        /// <param name="ordinal">The column to be retrieved.</param>
+        /// <param name="cancellationToken">Currently ignored.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        public override async Task<T> GetFieldValueAsync<T>(int ordinal, CancellationToken cancellationToken)
+        {
+            return await GetFieldValueInternalAsync<T>(ordinal).ConfigureAwait(false);
+        }
+
+        [RewriteAsync]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        T GetFieldValueInternal<T>(int ordinal)
         {
             CheckRowAndOrdinal(ordinal);
             Contract.EndContractBlock();
