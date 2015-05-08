@@ -77,8 +77,6 @@ namespace Npgsql
 
         UpdateRowSource _updateRowSource = UpdateRowSource.Both;
 
-        internal Type[] ExpectedTypes { get; set; }
-
         /// <summary>
         /// Indicates whether this command has been prepared.
         /// Never access this field directly, use <see cref="IsPrepared"/> instead.
@@ -1131,10 +1129,6 @@ namespace Npgsql
                 CommandType = CommandType,
                 DesignTimeVisible = DesignTimeVisible
             };
-            if (ExpectedTypes != null)
-            {
-                clone.ExpectedTypes = (Type[])ExpectedTypes.Clone();
-            }
             foreach (NpgsqlParameter parameter in Parameters)
             {
                 clone.Parameters.Add(parameter.Clone());

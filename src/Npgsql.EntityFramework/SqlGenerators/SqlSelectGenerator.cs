@@ -29,17 +29,17 @@ namespace Npgsql.SqlGenerators
              * Algorithm for finding the correct reference expression: "Collection"."Name"
              * The collection is always a leaf InputExpression, found by lookup in _refToNode.
              * The name for the collection is found using node.TopName.
-             * 
+             *
              * We must now follow the path from the leaf down to the root,
              * and make sure the column is projected all the way down.
-             * 
+             *
              * We need not project columns at a current InputExpression.
              * For example, in
              *  SELECT ? FROM <from> AS "X" WHERE "X"."field" = <value>
              * we use the property "field" but it should not be projected.
              * Current expressions are stored in _currentExpressions.
              * There can be many of these, for example if we are in a WHERE EXISTS (SELECT ...) or in the right hand side of an Apply expression.
-             * 
+             *
              * At join nodes, column names might have to be renamed, if a name collision occurs.
              * For example, the following would be illegal,
              *  SELECT "X"."A" AS "A", "Y"."A" AS "A" FROM (SELECT 1 AS "A") AS "X" CROSS JOIN (SELECT 1 AS "A") AS "Y"
@@ -98,12 +98,6 @@ namespace Npgsql.SqlGenerators
             System.Diagnostics.Debug.Assert(ve is InputExpression);
             InputExpression pe = (InputExpression)ve;
             command.CommandText = pe.ToString();
-            List<Type> expectedTypes = new List<Type>();
-            foreach (ColumnExpression column in pe.Projection.Arguments)
-            {
-                expectedTypes.Add(column.CLRType);
-            }
-            ((NpgsqlCommand)command).ExpectedTypes = expectedTypes.ToArray();
         }
     }
 }
