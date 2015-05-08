@@ -415,6 +415,7 @@ namespace Npgsql.Tests
         [Test, Description("Tests closing a connector while a reader is open")]
         [TestCase(true, TestName = "Pooled")]
         [TestCase(false, TestName = "NonPooled")]
+        [Timeout(10000)]
         public void CloseDuringRead(bool pooled)
         {
             var conn = new NpgsqlConnection(ConnectionString + ";" + (pooled ? "MaxPoolSize=1" : "Pooling=false"));

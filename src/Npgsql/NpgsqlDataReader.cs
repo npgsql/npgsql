@@ -574,7 +574,7 @@ namespace Npgsql
         /// We don't want to simply close because that would block the user until the open reader
         /// is consumed, potentially a long process.
         /// </summary>
-        internal async Task AsyncClose()
+        internal async Task CloseImmediate()
         {
             State = ReaderState.Closed;
             Command.State = CommandState.Idle;
@@ -585,10 +585,20 @@ namespace Npgsql
                 ReaderClosed = null;
             }
 
+            if (IsSchemaOnly) {
+                return;
+            }
+
             // TODO: Consume asynchronously?
             if (State != ReaderState.Consumed)
             {
-                await Task.Run(() => Consume());
+                if (_row != null)
+                {
+                    await _row.ConsumeAsync();
+                    _row = null;
+                }
+
+                await SkipUntilAsync(BackendMessageCode.ReadyForQuery);
             }
 
             _connector.EndUserAction();

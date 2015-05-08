@@ -235,7 +235,7 @@ namespace Npgsql
                 // NpgsqlDataReader.IsClosed to return true
                 try
                 {
-                    await connector.CurrentReader.AsyncClose();
+                    await connector.CurrentReader.CloseImmediate();
                 }
                 catch (Exception e)
                 {
