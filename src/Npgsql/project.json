@@ -17,6 +17,9 @@
     "compilationOptions": {
       "define": [ "KPROJ", "__MonoCS__" ]
     },
+    "scripts": {
+      "prebuild": "msbuild.exe Npgsql.csproj /t:RewriteAsync",
+    },
     "frameworks": {
         "net45": {
             "frameworkAssemblies": {
