@@ -459,7 +459,7 @@ namespace Npgsql.Tests
         [SetUp]
         public void SetUp()
         {
-            ExecuteNonQuery("DROP TABLE IF EXISTS data");
+            ExecuteNonQuery("DROP TABLE IF EXISTS data CASCADE");
             ExecuteNonQuery("CREATE TABLE data (" +
                             "field_pk SERIAL PRIMARY KEY," +
                             "field_serial SERIAL," +

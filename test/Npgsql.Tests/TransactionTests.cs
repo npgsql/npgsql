@@ -50,17 +50,17 @@ namespace Npgsql.Tests
         public void RollbackOnClose()
         {
             ExecuteNonQuery("DROP TABLE IF EXISTS rollback_on_close");
-            ExecuteNonQuery("CREATE TEMP TABLE rollback_on_close (name TEXT)");
+            ExecuteNonQuery("CREATE TABLE rollback_on_close (name TEXT)");
 
             NpgsqlTransaction tx;
             using (var conn = new NpgsqlConnection(ConnectionString))
             {
                 conn.Open();
                 tx = conn.BeginTransaction();
-                ExecuteNonQuery("INSERT INTO data (name) VALUES ('X')", conn, tx);
+                ExecuteNonQuery("INSERT INTO rollback_on_close (name) VALUES ('X')", conn, tx);
             }
             Assert.That(tx.Connection, Is.Null);
-            Assert.That(ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
+            Assert.That(ExecuteScalar("SELECT COUNT(*) FROM rollback_on_close"), Is.EqualTo(0));
         }
 
         [Test, Description("Intentionally generates an error, putting us in a failed transaction block. Rolls back.")]

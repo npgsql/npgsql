@@ -680,6 +680,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        [Category("TodoFor3.0")]
         public void VerifyFunctionNameWithDeriveParameters()
         {
             var invalidCommandName = new NpgsqlCommand("invalidfunctionname", Conn);

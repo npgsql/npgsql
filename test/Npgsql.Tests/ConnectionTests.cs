@@ -631,7 +631,7 @@ namespace Npgsql.Tests
             Conn.Notice += action;
             try
             {
-                ExecuteNonQuery("SELECT emit_notice()");
+                ExecuteNonQuery("SELECT emit_notice()::TEXT");  // See docs for CreateSleepCommand
                 Assert.That(notice, Is.Not.Null, "No notice was emitted");
                 Assert.That(notice.MessageText, Is.EqualTo("testnotice"));
                 Assert.That(notice.Severity, Is.EqualTo(ErrorSeverity.Notice));
