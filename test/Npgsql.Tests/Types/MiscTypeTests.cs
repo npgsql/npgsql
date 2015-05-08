@@ -61,7 +61,7 @@ namespace Npgsql.Tests.Types
         [Test]
         public void ReadMoney()
         {
-            var cmd = new NpgsqlCommand("SELECT 12345.12::MONEY, '-10.5'::MONEY", Conn);
+            var cmd = new NpgsqlCommand("SELECT '12345.12'::MONEY, '-10.5'::MONEY", Conn);
             var reader = cmd.ExecuteReader();
             reader.Read();
             Assert.That(reader.GetDecimal(0), Is.EqualTo(12345.12m));
@@ -439,6 +439,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
+        [MinPgVersion(9, 2, 0, "Ranges supported only starting PostgreSQL 9.2")]
         public void Range()
         {
             var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4", Conn);
@@ -464,6 +465,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
+        [MinPgVersion(9, 2, 0, "Ranges supported only starting PostgreSQL 9.2")]
         public void TestRange()
         {
             using (var cmd = Conn.CreateCommand())

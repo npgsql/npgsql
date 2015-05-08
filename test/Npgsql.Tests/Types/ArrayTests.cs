@@ -208,48 +208,5 @@ namespace Npgsql.Tests.Types
             Assert.That(reader[1], Is.EqualTo(expected.ToArray()));
             cmd.Dispose();
         }
-
-        // Older tests
-
-        [Test]
-        public void TestBug1010488ArrayParameterWithNullValue()
-        {
-            // Test by Christ Akkermans
-            new NpgsqlCommand(@"CREATE OR REPLACE FUNCTION NullTest (input INT4[]) RETURNS VOID
-            AS $$
-            DECLARE
-            BEGIN
-            END
-            $$ LANGUAGE plpgsql;", Conn).ExecuteNonQuery();
-
-            using (var cmd = new NpgsqlCommand("NullTest", Conn))
-            {
-                var parameter = new NpgsqlParameter("", NpgsqlDbType.Integer | NpgsqlDbType.Array);
-                parameter.Value = new object[] { 5, 5, DBNull.Value };
-                cmd.Parameters.Add(parameter);
-                cmd.CommandType = System.Data.CommandType.StoredProcedure;
-                cmd.ExecuteNonQuery();
-            }
-        }
-
-        [Test]
-        public void TestBug1010675ArrayParameterWithNullValue()
-        {
-            new NpgsqlCommand(@"CREATE OR REPLACE FUNCTION NullTest (input INT4[]) RETURNS VOID
-            AS $$
-            DECLARE
-            BEGIN
-            END
-            $$ LANGUAGE plpgsql;", Conn).ExecuteNonQuery();
-
-            using (var cmd = new NpgsqlCommand("NullTest", Conn))
-            {
-                NpgsqlParameter parameter = new NpgsqlParameter("", NpgsqlDbType.Integer | NpgsqlDbType.Array);
-                parameter.Value = new object[] { 5, 5, null };
-                cmd.Parameters.Add(parameter);
-                cmd.CommandType = System.Data.CommandType.StoredProcedure;
-                cmd.ExecuteNonQuery();
-            }
-        }
     }
 }

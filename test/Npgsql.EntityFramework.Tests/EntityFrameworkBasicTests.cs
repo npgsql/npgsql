@@ -38,7 +38,7 @@ namespace Npgsql.EntityFramework.Tests
                 ExecuteNonQuery("alter table \"dbo\".\"Blogs\" alter column \"IntComputedValue\" set default nextval('blog_int_computed_value_seq');", createSequenceConn);
 
             }
-            
+
 
         }
 
@@ -164,7 +164,7 @@ namespace Npgsql.EntityFramework.Tests
                 }
             }
         }
-        
+
         [Test]
         public void SelectWithWhere_Ef_TruncateTime()
         {
@@ -375,6 +375,7 @@ namespace Npgsql.EntityFramework.Tests
         }
 
         [Test]
+        [Category("TodoFor3.0")]
         public void DataTypes()
         {
             using (var context = new BloggingContext(ConnectionStringEF))
@@ -481,7 +482,7 @@ namespace Npgsql.EntityFramework.Tests
         }
 
         //Hunting season is open Happy hunting on OrderBy,GroupBy,Min,Max,Skip,Take,ThenBy... and all posible combinations
-        
+
         [Test]
         public void TestComplicatedQueries()
         {
@@ -589,7 +590,7 @@ namespace Npgsql.EntityFramework.Tests
 
                     // Just some really crazy query that results in an apply as well
                     context.Blogs.Select(b => new { b, b.BlogId, n = b.Posts.Select(p => new { t = p.Title + b.Name, n = p.Blog.Posts.Count(p2 => p2.BlogId < 4) }).Take(2) }).ToArray();
-                }   
+                }
             }
         }
     }
