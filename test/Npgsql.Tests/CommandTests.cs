@@ -351,7 +351,9 @@ namespace Npgsql.Tests
         [Timeout(3000)]
         public void CancelCrossCommand()
         {
-            using (var cmd1 = new NpgsqlCommand("SELECT pg_sleep(2)", Conn))
+            // In PG < 9.1 you can't do SELECT pg_sleep(2) in binary because that function returns void and PG doesn't know
+            // how to transfer that. So cast to text server-side.
+            using (var cmd1 = new NpgsqlCommand("SELECT pg_sleep(2)" + (Conn.PostgreSqlVersion < new Version(9,1,0) ? "::TEXT" : ""), Conn))
             using (var cmd2 = new NpgsqlCommand("SELECT 1", Conn)) {
                 var cancelTask = Task.Factory.StartNew(() =>
                 {
