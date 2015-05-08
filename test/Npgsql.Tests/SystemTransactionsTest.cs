@@ -151,7 +151,7 @@ namespace Npgsql.Tests
                     }
                     scope.Complete();
                 }
-            }, Throws.Exception.TypeOf<TransactionAbortedException>());
+            }, Throws.Exception.AssignableTo<TransactionException>());
             Assert.That(ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
         }
 
