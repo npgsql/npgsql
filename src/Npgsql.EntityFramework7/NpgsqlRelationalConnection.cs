@@ -36,6 +36,7 @@ namespace Npgsql.EntityFramework7
 
             // TODO: See #566
             builder.Database = "postgres";
+            builder.Pooling = false;
 
             // TODO use clone connection method once implimented see #1406
             var optionsBuilder = new DbContextOptionsBuilder();
