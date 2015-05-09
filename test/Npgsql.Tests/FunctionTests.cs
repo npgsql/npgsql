@@ -139,16 +139,13 @@ namespace Npgsql.Tests
             }
         }
 
-        // Older tests
+        #region Parameter Derivation
 
-#region Parameter Derivation
-#if DISABLED
-    // See https://github.com/npgsql/npgsql/issues/599
         [Test, Description("Tests function parameter derivation with IN, OUT and INOUT parameters")]
         public void DeriveParametersVarious()
         {
             // This function returns record because of the two Out (InOut & Out) parameters
-            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION ""func""(IN param1 INT, OUT param2 text, INOUT param3 INT) RETURNS record AS
+            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION pg_temp.func(IN param1 INT, OUT param2 text, INOUT param3 INT) RETURNS record AS
                               '
                               BEGIN
                                       param2 = ''sometext'';
@@ -156,7 +153,7 @@ namespace Npgsql.Tests
                               END;
                               ' LANGUAGE 'plpgsql';");
 
-            var cmd = new NpgsqlCommand("func", Conn);
+            var cmd = new NpgsqlCommand("pg_temp.func", Conn);
             cmd.CommandType = CommandType.StoredProcedure;
             NpgsqlCommandBuilder.DeriveParameters(cmd);
             Assert.That(cmd.Parameters, Has.Count.EqualTo(3));
@@ -175,14 +172,14 @@ namespace Npgsql.Tests
         public void DeriveParametersInOnly()
         {
             // This function returns record because of the two Out (InOut & Out) parameters
-            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION ""func""(IN param1 INT, IN param2 INT) RETURNS int AS
+            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION pg_temp.func(IN param1 INT, IN param2 INT) RETURNS int AS
                               '
                               BEGIN
                                 RETURN param1 + param2;
                               END;
                               ' LANGUAGE 'plpgsql';");
 
-            var cmd = new NpgsqlCommand("func", Conn);
+            var cmd = new NpgsqlCommand("pg_temp.func", Conn);
             cmd.CommandType = CommandType.StoredProcedure;
             NpgsqlCommandBuilder.DeriveParameters(cmd);
             Assert.That(cmd.Parameters, Has.Count.EqualTo(2));
@@ -197,14 +194,14 @@ namespace Npgsql.Tests
         public void DeriveParametersNoParams()
         {
             // This function returns record because of the two Out (InOut & Out) parameters
-            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION ""func""() RETURNS int AS
+            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION pg_temp.func() RETURNS int AS
                               '
                               BEGIN
                                 RETURN 4;
                               END;
                               ' LANGUAGE 'plpgsql';");
 
-            var cmd = new NpgsqlCommand("func", Conn);
+            var cmd = new NpgsqlCommand("pg_temp.func", Conn);
             cmd.CommandType = CommandType.StoredProcedure;
             NpgsqlCommandBuilder.DeriveParameters(cmd);
             Assert.That(cmd.Parameters, Is.Empty);
@@ -213,38 +210,24 @@ namespace Npgsql.Tests
         [Test]
         public void FunctionCaseSensitiveNameDeriveParameters()
         {
-            var command = new NpgsqlCommand("\"FunctionCaseSensitive\"", Conn);
-            NpgsqlCommandBuilder.DeriveParameters(command);
-            Assert.AreEqual(NpgsqlDbType.Integer, command.Parameters[0].NpgsqlDbType);
-            Assert.AreEqual(NpgsqlDbType.Text, command.Parameters[1].NpgsqlDbType);
-        }
-
-        [Test]
-        public void FunctionCaseSensitiveNameDeriveParametersWithSchema()
-        {
-            CreateCaseSensitiveFunction();
-            var command = new NpgsqlCommand("\"public\".\"FunctionCaseSensitive\"", Conn);
-            NpgsqlCommandBuilder.DeriveParameters(command);
-            Assert.AreEqual(NpgsqlDbType.Integer, command.Parameters[0].NpgsqlDbType);
-            Assert.AreEqual(NpgsqlDbType.Text, command.Parameters[1].NpgsqlDbType);
-        }
-
-        void CreateCaseSensitiveFunction()
-        {
-            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION ""FunctionCaseSensitive""(int4, text) returns int4 as
+            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION pg_temp.""FunctionCaseSensitive""(int4, text) returns int4 as
                               $BODY$
                               begin
                                 return 0;
                               end
                               $BODY$
                               language 'plpgsql';");
+            var command = new NpgsqlCommand("pg_temp.\"FunctionCaseSensitive\"", Conn);
+            NpgsqlCommandBuilder.DeriveParameters(command);
+            Assert.AreEqual(NpgsqlDbType.Integer, command.Parameters[0].NpgsqlDbType);
+            Assert.AreEqual(NpgsqlDbType.Text, command.Parameters[1].NpgsqlDbType);
         }
 
         [Test]
         public void DeriveParametersWithParameterNameFromFunction()
         {
-            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION testoutparameter2(x int, y int, out sum int, out product int) as 'select $1 + $2, $1 * $2' language 'sql';");
-            var command = new NpgsqlCommand("testoutparameter2", Conn);
+            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION pg_temp.testoutparameter2(x int, y int, out sum int, out product int) as 'select $1 + $2, $1 * $2' language 'sql';");
+            var command = new NpgsqlCommand("pg_temp.testoutparameter2", Conn);
             command.CommandType = CommandType.StoredProcedure;
             NpgsqlCommandBuilder.DeriveParameters(command);
             Assert.AreEqual(":x", command.Parameters[0].ParameterName);
@@ -252,12 +235,14 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void VerifyFunctionWithNoParametersWithDeriveParameters()
+        public void DeriveInvalidFunction()
         {
-            var command = new NpgsqlCommand("funcb", Conn);
-            NpgsqlCommandBuilder.DeriveParameters(command);
+            var invalidCommandName = new NpgsqlCommand("invalidfunctionname", Conn);
+            Assert.That(() => NpgsqlCommandBuilder.DeriveParameters(invalidCommandName),
+                Throws.Exception.TypeOf<InvalidOperationException>()
+                .With.Message.Contains("does not exist"));
         }
-#endif
+
         #endregion
 
         public FunctionTests(string backendVersion) : base(backendVersion) { }

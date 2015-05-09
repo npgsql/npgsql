@@ -663,16 +663,6 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        [Category("TodoFor3.0")]
-        public void VerifyFunctionNameWithDeriveParameters()
-        {
-            var invalidCommandName = new NpgsqlCommand("invalidfunctionname", Conn);
-            Assert.That(() => NpgsqlCommandBuilder.DeriveParameters(invalidCommandName),
-                Throws.Exception.TypeOf<InvalidOperationException>()
-                .With.Message.Contains("does not exist"));
-        }
-
-        [Test]
         public void CaseSensitiveParameterNames()
         {
             var command = new NpgsqlCommand("select :p1", Conn);
