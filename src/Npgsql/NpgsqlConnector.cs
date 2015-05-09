@@ -260,7 +260,7 @@ namespace Npgsql
         internal bool UseSslStream { get { return _settings.UseSslStream; } }
         internal int BufferSize { get { return _settings.BufferSize; } }
         internal int ConnectionTimeout { get { return _settings.Timeout; } }
-        internal int InternalCommandTimeout { get { return _settings.InternalCommandTimeout ?? _settings.CommandTimeout; } }
+        internal int InternalCommandTimeout { get { return _settings.InternalCommandTimeout == -1 ? _settings.CommandTimeout : _settings.InternalCommandTimeout; } }
         internal bool BackendTimeouts { get { return _settings.BackendTimeouts; } }
         internal int KeepAlive { get { return _settings.KeepAlive; } }
         internal bool Enlist { get { return _settings.Enlist; } }

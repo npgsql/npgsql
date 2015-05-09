@@ -677,13 +677,13 @@ namespace Npgsql
         [Description("The time to wait (in seconds) while trying to execute a an internal command before terminating the attempt and generating an error")]
 #endif
         [NpgsqlConnectionStringProperty]
-        public int? InternalCommandTimeout
+        public int InternalCommandTimeout
         {
             get { return _internalCommandTimeout; }
             set
             {
-                if (value.HasValue && value < NpgsqlConnector.MinimumInternalCommandTimeout && InternalCommandTimeout != 0)
-                    throw new ArgumentOutOfRangeException("value", value, string.Format("InternalCommandTimeout must be null, >= {0} or 0 (infinite)", NpgsqlConnector.MinimumInternalCommandTimeout));
+                if (value != 0 && value != -1 && value < NpgsqlConnector.MinimumInternalCommandTimeout)
+                    throw new ArgumentOutOfRangeException("value", value, string.Format("InternalCommandTimeout must be >= {0}, 0 (infinite) or -1 (use CommandTimeout)", NpgsqlConnector.MinimumInternalCommandTimeout));
                 Contract.EndContractBlock();
 
                 _internalCommandTimeout = value;
@@ -691,7 +691,7 @@ namespace Npgsql
                 SetValue("InternalCommandTimeout", value);
             }
         }
-        int? _internalCommandTimeout;
+        int _internalCommandTimeout;
 
         /// <summary>
         /// Whether to have the backend enforce <see cref="CommandTimeout"/> and <see cref="InternalCommandTimeout"/>
