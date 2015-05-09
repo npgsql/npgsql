@@ -18,8 +18,8 @@ namespace Npgsql
     {
         #region Fields
 
-        static readonly Dictionary<string, PropertyInfo> _propertiesByKeyword;
-        static readonly Dictionary<PropertyInfo, object> _propertyDefaults;
+        static readonly Dictionary<string, PropertyInfo> PropertiesByKeyword;
+        static readonly Dictionary<PropertyInfo, object> PropertyDefaults;
 
         #endregion
 
@@ -47,7 +47,7 @@ namespace Npgsql
 
         void Init()
         {
-            foreach (var kv in _propertyDefaults) {
+            foreach (var kv in PropertyDefaults) {
                 kv.Key.SetValue(this, kv.Value);
                 base.Clear();
             }
@@ -66,7 +66,7 @@ namespace Npgsql
 
             Contract.Assume(properties.All(p => p.CanRead && p.CanWrite));
 
-            _propertiesByKeyword = (
+            PropertiesByKeyword = (
                 from p in properties
                 from t in new[] { p.Name }.Concat(p.GetCustomAttribute<NpgsqlConnectionStringPropertyAttribute>().AlternateNames).Select(
                     k => new { Property = p, Keyword = k }
@@ -74,7 +74,7 @@ namespace Npgsql
                 select t
             ).ToDictionary(t => t.Keyword.ToUpperInvariant(), t => t.Property);
 
-            _propertyDefaults = properties
+            PropertyDefaults = properties
                 .Where(p => p.GetCustomAttribute<ObsoleteAttribute>() == null)
                 .ToDictionary(
                 p => p,
@@ -132,7 +132,7 @@ namespace Npgsql
             var p = GetProperty(keyword);
             var removed = base.ContainsKey(p.Name);
             // Note that string property setters call SetValue, which itself calls base.Remove().
-            p.SetValue(this, _propertyDefaults[p]);
+            p.SetValue(this, PropertyDefaults[p]);
             base.Remove(p.Name);
             return removed;
         }
@@ -159,13 +159,13 @@ namespace Npgsql
                 throw new ArgumentNullException("keyword");
             Contract.EndContractBlock();
 
-            return _propertiesByKeyword.ContainsKey(keyword.ToUpperInvariant());
+            return PropertiesByKeyword.ContainsKey(keyword.ToUpperInvariant());
         }
 
         PropertyInfo GetProperty(string keyword)
         {
             PropertyInfo p;
-            if (!_propertiesByKeyword.TryGetValue(keyword.ToUpperInvariant(), out p)) {
+            if (!PropertiesByKeyword.TryGetValue(keyword.ToUpperInvariant(), out p)) {
                 throw new ArgumentException("Keyword not supported: " + keyword, "keyword");
             }
             return p;
