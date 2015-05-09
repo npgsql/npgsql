@@ -131,50 +131,46 @@ namespace Npgsql
             catch
             {
                 command.Parameters.Clear();
-                 throw;
+                throw;
             }
         }
 
         private static void DoDeriveParameters(NpgsqlCommand command)
         {
-            throw new NotImplementedException();
-#if IMPLEMENT
             // See http://www.postgresql.org/docs/current/static/catalog-pg-proc.html
             command.Parameters.Clear();
             // Updated after 0.99.3 to support the optional existence of a name qualifying schema and case insensitivity when the schema ror procedure name do not contain a quote.
             // This fixed an incompatibility with NpgsqlCommand.CheckFunctionReturn(String ReturnType)
             var serverVersion = command.Connection.Connector.ServerVersion;
-            String query = null;
-            string procedureName = null;
+            string query;
+            string procedureName;
             string schemaName = null;
-            string[] fullName = command.CommandText.Split('.');
+            var fullName = command.CommandText.Split('.');
             if (fullName.Length > 1 && fullName[0].Length > 0)
             {
                 // proargsmodes is supported for Postgresql 8.1 and above
-                if (serverVersion >= new Version(8, 1, 0))
-                    query = "select proargnames, proargtypes, proallargtypes, proargmodes from pg_proc p left join pg_namespace n on p.pronamespace = n.oid where proname=:proname and n.nspname=:nspname";
-                else
-                    query = "select proargnames, proargtypes from pg_proc p left join pg_namespace n on p.pronamespace = n.oid where proname=:proname and n.nspname=:nspname";
+                query = serverVersion >= new Version(8, 1, 0)
+                    ? "select proargnames, proargtypes, proallargtypes, proargmodes from pg_proc p left join pg_namespace n on p.pronamespace = n.oid where proname=:proname and n.nspname=:nspname"
+                    : "select proargnames, proargtypes from pg_proc p left join pg_namespace n on p.pronamespace = n.oid where proname=:proname and n.nspname=:nspname";
                 schemaName = (fullName[0].IndexOf("\"") != -1) ? fullName[0] : fullName[0].ToLower();
                 procedureName = (fullName[1].IndexOf("\"") != -1) ? fullName[1] : fullName[1].ToLower();
             }
             else
             {
                 // proargsmodes is supported for Postgresql 8.1 and above
-                if (serverVersion >= new Version(8, 1, 0))
-                    query = "select proargnames, proargtypes, proallargtypes, proargmodes from pg_proc where proname = :proname";
-                else
-                    query = "select proargnames, proargtypes from pg_proc where proname = :proname";
+                query = serverVersion >= new Version(8, 1, 0)
+                    ? "select proargnames, proargtypes, proallargtypes, proargmodes from pg_proc where proname = :proname"
+                    : "select proargnames, proargtypes from pg_proc where proname = :proname";
                 procedureName = (fullName[0].IndexOf("\"") != -1) ? fullName[0] : fullName[0].ToLower();
             }
 
-            using (NpgsqlCommand c = new NpgsqlCommand(query, command.Connection))
+            using (var c = new NpgsqlCommand(query, command.Connection))
             {
                 c.Parameters.Add(new NpgsqlParameter("proname", NpgsqlDbType.Text));
                 c.Parameters[0].Value = procedureName.Replace("\"", "").Trim();
-                if (fullName.Length > 1 && !String.IsNullOrEmpty(schemaName))
+                if (fullName.Length > 1 && !string.IsNullOrEmpty(schemaName))
                 {
-                    NpgsqlParameter prm = c.Parameters.Add(new NpgsqlParameter("nspname", NpgsqlDbType.Text));
+                    var prm = c.Parameters.Add(new NpgsqlParameter("nspname", NpgsqlDbType.Text));
                     prm.Value = schemaName.Replace("\"", "").Trim();
                 }
 
@@ -182,12 +178,12 @@ namespace Npgsql
                 uint[] types = null;
                 char[] modes = null;
 
-                using (NpgsqlDataReader rdr = c.ExecuteReader(CommandBehavior.SingleRow | CommandBehavior.SingleResult))
+                using (var rdr = c.ExecuteReader(CommandBehavior.SingleRow | CommandBehavior.SingleResult))
                 {
                     if (rdr.Read())
                     {
                         if (!rdr.IsDBNull(0))
-                            names = rdr.GetValue(0) as String[];
+                            names = rdr.GetValue(0) as string[];
                         if (serverVersion >= new Version("8.1.0"))
                         {
                             if (!rdr.IsDBNull(2))
@@ -203,7 +199,7 @@ namespace Npgsql
                         }
                     }
                     else
-                        throw new InvalidOperationException(String.Format("{0} does not exist in pg_proc", command.CommandText));
+                        throw new InvalidOperationException(string.Format("{0} does not exist in pg_proc", command.CommandText));
                 }
 
                 command.Parameters.Clear();
@@ -211,12 +207,10 @@ namespace Npgsql
                 {
                     var param = new NpgsqlParameter();
 
-                    throw new NotImplementedException();
-                    /*
                     // TODO: Fix enums, composite types
-                    var npgsqlDbType = c.Connector.TypeHandlerRegistry.GetNpgsqlDbTypeFromOid(types[i]);
+                    var npgsqlDbType = c.Connection.Connector.TypeHandlerRegistry[types[i]].NpgsqlDbType;
                     if (npgsqlDbType == NpgsqlDbType.Unknown)
-                        throw new InvalidOperationException(String.Format("Invalid parameter type: {0}", types[i]));
+                        throw new InvalidOperationException(string.Format("Invalid parameter type: {0}", types[i]));
                     param.NpgsqlDbType = npgsqlDbType;
 
                     if (names != null && i < names.Length)
@@ -248,12 +242,10 @@ namespace Npgsql
                                     "Unknown code in proargmodes while deriving: " + modes[i]);
                         }
                     }
-                    
+
                     command.Parameters.Add(param);
-                     */
                 }
             }
-#endif
         }
 
         /// <summary>
@@ -269,11 +261,11 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Gets the automatically generated <see cref="NpgsqlCommand"/> object required to perform insertions 
+        /// Gets the automatically generated <see cref="NpgsqlCommand"/> object required to perform insertions
         /// at the data source, optionally using columns for parameter names.
         /// </summary>
         /// <param name="useColumnsForParameterNames">
-        /// If <c>true</c>, generate parameter names matching column names, if possible. 
+        /// If <c>true</c>, generate parameter names matching column names, if possible.
         /// If <c>false</c>, generate @p1, @p2, and so on.
         /// </param>
         /// <returns>
@@ -303,7 +295,7 @@ namespace Npgsql
         /// at the data source, optionally using columns for parameter names.
         /// </summary>
         /// <param name="useColumnsForParameterNames">
-        /// If <c>true</c>, generate parameter names matching column names, if possible. 
+        /// If <c>true</c>, generate parameter names matching column names, if possible.
         /// If <c>false</c>, generate @p1, @p2, and so on.
         /// </param>
         /// <returns>
@@ -329,7 +321,7 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Gets the automatically generated <see cref="NpgsqlCommand"/> object required to perform deletions 
+        /// Gets the automatically generated <see cref="NpgsqlCommand"/> object required to perform deletions
         /// at the data source, optionally using columns for parameter names.
         /// </summary>
         /// <param name="useColumnsForParameterNames">
