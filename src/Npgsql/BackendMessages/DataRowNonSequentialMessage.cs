@@ -53,6 +53,12 @@ namespace Npgsql.BackendMessages
             }
         }
 
+        internal override Task SeekToColumnAsync(int column)
+        {
+            SeekToColumn(column);
+            return PGUtil.CompletedTask;
+        }
+
         internal override void SeekInColumn(int posInColumn)
         {
             if (posInColumn > ColumnLen) {

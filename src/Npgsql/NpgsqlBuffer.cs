@@ -97,6 +97,7 @@ namespace Npgsql
             }
         }
 
+        [RewriteAsync]
         internal void ReadMore()
         {
             Ensure(ReadBytesLeft + 1);
@@ -108,6 +109,7 @@ namespace Npgsql
         /// temp buffer). Used in cases where we absolutely have to have an entire value in memory and cannot
         /// read it in sequentially.
         /// </summary>
+        [RewriteAsync]
         internal NpgsqlBuffer EnsureOrAllocateTemp(int count)
         {
             if (count <= Size) {
@@ -535,7 +537,7 @@ namespace Npgsql
                 _writePosition = count;
             }
         }
-        
+
         [RewriteAsync]
         public void Flush()
         {

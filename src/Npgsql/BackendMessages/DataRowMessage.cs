@@ -47,6 +47,7 @@ namespace Npgsql.BackendMessages
         /// The length is available in ColumnLen.
         /// </summary>
         internal abstract void SeekToColumn(int column);
+        internal abstract Task SeekToColumnAsync(int column);
         internal abstract void SeekInColumn(int posInColumn);
 
         /// <summary>

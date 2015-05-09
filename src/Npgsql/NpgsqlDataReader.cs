@@ -368,6 +368,7 @@ namespace Npgsql
 
         #endregion
 
+        [RewriteAsync]
         IBackendMessage ReadMessage()
         {
             if (_pendingMessage != null) {
@@ -518,6 +519,7 @@ namespace Npgsql
         /// Consumes all result sets for this reader, leaving the connector ready for sending and processing further
         /// queries
         /// </summary>
+        [RewriteAsync]
         void Consume()
         {
             if (IsSchemaOnly)
@@ -1418,6 +1420,7 @@ namespace Npgsql
 #if !NET40
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
 #endif
+        [RewriteAsync]
         T ReadColumnWithoutCache<T>(int ordinal)
         {
             _row.SeekToColumnStart(ordinal);
@@ -1441,6 +1444,7 @@ namespace Npgsql
 #if !NET40
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
 #endif
+        [RewriteAsync]
         T ReadColumn<T>(int ordinal)
         {
             CachedValue<T> cache = null;

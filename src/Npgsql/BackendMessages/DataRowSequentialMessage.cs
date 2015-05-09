@@ -33,6 +33,7 @@ namespace Npgsql.BackendMessages
         /// Places our position at the beginning of the given column, after the 4-byte length.
         /// The length is available in ColumnLen.
         /// </summary>
+        [RewriteAsync(withOverride: true)]
         internal override void SeekToColumn(int column)
         {
             CheckColumnIndex(column);

@@ -7,6 +7,7 @@ using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
 using System.Diagnostics.CodeAnalysis;
+using AsyncRewriter;
 
 namespace Npgsql
 {
@@ -39,8 +40,6 @@ namespace Npgsql
     }
 
     #endregion
-
-    #region Chunking type handler
 
     [ContractClass(typeof(IChunkingTypeWriterContracts))]
     interface IChunkingTypeWriter
@@ -116,9 +115,7 @@ namespace Npgsql
         }
     }
 
-    #endregion
-
-    internal abstract class TypeHandler
+    internal abstract partial class TypeHandler
     {
         internal string PgName { get; set; }
         internal uint OID { get; set; }
@@ -135,6 +132,7 @@ namespace Npgsql
 
         public virtual bool PreferTextWrite { get { return false; } }
 
+        [RewriteAsync]
         internal T Read<T>(DataRowMessage row, int len, FieldDescription fieldDescription = null)
         {
             Contract.Requires(row.PosInColumn == 0);
@@ -153,6 +151,7 @@ namespace Npgsql
             return result;
         }
 
+        [RewriteAsync]
         internal T Read<T>(NpgsqlBuffer buf, int len, FieldDescription fieldDescription=null)
         {
             T result;
