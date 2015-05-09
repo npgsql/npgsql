@@ -14,18 +14,10 @@ namespace NpgsqlTests
     /// </summary>
     public class FunctionTests : TestBase
     {
-        public FunctionTests(string backendVersion) : base(backendVersion) {}
-
-        /// <summary>
-        /// Declare function names used by this test.
-        /// They are dropped at Setup().
-        /// </summary>
-        String[] funcNamesUsedbyTest = { "SomeFunction", "func" };
-
         [Test]
         public void FunctionInOutParameters()
         {
-            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION ""SomeFunction""(OUT param1 int, INOUT param2 int) RETURNS record AS 
+            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION pg_temp.func(OUT param1 int, INOUT param2 int) RETURNS record AS 
                               '
                               BEGIN
                                       param1 = 1;
@@ -33,7 +25,7 @@ namespace NpgsqlTests
                               END;
                               ' LANGUAGE 'plpgsql';");
 
-            var cmd = new NpgsqlCommand(@"""SomeFunction""", Conn);
+            var cmd = new NpgsqlCommand(@"pg_temp.func", Conn);
             cmd.CommandType = CommandType.StoredProcedure;
 
             cmd.Parameters.Add(new NpgsqlParameter("param1", DbType.Int32) {
@@ -57,7 +49,7 @@ namespace NpgsqlTests
         public void DeriveParametersVarious()
         {
             // This function returns record because of the two Out (InOut & Out) parameters
-            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION ""func""(IN param1 INT, OUT param2 text, INOUT param3 INT) RETURNS record AS 
+            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION pg_temp.func(IN param1 INT, OUT param2 text, INOUT param3 INT) RETURNS record AS 
                               '
                               BEGIN
                                       param2 = ''sometext'';
@@ -65,7 +57,7 @@ namespace NpgsqlTests
                               END;
                               ' LANGUAGE 'plpgsql';");
 
-            var cmd = new NpgsqlCommand("func", Conn);
+            var cmd = new NpgsqlCommand("pg_temp.func", Conn);
             cmd.CommandType = CommandType.StoredProcedure;
             NpgsqlCommandBuilder.DeriveParameters(cmd);
             Assert.That(cmd.Parameters, Has.Count.EqualTo(3));
@@ -84,14 +76,14 @@ namespace NpgsqlTests
         public void DeriveParametersInOnly()
         {
             // This function returns record because of the two Out (InOut & Out) parameters
-            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION ""func""(IN param1 INT, IN param2 INT) RETURNS int AS 
+            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION pg_temp.func(IN param1 INT, IN param2 INT) RETURNS int AS 
                               '
                               BEGIN
                                 RETURN param1 + param2;
                               END;
                               ' LANGUAGE 'plpgsql';");
 
-            var cmd = new NpgsqlCommand("func", Conn);
+            var cmd = new NpgsqlCommand("pg_temp.func", Conn);
             cmd.CommandType = CommandType.StoredProcedure;
             NpgsqlCommandBuilder.DeriveParameters(cmd);
             Assert.That(cmd.Parameters, Has.Count.EqualTo(2));
@@ -106,46 +98,19 @@ namespace NpgsqlTests
         public void DeriveParametersNoParams()
         {
             // This function returns record because of the two Out (InOut & Out) parameters
-            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION ""func""() RETURNS int AS 
+            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION pg_temp.func() RETURNS int AS 
                               '
                               BEGIN
                                 RETURN 4;
                               END;
                               ' LANGUAGE 'plpgsql';");
 
-            var cmd = new NpgsqlCommand("func", Conn);
+            var cmd = new NpgsqlCommand("pg_temp.func", Conn);
             cmd.CommandType = CommandType.StoredProcedure;
             NpgsqlCommandBuilder.DeriveParameters(cmd);
             Assert.That(cmd.Parameters, Is.Empty);
         }
 
-        #region Setup / Teardown
-
-        [SetUp]
-        public void Setup()
-        {
-            base.SetUp();
-
-            // Drop all functions in the public schema
-            const string query =
-               @"SELECT proname, oidvectortypes(proargtypes)
-                 FROM pg_proc INNER JOIN pg_namespace ns ON pg_proc.pronamespace = ns.oid
-                 WHERE ns.nspname = 'public'";
-
-            var funcs = new Dictionary<string, string>();
-            using (var cmd = new NpgsqlCommand(query, Conn))
-            using (var rdr = cmd.ExecuteReader())
-                while (rdr.Read())
-                    funcs[rdr.GetString(0)] = rdr.GetString(1);
-            foreach (var func in funcs)
-                if (funcNamesUsedbyTest.Contains(func.Key))
-                    ExecuteNonQuery(String.Format(@"DROP FUNCTION ""{0}"" ({1})", func.Key, func.Value));
-
-            // We cannot remove functions introduced by PostgreSQL extensions.
-
-            // NpgsqlTests.FunctionTests("9.4").DeriveParametersInOnly:
-            // SetUp : Npgsql.NpgsqlException : ERROR: 42501: must be owner of function uuid_nil
-        }
-        #endregion Setup / Teardown
+        public FunctionTests(string backendVersion) : base(backendVersion) { }
     }
 }
