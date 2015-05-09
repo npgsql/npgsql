@@ -420,6 +420,7 @@ namespace Npgsql
         internal int Timeout { get { return _settings.Timeout; } }
         internal bool Enlist { get { return _settings.Enlist; } }
         internal int BufferSize { get { return _settings.BufferSize; } }
+        internal string EntityTemplateDatabase { get { return _settings.EntityTemplateDatabase; } }
 
         #endregion Configuration settings
 

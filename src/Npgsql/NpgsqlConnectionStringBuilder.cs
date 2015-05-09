@@ -718,6 +718,35 @@ namespace Npgsql
 
         #endregion
 
+        #region Properties - Entity Framework
+
+        /// <summary>
+        /// The database template to specify when creating a database in Entity Framework. If not specified,
+        /// PostgreSQL defaults to "template1".
+        /// </summary>
+        /// <remarks>
+        /// http://www.postgresql.org/docs/current/static/manage-ag-templatedbs.html
+        /// </remarks>
+#if !DNXCORE50
+        [Category("Entity Framework")]
+        [DisplayName("Template Database")]
+        [Description("The database template to specify when creating a database in Entity Framework. If not specified, PostgreSQL defaults to \"template1\".")]
+#endif
+        [NpgsqlConnectionStringProperty]
+        public string EntityTemplateDatabase
+        {
+            get { return _entityTemplateDatabase; }
+            set
+            {
+                _entityTemplateDatabase = value;
+                // TODO: Replace literal name with nameof operator in C# 6.0
+                SetValue("TemplateDatabase", value);
+            }
+        }
+        string _entityTemplateDatabase;
+
+        #endregion
+
         #region Properties - Advanced
 
         /// <summary>

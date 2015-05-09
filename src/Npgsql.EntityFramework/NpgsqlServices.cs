@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data.Common;
+using System.Text;
 using System.Xml;
 #if ENTITIES6
 using System.Data.Entity.Core.Common;
@@ -132,7 +133,18 @@ namespace Npgsql
         {
             UsingPostgresDBConnection((NpgsqlConnection)connection, conn =>
             {
-                using (NpgsqlCommand command = new NpgsqlCommand("CREATE DATABASE \"" + connection.Database + "\";", conn))
+                var sb = new StringBuilder();
+                sb.Append("CREATE DATABASE \"");
+                sb.Append(connection.Database);
+                sb.Append("\"");
+                if (conn.EntityTemplateDatabase != null)
+                {
+                    sb.Append(" TEMPLATE \"");
+                    sb.Append(conn.EntityTemplateDatabase);
+                    sb.Append("\"");
+                }
+
+                using (NpgsqlCommand command = new NpgsqlCommand(sb.ToString(), conn))
                 {
                     command.ExecuteNonQuery();
                 }
