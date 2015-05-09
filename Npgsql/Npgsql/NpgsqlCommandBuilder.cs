@@ -157,6 +157,16 @@ namespace Npgsql
                     query = "select proargnames, proargtypes from pg_proc p left join pg_namespace n on p.pronamespace = n.oid where proname=:proname and n.nspname=:nspname";
                 schemaName = (fullName[0].IndexOf("\"") != -1) ? fullName[0] : fullName[0].ToLower();
                 procedureName = (fullName[1].IndexOf("\"") != -1) ? fullName[1] : fullName[1].ToLower();
+
+                // The pg_temp pseudo-schema is special - it's an alias to a real schema name (e.g. pg_temp_2).
+                // We get the real name with pg_my_temp_schema().
+                if (schemaName == "pg_temp")
+                {
+                    using (var c = new NpgsqlCommand("SELECT nspname FROM pg_namespace WHERE oid=pg_my_temp_schema()", command.Connection))
+                    {
+                        schemaName = (string)c.ExecuteScalar();
+                    }
+                }
             }
             else
             {
