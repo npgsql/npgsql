@@ -3,7 +3,7 @@
   <Types>
     <RootType>
       <Properties>
-        <Property name="Host" type="System.String"/>
+        <Property name="Server" type="System.String"/>
         <Property name="Database" type="System.String"/>
       </Properties>
       <Services>
