@@ -625,10 +625,10 @@ namespace NpgsqlTests
         {
             ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('X')");
             ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('Y')");
-            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION funcB() returns setof data as '
+            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION pg_temp.funcb() returns setof data as '
                               select * from data;
                               ' language 'sql';");
-            var command = new NpgsqlCommand("funcb", Conn);
+            var command = new NpgsqlCommand("pg_temp.funcb", Conn);
             command.CommandType = CommandType.StoredProcedure;
 
             using (var dr = command.ExecuteReader(CommandBehavior.SingleRow))
@@ -647,11 +647,11 @@ namespace NpgsqlTests
             // Problem is that prepare plan must already have the limit 1 single row support.
             ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('X')");
             ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('Y')");
-            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION funcB() returns setof data as '
+            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION pg_temp.funcb() returns setof data as '
                               select * from data;
                               ' language 'sql';");
 
-            var command = new NpgsqlCommand("funcb()", Conn);
+            var command = new NpgsqlCommand("pg_temp.funcb()", Conn);
             command.CommandType = CommandType.StoredProcedure;
             command.Prepare();
 
@@ -891,10 +891,10 @@ namespace NpgsqlTests
         [Test]
         public void SchemaOnlyCommandBehaviorSupportFunctioncall()
         {
-            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION funcB() returns setof data as '
+            ExecuteNonQuery(@"CREATE FUNCTION pg_temp.funcb() returns setof data as '
                               select * from data;
                               ' language 'sql';");
-            var command = new NpgsqlCommand("funcb", Conn);
+            var command = new NpgsqlCommand("pg_temp.funcb", Conn);
             command.CommandType = CommandType.StoredProcedure;
             using (var dr = command.ExecuteReader(CommandBehavior.SchemaOnly))
             {
