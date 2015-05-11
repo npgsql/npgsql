@@ -133,6 +133,8 @@ namespace Npgsql
                         return TypeUsage.CreateStringTypeUsage(primitiveType, isUnicode, true, (int)facet.Value);
                     else
                         return TypeUsage.CreateStringTypeUsage(primitiveType, isUnicode, true);
+                case "cidr":
+                case "inet":
                 case "varchar":
                     if (storeType.Facets.TryGetValue(MaxLengthFacet, false, out facet) &&
                         !facet.IsUnbounded && facet.Value != null)
