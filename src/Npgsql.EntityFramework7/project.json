@@ -21,10 +21,16 @@
     "compile": "..\\..\\external\\EntityFramework\\src\\Shared\\*",
     "frameworks": {
         "net45": {
-        	"frameworkAssemblies": {
-        		"System": "4.0.0.0",
-        		"System.Runtime": "4.0.0.0"
-        	}
+            "frameworkAssemblies": {
+                "System": "4.0.0.0",
+                "System.Runtime": "4.0.0.0"
+            }
+        },
+        "dnx451": {
+            "frameworkAssemblies": {
+                "System": "4.0.0.0",
+                "System.Runtime": "4.0.0.0"
+            }
         }
     }
 }
