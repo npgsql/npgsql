@@ -82,6 +82,13 @@
         <Precision Minimum="0" Maximum="6" DefaultValue="6" Constant="false"/>
       </FacetDescriptions>
     </Type>
+    <Type Name="macaddr" PrimitiveTypeKind="String">
+      <FacetDescriptions>
+        <FixedLength DefaultValue="false" Constant="true" />
+        <MaxLength Minimum="1" Maximum="17" DefaultValue="17" Constant="false" />
+        <Unicode DefaultValue="true" Constant="true" />
+      </FacetDescriptions>
+    </Type>
     <Type Name="time" PrimitiveTypeKind="Time">
       <FacetDescriptions>
         <Precision Minimum="0" Maximum="6" DefaultValue="6" Constant="false"/>
