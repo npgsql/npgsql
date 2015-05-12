@@ -50,8 +50,7 @@
     <Type Name="cidr" PrimitiveTypeKind="String">
       <FacetDescriptions>
         <FixedLength DefaultValue="false" Constant="true" />
-        <!-- http://www.postgresql.org/docs/current/interactive/datatype-net-types.html -->
-        <MaxLength Minimum="1" Maximum="19" DefaultValue="19" Constant="false" />
+        <MaxLength Minimum="1" Maximum="45" DefaultValue="45" Constant="false" />
         <Unicode DefaultValue="true" Constant="true" />
       </FacetDescriptions>
     </Type>
@@ -74,8 +73,7 @@
     <Type Name="inet" PrimitiveTypeKind="String">
       <FacetDescriptions>
         <FixedLength DefaultValue="false" Constant="true" />
-        <!-- http://www.postgresql.org/docs/current/interactive/datatype-net-types.html -->
-        <MaxLength Minimum="1" Maximum="19" DefaultValue="19" Constant="false" />
+        <MaxLength Minimum="1" Maximum="45" DefaultValue="45" Constant="false" />
         <Unicode DefaultValue="true" Constant="true" />
       </FacetDescriptions>
     </Type>
