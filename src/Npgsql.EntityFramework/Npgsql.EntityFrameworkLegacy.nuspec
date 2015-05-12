@@ -17,7 +17,6 @@
     <dependencies>
       <dependency id="Npgsql" version="$version$" />
       <dependency id="EntityFramework" version="(,6.0.0)" />
-      <dependency id="Common.Logging" version="2.2.0" />
     </dependencies>
   </metadata>
   <files>

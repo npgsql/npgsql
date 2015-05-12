@@ -14,11 +14,6 @@
     <summary>Npgsql is a .NET data provider for Postgresql.</summary>
     <language>en-US</language>
     <tags>Npgsql postgres data database Postgresql</tags>
-    <dependencies>
-     <group targetFramework="net40">
-       <dependency id="Microsoft.Bcl.Async" />
-     </group>
-    </dependencies>
   </metadata>
   <files>
     <file src="bin\Release-net45\**\*.dll" target="lib\net45" exclude="**\policy.*" />
