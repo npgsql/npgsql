@@ -204,11 +204,11 @@ namespace NpgsqlTypes
                 ((NpgsqlTsQueryLexeme)valStack.Peek()).IsPrefixSearch = true;
             else if (ch == 'a' || ch == 'A')
                 ((NpgsqlTsQueryLexeme)valStack.Peek()).Weights |= NpgsqlTsQueryLexeme.Weight.A;
-            else if (ch == 'b' || ch == 'b')
+            else if (ch == 'b' || ch == 'B')
                 ((NpgsqlTsQueryLexeme)valStack.Peek()).Weights |= NpgsqlTsQueryLexeme.Weight.B;
-            else if (ch == 'c' || ch == 'c')
+            else if (ch == 'c' || ch == 'C')
                 ((NpgsqlTsQueryLexeme)valStack.Peek()).Weights |= NpgsqlTsQueryLexeme.Weight.C;
-            else if (ch == 'd' || ch == 'd')
+            else if (ch == 'd' || ch == 'D')
                 ((NpgsqlTsQueryLexeme)valStack.Peek()).Weights |= NpgsqlTsQueryLexeme.Weight.D;
             else
                 goto PushedVal;
@@ -478,7 +478,7 @@ namespace NpgsqlTypes
         {
             if (!first)
                 sb.Append("( ");
-            
+
             Left.Write(sb);
             sb.Append(" | ");
             Right.Write(sb);
