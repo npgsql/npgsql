@@ -432,6 +432,12 @@ namespace Npgsql
 
         static Dictionary<SecurityIdentifier, CachedUpn> cachedUpns = new Dictionary<SecurityIdentifier,CachedUpn>();
 
+        private string GetWindowsIdentityUserName()
+        {
+            WindowsIdentity identity = WindowsIdentity.GetCurrent();
+            return identity.Name.Split('\\')[1];
+        }
+
         private string GetIntegratedUserName()
         {
             // Side note: This maintains the hack fix mentioned before for https://github.com/npgsql/Npgsql/issues/133.
@@ -462,6 +468,13 @@ namespace Npgsql
                 if (upn == null) {
                     // Try to get the user's UPN in its correct case; this is what the
                     // server will need to verify against a Kerberos/SSPI ticket
+
+                    // If the computer does not belong to a domain, returns Empty.
+                    string domainName = System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties().DomainName;
+                    if (domainName.Equals(string.Empty))
+                    {
+                        return GetWindowsIdentityUserName();
+                    }
 
                     // First, find a domain server we can talk to
                     string domainHostName;
@@ -510,7 +523,7 @@ namespace Npgsql
             {
                 // Querying the directory failed, so return the SAM name
                 // (which probably won't work, but it's better than nothing)
-                return identity.Name.Split('\\')[1];
+                return GetWindowsIdentityUserName();
             }
         }
     #endregion
