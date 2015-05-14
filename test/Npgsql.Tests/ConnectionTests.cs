@@ -227,7 +227,7 @@ namespace Npgsql.Tests
         public void NotificationAsync()
         {
             var mre = new ManualResetEvent(false);
-            using (var listeningConn = new NpgsqlConnection(ConnectionString + ";SyncNotification=true"))
+            using (var listeningConn = new NpgsqlConnection(ConnectionString + ";ContinuousProcessing=true"))
             {
                 listeningConn.Open();
                 ExecuteNonQuery("LISTEN notifytest2", listeningConn);
@@ -248,7 +248,7 @@ namespace Npgsql.Tests
         public void NotificationDuringReader()
         {
             var receivedNotification = false;
-            using (var listeningConn = new NpgsqlConnection(ConnectionString + ";SyncNotification=true"))
+            using (var listeningConn = new NpgsqlConnection(ConnectionString + ";ContinuousProcessing=true"))
             {
                 listeningConn.Open();
                 ExecuteNonQuery("LISTEN notifytest2", listeningConn);
@@ -269,7 +269,7 @@ namespace Npgsql.Tests
         public void NotificationAsyncWithPrepend()
         {
             var mre = new ManualResetEvent(false);
-            using (var listeningConn = new NpgsqlConnection(ConnectionString + ";SyncNotification=true"))
+            using (var listeningConn = new NpgsqlConnection(ConnectionString + ";ContinuousProcessing=true"))
             {
                 listeningConn.Open();
                 ExecuteNonQuery("LISTEN notifytest2", listeningConn);
@@ -324,7 +324,7 @@ namespace Npgsql.Tests
         public void Keepalive()
         {
             var mre = new ManualResetEvent(false);
-            using (var conn = new NpgsqlConnection(ConnectionString + ";KeepAlive=1;SyncNotification=true"))
+            using (var conn = new NpgsqlConnection(ConnectionString + ";KeepAlive=1;ContinuousProcessing=true"))
             {
                 conn.Open();
 

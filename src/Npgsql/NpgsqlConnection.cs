@@ -341,7 +341,7 @@ namespace Npgsql
         /// Gets flag indicating if we are using Synchronous notification or not.
         /// The default value is false.
         /// </summary>
-        public bool SyncNotification { get { return Settings.SyncNotification; } }
+        public bool ContinuousProcessing { get { return Settings.ContinuousProcessing; } }
 
         /// <summary>
         /// Whether to use Windows integrated security to log in.

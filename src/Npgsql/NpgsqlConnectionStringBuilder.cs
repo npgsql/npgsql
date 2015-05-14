@@ -805,25 +805,25 @@ namespace Npgsql
         #region Properties - Advanced
 
         /// <summary>
-        /// Whether to listen for notifications and report them between command activity.
+        /// Whether to process messages that arrive between command activity.
         /// </summary>
 #if !DNXCORE50
         [Category("Advanced")]
-        [DisplayName("Sync Notification")]
-        [Description("Whether to listen for notifications and report them between command activity.")]
+        [DisplayName("Continuous Processing")]
+        [Description("Whether to process messages that arrive between command activity.")]
 #endif
-        [NpgsqlConnectionStringProperty]
-        public bool SyncNotification
+        [NpgsqlConnectionStringProperty("SyncNotification")]
+        public bool ContinuousProcessing
         {
-            get { return _syncNotification; }
+            get { return _continuousProcessing; }
             set
             {
-                _syncNotification = value;
+                _continuousProcessing = value;
                 // TODO: Replace literal name with nameof operator in C# 6.0
-                SetValue("SyncNotification", value);
+                SetValue("ContinuousProcessing", value);
             }
         }
-        bool _syncNotification;
+        bool _continuousProcessing;
 
         /// <summary>
         /// The number of seconds of connection inactivity before Npgsql sends a keepalive query.

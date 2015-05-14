@@ -265,7 +265,7 @@ namespace Npgsql
         internal bool Enlist { get { return _settings.Enlist; } }
         internal bool IntegratedSecurity { get { return _settings.IntegratedSecurity; } }
         internal bool ConvertInfinityDateTime { get { return _settings.ConvertInfinityDateTime; } }
-        internal bool SyncNotification { get { return _settings.SyncNotification; } }
+        internal bool ContinuousProcessing { get { return _settings.ContinuousProcessing; } }
 
         internal int ActualInternalCommandTimeout
         {
@@ -408,7 +408,7 @@ namespace Npgsql
                 TypeHandlerRegistry.Setup(this);
                 State = ConnectorState.Ready;
 
-                if (SyncNotification) {
+                if (ContinuousProcessing) {
                     HandleAsyncMessages();
                 }
             }
