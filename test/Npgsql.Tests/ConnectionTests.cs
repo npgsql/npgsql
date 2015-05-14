@@ -245,7 +245,6 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("A notification arriving while we have an open Reader")]
-        [Timeout(10000)]
         public void NotificationDuringReader()
         {
             var receivedNotification = false;
@@ -259,6 +258,7 @@ namespace Npgsql.Tests
                 using (cmd.ExecuteReader()) {
                     // Send notify via the other connection
                     ExecuteNonQuery("NOTIFY notifytest2");
+                    Thread.Sleep(500);
                 }
             }
             Assert.That(receivedNotification, Is.True);
