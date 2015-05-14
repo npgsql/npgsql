@@ -18,7 +18,20 @@ namespace Npgsql
     {
         #region Fields
 
+        /// <summary>
+        /// Makes all valid keywords for a property to that property (e.g. User Name -> Username, UserId -> Username...)
+        /// </summary>
         static readonly Dictionary<string, PropertyInfo> PropertiesByKeyword;
+
+        /// <summary>
+        /// Maps CLR property names (e.g. BufferSize) to their canonical keyword name, which is the
+        /// property's [DisplayName] (e.g. Buffer Size)
+        /// </summary>
+        static readonly Dictionary<string, string> PropertyNameToCanonicalKeyword;
+
+        /// <summary>
+        /// Maps each property to its [DefaultValue]
+        /// </summary>
         static readonly Dictionary<PropertyInfo, object> PropertyDefaults;
 
         #endregion
@@ -65,14 +78,21 @@ namespace Npgsql
                 .ToArray();
 
             Contract.Assume(properties.All(p => p.CanRead && p.CanWrite));
+            Contract.Assume(properties.All(p => p.GetCustomAttribute<DisplayNameAttribute>() != null));
 
             PropertiesByKeyword = (
                 from p in properties
-                from t in new[] { p.Name }.Concat(p.GetCustomAttribute<NpgsqlConnectionStringPropertyAttribute>().AlternateNames).Select(
+                let displayNameAttr = p.GetCustomAttribute<DisplayNameAttribute>()
+                from t in new[] { displayNameAttr.DisplayName, p.Name }.Concat(p.GetCustomAttribute<NpgsqlConnectionStringPropertyAttribute>().Aliases).Select(
                     k => new { Property = p, Keyword = k }
                 )
                 select t
             ).ToDictionary(t => t.Keyword.ToUpperInvariant(), t => t.Property);
+
+            PropertyNameToCanonicalKeyword = properties.ToDictionary(
+                p => p.Name,
+                p => p.GetCustomAttribute<DisplayNameAttribute>().DisplayName
+            );
 
             PropertyDefaults = properties
                 .Where(p => p.GetCustomAttribute<ObsoleteAttribute>() == null)
@@ -171,12 +191,13 @@ namespace Npgsql
             return p;
         }
 
-        void SetValue(string keyword, object value)
+        void SetValue(string propertyName, object value)
         {
+            var canonicalKeyword = PropertyNameToCanonicalKeyword[propertyName];
             if (value == null) {
-                base.Remove(keyword);
+                base.Remove(canonicalKeyword);
             } else {
-                base[keyword] = value;
+                base[canonicalKeyword] = value;
             }
         }
 
@@ -1012,17 +1033,17 @@ namespace Npgsql
         [AttributeUsage(AttributeTargets.Property)]
         class NpgsqlConnectionStringPropertyAttribute : Attribute
         {
-            internal string[] AlternateNames { get; private set; }
-            static string[] Empty = new string[0];
+            internal string[] Aliases { get; private set; }
+            static readonly string[] Empty = new string[0];
 
             internal NpgsqlConnectionStringPropertyAttribute()
             {
-                AlternateNames = Empty;
+                Aliases = Empty;
             }
 
-            internal NpgsqlConnectionStringPropertyAttribute(params string[] alternateNames)
+            internal NpgsqlConnectionStringPropertyAttribute(params string[] aliases)
             {
-                AlternateNames = alternateNames;
+                Aliases = aliases;
             }
         }
 
