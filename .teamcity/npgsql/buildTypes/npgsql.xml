@@ -7,6 +7,7 @@
       <option name="allowExternalStatus" value="true" />
       <option name="artifactRules" value="nupkgs/*.nupkg&#xA;src/Npgsql.EntityFramework7/bin/Release/*.nupkg" />
       <option name="checkoutMode" value="ON_AGENT" />
+      <option name="executionTimeoutMin" value="30" />
     </options>
     <disabled-settings>
       <setting-ref ref="RUNNER_11" />
