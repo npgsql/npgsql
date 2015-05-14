@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <build-type xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="6a165b73-7419-4350-9072-3c7566612c97" xsi:noNamespaceSchemaLocation="http://www.jetbrains.com/teamcity/schemas/9.0/project-config.xsd">
-  <name>Coverity Scan</name>
-  <description>Submits an nightly Npgsql build to Coverity for static analysis</description>
+  <name>Code Analysis</name>
+  <description>Performs code inspections and submits to Coverity</description>
   <settings>
     <options>
       <option name="checkoutMode" value="ON_AGENT" />
@@ -54,6 +54,12 @@
 --form description="Npgsql"
 https://scan.coverity.com/builds?project=npgsql%2Fnpgsql]]></param>
           <param name="teamcity.build.workingDir" value="src\Npgsql" />
+          <param name="teamcity.step.mode" value="default" />
+        </parameters>
+      </runner>
+      <runner id="RUNNER_16" name="Resharper Code Inspections" type="dotnet-tools-inspectcode">
+        <parameters>
+          <param name="dotnet-tools-inspectcode.solution" value="Npgsql2013.sln" />
           <param name="teamcity.step.mode" value="default" />
         </parameters>
       </runner>
