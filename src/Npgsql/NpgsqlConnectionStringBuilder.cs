@@ -34,6 +34,8 @@ namespace Npgsql
         /// </summary>
         static readonly Dictionary<PropertyInfo, object> PropertyDefaults;
 
+        static readonly string[] Empty = new string[0];
+
         #endregion
 
         #region Constructors
@@ -82,12 +84,16 @@ namespace Npgsql
 
             PropertiesByKeyword = (
                 from p in properties
-                let displayNameAttr = p.GetCustomAttribute<DisplayNameAttribute>()
-                from t in new[] { displayNameAttr.DisplayName, p.Name }.Concat(p.GetCustomAttribute<NpgsqlConnectionStringPropertyAttribute>().Aliases).Select(
-                    k => new { Property = p, Keyword = k }
-                )
-                select t
-            ).ToDictionary(t => t.Keyword.ToUpperInvariant(), t => t.Property);
+                let displayName = p.GetCustomAttribute<DisplayNameAttribute>().DisplayName.ToUpperInvariant()
+                let propertyName = p.Name.ToUpperInvariant()
+                from k in new[] { displayName }
+                  .Concat(propertyName != displayName ? new[] { propertyName } : Empty )
+                  .Concat(p.GetCustomAttribute<NpgsqlConnectionStringPropertyAttribute>().Aliases
+                    .Select(a => a.ToUpperInvariant())
+                  )
+                  .Select(k => new { Property = p, Keyword = k })
+                select k
+            ).ToDictionary(t => t.Keyword, t => t.Property);
 
             PropertyNameToCanonicalKeyword = properties.ToDictionary(
                 p => p.Name,
@@ -117,8 +123,11 @@ namespace Npgsql
         {
             get
             {
-                var value = GetProperty(keyword).GetValue(this);
-                return value ?? "";
+                object value;
+                if (!TryGetValue(keyword, out value)) {
+                    throw new ArgumentException("Keyword not supported: " + keyword, "keyword");
+                }
+                return value;
             }
             set
             {
@@ -191,6 +200,30 @@ namespace Npgsql
             return p;
         }
 
+        /// <summary>
+        /// Retrieves a value corresponding to the supplied key from this <see cref="NpgsqlConnectionStringBuilder"/>.
+        /// </summary>
+        /// <param name="keyword">The key of the item to retrieve.</param>
+        /// <param name="value">The value corresponding to the key.</param>
+        /// <returns><b>true</b> if keyword was found within the connection string, <b>false</b> otherwise.</returns>
+        public override bool TryGetValue(string keyword, out object value)
+        {
+            if (keyword == null)
+                throw new ArgumentNullException("keyword");
+            Contract.EndContractBlock();
+
+            PropertyInfo p;
+            if (!PropertiesByKeyword.TryGetValue(keyword.ToUpperInvariant(), out p))
+            {
+                value = null;
+                return false;
+            }
+
+            value = GetProperty(keyword).GetValue(this) ?? "";
+            return true;
+
+        }
+
         void SetValue(string propertyName, object value)
         {
             var canonicalKeyword = PropertyNameToCanonicalKeyword[propertyName];
@@ -221,7 +254,7 @@ namespace Npgsql
             {
                 _host = value;
                 // TODO: Replace literal name with nameof operator in C# 6.0
-                SetValue("Server", value);
+                SetValue("Host", value);
             }
         }
         string _host;
@@ -464,7 +497,7 @@ namespace Npgsql
         [DisplayName("Integrated Security")]
         [Description("Whether to use Windows integrated security to log in")]
 #endif
-        [NpgsqlConnectionStringProperty("Integrated Security")]
+        [NpgsqlConnectionStringProperty()]
         public bool IntegratedSecurity
         {
             get { return _integratedSecurity; }
@@ -750,7 +783,7 @@ namespace Npgsql
         /// </remarks>
 #if !DNXCORE50
         [Category("Entity Framework")]
-        [DisplayName("Template Database")]
+        [DisplayName("EF Template Database")]
         [Description("The database template to specify when creating a database in Entity Framework. If not specified, PostgreSQL defaults to \"template1\".")]
 #endif
         [NpgsqlConnectionStringProperty]
@@ -761,7 +794,7 @@ namespace Npgsql
             {
                 _entityTemplateDatabase = value;
                 // TODO: Replace literal name with nameof operator in C# 6.0
-                SetValue("TemplateDatabase", value);
+                SetValue("EntityTemplateDatabase", value);
             }
         }
         string _entityTemplateDatabase;
@@ -1034,7 +1067,6 @@ namespace Npgsql
         class NpgsqlConnectionStringPropertyAttribute : Attribute
         {
             internal string[] Aliases { get; private set; }
-            static readonly string[] Empty = new string[0];
 
             internal NpgsqlConnectionStringPropertyAttribute()
             {
