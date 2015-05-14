@@ -215,7 +215,7 @@ namespace Npgsql
         #region Constructors
 
         internal NpgsqlConnector(NpgsqlConnection connection)
-            : this(connection.CopyConnectionStringBuilder())
+            : this(connection.Settings)
         {
             Connection = connection;
             Connection.Connector = this;
