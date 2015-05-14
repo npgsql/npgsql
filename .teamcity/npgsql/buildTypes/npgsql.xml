@@ -96,8 +96,8 @@ c:\users\teamcity_agent\.dnx\bin\dnvm.cmd exec default dnu build --configuration
           <param name="nunit_categery_exclude" value="TodoFor3.0" />
           <param name="nunit_enabled" value="checked" />
           <param name="nunit_environment" value="v4.0" />
-          <param name="nunit_include"><![CDATA[test/Npgsql.Tests/bin/%system.Configuration%/*Tests.dll
-test/Npgsql.EntityFramework.Tests/bin/%system.Configuration%/*Tests.dll]]></param>
+          <param name="nunit_include"><![CDATA[test/Npgsql.Tests/bin/%system.Configuration%/Npgsql.Tests.dll
+test/Npgsql.EntityFramework.Tests/bin/%system.Configuration%/Npgsql.EntityFramework.Tests.dll]]></param>
           <param name="nunit_platform" value="MSIL" />
           <param name="nunit_version" value="NUnit-2.6.4" />
           <param name="teamcity.step.mode" value="default" />
