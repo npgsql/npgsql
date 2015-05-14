@@ -245,11 +245,11 @@ namespace Npgsql.Tests
             Assert.AreEqual("14 mons 3 days 04:05:06.007", new NpgsqlTimeSpan(1, 2, 3, 4, 5, 6, 7).ToString());
 
             Assert.AreEqual(new NpgsqlTimeSpan(0, 2, 3, 4, 5).ToString(), new NpgsqlTimeSpan(new TimeSpan(0, 2, 3, 4, 5)).ToString());
-            
+
             Assert.AreEqual(new NpgsqlTimeSpan(1, 2, 3, 4, 5).ToString(), new NpgsqlTimeSpan(new TimeSpan(1, 2, 3, 4, 5)).ToString());
             const long moreThanAMonthInTicks = TimeSpan.TicksPerDay*40;
             Assert.AreEqual(new NpgsqlTimeSpan(moreThanAMonthInTicks).ToString(), new NpgsqlTimeSpan(new TimeSpan(moreThanAMonthInTicks)).ToString());
-            
+
             var oldCulture = System.Threading.Thread.CurrentThread.CurrentCulture;
             var testCulture = new System.Globalization.CultureInfo("fr-FR");
             Assert.AreEqual(",", testCulture.NumberFormat.NumberDecimalSeparator, "decimal seperator");
@@ -262,106 +262,6 @@ namespace Npgsql.Tests
             {
                 System.Threading.Thread.CurrentThread.CurrentCulture = oldCulture;
             }
-        }
-
-        [Test]
-        [Category("TodoFor3.0")]
-        public void NpgsqlTimeConstructors()
-        {
-            throw new NotImplementedException();
-            /*
-            NpgsqlTime test;
-
-            test = new NpgsqlTime();
-            Assert.AreEqual(0, test.Hours, "Hours");
-            Assert.AreEqual(0, test.Minutes, "Minutes");
-            Assert.AreEqual(0, test.Seconds, "Seconds");
-            Assert.AreEqual(0, test.Milliseconds, "Milliseconds");
-            Assert.AreEqual(0, test.Microseconds, "Microseconds");
-
-            test = new NpgsqlTime(1234567890);
-            Assert.AreEqual(0, test.Hours, "Hours");
-            Assert.AreEqual(2, test.Minutes, "Minutes");
-            Assert.AreEqual(3, test.Seconds, "Seconds");
-            Assert.AreEqual(456, test.Milliseconds, "Milliseconds");
-            Assert.AreEqual(456789, test.Microseconds, "Microseconds");
-
-            test = new NpgsqlTime(new NpgsqlInterval(0, 1, 2, 3, 4));
-            Assert.AreEqual(1, test.Hours, "Hours");
-            Assert.AreEqual(2, test.Minutes, "Minutes");
-            Assert.AreEqual(3, test.Seconds, "Seconds");
-            Assert.AreEqual(4, test.Milliseconds, "Milliseconds");
-            Assert.AreEqual(4000, test.Microseconds, "Microseconds");
-
-            test = new NpgsqlTime(new NpgsqlTime(1, 2, 3, 4));
-            Assert.AreEqual(1, test.Hours, "Hours");
-            Assert.AreEqual(2, test.Minutes, "Minutes");
-            Assert.AreEqual(3, test.Seconds, "Seconds");
-            Assert.AreEqual(0, test.Milliseconds, "Milliseconds");
-            Assert.AreEqual(4, test.Microseconds, "Microseconds");
-
-            test = new NpgsqlTime(new TimeSpan(0, 1, 2, 3, 4));
-            Assert.AreEqual(1, test.Hours, "Hours");
-            Assert.AreEqual(2, test.Minutes, "Minutes");
-            Assert.AreEqual(3, test.Seconds, "Seconds");
-            Assert.AreEqual(4, test.Milliseconds, "Milliseconds");
-            Assert.AreEqual(4000, test.Microseconds, "Microseconds");
-
-            test = new NpgsqlTime(11, 45, 55.003m);
-            Assert.AreEqual(11, test.Hours, "Hours");
-            Assert.AreEqual(45, test.Minutes, "Minutes");
-            Assert.AreEqual(55, test.Seconds, "Seconds");
-            Assert.AreEqual(3, test.Milliseconds, "Milliseconds");
-            Assert.AreEqual(3000, test.Microseconds, "Microseconds");
-
-            test = new NpgsqlTime(11, 45, 55.003);
-            Assert.AreEqual(11, test.Hours, "Hours");
-            Assert.AreEqual(45, test.Minutes, "Minutes");
-            Assert.AreEqual(55, test.Seconds, "Seconds");
-            Assert.AreEqual(3, test.Milliseconds, "Milliseconds");
-            Assert.AreEqual(3000, test.Microseconds, "Microseconds");
-
-            test = new NpgsqlTime(4, 38, 53);
-            Assert.AreEqual(4, test.Hours, "Hours");
-            Assert.AreEqual(38, test.Minutes, "Minutes");
-            Assert.AreEqual(53, test.Seconds, "Seconds");
-            Assert.AreEqual(0, test.Milliseconds, "Milliseconds");
-            Assert.AreEqual(0, test.Microseconds, "Microseconds");
-
-            test = new NpgsqlTime(4, 38, 53, 123456);
-            Assert.AreEqual(4, test.Hours, "Hours");
-            Assert.AreEqual(38, test.Minutes, "Minutes");
-            Assert.AreEqual(53, test.Seconds, "Seconds");
-            Assert.AreEqual(123, test.Milliseconds, "Milliseconds");
-            Assert.AreEqual(123456, test.Microseconds, "Microseconds");
-             */
-        }
-
-        [Test]
-        [Category("TodoFor3.0")]
-        public void NpgsqlTimeToString()
-        {
-            throw new NotImplementedException();
-#if REWRITE
-            Assert.AreEqual("11:45:55.003", new NpgsqlTime(11, 45, 55.003m).ToString());
-
-            Assert.AreEqual("00:02:03.456789", new NpgsqlTime(1234567890).ToString());
-
-            Assert.AreEqual("00:02:03.456789", new NpgsqlTime(1234567891).ToString());
-
-            var oldCulture = System.Threading.Thread.CurrentThread.CurrentCulture;
-            var testCulture = new System.Globalization.CultureInfo("fr-FR");
-            Assert.AreEqual(",", testCulture.NumberFormat.NumberDecimalSeparator, "decimal seperator");
-            try
-            {
-                System.Threading.Thread.CurrentThread.CurrentCulture = testCulture;
-                Assert.AreEqual("00:02:03.456789", new NpgsqlTime(1234567891).ToString());
-            }
-            finally
-            {
-                System.Threading.Thread.CurrentThread.CurrentCulture = oldCulture;
-            }
-#endif
         }
 
         [Test]
@@ -527,49 +427,10 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        [Category("TodoFor3.0")]
-        public void NpgsqlTimeTzConvert()
-        {
-            throw new NotImplementedException();
-            /*
-            var timetz = new NpgsqlTimeTZ(13, 3, 45.001, new NpgsqlTimeZone(-5, 0));
-
-            Assert.AreEqual(13, timetz.Hours);
-            Assert.AreEqual(3, timetz.Minutes);
-            Assert.AreEqual(45, timetz.Seconds);
-            Assert.AreEqual(1, timetz.Milliseconds);
-            Assert.AreEqual(-5, timetz.TimeZone.Hours);
-            Assert.AreEqual(0, timetz.TimeZone.Minutes);
-            Assert.AreEqual(0, timetz.TimeZone.Seconds);
-
-            Assert.AreEqual(18, timetz.UTCTime.Hours);
-            Assert.AreEqual(3, timetz.UTCTime.Minutes);
-            Assert.AreEqual(45, timetz.UTCTime.Seconds);
-            Assert.AreEqual(1, timetz.UTCTime.Milliseconds);
-
-            var utcOffset = TimeZone.CurrentTimeZone.GetUtcOffset(DateTime.Now);
-            // add utc time as timespan to get local time as a timespan
-            var localTime = utcOffset + new TimeSpan(0, 18, 3, 45, 1);
-            var localDateTime = (DateTime) timetz;
-
-            Assert.AreEqual(localTime.Hours, localDateTime.Hour);
-            Assert.AreEqual(localTime.Minutes, localDateTime.Minute);
-            Assert.AreEqual(localTime.Seconds, timetz.LocalTime.Seconds);
-            Assert.AreEqual(localTime.Milliseconds, timetz.LocalTime.Milliseconds);
-
-            // LocalTime is really time local to the timezone of the TimeTZ.
-            Assert.AreEqual(13, timetz.LocalTime.Hours);
-            Assert.AreEqual(3, timetz.LocalTime.Minutes);
-            Assert.AreEqual(45, timetz.LocalTime.Seconds);
-            Assert.AreEqual(1, timetz.LocalTime.Milliseconds);
-            */
-        }
-
-        [Test]
         public void TsVector()
         {
             NpgsqlTsVector vec;
-            
+
             vec = NpgsqlTsVector.Parse("a");
             Assert.AreEqual("'a'", vec.ToString());
 
