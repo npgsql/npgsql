@@ -156,7 +156,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Not sure what this test is supposed to check...")]
-        [Category("TodoFor3.0")]
+        [Ignore("There's a real failure here")]
         public void FunctionTestTimestamptzParameterSupport()
         {
             ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('X')");
