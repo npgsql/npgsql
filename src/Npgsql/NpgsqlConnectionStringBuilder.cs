@@ -728,7 +728,8 @@ namespace Npgsql
 #if !DNXCORE50
         [Category("Timeouts")]
         [DisplayName("Internal Command Timeout")]
-        [Description("The time to wait (in seconds) while trying to execute a an internal command before terminating the attempt and generating an error")]
+        [Description("The time to wait (in seconds) while trying to execute a an internal command before terminating the attempt and generating an error. -1 uses CommandTimeout, 0 means no timeout.")]
+        [DefaultValue(-1)]
 #endif
         [NpgsqlConnectionStringProperty]
         public int InternalCommandTimeout

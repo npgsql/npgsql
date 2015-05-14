@@ -260,13 +260,28 @@ namespace Npgsql
         internal bool UseSslStream { get { return _settings.UseSslStream; } }
         internal int BufferSize { get { return _settings.BufferSize; } }
         internal int ConnectionTimeout { get { return _settings.Timeout; } }
-        internal int InternalCommandTimeout { get { return _settings.InternalCommandTimeout == -1 ? _settings.CommandTimeout : _settings.InternalCommandTimeout; } }
         internal bool BackendTimeouts { get { return _settings.BackendTimeouts; } }
         internal int KeepAlive { get { return _settings.KeepAlive; } }
         internal bool Enlist { get { return _settings.Enlist; } }
         internal bool IntegratedSecurity { get { return _settings.IntegratedSecurity; } }
         internal bool ConvertInfinityDateTime { get { return _settings.ConvertInfinityDateTime; } }
         internal bool SyncNotification { get { return _settings.SyncNotification; } }
+
+        internal int ActualInternalCommandTimeout
+        {
+            get
+            {
+                Contract.Ensures(Contract.Result<int>() == 0 || Contract.Result<int>() >= MinimumInternalCommandTimeout);
+
+                var internalTimeout = _settings.InternalCommandTimeout;
+                if (internalTimeout == -1) {
+                    return Math.Max(_settings.CommandTimeout, MinimumInternalCommandTimeout);
+                }
+
+                Contract.Assert(internalTimeout == 0 || internalTimeout >= MinimumInternalCommandTimeout);
+                return internalTimeout;
+            }
+        }
 
         #endregion Configuration settings
 
@@ -644,7 +659,7 @@ namespace Npgsql
         internal void PrependInternalMessage(FrontendMessage msg)
         {
             // Set backend timeout if needed.
-            PrependBackendTimeoutMessage(InternalCommandTimeout);
+            PrependBackendTimeoutMessage(ActualInternalCommandTimeout);
 
             if (msg is QueryMessage || msg is PregeneratedMessage || msg is SyncMessage)
             {
@@ -783,7 +798,7 @@ namespace Npgsql
             {
                 try
                 {
-                    SetFrontendTimeout(InternalCommandTimeout);
+                    SetFrontendTimeout(ActualInternalCommandTimeout);
                     while (_sentRfqPrependedMessages > 0)
                     {
                         var msg = DoReadSingleMessage(DataRowLoadingMode.Skip);
@@ -1592,7 +1607,7 @@ namespace Npgsql
                 // acquire the user lock (and prevent real user queries from running).
                 if (TransactionStatus != TransactionStatus.InFailedTransactionBlock)
                 {
-                    PrependBackendTimeoutMessage(InternalCommandTimeout);
+                    PrependBackendTimeoutMessage(ActualInternalCommandTimeout);
                 }
                 SendSingleMessage(PregeneratedMessage.KeepAlive);
                 SkipUntil(BackendMessageCode.ReadyForQuery);
@@ -1673,7 +1688,7 @@ namespace Npgsql
             using (StartUserAction())
             {
                 if (withTimeout) {
-                    PrependBackendTimeoutMessage(InternalCommandTimeout);
+                    PrependBackendTimeoutMessage(ActualInternalCommandTimeout);
                 }
                 AddMessage(message);
                 SendAllMessages();
