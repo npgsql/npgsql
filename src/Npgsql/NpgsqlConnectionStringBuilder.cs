@@ -981,8 +981,8 @@ namespace Npgsql
 
         private string GetWindowsIdentityUserName()
         {
-            WindowsIdentity identity = WindowsIdentity.GetCurrent();
-            return identity.Name.Split('\\')[1];
+            var identity = WindowsIdentity.GetCurrent();
+            return identity == null ? string.Empty : identity.Name.Split('\\')[1];
         }
 
         private string GetIntegratedUserName()
