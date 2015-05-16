@@ -172,6 +172,8 @@ namespace Npgsql
                 throw new ArgumentException("Database can't be null");
             if (string.IsNullOrWhiteSpace(UserName) && !IntegratedSecurity)
                 throw new ArgumentException("Either Username must be specified or IntegratedSecurity must be on");
+            if (ContinuousProcessing && UseSslStream)
+                throw new ArgumentException("ContinuousProcessing can't be turned on with UseSslStream");
             Contract.EndContractBlock();
 
             // If we're postponing a close (see doc on this variable), the connection is already

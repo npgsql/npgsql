@@ -658,6 +658,13 @@ namespace Npgsql.Tests
                 Assert.That(() => ExecuteScalar("SELECT 1", Conn), Throws.Exception.TypeOf<InvalidOperationException>());
         }
 
+        [Test]
+        public void NoContinuousProcessingWithSslStream()
+        {
+            using (var conn = new NpgsqlConnection(ConnectionString + ";UseSslStream=true;ContinuousProcessing=true"))
+                Assert.That(() => conn.Open(), Throws.Exception.TypeOf<ArgumentException>());
+        }
+
         #region GetSchema
 
         [Test]
