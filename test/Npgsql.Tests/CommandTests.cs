@@ -232,7 +232,7 @@ namespace Npgsql.Tests
         public void TimeoutSwitchConnection()
         {
             if (Conn.CommandTimeout >= 100 && Conn.CommandTimeout < 105)
-                TestUtil.Inconclusive("Bad default command timeout");
+                TestUtil.IgnoreExceptOnBuildServer("Bad default command timeout");
             using (var c1 = new NpgsqlConnection(ConnectionString + ";CommandTimeout=100")) {
                 using (var cmd = c1.CreateCommand()) {
                     Assert.That(cmd.CommandTimeout, Is.EqualTo(100));

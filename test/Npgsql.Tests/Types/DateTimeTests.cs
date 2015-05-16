@@ -145,7 +145,7 @@ namespace Npgsql.Tests.Types
         {
             var tzOffset = TimeZoneInfo.Local.BaseUtcOffset;
             if (tzOffset == TimeSpan.Zero)
-                TestUtil.Inconclusive("Test cannot run when machine timezone is UTC");
+                TestUtil.IgnoreExceptOnBuildServer("Test cannot run when machine timezone is UTC");
 
             // Note that the date component of the below is ignored
             var dto = new DateTimeOffset(5, 5, 5, 13, 3, 45, 510, tzOffset);
@@ -297,7 +297,7 @@ namespace Npgsql.Tests.Types
         {
             var tzOffset = TimeZoneInfo.Local.BaseUtcOffset;
             if (tzOffset == TimeSpan.Zero)
-                TestUtil.Inconclusive("Test cannot run when machine timezone is UTC");
+                TestUtil.IgnoreExceptOnBuildServer("Test cannot run when machine timezone is UTC");
 
             var dateTimeUtc = new DateTime(2015, 1, 27, 8, 45, 12, 345, DateTimeKind.Utc);
             var dateTimeLocal = dateTimeUtc.ToLocalTime();
