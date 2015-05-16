@@ -87,8 +87,6 @@ namespace Npgsql.BackendMessages
         {
             if (IsColumnNull)
             {
-                // TODO: What actual exception to throw here? Oracle throws InvalidCast, SqlClient throws its
-                // own SqlNullValueException
                 throw new InvalidCastException("Column is null");
             }
         }

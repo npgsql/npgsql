@@ -171,8 +171,6 @@ namespace Npgsql
         {
             ReadColumnLenIfNeeded();
             if (_columnLen == -1) {
-                // TODO: What actual exception to throw here? Oracle throws InvalidCast, SqlClient throws its
-                // own SqlNullValueException
                 throw new InvalidCastException("Column is null");
             }
 
