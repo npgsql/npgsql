@@ -128,7 +128,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
 
             if (fraction != 0)
             {
-                fractionDigits = fraction.ToString().Length;
+                fractionDigits = fraction.ToString(CultureInfo.InvariantCulture).Length - 2;
                 fractionGroups = (fractionDigits + 3) / 4;
                 if (weight < -1)
                     fractionGroups += weight + 1;
