@@ -28,7 +28,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         NpgsqlDateTime ISimpleTypeReader<NpgsqlDateTime>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             var ts = ReadTimeStamp(buf, len, fieldDescription);
-            return new NpgsqlDateTime(ts.Date, ts.Time, DateTimeKind.Utc);
+            return new NpgsqlDateTime(ts.Date, ts.Time, DateTimeKind.Utc).ToLocalTime();
         }
 
         DateTimeOffset ISimpleTypeReader<DateTimeOffset>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)

@@ -329,16 +329,16 @@ namespace Npgsql.Tests.Types
                     {
                         // Regular type (DateTime)
                         Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(DateTime)));
-                        Assert.That(reader.GetDateTime(i), Is.EqualTo(dateTimeUtc));
-                        Assert.That(reader.GetFieldValue<DateTime>(i).Kind, Is.EqualTo(DateTimeKind.Utc));
-                        Assert.That(reader[i], Is.EqualTo(dateTimeUtc));
-                        Assert.That(reader.GetValue(i), Is.EqualTo(dateTimeUtc));
+                        Assert.That(reader.GetDateTime(i), Is.EqualTo(dateTimeLocal));
+                        Assert.That(reader.GetFieldValue<DateTime>(i).Kind, Is.EqualTo(DateTimeKind.Local));
+                        Assert.That(reader[i], Is.EqualTo(dateTimeLocal));
+                        Assert.That(reader.GetValue(i), Is.EqualTo(dateTimeLocal));
 
                         // Provider-specific type (NpgsqlDateTime)
-                        Assert.That(reader.GetTimeStamp(i), Is.EqualTo(nDateTimeUtc));
+                        Assert.That(reader.GetTimeStamp(i), Is.EqualTo(nDateTimeLocal));
                         Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof(NpgsqlDateTime)));
-                        Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(nDateTimeUtc));
-                        Assert.That(reader.GetFieldValue<NpgsqlDateTime>(i), Is.EqualTo(nDateTimeUtc));
+                        Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(nDateTimeLocal));
+                        Assert.That(reader.GetFieldValue<NpgsqlDateTime>(i), Is.EqualTo(nDateTimeLocal));
 
                         // DateTimeOffset
                         Assert.That(reader.GetFieldValue<DateTimeOffset>(i), Is.EqualTo(dateTimeOffset.ToUniversalTime()));
