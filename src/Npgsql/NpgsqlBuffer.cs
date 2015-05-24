@@ -278,6 +278,7 @@ namespace Npgsql
 
         #region Read Complex
 
+        [RewriteAsync]
         internal int ReadAllBytes(byte[] output, int outputOffset, int len, bool readOnce)
         {
             if (len <= ReadBytesLeft)
