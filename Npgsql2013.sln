@@ -5,9 +5,9 @@ VisualStudioVersion = 12.0.31101.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Npgsql", "src\Npgsql\Npgsql.csproj", "{9D13B739-62B1-4190-B386-7A9547304EB3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Npgsql.EntityFramework", "src\Npgsql.EntityFramework\Npgsql.EntityFramework.csproj", "{3EC85CBA-5B79-11E3-8104-0022198AB089}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Npgsql.EntityFramework6", "src\Npgsql.EntityFramework\Npgsql.EntityFramework6.csproj", "{3EC85CBA-5B79-11E3-8104-0022198AB089}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Npgsql.EntityFrameworkLegacy", "src\Npgsql.EntityFramework\Npgsql.EntityFrameworkLegacy.csproj", "{100998C4-5B85-11E3-911C-0022198AB089}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Npgsql.EntityFramework5", "src\Npgsql.EntityFramework\Npgsql.EntityFramework5.csproj", "{100998C4-5B85-11E3-911C-0022198AB089}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Npgsql.Tests", "test\Npgsql.Tests\Npgsql.Tests.csproj", "{E9C258D7-0D8E-4E6A-9857-5C6438591755}"
 EndProject
