@@ -22,6 +22,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Data.Common;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.IO;
@@ -47,6 +48,8 @@ namespace Npgsql
     /// </summary>
     internal partial class NpgsqlConnector
     {
+        #region Fields and Properties
+
         readonly NpgsqlConnectionStringBuilder _settings;
 
         /// <summary>
@@ -148,12 +151,6 @@ namespace Npgsql
 #endif
 
         /// <summary>
-        /// Number of seconds added as a margin to the backend timeout to yield the frontend timeout.
-        /// We prefer the backend to timeout - it's a clean error which doesn't break the connector.
-        /// </summary>
-        const int FrontendTimeoutMargin = 3;
-
-        /// <summary>
         /// The frontend timeout for reading messages that are part of the user's command
         /// (i.e. which aren't internal prepended commands).
         /// </summary>
@@ -176,11 +173,15 @@ namespace Npgsql
         int _frontendTimeout;
 
         /// <summary>
-        /// The minimum timeout that can be set on internal commands such as COMMIT, ROLLBACK.
+        /// A lock that's taken while a user action is in progress, e.g. a command being executed.
         /// </summary>
-        internal const int MinimumInternalCommandTimeout = 3;
-
         SemaphoreSlim _userLock;
+
+        /// <summary>
+        /// A lock that's taken while a non-user-triggered async action is in progress, e.g. handling of an
+        /// asynchronous notification or a connection keepalive. Does <b>not</b> get taken for a user async
+        /// action such as <see cref="DbCommand.ExecuteReaderAsync()"/>.
+        /// </summary>
         SemaphoreSlim _asyncLock;
 
         readonly UserAction _userAction;
@@ -189,6 +190,23 @@ namespace Npgsql
         static readonly byte[] EmptyBuffer = new byte[0];
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+
+        #endregion
+
+        #region Constants
+
+        /// <summary>
+        /// Number of seconds added as a margin to the backend timeout to yield the frontend timeout.
+        /// We prefer the backend to timeout - it's a clean error which doesn't break the connector.
+        /// </summary>
+        const int FrontendTimeoutMargin = 3;
+
+        /// <summary>
+        /// The minimum timeout that can be set on internal commands such as COMMIT, ROLLBACK.
+        /// </summary>
+        internal const int MinimumInternalCommandTimeout = 3;
+
+        #endregion
 
         #region Reusable Message Objects
 
