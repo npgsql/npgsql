@@ -40,7 +40,7 @@ namespace Npgsql.TypeHandlers
 
         public TEnum Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
-            var str = buf.ReadStringSimple(len);
+            var str = buf.ReadString(len);
             TEnum value;
             var success = _labelToEnum == null
                 ? Enum.TryParse(str, out value)
@@ -85,7 +85,7 @@ namespace Npgsql.TypeHandlers
                 }
             }
 
-            buf.WriteStringSimple(str);
+            buf.WriteString(str);
         }
 
         internal EnumHandler<TEnum> Clone()

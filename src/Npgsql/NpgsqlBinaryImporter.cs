@@ -72,7 +72,7 @@ namespace Npgsql
         void WriteHeader()
         {
             EnsureDataMessage();
-            _buf.WriteBytesSimple(NpgsqlRawCopyStream.BinarySignature);
+            _buf.WriteBytes(NpgsqlRawCopyStream.BinarySignature, 0, NpgsqlRawCopyStream.BinarySignature.Length);
             _buf.WriteInt32(0);   // Flags field. OID inclusion not supported at the moment.
             _buf.WriteInt32(0);   // Header extension area length
         }

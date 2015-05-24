@@ -80,8 +80,8 @@ namespace Npgsql.FrontendMessages
                     _state = State.WroteHeader;
 
                     if (_queryLen <= buf.WriteSpaceLeft) {
-                        buf.WriteStringSimple(Query);
-                        goto case State.WroteQuery;                        
+                        buf.WriteString(Query);
+                        goto case State.WroteQuery;
                     }
 
                     if (_queryLen <= buf.Size) {

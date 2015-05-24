@@ -33,7 +33,7 @@ namespace Npgsql.FrontendMessages
 
         internal override void Write(NpgsqlBuffer buf)
         {
-            buf.WriteBytesSimple(_data, 0, _data.Length);
+            buf.WriteBytes(_data, 0, _data.Length);
         }
 
         public override string ToString()

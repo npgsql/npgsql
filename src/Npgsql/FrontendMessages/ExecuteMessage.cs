@@ -38,11 +38,10 @@ namespace Npgsql.FrontendMessages
 
             // TODO: Recycle?
             var portalNameBytes = Encoding.ASCII.GetBytes(Portal);
-            buf
-                .WriteByte(Code)
-                .WriteInt32(Length - 1)
-                .WriteBytesNullTerminated(portalNameBytes)
-                .WriteInt32(MaxRows);
+            buf.WriteByte(Code);
+            buf.WriteInt32(Length - 1);
+            buf.WriteBytesNullTerminated(portalNameBytes);
+            buf.WriteInt32(MaxRows);
         }
 
         public override string ToString()

@@ -28,7 +28,7 @@ namespace Npgsql.TypeHandlers
             var b = buf.ReadInt16();
             var c = buf.ReadInt16();
             var d = new byte[8];
-            buf.ReadBytes(d, 0, 8, true);
+            buf.ReadBytes(d, 0, 8);
             return new Guid(a, b, c, d);
         }
 
@@ -48,7 +48,7 @@ namespace Npgsql.TypeHandlers
             buf.WriteInt32(BitConverter.ToInt32(bytes, 0));
             buf.WriteInt16(BitConverter.ToInt16(bytes, 4));
             buf.WriteInt16(BitConverter.ToInt16(bytes, 6));
-            buf.WriteBytesSimple(bytes, 8, 8);
+            buf.WriteBytes(bytes, 8, 8);
         }
 
         #endregion

@@ -28,11 +28,10 @@ namespace Npgsql.FrontendMessages
         {
             Contract.Requires(BackendProcessId != 0);
 
-            buf
-                .WriteInt32(Length)
-                .WriteInt32(CancelRequestCode)
-                .WriteInt32(BackendProcessId)
-                .WriteInt32(BackendSecretKey);
+            buf.WriteInt32(Length);
+            buf.WriteInt32(CancelRequestCode);
+            buf.WriteInt32(BackendProcessId);
+            buf.WriteInt32(BackendSecretKey);
         }
 
         public override string ToString()

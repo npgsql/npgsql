@@ -230,7 +230,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
                     var lexemeNode = (NpgsqlTsQueryLexeme)node;
                     _buf.WriteByte((byte)lexemeNode.Weights);
                     _buf.WriteByte(lexemeNode.IsPrefixSearch ? (byte)1 : (byte)0);
-                    _buf.WriteStringSimple(lexemeNode.Text);
+                    _buf.WriteString(lexemeNode.Text);
                     _buf.WriteByte(0);
                 }
             }

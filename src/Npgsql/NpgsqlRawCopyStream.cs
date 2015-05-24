@@ -88,13 +88,13 @@ namespace Npgsql
 
             if (count <= _buf.WriteSpaceLeft)
             {
-                _buf.WriteBytesSimple(buffer, offset, count);
+                _buf.WriteBytes(buffer, offset, count);
                 return;
             }
 
             // Buffer is too big. Write whatever will fit and flush.
             var written = _buf.WriteSpaceLeft;
-            _buf.WriteBytesSimple(buffer, offset, _buf.WriteSpaceLeft);
+            _buf.WriteBytes(buffer, offset, _buf.WriteSpaceLeft);
             Flush();
 
             offset += written;
@@ -103,7 +103,7 @@ namespace Npgsql
             // If the remainder fits in a single buffer, no problem.
             if (count <= _buf.WriteSpaceLeft) {
                 EnsureDataMessage();
-                _buf.WriteBytesSimple(buffer, offset, count);
+                _buf.WriteBytes(buffer, offset, count);
                 return;
             }
 
@@ -170,7 +170,7 @@ namespace Npgsql
                 }
 
                 var len = Math.Min(count, _leftToReadInDataMsg);
-                _buf.ReadBytesSimple(buffer, offset, len);
+                _buf.ReadBytes(buffer, offset, len);
                 offset += len;
                 count -= len;
                 _leftToReadInDataMsg -= len;

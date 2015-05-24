@@ -38,7 +38,7 @@ namespace Npgsql.TypeHandlers
         int _byteLen, _charLen, _bytePos, _charPos;
         NpgsqlBuffer _buf;
 
-        char[] _singleCharArray = new char[1];
+        readonly char[] _singleCharArray = new char[1];
 
         #endregion
 
@@ -68,7 +68,7 @@ namespace Npgsql.TypeHandlers
                 if (_byteLen <= _buf.ReadBytesLeft)
                 {
                     // Already have the entire string in the buffer, decode and return
-                    result = _buf.ReadStringSimple(_byteLen);
+                    result = _buf.ReadString(_byteLen);
                     _buf = null;
                     return true;
                 }
@@ -87,7 +87,7 @@ namespace Npgsql.TypeHandlers
             }
 
             var len = Math.Min(_buf.ReadBytesLeft, _byteLen - _bytePos);
-            _buf.ReadBytesSimple(_tempBuf, _bytePos, len);
+            _buf.ReadBytes(_tempBuf, _bytePos, len);
             _bytePos += len;
             if (_bytePos < _byteLen)
             {
@@ -108,7 +108,7 @@ namespace Npgsql.TypeHandlers
                 if (_byteLen <= _buf.ReadBytesLeft)
                 {
                     // Already have the entire string in the buffer, decode and return
-                    result = _buf.ReadCharsSimple(_byteLen);
+                    result = _buf.ReadChars(_byteLen);
                     _buf = null;
                     return true;
                 }
@@ -128,7 +128,7 @@ namespace Npgsql.TypeHandlers
             }
 
             var len = Math.Min(_buf.ReadBytesLeft, _byteLen - _bytePos);
-            _buf.ReadBytesSimple(_tempBuf, _bytePos, len);
+            _buf.ReadBytes(_tempBuf, _bytePos, len);
             _bytePos += len;
             if (_bytePos < _byteLen) {
                 result = null;
@@ -179,12 +179,12 @@ namespace Npgsql.TypeHandlers
             }
 
             int bytesRead, charsRead;
-            row.Buffer.ReadChars(output, outputOffset, charsCount, row.ColumnLen - row.PosInColumn, out bytesRead, out charsRead);
+            row.Buffer.ReadAllChars(output, outputOffset, charsCount, row.ColumnLen - row.PosInColumn, out bytesRead, out charsRead);
             row.PosInColumn += bytesRead;
             _charPos += charsRead;
             return charsRead;
         }
-        
+
         #endregion
 
         #region Write
@@ -269,13 +269,13 @@ namespace Npgsql.TypeHandlers
                     // Can simply write the string to the buffer
                     if (_str != null)
                     {
-                        _buf.WriteStringSimple(_str, _charLen);
+                        _buf.WriteString(_str, _charLen);
                         _str = null;
                     }
                     else
                     {
                         Contract.Assert(_chars != null);
-                        _buf.WriteCharsSimple(_chars, _charLen);
+                        _buf.WriteChars(_chars, _charLen);
                         _str = null;
                     }
                     _buf = null;

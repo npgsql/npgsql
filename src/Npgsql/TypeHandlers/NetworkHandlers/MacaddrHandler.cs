@@ -18,17 +18,18 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
         ISimpleTypeReader<PhysicalAddress>, ISimpleTypeWriter,
         ISimpleTypeReader<string>
     {
+        byte[] _bytes;
+
         public PhysicalAddress Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             Contract.Assume(len == 6);
-            return new PhysicalAddress(new[] {
-                buf.ReadByte(),
-                buf.ReadByte(),
-                buf.ReadByte(),
-                buf.ReadByte(),
-                buf.ReadByte(),
-                buf.ReadByte()
-            });
+
+            if (_bytes == null) {
+                _bytes = new byte[6];
+            }
+
+            buf.ReadBytes(_bytes, 0, 6);
+            return new PhysicalAddress(_bytes);
         }
 
         string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
@@ -36,20 +37,15 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             return Read(buf, len, fieldDescription).ToString();
         }
 
-        PhysicalAddress GetValue(object value)
-        {
-            var val = value is PhysicalAddress ? (PhysicalAddress)value : PhysicalAddress.Parse((string)value);
-            if (val.GetAddressBytes().Length != 6)
-                throw new FormatException("MAC addresses must have length 6 in PostgreSQL");
-            return val;
-        }
-
         public int ValidateAndGetLength(object value) { return 6; }
 
         public void Write(object value, NpgsqlBuffer buf)
         {
-            var val = GetValue(value);
-            buf.WriteBytes(val.GetAddressBytes());
+            var address = value as PhysicalAddress;
+            var val = address ?? PhysicalAddress.Parse((string)value);
+            if (val.GetAddressBytes().Length != 6)
+                throw new FormatException("MAC addresses must have length 6 in PostgreSQL");
+            buf.WriteBytes(val.GetAddressBytes(), 0, 6);
         }
     }
 }

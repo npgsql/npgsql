@@ -36,7 +36,7 @@ namespace Npgsql.TypeHandlers
         public bool Read(out byte[] result)
         {
             var toRead = Math.Min(_bytes.Length - _pos, _buf.ReadBytesLeft);
-            _buf.ReadBytesSimple(_bytes, _pos, toRead);
+            _buf.ReadBytes(_bytes, _pos, toRead);
             _pos += toRead;
             if (_pos == _bytes.Length)
             {
@@ -62,7 +62,7 @@ namespace Npgsql.TypeHandlers
                 len = row.ColumnLen - offset;
             }
 
-            row.Buffer.ReadBytes(output, outputOffset, len, true);
+            row.Buffer.ReadAllBytes(output, outputOffset, len, false);
             row.PosInColumn += len;
             return len;
         }
@@ -123,7 +123,7 @@ namespace Npgsql.TypeHandlers
             // Otherwise, switch to direct write from the user-provided buffer
             if (_value.Count <= _buf.WriteSpaceLeft)
             {
-                _buf.WriteBytesSimple(_value.Array, _value.Offset, _value.Count);
+                _buf.WriteBytes(_value.Array, _value.Offset, _value.Count);
                 return true;
             }
 
@@ -159,7 +159,7 @@ namespace Npgsql.TypeHandlers
         {
             CheckDisposed();
             count = Math.Min(count, _row.ColumnLen - _row.PosInColumn);
-            var read = _row.Buffer.ReadBytes(buffer, offset, count, false);
+            var read = _row.Buffer.ReadAllBytes(buffer, offset, count, true);
             _row.PosInColumn += read;
             return read;
         }

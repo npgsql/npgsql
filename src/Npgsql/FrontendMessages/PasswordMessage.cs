@@ -78,7 +78,7 @@ namespace Npgsql.FrontendMessages
         {
             buf.WriteByte(Code);
             buf.WriteInt32(Length - 1);
-            buf.WriteBytes(Password);
+            buf.WriteBytes(Password, 0, Password.Length);
         }
 
         public override string ToString() { return "[Password]"; }

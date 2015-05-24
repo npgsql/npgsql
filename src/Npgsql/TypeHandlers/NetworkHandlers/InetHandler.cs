@@ -114,7 +114,7 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             buf.WriteByte((byte)(isCidrHandler ? 1 : 0));  // Ignored on server side
             var bytes = ip.GetAddressBytes();
             buf.WriteByte((byte)bytes.Length);
-            buf.WriteBytesSimple(bytes, 0, bytes.Length);            
+            buf.WriteBytes(bytes, 0, bytes.Length);            
         }
 
         public void Write(object value, NpgsqlBuffer buf)
