@@ -11,9 +11,9 @@ using Npgsql;
 namespace NpgsqlTypes
 {
     /// <summary>
-    /// A struct similar to DateTime but capable of storing PostgreSQL's timestamp and timestamptz types. DateTime
-    /// is capable of storing values from year 1 to 9999 at 100-nanosecond precision, while PostgreSQL's timestamps
-    /// store values from 4713BC to 5874897AD with 1-microsecond precision.
+    /// A struct similar to .NET DateTime but capable of storing PostgreSQL's timestamp and timestamptz types.
+    /// DateTime is capable of storing values from year 1 to 9999 at 100-nanosecond precision,
+    /// while PostgreSQL's timestamps store values from 4713BC to 5874897AD with 1-microsecond precision.
     /// </summary>
 #if !DNXCORE50
     [Serializable]
@@ -86,10 +86,10 @@ namespace NpgsqlTypes
         public bool IsLeapYear { get { return _date.IsLeapYear; } }
 
         public long Ticks { get { return _date.DaysSinceEra * NpgsqlTimeSpan.TicksPerDay + _time.Ticks; } }
-        public int Milliseconds { get { return _time.Milliseconds; } }
-        public int Seconds { get { return _time.Seconds; } }
-        public int Minutes { get { return _time.Minutes; } }
-        public int Hours { get { return _time.Hours; } }
+        public int Millisecond { get { return _time.Milliseconds; } }
+        public int Second { get { return _time.Seconds; } }
+        public int Minute { get { return _time.Minutes; } }
+        public int Hour { get { return _time.Hours; } }
         public bool IsInfinity { get { return _type == InternalType.Infinity; } }
         public bool IsNegativeInfinity { get { return _type == InternalType.NegativeInfinity; } }
 
@@ -499,6 +499,36 @@ namespace NpgsqlTypes
 
         #endregion
 
+        #region Casts
+
+        /// <summary>
+        /// Implicit cast of a <see cref="DateTime"/> to an <see cref="NpgsqlDateTime"/>
+        /// </summary>
+        /// <param name="dateTime">A <see cref="DateTime"/></param>
+        /// <returns>An equivalent <see cref="NpgsqlDateTime"/>.</returns>
+        public static implicit operator NpgsqlDateTime(DateTime dateTime)
+        {
+            return new NpgsqlDateTime(dateTime);
+        }
+
+        /// <summary>
+        /// Explicit cast of an <see cref="NpgsqlDateTime"/> to a <see cref="DateTime"/>.
+        /// </summary>
+        /// <param name="npgsqlDateTime">An <see cref="NpgsqlDateTime"/>.</param>
+        /// <returns>An equivalent <see cref="DateTime"/>.</returns>
+        /// <remarks>Doesn't convert sub-millisecond precision at the moment.</remarks>
+        public static explicit operator DateTime(NpgsqlDateTime npgsqlDateTime)
+        {
+            // TODO: Convert sub-millisecond precision
+            return new DateTime(
+                npgsqlDateTime.Year, npgsqlDateTime.Month, npgsqlDateTime.Day,
+                npgsqlDateTime.Hour, npgsqlDateTime.Minute, npgsqlDateTime.Second,
+                npgsqlDateTime.Millisecond, npgsqlDateTime.Kind
+            );
+        }
+
+        #endregion
+
         [Pure]
         public NpgsqlDateTime Normalize()
         {
@@ -516,7 +546,7 @@ namespace NpgsqlTypes
                 return InternalType.FiniteLocal;
             default:
                 throw PGUtil.ThrowIfReached();
-            }            
+            }
         }
 
         enum InternalType
