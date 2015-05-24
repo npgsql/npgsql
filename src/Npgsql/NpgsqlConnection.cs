@@ -279,14 +279,6 @@ namespace Npgsql
         public int Port { get { return Settings.Port; } }
 
         /// <summary>
-        /// If true, the connection will attempt to use SSL.
-        /// </summary>
-#if !DNXCORE50
-        [Browsable(true)]
-#endif
-        public bool SSL { get { return Settings.SSL; } }
-
-        /// <summary>
         /// If true, the connection will attempt to use SslStream instead of an internal TlsClientStream.
         /// </summary>
         public bool UseSslStream { get { return Settings.UseSslStream; } }
@@ -694,6 +686,7 @@ namespace Npgsql
 
         /// <summary>
         /// Verifies the remote Secure Sockets Layer (SSL) certificate used for authentication.
+        /// Ignored if <see cref="NpgsqlConnectionStringBuilder.TrustServerCertificate"/> is set.
         /// </summary>
         /// <remarks>
         /// See <see href="https://msdn.microsoft.com/en-us/library/system.net.security.remotecertificatevalidationcallback(v=vs.110).aspx"/>

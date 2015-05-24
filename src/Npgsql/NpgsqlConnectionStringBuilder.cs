@@ -427,33 +427,12 @@ namespace Npgsql
         #region Properties - Security
 
         /// <summary>
-        /// Whether to use SSL/TLS to encrypt the connection.
-        /// </summary>
-#if !DNXCORE50
-        [Category("Security")]
-        [DisplayName("SSL")]
-        [Description("Whether to use SSL/TLS to encrypt the connection")]
-#endif
-        [NpgsqlConnectionStringProperty]
-        public bool SSL
-        {
-            get { return _ssl; }
-            set
-            {
-                _ssl = value;
-                // TODO: Replace literal name with nameof operator in C# 6.0
-                SetValue("SSL", value);
-            }
-        }
-        bool _ssl;
-
-        /// <summary>
-        /// Controls whether SSL is required, preferred, allowed or disabled, depending on server support.
+        /// Controls whether SSL is required, disabled or preferred, depending on server support.
         /// </summary>
 #if !DNXCORE50
         [Category("Security")]
         [DisplayName("SSLMode")]
-        [Description("Controls whether SSL is required, preferred, allowed or disabled, depending on server support")]
+        [Description("Controls whether SSL is required, disabled or preferred, depending on server support.")]
 #endif
         [NpgsqlConnectionStringProperty]
         public SslMode SslMode
@@ -467,6 +446,27 @@ namespace Npgsql
             }
         }
         SslMode _sslmode;
+
+        /// <summary>
+        /// Whether to trust the server certificate without validating it.
+        /// </summary>
+#if !DNXCORE50
+        [Category("Security")]
+        [DisplayName("Trust Server Certificate")]
+        [Description("Whether to trust the server certificate without validating it.")]
+#endif
+        [NpgsqlConnectionStringProperty]
+        public bool TrustServerCertificate
+        {
+            get { return _trustServerCertificate; }
+            set
+            {
+                _trustServerCertificate = value;
+                // TODO: Replace literal name with nameof operator in C# 6.0
+                SetValue("TrustServerCertificate", value);
+            }
+        }
+        bool _trustServerCertificate;
 
         /// <summary>
         /// Npgsql uses its own internal implementation of TLS/SSL. Turn this on to use .NET SslStream instead.
@@ -497,7 +497,7 @@ namespace Npgsql
         [DisplayName("Integrated Security")]
         [Description("Whether to use Windows integrated security to log in")]
 #endif
-        [NpgsqlConnectionStringProperty()]
+        [NpgsqlConnectionStringProperty]
         public bool IntegratedSecurity
         {
             get { return _integratedSecurity; }
@@ -1122,10 +1122,6 @@ namespace Npgsql
         /// SSL is disabled. If the server requires SSL, the connection will fail.
         /// </summary>
         Disable,
-        /// <summary>
-        /// Allow SSL connections if the server requires them.
-        /// </summary>
-        Allow,
         /// <summary>
         /// Prefer SSL connections if the server allows them, but allow connections without SSL.
         /// </summary>

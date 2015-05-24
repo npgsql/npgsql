@@ -16,9 +16,8 @@ namespace Npgsql.Tests
         [TestCase(true,  TestName = "SslStream")]
         public void BasicSsl(bool useSslStream)
         {
-            using (var conn = new NpgsqlConnection(ConnectionString + ";SSL=true;SslMode=Require" + (useSslStream ? ";UseSslStream=true" : "")))
+            using (var conn = new NpgsqlConnection(ConnectionString + ";SslMode=Require;TrustServerCertificate=true;" + (useSslStream ? ";UseSslStream=true" : "")))
             {
-                conn.UserCertificateValidationCallback = (sender, certificate, chain, errors) => true;
                 conn.Open();
                 Assert.That(conn.IsSecure, Is.True);
             }
@@ -29,7 +28,7 @@ namespace Npgsql.Tests
         [TestCase(true,  TestName = "SslStream")]
         public void RejectSelfSignedCertificate(bool useSslStream)
         {
-            using (var conn = new NpgsqlConnection(ConnectionString + ";SSL=true;SslMode=Require" + (useSslStream ? ";UseSslStream=true" : "")))
+            using (var conn = new NpgsqlConnection(ConnectionString + ";SslMode=Require;" + (useSslStream ? ";UseSslStream=true" : "")))
             {
                 // The following is necessary since a pooled connector may exist from a previous
                 // SSL test
@@ -43,9 +42,8 @@ namespace Npgsql.Tests
         [Test, Description("Makes sure that ssl_renegotiation_limit is always 0, renegotiation is buggy")]
         public void NoSslRenegotiation()
         {
-            using (var conn = new NpgsqlConnection(ConnectionString + ";SSL=true;SslMode=Require"))
+            using (var conn = new NpgsqlConnection(ConnectionString + ";SslMode=Require;TrustServerCertificate=true"))
             {
-                conn.UserCertificateValidationCallback = (sender, certificate, chain, errors) => true;
                 conn.Open();
                 Assert.That(ExecuteScalar("SHOW ssl_renegotiation_limit", conn), Is.EqualTo("0"));
                 ExecuteNonQuery("DISCARD ALL");

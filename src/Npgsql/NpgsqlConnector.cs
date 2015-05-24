@@ -255,7 +255,6 @@ namespace Npgsql
         internal string UserName { get { return _settings.Username; } }
         internal string Password { get { return _settings.Password; } }
         internal string KerberosServiceName { get { return _settings.KerberosServiceName; } }
-        internal bool SSL { get { return _settings.SSL; } }
         internal SslMode SslMode { get { return _settings.SslMode; } }
         internal bool UseSslStream { get { return _settings.UseSslStream; } }
         internal int BufferSize { get { return _settings.BufferSize; } }
@@ -396,8 +395,7 @@ namespace Npgsql
                     startupMessage["statement_timeout"] = (_settings.CommandTimeout * 1000).ToString();
                     _backendTimeout = _settings.CommandTimeout;
                 }
-                // TODO: Clear up mess with SSLMode (#617)
-                if (SSL && !IsRedshift) {
+                if (IsSecure && !IsRedshift) {
                     startupMessage["ssl_renegotiation_limit"] = "0";
                 }
 
@@ -489,7 +487,7 @@ namespace Npgsql
                 _stream = _baseStream;
 
                 // If the PostgreSQL server has SSL connectors enabled Open SslClientStream if (response == 'S') {
-                if (SSL || (SslMode == SslMode.Require) || (SslMode == SslMode.Prefer))
+                if (SslMode == SslMode.Require || SslMode == SslMode.Prefer)
                 {
                     _stream
                         .WriteInt32(8)
@@ -511,7 +509,15 @@ namespace Npgsql
                             ProvideClientCertificatesCallback(clientCertificates);
                         }
 
-                        var certificateValidationCallback = UserCertificateValidationCallback ?? DefaultUserCertificateValidationCallback;
+                        RemoteCertificateValidationCallback certificateValidationCallback;
+                        if (_settings.TrustServerCertificate) {
+                            certificateValidationCallback = (sender, certificate, chain, errors) => true;
+                        } else if (UserCertificateValidationCallback != null) {
+                            certificateValidationCallback = UserCertificateValidationCallback;
+                        } else {
+                            certificateValidationCallback = DefaultUserCertificateValidationCallback;
+                        }
+
                         if (!UseSslStream)
                         {
 #if DNXCORE50
