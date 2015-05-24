@@ -721,23 +721,6 @@ namespace Npgsql
             get { return PostgreSqlVersion.ToString(); }
         }
 
-        /// <summary>
-        /// Protocol version in use.
-        /// This can only be called when there is an active connection.
-        /// Always retuna Version3
-        /// </summary>
-#if !DNXCORE50
-        [Browsable(false)]
-#endif
-        public ProtocolVersion BackendProtocolVersion
-        {
-            get
-            {
-                CheckConnectionOpen();
-                return ProtocolVersion.Version3;
-            }
-        }
-
         internal bool IsRedshift
         {
             get
@@ -789,6 +772,7 @@ namespace Npgsql
 #if !DNXCORE50
         [Browsable(false)]
 #endif
+            // ReSharper disable once InconsistentNaming
         public bool Supports_E_StringPrefix
         {
             get
@@ -1050,6 +1034,7 @@ namespace Npgsql
                     }
                     catch
                     {
+                        // ignored
                     }
                 }
                 Open();
