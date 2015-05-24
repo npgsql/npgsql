@@ -380,26 +380,7 @@ namespace Npgsql
         /// <param name="whereClause">if set to <c>true</c> [where clause].</param>
         protected override void ApplyParameterInfo(DbParameter p, DataRow row, StatementType statementType, bool whereClause)
         {
-
-            NpgsqlParameter parameter = (NpgsqlParameter) p;
-
-            /* TODO: Check if this is the right thing to do.
-             * ADO.Net seems to set this property to true when creating the parameter for the following query:
-             * ((@IsNull_FieldName = 1 AND FieldName IS NULL) OR
-                  (FieldName = @Original_FieldName))
-             * This parameter: @IsNull_FieldName was having its sourcecolumn set to the same name of FieldName.
-             * This was causing ADO.Net to try to set a value of different type of Int32.
-             * See bug 1010973 for more info.
-             */
-#if INVESTIGATE
-            if (parameter.SourceColumnNullMapping)
-            {
-                parameter.SourceColumn = "";
-            }
-            else
-
-                parameter.NpgsqlDbType = NpgsqlTypesHelper.GetNativeTypeInfo((Type)row[SchemaTableColumn.DataType]).NpgsqlDbType;
-#endif
+            // TODO: We may need to set NpgsqlDbType, as well as other properties, on p
         }
 
         /// <summary>
