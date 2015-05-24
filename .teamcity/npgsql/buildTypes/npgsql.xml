@@ -128,8 +128,8 @@ c:\users\teamcity_agent\.dnx\bin\dnvm.cmd exec default dnx . test]]></param>
           <param name="nuget.pack.project.dir" value="as_is" />
           <param name="nuget.pack.properties" value="Configuration=Release" />
           <param name="nuget.pack.specFile"><![CDATA[src\Npgsql\Npgsql.nuspec
-src\Npgsql.EntityFramework\Npgsql.EntityFramework.nuspec
-src\Npgsql.EntityFramework\Npgsql.EntityFrameworkLegacy.nuspec
+src\Npgsql.EntityFramework\Npgsql.EntityFramework6.nuspec
+src\Npgsql.EntityFramework\Npgsql.EntityFramework5.nuspec
 src\Npgsql.EntityFramework7\Npgsql.EntityFramework7.nuspec]]></param>
           <param name="nuget.pack.version" value="%GitVersion.NuGetVersion%" />
           <param name="nuget.path" value="?NuGet.CommandLine.DEFAULT.nupkg" />
