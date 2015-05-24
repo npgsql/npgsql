@@ -697,12 +697,12 @@ namespace Npgsql
 
         /// <summary>
         /// The time to wait (in seconds) while trying to execute a command before terminating the attempt and generating an error.
-        /// Defaults to 20 seconds.
+        /// Defaults to 30 seconds.
         /// </summary>
 #if !DNXCORE50
         [Category("Timeouts")]
         [DisplayName("Command Timeout")]
-        [Description("The time to wait (in seconds) while trying to execute a command before terminating the attempt and generating an error")]
+        [Description("The time to wait (in seconds) while trying to execute a command before terminating the attempt and generating an error. Set to zero for infinity.")]
         [DefaultValue(NpgsqlCommand.DefaultTimeout)]
 #endif
         [NpgsqlConnectionStringProperty]

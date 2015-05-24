@@ -40,6 +40,19 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, Description("Makes sure that ssl_renegotiation_limit is always 0, renegotiation is buggy")]
+        public void NoSslRenegotiation()
+        {
+            using (var conn = new NpgsqlConnection(ConnectionString + ";SSL=true;SslMode=Require"))
+            {
+                conn.UserCertificateValidationCallback = (sender, certificate, chain, errors) => true;
+                conn.Open();
+                Assert.That(ExecuteScalar("SHOW ssl_renegotiation_limit", conn), Is.EqualTo("0"));
+                ExecuteNonQuery("DISCARD ALL");
+                Assert.That(ExecuteScalar("SHOW ssl_renegotiation_limit", conn), Is.EqualTo("0"));
+            }
+        }
+
         [Test, Description("Makes sure that when SSL is disabled IsSecure returns false")]
         public void NonSecure()
         {

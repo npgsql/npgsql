@@ -392,6 +392,10 @@ namespace Npgsql
                 if (!string.IsNullOrEmpty(_settings.SearchPath)) {
                     startupMessage["search_path"] = _settings.SearchPath;
                 }
+                if (_settings.BackendTimeouts && _settings.CommandTimeout != 0) {
+                    startupMessage["statement_timeout"] = (_settings.CommandTimeout * 1000).ToString();
+                    _backendTimeout = _settings.CommandTimeout;
+                }
                 // TODO: Clear up mess with SSLMode (#617)
                 if (SSL && !IsRedshift) {
                     startupMessage["ssl_renegotiation_limit"] = "0";
