@@ -392,7 +392,8 @@ namespace Npgsql
                 if (!string.IsNullOrEmpty(_settings.SearchPath)) {
                     startupMessage["search_path"] = _settings.SearchPath;
                 }
-                if (!IsRedshift) {
+                // TODO: Clear up mess with SSLMode (#617)
+                if (SSL && !IsRedshift) {
                     startupMessage["ssl_renegotiation_limit"] = "0";
                 }
 
