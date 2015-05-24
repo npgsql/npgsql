@@ -36,10 +36,6 @@ using System.ComponentModel;
 using System.Data.Common;
 using NpgsqlTypes;
 
-#if WITHDESIGN
-
-#endif
-
 namespace Npgsql
 {
     /// <summary>
@@ -191,25 +187,6 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Obsolete. Use AddWithValue instead.
-        /// </summary>
-        /// <remarks>
-        /// Use caution when using this overload of the
-        /// <b>Add</b> method to specify integer parameter values.
-        /// Because this overload takes a <i>value</i> of type Object,
-        /// you must convert the integral value to an <b>Object</b>
-        /// type when the value is zero, as the following C# example demonstrates.
-        /// <code>parameters.Add(":pname", Convert.ToInt32(0));</code>
-        /// If you do not perform this conversion, the compiler will assume you
-        /// are attempting to call the NpgsqlParameterCollection.Add(string, DbType) overload.
-        /// </remarks>
-        [Obsolete("Do not call this method. Use AddWithValue instead.")]
-        public NpgsqlParameter Add(string parameterName, object value)
-        {
-            return this.AddWithValue(parameterName, value);
-        }
-
-        /// <summary>
         /// Adds a <see cref="NpgsqlParameter">NpgsqlParameter</see> to the <see cref="NpgsqlParameterCollection">NpgsqlParameterCollection</see> given the specified parameter name and value.
         /// </summary>
         /// <param name="parameterName">The name of the <see cref="NpgsqlParameter">NpgsqlParameter</see>.</param>
@@ -339,9 +316,9 @@ namespace Npgsql
                 parameterName = parameterName.Remove(0, 1);
             }
 
-            // Using a dictionary is much faster for 5 or more items            
+            // Using a dictionary is much faster for 5 or more items
             if (this.InternalList.Count >= 5)
-            {            
+            {
                 if (this.lookup == null)
                 {
                     this.lookup = new Dictionary<string, int>();
@@ -370,7 +347,7 @@ namespace Npgsql
                     for (scanIndex = 0 ; scanIndex < this.InternalList.Count ; scanIndex++)
                     {
                         var item = this.InternalList[scanIndex];
-                        
+
                         // Store only the first of each distinct value
                         if (! this.lookupIgnoreCase.ContainsKey(item.CleanName))
                         {
