@@ -75,9 +75,9 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Npgsql.EntityFramework\Npgsql.EntityFramework.csproj">
+    <ProjectReference Include="..\..\src\Npgsql.EntityFramework\Npgsql.EntityFramework6.csproj">
       <Project>{3ec85cba-5b79-11e3-8104-0022198ab089}</Project>
-      <Name>Npgsql.EntityFramework</Name>
+      <Name>Npgsql.EntityFramework6</Name>
     </ProjectReference>
     <ProjectReference Include="..\..\src\Npgsql\Npgsql.csproj">
       <Project>{9D13B739-62B1-4190-B386-7A9547304EB3}</Project>
