@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <metadata xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
-    <id>Npgsql.EntityFrameworkLegacy5</id>
+    <id>Npgsql.EntityFramework5</id>
     <title>Npgsql for Entity Framework Legacy</title>
     <version>0.0.0</version>
     <authors>Francisco Figueiredo Jr., Josh Cooley, Dave Page, Jon Asher, Brar Piening, Chris Morgan, Hiroshi Saito, Jon Hanna, Federico Di Gregorio, Glen Parker, Shay Rojansky</authors>
@@ -20,9 +20,9 @@
     </dependencies>
   </metadata>
   <files>
-    <file src="bin\Legacy-Release-net45\Npgsql.EntityFrameworkLegacy.dll" target="lib\net45"/>
-    <file src="bin\Legacy-Release-net45\Npgsql.EntityFrameworkLegacy.pdb" target="lib\net45"/>
-    <file src="bin\Legacy-Release-net45\Npgsql.EntityFrameworkLegacy.xml" target="lib\net45"/>
+    <file src="bin\Legacy-Release-net45\Npgsql.EntityFramework5.dll" target="lib\net45"/>
+    <file src="bin\Legacy-Release-net45\Npgsql.EntityFramework5.pdb" target="lib\net45"/>
+    <file src="bin\Legacy-Release-net45\Npgsql.EntityFramework5.xml" target="lib\net45"/>
     <file src="**\*.cs" target="src" />
   </files>
 </package>

@@ -22,7 +22,7 @@
     <DefineConstants>TRACE;DEBUG;NET45</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <DocumentationFile>bin\Legacy-Debug-net45\Npgsql.EntityFrameworkLegacy.xml</DocumentationFile>
+    <DocumentationFile>bin\Legacy-Debug-net45\Npgsql.EntityFramework5.xml</DocumentationFile>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <LangVersion>5</LangVersion>
   </PropertyGroup>
@@ -33,7 +33,7 @@
     <DefineConstants>TRACE;NET45</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <DocumentationFile>bin\Legacy-Release-net45\Npgsql.EntityFrameworkLegacy.xml</DocumentationFile>
+    <DocumentationFile>bin\Legacy-Release-net45\Npgsql.EntityFramework5.xml</DocumentationFile>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <LangVersion>5</LangVersion>
   </PropertyGroup>

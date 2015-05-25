@@ -22,7 +22,7 @@
     <DefineConstants>TRACE;DEBUG;NET45;ENTITIES6</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <DocumentationFile>bin\Debug-net45\Npgsql.EntityFramework.xml</DocumentationFile>
+    <DocumentationFile>bin\Debug-net45\Npgsql.EntityFramework6.xml</DocumentationFile>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <LangVersion>5</LangVersion>
   </PropertyGroup>
@@ -33,7 +33,7 @@
     <DefineConstants>TRACE;NET45;ENTITIES6</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <DocumentationFile>bin\Release-net45\Npgsql.EntityFramework.xml</DocumentationFile>
+    <DocumentationFile>bin\Release-net45\Npgsql.EntityFramework6.xml</DocumentationFile>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <LangVersion>5</LangVersion>
   </PropertyGroup>
