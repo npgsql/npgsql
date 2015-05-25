@@ -47,7 +47,7 @@ namespace Npgsql.EntityFramework.Tests
     public class EntityFrameworkMigrationTests : TestBase
     {
         public EntityFrameworkMigrationTests(string backendVersion) : base(backendVersion) { }
-        
+
         #region Helper method
 
         /// <summary>
@@ -754,8 +754,8 @@ namespace Npgsql.EntityFramework.Tests
             Assert.AreEqual("ALTER TABLE \"someTable\" ADD \"someFalseBooleanColumn\" boolean DEFAULT FALSE", statments.ElementAt(1).Sql);
             Assert.AreEqual("ALTER TABLE \"someTable\" ADD \"someTrueBooleanColumn\" boolean DEFAULT TRUE", statments.ElementAt(2).Sql);
             Assert.AreEqual("ALTER TABLE \"someTable\" ADD \"someByteColumn\" int2 DEFAULT 15", statments.ElementAt(3).Sql);
-            Assert.AreEqual("ALTER TABLE \"someTable\" ADD \"someDateTimeColumn\" timestamp DEFAULT '2014-01-31 05:15:23.435'", statments.ElementAt(4).Sql);
-            Assert.AreEqual("ALTER TABLE \"someTable\" ADD \"someDateTimeOffsetColumn\" timestamptz DEFAULT '2014-01-31 05:18:43.186+01'", statments.ElementAt(5).Sql);
+            Assert.AreEqual("ALTER TABLE \"someTable\" ADD \"someDateTimeColumn\" timestamp DEFAULT '2014-01-31 05:15:23.4350000'", statments.ElementAt(4).Sql);
+            Assert.AreEqual("ALTER TABLE \"someTable\" ADD \"someDateTimeOffsetColumn\" timestamptz DEFAULT '2014-01-31 04:18:43.1860000'", statments.ElementAt(5).Sql);
             Assert.AreEqual("ALTER TABLE \"someTable\" ADD \"someDecimalColumn\" numeric DEFAULT 23432423.534534", statments.ElementAt(6).Sql);
             Assert.AreEqual("ALTER TABLE \"someTable\" ADD \"someDoubleColumn\" float8 DEFAULT 44.66", statments.ElementAt(7).Sql);
             Assert.AreEqual("ALTER TABLE \"someTable\" ADD \"someGuidColumn\" uuid DEFAULT 'de303070-afb8-4ec1-bcb0-c637f3316501'", statments.ElementAt(8).Sql);
