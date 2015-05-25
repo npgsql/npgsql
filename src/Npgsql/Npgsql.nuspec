@@ -8,7 +8,7 @@
     <owners>Francisco Figueiredo Jr., Josh Cooley, Shay Rojansky</owners>
     <licenseUrl>https://github.com/npgsql/Npgsql/wiki/License</licenseUrl>
     <projectUrl>https://github.com/npgsql/Npgsql</projectUrl>
-    <copyright>Copyright 2002 - 2014 Npgsql Development Team</copyright>
+    <copyright>Copyright 2002 - 2015 Npgsql Development Team</copyright>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>Npgsql is a .NET data provider for PostgreSQL, 100% implemented in C# code. PostgreSQL 9.x and above is officially supported, other versions may work.</description>
     <summary>Npgsql is a .NET data provider for Postgresql.</summary>
