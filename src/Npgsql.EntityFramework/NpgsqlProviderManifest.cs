@@ -13,7 +13,7 @@ using System.Data;
 
 namespace Npgsql
 {
-    internal class NpgsqlProviderManifest : DbXmlEnabledProviderManifest
+    public class NpgsqlProviderManifest : DbXmlEnabledProviderManifest
     {
         public NpgsqlProviderManifest(string serverVersion)
             : base(CreateXmlReaderForResource("Npgsql.NpgsqlProviderManifest.Manifest.xml"))
