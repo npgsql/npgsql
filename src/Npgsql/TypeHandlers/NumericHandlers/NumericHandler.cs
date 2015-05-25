@@ -137,10 +137,23 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             numGroups = integerGroups + fractionGroups;
         }
 
-        public int ValidateAndGetLength(object value)
+        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
-            var num = GetIConvertibleValue<decimal>(value);
-            
+            decimal num;
+            if (value is decimal)
+            {
+                num = (decimal)value;
+            }
+            else
+            {
+                num = Convert.ToDecimal(value);
+                if (parameter == null)
+                {
+                    throw CreateConversionButNoParamException(value.GetType());
+                }
+                parameter.ConvertedValue = num;
+            }
+
             if (num == 0M)
                 return 4 * sizeof(short) + 0;
 
@@ -154,9 +167,11 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             return 4 * sizeof(short) + numGroups * sizeof(short);
         }
 
-        public void Write(object value, NpgsqlBuffer buf)
+        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
         {
-            var num = GetIConvertibleValue<decimal>(value);
+            var num = (decimal)(parameter != null && parameter.ConvertedValue != null
+                ? parameter.ConvertedValue
+                : value);
 
             if (num == 0M)
             {

@@ -32,12 +32,16 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             return Read<DateTimeOffset>(buf, len, fieldDescription).LocalDateTime.TimeOfDay;
         }
 
-        public int ValidateAndGetLength(object value)
+        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
+            if (!(value is DateTimeOffset) && !(value is DateTime) && !(value is TimeSpan))
+            {
+                throw CreateConversionException(value.GetType());
+            }
             return 12;
         }
 
-        public void Write(object value, NpgsqlBuffer buf)
+        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
         {
             if (value is DateTimeOffset)
             {
@@ -78,7 +82,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                 return;
             }
 
-            throw new InvalidCastException();
+            throw PGUtil.ThrowIfReached();
         }
     }
 }

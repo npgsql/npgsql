@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
@@ -15,20 +12,31 @@ namespace Npgsql.TypeHandlers
     internal class BoolHandler : TypeHandler<bool>,
         ISimpleTypeReader<bool>, ISimpleTypeWriter
     {
-        const byte T = (byte)'T';
-        const byte t = (byte)'t';
-
         public bool Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             return buf.ReadByte() != 0;
         }
 
-        public int ValidateAndGetLength(object value) { return 1; }
-
-        public void Write(object value, NpgsqlBuffer buf)
+        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
-            var v = ((IConvertible)value).ToBoolean(null);
-            buf.WriteByte(v ? (byte)1 : (byte)0);
+            if (!(value is bool))
+            {
+                var converted = Convert.ToBoolean(value);
+                if (parameter == null)
+                {
+                    throw CreateConversionButNoParamException(value.GetType());
+                }
+                parameter.ConvertedValue = converted;
+            }
+            return 1;
+        }
+
+        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        {
+            if (parameter != null && parameter.ConvertedValue != null) {
+                value = parameter.ConvertedValue;
+            }
+            buf.WriteByte(((bool)value) ? (byte)1 : (byte)0);
         }
     }
 }

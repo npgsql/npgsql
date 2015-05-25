@@ -66,6 +66,12 @@ namespace Npgsql
         string _name = String.Empty;
         object _value;
         object _npgsqlValue;
+
+        /// <summary>
+        /// Can be used to communicate a value from the validation phase to the writing phase.
+        /// </summary>
+        internal object ConvertedValue { get; set; }
+
         NpgsqlParameterCollection _collection;
         internal LengthCache LengthCache { get; private set; }
 
@@ -277,6 +283,7 @@ namespace Npgsql
                 ClearBind();
                 _value = value;
                 _npgsqlValue = value;
+                ConvertedValue = null;
             }
         }
 
@@ -296,6 +303,7 @@ namespace Npgsql
                 ClearBind();
                 _value = value;
                 _npgsqlValue = value;
+                ConvertedValue = null;
             }
         }
 
@@ -620,6 +628,10 @@ namespace Npgsql
 
         internal int ValidateAndGetLength()
         {
+            if (_value == null) {
+                throw new InvalidCastException(string.Format("Parameter {0} must be set", ParameterName));
+            }
+
             if (_value is DBNull) {
                 return 0;
             }
@@ -627,7 +639,7 @@ namespace Npgsql
             // No length caching for simple types
             var asSimpleWriter = Handler as ISimpleTypeWriter;
             if (asSimpleWriter != null) {
-                return asSimpleWriter.ValidateAndGetLength(Value);
+                return asSimpleWriter.ValidateAndGetLength(Value, this);
             }
 
             var asChunkingWriter = Handler as IChunkingTypeWriter;

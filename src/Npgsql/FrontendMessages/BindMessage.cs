@@ -125,7 +125,7 @@ namespace Npgsql.FrontendMessages
                     {
                         if (buf.WriteSpaceLeft < 4) { return false; }
                         buf.WriteInt16(1);
-                        buf.WriteInt16(AllResultTypesAreUnknown ? 0 : 1);                        
+                        buf.WriteInt16(AllResultTypesAreUnknown ? 0 : 1);
                     }
 
                     _state = State.Done;
@@ -183,7 +183,7 @@ namespace Npgsql.FrontendMessages
                     return false;
                 }
                 buf.WriteInt32(len);
-                asSimpleWriter.Write(param.Value, buf);                    
+                asSimpleWriter.Write(param.Value, buf, param);
             }
             return true;
         }

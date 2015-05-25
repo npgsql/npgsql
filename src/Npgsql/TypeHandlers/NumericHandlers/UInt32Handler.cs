@@ -22,10 +22,25 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             return (uint)buf.ReadInt32();
         }
 
-        public int ValidateAndGetLength(object value) { return 4; }
-
-        public void Write(object value, NpgsqlBuffer buf)
+        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
+            if (!(value is uint))
+            {
+                var converted = Convert.ToUInt32(value);
+                if (parameter == null)
+                {
+                    throw CreateConversionButNoParamException(value.GetType());
+                }
+                parameter.ConvertedValue = converted;
+            }
+            return 4;
+        }
+
+        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        {
+            if (parameter != null && parameter.ConvertedValue != null) {
+                value = parameter.ConvertedValue;
+            }
             buf.WriteInt32((int)(uint)value);
         }
     }

@@ -52,7 +52,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
                 int posBefore = _buf.ReadPosition;
 
                 List<NpgsqlTsVector.Lexeme.WordEntryPos> positions = null;
-                
+
                 var lexemeString = _buf.ReadNullTerminatedString();
                 int numPositions = _buf.ReadInt16();
                 for (var i = 0; i < numPositions; i++)
@@ -77,7 +77,10 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
         public int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             // TODO: Implement length cache
-            var vec = (NpgsqlTsVector)value;
+            var vec = value as NpgsqlTsVector;
+            if (vec == null) {
+                throw CreateConversionException(value.GetType());
+            }
 
             return 4 + vec.Sum(l => Encoding.UTF8.GetByteCount(l.Text) + 1 + 2 + l.Count * 2);
         }
@@ -103,7 +106,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             {
                 if (_buf.WriteSpaceLeft < MaxSingleLexemeBytes)
                     return false;
-                
+
                 _buf.WriteString(_value[_lexemePos].Text);
                 _buf.WriteByte(0);
                 _buf.WriteInt16(_value[_lexemePos].Count);

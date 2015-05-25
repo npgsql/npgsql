@@ -64,9 +64,8 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
 
         public int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
-            if (!(value is NpgsqlPolygon)) {
-                throw new InvalidCastException("Expected an NpgsqlPolygon");
-            }
+            if (!(value is NpgsqlPolygon))
+                throw CreateConversionException(value.GetType());
             return 4 + ((NpgsqlPolygon)value).Count * 16;
         }
 

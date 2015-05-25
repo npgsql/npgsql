@@ -139,7 +139,7 @@ namespace Npgsql
         public static Exception ThrowIfReached(string message = null)
         {
             Contract.Requires(false);
-            return message == null ? new Exception() : new Exception(message);
+            return message == null ? new Exception("An internal Npgsql occured, please open an issue in http://github.com/npgsql/npgsql with this exception's stack trace") : new Exception(message);
         }
     }
 

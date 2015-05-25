@@ -33,12 +33,29 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             return new TimeSpan(buf.ReadInt64() * 10);
         }
 
-        public int ValidateAndGetLength(object value) { return 8; }
-
-        public void Write(object value, NpgsqlBuffer buf)
+        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
-            if (!(value is TimeSpan)) {
-                throw new InvalidCastException();
+            var asString = value as string;
+            if (asString != null)
+            {
+                var converted = TimeSpan.Parse(asString);
+                if (parameter == null)
+                {
+                    throw CreateConversionButNoParamException(value.GetType());
+                }
+                parameter.ConvertedValue = converted;
+            }
+            else if (!(value is TimeSpan))
+            {
+                throw CreateConversionException(value.GetType());
+            }
+            return 8;
+        }
+
+        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        {
+            if (parameter != null && parameter.ConvertedValue != null) {
+                value = parameter.ConvertedValue;
             }
 
             buf.WriteInt64(((TimeSpan)value).Ticks / 10);

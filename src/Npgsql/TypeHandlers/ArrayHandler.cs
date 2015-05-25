@@ -33,7 +33,6 @@ namespace Npgsql.TypeHandlers
         WriteState _writeState;
         IEnumerator _enumerator;
         NpgsqlBuffer _buf;
-        NpgsqlParameter _parameter;
         LengthCache _lengthCache;
         FieldDescription _fieldDescription;
         int _dimensions;
@@ -273,7 +272,6 @@ namespace Npgsql.TypeHandlers
                 throw new InvalidOperationException("Started reading a value before completing a previous value");
 
             _buf = buf;
-            _parameter = parameter;
             _lengthCache = lengthCache;
             var asArray = value as Array;
             _writeValue = (IList)value;
@@ -340,14 +338,13 @@ namespace Npgsql.TypeHandlers
                     {
                         do {
                             if (!WriteSingleElement(_enumerator.Current, ref directBuf)) { return false; }
-                        } while (_enumerator.MoveNext());                       
+                        } while (_enumerator.MoveNext());
                     }
                     goto case WriteState.Cleanup;
 
                 case WriteState.Cleanup:
                     _writeValue = null;
                     _buf = null;
-                    _parameter = null;
                     _writeState = WriteState.NeedPrepare;
                     return true;
 
@@ -370,10 +367,10 @@ namespace Npgsql.TypeHandlers
             var asSimpleWriter = ElementHandler as ISimpleTypeWriter;
             if (asSimpleWriter != null)
             {
-                var elementLen = asSimpleWriter.ValidateAndGetLength(element);
+                var elementLen = asSimpleWriter.ValidateAndGetLength(element, null);
                 if (_buf.WriteSpaceLeft < 4 + elementLen) { return false; }
                 _buf.WriteInt32(elementLen);
-                asSimpleWriter.Write(element, _buf);
+                asSimpleWriter.Write(element, _buf, null);
                 return true;
             }
 
@@ -384,8 +381,8 @@ namespace Npgsql.TypeHandlers
                     if (_buf.WriteSpaceLeft < 4) {
                         return false;
                     }
-                    _buf.WriteInt32(asChunkedWriter.ValidateAndGetLength(element, ref _lengthCache, _parameter));
-                    asChunkedWriter.PrepareWrite(element, _buf, _lengthCache, _parameter);
+                    _buf.WriteInt32(asChunkedWriter.ValidateAndGetLength(element, ref _lengthCache, null));
+                    asChunkedWriter.PrepareWrite(element, _buf, _lengthCache, null);
                     _wroteElementLen = true;
                 }
                 if (!asChunkedWriter.Write(ref directBuf)) {
@@ -443,7 +440,7 @@ namespace Npgsql.TypeHandlers
                 return len;
             }
 
-            throw new InvalidCastException(String.Format("Can't write type {0} as an array", value.GetType()));
+            throw new InvalidCastException(string.Format("Can't write type {0} as an array of {1}", value.GetType(), typeof(TElement)));
         }
 
         int GetSingleElementLength(object element, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
@@ -454,7 +451,7 @@ namespace Npgsql.TypeHandlers
             var asChunkingWriter = ElementHandler as IChunkingTypeWriter;
             return asChunkingWriter != null
                 ? asChunkingWriter.ValidateAndGetLength(element, ref lengthCache, parameter)
-                : ((ISimpleTypeWriter)ElementHandler).ValidateAndGetLength(element);
+                : ((ISimpleTypeWriter)ElementHandler).ValidateAndGetLength(element, null);
         }
 
         enum WriteState

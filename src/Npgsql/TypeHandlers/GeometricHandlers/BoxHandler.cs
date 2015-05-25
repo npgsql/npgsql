@@ -34,15 +34,16 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
             return Read(buf, len, fieldDescription).ToString();
         }
 
-        public int ValidateAndGetLength(object value)
+        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
+            if (!(value is NpgsqlBox))
+                throw CreateConversionException(value.GetType());
             return 32;
         }
 
-        public void Write(object value, NpgsqlBuffer buf)
+        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
         {
-            var s = value as string;
-            var v = s != null ? NpgsqlBox.Parse(s) : (NpgsqlBox)value;
+            var v = (NpgsqlBox)value;
             buf.WriteDouble(v.Right);
             buf.WriteDouble(v.Top);
             buf.WriteDouble(v.Left);

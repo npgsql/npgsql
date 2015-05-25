@@ -39,17 +39,35 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             return new NpgsqlTimeSpan(month, day, ticks * 10);
         }
 
-        public int ValidateAndGetLength(object value)
+        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
             if (!_integerFormat) {
                 throw new NotSupportedException("Old floating point representation for timestamps not supported");
             }
 
+            var asString = value as string;
+            if (asString != null)
+            {
+                var converted = NpgsqlTimeSpan.Parse(asString);
+                if (parameter == null) {
+                    throw CreateConversionButNoParamException(value.GetType());
+                }
+                parameter.ConvertedValue = converted;
+            }
+            else if (!(value is TimeSpan) && !(value is NpgsqlTimeSpan))
+            {
+                throw CreateConversionException(value.GetType());
+            }
+
             return 16;
         }
 
-        public void Write(object value, NpgsqlBuffer buf)
+        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
         {
+            if (parameter != null && parameter.ConvertedValue != null) {
+                value = parameter.ConvertedValue;
+            }
+
             var interval = (value is TimeSpan)
                 ? ((NpgsqlTimeSpan)(TimeSpan)value)
                 : ((NpgsqlTimeSpan)value);

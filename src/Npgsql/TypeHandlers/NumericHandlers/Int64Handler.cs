@@ -59,12 +59,26 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             return Read(buf, len, fieldDescription).ToString();
         }
 
-        public int ValidateAndGetLength(object value) { return 8; }
-
-        public void Write(object value, NpgsqlBuffer buf)
+        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
-            var i = GetIConvertibleValue<long>(value);
-            buf.WriteInt64(i);
+            if (!(value is long))
+            {
+                var converted = Convert.ToInt64(value);
+                if (parameter == null)
+                {
+                    throw CreateConversionButNoParamException(value.GetType());
+                }
+                parameter.ConvertedValue = converted;
+            }
+            return 8;
+        }
+
+        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        {
+            if (parameter != null && parameter.ConvertedValue != null) {
+                value = parameter.ConvertedValue;
+            }
+            buf.WriteInt64((long)value);
         }
     }
 }

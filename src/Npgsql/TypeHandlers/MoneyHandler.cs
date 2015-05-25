@@ -23,12 +23,27 @@ namespace Npgsql.TypeHandlers
             return buf.ReadInt64() / 100m;
         }
 
-        public int ValidateAndGetLength(object value) { return 8; }
-
-        public void Write(object value, NpgsqlBuffer buf)
+        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
-            var money = value is decimal ? (decimal)value : Decimal.Parse(value.ToString(), CultureInfo.InvariantCulture);
-            buf.WriteInt64((long)(money * 100m + 0.5m /* round */));
+            if (!(value is decimal))
+            {
+                var converted = Convert.ToDecimal(value);
+                if (parameter == null)
+                {
+                    throw CreateConversionButNoParamException(value.GetType());
+                }
+                parameter.ConvertedValue = converted;
+            }
+            return 8;
+        }
+
+        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        {
+            var v = (decimal)(parameter != null && parameter.ConvertedValue != null
+                ? parameter.ConvertedValue
+                : value);
+
+            buf.WriteInt64((long)(v * 100m + 0.5m /* round */));
         }
     }
 }

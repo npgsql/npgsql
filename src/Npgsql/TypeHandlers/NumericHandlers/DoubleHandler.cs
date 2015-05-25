@@ -21,15 +21,26 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             return buf.ReadDouble();
         }
 
-        public int ValidateAndGetLength(object value)
+        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
+            if (!(value is double))
+            {
+                var converted = Convert.ToDouble(value);
+                if (parameter == null)
+                {
+                    throw CreateConversionButNoParamException(value.GetType());
+                }
+                parameter.ConvertedValue = converted;
+            }
             return 8;
         }
 
-        public void Write(object value, NpgsqlBuffer buf)
+        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
         {
-            var d = GetIConvertibleValue<double>(value);
-            buf.WriteDouble(d);
+            if (parameter != null && parameter.ConvertedValue != null) {
+                value = parameter.ConvertedValue;
+            }
+            buf.WriteDouble((double)value);
         }
     }
 }

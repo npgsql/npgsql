@@ -781,8 +781,8 @@ namespace Npgsql.Tests
             throw new SafeReadException(new Exception("Safe read exception as requested"));
         }
 
-        public int ValidateAndGetLength(object value) { throw new NotSupportedException(); }
-        public void Write(object value, NpgsqlBuffer buf) { throw new NotSupportedException(); }
+        public int ValidateAndGetLength(object value, NpgsqlParameter parameter) { throw new NotSupportedException(); }
+        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter) { throw new NotSupportedException(); }
     }
 
     internal class NonSafeExceptionGeneratingHandler : TypeHandler<int>, ISimpleTypeReader<int>, ISimpleTypeWriter
@@ -792,8 +792,8 @@ namespace Npgsql.Tests
             throw new Exception("Non-safe read exception as requested");
         }
 
-        public int ValidateAndGetLength(object value) { throw new NotSupportedException(); }
-        public void Write(object value, NpgsqlBuffer buf) { throw new NotSupportedException();}
+        public int ValidateAndGetLength(object value, NpgsqlParameter parameter) { throw new NotSupportedException(); }
+        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter) { throw new NotSupportedException();}
     }
 #endif
     #endregion

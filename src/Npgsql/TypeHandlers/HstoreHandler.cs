@@ -59,14 +59,14 @@ namespace Npgsql.TypeHandlers
                     }
                     totalLen += lengthCache.Set(Encoding.UTF8.GetByteCount(kv.Key));
                     if (kv.Value != null) {
-                        totalLen += lengthCache.Set(Encoding.UTF8.GetByteCount(kv.Value));                        
+                        totalLen += lengthCache.Set(Encoding.UTF8.GetByteCount(kv.Value));
                     }
                 }
 
                 return lengthCache.Lengths[pos] = totalLen;
             }
 
-            throw new InvalidCastException("Can't write type as hstore: " + value.GetType());
+            throw CreateConversionException(value.GetType());
         }
 
         public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter)
@@ -95,7 +95,7 @@ namespace Npgsql.TypeHandlers
                     if (_value.Count == 0)
                     {
                         CleanupState();
-                        return true;                        
+                        return true;
                     }
                     _enumerator = _value.GetEnumerator();
                     _enumerator.MoveNext();

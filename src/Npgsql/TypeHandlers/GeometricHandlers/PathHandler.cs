@@ -78,9 +78,8 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
 
         public int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
-            if (!(value is NpgsqlPath)) {
-                throw new InvalidCastException("Expected an NpgsqlPath");
-            }
+            if (!(value is NpgsqlPath))
+                    throw CreateConversionException(value.GetType());
             return 5 + ((NpgsqlPath)value).Count * 16;
         }
 

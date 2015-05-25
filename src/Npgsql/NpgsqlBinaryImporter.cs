@@ -37,6 +37,12 @@ namespace Npgsql
         /// </summary>
         internal int NumColumns { get; private set; }
 
+        /// <summary>
+        /// NpgsqlParameter instance needed in order to pass the <see cref="NpgsqlParameter.ConvertedValue"/> from
+        /// the validation phase to the writing phase.
+        /// </summary>
+        NpgsqlParameter _dummyParam;
+
         #endregion
 
         #region Construction / Initialization
@@ -48,6 +54,7 @@ namespace Npgsql
             _registry = connector.TypeHandlerRegistry;
             _lengthCache = new LengthCache();
             _column = -1;
+            _dummyParam = new NpgsqlParameter();
 
             try
             {
@@ -150,15 +157,17 @@ namespace Npgsql
                 return;
             }
 
+            _dummyParam.ConvertedValue = null;
+
             var asSimple = handler as ISimpleTypeWriter;
             if (asSimple != null) {
-                var len = asSimple.ValidateAndGetLength(asObject);
+                var len = asSimple.ValidateAndGetLength(asObject, _dummyParam);
                 _buf.WriteInt32(len);
                 if (_buf.WriteSpaceLeft < len) {
                     Contract.Assume(_buf.Size >= len);
                     FlushAndStartDataMessage();
                 }
-                asSimple.Write(asObject, _buf);
+                asSimple.Write(asObject, _buf, _dummyParam);
                 _column++;
                 return;
             }
@@ -166,11 +175,11 @@ namespace Npgsql
             var asChunking = handler as IChunkingTypeWriter;
             if (asChunking != null) {
                 _lengthCache.Clear();
-                var len = asChunking.ValidateAndGetLength(asObject, ref _lengthCache);
+                var len = asChunking.ValidateAndGetLength(asObject, ref _lengthCache, _dummyParam);
                 _buf.WriteInt32(len);
                 _lengthCache.Rewind();
                 _lengthCache.Get();  // Hack
-                asChunking.PrepareWrite(asObject, _buf, _lengthCache);
+                asChunking.PrepareWrite(asObject, _buf, _lengthCache, _dummyParam);
                 var directBuf = new DirectBuffer();
                 while (!asChunking.Write(ref directBuf)) {
                     FlushAndStartDataMessage();

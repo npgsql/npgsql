@@ -61,10 +61,26 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             }
         }
 
-        public int ValidateAndGetLength(object value) { return 4; }
-
-        public void Write(object value, NpgsqlBuffer buf)
+        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
+            if (!(value is DateTime) && !(value is NpgsqlDate))
+            {
+                var converted = Convert.ToDateTime(value);
+                if (parameter == null)
+                {
+                    throw CreateConversionButNoParamException(value.GetType());
+                }
+                parameter.ConvertedValue = converted;
+            }
+            return 4;
+        }
+
+        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        {
+            if (parameter != null && parameter.ConvertedValue != null) {
+                value = parameter.ConvertedValue;
+            }
+
             NpgsqlDate date;
             if (value is NpgsqlDate)
             {
@@ -93,13 +109,9 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                     date = new NpgsqlDate(dt);
                 }
             }
-            else if (value is string)
-            {
-                date = NpgsqlDate.Parse((string) value);
-            }
             else
             {
-                throw new InvalidCastException();
+                throw PGUtil.ThrowIfReached();
             }
 
             if (date == NpgsqlDate.NegativeInfinity)

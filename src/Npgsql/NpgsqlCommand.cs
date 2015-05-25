@@ -966,7 +966,9 @@ namespace Npgsql
             }
             catch
             {
-                Connection.Connector.EndUserAction();
+                if (Connection.Connector != null) {
+                    Connection.Connector.EndUserAction();
+                }
 
                 // Close connection if requested even when there is an error.
                 if ((behavior & CommandBehavior.CloseConnection) == CommandBehavior.CloseConnection)

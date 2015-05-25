@@ -37,7 +37,7 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             for (var i = 0; i < numBytes; i++) {
                 bytes[i] = buf.ReadByte();
             }
-            return new NpgsqlInet(new IPAddress(bytes), mask);            
+            return new NpgsqlInet(new IPAddress(bytes), mask);
         }
 
         NpgsqlInet ISimpleTypeReader<NpgsqlInet>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
@@ -69,10 +69,10 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
                 return 20;
             default:
                 throw new InvalidCastException(String.Format("Can't handle IPAddress with AddressFamily {0}, only InterNetwork or InterNetworkV6!", ip.AddressFamily));
-            }            
+            }
         }
 
-        public int ValidateAndGetLength(object value)
+        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
             return DoValidateAndGetLength(value);
         }
@@ -114,10 +114,10 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             buf.WriteByte((byte)(isCidrHandler ? 1 : 0));  // Ignored on server side
             var bytes = ip.GetAddressBytes();
             buf.WriteByte((byte)bytes.Length);
-            buf.WriteBytes(bytes, 0, bytes.Length);            
+            buf.WriteBytes(bytes, 0, bytes.Length);
         }
 
-        public void Write(object value, NpgsqlBuffer buf)
+        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
         {
             DoWrite(value, buf, false);
         }

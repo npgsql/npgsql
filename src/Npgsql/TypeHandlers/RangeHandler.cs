@@ -1,5 +1,6 @@
 ﻿using Npgsql.BackendMessages;
 using System;
+using System.CodeDom;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -159,6 +160,9 @@ namespace Npgsql.TypeHandlers
 
         public int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter = null)
         {
+            if (!(value is NpgsqlRange<TElement>))
+                throw CreateConversionException(value.GetType());
+
             var range = (NpgsqlRange<TElement>)value;
             var totalLen = 1;
 
@@ -168,13 +172,13 @@ namespace Npgsql.TypeHandlers
                 if (!range.LowerBoundInfinite) {
                     totalLen += 4 + (asChunkingWriter != null
                         ? asChunkingWriter.ValidateAndGetLength(range.LowerBound, ref lengthCache, parameter)
-                        : ((ISimpleTypeWriter)ElementHandler).ValidateAndGetLength(range.LowerBound));
+                        : ((ISimpleTypeWriter)ElementHandler).ValidateAndGetLength(range.LowerBound, null));
                 }
 
                 if (!range.UpperBoundInfinite) {
                     totalLen += 4 + (asChunkingWriter != null
                         ? asChunkingWriter.ValidateAndGetLength(range.UpperBound, ref lengthCache, parameter)
-                        : ((ISimpleTypeWriter)ElementHandler).ValidateAndGetLength(range.UpperBound));
+                        : ((ISimpleTypeWriter)ElementHandler).ValidateAndGetLength(range.UpperBound, null));
                 }
             }
 
@@ -220,10 +224,10 @@ namespace Npgsql.TypeHandlers
                     {
                         var asSimpleWriter = (ISimpleTypeWriter)ElementHandler;
                         // TODO: Cache length
-                        var len = asSimpleWriter.ValidateAndGetLength(_value.LowerBound);
+                        var len = asSimpleWriter.ValidateAndGetLength(_value.LowerBound, null);
                         if (_buf.WriteSpaceLeft < len + 4) { return false; }
                         _buf.WriteInt32(len);
-                        asSimpleWriter.Write(_value.LowerBound, _buf);
+                        asSimpleWriter.Write(_value.LowerBound, _buf, null);
                     }
                     else if (!asChunkingWriter.Write(ref directBuf)) { return false; }
                     goto case State.BeforeUpperBound;
@@ -244,10 +248,10 @@ namespace Npgsql.TypeHandlers
                     {
                         var asSimpleWriter = (ISimpleTypeWriter)ElementHandler;
                         // TODO: Cache length
-                        var len = asSimpleWriter.ValidateAndGetLength(_value.UpperBound);
+                        var len = asSimpleWriter.ValidateAndGetLength(_value.UpperBound, null);
                         if (_buf.WriteSpaceLeft < len + 4) { return false; }
                         _buf.WriteInt32(len);
-                        asSimpleWriter.Write(_value.UpperBound, _buf);
+                        asSimpleWriter.Write(_value.UpperBound, _buf, null);
                     }
                     else if (!asChunkingWriter.Write(ref directBuf)) { return false; }
 

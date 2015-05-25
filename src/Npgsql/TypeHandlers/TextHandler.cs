@@ -207,26 +207,38 @@ namespace Npgsql.TypeHandlers
         /// </summary>
         internal int DoValidateAndGetLength(object value, NpgsqlParameter parameter = null)
         {
-            var asString = value as string;
-            if (asString != null) {
+            switch (Type.GetTypeCode(value.GetType()))
+            {
+            case TypeCode.String:
+                var asString = (string)value;
                 return parameter == null || parameter.Size <= 0 || parameter.Size >= asString.Length
                   ? PGUtil.UTF8Encoding.GetByteCount(asString)
                   : PGUtil.UTF8Encoding.GetByteCount(asString.ToCharArray(), 0, parameter.Size);
-            }
 
-            var asCharArray = value as char[];
-            if (asCharArray != null) {
-                return parameter == null || parameter.Size <= 0 || parameter.Size >= asCharArray.Length
-                  ? PGUtil.UTF8Encoding.GetByteCount(asCharArray)
-                  : PGUtil.UTF8Encoding.GetByteCount(asCharArray, 0, parameter.Size);
-            }
+            case TypeCode.Object:
+                var asCharArray = value as char[];
+                if (asCharArray != null)
+                {
+                    return parameter == null || parameter.Size <= 0 || parameter.Size >= asCharArray.Length
+                      ? PGUtil.UTF8Encoding.GetByteCount(asCharArray)
+                      : PGUtil.UTF8Encoding.GetByteCount(asCharArray, 0, parameter.Size);
+                }
+                var converted = Convert.ToString(value);
+                if (parameter == null)
+                {
+                    throw CreateConversionButNoParamException(value.GetType());
+                }
+                parameter.ConvertedValue = value = converted;
+                goto case TypeCode.String;
 
-            if (value is char) {
+            case TypeCode.Char:
                 _singleCharArray[0] = (char)value;
                 return PGUtil.UTF8Encoding.GetByteCount(_singleCharArray);
-            }
 
-            throw new InvalidCastException("Can't write type as text: " + value.GetType());
+            default:
+                value = Convert.ToString(value);
+                goto case TypeCode.String;
+            }
         }
 
         public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
@@ -235,29 +247,33 @@ namespace Npgsql.TypeHandlers
             _charPos = -1;
             _byteLen = lengthCache.GetLast();
 
-            _str = value as string;
-            if (_str != null)
+            if (parameter != null && parameter.ConvertedValue != null) {
+                value = parameter.ConvertedValue;
+            }
+
+            switch (Type.GetTypeCode(value.GetType()))
             {
+            case TypeCode.String:
+                _str = (string)value;
                 _charLen = parameter == null || parameter.Size <= 0 || parameter.Size >= _str.Length ? _str.Length : parameter.Size;
                 return;
-            }
 
-            _chars = value as char[];
-            if (_chars != null)
-            {
+            case TypeCode.Object:
+                Contract.Assert(value is char[]);
+                _chars = (char[])value;
                 _charLen = parameter == null || parameter.Size <= 0 || parameter.Size >= _chars.Length ? _chars.Length : parameter.Size;
                 return;
-            }
 
-            if (value is char)
-            {
+            case TypeCode.Char:
                 _singleCharArray[0] = (char)value;
                 _chars = _singleCharArray;
                 _charLen = 1;
                 return;
-            }
 
-            throw PGUtil.ThrowIfReached();
+            default:
+                value = Convert.ToString(value);
+                goto case TypeCode.String;
+            }
         }
 
         public bool Write(ref DirectBuffer directBuf)

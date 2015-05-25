@@ -50,12 +50,19 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        public int ValidateAndGetLength(object value) { return 1; }
-
-        public void Write(object value, NpgsqlBuffer buf)
+        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
-            var b = GetIConvertibleValue<byte>(value);
-            buf.WriteByte(b);
+            if (!(value is byte))
+            {
+                // ReSharper disable once ReturnValueOfPureMethodIsNotUsed
+                Convert.ToByte(value);
+            }
+            return 1;
+        }
+
+        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        {
+            buf.WriteByte(value as byte? ?? Convert.ToByte(value));
         }
 
         #endregion

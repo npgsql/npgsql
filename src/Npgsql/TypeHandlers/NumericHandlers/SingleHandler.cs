@@ -27,12 +27,26 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             return Read(buf, len, fieldDescription);
         }
 
-        public int ValidateAndGetLength(object value) { return 4; }
-
-        public void Write(object value, NpgsqlBuffer buf)
+        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
-            var f = GetIConvertibleValue<float>(value);
-            buf.WriteSingle(f);
+            if (!(value is float))
+            {
+                var converted = Convert.ToSingle(value);
+                if (parameter == null)
+                {
+                    throw CreateConversionButNoParamException(value.GetType());
+                }
+                parameter.ConvertedValue = converted;
+            }
+            return 4;
+        }
+
+        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        {
+            if (parameter != null && parameter.ConvertedValue != null) {
+                value = parameter.ConvertedValue;
+            }
+            buf.WriteSingle((float)value);
         }
     }
 }

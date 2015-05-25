@@ -151,7 +151,7 @@ namespace Npgsql.TypeHandlers
                 return 4 + (asString.Length + 7)/8;
             }
 
-            throw new InvalidCastException("Expected BitArray, bool or string");
+            throw CreateConversionException(value.GetType());
         }
 
         public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
@@ -215,7 +215,7 @@ namespace Npgsql.TypeHandlers
             _buf.WriteByte(b ? (byte)0x80 : (byte)0);
             _buf = null;
             _value = null;
-            return true;            
+            return true;
         }
 
         bool WriteString(string str)

@@ -37,15 +37,19 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             return Read(buf, len, fieldDescription).ToString();
         }
 
-        public int ValidateAndGetLength(object value) { return 6; }
-
-        public void Write(object value, NpgsqlBuffer buf)
+        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
             var address = value as PhysicalAddress;
-            var val = address ?? PhysicalAddress.Parse((string)value);
-            if (val.GetAddressBytes().Length != 6)
+            if (address == null)
+                throw CreateConversionException(value.GetType());
+            if (address.GetAddressBytes().Length != 6)
                 throw new FormatException("MAC addresses must have length 6 in PostgreSQL");
-            buf.WriteBytes(val.GetAddressBytes(), 0, 6);
+            return 6;
+        }
+
+        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        {
+            buf.WriteBytes(((PhysicalAddress)value).GetAddressBytes(), 0, 6);
         }
     }
 }

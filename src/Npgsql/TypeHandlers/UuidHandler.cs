@@ -39,10 +39,31 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        public int ValidateAndGetLength(object value) { return 16; }
-
-        public void Write(object value, NpgsqlBuffer buf)
+        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
+            var asString = value as string;
+            if (value is string)
+            {
+                var converted = Guid.Parse(asString);
+                if (parameter == null)
+                {
+                    throw CreateConversionButNoParamException(value.GetType());
+                }
+                parameter.ConvertedValue = converted;
+            }
+            else if (!(value is Guid))
+            {
+                throw CreateConversionException(value.GetType());
+            }
+            return 16;
+        }
+
+        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        {
+            if (parameter != null && parameter.ConvertedValue != null) {
+                value = parameter.ConvertedValue;
+            }
+
             var bytes = ((Guid)value).ToByteArray();
 
             buf.WriteInt32(BitConverter.ToInt32(bytes, 0));

@@ -17,8 +17,8 @@ namespace Npgsql
 
     interface ISimpleTypeWriter
     {
-        int ValidateAndGetLength(object value);
-        void Write(object value, NpgsqlBuffer buf);
+        int ValidateAndGetLength(object value, NpgsqlParameter parameter);
+        void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter);
     }
 
     /// <summary>
@@ -50,7 +50,7 @@ namespace Npgsql
         /// the <see cref="NpgsqlParameter"/> containing <paramref name="value"/>. Consulted for settings
         /// which impact how to send the parameter, e.g. <see cref="NpgsqlParameter.Size"/>. Can be null.
         /// </param>
-        int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null);
+        int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter);
 
         /// <param name="value">the value to be written</param>
         /// <param name="buf"></param>
@@ -60,7 +60,7 @@ namespace Npgsql
         /// which impact how to send the parameter, e.g. <see cref="NpgsqlParameter.Size"/>. Can be null.
         /// <see cref="NpgsqlParameter.Size"/>.
         /// </param>
-        void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null);
+        void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter);
         bool Write(ref DirectBuffer directBuf);
     }
 
@@ -180,9 +180,14 @@ namespace Npgsql
             return result;
         }
 
-        protected static T GetIConvertibleValue<T>(object value) where T : IConvertible
+        protected Exception CreateConversionException(Type clrType)
         {
-            return value is T ? (T)value : (T)Convert.ChangeType(value, typeof(T), null);
+            return new InvalidCastException(string.Format("Can't convert .NET type {0} to PostgreSQL {1}", clrType, PgName));
+        }
+
+        protected Exception CreateConversionButNoParamException(Type clrType)
+        {
+            return new InvalidCastException(string.Format("Can't convert .NET type {0} to PostgreSQL {1} within an array or COPY operation", clrType, PgName));
         }
 
         [ContractInvariantMethod]

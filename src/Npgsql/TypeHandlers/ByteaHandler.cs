@@ -84,14 +84,16 @@ namespace Npgsql.TypeHandlers
                     ? arraySegment.Count
                     : parameter.Size;
             }
-            else
-            {
-                var array = (byte[])value;
 
-                return parameter == null || parameter.Size <= 0 || parameter.Size >= array.Length
-                    ? array.Length
+            var asArray = value as byte[];
+            if (asArray != null)
+            {
+                return parameter == null || parameter.Size <= 0 || parameter.Size >= asArray.Length
+                    ? asArray.Length
                     : parameter.Size;
             }
+
+            throw CreateConversionException(value.GetType());
         }
 
         public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)

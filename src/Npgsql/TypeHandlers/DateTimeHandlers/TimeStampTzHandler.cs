@@ -36,8 +36,12 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             return new DateTimeOffset(ReadTimeStamp(buf, len, fieldDescription).DateTime, TimeSpan.Zero);
         }
 
-        public override void Write(object value, NpgsqlBuffer buf)
+        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
         {
+            if (parameter != null && parameter.ConvertedValue != null) {
+                value = parameter.ConvertedValue;
+            }
+
             if (value is NpgsqlDateTime)
             {
                 var ts = (NpgsqlDateTime)value;
@@ -53,7 +57,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                 default:
                     throw PGUtil.ThrowIfReached();
                 }
-                base.Write(ts, buf);
+                base.Write(ts, buf, parameter);
                 return;
             }
 
@@ -72,17 +76,17 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                 default:
                     throw PGUtil.ThrowIfReached();
                 }
-                base.Write(dt, buf);
+                base.Write(dt, buf, parameter);
                 return;
             }
 
             if (value is DateTimeOffset)
             {
-                base.Write(((DateTimeOffset)value).ToUniversalTime(), buf);
+                base.Write(((DateTimeOffset)value).ToUniversalTime(), buf, parameter);
                 return;
             }
 
-            throw new InvalidCastException();
+            throw PGUtil.ThrowIfReached();
         }
     }
 }

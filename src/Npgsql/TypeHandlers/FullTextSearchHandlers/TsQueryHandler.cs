@@ -133,7 +133,10 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
 
         public int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
-            var vec = (NpgsqlTsQuery)value;
+            var vec = value as NpgsqlTsQuery;
+            if (vec == null) {
+                throw CreateConversionException(value.GetType());
+            }
 
             if (vec.Kind == NpgsqlTsQuery.NodeKind.Empty)
                 return 4;

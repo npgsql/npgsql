@@ -29,15 +29,14 @@ namespace Npgsql.Tests.Types
 
             using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", Conn))
             {
-                var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Date);
-                var p2 = new NpgsqlParameter("p2", DbType.Date);
-                var p3 = new NpgsqlParameter {ParameterName = "p3", Value = npgsqlDate};
+                var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Date) { Value = npgsqlDate };
+                var p2 = new NpgsqlParameter("p2", DbType.Date) { Value = npgsqlDate.ToString() };
+                var p3 = new NpgsqlParameter { ParameterName = "p3", Value = npgsqlDate };
                 Assert.That(p3.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Date));
                 Assert.That(p3.DbType, Is.EqualTo(DbType.Date));
                 cmd.Parameters.Add(p1);
                 cmd.Parameters.Add(p2);
                 cmd.Parameters.Add(p3);
-                p1.Value = p2.Value = npgsqlDate;
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();

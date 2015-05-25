@@ -6,6 +6,7 @@ using System.Text;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
+using System.Diagnostics.Contracts;
 
 namespace Npgsql.TypeHandlers.NumericHandlers
 {
@@ -59,12 +60,26 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             return Read(buf, len, fieldDescription).ToString();
         }
 
-        public int ValidateAndGetLength(object value) { return 2; }
-
-        public void Write(object value, NpgsqlBuffer buf)
+        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
-            var i = GetIConvertibleValue<short>(value);
-            buf.WriteInt16(i);
+            if (!(value is short))
+            {
+                var converted = Convert.ToInt16(value);
+                if (parameter == null)
+                {
+                    throw CreateConversionButNoParamException(value.GetType());
+                }
+                parameter.ConvertedValue = converted;
+            }
+            return 2;
+        }
+
+        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        {
+            if (parameter != null && parameter.ConvertedValue != null) {
+                value = parameter.ConvertedValue;
+            }
+            buf.WriteInt16((short)value);
         }
     }
 }

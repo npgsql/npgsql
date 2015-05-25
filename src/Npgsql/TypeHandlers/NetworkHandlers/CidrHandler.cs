@@ -27,12 +27,12 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             return Read(buf, len, fieldDescription).ToString();
         }
 
-        public int ValidateAndGetLength(object value)
+        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
             return InetHandler.DoValidateAndGetLength(value);
         }
 
-        public void Write(object value, NpgsqlBuffer buf)
+        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
         {
             InetHandler.DoWrite(value, buf, true);
         }

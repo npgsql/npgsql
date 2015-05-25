@@ -52,10 +52,10 @@ namespace Npgsql.TypeHandlers
             return value;
         }
 
-        public int ValidateAndGetLength(object value)
+        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
             if (!(value is TEnum))
-                throw new InvalidCastException(String.Format("Can't write type {0} as enum {1}", value.GetType(), typeof(TEnum)));
+                throw CreateConversionException(value.GetType());
 
             string str;
             if (_enumToLabel == null)
@@ -73,7 +73,7 @@ namespace Npgsql.TypeHandlers
             return Encoding.UTF8.GetByteCount(str);
         }
 
-        public void Write(object value, NpgsqlBuffer buf)
+        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
         {
             string str;
             if (_enumToLabel == null) {
