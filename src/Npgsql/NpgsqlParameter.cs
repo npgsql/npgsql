@@ -52,6 +52,8 @@ namespace Npgsql
     public sealed class NpgsqlParameter : DbParameter, ICloneable
 #endif
     {
+        #region Fields and Properties
+
         // Fields to implement IDbDataParameter interface.
         byte _precision;
         byte _scale;
@@ -70,7 +72,8 @@ namespace Npgsql
         internal bool IsBound { get; private set; }
         internal TypeHandler Handler { get; private set; }
         internal FormatCode FormatCode { get; private set; }
-        internal uint TypeOID { get; private set; }
+
+        #endregion
 
         #region Constructors
 
@@ -212,7 +215,7 @@ namespace Npgsql
             Scale = scale;
             SourceVersion = sourceVersion;
             Value = value;
-            
+
             NpgsqlDbType = parameterType;
         }
 
@@ -441,7 +444,7 @@ namespace Npgsql
                 }
                 Contract.EndContractBlock();
 
-                ClearBind(); 
+                ClearBind();
                 _npgsqlDbType = value;
                 _dbType = TypeHandlerRegistry.ToDbType(value);
             }
@@ -504,48 +507,6 @@ namespace Npgsql
         /// </summary>
         public override bool SourceColumnNullMapping { get; set; }
 
-        #endregion
-
-        /// <summary>
-        /// The name scrubbed of any optional marker
-        /// </summary>
-        internal string CleanName
-        {
-            get
-            {
-                string name = ParameterName;
-                if (name[0] == ':' || name[0] == '@')
-                {
-                    return name.Length > 1 ? name.Substring(1) : string.Empty;
-                }
-                return name;
-
-            }
-        }
-
-        /// <summary>
-        /// The collection to which this parameter belongs, if any.
-        /// </summary>
-        public NpgsqlParameterCollection Collection
-        {
-            get { return _collection; }
-
-            internal set
-            {
-                _collection = value;
-                ClearBind();
-            }
-        }
-
-        /// <summary>
-        /// Returns whether this parameter has had its type set explicitly via DbType or NpgsqlDbType
-        /// (and not via type inference)
-        /// </summary>
-        internal bool IsTypeExplicitlySet
-        {
-            get { return _npgsqlDbType.HasValue || _dbType.HasValue; }
-        }
-
         /// <summary>
         /// Used in combination with NpgsqlDbType.Enum or NpgsqlDbType.Array | NpgsqlDbType.Enum to indicate the enum type.
         /// For other NpgsqlDbTypes, this field is not used.
@@ -577,6 +538,50 @@ namespace Npgsql
                     _enumType = value;
                 }
             }
+        }
+
+        /// <summary>
+        /// The collection to which this parameter belongs, if any.
+        /// </summary>
+        public NpgsqlParameterCollection Collection
+        {
+            get { return _collection; }
+
+            internal set
+            {
+                _collection = value;
+                ClearBind();
+            }
+        }
+
+        #endregion
+
+        #region Internals
+
+        /// <summary>
+        /// The name scrubbed of any optional marker
+        /// </summary>
+        internal string CleanName
+        {
+            get
+            {
+                string name = ParameterName;
+                if (name[0] == ':' || name[0] == '@')
+                {
+                    return name.Length > 1 ? name.Substring(1) : string.Empty;
+                }
+                return name;
+
+            }
+        }
+
+        /// <summary>
+        /// Returns whether this parameter has had its type set explicitly via DbType or NpgsqlDbType
+        /// (and not via type inference)
+        /// </summary>
+        internal bool IsTypeExplicitlySet
+        {
+            get { return _npgsqlDbType.HasValue || _dbType.HasValue; }
         }
 
         internal void ResolveHandler(TypeHandlerRegistry registry)
@@ -661,6 +666,10 @@ namespace Npgsql
             get { return Direction == ParameterDirection.InputOutput || Direction == ParameterDirection.Output; }
         }
 
+        #endregion
+
+        #region Clone
+
         /// <summary>
         /// Creates a new <see cref="NpgsqlParameter">NpgsqlParameter</see> that
         /// is a copy of the current instance.
@@ -697,5 +706,6 @@ namespace Npgsql
             return Clone();
         }
 #endif
+        #endregion
     }
 }
