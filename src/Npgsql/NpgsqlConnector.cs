@@ -1446,8 +1446,11 @@ namespace Npgsql
                 _preparedStatementIndex = 0;
             }
 
-            // DISCARD ALL may have changed the value of statement_value, set to unknown
-            SetBackendTimeoutToUnknown();
+            // DISCARD ALL has reset statement_timeout to the default specified on the connection string.
+            if (_settings.BackendTimeouts)
+            {
+                _backendTimeout = _settings.CommandTimeout;
+            }
         }
 
         #endregion Close

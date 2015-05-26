@@ -139,13 +139,31 @@ namespace Npgsql.Tests
         [Test]
         public void TimeoutFromConnectionString()
         {
-            Assert.That(ExecuteScalar("SHOW statement_timeout"), Is.EqualTo("30s"));
-            using (var conn = new NpgsqlConnection(ConnectionString + ";CommandTimeout=180;pooling=false"))
+            var timeout = NpgsqlConnector.MinimumInternalCommandTimeout;
+            int connId;
+            using (var conn = new NpgsqlConnection(ConnectionString + ";CommandTimeout=" + timeout))
             {
-                var command = new NpgsqlCommand("\"Foo\"", conn);
+                var command = new NpgsqlCommand("SELECT 1", conn);
                 conn.Open();
-                Assert.AreEqual(180, command.CommandTimeout);
-                Assert.That(ExecuteScalar("SHOW statement_timeout", conn), Is.EqualTo("3min"));
+                Assert.That(command.CommandTimeout, Is.EqualTo(timeout));
+                command.CommandTimeout = 10;
+                command.ExecuteScalar();
+                Assert.That(command.CommandTimeout, Is.EqualTo(10));
+                connId = conn.ProcessID;
+            }
+            using (var conn = new NpgsqlConnection(ConnectionString + ";CommandTimeout=" + timeout))
+            {
+                conn.Open();
+                var command = CreateSleepCommand(conn, timeout + 2);
+                Assert.That(conn.ProcessID, Is.EqualTo(connId), "Got a different connection...");
+                Assert.That(command.CommandTimeout, Is.EqualTo(timeout));
+                Assert.That(() => command.ExecuteNonQuery(),
+                    Throws.TypeOf<NpgsqlException>()
+                    .With.Property("Code").EqualTo("57014")
+                );
+                Assert.That(ExecuteScalar("SHOW statement_timeout", conn), Is.EqualTo(timeout + "s"));
+                conn.Close();
+                NpgsqlConnection.ClearPool(conn);
             }
         }
 
