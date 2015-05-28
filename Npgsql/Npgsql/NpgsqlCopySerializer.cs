@@ -527,19 +527,35 @@ namespace Npgsql
         {
             PrefixField();
             int bufferedUpto = 0;
+            char[] charactersToEscape = new char[StringsToEscape.Length];
+
+            for (int i = 0; i < StringsToEscape.Length; i++)
+            {
+                charactersToEscape[i] = StringsToEscape[i][0];
+            }
+
             while (bufferedUpto < fieldValue.Length)
             {
                 int escapeAt = fieldValue.Length;
                 byte[] escapeSequence = null;
 
                 // choose closest instance of strings to escape in fieldValue
-                for (int eachEscapeable = 0; eachEscapeable < StringsToEscape.Length; eachEscapeable++)
+                for (int i = bufferedUpto; i < fieldValue.Length; i++)
                 {
-                    int i = fieldValue.IndexOf(StringsToEscape[eachEscapeable], bufferedUpto);
-                    if (i > -1 && i < escapeAt)
+                    for (int j = 0; j < charactersToEscape.Length; j++)
                     {
-                        escapeAt = i;
-                        escapeSequence = EscapeSequenceBytes[eachEscapeable];
+                        if (fieldValue[i] == charactersToEscape[j] && escapeAt > i)
+                        {
+                            escapeAt = i;
+                            escapeSequence = EscapeSequenceBytes[j];
+
+                            break;
+                        }
+                    }
+
+                    if (escapeAt != fieldValue.Length)
+                    {
+                        break;
                     }
                 }
 
