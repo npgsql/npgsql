@@ -244,7 +244,7 @@ namespace Npgsql
 #if !DNXCORE50
         [Category("Connection")]
         [DisplayName("Host")]
-        [Description("The hostname or IP address of the PostgreSQL server to connect to")]
+        [Description("The hostname or IP address of the PostgreSQL server to connect to.")]
 #endif
         [NpgsqlConnectionStringProperty("Server")]
         public string Host
@@ -265,7 +265,7 @@ namespace Npgsql
 #if !DNXCORE50
         [Category("Connection")]
         [DisplayName("Port")]
-        [Description("The TCP/IP port of the PostgreSQL server")]
+        [Description("The TCP port of the PostgreSQL server.")]
         [DefaultValue(NpgsqlConnection.DefaultPort)]
 #endif
         [NpgsqlConnectionStringProperty]
@@ -291,7 +291,7 @@ namespace Npgsql
 #if !DNXCORE50
         [Category("Connection")]
         [DisplayName("Database")]
-        [Description("The PostgreSQL database to connect to")]
+        [Description("The PostgreSQL database to connect to.")]
 #endif
         [NpgsqlConnectionStringProperty("DB")]
         public string Database
@@ -360,27 +360,6 @@ namespace Npgsql
         string _password;
 
         /// <summary>
-        /// Whether to enlist in an ambient TransactionScope.
-        /// </summary>
-#if !DNXCORE50
-        [Category("Connection")]
-        [DisplayName("Enlist")]
-        [Description("Whether to enlist in an ambient TransactionScope")]
-#endif
-        [NpgsqlConnectionStringProperty]
-        public bool Enlist
-        {
-            get { return _enlist; }
-            set
-            {
-                _enlist = value;
-                // TODO: Replace literal name with nameof operator in C# 6.0
-                SetValue("Enlist", value);
-            }
-        }
-        bool _enlist;
-
-        /// <summary>
         /// The optional application name parameter to be sent to the backend during connection initiation.
         /// </summary>
 #if !DNXCORE50
@@ -400,6 +379,27 @@ namespace Npgsql
             }
         }
         string _applicationName;
+
+        /// <summary>
+        /// Whether to enlist in an ambient TransactionScope.
+        /// </summary>
+#if !DNXCORE50
+        [Category("Connection")]
+        [DisplayName("Enlist")]
+        [Description("Whether to enlist in an ambient TransactionScope.")]
+#endif
+        [NpgsqlConnectionStringProperty]
+        public bool Enlist
+        {
+            get { return _enlist; }
+            set
+            {
+                _enlist = value;
+                // TODO: Replace literal name with nameof operator in C# 6.0
+                SetValue("Enlist", value);
+            }
+        }
+        bool _enlist;
 
         /// <summary>
         /// Gets or sets the schema search path.
@@ -431,7 +431,7 @@ namespace Npgsql
         /// </summary>
 #if !DNXCORE50
         [Category("Security")]
-        [DisplayName("SSLMode")]
+        [DisplayName("SSL Mode")]
         [Description("Controls whether SSL is required, disabled or preferred, depending on server support.")]
 #endif
         [NpgsqlConnectionStringProperty]
@@ -495,7 +495,7 @@ namespace Npgsql
 #if !DNXCORE50
         [Category("Security")]
         [DisplayName("Integrated Security")]
-        [Description("Whether to use Windows integrated security to log in")]
+        [Description("Whether to use Windows integrated security to log in.")]
 #endif
         [NpgsqlConnectionStringProperty]
         public bool IntegratedSecurity
@@ -520,7 +520,7 @@ namespace Npgsql
 #if !DNXCORE50
         [Category("Security")]
         [DisplayName("Kerberos Service Name")]
-        [Description("The Kerberos service name to be used for authentication")]
+        [Description("The Kerberos service name to be used for authentication.")]
 #endif
         [NpgsqlConnectionStringProperty("Krbsrvname")]
         public string KerberosServiceName
@@ -541,7 +541,7 @@ namespace Npgsql
 #if !DNXCORE50
         [Category("Security")]
         [DisplayName("Include Realm")]
-        [Description("The Kerberos realm to be used for authentication")]
+        [Description("The Kerberos realm to be used for authentication.")]
 #endif
         [NpgsqlConnectionStringProperty]
         public bool IncludeRealm
@@ -566,7 +566,7 @@ namespace Npgsql
 #if !DNXCORE50
         [Category("Pooling")]
         [DisplayName("Pooling")]
-        [Description("Whether connection pooling should be used")]
+        [Description("Whether connection pooling should be used.")]
         [DefaultValue(true)]
 #endif
         [NpgsqlConnectionStringProperty]
@@ -588,7 +588,7 @@ namespace Npgsql
 #if !DNXCORE50
         [Category("Pooling")]
         [DisplayName("Minimum Pool Size")]
-        [Description("The minimum connection pool size")]
+        [Description("The minimum connection pool size.")]
         [DefaultValue(1)]
 #endif
         [NpgsqlConnectionStringProperty]
@@ -614,7 +614,7 @@ namespace Npgsql
 #if !DNXCORE50
         [Category("Pooling")]
         [DisplayName("Maximum Pool Size")]
-        [Description("The maximum connection pool size")]
+        [Description("The maximum connection pool size.")]
         [DefaultValue(20)]
 #endif
         [NpgsqlConnectionStringProperty]
@@ -883,7 +883,7 @@ namespace Npgsql
 #if !DNXCORE50
         [Category("Compatibility")]
         [DisplayName("Server Compatibility Mode")]
-        [Description("A compatibility mode for special PostgreSQL server types")]
+        [Description("A compatibility mode for special PostgreSQL server types.")]
 #endif
         [NpgsqlConnectionStringProperty]
         public ServerCompatibilityMode ServerCompatibilityMode
@@ -904,7 +904,7 @@ namespace Npgsql
 #if !DNXCORE50
         [Category("Compatibility")]
         [DisplayName("Convert Infinity DateTime")]
-        [Description("Makes MaxValue and MinValue timestamps and dates readable as infinity and negative infinity")]
+        [Description("Makes MaxValue and MinValue timestamps and dates readable as infinity and negative infinity.")]
 #endif
         [NpgsqlConnectionStringProperty]
         public bool ConvertInfinityDateTime
