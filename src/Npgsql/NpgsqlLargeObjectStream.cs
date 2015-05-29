@@ -40,7 +40,6 @@ namespace Npgsql
     public partial class NpgsqlLargeObjectStream : Stream
     {
         NpgsqlLargeObjectManager _manager;
-        uint _oid;
         int _fd;
         long _pos;
         bool _writeable;
@@ -51,7 +50,6 @@ namespace Npgsql
         internal NpgsqlLargeObjectStream(NpgsqlLargeObjectManager manager, uint oid, int fd, bool writeable)
         {
             _manager = manager;
-            _oid = oid;
             _fd = fd;
             _pos = 0;
             _writeable = writeable;

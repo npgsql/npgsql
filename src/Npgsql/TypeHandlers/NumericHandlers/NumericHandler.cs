@@ -65,7 +65,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             var numGroups = (ushort)buf.ReadInt16();
             var weightFirstGroup = buf.ReadInt16(); // 10000^weight
             var sign = (ushort)buf.ReadInt16(); // 0x0000 = positive, 0x4000 = negative, 0xC000 = NaN
-            var dscale = buf.ReadInt16(); // Number of digits (in base 10) to print after decimal separator
+            buf.ReadInt16(); // dcsale. Number of digits (in base 10) to print after decimal separator
 
             bool overflow = false;
 

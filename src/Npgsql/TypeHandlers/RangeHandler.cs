@@ -76,8 +76,6 @@ namespace Npgsql.TypeHandlers
 
         public bool Read(out NpgsqlRange<TElement> result)
         {
-            var asChunkingReader = ElementHandler as IChunkingTypeReader<TElement>;
-
             switch (_state) {
             case State.Start:
                 if (_buf.ReadBytesLeft < 1)

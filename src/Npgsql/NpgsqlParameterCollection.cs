@@ -568,7 +568,6 @@ namespace Npgsql
         public override void CopyTo(Array array, int index)
         {
             (InternalList as ICollection).CopyTo(array, index);
-            IRaiseItemChangedEvents x = InternalList as IRaiseItemChangedEvents;
         }
 
         /// <summary>

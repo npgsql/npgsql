@@ -526,7 +526,7 @@ namespace TlsClientStream
             }
             _pendingConnState.WriteAes = new AesCryptoServiceProvider() { Key = writeKey, Mode = isCbc ? CipherMode.CBC : CipherMode.ECB, Padding = PaddingMode.None };
             _pendingConnState.ReadAes = new AesCryptoServiceProvider() { Key = readKey, Mode = isCbc ? CipherMode.CBC : CipherMode.ECB, Padding = PaddingMode.None };
-            int tmpOffset = macLen * 2 + aesKeyLen * 2;
+            // int tmpOffset = macLen * 2 + aesKeyLen * 2;
             if (isGcm)
             {
                 _pendingConnState.WriteAesECB = _pendingConnState.WriteAes.CreateEncryptor(writeKey, null);
@@ -1087,7 +1087,7 @@ namespace TlsClientStream
                         curve = null;
                         break;
                 }
-                var opaqueLen = buf[pos++]; // TODO: check len
+                // var opaqueLen = buf[pos++]; // TODO: check len
                 if (buf[pos++] != 4) // Uncompressed
                 {
                     SendAlertFatal(AlertDescription.IllegalParameter);
@@ -1219,7 +1219,7 @@ namespace TlsClientStream
             var pBig = new BigInteger(_handshakeData.P);
             var xcBig = new BigInteger(Xc);
 
-            var ycBig = BigInteger.ModPow(gBig, xcBig, pBig);
+            // var ycBig = BigInteger.ModPow(gBig, xcBig, pBig);
             var Yc = Utils.BigEndianFromBigInteger(BigInteger.ModPow(gBig, xcBig, pBig));
             var Z = Utils.BigEndianFromBigInteger(BigInteger.ModPow(new BigInteger(_handshakeData.Ys), xcBig, pBig));
 

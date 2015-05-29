@@ -51,7 +51,7 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
 
         static internal NpgsqlInet DoRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len, bool isCidrHandler)
         {
-            var addressFamily = buf.ReadByte();
+            buf.ReadByte();  // addressFamily
             var mask = buf.ReadByte();
             var isCidr = buf.ReadByte() == 1;
             Contract.Assume(isCidrHandler == isCidr);

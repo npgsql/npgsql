@@ -48,7 +48,6 @@ namespace Npgsql.FrontendMessages
         internal bool AllResultTypesAreUnknown { get; set; }
         internal bool[] UnknownResultTypeList { get; set; }
 
-        TypeHandlerRegistry _typeHandlerRegistry;
         State _state;
         int _paramIndex;
         bool _wroteParamLen;
@@ -65,7 +64,6 @@ namespace Npgsql.FrontendMessages
 
             AllResultTypesAreUnknown = false;
             UnknownResultTypeList = null;
-            _typeHandlerRegistry = typeHandlerRegistry;
             Portal = portal;
             Statement = statement;
             InputParameters = inputParameters;

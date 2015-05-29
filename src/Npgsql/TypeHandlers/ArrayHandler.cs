@@ -119,7 +119,7 @@ namespace Npgsql.TypeHandlers
                         return false;
                     }
                     _dimensions = _buf.ReadInt32();
-                    var hasNulls = _buf.ReadInt32();            // Not populated by PG?
+                    _buf.ReadInt32();        // Has nulls. Not populated by PG?
                     var elementOID = _buf.ReadUInt32();
                     Contract.Assume(elementOID == ElementHandler.OID);
                     _dimLengths = new int[_dimensions];

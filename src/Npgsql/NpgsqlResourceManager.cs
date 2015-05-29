@@ -85,8 +85,6 @@ namespace Npgsql
 
         private class DurableResourceManager : ISinglePhaseNotification
         {
-            private CommittableTransaction _tx;
-            private NpgsqlResourceManager _rm;
             private readonly INpgsqlTransactionCallbacks _callbacks;
             private string _txName;
 
@@ -98,8 +96,6 @@ namespace Npgsql
             public DurableResourceManager(NpgsqlResourceManager rm, INpgsqlTransactionCallbacks callbacks,
                                           CommittableTransaction tx)
             {
-                _rm = rm;
-                _tx = tx;
                 _callbacks = callbacks;
             }
 
