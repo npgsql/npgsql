@@ -222,10 +222,6 @@
     <Compile Include="TypeHandlers\NetworkHandlers\InetHandler.cs" />
     <Compile Include="TypeHandlers\InternalCharHandler.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlDate.cs" />
-    <Compile Include="NpgsqlTypes\FastPath.cs" />
-    <Compile Include="NpgsqlTypes\FastPathArg.cs" />
-    <Compile Include="NpgsqlTypes\LargeObject.cs" />
-    <Compile Include="NpgsqlTypes\LargeObjectManager.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlDbType.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlTypes.cs" />
     <Compile Include="CachedValue.cs" />
