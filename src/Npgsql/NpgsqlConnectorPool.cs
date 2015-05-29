@@ -1,6 +1,7 @@
-//  Copyright (C) 2002 The Npgsql Development Team
-//  npgsql-general@gborg.postgresql.org
-//  http://gborg.postgresql.org/project/npgsql/projdisplay.php
+#region License
+// The PostgreSQL License
+//
+// Copyright (C) 2015 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -18,13 +19,7 @@
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-//
-//  ConnectorPool.cs
-// ------------------------------------------------------------------
-//  Status
-//      0.00.0000 - 06/17/2002 - ulrich sprick - creation
-//                - 05/??/2004 - Glen Parker<glenebob@nwlink.com> rewritten using
-//                               System.Queue.
+#endregion
 
 using System;
 using System.Collections.Generic;

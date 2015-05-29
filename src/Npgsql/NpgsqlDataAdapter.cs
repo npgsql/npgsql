@@ -1,15 +1,8 @@
 #if !DNXCORE50
-// created on 1/8/2002 at 23:02
+#region License
+// The PostgreSQL License
 //
-// Npgsql.NpgsqlDataAdapter.cs
-//
-// Author:
-//  Francisco Jr. (fxjrlists@yahoo.com.br)
-//
-//  Copyright (C) 2002 The Npgsql Development Team
-//  npgsql-general@gborg.postgresql.org
-//  http://gborg.postgresql.org/project/npgsql/projdisplay.php
-//
+// Copyright (C) 2015 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -27,6 +20,7 @@
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+#endregion
 
 using System;
 using System.Data;
