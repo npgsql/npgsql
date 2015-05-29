@@ -1,7 +1,6 @@
 ---
 layout: page
 title: Community
-permalink: /community/
 ---
 Npgsql source code can be found on our <a href="http://www.github.com/npgsql/npgsql">Github page</a>.
 We use the Github issue tracker as well, please report any problems or feature requests there.
