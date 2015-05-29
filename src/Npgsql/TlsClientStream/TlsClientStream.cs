@@ -1087,7 +1087,7 @@ namespace TlsClientStream
                         curve = null;
                         break;
                 }
-                // var opaqueLen = buf[pos++]; // TODO: check len
+                pos++;  // opaqueLen. TODO: check len
                 if (buf[pos++] != 4) // Uncompressed
                 {
                     SendAlertFatal(AlertDescription.IllegalParameter);
