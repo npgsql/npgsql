@@ -187,7 +187,7 @@ namespace Npgsql
 
         protected Exception CreateConversionButNoParamException(Type clrType)
         {
-            return new InvalidCastException(string.Format("Can't convert .NET type {0} to PostgreSQL {1} within an array or COPY operation", clrType, PgName));
+            return new InvalidCastException(string.Format("Can't convert .NET type {0} to PostgreSQL {1} within an array", clrType, PgName));
         }
 
         [ContractInvariantMethod]

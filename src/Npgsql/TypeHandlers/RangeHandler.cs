@@ -26,7 +26,6 @@ namespace Npgsql.TypeHandlers
         #region State
 
         NpgsqlBuffer _buf;
-        NpgsqlParameter _parameter;
         LengthCache _lengthCache;
         NpgsqlRange<TElement> _value;
         State _state;
@@ -37,7 +36,6 @@ namespace Npgsql.TypeHandlers
         {
             _buf = null;
             _value = default(NpgsqlRange<TElement>);
-            _parameter = null;
             _fieldDescription = null;
             _state = State.Done;
         }
@@ -171,13 +169,13 @@ namespace Npgsql.TypeHandlers
                 var asChunkingWriter = ElementHandler as IChunkingTypeWriter;
                 if (!range.LowerBoundInfinite) {
                     totalLen += 4 + (asChunkingWriter != null
-                        ? asChunkingWriter.ValidateAndGetLength(range.LowerBound, ref lengthCache, parameter)
+                        ? asChunkingWriter.ValidateAndGetLength(range.LowerBound, ref lengthCache, null)
                         : ((ISimpleTypeWriter)ElementHandler).ValidateAndGetLength(range.LowerBound, null));
                 }
 
                 if (!range.UpperBoundInfinite) {
                     totalLen += 4 + (asChunkingWriter != null
-                        ? asChunkingWriter.ValidateAndGetLength(range.UpperBound, ref lengthCache, parameter)
+                        ? asChunkingWriter.ValidateAndGetLength(range.UpperBound, ref lengthCache, null)
                         : ((ISimpleTypeWriter)ElementHandler).ValidateAndGetLength(range.UpperBound, null));
                 }
             }
@@ -188,7 +186,6 @@ namespace Npgsql.TypeHandlers
         public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter)
         {
             _buf = buf;
-            _parameter = parameter;
             _lengthCache = lengthCache;
             _value = (NpgsqlRange<TElement>)value;
             _state = State.Start;
@@ -214,7 +211,7 @@ namespace Npgsql.TypeHandlers
                     }
 
                     if (asChunkingWriter != null) {
-                        asChunkingWriter.PrepareWrite(_value.LowerBound, _buf, _lengthCache, _parameter);
+                        asChunkingWriter.PrepareWrite(_value.LowerBound, _buf, _lengthCache, null);
                     }
                     _state = State.LowerBound;
                     goto case State.LowerBound;
@@ -238,7 +235,7 @@ namespace Npgsql.TypeHandlers
                         return true;
                     }
                     if (asChunkingWriter != null) {
-                        asChunkingWriter.PrepareWrite(_value.UpperBound, _buf, _lengthCache, _parameter);
+                        asChunkingWriter.PrepareWrite(_value.UpperBound, _buf, _lengthCache, null);
                     }
                     _state = State.UpperBound;
                     goto case State.UpperBound;
