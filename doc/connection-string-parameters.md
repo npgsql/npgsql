@@ -66,7 +66,7 @@ Parameter keywords are case-insensitive.
       <td>Controls whether SSL is required, disabled or preferred, depending on server support.</td>
     </tr>
 
-    <tr>
+    <tr id="trust-server-certificate">
       <td>Trust Server Certificate</td>
       <td>Whether to trust the server certificate without validating it.</td>
     </tr>

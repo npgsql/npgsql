@@ -4,13 +4,16 @@ title: About
 ---
 ## General
 
-Npgsql is an open source ADO.NET Data Provider for Postgresql, it allows programs written in C#, Visual Basic, F# to access the Postgresql database server.
-It allows any program developed for .Net framework to access database server. It is implemented in 100% C# code. Works with Postgresql 9.x and above.
+Npgsql is an open source ADO.NET Data Provider for PostgreSQL, it allows programs written in C#, Visual Basic, F# to access the PostgreSQL database server.
+It allows any program developed for .NET framework to access database server. It is implemented in 100% C# code. Works with PostgreSQL 9.x and above.
 
 ## Compatibility
 
-We aim to be compatible with all [currently supported Postgresql versions](http://www.postgresql.org/support/versioning/), which means 5 years back.
-Earlier versions may still work but we don't perform regression tests on them or commit to resolving issues on them.
+We aim to be compatible with all [currently supported PostgreSQL versions](http://www.postgresql.org/support/versioning/), which means 5 years back.
+Earlier versions may still work but we don't perform continuous testing on them or commit to resolving issues on them.
+
+Npgsql can also be used to access some databases which aren't PostgreSQL but use the PostgreSQL protocol, such as Amazon Redshift.
+Support for these is usually partial, please report any issues.
 
 ## Non-Windows Platforms
 
