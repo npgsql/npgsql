@@ -90,6 +90,7 @@ using (var inStream = conn.BeginRawBinaryCopy("COPY table1 TO STDIN BINARY")) {
 
 // Import data array into table2
 using (var outStream = conn.BeginRawBinaryCopy("COPY table2 FROM STDIN BINARY")) {
+    outStream.Write(data, 0, len);
 }
 {% endhighlight %}
 
