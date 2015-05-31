@@ -13,6 +13,10 @@ title: Documentation
 
 [Asynchronous notifications and Continuous Processing](continuous-processing.html)
 
+[Logging](logging.html)
+
+[SSL (or TLS)?](ssl.html)
+
 [Entity Framework](ef.html)
 
 [Entity Framework 7](ef7.html)

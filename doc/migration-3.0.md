@@ -11,7 +11,7 @@ where that made sense. This means that you cannot expect to drop 3.0 as a replac
 The following is a *non-exhaustive* list of things that changed. If you run against a breaking change not documented here,
 please let us know and we'll add it.
 
-# SSL
+## SSL
 
 * Npgsql 2.2 didn't perform validation on the server's certificate by default, so self-signed certificate were accepted.
   The new default is to perform validation. Specify the
@@ -19,7 +19,7 @@ please let us know and we'll add it.
 * The "SSL" connection string parameter has been removed, use "SSL Mode" instead.
 * The "SSL Mode" parameter's Allow option has been removed, as it wasn't doing anything.
 
-# Type Handling
+## Type Handling
 
 * Previously, Npgsql allowed writing a NULL by setting NpgsqlParameter.Value to `null`.
   This is [not allowed in ADO.NET](https://msdn.microsoft.com/en-us/library/system.data.common.dbparameter.value%28v=vs.110%29.aspx)
@@ -40,7 +40,7 @@ please let us know and we'll add it.
   Previously they returned int[], even for multidimensional arrays.
 * NpgsqlDataReader.GetDataTypeName() now returns the name of the PostgreSQL type rather than its OID.
 
-# Retired features
+## Retired features
 
 * Removed the "Preload Reader" feature, which loaded the entire resultset into memory. If you require this
   (inefficient) behavior, read the result into memory outside Npgsql. We plan on working on MARS support,
@@ -51,7 +51,7 @@ please let us know and we'll add it.
   `NpgsqlDataReader.GetFieldValue<T>`.
 * Removed the AlwaysPrepare connection string parameter
 
-# Other
+## Other
 
 * Previously, Npgsql set DateStyle=ISO, lc_monetary=C and extra_float_digits=3 on all connections it created. This is no longer
   case, if you rely on these parameters you must send them yourself.

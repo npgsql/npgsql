@@ -7,3 +7,19 @@
 /* Build status */
 .tctable {
 }
+
+code span {
+  line-height: 0.5;
+}
+
+h2 {
+  margin-top: 10px;
+  font-size: 24px;
+}
+
+#main li {
+  list-style-type: disc;
+  list-style-position: inside;
+  padding-left: 1em;
+  text-indent: -1em;
+}
