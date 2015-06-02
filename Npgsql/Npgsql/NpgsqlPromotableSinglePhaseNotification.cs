@@ -196,6 +196,7 @@ namespace Npgsql
         #endregion
 
         private static INpgsqlResourceManager _resourceManager;
+        private static object _resourceManagerSync = new object();
         private static System.Runtime.Remoting.Lifetime.ClientSponsor _sponser;
 
         private static INpgsqlResourceManager CreateResourceManager()
@@ -203,13 +204,19 @@ namespace Npgsql
             // TODO: create network proxy for resource manager
             if (_resourceManager == null)
             {
-                _sponser = new System.Runtime.Remoting.Lifetime.ClientSponsor();
-                AppDomain rmDomain = AppDomain.CreateDomain("NpgsqlResourceManager", AppDomain.CurrentDomain.Evidence, AppDomain.CurrentDomain.SetupInformation);
-                _resourceManager =
-                    (INpgsqlResourceManager)
-                    rmDomain.CreateInstanceAndUnwrap(typeof (NpgsqlResourceManager).Assembly.FullName,
-                                                     typeof (NpgsqlResourceManager).FullName);
-                _sponser.Register((MarshalByRefObject)_resourceManager);
+                lock (_resourceManagerSync)
+                {
+                    if (_resourceManager == null)
+                    {
+                        _sponser = new System.Runtime.Remoting.Lifetime.ClientSponsor();
+                        AppDomain rmDomain = AppDomain.CreateDomain("NpgsqlResourceManager", AppDomain.CurrentDomain.Evidence, AppDomain.CurrentDomain.SetupInformation);
+                        _resourceManager =
+                            (INpgsqlResourceManager)
+                            rmDomain.CreateInstanceAndUnwrap(typeof(NpgsqlResourceManager).Assembly.FullName,
+                                                             typeof(NpgsqlResourceManager).FullName);
+                        _sponser.Register((MarshalByRefObject)_resourceManager);                        
+                    }
+                }
             }
             return _resourceManager;
             //return new NpgsqlResourceManager();

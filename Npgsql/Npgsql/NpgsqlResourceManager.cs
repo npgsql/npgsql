@@ -23,6 +23,7 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Transactions;
 
@@ -38,7 +39,7 @@ namespace Npgsql
 
     internal class NpgsqlResourceManager : MarshalByRefObject, INpgsqlResourceManager
     {
-        private readonly Dictionary<string, CommittableTransaction> _transactions = new Dictionary<string, CommittableTransaction>();
+        private readonly IDictionary<string, CommittableTransaction> _transactions = new ConcurrentDictionary<string, CommittableTransaction>();
 
         #region INpgsqlTransactionManager Members
 
