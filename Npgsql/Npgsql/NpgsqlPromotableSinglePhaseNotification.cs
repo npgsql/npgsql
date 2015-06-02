@@ -133,7 +133,6 @@ namespace Npgsql
                 }
 
                 _callbacks = null;
-                _connection.PromotableDistributedTransactionEnded();
             }
             _inTransaction = false;
         }
@@ -163,7 +162,6 @@ namespace Npgsql
                 }
 
                 _callbacks = null;
-                _connection.PromotableDistributedTransactionEnded();
             }
             _inTransaction = false;
         }

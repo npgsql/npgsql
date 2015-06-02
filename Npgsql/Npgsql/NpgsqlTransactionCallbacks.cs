@@ -96,6 +96,8 @@ namespace Npgsql
             {
                 NpgsqlCommand.ExecuteBlind(connection.Connector, NpgsqlQuery.CommitTransaction);
             }
+
+            _connection.PromotableDistributedTransactionEnded();
         }
 
         public void PrepareTransaction()
@@ -122,6 +124,8 @@ namespace Npgsql
             {
                 NpgsqlCommand.ExecuteBlind(connection.Connector, NpgsqlQuery.RollbackTransaction);
             }
+
+            _connection.PromotableDistributedTransactionEnded();
         }
 
         #endregion
