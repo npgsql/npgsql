@@ -737,7 +737,7 @@ namespace Npgsql
             if (connector == null)
                 return;
 
-            if (promotable != null && promotable.InLocalTransaction)
+            if (promotable != null && (promotable.InLocalTransaction || promotable.InDitributedTransaction))
             {
                 _postponingClose = true;
                 return;
@@ -791,14 +791,26 @@ namespace Npgsql
         /// When a connection is closed within an enclosing TransactionScope and the transaction
         /// hasn't been promoted, we defer the actual closing until the scope ends.
         /// </summary>
-        internal void PromotableLocalTransactionEnded()
+        private void CloseIfPostponed()
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "PromotableLocalTransactionEnded");
             if (_postponingDispose)
                 Dispose(true);
             else if (_postponingClose)
                 ReallyClose();
         }
+
+        internal void PromotableLocalTransactionEnded()
+        {
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "PromotableLocalTransactionEnded");
+            CloseIfPostponed();
+        }
+
+        internal void PromotableDistributedTransactionEnded()
+        {
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "PromotableDistributedTransactionEnded");
+            CloseIfPostponed();
+        }
+
 
         /// <summary>
         /// Creates and returns a <see cref="System.Data.Common.DbCommand">DbCommand</see>

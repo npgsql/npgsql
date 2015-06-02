@@ -37,6 +37,7 @@ namespace Npgsql
         private INpgsqlResourceManager _rm;
         private bool _inTransaction;
         internal bool InLocalTransaction { get { return _npgsqlTx != null;  } }
+        internal bool InDitributedTransaction { get { return _callbacks != null; } }
 
         private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
 
@@ -130,7 +131,9 @@ namespace Npgsql
                     _callbacks.RollbackTransaction();
                     singlePhaseEnlistment.Aborted();
                 }
+
                 _callbacks = null;
+                _connection.PromotableDistributedTransactionEnded();
             }
             _inTransaction = false;
         }
@@ -158,7 +161,9 @@ namespace Npgsql
                     _callbacks.CommitTransaction();
                     singlePhaseEnlistment.Committed();
                 }
+
                 _callbacks = null;
+                _connection.PromotableDistributedTransactionEnded();
             }
             _inTransaction = false;
         }
