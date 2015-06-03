@@ -237,6 +237,22 @@ namespace Npgsql
                     Log.Warn("Error while performing async close on connector", e);
                 }
             }
+
+            if (connector.State == ConnectorState.Copy)
+            {
+                Contract.Assert(connector.CurrentCopyOperation != null);
+                try {
+                    connector.CurrentCopyOperation.Cancel();
+                } catch (Exception e) {
+                    Log.Warn("Error while cancelling copy on connector close", e);
+                }
+
+                try {
+                    connector.CurrentCopyOperation.Dispose();
+                } catch (Exception e) {
+                    Log.Warn("Error while disposing cancelled copy on connector close", e);
+                }
+            }
             UngetConnector(connection, connector);
         }
 

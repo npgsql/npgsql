@@ -144,6 +144,12 @@ namespace Npgsql
         internal NpgsqlDataReader CurrentReader;
 
         /// <summary>
+        /// If the connector is currently in COPY mode, holds a reference to the importer/exporter object.
+        /// Otherwise null.
+        /// </summary>
+        internal ICancelable CurrentCopyOperation;
+
+        /// <summary>
         /// Holds all run-time parameters received from the backend (via ParameterStatus messages)
         /// </summary>
         internal Dictionary<string, string> BackendParams;

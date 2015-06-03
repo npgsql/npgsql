@@ -243,6 +243,43 @@ namespace Npgsql.Tests
                 Throws.Exception.TypeOf<NpgsqlException>().With.Property("Code").EqualTo("42P01"));
         }
 
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/621")]
+        public void CloseDuringCopy()
+        {
+            /*
+            // TODO: Check no broken connections were returned to the pool
+            using (var conn = new NpgsqlConnection(ConnectionString)) {
+                conn.Open();
+                conn.BeginBinaryImport("COPY data (field_text, field_int4) FROM STDIN BINARY");
+            }
+
+            using (var conn = new NpgsqlConnection(ConnectionString)) {
+                conn.Open();
+                conn.BeginBinaryExport("COPY data (field_text, field_int2) TO STDIN BINARY");
+            }
+
+            using (var conn = new NpgsqlConnection(ConnectionString)) {
+                conn.Open();
+                conn.BeginRawBinaryCopy("COPY data (field_text, field_int4) FROM STDIN BINARY");
+            }
+
+            using (var conn = new NpgsqlConnection(ConnectionString)) {
+                conn.Open();
+                conn.BeginRawBinaryCopy("COPY data (field_text, field_int4) TO STDIN BINARY");
+            }
+            */
+            using (var conn = new NpgsqlConnection(ConnectionString)) {
+                conn.Open();
+                conn.BeginTextImport("COPY data (field_text, field_int4) FROM STDIN");
+            }
+
+            using (var conn = new NpgsqlConnection(ConnectionString)) {
+                conn.Open();
+                conn.BeginTextExport("COPY data (field_text, field_int4) TO STDIN");
+            }
+        }
+
         /// <summary>
         /// Checks that the connector state is properly managed for COPY operations
         /// </summary>

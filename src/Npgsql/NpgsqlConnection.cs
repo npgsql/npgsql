@@ -816,7 +816,9 @@ namespace Npgsql
             Connector.StartUserAction(ConnectorState.Copy);
             try
             {
-                return new NpgsqlBinaryImporter(Connector, copyFromCommand);
+                var importer = new NpgsqlBinaryImporter(Connector, copyFromCommand);
+                Connector.CurrentCopyOperation = importer;
+                return importer;
             }
             catch
             {
@@ -847,7 +849,10 @@ namespace Npgsql
             Connector.StartUserAction(ConnectorState.Copy);
             try
             {
-                return new NpgsqlBinaryExporter(Connector, copyToCommand);
+                var exporter = new NpgsqlBinaryExporter(Connector, copyToCommand);
+                Connector.CurrentCopyOperation = exporter;
+                return exporter;
+
             }
             catch
             {
@@ -879,7 +884,9 @@ namespace Npgsql
 
             CheckConnectionOpen();
             Connector.StartUserAction(ConnectorState.Copy);
-            return new NpgsqlCopyTextWriter(new NpgsqlRawCopyStream(Connector, copyFromCommand));
+            var writer = new NpgsqlCopyTextWriter(new NpgsqlRawCopyStream(Connector, copyFromCommand));
+            Connector.CurrentCopyOperation = writer;
+            return writer;
         }
 
         /// <summary>
@@ -903,7 +910,9 @@ namespace Npgsql
 
             CheckConnectionOpen();
             Connector.StartUserAction(ConnectorState.Copy);
-            return new NpgsqlCopyTextReader(new NpgsqlRawCopyStream(Connector, copyToCommand));
+            var reader = new NpgsqlCopyTextReader(new NpgsqlRawCopyStream(Connector, copyToCommand));
+            Connector.CurrentCopyOperation = reader;
+            return reader;
         }
 
         /// <summary>
@@ -936,6 +945,7 @@ namespace Npgsql
                     Connector.Break();
                     throw new ArgumentException("copyToCommand triggered a text transfer, only binary is allowed", "copyCommand");
                 }
+                Connector.CurrentCopyOperation = stream;
                 return stream;
             }
             catch

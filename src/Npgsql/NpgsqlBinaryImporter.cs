@@ -39,7 +39,7 @@ namespace Npgsql
     /// <remarks>
     /// See http://www.postgresql.org/docs/current/static/sql-copy.html.
     /// </remarks>
-    public class NpgsqlBinaryImporter : IDisposable
+    public class NpgsqlBinaryImporter : IDisposable, ICancelable
     {
         #region Fields and Properties
 
@@ -329,6 +329,7 @@ namespace Npgsql
             _connector.SendSingleMessage(CopyDoneMessage.Instance);
             _connector.ReadExpecting<CommandCompleteMessage>();
             _connector.ReadExpecting<ReadyForQueryMessage>();
+            _connector.CurrentCopyOperation = null;
             _connector.EndUserAction();
 
             _connector = null;
