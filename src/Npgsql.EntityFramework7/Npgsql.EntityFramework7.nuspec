@@ -4,8 +4,8 @@
     <id>Npgsql.EntityFramework7</id>
     <title>Npgsql for Entity Framework</title>
     <version>0.0.0</version>
-    <authors>Francisco Figueiredo Jr., Josh Cooley, Dave Page, Jon Asher, Brar Piening, Chris Morgan, Hiroshi Saito, Jon Hanna, Federico Di Gregorio, Glen Parker, Shay Rojansky</authors>
-    <owners>Francisco Figueiredo Jr., Josh Cooley, Shay Rojansky</owners>
+    <authors>Shay Rojansky</authors>
+    <owners>Shay Rojansky</owners>
     <licenseUrl>https://github.com/npgsql/Npgsql/wiki/License</licenseUrl>
     <projectUrl>https://github.com/npgsql/Npgsql</projectUrl>
     <copyright>Copyright 2002 - 2014 Npgsql Development Team</copyright>
