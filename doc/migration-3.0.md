@@ -49,6 +49,8 @@ please let us know and we'll add it.
   that can't be represented by the standard CLR types, use the standard ADO.NET
   `NpgsqlDataReader.GetProviderSpecificValue` or even better, the generic
   `NpgsqlDataReader.GetFieldValue<T>`.
+* Removed the feature where Npgsql automatically "dereferenced" a resultset of refcursors into multiple
+  resultsets (this was used to emulate returning multiple resultsets from stored procedures).
 * Removed the AlwaysPrepare connection string parameter
 
 ## Other
