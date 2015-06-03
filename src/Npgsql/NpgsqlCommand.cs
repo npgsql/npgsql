@@ -940,24 +940,7 @@ namespace Npgsql
             try
             {
                 ValidateAndCreateMessages(behavior);
-                var reader = Execute(behavior);
-
-                // Transparently dereference cursors returned from functions
-                if (CommandType == CommandType.StoredProcedure &&
-                    reader.FieldCount == 1 &&
-                    reader.GetDataTypeName(0) == "refcursor")
-                {
-                    var sb = new StringBuilder();
-                    while (reader.Read()) {
-                        sb.AppendFormat(@"FETCH ALL FROM ""{0}"";", reader.GetString(0));
-                    }
-                    reader.Dispose();
-
-                    var dereferenceCmd = new NpgsqlCommand(sb.ToString(), Connection);
-                    return dereferenceCmd.ExecuteReader(behavior);
-                }
-
-                return reader;
+                return Execute(behavior);
             }
             catch
             {
