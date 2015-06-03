@@ -1,16 +1,6 @@
 ﻿{
     "version": "3.0.0-alpha-*",
     "authors": [
-      "Francisco Figueiredo Jr.",
-      "Josh Cooley",
-      "Dave Page",
-      "Jon Asher",
-      "Brar Piening",
-      "Chris Morgan",
-      "Hiroshi Saito",
-      "Jon Hanna",
-      "Federico Di Gregorio",
-      "Glen Parker",
       "Shay Rojansky"
     ],
     "description": "PostgreSQL provider for Entity Framework 7",
