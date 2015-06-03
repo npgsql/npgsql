@@ -16,3 +16,24 @@ If you plan on submitting a pull request, please read our <a href="{{ "coding-st
 style guide</a>.
 
 Here are some <a href="{{ "unit-tests" | prepend: site.baseurl }}">notes on our unit tests</a>.
+
+## Contributors
+
+Current contributors to Npgsql are:
+
+* Shay Rojansky
+* Emil Lenngren
+* Francisco Figueiredo Jr.
+* Kenji Uno
+
+Past contributors to Npgsql:
+
+* Jon Asher
+* John Cooley
+* Federico Di Gregorio
+* Jon Hanna
+* Chris Morgan
+* Dave Page
+* Glen Parker
+* Brar Piening
+* Hiroshi Saito
