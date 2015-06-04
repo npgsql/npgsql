@@ -37,7 +37,7 @@ namespace Npgsql
         private INpgsqlResourceManager _rm;
         private bool _inTransaction;
         internal bool InLocalTransaction { get { return _npgsqlTx != null;  } }
-        internal bool InDitributedTransaction { get { return _callbacks != null; } }
+        internal bool InDitributedTransaction { get { return _callbacks != null && _callbacks.InDistributedTransaction; } }
 
         private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
 

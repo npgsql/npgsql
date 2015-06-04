@@ -45,12 +45,19 @@ namespace Npgsql
         private readonly string _txName = Guid.NewGuid().ToString();
 
         private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
+        private bool _inDistributedTransaction;
 
         public NpgsqlTransactionCallbacks(NpgsqlConnection connection)
         {
+            _inDistributedTransaction = true;
             _connection = connection;
             _connectionString = _connection.ConnectionString;
             _connection.Disposed += new EventHandler(_connection_Disposed);
+        }
+
+        public bool InDistributedTransaction
+        {
+            get { return _inDistributedTransaction; }
         }
 
         private void _connection_Disposed(object sender, EventArgs e)
@@ -97,6 +104,7 @@ namespace Npgsql
                 NpgsqlCommand.ExecuteBlind(connection.Connector, NpgsqlQuery.CommitTransaction);
             }
 
+            _inDistributedTransaction = false;
             _connection.PromotableDistributedTransactionEnded();
         }
 
@@ -124,6 +132,8 @@ namespace Npgsql
             {
                 NpgsqlCommand.ExecuteBlind(connection.Connector, NpgsqlQuery.RollbackTransaction);
             }
+
+            _inDistributedTransaction = false;
 
             _connection.PromotableDistributedTransactionEnded();
         }

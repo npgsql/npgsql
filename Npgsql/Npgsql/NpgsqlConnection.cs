@@ -781,7 +781,7 @@ namespace Npgsql
 
                 Connector.Close();
             }
-
+            
             connector = null;
 
             this.OnStateChange (new StateChangeEventArgs(ConnectionState.Open, ConnectionState.Closed));
@@ -802,7 +802,8 @@ namespace Npgsql
         internal void PromotableLocalTransactionEnded()
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "PromotableLocalTransactionEnded");
-            CloseIfPostponed();
+            if (promotable == null || !promotable.InDitributedTransaction)
+                CloseIfPostponed();
         }
 
         internal void PromotableDistributedTransactionEnded()
