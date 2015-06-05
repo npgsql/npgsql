@@ -243,5 +243,32 @@ namespace Npgsql
                     return System.Data.IsolationLevel.Unspecified;
             }
         }
+
+        public void Recover(string connectionString)
+        {
+            using (new TransactionScope(TransactionScopeOption.Suppress))
+            {
+                var store = new NpgsqlPreparedTransactionRecordStore();
+                bool recovering = false;
+
+                foreach (var record in store.GetAllRecords(connectionString))
+                {
+                    try
+                    {
+                        NpgsqlConnection c = new NpgsqlConnection(record.ConnectionString, false);
+                        c.Open();
+                        CreateResourceManager().Recover(record.RecoveryInformation, new NpgsqlTransactionCallbacks(c, record.TxName, true));
+                        recovering = true;
+                    }
+                    catch (Exception)
+                    {
+                        
+                    }
+                }
+
+                if (recovering)
+                    CreateResourceManager().RecoveryComplete(connectionString);
+            }
+        }
     }
 }

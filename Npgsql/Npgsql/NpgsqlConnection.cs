@@ -69,6 +69,7 @@ namespace Npgsql
 
     public sealed class NpgsqlConnection : DbConnection, ICloneable
     {
+        private readonly bool _performRecovery = true;
         // Logging related values
         private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
         private static readonly ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
@@ -190,12 +191,18 @@ namespace Npgsql
         /// </summary>
         /// <param name="ConnectionString">The connection used to open the PostgreSQL database.</param>
         public NpgsqlConnection(String ConnectionString)
+            : this(ConnectionString, true)
         {
+        }
+
+        internal NpgsqlConnection(String ConnectionString, bool performRecovery)
+        {
+            _performRecovery = performRecovery;
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME, "NpgsqlConnection()");
 
             LoadConnectionStringBuilder(ConnectionString);
 
-            Init();
+            Init();            
         }
 
         /// <summary>
@@ -678,6 +685,9 @@ namespace Npgsql
             {
                 connector.AddNotificationThread();
             }
+
+            if (_performRecovery)
+                Promotable.Recover(settings.ToString());
 
             if (Enlist)
             {

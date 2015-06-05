@@ -160,6 +160,8 @@
     <Compile Include="NpgsqlTypes\NpgsqlTypeMappings.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlTypes.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlTypesHelper.cs" />
+    <Compile Include="Npgsql\NpgsqlPreparedTransactionRecord.cs" />
+    <Compile Include="Npgsql\NpgsqlPreparedTransactionsRecordStore.cs" />
     <Compile Include="Npgsql\NpgsqlQuery.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Npgsql\Cache.cs" />

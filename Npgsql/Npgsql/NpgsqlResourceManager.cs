@@ -35,11 +35,15 @@ namespace Npgsql
         byte[] Promote(INpgsqlTransactionCallbacks transactionCallbacks);
         void CommitWork(string txName);
         void RollbackWork(string txName);
+        void Recover(byte[] recoveryInformation, INpgsqlTransactionCallbacks callbacks);
+        void RecoveryComplete(string connectionString);
     }
 
     internal class NpgsqlResourceManager : MarshalByRefObject, INpgsqlResourceManager
     {
         private readonly IDictionary<string, CommittableTransaction> _transactions = new ConcurrentDictionary<string, CommittableTransaction>();
+
+        private readonly NpgsqlPreparedTransactionRecordStore _store = new NpgsqlPreparedTransactionRecordStore();
 
         #region INpgsqlTransactionManager Members
 
@@ -82,18 +86,31 @@ namespace Npgsql
             }
         }
 
+        public void Recover(byte[] recoveryInformation, INpgsqlTransactionCallbacks callbacks)
+        {
+            var durableResourceManager = new DurableResourceManager(this, callbacks, true);
+            durableResourceManager.Reenlist(recoveryInformation);
+        }
+
+        public void RecoveryComplete(string connectionString)
+        {
+            TransactionManager.RecoveryComplete(_store.GetConnectionGuid(connectionString));
+        }
+
         #endregion
 
         private class DurableResourceManager : ISinglePhaseNotification
         {
             private CommittableTransaction _tx;
-            private NpgsqlResourceManager _rm;
+            private readonly bool _allowTransactionMissing = false;
+            private readonly NpgsqlResourceManager _rm;
             private readonly INpgsqlTransactionCallbacks _callbacks;
             private string _txName;
 
-            public DurableResourceManager(NpgsqlResourceManager rm, INpgsqlTransactionCallbacks callbacks)
+            public DurableResourceManager(NpgsqlResourceManager rm, INpgsqlTransactionCallbacks callbacks, bool allowTransactionMissing = false)
                 : this(rm, callbacks, null)
             {
+                _allowTransactionMissing = allowTransactionMissing;
             }
 
             public DurableResourceManager(NpgsqlResourceManager rm, INpgsqlTransactionCallbacks callbacks,
@@ -121,8 +138,8 @@ namespace Npgsql
 
             public void Commit(Enlistment enlistment)
             {
-                _callbacks.CommitTransaction();
-                // TODO: remove record of prepared
+                CheckTransactionMissing(() => _callbacks.CommitTransaction());
+                Store.DeleteRecord(TxName, _callbacks.ConnectionString);
                 enlistment.Done();
                 _callbacks.Dispose();
             }
@@ -135,17 +152,23 @@ namespace Npgsql
 
             public void Prepare(PreparingEnlistment preparingEnlistment)
             {
+                Store.AddRecord(new NpgsqlPreparedTransactionRecord(TxName, _callbacks.ConnectionString, preparingEnlistment.RecoveryInformation()));
                 _callbacks.PrepareTransaction();
-                // TODO: record prepared
                 preparingEnlistment.Prepared();
             }
 
             public void Rollback(Enlistment enlistment)
             {
-                _callbacks.RollbackTransaction();
-                // TODO: remove record of prepared
+                CheckTransactionMissing(() => _callbacks.RollbackTransaction());
+                Store.DeleteRecord(TxName, _callbacks.ConnectionString);
+
                 enlistment.Done();
                 _callbacks.Dispose();
+            }
+
+            private NpgsqlPreparedTransactionRecordStore Store
+            {
+                get { return _rm._store; }
             }
 
             #endregion
@@ -161,8 +184,6 @@ namespace Npgsql
 
             #endregion
 
-            private static readonly Guid rmGuid = new Guid("9e1b6d2d-8cdb-40ce-ac37-edfe5f880716");
-
             public Transaction Enlist(byte[] token)
             {
                 return Enlist(TransactionInterop.GetTransactionFromTransmitterPropagationToken(token));
@@ -170,8 +191,39 @@ namespace Npgsql
 
             public Transaction Enlist(Transaction tx)
             {
-                tx.EnlistDurable(rmGuid, this, EnlistmentOptions.None);
+                tx.EnlistDurable(RmGuid, this, EnlistmentOptions.None);
                 return tx;
+            }
+
+            private Guid RmGuid
+            {
+                get { return Store.GetConnectionGuid(_callbacks.ConnectionString); }
+            }
+
+            public void Reenlist(byte[] recoveryInformation)
+            {
+                TransactionManager.Reenlist(RmGuid, recoveryInformation, this);
+            }
+
+            private delegate void TransactionMissingAction();
+
+            private void CheckTransactionMissing(TransactionMissingAction action)
+            {
+                try
+                {
+                    action();
+                }
+                catch (NpgsqlException ex)
+                {
+                    if (_allowTransactionMissing)
+                    {
+                        if (ex.Code == "42704")
+                            return;
+                    }
+
+                    throw;
+                }
+                
             }
         }
     }

@@ -34,6 +34,7 @@ namespace Npgsql
         void PrepareTransaction();
         void CommitTransaction();
         void RollbackTransaction();
+        string ConnectionString { get; }
     }
 
     internal class NpgsqlTransactionCallbacks : MarshalByRefObject, INpgsqlTransactionCallbacks
@@ -42,17 +43,24 @@ namespace Npgsql
         private readonly string _connectionString;
         private bool _closeConnectionRequired;
         private bool _prepared;
-        private readonly string _txName = Guid.NewGuid().ToString();
+        private readonly string _txName;
 
         private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
         private bool _inDistributedTransaction;
 
-        public NpgsqlTransactionCallbacks(NpgsqlConnection connection)
+        public NpgsqlTransactionCallbacks(NpgsqlConnection connection, string txName, bool prepared)
         {
+            _txName = txName;
+            _prepared = prepared;
             _inDistributedTransaction = true;
             _connection = connection;
             _connectionString = _connection.ConnectionString;
-            _connection.Disposed += new EventHandler(_connection_Disposed);
+            _connection.Disposed += new EventHandler(_connection_Disposed);            
+        }
+
+        public NpgsqlTransactionCallbacks(NpgsqlConnection connection) 
+            : this(connection, Guid.NewGuid().ToString(), false)
+        {
         }
 
         public bool InDistributedTransaction
@@ -136,6 +144,11 @@ namespace Npgsql
             _inDistributedTransaction = false;
 
             _connection.PromotableDistributedTransactionEnded();
+        }
+
+        public string ConnectionString
+        {
+            get { return _connectionString; }
         }
 
         #endregion
