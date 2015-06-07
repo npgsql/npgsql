@@ -1,7 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security;
+using System.Security.Permissions;
 using System.Text;
+using System.Web.UI.WebControls;
 using Npgsql;
 using NUnit.Framework;
 
@@ -56,6 +59,49 @@ namespace Npgsql.Tests
         {
             Assert.That(Conn.IsSecure, Is.False);
         }
+
+        #region Partial Trust
+
+        [Test, Description("Makes sure Npgsql works when running under pseudo-medium trust")]
+        public void RestrictedTrust()
+        {
+            var domainSetup = new AppDomainSetup { ApplicationBase = AppDomain.CurrentDomain.BaseDirectory };
+            var permissions = new PermissionSet(null);
+            permissions.AddPermission(new SecurityPermission(SecurityPermissionFlag.Execution));
+
+            var domain = AppDomain.CreateDomain("Partial Trust AppDomain", null, domainSetup, permissions);
+
+            try
+            {
+                var test = (TrustTestClass) domain.CreateInstanceAndUnwrap(
+                    typeof (TrustTestClass).Assembly.FullName,
+                    typeof (TrustTestClass).FullName
+                    );
+                test.Go(ConnectionString);
+            }
+            finally
+            {
+                AppDomain.Unload(domain);
+            }
+        }
+
+        [Serializable]
+        public class TrustTestClass
+        {
+            public void Go(string connString)
+            {
+                using (var conn = new NpgsqlConnection(connString))
+                {
+                    conn.Open();
+                    using (var cmd = new NpgsqlCommand("SELECT 1", conn))
+                    {
+                        Assert.That(cmd.ExecuteScalar(), Is.EqualTo(1));
+                    }
+                }
+            }
+        }
+
+        #endregion
 
         #region Setup / Teardown / Utils
 
