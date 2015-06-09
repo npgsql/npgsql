@@ -158,7 +158,7 @@ namespace Npgsql
         // A cached copy of the result of `settings.ConnectionString`
         private string _connectionString;
 
-        private static IDictionary<string, bool> _recoveredConnections = new Dictionary<string, bool>();
+        private static HashSet<string> _recoveredConnections = new HashSet<string>();
         private readonly static object _recoveredConnectionsLock = new object();
 
         /// <summary>
@@ -695,11 +695,10 @@ namespace Npgsql
                 lock (_recoveredConnectionsLock)
                 {
                     var connectionString = settings.ToString();
-                    bool recovered;
-                    if (_recoveredConnections.TryGetValue(connectionString, out recovered) && recovered)
+                    if (!_recoveredConnections.Contains(connectionString))
                     {
                         Promotable.Recover(connectionString);
-                        _recoveredConnections[connectionString] = true;
+                        _recoveredConnections.Add(connectionString);
                     }
                 }
             }
