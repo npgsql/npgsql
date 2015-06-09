@@ -158,9 +158,6 @@ namespace Npgsql
         // A cached copy of the result of `settings.ConnectionString`
         private string _connectionString;
 
-        private static HashSet<string> _recoveredConnections = new HashSet<string>();
-        private readonly static object _recoveredConnectionsLock = new object();
-
         /// <summary>
         /// Initializes a new instance of the
         /// <see cref="Npgsql.NpgsqlConnection">NpgsqlConnection</see> class.
@@ -692,15 +689,7 @@ namespace Npgsql
 
             if (_performRecovery)
             {
-                lock (_recoveredConnectionsLock)
-                {
-                    var connectionString = settings.ToString();
-                    if (!_recoveredConnections.Contains(connectionString))
-                    {
-                        Promotable.Recover(connectionString);
-                        _recoveredConnections.Add(connectionString);
-                    }
-                }
+                Promotable.Recover(settings.ToString());
             }
 
             if (Enlist)

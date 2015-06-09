@@ -23,6 +23,7 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using System.Transactions;
 
@@ -244,34 +245,46 @@ namespace Npgsql
             }
         }
 
+        private static HashSet<string> _recoveredConnections = new HashSet<string>();
+        private readonly static object _recoveredConnectionsLock = new object();
+
         public void Recover(string connectionString)
         {
-            using (new TransactionScope(TransactionScopeOption.Suppress))
+            lock (_recoveredConnectionsLock)
             {
                 var store = new NpgsqlPreparedTransactionRecordStore();
-                bool recovering = false;
-
-                foreach (var record in store.GetAllRecords(connectionString))
+                var key = store.GetDirectoryForConnection(connectionString);
+                if (!_recoveredConnections.Contains(key))
                 {
-                    try
+                    using (new TransactionScope(TransactionScopeOption.Suppress))
                     {
-                        NpgsqlConnection c = new NpgsqlConnection(record.ConnectionString, false);
-                        c.Open();
-                        if (!CreateResourceManager().Recover(record.RecoveryInformation, new NpgsqlTransactionCallbacks(c, record.TxName, true)))
+                        bool recovering = false;
+
+                        foreach (var record in store.GetAllRecords(connectionString))
                         {
-                            store.DeleteRecord(record.TxName, record.ConnectionString);
+                            try
+                            {
+                                NpgsqlConnection c = new NpgsqlConnection(record.ConnectionString, false);
+                                c.Open();
+                                if (!CreateResourceManager().Recover(record.RecoveryInformation, new NpgsqlTransactionCallbacks(c, record.TxName, true)))
+                                {
+                                    store.DeleteRecord(record.TxName, record.ConnectionString);
+                                }
+
+                                recovering = true;
+                            }
+                            catch (Exception)
+                            {
+
+                            }
                         }
 
-                        recovering = true;
+                        if (recovering)
+                            CreateResourceManager().RecoveryComplete(connectionString);
                     }
-                    catch (Exception)
-                    {
-                        
-                    }
-                }
 
-                if (recovering)
-                    CreateResourceManager().RecoveryComplete(connectionString);
+                    _recoveredConnections.Add(key);
+                }
             }
         }
     }

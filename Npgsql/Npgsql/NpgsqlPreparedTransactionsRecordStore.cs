@@ -138,7 +138,7 @@ namespace Npgsql
             }
         }
 
-        private string GetDirectoryForConnection(string connectionString)
+        public string GetDirectoryForConnection(string connectionString)
         {
             var builder = new NpgsqlConnectionStringBuilder(connectionString);
             var rootDirectory = string.Format("{0}-{1}", builder.Host, builder.Port);
