@@ -71,7 +71,9 @@ namespace Npgsql
         {
             lock (_lock)
             {
-                _store.DeleteFile(GetTransactionPath(connectionString, txName));
+                var path = GetTransactionPath(connectionString, txName);
+                if (_store.FileExists(path))
+                    _store.DeleteFile(path);
             }
         }
 
