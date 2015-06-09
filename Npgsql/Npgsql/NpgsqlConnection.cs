@@ -27,6 +27,7 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
@@ -156,6 +157,9 @@ namespace Npgsql
 
         // A cached copy of the result of `settings.ConnectionString`
         private string _connectionString;
+
+        private static IDictionary<string, bool> _recoveredConnections = new Dictionary<string, bool>();
+        private readonly static object _recoveredConnectionsLock = new object();
 
         /// <summary>
         /// Initializes a new instance of the
@@ -687,7 +691,18 @@ namespace Npgsql
             }
 
             if (_performRecovery)
-                Promotable.Recover(settings.ToString());
+            {
+                lock (_recoveredConnectionsLock)
+                {
+                    var connectionString = settings.ToString();
+                    bool recovered;
+                    if (_recoveredConnections.TryGetValue(connectionString, out recovered) && recovered)
+                    {
+                        Promotable.Recover(connectionString);
+                        _recoveredConnections[connectionString] = true;
+                    }
+                }
+            }
 
             if (Enlist)
             {

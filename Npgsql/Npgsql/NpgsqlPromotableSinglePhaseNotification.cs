@@ -257,7 +257,11 @@ namespace Npgsql
                     {
                         NpgsqlConnection c = new NpgsqlConnection(record.ConnectionString, false);
                         c.Open();
-                        CreateResourceManager().Recover(record.RecoveryInformation, new NpgsqlTransactionCallbacks(c, record.TxName, true));
+                        if (!CreateResourceManager().Recover(record.RecoveryInformation, new NpgsqlTransactionCallbacks(c, record.TxName, true)))
+                        {
+                            store.DeleteRecord(record.TxName, record.ConnectionString);
+                        }
+
                         recovering = true;
                     }
                     catch (Exception)

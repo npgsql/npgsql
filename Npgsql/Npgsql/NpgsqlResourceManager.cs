@@ -35,7 +35,7 @@ namespace Npgsql
         byte[] Promote(INpgsqlTransactionCallbacks transactionCallbacks);
         void CommitWork(string txName);
         void RollbackWork(string txName);
-        void Recover(byte[] recoveryInformation, INpgsqlTransactionCallbacks callbacks);
+        bool Recover(byte[] recoveryInformation, INpgsqlTransactionCallbacks callbacks);
         void RecoveryComplete(string connectionString);
     }
 
@@ -86,10 +86,10 @@ namespace Npgsql
             }
         }
 
-        public void Recover(byte[] recoveryInformation, INpgsqlTransactionCallbacks callbacks)
+        public bool Recover(byte[] recoveryInformation, INpgsqlTransactionCallbacks callbacks)
         {
             var durableResourceManager = new DurableResourceManager(this, callbacks, true);
-            durableResourceManager.Reenlist(recoveryInformation);
+            return durableResourceManager.Reenlist(recoveryInformation);
         }
 
         public void RecoveryComplete(string connectionString)
@@ -200,9 +200,17 @@ namespace Npgsql
                 get { return Store.GetConnectionGuid(_callbacks.ConnectionString); }
             }
 
-            public void Reenlist(byte[] recoveryInformation)
+            public bool Reenlist(byte[] recoveryInformation)
             {
-                TransactionManager.Reenlist(RmGuid, recoveryInformation, this);
+                try
+                {
+                    TransactionManager.Reenlist(RmGuid, recoveryInformation, this);
+                    return true;
+                }
+                catch (ArgumentException)
+                {
+                    return false;
+                }
             }
 
             private delegate void TransactionMissingAction();
