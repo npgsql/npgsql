@@ -55,6 +55,9 @@ please let us know and we'll add it.
 
 ## Other
 
+* It is no longer possible to create database entities (tables, functions) and then use them in the same multi-query command -
+  you must first send a command creating the entity, and only then send commands using it.
+  See [#641](https://github.com/npgsql/npgsql/issues/641) for more details.
 * Previously, Npgsql set DateStyle=ISO, lc_monetary=C and extra_float_digits=3 on all connections it created. This is no longer
   case, if you rely on these parameters you must send them yourself.
 * Removed the obsolete `NpgsqlParameterCollection.Add(name, value)` method. Use `AddWithValue()` instead, which also exists

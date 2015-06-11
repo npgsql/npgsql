@@ -9,6 +9,8 @@ for more details.
 
 Npgsql supports three COPY operation modes: binary, text and raw binary.
 
+---
+
 ## Binary COPY
 
 This mode uses the efficient PostgreSQL binary format to transfer data in and out of the database.
@@ -50,6 +52,8 @@ using (var reader = Conn.BeginBinaryExport("COPY data (field_text, field_int2) T
 
 {% endhighlight %}
 
+---
+
 ## Text COPY
 
 This mode uses the PostgreSQL text or csv format to transfer data in and out of the database.
@@ -69,6 +73,8 @@ using (var reader = conn.BeginTextExport("COPY data (field_text, field_int4) TO 
 }
 
 {% endhighlight %}
+
+---
 
 ## Raw Binary COPY
 
@@ -94,12 +100,16 @@ using (var outStream = conn.BeginRawBinaryCopy("COPY table2 FROM STDIN BINARY"))
 }
 {% endhighlight %}
 
+---
+
 ## Cancel
 
 Import operations can be cancelled at any time by calling the `Cancel()` method on the importer object. No data
 is committed to the database before the importer is closed or disposed.
 
 Export operations can be cancelled as well, also by calling `Cancel()`.
+
+---
 
 ## Other
 
