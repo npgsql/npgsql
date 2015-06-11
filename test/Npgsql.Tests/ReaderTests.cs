@@ -193,12 +193,12 @@ namespace Npgsql.Tests
         [Test]
         public void GetOrdinal()
         {
-            var command = new NpgsqlCommand(@"SELECT 0, 1 AS some_column", Conn);
-            var dr = command.ExecuteReader();
-            dr.Read();
-            Assert.That(dr.GetOrdinal("some_column"), Is.EqualTo(1));
-            Assert.That(() => dr.GetOrdinal("doesn't_exist"), Throws.Exception.TypeOf<IndexOutOfRangeException>());
-            command.Dispose();
+            using (var command = new NpgsqlCommand(@"SELECT 0, 1 AS some_column WHERE 1=0", Conn))
+            using (var dr = command.ExecuteReader())
+            {
+                Assert.That(dr.GetOrdinal("some_column"), Is.EqualTo(1));
+                Assert.That(() => dr.GetOrdinal("doesn't_exist"), Throws.Exception.TypeOf<IndexOutOfRangeException>());
+            }
         }
 
         [Test]

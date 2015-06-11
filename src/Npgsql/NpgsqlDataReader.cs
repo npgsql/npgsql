@@ -1138,7 +1138,7 @@ namespace Npgsql
         public override int GetOrdinal(string name)
         {
             #region Contracts
-            CheckRow();
+            CheckResultSet();
             if (String.IsNullOrEmpty(name))
                 throw new ArgumentException("name cannot be empty", "name");
             Contract.EndContractBlock();
