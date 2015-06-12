@@ -176,7 +176,7 @@ namespace Npgsql.Tests
             var command = new NpgsqlCommand(@"SELECT 1::INT4 AS some_column", Conn);
             var dr = command.ExecuteReader();
             dr.Read();
-            Assert.That(dr.GetDataTypeName(0), Is.EqualTo("int4"));
+            Assert.That(dr.GetDataTypeName(0), Is.EqualTo("pg_catalog.int4"));
             command.Dispose();
         }
 

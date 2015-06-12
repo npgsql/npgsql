@@ -999,19 +999,16 @@ namespace Npgsql
         /// To register the type for a specific connection, use the <see cref="RegisterEnum{T}"/> method.
         /// </remarks>
         /// <param name="pgName">
-        /// A PostgreSQL type name for the corresponding enum type in the database.
-        /// If null, the .NET type's name in lowercase will be used
+        /// A PostgreSQL full type name for the corresponding enum type in the database.
         /// </param>
         /// <typeparam name="TEnum">The .NET enum type to be associated</typeparam>
-        public static void RegisterEnumGlobally<TEnum>(string pgName = null) where TEnum : struct
+        public static void RegisterEnumGlobally<TEnum>(string pgFullName) where TEnum : struct
         {
             if (!typeof(TEnum).GetTypeInfo().IsEnum)
                 throw new ArgumentException("An enum type must be provided");
-            if (pgName != null && pgName.Trim() == "")
-                throw new ArgumentException("pgName can't be empty", "pgName");
             Contract.EndContractBlock();
 
-            TypeHandlerRegistry.RegisterEnumTypeGlobally<TEnum>(pgName ?? typeof(TEnum).Name.ToLower());
+            TypeHandlerRegistry.RegisterEnumTypeGlobally<TEnum>(pgFullName);
         }
 
         #endregion

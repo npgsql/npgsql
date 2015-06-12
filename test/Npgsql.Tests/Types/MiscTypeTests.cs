@@ -48,7 +48,7 @@ namespace Npgsql.Tests.Types
                 Assert.That(reader.GetValue(i),                 Is.True);
                 Assert.That(reader.GetProviderSpecificValue(i), Is.True);
                 Assert.That(reader.GetFieldType(i),             Is.EqualTo(typeof (bool)));
-                Assert.That(reader.GetDataTypeName(i),          Is.EqualTo("bool"));
+                Assert.That(reader.GetDataTypeName(i),          Is.EqualTo("pg_catalog.bool"));
             }
 
             reader.Close();
@@ -205,7 +205,7 @@ namespace Npgsql.Tests.Types
 
         static void CheckUnrecognizedType()
         {
-            Assert.That(TypeHandlerRegistry.HandlerTypes.Values.All(x => x.Mapping.PgName != "regproc"), "Test requires an unrecognized type to work");
+            Assert.That(TypeHandlerRegistry.HandlerTypes.Values.All(x => x.Mapping.PgFullName != "regproc"), "Test requires an unrecognized type to work");
         }
 
         [Test, Description("Attempts to retrieve an unrecognized type without marking it as unknown, triggering an exception")]

@@ -54,7 +54,7 @@ namespace Npgsql.Tests.Types
                 Assert.That(reader.GetValue(i),                 Is.EqualTo(8));
                 Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(8));
                 Assert.That(reader.GetFieldType(i),             Is.EqualTo(typeof(short)));
-                Assert.That(reader.GetDataTypeName(i),          Is.EqualTo("int2"));
+                Assert.That(reader.GetDataTypeName(i),          Is.EqualTo("pg_catalog.int2"));
             }
 
             reader.Dispose();
@@ -89,7 +89,7 @@ namespace Npgsql.Tests.Types
                 Assert.That(reader.GetValue(i),                 Is.EqualTo(8));
                 Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(8));
                 Assert.That(reader.GetFieldType(i),             Is.EqualTo(typeof(int)));
-                Assert.That(reader.GetDataTypeName(i),          Is.EqualTo("int4"));
+                Assert.That(reader.GetDataTypeName(i),          Is.EqualTo("pg_catalog.int4"));
             }
 
             reader.Dispose();
@@ -137,7 +137,7 @@ namespace Npgsql.Tests.Types
                 Assert.That(reader.GetValue(i),                 Is.EqualTo(8));
                 Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(8));
                 Assert.That(reader.GetFieldType(i),             Is.EqualTo(typeof(long)));
-                Assert.That(reader.GetDataTypeName(i),          Is.EqualTo("int8"));
+                Assert.That(reader.GetDataTypeName(i),          Is.EqualTo("pg_catalog.int8"));
             }
 
             reader.Dispose();
@@ -246,7 +246,7 @@ namespace Npgsql.Tests.Types
                 Assert.That(reader.GetValue(i),                 Is.EqualTo(8));
                 Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(8));
                 Assert.That(reader.GetFieldType(i),             Is.EqualTo(typeof(decimal)));
-                Assert.That(reader.GetDataTypeName(i),          Is.EqualTo("numeric"));
+                Assert.That(reader.GetDataTypeName(i),          Is.EqualTo("pg_catalog.numeric"));
             }
 
             reader.Dispose();

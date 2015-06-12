@@ -82,7 +82,7 @@ namespace Npgsql
             // For arrays and ranges, join in the element OID and type (to filter out arrays of unhandled
             // types).
             var query =
-                @"SELECT a.typname, a.oid, " +
+                @"SELECT n.nspname || '.' || a.typname, a.oid, " +
                 @"CASE WHEN a.typreceive::TEXT='array_recv' THEN 'a' ELSE a.typtype END AS type, " +
                 @"CASE " +
                   @"WHEN a.typreceive::TEXT='array_recv' THEN a.typelem " +
@@ -91,6 +91,7 @@ namespace Npgsql
                 @"END AS elemoid, " +
                 @"CASE WHEN a.typreceive::TEXT='array_recv' OR a.typtype='r' THEN 1 ELSE 0 END AS ord " +
                 @"FROM pg_type AS a " +
+                @"JOIN pg_namespace AS n ON (n.oid = a.typnamespace) " +
                 @"LEFT OUTER JOIN pg_type AS b ON (b.oid = a.typelem) " +
                 (connector.SupportsRangeTypes ? @"LEFT OUTER JOIN pg_range ON (pg_range.rngtypid = a.oid) " : "") +
                 @"WHERE a.typtype IN ('b', 'r', 'e') AND (b.typtype IS NULL OR b.typtype IN ('b', 'r', 'e'))" +
@@ -106,11 +107,11 @@ namespace Npgsql
                     {
                         var backendType = new BackendType
                         {
-                            Name = dr.GetString(0),
+                            FullName = dr.GetString(0),
                             OID = Convert.ToUInt32(dr[1])
                         };
 
-                        Contract.Assume(backendType.Name != null);
+                        Contract.Assume(backendType.FullName != null);
                         Contract.Assume(backendType.OID != 0);
 
                         uint elementOID;
@@ -125,7 +126,7 @@ namespace Npgsql
                             elementOID = Convert.ToUInt32(dr[3]);
                             Contract.Assume(elementOID > 0);
                             if (!byOID.TryGetValue(elementOID, out backendType.Element)) {
-                                Log.Error(string.Format("Array type '{0}' refers to unknown element with OID {1}, skipping", backendType.Name, elementOID), connector.Id);
+                                Log.Error(string.Format("Array type '{0}' refers to unknown element with OID {1}, skipping", backendType.FullName, elementOID), connector.Id);
                                 continue;
                             }
                             backendType.Element.Array = backendType;
@@ -138,12 +139,12 @@ namespace Npgsql
                             elementOID = Convert.ToUInt32(dr[3]);
                             Contract.Assume(elementOID > 0);
                             if (!byOID.TryGetValue(elementOID, out backendType.Element)) {
-                                Log.Error(String.Format("Range type '{0}' refers to unknown subtype with OID {1}, skipping", backendType.Name, elementOID), connector.Id);
+                                Log.Error(String.Format("Range type '{0}' refers to unknown subtype with OID {1}, skipping", backendType.FullName, elementOID), connector.Id);
                                 continue;
                             }
                             break;
                         default:
-                            throw new ArgumentOutOfRangeException(String.Format("Unknown typtype for type '{0}' in pg_type: {1}", backendType.Name, typeChar));
+                            throw new ArgumentOutOfRangeException(String.Format("Unknown typtype for type '{0}' in pg_type: {1}", backendType.FullName, typeChar));
                         }
 
                         types.Add(backendType);
@@ -175,7 +176,7 @@ namespace Npgsql
                     continue;
                 case BackendTypeType.Enum:
                     TypeHandler handler;
-                    if (_globalEnumRegistrations != null && _globalEnumRegistrations.TryGetValue(backendType.Name, out handler)) {
+                    if (_globalEnumRegistrations != null && _globalEnumRegistrations.TryGetValue(backendType.FullName, out handler)) {
                         ActivateEnumType(handler, backendType);
                     }
                     continue;
@@ -191,7 +192,7 @@ namespace Npgsql
         void RegisterBaseType(BackendType backendType)
         {
             TypeAndMapping typeAndMapping;
-            if (!HandlerTypes.TryGetValue(backendType.Name, out typeAndMapping)) {
+            if (!HandlerTypes.TryGetValue(backendType.FullName, out typeAndMapping)) {
                 // Backend type not supported by Npgsql
                 return;
             }
@@ -209,7 +210,7 @@ namespace Npgsql
 
             handler.OID = backendType.OID;
             _oidIndex[backendType.OID] = handler;
-            handler.PgName = backendType.Name;
+            handler.PgFullName = backendType.FullName;
 
             if (mapping.NpgsqlDbType.HasValue)
             {
@@ -266,7 +267,7 @@ namespace Npgsql
                 arrayHandler = (ArrayHandler)Activator.CreateInstance(arrayHandlerType, elementHandler);
             }
 
-            arrayHandler.PgName = "array";
+            arrayHandler.PgFullName = "array";
             arrayHandler.OID = backendType.OID;
             _oidIndex[backendType.OID] = arrayHandler;
 
@@ -301,9 +302,9 @@ namespace Npgsql
             }
 
             var rangeHandlerType = typeof(RangeHandler<>).MakeGenericType(elementHandler.GetFieldType());
-            var handler = (TypeHandler)Activator.CreateInstance(rangeHandlerType, elementHandler, backendType.Name);
+            var handler = (TypeHandler)Activator.CreateInstance(rangeHandlerType, elementHandler, backendType.FullName);
 
-            handler.PgName = backendType.Name;
+            handler.PgFullName = backendType.FullName;
             handler.NpgsqlDbType = NpgsqlDbType.Range | elementHandler.NpgsqlDbType;
             handler.OID = backendType.OID;
             _oidIndex[backendType.OID] = handler;
@@ -316,7 +317,7 @@ namespace Npgsql
 
         internal void RegisterEnumType<TEnum>(string pgName) where TEnum : struct
         {
-            var backendTypeInfo = _backendTypes.FirstOrDefault(t => t.Name == pgName);
+            var backendTypeInfo = _backendTypes.FirstOrDefault(t => t.FullName == pgName);
             if (backendTypeInfo == null) {
                 throw new Exception(String.Format("An enum with the name {0} was not found in the database", pgName));
             }
@@ -325,18 +326,18 @@ namespace Npgsql
             ActivateEnumType(handler, backendTypeInfo);
         }
 
-        internal static void RegisterEnumTypeGlobally<TEnum>(string pgName) where TEnum : struct
+        internal static void RegisterEnumTypeGlobally<TEnum>(string pgFullName) where TEnum : struct
         {
             if (_globalEnumRegistrations == null) {
                 _globalEnumRegistrations = new ConcurrentDictionary<string, TypeHandler>();
             }
 
-            _globalEnumRegistrations[pgName] = new EnumHandler<TEnum>();
+            _globalEnumRegistrations[pgFullName] = new EnumHandler<TEnum>();
         }
 
         void ActivateEnumType(TypeHandler handler, BackendType backendType)
         {
-            handler.PgName = backendType.Name;
+            handler.PgFullName = backendType.FullName;
             handler.OID = backendType.OID;
             handler.NpgsqlDbType = NpgsqlDbType.Enum;
             _oidIndex[backendType.OID] = handler;
@@ -571,10 +572,10 @@ namespace Npgsql
 
                 foreach (TypeMappingAttribute m in mappings)
                 {
-                    if (HandlerTypes.ContainsKey(m.PgName)) {
-                        throw new Exception("Two type handlers registered on same PostgreSQL type name: " + m.PgName);
+                    if (HandlerTypes.ContainsKey(m.PgFullName)) {
+                        throw new Exception("Two type handlers registered on same PostgreSQL type name: " + m.PgFullName);
                     }
-                    HandlerTypes[m.PgName] = new TypeAndMapping { HandlerType=t, Mapping=m };
+                    HandlerTypes[m.PgFullName] = new TypeAndMapping { HandlerType=t, Mapping=m };
                     if (!m.NpgsqlDbType.HasValue) {
                         continue;
                     }
@@ -619,7 +620,7 @@ namespace Npgsql
 
     class BackendType
     {
-        internal string Name;
+        internal string FullName;
         internal uint OID;
         internal BackendTypeType Type;
         internal BackendType Element;

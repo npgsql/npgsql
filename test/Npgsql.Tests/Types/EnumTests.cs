@@ -17,7 +17,7 @@ namespace Npgsql.Tests.Types
         [Test]
         public void LateRegistration()
         {
-            Conn.RegisterEnum<Mood>("mood");
+            Conn.RegisterEnum<Mood>("public.mood");
             const Mood expected = Mood.Ok;
             var cmd = new NpgsqlCommand("SELECT @p1::MOOD, @p2::MOOD", Conn);
             var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Enum) { EnumType = typeof(Mood), Value = expected };
@@ -41,8 +41,8 @@ namespace Npgsql.Tests.Types
         [Test]
         public void DualEnums()
         {
-            Conn.RegisterEnum<Mood>("mood");
-            Conn.RegisterEnum<TestEnum>("test_enum");
+            Conn.RegisterEnum<Mood>("public.mood");
+            Conn.RegisterEnum<TestEnum>("public.test_enum");
             var cmd = new NpgsqlCommand("SELECT @p1", Conn);
             var expected = new Mood[] { Mood.Ok, Mood.Sad };
             var p = new NpgsqlParameter("p1", NpgsqlDbType.Enum | NpgsqlDbType.Array) { EnumType = typeof(Mood), Value = expected };
@@ -54,7 +54,7 @@ namespace Npgsql.Tests.Types
         [Test]
         public void GlobalRegistration()
         {
-            NpgsqlConnection.RegisterEnumGlobally<Mood>();
+            NpgsqlConnection.RegisterEnumGlobally<Mood>("public.mood");
             var myconn = new NpgsqlConnection(ConnectionString);
             myconn.Open();
             const Mood expected = Mood.Ok;
@@ -76,7 +76,7 @@ namespace Npgsql.Tests.Types
         [Test]
         public void Array()
         {
-            Conn.RegisterEnum<Mood>("mood");
+            Conn.RegisterEnum<Mood>("public.mood");
             var expected = new[] { Mood.Ok, Mood.Happy };
             var cmd = new NpgsqlCommand("SELECT @p1::MOOD[], @p2::MOOD[]", Conn);
             var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Enum | NpgsqlDbType.Array) { EnumType=typeof(Mood), Value = expected };
@@ -100,7 +100,7 @@ namespace Npgsql.Tests.Types
         [Test]
         public void TestEnumType()
         {
-            Conn.RegisterEnum<TestEnum>("test_enum");
+            Conn.RegisterEnum<TestEnum>("public.test_enum");
             using (var cmd = Conn.CreateCommand())
             {
                 cmd.CommandText = "Select :p1, :p2, :p3, :p4, :p5";

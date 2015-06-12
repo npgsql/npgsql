@@ -117,7 +117,7 @@ namespace Npgsql
 
     internal abstract partial class TypeHandler
     {
-        internal string PgName { get; set; }
+        internal string PgFullName { get; set; }
         internal uint OID { get; set; }
         internal NpgsqlDbType NpgsqlDbType { get; set; }
         internal abstract Type GetFieldType(FieldDescription fieldDescription=null);
@@ -168,7 +168,7 @@ namespace Npgsql
                 if (asChunkingReader == null) {
                     if (fieldDescription == null)
                         throw new InvalidCastException("Can't cast database type to " + typeof(T).Name);
-                    throw new InvalidCastException(String.Format("Can't cast database type {0} to {1}", fieldDescription.Handler.PgName, typeof(T).Name));
+                    throw new InvalidCastException(String.Format("Can't cast database type {0} to {1}", fieldDescription.Handler.PgFullName, typeof(T).Name));
                 }
 
                 asChunkingReader.PrepareRead(buf, len, fieldDescription);
@@ -182,12 +182,12 @@ namespace Npgsql
 
         protected Exception CreateConversionException(Type clrType)
         {
-            return new InvalidCastException(string.Format("Can't convert .NET type {0} to PostgreSQL {1}", clrType, PgName));
+            return new InvalidCastException(string.Format("Can't convert .NET type {0} to PostgreSQL {1}", clrType, PgFullName));
         }
 
         protected Exception CreateConversionButNoParamException(Type clrType)
         {
-            return new InvalidCastException(string.Format("Can't convert .NET type {0} to PostgreSQL {1} within an array", clrType, PgName));
+            return new InvalidCastException(string.Format("Can't convert .NET type {0} to PostgreSQL {1} within an array", clrType, PgFullName));
         }
 
         [ContractInvariantMethod]
@@ -278,6 +278,9 @@ namespace Npgsql
         /// <summary>
         /// Maps an Npgsql type handler to a PostgreSQL type.
         /// </summary>
+        /// <param name="pgNamespace">
+        /// A PostgreSQL type namespace as it appears in the pg_namespace table.
+        /// </param>
         /// <param name="pgName">A PostgreSQL type name as it appears in the pg_type table.</param>
         /// <param name="npgsqlDbType">
         /// A member of <see cref="NpgsqlDbType"/> which represents this PostgreSQL type.
@@ -299,18 +302,23 @@ namespace Npgsql
         /// When <see cref="NpgsqlParameter.NpgsqlDbType"/> or <see cref="NpgsqlParameter.Value"/>
         /// set, <see cref="NpgsqlParameter.DbType"/> will be set to this value.
         /// </param>
-        internal TypeMappingAttribute(string pgName, NpgsqlDbType? npgsqlDbType, DbType[] dbTypes, Type[] types, DbType? inferredDbType)
+        internal TypeMappingAttribute(string pgNamespace, string pgName, NpgsqlDbType? npgsqlDbType, DbType[] dbTypes, Type[] types, DbType? inferredDbType)
         {
+            if (String.IsNullOrWhiteSpace(pgNamespace))
+                throw new ArgumentException("pgNamespace can't be empty", "pgNamespace");
             if (String.IsNullOrWhiteSpace(pgName))
                 throw new ArgumentException("pgName can't be empty", "pgName");
             Contract.EndContractBlock();
 
-            PgName = pgName;
+            PgFullName = String.Format("{0}.{1}", pgNamespace, pgName);
             NpgsqlDbType = npgsqlDbType;
             DbTypes = dbTypes ?? new DbType[0];
             Types = types ?? new Type[0];
             InferredDbType = inferredDbType;
         }
+
+        internal TypeMappingAttribute(string pgName, NpgsqlDbType? npgsqlDbType, DbType[] dbTypes, Type[] types, DbType? inferredDbType)
+            : this("pg_catalog", pgName, npgsqlDbType, dbTypes, types, inferredDbType) { }
 
         internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, DbType[] dbTypes, Type[] types, DbType inferredDbType)
             : this(pgName, (NpgsqlDbType?)npgsqlDbType, dbTypes, types, inferredDbType) {}
@@ -351,7 +359,7 @@ namespace Npgsql
         internal TypeMappingAttribute(string pgName)
             : this(pgName, null, null, null, null) {}
 
-        internal string PgName { get; private set; }
+        internal string PgFullName { get; private set; }
         internal NpgsqlDbType? NpgsqlDbType { get; private set; }
         internal DbType[] DbTypes { get; private set; }
         internal Type[] Types { get; private set; }
@@ -360,7 +368,7 @@ namespace Npgsql
         public override string ToString()
         {
             var sb = new StringBuilder();
-            sb.AppendFormat("[{0} NpgsqlDbType={1}", PgName, NpgsqlDbType);
+            sb.AppendFormat("[{0} NpgsqlDbType={1}", PgFullName, NpgsqlDbType);
             if (DbTypes.Length > 0) {
                 sb.Append(" DbTypes=");
                 sb.Append(String.Join(",", DbTypes.Select(t => t.ToString())));
@@ -376,7 +384,7 @@ namespace Npgsql
         [ContractInvariantMethod]
         void ObjectInvariants()
         {
-            Contract.Invariant(!String.IsNullOrWhiteSpace(PgName));
+            Contract.Invariant(!String.IsNullOrWhiteSpace(PgFullName));
             Contract.Invariant(Types != null);
             Contract.Invariant(DbTypes != null);
         }

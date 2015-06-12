@@ -8,6 +8,8 @@ using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers
 {
+    // TODO It doesn't work now because hstore type is added by an extension so 
+    // we don't know to which schema it belongs.
     [TypeMapping("hstore", NpgsqlDbType.Hstore)]
     class HstoreHandler : TypeHandler<IDictionary<string, string>>,
         IChunkingTypeWriter, IChunkingTypeReader<IDictionary<string, string>>, IChunkingTypeReader<string>

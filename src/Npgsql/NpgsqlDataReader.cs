@@ -1136,7 +1136,7 @@ namespace Npgsql
             CheckOrdinal(ordinal);
             Contract.EndContractBlock();
 
-            return _rowDescription[ordinal].Handler.PgName;
+            return _rowDescription[ordinal].Handler.PgFullName;
         }
 
         /// <summary>
@@ -1266,7 +1266,7 @@ namespace Npgsql
             var elementType = t.GetElementType();
             var arrayHandler = handler as ArrayHandler;
             if (arrayHandler == null) {
-                throw new InvalidCastException(String.Format("Can't cast database type {0} to {1}", fieldDescription.Handler.PgName, typeof(T).Name));
+                throw new InvalidCastException(String.Format("Can't cast database type {0} to {1}", fieldDescription.Handler.PgFullName, typeof(T).Name));
             }
 
             if (arrayHandler.GetElementFieldType(fieldDescription) == elementType)
@@ -1277,7 +1277,7 @@ namespace Npgsql
             {
                 return (T)GetProviderSpecificValue(ordinal);
             }
-            throw new InvalidCastException(String.Format("Can't cast database type {0} to {1}", handler.PgName, typeof(T).Name));
+            throw new InvalidCastException(String.Format("Can't cast database type {0} to {1}", handler.PgFullName, typeof(T).Name));
         }
 
         /// <summary>
