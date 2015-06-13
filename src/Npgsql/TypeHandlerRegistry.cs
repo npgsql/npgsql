@@ -106,14 +106,15 @@ namespace Npgsql
             // types).
             var query =
                 @"SELECT a.typname, a.oid, " +
-                @"CASE WHEN a.typreceive::TEXT='array_recv' THEN 'a' ELSE a.typtype END AS type, " +
+                @"CASE WHEN pg_proc.proname='array_recv' THEN 'a' ELSE a.typtype END AS type, " +
                 @"CASE " +
-                  @"WHEN a.typreceive::TEXT='array_recv' THEN a.typelem " +
+                  @"WHEN pg_proc.proname='array_recv' THEN a.typelem " +
                   (connector.SupportsRangeTypes ? @"WHEN a.typtype='r' THEN rngsubtype " : "")+
                   @"ELSE 0 " +
                 @"END AS elemoid, " +
-                @"CASE WHEN a.typreceive::TEXT='array_recv' OR a.typtype='r' THEN 1 ELSE 0 END AS ord " +
+                @"CASE WHEN pg_proc.proname='array_recv' OR a.typtype='r' THEN 1 ELSE 0 END AS ord " +
                 @"FROM pg_type AS a " +
+                @"JOIN pg_proc ON pg_proc.oid = a.typreceive " +
                 @"LEFT OUTER JOIN pg_type AS b ON (b.oid = a.typelem) " +
                 (connector.SupportsRangeTypes ? @"LEFT OUTER JOIN pg_range ON (pg_range.rngtypid = a.oid) " : "") +
                 @"WHERE a.typtype IN ('b', 'r', 'e') AND (b.typtype IS NULL OR b.typtype IN ('b', 'r', 'e'))" +
