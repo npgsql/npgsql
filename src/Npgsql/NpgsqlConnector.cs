@@ -192,6 +192,13 @@ namespace Npgsql
         /// </summary>
         SemaphoreSlim _asyncLock;
 
+        /// <summary>
+        /// A lock that's taken while a cancellation is being delivered; new queries are blocked until the
+        /// cancellation is delivered. This reduces the chance that a cancellation meant for a previous
+        /// command will accidentally cancel a later one, see #615.
+        /// </summary>
+        readonly object _cancelLock;
+
         readonly UserAction _userAction;
         readonly Timer _keepAliveTimer;
 
@@ -264,6 +271,7 @@ namespace Npgsql
             _userLock = new SemaphoreSlim(1, 1);
             _asyncLock = new SemaphoreSlim(1, 1);
             _userAction = new UserAction(this);
+            _cancelLock = new object();
 
             if (KeepAlive > 0) {
                 _keepAliveTimer = new Timer(PerformKeepAlive, null, Timeout.Infinite, Timeout.Infinite);
@@ -747,6 +755,9 @@ namespace Npgsql
             if (!_messagesToSend.Any()) {
                 return;
             }
+
+            // If a cancellation is in progress, wait for it to "complete" before proceeding (#615)
+            lock (_cancelLock) { }
 
             _sentRfqPrependedMessages = _pendingRfqPrependedMessages;
             _pendingRfqPrependedMessages = 0;
@@ -1291,16 +1302,35 @@ namespace Npgsql
         /// </summary>
         internal void CancelRequest()
         {
-            var cancelConnector = new NpgsqlConnector(_settings);
+            lock (_cancelLock)
+            {
+                var cancelConnector = new NpgsqlConnector(_settings);
+                cancelConnector.DoCancelRequest(BackendProcessId, _backendSecretKey, cancelConnector.ConnectionTimeout);
+            }
+        }
+
+        void DoCancelRequest(int backendProcessId, int backendSecretKey, int connectionTimeout)
+        {
+            Contract.Requires(State == ConnectorState.Closed);
 
             try
             {
-                cancelConnector.RawOpen(cancelConnector.ConnectionTimeout*1000);
-                cancelConnector.SendSingleMessage(new CancelRequestMessage(BackendProcessId, _backendSecretKey));
+                RawOpen(connectionTimeout * 1000);
+                SendSingleMessage(new CancelRequestMessage(backendProcessId, backendSecretKey));
+
+                Contract.Assert(Buffer.ReadPosition == 0);
+
+                // Now wait for the server to close the connection, better chance of the cancellation
+                // actually being delivered.
+                var count = _stream.Read(Buffer._buf, 0, 1);
+                if (count != -1)
+                {
+                    Log.Error("Received response after sending cancel request, shouldn't happen! First byte: " + Buffer._buf[0]);
+                }
             }
             finally
             {
-                cancelConnector.Close();
+                Cleanup();
             }
         }
 
