@@ -241,16 +241,28 @@ namespace Npgsql
             if (connector.State == ConnectorState.Copy)
             {
                 Contract.Assert(connector.CurrentCopyOperation != null);
-                try {
-                    connector.CurrentCopyOperation.Cancel();
-                } catch (Exception e) {
-                    Log.Warn("Error while cancelling copy on connector close", e);
+
+                // Note: we only want to cancel import operations, since in these cases cancel is safe.
+                // Export cancellations go through the PostgreSQL "asynchronous" cancel mechanism and are
+                // therefore vulnerable to the race condition in #615.
+                if (connector.CurrentCopyOperation is NpgsqlBinaryImporter ||
+                    connector.CurrentCopyOperation is NpgsqlCopyTextWriter ||
+                    (connector.CurrentCopyOperation is NpgsqlRawCopyStream && ((NpgsqlRawCopyStream) connector.CurrentCopyOperation).CanWrite))
+                {
+                    try
+                    {
+                        connector.CurrentCopyOperation.Cancel();
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Warn("Error while cancelling COPY on connector close", e);
+                    }
                 }
 
                 try {
                     connector.CurrentCopyOperation.Dispose();
                 } catch (Exception e) {
-                    Log.Warn("Error while disposing cancelled copy on connector close", e);
+                    Log.Warn("Error while disposing cancelled COPY on connector close", e);
                 }
             }
             UngetConnector(connection, connector);
