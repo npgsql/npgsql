@@ -1271,8 +1271,13 @@ namespace Npgsql
 
             var t = typeof(T);
             if (!t.IsArray) {
+                if (t == typeof(object)) {
+                    return (T)GetValue(ordinal);
+                }
                 return ReadColumn<T>(ordinal);
             }
+
+            // Getting an array
 
             var fieldDescription = _rowDescription[ordinal];
             var handler = fieldDescription.Handler;

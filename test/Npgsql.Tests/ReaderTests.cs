@@ -202,6 +202,17 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        public void GetFieldValueAsObject()
+        {
+            using (var cmd = new NpgsqlCommand("SELECT 'foo'::TEXT", Conn))
+            using (var reader = cmd.ExecuteReader())
+            {
+                reader.Read();
+                Assert.That(reader.GetFieldValue<object>(0), Is.EqualTo("foo"));
+            }
+        }
+
+        [Test]
         public void GetValues()
         {
             var command = new NpgsqlCommand(@"SELECT 'hello', 1, '2014-01-01'::DATE", Conn);
