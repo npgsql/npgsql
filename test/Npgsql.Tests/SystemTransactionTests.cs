@@ -9,9 +9,9 @@ using NUnit.Framework;
 namespace Npgsql.Tests
 {
     [TestFixture]
-    public class SystemTransactionsTest : TestBase
+    public class SystemTransactionTests : TestBase
     {
-        public SystemTransactionsTest(string backendVersion) : base(backendVersion) { }
+        public SystemTransactionTests(string backendVersion) : base(backendVersion) { }
 
         [Test, Description("Single connection enlisting explicitly, committing")]
         public void ExplicitEnlist()

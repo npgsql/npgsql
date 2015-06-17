@@ -89,7 +89,7 @@
     <Compile Include="NpgsqlParameterTests.cs">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="SystemTransactionsTest.cs" />
+    <Compile Include="SystemTransactionTests.cs" />
     <Compile Include="TestUtil.cs" />
     <Compile Include="Types\MiscTypeTests.cs" />
     <Compile Include="Types\TextTests.cs" />
