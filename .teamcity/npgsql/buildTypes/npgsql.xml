@@ -12,7 +12,6 @@
     <disabled-settings>
       <setting-ref ref="RUNNER_11" />
       <setting-ref ref="RUNNER_21" />
-      <setting-ref ref="RUNNER_23" />
       <setting-ref ref="swabra" />
     </disabled-settings>
     <parameters>
