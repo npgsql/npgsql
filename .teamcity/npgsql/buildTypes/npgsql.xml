@@ -106,7 +106,7 @@ test/Npgsql.EntityFramework.Tests/bin/%system.Configuration%/Npgsql.EntityFramew
       <runner id="RUNNER_23" name="Run tests under mono" type="simpleRunner">
         <parameters>
           <param name="command.executable" value="%MONO_PREFIX%\bin\mono.exe" />
-          <param name="command.parameters" value="--runtime=v4.0 %system.teamcity.dotnet.nunitlauncher% v4.0 MSIL NUnit-2.6.3 %teamcity.build.checkoutDir%\test\Npgsql.Tests\bin\Release-net45\Npgsql.Tests.dll" />
+          <param name="command.parameters" value="--runtime=v4.0 %system.teamcity.dotnet.nunitlauncher% v4.0 MSIL NUnit-2.6.4 %teamcity.build.checkoutDir%\test\Npgsql.Tests\bin\Release-net45\Npgsql.Tests.dll" />
           <param name="teamcity.step.mode" value="default" />
         </parameters>
       </runner>
