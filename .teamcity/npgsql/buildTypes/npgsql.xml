@@ -15,6 +15,7 @@
       <setting-ref ref="swabra" />
     </disabled-settings>
     <parameters>
+      <param name="MONO_PREFIX" value="C:\Program Files (x86)\mono" />
       <param name="system.Configuration" value="Release-net45" />
     </parameters>
     <build-runners>
