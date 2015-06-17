@@ -5,7 +5,10 @@ layout: default
 
   <div id="npgsql-about">
     <h2>About Npgsql</h2>
-    Npgsql is a .NET Data Provider for Postgresql. It allows any program developed for .Net framework to access database server. It is implemented in 100% C# code. Works with Postgresql 9.x and above. <a href="{{ "about" | prepend: site.baseurl }}">Read more...</a>
+      Npgsql is the .NET data provider for PostgreSQL.
+      It allows any program developed for .NET framework to access a PostgreSQL database server.
+      It is implemented in 100% C# code. PostgreSQL versions since 9.0 are officially supported, others may work.
+      <a href="about.html">Read more...</a>
   </div>
 
   <h2>Latest News</h2>
@@ -45,13 +48,32 @@ layout: default
 
   </ul>
 
-  <a href="{{ "news" | prepend: site.baseurl }}">Click here for older announcements</a>
+  <a href="news.html">Click here for older announcements</a>
 
 </div> <!-- #main -->
 
 <div id="sidebar" class="four columns">
 
-  <h3>Build Status:</h3>
-  <script type="text/javascript" src="http://build.npgsql.org/externalStatus.html?js=1"></script>
+  <p>
+    <a href="https://www.nuget.org/packages/Npgsql/">
+      <img src="https://img.shields.io/nuget/v/Npgsql.svg?label=stable%20nuget" />
+    </a>
+  </p>
+
+  <p>
+    <img src="https://img.shields.io/myget/npgsql-unstable/v/npgsql.svg?label=unstable%20nuget" />
+  </p>
+
+  <p>
+    <a href="http://build.npgsql.org/viewType.html?buildTypeId=npgsql&guest=1">
+      <img src="https://img.shields.io/teamcity/http/build.npgsql.org/s/npgsql.svg?label=TeamCity" />
+    </a>
+  </p>
+
+  <p>
+    <a href="https://gitter.im/npgsql/npsgl">
+      <img src="https://img.shields.io/badge/GITTER-JOIN%20CHAT-brightgreen.svg" />
+    </a>
+  </p>
 
 </div> <!-- #sidebar -->

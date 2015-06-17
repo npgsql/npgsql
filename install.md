@@ -8,3 +8,6 @@ If you need Entity Framework support, install <a href="https://www.nuget.org/pac
 
 If you'd like to have Visual Studio Design-Time support, you can try our <a href="">experiental installer</a>.
 Otherwise follow the <a href="">instructions for manual installation</a> in the documentation.
+
+Our build server publishes CI nuget packages for every build. If you'd like to install an unstable build, add our unstable NuGet
+feed at MyGet: https://www.myget.org/F/npgsql-unstable

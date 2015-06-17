@@ -14,17 +14,16 @@ Parameter keywords are case-insensitive.
   </thead>
 
   <tbody>
-    <tr><td>Connection</td></tr>
 
     <tr>
       <td>Host</td>
       <td>The hostname or IP address of the PostgreSQL server to connect to.</td>
-    <tr>
+    </tr>
 
     <tr>
       <td>Port</td>
       <td>The TCP port of the PostgreSQL server.</td>
-    <tr>
+    </tr>
 
     <tr>
       <td>Database</td>
@@ -52,17 +51,12 @@ Parameter keywords are case-insensitive.
     </tr>
 
     <tr>
-      <td>SearchPath</td>
+      <td>Search Path</td>
       <td>Gets or sets the schema search path.</td>
     </tr>
 
-  </tbody>
-
-  <tbody>
-    <tr><td>Security</td></tr>
-
     <tr>
-      <td>SSLMode</td>
+      <td>SSL Mode</td>
       <td>Controls whether SSL is required, disabled or preferred, depending on server support.</td>
     </tr>
 
@@ -91,11 +85,6 @@ Parameter keywords are case-insensitive.
       <td>The Kerberos realm to be used for authentication.</td>
     </tr>
 
-  </tbody>
-
-  <tbody>
-    <tr><td>Pooling</td></tr>
-
     <tr>
       <td>Pooling</td>
       <td>Whether connection pooling should be used.</td>
@@ -116,20 +105,10 @@ Parameter keywords are case-insensitive.
       <td>The time to wait before closing unused connections in the pool if the count of all connections exeeds MinPoolSize.</td>
     </tr>
 
-  </tbody>
-
-  <tbody>
-    <tr><td>Entity Framework</td></tr>
-
     <tr>
       <td>EF Template Database</td>
       <td>The database template to specify when creating a database in Entity Framework. If not specified, PostgreSQL defaults to template1.</td>
     </tr>
-
-  </tbody>
-
-  <tbody>
-    <tr><td>Advanced</td></tr>
 
     <tr id="continuous-processing">
       <td>Continuous Processing</td>
@@ -146,11 +125,6 @@ Parameter keywords are case-insensitive.
       <td>Determines the size of the internal buffer Npgsql uses when reading or writing. Increasing may improve performance if transferring large values from the database.</td>
     </tr>
 
-  </tbody>
-
-  <tbody>
-    <tr><td>Compatibility</td></tr>
-
     <tr>
       <td>Server Compatibility Mode</td>
       <td>A compatibility mode for special PostgreSQL server types.</td>
@@ -160,6 +134,7 @@ Parameter keywords are case-insensitive.
       <td>Convert Infinity DateTime</td>
       <td>Makes MaxValue and MinValue timestamps and dates readable as infinity and negative infinity.</td>
     </tr>
+
   </tbody>
 
 <table>

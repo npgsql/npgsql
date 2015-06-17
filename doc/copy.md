@@ -57,8 +57,9 @@ using (var reader = Conn.BeginBinaryExport("COPY data (field_text, field_int2) T
 ## Text COPY
 
 This mode uses the PostgreSQL text or csv format to transfer data in and out of the database.
-It is the users responsibility to format the text or CSV appropriately, Npgsql simply provides a TextReader or
-Writer. This mode is less efficient than binary copy.
+It is the user's responsibility to format the text or CSV appropriately, Npgsql simply provides a TextReader or
+Writer. This mode is less efficient than binary copy, and is suitable mainly if you already have the data in a CSV
+or compatible text format and don't care about performance.
 
 {% highlight C# %}
 
@@ -78,7 +79,7 @@ using (var reader = conn.BeginTextExport("COPY data (field_text, field_int4) TO 
 
 ## Raw Binary COPY
 
-In this mode, data transfer is binary, but Npgsql does not encoding or decoding whatsoever - data is exposed as a raw .NET Stream.
+In this mode, data transfer is binary, but Npgsql does no encoding or decoding whatsoever - data is exposed as a raw .NET Stream.
 This mode makes sense only for bulk data and restore a table: the table is saved as a blob, which can later be restored. If you
 need to actually make sense of the data, you should be using regular binary mode instead (not raw).
 
