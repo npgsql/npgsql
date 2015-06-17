@@ -136,6 +136,7 @@ namespace Npgsql.Tests
 
         [Test, Description("Makes sure that when a timeout occurs, the transaction is rolled backed")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/495")]
+        [MonoIgnore("Mono's TransactionScope doesn't enforce the timeout: https://bugzilla.xamarin.com/show_bug.cgi?id=31197")]
         public void RollbackOnTimeout()
         {
             Assert.That(() =>

@@ -140,6 +140,7 @@ namespace Npgsql.Tests.Types
         #region Time with timezone
 
         [Test]
+        [MonoIgnore]
         public void TimeTz()
         {
             var tzOffset = TimeZoneInfo.Local.BaseUtcOffset;
