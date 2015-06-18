@@ -20,7 +20,7 @@ namespace Npgsql.TypeHandlers
         public RangeHandler(TypeHandler<TElement> elementHandler, string name)
         {
             ElementHandler = elementHandler;
-            PgName = name;
+            PgFullName = name;
         }
 
         #region State

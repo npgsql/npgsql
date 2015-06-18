@@ -21,7 +21,7 @@ namespace Npgsql.TypeHandlers
         internal UnrecognizedTypeHandler()
         {
             OID = 0;
-            PgName = "<unknown>";
+            PgFullName = "<unknown>";
         }
 
         internal override void PrepareRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)

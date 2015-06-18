@@ -950,7 +950,7 @@ namespace Npgsql
                 // Transparently dereference cursors returned from functions
                 if (CommandType == CommandType.StoredProcedure &&
                     reader.FieldCount == 1 &&
-                    reader.GetDataTypeName(0) == "refcursor")
+                    reader.GetDataTypeName(0) == "pg_catalog.refcursor")
                 {
                     var sb = new StringBuilder();
                     while (reader.Read()) {
