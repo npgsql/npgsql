@@ -8,7 +8,7 @@ description: > # this means to ignore newlines until "baseurl:"
 
 #baseurl: ""
 #url: "http://www.npgsql.org"
-baseurl: "/npgsql/"
+baseurl: "/"
 url: "http://npgsql.github.io"
 permalink:   /:categories/:title/
 
