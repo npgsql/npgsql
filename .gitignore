@@ -14,3 +14,4 @@ artifacts/
 # Roslyn cache directories
 *.ide/
 *.lock.json
+/.vagrant
