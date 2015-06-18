@@ -24,7 +24,7 @@ Current active contributors to Npgsql are:
 Past contributors to Npgsql:
 
 * Jon Asher
-* John Cooley
+* Josh Cooley
 * Federico Di Gregorio
 * Jon Hanna
 * Chris Morgan
