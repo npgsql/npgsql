@@ -20,3 +20,6 @@ Support for these is usually partial, please report any issues.
 Full compatibility on mono is a major goal of Npgsql. We run regular regression tests on mono and even contribute fixes to mono itself from time to time.
 Please report any issues you find.
 
+## License
+
+Npgsql uses the [PostgreSQL License](https://github.com/npgsql/npgsql/blob/develop/LICENSE.txt), a liberal OSI-approved open source license.
