@@ -117,6 +117,23 @@ namespace Npgsql.Tests
                 return;
             }
 
+            try
+            {
+                var connectionString = String.Format("{0};port=54{1}", DEFAULT_CONNECTION_STRING, BackendVersion.ToString().Replace(".", ""));
+                using (var conn = new NpgsqlConnection(connectionString))
+                    conn.Open();
+                _connectionString = connectionString;
+            }
+            catch
+            {
+            }
+
+            if (_connectionString != null)
+            {
+                Console.WriteLine("Using internal default connection string: " + _connectionString);
+                return;
+            }
+
             if (BackendVersion == LatestBackendVersion)
             {
                 _connectionString = DEFAULT_CONNECTION_STRING;
