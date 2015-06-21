@@ -947,9 +947,13 @@ namespace Npgsql
             // Wait notification thread finish its work.
             lock (_socket)
             {
-                // Kill notification thread.
-                _notificationThread.Abort();
-                _notificationThread = null;
+                if (_notificationThread != null)
+                {
+                    // Kill notification thread.
+                    _notificationThread.Abort();
+                    _notificationThread = null;
+                }
+
 
                 // Special case in order to not get problems with thread synchronization.
                 // It will be turned to 0 when synch thread is created.
