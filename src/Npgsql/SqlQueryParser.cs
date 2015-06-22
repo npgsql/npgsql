@@ -49,7 +49,7 @@ namespace Npgsql
         /// <param name="standardConformantStrings">Whether the PostgreSQL session is configured to use standard conformant strings.</param>
         /// <param name="parameters">The parameters configured on the <see cref="NpgsqlCommand"/> of this query.</param>
         /// <param name="queries">An empty list to be populated with the queries parsed by this method</param>
-        static internal void ParseRawQuery(string sql, bool standardConformantStrings, NpgsqlParameterCollection parameters, List<QueryDetails> queries)
+        static internal void ParseRawQuery(string sql, bool standardConformantStrings, NpgsqlParameterCollection parameters, List<NpgsqlStatement> queries)
         {
             Contract.Requires(sql != null);
             Contract.Requires(queries != null && !queries.Any());
@@ -377,7 +377,7 @@ namespace Npgsql
 
         SemiColon:
             currentSql.Write(sql.Substring(currTokenBeg, currCharOfs - currTokenBeg - 1));
-            queries.Add(new QueryDetails(currentSql.ToString(), currentParameters));
+            queries.Add(new NpgsqlStatement(currentSql.ToString(), currentParameters));
             while (currCharOfs < end) {
                 ch = sql[currCharOfs];
                 if (Char.IsWhiteSpace(ch)) {
@@ -399,7 +399,7 @@ namespace Npgsql
 
         Finish:
             currentSql.Write(sql.Substring(currTokenBeg, end - currTokenBeg));
-            queries.Add(new QueryDetails(currentSql.ToString(), currentParameters));
+            queries.Add(new NpgsqlStatement(currentSql.ToString(), currentParameters));
         }
 
         static bool IsLetter(char ch)

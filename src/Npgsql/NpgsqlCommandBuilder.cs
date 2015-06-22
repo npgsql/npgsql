@@ -377,7 +377,7 @@ namespace Npgsql
         /// <param name="row">The row.</param>
         /// <param name="statementType">Type of the statement.</param>
         /// <param name="whereClause">if set to <c>true</c> [where clause].</param>
-        protected override void ApplyParameterInfo(DbParameter p, DataRow row, StatementType statementType, bool whereClause)
+        protected override void ApplyParameterInfo(DbParameter p, DataRow row, System.Data.StatementType statementType, bool whereClause)
         {
             // TODO: We may need to set NpgsqlDbType, as well as other properties, on p
         }

@@ -128,4 +128,22 @@ namespace Npgsql
         Log
 #pragma warning restore 1591
     }
+
+    /// <summary>
+    /// Specifies the type of SQL statement, e.g. SELECT
+    /// </summary>
+    public enum StatementType
+    {
+#pragma warning disable 1591
+        Select,
+        Insert,
+        Delete,
+        Update,
+        CreateTableAs,
+        Move,
+        Fetch,
+        Copy,
+        Other
+#pragma warning restore 1591
+    }
 }

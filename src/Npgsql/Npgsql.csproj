@@ -184,6 +184,7 @@
     <Compile Include="FrontendMessages\ParseMessage.cs" />
     <Compile Include="LengthCache.cs" />
     <Compile Include="NpgsqlBuffer.cs" />
+    <Compile Include="NpgsqlStatement.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlTimeSpan.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlRange.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlDateTime.cs" />

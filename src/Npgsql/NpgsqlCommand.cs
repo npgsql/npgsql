@@ -66,7 +66,7 @@ namespace Npgsql
         int? _timeout;
         readonly NpgsqlParameterCollection _parameters = new NpgsqlParameterCollection();
 
-        List<QueryDetails> _queries;
+        List<NpgsqlStatement> _queries;
 
         int _queryIndex;
 
@@ -140,7 +140,7 @@ namespace Npgsql
         {
             _commandText = cmdText;
             CommandType = CommandType.Text;
-            _queries = new List<QueryDetails>();
+            _queries = new List<NpgsqlStatement>();
         }
 
         #endregion Constructors
@@ -520,7 +520,7 @@ namespace Npgsql
                 }
                 break;
             case CommandType.TableDirect:
-                _queries.Add(new QueryDetails("SELECT * FROM " + CommandText, new List<NpgsqlParameter>()));
+                _queries.Add(new NpgsqlStatement("SELECT * FROM " + CommandText, new List<NpgsqlParameter>()));
                 break;
             case CommandType.StoredProcedure:
                 var numInput = _parameters.Count(p => p.IsInputDirection);
@@ -536,7 +536,7 @@ namespace Npgsql
                     }
                 }
                 sb.Append(')');
-                _queries.Add(new QueryDetails(sb.ToString(), _parameters.Where(p => p.IsInputDirection).ToList()));
+                _queries.Add(new NpgsqlStatement(sb.ToString(), _parameters.Where(p => p.IsInputDirection).ToList()));
                 break;
             default:
                 throw PGUtil.ThrowIfReached();
@@ -1144,30 +1144,5 @@ namespace Npgsql
         Idle,
         InProgress,
         Disposed
-    }
-
-    class QueryDetails
-    {
-        public QueryDetails(string sql, List<NpgsqlParameter> inputParameters, string preparedStatementName = null)
-        {
-            Sql = sql;
-            InputParameters = inputParameters;
-            PreparedStatementName = preparedStatementName;
-        }
-
-        internal readonly string Sql;
-        internal readonly List<NpgsqlParameter> InputParameters;
-
-        /// <summary>
-        /// The RowDescription message for this query. If null, the query does not return rows (e.g. INSERT)
-        /// </summary>
-        internal RowDescriptionMessage Description;
-
-        /// <summary>
-        /// For prepared statements, holds the server-side prepared statement name.
-        /// </summary>
-        internal string PreparedStatementName;
-
-        public override string ToString() { return Sql; }
     }
 }

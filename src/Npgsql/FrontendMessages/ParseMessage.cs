@@ -58,13 +58,13 @@ namespace Npgsql.FrontendMessages
             ParameterTypeOIDs = new List<uint>();
         }
 
-        internal ParseMessage Populate(QueryDetails queryDetails, TypeHandlerRegistry typeHandlerRegistry)
+        internal ParseMessage Populate(NpgsqlStatement statement, TypeHandlerRegistry typeHandlerRegistry)
         {
             _state = State.WroteNothing;
             ParameterTypeOIDs.Clear();
-            Query = queryDetails.Sql;
-            Statement = queryDetails.PreparedStatementName ?? "";
-            foreach (var inputParam in queryDetails.InputParameters) {
+            Query = statement.SQL;
+            Statement = statement.PreparedStatementName ?? "";
+            foreach (var inputParam in statement.InputParameters) {
                 inputParam.ResolveHandler(typeHandlerRegistry);
                 ParameterTypeOIDs.Add(inputParam.Handler.OID);
             }
