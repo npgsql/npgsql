@@ -300,7 +300,7 @@ namespace Npgsql.EntityFramework7.FunctionalTests
         {
             using (var master = new NpgsqlConnection(CreateAdminConnectionString()))
             {
-                await master.OpenAsync().WithCurrentCulture();
+                await master.OpenAsync();
 
                 using (var command = master.CreateCommand())
                 {
@@ -312,10 +312,10 @@ namespace Npgsql.EntityFramework7.FunctionalTests
                       SELECT pg_terminate_backend (pg_stat_activity.pid)
                       FROM pg_stat_activity
                       WHERE pg_stat_activity.datname = '{0}'", name);
-                    await command.ExecuteNonQueryAsync().WithCurrentCulture();
+                    await command.ExecuteNonQueryAsync();
 
                     command.CommandText = string.Format(@"DROP DATABASE IF EXISTS ""{0}""", name);
-                    await command.ExecuteNonQueryAsync().WithCurrentCulture();
+                    await command.ExecuteNonQueryAsync();
                 }
             }
         }

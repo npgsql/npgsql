@@ -2,16 +2,17 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Linq;
 using System.Linq.Expressions;
 using JetBrains.Annotations;
+using Microsoft.Data.Entity.Relational;
 using Microsoft.Data.Entity.Relational.Query.Expressions;
 using Microsoft.Data.Entity.Relational.Query.Sql;
 using Microsoft.Data.Entity.Utilities;
-using System.Linq;
 
 namespace Npgsql.EntityFramework7.Query
 {
-    public class NpgsqlQueryGenerator : DefaultSqlQueryGenerator
+    public class NpgsqlQuerySqlGenerator : DefaultQuerySqlGenerator
     {
         protected override string ConcatOperator => "||";
         protected override string TrueLiteral => "TRUE";
@@ -24,8 +25,10 @@ namespace Npgsql.EntityFramework7.Query
             return "\"" + identifier.Replace("\"", "\"\"") + "\"";
         }
 
-        public NpgsqlQueryGenerator([NotNull] SelectExpression selectExpression)
-            : base(Check.NotNull(selectExpression, nameof(selectExpression)))
+        public NpgsqlQuerySqlGenerator(
+            [NotNull] SelectExpression selectExpression,
+            [NotNull] IRelationalTypeMapper typeMapper)
+            : base(selectExpression, typeMapper)
         {
         }
 
@@ -45,16 +48,11 @@ namespace Npgsql.EntityFramework7.Query
 
             if (selectExpression.Offset != null)
             {
-                if (!selectExpression.OrderBy.Any())
-                {
-                    throw new InvalidOperationException(Microsoft.Data.Entity.Relational.Strings.SkipNeedsOrderBy);
-                }
-
                 Sql.Append(" OFFSET ").Append(selectExpression.Offset);
             }
         }
 
-        public override Expression VisitCountExpression(CountExpression countExpression)
+        public override Expression VisitCount(CountExpression countExpression)
         {
             Check.NotNull(countExpression, nameof(countExpression));
 
@@ -67,14 +65,14 @@ namespace Npgsql.EntityFramework7.Query
             {
                 Sql.Append("COUNT(*)::INT4");
             }
-            else throw new NotSupportedException(string.Format("Count expression with type {0} not supported", countExpression.Type));
+            else throw new NotSupportedException($"Count expression with type {countExpression.Type} not supported");
 
             return countExpression;
         }
 
-        public override Expression VisitSumExpression(SumExpression sumExpression)
+        public override Expression VisitSum(SumExpression sumExpression)
         {
-            base.VisitSumExpression(sumExpression);
+            base.VisitSum(sumExpression);
 
             // In PostgreSQL SUM() doesn't return the same type as its argument for smallint, int and bigint.
             // Cast to get the same type.

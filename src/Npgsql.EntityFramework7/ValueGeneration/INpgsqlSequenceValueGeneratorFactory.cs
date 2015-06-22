@@ -5,7 +5,7 @@ using JetBrains.Annotations;
 using Microsoft.Data.Entity.Metadata;
 using Microsoft.Data.Entity.ValueGeneration;
 
-namespace Npgsql.EntityFramework7
+namespace Npgsql.EntityFramework7.ValueGeneration
 {
     public interface INpgsqlSequenceValueGeneratorFactory
     {

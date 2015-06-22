@@ -1,15 +1,18 @@
-// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using JetBrains.Annotations;
 using Microsoft.Data.Entity.Internal;
+using Microsoft.Data.Entity.Metadata.ModelConventions;
 
 namespace Npgsql.EntityFramework7
 {
-    public class NpgsqlModelSource : ModelSource, INpgsqlModelSource
+    public class NpgsqlModelSource : ModelSource
     {
-        public NpgsqlModelSource([NotNull] IDbSetFinder setFinder, [NotNull] IModelValidator modelValidator)
-            : base(setFinder, modelValidator)
+        public NpgsqlModelSource(
+            [NotNull] IDbSetFinder setFinder,
+            [NotNull] ICoreConventionSetBuilder coreConventionSetBuilder)
+            : base(setFinder, coreConventionSetBuilder)
         {
         }
     }

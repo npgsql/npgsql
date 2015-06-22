@@ -125,7 +125,7 @@ CREATE TABLE "Orders" (
 	"RequiredDate" timestamp NULL ,
 	"ShippedDate" timestamp NULL ,
 	"ShipVia" integer NULL ,
-	"Freight" money NULL CONSTRAINT "DF_Orders_Freight" DEFAULT (0),
+	"Freight" numeric(12,2) NULL CONSTRAINT "DF_Orders_Freight" DEFAULT (0),
 	"ShipName" varchar (40) NULL ,
 	"ShipAddress" varchar (60) NULL ,
 	"ShipCity" varchar (15) NULL ,
@@ -179,7 +179,7 @@ CREATE TABLE "Products" (
 	"SupplierID" integer NULL ,
 	"CategoryID" integer NULL ,
 	"QuantityPerUnit" varchar (20) NULL ,
-	"UnitPrice" money NULL CONSTRAINT "DF_Products_UnitPrice" DEFAULT (0),
+	"UnitPrice" numeric(12,2) NULL CONSTRAINT "DF_Products_UnitPrice" DEFAULT (0),
 	"UnitsInStock" smallint NULL CONSTRAINT "DF_Products_UnitsInStock" DEFAULT (0),
 	"UnitsOnOrder" smallint NULL CONSTRAINT "DF_Products_UnitsOnOrder" DEFAULT (0),
 	"ReorderLevel" smallint NULL CONSTRAINT "DF_Products_ReorderLevel" DEFAULT (0),
@@ -200,7 +200,7 @@ CREATE TABLE "Products" (
 	) REFERENCES "Suppliers" (
 		"SupplierID"
 	),
-	CONSTRAINT "CK_Products_UnitPrice" CHECK ("UnitPrice" >= 0::money),
+	CONSTRAINT "CK_Products_UnitPrice" CHECK ("UnitPrice" >= 0),
 	CONSTRAINT "CK_ReorderLevel" CHECK ("ReorderLevel" >= 0),
 	CONSTRAINT "CK_UnitsInStock" CHECK ("UnitsInStock" >= 0),
 	CONSTRAINT "CK_UnitsOnOrder" CHECK ("UnitsOnOrder" >= 0)
@@ -220,7 +220,7 @@ GO
 CREATE TABLE "Order Details" (
 	"OrderID" integer NOT NULL ,
 	"ProductID" integer NOT NULL ,
-	"UnitPrice" money NOT NULL CONSTRAINT "DF_Order_Details_UnitPrice" DEFAULT (0),
+	"UnitPrice" numeric(12,2) NOT NULL CONSTRAINT "DF_Order_Details_UnitPrice" DEFAULT (0),
 	"Quantity" smallint NOT NULL CONSTRAINT "DF_Order_Details_Quantity" DEFAULT (1),
 	"Discount" real NOT NULL CONSTRAINT "DF_Order_Details_Discount" DEFAULT (0),
 	CONSTRAINT "PK_Order_Details" PRIMARY KEY
@@ -242,7 +242,7 @@ CREATE TABLE "Order Details" (
 	),
 	CONSTRAINT "CK_Discount" CHECK ("Discount" >= 0 and ("Discount" <= 1)),
 	CONSTRAINT "CK_Quantity" CHECK ("Quantity" > 0),
-	CONSTRAINT "CK_UnitPrice" CHECK ("UnitPrice" >= 0::money)
+	CONSTRAINT "CK_UnitPrice" CHECK ("UnitPrice" >= 0)
 )
 GO
  CREATE INDEX ON "Order Details"("OrderID")
@@ -311,7 +311,7 @@ SELECT "Orders"."ShipName", "Orders"."ShipAddress", "Orders"."ShipCity", "Orders
 	"Orders"."OrderID", "Orders"."OrderDate", "Orders"."RequiredDate", "Orders"."ShippedDate", "Shippers"."CompanyName" As "ShipperName", 
 	"Order Details"."ProductID", "Products"."ProductName", "Order Details"."UnitPrice", "Order Details"."Quantity", 
 	"Order Details"."Discount", 
-	(("Order Details"."UnitPrice"*"Quantity"*(1-"Discount")/100)::money*100) AS "ExtendedPrice", "Orders"."Freight"
+	(("Order Details"."UnitPrice"*"Quantity"*(1-"Discount")/100)*100) AS "ExtendedPrice", "Orders"."Freight"
 FROM 	"Shippers" INNER JOIN 
 		("Products" INNER JOIN 
 			(
@@ -326,20 +326,20 @@ GO
 create view "Order Details Extended" AS
 SELECT "Order Details"."OrderID", "Order Details"."ProductID", "Products"."ProductName", 
 	"Order Details"."UnitPrice", "Order Details"."Quantity", "Order Details"."Discount", 
-	(("Order Details"."UnitPrice"*"Quantity"*(1-"Discount")/100)::money*100) AS "ExtendedPrice"
+	(("Order Details"."UnitPrice"*"Quantity"*(1-"Discount")/100)*100) AS "ExtendedPrice"
 FROM "Products" INNER JOIN "Order Details" ON "Products"."ProductID" = "Order Details"."ProductID"
 --ORDER BY "Order Details".OrderID
 GO
 
 create view "Order Subtotals" AS
-SELECT "Order Details"."OrderID", Sum(("Order Details"."UnitPrice"*"Quantity"*(1-"Discount")/100)::money*100) AS "Subtotal"
+SELECT "Order Details"."OrderID", Sum(("Order Details"."UnitPrice"*"Quantity"*(1-"Discount")/100)*100) AS "Subtotal"
 FROM "Order Details"
 GROUP BY "Order Details"."OrderID"
 GO
 
 create view "Product Sales for 1997" AS
 SELECT "Categories"."CategoryName", "Products"."ProductName", 
-Sum(("Order Details"."UnitPrice"*"Quantity"*(1-"Discount")/100)::money*100) AS "ProductSales"
+Sum(("Order Details"."UnitPrice"*"Quantity"*(1-"Discount")/100)*100) AS "ProductSales"
 FROM ("Categories" INNER JOIN "Products" ON "Categories"."CategoryID" = "Products"."CategoryID") 
 	INNER JOIN ("Orders" 
 		INNER JOIN "Order Details" ON "Orders"."OrderID" = "Order Details"."OrderID") 
@@ -372,7 +372,7 @@ SELECT "Order Subtotals"."Subtotal" AS "SaleAmount", "Orders"."OrderID", "Custom
 FROM 	"Customers" INNER JOIN 
 		("Orders" INNER JOIN "Order Subtotals" ON "Orders"."OrderID" = "Order Subtotals"."OrderID") 
 	ON "Customers"."CustomerID" = "Orders"."CustomerID"
-WHERE ("Order Subtotals"."Subtotal" >2500::money) AND ("Orders"."ShippedDate" BETWEEN '19970101' And '19971231')
+WHERE ("Order Subtotals"."Subtotal" > 2500) AND ("Orders"."ShippedDate" BETWEEN '19970101' And '19971231')
 GO
 
 create view "Summary of Sales by Quarter" AS

@@ -10,6 +10,9 @@ using Npgsql.EntityFramework7.Query;
 using Npgsql.EntityFramework7.Update;
 using Microsoft.Data.Entity.Storage;
 using Microsoft.Data.Entity.Utilities;
+using Npgsql;
+using Npgsql.EntityFramework7.Metadata;
+using Npgsql.EntityFramework7.ValueGeneration;
 
 // ReSharper disable once CheckNamespace
 
@@ -24,27 +27,24 @@ namespace Microsoft.Framework.DependencyInjection
             ((IAccessor<IServiceCollection>)builder.AddRelational()).Service
                 .AddSingleton<IDataStoreSource, NpgsqlDataStoreSource>()
                 .TryAdd(new ServiceCollection()
-                    .AddSingleton<INpgsqlModelBuilderFactory, NpgsqlModelBuilderFactory>()
+                    .AddSingleton<NpgsqlConventionSetBuilder>()
                     .AddSingleton<INpgsqlValueGeneratorCache, NpgsqlValueGeneratorCache>()
-                    .AddSingleton<INpgsqlSequenceValueGeneratorFactory, NpgsqlSequenceValueGeneratorFactory>()
                     .AddSingleton<INpgsqlSqlGenerator, NpgsqlSqlGenerator>()
-                    .AddSingleton<ISqlStatementExecutor, SqlStatementExecutor>()
-                    .AddSingleton<INpgsqlTypeMapper, NpgsqlTypeMapper>()
-                    .AddSingleton<INpgsqlModificationCommandBatchFactory, NpgsqlModificationCommandBatchFactory>()
-                    .AddSingleton<INpgsqlCommandBatchPreparer, NpgsqlCommandBatchPreparer>()
-                    .AddSingleton<INpgsqlModelSource, NpgsqlModelSource>()
-                    .AddSingleton<INpgsqlValueBufferFactoryFactory, NpgsqlValueBufferFactoryFactory>()
-                    .AddScoped<INpgsqlQueryContextFactory, NpgsqlQueryContextFactory>()
-                    .AddScoped<INpgsqlValueGeneratorSelector, NpgsqlValueGeneratorSelector>()
-                    .AddScoped<INpgsqlBatchExecutor, NpgsqlBatchExecutor>()
-                    .AddScoped<INpgsqlDataStoreServices, NpgsqlDataStoreServices>()
-                    .AddScoped<INpgsqlDataStore, NpgsqlDataStore>()
+                    .AddSingleton<NpgsqlTypeMapper>()
+                    .AddSingleton<NpgsqlModelSource>()
+                    .AddSingleton<NpgsqlMetadataExtensionProvider>()
+                    .AddScoped<INpgsqlSequenceValueGeneratorFactory, NpgsqlSequenceValueGeneratorFactory>()
+                    .AddScoped<NpgsqlModificationCommandBatchFactory>()
+                    .AddScoped<NpgsqlValueGeneratorSelector>()
+                    .AddScoped<NpgsqlDataStoreServices>()
+                    .AddScoped<NpgsqlDataStore>()
                     .AddScoped<INpgsqlEFConnection, NpgsqlRelationalConnection>()
-                    .AddScoped<INpgsqlModelDiffer, NpgsqlModelDiffer>()
-                    .AddScoped<INpgsqlDatabaseFactory, NpgsqlDatabaseFactory>()
-                    .AddScoped<INpgsqlMigrationSqlGenerator, NpgsqlMigrationSqlGenerator>()
-                    .AddScoped<INpgsqlDataStoreCreator, NpgsqlDataStoreCreator>()
-                    .AddScoped<INpgsqlHistoryRepository, NpgsqlHistoryRepository>());
+                    .AddScoped<NpgsqlModelDiffer>()
+                    .AddScoped<NpgsqlMigrationSqlGenerator>()
+                    .AddScoped<NpgsqlDataStoreCreator>()
+                    .AddScoped<NpgsqlHistoryRepository>()
+                    .AddScoped<NpgsqlCompositeMethodCallTranslator>()
+                    .AddScoped<NpgsqlCompositeMemberTranslator>());
 
             return builder;
         }

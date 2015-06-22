@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
+﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
@@ -6,54 +6,22 @@ using System.Linq;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity;
 using Microsoft.Data.Entity.Metadata;
+using Microsoft.Data.Entity.Relational;
 using Microsoft.Data.Entity.Relational.Metadata;
 using Microsoft.Data.Entity.Relational.Migrations.Infrastructure;
 using Microsoft.Data.Entity.Relational.Migrations.Operations;
 using Npgsql.EntityFramework7.Metadata;
-using Microsoft.Data.Entity.Utilities;
 
 namespace Npgsql.EntityFramework7.Migrations
 {
-    public class NpgsqlModelDiffer : ModelDiffer, INpgsqlModelDiffer
+    public class NpgsqlModelDiffer : ModelDiffer
     {
-        public NpgsqlModelDiffer([NotNull] INpgsqlTypeMapper typeMapper)
-            : base(typeMapper)
+        public NpgsqlModelDiffer(
+            [NotNull] IRelationalTypeMapper typeMapper,
+            [NotNull] IRelationalMetadataExtensionProvider metadataExtensions)
+            : base(typeMapper, metadataExtensions)
         {
         }
-
-        #region IModel
-
-        private static readonly LazyRef<Sequence> _defaultSequence =
-            new LazyRef<Sequence>(() => new Sequence(Sequence.DefaultName));
-
-        protected override IEnumerable<MigrationOperation> Diff([CanBeNull] IModel source, [CanBeNull] IModel target)
-        {
-            var operations = base.Diff(source, target);
-
-            // TODO: Remove when the default sequence is added to the model (See #1568)
-            var sourceUsesDefaultSequence = DefaultSequenceUsed(source);
-            var targetUsesDefaultSequence = DefaultSequenceUsed(target);
-            if (sourceUsesDefaultSequence == false && targetUsesDefaultSequence)
-            {
-                operations = operations.Concat(Add(_defaultSequence.Value));
-            }
-            else if (sourceUsesDefaultSequence && targetUsesDefaultSequence == false)
-            {
-                operations = operations.Concat(Remove(_defaultSequence.Value));
-            }
-
-            return operations;
-        }
-
-        private bool DefaultSequenceUsed(IModel model) =>
-            model != null
-            && model.Npgsql().DefaultSequenceName == null
-            && (model.Npgsql().ValueGenerationStrategy == NpgsqlValueGenerationStrategy.Sequence
-                || model.EntityTypes.SelectMany(t => t.GetProperties()).Any(
-                    p => p.Npgsql().ValueGenerationStrategy == NpgsqlValueGenerationStrategy.Sequence
-                         && p.Npgsql().SequenceName == null));
-
-        #endregion
 
         #region IProperty
 
@@ -69,15 +37,19 @@ namespace Npgsql.EntityFramework7.Migrations
                 && (source.Npgsql().ComputedExpression != target.Npgsql().ComputedExpression
                     || sourceValueGenerationStrategy != targetValueGenerationStrategy))
             {
+                var sourceExtensions = MetadataExtensions.Extensions(source);
+                var sourceEntityTypeExtensions = MetadataExtensions.Extensions(source.EntityType);
+                var targetExtensions = MetadataExtensions.Extensions(target);
+
                 alterColumnOperation = new AlterColumnOperation
                 {
-                    Schema = source.EntityType.Relational().Schema,
-                    Table = source.EntityType.Relational().Table,
-                    Name = source.Relational().Column,
-                    Type = TypeMapper.GetTypeMapping(target).StoreTypeName,
+                    Schema = sourceEntityTypeExtensions.Schema,
+                    Table = sourceEntityTypeExtensions.Table,
+                    Name = sourceExtensions.Column,
+                    Type = targetExtensions.ColumnType ?? TypeMapper.MapPropertyType(target).DefaultTypeName,
                     IsNullable = target.IsNullable,
-                    DefaultValue = target.Relational().DefaultValue,
-                    DefaultExpression = target.Relational().DefaultExpression
+                    DefaultValue = targetExtensions.DefaultValue,
+                    DefaultExpression = targetExtensions.DefaultExpression
                 };
                 operations.Add(alterColumnOperation);
             }
@@ -94,6 +66,7 @@ namespace Npgsql.EntityFramework7.Migrations
                 {
                     alterColumnOperation[NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.ColumnComputedExpression] =
                         target.Npgsql().ComputedExpression;
+                    alterColumnOperation.IsDestructiveChange |= source.Npgsql().ComputedExpression == null;
                 }
             }
 
@@ -122,7 +95,12 @@ namespace Npgsql.EntityFramework7.Migrations
         }
 
         // TODO: Move to metadata API?
-        private NpgsqlValueGenerationStrategy? GetValueGenerationStrategy(IProperty property) => property.Npgsql().ValueGenerationStrategy;
+        private static NpgsqlValueGenerationStrategy? GetValueGenerationStrategy(IProperty property)
+            => property.StoreGeneratedPattern == StoreGeneratedPattern.Identity
+               && property.Npgsql().DefaultExpression == null
+               && property.Npgsql().DefaultValue == null
+                ? property.Npgsql().ValueGenerationStrategy
+                : null;
 
         #endregion
 
@@ -137,13 +115,7 @@ namespace Npgsql.EntityFramework7.Migrations
             {
                 if (source.Npgsql().IsClustered != target.Npgsql().IsClustered)
                 {
-                    if (source != null
-                        && !operations.Any(o => o is DropPrimaryKeyOperation || o is DropUniqueConstraintOperation))
-                    {
-                        operations.AddRange(Remove(source));
-                    }
-
-                    operations.AddRange(Add(target));
+                    operations.AddRange(Remove(source).Concat(Add(target)));
                 }
             }
             else if (target.Npgsql().IsClustered != null)
@@ -183,12 +155,15 @@ namespace Npgsql.EntityFramework7.Migrations
             {
                 operations.AddRange(Remove(source));
 
+                var targetExtensions = MetadataExtensions.Extensions(target);
+                var targetEntityTypeExtensions = MetadataExtensions.Extensions(target.EntityType);
+
                 createIndexOperation = new CreateIndexOperation
                 {
-                    Name = target.Relational().Name,
-                    Schema = target.EntityType.Relational().Schema,
-                    Table = target.EntityType.Relational().Table,
-                    Columns = target.Properties.Select(p => p.Relational().Column).ToArray(),
+                    Name = targetExtensions.Name,
+                    Schema = targetEntityTypeExtensions.Schema,
+                    Table = targetEntityTypeExtensions.Table,
+                    Columns = GetColumnNames(target.Properties),
                     IsUnique = target.IsUnique
                 };
                 operations.Add(createIndexOperation);

@@ -1,4 +1,4 @@
-// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
@@ -8,7 +8,7 @@ using Microsoft.Data.Entity.Relational;
 using Microsoft.Data.Entity.Utilities;
 using Microsoft.Data.Entity.ValueGeneration;
 
-namespace Npgsql.EntityFramework7
+namespace Npgsql.EntityFramework7.ValueGeneration
 {
     public class NpgsqlSequenceValueGenerator<TValue> : HiLoValueGenerator<TValue>
     {
@@ -35,14 +35,13 @@ namespace Npgsql.EntityFramework7
         }
 
         protected override long GetNewLowValue()
-        {
-            var nextValue = _executor.ExecuteScalar(
-                _connection,
-                _connection.DbTransaction,
-                _sqlGenerator.GenerateNextSequenceValueOperation(_sequenceName));
-
-            return (long)Convert.ChangeType(nextValue, typeof(long), CultureInfo.InvariantCulture);
-        }
+            => (long)Convert.ChangeType(
+                _executor.ExecuteScalar(
+                    _connection,
+                    _connection.DbTransaction,
+                    _sqlGenerator.GenerateNextSequenceValueOperation(_sequenceName)),
+                typeof(long),
+                CultureInfo.InvariantCulture);
 
         public override bool GeneratesTemporaryValues => false;
     }

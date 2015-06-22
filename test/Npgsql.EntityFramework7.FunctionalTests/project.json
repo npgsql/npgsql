@@ -1,11 +1,10 @@
 {
     "dependencies": {
-        "EntityFramework.Relational.FunctionalTests": "1.0.0-*",
-        "Npgsql.EntityFramework7": "3.0.0-alpha-*",
-        "xunit.runner.aspnet": "2.0.0-aspnet-beta5-10337"
+        "EntityFramework.Relational.FunctionalTests": "7.0.0-*",
+        "Npgsql.EntityFramework7": "3.0.0-alpha-*"
     },
     "commands": {
-        "test": "xunit.runner.aspnet"
+        "test": "xunit.runner.dnx"
     },
     "frameworks": {
         "dnx451": { }

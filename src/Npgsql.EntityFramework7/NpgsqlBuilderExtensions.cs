@@ -1,11 +1,11 @@
-// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity.Metadata.Builders;
-using Npgsql.EntityFramework7.Metadata;
 using Microsoft.Data.Entity.Utilities;
+using Npgsql.EntityFramework7.Metadata;
 
 // ReSharper disable once CheckNamespace
 
@@ -15,11 +15,7 @@ namespace Microsoft.Data.Entity
     {
         public static NpgsqlPropertyBuilder ForNpgsql(
             [NotNull] this PropertyBuilder propertyBuilder)
-        {
-            Check.NotNull(propertyBuilder, nameof(propertyBuilder));
-
-            return new NpgsqlPropertyBuilder(propertyBuilder.Metadata);
-        }
+            => new NpgsqlPropertyBuilder(Check.NotNull(propertyBuilder, nameof(propertyBuilder)).Metadata);
 
         public static PropertyBuilder ForNpgsql(
             [NotNull] this PropertyBuilder propertyBuilder,
@@ -47,11 +43,7 @@ namespace Microsoft.Data.Entity
 
         public static NpgsqlEntityTypeBuilder ForNpgsql(
             [NotNull] this EntityTypeBuilder entityTypeBuilder)
-        {
-            Check.NotNull(entityTypeBuilder, nameof(entityTypeBuilder));
-
-            return new NpgsqlEntityTypeBuilder(entityTypeBuilder.Metadata);
-        }
+            => new NpgsqlEntityTypeBuilder(Check.NotNull(entityTypeBuilder, nameof(entityTypeBuilder)).Metadata);
 
         public static EntityTypeBuilder ForNpgsql(
             [NotNull] this EntityTypeBuilder entityTypeBuilder,
@@ -78,11 +70,7 @@ namespace Microsoft.Data.Entity
 
         public static NpgsqlKeyBuilder ForNpgsql(
             [NotNull] this KeyBuilder keyBuilder)
-        {
-            Check.NotNull(keyBuilder, nameof(keyBuilder));
-
-            return new NpgsqlKeyBuilder(keyBuilder.Metadata);
-        }
+            => new NpgsqlKeyBuilder(Check.NotNull(keyBuilder, nameof(keyBuilder)).Metadata);
 
         public static KeyBuilder ForNpgsql(
             [NotNull] this KeyBuilder keyBuilder,
@@ -98,11 +86,7 @@ namespace Microsoft.Data.Entity
 
         public static NpgsqlIndexBuilder ForNpgsql(
             [NotNull] this IndexBuilder indexBuilder)
-        {
-            Check.NotNull(indexBuilder, nameof(indexBuilder));
-
-            return new NpgsqlIndexBuilder(indexBuilder.Metadata);
-        }
+            => new NpgsqlIndexBuilder(Check.NotNull(indexBuilder, nameof(indexBuilder)).Metadata);
 
         public static IndexBuilder ForNpgsql(
             [NotNull] this IndexBuilder indexBuilder,
@@ -118,11 +102,8 @@ namespace Microsoft.Data.Entity
 
         public static NpgsqlForeignKeyBuilder ForNpgsql(
             [NotNull] this ReferenceCollectionBuilder referenceCollectionBuilder)
-        {
-            Check.NotNull(referenceCollectionBuilder, nameof(referenceCollectionBuilder));
-
-            return new NpgsqlForeignKeyBuilder(referenceCollectionBuilder.Metadata);
-        }
+            => new NpgsqlForeignKeyBuilder(
+                Check.NotNull(referenceCollectionBuilder, nameof(referenceCollectionBuilder)).Metadata);
 
         public static ReferenceCollectionBuilder ForNpgsql(
             [NotNull] this ReferenceCollectionBuilder referenceCollectionBuilder,
@@ -140,6 +121,7 @@ namespace Microsoft.Data.Entity
             [NotNull] this ReferenceCollectionBuilder<TEntity, TRelatedEntity> referenceCollectionBuilder,
             [NotNull] Action<NpgsqlForeignKeyBuilder> builderAction)
             where TEntity : class
+            where TRelatedEntity : class
         {
             Check.NotNull(referenceCollectionBuilder, nameof(referenceCollectionBuilder));
             Check.NotNull(builderAction, nameof(builderAction));
@@ -150,45 +132,9 @@ namespace Microsoft.Data.Entity
         }
 
         public static NpgsqlForeignKeyBuilder ForNpgsql(
-            [NotNull] this CollectionReferenceBuilder collectionReferenceBuilder)
-        {
-            Check.NotNull(collectionReferenceBuilder, nameof(collectionReferenceBuilder));
-
-            return new NpgsqlForeignKeyBuilder(collectionReferenceBuilder.Metadata);
-        }
-
-        public static CollectionReferenceBuilder ForNpgsql(
-            [NotNull] this CollectionReferenceBuilder collectionReferenceBuilder,
-            [NotNull] Action<NpgsqlForeignKeyBuilder> builderAction)
-        {
-            Check.NotNull(collectionReferenceBuilder, nameof(collectionReferenceBuilder));
-            Check.NotNull(builderAction, nameof(builderAction));
-
-            builderAction(ForNpgsql(collectionReferenceBuilder));
-
-            return collectionReferenceBuilder;
-        }
-
-        public static CollectionReferenceBuilder<TEntity, TRelatedEntity> ForNpgsql<TEntity, TRelatedEntity>(
-            [NotNull] this CollectionReferenceBuilder<TEntity, TRelatedEntity> collectionReferenceBuilder,
-            [NotNull] Action<NpgsqlForeignKeyBuilder> builderAction)
-            where TEntity : class
-        {
-            Check.NotNull(collectionReferenceBuilder, nameof(collectionReferenceBuilder));
-            Check.NotNull(builderAction, nameof(builderAction));
-
-            builderAction(ForNpgsql(collectionReferenceBuilder));
-
-            return collectionReferenceBuilder;
-        }
-
-        public static NpgsqlForeignKeyBuilder ForNpgsql(
             [NotNull] this ReferenceReferenceBuilder referenceReferenceBuilder)
-        {
-            Check.NotNull(referenceReferenceBuilder, nameof(referenceReferenceBuilder));
-
-            return new NpgsqlForeignKeyBuilder(referenceReferenceBuilder.Metadata);
-        }
+            => new NpgsqlForeignKeyBuilder(
+                Check.NotNull(referenceReferenceBuilder, nameof(referenceReferenceBuilder)).Metadata);
 
         public static ReferenceReferenceBuilder ForNpgsql(
             [NotNull] this ReferenceReferenceBuilder referenceReferenceBuilder,
@@ -205,6 +151,8 @@ namespace Microsoft.Data.Entity
         public static ReferenceReferenceBuilder<TEntity, TRelatedEntity> ForNpgsql<TEntity, TRelatedEntity>(
             [NotNull] this ReferenceReferenceBuilder<TEntity, TRelatedEntity> referenceReferenceBuilder,
             [NotNull] Action<NpgsqlForeignKeyBuilder> builderAction)
+            where TEntity : class
+            where TRelatedEntity : class
         {
             Check.NotNull(referenceReferenceBuilder, nameof(referenceReferenceBuilder));
             Check.NotNull(builderAction, nameof(builderAction));
@@ -216,11 +164,7 @@ namespace Microsoft.Data.Entity
 
         public static NpgsqlModelBuilder ForNpgsql(
             [NotNull] this ModelBuilder modelBuilder)
-        {
-            Check.NotNull(modelBuilder, nameof(modelBuilder));
-
-            return new NpgsqlModelBuilder(modelBuilder.Model);
-        }
+            => new NpgsqlModelBuilder(Check.NotNull(modelBuilder, nameof(modelBuilder)).Model);
 
         public static ModelBuilder ForNpgsql(
             [NotNull] this ModelBuilder modelBuilder,

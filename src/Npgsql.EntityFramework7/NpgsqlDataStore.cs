@@ -10,6 +10,7 @@ using Microsoft.Data.Entity.Query;
 using Microsoft.Data.Entity.Relational;
 using Microsoft.Data.Entity.Relational.Query;
 using Microsoft.Data.Entity.Relational.Query.Methods;
+using Microsoft.Data.Entity.Relational.Update;
 using Npgsql.EntityFramework7.Query;
 using Npgsql.EntityFramework7.Update;
 using Microsoft.Data.Entity.Utilities;
@@ -17,7 +18,7 @@ using Microsoft.Framework.Logging;
 
 namespace Npgsql.EntityFramework7
 {
-    public class NpgsqlDataStore : RelationalDataStore, INpgsqlDataStore
+    public class NpgsqlDataStore : RelationalDataStore
     {
         public NpgsqlDataStore(
             [NotNull] IModel model,
@@ -25,22 +26,28 @@ namespace Npgsql.EntityFramework7
             [NotNull] IEntityMaterializerSource entityMaterializerSource,
             [NotNull] IClrAccessorSource<IClrPropertyGetter> clrPropertyGetterSource,
             [NotNull] INpgsqlEFConnection connection,
-            [NotNull] INpgsqlCommandBatchPreparer batchPreparer,
-            [NotNull] INpgsqlBatchExecutor batchExecutor,
+            [NotNull] ICommandBatchPreparer batchPreparer,
+            [NotNull] IBatchExecutor batchExecutor,
             [NotNull] IDbContextOptions options,
             [NotNull] ILoggerFactory loggerFactory,
-            [NotNull] INpgsqlValueBufferFactoryFactory valueBufferFactoryFactory)
+            [NotNull] IRelationalValueBufferFactoryFactory valueBufferFactoryFactory,
+            [NotNull] IMethodCallTranslator compositeMethodCallTranslator,
+            [NotNull] IMemberTranslator compositeMemberTranslator,
+            [NotNull] IRelationalTypeMapper typeMapper)
             : base(
-                Check.NotNull(model, nameof(model)),
-                Check.NotNull(entityKeyFactorySource, nameof(entityKeyFactorySource)),
-                Check.NotNull(entityMaterializerSource, nameof(entityMaterializerSource)),
-                Check.NotNull(clrPropertyGetterSource, nameof(clrPropertyGetterSource)),
-                Check.NotNull(connection, nameof(connection)),
-                Check.NotNull(batchPreparer, nameof(batchPreparer)),
-                Check.NotNull(batchExecutor, nameof(batchExecutor)),
-                Check.NotNull(options, nameof(options)),
-                Check.NotNull(loggerFactory, nameof(loggerFactory)),
-                Check.NotNull(valueBufferFactoryFactory, nameof(valueBufferFactoryFactory)))
+                model,
+                entityKeyFactorySource,
+                entityMaterializerSource,
+                clrPropertyGetterSource,
+                connection,
+                batchPreparer,
+                batchExecutor,
+                options,
+                loggerFactory,
+                valueBufferFactoryFactory,
+                compositeMethodCallTranslator,
+                compositeMemberTranslator,
+                typeMapper)
         {
         }
 
@@ -48,12 +55,14 @@ namespace Npgsql.EntityFramework7
             ILinqOperatorProvider linqOperatorProvider,
             IResultOperatorHandler resultOperatorHandler,
             IQueryMethodProvider enumerableMethodProvider,
-            IMethodCallTranslator methodCallTranslator)
+            IMethodCallTranslator compositeMethodCallTranslator,
+            IMemberTranslator compositeMemberTranslator)
         {
             Check.NotNull(linqOperatorProvider, nameof(linqOperatorProvider));
             Check.NotNull(resultOperatorHandler, nameof(resultOperatorHandler));
             Check.NotNull(enumerableMethodProvider, nameof(enumerableMethodProvider));
-            Check.NotNull(methodCallTranslator, nameof(methodCallTranslator));
+            Check.NotNull(compositeMethodCallTranslator, nameof(compositeMethodCallTranslator));
+            Check.NotNull(compositeMemberTranslator, nameof(compositeMemberTranslator));
 
             return new NpgsqlQueryCompilationContext(
                 Model,
@@ -64,8 +73,10 @@ namespace Npgsql.EntityFramework7
                 EntityKeyFactorySource,
                 ClrPropertyGetterSource,
                 enumerableMethodProvider,
-                methodCallTranslator,
-                (INpgsqlValueBufferFactoryFactory)ValueBufferFactoryFactory);
+                compositeMethodCallTranslator,
+                compositeMemberTranslator,
+                ValueBufferFactoryFactory,
+                TypeMapper);
         }
     }
 }

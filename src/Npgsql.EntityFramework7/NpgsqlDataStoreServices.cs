@@ -4,57 +4,51 @@
 using System;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity.Infrastructure;
-using Microsoft.Data.Entity.Metadata;
 using Microsoft.Data.Entity.Metadata.Builders;
-using Microsoft.Data.Entity.Query;
+using Microsoft.Data.Entity.Metadata.ModelConventions;
 using Microsoft.Data.Entity.Relational;
+using Microsoft.Data.Entity.Relational.Metadata;
 using Microsoft.Data.Entity.Relational.Migrations.History;
 using Microsoft.Data.Entity.Relational.Migrations.Infrastructure;
 using Microsoft.Data.Entity.Relational.Migrations.Sql;
-using Npgsql.EntityFramework7.Migrations;
-using Npgsql.EntityFramework7.Query;
+using Microsoft.Data.Entity.Relational.Query.Methods;
+using Microsoft.Data.Entity.Relational.Update;
 using Microsoft.Data.Entity.Storage;
-using Microsoft.Data.Entity.Utilities;
 using Microsoft.Data.Entity.ValueGeneration;
-using Microsoft.Framework.DependencyInjection;
+using Npgsql.EntityFramework7.Metadata;
+using Npgsql.EntityFramework7.Migrations;
+using Npgsql.EntityFramework7.Update;
+using Npgsql.EntityFramework7.ValueGeneration;
 
 namespace Npgsql.EntityFramework7
 {
-    public class NpgsqlDataStoreServices : INpgsqlDataStoreServices
+    public class NpgsqlDataStoreServices : RelationalDataStoreServices
     {
         private readonly IServiceProvider _serviceProvider;
 
-        public NpgsqlDataStoreServices([NotNull] IServiceProvider serviceProvider)
+        public NpgsqlDataStoreServices([NotNull] IServiceProvider services)
+            : base(services)
         {
-            Check.NotNull(serviceProvider, nameof(serviceProvider));
-
-            _serviceProvider = serviceProvider;
         }
 
-        public virtual IDataStore Store => _serviceProvider.GetRequiredService<INpgsqlDataStore>();
-
-        public virtual IQueryContextFactory QueryContextFactory => _serviceProvider.GetRequiredService<INpgsqlQueryContextFactory>();
-
-        public virtual IDataStoreCreator Creator => _serviceProvider.GetRequiredService<INpgsqlDataStoreCreator>();
-
-        public virtual IDataStoreConnection Connection => _serviceProvider.GetRequiredService<INpgsqlEFConnection>();
-
-        public virtual IRelationalConnection RelationalConnection => _serviceProvider.GetRequiredService<INpgsqlEFConnection>();
-
-        public virtual IValueGeneratorSelector ValueGeneratorSelector => _serviceProvider.GetRequiredService<INpgsqlValueGeneratorSelector>();
-
-        public virtual IDatabaseFactory DatabaseFactory => _serviceProvider.GetRequiredService<INpgsqlDatabaseFactory>();
-
-        public virtual IModelBuilderFactory ModelBuilderFactory => _serviceProvider.GetRequiredService<INpgsqlModelBuilderFactory>();
-
-        public virtual IModelDiffer ModelDiffer => _serviceProvider.GetRequiredService<INpgsqlModelDiffer>();
-
-        public virtual IHistoryRepository HistoryRepository => _serviceProvider.GetRequiredService<INpgsqlHistoryRepository>();
-
-        public virtual IMigrationSqlGenerator MigrationSqlGenerator => _serviceProvider.GetRequiredService<INpgsqlMigrationSqlGenerator>();
-
-        public virtual IModelSource ModelSource => _serviceProvider.GetRequiredService<INpgsqlModelSource>();
-
-        public virtual ISqlGenerator SqlGenerator => _serviceProvider.GetRequiredService<INpgsqlSqlGenerator>();
+        public override IDataStore Store => GetService<NpgsqlDataStore>();
+        public override IDataStoreCreator Creator => GetService<NpgsqlDataStoreCreator>();
+        public override IDataStoreConnection Connection => GetService<INpgsqlEFConnection>();
+        public override IRelationalConnection RelationalConnection => GetService<INpgsqlEFConnection>();
+        public override IValueGeneratorSelector ValueGeneratorSelector => GetService<NpgsqlValueGeneratorSelector>();
+        public override IRelationalDataStoreCreator RelationalDataStoreCreator => GetService<NpgsqlDataStoreCreator>();
+        public override IConventionSetBuilder ConventionSetBuilder => GetService<NpgsqlConventionSetBuilder>();
+        public override IModelDiffer ModelDiffer => GetService<NpgsqlModelDiffer>();
+        public override IHistoryRepository HistoryRepository => GetService<NpgsqlHistoryRepository>();
+        public override IMigrationSqlGenerator MigrationSqlGenerator => GetService<NpgsqlMigrationSqlGenerator>();
+        public override IModelSource ModelSource => GetService<NpgsqlModelSource>();
+        public override ISqlGenerator SqlGenerator => GetService<INpgsqlSqlGenerator>();
+        public override IValueGeneratorCache ValueGeneratorCache => GetService<INpgsqlValueGeneratorCache>();
+        public override IRelationalTypeMapper TypeMapper => GetService<NpgsqlTypeMapper>();
+        public override IModificationCommandBatchFactory ModificationCommandBatchFactory => GetService<NpgsqlModificationCommandBatchFactory>();
+        public override IRelationalValueBufferFactoryFactory ValueBufferFactoryFactory => GetService<UntypedValueBufferFactoryFactory>();
+        public override IRelationalMetadataExtensionProvider MetadataExtensionProvider => GetService<NpgsqlMetadataExtensionProvider>();
+        public override IMethodCallTranslator CompositeMethodCallTranslator => GetService<NpgsqlCompositeMethodCallTranslator>();
+        public override IMemberTranslator CompositeMemberTranslator => GetService<NpgsqlCompositeMemberTranslator>();
     }
 }

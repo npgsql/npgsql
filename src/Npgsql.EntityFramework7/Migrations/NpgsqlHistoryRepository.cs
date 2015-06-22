@@ -7,6 +7,8 @@ using System.Data.SqlClient;
 using System.Text;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity;
+using Microsoft.Data.Entity.Internal;
+using Microsoft.Data.Entity.Relational;
 using Microsoft.Data.Entity.Relational.Migrations.History;
 using Microsoft.Data.Entity.Relational.Migrations.Operations;
 using Microsoft.Data.Entity.Utilities;
@@ -14,16 +16,16 @@ using Microsoft.Data.Entity.Utilities;
 namespace Npgsql.EntityFramework7.Migrations
 {
     // TODO: Log
-    public class NpgsqlHistoryRepository : INpgsqlHistoryRepository
+    public class NpgsqlHistoryRepository : IHistoryRepository
     {
         private readonly INpgsqlEFConnection _connection;
-        private readonly INpgsqlDataStoreCreator _creator;
+        private readonly IRelationalDataStoreCreator _creator;
         private readonly Type _contextType;
         private readonly INpgsqlSqlGenerator _sql;
 
         public NpgsqlHistoryRepository(
             [NotNull] INpgsqlEFConnection connection,
-            [NotNull] INpgsqlDataStoreCreator creator,
+            [NotNull] IRelationalDataStoreCreator creator,
             [NotNull] DbContext context,
             [NotNull] INpgsqlSqlGenerator sqlGenerator)
         {

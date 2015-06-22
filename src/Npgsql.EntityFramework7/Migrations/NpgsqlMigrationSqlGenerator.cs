@@ -15,7 +15,7 @@ using Microsoft.Data.Entity.Utilities;
 
 namespace Npgsql.EntityFramework7
 {
-    public class NpgsqlMigrationSqlGenerator : MigrationSqlGenerator, INpgsqlMigrationSqlGenerator
+    public class NpgsqlMigrationSqlGenerator : MigrationSqlGenerator
     {
         private readonly INpgsqlSqlGenerator _sql;
 

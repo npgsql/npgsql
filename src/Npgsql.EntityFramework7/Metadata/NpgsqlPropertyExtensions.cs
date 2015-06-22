@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
+﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
@@ -21,7 +21,7 @@ namespace Npgsql.EntityFramework7.Metadata
             [param: CanBeNull]
             set
             {
-                Check.NullButNotEmpty(value, "value");
+                Check.NullButNotEmpty(value, nameof(value));
 
                 ((Property)Property)[NpgsqlNameAnnotation] = value;
             }
@@ -34,7 +34,7 @@ namespace Npgsql.EntityFramework7.Metadata
             [param: CanBeNull]
             set
             {
-                Check.NullButNotEmpty(value, "value");
+                Check.NullButNotEmpty(value, nameof(value));
 
                 ((Property)Property)[NpgsqlColumnTypeAnnotation] = value;
             }
@@ -47,7 +47,7 @@ namespace Npgsql.EntityFramework7.Metadata
             [param: CanBeNull]
             set
             {
-                Check.NullButNotEmpty(value, "value");
+                Check.NullButNotEmpty(value, nameof(value));
 
                 ((Property)Property)[NpgsqlDefaultExpressionAnnotation] = value;
             }
@@ -86,7 +86,7 @@ namespace Npgsql.EntityFramework7.Metadata
             [param: CanBeNull]
             set
             {
-                Check.NullButNotEmpty(value, "value");
+                Check.NullButNotEmpty(value, nameof(value));
 
                 ((Property)Property)[NpgsqlSequenceNameAnnotation] = value;
             }
@@ -99,7 +99,7 @@ namespace Npgsql.EntityFramework7.Metadata
             [param: CanBeNull]
             set
             {
-                Check.NullButNotEmpty(value, "value");
+                Check.NullButNotEmpty(value, nameof(value));
 
                 ((Property)Property)[NpgsqlSequenceSchemaAnnotation] = value;
             }
@@ -117,7 +117,6 @@ namespace Npgsql.EntityFramework7.Metadata
                 if (value == null)
                 {
                     property[NpgsqlValueGenerationAnnotation] = null;
-                    property.GenerateValueOnAdd = null;
                 }
                 else
                 {
@@ -141,7 +140,6 @@ namespace Npgsql.EntityFramework7.Metadata
 
                     // TODO: Issue #777: Non-string annotations
                     property[NpgsqlValueGenerationAnnotation] = value.ToString();
-                    property.GenerateValueOnAdd = true;
                 }
             }
         }

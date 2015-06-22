@@ -1,4 +1,4 @@
-// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
@@ -6,9 +6,8 @@ using Microsoft.Data.Entity;
 using Microsoft.Data.Entity.FunctionalTests;
 using Microsoft.Data.Entity.Internal;
 using Microsoft.Data.Entity.Metadata;
-using Microsoft.Data.Entity.Metadata.Builders;
+using Microsoft.Data.Entity.Metadata.ModelConventions;
 using Microsoft.Framework.DependencyInjection;
-using Npgsql.EntityFramework7;
 
 namespace Npgsql.EntityFramework7.FunctionalTests
 {
@@ -16,16 +15,22 @@ namespace Npgsql.EntityFramework7.FunctionalTests
     {
         private readonly TestModelSource _testModelSource;
 
-        public TestNpgsqlModelSource(Action<ModelBuilder> onModelCreating, IDbSetFinder setFinder, IModelValidator modelValidator)
-            : base(setFinder, modelValidator)
+        public TestNpgsqlModelSource(
+            Action<ModelBuilder> onModelCreating,
+            IDbSetFinder setFinder,
+            ICoreConventionSetBuilder coreConventionSetBuilder)
+            : base(setFinder, coreConventionSetBuilder)
         {
-            _testModelSource = new TestModelSource(onModelCreating, setFinder);
+            _testModelSource = new TestModelSource(onModelCreating, setFinder, coreConventionSetBuilder);
         }
 
-        public override IModel GetModel(DbContext context, IModelBuilderFactory modelBuilderFactory) 
-            => _testModelSource.GetModel(context, modelBuilderFactory);
+        public override IModel GetModel(DbContext context, IConventionSetBuilder conventionSetBuilder, IModelValidator validator)
+            => _testModelSource.GetModel(context, conventionSetBuilder, validator);
 
-        public static Func<IServiceProvider, INpgsqlModelSource> GetFactory(Action<ModelBuilder> onModelCreating) 
-            => p => new TestNpgsqlModelSource(onModelCreating, p.GetRequiredService<IDbSetFinder>(), p.GetRequiredService<IModelValidator>());
+        public static Func<IServiceProvider, NpgsqlModelSource> GetFactory(Action<ModelBuilder> onModelCreating)
+            => p => new TestNpgsqlModelSource(
+                onModelCreating,
+                p.GetRequiredService<IDbSetFinder>(),
+                p.GetRequiredService<ICoreConventionSetBuilder>());
     }
 }

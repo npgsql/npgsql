@@ -1,14 +1,15 @@
-// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity;
+using Microsoft.Data.Entity.Internal;
 using Microsoft.Data.Entity.Metadata;
 using Microsoft.Data.Entity.Utilities;
 using Microsoft.Data.Entity.ValueGeneration;
 
-namespace Npgsql.EntityFramework7
+namespace Npgsql.EntityFramework7.ValueGeneration
 {
     public class NpgsqlValueGeneratorCache : ValueGeneratorCache, INpgsqlValueGeneratorCache
     {
@@ -47,13 +48,8 @@ namespace Npgsql.EntityFramework7
             return (sequence.Schema == null ? "" : (sequence.Schema + ".")) + sequence.Name;
         }
 
-        public virtual int GetPoolSize([NotNull] IProperty property)
-        {
-            Check.NotNull(property, nameof(property));
-
-            // TODO: Allow configuration without creation of derived factory type
-            // Issue #778
-            return 5;
-        }
+        // TODO: Allow configuration without creation of derived factory type
+        // Issue #778
+        public virtual int GetPoolSize([NotNull] IProperty property) => 5;
     }
 }

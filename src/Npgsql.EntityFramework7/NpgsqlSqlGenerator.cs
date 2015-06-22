@@ -50,10 +50,6 @@ namespace Npgsql.EntityFramework7
                 var readOperations = operations.Where(o => o.IsRead).ToArray();
 
                 AppendInsertCommandHeader(commandStringBuilder, tableName, schemaName, writeOperations);
-                if (readOperations.Length > 0)
-                {
-                    AppendOutputClause(commandStringBuilder, readOperations);
-                }
                 AppendValuesHeader(commandStringBuilder, writeOperations);
                 AppendValues(commandStringBuilder, writeOperations);
                 for (var j = 1; j < valueSetCount; j++)
@@ -61,12 +57,10 @@ namespace Npgsql.EntityFramework7
                     commandStringBuilder.Append(",").AppendLine();
                     AppendValues(commandStringBuilder, modificationCommands[j].ColumnModifications.Where(o => o.IsWrite).ToArray());
                 }
-                commandStringBuilder.Append(BatchCommandSeparator).AppendLine();
-                /*
-                if (readOperations.Length == 0)
+                if (readOperations.Length > 0)
                 {
-                    AppendSelectAffectedCountCommand(commandStringBuilder, tableName, schemaName);
-                }*/
+                    AppendReturningClause(commandStringBuilder, readOperations);
+                }
             }
 
             return defaultValuesOnly
@@ -90,41 +84,33 @@ namespace Npgsql.EntityFramework7
             var readOperations = operations.Where(o => o.IsRead).ToArray();
 
             AppendUpdateCommandHeader(commandStringBuilder, tableName, schemaName, writeOperations);
+            AppendWhereClause(commandStringBuilder, conditionOperations);
             if (readOperations.Length > 0)
             {
-                AppendOutputClause(commandStringBuilder, readOperations);
+                AppendReturningClause(commandStringBuilder, readOperations);
             }
-            AppendWhereClause(commandStringBuilder, conditionOperations);
-            commandStringBuilder.Append(BatchCommandSeparator).AppendLine();
-
-            /*
-            if (readOperations.Length == 0)
-            {
-                AppendSelectAffectedCountCommand(commandStringBuilder, tableName, schemaName);
-            }*/
         }
 
         // ReSharper disable once ParameterTypeCanBeEnumerable.Local
-        private void AppendOutputClause(
+        private void AppendReturningClause(
             StringBuilder commandStringBuilder,
             IReadOnlyList<ColumnModification> operations)
         {
             commandStringBuilder
                 .AppendLine()
-                .Append("OUTPUT ")
-                .AppendJoin(operations.Select(c => "INSERTED." + DelimitIdentifier(c.ColumnName)));
+                .Append("RETURNING ")
+                .AppendJoin(operations.Select(c => DelimitIdentifier(c.ColumnName)));
         }
 
         public override void AppendSelectAffectedCountCommand(StringBuilder commandStringBuilder, string tableName, string schemaName)
         {
-            /*
-            Check.NotNull(commandStringBuilder, nameof(commandStringBuilder));
-            Check.NotEmpty(tableName, nameof(tableName));
+            // PostgreSQL actually has no way of selecting the modified row count.
+            // SQL defines GET DIAGNOSTICS which should provide this, but in PostgreSQL it's only available
+            // in PL/pgSQL. See http://www.postgresql.org/docs/9.4/static/unsupported-features-sql-standard.html,
+            // identifier F121-01.
 
-            commandStringBuilder
-                .Append("SELECT @@ROWCOUNT")
-                .Append(BatchCommandSeparator).AppendLine();
-            */
+            // Instead, the affected row count can be accessed in the PostgreSQL protocol itself, which seems
+            // cleaner and more efficient anyway (no additional query).
         }
 
         public override void AppendBatchHeader(StringBuilder commandStringBuilder)
