@@ -52,6 +52,9 @@ please let us know and we'll add it.
 * Removed the feature where Npgsql automatically "dereferenced" a resultset of refcursors into multiple
   resultsets (this was used to emulate returning multiple resultsets from stored procedures).
 * Removed the AlwaysPrepare connection string parameter
+* Removed NpgsqlDataReader.LastInsertedOID, it did not allow accessing individual OIDs in multi-statement commands.
+  Replaced with NpgsqlDataReader.Statements, which provides OID and affected row information on a statement-by-statement
+  basis.
 
 ## Other
 
