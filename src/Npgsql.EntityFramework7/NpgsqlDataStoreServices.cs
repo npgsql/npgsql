@@ -33,8 +33,8 @@ namespace Npgsql.EntityFramework7
 
         public override IDataStore Store => GetService<NpgsqlDataStore>();
         public override IDataStoreCreator Creator => GetService<NpgsqlDataStoreCreator>();
-        public override IDataStoreConnection Connection => GetService<INpgsqlEFConnection>();
-        public override IRelationalConnection RelationalConnection => GetService<INpgsqlEFConnection>();
+        public override IDataStoreConnection Connection => GetService<NpgsqlDataStoreConnection>();
+        public override IRelationalConnection RelationalConnection => GetService<NpgsqlDataStoreConnection>();
         public override IValueGeneratorSelector ValueGeneratorSelector => GetService<NpgsqlValueGeneratorSelector>();
         public override IRelationalDataStoreCreator RelationalDataStoreCreator => GetService<NpgsqlDataStoreCreator>();
         public override IConventionSetBuilder ConventionSetBuilder => GetService<NpgsqlConventionSetBuilder>();

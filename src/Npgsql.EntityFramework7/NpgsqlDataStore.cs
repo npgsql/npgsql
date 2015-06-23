@@ -25,7 +25,7 @@ namespace Npgsql.EntityFramework7
             [NotNull] IEntityKeyFactorySource entityKeyFactorySource,
             [NotNull] IEntityMaterializerSource entityMaterializerSource,
             [NotNull] IClrAccessorSource<IClrPropertyGetter> clrPropertyGetterSource,
-            [NotNull] INpgsqlEFConnection connection,
+            [NotNull] NpgsqlDataStoreConnection connection,
             [NotNull] ICommandBatchPreparer batchPreparer,
             [NotNull] IBatchExecutor batchExecutor,
             [NotNull] IDbContextOptions options,

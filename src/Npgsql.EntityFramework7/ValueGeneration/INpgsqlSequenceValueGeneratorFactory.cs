@@ -12,6 +12,6 @@ namespace Npgsql.EntityFramework7.ValueGeneration
         ValueGenerator Create(
             [NotNull] IProperty property,
             [NotNull] NpgsqlSequenceValueGeneratorState generatorState,
-            [NotNull] INpgsqlEFConnection connection);
+            [NotNull] NpgsqlDataStoreConnection connection);
     }
 }

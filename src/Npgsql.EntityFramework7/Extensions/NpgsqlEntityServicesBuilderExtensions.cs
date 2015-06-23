@@ -38,7 +38,7 @@ namespace Microsoft.Framework.DependencyInjection
                     .AddScoped<NpgsqlValueGeneratorSelector>()
                     .AddScoped<NpgsqlDataStoreServices>()
                     .AddScoped<NpgsqlDataStore>()
-                    .AddScoped<INpgsqlEFConnection, NpgsqlRelationalConnection>()
+                    .AddScoped<NpgsqlDataStoreConnection>()
                     .AddScoped<NpgsqlModelDiffer>()
                     .AddScoped<NpgsqlMigrationSqlGenerator>()
                     .AddScoped<NpgsqlDataStoreCreator>()

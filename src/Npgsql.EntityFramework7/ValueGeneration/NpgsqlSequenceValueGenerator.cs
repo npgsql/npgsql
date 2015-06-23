@@ -14,14 +14,14 @@ namespace Npgsql.EntityFramework7.ValueGeneration
     {
         private readonly ISqlStatementExecutor _executor;
         private readonly INpgsqlSqlGenerator _sqlGenerator;
-        private readonly INpgsqlEFConnection _connection;
+        private readonly NpgsqlDataStoreConnection _connection;
         private readonly string _sequenceName;
 
         public NpgsqlSequenceValueGenerator(
             [NotNull] ISqlStatementExecutor executor,
             [NotNull] INpgsqlSqlGenerator sqlGenerator,
             [NotNull] NpgsqlSequenceValueGeneratorState generatorState,
-            [NotNull] INpgsqlEFConnection connection)
+            [NotNull] NpgsqlDataStoreConnection connection)
             : base(Check.NotNull(generatorState, nameof(generatorState)))
         {
             Check.NotNull(executor, nameof(executor));
