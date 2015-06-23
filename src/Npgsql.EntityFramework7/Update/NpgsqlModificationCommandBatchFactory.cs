@@ -20,6 +20,6 @@ namespace Npgsql.EntityFramework7.Update
         public override ModificationCommandBatch Create(
             IDbContextOptions options,
             IRelationalMetadataExtensionProvider metadataExtensionProvider)
-            => new SingularModificationCommandBatch(SqlGenerator);
+            => new NpgsqlModificationCommandBatch(SqlGenerator);
     }
 }
