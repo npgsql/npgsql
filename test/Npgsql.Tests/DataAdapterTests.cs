@@ -370,40 +370,49 @@ namespace Npgsql.Tests
         [Test]
         public void IntervalAsTimeSpan()
         {
-            var dt = new DataTable();
-            var c = dt.Columns.Add("dauer", typeof(TimeSpan));
-            // DataColumn c = dt.Columns.Add("dauer", typeof(NpgsqlInterval));
-            c.AllowDBNull = true;
-            var command = new NpgsqlCommand();
-            command.CommandType = CommandType.Text;
-            command.CommandText = "SELECT CAST('1 hour' AS interval) AS dauer";
-            command.Connection = Conn;
-            var da = new NpgsqlDataAdapter();
-            da.SelectCommand = command;
+            ExecuteNonQuery(@"CREATE TEMP TABLE data (" +
+                             "  pk SERIAL PRIMARY KEY, " +
+                             "  interval INTERVAL" +
+                             ")");
+            ExecuteNonQuery(@"INSERT INTO data (interval) VALUES ('1 hour'::INTERVAL)");
+
+            var dt = new DataTable("data");
+            var command = new NpgsqlCommand {
+                CommandType = CommandType.Text,
+                CommandText = "SELECT interval FROM data",
+                Connection = Conn
+            };
+            var da = new NpgsqlDataAdapter { SelectCommand = command };
             da.Fill(dt);
             foreach (DataRow dr in dt.Rows)
             {
-                Console.Out.WriteLine(dr["dauer"]);
+                Console.Out.WriteLine(dr["interval"]);
             }
         }
 
         [Test]
         public void IntervalAsTimeSpan2()
         {
-            var dt = new DataTable();
+            ExecuteNonQuery(@"CREATE TEMP TABLE data (" +
+                 "  pk SERIAL PRIMARY KEY, " +
+                 "  interval INTERVAL" +
+                 ")");
+            ExecuteNonQuery(@"INSERT INTO data (interval) VALUES ('1 hour'::INTERVAL)");
+
+            var dt = new DataTable("data");
             //DataColumn c = dt.Columns.Add("dauer", typeof(TimeSpan));
             // DataColumn c = dt.Columns.Add("dauer", typeof(NpgsqlInterval));
             //c.AllowDBNull = true;
             var command = new NpgsqlCommand();
             command.CommandType = CommandType.Text;
-            command.CommandText = "SELECT CAST('1 hour' AS interval) AS dauer";
+            command.CommandText = "SELECT interval FROM data";
             command.Connection = Conn;
             var da = new NpgsqlDataAdapter();
             da.SelectCommand = command;
             da.Fill(dt);
             foreach (DataRow dr in dt.Rows)
             {
-                Console.Out.WriteLine(dr["dauer"]);
+                Console.Out.WriteLine(dr["interval"]);
             }
         }
 

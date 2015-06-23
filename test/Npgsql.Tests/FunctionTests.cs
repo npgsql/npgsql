@@ -106,25 +106,6 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void MultipleRefCursorSupport()
-        {
-            ExecuteNonQuery(@"CREATE FUNCTION pg_temp.func() RETURNS SETOF refcursor AS 'DECLARE ref1 refcursor; ref2 refcursor; BEGIN OPEN ref1 FOR SELECT 1; RETURN NEXT ref1; OPEN ref2 FOR SELECT 2; RETURN next ref2; RETURN; END;' LANGUAGE 'plpgsql';");
-            using (Conn.BeginTransaction())
-            {
-                var command = new NpgsqlCommand("pg_temp.func", Conn);
-                command.CommandType = CommandType.StoredProcedure;
-                using (var dr = command.ExecuteReader())
-                {
-                    dr.Read();
-                    Assert.That(dr.GetInt32(0), Is.EqualTo(1));
-                    dr.NextResult();
-                    dr.Read();
-                    Assert.That(dr.GetInt32(0), Is.EqualTo(2));
-                }
-            }
-        }
-
-        [Test]
         public void SingleRow()
         {
             ExecuteNonQuery(@"CREATE FUNCTION pg_temp.func() RETURNS TABLE (a INT, b INT) AS 'VALUES (1,2), (3,4);' LANGUAGE 'sql'");

@@ -1,11 +1,9 @@
 ﻿#if !DNXCORE50
-// NpgsqlCommandBuilder.cs
+
+#region License
+// The PostgreSQL License
 //
-// Author:
-//   Pedro Martínez Juliá (yoros@wanadoo.es)
-//
-// Copyright (C) 2003 Pedro Martínez Juliá
-//
+// Copyright (C) 2015 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -23,6 +21,7 @@
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+#endregion
 
 using System;
 using System.Data;
@@ -378,7 +377,7 @@ namespace Npgsql
         /// <param name="row">The row.</param>
         /// <param name="statementType">Type of the statement.</param>
         /// <param name="whereClause">if set to <c>true</c> [where clause].</param>
-        protected override void ApplyParameterInfo(DbParameter p, DataRow row, StatementType statementType, bool whereClause)
+        protected override void ApplyParameterInfo(DbParameter p, DataRow row, System.Data.StatementType statementType, bool whereClause)
         {
             // TODO: We may need to set NpgsqlDbType, as well as other properties, on p
         }

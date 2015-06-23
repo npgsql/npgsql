@@ -1,3 +1,26 @@
+#region License
+// The PostgreSQL License
+//
+// Copyright (C) 2015 The Npgsql Development Team
+//
+// Permission to use, copy, modify, and distribute this software and its
+// documentation for any purpose, without fee, and without a written
+// agreement is hereby granted, provided that the above copyright notice
+// and this paragraph and the following two paragraphs appear in all copies.
+//
+// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
+// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
+// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
+// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
+// THE POSSIBILITY OF SUCH DAMAGE.
+//
+// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
+// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
+// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+#endregion
+
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -33,14 +56,14 @@ namespace Npgsql
         ReaderState State { get; set; }
 
         /// <summary>
-        /// Holds the list of RowDescription messages for each of the resultsets this reader is to process.
+        /// Holds the list of statements being executed by this reader.
         /// </summary>
-        List<QueryDetails> _queries;
+        readonly List<NpgsqlStatement> _statements;
 
         /// <summary>
         /// The index of the current query resultset we're processing (within a multiquery)
         /// </summary>
-        int _queryIndex;
+        int _statementIndex;
 
         /// <summary>
         /// The RowDescription message for the current resultset being processed
@@ -83,32 +106,31 @@ namespace Npgsql
         /// </summary>
         readonly RowCache _rowCache;
 
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+        // static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         internal bool IsSequential { get { return (_behavior & CommandBehavior.SequentialAccess) != 0; } }
         internal bool IsCaching { get { return !IsSequential; } }
         internal bool IsSchemaOnly { get { return (_behavior & CommandBehavior.SchemaOnly) != 0; } }
 
-        internal NpgsqlDataReader(NpgsqlCommand command, CommandBehavior behavior, List<QueryDetails> queries)
+        internal NpgsqlDataReader(NpgsqlCommand command, CommandBehavior behavior, List<NpgsqlStatement> statements)
         {
             Command = command;
             _connection = command.Connection;
             _connector = _connection.Connector;
             _behavior = behavior;
-            _recordsAffected = null;
 
             State = IsSchemaOnly ? ReaderState.BetweenResults : ReaderState.InResult;
 
             if (IsCaching) {
                 _rowCache = new RowCache();
             }
-            _queries = queries;
+            _statements = statements;
         }
 
         [RewriteAsync]
         internal void Init()
         {
-            _rowDescription = _queries[0].Description;
+            _rowDescription = _statements[0].Description;
             if (_rowDescription == null)
             {
                 // The first query has not result set, seek forward to the first query that does (if any)
@@ -219,15 +241,23 @@ namespace Npgsql
 
                 case BackendMessageCode.CompletedResponse:
                     var completed = (CommandCompleteMessage) msg;
-                    if (completed.RowsAffected.HasValue)
+                    switch (completed.StatementType)
                     {
-                        _recordsAffected = !_recordsAffected.HasValue
-                            ? completed.RowsAffected
-                            : _recordsAffected.Value + completed.RowsAffected.Value;
+                        case StatementType.Update:
+                        case StatementType.Insert:
+                        case StatementType.Delete:
+                        case StatementType.Copy:
+                            if (!_recordsAffected.HasValue) {
+                                _recordsAffected = 0;
+                            }
+                            _recordsAffected += completed.Rows;
+                            break;
                     }
-                    if (completed.LastInsertedOID.HasValue) {
-                        LastInsertedOID = completed.LastInsertedOID.Value;
-                    }
+
+                    _statements[_statementIndex].StatementType = completed.StatementType;
+                    _statements[_statementIndex].Rows = completed.Rows;
+                    _statements[_statementIndex].OID = completed.OID;
+
                     goto case BackendMessageCode.EmptyQueryResponse;
 
                 case BackendMessageCode.EmptyQueryResponse:
@@ -318,9 +348,9 @@ namespace Npgsql
                 }
 
                 // We are now at the end of the previous result set. Read up to the next result set, if any.
-                for (_queryIndex++; _queryIndex < _queries.Count; _queryIndex++)
+                for (_statementIndex++; _statementIndex < _statements.Count; _statementIndex++)
                 {
-                    _rowDescription = _queries[_queryIndex].Description;
+                    _rowDescription = _statements[_statementIndex].Description;
                     if (_rowDescription != null)
                     {
                         State = ReaderState.InResult;
@@ -353,9 +383,9 @@ namespace Npgsql
         {
             Contract.Requires(IsSchemaOnly);
 
-            for (_queryIndex++; _queryIndex < _queries.Count; _queryIndex++)
+            for (_statementIndex++; _statementIndex < _statements.Count; _statementIndex++)
             {
-                _rowDescription = _queries[_queryIndex].Description;
+                _rowDescription = _statements[_statementIndex].Description;
                 if (_rowDescription != null)
                 {
                     // Found a resultset
@@ -431,13 +461,20 @@ namespace Npgsql
         public override int RecordsAffected
         {
             get { return _recordsAffected.HasValue ? (int)_recordsAffected.Value : -1; }
-       }
+        }
 
         /// <summary>
-        /// Returns the OID of the last inserted row.
-        /// If table is created without OIDs, this will always be 0.
+        /// Returns details about each statement that this reader will or has executed.
         /// </summary>
-        public uint LastInsertedOID { get; private set; }
+        /// <remarks>
+        /// Note that some fields (i.e. rows and oid) are only populated as the reader
+        /// traverses the result.
+        ///
+        /// For commands with multiple queries, this exposes the number of rows affected on
+        /// a statement-by-statement basis, unlike <see cref="NpgsqlDataReader.RecordsAffected"/>
+        /// which exposes an aggregation across all statements.
+        /// </remarks>
+        public IReadOnlyList<NpgsqlStatement> Statements { get { return _statements.AsReadOnly(); } }
 
         /// <summary>
         /// Gets a value that indicates whether this DbDataReader contains one or more rows.
@@ -449,7 +486,7 @@ namespace Npgsql
                 if (_hasRows.HasValue) {
                     return _hasRows.Value;
                 }
-                if (_queryIndex >= _queries.Count) {
+                if (_statementIndex >= _statements.Count) {
                     return false;
                 }
                 while (true)
@@ -1115,7 +1152,7 @@ namespace Npgsql
         public override int GetOrdinal(string name)
         {
             #region Contracts
-            CheckRow();
+            CheckResultSet();
             if (String.IsNullOrEmpty(name))
                 throw new ArgumentException("name cannot be empty", "name");
             Contract.EndContractBlock();
@@ -1248,8 +1285,13 @@ namespace Npgsql
 
             var t = typeof(T);
             if (!t.IsArray) {
+                if (t == typeof(object)) {
+                    return (T)GetValue(ordinal);
+                }
                 return ReadColumn<T>(ordinal);
             }
+
+            // Getting an array
 
             var fieldDescription = _rowDescription[ordinal];
             var handler = fieldDescription.Handler;

@@ -1,10 +1,8 @@
 #if !DNXCORE50
-// NpgsqlResourceManager.cs
+#region License
+// The PostgreSQL License
 //
-// Author:
-//  Josh Cooley <jbnpgsql@tuxinthebox.net>
-//
-// Copyright (C) 2007, The Npgsql Development Team
+// Copyright (C) 2015 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -22,6 +20,7 @@
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+#endregion
 
 using System;
 using System.Collections.Generic;
@@ -86,8 +85,6 @@ namespace Npgsql
 
         private class DurableResourceManager : ISinglePhaseNotification
         {
-            private CommittableTransaction _tx;
-            private NpgsqlResourceManager _rm;
             private readonly INpgsqlTransactionCallbacks _callbacks;
             private string _txName;
 
@@ -99,8 +96,6 @@ namespace Npgsql
             public DurableResourceManager(NpgsqlResourceManager rm, INpgsqlTransactionCallbacks callbacks,
                                           CommittableTransaction tx)
             {
-                _rm = rm;
-                _tx = tx;
                 _callbacks = callbacks;
             }
 

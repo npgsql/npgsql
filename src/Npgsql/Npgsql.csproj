@@ -157,6 +157,7 @@
     <Compile Include="BackendMessages\RowDescriptionMessage.cs" />
     <Compile Include="BackendMessages\DataRowSequentialMessage.cs" />
     <Compile Include="FrontendMessages\CopyFailMessage.cs" />
+    <Compile Include="ICancelable.cs" />
     <Compile Include="Logging\NoOpLoggingProvider.cs" />
     <Compile Include="Logging\NpgsqlLogger.cs" />
     <Compile Include="Logging\INpgsqlLoggingProvider.cs" />
@@ -183,6 +184,7 @@
     <Compile Include="FrontendMessages\ParseMessage.cs" />
     <Compile Include="LengthCache.cs" />
     <Compile Include="NpgsqlBuffer.cs" />
+    <Compile Include="NpgsqlStatement.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlTimeSpan.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlRange.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlDateTime.cs" />
@@ -222,10 +224,6 @@
     <Compile Include="TypeHandlers\NetworkHandlers\InetHandler.cs" />
     <Compile Include="TypeHandlers\InternalCharHandler.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlDate.cs" />
-    <Compile Include="NpgsqlTypes\FastPath.cs" />
-    <Compile Include="NpgsqlTypes\FastPathArg.cs" />
-    <Compile Include="NpgsqlTypes\LargeObject.cs" />
-    <Compile Include="NpgsqlTypes\LargeObjectManager.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlDbType.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlTypes.cs" />
     <Compile Include="CachedValue.cs" />

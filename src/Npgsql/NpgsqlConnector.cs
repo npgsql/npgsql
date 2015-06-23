@@ -1,6 +1,7 @@
-//    Copyright (C) 2002 The Npgsql Development Team
-//    npgsql-general@gborg.postgresql.org
-//    http://gborg.postgresql.org/project/npgsql/projdisplay.php
+#region License
+// The PostgreSQL License
+//
+// Copyright (C) 2015 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -18,6 +19,7 @@
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+#endregion
 
 using System;
 using System.Collections.Generic;
@@ -142,6 +144,12 @@ namespace Npgsql
         internal NpgsqlDataReader CurrentReader;
 
         /// <summary>
+        /// If the connector is currently in COPY mode, holds a reference to the importer/exporter object.
+        /// Otherwise null.
+        /// </summary>
+        internal ICancelable CurrentCopyOperation;
+
+        /// <summary>
         /// Holds all run-time parameters received from the backend (via ParameterStatus messages)
         /// </summary>
         internal Dictionary<string, string> BackendParams;
@@ -183,6 +191,13 @@ namespace Npgsql
         /// action such as <see cref="DbCommand.ExecuteReaderAsync()"/>.
         /// </summary>
         SemaphoreSlim _asyncLock;
+
+        /// <summary>
+        /// A lock that's taken while a cancellation is being delivered; new queries are blocked until the
+        /// cancellation is delivered. This reduces the chance that a cancellation meant for a previous
+        /// command will accidentally cancel a later one, see #615.
+        /// </summary>
+        readonly object _cancelLock;
 
         readonly UserAction _userAction;
         readonly Timer _keepAliveTimer;
@@ -256,6 +271,7 @@ namespace Npgsql
             _userLock = new SemaphoreSlim(1, 1);
             _asyncLock = new SemaphoreSlim(1, 1);
             _userAction = new UserAction(this);
+            _cancelLock = new object();
 
             if (KeepAlive > 0) {
                 _keepAliveTimer = new Timer(PerformKeepAlive, null, Timeout.Infinite, Timeout.Infinite);
@@ -739,6 +755,9 @@ namespace Npgsql
             if (!_messagesToSend.Any()) {
                 return;
             }
+
+            // If a cancellation is in progress, wait for it to "complete" before proceeding (#615)
+            lock (_cancelLock) { }
 
             _sentRfqPrependedMessages = _pendingRfqPrependedMessages;
             _pendingRfqPrependedMessages = 0;
@@ -1283,16 +1302,35 @@ namespace Npgsql
         /// </summary>
         internal void CancelRequest()
         {
-            var cancelConnector = new NpgsqlConnector(_settings);
+            lock (_cancelLock)
+            {
+                var cancelConnector = new NpgsqlConnector(_settings);
+                cancelConnector.DoCancelRequest(BackendProcessId, _backendSecretKey, cancelConnector.ConnectionTimeout);
+            }
+        }
+
+        void DoCancelRequest(int backendProcessId, int backendSecretKey, int connectionTimeout)
+        {
+            Contract.Requires(State == ConnectorState.Closed);
 
             try
             {
-                cancelConnector.RawOpen(cancelConnector.ConnectionTimeout*1000);
-                cancelConnector.SendSingleMessage(new CancelRequestMessage(BackendProcessId, _backendSecretKey));
+                RawOpen(connectionTimeout * 1000);
+                SendSingleMessage(new CancelRequestMessage(backendProcessId, backendSecretKey));
+
+                Contract.Assert(Buffer.ReadPosition == 0);
+
+                // Now wait for the server to close the connection, better chance of the cancellation
+                // actually being delivered.
+                var count = _stream.Read(Buffer._buf, 0, 1);
+                if (count != -1)
+                {
+                    Log.Error("Received response after sending cancel request, shouldn't happen! First byte: " + Buffer._buf[0]);
+                }
             }
             finally
             {
-                cancelConnector.Close();
+                Cleanup();
             }
         }
 
