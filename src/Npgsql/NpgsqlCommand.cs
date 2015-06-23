@@ -94,12 +94,12 @@ namespace Npgsql
         internal const int DefaultTimeout = 30;
 
         /// <summary>
-        /// Specifies the maximum number of queries we allow in a multiquery, separated by semicolons.
+        /// Specifies the maximum number of statements we allow in a multiquery, separated by semicolons.
         /// We limit this because of deadlocks: as we send Parse and Bind messages to the backend, the backend
         /// replies with ParseComplete and BindComplete messages which we do not read until we finished sending
         /// all messages. Once our buffer gets full the backend will get stuck writing, and then so will we.
         /// </summary>
-        internal const int MaxQueriesInMultiquery = 5000;
+        public const int MaxStatements = 5000;
 
         #endregion
 
