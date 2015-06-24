@@ -18,14 +18,14 @@ using Microsoft.Framework.Logging;
 
 namespace Npgsql.EntityFramework7
 {
-    public class NpgsqlDataStore : RelationalDataStore
+    public class NpgsqlDatabase : RelationalDatabase
     {
-        public NpgsqlDataStore(
+        public NpgsqlDatabase(
             [NotNull] IModel model,
             [NotNull] IEntityKeyFactorySource entityKeyFactorySource,
             [NotNull] IEntityMaterializerSource entityMaterializerSource,
             [NotNull] IClrAccessorSource<IClrPropertyGetter> clrPropertyGetterSource,
-            [NotNull] NpgsqlDataStoreConnection connection,
+            [NotNull] NpgsqlDatabaseConnection connection,
             [NotNull] ICommandBatchPreparer batchPreparer,
             [NotNull] IBatchExecutor batchExecutor,
             [NotNull] IDbContextOptions options,

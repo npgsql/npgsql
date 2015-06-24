@@ -18,14 +18,14 @@ namespace Npgsql.EntityFramework7.Migrations
     // TODO: Log
     public class NpgsqlHistoryRepository : IHistoryRepository
     {
-        private readonly NpgsqlDataStoreConnection  _connection;
-        private readonly IRelationalDataStoreCreator _creator;
+        private readonly NpgsqlDatabaseConnection  _connection;
+        private readonly IRelationalDatabaseCreator _creator;
         private readonly Type _contextType;
         private readonly INpgsqlSqlGenerator _sql;
 
         public NpgsqlHistoryRepository(
-            [NotNull] NpgsqlDataStoreConnection connection,
-            [NotNull] IRelationalDataStoreCreator creator,
+            [NotNull] NpgsqlDatabaseConnection connection,
+            [NotNull] IRelationalDatabaseCreator creator,
             [NotNull] DbContext context,
             [NotNull] INpgsqlSqlGenerator sqlGenerator)
         {

@@ -16,15 +16,15 @@ using Microsoft.Data.Entity.Utilities;
 
 namespace Npgsql.EntityFramework7
 {
-    public class NpgsqlDataStoreCreator : RelationalDataStoreCreator
+    public class NpgsqlDatabaseCreator : RelationalDatabaseCreator
     {
-        private readonly NpgsqlDataStoreConnection _connection;
+        private readonly NpgsqlDatabaseConnection _connection;
         private readonly IModelDiffer _modelDiffer;
         private readonly IMigrationSqlGenerator _sqlGenerator;
         private readonly ISqlStatementExecutor _statementExecutor;
 
-        public NpgsqlDataStoreCreator(
-            [NotNull] NpgsqlDataStoreConnection connection,
+        public NpgsqlDatabaseCreator(
+            [NotNull] NpgsqlDatabaseConnection connection,
             [NotNull] IModelDiffer modelDiffer,
             [NotNull] IMigrationSqlGenerator sqlGenerator,
             [NotNull] ISqlStatementExecutor statementExecutor,

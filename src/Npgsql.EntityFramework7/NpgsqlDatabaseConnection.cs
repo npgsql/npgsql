@@ -14,11 +14,11 @@ using Npgsql;
 
 namespace Npgsql.EntityFramework7
 {
-    public class NpgsqlDataStoreConnection : RelationalConnection
+    public class NpgsqlDatabaseConnection : RelationalConnection
     {
         private readonly ILoggerFactory _loggerFactory;
 
-        public NpgsqlDataStoreConnection([NotNull] IDbContextOptions options, [NotNull] ILoggerFactory loggerFactory)
+        public NpgsqlDatabaseConnection([NotNull] IDbContextOptions options, [NotNull] ILoggerFactory loggerFactory)
             : base(options, loggerFactory)
         {
             Check.NotNull(loggerFactory, nameof(loggerFactory));
@@ -30,7 +30,7 @@ namespace Npgsql.EntityFramework7
         // Issue #774
         protected override DbConnection CreateDbConnection() => new NpgsqlConnection(ConnectionString);
 
-        public NpgsqlDataStoreConnection CreateMasterConnection()
+        public NpgsqlDatabaseConnection CreateMasterConnection()
         {
             var builder = new NpgsqlConnectionStringBuilder { ConnectionString = ConnectionString };
 
@@ -42,7 +42,7 @@ namespace Npgsql.EntityFramework7
             var optionsBuilder = new DbContextOptionsBuilder();
             optionsBuilder.UseNpgsql(builder.ConnectionString).CommandTimeout(CommandTimeout);
 
-            return new NpgsqlDataStoreConnection(optionsBuilder.Options, _loggerFactory);
+            return new NpgsqlDatabaseConnection(optionsBuilder.Options, _loggerFactory);
         }
     }
 }

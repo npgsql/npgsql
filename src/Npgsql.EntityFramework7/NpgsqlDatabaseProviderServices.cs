@@ -22,23 +22,22 @@ using Npgsql.EntityFramework7.ValueGeneration;
 
 namespace Npgsql.EntityFramework7
 {
-    public class NpgsqlDataStoreServices : RelationalDataStoreServices
+    public class NpgsqlDatabaseProviderServices : RelationalDatabaseProviderServices
     {
         private readonly IServiceProvider _serviceProvider;
 
-        public NpgsqlDataStoreServices([NotNull] IServiceProvider services)
+        public NpgsqlDatabaseProviderServices([NotNull] IServiceProvider services)
             : base(services)
         {
         }
 
-        public override IDataStore Store => GetService<NpgsqlDataStore>();
-        public override IDataStoreCreator Creator => GetService<NpgsqlDataStoreCreator>();
-        public override IDataStoreConnection Connection => GetService<NpgsqlDataStoreConnection>();
-        public override IRelationalConnection RelationalConnection => GetService<NpgsqlDataStoreConnection>();
+        public override IDatabase Database => GetService<NpgsqlDatabase>();
+        public override IDatabaseCreator Creator => GetService<NpgsqlDatabaseCreator>();
+        public override IDatabaseConnection Connection => GetService<NpgsqlDatabaseConnection>();
+        public override IRelationalConnection RelationalConnection => GetService<NpgsqlDatabaseConnection>();
         public override IValueGeneratorSelector ValueGeneratorSelector => GetService<NpgsqlValueGeneratorSelector>();
-        public override IRelationalDataStoreCreator RelationalDataStoreCreator => GetService<NpgsqlDataStoreCreator>();
+        public override IRelationalDatabaseCreator RelationalDatabaseCreator => GetService<NpgsqlDatabaseCreator>();
         public override IConventionSetBuilder ConventionSetBuilder => GetService<NpgsqlConventionSetBuilder>();
-        public override IModelDiffer ModelDiffer => GetService<NpgsqlModelDiffer>();
         public override IHistoryRepository HistoryRepository => GetService<NpgsqlHistoryRepository>();
         public override IMigrationSqlGenerator MigrationSqlGenerator => GetService<NpgsqlMigrationSqlGenerator>();
         public override IModelSource ModelSource => GetService<NpgsqlModelSource>();

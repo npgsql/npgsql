@@ -25,7 +25,7 @@ namespace Microsoft.Framework.DependencyInjection
             Check.NotNull(builder, nameof(builder));
 
             ((IAccessor<IServiceCollection>)builder.AddRelational()).Service
-                .AddSingleton<IDataStoreSource, NpgsqlDataStoreSource>()
+                .AddSingleton<IDatabaseProvider, NpgsqlDatabaseProvider>()
                 .TryAdd(new ServiceCollection()
                     .AddSingleton<NpgsqlConventionSetBuilder>()
                     .AddSingleton<INpgsqlValueGeneratorCache, NpgsqlValueGeneratorCache>()
@@ -36,12 +36,11 @@ namespace Microsoft.Framework.DependencyInjection
                     .AddScoped<INpgsqlSequenceValueGeneratorFactory, NpgsqlSequenceValueGeneratorFactory>()
                     .AddScoped<NpgsqlModificationCommandBatchFactory>()
                     .AddScoped<NpgsqlValueGeneratorSelector>()
-                    .AddScoped<NpgsqlDataStoreServices>()
-                    .AddScoped<NpgsqlDataStore>()
-                    .AddScoped<NpgsqlDataStoreConnection>()
-                    .AddScoped<NpgsqlModelDiffer>()
+                    .AddScoped<NpgsqlDatabaseProviderServices>()
+                    .AddScoped<NpgsqlDatabase>()
+                    .AddScoped<NpgsqlDatabaseConnection>()
                     .AddScoped<NpgsqlMigrationSqlGenerator>()
-                    .AddScoped<NpgsqlDataStoreCreator>()
+                    .AddScoped<NpgsqlDatabaseCreator>()
                     .AddScoped<NpgsqlHistoryRepository>()
                     .AddScoped<NpgsqlCompositeMethodCallTranslator>()
                     .AddScoped<NpgsqlCompositeMemberTranslator>());

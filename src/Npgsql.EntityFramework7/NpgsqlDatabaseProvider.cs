@@ -6,12 +6,12 @@ using Microsoft.Data.Entity.Storage;
 
 namespace Npgsql.EntityFramework7
 {
-    public class NpgsqlDataStoreSource : DataStoreSource<NpgsqlDataStoreServices, NpgsqlOptionsExtension>
+    public class NpgsqlDatabaseProvider : DatabaseProvider<NpgsqlDatabaseProviderServices, NpgsqlOptionsExtension>
     {
         public override void AutoConfigure(DbContextOptionsBuilder optionsBuilder)
         {
         }
 
-        public override string Name => "Npgsql Data Store";
+        public override string Name => "PostgreSQL Database";
     }
 }
