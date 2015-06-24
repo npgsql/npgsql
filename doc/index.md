@@ -55,6 +55,8 @@ or in many tutorials on the Internet.
 
 [Date and Time](datetime.html)
 
+[Compatibility Notes](compatibility.html)
+
 [Developer Resources](dev.html)
 
 ## Still to be written

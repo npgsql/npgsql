@@ -12,8 +12,7 @@ It allows any program developed for .NET framework to access database server. It
 We aim to be compatible with all [currently supported PostgreSQL versions](http://www.postgresql.org/support/versioning/), which means 5 years back.
 Earlier versions may still work but we don't perform continuous testing on them or commit to resolving issues on them.
 
-Npgsql can also be used to access some databases which aren't PostgreSQL but use the PostgreSQL protocol, such as Amazon Redshift.
-Support for these is usually partial, please report any issues.
+For more compatibility information please see [this page](doc/compatibility.html).
 
 ## Non-Windows Platforms
 
