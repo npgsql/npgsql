@@ -1,0 +1,87 @@
+---
+layout: default
+---
+<div id="main" class="eight columns">
+
+  <h1>{{ page.title }}</h1>
+  <div class="content">
+
+{% unless page.url == "/doc/manual-2.2.html" %}
+<p>
+  <strong>
+    Note: The documentation below is for Npgsql 3.0, which is still in beta.
+    <a href="manual-2.2.html">See here</a> for the older 2.2 documentation.
+  </strong>
+</p>
+{% endunless %}
+
+{{ content }}
+
+  </div>
+
+</div> <!-- #main -->
+
+<div id="sidebar" class="four columns">
+
+<p>
+  <a href="index.html">Intro</a>
+</p>
+
+<p>
+  <a href="migration-3.0.html">Migrating to 3.0</a>
+</p>
+
+<p>
+  <a href="connection-string-parameters.html">Connection String Parameters</a>
+</p>
+
+<p>
+  <a href="copy.html">Bulk Copy</a>
+</p>
+
+<p>
+  <a href="continuous-processing.html">Asynchronous notifications and Continuous Processing</a>
+</p>
+
+<p>
+  <a href="datetime.html">Date and Time</a>
+</p>
+
+<p>
+  <a href="logging.html">Logging</a>
+</p>
+
+<p>
+  <a href="compatibility.html">Compatibility Notes</a>
+</p>
+
+<p>
+  <a href="dev.html">Developer Resources</a>
+</p>
+
+<!-- Not done yet -->
+
+<p>
+  <a href="security.html">Security and Encryption</a>
+</p>
+
+<p>
+  <a href="ef.html">Entity Framework 6</a>
+</p>
+
+<p>
+  <a href="ef7.html">Entity Framework 7</a>
+</p>
+
+{% comment %}
+{% for page in site.pages | sort: 'title' %}
+{% capture url_start %}{{ page.url | truncate: 8 }}{% endcapture %}
+{% if url_start == "/doc/..." %}
+<p>
+  <a href="{{ page.url }}">{{ page.title }}</a>
+</p>
+{% endif %}
+{% endfor %}
+{% endcomment %}
+
+</div> <!-- #sidebar -->

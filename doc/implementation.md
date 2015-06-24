@@ -1,5 +1,5 @@
 ---
-layout: page
+layout: dev
 title: Internal Implementation Notes
 ---
 

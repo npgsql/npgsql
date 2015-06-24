@@ -1,10 +1,7 @@
 ---
-layout: page
+layout: doc
 title: Documentation
 ---
-
-*Note: The documentation below is for Npgsql 3.0, which is still in beta.
-[See here](manual-2.2.html) for the older 2.2 documentation.*
 
 ## Intro
 
@@ -40,30 +37,3 @@ using (var conn = new NpgsqlConnection("Host=myserver;Username=mylogin;Password=
 
 You can find more info about the ADO.NET API in the [MSDN docs](https://msdn.microsoft.com/en-us/library/h43ks021(v=vs.110).aspx)
 or in many tutorials on the Internet.
-
-## Other Subjects
-
-[Migration guide from 2.2 to 3.0](migration-3.0.html)
-
-[Connection String Parameters](connection-string-parameters.html)
-
-[Copy (bulk data transfer)](copy.html)
-
-[Asynchronous notifications and Continuous Processing](continuous-processing.html)
-
-[Logging](logging.html)
-
-[Date and Time](datetime.html)
-
-[Compatibility Notes](compatibility.html)
-
-[Developer Resources](dev.html)
-
-## Still to be written
-
-[SSL (or TLS)?, Kerberos](ssl.html)
-
-[Entity Framework](ef.html)
-
-[Entity Framework 7](ef7.html)
-

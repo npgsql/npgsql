@@ -1,5 +1,5 @@
 ---
-layout: page
+layout: doc
 title: User Manual
 #permalink: /doc/manual2.2/
 ---

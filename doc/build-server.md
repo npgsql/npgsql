@@ -1,5 +1,5 @@
 ---
-layout: page
+layout: doc
 title: Build Server Notes
 ---
 
