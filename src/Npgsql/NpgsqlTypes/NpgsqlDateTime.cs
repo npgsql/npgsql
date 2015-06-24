@@ -69,6 +69,10 @@ namespace NpgsqlTypes
 
         NpgsqlDateTime(InternalType type, NpgsqlDate date, TimeSpan time)
         {
+            if (!date.IsFinite && type != InternalType.Infinity && type != InternalType.NegativeInfinity)
+                throw new ArgumentException("Can't construct an NpgsqlDateTime with a non-finite date, use Infinity and NegativeInfinity instead", "date");
+            Contract.EndContractBlock();
+
             _type = type;
             _date = date;
             _time = time;

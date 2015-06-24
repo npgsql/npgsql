@@ -421,8 +421,10 @@ namespace NpgsqlTypes
                 return other._type == InternalType.Infinity;
             case InternalType.NegativeInfinity:
                 return other._type == InternalType.NegativeInfinity;
+            case InternalType.Finite:
+                return other._type == InternalType.Finite && _daysSinceEra == other._daysSinceEra;
             default:
-                return _daysSinceEra == other._daysSinceEra;
+                throw PGUtil.ThrowIfReached();
             }
         }
 
