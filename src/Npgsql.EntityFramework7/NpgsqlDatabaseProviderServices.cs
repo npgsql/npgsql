@@ -38,6 +38,7 @@ namespace Npgsql.EntityFramework7
         public override IValueGeneratorSelector ValueGeneratorSelector => GetService<NpgsqlValueGeneratorSelector>();
         public override IRelationalDatabaseCreator RelationalDatabaseCreator => GetService<NpgsqlDatabaseCreator>();
         public override IConventionSetBuilder ConventionSetBuilder => GetService<NpgsqlConventionSetBuilder>();
+        public override IMigrationAnnotationProvider MigrationAnnotationProvider => GetService<NpgsqlMigrationAnnotationProvider>();
         public override IHistoryRepository HistoryRepository => GetService<NpgsqlHistoryRepository>();
         public override IMigrationSqlGenerator MigrationSqlGenerator => GetService<NpgsqlMigrationSqlGenerator>();
         public override IModelSource ModelSource => GetService<NpgsqlModelSource>();

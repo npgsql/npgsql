@@ -24,7 +24,7 @@ namespace Microsoft.Framework.DependencyInjection
         {
             Check.NotNull(builder, nameof(builder));
 
-            ((IAccessor<IServiceCollection>)builder.AddRelational()).Service
+            builder.AddRelational().GetService()
                 .AddSingleton<IDatabaseProvider, NpgsqlDatabaseProvider>()
                 .TryAdd(new ServiceCollection()
                     .AddSingleton<NpgsqlConventionSetBuilder>()
@@ -33,6 +33,7 @@ namespace Microsoft.Framework.DependencyInjection
                     .AddSingleton<NpgsqlTypeMapper>()
                     .AddSingleton<NpgsqlModelSource>()
                     .AddSingleton<NpgsqlMetadataExtensionProvider>()
+                    .AddSingleton<NpgsqlMigrationAnnotationProvider>()
                     .AddScoped<INpgsqlSequenceValueGeneratorFactory, NpgsqlSequenceValueGeneratorFactory>()
                     .AddScoped<NpgsqlModificationCommandBatchFactory>()
                     .AddScoped<NpgsqlValueGeneratorSelector>()

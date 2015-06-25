@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System;
 using System.Text;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity;
@@ -247,6 +248,26 @@ namespace Npgsql.EntityFramework7
                 return;
             }
 
+            var valueGeneration = (string)annotatable[NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.ValueGeneration];
+            if (valueGeneration == "Identity")
+            {
+                switch (type)
+                {
+                case "int":
+                    type = "serial";
+                    break;
+                case "bigint":
+                    type = "bigserial";
+                    break;
+                case "smallint":
+                    type = "smallint";
+                    break;
+                default:
+                    throw new InvalidOperationException($"Column type {type} can't be Identity");
+                }
+            }
+            // TODO: Also valueGeneration == Sequence...!
+
             base.ColumnDefinition(
                 schema,
                 table,
@@ -258,12 +279,6 @@ namespace Npgsql.EntityFramework7
                 annotatable,
                 model,
                 builder);
-
-            var valueGeneration = (string)annotatable[NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.ValueGeneration];
-            if (valueGeneration == "Identity")
-            {
-                builder.Append(" IDENTITY");
-            }
         }
 
         public virtual void Rename(
