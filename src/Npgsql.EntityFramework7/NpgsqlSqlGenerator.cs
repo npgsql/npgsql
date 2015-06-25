@@ -61,6 +61,7 @@ namespace Npgsql.EntityFramework7
                 {
                     AppendReturningClause(commandStringBuilder, readOperations);
                 }
+                commandStringBuilder.Append(BatchCommandSeparator).AppendLine();
             }
 
             return defaultValuesOnly
