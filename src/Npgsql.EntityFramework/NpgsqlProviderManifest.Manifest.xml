@@ -47,6 +47,13 @@
         <Unicode DefaultValue="true" Constant="true" />
       </FacetDescriptions>
     </Type>
+    <Type Name="cidr" PrimitiveTypeKind="String">
+      <FacetDescriptions>
+        <FixedLength DefaultValue="false" Constant="true" />
+        <MaxLength Minimum="1" Maximum="45" DefaultValue="45" Constant="false" />
+        <Unicode DefaultValue="true" Constant="true" />
+      </FacetDescriptions>
+    </Type>
     <Type Name="timestamp" PrimitiveTypeKind="DateTime">
       <FacetDescriptions>
         <Precision DefaultValue="6" Constant="true"/>
@@ -63,9 +70,23 @@
         <Precision DefaultValue="0" Constant="true"/>
       </FacetDescriptions>
     </Type>
+    <Type Name="inet" PrimitiveTypeKind="String">
+      <FacetDescriptions>
+        <FixedLength DefaultValue="false" Constant="true" />
+        <MaxLength Minimum="1" Maximum="45" DefaultValue="45" Constant="false" />
+        <Unicode DefaultValue="true" Constant="true" />
+      </FacetDescriptions>
+    </Type>
     <Type Name="interval" PrimitiveTypeKind="Time">
       <FacetDescriptions>
         <Precision Minimum="0" Maximum="6" DefaultValue="6" Constant="false"/>
+      </FacetDescriptions>
+    </Type>
+    <Type Name="macaddr" PrimitiveTypeKind="String">
+      <FacetDescriptions>
+        <FixedLength DefaultValue="false" Constant="true" />
+        <MaxLength Minimum="1" Maximum="17" DefaultValue="17" Constant="false" />
+        <Unicode DefaultValue="true" Constant="true" />
       </FacetDescriptions>
     </Type>
     <Type Name="time" PrimitiveTypeKind="Time">
