@@ -4,11 +4,13 @@
 using System;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Text.RegularExpressions;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity.Relational;
 using Microsoft.Data.Entity.Relational.Query.Expressions;
 using Microsoft.Data.Entity.Relational.Query.Sql;
 using Microsoft.Data.Entity.Utilities;
+using Npgsql.EntityFramework7.Query.Expressions;
 
 namespace Npgsql.EntityFramework7.Query
 {
@@ -91,6 +93,46 @@ namespace Npgsql.EntityFramework7.Query
             }
 
             return sumExpression;
+        }
+
+        // See http://www.postgresql.org/docs/current/static/functions-matching.html
+        public Expression VisitRegexMatch([NotNull] RegexMatchExpression regexMatchExpression)
+        {
+            Check.NotNull(regexMatchExpression, nameof(regexMatchExpression));
+            var options = regexMatchExpression.Options;
+
+            Visit(regexMatchExpression.Match);
+            Sql.Append(" ~ ");
+
+            // PG regexps are singleline by default
+            if (options == RegexOptions.Singleline)
+            {
+                Visit(regexMatchExpression.Pattern);
+                return regexMatchExpression;
+            }
+
+            Sql.Append("('(?");
+            if (options.HasFlag(RegexOptions.IgnoreCase)) {
+                Sql.Append('i');
+            }
+
+            if (options.HasFlag(RegexOptions.Multiline)) {
+                Sql.Append('n');
+            }
+            else if (!options.HasFlag(RegexOptions.Singleline)) {
+                // In .NET's default mode, . doesn't match newlines but PostgreSQL it does.
+                Sql.Append('p');
+            }
+
+            if (options.HasFlag(RegexOptions.IgnorePatternWhitespace))
+            {
+                Sql.Append('x');
+            }
+
+            Sql.Append(")' || ");
+            Visit(regexMatchExpression.Pattern);
+            Sql.Append(')');
+            return regexMatchExpression;
         }
     }
 }

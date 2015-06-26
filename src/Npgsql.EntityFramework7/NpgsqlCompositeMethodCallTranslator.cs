@@ -24,7 +24,8 @@ namespace Npgsql.EntityFramework7
             new MathTruncateTranslator(),
             new StringReplaceTranslator(),
             new StringToLowerTranslator(),
-            new StringToUpperTranslator()
+            new StringToUpperTranslator(),
+            new RegexIsMatchTranslator()
         };
 
         public NpgsqlCompositeMethodCallTranslator([NotNull] ILoggerFactory loggerFactory)
