@@ -5,7 +5,7 @@
   <settings>
     <options>
       <option name="allowExternalStatus" value="true" />
-      <option name="artifactRules" value="nupkgs/*.nupkg&#xA;src/Npgsql.EntityFramework7/bin/Release/*.nupkg" />
+      <option name="artifactRules" value="nupkgs/*.nupkg&#xA;src/EntityFramework7.Npgsql/bin/Release/*.nupkg" />
       <option name="checkoutMode" value="ON_AGENT" />
       <option name="executionTimeoutMin" value="30" />
     </options>
@@ -71,7 +71,7 @@ c:\users\teamcity_agent\.dnx\bin\dnvm.cmd exec default dnu restore]]></param>
         <parameters>
           <param name="script.content"><![CDATA[set path=%%path%%;C:\Windows\System32\WindowsPowerShell\v1.0
 c:\users\teamcity_agent\.dnx\bin\dnvm.cmd exec default dnu build --configuration Release]]></param>
-          <param name="teamcity.build.workingDir" value="src/Npgsql.EntityFramework7" />
+          <param name="teamcity.build.workingDir" value="src/EntityFramework7.Npgsql" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
         </parameters>
@@ -114,7 +114,7 @@ test/Npgsql.EntityFramework.Tests/bin/%system.Configuration%/Npgsql.EntityFramew
         <parameters>
           <param name="script.content"><![CDATA[set path=%%path%%;C:\Windows\System32\WindowsPowerShell\v1.0
 c:\users\teamcity_agent\.dnx\bin\dnvm.cmd exec default dnx . test]]></param>
-          <param name="teamcity.build.workingDir" value="test/Npgsql.EntityFramework7.FunctionalTests" />
+          <param name="teamcity.build.workingDir" value="test/EntityFramework7.Npgsql.FunctionalTests" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
         </parameters>
@@ -128,9 +128,9 @@ c:\users\teamcity_agent\.dnx\bin\dnvm.cmd exec default dnx . test]]></param>
           <param name="nuget.pack.project.dir" value="as_is" />
           <param name="nuget.pack.properties" value="Configuration=Release" />
           <param name="nuget.pack.specFile"><![CDATA[src\Npgsql\Npgsql.nuspec
-src\Npgsql.EntityFramework\Npgsql.EntityFramework6.nuspec
-src\Npgsql.EntityFramework\Npgsql.EntityFramework5.nuspec
-src\Npgsql.EntityFramework7\Npgsql.EntityFramework7.nuspec]]></param>
+src\EntityFramework6.Npgsql\EntityFramework6.Npgsql.nuspec
+src\EntityFramework6.Npgsql\EntityFramework5.Npgsql.nuspec
+src\EntityFramework7.Npgsql\EntityFramework7.Npgsql.nuspec]]></param>
           <param name="nuget.pack.version" value="%GitVersion.NuGetVersion%" />
           <param name="nuget.path" value="?NuGet.CommandLine.DEFAULT.nupkg" />
           <param name="nugetCustomPath" value="?NuGet.CommandLine.DEFAULT.nupkg" />
@@ -151,7 +151,7 @@ c:\users\teamcity_agent\.dnx\bin\dnvm.cmd exec default dnu pack --configuration 
         <parameters>
           <param name="nuget.path" value="?NuGet.CommandLine.DEFAULT.nupkg" />
           <param name="nuget.publish.files"><![CDATA[nupkgs/*.nupkg
-src/Npgsql.EntityFramework7/bin/Release/*.nupkg]]></param>
+src/EntityFramework7.Npgsql/bin/Release/*.nupkg]]></param>
           <param name="nuget.publish.source" value="https://www.myget.org/F/npgsql-unstable" />
           <param name="nugetCustomPath" value="?NuGet.CommandLine.DEFAULT.nupkg" />
           <param name="nugetPathSelector" value="?NuGet.CommandLine.DEFAULT.nupkg" />
