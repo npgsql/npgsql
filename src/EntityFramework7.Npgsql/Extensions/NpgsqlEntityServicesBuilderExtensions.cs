@@ -1,18 +1,16 @@
 // Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using EntityFramework7.Npgsql;
+using EntityFramework7.Npgsql.Metadata;
+using EntityFramework7.Npgsql.Migrations;
+using EntityFramework7.Npgsql.Update;
+using EntityFramework7.Npgsql.ValueGeneration;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Relational;
-using Npgsql.EntityFramework7;
-using Npgsql.EntityFramework7.Migrations;
-using Npgsql.EntityFramework7.Query;
-using Npgsql.EntityFramework7.Update;
 using Microsoft.Data.Entity.Storage;
 using Microsoft.Data.Entity.Utilities;
-using Npgsql;
-using Npgsql.EntityFramework7.Metadata;
-using Npgsql.EntityFramework7.ValueGeneration;
 
 // ReSharper disable once CheckNamespace
 

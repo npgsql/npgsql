@@ -15,7 +15,7 @@ using Microsoft.Data.Entity.Relational.Query.Sql;
 using Microsoft.Data.Entity.Utilities;
 using Microsoft.Framework.Logging;
 
-namespace Npgsql.EntityFramework7.Query
+namespace EntityFramework7.Npgsql.Query
 {
     public class NpgsqlQueryCompilationContext : RelationalQueryCompilationContext
     {

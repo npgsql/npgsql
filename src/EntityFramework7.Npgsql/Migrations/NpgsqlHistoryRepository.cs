@@ -13,7 +13,7 @@ using Microsoft.Data.Entity.Relational.Migrations.History;
 using Microsoft.Data.Entity.Relational.Migrations.Operations;
 using Microsoft.Data.Entity.Utilities;
 
-namespace Npgsql.EntityFramework7.Migrations
+namespace EntityFramework7.Npgsql.Migrations
 {
     // TODO: Log
     public class NpgsqlHistoryRepository : IHistoryRepository

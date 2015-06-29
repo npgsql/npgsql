@@ -2,15 +2,15 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using EntityFramework7.Npgsql.Metadata;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity;
 using Microsoft.Data.Entity.Metadata;
 using Microsoft.Data.Entity.Relational.ValueGeneration;
 using Microsoft.Data.Entity.Utilities;
 using Microsoft.Data.Entity.ValueGeneration;
-using Npgsql.EntityFramework7.Metadata;
 
-namespace Npgsql.EntityFramework7.ValueGeneration
+namespace EntityFramework7.Npgsql.ValueGeneration
 {
     public class NpgsqlValueGeneratorSelector : RelationalValueGeneratorSelector
     {

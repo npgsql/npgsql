@@ -5,9 +5,8 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.Data.Entity.FunctionalTests.TestModels.Northwind;
 using Microsoft.Data.Entity.Infrastructure;
-using Npgsql.EntityFramework7.FunctionalTests;
 
-namespace Npgsql.EntityFramework7.FunctionalTests.TestModels
+namespace EntityFramework7.Npgsql.FunctionalTests.TestModels
 {
     public class NpgsqlNorthwindContext : NorthwindContext
     {

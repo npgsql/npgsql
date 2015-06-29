@@ -7,7 +7,7 @@ using Microsoft.Data.Entity.Relational;
 using Microsoft.Data.Entity.Utilities;
 using Microsoft.Framework.DependencyInjection;
 
-namespace Npgsql.EntityFramework7
+namespace EntityFramework7.Npgsql
 {
     public class NpgsqlOptionsExtension : RelationalOptionsExtension
     {

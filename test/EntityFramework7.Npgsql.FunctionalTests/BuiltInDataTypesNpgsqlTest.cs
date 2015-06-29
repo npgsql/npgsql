@@ -1,10 +1,6 @@
-﻿using System;
+﻿using Microsoft.Data.Entity.FunctionalTests;
 
-using Microsoft.Data.Entity;
-using Microsoft.Data.Entity.FunctionalTests;
-using Xunit;
-
-namespace Npgsql.EntityFramework7.FunctionalTests
+namespace EntityFramework7.Npgsql.FunctionalTests
 {
     public class BuiltInDataTypesNpgsqlTest : BuiltInDataTypesTestBase<BuiltInDataTypesNpgsqlFixture>
     {

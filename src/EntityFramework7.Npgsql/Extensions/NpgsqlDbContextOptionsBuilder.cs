@@ -6,7 +6,7 @@ using Microsoft.Data.Entity;
 using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Relational;
 
-namespace Npgsql.EntityFramework7.Extensions
+namespace EntityFramework7.Npgsql.Extensions
 {
     public class NpgsqlDbContextOptionsBuilder : RelationalDbContextOptionsBuilder
     {

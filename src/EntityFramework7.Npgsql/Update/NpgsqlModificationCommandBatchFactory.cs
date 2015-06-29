@@ -7,7 +7,7 @@ using Microsoft.Data.Entity.Relational;
 using Microsoft.Data.Entity.Relational.Metadata;
 using Microsoft.Data.Entity.Relational.Update;
 
-namespace Npgsql.EntityFramework7.Update
+namespace EntityFramework7.Npgsql.Update
 {
     // TODO: This is very temporary: command batching is disabled for now until properly implemented
     public class NpgsqlModificationCommandBatchFactory : ModificationCommandBatchFactory

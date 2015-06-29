@@ -6,12 +6,11 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
-using JetBrains.Annotations;
 using Microsoft.Data.Entity.Relational;
 using Microsoft.Data.Entity.Relational.Update;
 using Microsoft.Data.Entity.Utilities;
 
-namespace Npgsql.EntityFramework7
+namespace EntityFramework7.Npgsql
 {
     public class NpgsqlSqlGenerator : SqlGenerator, INpgsqlSqlGenerator
     {

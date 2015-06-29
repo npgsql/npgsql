@@ -3,11 +3,11 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using EntityFramework7.Npgsql.Query.Methods;
 using Microsoft.Data.Entity.Relational.Query;
 using Microsoft.Data.Entity.Relational.Query.Methods;
-using Npgsql.EntityFramework7.Query.Methods;
 
-namespace Npgsql.EntityFramework7
+namespace EntityFramework7.Npgsql
 {
     public class NpgsqlCompositeMemberTranslator : RelationalCompositeMemberTranslator
     {

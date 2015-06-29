@@ -6,7 +6,7 @@ using Microsoft.Data.Entity;
 using Microsoft.Data.Entity.FunctionalTests;
 using Microsoft.Framework.DependencyInjection;
 
-namespace Npgsql.EntityFramework7.FunctionalTests
+namespace EntityFramework7.Npgsql.FunctionalTests
 {
     public class StoreGeneratedNpgsqlTest
         : StoreGeneratedTestBase<NpgsqlTestStore, StoreGeneratedNpgsqlTest.StoreGeneratedNpgsqlFixture>

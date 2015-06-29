@@ -7,7 +7,7 @@ using Microsoft.Data.Entity.Metadata;
 using Microsoft.Data.Entity.Relational.Metadata;
 using Microsoft.Data.Entity.Utilities;
 
-namespace Npgsql.EntityFramework7.Metadata
+namespace EntityFramework7.Npgsql.Metadata
 {
     public class NpgsqlModelExtensions : ReadOnlyNpgsqlModelExtensions
     {

@@ -5,10 +5,9 @@ using System;
 using System.Linq.Expressions;
 using System.Text.RegularExpressions;
 using JetBrains.Annotations;
-using Microsoft.Data.Entity.Relational.Query.Sql;
 using Microsoft.Data.Entity.Utilities;
 
-namespace Npgsql.EntityFramework7.Query.Expressions
+namespace EntityFramework7.Npgsql.Query.Expressions
 {
     public class RegexMatchExpression : Expression
     {

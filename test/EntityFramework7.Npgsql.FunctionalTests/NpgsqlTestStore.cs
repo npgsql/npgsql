@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 using Microsoft.Data.Entity.Relational.FunctionalTests;
 using Npgsql;
 
-namespace Npgsql.EntityFramework7.FunctionalTests
+namespace EntityFramework7.Npgsql.FunctionalTests
 {
     public class NpgsqlTestStore : RelationalTestStore
     {

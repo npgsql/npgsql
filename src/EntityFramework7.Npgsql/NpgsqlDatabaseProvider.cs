@@ -4,7 +4,7 @@
 using Microsoft.Data.Entity;
 using Microsoft.Data.Entity.Storage;
 
-namespace Npgsql.EntityFramework7
+namespace EntityFramework7.Npgsql
 {
     public class NpgsqlDatabaseProvider : DatabaseProvider<NpgsqlDatabaseProviderServices, NpgsqlOptionsExtension>
     {

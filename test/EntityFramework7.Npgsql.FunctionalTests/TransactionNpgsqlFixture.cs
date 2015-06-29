@@ -4,11 +4,11 @@
 using System;
 using System.Data.Common;
 using Microsoft.Data.Entity;
-using Microsoft.Data.Entity.FunctionalTests;
 using Microsoft.Data.Entity.Relational.FunctionalTests;
 using Microsoft.Framework.DependencyInjection;
+using Microsoft.Data.Entity.FunctionalTests;
 
-namespace Npgsql.EntityFramework7.FunctionalTests
+namespace EntityFramework7.Npgsql.FunctionalTests
 {
     public class TransactionNpgsqlFixture : TransactionFixtureBase<NpgsqlTestStore>
     {

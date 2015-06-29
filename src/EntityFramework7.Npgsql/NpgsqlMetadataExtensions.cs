@@ -1,9 +1,9 @@
 // Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using EntityFramework7.Npgsql.Metadata;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity.Metadata;
-using Npgsql.EntityFramework7.Metadata;
 using Microsoft.Data.Entity.Utilities;
 
 // ReSharper disable once CheckNamespace

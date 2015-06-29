@@ -4,7 +4,7 @@
 using JetBrains.Annotations;
 using Microsoft.Data.Entity.Relational.Migrations.Operations;
 
-namespace Npgsql.EntityFramework7.Migrations
+namespace EntityFramework7.Npgsql.Migrations
 {
     public class DropDatabaseOperation : MigrationOperation
     {

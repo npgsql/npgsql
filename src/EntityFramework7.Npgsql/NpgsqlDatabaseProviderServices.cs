@@ -2,9 +2,12 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using EntityFramework7.Npgsql.Metadata;
+using EntityFramework7.Npgsql.Migrations;
+using EntityFramework7.Npgsql.Update;
+using EntityFramework7.Npgsql.ValueGeneration;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity.Infrastructure;
-using Microsoft.Data.Entity.Metadata.Builders;
 using Microsoft.Data.Entity.Metadata.ModelConventions;
 using Microsoft.Data.Entity.Relational;
 using Microsoft.Data.Entity.Relational.Metadata;
@@ -15,12 +18,8 @@ using Microsoft.Data.Entity.Relational.Query.Methods;
 using Microsoft.Data.Entity.Relational.Update;
 using Microsoft.Data.Entity.Storage;
 using Microsoft.Data.Entity.ValueGeneration;
-using Npgsql.EntityFramework7.Metadata;
-using Npgsql.EntityFramework7.Migrations;
-using Npgsql.EntityFramework7.Update;
-using Npgsql.EntityFramework7.ValueGeneration;
 
-namespace Npgsql.EntityFramework7
+namespace EntityFramework7.Npgsql
 {
     public class NpgsqlDatabaseProviderServices : RelationalDatabaseProviderServices
     {

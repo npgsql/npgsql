@@ -3,18 +3,16 @@
 
 using System;
 using System.Text;
+using EntityFramework7.Npgsql.Metadata;
 using JetBrains.Annotations;
-using Microsoft.Data.Entity;
 using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Metadata;
 using Microsoft.Data.Entity.Relational;
 using Microsoft.Data.Entity.Relational.Migrations.Operations;
 using Microsoft.Data.Entity.Relational.Migrations.Sql;
-using Npgsql.EntityFramework7.Metadata;
-using Npgsql.EntityFramework7.Migrations;
 using Microsoft.Data.Entity.Utilities;
 
-namespace Npgsql.EntityFramework7
+namespace EntityFramework7.Npgsql.Migrations
 {
     public class NpgsqlMigrationSqlGenerator : MigrationSqlGenerator
     {

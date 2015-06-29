@@ -2,17 +2,16 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Linq;
 using System.Linq.Expressions;
 using System.Text.RegularExpressions;
+using EntityFramework7.Npgsql.Query.Expressions;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity.Relational;
 using Microsoft.Data.Entity.Relational.Query.Expressions;
 using Microsoft.Data.Entity.Relational.Query.Sql;
 using Microsoft.Data.Entity.Utilities;
-using Npgsql.EntityFramework7.Query.Expressions;
 
-namespace Npgsql.EntityFramework7.Query
+namespace EntityFramework7.Npgsql.Query
 {
     public class NpgsqlQuerySqlGenerator : DefaultQuerySqlGenerator
     {

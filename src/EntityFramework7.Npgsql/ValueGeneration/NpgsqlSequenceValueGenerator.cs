@@ -8,7 +8,7 @@ using Microsoft.Data.Entity.Relational;
 using Microsoft.Data.Entity.Utilities;
 using Microsoft.Data.Entity.ValueGeneration;
 
-namespace Npgsql.EntityFramework7.ValueGeneration
+namespace EntityFramework7.Npgsql.ValueGeneration
 {
     public class NpgsqlSequenceValueGenerator<TValue> : HiLoValueGenerator<TValue>
     {

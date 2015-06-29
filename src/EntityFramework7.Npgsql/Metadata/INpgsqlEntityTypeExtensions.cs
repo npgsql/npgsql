@@ -3,7 +3,7 @@
 
 using Microsoft.Data.Entity.Relational.Metadata;
 
-namespace Npgsql.EntityFramework7.Metadata
+namespace EntityFramework7.Npgsql.Metadata
 {
     public interface INpgsqlEntityTypeExtensions : IRelationalEntityTypeExtensions
     {

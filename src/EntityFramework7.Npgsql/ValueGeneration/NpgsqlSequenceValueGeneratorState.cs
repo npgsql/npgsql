@@ -5,7 +5,7 @@ using JetBrains.Annotations;
 using Microsoft.Data.Entity.Utilities;
 using Microsoft.Data.Entity.ValueGeneration;
 
-namespace Npgsql.EntityFramework7.ValueGeneration
+namespace EntityFramework7.Npgsql.ValueGeneration
 {
     public class NpgsqlSequenceValueGeneratorState : HiLoValueGeneratorState
     {

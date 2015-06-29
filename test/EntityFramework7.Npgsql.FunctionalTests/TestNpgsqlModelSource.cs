@@ -9,7 +9,7 @@ using Microsoft.Data.Entity.Metadata;
 using Microsoft.Data.Entity.Metadata.ModelConventions;
 using Microsoft.Framework.DependencyInjection;
 
-namespace Npgsql.EntityFramework7.FunctionalTests
+namespace EntityFramework7.Npgsql.FunctionalTests
 {
     public class TestNpgsqlModelSource : NpgsqlModelSource
     {

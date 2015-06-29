@@ -4,7 +4,7 @@
 using Microsoft.Data.Entity.Metadata.Internal;
 using Microsoft.Data.Entity.Metadata.ModelConventions;
 
-namespace Npgsql.EntityFramework7.Metadata.ModelConventions
+namespace EntityFramework7.Npgsql.Metadata.ModelConventions
 {
     public class NpgsqlValueGenerationStrategyConvention : IModelConvention
     {

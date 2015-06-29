@@ -8,7 +8,7 @@ using JetBrains.Annotations;
 using Microsoft.Data.Entity.Relational.Query.Expressions;
 using Microsoft.Data.Entity.Relational.Query.Methods;
 
-namespace Npgsql.EntityFramework7.Query.Methods
+namespace EntityFramework7.Npgsql.Query.Methods
 {
     public class StringReplaceTranslator : IMethodCallTranslator
     {

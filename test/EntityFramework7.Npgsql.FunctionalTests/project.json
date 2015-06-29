@@ -1,7 +1,8 @@
 {
     "dependencies": {
         "EntityFramework.Relational.FunctionalTests": "7.0.0-*",
-        "EntityFramework7.Npgsql": "3.0.0-alpha-*"
+        "EntityFramework7.Npgsql": "3.0.0-alpha-*",
+        "Npgsql": "3.0.0-alpha-*"
     },
     "commands": {
         "test": "xunit.runner.dnx"

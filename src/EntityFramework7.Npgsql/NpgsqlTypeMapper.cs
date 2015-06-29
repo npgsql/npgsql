@@ -5,12 +5,9 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data;
-using System.Linq;
-using Microsoft.Data.Entity.Metadata;
 using Microsoft.Data.Entity.Relational;
-using Microsoft.Data.Entity.Utilities;
 
-namespace Npgsql.EntityFramework7
+namespace EntityFramework7.Npgsql
 {
     // TODO: Implementation is very partial at the moment...
     // TODO: Maybe it's worth finding a way to dynamically map types based on the TypeHandlerRegistry?

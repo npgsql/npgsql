@@ -8,8 +8,9 @@ using Microsoft.Data.Entity.Internal;
 using Microsoft.Data.Entity.Metadata;
 using Microsoft.Data.Entity.Utilities;
 using Microsoft.Data.Entity.ValueGeneration;
+using Strings = EntityFramework7.Npgsql.Properties.Strings;
 
-namespace Npgsql.EntityFramework7.ValueGeneration
+namespace EntityFramework7.Npgsql.ValueGeneration
 {
     public class NpgsqlValueGeneratorCache : ValueGeneratorCache, INpgsqlValueGeneratorCache
     {

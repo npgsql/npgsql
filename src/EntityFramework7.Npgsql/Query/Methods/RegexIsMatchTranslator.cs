@@ -1,17 +1,15 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text.RegularExpressions;
+using EntityFramework7.Npgsql.Query.Expressions;
 using JetBrains.Annotations;
-using Microsoft.Data.Entity.Relational.Query.Expressions;
 using Microsoft.Data.Entity.Relational.Query.Methods;
-using Npgsql.EntityFramework7.Query.Expressions;
 
-namespace Npgsql.EntityFramework7.Query.Methods
+namespace EntityFramework7.Npgsql.Query.Methods
 {
     /// <summary>
     /// Translates Regex.IsMatch calls into PostgreSQL regex expressions for database-side processing.

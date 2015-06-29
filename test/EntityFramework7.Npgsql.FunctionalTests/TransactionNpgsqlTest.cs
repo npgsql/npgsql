@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.Data.Entity.Relational.FunctionalTests;
 using Xunit;
 
-namespace Npgsql.EntityFramework7.FunctionalTests
+namespace EntityFramework7.Npgsql.FunctionalTests
 {
     public class TransactionNpgsqlTest : TransactionTestBase<NpgsqlTestStore, TransactionNpgsqlFixture>
     {

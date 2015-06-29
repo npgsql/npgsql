@@ -4,7 +4,7 @@
 using Microsoft.Data.Entity.FunctionalTests;
 using Xunit;
 
-namespace Npgsql.EntityFramework7.FunctionalTests
+namespace EntityFramework7.Npgsql.FunctionalTests
 {
     public class ChangeTrackingNpgsqlTest : ChangeTrackingTestBase<NorthwindQueryNpgsqlFixture>
     {
