@@ -2,13 +2,13 @@
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
   <PropertyGroup>
     <ProjectGuid>{4A0A42DE-C8B8-11E4-8EC9-005056A163A4}</ProjectGuid>
-    <RootNamespace>Npgsql.EntityFramework.Tests</RootNamespace>
+    <RootNamespace>EntityFramework6.Npgsql.Tests</RootNamespace>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>..\..\Npgsql.snk</AssemblyOriginatorKeyFile>
     <OutputType>Library</OutputType>
-    <AssemblyName>Npgsql.EntityFramework.Tests</AssemblyName>
+    <AssemblyName>EntityFramework6.Npgsql.Tests</AssemblyName>
     <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\..\</SolutionDir>
     <RestorePackages>true</RestorePackages>
   </PropertyGroup>
@@ -75,7 +75,7 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Npgsql.EntityFramework\Npgsql.EntityFramework6.csproj">
+    <ProjectReference Include="..\..\src\EntityFramework6.Npgsql\EntityFramework6.Npgsql.csproj">
       <Project>{3ec85cba-5b79-11e3-8104-0022198ab089}</Project>
       <Name>Npgsql.EntityFramework6</Name>
     </ProjectReference>

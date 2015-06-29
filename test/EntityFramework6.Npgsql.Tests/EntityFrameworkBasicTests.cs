@@ -9,7 +9,7 @@ using System.Text;
 using System.ComponentModel.DataAnnotations.Schema;
 using Npgsql.Tests;
 
-namespace Npgsql.EntityFramework.Tests
+namespace EntityFramework6.Npgsql.Tests
 {
     [TestFixture]
     public class EntityFrameworkBasicTests : TestBase

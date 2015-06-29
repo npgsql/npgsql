@@ -40,7 +40,7 @@ using System.Text;
 using System.Threading;
 using Npgsql.Tests;
 
-namespace Npgsql.EntityFramework.Tests
+namespace EntityFramework6.Npgsql.Tests
 {
     [TestFixture]
     public class EntityFrameworkMigrationTests : TestBase
