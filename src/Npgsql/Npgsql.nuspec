@@ -6,14 +6,14 @@
     <version>0.0.0</version>
     <authors>Shay Rojansky, Emil Lenngren, Francisco Figueiredo Jr., Kenji Uno, Jon Asher, John Cooley, Federico Di Gregorio, Jon Hanna, Chris Morgan, Dave Page, Glen Parker, Brar Piening, Hiroshi Saito</authors>
     <owners>Shay Rojansky, Emil Lenngren, Francisco Figueiredo Jr., Kenji Uno</owners>
-    <licenseUrl>https://github.com/npgsql/Npgsql/wiki/License</licenseUrl>
-    <projectUrl>https://github.com/npgsql/Npgsql</projectUrl>
+    <licenseUrl>https://github.com/npgsql/npgsql/blob/develop/LICENSE.txt</licenseUrl>
+    <projectUrl>http://www.npgsql.org</projectUrl>
     <copyright>Copyright 2002 - 2015 Npgsql Development Team</copyright>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>Npgsql is a .NET data provider for PostgreSQL, 100% implemented in C# code. PostgreSQL 9.x and above is officially supported, other versions may work.</description>
     <summary>Npgsql is a .NET data provider for Postgresql.</summary>
     <language>en-US</language>
-    <tags>Npgsql postgres data database Postgresql</tags>
+    <tags>npgsql postgresql postgres data database sql ado ado.net</tags>
   </metadata>
   <files>
     <file src="bin\Release-net45\**\*.dll" target="lib\net45" exclude="**\policy.*" />
