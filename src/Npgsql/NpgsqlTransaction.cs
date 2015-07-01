@@ -69,6 +69,8 @@ namespace Npgsql
         }
         readonly IsolationLevel _isolationLevel;
 
+        const IsolationLevel DefaultIsolationLevel = IsolationLevel.ReadCommitted;
+
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         #endregion
@@ -76,7 +78,7 @@ namespace Npgsql
         #region Constructors
 
         internal NpgsqlTransaction(NpgsqlConnection conn)
-            : this(conn, IsolationLevel.ReadCommitted)
+            : this(conn, DefaultIsolationLevel)
         {
             Contract.Requires(conn != null);
         }
@@ -107,6 +109,8 @@ namespace Npgsql
                 case IsolationLevel.ReadCommitted:
                     Connector.PrependInternalMessage(PregeneratedMessage.BeginTransReadCommitted);
                     break;
+                case IsolationLevel.Unspecified:
+                    goto case DefaultIsolationLevel;
                 default:
                     throw PGUtil.ThrowIfReached("Isolation level not supported: " + isolationLevel);
             }

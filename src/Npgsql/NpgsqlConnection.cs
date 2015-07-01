@@ -499,11 +499,6 @@ namespace Npgsql
                     throw new NotSupportedException("Nested/Concurrent transactions aren't supported.");
                 }
 
-                if (level == IsolationLevel.Unspecified)
-                {
-                    level = IsolationLevel.ReadCommitted;
-                }
-
                 Log.Debug("Beginning transaction with isolation level " + level, Connector.Id);
 
                 return new NpgsqlTransaction(this, level);
