@@ -125,6 +125,11 @@ namespace Npgsql.Tests
             var dbConn = (DbConnection)Conn;
             var tx = dbConn.BeginTransaction();
             Assert.That(tx.IsolationLevel, Is.EqualTo(IsolationLevel.ReadCommitted));
+            tx.Rollback();
+
+            tx = dbConn.BeginTransaction(IsolationLevel.Unspecified);
+            Assert.That(tx.IsolationLevel, Is.EqualTo(IsolationLevel.ReadCommitted));
+            tx.Rollback();
         }
 
         [Test, Description("Makes sure that transactions started in SQL work")]
