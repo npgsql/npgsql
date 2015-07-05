@@ -7,9 +7,9 @@ using Microsoft.Data.Entity.Utilities;
 
 namespace EntityFramework7.Npgsql.Metadata
 {
-    public class NpgsqlKeyExtensions : ReadOnlyNpgsqlKeyExtensions
+    public class NpgsqlKeyAnnotations : ReadOnlyNpgsqlKeyAnnotations
     {
-        public NpgsqlKeyExtensions([NotNull] Key key)
+        public NpgsqlKeyAnnotations([NotNull] Key key)
             : base(key)
         {
         }
@@ -24,19 +24,6 @@ namespace EntityFramework7.Npgsql.Metadata
                 Check.NullButNotEmpty(value, "value");
 
                 ((Key)Key)[NpgsqlNameAnnotation] = value;
-            }
-        }
-
-        [CanBeNull]
-        public new virtual bool? IsClustered
-        {
-            get { return base.IsClustered; }
-            [param: CanBeNull]
-            set
-            {
-                // TODO: Issue #777: Non-string annotations
-                // TODO: Issue #700: Annotate associated index object instead
-                ((Key)Key)[NpgsqlClusteredAnnotation] = value == null ? null : value.ToString();
             }
         }
     }

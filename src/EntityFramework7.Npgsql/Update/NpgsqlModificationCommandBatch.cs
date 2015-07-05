@@ -1,11 +1,12 @@
 ﻿using System;
+using System.Data.Common;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity;
-using Microsoft.Data.Entity.Relational;
-using Microsoft.Data.Entity.Relational.Update;
+using Microsoft.Data.Entity.Infrastructure;
+using Microsoft.Data.Entity.Storage;
 using Microsoft.Data.Entity.Update;
 using Microsoft.Data.Entity.Utilities;
 using Microsoft.Framework.Logging;
@@ -13,11 +14,24 @@ using Npgsql;
 
 namespace EntityFramework7.Npgsql.Update
 {
-    using RelationalStrings = Microsoft.Data.Entity.Relational.Strings;
+    using RelationalStrings = Microsoft.Data.Entity.Relational.Internal.Strings;
 
+    /// <remarks>
+    /// The usual ModificationCommandBatch implementation is <see cref="AffectedCountModificationCommandBatch"/>,
+    /// which relies on <see cref="SqlGenerator.AppendSelectAffectedCountCommand"/> to fetch the number of
+    /// rows modified via SQL.
+    ///
+    /// PostgreSQL actually has no way of selecting the modified row count.
+    /// SQL defines GET DIAGNOSTICS which should provide this, but in PostgreSQL it's only available
+    /// in PL/pgSQL. See http://www.postgresql.org/docs/9.4/static/unsupported-features-sql-standard.html,
+    /// identifier F121-01.
+    ///
+    /// Instead, the affected row count can be accessed in the PostgreSQL protocol itself, which seems
+    /// cleaner and more efficient anyway (no additional query).
+    /// </remarks>
     public class NpgsqlModificationCommandBatch : ReaderModificationCommandBatch
     {
-        public NpgsqlModificationCommandBatch([NotNull] ISqlGenerator sqlGenerator)
+        public NpgsqlModificationCommandBatch([NotNull] IUpdateSqlGenerator sqlGenerator)
             : base(sqlGenerator)
         {}
 
@@ -27,202 +41,161 @@ namespace EntityFramework7.Npgsql.Update
         protected override bool IsCommandTextValid()
             => true;
 
-        public override int Execute(IRelationalTransaction transaction, IRelationalTypeMapper typeMapper, DbContext context, ILogger logger)
+        protected override void Consume(DbDataReader reader, DbContext context)
         {
-            Check.NotNull(transaction, nameof(transaction));
-            Check.NotNull(typeMapper, nameof(typeMapper));
-            Check.NotNull(context, nameof(context));
-            Check.NotNull(logger, nameof(logger));
-
-            var commandText = GetCommandText();
-
+            var npgsqlReader = (NpgsqlDataReader)reader;
+            Debug.Assert(npgsqlReader.Statements.Count == ModificationCommands.Count, $"Reader has {npgsqlReader.Statements.Count} statements, expected {ModificationCommands.Count}");
             var commandIndex = 0;
-            using (var storeCommand = CreateStoreCommand(commandText, transaction.DbTransaction, typeMapper, transaction.Connection?.CommandTimeout))
+
+            try
             {
-                /* LogCommand is internal...
-                if (logger.IsEnabled(LogLevel.Verbose))
+                var firstResultSet = true;
+                while (true)
                 {
-                    logger.LogCommand(storeCommand);
-                }
-                */
+                    // Find the next propagating command, if any
+                    int nextPropagating;
+                    for (nextPropagating = commandIndex;
+                        nextPropagating < ModificationCommands.Count &&
+                        !ModificationCommands[nextPropagating].RequiresResultPropagation;
+                        nextPropagating++) ;
 
-                try
-                {
-                    using (var reader = (NpgsqlDataReader)storeCommand.ExecuteReader())
+                    // Go over all non-propagating commands before the next propagating one,
+                    // make sure they executed
+                    for (; commandIndex < nextPropagating; commandIndex++)
                     {
-                        Debug.Assert(reader.Statements.Count == ModificationCommands.Count, $"Reader has {reader.Statements.Count} statements, expected {ModificationCommands.Count}");
-                        var firstResultSet = true;
-                        while (true)
+                        if (npgsqlReader.Statements[commandIndex].Rows == 0)
                         {
-                            // Find the next propagating command, if any
-                            int nextPropagating;
-                            for (nextPropagating = commandIndex;
-                                nextPropagating < ModificationCommands.Count &&
-                                !ModificationCommands[nextPropagating].RequiresResultPropagation;
-                                nextPropagating++) ;
-
-                            // Go over all non-propagating commands before the next propagating one,
-                            // make sure they executed
-                            for (; commandIndex < nextPropagating; commandIndex++)
-                            {
-                                if (reader.Statements[commandIndex].Rows == 0)
-                                {
-                                    throw new DbUpdateConcurrencyException(
-                                        RelationalStrings.UpdateConcurrencyException(1, 0),
-                                        context,
-                                        ModificationCommands[nextPropagating].Entries
-                                    );
-                                }
-                            }
-
-                            if (nextPropagating == ModificationCommands.Count)
-                            {
-                                Debug.Assert(!reader.NextResult(), "Expected less resultsets");
-                                break;
-                            }
-
-                            if (firstResultSet)
-                            {
-                                firstResultSet = false;
-                            }
-                            else
-                            {
-                                var hasNextResultSet = reader.NextResult();
-                                Debug.Assert(hasNextResultSet, "Expected more resultsets");
-                            }
-
-                            // Extract result from the command and propagate it
-
-                            var modificationCommand = ModificationCommands[commandIndex++];
-
-                            if (!reader.Read())
-                            {
-                                // Should never happen? Aren't result-propagating modifications only INSERTs,
-                                // which either succeed or throw an exception (e.g. constraint violation)?
-                                throw new DbUpdateConcurrencyException(
-                                    RelationalStrings.UpdateConcurrencyException(1, 0),
-                                    context,
-                                    modificationCommand.Entries
-                                );
-                            }
-
-                            modificationCommand.PropagateResults(modificationCommand.ValueBufferFactory.CreateValueBuffer(reader));
+                            throw new DbUpdateConcurrencyException(
+                                RelationalStrings.UpdateConcurrencyException(1, 0),
+                                ModificationCommands[nextPropagating].Entries
+                            );
                         }
                     }
-                }
-                catch (DbUpdateException)
-                {
-                    throw;
-                }
-                catch (Exception ex)
-                {
-                    throw commandIndex < ModificationCommands.Count
-                        ? new DbUpdateException(RelationalStrings.UpdateStoreException, context, ex, ModificationCommands[commandIndex].Entries)
-                        : new DbUpdateException(RelationalStrings.UpdateStoreException, context, ex);
+
+                    if (nextPropagating == ModificationCommands.Count)
+                    {
+                        Debug.Assert(!reader.NextResult(), "Expected less resultsets");
+                        break;
+                    }
+
+                    if (firstResultSet)
+                    {
+                        firstResultSet = false;
+                    }
+                    else
+                    {
+                        var hasNextResultSet = reader.NextResult();
+                        Debug.Assert(hasNextResultSet, "Expected more resultsets");
+                    }
+
+                    // Extract result from the command and propagate it
+
+                    var modificationCommand = ModificationCommands[commandIndex++];
+
+                    if (!reader.Read())
+                    {
+                        // Should never happen? Aren't result-propagating modifications only INSERTs,
+                        // which either succeed or throw an exception (e.g. constraint violation)?
+                        throw new DbUpdateConcurrencyException(
+                            RelationalStrings.UpdateConcurrencyException(1, 0),
+                            modificationCommand.Entries);
+                    }
+
+                    modificationCommand.PropagateResults(modificationCommand.ValueBufferFactory.Create(reader));
                 }
             }
-
-            return ModificationCommands.Count;
+            catch (DbUpdateException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                throw new DbUpdateException(
+                    RelationalStrings.UpdateStoreException,
+                    ex,
+                    ModificationCommands[commandIndex].Entries);
+            }
         }
 
-        public override async Task<int> ExecuteAsync(IRelationalTransaction transaction, IRelationalTypeMapper typeMapper, DbContext context, ILogger logger,
-            CancellationToken cancellationToken = new CancellationToken())
+        protected override async Task ConsumeAsync(
+            DbDataReader reader,
+            DbContext context,
+            CancellationToken cancellationToken = default(CancellationToken))
         {
-            Check.NotNull(transaction, nameof(transaction));
-            Check.NotNull(typeMapper, nameof(typeMapper));
-            Check.NotNull(context, nameof(context));
-            Check.NotNull(logger, nameof(logger));
-
-            var commandText = GetCommandText();
-
+            var npgsqlReader = (NpgsqlDataReader)reader;
+            Debug.Assert(npgsqlReader.Statements.Count == ModificationCommands.Count, $"Reader has {npgsqlReader.Statements.Count} statements, expected {ModificationCommands.Count}");
             var commandIndex = 0;
-            using (var storeCommand = CreateStoreCommand(commandText, transaction.DbTransaction, typeMapper, transaction.Connection?.CommandTimeout))
+
+            try
             {
-                /* LogCommand is internal...
-                if (logger.IsEnabled(LogLevel.Verbose))
+                var firstResultSet = true;
+                while (true)
                 {
-                    logger.LogCommand(storeCommand);
-                }
-                */
+                    // Find the next propagating command, if any
+                    int nextPropagating;
+                    for (nextPropagating = commandIndex;
+                        nextPropagating < ModificationCommands.Count &&
+                        !ModificationCommands[nextPropagating].RequiresResultPropagation;
+                        nextPropagating++)
+                        ;
 
-                try
-                {
-                    using (var reader = (NpgsqlDataReader)await storeCommand.ExecuteReaderAsync(cancellationToken))
+                    // Go over all non-propagating commands before the next propagating one,
+                    // make sure they executed
+                    for (; commandIndex < nextPropagating; commandIndex++)
                     {
-                        Debug.Assert(reader.Statements.Count == ModificationCommands.Count, $"Reader has {reader.Statements.Count} statements, expected {ModificationCommands.Count}");
-                        var firstResultSet = true;
-                        while (true)
+                        if (npgsqlReader.Statements[commandIndex].Rows == 0)
                         {
-                            // Find the next propagating command, if any
-                            int nextPropagating;
-                            for (nextPropagating = commandIndex;
-                                nextPropagating < ModificationCommands.Count &&
-                                !ModificationCommands[nextPropagating].RequiresResultPropagation;
-                                nextPropagating++)
-                                ;
-
-                            // Go over all non-propagating commands before the next propagating one,
-                            // make sure they executed
-                            for (; commandIndex < nextPropagating; commandIndex++)
-                            {
-                                if (reader.Statements[commandIndex].Rows == 0)
-                                {
-                                    throw new DbUpdateConcurrencyException(
-                                        RelationalStrings.UpdateConcurrencyException(1, 0),
-                                        context,
-                                        ModificationCommands[nextPropagating].Entries
-                                    );
-                                }
-                            }
-
-                            if (nextPropagating == ModificationCommands.Count)
-                            {
-                                Debug.Assert(!(await reader.NextResultAsync(cancellationToken)), "Expected less resultsets");
-                                break;
-                            }
-
-                            if (firstResultSet)
-                            {
-                                firstResultSet = false;
-                            }
-                            else
-                            {
-                                var hasNextResultSet = await reader.NextResultAsync(cancellationToken);
-                                Debug.Assert(hasNextResultSet, "Expected more resultsets");
-                            }
-
-                            // Extract result from the command and propagate it
-
-                            var modificationCommand = ModificationCommands[commandIndex++];
-
-                            if (!(await reader.ReadAsync(cancellationToken)))
-                            {
-                                // Should never happen? Aren't result-propagating modifications only INSERTs,
-                                // which either succeed or throw an exception (e.g. constraint violation)?
-                                throw new DbUpdateConcurrencyException(
-                                    RelationalStrings.UpdateConcurrencyException(1, 0),
-                                    context,
-                                    modificationCommand.Entries
-                                );
-                            }
-
-                            modificationCommand.PropagateResults(modificationCommand.ValueBufferFactory.CreateValueBuffer(reader));
+                            throw new DbUpdateConcurrencyException(
+                                RelationalStrings.UpdateConcurrencyException(1, 0),
+                                ModificationCommands[nextPropagating].Entries
+                            );
                         }
                     }
-                }
-                catch (DbUpdateException)
-                {
-                    throw;
-                }
-                catch (Exception ex)
-                {
-                    throw commandIndex < ModificationCommands.Count
-                        ? new DbUpdateException(RelationalStrings.UpdateStoreException, context, ex, ModificationCommands[commandIndex].Entries)
-                        : new DbUpdateException(RelationalStrings.UpdateStoreException, context, ex);
+
+                    if (nextPropagating == ModificationCommands.Count)
+                    {
+                        Debug.Assert(!(await reader.NextResultAsync(cancellationToken)), "Expected less resultsets");
+                        break;
+                    }
+
+                    if (firstResultSet)
+                    {
+                        firstResultSet = false;
+                    }
+                    else
+                    {
+                        var hasNextResultSet = await reader.NextResultAsync(cancellationToken);
+                        Debug.Assert(hasNextResultSet, "Expected more resultsets");
+                    }
+
+                    // Extract result from the command and propagate it
+
+                    var modificationCommand = ModificationCommands[commandIndex++];
+
+                    if (!(await reader.ReadAsync(cancellationToken)))
+                    {
+                        // Should never happen? Aren't result-propagating modifications only INSERTs,
+                        // which either succeed or throw an exception (e.g. constraint violation)?
+                        throw new DbUpdateConcurrencyException(
+                            RelationalStrings.UpdateConcurrencyException(1, 0),
+                            modificationCommand.Entries
+                        );
+                    }
+
+                    modificationCommand.PropagateResults(modificationCommand.ValueBufferFactory.Create(reader));
                 }
             }
-
-            return ModificationCommands.Count;
+            catch (DbUpdateException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                throw new DbUpdateException(
+                    RelationalStrings.UpdateStoreException,
+                    ex,
+                    ModificationCommands[commandIndex].Entries);
+            }
         }
     }
 }

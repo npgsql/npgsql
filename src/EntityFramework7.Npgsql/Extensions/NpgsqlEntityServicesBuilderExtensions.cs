@@ -8,7 +8,6 @@ using EntityFramework7.Npgsql.Update;
 using EntityFramework7.Npgsql.ValueGeneration;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity.Infrastructure;
-using Microsoft.Data.Entity.Relational;
 using Microsoft.Data.Entity.Storage;
 using Microsoft.Data.Entity.Utilities;
 
@@ -23,18 +22,16 @@ namespace Microsoft.Framework.DependencyInjection
             Check.NotNull(builder, nameof(builder));
 
             builder.AddRelational().GetService()
-                .AddSingleton<IDatabaseProvider, NpgsqlDatabaseProvider>()
+                .AddSingleton<IDatabaseProvider, DatabaseProvider<NpgsqlDatabaseProviderServices, NpgsqlOptionsExtension>>()
                 .TryAdd(new ServiceCollection()
                     .AddSingleton<NpgsqlConventionSetBuilder>()
-                    .AddSingleton<INpgsqlValueGeneratorCache, NpgsqlValueGeneratorCache>()
-                    .AddSingleton<INpgsqlSqlGenerator, NpgsqlSqlGenerator>()
+                    .AddSingleton<NpgsqlValueGeneratorCache>()
+                    .AddSingleton<NpgsqlUpdateSqlGenerator>()
                     .AddSingleton<NpgsqlTypeMapper>()
                     .AddSingleton<NpgsqlModelSource>()
                     .AddSingleton<NpgsqlMetadataExtensionProvider>()
                     .AddSingleton<NpgsqlMigrationAnnotationProvider>()
-                    .AddScoped<INpgsqlSequenceValueGeneratorFactory, NpgsqlSequenceValueGeneratorFactory>()
                     .AddScoped<NpgsqlModificationCommandBatchFactory>()
-                    .AddScoped<NpgsqlValueGeneratorSelector>()
                     .AddScoped<NpgsqlDatabaseProviderServices>()
                     .AddScoped<NpgsqlDatabase>()
                     .AddScoped<NpgsqlDatabaseConnection>()

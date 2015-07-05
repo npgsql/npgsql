@@ -4,28 +4,15 @@
 using JetBrains.Annotations;
 using Microsoft.Data.Entity;
 using Microsoft.Data.Entity.Metadata;
-using Microsoft.Data.Entity.Relational.Metadata;
 using Microsoft.Data.Entity.Utilities;
 
 namespace EntityFramework7.Npgsql.Metadata
 {
-    public class NpgsqlModelExtensions : ReadOnlyNpgsqlModelExtensions
+    public class NpgsqlModelAnnotations : ReadOnlyNpgsqlModelAnnotations
     {
-        public NpgsqlModelExtensions([NotNull] Model model)
+        public NpgsqlModelAnnotations([NotNull] Model model)
             : base(model)
         {
-        }
-
-        [CanBeNull]
-        public new virtual NpgsqlValueGenerationStrategy? ValueGenerationStrategy
-        {
-            get { return base.ValueGenerationStrategy; }
-            [param: CanBeNull]
-            set
-            {
-                // TODO: Issue #777: Non-string annotations
-                ((Model)Model)[NpgsqlValueGenerationAnnotation] = value == null ? null : value.ToString();
-            }
         }
 
         public new virtual string DefaultSequenceName

@@ -12,88 +12,88 @@ namespace Microsoft.Data.Entity
 {
     public static class NpgsqlMetadataExtensions
     {
-        public static NpgsqlPropertyExtensions Npgsql([NotNull] this Property property)
+        public static NpgsqlPropertyAnnotations Npgsql([NotNull] this Property property)
         {
             Check.NotNull(property, nameof(property));
 
-            return new NpgsqlPropertyExtensions(property);
+            return new NpgsqlPropertyAnnotations(property);
         }
 
-        public static INpgsqlPropertyExtensions Npgsql([NotNull] this IProperty property)
+        public static INpgsqlPropertyAnnotations Npgsql([NotNull] this IProperty property)
         {
             Check.NotNull(property, nameof(property));
 
-            return new ReadOnlyNpgsqlPropertyExtensions(property);
+            return new ReadOnlyNpgsqlPropertyAnnotations(property);
         }
 
-        public static NpgsqlEntityTypeExtensions Npgsql([NotNull] this EntityType entityType)
+        public static NpgsqlEntityTypeAnnotations Npgsql([NotNull] this EntityType entityType)
         {
             Check.NotNull(entityType, nameof(entityType));
 
-            return new NpgsqlEntityTypeExtensions(entityType);
+            return new NpgsqlEntityTypeAnnotations(entityType);
         }
 
-        public static INpgsqlEntityTypeExtensions Npgsql([NotNull] this IEntityType entityType)
+        public static INpgsqlEntityTypeAnnotations Npgsql([NotNull] this IEntityType entityType)
         {
             Check.NotNull(entityType, nameof(entityType));
 
-            return new ReadOnlyNpgsqlEntityTypeExtensions(entityType);
+            return new ReadOnlyNpgsqlEntityTypeAnnotations(entityType);
         }
 
-        public static NpgsqlKeyExtensions Npgsql([NotNull] this Key key)
+        public static NpgsqlKeyAnnotations Npgsql([NotNull] this Key key)
         {
             Check.NotNull(key, nameof(key));
 
-            return new NpgsqlKeyExtensions(key);
+            return new NpgsqlKeyAnnotations(key);
         }
 
-        public static INpgsqlKeyExtensions Npgsql([NotNull] this IKey key)
+        public static INpgsqlKeyAnnotations Npgsql([NotNull] this IKey key)
         {
             Check.NotNull(key, nameof(key));
 
-            return new ReadOnlyNpgsqlKeyExtensions(key);
+            return new ReadOnlyNpgsqlKeyAnnotations(key);
         }
 
-        public static NpgsqlIndexExtensions Npgsql([NotNull] this Index index)
+        public static NpgsqlIndexAnnotations Npgsql([NotNull] this Index index)
         {
             Check.NotNull(index, nameof(index));
 
-            return new NpgsqlIndexExtensions(index);
+            return new NpgsqlIndexAnnotations(index);
         }
 
-        public static INpgsqlIndexExtensions Npgsql([NotNull] this IIndex index)
+        public static INpgsqlIndexAnnotations Npgsql([NotNull] this IIndex index)
         {
             Check.NotNull(index, nameof(index));
 
-            return new ReadOnlyNpgsqlIndexExtensions(index);
+            return new ReadOnlyNpgsqlIndexAnnotations(index);
         }
 
-        public static NpgsqlForeignKeyExtensions Npgsql([NotNull] this ForeignKey foreignKey)
+        public static NpgsqlForeignKeyAnnotations Npgsql([NotNull] this ForeignKey foreignKey)
         {
             Check.NotNull(foreignKey, nameof(foreignKey));
 
-            return new NpgsqlForeignKeyExtensions(foreignKey);
+            return new NpgsqlForeignKeyAnnotations(foreignKey);
         }
 
-        public static INpgsqlForeignKeyExtensions Npgsql([NotNull] this IForeignKey foreignKey)
+        public static INpgsqlForeignKeyAnnotations Npgsql([NotNull] this IForeignKey foreignKey)
         {
             Check.NotNull(foreignKey, nameof(foreignKey));
 
-            return new ReadOnlyNpgsqlForeignKeyExtensions(foreignKey);
+            return new ReadOnlyNpgsqlForeignKeyAnnotations(foreignKey);
         }
 
-        public static NpgsqlModelExtensions Npgsql([NotNull] this Model model)
+        public static NpgsqlModelAnnotations Npgsql([NotNull] this Model model)
         {
             Check.NotNull(model, nameof(model));
 
-            return new NpgsqlModelExtensions(model);
+            return new NpgsqlModelAnnotations(model);
         }
 
-        public static INpgsqlModelExtensions Npgsql([NotNull] this IModel model)
+        public static INpgsqlModelAnnotations Npgsql([NotNull] this IModel model)
         {
             Check.NotNull(model, nameof(model));
 
-            return new ReadOnlyNpgsqlModelExtensions(model);
+            return new ReadOnlyNpgsqlModelAnnotations(model);
         }
     }
 }

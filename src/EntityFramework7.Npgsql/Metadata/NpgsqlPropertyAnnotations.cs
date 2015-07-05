@@ -9,9 +9,9 @@ using Microsoft.Data.Entity.Utilities;
 
 namespace EntityFramework7.Npgsql.Metadata
 {
-    public class NpgsqlPropertyExtensions : ReadOnlyNpgsqlPropertyExtensions
+    public class NpgsqlPropertyAnnotations : ReadOnlyNpgsqlPropertyAnnotations
     {
-        public NpgsqlPropertyExtensions([NotNull] Property property)
+        public NpgsqlPropertyAnnotations([NotNull] Property property)
             : base(property)
         {
         }
@@ -42,9 +42,9 @@ namespace EntityFramework7.Npgsql.Metadata
         }
 
         [CanBeNull]
-        public new virtual string DefaultExpression
+        public new virtual string DefaultValueSql
         {
-            get { return base.DefaultExpression; }
+            get { return base.DefaultValueSql; }
             [param: CanBeNull]
             set
             {
@@ -103,45 +103,6 @@ namespace EntityFramework7.Npgsql.Metadata
                 Check.NullButNotEmpty(value, nameof(value));
 
                 ((Property)Property)[NpgsqlSequenceSchemaAnnotation] = value;
-            }
-        }
-
-        [CanBeNull]
-        public new virtual NpgsqlValueGenerationStrategy? ValueGenerationStrategy
-        {
-            get { return base.ValueGenerationStrategy; }
-            [param: CanBeNull]
-            set
-            {
-                var property = ((Property)Property);
-
-                if (value == null)
-                {
-                    property[NpgsqlValueGenerationAnnotation] = null;
-                }
-                else
-                {
-                    var propertyType = Property.ClrType;
-
-                    if (value == NpgsqlValueGenerationStrategy.Identity
-                        && (!propertyType.IsInteger()
-                            || propertyType == typeof(byte)
-                            || propertyType == typeof(byte?)))
-                    {
-                        throw new ArgumentException(Strings.IdentityBadType(
-                            Property.Name, Property.EntityType.Name, propertyType.Name));
-                    }
-
-                    if (value == NpgsqlValueGenerationStrategy.Sequence
-                        && !propertyType.IsInteger())
-                    {
-                        throw new ArgumentException(Strings.SequenceBadType(
-                            Property.Name, Property.EntityType.Name, propertyType.Name));
-                    }
-
-                    // TODO: Issue #777: Non-string annotations
-                    property[NpgsqlValueGenerationAnnotation] = value.ToString();
-                }
             }
         }
     }

@@ -3,16 +3,15 @@
 
 using JetBrains.Annotations;
 using Microsoft.Data.Entity.Metadata;
-using Microsoft.Data.Entity.Relational.Metadata;
 
 namespace EntityFramework7.Npgsql.Metadata
 {
-    public class ReadOnlyNpgsqlEntityTypeExtensions : ReadOnlyRelationalEntityTypeExtensions, INpgsqlEntityTypeExtensions
+    public class ReadOnlyNpgsqlEntityTypeAnnotations : ReadOnlyRelationalEntityTypeAnnotations, INpgsqlEntityTypeAnnotations
     {
         protected const string NpgsqlTableAnnotation = NpgsqlAnnotationNames.Prefix + RelationalAnnotationNames.TableName;
         protected const string NpgsqlSchemaAnnotation = NpgsqlAnnotationNames.Prefix + RelationalAnnotationNames.Schema;
 
-        public ReadOnlyNpgsqlEntityTypeExtensions([NotNull] IEntityType entityType)
+        public ReadOnlyNpgsqlEntityTypeAnnotations([NotNull] IEntityType entityType)
             : base(entityType)
         {
         }

@@ -1,13 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data.Common;
-using System.Data.SqlClient;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Data.Entity.Relational.FunctionalTests;
+using Microsoft.Data.Entity.FunctionalTests;
 using Npgsql;
 
 namespace EntityFramework7.Npgsql.FunctionalTests
@@ -186,62 +185,6 @@ namespace EntityFramework7.Npgsql.FunctionalTests
             }
         }
 
-        private static async Task WaitForExistsAsync(NpgsqlConnection connection)
-        {
-            var retryCount = 0;
-            while (true)
-            {
-                try
-                {
-                    await connection.OpenAsync();
-
-                    connection.Close();
-
-                    return;
-                }
-                catch (SqlException e)
-                {
-                    if (++retryCount >= 30
-                        || (e.Number != 233 && e.Number != -2 && e.Number != 4060))
-                    {
-                        throw;
-                    }
-
-                    // TODO: SqlConnection.ClearPool(connection);
-
-                    Thread.Sleep(100);
-                }
-            }
-        }
-
-        private static void WaitForExists(NpgsqlConnection connection)
-        {
-            var retryCount = 0;
-            while (true)
-            {
-                try
-                {
-                    connection.Open();
-
-                    connection.Close();
-
-                    return;
-                }
-                catch (SqlException e)
-                {
-                    if (++retryCount >= 30
-                        || (e.Number != 233 && e.Number != -2 && e.Number != 4060))
-                    {
-                        throw;
-                    }
-
-                    //TODO: SqlConnection.ClearPool(connection);
-
-                    Thread.Sleep(100);
-                }
-            }
-        }
-
         private async Task<NpgsqlTestStore> CreateTransientAsync(bool createDatabase)
         {
             await DeleteDatabaseAsync(_name);
@@ -258,8 +201,6 @@ namespace EntityFramework7.Npgsql.FunctionalTests
                         command.CommandText = string.Format(@"{0}CREATE DATABASE ""{1}""", Environment.NewLine, _name);
 
                         await command.ExecuteNonQueryAsync();
-
-                        await WaitForExistsAsync(_connection);
                     }
                 }
                 await _connection.OpenAsync();
@@ -285,8 +226,6 @@ namespace EntityFramework7.Npgsql.FunctionalTests
                         command.CommandText = string.Format(@"{0}CREATE DATABASE ""{1}""", Environment.NewLine, _name);
 
                         command.ExecuteNonQuery();
-
-                        WaitForExists(_connection);
                     }
                 }
                 _connection.Open();

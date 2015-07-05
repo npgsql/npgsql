@@ -6,34 +6,19 @@ using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity.Metadata;
-using Microsoft.Data.Entity.Relational.Metadata;
 using Microsoft.Data.Entity.Utilities;
 
 namespace EntityFramework7.Npgsql.Metadata
 {
-    public class ReadOnlyNpgsqlModelExtensions : ReadOnlyRelationalModelExtensions, INpgsqlModelExtensions
+    public class ReadOnlyNpgsqlModelAnnotations : ReadOnlyRelationalModelAnnotations, INpgsqlModelAnnotations
     {
-        protected const string NpgsqlValueGenerationAnnotation = NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.ValueGeneration;
         protected const string NpgsqlSequenceAnnotation = NpgsqlAnnotationNames.Prefix + RelationalAnnotationNames.Sequence;
         protected const string NpgsqlDefaultSequenceNameAnnotation = NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.DefaultSequenceName;
         protected const string NpgsqlDefaultSequenceSchemaAnnotation = NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.DefaultSequenceSchema;
 
-        public ReadOnlyNpgsqlModelExtensions([NotNull] IModel model)
+        public ReadOnlyNpgsqlModelAnnotations([NotNull] IModel model)
             : base(model)
         {
-        }
-
-        public virtual NpgsqlValueGenerationStrategy? ValueGenerationStrategy
-        {
-            get
-            {
-                // TODO: Issue #777: Non-string annotations
-                var value = Model[NpgsqlValueGenerationAnnotation] as string;
-
-                return value == null
-                    ? null
-                    : (NpgsqlValueGenerationStrategy?)Enum.Parse(typeof(NpgsqlValueGenerationStrategy), value);
-            }
         }
 
         public virtual string DefaultSequenceName => Model[NpgsqlDefaultSequenceNameAnnotation] as string;

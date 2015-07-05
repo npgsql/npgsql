@@ -1,20 +1,12 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using EntityFramework7.Npgsql.Metadata.ModelConventions;
-using Microsoft.Data.Entity.Metadata.ModelConventions;
-using Microsoft.Data.Entity.Utilities;
+using Microsoft.Data.Entity.Metadata.Conventions.Internal;
 
 namespace EntityFramework7.Npgsql
 {
-    public class NpgsqlConventionSetBuilder : IConventionSetBuilder
+    public class NpgsqlConventionSetBuilder : RelationalConventionSetBuilder
     {
-        public virtual ConventionSet AddConventions(ConventionSet conventionSet)
-        {
-            Check.NotNull(conventionSet, nameof(conventionSet));
-
-            conventionSet.ModelInitializedConventions.Add(new NpgsqlValueGenerationStrategyConvention());
-            return conventionSet;
-        }
+        // TODO: SqlServer has identity here, do we need something?
     }
 }

@@ -4,6 +4,7 @@
 using System;
 using Microsoft.Data.Entity;
 using Microsoft.Data.Entity.FunctionalTests;
+using Microsoft.Data.Entity.Metadata;
 using Microsoft.Framework.DependencyInjection;
 
 namespace EntityFramework7.Npgsql.FunctionalTests
@@ -64,10 +65,6 @@ namespace EntityFramework7.Npgsql.FunctionalTests
 
                 modelBuilder.Entity<Gumball>(b =>
                     {
-                        b.Property(e => e.Id)
-                            .ForNpgsql()
-                            .UseIdentity();
-
                         b.Property(e => e.Identity)
                             .DefaultValue("Banana Joe");
 

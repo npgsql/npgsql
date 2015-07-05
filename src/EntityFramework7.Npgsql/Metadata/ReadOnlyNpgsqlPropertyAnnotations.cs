@@ -5,23 +5,21 @@ using System;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity;
 using Microsoft.Data.Entity.Metadata;
-using Microsoft.Data.Entity.Relational.Metadata;
 
 namespace EntityFramework7.Npgsql.Metadata
 {
-    public class ReadOnlyNpgsqlPropertyExtensions : ReadOnlyRelationalPropertyExtensions, INpgsqlPropertyExtensions
+    public class ReadOnlyNpgsqlPropertyAnnotations : ReadOnlyRelationalPropertyAnnotations, INpgsqlPropertyAnnotations
     {
         protected const string NpgsqlNameAnnotation = NpgsqlAnnotationNames.Prefix + RelationalAnnotationNames.ColumnName;
         protected const string NpgsqlColumnTypeAnnotation = NpgsqlAnnotationNames.Prefix + RelationalAnnotationNames.ColumnType;
         protected const string NpgsqlDefaultExpressionAnnotation = NpgsqlAnnotationNames.Prefix + RelationalAnnotationNames.ColumnDefaultExpression;
-        protected const string NpgsqlValueGenerationAnnotation = NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.ValueGeneration;
         protected const string NpgsqlComputedExpressionAnnotation = NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.ColumnComputedExpression;
         protected const string NpgsqlSequenceNameAnnotation = NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.SequenceName;
         protected const string NpgsqlSequenceSchemaAnnotation = NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.SequenceSchema;
         protected const string NpgsqlDefaultValueAnnotation = NpgsqlAnnotationNames.Prefix + RelationalAnnotationNames.ColumnDefaultValue;
         protected const string NpgsqlDefaultValueTypeAnnotation = NpgsqlAnnotationNames.Prefix + RelationalAnnotationNames.ColumnDefaultValueType;
 
-        public ReadOnlyNpgsqlPropertyExtensions([NotNull] IProperty property)
+        public ReadOnlyNpgsqlPropertyAnnotations([NotNull] IProperty property)
             : base(property)
         {
         }
@@ -34,9 +32,9 @@ namespace EntityFramework7.Npgsql.Metadata
             => Property[NpgsqlColumnTypeAnnotation] as string
                ?? base.ColumnType;
 
-        public override string DefaultExpression
+        public override string DefaultValueSql
             => Property[NpgsqlDefaultExpressionAnnotation] as string
-               ?? base.DefaultExpression;
+               ?? base.DefaultValueSql;
 
         public override object DefaultValue
             => new TypedAnnotation(
@@ -47,34 +45,12 @@ namespace EntityFramework7.Npgsql.Metadata
         public virtual string ComputedExpression
             => Property[NpgsqlComputedExpressionAnnotation] as string;
 
-        public virtual NpgsqlValueGenerationStrategy? ValueGenerationStrategy
-        {
-            get
-            {
-                // TODO: Issue #777: Non-string annotations
-                var value = Property[NpgsqlValueGenerationAnnotation] as string;
-
-                var strategy = value == null
-                    ? null
-                    : (NpgsqlValueGenerationStrategy?)Enum.Parse(typeof(NpgsqlValueGenerationStrategy), value);
-
-                return strategy == NpgsqlValueGenerationStrategy.Default
-                    ? Property.EntityType.Model.Npgsql().ValueGenerationStrategy
-                    : strategy;
-            }
-        }
-
         public virtual string SequenceName => Property[NpgsqlSequenceNameAnnotation] as string;
         public virtual string SequenceSchema => Property[NpgsqlSequenceSchemaAnnotation] as string;
 
         public virtual Sequence TryGetSequence()
         {
             var modelExtensions = Property.EntityType.Model.Npgsql();
-
-            if (ValueGenerationStrategy != NpgsqlValueGenerationStrategy.Sequence)
-            {
-                return null;
-            }
 
             var sequenceName = SequenceName
                                ?? modelExtensions.DefaultSequenceName

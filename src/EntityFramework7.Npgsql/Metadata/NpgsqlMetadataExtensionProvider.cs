@@ -3,17 +3,16 @@
 
 using Microsoft.Data.Entity;
 using Microsoft.Data.Entity.Metadata;
-using Microsoft.Data.Entity.Relational.Metadata;
 
 namespace EntityFramework7.Npgsql.Metadata
 {
     public class NpgsqlMetadataExtensionProvider : IRelationalMetadataExtensionProvider
     {
-        public virtual IRelationalEntityTypeExtensions Extensions(IEntityType entityType) => entityType.Npgsql();
-        public virtual IRelationalForeignKeyExtensions Extensions(IForeignKey foreignKey) => foreignKey.Npgsql();
-        public virtual IRelationalIndexExtensions Extensions(IIndex index) => index.Npgsql();
-        public virtual IRelationalKeyExtensions Extensions(IKey key) => key.Npgsql();
-        public virtual IRelationalPropertyExtensions Extensions(IProperty property) => property.Npgsql();
-        public virtual IRelationalModelExtensions Extensions(IModel model) => model.Npgsql();
+        public virtual IRelationalEntityTypeAnnotations Extensions(IEntityType entityType) => entityType.Npgsql();
+        public virtual IRelationalForeignKeyAnnotations Extensions(IForeignKey foreignKey) => foreignKey.Npgsql();
+        public virtual IRelationalIndexAnnotations Extensions(IIndex index) => index.Npgsql();
+        public virtual IRelationalKeyAnnotations Extensions(IKey key) => key.Npgsql();
+        public virtual IRelationalPropertyAnnotations Extensions(IProperty property) => property.Npgsql();
+        public virtual IRelationalModelAnnotations Extensions(IModel model) => model.Npgsql();
     }
 }

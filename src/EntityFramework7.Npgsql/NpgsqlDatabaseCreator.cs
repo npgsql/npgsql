@@ -4,15 +4,16 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using EntityFramework7.Npgsql.Migrations;
 using JetBrains.Annotations;
+using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Metadata;
-using Microsoft.Data.Entity.Relational;
-using Microsoft.Data.Entity.Relational.Migrations.Infrastructure;
-using Microsoft.Data.Entity.Relational.Migrations.Operations;
-using Microsoft.Data.Entity.Relational.Migrations.Sql;
+using Microsoft.Data.Entity.Migrations.Infrastructure;
+using Microsoft.Data.Entity.Migrations.Operations;
+using Microsoft.Data.Entity.Migrations.Sql;
+using Microsoft.Data.Entity.Storage;
 using Microsoft.Data.Entity.Utilities;
 using Npgsql;
+using EntityFramework7.Npgsql.Migrations;
 
 namespace EntityFramework7.Npgsql
 {

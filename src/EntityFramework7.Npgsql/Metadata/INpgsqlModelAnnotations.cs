@@ -2,15 +2,12 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using JetBrains.Annotations;
-using Microsoft.Data.Entity.Relational.Metadata;
+using Microsoft.Data.Entity.Metadata;
 
 namespace EntityFramework7.Npgsql.Metadata
 {
-    public interface INpgsqlModelExtensions : IRelationalModelExtensions
+    public interface INpgsqlModelAnnotations : IRelationalModelAnnotations
     {
-        [CanBeNull]
-        NpgsqlValueGenerationStrategy? ValueGenerationStrategy { get; }
-
         [CanBeNull]
         string DefaultSequenceName { get; }
 

@@ -4,12 +4,12 @@
 using System;
 using System.Linq.Expressions;
 using System.Text.RegularExpressions;
-using EntityFramework7.Npgsql.Query.Expressions;
 using JetBrains.Annotations;
-using Microsoft.Data.Entity.Relational;
-using Microsoft.Data.Entity.Relational.Query.Expressions;
-using Microsoft.Data.Entity.Relational.Query.Sql;
+using Microsoft.Data.Entity.Query.Expressions;
+using Microsoft.Data.Entity.Query.Sql;
+using Microsoft.Data.Entity.Storage;
 using Microsoft.Data.Entity.Utilities;
+using EntityFramework7.Npgsql.Query.Expressions;
 
 namespace EntityFramework7.Npgsql.Query
 {

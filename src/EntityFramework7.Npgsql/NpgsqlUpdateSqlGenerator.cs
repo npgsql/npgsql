@@ -6,13 +6,13 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
-using Microsoft.Data.Entity.Relational;
-using Microsoft.Data.Entity.Relational.Update;
+using Microsoft.Data.Entity.Infrastructure;
+using Microsoft.Data.Entity.Update;
 using Microsoft.Data.Entity.Utilities;
 
 namespace EntityFramework7.Npgsql
 {
-    public class NpgsqlSqlGenerator : SqlGenerator, INpgsqlSqlGenerator
+    public class NpgsqlUpdateSqlGenerator : UpdateSqlGenerator
     {
         public override void AppendInsertOperation(
             StringBuilder commandStringBuilder,
@@ -100,17 +100,6 @@ namespace EntityFramework7.Npgsql
                 .AppendLine()
                 .Append("RETURNING ")
                 .AppendJoin(operations.Select(c => DelimitIdentifier(c.ColumnName)));
-        }
-
-        public override void AppendSelectAffectedCountCommand(StringBuilder commandStringBuilder, string tableName, string schemaName)
-        {
-            // PostgreSQL actually has no way of selecting the modified row count.
-            // SQL defines GET DIAGNOSTICS which should provide this, but in PostgreSQL it's only available
-            // in PL/pgSQL. See http://www.postgresql.org/docs/9.4/static/unsupported-features-sql-standard.html,
-            // identifier F121-01.
-
-            // Instead, the affected row count can be accessed in the PostgreSQL protocol itself, which seems
-            // cleaner and more efficient anyway (no additional query).
         }
 
         public override void AppendBatchHeader(StringBuilder commandStringBuilder)

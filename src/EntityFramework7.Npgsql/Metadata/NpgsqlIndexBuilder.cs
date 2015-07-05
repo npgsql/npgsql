@@ -27,12 +27,5 @@ namespace EntityFramework7.Npgsql.Metadata
 
             return this;
         }
-
-        public virtual NpgsqlIndexBuilder Clustered(bool isClustered = true)
-        {
-            _index.Npgsql().IsClustered = isClustered;
-
-            return this;
-        }
     }
 }

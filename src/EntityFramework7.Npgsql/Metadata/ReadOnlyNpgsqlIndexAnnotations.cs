@@ -3,21 +3,20 @@
 
 using JetBrains.Annotations;
 using Microsoft.Data.Entity.Metadata;
-using Microsoft.Data.Entity.Relational.Metadata;
 
 namespace EntityFramework7.Npgsql.Metadata
 {
-    public class ReadOnlyNpgsqlForeignKeyExtensions : ReadOnlyRelationalForeignKeyExtensions, INpgsqlForeignKeyExtensions
+    public class ReadOnlyNpgsqlIndexAnnotations : ReadOnlyRelationalIndexAnnotations, INpgsqlIndexAnnotations
     {
         protected const string NpgsqlNameAnnotation = NpgsqlAnnotationNames.Prefix + RelationalAnnotationNames.Name;
 
-        public ReadOnlyNpgsqlForeignKeyExtensions([NotNull] IForeignKey foreignKey)
-            : base(foreignKey)
+        public ReadOnlyNpgsqlIndexAnnotations([NotNull] IIndex index)
+            : base(index)
         {
         }
 
         public override string Name
-            => ForeignKey[NpgsqlNameAnnotation] as string
-               ?? base.Name;
+            => Index[NpgsqlNameAnnotation] as string
+                ?? base.Name;
     }
 }

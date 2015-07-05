@@ -1,4 +1,4 @@
-// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
+﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using JetBrains.Annotations;
@@ -7,10 +7,10 @@ using Microsoft.Data.Entity.Utilities;
 
 namespace EntityFramework7.Npgsql.Metadata
 {
-    public class NpgsqlForeignKeyExtensions : ReadOnlyNpgsqlForeignKeyExtensions
+    public class NpgsqlIndexAnnotations : ReadOnlyNpgsqlIndexAnnotations
     {
-        public NpgsqlForeignKeyExtensions([NotNull] ForeignKey foreignKey)
-            : base(foreignKey)
+        public NpgsqlIndexAnnotations([NotNull] Index index)
+            : base(index)
         {
         }
 
@@ -23,7 +23,7 @@ namespace EntityFramework7.Npgsql.Metadata
             {
                 Check.NullButNotEmpty(value, "value");
 
-                ((ForeignKey)ForeignKey)[NpgsqlNameAnnotation] = value;
+                ((Index)Index)[NpgsqlNameAnnotation] = value;
             }
         }
     }

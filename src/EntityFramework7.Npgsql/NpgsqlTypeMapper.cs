@@ -5,7 +5,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data;
-using Microsoft.Data.Entity.Relational;
+using Microsoft.Data.Entity.Storage;
 
 namespace EntityFramework7.Npgsql
 {

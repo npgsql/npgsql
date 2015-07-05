@@ -2,14 +2,13 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using EntityFramework7.Npgsql.FunctionalTests.TestModels;
 using Microsoft.Data.Entity;
 using Microsoft.Data.Entity.FunctionalTests.TestModels.Northwind;
 using Microsoft.Data.Entity.Infrastructure;
-using Microsoft.Data.Entity.Relational.FunctionalTests;
 using Microsoft.Framework.DependencyInjection;
 using Microsoft.Framework.Logging;
 using Microsoft.Data.Entity.FunctionalTests;
+using EntityFramework7.Npgsql.FunctionalTests.TestModels;
 
 namespace EntityFramework7.Npgsql.FunctionalTests
 {

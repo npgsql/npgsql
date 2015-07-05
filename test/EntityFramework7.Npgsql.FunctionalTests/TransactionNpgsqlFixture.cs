@@ -4,7 +4,6 @@
 using System;
 using System.Data.Common;
 using Microsoft.Data.Entity;
-using Microsoft.Data.Entity.Relational.FunctionalTests;
 using Microsoft.Framework.DependencyInjection;
 using Microsoft.Data.Entity.FunctionalTests;
 

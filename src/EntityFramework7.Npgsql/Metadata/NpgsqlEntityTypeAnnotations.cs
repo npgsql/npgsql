@@ -7,9 +7,9 @@ using Microsoft.Data.Entity.Utilities;
 
 namespace EntityFramework7.Npgsql.Metadata
 {
-    public class NpgsqlEntityTypeExtensions : ReadOnlyNpgsqlEntityTypeExtensions
+    public class NpgsqlEntityTypeAnnotations : ReadOnlyNpgsqlEntityTypeAnnotations
     {
-        public NpgsqlEntityTypeExtensions([NotNull] EntityType entityType)
+        public NpgsqlEntityTypeAnnotations([NotNull] EntityType entityType)
             : base(entityType)
         {
         }

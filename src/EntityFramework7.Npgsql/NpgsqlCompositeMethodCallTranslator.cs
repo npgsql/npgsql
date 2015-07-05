@@ -5,8 +5,8 @@ using System.Collections.Generic;
 using System.Linq;
 using EntityFramework7.Npgsql.Query.Methods;
 using JetBrains.Annotations;
-using Microsoft.Data.Entity.Relational.Query;
-using Microsoft.Data.Entity.Relational.Query.Methods;
+using Microsoft.Data.Entity.Query;
+using Microsoft.Data.Entity.Query.Methods;
 using Microsoft.Framework.Logging;
 
 namespace EntityFramework7.Npgsql

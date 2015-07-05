@@ -2,7 +2,6 @@
 using System.Text.RegularExpressions;
 using Microsoft.Data.Entity.FunctionalTests;
 using Microsoft.Data.Entity.FunctionalTests.TestModels.Northwind;
-using Microsoft.Data.Entity.Relational.FunctionalTests;
 using Xunit;
 
 #if DNXCORE50

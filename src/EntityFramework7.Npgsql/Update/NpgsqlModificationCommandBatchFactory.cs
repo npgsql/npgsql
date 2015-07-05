@@ -3,16 +3,15 @@
 
 using JetBrains.Annotations;
 using Microsoft.Data.Entity.Infrastructure;
-using Microsoft.Data.Entity.Relational;
-using Microsoft.Data.Entity.Relational.Metadata;
-using Microsoft.Data.Entity.Relational.Update;
+using Microsoft.Data.Entity.Metadata;
+using Microsoft.Data.Entity.Update;
 
 namespace EntityFramework7.Npgsql.Update
 {
     // TODO: This is very temporary: command batching is disabled for now until properly implemented
     public class NpgsqlModificationCommandBatchFactory : ModificationCommandBatchFactory
     {
-        public NpgsqlModificationCommandBatchFactory([NotNull] ISqlGenerator sqlGenerator)
+        public NpgsqlModificationCommandBatchFactory([NotNull] IUpdateSqlGenerator sqlGenerator)
             : base(sqlGenerator)
         {
         }
@@ -20,6 +19,6 @@ namespace EntityFramework7.Npgsql.Update
         public override ModificationCommandBatch Create(
             IDbContextOptions options,
             IRelationalMetadataExtensionProvider metadataExtensionProvider)
-            => new NpgsqlModificationCommandBatch(SqlGenerator);
+            => new NpgsqlModificationCommandBatch(UpdateSqlGenerator);
     }
 }

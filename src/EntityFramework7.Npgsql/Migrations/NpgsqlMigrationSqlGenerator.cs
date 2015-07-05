@@ -7,18 +7,17 @@ using EntityFramework7.Npgsql.Metadata;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Metadata;
-using Microsoft.Data.Entity.Relational;
-using Microsoft.Data.Entity.Relational.Migrations.Operations;
-using Microsoft.Data.Entity.Relational.Migrations.Sql;
+using Microsoft.Data.Entity.Migrations.Operations;
+using Microsoft.Data.Entity.Migrations.Sql;
 using Microsoft.Data.Entity.Utilities;
 
 namespace EntityFramework7.Npgsql.Migrations
 {
     public class NpgsqlMigrationSqlGenerator : MigrationSqlGenerator
     {
-        private readonly INpgsqlSqlGenerator _sql;
+        private readonly NpgsqlUpdateSqlGenerator _sql;
 
-        public NpgsqlMigrationSqlGenerator([NotNull] INpgsqlSqlGenerator sqlGenerator)
+        public NpgsqlMigrationSqlGenerator([NotNull] NpgsqlUpdateSqlGenerator sqlGenerator)
             : base(Check.NotNull(sqlGenerator, nameof(sqlGenerator)))
         {
             _sql = sqlGenerator;
@@ -139,6 +138,14 @@ namespace EntityFramework7.Npgsql.Migrations
             }
         }
 
+        public override void Generate(CreateSchemaOperation operation, IModel model, SqlBatchBuilder builder)
+        {
+            Check.NotNull(operation, nameof(operation));
+            Check.NotNull(builder, nameof(builder));
+
+            throw new NotImplementedException();
+        }
+
         public virtual void Generate(
             [NotNull] CreateDatabaseOperation operation,
             [CanBeNull] IModel model,
@@ -246,6 +253,7 @@ namespace EntityFramework7.Npgsql.Migrations
                 return;
             }
 
+
             var valueGeneration = (string)annotatable[NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.ValueGeneration];
             if (valueGeneration == "Identity")
             {
@@ -261,10 +269,9 @@ namespace EntityFramework7.Npgsql.Migrations
                     type = "smallint";
                     break;
                 default:
-                    throw new InvalidOperationException($"Column type {type} can't be Identity");
+                    throw new InvalidOperationException($"Column {name} of type {type} can't be Identity");
                 }
             }
-            // TODO: Also valueGeneration == Sequence...!
 
             base.ColumnDefinition(
                 schema,
@@ -336,22 +343,10 @@ namespace EntityFramework7.Npgsql.Migrations
                 operation.Type,
                 operation.IsNullable,
                 operation.DefaultValue,
-                operation.DefaultExpression,
+                operation.DefaultValueSql,
                 operation,
                 model,
                 builder);
-
-        public override void IndexTraits(MigrationOperation operation, IModel model, SqlBatchBuilder builder)
-        {
-            Check.NotNull(operation, nameof(operation));
-            Check.NotNull(builder, nameof(builder));
-
-            var clustered = (string)operation[NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.Clustered];
-            if (clustered != null)
-            {
-                builder.Append(clustered == "True" ? "CLUSTERED " : "NONCLUSTERED ");
-            }
-        }
 
         public override void ForeignKeyAction(ReferentialAction referentialAction, SqlBatchBuilder builder)
         {

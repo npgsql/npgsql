@@ -3,9 +3,9 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.Data.Entity.Query;
+using Microsoft.Data.Entity.Query.Methods;
 using EntityFramework7.Npgsql.Query.Methods;
-using Microsoft.Data.Entity.Relational.Query;
-using Microsoft.Data.Entity.Relational.Query.Methods;
 
 namespace EntityFramework7.Npgsql
 {

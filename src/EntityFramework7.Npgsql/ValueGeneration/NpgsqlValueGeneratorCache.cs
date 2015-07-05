@@ -12,45 +12,5 @@ using Strings = EntityFramework7.Npgsql.Properties.Strings;
 
 namespace EntityFramework7.Npgsql.ValueGeneration
 {
-    public class NpgsqlValueGeneratorCache : ValueGeneratorCache, INpgsqlValueGeneratorCache
-    {
-        private readonly ThreadSafeDictionaryCache<string, NpgsqlSequenceValueGeneratorState> _sequenceGeneratorCache
-            = new ThreadSafeDictionaryCache<string, NpgsqlSequenceValueGeneratorState>();
-
-        public virtual NpgsqlSequenceValueGeneratorState GetOrAddSequenceState(IProperty property)
-        {
-            Check.NotNull(property, nameof(property));
-
-            return _sequenceGeneratorCache.GetOrAdd(
-                GetSequenceName(property),
-                sequenceName => new NpgsqlSequenceValueGeneratorState(sequenceName, GetBlockSize(property), GetPoolSize(property)));
-        }
-
-        public virtual int GetBlockSize([NotNull] IProperty property)
-        {
-            Check.NotNull(property, nameof(property));
-
-            var incrementBy = property.Npgsql().TryGetSequence().IncrementBy;
-
-            if (incrementBy <= 0)
-            {
-                throw new NotSupportedException(Strings.SequenceBadBlockSize(incrementBy, GetSequenceName(property)));
-            }
-
-            return incrementBy;
-        }
-
-        public virtual string GetSequenceName([NotNull] IProperty property)
-        {
-            Check.NotNull(property, nameof(property));
-
-            var sequence = property.Npgsql().TryGetSequence();
-
-            return (sequence.Schema == null ? "" : (sequence.Schema + ".")) + sequence.Name;
-        }
-
-        // TODO: Allow configuration without creation of derived factory type
-        // Issue #778
-        public virtual int GetPoolSize([NotNull] IProperty property) => 5;
-    }
+    public class NpgsqlValueGeneratorCache : ValueGeneratorCache {}
 }

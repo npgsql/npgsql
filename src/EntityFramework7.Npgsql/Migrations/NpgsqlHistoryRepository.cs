@@ -8,9 +8,9 @@ using System.Text;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity;
 using Microsoft.Data.Entity.Internal;
-using Microsoft.Data.Entity.Relational;
-using Microsoft.Data.Entity.Relational.Migrations.History;
-using Microsoft.Data.Entity.Relational.Migrations.Operations;
+using Microsoft.Data.Entity.Migrations.History;
+using Microsoft.Data.Entity.Migrations.Operations;
+using Microsoft.Data.Entity.Storage;
 using Microsoft.Data.Entity.Utilities;
 
 namespace EntityFramework7.Npgsql.Migrations
@@ -21,13 +21,13 @@ namespace EntityFramework7.Npgsql.Migrations
         private readonly NpgsqlDatabaseConnection  _connection;
         private readonly IRelationalDatabaseCreator _creator;
         private readonly Type _contextType;
-        private readonly INpgsqlSqlGenerator _sql;
+        private readonly NpgsqlUpdateSqlGenerator _sql;
 
         public NpgsqlHistoryRepository(
             [NotNull] NpgsqlDatabaseConnection connection,
             [NotNull] IRelationalDatabaseCreator creator,
             [NotNull] DbContext context,
-            [NotNull] INpgsqlSqlGenerator sqlGenerator)
+            [NotNull] NpgsqlUpdateSqlGenerator sqlGenerator)
         {
             Check.NotNull(connection, nameof(connection));
             Check.NotNull(creator, nameof(creator));
