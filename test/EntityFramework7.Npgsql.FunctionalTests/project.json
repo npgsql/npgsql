@@ -1,13 +1,15 @@
-{
-    "dependencies": {
-        "EntityFramework.Relational.FunctionalTests": "7.0.0-*",
-        "EntityFramework7.Npgsql": "3.0.0-alpha-*",
-        "Npgsql": "3.0.0-alpha-*"
-    },
-    "commands": {
-        "test": "xunit.runner.dnx"
-    },
-    "frameworks": {
-        "dnx451": { }
-    }
+﻿{
+  "dependencies": {
+    "EntityFramework.Core": "7.0.0-beta6-13675",
+    "EntityFramework.Relational": "7.0.0-beta6-13675",
+    "EntityFramework.Relational.FunctionalTests": "7.0.0-*",
+    "EntityFramework7.Npgsql": "3.0.0-alpha-*",
+    "Npgsql": "3.0.0-alpha-*"
+  },
+  "commands": {
+    "test": "xunit.runner.dnx"
+  },
+  "frameworks": {
+    "dnx451": {}
+  }
 }

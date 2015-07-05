@@ -21,9 +21,19 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NpgsqlDdexProvider2013", "s
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EntityFramework6.Npgsql.Tests", "test\EntityFramework6.Npgsql.Tests\EntityFramework6.Npgsql.Tests.csproj", "{4A0A42DE-C8B8-11E4-8EC9-005056A163A4}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EntityFramework7.Npgsql", "src\EntityFramework7.Npgsql\EntityFramework7.Npgsql.csproj", "{FADDA2D1-03B4-4DEF-8D24-DD1CA4E81F4A}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{8537E50E-CF7F-49CB-B4EF-3E2A1B11F050}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{ED612DB1-AB32-4603-95E7-891BACA71C39}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EntityFramework7.Npgsql.FunctionalTests", "test\EntityFramework7.Npgsql.FunctionalTests\EntityFramework7.Npgsql.FunctionalTests.csproj", "{05A7D0B7-4AE1-4BC8-A1BE-2389F1593B2D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
@@ -51,9 +61,27 @@ Global
 		{4A0A42DE-C8B8-11E4-8EC9-005056A163A4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4A0A42DE-C8B8-11E4-8EC9-005056A163A4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4A0A42DE-C8B8-11E4-8EC9-005056A163A4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FADDA2D1-03B4-4DEF-8D24-DD1CA4E81F4A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FADDA2D1-03B4-4DEF-8D24-DD1CA4E81F4A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FADDA2D1-03B4-4DEF-8D24-DD1CA4E81F4A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FADDA2D1-03B4-4DEF-8D24-DD1CA4E81F4A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{05A7D0B7-4AE1-4BC8-A1BE-2389F1593B2D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{05A7D0B7-4AE1-4BC8-A1BE-2389F1593B2D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{05A7D0B7-4AE1-4BC8-A1BE-2389F1593B2D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{05A7D0B7-4AE1-4BC8-A1BE-2389F1593B2D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{9D13B739-62B1-4190-B386-7A9547304EB3} = {8537E50E-CF7F-49CB-B4EF-3E2A1B11F050}
+		{3EC85CBA-5B79-11E3-8104-0022198AB089} = {8537E50E-CF7F-49CB-B4EF-3E2A1B11F050}
+		{100998C4-5B85-11E3-911C-0022198AB089} = {8537E50E-CF7F-49CB-B4EF-3E2A1B11F050}
+		{E9C258D7-0D8E-4E6A-9857-5C6438591755} = {ED612DB1-AB32-4603-95E7-891BACA71C39}
+		{249C6185-C3B5-4D28-A508-ABD975702A0B} = {8537E50E-CF7F-49CB-B4EF-3E2A1B11F050}
+		{4A0A42DE-C8B8-11E4-8EC9-005056A163A4} = {ED612DB1-AB32-4603-95E7-891BACA71C39}
+		{FADDA2D1-03B4-4DEF-8D24-DD1CA4E81F4A} = {8537E50E-CF7F-49CB-B4EF-3E2A1B11F050}
+		{05A7D0B7-4AE1-4BC8-A1BE-2389F1593B2D} = {ED612DB1-AB32-4603-95E7-891BACA71C39}
 	EndGlobalSection
 	GlobalSection(MonoDevelopProperties) = preSolution
 		StartupItem = Npgsql.csproj
