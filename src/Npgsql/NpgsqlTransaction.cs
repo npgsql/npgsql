@@ -89,7 +89,6 @@ namespace Npgsql
             Contract.Requires(isolationLevel != IsolationLevel.Chaos);
 
             Connection = conn;
-            _isolationLevel = isolationLevel;
             Connector.Transaction = this;
             Connector.TransactionStatus = TransactionStatus.Pending;
 
@@ -110,10 +109,13 @@ namespace Npgsql
                     Connector.PrependInternalMessage(PregeneratedMessage.BeginTransReadCommitted);
                     break;
                 case IsolationLevel.Unspecified:
+                    isolationLevel = DefaultIsolationLevel;
                     goto case DefaultIsolationLevel;
                 default:
                     throw PGUtil.ThrowIfReached("Isolation level not supported: " + isolationLevel);
             }
+
+            _isolationLevel = isolationLevel;
         }
 
         #endregion

@@ -20,9 +20,9 @@
     </dependencies>
   </metadata>
   <files>
-    <file src="bin\Release-net45\EntityFramework6.Npgsql.dll" target="lib\net45"/>
-    <file src="bin\Release-net45\EntityFramework6.Npgsql.pdb" target="lib\net45"/>
-    <file src="bin\Release-net45\EntityFramework6.Npgsql.xml" target="lib\net45"/>
+    <file src="bin\Release\EntityFramework6.Npgsql.dll" target="lib\net45"/>
+    <file src="bin\Release\EntityFramework6.Npgsql.pdb" target="lib\net45"/>
+    <file src="bin\Release\EntityFramework6.Npgsql.xml" target="lib\net45"/>
     <file src="**\*.cs" target="src" />
     <file src="install.ps1" target="tools" />
   </files>

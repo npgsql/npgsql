@@ -144,6 +144,13 @@ namespace Npgsql.TypeHandlers
         // ReSharper disable once RedundantAssignment
         public bool Write(ref DirectBuffer directBuf)
         {
+            // If we're back here after having returned a direct buffer, we're done.
+            if (_returnedBuffer)
+            {
+                _returnedBuffer = false;
+                return true;
+            }
+
             // If the entire array fits in our buffer, copy it as usual.
             // Otherwise, switch to direct write from the user-provided buffer
             if (_value.Count <= _buf.WriteSpaceLeft)
@@ -152,17 +159,11 @@ namespace Npgsql.TypeHandlers
                 return true;
             }
 
-            if (!_returnedBuffer)
-            {
-                directBuf.Buffer = _value.Array;
-                directBuf.Offset = _value.Offset;
-                directBuf.Size = _value.Count;
-                _returnedBuffer = true;
-                return false;
-            }
-
-            _returnedBuffer = false;
-            return true;
+            directBuf.Buffer = _value.Array;
+            directBuf.Offset = _value.Offset;
+            directBuf.Size = _value.Count;
+            _returnedBuffer = true;
+            return false;
         }
 
         #endregion

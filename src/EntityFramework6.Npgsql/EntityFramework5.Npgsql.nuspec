@@ -20,9 +20,9 @@
     </dependencies>
   </metadata>
   <files>
-    <file src="bin\Legacy-Release-net45\EntityFramework5.Npgsql.dll" target="lib\net45"/>
-    <file src="bin\Legacy-Release-net45\EntityFramework5.Npgsql.pdb" target="lib\net45"/>
-    <file src="bin\Legacy-Release-net45\EntityFramework5.Npgsql.xml" target="lib\net45"/>
+    <file src="bin\Release\EntityFramework5.Npgsql.dll" target="lib\net45"/>
+    <file src="bin\Release\EntityFramework5.Npgsql.pdb" target="lib\net45"/>
+    <file src="bin\Release\EntityFramework5.Npgsql.xml" target="lib\net45"/>
     <file src="**\*.cs" target="src" />
   </files>
 </package>

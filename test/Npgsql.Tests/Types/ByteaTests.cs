@@ -365,6 +365,23 @@ namespace Npgsql.Tests.Types
             }
         }
 
+        [Test, Description("Writes a bytea that doesn't fit in a partially-full buffer, but does fit in an empty buffer")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/654")]
+        public void WriteDoesntFitInitiallyButFitsLater()
+        {
+            ExecuteNonQuery(string.Format("CREATE TEMP TABLE data (field BYTEA)"));
+
+            var bytea = new byte[8180];
+            for (var i = 0; i < bytea.Length; i++) {
+                bytea[i] = (byte)(i % 256);
+            }
+
+            using (var cmd = new NpgsqlCommand("INSERT INTO data (field) VALUES (@p)", Conn)) {
+                cmd.Parameters.AddWithValue("@p", bytea);
+                cmd.ExecuteNonQuery();
+            }
+        }
+
         #region Utilities
 
         /// <summary>
