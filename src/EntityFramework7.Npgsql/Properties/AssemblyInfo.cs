@@ -6,4 +6,3 @@ using System.Resources;
 
 [assembly: AssemblyTitle("EntityFramework7.Npgsql")]
 [assembly: AssemblyDescription("PostgreSQL provider for Entity Framework 7")]
-[assembly: NeutralResourcesLanguage("en-US")]
