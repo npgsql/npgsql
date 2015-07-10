@@ -207,6 +207,28 @@ namespace Npgsql.Tests
             Assert.That(ExecuteScalar("SELECT field FROM data"), Is.EqualTo(data));
         }
 
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/662")]
+        public void DirectBuffer()
+        {
+            using (var conn = new NpgsqlConnection(ConnectionString))
+            {
+                conn.Open();
+                ExecuteNonQuery("CREATE TEMP TABLE data (blob BYTEA)", conn);
+
+                using (var writer = conn.BeginBinaryImport("COPY data (blob) FROM STDIN BINARY"))
+                {
+                    // Big value - triggers use of the direct buffer optimization
+                    var data = new byte[conn.BufferSize + 10];
+
+                    writer.StartRow();
+                    writer.Write(data);
+                    writer.StartRow();
+                    writer.Write(data);
+                    writer.Dispose();
+                }
+            }
+        }
 
         #endregion
 
