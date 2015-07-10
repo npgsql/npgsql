@@ -58,6 +58,8 @@ please let us know and we'll add it.
 
 ## Other
 
+* The Entity Framework provider packages have been renamed to align with Microsoft's new naming.
+  The new packages are *EntityFramework5.Npgsql* and *EntityFramework6.Npgsql*. EntityFramework7.Npgsql is in alpha.
 * It is no longer possible to create database entities (tables, functions) and then use them in the same multi-query command -
   you must first send a command creating the entity, and only then send commands using it.
   See [#641](https://github.com/npgsql/npgsql/issues/641) for more details.
