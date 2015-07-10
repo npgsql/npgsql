@@ -15,7 +15,7 @@ please let us know and we'll add it.
 
 * Npgsql 2.2 didn't perform validation on the server's certificate by default, so self-signed certificate were accepted.
   The new default is to perform validation. Specify the
-  [Trust Server Certificate](connection-string-parameters.md#trust-server-certificate) connection string parameter.
+  [Trust Server Certificate](connection-string-parameters.html#trust-server-certificate) connection string parameter to get back previous behavior.
 * The "SSL" connection string parameter has been removed, use "SSL Mode" instead.
 * The "SSL Mode" parameter's Allow option has been removed, as it wasn't doing anything.
 
