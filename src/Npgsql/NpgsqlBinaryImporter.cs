@@ -116,6 +116,8 @@ namespace Npgsql
         /// </summary>
         public void StartRow()
         {
+            CheckDisposed();
+
             if (_column != -1 && _column != NumColumns) {
                 throw new InvalidOperationException("Row has already been started and must be finished");
             }
@@ -170,8 +172,7 @@ namespace Npgsql
 
         void DoWrite<T>(TypeHandler handler, T value)
         {
-            if (_buf.WriteSpaceLeft < 4) { Flush(); }
-            EnsureDataMessage();
+            if (_buf.WriteSpaceLeft < 4) { FlushAndStartDataMessage(); }
 
             var asObject = (object)value;   // TODO: Implement boxless writing in the future
             if (asObject == null) {
@@ -211,18 +212,22 @@ namespace Npgsql
 
                 asChunking.PrepareWrite(asObject, _buf, _lengthCache, _dummyParam);
                 var directBuf = new DirectBuffer();
-                while (!asChunking.Write(ref directBuf)) {
+                while (!asChunking.Write(ref directBuf))
+                {
                     FlushAndStartDataMessage();
 
                     // The following is an optimization hack for writing large byte arrays without passing
                     // through our buffer
                     if (directBuf.Buffer != null) {
                         len = directBuf.Size == 0 ? directBuf.Buffer.Length : directBuf.Size;
-                        _buf.WriteInt32(len);
-                        Flush();
+                        _buf.WritePosition = 1;
+                        _buf.WriteInt32(len + 4);
+                        _buf.Flush();
+                        _writingDataMsg = false;
                         _buf.Underlying.Write(directBuf.Buffer, directBuf.Offset, len);
                         directBuf.Buffer = null;
                         directBuf.Size = 0;
+                        EnsureDataMessage();
                     }
                 }
                 _column++;
@@ -242,8 +247,7 @@ namespace Npgsql
                 throw new InvalidOperationException("A row hasn't been started");
             }
 
-            if (_buf.WriteSpaceLeft < 4) { Flush(); }
-            EnsureDataMessage();
+            if (_buf.WriteSpaceLeft < 4) { FlushAndStartDataMessage(); }
 
             _buf.WriteInt32(-1);
             _column++;
@@ -357,6 +361,12 @@ namespace Npgsql
             if (_isDisposed) {
                 throw new ObjectDisposedException(GetType().FullName, "The COPY operation has already ended.");
             }
+        }
+
+        [ContractInvariantMethod]
+        void ObjectInvariants()
+        {
+            Contract.Invariant(_isDisposed || _writingDataMsg);
         }
 
         #endregion
