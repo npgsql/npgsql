@@ -25,6 +25,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
@@ -172,69 +173,86 @@ namespace Npgsql
 
         void DoWrite<T>(TypeHandler handler, T value)
         {
-            if (_buf.WriteSpaceLeft < 4) { FlushAndStartDataMessage(); }
-
-            var asObject = (object)value;   // TODO: Implement boxless writing in the future
-            if (asObject == null) {
-                _buf.WriteInt32(-1);
-                _column++;
-                return;
-            }
-
-            _dummyParam.ConvertedValue = null;
-
-            var asSimple = handler as ISimpleTypeWriter;
-            if (asSimple != null) {
-                var len = asSimple.ValidateAndGetLength(asObject, _dummyParam);
-                _buf.WriteInt32(len);
-                if (_buf.WriteSpaceLeft < len) {
-                    Contract.Assume(_buf.Size >= len);
-                    FlushAndStartDataMessage();
-                }
-                asSimple.Write(asObject, _buf, _dummyParam);
-                _column++;
-                return;
-            }
-
-            var asChunking = handler as IChunkingTypeWriter;
-            if (asChunking != null) {
-                _lengthCache.Clear();
-                var len = asChunking.ValidateAndGetLength(asObject, ref _lengthCache, _dummyParam);
-                _buf.WriteInt32(len);
-
-                // If the type handler used the length cache, rewind it to skip the first position:
-                // it contains the entire value length which we already have in len.
-                if (_lengthCache.Position > 0)
-                {
-                    _lengthCache.Rewind();
-                    _lengthCache.Position++;
-                }
-
-                asChunking.PrepareWrite(asObject, _buf, _lengthCache, _dummyParam);
-                var directBuf = new DirectBuffer();
-                while (!asChunking.Write(ref directBuf))
+            try
+            {
+                if (_buf.WriteSpaceLeft < 4)
                 {
                     FlushAndStartDataMessage();
+                }
 
-                    // The following is an optimization hack for writing large byte arrays without passing
-                    // through our buffer
-                    if (directBuf.Buffer != null) {
-                        len = directBuf.Size == 0 ? directBuf.Buffer.Length : directBuf.Size;
-                        _buf.WritePosition = 1;
-                        _buf.WriteInt32(len + 4);
-                        _buf.Flush();
-                        _writingDataMsg = false;
-                        _buf.Underlying.Write(directBuf.Buffer, directBuf.Offset, len);
-                        directBuf.Buffer = null;
-                        directBuf.Size = 0;
+                var asObject = (object) value; // TODO: Implement boxless writing in the future
+                if (asObject == null)
+                {
+                    _buf.WriteInt32(-1);
+                    _column++;
+                    return;
+                }
+
+                _dummyParam.ConvertedValue = null;
+
+                var asSimple = handler as ISimpleTypeWriter;
+                if (asSimple != null)
+                {
+                    var len = asSimple.ValidateAndGetLength(asObject, _dummyParam);
+                    _buf.WriteInt32(len);
+                    if (_buf.WriteSpaceLeft < len)
+                    {
+                        Contract.Assume(_buf.Size >= len);
+                        FlushAndStartDataMessage();
+                    }
+                    asSimple.Write(asObject, _buf, _dummyParam);
+                    _column++;
+                    return;
+                }
+
+                var asChunking = handler as IChunkingTypeWriter;
+                if (asChunking != null)
+                {
+                    _lengthCache.Clear();
+                    var len = asChunking.ValidateAndGetLength(asObject, ref _lengthCache, _dummyParam);
+                    _buf.WriteInt32(len);
+
+                    // If the type handler used the length cache, rewind it to skip the first position:
+                    // it contains the entire value length which we already have in len.
+                    if (_lengthCache.Position > 0)
+                    {
+                        _lengthCache.Rewind();
+                        _lengthCache.Position++;
+                    }
+
+                    asChunking.PrepareWrite(asObject, _buf, _lengthCache, _dummyParam);
+                    var directBuf = new DirectBuffer();
+                    while (!asChunking.Write(ref directBuf))
+                    {
+                        Flush();
+
+                        // The following is an optimization hack for writing large byte arrays without passing
+                        // through our buffer
+                        if (directBuf.Buffer != null)
+                        {
+                            len = directBuf.Size == 0 ? directBuf.Buffer.Length : directBuf.Size;
+                            _buf.WritePosition = 1;
+                            _buf.WriteInt32(len + 4);
+                            _buf.Flush();
+                            _writingDataMsg = false;
+                            _buf.Underlying.Write(directBuf.Buffer, directBuf.Offset, len);
+                            directBuf.Buffer = null;
+                            directBuf.Size = 0;
+                        }
                         EnsureDataMessage();
                     }
+                    _column++;
+                    return;
                 }
-                _column++;
-                return;
-            }
 
-            throw PGUtil.ThrowIfReached();
+                throw PGUtil.ThrowIfReached();
+            }
+            catch
+            {
+                _connector.Break();
+                Cleanup();
+                throw;
+            }
         }
 
         /// <summary>
@@ -343,6 +361,11 @@ namespace Npgsql
             _connector.CurrentCopyOperation = null;
             _connector.EndUserAction();
 
+            Cleanup();
+        }
+
+        void Cleanup()
+        {
             _connector = null;
             _registry = null;
             _buf = null;

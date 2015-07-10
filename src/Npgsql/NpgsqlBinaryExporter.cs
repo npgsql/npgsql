@@ -24,6 +24,7 @@
 using System;
 using System.Diagnostics.Contracts;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
 using NpgsqlTypes;
@@ -192,16 +193,22 @@ namespace Npgsql
 
         T DoRead<T>(TypeHandler handler)
         {
-            ReadColumnLenIfNeeded();
-            if (_columnLen == -1) {
-                throw new InvalidCastException("Column is null");
-            }
+            try {
+                ReadColumnLenIfNeeded();
+                if (_columnLen == -1) {
+                    throw new InvalidCastException("Column is null");
+                }
 
-            var result = handler.Read<T>(_buf, _columnLen);
-            _leftToReadInDataMsg -= _columnLen;
-            _columnLen = int.MinValue;   // Mark that the (next) column length hasn't been read yet
-            _column++;
-            return result;
+                var result = handler.Read<T>(_buf, _columnLen);
+                _leftToReadInDataMsg -= _columnLen;
+                _columnLen = int.MinValue;   // Mark that the (next) column length hasn't been read yet
+                _column++;
+                return result;
+            } catch {
+                _connector.Break();
+                Cleanup();
+                throw;
+            }
         }
 
         /// <summary>
@@ -279,7 +286,11 @@ namespace Npgsql
             }
 
             _connector.State = ConnectorState.Ready;
+            Cleanup();
+        }
 
+        void Cleanup()
+        {
             _connector = null;
             _registry = null;
             _buf = null;

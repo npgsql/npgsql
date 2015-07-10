@@ -115,26 +115,21 @@ namespace Npgsql
                 return;
             }
 
-            // Buffer is too big. Write whatever will fit and flush.
-            var written = _buf.WriteSpaceLeft;
-            _buf.WriteBytes(buffer, offset, _buf.WriteSpaceLeft);
-            Flush();
+            try {
+                // Value is too big. Flush whatever is in the buffer, then write a new CopyData
+                // directly with the buffer.
+                Flush();
 
-            offset += written;
-            count -= written;
-
-            // If the remainder fits in a single buffer, no problem.
-            if (count <= _buf.WriteSpaceLeft) {
+                _buf.WriteByte((byte)BackendMessageCode.CopyData);
+                _buf.WriteInt32(count + 4);
+                _buf.Flush();
+                _buf.Underlying.Write(buffer, offset, count);
                 EnsureDataMessage();
-                _buf.WriteBytes(buffer, offset, count);
-                return;
+            } catch {
+                _connector.Break();
+                Cleanup();
+                throw;
             }
-
-            // Otherwise, write the CopyData header via our buffer and the remaining data directly to the socket
-            _buf.WriteByte((byte)BackendMessageCode.CopyData);
-            _buf.WriteInt32(count);
-            _buf.Flush();
-            _buf.Underlying.Write(buffer, offset, count);
         }
 
         public override void Flush()
@@ -172,36 +167,47 @@ namespace Npgsql
             if (!CanRead)
                 throw new InvalidOperationException("Stream not open for reading");
 
-            var totalRead = 0;
-            do {
-                if (_leftToReadInDataMsg == 0)
-                {
-                    if (_isConsumed) { return 0; }
-                    var msg = _connector.ReadSingleMessage();
-                    switch (msg.Code) {
-                    case BackendMessageCode.CopyData:
-                        _leftToReadInDataMsg = ((CopyDataMessage)msg).Length;
-                        break;
-                    case BackendMessageCode.CopyDone:
-                        _connector.ReadExpecting<CommandCompleteMessage>();
-                        _connector.ReadExpecting<ReadyForQueryMessage>();
-                        _isConsumed = true;
-                        goto done;
-                    default:
-                        throw _connector.UnexpectedMessageReceived(msg.Code);
-                    }
+            if (_isConsumed) {
+                return 0;
+            }
+
+            if (_leftToReadInDataMsg == 0)
+            {
+                // We've consumed the current DataMessage (or haven't yet received the first),
+                // read the next message
+                var msg = _connector.ReadSingleMessage();
+                switch (msg.Code) {
+                case BackendMessageCode.CopyData:
+                    _leftToReadInDataMsg = ((CopyDataMessage)msg).Length;
+                    break;
+                case BackendMessageCode.CopyDone:
+                    _connector.ReadExpecting<CommandCompleteMessage>();
+                    _connector.ReadExpecting<ReadyForQueryMessage>();
+                    _isConsumed = true;
+                    return 0;
+                default:
+                    throw _connector.UnexpectedMessageReceived(msg.Code);
                 }
+            }
 
-                var len = Math.Min(count, _leftToReadInDataMsg);
-                _buf.ReadBytes(buffer, offset, len);
-                offset += len;
-                count -= len;
-                _leftToReadInDataMsg -= len;
-                totalRead += len;
-            } while (count > 0);
+            Contract.Assume(_leftToReadInDataMsg > 0);
 
-        done:
-            return totalRead;
+            // If our buffer is empty, read in more. Otherwise return whatever is there, even if the
+            // user asked for more (normal socket behavior)
+            if (_buf.ReadBytesLeft == 0) {
+                _buf.ReadMore();
+            }
+
+            Contract.Assert(_buf.ReadBytesLeft > 0);
+
+            var maxCount = Math.Min(_buf.ReadBytesLeft, _leftToReadInDataMsg);
+            if (count > maxCount) {
+                count = maxCount;
+            }
+
+            _leftToReadInDataMsg -= count;
+            _buf.ReadBytes(buffer, offset, count);
+            return count;
         }
 
         #endregion
@@ -257,13 +263,20 @@ namespace Npgsql
             else
             {
                 if (!_isConsumed) {
-                    _buf.Skip(_leftToReadInDataMsg);
+                    if (_leftToReadInDataMsg > 0) {
+                        _buf.Skip(_leftToReadInDataMsg);
+                    }
                     _connector.SkipUntil(BackendMessageCode.ReadyForQuery);
                 }
             }
 
             _connector.CurrentCopyOperation = null;
             _connector.EndUserAction();
+            Cleanup();
+        }
+
+        void Cleanup()
+        {
             _connector = null;
             _buf = null;
             _isDisposed = true;
