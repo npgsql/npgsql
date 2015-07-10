@@ -28,14 +28,15 @@
           <param name="nuget.path" value="?NuGet.CommandLine.DEFAULT.nupkg" />
           <param name="nuget.updatePackages.mode" value="sln" />
           <param name="nuget.use.restore" value="restore" />
+          <param name="nugetCustomPath" value="?NuGet.CommandLine.DEFAULT.nupkg" />
           <param name="nugetPathSelector" value="?NuGet.CommandLine.DEFAULT.nupkg" />
-          <param name="sln.path" value="Npgsql2013.sln" />
+          <param name="sln.path" value="Npgsql2015.sln" />
           <param name="teamcity.step.mode" value="default" />
         </parameters>
       </runner>
       <runner id="RUNNER_2" name="Build Debug" type="MSBuild">
         <parameters>
-          <param name="build-file-path" value="Npgsql2013.sln" />
+          <param name="build-file-path" value="Npgsql2015.sln" />
           <param name="dotNetCoverage.NCover.HTMLReport.File.Sort" value="0" />
           <param name="dotNetCoverage.NCover.HTMLReport.File.Type" value="1" />
           <param name="dotNetCoverage.NCover.Reg" value="selected" />
@@ -50,7 +51,7 @@
           <param name="dotNetCoverage.PartCover.includes" value="[*]*" />
           <param name="dotNetCoverage.PartCover.platformBitness" value="x86" />
           <param name="dotNetCoverage.PartCover.platformVersion" value="v2.0" />
-          <param name="msbuild_version" value="4.0" />
+          <param name="msbuild_version" value="14.0" />
           <param name="run-platform" value="x86" />
           <param name="runnerArgs" value="/p:Configuration=Debug" />
           <param name="teamcity.step.mode" value="default" />
@@ -93,7 +94,7 @@ test/Npgsql.EntityFramework.Tests/bin/Debug/Npgsql.EntityFramework.Tests.dll]]><
       </runner>
       <runner id="RUNNER_14" name="Build Release" type="MSBuild">
         <parameters>
-          <param name="build-file-path" value="Npgsql2013.sln" />
+          <param name="build-file-path" value="Npgsql2015.sln" />
           <param name="dotNetCoverage.NCover.HTMLReport.File.Sort" value="0" />
           <param name="dotNetCoverage.NCover.HTMLReport.File.Type" value="1" />
           <param name="dotNetCoverage.NCover.Reg" value="selected" />
@@ -108,7 +109,7 @@ test/Npgsql.EntityFramework.Tests/bin/Debug/Npgsql.EntityFramework.Tests.dll]]><
           <param name="dotNetCoverage.PartCover.includes" value="[*]*" />
           <param name="dotNetCoverage.PartCover.platformBitness" value="x86" />
           <param name="dotNetCoverage.PartCover.platformVersion" value="v2.0" />
-          <param name="msbuild_version" value="4.0" />
+          <param name="msbuild_version" value="14.0" />
           <param name="run-platform" value="x86" />
           <param name="runnerArgs" value="/p:Configuration=Release" />
           <param name="teamcity.step.mode" value="default" />
