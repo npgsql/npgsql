@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.IO;
 using System.Linq;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using Npgsql;
@@ -14,6 +15,8 @@ namespace Npgsql.Tests
 {
     public class CopyTests : TestBase
     {
+        #region Raw
+
         [Test, Description("Exports data in binary format (raw mode) and then loads it back in")]
         public void RawBinaryRoundtrip()
         {
@@ -105,6 +108,10 @@ namespace Npgsql.Tests
             }
         }
 
+        #endregion
+
+        #region Binary
+
         [Test, Description("Roundtrips some data")]
         public void BinaryRoundtrip()
         {
@@ -167,7 +174,43 @@ namespace Npgsql.Tests
             }
         }
 
-        #region Text In
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/657")]
+        public void ByteaImport()
+        {
+            ExecuteNonQuery("CREATE TEMP TABLE data (field BYTEA)", Conn);
+
+            var data = new byte[] { 1, 5, 8 };
+
+            using (var writer = Conn.BeginBinaryImport("COPY data (field) FROM STDIN BINARY"))
+            {
+                writer.StartRow();
+                writer.Write(data, NpgsqlDbType.Bytea);
+            }
+
+            Assert.That(ExecuteScalar("SELECT field FROM data"), Is.EqualTo(data));
+
+        }
+
+        [Test]
+        public void StringArray()
+        {
+            ExecuteNonQuery("CREATE TEMP TABLE data (field TEXT[])", Conn);
+
+            var data = new[] { "foo", "a", "bar" };
+            using (var writer = Conn.BeginBinaryImport("COPY data (field) FROM STDIN BINARY"))
+            {
+                writer.StartRow();
+                writer.Write(data, NpgsqlDbType.Array | NpgsqlDbType.Text);
+            }
+
+            Assert.That(ExecuteScalar("SELECT field FROM data"), Is.EqualTo(data));
+        }
+
+
+        #endregion
+
+        #region Text
 
         [Test]
         public void TextImport()
@@ -216,10 +259,6 @@ namespace Npgsql.Tests
             writer.Close();
             Assert.That(ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(0));
         }
-
-        #endregion
-
-        #region Text Out
 
         [Test]
         public void TextExport()
@@ -310,6 +349,10 @@ namespace Npgsql.Tests
                 conn.BeginTextExport("COPY data (field_text, field_int4) TO STDIN");
             }
         }
+
+        #endregion
+
+        #region Utils
 
         /// <summary>
         /// Checks that the connector state is properly managed for COPY operations

@@ -200,8 +200,15 @@ namespace Npgsql
                 _lengthCache.Clear();
                 var len = asChunking.ValidateAndGetLength(asObject, ref _lengthCache, _dummyParam);
                 _buf.WriteInt32(len);
-                _lengthCache.Rewind();
-                _lengthCache.Get();  // Hack
+
+                // If the type handler used the length cache, rewind it to skip the first position:
+                // it contains the entire value length which we already have in len.
+                if (_lengthCache.Position > 0)
+                {
+                    _lengthCache.Rewind();
+                    _lengthCache.Position++;
+                }
+
                 asChunking.PrepareWrite(asObject, _buf, _lengthCache, _dummyParam);
                 var directBuf = new DirectBuffer();
                 while (!asChunking.Write(ref directBuf)) {
