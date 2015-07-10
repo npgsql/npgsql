@@ -60,6 +60,7 @@ namespace Npgsql.Tests
 
         [Test, Description("Cancels an async query with the cancellation token")]
         [Timeout(5000)]
+        [Ignore("Not reliable...")]
         public void Cancel()
         {
             var cancellationSource = new CancellationTokenSource();

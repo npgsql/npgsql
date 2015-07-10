@@ -39,12 +39,18 @@ namespace Npgsql.Tests
             }
 
             var data = new byte[10000];
-            int len;
-            using (var inStream = Conn.BeginRawBinaryCopy("COPY data (field_text, field_int4) TO STDIN BINARY"))
+            int len = 0;
+            using (var outStream = Conn.BeginRawBinaryCopy("COPY data (field_text, field_int4) TO STDIN BINARY"))
             {
                 StateAssertions(Conn);
 
-                len = inStream.Read(data, 0, data.Length);
+                while (true) {
+                    var read = outStream.Read(data, len, data.Length - len);
+                    if (read == 0)
+                        break;
+                    len += read;
+                }
+
                 Assert.That(len, Is.GreaterThan(Conn.BufferSize) & Is.LessThan(data.Length));
                 Console.WriteLine("Exported binary dump, length=" + len);
             }
@@ -105,6 +111,44 @@ namespace Npgsql.Tests
                 }
 
                 Assert.That(ExecuteScalar("SELECT COUNT(*) FROM data", conn), Is.EqualTo(0));
+            }
+        }
+
+        [Test]
+        public void ImportLargeValueRaw()
+        {
+            ExecuteNonQuery("CREATE TEMP TABLE data (blob BYTEA)", Conn);
+
+            var data = new byte[Conn.BufferSize + 10];
+            var dump = new byte[Conn.BufferSize + 200];
+            var len = 0;
+
+            // Insert a blob with a regular insert
+            using (var cmd = new NpgsqlCommand("INSERT INTO data (blob) VALUES (@p)", Conn))
+            {
+                cmd.Parameters.AddWithValue("p", data);
+                cmd.ExecuteNonQuery();
+            }
+
+            // Raw dump out
+            using (var outStream = Conn.BeginRawBinaryCopy("COPY data (blob) TO STDIN BINARY"))
+            {
+                while (true)
+                {
+                    var read = outStream.Read(dump, len, dump.Length - len);
+                    if (read == 0)
+                        break;
+                    len += read;
+                }
+                Assert.That(len < dump.Length);
+            }
+
+            ExecuteNonQuery("TRUNCATE data");
+
+            // And raw dump back in
+            using (var inStream = Conn.BeginRawBinaryCopy("COPY data (blob) FROM STDIN BINARY"))
+            {
+                inStream.Write(dump, 0, len);
             }
         }
 
@@ -176,7 +220,7 @@ namespace Npgsql.Tests
 
         [Test]
         [IssueLink("https://github.com/npgsql/npgsql/issues/657")]
-        public void ByteaImport()
+        public void ImportBytea()
         {
             ExecuteNonQuery("CREATE TEMP TABLE data (field BYTEA)", Conn);
 
@@ -189,11 +233,10 @@ namespace Npgsql.Tests
             }
 
             Assert.That(ExecuteScalar("SELECT field FROM data"), Is.EqualTo(data));
-
         }
 
         [Test]
-        public void StringArray()
+        public void ImportStringArray()
         {
             ExecuteNonQuery("CREATE TEMP TABLE data (field TEXT[])", Conn);
 
@@ -209,7 +252,7 @@ namespace Npgsql.Tests
 
         [Test]
         [IssueLink("https://github.com/npgsql/npgsql/issues/662")]
-        public void DirectBuffer()
+        public void ImportDirectBuffer()
         {
             using (var conn = new NpgsqlConnection(ConnectionString))
             {
@@ -228,6 +271,53 @@ namespace Npgsql.Tests
                     writer.Dispose();
                 }
             }
+        }
+
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/661")]
+        [Ignore("Unreliable")]
+        public void UnexpectedExceptionBinaryImport()
+        {
+            var conn = new NpgsqlConnection(ConnectionString);
+            conn.Open();
+            ExecuteNonQuery("CREATE TEMP TABLE data (blob BYTEA)", conn);
+
+            var data = new byte[conn.BufferSize + 10];
+
+            var writer = conn.BeginBinaryImport("COPY data (blob) FROM STDIN BINARY");
+            ExecuteNonQuery(string.Format("SELECT pg_terminate_backend({0})", conn.ProcessID));
+            Thread.Sleep(50);
+            Assert.That(() =>
+            {
+                writer.StartRow();
+                writer.Write(data);
+                writer.Dispose();
+            }, Throws.Exception.TypeOf<IOException>());
+            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+        }
+
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/657")]
+        [Explicit]
+        public void ImportByteaMassive()
+        {
+            ExecuteNonQuery("CREATE TEMP TABLE data (field BYTEA)", Conn);
+
+            const int iterations = 10000;
+            var data = new byte[1024 * 1024];
+
+            using (var writer = Conn.BeginBinaryImport("COPY data (field) FROM STDIN BINARY"))
+            {
+                for (var i = 0; i < iterations; i++)
+                {
+                    if (i % 100 == 0)
+                        Console.WriteLine("Iteration " + i);
+                    writer.StartRow();
+                    writer.Write(data, NpgsqlDbType.Bytea);
+                }
+            }
+
+            Assert.That(ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(iterations));
         }
 
         #endregion
