@@ -20,7 +20,8 @@
     "net45": {
       "frameworkAssemblies": {
         "System": "4.0.0.0",
-        "System.Runtime": "4.0.0.0"
+        "System.Runtime": "4.0.0.0",
+        "System.Linq.Expressions": "4.0.0.0"
       }
     }
   }
