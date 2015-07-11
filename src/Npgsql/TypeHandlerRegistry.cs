@@ -56,6 +56,14 @@ namespace Npgsql
         static readonly Dictionary<Type, DbType> TypeToDbType;
 
         /// <summary>
+        /// Types that aren't to be loaded.
+        /// Currently contains arrays of types without binary I/O.
+        /// </summary>
+        static readonly HashSet<string> IgnoredTypes = new HashSet<string> {
+            "_aclitem", "_ghstore", "_gtsvector"
+        };
+
+        /// <summary>
         /// Caches, for each connection string, the results of the backend type query in the form of a list of type
         /// info structs keyed by the PG name.
         /// Repeated connections to the same connection string reuse the query results and avoid an additional
@@ -136,6 +144,10 @@ namespace Npgsql
 
                         Contract.Assume(backendType.Name != null);
                         Contract.Assume(backendType.OID != 0);
+
+                        if (IgnoredTypes.Contains(backendType.Name)) {
+                            continue;
+                        }
 
                         uint elementOID;
                         var typeChar = dr.GetString(2)[0];
@@ -648,6 +660,14 @@ namespace Npgsql
         internal BackendTypeType Type;
         internal BackendType Element;
         internal BackendType Array;
+
+        /// <summary>
+        /// Returns a string that represents the current object.
+        /// </summary>
+        public override string ToString()
+        {
+            return Name;
+        }
     }
 
     struct TypeAndMapping
