@@ -9,7 +9,6 @@
     "EntityFramework.Relational": "7.0.0-beta6-13675",
     "Npgsql": "3.0.0-alpha-*"
   },
-  "compile": "..\\..\\external\\EntityFramework\\src\\Shared\\*",
   "frameworks": {
     "dnx451": {
       "frameworkAssemblies": {
@@ -20,7 +19,8 @@
     "net45": {
       "frameworkAssemblies": {
         "System": "4.0.0.0",
-        "System.Runtime": "4.0.0.0"
+        "System.Runtime": "4.0.0.0",
+        "System.Linq.Expressions": "4.0.0.0"
       }
     }
   }
