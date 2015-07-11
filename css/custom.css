@@ -22,11 +22,24 @@ header .header-content {
 
 .highlight {
   line-height: normal;
+  margin-bottom: 15px;
 }
 
 h2 {
   margin-top: 10px;
   font-size: 24px;
+}
+
+.row {
+  max-width: 1110px;
+}
+
+#main {
+  width: 80%;
+}
+
+#sidebar {
+  width: 20%;
 }
 
 .content li, .entry-content li {
