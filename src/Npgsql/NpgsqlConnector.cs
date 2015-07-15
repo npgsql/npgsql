@@ -871,7 +871,15 @@ namespace Npgsql
             }
             catch (NpgsqlException)
             {
-                EndUserAction();
+                if (CurrentReader != null)
+                {
+                    // The reader cleanup will call EndUserAction
+                    CurrentReader.Cleanup();
+                }
+                else
+                {
+                    EndUserAction();
+                }
                 throw;
             }
             catch
