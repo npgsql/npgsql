@@ -125,7 +125,7 @@ namespace Npgsql
                 @"JOIN pg_proc ON pg_proc.oid = a.typreceive " +
                 @"LEFT OUTER JOIN pg_type AS b ON (b.oid = a.typelem) " +
                 (connector.SupportsRangeTypes ? @"LEFT OUTER JOIN pg_range ON (pg_range.rngtypid = a.oid) " : "") +
-                @"WHERE a.typtype IN ('b', 'r', 'e') AND (b.typtype IS NULL OR b.typtype IN ('b', 'r', 'e'))" +
+                @"WHERE a.typtype IN ('b', 'r', 'e') AND (b.typtype IS NULL OR b.typtype IN ('b', 'r', 'e')) " +
                 @"ORDER BY ord";
 
             var types = new List<BackendType>();
