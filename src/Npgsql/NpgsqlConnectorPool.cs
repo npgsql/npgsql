@@ -68,7 +68,7 @@ namespace Npgsql
 
         private object locker = new object();
 
-        public NpgsqlConnectorPool()
+        internal NpgsqlConnectorPool()
         {
             PooledConnectors = new Dictionary<string, ConnectorQueue>();
 
@@ -163,7 +163,7 @@ namespace Npgsql
         /// the connector. Its ConnectionString will be used to search the
         /// pool for available connectors.</param>
         /// <returns>A connector object.</returns>
-        public NpgsqlConnector RequestConnector(NpgsqlConnection connection)
+        internal NpgsqlConnector RequestConnector(NpgsqlConnection connection)
         {
             if (connection.MaxPoolSize < connection.MinPoolSize)
                 throw new ArgumentException(string.Format("Connection can't have MaxPoolSize {0} under MinPoolSize {1}", connection.MaxPoolSize, connection.MinPoolSize));
@@ -209,63 +209,6 @@ namespace Npgsql
             StartTimer();
 
             return connector;
-        }
-
-        /// <summary>
-        /// Releases a connector, possibly back to the pool for future use.
-        /// </summary>
-        /// <remarks>
-        /// Pooled connectors will be put back into the pool if there is room.
-        /// </remarks>
-        /// <param name="connection">Connection to which the connector is leased.</param>
-        /// <param name="connector">The connector to release.</param>
-        public async void ReleaseConnector(NpgsqlConnection connection, NpgsqlConnector connector)
-        {
-            //We can only clean up a connector with a reader if the current thread hasn't been aborted
-            //If it has then we need to just close it (ReleasePooledConnector will do this for an aborted thread)
-            if (connector.CurrentReader != null && (Thread.CurrentThread.ThreadState & (ThreadState.Aborted | ThreadState.AbortRequested)) == 0)
-            {
-                // Consume the open reader asynchronously, returning to the user immediately.
-                // However, synchronously "fake close" the reader, this emits the closed event and causes
-                // NpgsqlDataReader.IsClosed to return true
-                try
-                {
-                    await connector.CurrentReader.CloseImmediate();
-                }
-                catch (Exception e)
-                {
-                    Log.Warn("Error while performing async close on connector", e);
-                }
-            }
-
-            if (connector.State == ConnectorState.Copy)
-            {
-                Contract.Assert(connector.CurrentCopyOperation != null);
-
-                // Note: we only want to cancel import operations, since in these cases cancel is safe.
-                // Export cancellations go through the PostgreSQL "asynchronous" cancel mechanism and are
-                // therefore vulnerable to the race condition in #615.
-                if (connector.CurrentCopyOperation is NpgsqlBinaryImporter ||
-                    connector.CurrentCopyOperation is NpgsqlCopyTextWriter ||
-                    (connector.CurrentCopyOperation is NpgsqlRawCopyStream && ((NpgsqlRawCopyStream) connector.CurrentCopyOperation).CanWrite))
-                {
-                    try
-                    {
-                        connector.CurrentCopyOperation.Cancel();
-                    }
-                    catch (Exception e)
-                    {
-                        Log.Warn("Error while cancelling COPY on connector close", e);
-                    }
-                }
-
-                try {
-                    connector.CurrentCopyOperation.Dispose();
-                } catch (Exception e) {
-                    Log.Warn("Error while disposing cancelled COPY on connector close", e);
-                }
-            }
-            UngetConnector(connection, connector);
         }
 
         /// <summary>
@@ -367,14 +310,18 @@ namespace Npgsql
             return Connector;
         }
 
+
         /// <summary>
-        /// Put a pooled connector into the pool queue.
+        /// Releases a connector, possibly back to the pool for future use.
         /// </summary>
-        /// <param name="Connection">Connection <paramref name="Connector"/> is leased to.</param>
-        /// <param name="Connector">Connector to pool</param>
-        private void UngetConnector(NpgsqlConnection Connection, NpgsqlConnector Connector)
+        /// <remarks>
+        /// Pooled connectors will be put back into the pool if there is room.
+        /// </remarks>
+        /// <param name="connection">Connection to which the connector is leased.</param>
+        /// <param name="connector">The connector to release.</param>
+        internal void ReleaseConnector(NpgsqlConnection connection, NpgsqlConnector connector)
         {
-            Contract.Requires(Connector.IsReady || Connector.IsClosed || Connector.IsBroken);
+            Contract.Requires(connector.IsReady || connector.IsClosed || connector.IsBroken);
 
             ConnectorQueue queue;
 
@@ -382,12 +329,12 @@ namespace Npgsql
             // As we are handling all possible queues, we have to lock everything...
             lock (locker)
             {
-                PooledConnectors.TryGetValue(Connection.ConnectionString, out queue);
+                PooledConnectors.TryGetValue(connection.ConnectionString, out queue);
             }
 
             if (queue == null)
             {
-                Connector.Close(); // Release connection to postgres
+                connector.Close(); // Release connection to postgres
                 return; // Queue may be emptied by connection problems. See ClearPool below.
             }
 
@@ -400,36 +347,36 @@ namespace Npgsql
             }
             */
 
-            bool inQueue = queue.Busy.ContainsKey(Connector);
+            bool inQueue = queue.Busy.ContainsKey(connector);
 
-            if (Connector.IsBroken || Connector.IsClosed)
+            if (connector.IsBroken || connector.IsClosed)
             {
-                if (Connector.InTransaction)
+                if (connector.InTransaction)
                 {
-                    Connector.ClearTransaction();
+                    connector.ClearTransaction();
                 }
 
-                Connector.Close();
+                connector.Close();
                 inQueue = false;
             }
             else
             {
-                Contract.Assert(Connector.IsReady);
+                Contract.Assert(connector.IsReady);
 
                 //If thread is good
                 if ((Thread.CurrentThread.ThreadState & (ThreadState.Aborted | ThreadState.AbortRequested)) == 0)
                 {
                     // Release all resources associated with this connector.
                     try {
-                        Connector.Reset();
+                        connector.Reset();
                     } catch {
-                        Connector.Close();
+                        connector.Close();
                         inQueue = false;
                     }
                 } else {
                     //Thread is being aborted, this connection is possibly broken. So kill it rather than returning it to the pool
                     inQueue = false;
-                    Connector.Close();
+                    connector.Close();
                 }
             }
 
@@ -438,17 +385,17 @@ namespace Npgsql
             if (inQueue)
                 lock (queue)
                 {
-                    queue.Busy.Remove(Connector);
-                    queue.Available.Enqueue(Connector);
+                    queue.Busy.Remove(connector);
+                    queue.Available.Enqueue(connector);
                 }
             else
                 lock (queue)
                 {
-                    queue.Busy.Remove(Connector);
+                    queue.Busy.Remove(connector);
                 }
 
-            Connector.ProvideClientCertificatesCallback = null;
-            Connector.UserCertificateValidationCallback = null;
+            connector.ProvideClientCertificatesCallback = null;
+            connector.UserCertificateValidationCallback = null;
         }
 
         private static void ClearQueue(ConnectorQueue Queue)

@@ -618,42 +618,6 @@ namespace Npgsql
             Cleanup();
         }
 
-        /// <summary>
-        /// Special version of close used when a connection is closed with an open reader.
-        /// We don't want to simply close because that would block the user until the open reader
-        /// is consumed, potentially a long process.
-        /// </summary>
-        internal async Task CloseImmediate()
-        {
-            State = ReaderState.Closed;
-            Command.State = CommandState.Idle;
-            _connector.CurrentReader = null;
-
-            if (ReaderClosed != null) {
-                ReaderClosed(this, EventArgs.Empty);
-                ReaderClosed = null;
-            }
-
-            if (IsSchemaOnly) {
-                return;
-            }
-
-            // TODO: Consume asynchronously?
-            if (State != ReaderState.Consumed)
-            {
-                if (_row != null)
-                {
-                    await _row.ConsumeAsync();
-                    _row = null;
-                }
-
-                await SkipUntilAsync(BackendMessageCode.ReadyForQuery);
-            }
-
-            _connector.EndUserAction();
-        }
-
-
         internal void Cleanup()
         {
             if ((_behavior & CommandBehavior.CloseConnection) != 0)
