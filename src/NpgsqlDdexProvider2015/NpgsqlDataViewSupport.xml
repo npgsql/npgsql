@@ -1,0 +1,107 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<DataViewSupport xmlns="http://schemas.microsoft.com/VisualStudio/2007/07/Data/DataViewSupport">
+  <Views>
+    <View name="PostgreSQL_Default">
+      <DisplayName>PostgreSQL Server</DisplayName>
+      <ConnectionNode>
+        <InitialDisplayName>{Root.Server} ({Root.Database})</InitialDisplayName>
+        <Commands>
+          <Command guid="501822E1-B5AF-11d0-B4DC-00A0C91506EF" cmdid="0x3528" provider="884DD964-5327-461f-9F06-6484DD540F8F" />
+        </Commands>
+        <Children>
+          <StaticNode>
+            <DisplayName resource="Node_Schemata" />
+            <Icon name="Folder" />
+            <Children>
+              <Selection type="Schemata" restrictions="{Root.Database}">
+                <SelectionNode nodeId="Schema">
+                  <DisplayName>{schema_name}</DisplayName>
+                  <Icon name="Database" />
+                  <Children>
+                    <StaticNode>
+                      <DisplayName resource="Node_Tables" />
+                      <Icon name="Folder" />
+                      <Commands>
+                        <Command guid="501822E1-B5AF-11d0-B4DC-00A0C91506EF" cmdid="0x3528" provider="884DD964-5327-461f-9F06-6484DD540F8F" />
+                      </Commands>
+                      <Children>
+                        <Selection type="Tables" restrictions="{Root.Database},{Schema.schema_name}">
+                          <SelectionNode nodeId="Table">
+                            <DisplayName>{table_name}</DisplayName>
+                            <Icon name="Table" />
+                            <Commands>
+                              <Command guid="501822E1-B5AF-11d0-B4DC-00A0C91506EF" cmdid="0x3060" provider="884DD964-5327-461f-9F06-6484DD540F8F" />
+                            </Commands>
+                            <Children>
+                              <StaticNode>
+                                <DisplayName resource="Node_Columns" />
+                                <Icon name="Folder" />
+                                <Children>
+                                  <Selection type="Columns" restrictions="{Root.Database},{Table.table_schema},{Table.table_name}">
+                                    <SelectionNode>
+                                      <DisplayName>{column_name}</DisplayName>
+                                      <Icon name="Column" />
+                                    </SelectionNode>
+                                  </Selection>
+                                </Children>
+                              </StaticNode>
+                              <StaticNode>
+                                <DisplayName resource="Node_Constraints" />
+                                <Icon name="Folder" />
+                                <Children>
+                                  <Selection type="Constraints" restrictions="{Root.Database},{Table.table_schema},{Table.table_name}" filter="constraint_type &lt;&gt; 'CHECK'">
+                                    <SelectionNode>
+                                      <DisplayName>{constraint_name}</DisplayName>
+                                      <Icon name="PrimaryKey" when="{constraint_type} = 'PRIMARY KEY'" />
+                                      <Icon name="UniqueKey" when="{constraint_type} = 'UNIQUE'" />
+                                      <Icon name="ForeignKey" when="{constraint_type} = 'FOREIGN KEY'" />
+                                      <Icon name="CheckConstraint" when="{constraint_type} = 'CHECK'" />
+                                    </SelectionNode>
+                                  </Selection>
+                                </Children>
+                              </StaticNode>
+                            </Children>
+                          </SelectionNode>
+                        </Selection>
+                      </Children>
+                    </StaticNode>
+                    <StaticNode>
+                      <DisplayName resource="Node_Views" />
+                      <Icon name="Folder" />
+                      <Children>
+                        <Selection type="Views" restrictions="{Root.Database},{Schema.schema_name}">
+                          <SelectionNode nodeId="View">
+                            <DisplayName>{table_name}</DisplayName>
+                            <Icon name="View" />
+                            <Commands>
+                              <Command guid="501822E1-B5AF-11d0-B4DC-00A0C91506EF" cmdid="0x3060" provider="884DD964-5327-461f-9F06-6484DD540F8F" />
+                            </Commands>
+                            <Children>
+                              <StaticNode>
+                                <DisplayName resource="Node_Columns" />
+                                <Icon name="Folder" />
+                                <Children>
+                                  <Selection type="ViewColumns" restrictions="{Root.Database},{View.table_schema},{View.table_name}">
+                                    <SelectionNode>
+                                      <DisplayName>{column_name}</DisplayName>
+                                      <Icon name="Column" />
+                                    </SelectionNode>
+                                  </Selection>
+                                </Children>
+                              </StaticNode>
+                            </Children>
+                          </SelectionNode>
+                        </Selection>
+                      </Children>
+                    </StaticNode>
+                  </Children>
+                </SelectionNode>
+              </Selection>
+            </Children>
+          </StaticNode>
+        </Children>
+      </ConnectionNode>
+    </View>
+  </Views>
+  <Resources baseName="Npgsql.VisualStudio.Provider.Resources" />
+</DataViewSupport>

@@ -1,0 +1,504 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<DataObjectSupport xmlns="http://schemas.microsoft.com/VisualStudio/2007/07/Data/DataObjectSupport">
+  <Types>
+    <RootType>
+      <Properties>
+        <Property name="Server" type="System.String"/>
+        <Property name="Database" type="System.String"/>
+      </Properties>
+      <Services>
+        <Service type="IVsDataObjectSelector" implementationType="Microsoft.VisualStudio.Data.Framework.AdoDotNet.AdoDotNetRootObjectSelector">
+          <Parameters method="SelectObjects">
+            <Parameter />
+          </Parameters>
+        </Service>
+      </Services>
+    </RootType>
+    <Type name="Schemata" preferredOrdering="catalog_name,schema_name">
+      <Identifier>
+        <Part name="catalog_name" />
+        <Part name="schema_name" />
+      </Identifier>
+      <Properties>
+        <Property name="catalog_name" isIdentifierPart="true" />
+        <Property name="schema_name" isIdentifierPart="true" />
+      </Properties>
+      <Services>
+        <Service type="IVsDataObjectSelector" implementationType="Microsoft.VisualStudio.Data.Framework.AdoDotNet.AdoDotNetObjectSelector">
+          <Parameters method="SelectObjects">
+            <Parameter value="Schemata" />
+          </Parameters>
+        </Service>
+      </Services>
+    </Type>
+    <Type name="Tables" preferredOrdering="table_catalog,table_schema,table_name">
+      <Identifier>
+        <Part name="table_catalog" />
+        <Part name="table_schema" />
+        <Part name="table_name" />
+      </Identifier>
+      <Properties>
+        <Property name="table_catalog" isIdentifierPart="true" />
+        <Property name="table_schema" isIdentifierPart="true" />
+        <Property name="table_name" isIdentifierPart="true" />
+        <Property name="table_type" />
+      </Properties>
+      <Services>
+        <Service type="IVsDataObjectSelector" implementationType="Microsoft.VisualStudio.Data.Framework.AdoDotNet.AdoDotNetObjectSelector">
+          <Parameters method="SelectObjects">
+            <Parameter value="Tables" />
+          </Parameters>
+        </Service>
+        <Service type="IDSRefBuilder" implementationType="Microsoft.VisualStudio.Data.Framework.DSRefBuilder">
+          <Parameters method="AppendToDSRef">
+            <Parameter>
+              <Parameter value="{2}" />
+              <Parameter value="{1}" />
+              <Parameter value="Table" />
+              <Parameter />
+              <Parameter>
+                <Parameter value="39A5A7E7-513F-44a4-B79D-7652CD8962D9">
+                  <Parameter value="101" type="System.Int32" />
+                </Parameter>
+              </Parameter>
+            </Parameter>
+          </Parameters>
+        </Service>
+      </Services>
+    </Type>
+    <Type name="Columns" preferredOrdering="table_catalog,table_schema,table_name,ordinal_position">
+      <Identifier>
+        <Part name="table_catalog" />
+        <Part name="table_schema" />
+        <Part name="table_name" />
+        <Part name="column_name" />
+      </Identifier>
+      <Properties>
+        <Property name="table_catalog" isIdentifierPart="true" />
+        <Property name="table_schema" isIdentifierPart="true" />
+        <Property name="table_name" isIdentifierPart="true" />
+        <Property name="column_name" isIdentifierPart="true" />
+        <Property name="ordinal_position" type="System.Int32" />
+        <Property name="column_default" />
+        <Property name="is_nullable" />
+        <Property name="data_type" />
+        <Property name="character_maximum_length" type="System.Int32" />
+        <Property name="character_octet_length" type="System.Int32" />
+        <Property name="numeric_precision" type="System.Int32" />
+        <Property name="numeric_precision_radix" type="System.Int32" />
+        <Property name="numeric_scale" type="System.Int32" />
+        <Property name="datetime_precision" type="System.Int32" />
+      </Properties>
+      <Services>
+        <Service type="IVsDataObjectSelector" implementationType="Microsoft.VisualStudio.Data.Framework.AdoDotNet.AdoDotNetObjectSelector">
+          <Parameters method="SelectObjects">
+            <Parameter value="Columns" />
+          </Parameters>
+        </Service>
+        <Service type="IDSRefBuilder" implementationType="Microsoft.VisualStudio.Data.Framework.DSRefBuilder">
+          <Parameters method="AppendToDSRef">
+            <Parameter>
+              <Parameter value="{2}" />
+              <Parameter value="{1}" />
+              <Parameter value="Table" />
+              <Parameter />
+              <Parameter>
+                <Parameter value="39A5A7E7-513F-44A4-B79D-7652CD8962D9">
+                  <Parameter value="101" type="System.Int32" />
+                </Parameter>
+              </Parameter>
+              <Parameter>
+                <Parameter>
+                  <Parameter value="{3}" />
+                  <Parameter />
+                  <Parameter value="Field" />
+                  <Parameter />
+                  <Parameter>
+                    <Parameter value="39A5A7E7-513F-44A4-B79D-7652CD8962D9">
+                      <Parameter value="102" type="System.Int32" />
+                    </Parameter>
+                  </Parameter>
+                </Parameter>
+              </Parameter>
+            </Parameter>
+          </Parameters>
+        </Service>
+      </Services>
+    </Type>
+    <Type name="Constraints" preferredOrdering="table_catalog,table_schema,table_name">
+      <Identifier>
+        <Part name="TABLE_CATALOG" />
+        <Part name="TABLE_SCHEMA" />
+        <Part name="TABLE_NAME" />
+        <Part name="CONSTRAINT_NAME" />
+      </Identifier>
+      <Properties>
+        <Property name="CONSTRAINT_CATALOG" />
+        <Property name="CONSTRAINT_SCHEMA" />
+        <Property name="CONSTRAINT_NAME" isIdentifierPart="true" />
+        <Property name="TABLE_CATALOG" isIdentifierPart="true" />
+        <Property name="TABLE_SCHEMA" isIdentifierPart="true" />
+        <Property name="TABLE_NAME" isIdentifierPart="true" />
+        <Property name="CONSTRAINT_TYPE" />
+        <Property name="IS_DEFERRABLE" />
+        <Property name="INITIALLY_DEFERRED" />
+      </Properties>
+      <Services>
+        <Service type="IVsDataObjectSelector" implementationType="Microsoft.VisualStudio.Data.Framework.AdoDotNet.AdoDotNetObjectSelector">
+          <Parameters method="SelectObjects">
+            <Parameter value="Constraints" />
+          </Parameters>
+        </Service>
+        <Service type="IDSRefBuilder" implementationType="Microsoft.VisualStudio.Data.Framework.DSRefBuilder">
+          <Parameters method="AppendToDSRef">
+            <Parameter>
+              <Parameter value="{2}" />
+              <Parameter value="{1}" />
+              <Parameter value="Table" />
+              <Parameter />
+              <Parameter>
+                <Parameter value="39A5A7E7-513F-44A4-B79D-7652CD8962D9">
+                  <Parameter value="101" type="System.Int32" />
+                </Parameter>
+              </Parameter>
+              <Parameter>
+                <Parameter>
+                  <Parameter value="{3}" />
+                  <Parameter />
+                  <Parameter value="Index" />
+                </Parameter>
+              </Parameter>  
+            </Parameter>
+          </Parameters>
+        </Service>
+      </Services>
+    </Type>
+    <Type name="ConstraintColumns">
+      <Identifier>
+        <Part name="table_catalog" />
+        <Part name="table_schema" />
+        <Part name="table_name" />
+        <Part name="column_name" />
+        <Part name="constraint_catalog" />
+        <Part name="constraint_schema" />
+        <Part name="constraint_name" />
+      </Identifier>
+      <Properties>
+        <Property name="table_catalog" isIdentifierPart="true" />
+        <Property name="table_schema" isIdentifierPart="true" />
+        <Property name="table_name" isIdentifierPart="true" />
+        <Property name="column_name" isIdentifierPart="true" />
+        <Property name="ordinal_position" type="System.Int32" />
+        <Property name="constraint_type" />
+        <Property name="constraint_catalog" isIdentifierPart="true" />
+        <Property name="constraint_schema" isIdentifierPart="true" />
+        <Property name="constraint_name" isIdentifierPart="true" />
+      </Properties>
+      <Services>
+        <Service type="IVsDataObjectSelector" implementationType="Microsoft.VisualStudio.Data.Framework.AdoDotNet.AdoDotNetObjectSelector">
+          <Parameters method="SelectObjects">
+            <Parameter value="ConstraintColumns" />
+          </Parameters>
+        </Service>
+        <Service type="IDSRefBuilder" implementationType="Microsoft.VisualStudio.Data.Framework.DSRefBuilder">
+          <Parameters method="AppendToDSRef">
+            <Parameter>
+              <Parameter value="{2}" />
+              <Parameter value="{1}" />
+              <Parameter value="Table" />
+              <Parameter />
+              <Parameter>
+                <Parameter value="39A5A7E7-513F-44A4-B79D-7652CD8962D9">
+                  <Parameter value="101" type="System.Int32" />
+                </Parameter>
+              </Parameter>
+              <Parameter>
+                <Parameter>
+                  <Parameter value="{6}" />
+                  <Parameter />
+                  <Parameter value="Index" />
+                  <Parameter />
+                  <Parameter />
+                  <Parameter>
+                    <Parameter>
+                      <Parameter value="{3}" />
+                      <Parameter />
+                      <Parameter value="Field" />
+                    </Parameter>
+                  </Parameter>
+                </Parameter>
+              </Parameter>
+            </Parameter>
+          </Parameters>
+        </Service>
+      </Services>
+    </Type>
+    <Type name="Views" preferredOrdering="table_catalog,table_schema,table_name">
+      <Identifier>
+        <Part name="table_catalog" />
+        <Part name="table_schema" />
+        <Part name="table_name" />
+      </Identifier>
+      <Properties>
+        <Property name="table_catalog" isIdentifierPart="true" />
+        <Property name="table_schema" isIdentifierPart="true" />
+        <Property name="table_name" isIdentifierPart="true" />
+      </Properties>
+      <Services>
+        <Service type="IVsDataObjectSelector" implementationType="Microsoft.VisualStudio.Data.Framework.AdoDotNet.AdoDotNetObjectSelector">
+          <Parameters method="SelectObjects">
+            <Parameter value="Views" />
+          </Parameters>
+        </Service>
+        <Service type="IDSRefBuilder" implementationType="Microsoft.VisualStudio.Data.Framework.DSRefBuilder">
+          <Parameters method="AppendToDSRef">
+            <Parameter>
+              <Parameter value="{2}" />
+              <Parameter value="{1}" />
+              <Parameter value="View" />
+              <Parameter />
+              <Parameter>
+                <Parameter value="39A5A7E7-513F-44A4-B79D-7652CD8962D9">
+                  <Parameter value="301" type="System.Int32" />
+                </Parameter>
+              </Parameter>  
+            </Parameter>
+          </Parameters>
+        </Service>
+      </Services>
+    </Type>
+    <Type name="ViewColumns" preferredOrdering="table_catalog,table_schema,table_name,ordinal_position">
+      <Identifier>
+        <Part name="table_catalog" />
+        <Part name="table_schema" />
+        <Part name="table_name" />
+        <Part name="column_name" />
+      </Identifier>
+      <Properties>
+        <Property name="table_catalog" isIdentifierPart="true" />
+        <Property name="table_schema" isIdentifierPart="true" />
+        <Property name="table_name" isIdentifierPart="true" />
+        <Property name="column_name" isIdentifierPart="true" />
+        <Property name="ordinal_position" type="System.Int32" />
+        <Property name="column_default" />
+        <Property name="is_nullable" />
+        <Property name="data_type" />
+        <Property name="character_maximum_length" type="System.Int32" />
+        <Property name="character_octet_length" type="System.Int32" />
+        <Property name="numeric_precision" type="System.Int32" />
+        <Property name="numeric_precision_radix" type="System.Int32" />
+        <Property name="numeric_scale" type="System.Int32" />
+        <Property name="datetime_precision" type="System.Int32" />
+      </Properties>
+      <Services>
+        <Service type="IVsDataObjectSelector" implementationType="Microsoft.VisualStudio.Data.Framework.AdoDotNet.AdoDotNetObjectSelector">
+          <Parameters method="SelectObjects">
+            <Parameter value="Columns" />
+          </Parameters>
+        </Service>
+        <Service type="IDSRefBuilder" implementationType="Microsoft.VisualStudio.Data.Framework.DSRefBuilder">
+          <Parameters method="AppendToDSRef">
+            <Parameter>
+              <Parameter value="{2}" />
+              <Parameter value="{1}" />
+              <Parameter value="View" />
+              <Parameter />
+              <Parameter>
+                <Parameter value="39A5A7E7-513F-44A4-B79D-7652CD8962D9">
+                  <Parameter value="301" type="System.Int32" />
+                </Parameter>
+              </Parameter>
+              <Parameter>
+                <Parameter>
+                  <Parameter value="{3}" />
+                  <Parameter />
+                  <Parameter value="Field" />
+                  <Parameter />
+                  <Parameter>
+                    <Parameter value="39A5A7E7-513F-44A4-B79D-7652CD8962D9">
+                      <Parameter value="302" type="System.Int32" />
+                    </Parameter>
+                  </Parameter>
+                </Parameter>
+              </Parameter>
+            </Parameter>
+          </Parameters>
+        </Service>
+      </Services>
+    </Type>
+  </Types>
+  <MappedTypes>
+    <MappedType name="Table" underlyingType="Tables">
+      <Selection restrictions="{Catalog},{Schema},{Name}"/>
+      <Identifier>
+        <Part name="Catalog" underlyingMember="table_catalog" />
+        <Part name="Schema" underlyingMember="table_schema" />
+        <Part name="Name" underlyingMember="table_name" />
+      </Identifier>
+      <Properties>
+        <Property name="Name" isIdentifierPart="true" />
+        <Property name="Schema" isIdentifierPart="true" />
+        <Property name="Type">
+          <Conversion>
+            <Calculate expr="'USER'" exprType="System.String" />
+          </Conversion>
+        </Property>
+      </Properties>
+    </MappedType>
+    <MappedType name="TableColumn" underlyingType="Columns">
+      <Selection restrictions="{Catalog},{Schema},{Table},{Name}" />
+      <Identifier>
+        <Part name="Catalog" underlyingMember="table_catalog" />
+        <Part name="Schema" underlyingMember="table_schema" />
+        <Part name="Table" underlyingMember="table_name" />
+        <Part name="Name" underlyingMember="column_name" />
+      </Identifier>
+      <Properties>
+        <Property name="Name" isIdentifierPart="true" />
+        <Property name="Ordinal" underlyingMember="ordinal_position" />
+        <Property name="NativeDataType" underlyingMember="data_type" />
+        <Property name="AdoDotNetDataType" underlyingMember="data_type">
+          <Conversion>
+            <CallMapper implementationType="Microsoft.VisualStudio.Data.Framework.AdoDotNet.AdoDotNetMappedObjectConverter" />
+          </Conversion>
+        </Property>
+        <Property name="AdoDotNetDbType" underlyingMember="data_type">
+          <Conversion>
+            <CallMapper />
+          </Conversion>
+        </Property>
+        <Property name="FrameworkDataType" underlyingMember="data_type">
+          <Conversion>
+            <CallMapper />
+          </Conversion>
+        </Property>
+        <Property name="Length" underlyingMember="character_maximum_length" />
+        <Property name="Precision" underlyingMember="numeric_precision" />
+        <Property name="Scale" underlyingMember="numeric_scale" />
+        <Property name="IsNullable" underlyingMember="is_nullable">
+          <Conversion>
+            <Calculate expr="IIF({0} = 'YES', true, false)" exprType="System.Boolean" />
+          </Conversion>
+        </Property>
+        <Property name="DefaultValue" underlyingMember="column_default" />
+      </Properties>
+    </MappedType>
+    <MappedType name="TableUniqueKey" underlyingType="Constraints">
+      <Selection restrictions="{Catalog}, {Schema}, {Table}, {Name}" filter="constraint_type IN ('PRIMARY KEY', 'UNIQUE')"/>
+      <Identifier>
+        <Part name="Catalog" underlyingMember="table_catalog" />
+        <Part name="Schema" underlyingMember="table_schema" />
+        <Part name="Table" underlyingMember="table_name" />
+        <Part name="Name" underlyingMember="constraint_name" />
+      </Identifier>
+      <Properties>
+        <Property name="Name" isIdentifierPart="true" />
+        <Property name="IsPrimary" underlyingMember="constraint_type">
+          <Conversion>
+            <Calculate expr="IIF({0} = 'PRIMARY KEY', true, false)" exprType="System.Boolean" />
+          </Conversion>
+        </Property>
+      </Properties>
+    </MappedType>
+    <MappedType name="TableUniqueKeyColumn" underlyingType="ConstraintColumns">
+      <Selection restrictions="{Catalog}, {Schema}, {Table}, {UniqueKey}, {Name}" filter="constraint_type IN ('PRIMARY KEY', 'UNIQUE')" />
+      <Identifier>
+        <Part name="Catalog" underlyingMember="table_catalog" />
+        <Part name="Schema" underlyingMember="table_schema" />
+        <Part name="Table" underlyingMember="table_name" />
+        <Part name="UniqueKey" underlyingMember="constraint_name" />
+        <Part name="Name" underlyingMember="column_name" />
+      </Identifier>
+      <Properties>
+        <Property name="Name" isIdentifierPart="true" />
+        <Property name="Ordinal" underlyingMember="ordinal_position" />
+      </Properties>
+    </MappedType>
+    <MappedType name="TableForeignKey" underlyingType="Constraints">
+      <Selection restrictions="{Catalog}, {Schema}, {Table}, {Name}"  filter="constraint_type = 'FOREIGN KEY'" />
+      <Identifier>
+        <Part name="Catalog" underlyingMember="table_catalog" />
+        <Part name="Schema" underlyingMember="table_schema" />
+        <Part name="Table" underlyingMember="table_name" />
+        <Part name="Name" underlyingMember="constraint_name" />
+      </Identifier>
+      <Properties>
+        <Property name="Name" isIdentifierPart="true" />
+      </Properties>
+    </MappedType>
+    <MappedType name="TableForeignKeyColumn" underlyingType="ConstraintColumns">
+      <Selection restrictions="{Catalog}, {Schema}, {Table}, {TableForeignKey}, {Name}" />
+      <Identifier>
+        <Part name="Catalog" underlyingMember="table_catalog" />
+        <Part name="Schema" underlyingMember="table_schema" />
+        <Part name="Table" underlyingMember="table_name" />
+        <Part name="TableForeignKey" underlyingMember="constraint_name" />
+        <Part name="Name" underlyingMember="column_name" />
+      </Identifier>
+      <Properties>
+        <Property name="Name" isIdentifierPart="true" />
+        <Property name="Ordinal" underlyingMember="ordinal_position" />
+        <!--Property name="ReferencedColumn">
+          <Conversion>
+            <CallMapper implementationType="" />
+          </Conversion>
+        </Property-->
+      </Properties>
+    </MappedType>
+    <MappedType name="View" underlyingType="Views">
+      <Selection restrictions="{Catalog},{Schema},{Name}" />
+      <Identifier>
+        <Part name="Catalog" underlyingMember="table_catalog" />
+        <Part name="Schema" underlyingMember="table_schema" />
+        <Part name="Name" underlyingMember="table_name" />
+      </Identifier>
+      <Properties>
+        <Property name="Name" isIdentifierPart="true" />
+        <Property name="Schema" isIdentifierPart="true" />
+        <Property name="Type">
+          <Conversion>
+            <Calculate expr="'USER'" exprType="System.String" />
+          </Conversion>
+        </Property>
+      </Properties>
+    </MappedType>
+    <MappedType name="ViewColumn" underlyingType="Columns">
+      <Selection restrictions="{Catalog},{Schema},{View},{Name}" />
+      <Identifier>
+        <Part name="Catalog" underlyingMember="table_catalog" />
+        <Part name="Schema" underlyingMember="table_schema" />
+        <Part name="View" underlyingMember="table_name" />
+        <Part name="Name" underlyingMember="column_name" />
+      </Identifier>
+      <Properties>
+        <Property name="Name" isIdentifierPart="true" />
+        <Property name="Ordinal" underlyingMember="ordinal_position" />
+        <Property name="NativeDataType" underlyingMember="data_type" />
+        <Property name="AdoDotNetDataType" underlyingMember="data_type">
+          <Conversion>
+            <CallMapper implementationType="Microsoft.VisualStudio.Data.Framework.AdoDotNet.AdoDotNetMappedObjectConverter" />
+          </Conversion>
+        </Property>
+        <Property name="AdoDotNetDbType" underlyingMember="data_type">
+          <Conversion>
+            <CallMapper />
+          </Conversion>
+        </Property>
+        <Property name="FrameworkDataType" underlyingMember="data_type">
+          <Conversion>
+            <CallMapper />
+          </Conversion>
+        </Property>
+        <Property name="Length" underlyingMember="character_maximum_length" />
+        <Property name="Precision" underlyingMember="numeric_precision" />
+        <Property name="Scale" underlyingMember="numeric_scale" />
+        <Property name="IsNullable" underlyingMember="is_nullable">
+          <Conversion>
+            <Calculate expr="IIF({0} = 'YES', true, false)" exprType="System.Boolean" />
+          </Conversion>
+        </Property>
+        <Property name="DefaultValue" underlyingMember="column_default" />
+      </Properties>
+    </MappedType>
+  </MappedTypes>
+</DataObjectSupport>
