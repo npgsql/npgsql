@@ -604,6 +604,7 @@ namespace Npgsql
                 // exception thrown from a type handler. Or if the connection was closed while the reader
                 // was still open
                 State = ReaderState.Closed;
+                Command.State = CommandState.Idle;
                 if (ReaderClosed != null) {
                     ReaderClosed(this, EventArgs.Empty);
                 }
@@ -613,19 +614,8 @@ namespace Npgsql
             if (State != ReaderState.Consumed) {
                 Consume();
             }
-            if ((_behavior & CommandBehavior.CloseConnection) != 0) {
-                _connection.Close();
-            }
 
-            State = ReaderState.Closed;
-            Command.State = CommandState.Idle;
-            _connector.CurrentReader = null;
-            _connector.EndUserAction();
-
-            if (ReaderClosed != null) {
-                ReaderClosed(this, EventArgs.Empty);
-                ReaderClosed = null;
-            }
+            Cleanup();
         }
 
         /// <summary>
@@ -661,6 +651,26 @@ namespace Npgsql
             }
 
             _connector.EndUserAction();
+        }
+
+
+        internal void Cleanup()
+        {
+            if ((_behavior & CommandBehavior.CloseConnection) != 0)
+            {
+                _connection.Close();
+            }
+
+            State = ReaderState.Closed;
+            Command.State = CommandState.Idle;
+            _connector.CurrentReader = null;
+            _connector.EndUserAction();
+
+            if (ReaderClosed != null)
+            {
+                ReaderClosed(this, EventArgs.Empty);
+                ReaderClosed = null;
+            }
         }
 
         #endregion
