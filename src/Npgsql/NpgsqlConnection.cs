@@ -32,6 +32,7 @@ using System.Net.Security;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using System.Threading;
 #if !DNXCORE50
 using System.Transactions;
 #endif
@@ -572,6 +573,8 @@ namespace Npgsql
             Connector.Notification -= NotificationDelegate;
             Connector.Notice -= NoticeDelegate;
 
+            CloseOngoingOperations();
+
             if (Pooling)
             {
                 NpgsqlConnectorPool.ConnectorPoolMgr.ReleaseConnector(this, Connector);
@@ -587,6 +590,53 @@ namespace Npgsql
             Connector = null;
 
             OnStateChange(new StateChangeEventArgs(ConnectionState.Open, ConnectionState.Closed));
+        }
+
+        /// <summary>
+        /// Closes ongoing operations, i.e. an open reader exists or a COPY operation still in progress, as
+        /// part of a connection close.
+        /// Does nothing if the thread has been aborted - the connector will be closed immediately.
+        /// </summary>
+        void CloseOngoingOperations()
+        {
+            if ((Thread.CurrentThread.ThreadState & (ThreadState.Aborted | ThreadState.AbortRequested)) != 0) {
+                return;
+            }
+
+            if (Connector.CurrentReader != null)
+            {
+                Connector.CurrentReader.Close();
+            }
+            else if (Connector.State == ConnectorState.Copy)
+            {
+                Contract.Assert(Connector.CurrentCopyOperation != null);
+
+                // Note: we only want to cancel import operations, since in these cases cancel is safe.
+                // Export cancellations go through the PostgreSQL "asynchronous" cancel mechanism and are
+                // therefore vulnerable to the race condition in #615.
+                if (Connector.CurrentCopyOperation is NpgsqlBinaryImporter ||
+                    Connector.CurrentCopyOperation is NpgsqlCopyTextWriter ||
+                    (Connector.CurrentCopyOperation is NpgsqlRawCopyStream && ((NpgsqlRawCopyStream)Connector.CurrentCopyOperation).CanWrite))
+                {
+                    try
+                    {
+                        Connector.CurrentCopyOperation.Cancel();
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Warn("Error while cancelling COPY on connector close", e);
+                    }
+                }
+
+                try
+                {
+                    Connector.CurrentCopyOperation.Dispose();
+                }
+                catch (Exception e)
+                {
+                    Log.Warn("Error while disposing cancelled COPY on connector close", e);
+                }
+            }
         }
 
         /// <summary>
