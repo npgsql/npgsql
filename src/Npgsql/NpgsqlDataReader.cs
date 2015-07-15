@@ -305,7 +305,7 @@ namespace Npgsql
         bool NextResultInternal()
         {
             Contract.Requires(!IsSchemaOnly);
-            Contract.Ensures(Command.CommandType != CommandType.StoredProcedure || Contract.Result<bool>() == false);
+            // Contract.Ensures(Command.CommandType != CommandType.StoredProcedure || Contract.Result<bool>() == false);
 
             try
             {
