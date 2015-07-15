@@ -33,6 +33,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Diagnostics.Contracts;
+using System.Net.Sockets;
 using AsyncRewriter;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
@@ -1025,7 +1026,11 @@ namespace Npgsql
             }
             catch (Exception e)
             {
-                Log.Warn("Exception caught while attempting to cancel command", e, connector.Id);
+                var socketException = e.InnerException as SocketException;
+                if (socketException == null || socketException.SocketErrorCode != SocketError.ConnectionReset)
+                {
+                    Log.Warn("Exception caught while attempting to cancel command", e, connector.Id);
+                }
             }
         }
 
