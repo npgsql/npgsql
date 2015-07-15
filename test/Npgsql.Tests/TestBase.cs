@@ -188,7 +188,7 @@ namespace Npgsql.Tests
         {
             var config = new LoggingConfiguration();
             var consoleTarget = new ConsoleTarget();
-            consoleTarget.Layout = @"${message}";
+            consoleTarget.Layout = @"${message} ${exception:format=tostring}";
             config.AddTarget("console", consoleTarget);
             var rule = new LoggingRule("*", NLog.LogLevel.Debug, consoleTarget);
             config.LoggingRules.Add(rule);
