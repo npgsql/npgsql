@@ -47,6 +47,6 @@ This will help future searches for the history of the files. Note that you stil 
 [1]: http://www.npgsql.org/  "Official site"
 [2]: https://github.com/npgsql/Npgsql/  "Npgsql source code @ GitHub"
 [3]: http://www.nuget.org/packages/Npgsql/ "Npgsql @ Nuget Gallery"
-[4]: https://github.com/npgsql/Npgsql/wiki/  "Wiki"
+[4]: http://www.npgsql.org/doc/manual-2.2.html  "Wiki"
 [5]: https://github.com/npgsql/Npgsql/commit/d7beea23f3407b38747cde05568a59ac87cdd121#diff-3b02da674650ba0f31603c365249f34f
 [6]: http://stackoverflow.com/questions/17213046/see-history-in-github-after-folder-rename
