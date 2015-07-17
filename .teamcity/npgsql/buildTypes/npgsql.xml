@@ -11,7 +11,6 @@
     </options>
     <disabled-settings>
       <setting-ref ref="RUNNER_23" />
-      <setting-ref ref="swabra" />
     </disabled-settings>
     <parameters>
       <param name="MONO_PREFIX" value="C:\Program Files (x86)\mono" />
@@ -162,15 +161,6 @@ src/EntityFramework7.Npgsql/bin/Release/*.nupkg]]></param>
         </parameters>
       </build-trigger>
     </build-triggers>
-    <build-extensions>
-      <extension id="swabra" type="swabra">
-        <parameters>
-          <param name="swabra.enabled" value="swabra.before.build" />
-          <param name="swabra.processes" value="report" />
-          <param name="swabra.strict" value="true" />
-        </parameters>
-      </extension>
-    </build-extensions>
     <cleanup />
   </settings>
 </build-type>
