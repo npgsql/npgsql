@@ -16,9 +16,9 @@
     <tags>npgsql postgresql postgres data database sql ado ado.net</tags>
   </metadata>
   <files>
-    <file src="bin\Release\**\*.dll" target="lib\net45" exclude="**\policy.*" />
-    <file src="bin\Release\*.pdb" target="lib\net45"/>
-    <file src="bin\Release\*.xml" target="lib\net45"/>
+    <file src="bin\Release\Npgsql.dll" target="lib\net45"/>
+    <file src="bin\Release\Npgsql.pdb" target="lib\net45"/>
+    <file src="bin\Release\Npgsql.xml" target="lib\net45"/>
     <file src="**\*.cs" target="src" />
   </files>
 </package>
