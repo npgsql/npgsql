@@ -161,6 +161,17 @@ src/EntityFramework7.Npgsql/bin/Release/*.nupkg]]></param>
         </parameters>
       </build-trigger>
     </build-triggers>
+    <build-extensions>
+      <extension id="BUILD_EXT_1" type="teamcity.github.status">
+        <parameters>
+          <param name="guthub_host" value="https://api.github.com" />
+          <param name="guthub_owner" value="npgsql" />
+          <param name="guthub_repo" value="npgsql" />
+          <param name="guthub_username" value="npgsql-teamcity" />
+          <param name="secure:guthub_username" value="zxx9b1a45147d7e64e7775d03cbe80d301b" />
+        </parameters>
+      </extension>
+    </build-extensions>
     <cleanup />
   </settings>
 </build-type>
