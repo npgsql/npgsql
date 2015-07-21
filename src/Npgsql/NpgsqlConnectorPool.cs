@@ -64,8 +64,6 @@ namespace Npgsql
         /// </summary>
         internal const int PoolSizeLimit = 1024;
 
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
-
         private object locker = new object();
 
         internal NpgsqlConnectorPool()
