@@ -76,7 +76,10 @@ namespace Npgsql.BackendMessages
 
             case "SELECT":
                 StatementType = StatementType.Select;
-                ParseRows(tokens[1]);
+                // PostgreSQL 8.4 and below doesn't include the number of rows
+                if (tokens.Length > 1) {
+                    ParseRows(tokens[1]);
+                }
                 break;
 
             case "MOVE":
