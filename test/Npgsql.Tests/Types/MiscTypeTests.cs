@@ -167,12 +167,17 @@ namespace Npgsql.Tests.Types
         [MinPgVersion(9, 4, 0, "JSONB data type not yet introduced")]
         public void Jsonb()
         {
-            const string expected = @"{""Key"": ""Value""}";
-            using (var cmd = new NpgsqlCommand("SELECT @p", Conn)) {
-                cmd.Parameters.AddWithValue("p", NpgsqlDbType.Jsonb, expected);
+            var sb = new StringBuilder();
+            sb.Append(@"{""Key"": """);
+            sb.Append('x', Conn.BufferSize);
+            sb.Append(@"""}");
+            var value = sb.ToString();
+            using (var cmd = new NpgsqlCommand("SELECT @p", Conn))
+            {
+                cmd.Parameters.AddWithValue("p", NpgsqlDbType.Jsonb, value);
                 var reader = cmd.ExecuteReader();
                 reader.Read();
-                Assert.That(reader.GetString(0), Is.EqualTo(expected));
+                Assert.That(reader.GetString(0), Is.EqualTo(value));
                 Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(string)));
                 reader.Close();
             }

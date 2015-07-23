@@ -66,11 +66,11 @@ namespace Npgsql.TypeHandlers
                 lengthCache = new LengthCache(1);
             }
             if (lengthCache.IsPopulated) {
-                return lengthCache.Get();
+                return lengthCache.Get() + 1;
             }
 
             // Add one byte for the prepended version number
-            return lengthCache.Set(_textHandler.DoValidateAndGetLength(value, parameter)+1);
+            return _textHandler.ValidateAndGetLength(value, ref lengthCache, parameter) + 1;
         }
 
         public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter)
