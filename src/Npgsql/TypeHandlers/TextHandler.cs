@@ -221,30 +221,27 @@ namespace Npgsql.TypeHandlers
                 return lengthCache.Get();
             }
 
-            return lengthCache.Set(DoValidateAndGetLength(value, parameter));
-        }
+            //return lengthCache.Set(DoValidateAndGetLength(value, parameter));
 
-        /// <summary>
-        /// Validates and calculates the length, but does not consult the length cache or stores
-        /// in it. Used by other type handlers which delegate to TextHandler.
-        /// </summary>
-        internal int DoValidateAndGetLength(object value, NpgsqlParameter parameter = null)
-        {
             switch (Type.GetTypeCode(value.GetType()))
             {
             case TypeCode.String:
                 var asString = (string)value;
-                return parameter == null || parameter.Size <= 0 || parameter.Size >= asString.Length
+                return lengthCache.Set(
+                    parameter == null || parameter.Size <= 0 || parameter.Size >= asString.Length
                   ? PGUtil.UTF8Encoding.GetByteCount(asString)
-                  : PGUtil.UTF8Encoding.GetByteCount(asString.ToCharArray(), 0, parameter.Size);
+                  : PGUtil.UTF8Encoding.GetByteCount(asString.ToCharArray(), 0, parameter.Size)
+                );
 
             case TypeCode.Object:
                 var asCharArray = value as char[];
                 if (asCharArray != null)
                 {
-                    return parameter == null || parameter.Size <= 0 || parameter.Size >= asCharArray.Length
+                    return lengthCache.Set(
+                        parameter == null || parameter.Size <= 0 || parameter.Size >= asCharArray.Length
                       ? PGUtil.UTF8Encoding.GetByteCount(asCharArray)
-                      : PGUtil.UTF8Encoding.GetByteCount(asCharArray, 0, parameter.Size);
+                      : PGUtil.UTF8Encoding.GetByteCount(asCharArray, 0, parameter.Size)
+                    );
                 }
                 var converted = Convert.ToString(value);
                 if (parameter == null)
@@ -256,7 +253,7 @@ namespace Npgsql.TypeHandlers
 
             case TypeCode.Char:
                 _singleCharArray[0] = (char)value;
-                return PGUtil.UTF8Encoding.GetByteCount(_singleCharArray);
+                return lengthCache.Set(PGUtil.UTF8Encoding.GetByteCount(_singleCharArray));
 
             default:
                 value = Convert.ToString(value);
@@ -330,7 +327,9 @@ namespace Npgsql.TypeHandlers
                 // Bad case: the string doesn't fit in our buffer.
                 _charPos = 0;
 
-                // For strings, allocate a temporary byte buffer to hold the entire string and write it directly.
+                // For strings, chunked/incremental conversion isn't supported
+                // (see https://visualstudio.uservoice.com/forums/121579-visual-studio/suggestions/6584398-add-system-text-encoder-convert-method-string-in)
+                // So for now allocate a temporary byte buffer to hold the entire string and write it directly.
                 if (_str != null)
                 {
                     directBuf.Buffer = new byte[_byteLen];
