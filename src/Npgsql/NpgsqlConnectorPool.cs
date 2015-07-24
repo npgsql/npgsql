@@ -26,6 +26,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics.Contracts;
 using System.Threading;
+using System.Threading.Tasks;
 using Npgsql.Logging;
 
 namespace Npgsql
@@ -161,7 +162,7 @@ namespace Npgsql
         /// the connector. Its ConnectionString will be used to search the
         /// pool for available connectors.</param>
         /// <returns>A connector object.</returns>
-        internal NpgsqlConnector RequestConnector(NpgsqlConnection connection)
+        internal async Task<NpgsqlConnector> RequestConnectorAsync(NpgsqlConnection connection)
         {
             if (connection.MaxPoolSize < connection.MinPoolSize)
                 throw new ArgumentException(string.Format("Connection can't have MaxPoolSize {0} under MinPoolSize {1}", connection.MaxPoolSize, connection.MinPoolSize));
@@ -181,7 +182,7 @@ namespace Npgsql
 
                 Int32 ST = timeoutMilliseconds > 1000 ? 1000 : timeoutMilliseconds;
 
-                Thread.Sleep(ST);
+                await Task.Delay(ST);
                 timeoutMilliseconds -= ST;
 
                 //lock (this)
