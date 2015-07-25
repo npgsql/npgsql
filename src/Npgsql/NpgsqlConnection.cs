@@ -199,7 +199,7 @@ namespace Npgsql
                         UserCertificateValidationCallback = UserCertificateValidationCallback
                     };
 
-                    Connector.Open();
+                    await Connector.OpenAsync();
                 }
 
                 Connector.Notice += NoticeDelegate;

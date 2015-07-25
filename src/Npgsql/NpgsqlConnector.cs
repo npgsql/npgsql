@@ -35,7 +35,9 @@ using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
+using System.Threading.Tasks;
 using AsyncRewriter;
+using Npgsql.Async;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
 using Npgsql.TypeHandlers;
@@ -197,7 +199,7 @@ namespace Npgsql
         /// cancellation is delivered. This reduces the chance that a cancellation meant for a previous
         /// command will accidentally cancel a later one, see #615.
         /// </summary>
-        readonly object _cancelLock;
+        readonly AsyncLock _cancelLock;
 
         readonly UserAction _userAction;
         readonly Timer _keepAliveTimer;
@@ -226,22 +228,22 @@ namespace Npgsql
         #region Reusable Message Objects
 
         // Frontend. Note that these are only used for single-query commands.
-        internal readonly ParseMessage    ParseMessage    = new ParseMessage();
-        internal readonly BindMessage     BindMessage     = new BindMessage();
+        internal readonly ParseMessage ParseMessage = new ParseMessage();
+        internal readonly BindMessage BindMessage = new BindMessage();
         internal readonly DescribeMessage DescribeMessage = new DescribeMessage();
-        internal readonly ExecuteMessage  ExecuteMessage  = new ExecuteMessage();
+        internal readonly ExecuteMessage ExecuteMessage = new ExecuteMessage();
 
         // Backend
-        readonly CommandCompleteMessage      _commandCompleteMessage      = new CommandCompleteMessage();
-        readonly ReadyForQueryMessage        _readyForQueryMessage        = new ReadyForQueryMessage();
+        readonly CommandCompleteMessage _commandCompleteMessage = new CommandCompleteMessage();
+        readonly ReadyForQueryMessage _readyForQueryMessage = new ReadyForQueryMessage();
         readonly ParameterDescriptionMessage _parameterDescriptionMessage = new ParameterDescriptionMessage();
-        readonly DataRowSequentialMessage    _dataRowSequentialMessage    = new DataRowSequentialMessage();
+        readonly DataRowSequentialMessage _dataRowSequentialMessage = new DataRowSequentialMessage();
         readonly DataRowNonSequentialMessage _dataRowNonSequentialMessage = new DataRowNonSequentialMessage();
 
         // Since COPY is rarely used, allocate these lazily
-        CopyInResponseMessage  _copyInResponseMessage;
+        CopyInResponseMessage _copyInResponseMessage;
         CopyOutResponseMessage _copyOutResponseMessage;
-        CopyDataMessage        _copyDataMessage;
+        CopyDataMessage _copyDataMessage;
 
         #endregion
 
@@ -271,9 +273,10 @@ namespace Npgsql
             _userLock = new SemaphoreSlim(1, 1);
             _asyncLock = new SemaphoreSlim(1, 1);
             _userAction = new UserAction(this);
-            _cancelLock = new object();
+            _cancelLock = new AsyncLock();
 
-            if (KeepAlive > 0) {
+            if (KeepAlive > 0)
+            {
                 _keepAliveTimer = new Timer(PerformKeepAlive, null, Timeout.Infinite, Timeout.Infinite);
             }
         }
@@ -307,7 +310,8 @@ namespace Npgsql
                 Contract.Ensures(Contract.Result<int>() == 0 || Contract.Result<int>() >= MinimumInternalCommandTimeout);
 
                 var internalTimeout = _settings.InternalCommandTimeout;
-                if (internalTimeout == -1) {
+                if (internalTimeout == -1)
+                {
                     return Math.Max(_settings.CommandTimeout, MinimumInternalCommandTimeout);
                 }
 
@@ -385,7 +389,7 @@ namespace Npgsql
             }
         }
 
-        internal bool IsReady  { get { return State == ConnectorState.Ready;  } }
+        internal bool IsReady { get { return State == ConnectorState.Ready; } }
         internal bool IsClosed { get { return State == ConnectorState.Closed; } }
         internal bool IsBroken { get { return State == ConnectorState.Broken; } }
 
@@ -398,7 +402,7 @@ namespace Npgsql
         /// </summary>
         /// <remarks>Usually called by the RequestConnector
         /// Method of the connection pool manager.</remarks>
-        internal void Open()
+        internal async Task OpenAsync()
         {
             Contract.Requires(Connection != null && Connection.Connector == this);
             Contract.Requires(State == ConnectorState.Closed);
@@ -412,26 +416,35 @@ namespace Npgsql
             // this allows us to still respect the caller's timeout expectation.
             var connectTimeRemaining = ConnectionTimeout * 1000;
 
-            try {
+            try
+            {
+                var cancellationTokenSource = new CancellationTokenSource(connectTimeRemaining);
+                var cancellationToken = cancellationTokenSource.Token;
+
                 // Get a raw connection, possibly SSL...
-                RawOpen(connectTimeRemaining);
+                await RawOpenAsync(cancellationToken);
 
                 var startupMessage = new StartupMessage(Database, UserName);
-                if (!string.IsNullOrEmpty(_settings.ApplicationName)) {
+                if (!string.IsNullOrEmpty(_settings.ApplicationName))
+                {
                     startupMessage["application_name"] = _settings.ApplicationName;
                 }
-                if (!string.IsNullOrEmpty(_settings.SearchPath)) {
+                if (!string.IsNullOrEmpty(_settings.SearchPath))
+                {
                     startupMessage["search_path"] = _settings.SearchPath;
                 }
-                if (_settings.BackendTimeouts && _settings.CommandTimeout != 0) {
+                if (_settings.BackendTimeouts && _settings.CommandTimeout != 0)
+                {
                     startupMessage["statement_timeout"] = (_settings.CommandTimeout * 1000).ToString();
                     _backendTimeout = _settings.CommandTimeout;
                 }
-                if (IsSecure && !IsRedshift) {
+                if (IsSecure && !IsRedshift)
+                {
                     startupMessage["ssl_renegotiation_limit"] = "0";
                 }
 
-                if (startupMessage.Length > Buffer.Size) {  // Should really never happen, just in case
+                if (startupMessage.Length > Buffer.Size)
+                {  // Should really never happen, just in case
                     throw new Exception("Startup message bigger than buffer");
                 }
                 startupMessage.Write(Buffer);
@@ -443,38 +456,31 @@ namespace Npgsql
                 TypeHandlerRegistry.Setup(this);
                 State = ConnectorState.Ready;
 
-                if (ContinuousProcessing) {
+                if (ContinuousProcessing)
+                {
                     HandleAsyncMessages();
                 }
             }
             catch
             {
                 try { Break(); }
-                catch {
+                catch
+                {
                     // ignored
                 }
                 throw;
             }
         }
 
-        public void RawOpen(int timeout)
+        public async Task RawOpenAsync(CancellationToken cancellationToken)
         {
             try
             {
                 // Keep track of time remaining; Even though there may be multiple timeout-able calls,
                 // this allows us to still respect the caller's timeout expectation.
                 var attemptStart = DateTime.Now;
-                var result = Dns.BeginGetHostAddresses(Host, null, null);
-
-                if (!result.AsyncWaitHandle.WaitOne(timeout, true))
-                {
-                    // Timeout was used up attempting the Dns lookup
-                    throw new TimeoutException("Dns hostname lookup timeout. Increase Timeout value in ConnectionString.");
-                }
-
-                timeout -= Convert.ToInt32((DateTime.Now - attemptStart).TotalMilliseconds);
-
-                var ips = Dns.EndGetHostAddresses(result);
+                var ips = await Dns.GetHostAddressesAsync(Host).ConfigureAwait(false);
+                cancellationToken.ThrowIfCancellationRequested();
 
                 // try every ip address of the given hostname, use the first reachable one
                 // make sure not to exceed the caller's timeout expectation by splitting the
@@ -484,31 +490,39 @@ namespace Npgsql
                     Log.Trace("Attempting to connect to " + ips[i], Id);
                     var ep = new IPEndPoint(ips[i], Port);
                     _socket = new Socket(ep.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-                    attemptStart = DateTime.Now;
-
+                    
                     try
                     {
-                        result = _socket.BeginConnect(ep, null, null);
+                        var tcs = new TaskCompletionSource<SocketAsyncEventArgs>();
 
-                        if (!result.AsyncWaitHandle.WaitOne(timeout / (ips.Length - i), true)) {
-                            throw new TimeoutException("Connection establishment timeout. Increase Timeout value in ConnectionString.");
-                        }
+                        var socketAsyncEventArgs = new SocketAsyncEventArgs();
+                        socketAsyncEventArgs.RemoteEndPoint = ep;
+                        socketAsyncEventArgs.Completed += (sender, args) =>
+                        {
+                            tcs.TrySetResult(args);
+                        };
 
-                        _socket.EndConnect(result);
+                        cancellationToken.ThrowIfCancellationRequested();
+                        cancellationToken.Register(() => tcs.TrySetException(new TaskCanceledException()));
+                        _socket.ConnectAsync(socketAsyncEventArgs);
 
-                        // connect was successful, leave the loop
+                        await tcs.Task.ConfigureAwait(false);
                         break;
                     }
                     catch (TimeoutException)
                     {
                         throw;
                     }
+                    catch (TaskCanceledException)
+                    {
+                        throw;
+                    }
                     catch
                     {
                         Log.Warn("Failed to connect to " + ips[i]);
-                        timeout -= Convert.ToInt32((DateTime.Now - attemptStart).TotalMilliseconds);
 
-                        if (i == ips.Length - 1) {
+                        if (i == ips.Length - 1)
+                        {
                             throw;
                         }
                     }
@@ -530,23 +544,30 @@ namespace Npgsql
 
                     if (response != 'S')
                     {
-                        if (SslMode == SslMode.Require) {
+                        if (SslMode == SslMode.Require)
+                        {
                             throw new InvalidOperationException("Ssl connection requested. No Ssl enabled connection from this host is configured.");
                         }
                     }
                     else
                     {
                         var clientCertificates = new X509CertificateCollection();
-                        if (ProvideClientCertificatesCallback != null) {
+                        if (ProvideClientCertificatesCallback != null)
+                        {
                             ProvideClientCertificatesCallback(clientCertificates);
                         }
 
                         RemoteCertificateValidationCallback certificateValidationCallback;
-                        if (_settings.TrustServerCertificate) {
+                        if (_settings.TrustServerCertificate)
+                        {
                             certificateValidationCallback = (sender, certificate, chain, errors) => true;
-                        } else if (UserCertificateValidationCallback != null) {
+                        }
+                        else if (UserCertificateValidationCallback != null)
+                        {
                             certificateValidationCallback = UserCertificateValidationCallback;
-                        } else {
+                        }
+                        else
+                        {
                             certificateValidationCallback = DefaultUserCertificateValidationCallback;
                         }
 
@@ -577,21 +598,27 @@ namespace Npgsql
             {
                 if (_stream != null)
                 {
-                    try { _stream.Dispose(); } catch {
+                    try { _stream.Dispose(); }
+                    catch
+                    {
                         // ignored
                     }
                     _stream = null;
                 }
                 if (_baseStream != null)
                 {
-                    try { _baseStream.Dispose(); } catch {
+                    try { _baseStream.Dispose(); }
+                    catch
+                    {
                         // ignored
                     }
                     _baseStream = null;
                 }
                 if (_socket != null)
                 {
-                    try { _socket.Dispose(); } catch {
+                    try { _socket.Dispose(); }
+                    catch
+                    {
                         // ignored
                     }
                     _socket = null;
@@ -612,7 +639,7 @@ namespace Npgsql
                         ProcessAuthenticationMessage((AuthenticationRequestMessage)msg);
                         continue;
                     case BackendMessageCode.BackendKeyData:
-                        var backendKeyDataMsg = (BackendKeyDataMessage) msg;
+                        var backendKeyDataMsg = (BackendKeyDataMessage)msg;
                         BackendProcessId = backendKeyDataMsg.BackendProcessId;
                         _backendSecretKey = backendKeyDataMsg.BackendSecretKey;
                         continue;
@@ -643,7 +670,8 @@ namespace Npgsql
                     break;
 
                 case AuthenticationRequestType.AuthenticationGSS:
-                    if (!IntegratedSecurity) {
+                    if (!IntegratedSecurity)
+                    {
                         throw new Exception("GSS authentication but IntegratedSecurity not enabled");
                     }
 #if DNXCORE50
@@ -656,7 +684,8 @@ namespace Npgsql
 #endif
 
                 case AuthenticationRequestType.AuthenticationSSPI:
-                    if (!IntegratedSecurity) {
+                    if (!IntegratedSecurity)
+                    {
                         throw new Exception("SSPI authentication but IntegratedSecurity not enabled");
                     }
 #if DNXCORE50
@@ -715,42 +744,45 @@ namespace Npgsql
 
         internal void PrependBackendTimeoutMessage(int timeout)
         {
-            if (_backendTimeout == timeout || !BackendTimeouts) {
+            if (_backendTimeout == timeout || !BackendTimeouts)
+            {
                 return;
             }
 
             _backendTimeout = timeout;
             _pendingRfqPrependedMessages++;
 
-            switch (timeout) {
-            case 10:
-                _messagesToSend.Add(PregeneratedMessage.SetStmtTimeout10Sec);
-                return;
-            case 20:
-                _messagesToSend.Add(PregeneratedMessage.SetStmtTimeout20Sec);
-                return;
-            case 30:
-                _messagesToSend.Add(PregeneratedMessage.SetStmtTimeout30Sec);
-                return;
-            case 60:
-                _messagesToSend.Add(PregeneratedMessage.SetStmtTimeout60Sec);
-                return;
-            case 90:
-                _messagesToSend.Add(PregeneratedMessage.SetStmtTimeout90Sec);
-                return;
-            case 120:
-                _messagesToSend.Add(PregeneratedMessage.SetStmtTimeout120Sec);
-                return;
-            default:
-                _messagesToSend.Add(new QueryMessage(string.Format("SET statement_timeout = {0}", timeout * 1000)));
-                return;
+            switch (timeout)
+            {
+                case 10:
+                    _messagesToSend.Add(PregeneratedMessage.SetStmtTimeout10Sec);
+                    return;
+                case 20:
+                    _messagesToSend.Add(PregeneratedMessage.SetStmtTimeout20Sec);
+                    return;
+                case 30:
+                    _messagesToSend.Add(PregeneratedMessage.SetStmtTimeout30Sec);
+                    return;
+                case 60:
+                    _messagesToSend.Add(PregeneratedMessage.SetStmtTimeout60Sec);
+                    return;
+                case 90:
+                    _messagesToSend.Add(PregeneratedMessage.SetStmtTimeout90Sec);
+                    return;
+                case 120:
+                    _messagesToSend.Add(PregeneratedMessage.SetStmtTimeout120Sec);
+                    return;
+                default:
+                    _messagesToSend.Add(new QueryMessage(string.Format("SET statement_timeout = {0}", timeout * 1000)));
+                    return;
             }
         }
 
         [RewriteAsync]
         internal void SendAllMessages()
         {
-            if (!_messagesToSend.Any()) {
+            if (!_messagesToSend.Any())
+            {
                 return;
             }
 
@@ -899,7 +931,7 @@ namespace Npgsql
                 var buf = Buffer;
 
                 Buffer.Ensure(5);
-                var messageCode = (BackendMessageCode) Buffer.ReadByte();
+                var messageCode = (BackendMessageCode)Buffer.ReadByte();
                 Contract.Assume(Enum.IsDefined(typeof(BackendMessageCode), messageCode), "Unknown message code: " + messageCode);
                 var len = Buffer.ReadInt32() - 4;  // Transmitted length includes itself
 
@@ -919,37 +951,41 @@ namespace Npgsql
 
                 var msg = ParseServerMessage(buf, messageCode, len, dataRowLoadingMode);
 
-                switch (messageCode) {
-                case BackendMessageCode.ErrorResponse:
-                    Contract.Assert(msg == null);
+                switch (messageCode)
+                {
+                    case BackendMessageCode.ErrorResponse:
+                        Contract.Assert(msg == null);
 
-                    // An ErrorResponse is (almost) always followed by a ReadyForQuery. Save the error
-                    // and throw it as an exception when the ReadyForQuery is received (next).
-                    error = new NpgsqlException(buf);
+                        // An ErrorResponse is (almost) always followed by a ReadyForQuery. Save the error
+                        // and throw it as an exception when the ReadyForQuery is received (next).
+                        error = new NpgsqlException(buf);
 
-                    if (State == ConnectorState.Connecting) {
-                        // During the startup/authentication phase, an ErrorResponse isn't followed by
-                        // an RFQ. Instead, the server closes the connection immediately
-                        throw error;
-                    }
+                        if (State == ConnectorState.Connecting)
+                        {
+                            // During the startup/authentication phase, an ErrorResponse isn't followed by
+                            // an RFQ. Instead, the server closes the connection immediately
+                            throw error;
+                        }
 
-                    continue;
-
-                case BackendMessageCode.ReadyForQuery:
-                    if (error != null) {
-                        throw error;
-                    }
-                    break;
-
-                // Asynchronous messages
-                case BackendMessageCode.NoticeResponse:
-                case BackendMessageCode.NotificationResponse:
-                case BackendMessageCode.ParameterStatus:
-                    Contract.Assert(msg == null);
-                    if (!returnNullForAsyncMessage) {
                         continue;
-                    }
-                    return null;
+
+                    case BackendMessageCode.ReadyForQuery:
+                        if (error != null)
+                        {
+                            throw error;
+                        }
+                        break;
+
+                    // Asynchronous messages
+                    case BackendMessageCode.NoticeResponse:
+                    case BackendMessageCode.NotificationResponse:
+                    case BackendMessageCode.ParameterStatus:
+                        Contract.Assert(msg == null);
+                        if (!returnNullForAsyncMessage)
+                        {
+                            continue;
+                        }
+                        return null;
                 }
 
                 Contract.Assert(msg != null, "Message is null for code: " + messageCode);
@@ -1023,19 +1059,22 @@ namespace Npgsql
                     return new BackendKeyDataMessage(buf);
 
                 case BackendMessageCode.CopyInResponse:
-                    if (_copyInResponseMessage == null) {
+                    if (_copyInResponseMessage == null)
+                    {
                         _copyInResponseMessage = new CopyInResponseMessage();
                     }
                     return _copyInResponseMessage.Load(Buffer);
 
                 case BackendMessageCode.CopyOutResponse:
-                    if (_copyOutResponseMessage == null) {
+                    if (_copyOutResponseMessage == null)
+                    {
                         _copyOutResponseMessage = new CopyOutResponseMessage();
                     }
                     return _copyOutResponseMessage.Load(Buffer);
 
                 case BackendMessageCode.CopyData:
-                    if (_copyDataMessage == null) {
+                    if (_copyDataMessage == null)
+                    {
                         _copyDataMessage = new CopyDataMessage();
                     }
                     return _copyDataMessage.Load(len);
@@ -1072,7 +1111,8 @@ namespace Npgsql
             else
                 timeout = userTimeout * 1000;
 
-            if (timeout != _frontendTimeout) {
+            if (timeout != _frontendTimeout)
+            {
                 _socket.ReceiveTimeout = _frontendTimeout = timeout;
             }
         }
@@ -1082,11 +1122,11 @@ namespace Npgsql
             get
             {
                 return Buffer.ReadBytesLeft > 0 ||
-                       (_stream is NetworkStream && ((NetworkStream) _stream).DataAvailable)
+                       (_stream is NetworkStream && ((NetworkStream)_stream).DataAvailable)
 #if !DNXCORE50
-                       || (_stream is TlsClientStream.TlsClientStream && ((TlsClientStream.TlsClientStream) _stream).HasBufferedReadData(false))
+ || (_stream is TlsClientStream.TlsClientStream && ((TlsClientStream.TlsClientStream)_stream).HasBufferedReadData(false))
 #endif
-                    ;
+;
             }
         }
 
@@ -1121,7 +1161,8 @@ namespace Npgsql
             {
                 var msg = ReadSingleMessage(DataRowLoadingMode.Skip);
                 Contract.Assert(!(msg is DataRowMessage));
-                if (msg.Code == stopAt) {
+                if (msg.Code == stopAt)
+                {
                     return msg;
                 }
             }
@@ -1137,10 +1178,12 @@ namespace Npgsql
             Contract.Requires(stopAt1 != BackendMessageCode.DataRow, "Shouldn't be used for rows, doesn't know about sequential");
             Contract.Requires(stopAt2 != BackendMessageCode.DataRow, "Shouldn't be used for rows, doesn't know about sequential");
 
-            while (true) {
+            while (true)
+            {
                 var msg = ReadSingleMessage(DataRowLoadingMode.Skip);
                 Contract.Assert(!(msg is DataRowMessage));
-                if (msg.Code == stopAt1 || msg.Code == stopAt2) {
+                if (msg.Code == stopAt1 || msg.Code == stopAt2)
+                {
                     return msg;
                 }
             }
@@ -1175,14 +1218,14 @@ namespace Npgsql
             {
                 switch (TransactionStatus)
                 {
-                case TransactionStatus.Idle:
-                    return false;
-                case TransactionStatus.Pending:
-                case TransactionStatus.InTransactionBlock:
-                case TransactionStatus.InFailedTransactionBlock:
-                    return true;
-                default:
-                    throw PGUtil.ThrowIfReached();
+                    case TransactionStatus.Idle:
+                        return false;
+                    case TransactionStatus.Pending:
+                    case TransactionStatus.InTransactionBlock:
+                    case TransactionStatus.InFailedTransactionBlock:
+                        return true;
+                    default:
+                        throw PGUtil.ThrowIfReached();
                 }
             }
         }
@@ -1193,23 +1236,25 @@ namespace Npgsql
         {
             if (newStatus == TransactionStatus) { return; }
 
-            switch (newStatus) {
-            case TransactionStatus.Idle:
-                if (TransactionStatus == TransactionStatus.Pending) {
-                    // The transaction status must go from Pending through InTransactionBlock to Idle.
-                    // And Idle received during Pending means that the transaction BEGIN message was prepended by another
-                    // message (e.g. DISCARD ALL), whose RFQ had the (irrelevant) indicator Idle.
-                    return;
-                }
-                ClearTransaction();
-                break;
-            case TransactionStatus.InTransactionBlock:
-            case TransactionStatus.InFailedTransactionBlock:
-                break;
-            case TransactionStatus.Pending:
-                throw new Exception("Invalid TransactionStatus (should be frontend-only)");
-            default:
-                throw PGUtil.ThrowIfReached();
+            switch (newStatus)
+            {
+                case TransactionStatus.Idle:
+                    if (TransactionStatus == TransactionStatus.Pending)
+                    {
+                        // The transaction status must go from Pending through InTransactionBlock to Idle.
+                        // And Idle received during Pending means that the transaction BEGIN message was prepended by another
+                        // message (e.g. DISCARD ALL), whose RFQ had the (irrelevant) indicator Idle.
+                        return;
+                    }
+                    ClearTransaction();
+                    break;
+                case TransactionStatus.InTransactionBlock:
+                case TransactionStatus.InFailedTransactionBlock:
+                    break;
+                case TransactionStatus.Pending:
+                    throw new Exception("Invalid TransactionStatus (should be frontend-only)");
+                default:
+                    throw PGUtil.ThrowIfReached();
             }
             TransactionStatus = newStatus;
         }
@@ -1306,22 +1351,26 @@ namespace Npgsql
         /// <summary>
         /// Creates another connector and sends a cancel request through it for this connector.
         /// </summary>
-        internal void CancelRequest()
+        internal Task CancelRequest()
         {
-            lock (_cancelLock)
+            return _cancelLock.LockAsync(async () =>
             {
                 var cancelConnector = new NpgsqlConnector(_settings);
-                cancelConnector.DoCancelRequest(BackendProcessId, _backendSecretKey, cancelConnector.ConnectionTimeout);
-            }
+                var timeout = cancelConnector.ConnectionTimeout * 1000;
+                using (var cts = new CancellationTokenSource(timeout))
+                {
+                    await cancelConnector.DoCancelRequestAsync(BackendProcessId, _backendSecretKey, cts.Token);
+                }
+            });
         }
 
-        void DoCancelRequest(int backendProcessId, int backendSecretKey, int connectionTimeout)
+        async Task DoCancelRequestAsync(int backendProcessId, int backendSecretKey, CancellationToken cancellationToken)
         {
             Contract.Requires(State == ConnectorState.Closed);
 
             try
             {
-                RawOpen(connectionTimeout * 1000);
+                await RawOpenAsync(cancellationToken);
                 SendSingleMessage(new CancelRequestMessage(backendProcessId, backendSecretKey));
 
                 Contract.Assert(Buffer.ReadPosition == 0);
@@ -1357,10 +1406,12 @@ namespace Npgsql
                 case ConnectorState.Closed:
                     return;
                 case ConnectorState.Ready:
-                    try { SendSingleMessage(TerminateMessage.Instance); } catch {
+                    try { SendSingleMessage(TerminateMessage.Instance); }
+                    catch
+                    {
                         // ignored
                     }
-                break;
+                    break;
             }
 
             State = ConnectorState.Closed;
@@ -1404,13 +1455,18 @@ namespace Npgsql
         /// </summary>
         void Cleanup()
         {
-            try { if (_stream != null) _stream.Dispose(); } catch {
+            try { if (_stream != null) _stream.Dispose(); }
+            catch
+            {
                 // ignored
             }
 
-            if (CurrentReader != null) {
+            if (CurrentReader != null)
+            {
                 CurrentReader.Command.State = CommandState.Idle;
-                try { CurrentReader.Close(); } catch {
+                try { CurrentReader.Close(); }
+                catch
+                {
                     // ignored
                 }
                 CurrentReader = null;
@@ -1443,19 +1499,19 @@ namespace Npgsql
 
             switch (State)
             {
-            case ConnectorState.Ready:
-                break;
-            case ConnectorState.Closed:
-            case ConnectorState.Broken:
-                Log.Warn(String.Format("Reset() called on connector with state {0}, ignoring", State), Id);
-                return;
-            case ConnectorState.Connecting:
-            case ConnectorState.Executing:
-            case ConnectorState.Fetching:
-            case ConnectorState.Copy:
-                throw new InvalidOperationException("Reset() called on connector with state " + State);
-            default:
-                throw PGUtil.ThrowIfReached();
+                case ConnectorState.Ready:
+                    break;
+                case ConnectorState.Closed:
+                case ConnectorState.Broken:
+                    Log.Warn(String.Format("Reset() called on connector with state {0}, ignoring", State), Id);
+                    return;
+                case ConnectorState.Connecting:
+                case ConnectorState.Executing:
+                case ConnectorState.Fetching:
+                case ConnectorState.Copy:
+                    throw new InvalidOperationException("Reset() called on connector with state " + State);
+                default:
+                    throw PGUtil.ThrowIfReached();
             }
 
             if (IsInUserAction)
@@ -1501,7 +1557,7 @@ namespace Npgsql
 
         #region Locking
 
-        internal IDisposable StartUserAction(ConnectorState newState=ConnectorState.Executing)
+        internal IDisposable StartUserAction(ConnectorState newState = ConnectorState.Executing)
         {
             Contract.Requires(newState != ConnectorState.Ready);
             Contract.Requires(newState != ConnectorState.Closed);
@@ -1512,20 +1568,21 @@ namespace Npgsql
 
             if (!_userLock.Wait(0))
             {
-                switch (State) {
-                case ConnectorState.Closed:
-                case ConnectorState.Broken:
-                case ConnectorState.Connecting:
-                    throw new InvalidOperationException("The connection is still connecting.");
-                case ConnectorState.Ready:
-                // Can happen in a race condition as the connector is transitioning to Ready
-                case ConnectorState.Executing:
-                case ConnectorState.Fetching:
-                    throw new InvalidOperationException("An operation is already in progress.");
-                case ConnectorState.Copy:
-                    throw new InvalidOperationException("A COPY operation is in progress and must complete first.");
-                default:
-                    throw PGUtil.ThrowIfReached("Unknown connector state: " + State);
+                switch (State)
+                {
+                    case ConnectorState.Closed:
+                    case ConnectorState.Broken:
+                    case ConnectorState.Connecting:
+                        throw new InvalidOperationException("The connection is still connecting.");
+                    case ConnectorState.Ready:
+                    // Can happen in a race condition as the connector is transitioning to Ready
+                    case ConnectorState.Executing:
+                    case ConnectorState.Fetching:
+                        throw new InvalidOperationException("An operation is already in progress.");
+                    case ConnectorState.Copy:
+                        throw new InvalidOperationException("A COPY operation is in progress and must complete first.");
+                    default:
+                        throw PGUtil.ThrowIfReached("Unknown connector state: " + State);
                 }
             }
 
@@ -1543,7 +1600,8 @@ namespace Npgsql
             }
 
             // Disable keepalive
-            if (KeepAlive > 0) {
+            if (KeepAlive > 0)
+            {
                 _keepAliveTimer.Change(Timeout.Infinite, Timeout.Infinite);
             }
 
@@ -1585,7 +1643,7 @@ namespace Npgsql
 
                 if (KeepAlive > 0)
                 {
-                    var keepAlive = KeepAlive*1000;
+                    var keepAlive = KeepAlive * 1000;
                     _keepAliveTimer.Change(keepAlive, keepAlive);
                 }
 
@@ -1634,7 +1692,8 @@ namespace Npgsql
                 {
                     await _baseStream.ReadAsync(EmptyBuffer, 0, 0);
 
-                    if (_asyncLock == null) {
+                    if (_asyncLock == null)
+                    {
                         return;
                     }
 
@@ -1648,7 +1707,8 @@ namespace Npgsql
                     }
                     finally
                     {
-                        if (_asyncLock != null) {
+                        if (_asyncLock != null)
+                        {
                             _asyncLock.Release();
                         }
                     }
@@ -1668,7 +1728,8 @@ namespace Npgsql
         {
             if (_asyncLock == null) { return; }
 
-            if (!_asyncLock.Wait(0)) {
+            if (!_asyncLock.Wait(0))
+            {
                 // The async semaphore has already been acquired, either by a user action,
                 // or an async notification being handled, or, improbably, by a previous keepalive.
                 // Whatever the case, exit immediately, no need to perform a keepalive.
@@ -1754,16 +1815,17 @@ namespace Npgsql
 
         #region Execute internal command
 
-        internal void ExecuteInternalCommand(string query, bool withTimeout=true)
+        internal void ExecuteInternalCommand(string query, bool withTimeout = true)
         {
             ExecuteInternalCommand(new QueryMessage(query), withTimeout);
         }
 
-        internal void ExecuteInternalCommand(SimpleFrontendMessage message, bool withTimeout=true)
+        internal void ExecuteInternalCommand(SimpleFrontendMessage message, bool withTimeout = true)
         {
             using (StartUserAction())
             {
-                if (withTimeout) {
+                if (withTimeout)
+                {
                     PrependBackendTimeoutMessage(ActualInternalCommandTimeout);
                 }
                 AddMessage(message);
@@ -1807,7 +1869,8 @@ namespace Npgsql
                 return;
             }
 
-            if (name == "standard_conforming_strings") {
+            if (name == "standard_conforming_strings")
+            {
                 UseConformantStrings = (value == "on");
             }
         }
