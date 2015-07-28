@@ -11,6 +11,13 @@ where that made sense. This means that you cannot expect to drop 3.0 as a replac
 The following is a *non-exhaustive* list of things that changed. If you run against a breaking change not documented here,
 please let us know and we'll add it.
 
+## Major
+
+* Support for .NET 2.0, .NET 3.5 and .NET 4.0 has been dropped - you will have to upgrade to .NET 4.5 to use Npgsql 3.0.
+  We'll continue to do bugfixes on the 2.2 branch for a while on a best-effort basis.
+* The Entity Framework provider packages have been renamed to align with Microsoft's new naming.
+  The new packages are *EntityFramework5.Npgsql* and *EntityFramework6.Npgsql*. EntityFramework7.Npgsql is in alpha.
+
 ## SSL
 
 * Npgsql 2.2 didn't perform validation on the server's certificate by default, so self-signed certificate were accepted.
@@ -25,7 +32,7 @@ please let us know and we'll add it.
   This is [not allowed in ADO.NET](https://msdn.microsoft.com/en-us/library/system.data.common.dbparameter.value%28v=vs.110%29.aspx)
   and is no longer supported, set to `DBNull.Value` instead.
 * Removed support for writing a parameter with an `IEnumerable<T>` value, since that would require Npgsql to enumerate it multiple
-  time internally. `IList<T>` and IList are permitted.
+  times internally. `IList<T>` and IList are permitted.
 * NpgsqlMacAddress has been removed and replaced by the standard .NET PhysicalAddress.
 * Npgsql's BitString has been removed and replaced by the standard .NET BitArray.
 * NpgsqlTime has been removed and replaced by the standard .NET TimeSpan.
@@ -35,7 +42,7 @@ please let us know and we'll add it.
   infinity. Use NpgsqlTimeStamp.Infinity and NpgsqlTimeStamp.MinusInfinity explicitly for that.
   You can also specify the "Convert Infinity DateTime" connection string parameter to retain the old behavior.
 * Renamed NpgsqlInet's addr and mask to Address and Mask.
-* NpgsqlPoint now holds Doubles instead of Singles (#437).
+* NpgsqlPoint now holds Doubles instead of Singles ([#437](https://github.com/npgsql/npgsql/issues/437)).
 * NpgsqlDataReader.GetFieldType() and GetProviderSpecificFieldType() now return Array for arrays.
   Previously they returned int[], even for multidimensional arrays.
 * NpgsqlDataReader.GetDataTypeName() now returns the name of the PostgreSQL type rather than its OID.
@@ -44,13 +51,14 @@ please let us know and we'll add it.
 
 * Removed the "Preload Reader" feature, which loaded the entire resultset into memory. If you require this
   (inefficient) behavior, read the result into memory outside Npgsql. We plan on working on MARS support,
-  see #462.
+  see [#462](https://github.com/npgsql/npgsql/issues/462).
 * The "Use Extended Types" parameter is no longer needed and isn't supported. To access PostgreSQL values
   that can't be represented by the standard CLR types, use the standard ADO.NET
   `NpgsqlDataReader.GetProviderSpecificValue` or even better, the generic
   `NpgsqlDataReader.GetFieldValue<T>`.
 * Removed the feature where Npgsql automatically "dereferenced" a resultset of refcursors into multiple
   resultsets (this was used to emulate returning multiple resultsets from stored procedures).
+  See [#438](https://github.com/npgsql/npgsql/issues/438).
 * Removed the AlwaysPrepare connection string parameter
 * Removed NpgsqlDataReader.LastInsertedOID, it did not allow accessing individual OIDs in multi-statement commands.
   Replaced with NpgsqlDataReader.Statements, which provides OID and affected row information on a statement-by-statement
@@ -58,8 +66,6 @@ please let us know and we'll add it.
 
 ## Other
 
-* The Entity Framework provider packages have been renamed to align with Microsoft's new naming.
-  The new packages are *EntityFramework5.Npgsql* and *EntityFramework6.Npgsql*. EntityFramework7.Npgsql is in alpha.
 * It is no longer possible to create database entities (tables, functions) and then use them in the same multi-query command -
   you must first send a command creating the entity, and only then send commands using it.
   See [#641](https://github.com/npgsql/npgsql/issues/641) for more details.
