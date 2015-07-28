@@ -1,5 +1,5 @@
 ---
-layout: dev
+layout: doc
 title: Logging
 ---
 
