@@ -9,6 +9,18 @@ and documents some important gotchas.
 We aim to be compatible with all [currently supported PostgreSQL versions](http://www.postgresql.org/support/versioning/), which means 5 years back.
 Earlier versions may still work but we don't perform continuous testing on them or commit to resolving issues on them.
 
+## ADO.NET
+
+Npgsql is an ADO.NET-compatible provider, so it has the same APIs as other .NET database drivers and should behave the same.
+Please let us know if you notice any non-standard behavior.
+
+A few known issues:
+
+* Npgsql 3.0 implements most [.NET 4.5 ADO.NET async operations](https://msdn.microsoft.com/en-us/library/hh211418(v=vs.110).aspx), e.g.
+  ExecuteReaderAsync.
+  However, *connecting* asynchronously is not yet implemented (doing so will transparently fall back to sync). This is a planned feature
+  for 3.1, see [#379](https://github.com/npgsql/npgsql/issues/379).
+
 ## Amazon Redshift
 
 Amazon Redshift is a cloud-based data warehouse originally based on PostgreSQL 8.0.2.
