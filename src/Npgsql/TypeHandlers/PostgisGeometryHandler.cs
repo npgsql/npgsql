@@ -8,9 +8,9 @@ namespace Npgsql.TypeHandlers
     /// <summary>
     /// Type Handler for the postgis geometry type.
     /// </summary>
-    [TypeMapping("geometry", NpgsqlDbType.Geometry, typeof(IGeometry))]
-    class PostgisGeometryHandler : TypeHandler<IGeometry>
-        , IChunkingTypeReader<IGeometry>, IChunkingTypeWriter
+    [TypeMapping("geometry", NpgsqlDbType.Geometry, typeof(PostgisGeometry))]
+    class PostgisGeometryHandler : TypeHandler<PostgisGeometry>
+        , IChunkingTypeReader<PostgisGeometry>, IChunkingTypeWriter
     {
         class Counter
         {
@@ -38,9 +38,9 @@ namespace Npgsql.TypeHandlers
         Coordinate2D[] _points;
         Coordinate2D[][] _rings;
         Coordinate2D[][][] _pols;
-        readonly Stack<IGeometry[]> _geoms = new Stack<IGeometry[]>();
+        readonly Stack<PostgisGeometry[]> _geoms = new Stack<PostgisGeometry[]>();
         readonly Stack<Counter> _icol = new Stack<Counter>();
-        IGeometry _toWrite;
+        PostgisGeometry _toWrite;
 
         public void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription = null)
         {
@@ -61,9 +61,9 @@ namespace Npgsql.TypeHandlers
             _id = 0;
         }
 
-        public bool Read(out IGeometry result)
+        public bool Read(out PostgisGeometry result)
         {
-            result = default(IGeometry);
+            result = default(PostgisGeometry);
             if (_id == 0)
             {
                 if (_buf.ReadBytesLeft < 5)
@@ -245,7 +245,7 @@ namespace Npgsql.TypeHandlers
                     {
                         if (_buf.ReadBytesLeft < 4)
                             return false;
-                        _geoms.Push(new IGeometry[_buf.ReadInt32(_bo)]);
+                        _geoms.Push(new PostgisGeometry[_buf.ReadInt32(_bo)]);
                         _icol.Push(new Counter());
                     }
                     _id = 0;
@@ -253,7 +253,7 @@ namespace Npgsql.TypeHandlers
                     var i = _icol.Peek();
                     for (; i < g.Length; i.Increment())
                     {
-                        IGeometry geom;
+                        PostgisGeometry geom;
                         if (!Read(out geom))
                         {
                             _newGeom = false;
@@ -276,7 +276,7 @@ namespace Npgsql.TypeHandlers
 
         public int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter = null)
         {
-            var g = value as IGeometry;
+            var g = value as PostgisGeometry;
             if (g == null)
                 throw new InvalidCastException("IGeometry type expected.");
             return g.GetLen();
@@ -284,7 +284,7 @@ namespace Npgsql.TypeHandlers
 
         public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter = null)
         {
-            _toWrite = value as IGeometry;
+            _toWrite = value as PostgisGeometry;
             if (_toWrite == null)
                 throw new InvalidCastException("IGeometry type expected.");
             _buf = buf;
@@ -292,7 +292,7 @@ namespace Npgsql.TypeHandlers
             Reset();
         }
 
-        bool Write(IGeometry geom)
+        bool Write(PostgisGeometry geom)
         {
             if (_newGeom)
             {

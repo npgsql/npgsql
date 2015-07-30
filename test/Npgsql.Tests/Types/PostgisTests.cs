@@ -9,7 +9,7 @@ namespace Npgsql.Tests.Types
     {
         public class TestAtt
         {
-            public IGeometry Geom;
+            public PostgisGeometry Geom;
             public string SQL;
         }
 
@@ -54,7 +54,7 @@ namespace Npgsql.Tests.Types
                 SQL = "st_multi(st_makepolygon(st_makeline(ARRAY[st_makepoint(1,1),st_makepoint(2,2),st_makepoint(3,3),st_makepoint(1,1)])))"
             },
             new TestAtt {
-                Geom = new PostgisGeometryCollection(new IGeometry[] {
+                Geom = new PostgisGeometryCollection(new PostgisGeometry[] {
                     new PostgisPoint(1,1),
                     new PostgisMultiPolygon(new[] {
                         new PostgisPolygon(new[] { new[] {
@@ -68,9 +68,9 @@ namespace Npgsql.Tests.Types
                 SQL = "st_collect(st_makepoint(1,1),st_multi(st_makepolygon(st_makeline(ARRAY[st_makepoint(1,1),st_makepoint(2,2),st_makepoint(3,3),st_makepoint(1,1)]))))"
             },
             new TestAtt {
-                Geom = new PostgisGeometryCollection(new IGeometry[] {
+                Geom = new PostgisGeometryCollection(new PostgisGeometry[] {
                     new PostgisPoint(1,1),
-                    new PostgisGeometryCollection(new IGeometry[] {
+                    new PostgisGeometryCollection(new PostgisGeometry[] {
                         new PostgisPoint(1,1),
                         new PostgisMultiPolygon(new[] {
                             new PostgisPolygon(new[] { new[] {
@@ -139,7 +139,7 @@ namespace Npgsql.Tests.Types
                 cmd.CommandText = "Select st_setsrid(" + a.SQL + ",3942)";
                 var p = cmd.ExecuteScalar();
                 Assert.IsTrue(p.Equals(a.Geom));
-                Assert.IsTrue((p as IGeometry).SRID == 3942);
+                Assert.IsTrue((p as PostgisGeometry).SRID == 3942);
             }
         }
 
@@ -149,7 +149,7 @@ namespace Npgsql.Tests.Types
             using (var cmd = Conn.CreateCommand())
             {
                 cmd.CommandText = "Select ARRAY(select st_makepoint(1,1))";
-                var p = cmd.ExecuteScalar() as IGeometry[];
+                var p = cmd.ExecuteScalar() as PostgisGeometry[];
                 var p2 = new PostgisPoint(1d, 1d);
                 Assert.IsTrue(p != null && p[0] is PostgisPoint && p2 == (PostgisPoint)p[0]);
             }

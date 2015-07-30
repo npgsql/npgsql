@@ -69,7 +69,7 @@ namespace NpgsqlTypes
     /// <summary>
     /// Represents an Postgis feature.
     /// </summary>
-    public abstract class IGeometry
+    public abstract class PostgisGeometry
     {
         /// <summary>
         /// returns the binary length of the data structure without header.
@@ -96,7 +96,7 @@ namespace NpgsqlTypes
     /// <summary>
     /// Represents an Postgis 2D Point
     /// </summary>
-    public class PostgisPoint : IGeometry, IEquatable<PostgisPoint>
+    public class PostgisPoint : PostgisGeometry, IEquatable<PostgisPoint>
     {
 
         internal override WkbIdentifier Identifier
@@ -163,7 +163,7 @@ namespace NpgsqlTypes
     /// <summary>
     /// Represents an Ogc 2D LineString
     /// </summary>
-    public class PostgisLineString : IGeometry, IEquatable<PostgisLineString>, IEnumerable<Coordinate2D>
+    public class PostgisLineString : PostgisGeometry, IEquatable<PostgisLineString>, IEnumerable<Coordinate2D>
     {
         readonly Coordinate2D[] _points;
 
@@ -252,7 +252,7 @@ namespace NpgsqlTypes
     /// <summary>
     /// Represents an Postgis 2D Polygon.
     /// </summary>
-    public class PostgisPolygon : IGeometry, IEquatable<PostgisPolygon>
+    public class PostgisPolygon : PostgisGeometry, IEquatable<PostgisPolygon>
     {
         readonly Coordinate2D[][] _rings;
 
@@ -364,7 +364,7 @@ namespace NpgsqlTypes
     /// <summary>
     /// Represents a Postgis 2D MultiPoint
     /// </summary>
-    public class PostgisMultiPoint : IGeometry, IEquatable<PostgisMultiPoint>, IEnumerable<Coordinate2D>
+    public class PostgisMultiPoint : PostgisGeometry, IEquatable<PostgisMultiPoint>, IEnumerable<Coordinate2D>
     {
         readonly Coordinate2D[] _points;
 
@@ -459,7 +459,7 @@ namespace NpgsqlTypes
     /// <summary>
     /// Represents a Postgis 2D MultiLineString
     /// </summary>
-    public class PostgisMultiLineString : IGeometry, IEquatable<PostgisMultiLineString>, IEnumerable<PostgisLineString>
+    public class PostgisMultiLineString : PostgisGeometry, IEquatable<PostgisMultiLineString>, IEnumerable<PostgisLineString>
     {
         readonly PostgisLineString[] _lineStrings;
 
@@ -569,7 +569,7 @@ namespace NpgsqlTypes
     /// <summary>
     /// Represents a Postgis 2D MultiPolygon.
     /// </summary>
-    public class PostgisMultiPolygon : IGeometry, IEquatable<PostgisMultiPolygon>, IEnumerable<PostgisPolygon>
+    public class PostgisMultiPolygon : PostgisGeometry, IEquatable<PostgisMultiPolygon>, IEnumerable<PostgisPolygon>
     {
         readonly PostgisPolygon[] _polygons;
 
@@ -668,11 +668,11 @@ namespace NpgsqlTypes
     /// <summary>
     /// Represents a collection of Postgis feature.
     /// </summary>
-    public class PostgisGeometryCollection : IGeometry, IEquatable<PostgisGeometryCollection>, IEnumerable<IGeometry>
+    public class PostgisGeometryCollection : PostgisGeometry, IEquatable<PostgisGeometryCollection>, IEnumerable<PostgisGeometry>
     {
-        readonly IGeometry[] _geometries;
+        readonly PostgisGeometry[] _geometries;
 
-        public IGeometry this[int index]
+        public PostgisGeometry this[int index]
         {
             get { return _geometries[index]; }
         }
@@ -682,9 +682,9 @@ namespace NpgsqlTypes
             get { return WkbIdentifier.GeometryCollection; }
         }
 
-        public IEnumerator<IGeometry> GetEnumerator()
+        public IEnumerator<PostgisGeometry> GetEnumerator()
         {
-            return ((IEnumerable<IGeometry>)_geometries).GetEnumerator();
+            return ((IEnumerable<PostgisGeometry>)_geometries).GetEnumerator();
         }
 
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
@@ -692,12 +692,12 @@ namespace NpgsqlTypes
             return GetEnumerator();
         }
 
-        public PostgisGeometryCollection(IGeometry[] geometries)
+        public PostgisGeometryCollection(PostgisGeometry[] geometries)
         {
             _geometries = geometries;
         }
 
-        public PostgisGeometryCollection(IEnumerable<IGeometry> geometries)
+        public PostgisGeometryCollection(IEnumerable<PostgisGeometry> geometries)
         {
             _geometries = geometries.ToArray();
         }
