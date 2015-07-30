@@ -70,10 +70,10 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                 var ts = (NpgsqlDateTime)value;
                 switch (ts.Kind)
                 {
-                case DateTimeKind.Unspecified:
-                    // Treat as Local
                 case DateTimeKind.Utc:
                     break;
+                case DateTimeKind.Unspecified:
+                    // Treat as Local
                 case DateTimeKind.Local:
                     ts = ts.ToUniversalTime();
                     break;
@@ -89,10 +89,10 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                 var dt = (DateTime)value;
                 switch (dt.Kind)
                 {
-                case DateTimeKind.Unspecified:
-                // Treat as Local
                 case DateTimeKind.Utc:
                     break;
+                case DateTimeKind.Unspecified:
+                    // Treat as Local
                 case DateTimeKind.Local:
                     dt = dt.ToUniversalTime();
                     break;
