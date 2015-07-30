@@ -113,23 +113,6 @@ namespace Npgsql
     }
 
     /// <summary>
-    /// The severity level of an <see cref="NpgsqlException"/> or a <see cref="NpgsqlNotice"/>.
-    /// </summary>
-    public enum ErrorSeverity
-    {
-#pragma warning disable 1591
-        Panic,
-        Fatal,
-        Error,
-        Warning,
-        Notice,
-        Debug,
-        Info,
-        Log
-#pragma warning restore 1591
-    }
-
-    /// <summary>
     /// Specifies the type of SQL statement, e.g. SELECT
     /// </summary>
     public enum StatementType

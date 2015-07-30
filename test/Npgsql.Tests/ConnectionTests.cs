@@ -620,6 +620,8 @@ namespace Npgsql.Tests
         [Test, Description("Makes sure notices are probably received and emitted as events")]
         public void Notice()
         {
+            // Make sure messages are in English
+            ExecuteNonQuery(@"SET lc_messages='English_United States.1252'");
             ExecuteNonQuery(@"
                  CREATE OR REPLACE FUNCTION emit_notice() RETURNS VOID AS
                     'BEGIN RAISE NOTICE ''testnotice''; END;'
@@ -634,7 +636,7 @@ namespace Npgsql.Tests
                 ExecuteNonQuery("SELECT emit_notice()::TEXT");  // See docs for CreateSleepCommand
                 Assert.That(notice, Is.Not.Null, "No notice was emitted");
                 Assert.That(notice.MessageText, Is.EqualTo("testnotice"));
-                Assert.That(notice.Severity, Is.EqualTo(ErrorSeverity.Notice));
+                Assert.That(notice.Severity, Is.EqualTo("NOTICE"));
             }
             finally
             {

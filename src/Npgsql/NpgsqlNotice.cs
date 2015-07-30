@@ -48,7 +48,7 @@ namespace Npgsql
         /// Severity of the error or notice.
         /// Always present.
         /// </summary>
-        public ErrorSeverity Severity { get { return _msg.Severity; } }
+        public string Severity { get { return _msg.Severity; } }
 
         /// <summary>
         /// The SQLSTATE code for the error.
@@ -163,16 +163,6 @@ namespace Npgsql
         internal NpgsqlNotice(NpgsqlBuffer buf)
         {
             _msg = new ErrorOrNoticeMessage(buf);
-        }
-
-        [ContractInvariantMethod]
-        void ObjectInvariants()
-        {
-            Contract.Invariant(Severity == ErrorSeverity.Log    ||
-                               Severity == ErrorSeverity.Info   ||
-                               Severity == ErrorSeverity.Debug  ||
-                               Severity == ErrorSeverity.Notice ||
-                               Severity == ErrorSeverity.Warning);
         }
     }
 

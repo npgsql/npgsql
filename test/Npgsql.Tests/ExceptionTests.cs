@@ -41,6 +41,8 @@ namespace Npgsql.Tests
         [Test, Description("Generates a basic server-side exception, checks that it's properly raised and populated")]
         public void Basic()
         {
+            // Make sure messages are in English
+            ExecuteNonQuery(@"SET lc_messages='English_United States.1252'");
             ExecuteNonQuery(@"
                  CREATE OR REPLACE FUNCTION emit_exception() RETURNS VOID AS
                     'BEGIN RAISE EXCEPTION ''testexception'' USING ERRCODE = ''12345''; END;'
@@ -59,12 +61,12 @@ namespace Npgsql.Tests
             }
 
             Assert.That(ex.MessageText, Is.EqualTo("testexception"));
-            Assert.That(ex.Severity, Is.EqualTo(ErrorSeverity.Error));
+            Assert.That(ex.Severity, Is.EqualTo("ERROR"));
             Assert.That(ex.Code, Is.EqualTo("12345"));
             Assert.That(ex.Position, Is.EqualTo(0));
 
             var data = ex.Data;
-            Assert.That(data["Severity"], Is.EqualTo(ErrorSeverity.Error));
+            Assert.That(data["Severity"], Is.EqualTo("ERROR"));
             Assert.That(data["Code"], Is.EqualTo("12345"));
             Assert.That(data.Contains("Position"), Is.False);
 
