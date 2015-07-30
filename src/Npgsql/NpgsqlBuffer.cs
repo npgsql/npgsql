@@ -618,5 +618,72 @@ namespace Npgsql
         }
 
         #endregion
+
+        #region Postgis
+        
+        internal int ReadInt32(ByteOrder bo)
+        {
+            Contract.Requires(ReadBytesLeft >= sizeof(int));
+            int result;
+            if (BitConverter.IsLittleEndian == (bo == ByteOrder.LSB))
+            {
+                result = BitConverter.ToInt32(_buf, ReadPosition);
+                ReadPosition += 4;
+            }
+            else
+            {
+                _workspace[3] = _buf[ReadPosition++];
+                _workspace[2] = _buf[ReadPosition++];
+                _workspace[1] = _buf[ReadPosition++];
+                _workspace[0] = _buf[ReadPosition++];
+                result = BitConverter.ToInt32(_workspace, 0);
+            }
+            return result;
+        }
+
+        internal uint ReadUInt32(ByteOrder bo)
+        {
+            Contract.Requires(ReadBytesLeft >= sizeof(int));
+            uint result;
+            if (BitConverter.IsLittleEndian == (bo == ByteOrder.LSB))
+            {
+                result = BitConverter.ToUInt32(_buf, ReadPosition);
+                ReadPosition += 4;
+            }
+            else
+            {
+                _workspace[3] = _buf[ReadPosition++];
+                _workspace[2] = _buf[ReadPosition++];
+                _workspace[1] = _buf[ReadPosition++];
+                _workspace[0] = _buf[ReadPosition++];
+                result = BitConverter.ToUInt32(_workspace, 0);
+            }
+            return result;
+        }
+
+        internal double ReadDouble(ByteOrder bo)
+        {
+            Contract.Requires(ReadBytesLeft >= sizeof(double));
+            
+            if (BitConverter.IsLittleEndian == (ByteOrder.LSB == bo))
+            {
+                var result = BitConverter.ToDouble(_buf, ReadPosition);
+                ReadPosition += 8;
+                return result;
+            }
+            else
+            {
+                _workspace[7] = _buf[ReadPosition++];
+                _workspace[6] = _buf[ReadPosition++];
+                _workspace[5] = _buf[ReadPosition++];
+                _workspace[4] = _buf[ReadPosition++];
+                _workspace[3] = _buf[ReadPosition++];
+                _workspace[2] = _buf[ReadPosition++];
+                _workspace[1] = _buf[ReadPosition++];
+                _workspace[0] = _buf[ReadPosition++];
+                return BitConverter.ToDouble(_workspace, 0);
+            }
+        }
+        #endregion
     }
 }

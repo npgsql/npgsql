@@ -438,5 +438,12 @@ namespace NpgsqlTypes
         Unknown = 40,
 
         #endregion
+
+        #region Postgis
+        /// <summary>
+        /// The geometry type for postgresql spatial extension postgis.
+        /// </summary>
+        Geometry = 50
+        #endregion
     }
 }

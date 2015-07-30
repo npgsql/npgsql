@@ -156,6 +156,7 @@
     <Compile Include="BackendMessages\ParseCompleteMessage.cs" />
     <Compile Include="BackendMessages\RowDescriptionMessage.cs" />
     <Compile Include="BackendMessages\DataRowSequentialMessage.cs" />
+    <Compile Include="ByteOrder.cs" />
     <Compile Include="FrontendMessages\CopyFailMessage.cs" />
     <Compile Include="ICancelable.cs" />
     <Compile Include="Logging\NoOpLoggingProvider.cs" />
@@ -191,6 +192,7 @@
     <Compile Include="NpgsqlTypes\NpgsqlTsQuery.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlTsVector.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlUserTypes.cs" />
+    <Compile Include="NpgsqlTypes\PostgisTypes.cs" />
     <Compile Include="SqlQueryParser.cs" />
     <Compile Include="TlsClientStream\CipherSuiteInfo.cs" />
     <Compile Include="TlsClientStream\ClientAlertException.cs" />
@@ -255,6 +257,7 @@
     </Compile>
     <Compile Include="TypeHandlers\ArrayHandler.cs" />
     <Compile Include="TypeHandlers\NumericHandlers\UInt32Handler.cs" />
+    <Compile Include="TypeHandlers\PostgisGeometryHandler.cs" />
     <Compile Include="TypeHandlers\RangeHandler.cs" />
     <Compile Include="TypeHandlers\UuidHandler.cs" />
     <Compile Include="TypeHandlers\MoneyHandler.cs" />
