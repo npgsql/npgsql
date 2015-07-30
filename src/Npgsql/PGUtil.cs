@@ -38,6 +38,7 @@ namespace Npgsql
     internal static partial class PGUtil
     {
         internal static readonly UTF8Encoding UTF8Encoding = new UTF8Encoding(false, true);
+        internal static readonly UTF8Encoding RelaxedUTF8Encoding = new UTF8Encoding(false, false);
 
         /// <summary>
         /// This method takes a version string as returned by SELECT VERSION() and returns

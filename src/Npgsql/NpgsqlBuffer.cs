@@ -330,8 +330,17 @@ namespace Npgsql
         /// Seeks the first null terminator (\0) and returns the string up to it. The buffer must already
         /// contain the entire string and its terminator.
         /// </summary>
-        /// <returns></returns>
         internal string ReadNullTerminatedString()
+        {
+            return ReadNullTerminatedString(TextEncoding);
+        }
+
+        /// <summary>
+        /// Seeks the first null terminator (\0) and returns the string up to it. The buffer must already
+        /// contain the entire string and its terminator.
+        /// </summary>
+        /// <param name="encoding">Decodes the messages with this encoding.</param>
+        internal string ReadNullTerminatedString(Encoding encoding)
         {
             int i;
             for (i = ReadPosition; _buf[i] != 0; i++)
@@ -339,7 +348,7 @@ namespace Npgsql
                 Contract.Assume(i <= ReadPosition + ReadBytesLeft);
             }
             Contract.Assert(i >= ReadPosition);
-            var result = TextEncoding.GetString(_buf, ReadPosition, i - ReadPosition);
+            var result = encoding.GetString(_buf, ReadPosition, i - ReadPosition);
             ReadPosition = i + 1;
             return result;
         }

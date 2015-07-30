@@ -60,24 +60,24 @@ namespace Npgsql.BackendMessages
                     // Null terminator; error message fully consumed.
                     return;
                 case ErrorFieldTypeCode.Severity:
-                    Severity = buf.ReadNullTerminatedString();
+                    Severity = buf.ReadNullTerminatedString(PGUtil.RelaxedUTF8Encoding);
                     break;
                 case ErrorFieldTypeCode.Code:
                     Code = buf.ReadNullTerminatedString();
                     break;
                 case ErrorFieldTypeCode.Message:
-                    Message = buf.ReadNullTerminatedString();
+                    Message = buf.ReadNullTerminatedString(PGUtil.RelaxedUTF8Encoding);
                     break;
                 case ErrorFieldTypeCode.Detail:
-                    Detail = buf.ReadNullTerminatedString();
+                    Detail = buf.ReadNullTerminatedString(PGUtil.RelaxedUTF8Encoding);
                     break;
                 case ErrorFieldTypeCode.Hint:
-                    Hint = buf.ReadNullTerminatedString();
+                    Hint = buf.ReadNullTerminatedString(PGUtil.RelaxedUTF8Encoding);
                     break;
                 case ErrorFieldTypeCode.Position:
                     var positionStr = buf.ReadNullTerminatedString();
                     int position;
-                    if (!Int32.TryParse(positionStr, out position)) {
+                    if (!int.TryParse(positionStr, out position)) {
                         Log.Warn("Non-numeric position in ErrorResponse: " + positionStr);
                         continue;
                     }
@@ -99,7 +99,7 @@ namespace Npgsql.BackendMessages
                     Where = buf.ReadNullTerminatedString();
                     break;
                 case ErrorFieldTypeCode.File:
-                    File = buf.ReadNullTerminatedString();
+                    File = buf.ReadNullTerminatedString(PGUtil.RelaxedUTF8Encoding);
                     break;
                 case ErrorFieldTypeCode.Line:
                     Line = buf.ReadNullTerminatedString();
