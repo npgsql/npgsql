@@ -52,17 +52,17 @@ Accordingly, your DateTime's Kind will determine the the timezone sent to the da
 DateTime(Kind=UTC)         | timestamp   | Send as-is
 DateTime(Kind=Local)       | timestamp   | Send as-is
 DateTime(Kind=Unspecified) | timestamp   | Send as-is
-DateTimeOffset             | timestamp   | Strip offset, send as-is.
+DateTimeOffset             | timestamp   | Strip offset, send as-is
                            |             |
 DateTime(Kind=UTC)         | timestamptz | Send as-is
 DateTime(Kind=Local)       | timestamptz | Convert to UTC locally before sending
-DateTime(Kind=Unspecified) | timestamptz | **Convert to UTC locally before sending**
-DateTimeOffset             | timestamptz | Convert to UTC locally
+DateTime(Kind=Unspecified) | timestamptz | Send as-is
+DateTimeOffset             | timestamptz | Convert to UTC locally before sending
                            |             |
 DateTime(Kind=UTC)         | time        | Send as-is
 DateTime(Kind=Local)       | time        | Send as-is
 DateTime(Kind=Unspecified) | time        | Send as-is
-DateTimeOffset             | time        | Strip offset, send as-is.
+DateTimeOffset             | time        | Strip offset, send as-is
                            |             |
 DateTime(Kind=UTC)         | timetz      | Send time and UTC timezone
 DateTime(Kind=Local)       | timetz      | Send time and local system timezone
