@@ -129,4 +129,21 @@ namespace Npgsql
         Other
 #pragma warning restore 1591
     }
+
+    /// <summary>
+    /// The way how to order bytes.
+    /// </summary>
+    enum ByteOrder
+    {
+        // ReSharper disable once InconsistentNaming
+        /// <summary>
+        /// Most significant byte first (XDR)
+        /// </summary>
+        MSB = 0,
+        // ReSharper disable once InconsistentNaming
+        /// <summary>
+        /// Less significant byte first (NDR)
+        /// </summary>
+        LSB = 1
+    }
 }
