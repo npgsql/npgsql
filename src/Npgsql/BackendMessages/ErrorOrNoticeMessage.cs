@@ -31,7 +31,7 @@ namespace Npgsql.BackendMessages
     {
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
-        internal ErrorSeverity Severity { get; private set; }
+        internal string Severity { get; private set; }
         internal string Code { get; private set; }
         internal string Message { get; private set; }
         internal string Detail { get; private set; }
@@ -60,13 +60,7 @@ namespace Npgsql.BackendMessages
                     // Null terminator; error message fully consumed.
                     return;
                 case ErrorFieldTypeCode.Severity:
-                    var severityStr = buf.ReadNullTerminatedString();
-                    ErrorSeverity severity;
-                    if (!Enum.TryParse(severityStr, true, out severity)) {
-                        Log.Warn("Unrecognized severity level in ErrorResponse: " + severityStr);
-                        continue;
-                    }
-                    Severity = severity;
+                    Severity = buf.ReadNullTerminatedString();
                     break;
                 case ErrorFieldTypeCode.Code:
                     Code = buf.ReadNullTerminatedString();

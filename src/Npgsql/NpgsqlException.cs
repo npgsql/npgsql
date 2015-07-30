@@ -52,7 +52,7 @@ namespace Npgsql
         /// Severity of the error or notice.
         /// Always present.
         /// </summary>
-        public ErrorSeverity Severity { get { return _msg.Severity; } }
+        public string Severity { get { return _msg.Severity; } }
 
         /// <summary>
         /// The SQLSTATE code for the error.
@@ -194,14 +194,6 @@ namespace Npgsql
                     ).ToDictionary(kv => kv.Key, kv => kv.Value)
                 );
             }
-        }
-
-        [ContractInvariantMethod]
-        void ObjectInvariants()
-        {
-            Contract.Invariant(Severity == ErrorSeverity.Error ||
-                               Severity == ErrorSeverity.Fatal ||
-                               Severity == ErrorSeverity.Panic);
         }
     }
 }
