@@ -1,9 +1,7 @@
-﻿// EntityFrameworkMigrationTests.cs
+﻿#region License
+// The PostgreSQL License
 //
-// Author:
-//    David Karlaš (david.karlas@gmail.com)
-//
-//    Copyright (C) 2014 David Karlaš
+// Copyright (C) 2015 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -21,6 +19,7 @@
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+#endregion
 
 using Npgsql;
 using NUnit.Framework;
