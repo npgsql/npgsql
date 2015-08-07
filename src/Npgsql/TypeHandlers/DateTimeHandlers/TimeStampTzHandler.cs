@@ -71,7 +71,6 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                 switch (ts.Kind)
                 {
                 case DateTimeKind.Unspecified:
-                    // Treat as Local
                 case DateTimeKind.Utc:
                     break;
                 case DateTimeKind.Local:
@@ -90,7 +89,6 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                 switch (dt.Kind)
                 {
                 case DateTimeKind.Unspecified:
-                // Treat as Local
                 case DateTimeKind.Utc:
                     break;
                 case DateTimeKind.Local:
