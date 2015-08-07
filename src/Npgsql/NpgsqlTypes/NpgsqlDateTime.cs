@@ -172,6 +172,15 @@ namespace NpgsqlTypes
             }
         }
 
+        /// <summary>
+        /// Converts the value of the current <see cref="NpgsqlDateTime"/> object to Coordinated Universal Time (UTC).
+        /// </summary>
+        /// <remarks>
+        /// See the MSDN documentation for DateTime.ToUniversalTime().
+        /// <b>Note:</b> this method <b>only</b> takes into account the time zone's base offset, and does
+        /// <b>not</b> respect daylight savings. See https://github.com/npgsql/npgsql/pull/684 for more
+        /// details.
+        /// </remarks>
         public NpgsqlDateTime ToUniversalTime()
         {
             switch (_type)
@@ -189,6 +198,15 @@ namespace NpgsqlTypes
             }
         }
 
+        /// <summary>
+        /// Converts the value of the current <see cref="NpgsqlDateTime"/> object to local time.
+        /// </summary>
+        /// <remarks>
+        /// See the MSDN documentation for DateTime.ToLocalTime().
+        /// <b>Note:</b> this method <b>only</b> takes into account the time zone's base offset, and does
+        /// <b>not</b> respect daylight savings. See https://github.com/npgsql/npgsql/pull/684 for more
+        /// details.
+        /// </remarks>
         public NpgsqlDateTime ToLocalTime()
         {
             switch (_type) {
