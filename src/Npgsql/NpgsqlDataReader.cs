@@ -1,3 +1,26 @@
+#region License
+// The PostgreSQL License
+//
+// Copyright (C) 2015 The Npgsql Development Team
+//
+// Permission to use, copy, modify, and distribute this software and its
+// documentation for any purpose, without fee, and without a written
+// agreement is hereby granted, provided that the above copyright notice
+// and this paragraph and the following two paragraphs appear in all copies.
+//
+// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
+// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
+// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
+// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
+// THE POSSIBILITY OF SUCH DAMAGE.
+//
+// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
+// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
+// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+#endregion
+
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -33,14 +56,14 @@ namespace Npgsql
         ReaderState State { get; set; }
 
         /// <summary>
-        /// Holds the list of RowDescription messages for each of the resultsets this reader is to process.
+        /// Holds the list of statements being executed by this reader.
         /// </summary>
-        List<QueryDetails> _queries;
+        readonly List<NpgsqlStatement> _statements;
 
         /// <summary>
         /// The index of the current query resultset we're processing (within a multiquery)
         /// </summary>
-        int _queryIndex;
+        int _statementIndex;
 
         /// <summary>
         /// The RowDescription message for the current resultset being processed
@@ -83,32 +106,31 @@ namespace Npgsql
         /// </summary>
         readonly RowCache _rowCache;
 
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+        // static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         internal bool IsSequential { get { return (_behavior & CommandBehavior.SequentialAccess) != 0; } }
         internal bool IsCaching { get { return !IsSequential; } }
         internal bool IsSchemaOnly { get { return (_behavior & CommandBehavior.SchemaOnly) != 0; } }
 
-        internal NpgsqlDataReader(NpgsqlCommand command, CommandBehavior behavior, List<QueryDetails> queries)
+        internal NpgsqlDataReader(NpgsqlCommand command, CommandBehavior behavior, List<NpgsqlStatement> statements)
         {
             Command = command;
             _connection = command.Connection;
             _connector = _connection.Connector;
             _behavior = behavior;
-            _recordsAffected = null;
 
             State = IsSchemaOnly ? ReaderState.BetweenResults : ReaderState.InResult;
 
             if (IsCaching) {
                 _rowCache = new RowCache();
             }
-            _queries = queries;
+            _statements = statements;
         }
 
         [RewriteAsync]
         internal void Init()
         {
-            _rowDescription = _queries[0].Description;
+            _rowDescription = _statements[0].Description;
             if (_rowDescription == null)
             {
                 // The first query has not result set, seek forward to the first query that does (if any)
@@ -130,8 +152,27 @@ namespace Npgsql
         /// <summary>
         /// Advances the reader to the next record in a result set.
         /// </summary>
-        /// <returns></returns>
+        /// <returns><b>true</b> if there are more rows; otherwise <b>false</b>.</returns>
+        /// <remarks>
+        /// The default position of a data reader is before the first record. Therefore, you must call Read to begin accessing data.
+        /// </remarks>
         public override bool Read()
+        {
+            return ReadInternal();
+        }
+
+        /// <summary>
+        /// This is the asynchronous version of <see cref="Read"/> The cancellation token is currently ignored.
+        /// </summary>
+        /// <param name="cancellationToken">Ignored for now.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        public override async Task<bool> ReadAsync(CancellationToken cancellationToken)
+        {
+            return await ReadInternalAsync().ConfigureAwait(false);
+        }
+
+        [RewriteAsync]
+        bool ReadInternal()
         {
             if (_row != null) {
                 _row.Consume();
@@ -200,15 +241,23 @@ namespace Npgsql
 
                 case BackendMessageCode.CompletedResponse:
                     var completed = (CommandCompleteMessage) msg;
-                    if (completed.RowsAffected.HasValue)
+                    switch (completed.StatementType)
                     {
-                        _recordsAffected = !_recordsAffected.HasValue
-                            ? completed.RowsAffected
-                            : _recordsAffected.Value + completed.RowsAffected.Value;
+                        case StatementType.Update:
+                        case StatementType.Insert:
+                        case StatementType.Delete:
+                        case StatementType.Copy:
+                            if (!_recordsAffected.HasValue) {
+                                _recordsAffected = 0;
+                            }
+                            _recordsAffected += completed.Rows;
+                            break;
                     }
-                    if (completed.LastInsertedOID.HasValue) {
-                        LastInsertedOID = completed.LastInsertedOID.Value;
-                    }
+
+                    _statements[_statementIndex].StatementType = completed.StatementType;
+                    _statements[_statementIndex].Rows = completed.Rows;
+                    _statements[_statementIndex].OID = completed.OID;
+
                     goto case BackendMessageCode.EmptyQueryResponse;
 
                 case BackendMessageCode.EmptyQueryResponse:
@@ -242,20 +291,21 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// This is the asynchronous version of NextResult. The <paramref name="cancellationToken"/>
-        /// parameter is currently ignored.
+        /// This is the asynchronous version of NextResult.
+        /// The <paramref name="cancellationToken"/> parameter is currently ignored.
         /// </summary>
+        /// <param name="cancellationToken">Currently ignored.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
         public override async sealed Task<bool> NextResultAsync(CancellationToken cancellationToken)
         {
-            return IsSchemaOnly ? NextResultSchemaOnly() : await NextResultInternalAsync();
+            return IsSchemaOnly ? NextResultSchemaOnly() : await NextResultInternalAsync().ConfigureAwait(false);
         }
 
         [RewriteAsync]
         bool NextResultInternal()
         {
             Contract.Requires(!IsSchemaOnly);
-            Contract.Ensures(Command.CommandType != CommandType.StoredProcedure || Contract.Result<bool>() == false);
+            // Contract.Ensures(Command.CommandType != CommandType.StoredProcedure || Contract.Result<bool>() == false);
 
             try
             {
@@ -298,9 +348,9 @@ namespace Npgsql
                 }
 
                 // We are now at the end of the previous result set. Read up to the next result set, if any.
-                for (_queryIndex++; _queryIndex < _queries.Count; _queryIndex++)
+                for (_statementIndex++; _statementIndex < _statements.Count; _statementIndex++)
                 {
-                    _rowDescription = _queries[_queryIndex].Description;
+                    _rowDescription = _statements[_statementIndex].Description;
                     if (_rowDescription != null)
                     {
                         State = ReaderState.InResult;
@@ -333,9 +383,9 @@ namespace Npgsql
         {
             Contract.Requires(IsSchemaOnly);
 
-            for (_queryIndex++; _queryIndex < _queries.Count; _queryIndex++)
+            for (_statementIndex++; _statementIndex < _statements.Count; _statementIndex++)
             {
-                _rowDescription = _queries[_queryIndex].Description;
+                _rowDescription = _statements[_statementIndex].Description;
                 if (_rowDescription != null)
                 {
                     // Found a resultset
@@ -348,6 +398,7 @@ namespace Npgsql
 
         #endregion
 
+        [RewriteAsync]
         IBackendMessage ReadMessage()
         {
             if (_pendingMessage != null) {
@@ -410,13 +461,20 @@ namespace Npgsql
         public override int RecordsAffected
         {
             get { return _recordsAffected.HasValue ? (int)_recordsAffected.Value : -1; }
-       }
+        }
 
         /// <summary>
-        /// Returns the OID of the last inserted row.
-        /// If table is created without OIDs, this will always be 0.
+        /// Returns details about each statement that this reader will or has executed.
         /// </summary>
-        public uint LastInsertedOID { get; private set; }
+        /// <remarks>
+        /// Note that some fields (i.e. rows and oid) are only populated as the reader
+        /// traverses the result.
+        ///
+        /// For commands with multiple queries, this exposes the number of rows affected on
+        /// a statement-by-statement basis, unlike <see cref="NpgsqlDataReader.RecordsAffected"/>
+        /// which exposes an aggregation across all statements.
+        /// </remarks>
+        public IReadOnlyList<NpgsqlStatement> Statements { get { return _statements.AsReadOnly(); } }
 
         /// <summary>
         /// Gets a value that indicates whether this DbDataReader contains one or more rows.
@@ -428,7 +486,7 @@ namespace Npgsql
                 if (_hasRows.HasValue) {
                     return _hasRows.Value;
                 }
-                if (_queryIndex >= _queries.Count) {
+                if (_statementIndex >= _statements.Count) {
                     return false;
                 }
                 while (true)
@@ -498,6 +556,7 @@ namespace Npgsql
         /// Consumes all result sets for this reader, leaving the connector ready for sending and processing further
         /// queries
         /// </summary>
+        [RewriteAsync]
         void Consume()
         {
             if (IsSchemaOnly)
@@ -545,6 +604,7 @@ namespace Npgsql
                 // exception thrown from a type handler. Or if the connection was closed while the reader
                 // was still open
                 State = ReaderState.Closed;
+                Command.State = CommandState.Idle;
                 if (ReaderClosed != null) {
                     ReaderClosed(this, EventArgs.Empty);
                 }
@@ -554,7 +614,14 @@ namespace Npgsql
             if (State != ReaderState.Consumed) {
                 Consume();
             }
-            if ((_behavior & CommandBehavior.CloseConnection) != 0) {
+
+            Cleanup();
+        }
+
+        internal void Cleanup()
+        {
+            if ((_behavior & CommandBehavior.CloseConnection) != 0)
+            {
                 _connection.Close();
             }
 
@@ -563,35 +630,11 @@ namespace Npgsql
             _connector.CurrentReader = null;
             _connector.EndUserAction();
 
-            if (ReaderClosed != null) {
-                ReaderClosed(this, EventArgs.Empty);
-                ReaderClosed = null;
-            }
-        }
-
-        /// <summary>
-        /// Special version of close used when a connection is closed with an open reader.
-        /// We don't want to simply close because that would block the user until the open reader
-        /// is consumed, potentially a long process.
-        /// </summary>
-        internal async Task AsyncClose()
-        {
-            State = ReaderState.Closed;
-            Command.State = CommandState.Idle;
-            _connector.CurrentReader = null;
-
-            if (ReaderClosed != null) {
-                ReaderClosed(this, EventArgs.Empty);
-                ReaderClosed = null;
-            }
-
-            // TODO: Consume asynchronously?
-            if (State != ReaderState.Consumed)
+            if (ReaderClosed != null)
             {
-                await Task.Run(() => Consume());
+                ReaderClosed(this, EventArgs.Empty);
+                ReaderClosed = null;
             }
-
-            _connector.EndUserAction();
         }
 
         #endregion
@@ -1027,6 +1070,8 @@ namespace Npgsql
 
         #endregion
 
+        #region IsDBNull
+
         /// <summary>
         /// Gets a value that indicates whether the column contains nonexistent or missing values.
         /// </summary>
@@ -1034,12 +1079,34 @@ namespace Npgsql
         /// <returns><b>true</b> if the specified column is equivalent to <see cref="DBNull"/>; otherwise <b>false</b>.</returns>
         public override bool IsDBNull(int ordinal)
         {
+            return IsDBNullInternal(ordinal);
+        }
+
+        /// <summary>
+        /// An asynchronous version of <see cref="IsDBNull"/>, which gets a value that indicates whether the column contains non-existent or missing values.
+        /// The <paramref name="cancellationToken"/> parameter is currently ignored.
+        /// </summary>
+        /// <param name="ordinal">The zero-based column to be retrieved.</param>
+        /// <param name="cancellationToken">Currently ignored.</param>
+        /// <returns><b>true</b> if the specified column value is equivalent to <see cref="DBNull"/> otherwise <b>false</b>.</returns>
+        public override async Task<bool> IsDBNullAsync(int ordinal, CancellationToken cancellationToken)
+        {
+            return await IsDBNullInternalAsync(ordinal).ConfigureAwait(false);
+        }
+
+        [RewriteAsync]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        // ReSharper disable once InconsistentNaming
+        bool IsDBNullInternal(int ordinal)
+        {
             CheckRowAndOrdinal(ordinal);
             Contract.EndContractBlock();
 
             Row.SeekToColumn(ordinal);
             return _row.IsColumnNull;
         }
+
+        #endregion
 
         /// <summary>
         /// Gets the value of the specified column as an instance of <see cref="object"/>.
@@ -1059,7 +1126,7 @@ namespace Npgsql
         public override int GetOrdinal(string name)
         {
             #region Contracts
-            CheckRow();
+            CheckResultSet();
             if (String.IsNullOrEmpty(name))
                 throw new ArgumentException("name cannot be empty", "name");
             Contract.EndContractBlock();
@@ -1165,19 +1232,40 @@ namespace Npgsql
         /// <typeparam name="T">Synchronously gets the value of the specified column as a type.</typeparam>
         /// <param name="ordinal">The column to be retrieved.</param>
         /// <returns>The column to be retrieved.</returns>
-#if NET40
-        public T GetFieldValue<T>(int ordinal)
-#else
         public override T GetFieldValue<T>(int ordinal)
-#endif
+        {
+            return GetFieldValueInternal<T>(ordinal);
+        }
+
+        /// <summary>
+        /// Asynchronously gets the value of the specified column as a type.
+        /// The <paramref name="cancellationToken"/> parameter is currently ignored.
+        /// </summary>
+        /// <typeparam name="T">The type of the value to be returned.</typeparam>
+        /// <param name="ordinal">The column to be retrieved.</param>
+        /// <param name="cancellationToken">Currently ignored.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        public override async Task<T> GetFieldValueAsync<T>(int ordinal, CancellationToken cancellationToken)
+        {
+            return await GetFieldValueInternalAsync<T>(ordinal).ConfigureAwait(false);
+        }
+
+        [RewriteAsync]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        T GetFieldValueInternal<T>(int ordinal)
         {
             CheckRowAndOrdinal(ordinal);
             Contract.EndContractBlock();
 
             var t = typeof(T);
             if (!t.IsArray) {
+                if (t == typeof(object)) {
+                    return (T)GetValue(ordinal);
+                }
                 return ReadColumn<T>(ordinal);
             }
+
+            // Getting an array
 
             var fieldDescription = _rowDescription[ordinal];
             var handler = fieldDescription.Handler;
@@ -1348,6 +1436,7 @@ namespace Npgsql
 #if !NET40
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
 #endif
+        [RewriteAsync]
         T ReadColumnWithoutCache<T>(int ordinal)
         {
             _row.SeekToColumnStart(ordinal);
@@ -1371,6 +1460,7 @@ namespace Npgsql
 #if !NET40
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
 #endif
+        [RewriteAsync]
         T ReadColumn<T>(int ordinal)
         {
             CachedValue<T> cache = null;

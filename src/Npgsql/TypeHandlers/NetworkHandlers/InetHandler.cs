@@ -1,4 +1,27 @@
-﻿using System;
+﻿#region License
+// The PostgreSQL License
+//
+// Copyright (C) 2015 The Npgsql Development Team
+//
+// Permission to use, copy, modify, and distribute this software and its
+// documentation for any purpose, without fee, and without a written
+// agreement is hereby granted, provided that the above copyright notice
+// and this paragraph and the following two paragraphs appear in all copies.
+//
+// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
+// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
+// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
+// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
+// THE POSSIBILITY OF SUCH DAMAGE.
+//
+// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
+// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
+// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+#endregion
+
+using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
@@ -28,7 +51,7 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
 
         static internal NpgsqlInet DoRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len, bool isCidrHandler)
         {
-            var addressFamily = buf.ReadByte();
+            buf.ReadByte();  // addressFamily
             var mask = buf.ReadByte();
             var isCidr = buf.ReadByte() == 1;
             Contract.Assume(isCidrHandler == isCidr);
@@ -37,7 +60,7 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             for (var i = 0; i < numBytes; i++) {
                 bytes[i] = buf.ReadByte();
             }
-            return new NpgsqlInet(new IPAddress(bytes), mask);            
+            return new NpgsqlInet(new IPAddress(bytes), mask);
         }
 
         NpgsqlInet ISimpleTypeReader<NpgsqlInet>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
@@ -69,10 +92,10 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
                 return 20;
             default:
                 throw new InvalidCastException(String.Format("Can't handle IPAddress with AddressFamily {0}, only InterNetwork or InterNetworkV6!", ip.AddressFamily));
-            }            
+            }
         }
 
-        public int ValidateAndGetLength(object value)
+        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
             return DoValidateAndGetLength(value);
         }
@@ -114,10 +137,10 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             buf.WriteByte((byte)(isCidrHandler ? 1 : 0));  // Ignored on server side
             var bytes = ip.GetAddressBytes();
             buf.WriteByte((byte)bytes.Length);
-            buf.WriteBytesSimple(bytes, 0, bytes.Length);            
+            buf.WriteBytes(bytes, 0, bytes.Length);
         }
 
-        public void Write(object value, NpgsqlBuffer buf)
+        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
         {
             DoWrite(value, buf, false);
         }

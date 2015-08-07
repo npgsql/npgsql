@@ -1,4 +1,27 @@
-﻿using System;
+﻿#region License
+// The PostgreSQL License
+//
+// Copyright (C) 2015 The Npgsql Development Team
+//
+// Permission to use, copy, modify, and distribute this software and its
+// documentation for any purpose, without fee, and without a written
+// agreement is hereby granted, provided that the above copyright notice
+// and this paragraph and the following two paragraphs appear in all copies.
+//
+// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
+// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
+// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
+// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
+// THE POSSIBILITY OF SUCH DAMAGE.
+//
+// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
+// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
+// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+#endregion
+
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
@@ -36,7 +59,7 @@ namespace Npgsql.TypeHandlers
         public bool Read(out byte[] result)
         {
             var toRead = Math.Min(_bytes.Length - _pos, _buf.ReadBytesLeft);
-            _buf.ReadBytesSimple(_bytes, _pos, toRead);
+            _buf.ReadBytes(_bytes, _pos, toRead);
             _pos += toRead;
             if (_pos == _bytes.Length)
             {
@@ -62,7 +85,7 @@ namespace Npgsql.TypeHandlers
                 len = row.ColumnLen - offset;
             }
 
-            row.Buffer.ReadBytes(output, outputOffset, len, true);
+            row.Buffer.ReadAllBytes(output, outputOffset, len, false);
             row.PosInColumn += len;
             return len;
         }
@@ -84,14 +107,16 @@ namespace Npgsql.TypeHandlers
                     ? arraySegment.Count
                     : parameter.Size;
             }
-            else
-            {
-                var array = (byte[])value;
 
-                return parameter == null || parameter.Size <= 0 || parameter.Size >= array.Length
-                    ? array.Length
+            var asArray = value as byte[];
+            if (asArray != null)
+            {
+                return parameter == null || parameter.Size <= 0 || parameter.Size >= asArray.Length
+                    ? asArray.Length
                     : parameter.Size;
             }
+
+            throw CreateConversionException(value.GetType());
         }
 
         public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
@@ -119,25 +144,26 @@ namespace Npgsql.TypeHandlers
         // ReSharper disable once RedundantAssignment
         public bool Write(ref DirectBuffer directBuf)
         {
+            // If we're back here after having returned a direct buffer, we're done.
+            if (_returnedBuffer)
+            {
+                _returnedBuffer = false;
+                return true;
+            }
+
             // If the entire array fits in our buffer, copy it as usual.
             // Otherwise, switch to direct write from the user-provided buffer
             if (_value.Count <= _buf.WriteSpaceLeft)
             {
-                _buf.WriteBytesSimple(_value.Array, _value.Offset, _value.Count);
+                _buf.WriteBytes(_value.Array, _value.Offset, _value.Count);
                 return true;
             }
 
-            if (!_returnedBuffer)
-            {
-                directBuf.Buffer = _value.Array;
-                directBuf.Offset = _value.Offset;
-                directBuf.Size = _value.Count;
-                _returnedBuffer = true;
-                return false;
-            }
-
-            _returnedBuffer = false;
-            return true;
+            directBuf.Buffer = _value.Array;
+            directBuf.Offset = _value.Offset;
+            directBuf.Size = _value.Count;
+            _returnedBuffer = true;
+            return false;
         }
 
         #endregion
@@ -159,7 +185,16 @@ namespace Npgsql.TypeHandlers
         {
             CheckDisposed();
             count = Math.Min(count, _row.ColumnLen - _row.PosInColumn);
-            var read = _row.Buffer.ReadBytes(buffer, offset, count, false);
+            var read = _row.Buffer.ReadAllBytes(buffer, offset, count, true);
+            _row.PosInColumn += read;
+            return read;
+        }
+
+        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken token)
+        {
+            CheckDisposed();
+            count = Math.Min(count, _row.ColumnLen - _row.PosInColumn);
+            var read = await _row.Buffer.ReadAllBytesAsync(buffer, offset, count, true);
             _row.PosInColumn += read;
             return read;
         }

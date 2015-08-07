@@ -1,11 +1,7 @@
-// NpgsqlTypes.NpgsqlTypesHelper.cs
+#region License
+// The PostgreSQL License
 //
-// Author:
-//    Glen Parker <glenebob@nwlink.com>
-//
-//    Copyright (C) 2004 The Npgsql Development Team
-//    npgsql-general@gborg.postgresql.org
-//    http://gborg.postgresql.org/project/npgsql/projdisplay.php
+// Copyright (C) 2015 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -23,9 +19,7 @@
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-
-// This file provides implementations of PostgreSQL specific data types that cannot
-// be mapped to standard .NET classes.
+#endregion
 
 using System;
 using System.Collections;
@@ -136,7 +130,7 @@ namespace NpgsqlTypes
                 Double.Parse(m.Groups[1].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat),
                 Double.Parse(m.Groups[2].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat),
                 Double.Parse(m.Groups[3].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat)
-            );            
+            );
         }
 
         public override String ToString()
@@ -205,7 +199,7 @@ namespace NpgsqlTypes
                 Double.Parse(m.Groups[3].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat),
                 Double.Parse(m.Groups[4].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat)
             );
-            
+
         }
 
         public override String ToString()
@@ -308,7 +302,7 @@ namespace NpgsqlTypes
                                 Double.Parse(m.Groups[2].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat)),
                 new NpgsqlPoint(Double.Parse(m.Groups[3].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat),
                                 Double.Parse(m.Groups[4].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat))
-            );            
+            );
         }
 
         public override int GetHashCode()
@@ -497,7 +491,7 @@ namespace NpgsqlTypes
                     break;
                 i = i2 + 2;
             }
-            return result;            
+            return result;
         }
     }
 

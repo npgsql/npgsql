@@ -1,7 +1,31 @@
-﻿using System;
+﻿#region License
+// The PostgreSQL License
+//
+// Copyright (C) 2015 The Npgsql Development Team
+//
+// Permission to use, copy, modify, and distribute this software and its
+// documentation for any purpose, without fee, and without a written
+// agreement is hereby granted, provided that the above copyright notice
+// and this paragraph and the following two paragraphs appear in all copies.
+//
+// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
+// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
+// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
+// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
+// THE POSSIBILITY OF SUCH DAMAGE.
+//
+// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
+// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
+// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+#endregion
+
+using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
@@ -16,7 +40,7 @@ namespace Npgsql
     /// <remarks>
     /// See http://www.postgresql.org/docs/current/static/sql-copy.html.
     /// </remarks>
-    public class NpgsqlBinaryImporter : IDisposable
+    public class NpgsqlBinaryImporter : IDisposable, ICancelable
     {
         #region Fields and Properties
 
@@ -37,6 +61,12 @@ namespace Npgsql
         /// </summary>
         internal int NumColumns { get; private set; }
 
+        /// <summary>
+        /// NpgsqlParameter instance needed in order to pass the <see cref="NpgsqlParameter.ConvertedValue"/> from
+        /// the validation phase to the writing phase.
+        /// </summary>
+        NpgsqlParameter _dummyParam;
+
         #endregion
 
         #region Construction / Initialization
@@ -48,6 +78,7 @@ namespace Npgsql
             _registry = connector.TypeHandlerRegistry;
             _lengthCache = new LengthCache();
             _column = -1;
+            _dummyParam = new NpgsqlParameter();
 
             try
             {
@@ -72,7 +103,7 @@ namespace Npgsql
         void WriteHeader()
         {
             EnsureDataMessage();
-            _buf.WriteBytesSimple(NpgsqlRawCopyStream.BinarySignature);
+            _buf.WriteBytes(NpgsqlRawCopyStream.BinarySignature, 0, NpgsqlRawCopyStream.BinarySignature.Length);
             _buf.WriteInt32(0);   // Flags field. OID inclusion not supported at the moment.
             _buf.WriteInt32(0);   // Header extension area length
         }
@@ -86,6 +117,8 @@ namespace Npgsql
         /// </summary>
         public void StartRow()
         {
+            CheckDisposed();
+
             if (_column != -1 && _column != NumColumns) {
                 throw new InvalidOperationException("Row has already been started and must be finished");
             }
@@ -140,57 +173,86 @@ namespace Npgsql
 
         void DoWrite<T>(TypeHandler handler, T value)
         {
-            if (_buf.WriteSpaceLeft < 4) { Flush(); }
-            EnsureDataMessage();
-
-            var asObject = (object)value;   // TODO: Implement boxless writing in the future
-            if (asObject == null) {
-                _buf.WriteInt32(-1);
-                _column++;
-                return;
-            }
-
-            var asSimple = handler as ISimpleTypeWriter;
-            if (asSimple != null) {
-                var len = asSimple.ValidateAndGetLength(asObject);
-                _buf.WriteInt32(len);
-                if (_buf.WriteSpaceLeft < len) {
-                    Contract.Assume(_buf.Size >= len);
+            try
+            {
+                if (_buf.WriteSpaceLeft < 4)
+                {
                     FlushAndStartDataMessage();
                 }
-                asSimple.Write(asObject, _buf);
-                _column++;
-                return;
-            }
 
-            var asChunking = handler as IChunkingTypeWriter;
-            if (asChunking != null) {
-                _lengthCache.Clear();
-                var len = asChunking.ValidateAndGetLength(asObject, ref _lengthCache);
-                _buf.WriteInt32(len);
-                _lengthCache.Rewind();
-                _lengthCache.Get();  // Hack
-                asChunking.PrepareWrite(asObject, _buf, _lengthCache);
-                var directBuf = new DirectBuffer();
-                while (!asChunking.Write(ref directBuf)) {
-                    FlushAndStartDataMessage();
+                var asObject = (object) value; // TODO: Implement boxless writing in the future
+                if (asObject == null)
+                {
+                    _buf.WriteInt32(-1);
+                    _column++;
+                    return;
+                }
 
-                    // The following is an optimization hack for writing large byte arrays without passing
-                    // through our buffer
-                    if (directBuf.Buffer != null) {
-                        len = directBuf.Size == 0 ? directBuf.Buffer.Length : directBuf.Size;
-                        _buf.WriteInt32(len);
-                        Flush();
-                        _buf.Underlying.Write(directBuf.Buffer, directBuf.Offset, len);
-                        directBuf.Buffer = null;
-                        directBuf.Size = 0;
+                _dummyParam.ConvertedValue = null;
+
+                var asSimple = handler as ISimpleTypeWriter;
+                if (asSimple != null)
+                {
+                    var len = asSimple.ValidateAndGetLength(asObject, _dummyParam);
+                    _buf.WriteInt32(len);
+                    if (_buf.WriteSpaceLeft < len)
+                    {
+                        Contract.Assume(_buf.Size >= len);
+                        FlushAndStartDataMessage();
                     }
+                    asSimple.Write(asObject, _buf, _dummyParam);
+                    _column++;
+                    return;
                 }
-                _column++;
-                return;
-            }
 
-            throw PGUtil.ThrowIfReached();
+                var asChunking = handler as IChunkingTypeWriter;
+                if (asChunking != null)
+                {
+                    _lengthCache.Clear();
+                    var len = asChunking.ValidateAndGetLength(asObject, ref _lengthCache, _dummyParam);
+                    _buf.WriteInt32(len);
+
+                    // If the type handler used the length cache, rewind it to skip the first position:
+                    // it contains the entire value length which we already have in len.
+                    if (_lengthCache.Position > 0)
+                    {
+                        _lengthCache.Rewind();
+                        _lengthCache.Position++;
+                    }
+
+                    asChunking.PrepareWrite(asObject, _buf, _lengthCache, _dummyParam);
+                    var directBuf = new DirectBuffer();
+                    while (!asChunking.Write(ref directBuf))
+                    {
+                        Flush();
+
+                        // The following is an optimization hack for writing large byte arrays without passing
+                        // through our buffer
+                        if (directBuf.Buffer != null)
+                        {
+                            len = directBuf.Size == 0 ? directBuf.Buffer.Length : directBuf.Size;
+                            _buf.WritePosition = 1;
+                            _buf.WriteInt32(len + 4);
+                            _buf.Flush();
+                            _writingDataMsg = false;
+                            _buf.Underlying.Write(directBuf.Buffer, directBuf.Offset, len);
+                            directBuf.Buffer = null;
+                            directBuf.Size = 0;
+                        }
+                        EnsureDataMessage();
+                    }
+                    _column++;
+                    return;
+                }
+
+                throw PGUtil.ThrowIfReached();
+            }
+            catch
+            {
+                _connector.Break();
+                Cleanup();
+                throw;
+            }
         }
 
         /// <summary>
@@ -203,8 +265,7 @@ namespace Npgsql
                 throw new InvalidOperationException("A row hasn't been started");
             }
 
-            if (_buf.WriteSpaceLeft < 4) { Flush(); }
-            EnsureDataMessage();
+            if (_buf.WriteSpaceLeft < 4) { FlushAndStartDataMessage(); }
 
             _buf.WriteInt32(-1);
             _column++;
@@ -297,8 +358,14 @@ namespace Npgsql
             _connector.SendSingleMessage(CopyDoneMessage.Instance);
             _connector.ReadExpecting<CommandCompleteMessage>();
             _connector.ReadExpecting<ReadyForQueryMessage>();
+            _connector.CurrentCopyOperation = null;
             _connector.EndUserAction();
 
+            Cleanup();
+        }
+
+        void Cleanup()
+        {
             _connector = null;
             _registry = null;
             _buf = null;
@@ -317,6 +384,12 @@ namespace Npgsql
             if (_isDisposed) {
                 throw new ObjectDisposedException(GetType().FullName, "The COPY operation has already ended.");
             }
+        }
+
+        [ContractInvariantMethod]
+        void ObjectInvariants()
+        {
+            Contract.Invariant(_isDisposed || _writingDataMsg);
         }
 
         #endregion

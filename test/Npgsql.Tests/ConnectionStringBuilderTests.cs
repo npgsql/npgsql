@@ -17,7 +17,7 @@ namespace Npgsql.Tests
             Builder.Host = "myhost";
             Assert.That(Builder["host"], Is.EqualTo("myhost"));
             Assert.That(Builder.Count, Is.EqualTo(1));
-            Assert.That(Builder.ConnectionString, Is.EqualTo("Server=myhost"));
+            Assert.That(Builder.ConnectionString, Is.EqualTo("Host=myhost"));
             Builder.Remove("HOST");
             Assert.That(Builder["host"], Is.EqualTo(""));
             Assert.That(Builder.Count, Is.EqualTo(0));
@@ -26,8 +26,21 @@ namespace Npgsql.Tests
         [Test]
         public void FromString()
         {
-            Builder.ConnectionString = "Host=myhost";
+            Builder.ConnectionString = "Host=myhost;EF Template Database=foo";
             Assert.That(Builder.Host, Is.EqualTo("myhost"));
+            Assert.That(Builder.EntityTemplateDatabase, Is.EqualTo("foo"));
+        }
+
+        [Test]
+        public void TryGetValue()
+        {
+            object value;
+            Builder.ConnectionString = "Host=myhost";
+
+            Assert.That(Builder.TryGetValue("Host", out value), Is.True);
+            Assert.That(value, Is.EqualTo("myhost"));
+
+            Assert.That(Builder.TryGetValue("SomethingUnknown", out value), Is.False);
         }
 
         [Test]

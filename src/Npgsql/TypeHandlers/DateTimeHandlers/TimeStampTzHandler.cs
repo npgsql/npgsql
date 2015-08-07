@@ -1,4 +1,27 @@
-﻿using System;
+﻿#region License
+// The PostgreSQL License
+//
+// Copyright (C) 2015 The Npgsql Development Team
+//
+// Permission to use, copy, modify, and distribute this software and its
+// documentation for any purpose, without fee, and without a written
+// agreement is hereby granted, provided that the above copyright notice
+// and this paragraph and the following two paragraphs appear in all copies.
+//
+// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
+// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
+// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
+// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
+// THE POSSIBILITY OF SUCH DAMAGE.
+//
+// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
+// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
+// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+#endregion
+
+using System;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
@@ -28,7 +51,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         NpgsqlDateTime ISimpleTypeReader<NpgsqlDateTime>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             var ts = ReadTimeStamp(buf, len, fieldDescription);
-            return new NpgsqlDateTime(ts.Date, ts.Time, DateTimeKind.Utc);
+            return new NpgsqlDateTime(ts.Date, ts.Time, DateTimeKind.Utc).ToLocalTime();
         }
 
         DateTimeOffset ISimpleTypeReader<DateTimeOffset>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
@@ -36,15 +59,18 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             return new DateTimeOffset(ReadTimeStamp(buf, len, fieldDescription).DateTime, TimeSpan.Zero);
         }
 
-        public override void Write(object value, NpgsqlBuffer buf)
+        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
         {
+            if (parameter != null && parameter.ConvertedValue != null) {
+                value = parameter.ConvertedValue;
+            }
+
             if (value is NpgsqlDateTime)
             {
                 var ts = (NpgsqlDateTime)value;
                 switch (ts.Kind)
                 {
                 case DateTimeKind.Unspecified:
-                    // Treat as Local
                 case DateTimeKind.Utc:
                     break;
                 case DateTimeKind.Local:
@@ -53,7 +79,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                 default:
                     throw PGUtil.ThrowIfReached();
                 }
-                base.Write(ts, buf);
+                base.Write(ts, buf, parameter);
                 return;
             }
 
@@ -63,7 +89,6 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                 switch (dt.Kind)
                 {
                 case DateTimeKind.Unspecified:
-                // Treat as Local
                 case DateTimeKind.Utc:
                     break;
                 case DateTimeKind.Local:
@@ -72,17 +97,17 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                 default:
                     throw PGUtil.ThrowIfReached();
                 }
-                base.Write(dt, buf);
+                base.Write(dt, buf, parameter);
                 return;
             }
 
             if (value is DateTimeOffset)
             {
-                base.Write(((DateTimeOffset)value).ToUniversalTime(), buf);
+                base.Write(((DateTimeOffset)value).ToUniversalTime(), buf, parameter);
                 return;
             }
 
-            throw new InvalidCastException();
+            throw PGUtil.ThrowIfReached();
         }
     }
 }

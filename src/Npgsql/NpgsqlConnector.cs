@@ -1,6 +1,7 @@
-//    Copyright (C) 2002 The Npgsql Development Team
-//    npgsql-general@gborg.postgresql.org
-//    http://gborg.postgresql.org/project/npgsql/projdisplay.php
+#region License
+// The PostgreSQL License
+//
+// Copyright (C) 2015 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -18,10 +19,12 @@
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+#endregion
 
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Data.Common;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.IO;
@@ -47,6 +50,8 @@ namespace Npgsql
     /// </summary>
     internal partial class NpgsqlConnector
     {
+        #region Fields and Properties
+
         readonly NpgsqlConnectionStringBuilder _settings;
 
         /// <summary>
@@ -139,6 +144,12 @@ namespace Npgsql
         internal NpgsqlDataReader CurrentReader;
 
         /// <summary>
+        /// If the connector is currently in COPY mode, holds a reference to the importer/exporter object.
+        /// Otherwise null.
+        /// </summary>
+        internal ICancelable CurrentCopyOperation;
+
+        /// <summary>
         /// Holds all run-time parameters received from the backend (via ParameterStatus messages)
         /// </summary>
         internal Dictionary<string, string> BackendParams;
@@ -146,12 +157,6 @@ namespace Npgsql
 #if !DNXCORE50
         internal SSPIHandler SSPI { get; set; }
 #endif
-
-        /// <summary>
-        /// Number of seconds added as a margin to the backend timeout to yield the frontend timeout.
-        /// We prefer the backend to timeout - it's a clean error which doesn't break the connector.
-        /// </summary>
-        const int FrontendTimeoutMargin = 3;
 
         /// <summary>
         /// The frontend timeout for reading messages that are part of the user's command
@@ -176,12 +181,23 @@ namespace Npgsql
         int _frontendTimeout;
 
         /// <summary>
-        /// The minimum timeout that can be set on internal commands such as COMMIT, ROLLBACK.
+        /// A lock that's taken while a user action is in progress, e.g. a command being executed.
         /// </summary>
-        internal const int MinimumInternalCommandTimeout = 3;
-
         SemaphoreSlim _userLock;
+
+        /// <summary>
+        /// A lock that's taken while a non-user-triggered async action is in progress, e.g. handling of an
+        /// asynchronous notification or a connection keepalive. Does <b>not</b> get taken for a user async
+        /// action such as <see cref="DbCommand.ExecuteReaderAsync()"/>.
+        /// </summary>
         SemaphoreSlim _asyncLock;
+
+        /// <summary>
+        /// A lock that's taken while a cancellation is being delivered; new queries are blocked until the
+        /// cancellation is delivered. This reduces the chance that a cancellation meant for a previous
+        /// command will accidentally cancel a later one, see #615.
+        /// </summary>
+        readonly object _cancelLock;
 
         readonly UserAction _userAction;
         readonly Timer _keepAliveTimer;
@@ -189,6 +205,23 @@ namespace Npgsql
         static readonly byte[] EmptyBuffer = new byte[0];
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+
+        #endregion
+
+        #region Constants
+
+        /// <summary>
+        /// Number of seconds added as a margin to the backend timeout to yield the frontend timeout.
+        /// We prefer the backend to timeout - it's a clean error which doesn't break the connector.
+        /// </summary>
+        const int FrontendTimeoutMargin = 3;
+
+        /// <summary>
+        /// The minimum timeout that can be set on internal commands such as COMMIT, ROLLBACK.
+        /// </summary>
+        internal const int MinimumInternalCommandTimeout = 3;
+
+        #endregion
 
         #region Reusable Message Objects
 
@@ -215,7 +248,7 @@ namespace Npgsql
         #region Constructors
 
         internal NpgsqlConnector(NpgsqlConnection connection)
-            : this(connection.CopyConnectionStringBuilder())
+            : this(connection.Settings)
         {
             Connection = connection;
             Connection.Connector = this;
@@ -238,6 +271,7 @@ namespace Npgsql
             _userLock = new SemaphoreSlim(1, 1);
             _asyncLock = new SemaphoreSlim(1, 1);
             _userAction = new UserAction(this);
+            _cancelLock = new object();
 
             if (KeepAlive > 0) {
                 _keepAliveTimer = new Timer(PerformKeepAlive, null, Timeout.Infinite, Timeout.Infinite);
@@ -255,18 +289,32 @@ namespace Npgsql
         internal string UserName { get { return _settings.Username; } }
         internal string Password { get { return _settings.Password; } }
         internal string KerberosServiceName { get { return _settings.KerberosServiceName; } }
-        internal bool SSL { get { return _settings.SSL; } }
         internal SslMode SslMode { get { return _settings.SslMode; } }
         internal bool UseSslStream { get { return _settings.UseSslStream; } }
         internal int BufferSize { get { return _settings.BufferSize; } }
         internal int ConnectionTimeout { get { return _settings.Timeout; } }
-        internal int InternalCommandTimeout { get { return _settings.InternalCommandTimeout ?? _settings.CommandTimeout; } }
         internal bool BackendTimeouts { get { return _settings.BackendTimeouts; } }
         internal int KeepAlive { get { return _settings.KeepAlive; } }
         internal bool Enlist { get { return _settings.Enlist; } }
         internal bool IntegratedSecurity { get { return _settings.IntegratedSecurity; } }
         internal bool ConvertInfinityDateTime { get { return _settings.ConvertInfinityDateTime; } }
-        internal bool SyncNotification { get { return _settings.SyncNotification; } }
+        internal bool ContinuousProcessing { get { return _settings.ContinuousProcessing; } }
+
+        internal int ActualInternalCommandTimeout
+        {
+            get
+            {
+                Contract.Ensures(Contract.Result<int>() == 0 || Contract.Result<int>() >= MinimumInternalCommandTimeout);
+
+                var internalTimeout = _settings.InternalCommandTimeout;
+                if (internalTimeout == -1) {
+                    return Math.Max(_settings.CommandTimeout, MinimumInternalCommandTimeout);
+                }
+
+                Contract.Assert(internalTimeout == 0 || internalTimeout >= MinimumInternalCommandTimeout);
+                return internalTimeout;
+            }
+        }
 
         #endregion Configuration settings
 
@@ -355,8 +403,6 @@ namespace Npgsql
             Contract.Requires(Connection != null && Connection.Connector == this);
             Contract.Requires(State == ConnectorState.Closed);
             Contract.Ensures(State == ConnectorState.Ready);
-            Contract.EnsuresOnThrow<IOException>(State == ConnectorState.Closed);
-            Contract.EnsuresOnThrow<SocketException>(State == ConnectorState.Closed);
 
             State = ConnectorState.Connecting;
 
@@ -377,7 +423,11 @@ namespace Npgsql
                 if (!string.IsNullOrEmpty(_settings.SearchPath)) {
                     startupMessage["search_path"] = _settings.SearchPath;
                 }
-                if (!IsRedshift) {
+                if (_settings.BackendTimeouts && _settings.CommandTimeout != 0) {
+                    startupMessage["statement_timeout"] = (_settings.CommandTimeout * 1000).ToString();
+                    _backendTimeout = _settings.CommandTimeout;
+                }
+                if (IsSecure && !IsRedshift) {
                     startupMessage["ssl_renegotiation_limit"] = "0";
                 }
 
@@ -393,7 +443,7 @@ namespace Npgsql
                 TypeHandlerRegistry.Setup(this);
                 State = ConnectorState.Ready;
 
-                if (SyncNotification) {
+                if (ContinuousProcessing) {
                     HandleAsyncMessages();
                 }
             }
@@ -469,7 +519,7 @@ namespace Npgsql
                 _stream = _baseStream;
 
                 // If the PostgreSQL server has SSL connectors enabled Open SslClientStream if (response == 'S') {
-                if (SSL || (SslMode == SslMode.Require) || (SslMode == SslMode.Prefer))
+                if (SslMode == SslMode.Require || SslMode == SslMode.Prefer)
                 {
                     _stream
                         .WriteInt32(8)
@@ -491,7 +541,15 @@ namespace Npgsql
                             ProvideClientCertificatesCallback(clientCertificates);
                         }
 
-                        var certificateValidationCallback = UserCertificateValidationCallback ?? DefaultUserCertificateValidationCallback;
+                        RemoteCertificateValidationCallback certificateValidationCallback;
+                        if (_settings.TrustServerCertificate) {
+                            certificateValidationCallback = (sender, certificate, chain, errors) => true;
+                        } else if (UserCertificateValidationCallback != null) {
+                            certificateValidationCallback = UserCertificateValidationCallback;
+                        } else {
+                            certificateValidationCallback = DefaultUserCertificateValidationCallback;
+                        }
+
                         if (!UseSslStream)
                         {
 #if DNXCORE50
@@ -644,7 +702,7 @@ namespace Npgsql
         internal void PrependInternalMessage(FrontendMessage msg)
         {
             // Set backend timeout if needed.
-            PrependBackendTimeoutMessage(InternalCommandTimeout);
+            PrependBackendTimeoutMessage(ActualInternalCommandTimeout);
 
             if (msg is QueryMessage || msg is PregeneratedMessage || msg is SyncMessage)
             {
@@ -695,6 +753,9 @@ namespace Npgsql
             if (!_messagesToSend.Any()) {
                 return;
             }
+
+            // If a cancellation is in progress, wait for it to "complete" before proceeding (#615)
+            lock (_cancelLock) { }
 
             _sentRfqPrependedMessages = _pendingRfqPrependedMessages;
             _pendingRfqPrependedMessages = 0;
@@ -783,7 +844,7 @@ namespace Npgsql
             {
                 try
                 {
-                    SetFrontendTimeout(InternalCommandTimeout);
+                    SetFrontendTimeout(ActualInternalCommandTimeout);
                     while (_sentRfqPrependedMessages > 0)
                     {
                         var msg = DoReadSingleMessage(DataRowLoadingMode.Skip);
@@ -808,7 +869,15 @@ namespace Npgsql
             }
             catch (NpgsqlException)
             {
-                EndUserAction();
+                if (CurrentReader != null)
+                {
+                    // The reader cleanup will call EndUserAction
+                    CurrentReader.Cleanup();
+                }
+                else
+                {
+                    EndUserAction();
+                }
                 throw;
             }
             catch
@@ -834,8 +903,8 @@ namespace Npgsql
                 Contract.Assume(Enum.IsDefined(typeof(BackendMessageCode), messageCode), "Unknown message code: " + messageCode);
                 var len = Buffer.ReadInt32() - 4;  // Transmitted length includes itself
 
-                if ((messageCode == BackendMessageCode.DataRow || messageCode == BackendMessageCode.CopyData) &&
-                    dataRowLoadingMode != DataRowLoadingMode.NonSequential)
+                if ((messageCode == BackendMessageCode.DataRow && dataRowLoadingMode != DataRowLoadingMode.NonSequential) ||
+                     messageCode == BackendMessageCode.CopyData)
                 {
                     if (dataRowLoadingMode == DataRowLoadingMode.Skip)
                     {
@@ -1239,16 +1308,35 @@ namespace Npgsql
         /// </summary>
         internal void CancelRequest()
         {
-            var cancelConnector = new NpgsqlConnector(_settings);
+            lock (_cancelLock)
+            {
+                var cancelConnector = new NpgsqlConnector(_settings);
+                cancelConnector.DoCancelRequest(BackendProcessId, _backendSecretKey, cancelConnector.ConnectionTimeout);
+            }
+        }
+
+        void DoCancelRequest(int backendProcessId, int backendSecretKey, int connectionTimeout)
+        {
+            Contract.Requires(State == ConnectorState.Closed);
 
             try
             {
-                cancelConnector.RawOpen(cancelConnector.ConnectionTimeout*1000);
-                cancelConnector.SendSingleMessage(new CancelRequestMessage(BackendProcessId, _backendSecretKey));
+                RawOpen(connectionTimeout * 1000);
+                SendSingleMessage(new CancelRequestMessage(backendProcessId, backendSecretKey));
+
+                Contract.Assert(Buffer.ReadPosition == 0);
+
+                // Now wait for the server to close the connection, better chance of the cancellation
+                // actually being delivered.
+                var count = _stream.Read(Buffer._buf, 0, 1);
+                if (count != -1)
+                {
+                    Log.Error("Received response after sending cancel request, shouldn't happen! First byte: " + Buffer._buf[0]);
+                }
             }
             finally
             {
-                cancelConnector.Close();
+                Cleanup();
             }
         }
 
@@ -1402,8 +1490,11 @@ namespace Npgsql
                 _preparedStatementIndex = 0;
             }
 
-            // DISCARD ALL may have changed the value of statement_value, set to unknown
-            SetBackendTimeoutToUnknown();
+            // DISCARD ALL has reset statement_timeout to the default specified on the connection string.
+            if (_settings.BackendTimeouts)
+            {
+                _backendTimeout = _settings.CommandTimeout;
+            }
         }
 
         #endregion Close
@@ -1592,7 +1683,7 @@ namespace Npgsql
                 // acquire the user lock (and prevent real user queries from running).
                 if (TransactionStatus != TransactionStatus.InFailedTransactionBlock)
                 {
-                    PrependBackendTimeoutMessage(InternalCommandTimeout);
+                    PrependBackendTimeoutMessage(ActualInternalCommandTimeout);
                 }
                 SendSingleMessage(PregeneratedMessage.KeepAlive);
                 SkipUntil(BackendMessageCode.ReadyForQuery);
@@ -1673,7 +1764,7 @@ namespace Npgsql
             using (StartUserAction())
             {
                 if (withTimeout) {
-                    PrependBackendTimeoutMessage(InternalCommandTimeout);
+                    PrependBackendTimeoutMessage(ActualInternalCommandTimeout);
                 }
                 AddMessage(message);
                 SendAllMessages();

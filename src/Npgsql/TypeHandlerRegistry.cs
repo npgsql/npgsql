@@ -1,4 +1,27 @@
-﻿using System;
+﻿#region License
+// The PostgreSQL License
+//
+// Copyright (C) 2015 The Npgsql Development Team
+//
+// Permission to use, copy, modify, and distribute this software and its
+// documentation for any purpose, without fee, and without a written
+// agreement is hereby granted, provided that the above copyright notice
+// and this paragraph and the following two paragraphs appear in all copies.
+//
+// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
+// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
+// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
+// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
+// THE POSSIBILITY OF SUCH DAMAGE.
+//
+// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
+// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
+// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+#endregion
+
+using System;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -31,6 +54,14 @@ namespace Npgsql
         static readonly Dictionary<DbType, NpgsqlDbType> DbTypeToNpgsqlDbType;
         static readonly Dictionary<Type, NpgsqlDbType> TypeToNpgsqlDbType;
         static readonly Dictionary<Type, DbType> TypeToDbType;
+
+        /// <summary>
+        /// Types that aren't to be loaded.
+        /// Currently contains arrays of types without binary I/O.
+        /// </summary>
+        static readonly HashSet<string> IgnoredTypes = new HashSet<string> {
+            "_aclitem", "_ghstore", "_gtsvector"
+        };
 
         /// <summary>
         /// Caches, for each connection string, the results of the backend type query in the form of a list of type
@@ -83,17 +114,18 @@ namespace Npgsql
             // types).
             var query =
                 @"SELECT a.typname, a.oid, " +
-                @"CASE WHEN a.typreceive::TEXT='array_recv' THEN 'a' ELSE a.typtype END AS type, " +
+                @"CASE WHEN pg_proc.proname='array_recv' THEN 'a' ELSE a.typtype END AS type, " +
                 @"CASE " +
-                  @"WHEN a.typreceive::TEXT='array_recv' THEN a.typelem " +
+                  @"WHEN pg_proc.proname='array_recv' THEN a.typelem " +
                   (connector.SupportsRangeTypes ? @"WHEN a.typtype='r' THEN rngsubtype " : "")+
                   @"ELSE 0 " +
                 @"END AS elemoid, " +
-                @"CASE WHEN a.typreceive::TEXT='array_recv' OR a.typtype='r' THEN 1 ELSE 0 END AS ord " +
+                @"CASE WHEN pg_proc.proname='array_recv' OR a.typtype='r' THEN 1 ELSE 0 END AS ord " +
                 @"FROM pg_type AS a " +
+                @"JOIN pg_proc ON pg_proc.oid = a.typreceive " +
                 @"LEFT OUTER JOIN pg_type AS b ON (b.oid = a.typelem) " +
                 (connector.SupportsRangeTypes ? @"LEFT OUTER JOIN pg_range ON (pg_range.rngtypid = a.oid) " : "") +
-                @"WHERE a.typtype IN ('b', 'r', 'e') AND (b.typtype IS NULL OR b.typtype IN ('b', 'r', 'e'))" +
+                @"WHERE a.typtype IN ('b', 'r', 'e') AND (b.typtype IS NULL OR b.typtype IN ('b', 'r', 'e')) " +
                 @"ORDER BY ord";
 
             var types = new List<BackendType>();
@@ -112,6 +144,10 @@ namespace Npgsql
 
                         Contract.Assume(backendType.Name != null);
                         Contract.Assume(backendType.OID != 0);
+
+                        if (IgnoredTypes.Contains(backendType.Name)) {
+                            continue;
+                        }
 
                         uint elementOID;
                         var typeChar = dr.GetString(2)[0];
@@ -624,6 +660,14 @@ namespace Npgsql
         internal BackendTypeType Type;
         internal BackendType Element;
         internal BackendType Array;
+
+        /// <summary>
+        /// Returns a string that represents the current object.
+        /// </summary>
+        public override string ToString()
+        {
+            return Name;
+        }
     }
 
     struct TypeAndMapping

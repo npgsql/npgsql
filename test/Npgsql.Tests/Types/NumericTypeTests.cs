@@ -207,7 +207,7 @@ namespace Npgsql.Tests.Types
             }
 
 
-            var decimals = new decimal[] { 0, 1, -1, 2, -2, decimal.MaxValue, decimal.MinValue, 9999, 10000, -0.0001M, 0.00001M, 0.00000000111143243221M, 4372894738294782934.5832947839247M, 7483927483400000000000M };
+            var decimals = new decimal[] { 499.0M / 375.0M, 0, 1, -1, 2, -2, decimal.MaxValue, decimal.MinValue, 9999, 10000, -0.0001M, 0.00001M, 0.00000000111143243221M, 4372894738294782934.5832947839247M, 7483927483400000000000M };
 
             cmd = new NpgsqlCommand("SELECT " + string.Join(", ", Enumerable.Range(0, decimals.Length).Select(i => "@p" + i.ToString())), Conn);
             for (var i = 0; i < decimals.Length; i++)
@@ -302,7 +302,7 @@ namespace Npgsql.Tests.Types
         {
             using (var cmd = Conn.CreateCommand())
             {
-                cmd.CommandText = "select 1::money, 123.45::money, 1234567890123.45::money";
+                cmd.CommandText = "select '1'::MONEY, '123.45'::MONEY, '1234567890123.45'::MONEY";
                 if (prepare == PrepareOrNot.Prepared)
                     cmd.Prepare();
                 using (var reader = cmd.ExecuteReader())

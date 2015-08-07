@@ -1,13 +1,7 @@
-// created on 21/5/2002 at 20:03
-
-// Npgsql.NpgsqlCommand.cs
+#region License
+// The PostgreSQL License
 //
-// Author:
-//    Francisco Jr. (fxjrlists@yahoo.com.br)
-//
-//    Copyright (C) 2002 The Npgsql Development Team
-//    npgsql-general@gborg.postgresql.org
-//    http://gborg.postgresql.org/project/npgsql/projdisplay.php
+// Copyright (C) 2015 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -25,6 +19,7 @@
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+#endregion
 
 using System;
 using System.Collections.Generic;
@@ -38,6 +33,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Diagnostics.Contracts;
+using System.Net.Sockets;
 using AsyncRewriter;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
@@ -56,7 +52,7 @@ namespace Npgsql
     public sealed partial class NpgsqlCommand : DbCommand
 #else
     [System.ComponentModel.DesignerCategory("")]
-    public sealed partial class NpgsqlCommand : DbCommand
+    public sealed partial class NpgsqlCommand : DbCommand, ICloneable
 #endif
     {
         #region Fields
@@ -71,13 +67,11 @@ namespace Npgsql
         int? _timeout;
         readonly NpgsqlParameterCollection _parameters = new NpgsqlParameterCollection();
 
-        List<QueryDetails> _queries;
+        List<NpgsqlStatement> _queries;
 
         int _queryIndex;
 
         UpdateRowSource _updateRowSource = UpdateRowSource.Both;
-
-        internal Type[] ExpectedTypes { get; set; }
 
         /// <summary>
         /// Indicates whether this command has been prepared.
@@ -147,7 +141,7 @@ namespace Npgsql
         {
             _commandText = cmdText;
             CommandType = CommandType.Text;
-            _queries = new List<QueryDetails>();
+            _queries = new List<NpgsqlStatement>();
         }
 
         #endregion Constructors
@@ -527,7 +521,7 @@ namespace Npgsql
                 }
                 break;
             case CommandType.TableDirect:
-                _queries.Add(new QueryDetails("SELECT * FROM " + CommandText, new List<NpgsqlParameter>()));
+                _queries.Add(new NpgsqlStatement("SELECT * FROM " + CommandText, new List<NpgsqlParameter>()));
                 break;
             case CommandType.StoredProcedure:
                 var numInput = _parameters.Count(p => p.IsInputDirection);
@@ -543,7 +537,7 @@ namespace Npgsql
                     }
                 }
                 sb.Append(')');
-                _queries.Add(new QueryDetails(sb.ToString(), _parameters.Where(p => p.IsInputDirection).ToList()));
+                _queries.Add(new NpgsqlStatement(sb.ToString(), _parameters.Where(p => p.IsInputDirection).ToList()));
                 break;
             default:
                 throw PGUtil.ThrowIfReached();
@@ -791,7 +785,7 @@ namespace Npgsql
             cancellationToken.Register(Cancel);
             try
             {
-                return await ExecuteNonQueryInternalAsync();
+                return await ExecuteNonQueryInternalAsync().ConfigureAwait(false);
             }
             catch (NpgsqlException e)
             {
@@ -846,7 +840,7 @@ namespace Npgsql
             cancellationToken.Register(Cancel);
             try
             {
-                return await ExecuteScalarInternalAsync();
+                return await ExecuteScalarInternalAsync().ConfigureAwait(false);
             }
             catch (NpgsqlException e)
             {
@@ -916,7 +910,7 @@ namespace Npgsql
             cancellationToken.Register(Cancel);
             try
             {
-                return await ExecuteDbDataReaderInternalAsync(behavior);
+                return await ExecuteDbDataReaderInternalAsync(behavior).ConfigureAwait(false);
             }
             catch (NpgsqlException e)
             {
@@ -947,28 +941,13 @@ namespace Npgsql
             try
             {
                 ValidateAndCreateMessages(behavior);
-                var reader = Execute(behavior);
-
-                // Transparently dereference cursors returned from functions
-                if (CommandType == CommandType.StoredProcedure &&
-                    reader.FieldCount == 1 &&
-                    reader.GetDataTypeName(0) == "refcursor")
-                {
-                    var sb = new StringBuilder();
-                    while (reader.Read()) {
-                        sb.AppendFormat(@"FETCH ALL FROM ""{0}"";", reader.GetString(0));
-                    }
-                    reader.Dispose();
-
-                    var dereferenceCmd = new NpgsqlCommand(sb.ToString(), Connection);
-                    return dereferenceCmd.ExecuteReader(behavior);
-                }
-
-                return reader;
+                return Execute(behavior);
             }
             catch
             {
-                Connection.Connector.EndUserAction();
+                if (Connection.Connector != null) {
+                    Connection.Connector.EndUserAction();
+                }
 
                 // Close connection if requested even when there is an error.
                 if ((behavior & CommandBehavior.CloseConnection) == CommandBehavior.CloseConnection)
@@ -1047,7 +1026,11 @@ namespace Npgsql
             }
             catch (Exception e)
             {
-                Log.Warn("Exception caught while attempting to cancel command", e, connector.Id);
+                var socketException = e.InnerException as SocketException;
+                if (socketException == null || socketException.SocketErrorCode != SocketError.ConnectionReset)
+                {
+                    Log.Warn("Exception caught while attempting to cancel command", e, connector.Id);
+                }
             }
         }
 
@@ -1106,6 +1089,38 @@ namespace Npgsql
             }
         }
 
+#if !DNXCORE50
+        /// <summary>
+        /// Create a new command based on this one.
+        /// </summary>
+        /// <returns>A new NpgsqlCommand object.</returns>
+        Object ICloneable.Clone()
+        {
+            return Clone();
+        }
+#endif
+
+        /// <summary>
+        /// Create a new command based on this one.
+        /// </summary>
+        /// <returns>A new NpgsqlCommand object.</returns>
+        public NpgsqlCommand Clone()
+        {
+            // TODO: Add consistency checks.
+
+            var clone = new NpgsqlCommand(CommandText, Connection, Transaction)
+            {
+                CommandTimeout = CommandTimeout,
+                CommandType = CommandType,
+                DesignTimeVisible = DesignTimeVisible
+            };
+            foreach (NpgsqlParameter parameter in Parameters)
+            {
+                clone.Parameters.Add(parameter.Clone());
+            }
+            return clone;
+        }
+
         void Prechecks()
         {
             if (State == CommandState.Disposed)
@@ -1134,30 +1149,5 @@ namespace Npgsql
         Idle,
         InProgress,
         Disposed
-    }
-
-    class QueryDetails
-    {
-        public QueryDetails(string sql, List<NpgsqlParameter> inputParameters, string preparedStatementName = null)
-        {
-            Sql = sql;
-            InputParameters = inputParameters;
-            PreparedStatementName = preparedStatementName;
-        }
-
-        internal readonly string Sql;
-        internal readonly List<NpgsqlParameter> InputParameters;
-
-        /// <summary>
-        /// The RowDescription message for this query. If null, the query does not return rows (e.g. INSERT)
-        /// </summary>
-        internal RowDescriptionMessage Description;
-
-        /// <summary>
-        /// For prepared statements, holds the server-side prepared statement name.
-        /// </summary>
-        internal string PreparedStatementName;
-
-        public override string ToString() { return Sql; }
     }
 }

@@ -1,4 +1,27 @@
-﻿using Npgsql.BackendMessages;
+﻿#region License
+// The PostgreSQL License
+//
+// Copyright (C) 2015 The Npgsql Development Team
+//
+// Permission to use, copy, modify, and distribute this software and its
+// documentation for any purpose, without fee, and without a written
+// agreement is hereby granted, provided that the above copyright notice
+// and this paragraph and the following two paragraphs appear in all copies.
+//
+// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
+// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
+// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
+// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
+// THE POSSIBILITY OF SUCH DAMAGE.
+//
+// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
+// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
+// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+#endregion
+
+using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System;
 using System.Collections.Generic;
@@ -40,7 +63,7 @@ namespace Npgsql.TypeHandlers
 
         public TEnum Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
-            var str = buf.ReadStringSimple(len);
+            var str = buf.ReadString(len);
             TEnum value;
             var success = _labelToEnum == null
                 ? Enum.TryParse(str, out value)
@@ -52,10 +75,10 @@ namespace Npgsql.TypeHandlers
             return value;
         }
 
-        public int ValidateAndGetLength(object value)
+        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
             if (!(value is TEnum))
-                throw new InvalidCastException(String.Format("Can't write type {0} as enum {1}", value.GetType(), typeof(TEnum)));
+                throw CreateConversionException(value.GetType());
 
             string str;
             if (_enumToLabel == null)
@@ -73,7 +96,7 @@ namespace Npgsql.TypeHandlers
             return Encoding.UTF8.GetByteCount(str);
         }
 
-        public void Write(object value, NpgsqlBuffer buf)
+        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
         {
             string str;
             if (_enumToLabel == null) {
@@ -85,7 +108,7 @@ namespace Npgsql.TypeHandlers
                 }
             }
 
-            buf.WriteStringSimple(str);
+            buf.WriteString(str);
         }
 
         internal EnumHandler<TEnum> Clone()

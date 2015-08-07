@@ -1,4 +1,27 @@
-﻿using System;
+﻿#region License
+// The PostgreSQL License
+//
+// Copyright (C) 2015 The Npgsql Development Team
+//
+// Permission to use, copy, modify, and distribute this software and its
+// documentation for any purpose, without fee, and without a written
+// agreement is hereby granted, provided that the above copyright notice
+// and this paragraph and the following two paragraphs appear in all copies.
+//
+// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
+// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
+// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
+// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
+// THE POSSIBILITY OF SUCH DAMAGE.
+//
+// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
+// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
+// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+#endregion
+
+using System;
 using System.CodeDom;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
@@ -33,12 +56,29 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             return new TimeSpan(buf.ReadInt64() * 10);
         }
 
-        public int ValidateAndGetLength(object value) { return 8; }
-
-        public void Write(object value, NpgsqlBuffer buf)
+        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
-            if (!(value is TimeSpan)) {
-                throw new InvalidCastException();
+            var asString = value as string;
+            if (asString != null)
+            {
+                var converted = TimeSpan.Parse(asString);
+                if (parameter == null)
+                {
+                    throw CreateConversionButNoParamException(value.GetType());
+                }
+                parameter.ConvertedValue = converted;
+            }
+            else if (!(value is TimeSpan))
+            {
+                throw CreateConversionException(value.GetType());
+            }
+            return 8;
+        }
+
+        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        {
+            if (parameter != null && parameter.ConvertedValue != null) {
+                value = parameter.ConvertedValue;
             }
 
             buf.WriteInt64(((TimeSpan)value).Ticks / 10);

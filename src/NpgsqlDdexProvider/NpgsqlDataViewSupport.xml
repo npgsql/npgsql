@@ -4,7 +4,7 @@
     <View name="PostgreSQL_Default">
       <DisplayName>PostgreSQL Server</DisplayName>
       <ConnectionNode>
-        <InitialDisplayName>{Root.Host} ({Root.Database})</InitialDisplayName>
+        <InitialDisplayName>{Root.Server} ({Root.Database})</InitialDisplayName>
         <Commands>
           <Command guid="501822E1-B5AF-11d0-B4DC-00A0C91506EF" cmdid="0x3528" provider="884DD964-5327-461f-9F06-6484DD540F8F" />
         </Commands>

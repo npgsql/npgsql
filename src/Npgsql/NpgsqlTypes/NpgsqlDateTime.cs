@@ -1,4 +1,27 @@
-﻿using System;
+﻿#region License
+// The PostgreSQL License
+//
+// Copyright (C) 2015 The Npgsql Development Team
+//
+// Permission to use, copy, modify, and distribute this software and its
+// documentation for any purpose, without fee, and without a written
+// agreement is hereby granted, provided that the above copyright notice
+// and this paragraph and the following two paragraphs appear in all copies.
+//
+// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
+// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
+// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
+// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
+// THE POSSIBILITY OF SUCH DAMAGE.
+//
+// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
+// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
+// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+#endregion
+
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
@@ -11,9 +34,9 @@ using Npgsql;
 namespace NpgsqlTypes
 {
     /// <summary>
-    /// A struct similar to DateTime but capable of storing PostgreSQL's timestamp and timestamptz types. DateTime
-    /// is capable of storing values from year 1 to 9999 at 100-nanosecond precision, while PostgreSQL's timestamps
-    /// store values from 4713BC to 5874897AD with 1-microsecond precision.
+    /// A struct similar to .NET DateTime but capable of storing PostgreSQL's timestamp and timestamptz types.
+    /// DateTime is capable of storing values from year 1 to 9999 at 100-nanosecond precision,
+    /// while PostgreSQL's timestamps store values from 4713BC to 5874897AD with 1-microsecond precision.
     /// </summary>
 #if !DNXCORE50
     [Serializable]
@@ -46,6 +69,10 @@ namespace NpgsqlTypes
 
         NpgsqlDateTime(InternalType type, NpgsqlDate date, TimeSpan time)
         {
+            if (!date.IsFinite && type != InternalType.Infinity && type != InternalType.NegativeInfinity)
+                throw new ArgumentException("Can't construct an NpgsqlDateTime with a non-finite date, use Infinity and NegativeInfinity instead", "date");
+            Contract.EndContractBlock();
+
             _type = type;
             _date = date;
             _time = time;
@@ -86,10 +113,10 @@ namespace NpgsqlTypes
         public bool IsLeapYear { get { return _date.IsLeapYear; } }
 
         public long Ticks { get { return _date.DaysSinceEra * NpgsqlTimeSpan.TicksPerDay + _time.Ticks; } }
-        public int Milliseconds { get { return _time.Milliseconds; } }
-        public int Seconds { get { return _time.Seconds; } }
-        public int Minutes { get { return _time.Minutes; } }
-        public int Hours { get { return _time.Hours; } }
+        public int Millisecond { get { return _time.Milliseconds; } }
+        public int Second { get { return _time.Seconds; } }
+        public int Minute { get { return _time.Minutes; } }
+        public int Hour { get { return _time.Hours; } }
         public bool IsInfinity { get { return _type == InternalType.Infinity; } }
         public bool IsNegativeInfinity { get { return _type == InternalType.NegativeInfinity; } }
 
@@ -145,6 +172,15 @@ namespace NpgsqlTypes
             }
         }
 
+        /// <summary>
+        /// Converts the value of the current <see cref="NpgsqlDateTime"/> object to Coordinated Universal Time (UTC).
+        /// </summary>
+        /// <remarks>
+        /// See the MSDN documentation for DateTime.ToUniversalTime().
+        /// <b>Note:</b> this method <b>only</b> takes into account the time zone's base offset, and does
+        /// <b>not</b> respect daylight savings. See https://github.com/npgsql/npgsql/pull/684 for more
+        /// details.
+        /// </remarks>
         public NpgsqlDateTime ToUniversalTime()
         {
             switch (_type)
@@ -162,6 +198,15 @@ namespace NpgsqlTypes
             }
         }
 
+        /// <summary>
+        /// Converts the value of the current <see cref="NpgsqlDateTime"/> object to local time.
+        /// </summary>
+        /// <remarks>
+        /// See the MSDN documentation for DateTime.ToLocalTime().
+        /// <b>Note:</b> this method <b>only</b> takes into account the time zone's base offset, and does
+        /// <b>not</b> respect daylight savings. See https://github.com/npgsql/npgsql/pull/684 for more
+        /// details.
+        /// </remarks>
         public NpgsqlDateTime ToLocalTime()
         {
             switch (_type) {
@@ -499,6 +544,36 @@ namespace NpgsqlTypes
 
         #endregion
 
+        #region Casts
+
+        /// <summary>
+        /// Implicit cast of a <see cref="DateTime"/> to an <see cref="NpgsqlDateTime"/>
+        /// </summary>
+        /// <param name="dateTime">A <see cref="DateTime"/></param>
+        /// <returns>An equivalent <see cref="NpgsqlDateTime"/>.</returns>
+        public static implicit operator NpgsqlDateTime(DateTime dateTime)
+        {
+            return new NpgsqlDateTime(dateTime);
+        }
+
+        /// <summary>
+        /// Explicit cast of an <see cref="NpgsqlDateTime"/> to a <see cref="DateTime"/>.
+        /// </summary>
+        /// <param name="npgsqlDateTime">An <see cref="NpgsqlDateTime"/>.</param>
+        /// <returns>An equivalent <see cref="DateTime"/>.</returns>
+        /// <remarks>Doesn't convert sub-millisecond precision at the moment.</remarks>
+        public static explicit operator DateTime(NpgsqlDateTime npgsqlDateTime)
+        {
+            // TODO: Convert sub-millisecond precision
+            return new DateTime(
+                npgsqlDateTime.Year, npgsqlDateTime.Month, npgsqlDateTime.Day,
+                npgsqlDateTime.Hour, npgsqlDateTime.Minute, npgsqlDateTime.Second,
+                npgsqlDateTime.Millisecond, npgsqlDateTime.Kind
+            );
+        }
+
+        #endregion
+
         [Pure]
         public NpgsqlDateTime Normalize()
         {
@@ -516,7 +591,7 @@ namespace NpgsqlTypes
                 return InternalType.FiniteLocal;
             default:
                 throw PGUtil.ThrowIfReached();
-            }            
+            }
         }
 
         enum InternalType

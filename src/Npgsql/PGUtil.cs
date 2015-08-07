@@ -1,13 +1,7 @@
-// created on 1/6/2002 at 22:27
-
-// Npgsql.PGUtil.cs
+#region License
+// The PostgreSQL License
 //
-// Author:
-//    Francisco Jr. (fxjrlists@yahoo.com.br)
-//
-//    Copyright (C) 2002 The Npgsql Development Team
-//    npgsql-general@gborg.postgresql.org
-//    http://gborg.postgresql.org/project/npgsql/projdisplay.php
+// Copyright (C) 2015 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -25,6 +19,7 @@
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+#endregion
 
 using System;
 using System.Collections;
@@ -43,6 +38,7 @@ namespace Npgsql
     internal static partial class PGUtil
     {
         internal static readonly UTF8Encoding UTF8Encoding = new UTF8Encoding(false, true);
+        internal static readonly UTF8Encoding RelaxedUTF8Encoding = new UTF8Encoding(false, false);
 
         /// <summary>
         /// This method takes a version string as returned by SELECT VERSION() and returns
@@ -139,7 +135,7 @@ namespace Npgsql
         public static Exception ThrowIfReached(string message = null)
         {
             Contract.Requires(false);
-            return message == null ? new Exception() : new Exception(message);
+            return message == null ? new Exception("An internal Npgsql occured, please open an issue in http://github.com/npgsql/npgsql with this exception's stack trace") : new Exception(message);
         }
     }
 

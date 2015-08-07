@@ -1,13 +1,7 @@
-// created on 18/5/2002 at 01:25
-
-// Npgsql.NpgsqlParameter.cs
+#region License
+// The PostgreSQL License
 //
-// Author:
-//    Francisco Jr. (fxjrlists@yahoo.com.br)
-//
-//    Copyright (C) 2002 The Npgsql Development Team
-//    npgsql-general@gborg.postgresql.org
-//    http://gborg.postgresql.org/project/npgsql/projdisplay.php
+// Copyright (C) 2015 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -25,6 +19,7 @@
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+#endregion
 
 using System;
 using System.ComponentModel;
@@ -52,6 +47,8 @@ namespace Npgsql
     public sealed class NpgsqlParameter : DbParameter, ICloneable
 #endif
     {
+        #region Fields and Properties
+
         // Fields to implement IDbDataParameter interface.
         byte _precision;
         byte _scale;
@@ -64,13 +61,20 @@ namespace Npgsql
         string _name = String.Empty;
         object _value;
         object _npgsqlValue;
+
+        /// <summary>
+        /// Can be used to communicate a value from the validation phase to the writing phase.
+        /// </summary>
+        internal object ConvertedValue { get; set; }
+
         NpgsqlParameterCollection _collection;
         internal LengthCache LengthCache { get; private set; }
 
         internal bool IsBound { get; private set; }
         internal TypeHandler Handler { get; private set; }
         internal FormatCode FormatCode { get; private set; }
-        internal uint TypeOID { get; private set; }
+
+        #endregion
 
         #region Constructors
 
@@ -212,7 +216,7 @@ namespace Npgsql
             Scale = scale;
             SourceVersion = sourceVersion;
             Value = value;
-            
+
             NpgsqlDbType = parameterType;
         }
 
@@ -274,6 +278,7 @@ namespace Npgsql
                 ClearBind();
                 _value = value;
                 _npgsqlValue = value;
+                ConvertedValue = null;
             }
         }
 
@@ -293,6 +298,7 @@ namespace Npgsql
                 ClearBind();
                 _value = value;
                 _npgsqlValue = value;
+                ConvertedValue = null;
             }
         }
 
@@ -441,7 +447,7 @@ namespace Npgsql
                 }
                 Contract.EndContractBlock();
 
-                ClearBind(); 
+                ClearBind();
                 _npgsqlDbType = value;
                 _dbType = TypeHandlerRegistry.ToDbType(value);
             }
@@ -504,48 +510,6 @@ namespace Npgsql
         /// </summary>
         public override bool SourceColumnNullMapping { get; set; }
 
-        #endregion
-
-        /// <summary>
-        /// The name scrubbed of any optional marker
-        /// </summary>
-        internal string CleanName
-        {
-            get
-            {
-                string name = ParameterName;
-                if (name[0] == ':' || name[0] == '@')
-                {
-                    return name.Length > 1 ? name.Substring(1) : string.Empty;
-                }
-                return name;
-
-            }
-        }
-
-        /// <summary>
-        /// The collection to which this parameter belongs, if any.
-        /// </summary>
-        public NpgsqlParameterCollection Collection
-        {
-            get { return _collection; }
-
-            internal set
-            {
-                _collection = value;
-                ClearBind();
-            }
-        }
-
-        /// <summary>
-        /// Returns whether this parameter has had its type set explicitly via DbType or NpgsqlDbType
-        /// (and not via type inference)
-        /// </summary>
-        internal bool IsTypeExplicitlySet
-        {
-            get { return _npgsqlDbType.HasValue || _dbType.HasValue; }
-        }
-
         /// <summary>
         /// Used in combination with NpgsqlDbType.Enum or NpgsqlDbType.Array | NpgsqlDbType.Enum to indicate the enum type.
         /// For other NpgsqlDbTypes, this field is not used.
@@ -577,6 +541,50 @@ namespace Npgsql
                     _enumType = value;
                 }
             }
+        }
+
+        /// <summary>
+        /// The collection to which this parameter belongs, if any.
+        /// </summary>
+        public NpgsqlParameterCollection Collection
+        {
+            get { return _collection; }
+
+            internal set
+            {
+                _collection = value;
+                ClearBind();
+            }
+        }
+
+        #endregion
+
+        #region Internals
+
+        /// <summary>
+        /// The name scrubbed of any optional marker
+        /// </summary>
+        internal string CleanName
+        {
+            get
+            {
+                string name = ParameterName;
+                if (name[0] == ':' || name[0] == '@')
+                {
+                    return name.Length > 1 ? name.Substring(1) : string.Empty;
+                }
+                return name;
+
+            }
+        }
+
+        /// <summary>
+        /// Returns whether this parameter has had its type set explicitly via DbType or NpgsqlDbType
+        /// (and not via type inference)
+        /// </summary>
+        internal bool IsTypeExplicitlySet
+        {
+            get { return _npgsqlDbType.HasValue || _dbType.HasValue; }
         }
 
         internal void ResolveHandler(TypeHandlerRegistry registry)
@@ -615,6 +623,10 @@ namespace Npgsql
 
         internal int ValidateAndGetLength()
         {
+            if (_value == null) {
+                throw new InvalidCastException(string.Format("Parameter {0} must be set", ParameterName));
+            }
+
             if (_value is DBNull) {
                 return 0;
             }
@@ -622,7 +634,7 @@ namespace Npgsql
             // No length caching for simple types
             var asSimpleWriter = Handler as ISimpleTypeWriter;
             if (asSimpleWriter != null) {
-                return asSimpleWriter.ValidateAndGetLength(Value);
+                return asSimpleWriter.ValidateAndGetLength(Value, this);
             }
 
             var asChunkingWriter = Handler as IChunkingTypeWriter;
@@ -661,6 +673,10 @@ namespace Npgsql
             get { return Direction == ParameterDirection.InputOutput || Direction == ParameterDirection.Output; }
         }
 
+        #endregion
+
+        #region Clone
+
         /// <summary>
         /// Creates a new <see cref="NpgsqlParameter">NpgsqlParameter</see> that
         /// is a copy of the current instance.
@@ -697,5 +713,6 @@ namespace Npgsql
             return Clone();
         }
 #endif
+        #endregion
     }
 }

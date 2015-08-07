@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<build-type xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="6a165b73-7419-4350-9072-3c7566612c97" xsi:noNamespaceSchemaLocation="http://www.jetbrains.com/teamcity/schemas/9.0/project-config.xsd">
+  <name>Code Analysis</name>
+  <description>Performs code inspections and submits to Coverity</description>
+  <settings>
+    <options>
+      <option name="checkoutMode" value="ON_AGENT" />
+    </options>
+    <parameters>
+      <param name="system.Configuration" value="Release-net45" />
+    </parameters>
+    <build-runners>
+      <runner id="RUNNER_6" name="GitVersion" type="simpleRunner">
+        <parameters>
+          <param name="command.executable" value="GitVersion" />
+          <param name="command.parameters" value="/output buildserver" />
+          <param name="teamcity.step.mode" value="default" />
+        </parameters>
+      </runner>
+      <runner id="RUNNER_3" name="NuGet Restore" type="jb.nuget.installer">
+        <parameters>
+          <param name="nuget.path" value="?NuGet.CommandLine.DEFAULT.nupkg" />
+          <param name="nuget.updatePackages.mode" value="sln" />
+          <param name="nuget.use.restore" value="restore" />
+          <param name="nugetCustomPath" value="?NuGet.CommandLine.DEFAULT.nupkg" />
+          <param name="nugetPathSelector" value="?NuGet.CommandLine.DEFAULT.nupkg" />
+          <param name="sln.path" value="Npgsql2013.sln" />
+          <param name="teamcity.step.mode" value="default" />
+        </parameters>
+      </runner>
+      <runner id="RUNNER_24" name="Build with Coverity" type="simpleRunner">
+        <parameters>
+          <param name="command.executable" value="C:\dev\cov-analysis-win64-7.6.0\bin\cov-build.exe" />
+          <param name="command.parameters" value="--dir cov-int msbuild.exe Npgsql.csproj" />
+          <param name="teamcity.build.workingDir" value="src\Npgsql" />
+          <param name="teamcity.step.mode" value="default" />
+        </parameters>
+      </runner>
+      <runner id="RUNNER_12" name="ZIP Coverity Intermediate Directory" type="simpleRunner">
+        <parameters>
+          <param name="command.executable" value="c:\util\7z\7z.exe" />
+          <param name="command.parameters" value="a -tzip NpgsqlCoverity.zip cov-int" />
+          <param name="teamcity.build.workingDir" value="src\Npgsql" />
+          <param name="teamcity.step.mode" value="default" />
+        </parameters>
+      </runner>
+      <runner id="RUNNER_13" name="Upload Coverity scan" type="simpleRunner">
+        <parameters>
+          <param name="command.executable" value="c:\cygwin64\bin\curl" />
+          <param name="command.parameters"><![CDATA[--form token=Tsm51kcalAHfs74yXQquJQ
+--form email=roji@roji.org
+--form file=@NpgsqlCoverity.zip
+--form version="%GitVersion.NuGetVersion%"
+--form description="Npgsql"
+https://scan.coverity.com/builds?project=npgsql%2Fnpgsql]]></param>
+          <param name="teamcity.build.workingDir" value="src\Npgsql" />
+          <param name="teamcity.step.mode" value="default" />
+        </parameters>
+      </runner>
+      <runner id="RUNNER_16" name="Resharper Code Inspections" type="dotnet-tools-inspectcode">
+        <parameters>
+          <param name="dotnet-tools-inspectcode.solution" value="Npgsql2013.sln" />
+          <param name="teamcity.step.mode" value="default" />
+        </parameters>
+      </runner>
+    </build-runners>
+    <vcs-settings>
+      <vcs-entry-ref root-id="npgsql_github" />
+    </vcs-settings>
+    <requirements />
+    <build-triggers>
+      <build-trigger id="TRIGGER_1" type="schedulingTrigger">
+        <parameters>
+          <param name="branchFilter" value="+:&lt;default&gt;" />
+          <param name="cronExpression_dm" value="*" />
+          <param name="cronExpression_dw" value="?" />
+          <param name="cronExpression_hour" value="*" />
+          <param name="cronExpression_min" value="0" />
+          <param name="cronExpression_month" value="*" />
+          <param name="cronExpression_sec" value="0" />
+          <param name="cronExpression_year" value="*" />
+          <param name="dayOfWeek" value="Sunday" />
+          <param name="hour" value="0" />
+          <param name="minute" value="0" />
+          <param name="schedulingPolicy" value="daily" />
+          <param name="timezone" value="SERVER" />
+          <param name="triggerBuildWithPendingChangesOnly" value="true" />
+        </parameters>
+      </build-trigger>
+    </build-triggers>
+    <cleanup />
+  </settings>
+</build-type>
+

@@ -94,20 +94,47 @@ namespace Npgsql.Tests
             reader = cmd.ExecuteReader();
             reader.Close();
             Assert.That(reader.RecordsAffected, Is.EqualTo(2));
+
+            cmd = new NpgsqlCommand("UPDATE data SET int=8 WHERE int=666", Conn);
+            reader = cmd.ExecuteReader();
+            reader.Close();
+            Assert.That(reader.RecordsAffected, Is.EqualTo(0));
         }
 
         [Test]
-        public void LastInsertedOID()
+        public void Statements()
         {
             ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT) WITH OIDS");
-            var insertCmd = new NpgsqlCommand("INSERT INTO data (name) VALUES ('a')", Conn);
-            insertCmd.ExecuteNonQuery();
+            using (var cmd = new NpgsqlCommand(
+                "INSERT INTO data (name) VALUES ('a');" +
+                "UPDATE data SET name='b' WHERE name='doesnt_exist'",
+                Conn)
+            )
+            using (var reader = cmd.ExecuteReader())
+            {
+                Assert.That(reader.Statements[0].SQL, Is.EqualTo("INSERT INTO data (name) VALUES ('a')"));
+                Assert.That(reader.Statements[0].StatementType, Is.EqualTo(StatementType.Insert));
+                Assert.That(reader.Statements[0].Rows, Is.EqualTo(1));
+                Assert.That(reader.Statements[0].OID, Is.Not.EqualTo(0));
+                Assert.That(reader.Statements[1].SQL, Is.EqualTo("UPDATE data SET name='b' WHERE name='doesnt_exist'"));
+                Assert.That(reader.Statements[1].StatementType, Is.EqualTo(StatementType.Update));
+                Assert.That(reader.Statements[1].Rows, Is.EqualTo(0));
+                Assert.That(reader.Statements[1].OID, Is.EqualTo(0));
+            }
 
-            var selectCmd = new NpgsqlCommand("SELECT MAX(oid) FROM data", Conn);
-            var previousOid = (uint)selectCmd.ExecuteScalar();
-
-            var reader = insertCmd.ExecuteReader();
-            Assert.That(reader.LastInsertedOID, Is.EqualTo(previousOid + 1));
+            using (var cmd = new NpgsqlCommand("SELECT name FROM data; DELETE FROM data", Conn))
+            using (var reader = cmd.ExecuteReader())
+            {
+                reader.NextResult();  // Consume SELECT result set
+                Assert.That(reader.Statements[0].SQL, Is.EqualTo("SELECT name FROM data"));
+                Assert.That(reader.Statements[0].StatementType, Is.EqualTo(StatementType.Select));
+                Assert.That(reader.Statements[0].Rows, Is.EqualTo(1));
+                Assert.That(reader.Statements[0].OID, Is.EqualTo(0));
+                Assert.That(reader.Statements[1].SQL, Is.EqualTo("DELETE FROM data"));
+                Assert.That(reader.Statements[1].StatementType, Is.EqualTo(StatementType.Delete));
+                Assert.That(reader.Statements[1].Rows, Is.EqualTo(1));
+                Assert.That(reader.Statements[1].OID, Is.EqualTo(0));
+            }
         }
 
         [Test]
@@ -193,12 +220,23 @@ namespace Npgsql.Tests
         [Test]
         public void GetOrdinal()
         {
-            var command = new NpgsqlCommand(@"SELECT 0, 1 AS some_column", Conn);
-            var dr = command.ExecuteReader();
-            dr.Read();
-            Assert.That(dr.GetOrdinal("some_column"), Is.EqualTo(1));
-            Assert.That(() => dr.GetOrdinal("doesn't_exist"), Throws.Exception.TypeOf<IndexOutOfRangeException>());
-            command.Dispose();
+            using (var command = new NpgsqlCommand(@"SELECT 0, 1 AS some_column WHERE 1=0", Conn))
+            using (var dr = command.ExecuteReader())
+            {
+                Assert.That(dr.GetOrdinal("some_column"), Is.EqualTo(1));
+                Assert.That(() => dr.GetOrdinal("doesn't_exist"), Throws.Exception.TypeOf<IndexOutOfRangeException>());
+            }
+        }
+
+        [Test]
+        public void GetFieldValueAsObject()
+        {
+            using (var cmd = new NpgsqlCommand("SELECT 'foo'::TEXT", Conn))
+            using (var reader = cmd.ExecuteReader())
+            {
+                reader.Read();
+                Assert.That(reader.GetFieldValue<object>(0), Is.EqualTo("foo"));
+            }
         }
 
         [Test]
@@ -781,8 +819,8 @@ namespace Npgsql.Tests
             throw new SafeReadException(new Exception("Safe read exception as requested"));
         }
 
-        public int ValidateAndGetLength(object value) { throw new NotSupportedException(); }
-        public void Write(object value, NpgsqlBuffer buf) { throw new NotSupportedException(); }
+        public int ValidateAndGetLength(object value, NpgsqlParameter parameter) { throw new NotSupportedException(); }
+        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter) { throw new NotSupportedException(); }
     }
 
     internal class NonSafeExceptionGeneratingHandler : TypeHandler<int>, ISimpleTypeReader<int>, ISimpleTypeWriter
@@ -792,8 +830,8 @@ namespace Npgsql.Tests
             throw new Exception("Non-safe read exception as requested");
         }
 
-        public int ValidateAndGetLength(object value) { throw new NotSupportedException(); }
-        public void Write(object value, NpgsqlBuffer buf) { throw new NotSupportedException();}
+        public int ValidateAndGetLength(object value, NpgsqlParameter parameter) { throw new NotSupportedException(); }
+        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter) { throw new NotSupportedException();}
     }
 #endif
     #endregion

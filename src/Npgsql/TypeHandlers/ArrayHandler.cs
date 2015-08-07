@@ -1,4 +1,27 @@
-﻿using System;
+﻿#region License
+// The PostgreSQL License
+//
+// Copyright (C) 2015 The Npgsql Development Team
+//
+// Permission to use, copy, modify, and distribute this software and its
+// documentation for any purpose, without fee, and without a written
+// agreement is hereby granted, provided that the above copyright notice
+// and this paragraph and the following two paragraphs appear in all copies.
+//
+// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
+// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
+// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
+// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
+// THE POSSIBILITY OF SUCH DAMAGE.
+//
+// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
+// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
+// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+#endregion
+
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
@@ -33,7 +56,6 @@ namespace Npgsql.TypeHandlers
         WriteState _writeState;
         IEnumerator _enumerator;
         NpgsqlBuffer _buf;
-        NpgsqlParameter _parameter;
         LengthCache _lengthCache;
         FieldDescription _fieldDescription;
         int _dimensions;
@@ -97,7 +119,7 @@ namespace Npgsql.TypeHandlers
                         return false;
                     }
                     _dimensions = _buf.ReadInt32();
-                    var hasNulls = _buf.ReadInt32();            // Not populated by PG?
+                    _buf.ReadInt32();        // Has nulls. Not populated by PG?
                     var elementOID = _buf.ReadUInt32();
                     Contract.Assume(elementOID == ElementHandler.OID);
                     _dimLengths = new int[_dimensions];
@@ -273,7 +295,6 @@ namespace Npgsql.TypeHandlers
                 throw new InvalidOperationException("Started reading a value before completing a previous value");
 
             _buf = buf;
-            _parameter = parameter;
             _lengthCache = lengthCache;
             var asArray = value as Array;
             _writeValue = (IList)value;
@@ -340,14 +361,13 @@ namespace Npgsql.TypeHandlers
                     {
                         do {
                             if (!WriteSingleElement(_enumerator.Current, ref directBuf)) { return false; }
-                        } while (_enumerator.MoveNext());                       
+                        } while (_enumerator.MoveNext());
                     }
                     goto case WriteState.Cleanup;
 
                 case WriteState.Cleanup:
                     _writeValue = null;
                     _buf = null;
-                    _parameter = null;
                     _writeState = WriteState.NeedPrepare;
                     return true;
 
@@ -370,10 +390,10 @@ namespace Npgsql.TypeHandlers
             var asSimpleWriter = ElementHandler as ISimpleTypeWriter;
             if (asSimpleWriter != null)
             {
-                var elementLen = asSimpleWriter.ValidateAndGetLength(element);
+                var elementLen = asSimpleWriter.ValidateAndGetLength(element, null);
                 if (_buf.WriteSpaceLeft < 4 + elementLen) { return false; }
                 _buf.WriteInt32(elementLen);
-                asSimpleWriter.Write(element, _buf);
+                asSimpleWriter.Write(element, _buf, null);
                 return true;
             }
 
@@ -384,8 +404,8 @@ namespace Npgsql.TypeHandlers
                     if (_buf.WriteSpaceLeft < 4) {
                         return false;
                     }
-                    _buf.WriteInt32(asChunkedWriter.ValidateAndGetLength(element, ref _lengthCache, _parameter));
-                    asChunkedWriter.PrepareWrite(element, _buf, _lengthCache, _parameter);
+                    _buf.WriteInt32(asChunkedWriter.ValidateAndGetLength(element, ref _lengthCache, null));
+                    asChunkedWriter.PrepareWrite(element, _buf, _lengthCache, null);
                     _wroteElementLen = true;
                 }
                 if (!asChunkedWriter.Write(ref directBuf)) {
@@ -443,7 +463,7 @@ namespace Npgsql.TypeHandlers
                 return len;
             }
 
-            throw new InvalidCastException(String.Format("Can't write type {0} as an array", value.GetType()));
+            throw new InvalidCastException(string.Format("Can't write type {0} as an array of {1}", value.GetType(), typeof(TElement)));
         }
 
         int GetSingleElementLength(object element, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
@@ -454,7 +474,7 @@ namespace Npgsql.TypeHandlers
             var asChunkingWriter = ElementHandler as IChunkingTypeWriter;
             return asChunkingWriter != null
                 ? asChunkingWriter.ValidateAndGetLength(element, ref lengthCache, parameter)
-                : ((ISimpleTypeWriter)ElementHandler).ValidateAndGetLength(element);
+                : ((ISimpleTypeWriter)ElementHandler).ValidateAndGetLength(element, null);
         }
 
         enum WriteState

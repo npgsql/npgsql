@@ -9,21 +9,21 @@ namespace Npgsql.Tests
     public static class TestUtil
     {
         /// <summary>
-        /// Calls Assert.Inconclusive() unless we're on the build server, in which case calls
+        /// Calls Assert.Ignore() unless we're on the build server, in which case calls
         /// Assert.Fail(). We don't to miss any regressions just because something was misconfigured
         /// at the build server and caused a test to be inconclusive.
         /// </summary>
-        public static void Inconclusive(string message)
+        public static void IgnoreExceptOnBuildServer(string message)
         {
             if (Environment.GetEnvironmentVariable("TEAMCITY_VERSION") == null)
-                Assert.Inconclusive(message);
+                Assert.Ignore(message);
             else
                 Assert.Fail(message);
         }
 
-        public static void Inconclusive(string message, params object[] args)
+        public static void IgnoreExceptOnBuildServer(string message, params object[] args)
         {
-            Inconclusive(String.Format(message, args));
+            IgnoreExceptOnBuildServer(String.Format(message, args));
         }
     }
 
@@ -65,7 +65,7 @@ namespace Npgsql.Tests
         public void AfterTest(TestDetails testDetails) { }
         public ActionTargets Targets { get { return ActionTargets.Test; } }
     }
-    
+
     /// <summary>
     /// Causes the test to be ignored if the Postgresql backend version is less than the given one.
     /// </summary>

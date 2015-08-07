@@ -1,4 +1,27 @@
-﻿using System;
+﻿#region License
+// The PostgreSQL License
+//
+// Copyright (C) 2015 The Npgsql Development Team
+//
+// Permission to use, copy, modify, and distribute this software and its
+// documentation for any purpose, without fee, and without a written
+// agreement is hereby granted, provided that the above copyright notice
+// and this paragraph and the following two paragraphs appear in all copies.
+//
+// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
+// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
+// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
+// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
+// THE POSSIBILITY OF SUCH DAMAGE.
+//
+// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
+// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
+// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+#endregion
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -52,7 +75,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
                 int posBefore = _buf.ReadPosition;
 
                 List<NpgsqlTsVector.Lexeme.WordEntryPos> positions = null;
-                
+
                 var lexemeString = _buf.ReadNullTerminatedString();
                 int numPositions = _buf.ReadInt16();
                 for (var i = 0; i < numPositions; i++)
@@ -77,7 +100,10 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
         public int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             // TODO: Implement length cache
-            var vec = (NpgsqlTsVector)value;
+            var vec = value as NpgsqlTsVector;
+            if (vec == null) {
+                throw CreateConversionException(value.GetType());
+            }
 
             return 4 + vec.Sum(l => Encoding.UTF8.GetByteCount(l.Text) + 1 + 2 + l.Count * 2);
         }
@@ -103,8 +129,8 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             {
                 if (_buf.WriteSpaceLeft < MaxSingleLexemeBytes)
                     return false;
-                
-                _buf.WriteStringSimple(_value[_lexemePos].Text);
+
+                _buf.WriteString(_value[_lexemePos].Text);
                 _buf.WriteByte(0);
                 _buf.WriteInt16(_value[_lexemePos].Count);
                 for (var i = 0; i < _value[_lexemePos].Count; i++)

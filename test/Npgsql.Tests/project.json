@@ -8,7 +8,7 @@
         "Npgsql": "3.0.0-alpha-*"
     },
     "frameworks": {
-        "net451": {
+        "net45": {
             "dependencies": { },
             "frameworkAssemblies": {
                 "System.Diagnostics.Contracts": "4.0.0.0",

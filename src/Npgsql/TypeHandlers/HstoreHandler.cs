@@ -1,4 +1,27 @@
-﻿using System;
+﻿#region License
+// The PostgreSQL License
+//
+// Copyright (C) 2015 The Npgsql Development Team
+//
+// Permission to use, copy, modify, and distribute this software and its
+// documentation for any purpose, without fee, and without a written
+// agreement is hereby granted, provided that the above copyright notice
+// and this paragraph and the following two paragraphs appear in all copies.
+//
+// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
+// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
+// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
+// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
+// THE POSSIBILITY OF SUCH DAMAGE.
+//
+// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
+// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
+// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+#endregion
+
+using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
@@ -59,14 +82,14 @@ namespace Npgsql.TypeHandlers
                     }
                     totalLen += lengthCache.Set(Encoding.UTF8.GetByteCount(kv.Key));
                     if (kv.Value != null) {
-                        totalLen += lengthCache.Set(Encoding.UTF8.GetByteCount(kv.Value));                        
+                        totalLen += lengthCache.Set(Encoding.UTF8.GetByteCount(kv.Value));
                     }
                 }
 
                 return lengthCache.Lengths[pos] = totalLen;
             }
 
-            throw new InvalidCastException("Can't write type as hstore: " + value.GetType());
+            throw CreateConversionException(value.GetType());
         }
 
         public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter)
@@ -95,7 +118,7 @@ namespace Npgsql.TypeHandlers
                     if (_value.Count == 0)
                     {
                         CleanupState();
-                        return true;                        
+                        return true;
                     }
                     _enumerator = _value.GetEnumerator();
                     _enumerator.MoveNext();

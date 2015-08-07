@@ -1,4 +1,27 @@
-﻿using System;
+﻿#region License
+// The PostgreSQL License
+//
+// Copyright (C) 2015 The Npgsql Development Team
+//
+// Permission to use, copy, modify, and distribute this software and its
+// documentation for any purpose, without fee, and without a written
+// agreement is hereby granted, provided that the above copyright notice
+// and this paragraph and the following two paragraphs appear in all copies.
+//
+// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
+// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
+// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
+// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
+// THE POSSIBILITY OF SUCH DAMAGE.
+//
+// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
+// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
+// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+#endregion
+
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
@@ -38,7 +61,7 @@ namespace Npgsql.TypeHandlers
         int _byteLen, _charLen, _bytePos, _charPos;
         NpgsqlBuffer _buf;
 
-        char[] _singleCharArray = new char[1];
+        readonly char[] _singleCharArray = new char[1];
 
         #endregion
 
@@ -68,7 +91,7 @@ namespace Npgsql.TypeHandlers
                 if (_byteLen <= _buf.ReadBytesLeft)
                 {
                     // Already have the entire string in the buffer, decode and return
-                    result = _buf.ReadStringSimple(_byteLen);
+                    result = _buf.ReadString(_byteLen);
                     _buf = null;
                     return true;
                 }
@@ -87,7 +110,7 @@ namespace Npgsql.TypeHandlers
             }
 
             var len = Math.Min(_buf.ReadBytesLeft, _byteLen - _bytePos);
-            _buf.ReadBytesSimple(_tempBuf, _bytePos, len);
+            _buf.ReadBytes(_tempBuf, _bytePos, len);
             _bytePos += len;
             if (_bytePos < _byteLen)
             {
@@ -108,7 +131,7 @@ namespace Npgsql.TypeHandlers
                 if (_byteLen <= _buf.ReadBytesLeft)
                 {
                     // Already have the entire string in the buffer, decode and return
-                    result = _buf.ReadCharsSimple(_byteLen);
+                    result = _buf.ReadChars(_byteLen);
                     _buf = null;
                     return true;
                 }
@@ -128,7 +151,7 @@ namespace Npgsql.TypeHandlers
             }
 
             var len = Math.Min(_buf.ReadBytesLeft, _byteLen - _bytePos);
-            _buf.ReadBytesSimple(_tempBuf, _bytePos, len);
+            _buf.ReadBytes(_tempBuf, _bytePos, len);
             _bytePos += len;
             if (_bytePos < _byteLen) {
                 result = null;
@@ -179,12 +202,12 @@ namespace Npgsql.TypeHandlers
             }
 
             int bytesRead, charsRead;
-            row.Buffer.ReadChars(output, outputOffset, charsCount, row.ColumnLen - row.PosInColumn, out bytesRead, out charsRead);
+            row.Buffer.ReadAllChars(output, outputOffset, charsCount, row.ColumnLen - row.PosInColumn, out bytesRead, out charsRead);
             row.PosInColumn += bytesRead;
             _charPos += charsRead;
             return charsRead;
         }
-        
+
         #endregion
 
         #region Write
@@ -198,35 +221,44 @@ namespace Npgsql.TypeHandlers
                 return lengthCache.Get();
             }
 
-            return lengthCache.Set(DoValidateAndGetLength(value, parameter));
-        }
+            //return lengthCache.Set(DoValidateAndGetLength(value, parameter));
 
-        /// <summary>
-        /// Validates and calculates the length, but does not consult the length cache or stores
-        /// in it. Used by other type handlers which delegate to TextHandler.
-        /// </summary>
-        internal int DoValidateAndGetLength(object value, NpgsqlParameter parameter = null)
-        {
-            var asString = value as string;
-            if (asString != null) {
-                return parameter == null || parameter.Size <= 0 || parameter.Size >= asString.Length
+            switch (Type.GetTypeCode(value.GetType()))
+            {
+            case TypeCode.String:
+                var asString = (string)value;
+                return lengthCache.Set(
+                    parameter == null || parameter.Size <= 0 || parameter.Size >= asString.Length
                   ? PGUtil.UTF8Encoding.GetByteCount(asString)
-                  : PGUtil.UTF8Encoding.GetByteCount(asString.ToCharArray(), 0, parameter.Size);
-            }
+                  : PGUtil.UTF8Encoding.GetByteCount(asString.ToCharArray(), 0, parameter.Size)
+                );
 
-            var asCharArray = value as char[];
-            if (asCharArray != null) {
-                return parameter == null || parameter.Size <= 0 || parameter.Size >= asCharArray.Length
-                  ? PGUtil.UTF8Encoding.GetByteCount(asCharArray)
-                  : PGUtil.UTF8Encoding.GetByteCount(asCharArray, 0, parameter.Size);
-            }
+            case TypeCode.Object:
+                var asCharArray = value as char[];
+                if (asCharArray != null)
+                {
+                    return lengthCache.Set(
+                        parameter == null || parameter.Size <= 0 || parameter.Size >= asCharArray.Length
+                      ? PGUtil.UTF8Encoding.GetByteCount(asCharArray)
+                      : PGUtil.UTF8Encoding.GetByteCount(asCharArray, 0, parameter.Size)
+                    );
+                }
+                var converted = Convert.ToString(value);
+                if (parameter == null)
+                {
+                    throw CreateConversionButNoParamException(value.GetType());
+                }
+                parameter.ConvertedValue = value = converted;
+                goto case TypeCode.String;
 
-            if (value is char) {
+            case TypeCode.Char:
                 _singleCharArray[0] = (char)value;
-                return PGUtil.UTF8Encoding.GetByteCount(_singleCharArray);
-            }
+                return lengthCache.Set(PGUtil.UTF8Encoding.GetByteCount(_singleCharArray));
 
-            throw new InvalidCastException("Can't write type as text: " + value.GetType());
+            default:
+                value = Convert.ToString(value);
+                goto case TypeCode.String;
+            }
         }
 
         public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
@@ -235,29 +267,33 @@ namespace Npgsql.TypeHandlers
             _charPos = -1;
             _byteLen = lengthCache.GetLast();
 
-            _str = value as string;
-            if (_str != null)
+            if (parameter != null && parameter.ConvertedValue != null) {
+                value = parameter.ConvertedValue;
+            }
+
+            switch (Type.GetTypeCode(value.GetType()))
             {
+            case TypeCode.String:
+                _str = (string)value;
                 _charLen = parameter == null || parameter.Size <= 0 || parameter.Size >= _str.Length ? _str.Length : parameter.Size;
                 return;
-            }
 
-            _chars = value as char[];
-            if (_chars != null)
-            {
+            case TypeCode.Object:
+                Contract.Assert(value is char[]);
+                _chars = (char[])value;
                 _charLen = parameter == null || parameter.Size <= 0 || parameter.Size >= _chars.Length ? _chars.Length : parameter.Size;
                 return;
-            }
 
-            if (value is char)
-            {
+            case TypeCode.Char:
                 _singleCharArray[0] = (char)value;
                 _chars = _singleCharArray;
                 _charLen = 1;
                 return;
-            }
 
-            throw PGUtil.ThrowIfReached();
+            default:
+                value = Convert.ToString(value);
+                goto case TypeCode.String;
+            }
         }
 
         public bool Write(ref DirectBuffer directBuf)
@@ -269,13 +305,13 @@ namespace Npgsql.TypeHandlers
                     // Can simply write the string to the buffer
                     if (_str != null)
                     {
-                        _buf.WriteStringSimple(_str, _charLen);
+                        _buf.WriteString(_str, _charLen);
                         _str = null;
                     }
                     else
                     {
                         Contract.Assert(_chars != null);
-                        _buf.WriteCharsSimple(_chars, _charLen);
+                        _buf.WriteChars(_chars, _charLen);
                         _str = null;
                     }
                     _buf = null;
@@ -291,7 +327,9 @@ namespace Npgsql.TypeHandlers
                 // Bad case: the string doesn't fit in our buffer.
                 _charPos = 0;
 
-                // For strings, allocate a temporary byte buffer to hold the entire string and write it directly.
+                // For strings, chunked/incremental conversion isn't supported
+                // (see https://visualstudio.uservoice.com/forums/121579-visual-studio/suggestions/6584398-add-system-text-encoder-convert-method-string-in)
+                // So for now allocate a temporary byte buffer to hold the entire string and write it directly.
                 if (_str != null)
                 {
                     directBuf.Buffer = new byte[_byteLen];

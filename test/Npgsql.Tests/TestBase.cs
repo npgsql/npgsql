@@ -139,9 +139,9 @@ namespace Npgsql.Tests
             catch (NpgsqlException e)
             {
                 if (e.Code == "3D000")
-                    TestUtil.Inconclusive("Please create a database npgsql_tests, owned by user npgsql_tests");
+                    TestUtil.IgnoreExceptOnBuildServer("Please create a database npgsql_tests, owned by user npgsql_tests");
                 else if (e.Code == "28P01")
-                    TestUtil.Inconclusive("Please create a user npgsql_tests as follows: create user npgsql_tests with password 'npgsql_tests'");
+                    TestUtil.IgnoreExceptOnBuildServer("Please create a user npgsql_tests as follows: create user npgsql_tests with password 'npgsql_tests'");
                 else
                     throw;
             }
@@ -188,7 +188,7 @@ namespace Npgsql.Tests
         {
             var config = new LoggingConfiguration();
             var consoleTarget = new ConsoleTarget();
-            consoleTarget.Layout = @"${message}";
+            consoleTarget.Layout = @"${message} ${exception:format=tostring}";
             config.AddTarget("console", consoleTarget);
             var rule = new LoggingRule("*", NLog.LogLevel.Debug, consoleTarget);
             config.LoggingRules.Add(rule);
@@ -246,6 +246,18 @@ namespace Npgsql.Tests
         protected static bool IsSequential(CommandBehavior behavior)
         {
             return (behavior & CommandBehavior.SequentialAccess) != 0;
+        }
+
+
+        /// <summary>
+        /// In PG under 9.1 you can't do SELECT pg_sleep(2) in binary because that function returns void and PG doesn't know
+        /// how to transfer that. So cast to text server-side.
+        /// </summary>
+        /// <param name="seconds"></param>
+        /// <returns></returns>
+        protected static NpgsqlCommand CreateSleepCommand(NpgsqlConnection conn, int seconds)
+        {
+            return new NpgsqlCommand(string.Format("SELECT pg_sleep({0}){1}", seconds, conn.PostgreSqlVersion < new Version(9, 1, 0) ? "::TEXT" : ""), conn);
         }
 
         #endregion

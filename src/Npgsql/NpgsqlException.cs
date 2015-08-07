@@ -1,13 +1,7 @@
-// created on 12/7/2003 at 18:36
-
-// Npgsql.NpgsqlError.cs
+#region License
+// The PostgreSQL License
 //
-// Author:
-//    Francisco Jr. (fxjrlists@yahoo.com.br)
-//
-//    Copyright (C) 2002 The Npgsql Development Team
-//    npgsql-general@gborg.postgresql.org
-//    http://gborg.postgresql.org/project/npgsql/projdisplay.php
+// Copyright (C) 2015 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -25,6 +19,7 @@
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+#endregion
 
 using System;
 using System.Collections;
@@ -57,7 +52,7 @@ namespace Npgsql
         /// Severity of the error or notice.
         /// Always present.
         /// </summary>
-        public ErrorSeverity Severity { get { return _msg.Severity; } }
+        public string Severity { get { return _msg.Severity; } }
 
         /// <summary>
         /// The SQLSTATE code for the error.
@@ -199,14 +194,6 @@ namespace Npgsql
                     ).ToDictionary(kv => kv.Key, kv => kv.Value)
                 );
             }
-        }
-
-        [ContractInvariantMethod]
-        void ObjectInvariants()
-        {
-            Contract.Invariant(Severity == ErrorSeverity.Error ||
-                               Severity == ErrorSeverity.Fatal ||
-                               Severity == ErrorSeverity.Panic);
         }
     }
 }

@@ -1,4 +1,27 @@
-﻿using System;
+﻿#region License
+// The PostgreSQL License
+//
+// Copyright (C) 2015 The Npgsql Development Team
+//
+// Permission to use, copy, modify, and distribute this software and its
+// documentation for any purpose, without fee, and without a written
+// agreement is hereby granted, provided that the above copyright notice
+// and this paragraph and the following two paragraphs appear in all copies.
+//
+// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
+// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
+// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
+// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
+// THE POSSIBILITY OF SUCH DAMAGE.
+//
+// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
+// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
+// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+#endregion
+
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -42,7 +65,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             var numGroups = (ushort)buf.ReadInt16();
             var weightFirstGroup = buf.ReadInt16(); // 10000^weight
             var sign = (ushort)buf.ReadInt16(); // 0x0000 = positive, 0x4000 = negative, 0xC000 = NaN
-            var dscale = buf.ReadInt16(); // Number of digits (in base 10) to print after decimal separator
+            buf.ReadInt16(); // dcsale. Number of digits (in base 10) to print after decimal separator
 
             bool overflow = false;
 
@@ -128,7 +151,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
 
             if (fraction != 0)
             {
-                fractionDigits = fraction.ToString().Length;
+                fractionDigits = fraction.ToString(CultureInfo.InvariantCulture).Length - 2;
                 fractionGroups = (fractionDigits + 3) / 4;
                 if (weight < -1)
                     fractionGroups += weight + 1;
@@ -137,10 +160,23 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             numGroups = integerGroups + fractionGroups;
         }
 
-        public int ValidateAndGetLength(object value)
+        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
-            var num = GetIConvertibleValue<decimal>(value);
-            
+            decimal num;
+            if (value is decimal)
+            {
+                num = (decimal)value;
+            }
+            else
+            {
+                num = Convert.ToDecimal(value);
+                if (parameter == null)
+                {
+                    throw CreateConversionButNoParamException(value.GetType());
+                }
+                parameter.ConvertedValue = num;
+            }
+
             if (num == 0M)
                 return 4 * sizeof(short) + 0;
 
@@ -154,9 +190,11 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             return 4 * sizeof(short) + numGroups * sizeof(short);
         }
 
-        public void Write(object value, NpgsqlBuffer buf)
+        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
         {
-            var num = GetIConvertibleValue<decimal>(value);
+            var num = (decimal)(parameter != null && parameter.ConvertedValue != null
+                ? parameter.ConvertedValue
+                : value);
 
             if (num == 0M)
             {

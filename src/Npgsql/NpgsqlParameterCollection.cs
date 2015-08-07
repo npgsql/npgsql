@@ -1,16 +1,7 @@
-// created on 09/07/2003 at 20:20
-// Npgsql.NpgsqlParameterCollection.cs
+#region License
+// The PostgreSQL License
 //
-// Author:
-// Brar Piening (brar@gmx.de)
-//
-// Rewritten from the scratch to derive from MarshalByRefObject instead of ArrayList.
-// Recycled some parts of the original NpgsqlParameterCollection.cs
-// by Francisco Jr. (fxjrlists@yahoo.com.br)
-//
-// Copyright (C) 2002 The Npgsql Development Team
-// npgsql-general@gborg.postgresql.org
-// http://gborg.postgresql.org/project/npgsql/projdisplay.php
+// Copyright (C) 2015 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -28,6 +19,7 @@
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+#endregion
 
 using System;
 using System.Collections;
@@ -35,10 +27,6 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data.Common;
 using NpgsqlTypes;
-
-#if WITHDESIGN
-
-#endif
 
 namespace Npgsql
 {
@@ -191,25 +179,6 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Obsolete. Use AddWithValue instead.
-        /// </summary>
-        /// <remarks>
-        /// Use caution when using this overload of the
-        /// <b>Add</b> method to specify integer parameter values.
-        /// Because this overload takes a <i>value</i> of type Object,
-        /// you must convert the integral value to an <b>Object</b>
-        /// type when the value is zero, as the following C# example demonstrates.
-        /// <code>parameters.Add(":pname", Convert.ToInt32(0));</code>
-        /// If you do not perform this conversion, the compiler will assume you
-        /// are attempting to call the NpgsqlParameterCollection.Add(string, DbType) overload.
-        /// </remarks>
-        [Obsolete("Do not call this method. Use AddWithValue instead.")]
-        public NpgsqlParameter Add(string parameterName, object value)
-        {
-            return this.AddWithValue(parameterName, value);
-        }
-
-        /// <summary>
         /// Adds a <see cref="NpgsqlParameter">NpgsqlParameter</see> to the <see cref="NpgsqlParameterCollection">NpgsqlParameterCollection</see> given the specified parameter name and value.
         /// </summary>
         /// <param name="parameterName">The name of the <see cref="NpgsqlParameter">NpgsqlParameter</see>.</param>
@@ -339,9 +308,9 @@ namespace Npgsql
                 parameterName = parameterName.Remove(0, 1);
             }
 
-            // Using a dictionary is much faster for 5 or more items            
+            // Using a dictionary is much faster for 5 or more items
             if (this.InternalList.Count >= 5)
-            {            
+            {
                 if (this.lookup == null)
                 {
                     this.lookup = new Dictionary<string, int>();
@@ -370,7 +339,7 @@ namespace Npgsql
                     for (scanIndex = 0 ; scanIndex < this.InternalList.Count ; scanIndex++)
                     {
                         var item = this.InternalList[scanIndex];
-                        
+
                         // Store only the first of each distinct value
                         if (! this.lookupIgnoreCase.ContainsKey(item.CleanName))
                         {
@@ -599,7 +568,6 @@ namespace Npgsql
         public override void CopyTo(Array array, int index)
         {
             (InternalList as ICollection).CopyTo(array, index);
-            IRaiseItemChangedEvents x = InternalList as IRaiseItemChangedEvents;
         }
 
         /// <summary>

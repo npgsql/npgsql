@@ -1,5 +1,29 @@
-﻿using Npgsql.BackendMessages;
+﻿#region License
+// The PostgreSQL License
+//
+// Copyright (C) 2015 The Npgsql Development Team
+//
+// Permission to use, copy, modify, and distribute this software and its
+// documentation for any purpose, without fee, and without a written
+// agreement is hereby granted, provided that the above copyright notice
+// and this paragraph and the following two paragraphs appear in all copies.
+//
+// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
+// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
+// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
+// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
+// THE POSSIBILITY OF SUCH DAMAGE.
+//
+// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
+// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
+// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+#endregion
+
+using Npgsql.BackendMessages;
 using System;
+using System.CodeDom;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -25,7 +49,6 @@ namespace Npgsql.TypeHandlers
         #region State
 
         NpgsqlBuffer _buf;
-        NpgsqlParameter _parameter;
         LengthCache _lengthCache;
         NpgsqlRange<TElement> _value;
         State _state;
@@ -36,7 +59,6 @@ namespace Npgsql.TypeHandlers
         {
             _buf = null;
             _value = default(NpgsqlRange<TElement>);
-            _parameter = null;
             _fieldDescription = null;
             _state = State.Done;
         }
@@ -54,8 +76,6 @@ namespace Npgsql.TypeHandlers
 
         public bool Read(out NpgsqlRange<TElement> result)
         {
-            var asChunkingReader = ElementHandler as IChunkingTypeReader<TElement>;
-
             switch (_state) {
             case State.Start:
                 if (_buf.ReadBytesLeft < 1)
@@ -159,6 +179,9 @@ namespace Npgsql.TypeHandlers
 
         public int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter = null)
         {
+            if (!(value is NpgsqlRange<TElement>))
+                throw CreateConversionException(value.GetType());
+
             var range = (NpgsqlRange<TElement>)value;
             var totalLen = 1;
 
@@ -167,14 +190,14 @@ namespace Npgsql.TypeHandlers
                 var asChunkingWriter = ElementHandler as IChunkingTypeWriter;
                 if (!range.LowerBoundInfinite) {
                     totalLen += 4 + (asChunkingWriter != null
-                        ? asChunkingWriter.ValidateAndGetLength(range.LowerBound, ref lengthCache, parameter)
-                        : ((ISimpleTypeWriter)ElementHandler).ValidateAndGetLength(range.LowerBound));
+                        ? asChunkingWriter.ValidateAndGetLength(range.LowerBound, ref lengthCache, null)
+                        : ((ISimpleTypeWriter)ElementHandler).ValidateAndGetLength(range.LowerBound, null));
                 }
 
                 if (!range.UpperBoundInfinite) {
                     totalLen += 4 + (asChunkingWriter != null
-                        ? asChunkingWriter.ValidateAndGetLength(range.UpperBound, ref lengthCache, parameter)
-                        : ((ISimpleTypeWriter)ElementHandler).ValidateAndGetLength(range.UpperBound));
+                        ? asChunkingWriter.ValidateAndGetLength(range.UpperBound, ref lengthCache, null)
+                        : ((ISimpleTypeWriter)ElementHandler).ValidateAndGetLength(range.UpperBound, null));
                 }
             }
 
@@ -184,7 +207,6 @@ namespace Npgsql.TypeHandlers
         public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter)
         {
             _buf = buf;
-            _parameter = parameter;
             _lengthCache = lengthCache;
             _value = (NpgsqlRange<TElement>)value;
             _state = State.Start;
@@ -210,7 +232,7 @@ namespace Npgsql.TypeHandlers
                     }
 
                     if (asChunkingWriter != null) {
-                        asChunkingWriter.PrepareWrite(_value.LowerBound, _buf, _lengthCache, _parameter);
+                        asChunkingWriter.PrepareWrite(_value.LowerBound, _buf, _lengthCache, null);
                     }
                     _state = State.LowerBound;
                     goto case State.LowerBound;
@@ -220,10 +242,10 @@ namespace Npgsql.TypeHandlers
                     {
                         var asSimpleWriter = (ISimpleTypeWriter)ElementHandler;
                         // TODO: Cache length
-                        var len = asSimpleWriter.ValidateAndGetLength(_value.LowerBound);
+                        var len = asSimpleWriter.ValidateAndGetLength(_value.LowerBound, null);
                         if (_buf.WriteSpaceLeft < len + 4) { return false; }
                         _buf.WriteInt32(len);
-                        asSimpleWriter.Write(_value.LowerBound, _buf);
+                        asSimpleWriter.Write(_value.LowerBound, _buf, null);
                     }
                     else if (!asChunkingWriter.Write(ref directBuf)) { return false; }
                     goto case State.BeforeUpperBound;
@@ -234,7 +256,7 @@ namespace Npgsql.TypeHandlers
                         return true;
                     }
                     if (asChunkingWriter != null) {
-                        asChunkingWriter.PrepareWrite(_value.UpperBound, _buf, _lengthCache, _parameter);
+                        asChunkingWriter.PrepareWrite(_value.UpperBound, _buf, _lengthCache, null);
                     }
                     _state = State.UpperBound;
                     goto case State.UpperBound;
@@ -244,10 +266,10 @@ namespace Npgsql.TypeHandlers
                     {
                         var asSimpleWriter = (ISimpleTypeWriter)ElementHandler;
                         // TODO: Cache length
-                        var len = asSimpleWriter.ValidateAndGetLength(_value.UpperBound);
+                        var len = asSimpleWriter.ValidateAndGetLength(_value.UpperBound, null);
                         if (_buf.WriteSpaceLeft < len + 4) { return false; }
                         _buf.WriteInt32(len);
-                        asSimpleWriter.Write(_value.UpperBound, _buf);
+                        asSimpleWriter.Write(_value.UpperBound, _buf, null);
                     }
                     else if (!asChunkingWriter.Write(ref directBuf)) { return false; }
 

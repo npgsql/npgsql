@@ -49,7 +49,7 @@ namespace Npgsql.Tests
         {
             _params.AddWithValue(":param", "foo");
             SqlQueryParser.ParseRawQuery(sql, true, _params, _queries);
-            Assert.That(_queries.Single().Sql, Is.EqualTo(sql));
+            Assert.That(_queries.Single().SQL, Is.EqualTo(sql));
             Assert.That(_queries.Single().InputParameters, Is.Empty);
         }
 
@@ -82,7 +82,7 @@ namespace Npgsql.Tests
         public void NonConformantStrings()
         {
             SqlQueryParser.ParseRawQuery(@"SELECT 'abc\':str''a:str'", false, _params, _queries);
-            Assert.That(_queries.Single().Sql, Is.EqualTo(@"SELECT 'abc\':str''a:str'"));
+            Assert.That(_queries.Single().SQL, Is.EqualTo(@"SELECT 'abc\':str''a:str'"));
             Assert.That(_queries.Single().InputParameters, Is.Empty);
         }
 
@@ -124,13 +124,13 @@ namespace Npgsql.Tests
 
         #region Setup / Teardown / Utils
 
-        List<QueryDetails> _queries;
+        List<NpgsqlStatement> _queries;
         NpgsqlParameterCollection _params;
 
         [SetUp]
         public void SetUp()
         {
-            _queries = new List<QueryDetails>();
+            _queries = new List<NpgsqlStatement>();
             _params = new NpgsqlParameterCollection();
         }
 

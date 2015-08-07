@@ -68,7 +68,7 @@ namespace Npgsql.Tests
 
             var chars = new char[expected.Length + 5];
             int bytesRead, charsRead;
-            Buffer.ReadChars(chars, 5, expected.Length, bytes.Length, out bytesRead, out charsRead);
+            Buffer.ReadAllChars(chars, 5, expected.Length, bytes.Length, out bytesRead, out charsRead);
             Assert.That(charsRead, Is.EqualTo(expected.Length));
             Assert.That(bytesRead, Is.EqualTo(bytes.Length));
             var actual = new string(chars, 5, expected.Length);
@@ -85,7 +85,7 @@ namespace Npgsql.Tests
 
             var chars = new char[expected.Length + 5];
             int bytesRead, charsRead;
-            Buffer.ReadChars(chars, 0, expected.Length + 5, bytes.Length, out bytesRead, out charsRead);
+            Buffer.ReadAllChars(chars, 0, expected.Length + 5, bytes.Length, out bytesRead, out charsRead);
             Assert.That(charsRead, Is.EqualTo(expected.Length));
             Assert.That(bytesRead, Is.EqualTo(bytes.Length));
             var actual = new string(chars, 0, expected.Length);

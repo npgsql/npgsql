@@ -1,7 +1,9 @@
 Npgsql - .NET Data Provider for PostgreSQL
 =============
 
-[![Build Status](https://img.shields.io/teamcity/http/build.npgsql.org/s/npgsql_all.svg?label=3.0.0-alpha)](http://build.npgsql.org/viewType.html?buildTypeId=npgsql_all&guest=1) [![Join the chat at https://gitter.im/npgsql/npsgl](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/npgsql/npgsql)
+[![Stable nuget](https://img.shields.io/nuget/v/Npgsql.svg?label=stable%20nuget)](https://www.nuget.org/packages/Npgsql/)
+![Unstable nuget](https://img.shields.io/myget/npgsql-unstable/v/npgsql.svg?label=unstable%20nuget)
+[![Build Status](https://img.shields.io/teamcity/http/build.npgsql.org/s/npgsql.svg?label=TeamCity)](http://build.npgsql.org/viewType.html?buildTypeId=npgsql&guest=1) [![Join the chat at https://gitter.im/npgsql/npsgl](https://img.shields.io/badge/GITTER-JOIN%20CHAT-brightgreen.svg)](https://gitter.im/npgsql/npgsql)
 
 ###What Is Npgsql?
 
@@ -14,6 +16,9 @@ Npgsql is a .Net Data Provider for PostgreSQL. It allows you to connect and inte
 +   [Npgsql source code @ GitHub][2]
 +   [Available on NuGet Gallery][3]
 +   [Wiki - Usage and other information][4]
+
+Nuget packages are published as part of our CI process, use with extreme caution.
+The feed URL is: https://www.myget.org/F/npgsql-unstable
 
 ###Developers
 
@@ -39,20 +44,7 @@ Developers who contributes to Npgsql currently or in past, in no particular orde
 
 Refer LICENSE.txt for more information on license terms.
 
-###Code history
-
-On December 2nd, [we committed a change][5] to restructure Npgsql code. This change modified file locations and unfortunately made the complete modification history of those files to not be available anymore through GitHub interface directly. [This stackoverflow post][6] documents a way to access the history before the rename: You just need to access the object tree **before** the rename and then you can see the rest of the file history.
-In the case of this rename, this is the tree: https://github.com/npgsql/Npgsql/tree/2f8928e4dee59275767de0df2ec41a654744a3bc
-
-On September 15th, [we committed another change][7] to restructure Npgsql code. The tree which contains the code before this change is this: https://github.com/npgsql/Npgsql/commit/853d69c276f1de1b8ceb5fc14638a0cd40b83983
-
-This will help future searches for the history of the files. Note that you stil can access the complete history of the file through command line: `git log --follow ./newflodername/file`
-
-
 [1]: http://www.npgsql.org/  "Official site"
 [2]: https://github.com/npgsql/Npgsql/  "Npgsql source code @ GitHub"
 [3]: http://www.nuget.org/packages/Npgsql/ "Npgsql @ Nuget Gallery"
 [4]: https://github.com/npgsql/Npgsql/wiki/  "Wiki"
-[5]: https://github.com/npgsql/Npgsql/commit/d7beea23f3407b38747cde05568a59ac87cdd121#diff-3b02da674650ba0f31603c365249f34f
-[6]: http://stackoverflow.com/questions/17213046/see-history-in-github-after-folder-rename
-[7]: https://github.com/npgsql/Npgsql/commit/a7d29a7a8d6a5d441b96827fe11a3c8d066720eb

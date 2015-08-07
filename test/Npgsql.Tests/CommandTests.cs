@@ -139,13 +139,31 @@ namespace Npgsql.Tests
         [Test]
         public void TimeoutFromConnectionString()
         {
-            Assert.That(ExecuteScalar("SHOW statement_timeout"), Is.EqualTo("30s"));
-            using (var conn = new NpgsqlConnection(ConnectionString + ";CommandTimeout=180;pooling=false"))
+            var timeout = NpgsqlConnector.MinimumInternalCommandTimeout;
+            int connId;
+            using (var conn = new NpgsqlConnection(ConnectionString + ";CommandTimeout=" + timeout))
             {
-                var command = new NpgsqlCommand("\"Foo\"", conn);
+                var command = new NpgsqlCommand("SELECT 1", conn);
                 conn.Open();
-                Assert.AreEqual(180, command.CommandTimeout);
-                Assert.That(ExecuteScalar("SHOW statement_timeout", conn), Is.EqualTo("3min"));
+                Assert.That(command.CommandTimeout, Is.EqualTo(timeout));
+                command.CommandTimeout = 10;
+                command.ExecuteScalar();
+                Assert.That(command.CommandTimeout, Is.EqualTo(10));
+                connId = conn.ProcessID;
+            }
+            using (var conn = new NpgsqlConnection(ConnectionString + ";CommandTimeout=" + timeout))
+            {
+                conn.Open();
+                var command = CreateSleepCommand(conn, timeout + 2);
+                Assert.That(conn.ProcessID, Is.EqualTo(connId), "Got a different connection...");
+                Assert.That(command.CommandTimeout, Is.EqualTo(timeout));
+                Assert.That(() => command.ExecuteNonQuery(),
+                    Throws.TypeOf<NpgsqlException>()
+                    .With.Property("Code").EqualTo("57014")
+                );
+                Assert.That(ExecuteScalar("SHOW statement_timeout", conn), Is.EqualTo(timeout + "s"));
+                conn.Close();
+                NpgsqlConnection.ClearPool(conn);
             }
         }
 
@@ -167,9 +185,7 @@ namespace Npgsql.Tests
                 } catch {
                 }
 
-                using (var command = new NpgsqlCommand("SELECT :dummy, pg_sleep(3)", conn)) {
-                    command.Parameters.Add(new NpgsqlParameter("dummy", NpgsqlDbType.Text));
-                    command.Parameters[0].Value = "foo";
+                using (var command = CreateSleepCommand(conn, 3)) {
                     command.CommandTimeout = 1;
                     try {
                         command.ExecuteNonQuery();
@@ -180,9 +196,7 @@ namespace Npgsql.Tests
                     }
                 }
 
-                using (var command = new NpgsqlCommand("SELECT :dummy, pg_sleep(3)", conn)) {
-                    command.Parameters.Add(new NpgsqlParameter("dummy", NpgsqlDbType.Text));
-                    command.Parameters[0].Value = "foo";
+                using (var command = CreateSleepCommand(conn, 3)) {
                     command.CommandTimeout = 4;
                     try {
                         command.ExecuteNonQuery();
@@ -204,13 +218,10 @@ namespace Npgsql.Tests
             using (var conn = new NpgsqlConnection(ConnectionString)) {
                 conn.Open();
 
-                var command = new NpgsqlCommand("pg_sleep", conn);
-                command.CommandType = CommandType.StoredProcedure;
-                command.Parameters.Add(new NpgsqlParameter());
-                command.Parameters[0].NpgsqlDbType = NpgsqlDbType.Double;
-                command.Parameters[0].Value = 3d;
+                var command = CreateSleepCommand(conn, 3);
                 command.CommandTimeout = 1;
-                try {
+                try
+                {
                     command.ExecuteNonQuery();
                     Assert.Fail("3s function call survived a 1s timeout");
                 } catch (NpgsqlException) {
@@ -222,11 +233,7 @@ namespace Npgsql.Tests
             using (var conn = new NpgsqlConnection(ConnectionString)) {
                 conn.Open();
 
-                var command = new NpgsqlCommand("pg_sleep", conn);
-                command.CommandType = CommandType.StoredProcedure;
-                command.Parameters.Add(new NpgsqlParameter());
-                command.Parameters[0].NpgsqlDbType = NpgsqlDbType.Double;
-                command.Parameters[0].Value = 3d;
+                var command = CreateSleepCommand(conn, 3);
                 command.CommandTimeout = 4;
                 try {
                     command.ExecuteNonQuery();
@@ -243,7 +250,7 @@ namespace Npgsql.Tests
         public void TimeoutSwitchConnection()
         {
             if (Conn.CommandTimeout >= 100 && Conn.CommandTimeout < 105)
-                TestUtil.Inconclusive("Bad default command timeout");
+                TestUtil.IgnoreExceptOnBuildServer("Bad default command timeout");
             using (var c1 = new NpgsqlConnection(ConnectionString + ";CommandTimeout=100")) {
                 using (var cmd = c1.CreateCommand()) {
                     Assert.That(cmd.CommandTimeout, Is.EqualTo(100));
@@ -304,7 +311,7 @@ namespace Npgsql.Tests
             using (var conn = new NpgsqlConnection(ConnectionString + ";CommandTimeout=1;BackendTimeouts=false"))
             {
                 conn.Open();
-                using (var cmd = new NpgsqlCommand("SELECT pg_sleep(10)", conn))
+                using (var cmd = CreateSleepCommand(conn, 10))
                 {
                     Assert.That(() => cmd.ExecuteNonQuery(), Throws.Exception.TypeOf<IOException>());
                     Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
@@ -334,7 +341,7 @@ namespace Npgsql.Tests
         [Timeout(6000)]
         public void Cancel()
         {
-            using (var cmd = new NpgsqlCommand("SELECT pg_sleep(5)", Conn)) {
+            using (var cmd = CreateSleepCommand(Conn, 5)) {
                 Task.Factory.StartNew(() =>
                 {
                     Thread.Sleep(300);
@@ -351,7 +358,7 @@ namespace Npgsql.Tests
         [Timeout(3000)]
         public void CancelCrossCommand()
         {
-            using (var cmd1 = new NpgsqlCommand("SELECT pg_sleep(2)", Conn))
+            using (var cmd1 = CreateSleepCommand(Conn, 2))
             using (var cmd2 = new NpgsqlCommand("SELECT 1", Conn)) {
                 var cancelTask = Task.Factory.StartNew(() =>
                 {
@@ -396,23 +403,6 @@ namespace Npgsql.Tests
 
                 command.CommandText = "close te;";
                 command.ExecuteNonQuery();
-            }
-        }
-
-        [Test]
-        public void MultipleRefCursorSupport()
-        {
-            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION testmultcurfunc() RETURNS SETOF refcursor AS 'DECLARE ref1 refcursor; ref2 refcursor; BEGIN OPEN ref1 FOR SELECT 1; RETURN NEXT ref1; OPEN ref2 FOR SELECT 2; RETURN next ref2; RETURN; END;' LANGUAGE 'plpgsql';");
-            using (Conn.BeginTransaction()) {
-                var command = new NpgsqlCommand("testmultcurfunc", Conn);
-                command.CommandType = CommandType.StoredProcedure;
-                using (var dr = command.ExecuteReader()) {
-                    dr.Read();
-                    Assert.That(dr.GetInt32(0), Is.EqualTo(1));
-                    dr.NextResult();
-                    dr.Read();
-                    Assert.That(dr.GetInt32(0), Is.EqualTo(2));
-                }
             }
         }
 
@@ -688,15 +678,6 @@ namespace Npgsql.Tests
             Assert.AreEqual(4, command.Parameters["param1"].Value);
             Assert.AreEqual(5, command.Parameters["param2"].Value);
             //Assert.AreEqual(-1, command.Parameters["p"].Value); //Which is better, not filling this or filling this with an unmapped value?
-        }
-
-        [Test]
-        public void VerifyFunctionNameWithDeriveParameters()
-        {
-            var invalidCommandName = new NpgsqlCommand("invalidfunctionname", Conn);
-            Assert.That(() => NpgsqlCommandBuilder.DeriveParameters(invalidCommandName),
-                Throws.Exception.TypeOf<InvalidOperationException>()
-                .With.Message.Contains("does not exist"));
         }
 
         [Test]

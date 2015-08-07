@@ -1,4 +1,27 @@
-﻿using System;
+﻿#region License
+// The PostgreSQL License
+//
+// Copyright (C) 2015 The Npgsql Development Team
+//
+// Permission to use, copy, modify, and distribute this software and its
+// documentation for any purpose, without fee, and without a written
+// agreement is hereby granted, provided that the above copyright notice
+// and this paragraph and the following two paragraphs appear in all copies.
+//
+// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
+// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
+// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
+// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
+// THE POSSIBILITY OF SUCH DAMAGE.
+//
+// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
+// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
+// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+#endregion
+
+using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
@@ -7,6 +30,7 @@ using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
 using System.Diagnostics.CodeAnalysis;
+using AsyncRewriter;
 
 namespace Npgsql
 {
@@ -16,8 +40,8 @@ namespace Npgsql
 
     interface ISimpleTypeWriter
     {
-        int ValidateAndGetLength(object value);
-        void Write(object value, NpgsqlBuffer buf);
+        int ValidateAndGetLength(object value, NpgsqlParameter parameter);
+        void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter);
     }
 
     /// <summary>
@@ -40,8 +64,6 @@ namespace Npgsql
 
     #endregion
 
-    #region Chunking type handler
-
     [ContractClass(typeof(IChunkingTypeWriterContracts))]
     interface IChunkingTypeWriter
     {
@@ -51,7 +73,7 @@ namespace Npgsql
         /// the <see cref="NpgsqlParameter"/> containing <paramref name="value"/>. Consulted for settings
         /// which impact how to send the parameter, e.g. <see cref="NpgsqlParameter.Size"/>. Can be null.
         /// </param>
-        int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null);
+        int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter);
 
         /// <param name="value">the value to be written</param>
         /// <param name="buf"></param>
@@ -61,7 +83,7 @@ namespace Npgsql
         /// which impact how to send the parameter, e.g. <see cref="NpgsqlParameter.Size"/>. Can be null.
         /// <see cref="NpgsqlParameter.Size"/>.
         /// </param>
-        void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null);
+        void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter);
         bool Write(ref DirectBuffer directBuf);
     }
 
@@ -116,9 +138,7 @@ namespace Npgsql
         }
     }
 
-    #endregion
-
-    internal abstract class TypeHandler
+    internal abstract partial class TypeHandler
     {
         internal string PgName { get; set; }
         internal uint OID { get; set; }
@@ -135,6 +155,7 @@ namespace Npgsql
 
         public virtual bool PreferTextWrite { get { return false; } }
 
+        [RewriteAsync]
         internal T Read<T>(DataRowMessage row, int len, FieldDescription fieldDescription = null)
         {
             Contract.Requires(row.PosInColumn == 0);
@@ -153,6 +174,7 @@ namespace Npgsql
             return result;
         }
 
+        [RewriteAsync]
         internal T Read<T>(NpgsqlBuffer buf, int len, FieldDescription fieldDescription=null)
         {
             T result;
@@ -181,9 +203,14 @@ namespace Npgsql
             return result;
         }
 
-        protected static T GetIConvertibleValue<T>(object value) where T : IConvertible
+        protected Exception CreateConversionException(Type clrType)
         {
-            return value is T ? (T)value : (T)Convert.ChangeType(value, typeof(T), null);
+            return new InvalidCastException(string.Format("Can't convert .NET type {0} to PostgreSQL {1}", clrType, PgName));
+        }
+
+        protected Exception CreateConversionButNoParamException(Type clrType)
+        {
+            return new InvalidCastException(string.Format("Can't convert .NET type {0} to PostgreSQL {1} within an array", clrType, PgName));
         }
 
         [ContractInvariantMethod]

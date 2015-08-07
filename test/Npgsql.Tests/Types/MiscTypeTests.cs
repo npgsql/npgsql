@@ -61,7 +61,7 @@ namespace Npgsql.Tests.Types
         [Test]
         public void ReadMoney()
         {
-            var cmd = new NpgsqlCommand("SELECT 12345.12::MONEY, '-10.5'::MONEY", Conn);
+            var cmd = new NpgsqlCommand("SELECT '12345.12'::MONEY, '-10.5'::MONEY", Conn);
             var reader = cmd.ExecuteReader();
             reader.Read();
             Assert.That(reader.GetDecimal(0), Is.EqualTo(12345.12m));
@@ -167,12 +167,17 @@ namespace Npgsql.Tests.Types
         [MinPgVersion(9, 4, 0, "JSONB data type not yet introduced")]
         public void Jsonb()
         {
-            const string expected = @"{""Key"": ""Value""}";
-            using (var cmd = new NpgsqlCommand("SELECT @p", Conn)) {
-                cmd.Parameters.AddWithValue("p", NpgsqlDbType.Jsonb, expected);
+            var sb = new StringBuilder();
+            sb.Append(@"{""Key"": """);
+            sb.Append('x', Conn.BufferSize);
+            sb.Append(@"""}");
+            var value = sb.ToString();
+            using (var cmd = new NpgsqlCommand("SELECT @p", Conn))
+            {
+                cmd.Parameters.AddWithValue("p", NpgsqlDbType.Jsonb, value);
                 var reader = cmd.ExecuteReader();
                 reader.Read();
-                Assert.That(reader.GetString(0), Is.EqualTo(expected));
+                Assert.That(reader.GetString(0), Is.EqualTo(value));
                 Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(string)));
                 reader.Close();
             }
@@ -439,6 +444,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
+        [MinPgVersion(9, 2, 0, "Ranges supported only starting PostgreSQL 9.2")]
         public void Range()
         {
             var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4", Conn);
@@ -464,6 +470,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
+        [MinPgVersion(9, 2, 0, "Ranges supported only starting PostgreSQL 9.2")]
         public void TestRange()
         {
             using (var cmd = Conn.CreateCommand())

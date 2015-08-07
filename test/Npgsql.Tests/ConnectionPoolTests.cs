@@ -43,11 +43,20 @@ namespace Npgsql.Tests
         {
             var conn = new NpgsqlConnection(ConnectionString + ";SearchPath=public");
             conn.Open();
-            ExecuteNonQuery("SET search_path=foo", conn);
-            conn.Close();
-            conn.Open();
-            Assert.That(ExecuteScalar("SHOW search_path", conn), Is.EqualTo("public"));
-            conn.Close();
+            ExecuteNonQuery("DROP SCHEMA IF EXISTS foo");
+            ExecuteNonQuery("CREATE SCHEMA foo");
+            try
+            {
+                ExecuteNonQuery("SET search_path=foo", conn);
+                conn.Close();
+                conn.Open();
+                Assert.That(ExecuteScalar("SHOW search_path", conn), Is.EqualTo("public"));
+                conn.Close();
+            }
+            finally
+            {
+                ExecuteNonQuery("DROP SCHEMA foo");
+            }
         }
 
         [Test]

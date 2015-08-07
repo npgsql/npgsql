@@ -1,13 +1,7 @@
-// created on 17/11/2002 at 19:04
-
-// Npgsql.NpgsqlTransaction.cs
+#region License
+// The PostgreSQL License
 //
-// Author:
-//    Francisco Jr. (fxjrlists@yahoo.com.br)
-//
-//    Copyright (C) 2002 The Npgsql Development Team
-//    npgsql-general@gborg.postgresql.org
-//    http://gborg.postgresql.org/project/npgsql/projdisplay.php
+// Copyright (C) 2015 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -25,6 +19,7 @@
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+#endregion
 
 using System;
 using System.Data;
@@ -74,6 +69,8 @@ namespace Npgsql
         }
         readonly IsolationLevel _isolationLevel;
 
+        const IsolationLevel DefaultIsolationLevel = IsolationLevel.ReadCommitted;
+
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         #endregion
@@ -81,7 +78,7 @@ namespace Npgsql
         #region Constructors
 
         internal NpgsqlTransaction(NpgsqlConnection conn)
-            : this(conn, IsolationLevel.ReadCommitted)
+            : this(conn, DefaultIsolationLevel)
         {
             Contract.Requires(conn != null);
         }
@@ -92,7 +89,6 @@ namespace Npgsql
             Contract.Requires(isolationLevel != IsolationLevel.Chaos);
 
             Connection = conn;
-            _isolationLevel = isolationLevel;
             Connector.Transaction = this;
             Connector.TransactionStatus = TransactionStatus.Pending;
 
@@ -112,9 +108,14 @@ namespace Npgsql
                 case IsolationLevel.ReadCommitted:
                     Connector.PrependInternalMessage(PregeneratedMessage.BeginTransReadCommitted);
                     break;
+                case IsolationLevel.Unspecified:
+                    isolationLevel = DefaultIsolationLevel;
+                    goto case DefaultIsolationLevel;
                 default:
                     throw PGUtil.ThrowIfReached("Isolation level not supported: " + isolationLevel);
             }
+
+            _isolationLevel = isolationLevel;
         }
 
         #endregion

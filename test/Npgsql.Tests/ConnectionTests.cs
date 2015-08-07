@@ -80,7 +80,7 @@ namespace Npgsql.Tests
                 Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
                 Assert.That(conn.Connector.State, Is.EqualTo(ConnectorState.Ready));
 
-                using (var cmd = new NpgsqlCommand("SELECT pg_sleep(1)", conn))
+                using (var cmd = CreateSleepCommand(conn, 1))
                 {
                     var exitFlag = false;
                     var pollingTask = Task.Factory.StartNew(() =>
@@ -227,7 +227,7 @@ namespace Npgsql.Tests
         public void NotificationAsync()
         {
             var mre = new ManualResetEvent(false);
-            using (var listeningConn = new NpgsqlConnection(ConnectionString + ";SyncNotification=true"))
+            using (var listeningConn = new NpgsqlConnection(ConnectionString + ";ContinuousProcessing=true"))
             {
                 listeningConn.Open();
                 ExecuteNonQuery("LISTEN notifytest2", listeningConn);
@@ -245,11 +245,10 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("A notification arriving while we have an open Reader")]
-        [Timeout(10000)]
         public void NotificationDuringReader()
         {
             var receivedNotification = false;
-            using (var listeningConn = new NpgsqlConnection(ConnectionString + ";SyncNotification=true"))
+            using (var listeningConn = new NpgsqlConnection(ConnectionString + ";ContinuousProcessing=true"))
             {
                 listeningConn.Open();
                 ExecuteNonQuery("LISTEN notifytest2", listeningConn);
@@ -259,6 +258,7 @@ namespace Npgsql.Tests
                 using (cmd.ExecuteReader()) {
                     // Send notify via the other connection
                     ExecuteNonQuery("NOTIFY notifytest2");
+                    Thread.Sleep(500);
                 }
             }
             Assert.That(receivedNotification, Is.True);
@@ -269,7 +269,7 @@ namespace Npgsql.Tests
         public void NotificationAsyncWithPrepend()
         {
             var mre = new ManualResetEvent(false);
-            using (var listeningConn = new NpgsqlConnection(ConnectionString + ";SyncNotification=true"))
+            using (var listeningConn = new NpgsqlConnection(ConnectionString + ";ContinuousProcessing=true"))
             {
                 listeningConn.Open();
                 ExecuteNonQuery("LISTEN notifytest2", listeningConn);
@@ -324,7 +324,7 @@ namespace Npgsql.Tests
         public void Keepalive()
         {
             var mre = new ManualResetEvent(false);
-            using (var conn = new NpgsqlConnection(ConnectionString + ";KeepAlive=1;SyncNotification=true"))
+            using (var conn = new NpgsqlConnection(ConnectionString + ";KeepAlive=1;ContinuousProcessing=true"))
             {
                 conn.Open();
 
@@ -415,6 +415,7 @@ namespace Npgsql.Tests
         [Test, Description("Tests closing a connector while a reader is open")]
         [TestCase(true, TestName = "Pooled")]
         [TestCase(false, TestName = "NonPooled")]
+        [Timeout(10000)]
         public void CloseDuringRead(bool pooled)
         {
             var conn = new NpgsqlConnection(ConnectionString + ";" + (pooled ? "MaxPoolSize=1" : "Pooling=false"));
@@ -619,6 +620,8 @@ namespace Npgsql.Tests
         [Test, Description("Makes sure notices are probably received and emitted as events")]
         public void Notice()
         {
+            // Make sure messages are in English
+            ExecuteNonQuery(@"SET lc_messages='English_United States.1252'");
             ExecuteNonQuery(@"
                  CREATE OR REPLACE FUNCTION emit_notice() RETURNS VOID AS
                     'BEGIN RAISE NOTICE ''testnotice''; END;'
@@ -630,23 +633,15 @@ namespace Npgsql.Tests
             Conn.Notice += action;
             try
             {
-                ExecuteNonQuery("SELECT emit_notice()");
+                ExecuteNonQuery("SELECT emit_notice()::TEXT");  // See docs for CreateSleepCommand
                 Assert.That(notice, Is.Not.Null, "No notice was emitted");
                 Assert.That(notice.MessageText, Is.EqualTo("testnotice"));
-                Assert.That(notice.Severity, Is.EqualTo(ErrorSeverity.Notice));
+                Assert.That(notice.Severity, Is.EqualTo("NOTICE"));
             }
             finally
             {
                 Conn.Notice -= action;
             }
-        }
-
-        [Test, Description("Makes sure that ssl_renegotiation_limit is always 0, renegotiation is buggy")]
-        public void NoSslRenegotiation()
-        {
-            Assert.That(ExecuteScalar("SHOW ssl_renegotiation_limit"), Is.EqualTo("0"));
-            ExecuteNonQuery("DISCARD ALL");
-            Assert.That(ExecuteScalar("SHOW ssl_renegotiation_limit"), Is.EqualTo("0"));
         }
 
         [Test, Description("Makes sure that concurrent use of the connection throws an exception")]
@@ -655,6 +650,13 @@ namespace Npgsql.Tests
             using (var cmd = new NpgsqlCommand("SELECT 1", Conn))
             using (cmd.ExecuteReader())
                 Assert.That(() => ExecuteScalar("SELECT 1", Conn), Throws.Exception.TypeOf<InvalidOperationException>());
+        }
+
+        [Test]
+        public void NoContinuousProcessingWithSslStream()
+        {
+            using (var conn = new NpgsqlConnection(ConnectionString + ";UseSslStream=true;ContinuousProcessing=true"))
+                Assert.That(() => conn.Open(), Throws.Exception.TypeOf<ArgumentException>());
         }
 
         #region GetSchema

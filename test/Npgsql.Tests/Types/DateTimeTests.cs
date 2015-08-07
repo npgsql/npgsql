@@ -29,15 +29,14 @@ namespace Npgsql.Tests.Types
 
             using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", Conn))
             {
-                var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Date);
-                var p2 = new NpgsqlParameter("p2", DbType.Date);
-                var p3 = new NpgsqlParameter {ParameterName = "p3", Value = npgsqlDate};
+                var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Date) { Value = npgsqlDate };
+                var p2 = new NpgsqlParameter("p2", DbType.Date) { Value = npgsqlDate.ToString() };
+                var p3 = new NpgsqlParameter { ParameterName = "p3", Value = npgsqlDate };
                 Assert.That(p3.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Date));
                 Assert.That(p3.DbType, Is.EqualTo(DbType.Date));
                 cmd.Parameters.Add(p1);
                 cmd.Parameters.Add(p2);
                 cmd.Parameters.Add(p3);
-                p1.Value = p2.Value = npgsqlDate;
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();
@@ -141,11 +140,12 @@ namespace Npgsql.Tests.Types
         #region Time with timezone
 
         [Test]
+        [MonoIgnore]
         public void TimeTz()
         {
             var tzOffset = TimeZoneInfo.Local.BaseUtcOffset;
             if (tzOffset == TimeSpan.Zero)
-                TestUtil.Inconclusive("Test cannot run when machine timezone is UTC");
+                TestUtil.IgnoreExceptOnBuildServer("Test cannot run when machine timezone is UTC");
 
             // Note that the date component of the below is ignored
             var dto = new DateTimeOffset(5, 5, 5, 13, 3, 45, 510, tzOffset);
@@ -297,7 +297,7 @@ namespace Npgsql.Tests.Types
         {
             var tzOffset = TimeZoneInfo.Local.BaseUtcOffset;
             if (tzOffset == TimeSpan.Zero)
-                TestUtil.Inconclusive("Test cannot run when machine timezone is UTC");
+                TestUtil.IgnoreExceptOnBuildServer("Test cannot run when machine timezone is UTC");
 
             var dateTimeUtc = new DateTime(2015, 1, 27, 8, 45, 12, 345, DateTimeKind.Utc);
             var dateTimeLocal = dateTimeUtc.ToLocalTime();
@@ -329,16 +329,16 @@ namespace Npgsql.Tests.Types
                     {
                         // Regular type (DateTime)
                         Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(DateTime)));
-                        Assert.That(reader.GetDateTime(i), Is.EqualTo(dateTimeUtc));
-                        Assert.That(reader.GetFieldValue<DateTime>(i).Kind, Is.EqualTo(DateTimeKind.Utc));
-                        Assert.That(reader[i], Is.EqualTo(dateTimeUtc));
-                        Assert.That(reader.GetValue(i), Is.EqualTo(dateTimeUtc));
+                        Assert.That(reader.GetDateTime(i), Is.EqualTo(dateTimeLocal));
+                        Assert.That(reader.GetFieldValue<DateTime>(i).Kind, Is.EqualTo(DateTimeKind.Local));
+                        Assert.That(reader[i], Is.EqualTo(dateTimeLocal));
+                        Assert.That(reader.GetValue(i), Is.EqualTo(dateTimeLocal));
 
                         // Provider-specific type (NpgsqlDateTime)
-                        Assert.That(reader.GetTimeStamp(i), Is.EqualTo(nDateTimeUtc));
+                        Assert.That(reader.GetTimeStamp(i), Is.EqualTo(nDateTimeLocal));
                         Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof(NpgsqlDateTime)));
-                        Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(nDateTimeUtc));
-                        Assert.That(reader.GetFieldValue<NpgsqlDateTime>(i), Is.EqualTo(nDateTimeUtc));
+                        Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(nDateTimeLocal));
+                        Assert.That(reader.GetFieldValue<NpgsqlDateTime>(i), Is.EqualTo(nDateTimeLocal));
 
                         // DateTimeOffset
                         Assert.That(reader.GetFieldValue<DateTimeOffset>(i), Is.EqualTo(dateTimeOffset.ToUniversalTime()));

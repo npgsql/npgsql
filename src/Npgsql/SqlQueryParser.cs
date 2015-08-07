@@ -1,4 +1,27 @@
-﻿using System;
+﻿#region License
+// The PostgreSQL License
+//
+// Copyright (C) 2015 The Npgsql Development Team
+//
+// Permission to use, copy, modify, and distribute this software and its
+// documentation for any purpose, without fee, and without a written
+// agreement is hereby granted, provided that the above copyright notice
+// and this paragraph and the following two paragraphs appear in all copies.
+//
+// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
+// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
+// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
+// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
+// THE POSSIBILITY OF SUCH DAMAGE.
+//
+// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
+// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
+// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+#endregion
+
+using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.IO;
@@ -26,7 +49,7 @@ namespace Npgsql
         /// <param name="standardConformantStrings">Whether the PostgreSQL session is configured to use standard conformant strings.</param>
         /// <param name="parameters">The parameters configured on the <see cref="NpgsqlCommand"/> of this query.</param>
         /// <param name="queries">An empty list to be populated with the queries parsed by this method</param>
-        static internal void ParseRawQuery(string sql, bool standardConformantStrings, NpgsqlParameterCollection parameters, List<QueryDetails> queries)
+        static internal void ParseRawQuery(string sql, bool standardConformantStrings, NpgsqlParameterCollection parameters, List<NpgsqlStatement> queries)
         {
             Contract.Requires(sql != null);
             Contract.Requires(queries != null && !queries.Any());
@@ -354,7 +377,7 @@ namespace Npgsql
 
         SemiColon:
             currentSql.Write(sql.Substring(currTokenBeg, currCharOfs - currTokenBeg - 1));
-            queries.Add(new QueryDetails(currentSql.ToString(), currentParameters));
+            queries.Add(new NpgsqlStatement(currentSql.ToString(), currentParameters));
             while (currCharOfs < end) {
                 ch = sql[currCharOfs];
                 if (Char.IsWhiteSpace(ch)) {
@@ -376,7 +399,7 @@ namespace Npgsql
 
         Finish:
             currentSql.Write(sql.Substring(currTokenBeg, end - currTokenBeg));
-            queries.Add(new QueryDetails(currentSql.ToString(), currentParameters));
+            queries.Add(new NpgsqlStatement(currentSql.ToString(), currentParameters));
         }
 
         static bool IsLetter(char ch)
