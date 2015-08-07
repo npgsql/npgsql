@@ -5,7 +5,7 @@ title: User Manual
 ---
 
 *Note: This documentation covers the older 2.2 version of Npgsql,
-if you're starting out it's recommended that you try the [newer 3.0 version](.) (still in beta).*
+if you're starting out it's recommended that you try the [newer 3.0 version](.).*
 
 ## 1. What is Npgsql?
 

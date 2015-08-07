@@ -3,6 +3,13 @@ layout: doc
 title: Documentation
 ---
 
+<p>
+  <strong>
+    Note: The documentation below is for Npgsql 3.0.
+    <a href="manual-2.2.html">See here</a> for the older 2.2 manual.
+  </strong>
+</p>
+
 ## Intro
 
 Npgsql aims to be fully ADO.NET-compatible, it's API should feel almost identical to other
