@@ -33,6 +33,8 @@ using System.Reflection;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
+using System.Threading.Tasks;
+using AsyncRewriter;
 #if !DNXCORE50
 using System.Transactions;
 #endif
@@ -51,7 +53,7 @@ namespace Npgsql
     public sealed class NpgsqlConnection : DbConnection
 #else
     [System.ComponentModel.DesignerCategory("")]
-    public sealed class NpgsqlConnection : DbConnection
+    public sealed partial class NpgsqlConnection : DbConnection
 #endif
     {
         #region Fields
@@ -162,6 +164,48 @@ namespace Npgsql
         /// </summary>
         public override void Open()
         {
+            var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
+            OpenInternal(timeout);
+        }
+
+        /// <summary>
+        /// This is the asynchronous version of <see cref="Open"/>.
+        /// </summary>
+        /// <remarks>
+        /// Do not invoke other methods and properties of the <see cref="NpgsqlConnection"/> object until the returned Task is complete.
+        /// </remarks>
+        /// <param name="cancellationToken">The cancellation instruction.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        public override Task OpenAsync(CancellationToken cancellationToken)
+        {
+            var timeoutTs = TimeSpan.FromSeconds(ConnectionTimeout);
+            var timeout = new NpgsqlTimeout(timeoutTs);
+            if (ConnectionTimeout != 0)
+            {
+                // The connection timeout event is transmitted by triggering the cancellation token.
+                // However, since a cancellation token can't be triggered directly we chain it to a
+                // new cancellation token source
+                var cts = new CancellationTokenSource(timeoutTs);
+                cancellationToken.Register(() => cts.Cancel());
+                cancellationToken = cts.Token;
+            }
+            try
+            {
+                return OpenInternalAsync(cancellationToken, timeout);
+            }
+            catch (TaskCanceledException e)
+            {
+                if (timeout.HasExpired)
+                {
+                    throw new TimeoutException("The connection attempt timed out", e);
+                }
+                throw;
+            }
+        }
+
+        [RewriteAsync]
+        void OpenInternal(NpgsqlTimeout timeout)
+        {
             if (string.IsNullOrWhiteSpace(Host))
                 throw new ArgumentException("Host can't be null");
             if (string.IsNullOrWhiteSpace(UserName) && !IntegratedSecurity)
@@ -193,7 +237,7 @@ namespace Npgsql
                 else
                 {
                     Connector = new NpgsqlConnector(this);
-                    Connector.Open();
+                    Connector.Open(timeout);
                 }
 
                 Connector.Notice += NoticeDelegate;

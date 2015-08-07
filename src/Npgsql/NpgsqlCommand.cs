@@ -785,7 +785,7 @@ namespace Npgsql
             cancellationToken.Register(Cancel);
             try
             {
-                return await ExecuteNonQueryInternalAsync().ConfigureAwait(false);
+                return await ExecuteNonQueryInternalAsync(cancellationToken).ConfigureAwait(false);
             }
             catch (NpgsqlException e)
             {
@@ -840,7 +840,7 @@ namespace Npgsql
             cancellationToken.Register(Cancel);
             try
             {
-                return await ExecuteScalarInternalAsync().ConfigureAwait(false);
+                return await ExecuteScalarInternalAsync(cancellationToken).ConfigureAwait(false);
             }
             catch (NpgsqlException e)
             {
@@ -910,7 +910,7 @@ namespace Npgsql
             cancellationToken.Register(Cancel);
             try
             {
-                return await ExecuteDbDataReaderInternalAsync(behavior).ConfigureAwait(false);
+                return await ExecuteDbDataReaderInternalAsync(cancellationToken, behavior).ConfigureAwait(false);
             }
             catch (NpgsqlException e)
             {

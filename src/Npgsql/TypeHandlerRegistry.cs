@@ -32,10 +32,11 @@ using Npgsql.Logging;
 using Npgsql.TypeHandlers;
 using NpgsqlTypes;
 using System.Diagnostics.Contracts;
+using AsyncRewriter;
 
 namespace Npgsql
 {
-    internal class TypeHandlerRegistry
+    internal partial class TypeHandlerRegistry
     {
         #region Members
 
@@ -71,13 +72,14 @@ namespace Npgsql
 
         #region Initialization and Loading
 
-        static internal void Setup(NpgsqlConnector connector)
+        [RewriteAsync]
+        static internal void Setup(NpgsqlConnector connector, NpgsqlTimeout timeout)
         {
             connector.TypeHandlerRegistry = new TypeHandlerRegistry(connector);
 
             List<BackendType> types;
             if (!BackendTypeCache.TryGetValue(connector.ConnectionString, out types)) {
-                types = BackendTypeCache[connector.ConnectionString] = LoadBackendTypes(connector);
+                types = BackendTypeCache[connector.ConnectionString] = LoadBackendTypes(connector, timeout);
             }
 
             connector.TypeHandlerRegistry.RegisterTypes(types);
@@ -95,7 +97,8 @@ namespace Npgsql
             _byNpgsqlDbType[NpgsqlDbType.Unknown] = UnrecognizedTypeHandler;
         }
 
-        static List<BackendType> LoadBackendTypes(NpgsqlConnector connector)
+        [RewriteAsync]
+        static List<BackendType> LoadBackendTypes(NpgsqlConnector connector, NpgsqlTimeout timeout)
         {
             var byOID = new Dictionary<uint, BackendType>();
 
@@ -123,11 +126,13 @@ namespace Npgsql
             var types = new List<BackendType>();
             using (var command = new NpgsqlCommand(query, connector.Connection))
             {
+                command.CommandTimeout = timeout.IsSet ? (int)timeout.TimeLeft.TotalSeconds : 0;
                 command.AllResultTypesAreUnknown = true;
-                using (var dr = command.ExecuteReader(CommandBehavior.SequentialAccess))
+                using (var dr = command.ExecuteReader())
                 {
                     while (dr.Read())
                     {
+                        timeout.Check();
                         var backendType = new BackendType
                         {
                             Name = dr.GetString(0),

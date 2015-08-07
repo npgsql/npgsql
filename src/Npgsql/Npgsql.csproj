@@ -157,6 +157,7 @@
     <Compile Include="BackendMessages\RowDescriptionMessage.cs" />
     <Compile Include="BackendMessages\DataRowSequentialMessage.cs" />
     <Compile Include="FrontendMessages\CopyFailMessage.cs" />
+    <Compile Include="FrontendMessages\SSLRequestMessage.cs" />
     <Compile Include="ICancelable.cs" />
     <Compile Include="Logging\NoOpLoggingProvider.cs" />
     <Compile Include="Logging\NpgsqlLogger.cs" />
@@ -193,6 +194,7 @@
     <Compile Include="NpgsqlTypes\NpgsqlUserTypes.cs" />
     <Compile Include="NpgsqlTypes\PostgisTypes.cs" />
     <Compile Include="SqlQueryParser.cs" />
+    <Compile Include="TaskExtensions.cs" />
     <Compile Include="TlsClientStream\CipherSuiteInfo.cs" />
     <Compile Include="TlsClientStream\ClientAlertException.cs" />
     <Compile Include="TlsClientStream\ConnectionState.cs" />
@@ -287,11 +289,11 @@
     <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <Import Project="..\..\packages\AsyncRewriter.0.6.0\build\AsyncRewriter.targets" Condition="Exists('..\..\packages\AsyncRewriter.0.6.0\build\AsyncRewriter.targets')" />
+  <Import Project="..\..\packages\AsyncRewriter.0.6.5\build\AsyncRewriter.targets" Condition="Exists('..\..\packages\AsyncRewriter.0.6.5\build\AsyncRewriter.targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
       <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
     </PropertyGroup>
-    <Error Condition="!Exists('..\..\packages\AsyncRewriter.0.6.0\build\AsyncRewriter.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\AsyncRewriter.0.6.0\build\AsyncRewriter.targets'))" />
+    <Error Condition="!Exists('..\..\packages\AsyncRewriter.0.6.5\build\AsyncRewriter.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\AsyncRewriter.0.6.5\build\AsyncRewriter.targets'))" />
   </Target>
 </Project>

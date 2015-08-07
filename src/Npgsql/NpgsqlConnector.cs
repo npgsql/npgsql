@@ -35,6 +35,7 @@ using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
+using System.Threading.Tasks;
 using AsyncRewriter;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
@@ -394,59 +395,35 @@ namespace Npgsql
         #region Open
 
         /// <summary>
+        /// Totally temporary until the connection pool is rewritten with timeout support
+        /// </summary>
+        internal void Open()
+        {
+            Open(new NpgsqlTimeout(TimeSpan.Zero));
+        }
+
+        /// <summary>
         /// Opens the physical connection to the server.
         /// </summary>
         /// <remarks>Usually called by the RequestConnector
         /// Method of the connection pool manager.</remarks>
-        internal void Open()
+        [RewriteAsync]
+        internal void Open(NpgsqlTimeout timeout)
         {
             Contract.Requires(Connection != null && Connection.Connector == this);
             Contract.Requires(State == ConnectorState.Closed);
-            Contract.Ensures(State == ConnectorState.Ready);
 
             State = ConnectorState.Connecting;
 
-            ServerVersion = null;
-
-            // Keep track of time remaining; Even though there may be multiple timeout-able calls,
-            // this allows us to still respect the caller's timeout expectation.
-            var connectTimeRemaining = ConnectionTimeout * 1000;
-
             try {
-                // Get a raw connection, possibly SSL...
-                RawOpen(connectTimeRemaining);
+                RawOpen(timeout);
 
-                var startupMessage = new StartupMessage();
-
-                startupMessage["client_encoding"] = "UTF8";
-                startupMessage["user"] = UserName;
-                if (!string.IsNullOrEmpty(Database)) {
-                    startupMessage["database"] = Database;
-                }
-                if (!string.IsNullOrEmpty(_settings.ApplicationName)) {
-                    startupMessage["application_name"] = _settings.ApplicationName;
-                }
-                if (!string.IsNullOrEmpty(_settings.SearchPath)) {
-                    startupMessage["search_path"] = _settings.SearchPath;
-                }
-                if (_settings.BackendTimeouts && _settings.CommandTimeout != 0) {
-                    startupMessage["statement_timeout"] = (_settings.CommandTimeout * 1000).ToString();
-                    _backendTimeout = _settings.CommandTimeout;
-                }
-                if (IsSecure && !IsRedshift) {
-                    startupMessage["ssl_renegotiation_limit"] = "0";
-                }
-
-                if (startupMessage.Length > Buffer.Size) {  // Should really never happen, just in case
-                    throw new Exception("Startup message bigger than buffer");
-                }
-                startupMessage.Write(Buffer);
-
+                WriteStartupMessage();
                 Buffer.Flush();
-                HandleAuthentication();
+                timeout.Check();
 
-                ProcessServerVersion();
-                TypeHandlerRegistry.Setup(this);
+                HandleAuthentication(timeout);
+                TypeHandlerRegistry.Setup(this, timeout);
                 State = ConnectorState.Ready;
 
                 if (ContinuousProcessing) {
@@ -463,96 +440,90 @@ namespace Npgsql
             }
         }
 
-        public void RawOpen(int timeout)
+        void WriteStartupMessage()
+        {
+            var startupMessage = new StartupMessage();
+
+            startupMessage["client_encoding"] = "UTF8";
+            startupMessage["user"] = UserName;
+            if (!string.IsNullOrEmpty(Database))
+            {
+                startupMessage["database"] = Database;
+            }
+            if (!string.IsNullOrEmpty(_settings.ApplicationName))
+            {
+                startupMessage["application_name"] = _settings.ApplicationName;
+            }
+            if (!string.IsNullOrEmpty(_settings.SearchPath))
+            {
+                startupMessage["search_path"] = _settings.SearchPath;
+            }
+            if (_settings.BackendTimeouts && _settings.CommandTimeout != 0)
+            {
+                startupMessage["statement_timeout"] = (_settings.CommandTimeout * 1000).ToString();
+                _backendTimeout = _settings.CommandTimeout;
+            }
+            if (IsSecure && !IsRedshift)
+            {
+                startupMessage["ssl_renegotiation_limit"] = "0";
+            }
+
+            if (startupMessage.Length > Buffer.Size)
+            {  // Should really never happen, just in case
+                throw new Exception("Startup message bigger than buffer");
+            }
+            startupMessage.Write(Buffer);
+        }
+
+        [RewriteAsync]
+        public void RawOpen(NpgsqlTimeout timeout)
         {
             try
             {
-                // Keep track of time remaining; Even though there may be multiple timeout-able calls,
-                // this allows us to still respect the caller's timeout expectation.
-                var attemptStart = DateTime.Now;
-                var result = Dns.BeginGetHostAddresses(Host, null, null);
-
-                if (!result.AsyncWaitHandle.WaitOne(timeout, true))
-                {
-                    // Timeout was used up attempting the Dns lookup
-                    throw new TimeoutException("Dns hostname lookup timeout. Increase Timeout value in ConnectionString.");
-                }
-
-                timeout -= Convert.ToInt32((DateTime.Now - attemptStart).TotalMilliseconds);
-
-                var ips = Dns.EndGetHostAddresses(result);
-
-                // try every ip address of the given hostname, use the first reachable one
-                // make sure not to exceed the caller's timeout expectation by splitting the
-                // time we have left between all the remaining ip's in the list.
-                for (var i = 0; i < ips.Length; i++)
-                {
-                    Log.Trace("Attempting to connect to " + ips[i], Id);
-                    var ep = new IPEndPoint(ips[i], Port);
-                    _socket = new Socket(ep.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-                    attemptStart = DateTime.Now;
-
-                    try
-                    {
-                        result = _socket.BeginConnect(ep, null, null);
-
-                        if (!result.AsyncWaitHandle.WaitOne(timeout / (ips.Length - i), true)) {
-                            throw new TimeoutException("Connection establishment timeout. Increase Timeout value in ConnectionString.");
-                        }
-
-                        _socket.EndConnect(result);
-
-                        // connect was successful, leave the loop
-                        break;
-                    }
-                    catch (TimeoutException)
-                    {
-                        throw;
-                    }
-                    catch
-                    {
-                        Log.Warn("Failed to connect to " + ips[i]);
-                        timeout -= Convert.ToInt32((DateTime.Now - attemptStart).TotalMilliseconds);
-
-                        if (i == ips.Length - 1) {
-                            throw;
-                        }
-                    }
-                }
+                Connect(timeout);
 
                 Contract.Assert(_socket != null);
                 _baseStream = new NetworkStream(_socket, true);
                 _stream = _baseStream;
+                Buffer = new NpgsqlBuffer(_stream, BufferSize, PGUtil.UTF8Encoding);
 
-                // If the PostgreSQL server has SSL connectors enabled Open SslClientStream if (response == 'S') {
                 if (SslMode == SslMode.Require || SslMode == SslMode.Prefer)
                 {
-                    _stream
-                        .WriteInt32(8)
-                        .WriteInt32(80877103);
+                    SSLRequestMessage.Instance.Write(Buffer);
+                    Buffer.Flush();
 
-                    // Receive response
-                    var response = (Char)_stream.ReadByte();
+                    Buffer.Ensure(1);
+                    var response = (char)Buffer.ReadByte();
+                    timeout.Check();
 
-                    if (response != 'S')
+                    switch (response)
                     {
-                        if (SslMode == SslMode.Require) {
-                            throw new InvalidOperationException("Ssl connection requested. No Ssl enabled connection from this host is configured.");
+                    default:
+                        throw new Exception(string.Format("Received unknown response {0} for SSLRequest (expecting S or N)", response));
+                    case 'N':
+                        if (SslMode == SslMode.Require)
+                        {
+                            throw new InvalidOperationException("SSL connection requested. No SSL enabled connection from this host is configured.");
                         }
-                    }
-                    else
-                    {
+                        break;
+                    case 'S':
                         var clientCertificates = new X509CertificateCollection();
-                        if (Connection.ProvideClientCertificatesCallback != null) {
+                        if (Connection.ProvideClientCertificatesCallback != null)
+                        {
                             Connection.ProvideClientCertificatesCallback(clientCertificates);
                         }
 
                         RemoteCertificateValidationCallback certificateValidationCallback;
-                        if (_settings.TrustServerCertificate) {
+                        if (_settings.TrustServerCertificate)
+                        {
                             certificateValidationCallback = (sender, certificate, chain, errors) => true;
-                        } else if (Connection.UserCertificateValidationCallback != null) {
+                        }
+                        else if (Connection.UserCertificateValidationCallback != null)
+                        {
                             certificateValidationCallback = Connection.UserCertificateValidationCallback;
-                        } else {
+                        }
+                        else
+                        {
                             certificateValidationCallback = DefaultUserCertificateValidationCallback;
                         }
 
@@ -572,11 +543,13 @@ namespace Npgsql
                             sslStream.AuthenticateAsClient(Host, clientCertificates, System.Security.Authentication.SslProtocols.Default, false);
                             _stream = sslStream;
                         }
+                        timeout.Check();
+                        Buffer.Underlying = _stream;
                         IsSecure = true;
+                        break;
                     }
                 }
 
-                Buffer = new NpgsqlBuffer(_stream, BufferSize, PGUtil.UTF8Encoding);
                 Log.Debug(String.Format("Connected to {0}:{1}", Host, Port));
             }
             catch
@@ -606,53 +579,194 @@ namespace Npgsql
             }
         }
 
-        void HandleAuthentication()
+        void Connect(NpgsqlTimeout timeout)
+        {
+            // Note that there aren't any timeoutable DNS methods, and we want to use sync-only
+            // methods (not to rely on any TP threads etc.)
+            var ips = Dns.GetHostAddresses(Host);
+            timeout.Check();
+
+            // Give each IP an equal share of the remaining time
+            var perIpTimeout = timeout.IsSet ? (int)((timeout.TimeLeft.Ticks / ips.Length) / 10) : -1;
+
+            for (var i = 0; i < ips.Length; i++)
+            {
+                Log.Trace("Attempting to connect to " + ips[i], Id);
+                var ep = new IPEndPoint(ips[i], Port);
+                var socket = new Socket(ep.AddressFamily, SocketType.Stream, ProtocolType.Tcp)
+                {
+                    Blocking = false
+                };
+
+                try
+                {
+                    try
+                    {
+                        socket.Connect(ep);
+                    }
+                    catch (SocketException e)
+                    {
+                        if (e.SocketErrorCode != SocketError.WouldBlock)
+                        {
+                            throw;
+                        }
+                    }
+                    var empty = new List<Socket>();
+                    var write = new List<Socket> { socket };
+                    var error = new List<Socket> { socket };
+                    Socket.Select(empty, write, error, perIpTimeout);
+                    if (error.Any())
+                        socket.Connect(ep);
+                    if (!write.Any())
+                    {
+                        socket.Close();
+                        Log.Warn(string.Format("Timeout after {0} seconds when connecting to {1}",
+                                 new TimeSpan(perIpTimeout * 10).TotalSeconds, ips[i]));
+                        if (i == ips.Length - 1)
+                        {
+                            throw new TimeoutException();
+                        }
+                        continue;
+                    }
+                    socket.Blocking = true;
+                    _socket = socket;
+                    return;
+                }
+                catch (TimeoutException)
+                {
+                    throw;
+                }
+                catch
+                {
+                    Log.Warn("Failed to connect to " + ips[i]);
+
+                    if (i == ips.Length - 1)
+                    {
+                        throw;
+                    }
+                }
+            }
+        }
+
+        async Task ConnectAsync(NpgsqlTimeout timeout, CancellationToken cancellationToken)
+        {
+            // Note that there aren't any timeoutable or cancellable DNS methods
+            var ips = await Dns.GetHostAddressesAsync(Host).WithCancellation(cancellationToken);
+
+            // Give each IP an equal share of the remaining time
+            var perIpTimespan = timeout.IsSet ? new TimeSpan(timeout.TimeLeft.Ticks / ips.Length) : TimeSpan.Zero;
+            var perIpTimeout = timeout.IsSet ? new NpgsqlTimeout(perIpTimespan) : timeout;
+
+            for (var i = 0; i < ips.Length; i++)
+            {
+                Log.Trace("Attempting to connect to " + ips[i], Id);
+                var ep = new IPEndPoint(ips[i], Port);
+                var socket = new Socket(ep.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+                var connectTask = Task.Factory.FromAsync(socket.BeginConnect, socket.EndConnect, ep, null);
+                try
+                {
+                    try
+                    {
+                        await connectTask.WithCancellationAndTimeout(perIpTimeout, cancellationToken);
+                    }
+                    catch (OperationCanceledException)
+                    {
+#pragma warning disable 4014
+                        // ReSharper disable once MethodSupportsCancellation
+                        connectTask.ContinueWith(t => socket.Close());
+#pragma warning restore 4014
+
+                        if (timeout.HasExpired)
+                        {
+                            Log.Warn(string.Format("Timeout after {0} seconds when connecting to {1}",
+                                perIpTimespan.TotalSeconds, ips[i]));
+                            if (i == ips.Length - 1)
+                            {
+                                throw new TimeoutException();
+                            }
+                            continue;
+                        }
+
+                        // We're here if an actual cancellation was requested (not a timeout)
+                        throw;
+                    }
+
+                    _socket = socket;
+                    return;
+                }
+                catch (TimeoutException)
+                {
+                    throw;
+                }
+                catch
+                {
+                    Log.Warn("Failed to connect to " + ips[i]);
+
+                    if (i == ips.Length - 1)
+                    {
+                        throw;
+                    }
+                }
+            }
+        }
+
+        [RewriteAsync]
+        void HandleAuthentication(NpgsqlTimeout timeout)
         {
             Log.Debug("Authenticating...", Id);
             while (true)
             {
                 var msg = ReadSingleMessage();
+                timeout.Check();
                 switch (msg.Code)
                 {
-                    case BackendMessageCode.AuthenticationRequest:
-                        ProcessAuthenticationMessage((AuthenticationRequestMessage)msg);
-                        continue;
-                    case BackendMessageCode.BackendKeyData:
-                        var backendKeyDataMsg = (BackendKeyDataMessage) msg;
-                        BackendProcessId = backendKeyDataMsg.BackendProcessId;
-                        _backendSecretKey = backendKeyDataMsg.BackendSecretKey;
-                        continue;
-                    case BackendMessageCode.ReadyForQuery:
-                        State = ConnectorState.Ready;
-                        return;
-                    default:
-                        throw new Exception("Unexpected message received while authenticating: " + msg.Code);
+                case BackendMessageCode.AuthenticationRequest:
+                    var passwordMessage = ProcessAuthenticationMessage((AuthenticationRequestMessage)msg);
+                    if (passwordMessage != null)
+                    {
+                        passwordMessage.Write(Buffer);
+                        Buffer.Flush();
+                        timeout.Check();
+                    }
+
+                    continue;
+                case BackendMessageCode.BackendKeyData:
+                    var backendKeyDataMsg = (BackendKeyDataMessage) msg;
+                    BackendProcessId = backendKeyDataMsg.BackendProcessId;
+                    _backendSecretKey = backendKeyDataMsg.BackendSecretKey;
+                    continue;
+                case BackendMessageCode.ReadyForQuery:
+                    State = ConnectorState.Ready;
+                    return;
+                default:
+                    throw new Exception("Unexpected message received while authenticating: " + msg.Code);
                 }
             }
         }
 
-        void ProcessAuthenticationMessage(AuthenticationRequestMessage msg)
+        /// <summary>
+        /// Performs a step in the PostgreSQL authentication protocol
+        /// </summary>
+        /// <param name="msg">A message read from the server, instructing us on the required response</param>
+        /// <returns>a PasswordMessage to be sent, or null if authentication has completed successfully</returns>
+        PasswordMessage ProcessAuthenticationMessage(AuthenticationRequestMessage msg)
         {
-            PasswordMessage passwordMessage;
-
             switch (msg.AuthRequestType)
             {
                 case AuthenticationRequestType.AuthenticationOk:
-                    return;
+                    return null;
 
                 case AuthenticationRequestType.AuthenticationCleartextPassword:
                     if (Password == null) {
                         throw new Exception("No password has been provided but the backend requires one (in cleartext)");
                     }
-                    passwordMessage = PasswordMessage.CreateClearText(Password);
-                    break;
+                    return PasswordMessage.CreateClearText(Password);
 
                 case AuthenticationRequestType.AuthenticationMD5Password:
                     if (Password == null) {
                         throw new Exception("No password has been provided but the backend requires one (in MD5)");
                     }
-                    passwordMessage = PasswordMessage.CreateMD5(Password, UserName, ((AuthenticationMD5PasswordMessage)msg).Salt);
-                    break;
+                    return PasswordMessage.CreateMD5(Password, UserName, ((AuthenticationMD5PasswordMessage)msg).Salt);
 
                 case AuthenticationRequestType.AuthenticationGSS:
                     if (!IntegratedSecurity) {
@@ -663,8 +777,7 @@ namespace Npgsql
 #else
                     // For GSSAPI we have to use the supplied hostname
                     SSPI = new SSPIHandler(Host, KerberosServiceName, true);
-                    passwordMessage = new PasswordMessage(SSPI.Continue(null));
-                    break;
+                    return new PasswordMessage(SSPI.Continue(null));
 #endif
 
                 case AuthenticationRequestType.AuthenticationSSPI:
@@ -675,8 +788,7 @@ namespace Npgsql
                     throw new NotSupportedException("SSPI not yet supported in .NET Core");
 #else
                     SSPI = new SSPIHandler(Host, KerberosServiceName, false);
-                    passwordMessage = new PasswordMessage(SSPI.Continue(null));
-                    break;
+                    return new PasswordMessage(SSPI.Continue(null));
 #endif
 
                 case AuthenticationRequestType.AuthenticationGSSContinue:
@@ -686,17 +798,14 @@ namespace Npgsql
                     var passwdRead = SSPI.Continue(((AuthenticationGSSContinueMessage)msg).AuthenticationData);
                     if (passwdRead.Length != 0)
                     {
-                        passwordMessage = new PasswordMessage(passwdRead);
-                        break;
+                        return new PasswordMessage(passwdRead);
                     }
-                    return;
+                    return null;
 #endif
 
                 default:
                     throw new NotSupportedException(String.Format("Authentication method not supported (Received: {0})", msg.AuthRequestType));
             }
-            passwordMessage.Write(Buffer);
-            Buffer.Flush();
         }
 
         #endregion
@@ -1320,7 +1429,7 @@ namespace Npgsql
 
             try
             {
-                RawOpen(connectionTimeout * 1000);
+                RawOpen(new NpgsqlTimeout(TimeSpan.FromSeconds(connectionTimeout)));
                 SendSingleMessage(new CancelRequestMessage(backendProcessId, backendSecretKey));
 
                 Contract.Assert(Buffer.ReadPosition == 0);
@@ -1714,8 +1823,20 @@ namespace Npgsql
         /// This method is required to set all the version dependent features flags.
         /// SupportsPrepare means the server can use prepared query plans (7.3+)
         /// </summary>
-        void ProcessServerVersion()
+        void ProcessServerVersion(string value)
         {
+            var versionString = value.Trim();
+            for (var idx = 0; idx != versionString.Length; ++idx)
+            {
+                var c = value[idx];
+                if (!char.IsDigit(c) && c != '.')
+                {
+                    versionString = versionString.Substring(0, idx);
+                    break;
+                }
+            }
+            ServerVersion = new Version(versionString);
+
             SupportsSavepoint = (ServerVersion >= new Version(8, 0, 0));
             SupportsDiscard = (ServerVersion >= new Version(8, 3, 0));
             SupportsApplicationName = (ServerVersion >= new Version(9, 0, 0));
@@ -1790,20 +1911,7 @@ namespace Npgsql
             switch (name)
             {
             case "server_version":
-                // Deal with this here so that if there are
-                // changes in a future backend version, we can handle it here in the
-                // protocol handler and leave everybody else put of it.
-                var versionString = value.Trim();
-                for (var idx = 0; idx != versionString.Length; ++idx)
-                {
-                    var c = value[idx];
-                    if (!char.IsDigit(c) && c != '.')
-                    {
-                        versionString = versionString.Substring(0, idx);
-                        break;
-                    }
-                }
-                ServerVersion = new Version(versionString);
+                ProcessServerVersion(value);
                 return;
 
             case "standard_conforming_strings":

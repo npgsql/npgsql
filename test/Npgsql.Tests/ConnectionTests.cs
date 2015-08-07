@@ -224,6 +224,70 @@ namespace Npgsql.Tests
                 Assert.That(() => conn.Open(), Throws.Exception.TypeOf<ArgumentException>());
         }
 
+        [Test]
+        [Timeout(5000)]
+        public void ConnectTimeout()
+        {
+            var unknownIp = Environment.GetEnvironmentVariable("NPGSQL_UNKNOWN_IP");
+            if (unknownIp == null)
+                TestUtil.IgnoreExceptOnBuildServer("NPGSQL_UNKNOWN_IP isn't defined and is required for connection timeout tests");
+
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString) {
+                Host = unknownIp,
+                Pooling = false,
+                Timeout = 1
+            };
+            using (var conn = new NpgsqlConnection(csb))
+            {
+                Assert.That(() => conn.Open(), Throws.Exception.TypeOf<TimeoutException>());
+                Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
+            }
+        }
+
+        [Test]
+        [Timeout(5000)]
+        public void ConnectTimeoutAsync()
+        {
+            var unknownIp = Environment.GetEnvironmentVariable("NPGSQL_UNKNOWN_IP");
+            if (unknownIp == null)
+                TestUtil.IgnoreExceptOnBuildServer("NPGSQL_UNKNOWN_IP isn't defined and is required for connection timeout tests");
+
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Host = unknownIp,
+                Pooling = false,
+                Timeout = 1
+            };
+            using (var conn = new NpgsqlConnection(csb))
+            {
+                Assert.That(async () => await conn.OpenAsync(), Throws.Exception.TypeOf<TimeoutException>());
+                Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
+            }
+        }
+
+        [Test]
+        [Timeout(5000)]
+        public void ConnectTimeoutCancel()
+        {
+            var unknownIp = Environment.GetEnvironmentVariable("NPGSQL_UNKNOWN_IP");
+            if (unknownIp == null)
+                TestUtil.IgnoreExceptOnBuildServer("NPGSQL_UNKNOWN_IP isn't defined and is required for connection cancellation tests");
+
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Host = unknownIp,
+                Pooling = false,
+                Timeout = 30
+            };
+            using (var conn = new NpgsqlConnection(csb))
+            {
+                var cts = new CancellationTokenSource();
+                cts.CancelAfter(1000);
+                Assert.That(async () => await conn.OpenAsync(cts.Token), Throws.Exception.TypeOf<TaskCanceledException>());
+                Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
+            }
+        }
+
         #endregion
 
         #region Notification

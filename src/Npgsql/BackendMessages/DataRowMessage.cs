@@ -27,6 +27,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.TypeHandlers;
 
@@ -70,7 +71,7 @@ namespace Npgsql.BackendMessages
         /// The length is available in ColumnLen.
         /// </summary>
         internal abstract void SeekToColumn(int column);
-        internal abstract Task SeekToColumnAsync(int column);
+        internal abstract Task SeekToColumnAsync(CancellationToken cancellationToken, int column);
         internal abstract void SeekInColumn(int posInColumn);
 
         /// <summary>
@@ -86,7 +87,7 @@ namespace Npgsql.BackendMessages
         /// <summary>
         /// Consumes the current row asynchronously, allowing the reader to read in the next one.
         /// </summary>
-        internal abstract Task ConsumeAsync();
+        internal abstract Task ConsumeAsync(CancellationToken token);
 
         internal void SeekToColumnStart(int column)
         {

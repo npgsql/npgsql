@@ -29,13 +29,14 @@ using System.IO;
 using System.Net;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using AsyncRewriter;
 
 namespace Npgsql
 {
     // ReSharper disable once InconsistentNaming
-    internal static partial class PGUtil
+    internal static class PGUtil
     {
         internal static readonly UTF8Encoding UTF8Encoding = new UTF8Encoding(false, true);
         internal static readonly UTF8Encoding RelaxedUTF8Encoding = new UTF8Encoding(false, false);
@@ -81,17 +82,6 @@ namespace Npgsql
             }
 
             return VersionString;
-        }
-
-        /// <summary>
-        /// Write a 32-bit integer to the given stream in the correct byte order.
-        /// </summary>
-        [RewriteAsync]
-        public static Stream WriteInt32(this Stream stream, Int32 value)
-        {
-            stream.Write(BitConverter.GetBytes(IPAddress.HostToNetworkOrder(value)), 0, 4);
-
-            return stream;
         }
 
         public static int RotateShift(int val, int shift)
@@ -162,5 +152,44 @@ namespace Npgsql
         {
             return string.Join(separator, values);
         }
+    }
+
+    /// <summary>
+    /// Represents a timeout that will expire at some point.
+    /// </summary>
+    internal struct NpgsqlTimeout
+    {
+        readonly DateTime _expiration;
+        internal DateTime Expiration { get { return _expiration; } }
+
+        internal NpgsqlTimeout(TimeSpan expiration)
+        {
+            _expiration = expiration == TimeSpan.Zero
+                ? DateTime.MaxValue
+                : DateTime.Now + expiration;
+        }
+
+        internal void Check()
+        {
+            if (HasExpired)
+                throw new TimeoutException();
+        }
+
+        internal bool IsSet
+        {
+            get { return _expiration != DateTime.MaxValue; }
+        }
+
+        internal bool HasExpired
+        {
+            get { return DateTime.Now >= Expiration; }
+        }
+
+        internal Task AsTask
+        {
+            get { return Task.Delay(TimeLeft); }
+        }
+
+        internal TimeSpan TimeLeft { get { return Expiration - DateTime.Now; } }
     }
 }
