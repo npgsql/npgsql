@@ -24,7 +24,7 @@
           <param name="nuget.use.restore" value="restore" />
           <param name="nugetCustomPath" value="?NuGet.CommandLine.DEFAULT.nupkg" />
           <param name="nugetPathSelector" value="?NuGet.CommandLine.DEFAULT.nupkg" />
-          <param name="sln.path" value="Npgsql2013.sln" />
+          <param name="sln.path" value="Npgsql.sln" />
           <param name="teamcity.step.mode" value="default" />
         </parameters>
       </runner>
@@ -59,7 +59,7 @@ https://scan.coverity.com/builds?project=npgsql%2Fnpgsql]]></param>
       </runner>
       <runner id="RUNNER_16" name="Resharper Code Inspections" type="dotnet-tools-inspectcode">
         <parameters>
-          <param name="dotnet-tools-inspectcode.solution" value="Npgsql2013.sln" />
+          <param name="dotnet-tools-inspectcode.solution" value="Npgsql.sln" />
           <param name="teamcity.step.mode" value="default" />
         </parameters>
       </runner>
