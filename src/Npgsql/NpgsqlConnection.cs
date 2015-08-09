@@ -33,6 +33,7 @@ using System.Reflection;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
+using System.Threading.Tasks;
 #if !DNXCORE50
 using System.Transactions;
 #endif
@@ -157,10 +158,10 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Opens a database connection with the property settings specified by the
+        /// Opens a database connection async with the property settings specified by the
         /// <see cref="NpgsqlConnection.ConnectionString">ConnectionString</see>.
         /// </summary>
-        public override void Open()
+        public override async Task OpenAsync(CancellationToken cancellationToken)
         {
             if (string.IsNullOrWhiteSpace(Host))
                 throw new ArgumentException("Host can't be null");
@@ -188,16 +189,17 @@ namespace Npgsql
                 // Get a Connector, either from the pool or creating one ourselves.
                 if (Pooling)
                 {
-                    Connector = NpgsqlConnectorPool.ConnectorPoolMgr.RequestConnector(this);
+                    Connector = await NpgsqlConnectorPool.ConnectorPoolMgr.RequestConnectorAsync(this);
                 }
                 else
                 {
-                    Connector = new NpgsqlConnector(this) {
+                    Connector = new NpgsqlConnector(this)
+                    {
                         ProvideClientCertificatesCallback = ProvideClientCertificatesCallback,
                         UserCertificateValidationCallback = UserCertificateValidationCallback
                     };
 
-                    Connector.Open();
+                    await Connector.OpenAsync();
                 }
 
                 Connector.Notice += NoticeDelegate;
@@ -217,6 +219,15 @@ namespace Npgsql
             }
             OpenCounter++;
             OnStateChange(new StateChangeEventArgs(ConnectionState.Closed, ConnectionState.Open));
+        }
+
+        /// <summary>
+        /// Opens a database connection with the property settings specified by the
+        /// <see cref="NpgsqlConnection.ConnectionString">ConnectionString</see>.
+        /// </summary>
+        public override void Open()
+        {
+            this.OpenAsync().Wait();
         }
 
         #endregion Open / Init

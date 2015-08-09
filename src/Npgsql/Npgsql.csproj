@@ -140,6 +140,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AsyncRewriterHelpers.cs" />
+    <Compile Include="Async\AsyncLock.cs" />
+    <Compile Include="Async\AsyncSemaphore.cs" />
     <Compile Include="BackendMessages\CopyMessages.cs" />
     <Compile Include="BackendMessages\DataRowNonSequentialMessage.cs" />
     <Compile Include="BackendMessages\CloseCompletedMessage.cs" />

@@ -26,6 +26,8 @@ using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics.Contracts;
 using System.Threading;
+using System.Threading.Tasks;
+using Npgsql.Async;
 using Npgsql.Logging;
 
 namespace Npgsql
@@ -65,6 +67,8 @@ namespace Npgsql
         internal const int PoolSizeLimit = 1024;
 
         private object locker = new object();
+
+        private AsyncLock _queueLock = new AsyncLock();
 
         internal NpgsqlConnectorPool()
         {
@@ -161,7 +165,7 @@ namespace Npgsql
         /// the connector. Its ConnectionString will be used to search the
         /// pool for available connectors.</param>
         /// <returns>A connector object.</returns>
-        internal NpgsqlConnector RequestConnector(NpgsqlConnection connection)
+        internal async Task<NpgsqlConnector> RequestConnectorAsync(NpgsqlConnection connection)
         {
             if (connection.MaxPoolSize < connection.MinPoolSize)
                 throw new ArgumentException(string.Format("Connection can't have MaxPoolSize {0} under MinPoolSize {1}", connection.MaxPoolSize, connection.MinPoolSize));
@@ -173,7 +177,7 @@ namespace Npgsql
             // No need for this lock anymore
             //lock (this)
             {
-                connector = GetPooledConnector(connection);
+                connector = await GetPooledConnectorAsync(connection);
             }
 
             while (connector == null && timeoutMilliseconds > 0)
@@ -181,12 +185,12 @@ namespace Npgsql
 
                 Int32 ST = timeoutMilliseconds > 1000 ? 1000 : timeoutMilliseconds;
 
-                Thread.Sleep(ST);
+                await Task.Delay(ST);
                 timeoutMilliseconds -= ST;
 
                 //lock (this)
                 {
-                    connector = GetPooledConnector(connection);
+                    connector = await GetPooledConnectorAsync(connection);
                 }
             }
 
@@ -212,7 +216,7 @@ namespace Npgsql
         /// <summary>
         /// Find an available pooled connector in the pool, or create a new one if none found.
         /// </summary>
-        private NpgsqlConnector GetPooledConnector(NpgsqlConnection Connection)
+        private async Task<NpgsqlConnector> GetPooledConnectorAsync(NpgsqlConnection Connection)
         {
             ConnectorQueue Queue = null;
             NpgsqlConnector Connector = null;
@@ -234,7 +238,7 @@ namespace Npgsql
             }
 
             // Now we can simply lock on the pool itself.
-            lock (Queue)
+            await _queueLock.LockAsync(() =>
             {
                 if (Queue.Available.Count > 0)
                 {
@@ -245,18 +249,18 @@ namespace Npgsql
                     Connector = Queue.Available.Dequeue();
                     Queue.Busy.Add(Connector, null);
                 }
-            }
+            });
 
             if (Connector != null) return Connector;
 
-            lock (Queue)
+            await _queueLock.LockAsync(() =>
             {
                 if (Queue.Available.Count + Queue.Busy.Count < Connection.MaxPoolSize)
                 {
                     Connector = new NpgsqlConnector(Connection);
                     Queue.Busy.Add(Connector, null);
                 }
-            }
+            });
 
             if (Connector != null)
             {
@@ -265,12 +269,12 @@ namespace Npgsql
 
                 try
                 {
-                    Connector.Open();
+                    await Connector.OpenAsync();
                 }
                 catch
                 {
                     Contract.Assert(Connector.IsBroken);
-                    lock (Queue)
+                    
                     {
                         Queue.Busy.Remove(Connector);
                     }
@@ -282,18 +286,19 @@ namespace Npgsql
                 if (Connection.MinPoolSize > 1)
                 {
 
-                    lock (Queue)
+                    await _queueLock.LockAsync(async () =>
                     {
 
                         while (Queue.Available.Count + Queue.Busy.Count < Connection.MinPoolSize)
                         {
-                            NpgsqlConnector spare = new NpgsqlConnector(Connection) {
+                            NpgsqlConnector spare = new NpgsqlConnector(Connection)
+                            {
                                 ProvideClientCertificatesCallback = Connection.ProvideClientCertificatesCallback,
                                 UserCertificateValidationCallback = Connection.UserCertificateValidationCallback
                             };
 
 
-                            spare.Open();
+                            await spare.OpenAsync();
 
                             spare.ProvideClientCertificatesCallback = null;
                             spare.UserCertificateValidationCallback = null;
@@ -301,7 +306,7 @@ namespace Npgsql
                             spare.Connection = null;
                             Queue.Available.Enqueue(spare);
                         }
-                    }
+                    });
                 }
             }
 
@@ -365,13 +370,18 @@ namespace Npgsql
                 if ((Thread.CurrentThread.ThreadState & (ThreadState.Aborted | ThreadState.AbortRequested)) == 0)
                 {
                     // Release all resources associated with this connector.
-                    try {
+                    try
+                    {
                         connector.Reset();
-                    } catch {
+                    }
+                    catch
+                    {
                         connector.Close();
                         inQueue = false;
                     }
-                } else {
+                }
+                else
+                {
                     //Thread is being aborted, this connection is possibly broken. So kill it rather than returning it to the pool
                     inQueue = false;
                     connector.Close();
