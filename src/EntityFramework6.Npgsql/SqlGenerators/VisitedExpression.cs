@@ -718,7 +718,8 @@ namespace Npgsql.SqlGenerators
 
         internal void And(VisitedExpression andAlso)
         {
-            _where = OperatorExpression.Build(Operator.And, _where, andAlso);
+            // useNewPrecedence doesn't matter here since there was no change with the AND operator
+            _where = OperatorExpression.Build(Operator.And, true, _where, andAlso);
         }
     }
 
@@ -870,12 +871,14 @@ namespace Npgsql.SqlGenerators
         private string op;
         private int leftPrecedence;
         private int rightPrecedence;
+        private int newPrecedence; // Since PostgreSQL 9.5, the operator precedence was changed
         private UnaryTypes unaryType;
         private bool rightAssoc;
 
         public string Op { get { return op; } }
         public int LeftPrecedence { get { return leftPrecedence; } }
         public int RightPrecedence { get { return rightPrecedence; } }
+        public int NewPrecedence { get { return newPrecedence; } }
         public UnaryTypes UnaryType { get { return unaryType; } }
         public bool RightAssoc { get { return rightAssoc; } }
 
@@ -885,27 +888,30 @@ namespace Npgsql.SqlGenerators
             Postfix
         }
 
-        private Operator(string op, int precedence)
+        private Operator(string op, int precedence, int newPrecedence)
         {
             this.op = ' ' + op + ' ';
             this.leftPrecedence = precedence;
             this.rightPrecedence = precedence;
+            this.newPrecedence = newPrecedence;
             this.unaryType = UnaryTypes.Binary;
         }
 
-        private Operator(string op, int leftPrecedence, int rightPrecedence)
+        private Operator(string op, int leftPrecedence, int rightPrecedence, int newPrecedence)
         {
             this.op = ' ' + op + ' ';
             this.leftPrecedence = leftPrecedence;
             this.rightPrecedence = rightPrecedence;
+            this.newPrecedence = newPrecedence;
             this.unaryType = UnaryTypes.Binary;
         }
 
-        private Operator(string op, int precedence, UnaryTypes unaryType, bool rightAssoc)
+        private Operator(string op, int precedence, int newPrecedence, UnaryTypes unaryType, bool rightAssoc)
         {
             this.op = unaryType == UnaryTypes.Binary ? ' ' + op + ' ' : unaryType == UnaryTypes.Prefix ? op + ' ' : ' ' + op;
             this.leftPrecedence = precedence;
             this.rightPrecedence = precedence;
+            this.newPrecedence = newPrecedence;
             this.unaryType = unaryType;
             this.rightAssoc = rightAssoc;
         }
@@ -915,7 +921,7 @@ namespace Npgsql.SqlGenerators
          * Corresponds to the operator precedence table at
          * http://www.postgresql.org/docs/current/interactive/sql-syntax-lexical.html
          *
-         * Note that NOT IN and NOT LIKE have different precedences depending on
+         * Note that in versions up to 9.4, NOT IN and NOT LIKE have different precedences depending on
          * if the other operator is to the left or to the right.
          * For example, "a = b NOT LIKE c" is parsed as "(a = b) NOT LIKE c"
          * but "a NOT LIKE b = c" is parsed as "(a NOT LIKE b) = c"
@@ -924,32 +930,32 @@ namespace Npgsql.SqlGenerators
          * so this happens when the two keywords are put together like this.
          *
          */
-        public static readonly Operator UnaryMinus = new Operator("-", 17, UnaryTypes.Prefix, true);
-        public static readonly Operator Mul = new Operator("*", 15);
-        public static readonly Operator Div = new Operator("/", 15);
-        public static readonly Operator Mod = new Operator("%", 15);
-        public static readonly Operator Add = new Operator("+", 14);
-        public static readonly Operator Sub = new Operator("-", 14);
-        public static readonly Operator IsNull = new Operator("IS NULL", 13, UnaryTypes.Postfix, false);
-        public static readonly Operator IsNotNull = new Operator("IS NOT NULL", 13, UnaryTypes.Postfix, false);
-        public static readonly Operator LessThanOrEquals = new Operator("<=", 10);
-        public static readonly Operator GreaterThanOrEquals = new Operator(">=", 10);
-        public static readonly Operator NotEquals = new Operator("!=", 10);
-        public static readonly Operator BitwiseAnd = new Operator("&", 10);
-        public static readonly Operator BitwiseOr = new Operator("|", 10);
-        public static readonly Operator BitwiseXor = new Operator("#", 10);
-        public static readonly Operator BitwiseNot = new Operator("~", 10, UnaryTypes.Prefix, false);
-        public static readonly Operator Concat = new Operator("||", 10);
-        public static readonly Operator In = new Operator("IN", 9);
-        public static readonly Operator NotIn = new Operator("NOT IN", 3, 9);
-        public static readonly Operator Like = new Operator("LIKE", 6);
-        public static readonly Operator NotLike = new Operator("NOT LIKE", 3, 6);
-        public static readonly Operator LessThan = new Operator("<", 5);
-        public static readonly Operator GreaterThan = new Operator(">", 5);
-        public static readonly new Operator Equals = new Operator("=", 4, UnaryTypes.Binary, true);
-        public static readonly Operator Not = new Operator("NOT", 3, UnaryTypes.Prefix, true);
-        public static readonly Operator And = new Operator("AND", 2);
-        public static readonly Operator Or = new Operator("OR", 1);
+        public static readonly Operator UnaryMinus = new Operator("-", 17, 12, UnaryTypes.Prefix, true);
+        public static readonly Operator Mul = new Operator("*", 15, 10);
+        public static readonly Operator Div = new Operator("/", 15, 10);
+        public static readonly Operator Mod = new Operator("%", 15, 10);
+        public static readonly Operator Add = new Operator("+", 14, 9);
+        public static readonly Operator Sub = new Operator("-", 14, 9);
+        public static readonly Operator IsNull = new Operator("IS NULL", 13, 4, UnaryTypes.Postfix, false);
+        public static readonly Operator IsNotNull = new Operator("IS NOT NULL", 13, 4, UnaryTypes.Postfix, false);
+        public static readonly Operator LessThanOrEquals = new Operator("<=", 10, 5);
+        public static readonly Operator GreaterThanOrEquals = new Operator(">=", 10, 5);
+        public static readonly Operator NotEquals = new Operator("!=", 10, 5);
+        public static readonly Operator BitwiseAnd = new Operator("&", 10, 8);
+        public static readonly Operator BitwiseOr = new Operator("|", 10, 8);
+        public static readonly Operator BitwiseXor = new Operator("#", 10, 8);
+        public static readonly Operator BitwiseNot = new Operator("~", 10, 8, UnaryTypes.Prefix, false);
+        public static readonly Operator Concat = new Operator("||", 10, 8);
+        public static readonly Operator In = new Operator("IN", 9, 6);
+        public static readonly Operator NotIn = new Operator("NOT IN", 3, 9, 6);
+        public static readonly Operator Like = new Operator("LIKE", 6, 6);
+        public static readonly Operator NotLike = new Operator("NOT LIKE", 3, 6, 6);
+        public static readonly Operator LessThan = new Operator("<", 5, 5);
+        public static readonly Operator GreaterThan = new Operator(">", 5, 5);
+        public static readonly new Operator Equals = new Operator("=", 4, 5, UnaryTypes.Binary, true);
+        public static readonly Operator Not = new Operator("NOT", 3, 3, UnaryTypes.Prefix, true);
+        public static readonly Operator And = new Operator("AND", 2, 2);
+        public static readonly Operator Or = new Operator("OR", 1, 1);
 
         public static readonly Dictionary<Operator, Operator> NegateDict;
 
@@ -976,21 +982,23 @@ namespace Npgsql.SqlGenerators
     internal class OperatorExpression : VisitedExpression
     {
         private Operator op;
+        private bool useNewPrecedences;
         private VisitedExpression left;
         private VisitedExpression right;
 
-        private OperatorExpression(Operator op, VisitedExpression left, VisitedExpression right)
+        private OperatorExpression(Operator op, bool useNewPrecedences, VisitedExpression left, VisitedExpression right)
         {
             this.op = op;
+            this.useNewPrecedences = useNewPrecedences;
             this.left = left;
             this.right = right;
         }
 
-        public static OperatorExpression Build(Operator op, VisitedExpression left, VisitedExpression right)
+        public static OperatorExpression Build(Operator op, bool useNewPrecedences, VisitedExpression left, VisitedExpression right)
         {
             if (op.UnaryType == Operator.UnaryTypes.Binary)
             {
-                return new OperatorExpression(op, left, right);
+                return new OperatorExpression(op, useNewPrecedences, left, right);
             }
             else
             {
@@ -998,15 +1006,15 @@ namespace Npgsql.SqlGenerators
             }
         }
 
-        public static OperatorExpression Build(Operator op, VisitedExpression exp)
+        public static OperatorExpression Build(Operator op, bool useNewPrecedences, VisitedExpression exp)
         {
             if (op.UnaryType == Operator.UnaryTypes.Prefix)
             {
-                return new OperatorExpression(op, null, exp);
+                return new OperatorExpression(op, useNewPrecedences, null, exp);
             }
             else if (op.UnaryType == Operator.UnaryTypes.Postfix)
             {
-                return new OperatorExpression(op, exp, null);
+                return new OperatorExpression(op, useNewPrecedences, exp, null);
             }
             else
             {
@@ -1019,7 +1027,7 @@ namespace Npgsql.SqlGenerators
         /// If possible, replaces the operator of exp if exp is a negatable OperatorExpression,
         /// else return a new OperatorExpression of type Not that wraps exp.
         /// </summary>
-        public static VisitedExpression Negate(VisitedExpression exp)
+        public static VisitedExpression Negate(VisitedExpression exp, bool useNewPrecedences)
         {
             OperatorExpression expOp = exp as OperatorExpression;
             if (expOp != null)
@@ -1037,7 +1045,7 @@ namespace Npgsql.SqlGenerators
                 }
             }
 
-            return OperatorExpression.Build(Operator.Not, exp);
+            return OperatorExpression.Build(Operator.Not, useNewPrecedences, exp);
         }
 
         internal override void WriteSql(StringBuilder sqlText)
@@ -1050,14 +1058,32 @@ namespace Npgsql.SqlGenerators
             OperatorExpression leftOp = left as OperatorExpression;
             OperatorExpression rightOp = right as OperatorExpression;
 
-            bool wrapLeft = leftOp != null && (op.RightAssoc ? leftOp.op.RightPrecedence <= op.LeftPrecedence : leftOp.op.RightPrecedence < op.LeftPrecedence);
-            bool wrapRight = rightOp != null && (!op.RightAssoc ? rightOp.op.LeftPrecedence <= op.RightPrecedence : rightOp.op.LeftPrecedence < op.RightPrecedence);
+            bool wrapLeft, wrapRight;
+
+            if (!useNewPrecedences)
+            {
+                wrapLeft = leftOp != null && (op.RightAssoc ? leftOp.op.RightPrecedence <= op.LeftPrecedence : leftOp.op.RightPrecedence < op.LeftPrecedence);
+                wrapRight = rightOp != null && (!op.RightAssoc ? rightOp.op.LeftPrecedence <= op.RightPrecedence : rightOp.op.LeftPrecedence < op.RightPrecedence);
+            }
+            else
+            {
+                wrapLeft = leftOp != null && (op.RightAssoc ? leftOp.op.NewPrecedence <= op.NewPrecedence : leftOp.op.NewPrecedence < op.NewPrecedence);
+                wrapRight = rightOp != null && (!op.RightAssoc ? rightOp.op.NewPrecedence <= op.NewPrecedence : rightOp.op.NewPrecedence < op.NewPrecedence);
+            }
 
             // Avoid parentheses for prefix operators if possible,
             // e.g. BitwiseNot: (a & (~ b)) & c is written as a & ~ b & c
             // but (a + (~ b)) + c must be written as a + (~ b) + c
-            if (wrapRight && rightOp.left == null && (rightParent == null || (!rightParent.op.RightAssoc ? rightOp.op.RightPrecedence >= rightParent.op.LeftPrecedence : rightOp.op.RightPrecedence > rightParent.op.LeftPrecedence)))
-                wrapRight = false;
+            if (!useNewPrecedences)
+            {
+                if (wrapRight && rightOp.left == null && (rightParent == null || (!rightParent.op.RightAssoc ? rightOp.op.RightPrecedence >= rightParent.op.LeftPrecedence : rightOp.op.RightPrecedence > rightParent.op.LeftPrecedence)))
+                    wrapRight = false;
+            }
+            else
+            {
+                if (wrapRight && rightOp.left == null && (rightParent == null || (!rightParent.op.RightAssoc ? rightOp.op.NewPrecedence >= rightParent.op.NewPrecedence : rightOp.op.NewPrecedence > rightParent.op.NewPrecedence)))
+                    wrapRight = false;
+            }
 
             if (left != null)
             {

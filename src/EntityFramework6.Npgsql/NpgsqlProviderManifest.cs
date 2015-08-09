@@ -38,9 +38,17 @@ namespace Npgsql
 {
     internal class NpgsqlProviderManifest : DbXmlEnabledProviderManifest
     {
+        private Version _version;
+
+        public Version Version { get { return _version; } }
+
         public NpgsqlProviderManifest(string serverVersion)
             : base(CreateXmlReaderForResource("Npgsql.NpgsqlProviderManifest.Manifest.xml"))
         {
+            if (!Version.TryParse(serverVersion, out _version))
+            {
+                _version = new Version(9, 5);
+            }
         }
 
         protected override XmlReader GetDbInformation(string informationType)
