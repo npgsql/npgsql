@@ -63,10 +63,10 @@ namespace Npgsql
 
         protected override DbCommandDefinition CreateDbCommandDefinition(DbProviderManifest providerManifest, DbCommandTree commandTree)
         {
-            return CreateCommandDefinition(CreateDbCommand(commandTree));
+            return CreateCommandDefinition(CreateDbCommand(((NpgsqlProviderManifest)providerManifest).Version, commandTree));
         }
 
-        internal DbCommand CreateDbCommand(DbCommandTree commandTree)
+        internal DbCommand CreateDbCommand(Version serverVersion, DbCommandTree commandTree)
         {
             if (commandTree == null)
                 throw new ArgumentNullException("commandTree");
@@ -81,12 +81,12 @@ namespace Npgsql
                 command.Parameters.Add(dbParameter);
             }
 
-            TranslateCommandTree(commandTree, command);
+            TranslateCommandTree(serverVersion, commandTree, command);
 
             return command;
         }
 
-        private void TranslateCommandTree(DbCommandTree commandTree, DbCommand command)
+        private void TranslateCommandTree(Version serverVersion, DbCommandTree commandTree, DbCommand command)
         {
             SqlBaseGenerator sqlGenerator = null;
 
@@ -115,6 +115,7 @@ namespace Npgsql
                 // TODO: get a message (unsupported DbCommandTree type)
                 throw new ArgumentException();
             }
+            sqlGenerator.Version = serverVersion;
 
             sqlGenerator.BuildCommand(command);
         }

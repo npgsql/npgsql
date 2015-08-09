@@ -368,6 +368,8 @@ namespace EntityFramework6.Npgsql.Tests
                                                    one + ~(two * three) + ~(two ^ ~three) - one ^ three * ~two / three | four);
                 Assert.AreEqual(oneRow.Select(p => one - (two - three) - four - (- one - two) - (- three)).First(),
                                                    one - (two - three) - four - (- one - two) - (- three));
+                Assert.AreEqual(oneRow.Select(p => one <= (one & one)).First(),
+                                                   one <= (one & one));
                 Assert.AreEqual(oneRow.Select(p => boolArr.Contains(True == true)).First(), true);
                 Assert.AreEqual(oneRow.Select(p => !boolArr.Contains(False == true)).First(), false);
                 Assert.AreEqual(oneRow.Select(p => !boolArr.Contains(False != true)).First(), false);
