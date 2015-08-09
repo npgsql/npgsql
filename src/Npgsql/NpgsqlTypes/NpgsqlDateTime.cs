@@ -188,7 +188,7 @@ namespace NpgsqlTypes
             case InternalType.FiniteUnspecified:
                 // Treat as Local
             case InternalType.FiniteLocal:
-                return new NpgsqlDateTime(Subtract(TimeZoneInfo.Local.BaseUtcOffset).Ticks, DateTimeKind.Utc);
+                return new NpgsqlDateTime(this.DateTime.ToUniversalTime());
             case InternalType.FiniteUtc:
             case InternalType.Infinity:
             case InternalType.NegativeInfinity:
@@ -213,7 +213,7 @@ namespace NpgsqlTypes
             case InternalType.FiniteUnspecified:
                 // Treat as UTC
             case InternalType.FiniteUtc:
-                return new NpgsqlDateTime(Add(TimeZoneInfo.Local.BaseUtcOffset).Ticks, DateTimeKind.Local);
+                return new NpgsqlDateTime(this.DateTime.ToLocalTime());
             case InternalType.FiniteLocal:
             case InternalType.Infinity:
             case InternalType.NegativeInfinity:
