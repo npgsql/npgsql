@@ -46,6 +46,7 @@ namespace Npgsql.TypeHandlers
     [TypeMapping("name",      NpgsqlDbType.Name,               inferredDbType: DbType.String)]
     [TypeMapping("json",      NpgsqlDbType.Json,               inferredDbType: DbType.String)]
     [TypeMapping("refcursor", NpgsqlDbType.Refcursor,          inferredDbType: DbType.String)]
+    [TypeMapping("citext")]
     [TypeMapping("unknown")]
     internal class TextHandler : TypeHandler<string>,
         IChunkingTypeWriter,
