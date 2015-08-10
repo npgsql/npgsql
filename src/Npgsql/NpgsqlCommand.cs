@@ -1112,7 +1112,9 @@ namespace Npgsql
             {
                 CommandTimeout = CommandTimeout,
                 CommandType = CommandType,
-                DesignTimeVisible = DesignTimeVisible
+                DesignTimeVisible = DesignTimeVisible,
+                _allResultTypesAreUnknown = _allResultTypesAreUnknown,
+                _unknownResultTypeList = _unknownResultTypeList
             };
             foreach (NpgsqlParameter parameter in Parameters)
             {

@@ -59,6 +59,7 @@ namespace EntityFramework6.Npgsql.Tests
                 createSequenceConn.Open();
                 ExecuteNonQuery("create sequence blog_int_computed_value_seq", createSequenceConn);
                 ExecuteNonQuery("alter table \"dbo\".\"Blogs\" alter column \"IntComputedValue\" set default nextval('blog_int_computed_value_seq');", createSequenceConn);
+                ExecuteNonQuery("alter table \"dbo\".\"Posts\" alter column \"JsonColumn\" type json using null", createSequenceConn);
 
             }
 
@@ -98,6 +99,7 @@ namespace EntityFramework6.Npgsql.Tests
             public string Content { get; set; }
             public byte Rating { get; set; }
             public DateTime CreationDate { get; set; }
+            public string JsonColumn { get; set; }
             public int BlogId { get; set; }
             public virtual Blog Blog { get; set; }
         }
@@ -122,6 +124,8 @@ namespace EntityFramework6.Npgsql.Tests
         [Test]
         public void InsertAndSelect()
         {
+            var jsonVal = "{\"key\":\"value\"}";
+
             using (var context = new BloggingContext(ConnectionStringEF))
             {
                 var blog = new Blog()
@@ -134,7 +138,8 @@ namespace EntityFramework6.Npgsql.Tests
                     {
                         Content = "Some post content " + i,
                         Rating = (byte)i,
-                        Title = "Some post Title " + i
+                        Title = "Some post Title " + i,
+                        JsonColumn = jsonVal
                     });
                 context.Blogs.Add(blog);
                 context.NoColumnsEntities.Add(new NoColumnsEntity());
@@ -149,7 +154,10 @@ namespace EntityFramework6.Npgsql.Tests
                 foreach (var post in posts)
                 {
                     StringAssert.StartsWith("Some post Title ", post.Title);
+                    Assert.AreEqual(jsonVal, post.JsonColumn);
                 }
+                var someParameter = "Some";
+                Assert.IsTrue(context.Posts.Any(p => p.Title.StartsWith(someParameter)));
                 Assert.AreEqual(1, context.NoColumnsEntities.Count());
             }
         }
