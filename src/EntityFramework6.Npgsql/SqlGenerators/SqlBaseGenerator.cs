@@ -809,7 +809,7 @@ namespace Npgsql.SqlGenerators
                 case PrimitiveTypeKind.Int64:
                     return "int8";
                 case PrimitiveTypeKind.String:
-                    return "varchar";
+                    return "text";
                 case PrimitiveTypeKind.Decimal:
                     return "numeric";
                 case PrimitiveTypeKind.Single:

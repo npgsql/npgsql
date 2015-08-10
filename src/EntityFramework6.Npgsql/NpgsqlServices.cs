@@ -37,6 +37,8 @@ using System.Data.Common.CommandTrees;
 using System.Data.Metadata.Edm;
 #endif
 using Npgsql.SqlGenerators;
+using System.Data;
+using NpgsqlTypes;
 
 namespace Npgsql
 {
@@ -71,13 +73,18 @@ namespace Npgsql
             if (commandTree == null)
                 throw new ArgumentNullException("commandTree");
 
-            DbCommand command = NpgsqlFactory.Instance.CreateCommand();
+            NpgsqlCommand command = new NpgsqlCommand();
 
             foreach (KeyValuePair<string, TypeUsage> parameter in commandTree.Parameters)
             {
-                DbParameter dbParameter = command.CreateParameter();
+                NpgsqlParameter dbParameter = command.CreateParameter();
                 dbParameter.ParameterName = parameter.Key;
                 dbParameter.DbType = NpgsqlProviderManifest.GetDbType(((PrimitiveType)parameter.Value.EdmType).PrimitiveTypeKind);
+                if (dbParameter.DbType == DbType.String)
+                {
+                    // Send strings as unknowns to be compatible with other datatypes than text
+                    dbParameter.NpgsqlDbType = NpgsqlDbType.Unknown;
+                }
                 command.Parameters.Add(dbParameter);
             }
 
