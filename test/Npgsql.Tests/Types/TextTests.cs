@@ -353,6 +353,32 @@ namespace Npgsql.Tests.Types
             }
         }
 
+        [Test, Description("Checks support for the citext contrib type")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/695")]
+        public void Citext()
+        {
+            if (Conn.PostgreSqlVersion > new Version(9, 0))
+            {
+                ExecuteNonQuery("CREATE EXTENSION IF NOT EXISTS citext");
+                TypeHandlerRegistry.ClearBackendTypeCache();
+            }
+
+            using (var conn = new NpgsqlConnection(ConnectionString + ";Pooling=false"))
+            {
+                conn.Open();
+                var value = "Foo";
+                using (var cmd = new NpgsqlCommand("SELECT @p::CITEXT", conn))
+                {
+                    cmd.Parameters.AddWithValue("p", value);
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        reader.Read();
+                        Assert.That(reader.GetString(0), Is.EqualTo(value));
+                    }
+                }
+            }
+        }
+
         public TextTests(string backendVersion) : base(backendVersion) { }
     }
 }

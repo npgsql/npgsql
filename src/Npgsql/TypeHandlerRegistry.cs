@@ -639,6 +639,10 @@ namespace Npgsql
 
         #region Misc
 
+        /// <summary>
+        /// Clears the internal type cache.
+        /// Useful for forcing a reload of the types after loading an extension.
+        /// </summary>
         static internal void ClearBackendTypeCache()
         {
             BackendTypeCache.Clear();
