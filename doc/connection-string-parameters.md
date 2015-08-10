@@ -143,6 +143,30 @@ Parameter keywords are case-insensitive.
     </tr>
 
     <tr>
+      <td>Timeout</td>
+      <td>The time to wait (in seconds) while trying to establish a connection before terminating the attempt and generating an error.</td>
+      <td>15</td>
+    </tr>
+
+    <tr>
+      <td>Command Timeout</td>
+      <td>The time to wait (in seconds) while trying to execute a command before terminating the attempt and generating an error. Set to zero for infinity.</td>
+      <td>30</td>
+    </tr>
+
+    <tr>
+      <td>Internal Command Timeout</td>
+      <td>The time to wait (in seconds) while trying to execute a an internal command before terminating the attempt and generating an error. -1 uses CommandTimeout, 0 means no timeout.</td>
+      <td>-1</td>
+    </tr>
+
+    <tr>
+      <td>Backend Timeouts</td>
+      <td>Whether to have the backend enforce CommandTimeout and InternalCommandTimeout via the statement_timeout variable.</td>
+      <td>true</td>
+    </tr>
+
+    <tr>
       <td>Buffer Size</td>
       <td>Determines the size of the internal buffer Npgsql uses when reading or writing. Increasing may improve performance if transferring large values from the database.</td>
       <td>8192</td>
