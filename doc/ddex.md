@@ -7,7 +7,7 @@ title: Visual Studio Support (DDEX)
 
 (by @kenjiuno)
 
-Reference: https://github.com/npgsql/Npgsql/pull/213#issuecomment-46892619
+Reference: [#213](https://github.com/npgsql/Npgsql/pull/213#issuecomment-46892619)
 
 Prerequisites:
 

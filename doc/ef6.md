@@ -5,7 +5,7 @@ title: Entity Framework 6
 
 
 **NOTE**: if you want to use Visual Studio Visual Designer, see
-[[Visual Studio Design Time Support DDEX Provider|Visual-Studio-Design-Time-Support---DDEX-Provider]] instead.
+[VS integration](ddex.html) instead.
 
 ## Guid Support ##
 
