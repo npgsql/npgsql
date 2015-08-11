@@ -410,8 +410,16 @@ namespace Npgsql
             set
             {
                 ClearBind();
-                _dbType = value;
-                _npgsqlDbType = TypeHandlerRegistry.ToNpgsqlDbType(value);
+                if (value == DbType.Object)
+                {
+                    _dbType = null;
+                    _npgsqlDbType = null;
+                }
+                else
+                {
+                    _dbType = value;
+                    _npgsqlDbType = TypeHandlerRegistry.ToNpgsqlDbType(value);
+                }
             }
         }
 
