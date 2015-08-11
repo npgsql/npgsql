@@ -31,6 +31,9 @@ please let us know and we'll add it.
 * Previously, Npgsql allowed writing a NULL by setting NpgsqlParameter.Value to `null`.
   This is [not allowed in ADO.NET](https://msdn.microsoft.com/en-us/library/system.data.common.dbparameter.value%28v=vs.110%29.aspx)
   and is no longer supported, set to `DBNull.Value` instead.
+* In some cases, you will now be required to explicitly set a parameter's type although you didn't have to before (you'll get an error
+  42804 explaining this). This can happen especially in Dapper custom custom type handlers ([#694](https://github.com/npgsql/npgsql/issues/694)).
+  Simply set the NpgsqlDbType property on the parameter.
 * Removed support for writing a parameter with an `IEnumerable<T>` value, since that would require Npgsql to enumerate it multiple
   times internally. `IList<T>` and IList are permitted.
 * NpgsqlMacAddress has been removed and replaced by the standard .NET PhysicalAddress.
