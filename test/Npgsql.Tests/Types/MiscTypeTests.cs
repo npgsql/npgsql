@@ -229,6 +229,17 @@ namespace Npgsql.Tests.Types
             }
         }
 
+        [Test, Description("Makes sure that setting DbType.Object makes Npgsql infer the type")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/694")]
+        public void DbTypeCausesInference()
+        {
+            using (var cmd = new NpgsqlCommand("SELECT @p", Conn))
+            {
+                cmd.Parameters.Add(new NpgsqlParameter { ParameterName="p", DbType = DbType.Object, Value = 3 });
+                Assert.That(cmd.ExecuteScalar(), Is.EqualTo(3));
+            }
+        }
+
         #region Unrecognized types
 
         static void CheckUnrecognizedType()
