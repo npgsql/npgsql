@@ -1,5 +1,5 @@
 ﻿{
-  "version": "3.0.0-alpha-*",
+  "version": "3.1.0",
   "authors": [
     "Shay Rojansky"
   ],
@@ -7,7 +7,7 @@
   "dependencies": {
     "EntityFramework.Core": "7.0.0-beta6-13675",
     "EntityFramework.Relational": "7.0.0-beta6-13675",
-    "Npgsql": "3.0.0-alpha-*"
+    "Npgsql": "3.1.0"
   },
   "frameworks": {
     "dnx451": {
