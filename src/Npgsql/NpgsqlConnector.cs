@@ -537,15 +537,15 @@ namespace Npgsql
                     else
                     {
                         var clientCertificates = new X509CertificateCollection();
-                        if (ProvideClientCertificatesCallback != null) {
-                            ProvideClientCertificatesCallback(clientCertificates);
+                        if (Connection.ProvideClientCertificatesCallback != null) {
+                            Connection.ProvideClientCertificatesCallback(clientCertificates);
                         }
 
                         RemoteCertificateValidationCallback certificateValidationCallback;
                         if (_settings.TrustServerCertificate) {
                             certificateValidationCallback = (sender, certificate, chain, errors) => true;
-                        } else if (UserCertificateValidationCallback != null) {
-                            certificateValidationCallback = UserCertificateValidationCallback;
+                        } else if (Connection.UserCertificateValidationCallback != null) {
+                            certificateValidationCallback = Connection.UserCertificateValidationCallback;
                         } else {
                             certificateValidationCallback = DefaultUserCertificateValidationCallback;
                         }
@@ -1280,19 +1280,6 @@ namespace Npgsql
         /// Returns whether SSL is being used for the connection
         /// </summary>
         internal bool IsSecure { get; private set; }
-
-        /// <summary>
-        /// Represents the method that allows the application to provide a certificate collection to be used for SSL client authentication
-        /// </summary>
-        internal ProvideClientCertificatesCallback ProvideClientCertificatesCallback { get; set; }
-
-        /// <summary>
-        /// Verifies the remote Secure Sockets Layer (SSL) certificate used for authentication.
-        /// </summary>
-        /// <remarks>
-        /// See <see href="https://msdn.microsoft.com/en-us/library/system.net.security.remotecertificatevalidationcallback(v=vs.110).aspx"/>
-        /// </remarks>
-        public RemoteCertificateValidationCallback UserCertificateValidationCallback { get; set; }
 
         static bool DefaultUserCertificateValidationCallback(object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
         {

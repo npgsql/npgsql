@@ -192,11 +192,7 @@ namespace Npgsql
                 }
                 else
                 {
-                    Connector = new NpgsqlConnector(this) {
-                        ProvideClientCertificatesCallback = ProvideClientCertificatesCallback,
-                        UserCertificateValidationCallback = UserCertificateValidationCallback
-                    };
-
+                    Connector = new NpgsqlConnector(this);
                     Connector.Open();
                 }
 
@@ -582,9 +578,6 @@ namespace Npgsql
             else
             {
                 Connector.Close();
-
-                Connector.ProvideClientCertificatesCallback = null;
-                Connector.UserCertificateValidationCallback = null;
             }
 
             Connector = null;

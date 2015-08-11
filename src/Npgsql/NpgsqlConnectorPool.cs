@@ -260,9 +260,6 @@ namespace Npgsql
 
             if (Connector != null)
             {
-                Connector.ProvideClientCertificatesCallback = Connection.ProvideClientCertificatesCallback;
-                Connector.UserCertificateValidationCallback = Connection.UserCertificateValidationCallback;
-
                 try
                 {
                     Connector.Open();
@@ -287,17 +284,8 @@ namespace Npgsql
 
                         while (Queue.Available.Count + Queue.Busy.Count < Connection.MinPoolSize)
                         {
-                            NpgsqlConnector spare = new NpgsqlConnector(Connection) {
-                                ProvideClientCertificatesCallback = Connection.ProvideClientCertificatesCallback,
-                                UserCertificateValidationCallback = Connection.UserCertificateValidationCallback
-                            };
-
-
+                            NpgsqlConnector spare = new NpgsqlConnector(Connection);
                             spare.Open();
-
-                            spare.ProvideClientCertificatesCallback = null;
-                            spare.UserCertificateValidationCallback = null;
-
                             spare.Connection = null;
                             Queue.Available.Enqueue(spare);
                         }
@@ -391,9 +379,6 @@ namespace Npgsql
                 {
                     queue.Busy.Remove(connector);
                 }
-
-            connector.ProvideClientCertificatesCallback = null;
-            connector.UserCertificateValidationCallback = null;
         }
 
         private static void ClearQueue(ConnectorQueue Queue)
