@@ -334,7 +334,7 @@ namespace Npgsql.Tests.Types
         [IssueLink("https://github.com/npgsql/npgsql/issues/695")]
         public void Citext()
         {
-            if (Conn.PostgreSqlVersion > new Version(9, 0))
+            if (Conn.PostgreSqlVersion >= new Version(9, 1, 0))
             {
                 ExecuteNonQuery("CREATE EXTENSION IF NOT EXISTS citext");
                 TypeHandlerRegistry.ClearBackendTypeCache();
