@@ -5,13 +5,14 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data;
+using Microsoft.Data.Entity;
+using Microsoft.Data.Entity.Metadata;
 using Microsoft.Data.Entity.Storage;
 
 namespace EntityFramework7.Npgsql
 {
     // TODO: Implementation is very partial at the moment...
     // TODO: Maybe it's worth finding a way to dynamically map types based on the TypeHandlerRegistry?
-    // this would entail having access to an open connection here.
     // TODO: Complete types - network, geometric...
     // TODO: Provider-specific types?
     // TODO: Arrays?
@@ -96,6 +97,8 @@ namespace EntityFramework7.Npgsql
                     //{ typeof(ulong), new RelationalTypeMapping("numeric(20, 0)") },
                 };
         }
+
+        protected override string GetColumnType(IProperty property) => property.Npgsql().ColumnType;
 
         protected override IReadOnlyDictionary<Type, RelationalTypeMapping> SimpleMappings
             => _simpleMappings;

@@ -8,7 +8,6 @@ namespace EntityFramework7.Npgsql.Metadata
 {
     public interface INpgsqlPropertyAnnotations : IRelationalPropertyAnnotations
     {
-        string ComputedExpression { get; }
         string SequenceName { get; }
         string SequenceSchema { get; }
         Sequence TryGetSequence();

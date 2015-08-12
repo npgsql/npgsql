@@ -9,8 +9,9 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>EntityFramework7.Npgsql.FunctionalTests</RootNamespace>
     <AssemblyName>EntityFramework7.Npgsql.FunctionalTests</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -31,78 +32,79 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="EntityFramework.Core, Version=7.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\EntityFramework.Core.7.0.0-beta6-13675\lib\net45\EntityFramework.Core.dll</HintPath>
+      <HintPath>..\..\packages\EntityFramework.Core.7.0.0-beta7-13932\lib\net45\EntityFramework.Core.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="EntityFramework.Core.FunctionalTests, Version=7.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\EntityFramework.Core.FunctionalTests.7.0.0-beta6-13675\lib\net46\EntityFramework.Core.FunctionalTests.dll</HintPath>
+      <HintPath>..\..\packages\EntityFramework.Core.FunctionalTests.7.0.0-beta7-13932\lib\net46\EntityFramework.Core.FunctionalTests.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="EntityFramework.InMemory, Version=7.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\EntityFramework.InMemory.7.0.0-beta6-13675\lib\net45\EntityFramework.InMemory.dll</HintPath>
+      <HintPath>..\..\packages\EntityFramework.InMemory.7.0.0-beta7-13932\lib\net45\EntityFramework.InMemory.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="EntityFramework.Relational, Version=7.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\EntityFramework.Relational.7.0.0-beta6-13675\lib\net45\EntityFramework.Relational.dll</HintPath>
+      <HintPath>..\..\packages\EntityFramework.Relational.7.0.0-beta7-13932\lib\net45\EntityFramework.Relational.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="EntityFramework.Relational.FunctionalTests, Version=7.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\EntityFramework.Relational.FunctionalTests.7.0.0-beta6-13675\lib\net46\EntityFramework.Relational.FunctionalTests.dll</HintPath>
+      <HintPath>..\..\packages\EntityFramework.Relational.FunctionalTests.7.0.0-beta7-13932\lib\net46\EntityFramework.Relational.FunctionalTests.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Framework.Caching.Abstractions, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Framework.Caching.Abstractions.1.0.0-beta6-11576\lib\net45\Microsoft.Framework.Caching.Abstractions.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Framework.Caching.Abstractions.1.0.0-beta7-11697\lib\net45\Microsoft.Framework.Caching.Abstractions.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Framework.Caching.Memory, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Framework.Caching.Memory.1.0.0-beta6-11576\lib\net45\Microsoft.Framework.Caching.Memory.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Framework.Caching.Memory.1.0.0-beta7-11697\lib\net45\Microsoft.Framework.Caching.Memory.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Framework.Configuration, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Framework.Configuration.1.0.0-beta6-11554\lib\net45\Microsoft.Framework.Configuration.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Framework.Configuration.1.0.0-beta7-11643\lib\net45\Microsoft.Framework.Configuration.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Framework.Configuration.Abstractions, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Framework.Configuration.Abstractions.1.0.0-beta6-11554\lib\net45\Microsoft.Framework.Configuration.Abstractions.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Framework.Configuration.Abstractions.1.0.0-beta7-11643\lib\net45\Microsoft.Framework.Configuration.Abstractions.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Framework.Configuration.Binder, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Framework.Configuration.Binder.1.0.0-beta6-11554\lib\net45\Microsoft.Framework.Configuration.Binder.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Framework.Configuration.Binder.1.0.0-beta7-11643\lib\net45\Microsoft.Framework.Configuration.Binder.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Framework.DependencyInjection, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Framework.DependencyInjection.1.0.0-beta6-11558\lib\net45\Microsoft.Framework.DependencyInjection.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Framework.DependencyInjection.1.0.0-beta7-11650\lib\net45\Microsoft.Framework.DependencyInjection.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Framework.DependencyInjection.Abstractions, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Framework.DependencyInjection.Abstractions.1.0.0-beta6-11558\lib\net45\Microsoft.Framework.DependencyInjection.Abstractions.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Framework.DependencyInjection.Abstractions.1.0.0-beta7-11650\lib\net45\Microsoft.Framework.DependencyInjection.Abstractions.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Framework.Logging, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Framework.Logging.1.0.0-beta6-11558\lib\net45\Microsoft.Framework.Logging.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Framework.Logging.1.0.0-beta7-11655\lib\net45\Microsoft.Framework.Logging.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Framework.Logging.Abstractions, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Framework.Logging.Abstractions.1.0.0-beta6-11558\lib\net45\Microsoft.Framework.Logging.Abstractions.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Framework.Logging.Abstractions.1.0.0-beta7-11655\lib\net45\Microsoft.Framework.Logging.Abstractions.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Framework.OptionsModel, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Framework.OptionsModel.1.0.0-beta6-11528\lib\net45\Microsoft.Framework.OptionsModel.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Framework.OptionsModel.1.0.0-beta7-11618\lib\net45\Microsoft.Framework.OptionsModel.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Remotion.Linq, Version=2.0.0.0, Culture=neutral, PublicKeyToken=fee00910d6e5f53b, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Remotion.Linq.2.0.0-alpha-004\lib\net45\Remotion.Linq.dll</HintPath>
+      <HintPath>..\..\packages\Remotion.Linq.2.0.0-beta-002\lib\net45\Remotion.Linq.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="System" />
-    <Reference Include="System.Collections.Immutable, Version=1.1.36.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\System.Collections.Immutable.1.1.36\lib\portable-net45+win8+wp8+wpa81\System.Collections.Immutable.dll</HintPath>
+    <Reference Include="System.Collections.Concurrent" />
+    <Reference Include="System.Collections.Immutable, Version=1.1.37.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\System.Collections.Immutable.1.1.37\lib\dotnet\System.Collections.Immutable.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="System.ComponentModel.DataAnnotations" />
     <Reference Include="System.Core" />
     <Reference Include="System.Interactive.Async, Version=1.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Ix-Async.1.2.3\lib\net45\System.Interactive.Async.dll</HintPath>
+      <HintPath>..\..\packages\Ix-Async.1.2.5\lib\net45\System.Interactive.Async.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="System.Transactions" />
@@ -117,16 +119,16 @@
       <HintPath>..\..\packages\xunit.abstractions.2.0.0\lib\net35\xunit.abstractions.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="xunit.assert, Version=2.1.0.3033, Culture=neutral, PublicKeyToken=8d05b1bb7a6fdb6c, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\xunit.assert.2.1.0-beta4-build3033\lib\portable-net45+dnxcore50+win+wpa81+wp80+monotouch+monoandroid+Xamarin.iOS\xunit.assert.dll</HintPath>
+    <Reference Include="xunit.assert, Version=2.1.0.3110, Culture=neutral, PublicKeyToken=8d05b1bb7a6fdb6c, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\xunit.assert.2.1.0-rc1-build3110\lib\dotnet\xunit.assert.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="xunit.core, Version=2.1.0.3033, Culture=neutral, PublicKeyToken=8d05b1bb7a6fdb6c, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\xunit.extensibility.core.2.1.0-beta4-build3033\lib\portable-net45+dnxcore50+win+wpa81+wp80+monotouch+monoandroid+Xamarin.iOS\xunit.core.dll</HintPath>
+    <Reference Include="xunit.core, Version=2.1.0.3110, Culture=neutral, PublicKeyToken=8d05b1bb7a6fdb6c, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\xunit.extensibility.core.2.1.0-rc1-build3110\lib\dotnet\xunit.core.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="xunit.execution.desktop, Version=2.1.0.3033, Culture=neutral, PublicKeyToken=8d05b1bb7a6fdb6c, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\xunit.extensibility.execution.2.1.0-beta4-build3033\lib\net45\xunit.execution.desktop.dll</HintPath>
+    <Reference Include="xunit.execution.desktop, Version=2.1.0.3110, Culture=neutral, PublicKeyToken=8d05b1bb7a6fdb6c, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\xunit.extensibility.execution.2.1.0-rc1-build3110\lib\net45\xunit.execution.desktop.dll</HintPath>
       <Private>True</Private>
     </Reference>
   </ItemGroup>
@@ -139,13 +141,14 @@
     <Compile Include="NpgsqlTestStore.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="QueryNpgsqlTest.cs" />
-    <Compile Include="StoreGeneratedNpgsqlTestBase.cs" />
+    <Compile Include="StoreGeneratedNpgsqlTest.cs" />
     <Compile Include="TestModels\NpgsqlNorthwindContext.cs" />
     <Compile Include="TestNpgsqlModelSource.cs" />
     <Compile Include="TransactionNpgsqlFixture.cs" />
     <Compile Include="TransactionNpgsqlTest.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="app.config" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>

@@ -66,22 +66,22 @@ namespace EntityFramework7.Npgsql.FunctionalTests
                 modelBuilder.Entity<Gumball>(b =>
                     {
                         b.Property(e => e.Identity)
-                            .DefaultValue("Banana Joe");
+                            .HasDefaultValue("Banana Joe");
 
                         b.Property(e => e.IdentityReadOnlyBeforeSave)
-                            .DefaultValue("Doughnut Sheriff");
+                            .HasDefaultValue("Doughnut Sheriff");
 
                         b.Property(e => e.IdentityReadOnlyAfterSave)
-                            .DefaultValue("Anton");
+                            .HasDefaultValue("Anton");
 
                         b.Property(e => e.Computed)
-                            .DefaultValue("Alan");
+                            .HasDefaultValue("Alan");
 
                         b.Property(e => e.ComputedReadOnlyBeforeSave)
-                            .DefaultValue("Carmen");
+                            .HasDefaultValue("Carmen");
 
                         b.Property(e => e.ComputedReadOnlyAfterSave)
-                            .DefaultValue("Tina Rex");
+                            .HasDefaultValue("Tina Rex");
                     });
             }
         }

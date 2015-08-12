@@ -5,8 +5,8 @@
   ],
   "description": "PostgreSQL provider for Entity Framework 7",
   "dependencies": {
-    "EntityFramework.Core": "7.0.0-beta6-13675",
-    "EntityFramework.Relational": "7.0.0-beta6-13675",
+    "EntityFramework.Core": "7.0.0-beta7-13932",
+    "EntityFramework.Relational": "7.0.0-beta7-13932",
     "Npgsql": "3.1.0"
   },
   "frameworks": {

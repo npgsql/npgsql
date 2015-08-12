@@ -12,16 +12,15 @@ namespace EntityFramework7.Npgsql.Migrations
     {
         public override IEnumerable<IAnnotation> For(IProperty property)
         {
-            if (property.StoreGeneratedPattern != StoreGeneratedPattern.None)
-            {
-                // TODO: The following is a workaround for https://github.com/aspnet/EntityFramework/issues/2539
-                if (property.Npgsql().DefaultValueSql    == null &&
-                    property.Npgsql().DefaultValue       == null &&
-                    property.Npgsql().ComputedExpression == null)
-                {
-                    yield return new Annotation(NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.ValueGeneration, property.StoreGeneratedPattern.ToString());
-                }
+            if (property.ValueGenerated == ValueGenerated.OnAdd &&
+                property.ClrType.IsIntegerForSerial()) {
+                yield return new Annotation(NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.Serial, true);
             }
+
+            // TODO: Named sequences
+
+            // TODO: We don't support ValueGenerated.OnAddOrUpdate, so should we throw an exception?
+            // Other providers don't seem to...
         }
     }
 }

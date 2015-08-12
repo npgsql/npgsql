@@ -6,8 +6,7 @@ namespace EntityFramework7.Npgsql.Metadata
     public static class NpgsqlAnnotationNames
     {
         public const string Prefix = "Npgsql:";
-        public const string ValueGeneration = "ValueGeneration";
-        public const string ColumnComputedExpression = "ColumnComputedExpression";
+        public const string Serial = "Serial";
         public const string DefaultSequenceName = "DefaultSequenceName";
         public const string DefaultSequenceSchema = "DefaultSequenceSchema";
         public const string SequenceName = "SequenceName";

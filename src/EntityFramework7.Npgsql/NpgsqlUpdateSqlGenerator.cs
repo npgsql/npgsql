@@ -31,7 +31,7 @@ namespace EntityFramework7.Npgsql
             Check.NotEmpty(modificationCommands, nameof(modificationCommands));
 
             var tableName = modificationCommands[0].TableName;
-            var schemaName = modificationCommands[0].SchemaName;
+            var schemaName = modificationCommands[0].Schema;
 
             // TODO: Support TPH
             var defaultValuesOnly = !modificationCommands.First().ColumnModifications.Any(o => o.IsWrite);
@@ -76,7 +76,7 @@ namespace EntityFramework7.Npgsql
             Check.NotNull(command, nameof(command));
 
             var tableName = command.TableName;
-            var schemaName = command.SchemaName;
+            var schemaName = command.Schema;
             var operations = command.ColumnModifications;
 
             var writeOperations = operations.Where(o => o.IsWrite).ToArray();
@@ -128,18 +128,10 @@ namespace EntityFramework7.Npgsql
         public override string BatchSeparator => "GO";
 
         public override string DelimitIdentifier(string identifier)
-        {
-            Check.NotEmpty(identifier, nameof(identifier));
+            => '"' + EscapeIdentifier(Check.NotEmpty(identifier, nameof(identifier))) + '"';
 
-            return '"' + EscapeIdentifier(identifier) + '"';
-        }
-
-        public override string EscapeIdentifier(string identifier)
-        {
-            Check.NotEmpty(identifier, nameof(identifier));
-
-            return identifier.Replace("\"", "\"\"");
-        }
+        protected override string EscapeIdentifier(string identifier)
+            => Check.NotEmpty(identifier, nameof(identifier)).Replace("\"", "\"\"");
 
         public override string GenerateLiteral(byte[] literal)
         {
@@ -168,27 +160,5 @@ namespace EntityFramework7.Npgsql
             OneResultSet,
             OneCommandPerResultSet
         }
-
-        #region Npsql-specific
-
-        public override string GenerateNextSequenceValueOperation(string sequenceName)
-        {
-            Check.NotNull(sequenceName, nameof(sequenceName));
-
-            //TODO:Verify implementation
-
-            //split string using '.' to extract schema and name parts
-            var parts = sequenceName.Split(new char[] {'.'});
-
-            //TODO: should we throw exceptions if parts is empty or has more than 2 components?
-
-            //synthesize the sequence name
-            //The name itself must be delimited, but the schema should not
-            var actualSequenceName = (parts.Length == 1) ? DelimitIdentifier(parts[0]) : $"{parts[0]}.{DelimitIdentifier(parts[1])}";
-
-            return string.Format("SELECT nextval('{0}')", actualSequenceName);
-        }
-
-        #endregion
     }
 }

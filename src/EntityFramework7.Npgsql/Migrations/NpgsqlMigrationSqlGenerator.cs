@@ -17,8 +17,11 @@ namespace EntityFramework7.Npgsql.Migrations
     {
         private readonly NpgsqlUpdateSqlGenerator _sql;
 
-        public NpgsqlMigrationSqlGenerator([NotNull] NpgsqlUpdateSqlGenerator sqlGenerator)
-            : base(Check.NotNull(sqlGenerator, nameof(sqlGenerator)))
+        public NpgsqlMigrationSqlGenerator(
+            [NotNull] NpgsqlUpdateSqlGenerator sqlGenerator,
+            [NotNull] NpgsqlTypeMapper typeMapper,
+            [NotNull] NpgsqlMetadataExtensionProvider annotations)
+            : base(sqlGenerator, typeMapper, annotations)
         {
             _sql = sqlGenerator;
         }
@@ -36,7 +39,19 @@ namespace EntityFramework7.Npgsql.Migrations
                 .Append("ALTER TABLE ")
                 .Append(_sql.DelimitIdentifier(operation.Table, operation.Schema))
                 .Append(" ALTER COLUMN ");
-            ColumnDefinition(operation, model, builder);
+            ColumnDefinition(
+                    operation.Schema,
+                    operation.Table,
+                    operation.Name,
+                    operation.ClrType,
+                    operation.ColumnType,
+                    operation.IsNullable,
+                    /*defaultValue:*/ null,
+                    /*defaultValueSql:*/ null,
+                    operation.ComputedColumnSql,
+                    operation,
+                    model,
+                    builder);
         }
 
         public override void Generate(
@@ -228,10 +243,12 @@ namespace EntityFramework7.Npgsql.Migrations
             string schema,
             string table,
             string name,
+            Type clrType,
             string type,
             bool nullable,
             object defaultValue,
-            string defaultExpression,
+            string defaultValueSql,
+            string computedColumnSql,
             IAnnotatable annotatable,
             IModel model,
             SqlBatchBuilder builder)
@@ -241,21 +258,11 @@ namespace EntityFramework7.Npgsql.Migrations
             Check.NotNull(annotatable, nameof(annotatable));
             Check.NotNull(builder, nameof(builder));
 
-            var computedExpression = annotatable[NpgsqlAnnotationNames.Prefix
-                + NpgsqlAnnotationNames.ColumnComputedExpression];
-            if (computedExpression != null)
-            {
-                builder
-                    .Append(_sql.DelimitIdentifier(name))
-                    .Append(" AS ")
-                    .Append(computedExpression);
+            // TODO: Maybe implement computed columns via functions?
+            // http://stackoverflow.com/questions/11165450/store-common-query-as-column/11166268#11166268
 
-                return;
-            }
-
-
-            var valueGeneration = (string)annotatable[NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.ValueGeneration];
-            if (valueGeneration == "Identity")
+            var serial = annotatable[NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.Serial];
+            if (serial != null && (bool)serial)
             {
                 switch (type)
                 {
@@ -266,7 +273,7 @@ namespace EntityFramework7.Npgsql.Migrations
                     type = "bigserial";
                     break;
                 case "smallint":
-                    type = "smallint";
+                    type = "smallserial";
                     break;
                 default:
                     throw new InvalidOperationException($"Column {name} of type {type} can't be Identity");
@@ -277,10 +284,12 @@ namespace EntityFramework7.Npgsql.Migrations
                 schema,
                 table,
                 name,
+                clrType,
                 type,
                 nullable,
                 defaultValue,
-                defaultExpression,
+                defaultValueSql,
+                computedColumnSql,
                 annotatable,
                 model,
                 builder);
@@ -331,22 +340,6 @@ namespace EntityFramework7.Npgsql.Migrations
                 .Append(" TRANSFER ")
                 .Append(_sql.DelimitIdentifier(name, schema));
         }
-
-        public virtual void ColumnDefinition(
-            [NotNull] AlterColumnOperation operation,
-            [CanBeNull] IModel model,
-            [NotNull] SqlBatchBuilder builder) =>
-            ColumnDefinition(
-                operation.Schema,
-                operation.Table,
-                operation.Name,
-                operation.Type,
-                operation.IsNullable,
-                operation.DefaultValue,
-                operation.DefaultValueSql,
-                operation,
-                model,
-                builder);
 
         public override void ForeignKeyAction(ReferentialAction referentialAction, SqlBatchBuilder builder)
         {

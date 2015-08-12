@@ -81,27 +81,27 @@ namespace EntityFramework7.Npgsql.FunctionalTests
             {
                 b.Key(e => e.Int);
                 b.Property(e => e.Int)
-                    .StoreGeneratedPattern(StoreGeneratedPattern.None);
+                 .ValueGeneratedNever();
             });
 
             modelBuilder.Entity<MappedNullableDataTypes>(b =>
             {
                 b.Key(e => e.Int);
                 b.Property(e => e.Int)
-                    .StoreGeneratedPattern(StoreGeneratedPattern.None);
+                 .ValueGeneratedNever();
             });
 
             modelBuilder.Entity<MappedSizedDataTypes>()
                 .Property(e => e.Id)
-                .StoreGeneratedPattern(StoreGeneratedPattern.None);
+                .ValueGeneratedNever();
 
             modelBuilder.Entity<MappedScaledDataTypes>()
                 .Property(e => e.Id)
-                .StoreGeneratedPattern(StoreGeneratedPattern.None);
+                .ValueGeneratedNever();
 
             modelBuilder.Entity<MappedPrecisionAndScaledDataTypes>()
                 .Property(e => e.Id)
-                .StoreGeneratedPattern(StoreGeneratedPattern.None);
+                .ValueGeneratedNever();
 
             MapColumnTypes<MappedDataTypes>(modelBuilder);
             MapColumnTypes<MappedNullableDataTypes>(modelBuilder);
