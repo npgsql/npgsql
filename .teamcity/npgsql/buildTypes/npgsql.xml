@@ -79,7 +79,7 @@
           <param name="nunit_enabled" value="checked" />
           <param name="nunit_environment" value="v4.0" />
           <param name="nunit_include"><![CDATA[test/Npgsql.Tests/bin/Debug/Npgsql.Tests.dll
-test/Npgsql.EntityFramework.Tests/bin/Debug/Npgsql.EntityFramework.Tests.dll]]></param>
+test/EntityFramework6.Npgsql.Tests/bin/Debug/EntityFramework6.Npgsql.Tests.dll]]></param>
           <param name="nunit_platform" value="MSIL" />
           <param name="nunit_version" value="NUnit-2.6.4" />
           <param name="teamcity.step.mode" value="default" />
