@@ -32,6 +32,8 @@ contains lots of useful compatibility information.
 
 Additional known issues:
 
+* If you want to connect over SSL, your connection string must contain "Server Compatibility Mode=Redshift", otherwise you'll get a connection
+  error about `ssl_renegotiation_limit`.
 * Entity Framework with database-computed identity values don't work with Redshift, since it doesn't support sequences
 (see issue [#544](https://github.com/npgsql/npgsql/issues/544)).
 

@@ -174,7 +174,7 @@ Parameter keywords are case-insensitive.
 
     <tr>
       <td>Server Compatibility Mode</td>
-      <td>A compatibility mode for special PostgreSQL server types.</td>
+      <td>A compatibility mode for special PostgreSQL server types. Currently only "Redshift" is supported.</td>
       <td>off</td>
     </tr>
 
