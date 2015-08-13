@@ -18,4 +18,8 @@ PostgreSQL versions to catch errors as early as possible. CI NuGet packages are 
 
 For some information about the build server setup, see [this page](dev/build-server.html).
 
+## Other stuff
+
+Emil compiled [a list of PostgreSQL types and their wire representations](dev/types.html).
+
 Thanks to Dave Page at PostgreSQL for donating a VM for this!
