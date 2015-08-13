@@ -63,6 +63,8 @@ please let us know and we'll add it.
   resultsets (this was used to emulate returning multiple resultsets from stored procedures).
   See [#438](https://github.com/npgsql/npgsql/issues/438).
 * Removed the AlwaysPrepare connection string parameter
+* Removed the Encoding connection string parameter, which was obsolete and unused anyway
+  (UTF8 was always used regardless of what was specified)
 * Removed NpgsqlDataReader.LastInsertedOID, it did not allow accessing individual OIDs in multi-statement commands.
   Replaced with NpgsqlDataReader.Statements, which provides OID and affected row information on a statement-by-statement
   basis.
