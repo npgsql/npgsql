@@ -31,7 +31,7 @@ Parameter keywords are case-insensitive.
     <tr>
       <td>Database</td>
       <td>The PostgreSQL database to connect to.</td>
-      <td><strong>Required</strong></td>
+      <td>Username</td>
     </tr>
 
     <tr>
