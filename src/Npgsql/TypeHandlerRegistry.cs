@@ -56,14 +56,6 @@ namespace Npgsql
         static readonly Dictionary<Type, DbType> TypeToDbType;
 
         /// <summary>
-        /// Types that aren't to be loaded.
-        /// Currently contains arrays of types without binary I/O.
-        /// </summary>
-        static readonly HashSet<string> IgnoredTypes = new HashSet<string> {
-            "_aclitem", "_ghstore", "_gtsvector"
-        };
-
-        /// <summary>
         /// Caches, for each connection string, the results of the backend type query in the form of a list of type
         /// info structs keyed by the PG name.
         /// Repeated connections to the same connection string reuse the query results and avoid an additional
@@ -145,10 +137,6 @@ namespace Npgsql
                         Contract.Assume(backendType.Name != null);
                         Contract.Assume(backendType.OID != 0);
 
-                        if (IgnoredTypes.Contains(backendType.Name)) {
-                            continue;
-                        }
-
                         uint elementOID;
                         var typeChar = dr.GetString(2)[0];
                         switch (typeChar)
@@ -161,7 +149,7 @@ namespace Npgsql
                             elementOID = Convert.ToUInt32(dr[3]);
                             Contract.Assume(elementOID > 0);
                             if (!byOID.TryGetValue(elementOID, out backendType.Element)) {
-                                Log.Error(string.Format("Array type '{0}' refers to unknown element with OID {1}, skipping", backendType.Name, elementOID), connector.Id);
+                                Log.Trace(string.Format("Array type '{0}' refers to unknown element with OID {1}, skipping", backendType.Name, elementOID), connector.Id);
                                 continue;
                             }
                             backendType.Element.Array = backendType;
