@@ -1081,11 +1081,17 @@ namespace Npgsql
         /// </remarks>
         void FixupRowDescription(RowDescriptionMessage rowDescription, bool isFirst)
         {
-            for (var i = 0; i < rowDescription.NumFields; i++) {
-                rowDescription[i].FormatCode =
+            for (var i = 0; i < rowDescription.NumFields; i++)
+            {
+                var field = rowDescription[i];
+                field.FormatCode =
                     (UnknownResultTypeList == null || !isFirst ? AllResultTypesAreUnknown : UnknownResultTypeList[i])
                     ? FormatCode.Text
                     : FormatCode.Binary;
+                if (field.FormatCode == FormatCode.Text)
+                {
+                    field.Handler = Connection.Connector.TypeHandlerRegistry.UnrecognizedTypeHandler;
+                }
             }
         }
 
