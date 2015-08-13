@@ -31,19 +31,10 @@ namespace Npgsql.FrontendMessages
 {
     class StartupMessage : SimpleFrontendMessage
     {
-        readonly Dictionary<byte[], byte[]> _parameters;
+        readonly Dictionary<byte[], byte[]> _parameters = new Dictionary<byte[], byte[]>();
         int _length;
 
         const int ProtocolVersion3 = 3 << 16; // 196608
-
-        internal StartupMessage(string database, string username)
-        {
-            _parameters = new Dictionary<byte[], byte[]> {
-                { PGUtil.UTF8Encoding.GetBytes("database"),        PGUtil.UTF8Encoding.GetBytes(database) },
-                { PGUtil.UTF8Encoding.GetBytes("user"),            PGUtil.UTF8Encoding.GetBytes(username) },
-                { PGUtil.UTF8Encoding.GetBytes("client_encoding"), PGUtil.UTF8Encoding.GetBytes("UTF8")   }
-            };
-        }
 
         internal string this[string key]
         {

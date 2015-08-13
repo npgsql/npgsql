@@ -173,7 +173,6 @@ namespace Npgsql.Tests
         public void MandatoryConnectionStringParams()
         {
             Assert.That(() => new NpgsqlConnection("User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests").Open(), Throws.Exception.TypeOf<ArgumentException>());
-            Assert.That(() => new NpgsqlConnection("Server=localhost;User ID=npgsql_tests;Password=npgsql_tests").Open(), Throws.Exception.TypeOf<ArgumentException>());
         }
 
         [Test, Description("Reuses the same connection instance for a failed connection, then a successful one")]
@@ -343,6 +342,18 @@ namespace Npgsql.Tests
         }
 
         #endregion
+
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/703")]
+        public void NoDatabaseDefaultsToUsername()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Database = null };
+            using (var conn = new NpgsqlConnection(csb))
+            {
+                conn.Open();
+                Assert.That(ExecuteScalar("SELECT current_database()"), Is.EqualTo(csb.Username));
+            }
+        }
 
         [Test, Description("Breaks a connector while it's in the pool, without a keepalive and without")]
         [TestCase(false, TestName = "WithoutKeepAlive")]

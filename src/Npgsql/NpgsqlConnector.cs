@@ -416,7 +416,13 @@ namespace Npgsql
                 // Get a raw connection, possibly SSL...
                 RawOpen(connectTimeRemaining);
 
-                var startupMessage = new StartupMessage(Database, UserName);
+                var startupMessage = new StartupMessage();
+
+                startupMessage["client_encoding"] = "UTF8";
+                startupMessage["user"] = UserName;
+                if (!string.IsNullOrEmpty(Database)) {
+                    startupMessage["database"] = Database;
+                }
                 if (!string.IsNullOrEmpty(_settings.ApplicationName)) {
                     startupMessage["application_name"] = _settings.ApplicationName;
                 }
@@ -1788,8 +1794,9 @@ namespace Npgsql
         {
             BackendParams[name] = value;
 
-            if (name == "server_version")
+            switch (name)
             {
+            case "server_version":
                 // Deal with this here so that if there are
                 // changes in a future backend version, we can handle it here in the
                 // protocol handler and leave everybody else put of it.
@@ -1805,10 +1812,10 @@ namespace Npgsql
                 }
                 ServerVersion = new Version(versionString);
                 return;
-            }
 
-            if (name == "standard_conforming_strings") {
+            case "standard_conforming_strings":
                 UseConformantStrings = (value == "on");
+                return;
             }
         }
 
