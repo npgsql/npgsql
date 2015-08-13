@@ -282,6 +282,17 @@ namespace Npgsql.Tests.Types
             cmd.Dispose();
         }
 
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/711")]
+        public void KnownTypeAsUnknown()
+        {
+            using (var cmd = new NpgsqlCommand("SELECT 8", Conn))
+            {
+                cmd.AllResultTypesAreUnknown = true;
+                Assert.That(cmd.ExecuteScalar(), Is.EqualTo("8"));
+            }
+        }
+
         [Test, Description("Sends a null value parameter with no NpgsqlDbType or DbType, but with context for the backend to handle it")]
         public void UnrecognizedNull()
         {
