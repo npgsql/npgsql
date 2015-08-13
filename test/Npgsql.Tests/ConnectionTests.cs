@@ -209,6 +209,14 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        public void NoUsername()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Username = null };
+            using (var conn = new NpgsqlConnection(csb))
+                Assert.That(() => conn.Open(), Throws.Exception.TypeOf<ArgumentException>());
+        }
+
+        [Test]
         public void NoPassword()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Password = null };

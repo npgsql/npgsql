@@ -641,10 +641,16 @@ namespace Npgsql
                     return;
 
                 case AuthenticationRequestType.AuthenticationCleartextPassword:
+                    if (Password == null) {
+                        throw new Exception("No password has been provided but the backend requires one (in cleartext)");
+                    }
                     passwordMessage = PasswordMessage.CreateClearText(Password);
                     break;
 
                 case AuthenticationRequestType.AuthenticationMD5Password:
+                    if (Password == null) {
+                        throw new Exception("No password has been provided but the backend requires one (in MD5)");
+                    }
                     passwordMessage = PasswordMessage.CreateMD5(Password, UserName, ((AuthenticationMD5PasswordMessage)msg).Salt);
                     break;
 
