@@ -175,6 +175,7 @@ namespace Npgsql.Tests
             Assert.That(() => new NpgsqlConnection("User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests").Open(), Throws.Exception.TypeOf<ArgumentException>());
         }
 
+
         [Test, Description("Reuses the same connection instance for a failed connection, then a successful one")]
         public void FailConnectThenSucceed()
         {
@@ -205,6 +206,14 @@ namespace Npgsql.Tests
             {
                 ExecuteNonQuery("DROP DATABASE IF EXISTS foo");
             }
+        }
+
+        [Test]
+        public void NoPassword()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Password = null };
+            using (var conn = new NpgsqlConnection(csb))
+                Assert.That(() => conn.Open(), Throws.Exception.TypeOf<ArgumentException>());
         }
 
         #endregion
