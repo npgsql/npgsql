@@ -611,10 +611,9 @@ namespace Npgsql
                             throw;
                         }
                     }
-                    var empty = new List<Socket>();
                     var write = new List<Socket> { socket };
                     var error = new List<Socket> { socket };
-                    Socket.Select(empty, write, error, perIpTimeout);
+                    Socket.Select(null, write, error, perIpTimeout);
                     if (error.Any())
                         throw new SocketException((int)socket.GetSocketOption(SocketOptionLevel.Socket, SocketOptionName.Error));
                     if (!write.Any())
