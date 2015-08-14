@@ -3,7 +3,7 @@ layout: doc
 title: FAQ
 ---
 
-### I get an exception "The field field1 has a type currently unknown to Npgsql (OID XXXXX). You can retrieve it as a string by marking it as unknown".
+### <a name="unknown_type">I get an exception "The field field1 has a type currently unknown to Npgsql (OID XXXXX). You can retrieve it as a string by marking it as unknown".</a>
 
 Npgsql has to implement support for each PostgreSQL type, and it seems you've stumbled upon an unsupported type.
 
@@ -34,4 +34,17 @@ using (var cmd = new NpgsqlCommand(...)) {
   // Read everything as strings
 }
 {% endhighlight %}
+
+---
+
+### <a name="jsonb">I'm trying to write a JSONB type and am getting 'column "XXX" is of type jsonb but expression is of type text'</a>
+
+When sending a JSONB parameter, you must explicitly specify its type to be JSONB with NpgsqlDbType:
+
+{% highlight C# %}
+using (var cmd = new NpgsqlCommand("INSERT INTO foo (col) VALUES (@p)", conn)) {
+  cmd.Parameters.AddWithValue("p", NpgsqlDbType.Jsonb, jsonText);
+}
+{% endhighlight %}
+
 
