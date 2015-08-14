@@ -616,7 +616,7 @@ namespace Npgsql
                     var error = new List<Socket> { socket };
                     Socket.Select(empty, write, error, perIpTimeout);
                     if (error.Any())
-                        socket.Connect(ep);
+                        throw new SocketException((int)socket.GetSocketOption(SocketOptionLevel.Socket, SocketOptionName.Error));
                     if (!write.Any())
                     {
                         socket.Close();
