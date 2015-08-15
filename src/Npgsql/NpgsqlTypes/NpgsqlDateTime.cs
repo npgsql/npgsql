@@ -64,7 +64,7 @@ namespace NpgsqlTypes
             new NpgsqlDateTime(InternalType.NegativeInfinity, NpgsqlDate.Era, TimeSpan.Zero);
 
         // 9999-12-31
-        private static readonly int MaxDateTimeDay = 3652058;
+        private const int MaxDateTimeDay = 3652058;
 
         #endregion
 
@@ -171,9 +171,10 @@ namespace NpgsqlTypes
             {
                 if (!IsFinite)
                     throw new InvalidCastException("Can't convert infinite timestamp values to DateTime");
+                Contract.EndContractBlock();
+
                 if (_date.DaysSinceEra < 0 || _date.DaysSinceEra > MaxDateTimeDay)
                     throw new InvalidCastException("Out of the range of DateTime (year must be between 1 and 9999)");
-                Contract.EndContractBlock();
 
                 return new DateTime(Ticks, Kind);
             }
@@ -198,7 +199,7 @@ namespace NpgsqlTypes
                 if (_date.DaysSinceEra >= 1 && _date.DaysSinceEra <= MaxDateTimeDay - 1)
                 {
                     // Day between 0001-01-02 and 9999-12-30, so we can use DateTime and it will always succeed
-                    return new NpgsqlDateTime(Subtract(TimeZoneInfo.Local.GetUtcOffset(this.DateTime)).Ticks, DateTimeKind.Local);
+                    return new NpgsqlDateTime(Subtract(TimeZoneInfo.Local.GetUtcOffset(new DateTime(this.DateTime.Ticks, DateTimeKind.Local))).Ticks, DateTimeKind.Utc);
                 }
                 // Else there are no DST rules available in the system for outside the DateTime range, so just use the base offset
                 return new NpgsqlDateTime(Subtract(TimeZoneInfo.Local.BaseUtcOffset).Ticks, DateTimeKind.Utc);
@@ -229,7 +230,7 @@ namespace NpgsqlTypes
                 if (_date.DaysSinceEra >= 1 && _date.DaysSinceEra <= MaxDateTimeDay - 1)
                 {
                     // Day between 0001-01-02 and 9999-12-30, so we can use DateTime and it will always succeed
-                    return new NpgsqlDateTime(TimeZoneInfo.ConvertTimeFromUtc(this.DateTime, TimeZoneInfo.Local));
+                    return new NpgsqlDateTime(TimeZoneInfo.ConvertTimeFromUtc(new DateTime(this.DateTime.Ticks, DateTimeKind.Utc), TimeZoneInfo.Local));
                 }
                 // Else there are no DST rules available in the system for outside the DateTime range, so just use the base offset
                 return new NpgsqlDateTime(Add(TimeZoneInfo.Local.BaseUtcOffset).Ticks, DateTimeKind.Local);

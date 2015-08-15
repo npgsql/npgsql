@@ -368,6 +368,10 @@ namespace Npgsql.Tests.Types
                     }
                 }
             }
+
+            Assert.AreEqual(nDateTimeUtc, nDateTimeLocal.ToUniversalTime());
+            Assert.AreEqual(nDateTimeUtc, new NpgsqlDateTime(nDateTimeLocal.Ticks, DateTimeKind.Unspecified).ToUniversalTime());
+            Assert.AreEqual(nDateTimeLocal, nDateTimeUnspecified.ToLocalTime());
         }
 
         #endregion
