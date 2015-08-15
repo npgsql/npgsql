@@ -1161,6 +1161,15 @@ namespace Npgsql
             CheckOrdinal(ordinal);
             Contract.EndContractBlock();
 
+            if (Command.ObjectResultTypes != null)
+            {
+                var type = Command.ObjectResultTypes[ordinal];
+                if (type != null)
+                {
+                    return type;
+                }
+            }
+
             var fieldDescription = _rowDescription[ordinal];
             return fieldDescription.Handler.GetFieldType(fieldDescription);
         }
