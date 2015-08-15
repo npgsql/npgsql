@@ -17,6 +17,8 @@ please let us know and we'll add it.
   We'll continue to do bugfixes on the 2.2 branch for a while on a best-effort basis.
 * The Entity Framework provider packages have been renamed to align with Microsoft's new naming.
   The new packages are *EntityFramework5.Npgsql* and *EntityFramework6.Npgsql*. EntityFramework7.Npgsql is in alpha.
+* Composite (custom) types aren't supported yet, but this is a high-priority feature for us.
+  See [#441](https://github.com/npgsql/npgsql/issues/441).
 
 ## SSL
 
