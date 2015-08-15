@@ -387,7 +387,6 @@ namespace EntityFramework6.Npgsql.Tests
         }
 
         [Test]
-        [Category("TodoFor3.0")]
         public void DataTypes()
         {
             using (var context = new BloggingContext(ConnectionStringEF))
@@ -397,7 +396,6 @@ namespace EntityFramework6.Npgsql.Tests
                 IQueryable<int> oneRow = context.Posts.Where(p => false).Select(p => 1).Concat(new int[] { 1 });
 
                 Assert.AreEqual((byte)1, oneRow.Select(p => (byte)1).First());
-                Assert.AreEqual((sbyte)1, oneRow.Select(p => (sbyte)1).First());
                 Assert.AreEqual((short)1, oneRow.Select(p => (short)1).First());
                 Assert.AreEqual((long)1, oneRow.Select(p => (long)1).First());
                 Assert.AreEqual(1.25M, oneRow.Select(p => 1.25M).First());
@@ -412,6 +410,23 @@ namespace EntityFramework6.Npgsql.Tests
                 Assert.AreEqual(1.12e+12f, oneRow.Select(p => 1.12e+12f).First());
                 Assert.AreEqual(1.12e-12f, oneRow.Select(p => 1.12e-12f).First());
                 Assert.AreEqual((short)-32768, oneRow.Select(p => (short)-32768).First());
+                Assert.IsTrue(new byte[] { 1, 2 }.SequenceEqual(oneRow.Select(p => new byte[] { 1, 2 }).First()));
+
+                byte byteVal = 1;
+                short shortVal = -32768;
+                long longVal = 1L << 33;
+                decimal decimalVal = 1.25M;
+                double doubleVal = 1.12;
+                float floatVal = 1.22f;
+                byte[] byteArrVal = new byte[] { 1, 2 };
+
+                Assert.AreEqual(byteVal, oneRow.Select(p => byteVal).First());
+                Assert.AreEqual(shortVal, oneRow.Select(p => shortVal).First());
+                Assert.AreEqual(longVal, oneRow.Select(p => longVal).First());
+                Assert.AreEqual(decimalVal, oneRow.Select(p => decimalVal).First());
+                Assert.AreEqual(doubleVal, oneRow.Select(p => doubleVal).First());
+                Assert.AreEqual(floatVal, oneRow.Select(p => floatVal).First());
+                Assert.IsTrue(byteArrVal.SequenceEqual(oneRow.Select(p => byteArrVal).First()));
 
                 // A literal TimeSpan is written as an interval
                 Assert.AreEqual(new TimeSpan(1, 2, 3, 4), oneRow.Select(p => new TimeSpan(1, 2, 3, 4)).First());
@@ -437,6 +452,19 @@ namespace EntityFramework6.Npgsql.Tests
 
                 // String
                 Assert.AreEqual(@"a'b\c", oneRow.Select(p => @"a'b\c").First());
+            }
+        }
+
+        [Test]
+        public void SByteTest()
+        {
+            using (var context = new BloggingContext(ConnectionStringEF))
+            {
+                IQueryable<int> oneRow = context.Posts.Where(p => false).Select(p => 1).Concat(new int[] { 1 });
+
+                sbyte sbyteVal = -1;
+                Assert.AreEqual(sbyteVal, oneRow.Select(p => sbyteVal).First());
+                Assert.AreEqual((sbyte)1, oneRow.Select(p => (sbyte)1).First());
             }
         }
 

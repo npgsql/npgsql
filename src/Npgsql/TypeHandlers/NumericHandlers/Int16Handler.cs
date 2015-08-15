@@ -36,10 +36,10 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-numeric.html
     /// </remarks>
-    [TypeMapping("int2", NpgsqlDbType.Smallint, new[] { DbType.Int16, DbType.Byte }, new[] { typeof(short), typeof(byte) }, DbType.Int16)]
+    [TypeMapping("int2", NpgsqlDbType.Smallint, new[] { DbType.Int16, DbType.Byte, DbType.SByte }, new[] { typeof(short), typeof(byte), typeof(sbyte) }, DbType.Int16)]
     internal class Int16Handler : TypeHandler<short>,
-        ISimpleTypeReader<short>, ISimpleTypeWriter,
-        ISimpleTypeReader<byte>, ISimpleTypeReader<int>, ISimpleTypeReader<long>,
+        ISimpleTypeReader<short>, ISimpleTypeWriter, ISimpleTypeReader<byte>,
+        ISimpleTypeReader<sbyte>, ISimpleTypeReader<int>, ISimpleTypeReader<long>,
         ISimpleTypeReader<float>, ISimpleTypeReader<double>, ISimpleTypeReader<decimal>,
         ISimpleTypeReader<string>
     {
@@ -51,6 +51,11 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         byte ISimpleTypeReader<byte>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             return (byte)Read(buf, len, fieldDescription);
+        }
+
+        sbyte ISimpleTypeReader<sbyte>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        {
+            return (sbyte)Read(buf, len, fieldDescription);
         }
 
         int ISimpleTypeReader<int>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)

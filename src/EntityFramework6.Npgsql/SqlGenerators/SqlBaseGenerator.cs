@@ -32,11 +32,14 @@ using System.Data.Common.CommandTrees;
 using System.Data.Metadata.Edm;
 #endif
 using System.Linq;
+using NpgsqlTypes;
 
 namespace Npgsql.SqlGenerators
 {
     internal abstract class SqlBaseGenerator : DbExpressionVisitor<VisitedExpression>
     {
+        internal NpgsqlCommand _command;
+        internal bool _createParametersForConstants;
         private Version _version;
         internal Version Version { get { return _version; } set { _version = value; _useNewPrecedences = value >= new Version(9, 5); } }
         private bool _useNewPrecedences;
@@ -44,6 +47,7 @@ namespace Npgsql.SqlGenerators
         protected Dictionary<string, PendingProjectsNode> _refToNode = new Dictionary<string, PendingProjectsNode>();
         protected HashSet<InputExpression> _currentExpressions = new HashSet<InputExpression>();
         protected uint _aliasCounter = 0;
+        protected uint _parameterCount = 0;
 
         private static Dictionary<string, string> AggregateFunctionNames = new Dictionary<string, string>()
         {
@@ -762,11 +766,19 @@ namespace Npgsql.SqlGenerators
 
         public override VisitedExpression Visit(DbConstantExpression expression)
         {
-            // literals to be inserted into the sql
-            // may require some formatting depending on the type
-            //throw new NotImplementedException();
-            // TODO: this is just for testing
-            return new ConstantExpression(expression.Value, expression.ResultType);
+            if (_createParametersForConstants)
+            {
+                NpgsqlParameter parameter = new NpgsqlParameter();
+                parameter.ParameterName = "p_" + _parameterCount++;
+                parameter.NpgsqlDbType = NpgsqlProviderManifest.GetNpgsqlDbType(((PrimitiveType)expression.ResultType.EdmType).PrimitiveTypeKind);
+                parameter.Value = expression.Value;
+                _command.Parameters.Add(parameter);
+                return new LiteralExpression("@" + parameter.ParameterName);
+            }
+            else
+            {
+                return new ConstantExpression(expression.Value, expression.ResultType);
+            }
         }
 
         public override VisitedExpression Visit(DbComparisonExpression expression)

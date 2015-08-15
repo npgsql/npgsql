@@ -359,6 +359,18 @@ namespace Npgsql
 
         #endregion
 
+        #region Result Types Management
+
+        /// <summary>
+        /// Marks result types to be used when using GetValue on a data reader, on a column-by-column basis.
+        /// Used for Entity Framework 5-6 compability.
+        /// Only primitive numerical types and DateTimeOffset are supported.
+        /// Set the whole array or just a value to null to use default type.
+        /// </summary>
+        internal Type[] ObjectResultTypes { get; set; }
+
+        #endregion
+
         #region State management
 
         int _state;
@@ -1120,7 +1132,8 @@ namespace Npgsql
                 CommandType = CommandType,
                 DesignTimeVisible = DesignTimeVisible,
                 _allResultTypesAreUnknown = _allResultTypesAreUnknown,
-                _unknownResultTypeList = _unknownResultTypeList
+                _unknownResultTypeList = _unknownResultTypeList,
+                ObjectResultTypes = ObjectResultTypes
             };
             foreach (NpgsqlParameter parameter in Parameters)
             {
