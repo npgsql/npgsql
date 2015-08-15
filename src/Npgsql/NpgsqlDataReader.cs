@@ -1217,6 +1217,20 @@ namespace Npgsql
                 throw;
             }
 
+            // Used for Entity Framework <= 6 compability
+            if (Command.ObjectResultTypes != null && Command.ObjectResultTypes[ordinal] != null && result != null)
+            {
+                var type = Command.ObjectResultTypes[ordinal];
+                if (type == typeof(DateTimeOffset))
+                {
+                    result = new DateTimeOffset((DateTime)result);
+                }
+                else
+                {
+                    result = Convert.ChangeType(result, type);
+                }
+            }
+
             if (IsCaching)
             {
                 Contract.Assert(cache != null);
