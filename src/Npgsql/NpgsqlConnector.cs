@@ -614,13 +614,19 @@ namespace Npgsql
                     var write = new List<Socket> { socket };
                     var error = new List<Socket> { socket };
                     Socket.Select(null, write, error, perIpTimeout);
-                    if (error.Any())
+                    var errorCode = (int) socket.GetSocketOption(SocketOptionLevel.Socket, SocketOptionName.Error);
+                    if (errorCode != 0) {
                         throw new SocketException((int)socket.GetSocketOption(SocketOptionLevel.Socket, SocketOptionName.Error));
+                    }
                     if (!write.Any())
                     {
-                        socket.Close();
                         Log.Warn(string.Format("Timeout after {0} seconds when connecting to {1}",
                                  new TimeSpan(perIpTimeout * 10).TotalSeconds, ips[i]));
+                        try { socket.Close(); }
+                        catch
+                        {
+                            // ignored
+                        }
                         if (i == ips.Length - 1)
                         {
                             throw new TimeoutException();
@@ -631,12 +637,15 @@ namespace Npgsql
                     _socket = socket;
                     return;
                 }
-                catch (TimeoutException)
-                {
-                    throw;
-                }
+                catch (TimeoutException) { throw; }
                 catch
                 {
+                    try { socket.Close(); }
+                    catch
+                    {
+                        // ignored
+                    }
+
                     Log.Warn("Failed to connect to " + ips[i]);
 
                     if (i == ips.Length - 1)
@@ -693,12 +702,16 @@ namespace Npgsql
                     _socket = socket;
                     return;
                 }
-                catch (TimeoutException)
-                {
-                    throw;
-                }
+                catch (TimeoutException) { throw; }
+                catch (OperationCanceledException) { throw; }
                 catch
                 {
+                    try { socket.Close(); }
+                    catch
+                    {
+                        // ignored
+                    }
+
                     Log.Warn("Failed to connect to " + ips[i]);
 
                     if (i == ips.Length - 1)

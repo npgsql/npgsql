@@ -30,6 +30,7 @@ using System.Data;
 using System.Resources;
 using NUnit.Framework;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Text.RegularExpressions;
 using NpgsqlTypes;
@@ -135,8 +136,28 @@ namespace Npgsql.Tests
         [TestCase(false, TestName = "NonPooled")]
         public void ConnectionRefused(bool pooled)
         {
-            using (var conn = new NpgsqlConnection("Server=127.0.0.1;Port=44444;Database=d;User Id=x;Password=y" + (pooled ? "" : ";Pooling=false"))) {
-                Assert.That(() => conn.Open(), Throws.Exception.TypeOf<SocketException>());
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Port = 44444, Pooling = pooled };
+            using (var conn = new NpgsqlConnection(csb)) {
+                Assert.That(() => conn.Open(), Throws.Exception
+                    .TypeOf<SocketException>()
+                    .With.Property("SocketErrorCode").EqualTo(SocketError.ConnectionRefused)
+                );
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
+            }
+        }
+
+        [Test]
+        [TestCase(true, TestName = "Pooled")]
+        [TestCase(false, TestName = "NonPooled")]
+        public void ConnectionRefusedAsync(bool pooled)
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Port = 44444, Pooling = pooled };
+            using (var conn = new NpgsqlConnection(csb))
+            {
+                Assert.That(async () => await conn.OpenAsync(), Throws.Exception
+                    .TypeOf<SocketException>()
+                    .With.Property("SocketErrorCode").EqualTo(SocketError.ConnectionRefused)
+                );
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
             }
         }
@@ -145,7 +166,8 @@ namespace Npgsql.Tests
         [Ignore("Fails in a non-determinstic manner and only on the build server... investigate...")]
         public void InvalidUserId()
         {
-            using (var conn = new NpgsqlConnection(ConnectionString + ";userid=npgsql_tes;pooling=false"))
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Username = "unknown", Pooling = false };
+            using (var conn = new NpgsqlConnection(csb))
             {
                 Assert.That(conn.Open, Throws.Exception
                     .TypeOf<NpgsqlException>()
@@ -158,8 +180,8 @@ namespace Npgsql.Tests
         [Test, Description("Connects with a bad password to ensure the proper error is thrown")]
         public void AuthenticationFailure()
         {
-            var badConnString = Regex.Replace(ConnectionString, @"Password=\w+", "Password=bad_password");
-            using (var conn = new NpgsqlConnection(badConnString))
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Password = "bad", Pooling = false };
+            using (var conn = new NpgsqlConnection(csb))
             {
                 Assert.That(() => conn.Open(), Throws.Exception
                     .TypeOf<NpgsqlException>()
@@ -235,11 +257,14 @@ namespace Npgsql.Tests
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString) {
                 Host = unknownIp,
                 Pooling = false,
-                Timeout = 1
+                Timeout = 120
             };
             using (var conn = new NpgsqlConnection(csb))
             {
+                var sw = Stopwatch.StartNew();
                 Assert.That(() => conn.Open(), Throws.Exception.TypeOf<TimeoutException>());
+                Assert.That(sw.Elapsed.TotalSeconds, Is.GreaterThanOrEqualTo(csb.Timeout),
+                    string.Format("Timeout was supposed to happen after {0} seconds, but fired after {1}", csb.Timeout, sw.Elapsed.TotalSeconds));
                 Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
             }
         }
