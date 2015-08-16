@@ -122,6 +122,7 @@ namespace Npgsql
     {
         int ValidateAndGetLength(object value, NpgsqlParameter parameter);
         void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter);
+        object ReadAsObject(NpgsqlBuffer buf, int len, FieldDescription fieldDescription = null);
     }
 
     internal abstract partial class SimpleTypeHandler<T> : TypeHandler<T>, ISimpleTypeHandler<T>
@@ -146,6 +147,11 @@ namespace Npgsql
             }
 
             return asTypedHandler.Read(buf, len, fieldDescription);
+        }
+
+        public object ReadAsObject(NpgsqlBuffer buf, int len, FieldDescription fieldDescription = null)
+        {
+            return Read(buf, len, fieldDescription);
         }
     }
 
@@ -196,6 +202,7 @@ namespace Npgsql
         int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter);
         void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter);
         bool Write(ref DirectBuffer directBuf);
+        bool ReadAsObject(out object result);
     }
 
     [ContractClass(typeof(ChunkingTypeHandlerContracts<>))]
@@ -248,11 +255,13 @@ namespace Npgsql
             return result;
         }
 
-        /*
-        public object ReadAsObject(NpgsqlBuffer buf, int len, FieldDescription fieldDescription = null)
+        public bool ReadAsObject(out object result)
         {
-
-        }*/
+            T result2;
+            var completed = Read(out result2);
+            result = result2;
+            return completed;
+        }
     }
 
     /// <summary>

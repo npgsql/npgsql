@@ -32,11 +32,17 @@ using System.Text;
 
 namespace Npgsql.TypeHandlers
 {
-    internal interface IEnumHandler { }
+    internal interface IEnumHandler
+    {
+        Type ClrType { get; }
+    }
+
     internal class EnumHandler<TEnum> : SimpleTypeHandler<TEnum>, IEnumHandler where TEnum : struct
     {
         readonly Dictionary<TEnum, string> _enumToLabel;
         readonly Dictionary<string, TEnum> _labelToEnum;
+
+        public Type ClrType { get { return typeof (TEnum); } }
 
         public EnumHandler()
         {

@@ -38,14 +38,14 @@ namespace Npgsql.Tests.Types
         enum Mood { Sad, Ok, Happy };
 
         [Test]
-        public void LateRegistration()
+        public void LateMapping()
         {
             ExecuteNonQuery("CREATE TYPE pg_temp.mood AS ENUM ('Sad', 'Ok', 'Happy')");
             Conn.ReloadTypes();
-            Conn.RegisterEnum<Mood>("mood");
+            Conn.MapEnum<Mood>("mood");
             const Mood expected = Mood.Ok;
             var cmd = new NpgsqlCommand("SELECT @p1::MOOD, @p2::MOOD", Conn);
-            var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Enum) { EnumType = typeof(Mood), Value = expected };
+            var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Enum) { SpecificType = typeof(Mood), Value = expected };
             var p2 = new NpgsqlParameter { ParameterName = "p2", Value = expected };
             cmd.Parameters.Add(p1);
             cmd.Parameters.Add(p2);
@@ -69,21 +69,21 @@ namespace Npgsql.Tests.Types
             ExecuteNonQuery("CREATE TYPE pg_temp.mood AS ENUM ('Sad', 'Ok', 'Happy')");
             ExecuteNonQuery("CREATE TYPE pg_temp.test_enum AS ENUM ('label1', 'label2', 'label3')");
             Conn.ReloadTypes();
-            Conn.RegisterEnum<Mood>("mood");
-            Conn.RegisterEnum<TestEnum>("test_enum");
+            Conn.MapEnum<Mood>("mood");
+            Conn.MapEnum<TestEnum>("test_enum");
             var cmd = new NpgsqlCommand("SELECT @p1", Conn);
             var expected = new Mood[] { Mood.Ok, Mood.Sad };
-            var p = new NpgsqlParameter("p1", NpgsqlDbType.Enum | NpgsqlDbType.Array) { EnumType = typeof(Mood), Value = expected };
+            var p = new NpgsqlParameter("p1", NpgsqlDbType.Enum | NpgsqlDbType.Array) { SpecificType = typeof(Mood), Value = expected };
             cmd.Parameters.Add(p);
             var result = cmd.ExecuteScalar();
             Assert.AreEqual(expected, result);
         }
 
         [Test]
-        public void GlobalRegistration()
+        public void GlobalMapping()
         {
             ExecuteNonQuery("CREATE TYPE pg_temp.mood AS ENUM ('Sad', 'Ok', 'Happy')");
-            NpgsqlConnection.RegisterEnumGlobally<Mood>();
+            NpgsqlConnection.MapEnumGlobally<Mood>();
             Conn.ReloadTypes();
             const Mood expected = Mood.Ok;
             using (var cmd = new NpgsqlCommand("SELECT @p::MOOD", Conn))
@@ -107,12 +107,12 @@ namespace Npgsql.Tests.Types
         {
             ExecuteNonQuery("CREATE TYPE pg_temp.mood AS ENUM ('Sad', 'Ok', 'Happy')");
             Conn.ReloadTypes();
-            Conn.RegisterEnum<Mood>("mood");
+            Conn.MapEnum<Mood>("mood");
             var expected = new[] { Mood.Ok, Mood.Happy };
             using (var cmd = new NpgsqlCommand("SELECT @p1::MOOD[], @p2::MOOD[]", Conn))
             {
                 var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Enum | NpgsqlDbType.Array) {
-                    EnumType = typeof (Mood),
+                    SpecificType = typeof (Mood),
                     Value = expected
                 };
                 var p2 = new NpgsqlParameter { ParameterName = "p2", Value = expected };
@@ -137,7 +137,7 @@ namespace Npgsql.Tests.Types
         {
             ExecuteNonQuery("CREATE TYPE pg_temp.test_enum AS ENUM ('label1', 'label2', 'label3')");
             Conn.ReloadTypes();
-            Conn.RegisterEnum<TestEnum>("test_enum");
+            Conn.MapEnum<TestEnum>("test_enum");
             using (var cmd = Conn.CreateCommand())
             {
                 cmd.CommandText = "Select :p1, :p2, :p3, :p4, :p5";
@@ -149,9 +149,9 @@ namespace Npgsql.Tests.Types
                 cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p5", NpgsqlDbType = NpgsqlDbType.Enum, EnumType = typeof(TestEnum), Value = DBNull.Value });
 
                 Assert.AreEqual(NpgsqlDbType.Enum, cmd.Parameters[0].NpgsqlDbType);
-                Assert.AreEqual(typeof(TestEnum), cmd.Parameters[0].EnumType);
+                Assert.AreEqual(typeof(TestEnum), cmd.Parameters[0].SpecificType);
                 Assert.AreEqual(NpgsqlDbType.Array | NpgsqlDbType.Enum, cmd.Parameters[2].NpgsqlDbType);
-                Assert.AreEqual(typeof(TestEnum), cmd.Parameters[2].EnumType);
+                Assert.AreEqual(typeof(TestEnum), cmd.Parameters[2].SpecificType);
 
                 using (var rdr = cmd.ExecuteReader())
                 {

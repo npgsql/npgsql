@@ -355,7 +355,7 @@ namespace Npgsql.TypeHandlers
                     }
                     _buf.WriteInt32(_dimensions);
                     _buf.WriteInt32(1);  // HasNulls=1. Not actually used by the backend.
-                    _buf.WriteInt32((int)ElementHandler.OID);
+                    _buf.WriteUInt32(ElementHandler.OID);
                     var asArray = _writeValue as Array;
                     if (asArray != null)
                     {
