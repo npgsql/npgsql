@@ -74,7 +74,7 @@ namespace EntityFramework7.Npgsql.Migrations
             }
         }
 
-        protected override bool Exists(object value) => value != DBNull.Value;
+        protected override bool Exists(object value) => value != null && value != DBNull.Value;
 
         public override string GetInsertScript(HistoryRow row)
         {

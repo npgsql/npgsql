@@ -1,5 +1,6 @@
 ﻿using System.Data.Common;
 using System.Threading.Tasks;
+using Microsoft.Data.Entity;
 using Microsoft.Data.Entity.FunctionalTests;
 using Microsoft.Data.Entity.Internal;
 using Npgsql;
@@ -9,8 +10,22 @@ namespace EntityFramework7.Npgsql.FunctionalTests
 {
     public class MigrationsNpgsqlTest : MigrationsTestBase<MigrationsNpgsqlFixture>
     {
+        private readonly MigrationsNpgsqlFixture _fixture;
+
         public MigrationsNpgsqlTest(MigrationsNpgsqlFixture fixture) : base(fixture)
         {
+            _fixture = fixture;
+        }
+
+        [Fact]
+        public void MigrationHistory_Table_Is_Created_On_Empty_Database()
+        {
+            using (var db = _fixture.CreateContext())
+            {
+                db.Database.EnsureDeleted();
+                db.Database.EnsureCreated();
+                db.Database.ApplyMigrations();
+            }
         }
 
         protected override async Task AssertFirstMigrationAsync(DbConnection connection)
