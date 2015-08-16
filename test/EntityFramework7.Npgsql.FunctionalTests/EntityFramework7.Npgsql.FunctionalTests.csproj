@@ -134,6 +134,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AsNoTrackingNpgsqlTest.cs" />
+    <Compile Include="AsyncQueryNpgsqlTest.cs" />
     <Compile Include="BuiltInDataTypesNpgsqlFixture.cs" />
     <Compile Include="BuiltInDataTypesNpgsqlTest.cs" />
     <Compile Include="ChangeTrackingNpgsqlTest.cs" />
