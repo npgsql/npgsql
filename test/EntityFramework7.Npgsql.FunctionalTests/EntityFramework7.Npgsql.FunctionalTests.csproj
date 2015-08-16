@@ -137,6 +137,8 @@
     <Compile Include="BuiltInDataTypesNpgsqlFixture.cs" />
     <Compile Include="BuiltInDataTypesNpgsqlTest.cs" />
     <Compile Include="ChangeTrackingNpgsqlTest.cs" />
+    <Compile Include="MigrationsNpgsqlFixture.cs" />
+    <Compile Include="MigrationsNpgsqlTest.cs" />
     <Compile Include="NorthwindQueryNpgsqlFixture.cs" />
     <Compile Include="NpgsqlTestStore.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

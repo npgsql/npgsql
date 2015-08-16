@@ -17,7 +17,6 @@ using Microsoft.Data.Entity.Utilities;
 
 namespace EntityFramework7.Npgsql.Migrations
 {
-    // TODO: Copied from SqlServer, adjust to PostgreSQL
     public class NpgsqlHistoryRepository : HistoryRepository
     {
         private readonly NpgsqlUpdateSqlGenerator _sql;
@@ -56,18 +55,20 @@ namespace EntityFramework7.Npgsql.Migrations
             {
                 var builder = new StringBuilder();
 
-                builder.Append("SELECT OBJECT_ID(N'");
+                builder.Append("SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace WHERE ");
 
                 if (TableSchema != null)
                 {
                     builder
+                        .Append("n.nspname='")
                         .Append(_sql.EscapeLiteral(TableSchema))
-                        .Append(".");
+                        .Append("' AND ");
                 }
 
                 builder
+                    .Append("c.relname='")
                     .Append(_sql.EscapeLiteral(TableName))
-                    .Append("');");
+                    .Append("';");
 
                 return builder.ToString();
             }
@@ -86,9 +87,9 @@ namespace EntityFramework7.Npgsql.Migrations
                 .Append(", ")
                 .Append(_sql.DelimitIdentifier(ProductVersionColumnName))
                 .AppendLine(")")
-                .Append("VALUES (N'")
+                .Append("VALUES ('")
                 .Append(_sql.EscapeLiteral(row.MigrationId))
-                .Append("', N'")
+                .Append("', '")
                 .Append(_sql.EscapeLiteral(row.ProductVersion))
                 .Append("');")
                 .ToString();
@@ -102,7 +103,7 @@ namespace EntityFramework7.Npgsql.Migrations
                 .AppendLine(_sql.DelimitIdentifier(TableName, TableSchema))
                 .Append("WHERE ")
                 .Append(_sql.DelimitIdentifier(MigrationIdColumnName))
-                .Append(" = N'")
+                .Append(" = '")
                 .Append(_sql.EscapeLiteral(migrationId))
                 .Append("';")
                 .ToString();
@@ -112,22 +113,25 @@ namespace EntityFramework7.Npgsql.Migrations
         {
             var builder = new IndentedStringBuilder();
 
-            builder.Append("IF OBJECT_ID(N'");
+            builder.Append("IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace WHERE ");
 
             if (TableSchema != null)
             {
                 builder
+                    .Append("n.nspname='")
                     .Append(_sql.EscapeLiteral(TableSchema))
-                    .Append(".");
+                    .Append("' AND ");
             }
 
             builder
+                .Append("c.relname='")
                 .Append(_sql.EscapeLiteral(TableName))
-                .AppendLine("') IS NULL");
-            using (builder.Indent())
-            {
-                builder.AppendLines(GetCreateScript());
-            }
+                .Append("') THEN");
+
+
+            builder.AppendLines(GetCreateScript());
+
+            builder.Append(GetEndIfScript());
 
             return builder.ToString();
         }
@@ -141,7 +145,7 @@ namespace EntityFramework7.Npgsql.Migrations
                 .Append(_sql.DelimitIdentifier(TableName, TableSchema))
                 .Append(" WHERE ")
                 .Append(_sql.DelimitIdentifier(MigrationIdColumnName))
-                .Append(" = N'")
+                .Append(" = '")
                 .Append(_sql.EscapeLiteral(migrationId))
                 .AppendLine("')")
                 .Append("BEGIN")
@@ -157,13 +161,13 @@ namespace EntityFramework7.Npgsql.Migrations
                 .Append(_sql.DelimitIdentifier(TableName, TableSchema))
                 .Append(" WHERE ")
                 .Append(_sql.DelimitIdentifier(MigrationIdColumnName))
-                .Append(" = N'")
+                .Append(" = '")
                 .Append(_sql.EscapeLiteral(migrationId))
                 .AppendLine("')")
                 .Append("BEGIN")
                 .ToString();
         }
 
-        public override string GetEndIfScript() => "END";
+        public override string GetEndIfScript() => "END IF";
     }
 }
