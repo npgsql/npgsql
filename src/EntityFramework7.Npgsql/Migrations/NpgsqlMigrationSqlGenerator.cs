@@ -16,6 +16,7 @@ namespace EntityFramework7.Npgsql.Migrations
     public class NpgsqlMigrationSqlGenerator : MigrationSqlGenerator
     {
         private readonly NpgsqlUpdateSqlGenerator _sql;
+        private readonly NpgsqlTypeMapper _typeMapper;
 
         public NpgsqlMigrationSqlGenerator(
             [NotNull] NpgsqlUpdateSqlGenerator sqlGenerator,
@@ -24,6 +25,7 @@ namespace EntityFramework7.Npgsql.Migrations
             : base(sqlGenerator, typeMapper, annotations)
         {
             _sql = sqlGenerator;
+            _typeMapper = typeMapper;
         }
 
         public override void Generate(
@@ -254,9 +256,17 @@ namespace EntityFramework7.Npgsql.Migrations
             SqlBatchBuilder builder)
         {
             Check.NotEmpty(name, nameof(name));
-            Check.NotEmpty(type, nameof(type));
             Check.NotNull(annotatable, nameof(annotatable));
+            Check.NotNull(clrType, nameof(clrType));
             Check.NotNull(builder, nameof(builder));
+
+            if (type == null)
+            {
+                var property = FindProperty(model, schema, table, name);
+                type = property != null
+                    ? _typeMapper.MapPropertyType(property).DefaultTypeName
+                    : _typeMapper.GetDefaultMapping(clrType).DefaultTypeName;
+            }
 
             // TODO: Maybe implement computed columns via functions?
             // http://stackoverflow.com/questions/11165450/store-common-query-as-column/11166268#11166268
