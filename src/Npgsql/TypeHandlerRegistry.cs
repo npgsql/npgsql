@@ -641,6 +641,16 @@ namespace Npgsql
             BackendTypeCache.Clear();
         }
 
+        /// <summary>
+        /// Clears the internal type cache.
+        /// Useful for forcing a reload of the types after loading an extension.
+        /// </summary>
+        static internal void ClearBackendTypeCache(string connectionString)
+        {
+            List<BackendType> types;
+            BackendTypeCache.TryRemove(connectionString, out types);
+        }
+
         #endregion
 
         #region Debugging / Testing

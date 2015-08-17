@@ -1294,6 +1294,16 @@ namespace Npgsql
             NpgsqlConnectorPool.ConnectorPoolMgr.ClearAllPools();
         }
 
+        /// <summary>
+        /// Flushes the type cache for this connection's connection string and reloads the
+        /// types for this connection only.
+        /// </summary>
+        internal void ReloadTypes()
+        {
+            TypeHandlerRegistry.ClearBackendTypeCache(ConnectionString);
+            TypeHandlerRegistry.Setup(Connector, new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout)));
+        }
+
         #endregion Misc
     }
 
