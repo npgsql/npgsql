@@ -52,11 +52,16 @@ namespace Npgsql.Tests.Types
             var expected = new int[Conn.BufferSize / 4 + 100];
             for (var i = 0; i < expected.Length; i++)
                 expected[i] = i;
-            var cmd = new NpgsqlCommand("SELECT @p", Conn);
-            var p = new NpgsqlParameter { ParameterName = "p", Value = expected };
-            cmd.Parameters.Add(p);
-            Assert.That(cmd.ExecuteScalar(), Is.EqualTo(expected));
-            cmd.Dispose();
+            using (var cmd = new NpgsqlCommand("SELECT @p", Conn))
+            {
+                var p = new NpgsqlParameter { ParameterName = "p", Value = expected };
+                cmd.Parameters.Add(p);
+                using (var reader = cmd.ExecuteReader(CommandBehavior.SequentialAccess))
+                {
+                    reader.Read();
+                    Assert.That(reader[0], Is.EqualTo(expected));
+                }
+            }
         }
 
         [Test, Description("Roundtrips a large, two-dimensional array of ints that will be chunked")]
@@ -68,11 +73,16 @@ namespace Npgsql.Tests.Types
                 expected[0,i] = i;
             for (var i = 0; i < len; i++)
                 expected[1,i] = i;
-            var cmd = new NpgsqlCommand("SELECT @p", Conn);
-            var p = new NpgsqlParameter { ParameterName = "p", Value = expected };
-            cmd.Parameters.Add(p);
-            Assert.That(cmd.ExecuteScalar(), Is.EqualTo(expected));
-            cmd.Dispose();
+            using (var cmd = new NpgsqlCommand("SELECT @p", Conn))
+            {
+                var p = new NpgsqlParameter {ParameterName = "p", Value = expected};
+                cmd.Parameters.Add(p);
+                using (var reader = cmd.ExecuteReader(CommandBehavior.SequentialAccess))
+                {
+                    reader.Read();
+                    Assert.That(reader[0], Is.EqualTo(expected));
+                }
+            }
         }
 
         [Test, Description("Roundtrips a long, one-dimensional array of strings, including a null")]
@@ -85,11 +95,9 @@ namespace Npgsql.Tests.Types
             {
                 var p = new NpgsqlParameter("p", NpgsqlDbType.Array | NpgsqlDbType.Text) { Value = expected };
                 cmd.Parameters.Add(p);
-                using (var reader = cmd.ExecuteReader())
+                using (var reader = cmd.ExecuteReader(CommandBehavior.SequentialAccess))
                 {
                     reader.Read();
-                    Assert.That(reader.GetValue(0), Is.EqualTo(expected));
-                    Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(expected));
                     Assert.That(reader.GetFieldValue<string[]>(0), Is.EqualTo(expected));
                 }
             }
