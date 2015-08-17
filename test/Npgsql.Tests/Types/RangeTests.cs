@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -41,6 +42,30 @@ namespace Types
 
             reader.Dispose();
             cmd.Dispose();
+        }
+
+        [Test]
+        public void RangeWithLongSubtype()
+        {
+            ExecuteNonQuery("CREATE TYPE pg_temp.textrange AS RANGE(subtype=text)");
+            Conn.ReloadTypes();
+            Assert.That(ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+
+            var value = new NpgsqlRange<string>(
+                new string('a', Conn.BufferSize + 10),
+                new string('z', Conn.BufferSize + 10)
+            );
+
+            //var value = new NpgsqlRange<string>("bar", "foo");
+            using (var cmd = new NpgsqlCommand("SELECT @p", Conn))
+            {
+                cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType.Range | NpgsqlDbType.Text) { Value = value });
+                using (var reader = cmd.ExecuteReader(CommandBehavior.SequentialAccess))
+                {
+                    reader.Read();
+                    Assert.That(reader[0], Is.EqualTo(value));
+                }
+            }
         }
 
         [Test]
