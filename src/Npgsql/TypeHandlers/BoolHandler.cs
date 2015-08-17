@@ -32,15 +32,14 @@ namespace Npgsql.TypeHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-boolean.html
     /// </remarks>
     [TypeMapping("bool", NpgsqlDbType.Boolean, DbType.Boolean, typeof(bool))]
-    internal class BoolHandler : TypeHandler<bool>,
-        ISimpleTypeReader<bool>, ISimpleTypeWriter
+    internal class BoolHandler : SimpleTypeHandler<bool>
     {
-        public bool Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override bool Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             return buf.ReadByte() != 0;
         }
 
-        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
             if (!(value is bool))
             {
@@ -54,7 +53,7 @@ namespace Npgsql.TypeHandlers
             return 1;
         }
 
-        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
         {
             if (parameter != null && parameter.ConvertedValue != null) {
                 value = parameter.ConvertedValue;

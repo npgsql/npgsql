@@ -37,15 +37,14 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     [TypeMapping("oid", NpgsqlDbType.Oid)]
     [TypeMapping("xid", NpgsqlDbType.Xid)]
     [TypeMapping("cid", NpgsqlDbType.Cid)]
-    internal class UInt32Handler : TypeHandler<uint>,
-        ISimpleTypeReader<uint>, ISimpleTypeWriter
+    internal class UInt32Handler : SimpleTypeHandler<uint>
     {
-        public uint Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override uint Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             return (uint)buf.ReadInt32();
         }
 
-        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
             if (!(value is uint))
             {
@@ -59,7 +58,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             return 4;
         }
 
-        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
         {
             if (parameter != null && parameter.ConvertedValue != null) {
                 value = parameter.ConvertedValue;

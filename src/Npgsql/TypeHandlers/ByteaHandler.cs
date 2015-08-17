@@ -41,22 +41,21 @@ namespace Npgsql.TypeHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-binary.html
     /// </remarks>
     [TypeMapping("bytea", NpgsqlDbType.Bytea, DbType.Binary, new Type[] { typeof(byte[]), typeof(ArraySegment<byte>) })]
-    internal class ByteaHandler : TypeHandler<byte[]>,
-        IChunkingTypeReader<byte[]>, IChunkingTypeWriter
+    internal class ByteaHandler : ChunkingTypeHandler<byte[]>
     {
         bool _returnedBuffer;
         byte[] _bytes;
         int _pos;
         NpgsqlBuffer _buf;
 
-        public void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             _bytes = new byte[len];
             _pos = 0;
             _buf = buf;
         }
 
-        public bool Read(out byte[] result)
+        public override bool Read(out byte[] result)
         {
             var toRead = Math.Min(_bytes.Length - _pos, _buf.ReadBytesLeft);
             _buf.ReadBytes(_bytes, _pos, toRead);
@@ -94,7 +93,7 @@ namespace Npgsql.TypeHandlers
 
         ArraySegment<byte> _value;
 
-        public int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
+        public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             if (value is ArraySegment<byte>)
             {
@@ -119,7 +118,7 @@ namespace Npgsql.TypeHandlers
             throw CreateConversionException(value.GetType());
         }
 
-        public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
+        public override void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             _buf = buf;
 
@@ -142,7 +141,7 @@ namespace Npgsql.TypeHandlers
         }
 
         // ReSharper disable once RedundantAssignment
-        public bool Write(ref DirectBuffer directBuf)
+        public override bool Write(ref DirectBuffer directBuf)
         {
             // If we're back here after having returned a direct buffer, we're done.
             if (_returnedBuffer)

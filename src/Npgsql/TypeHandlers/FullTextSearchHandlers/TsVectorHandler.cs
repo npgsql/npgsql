@@ -34,7 +34,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-textsearch.html
     /// </summary>
     [TypeMapping("tsvector", NpgsqlDbType.TsVector, typeof(NpgsqlTsVector))]
-    internal class TsVectorHandler : TypeHandler<NpgsqlTsVector>, IChunkingTypeReader<NpgsqlTsVector>, IChunkingTypeWriter
+    internal class TsVectorHandler : ChunkingTypeHandler<NpgsqlTsVector>
     {
         // 2561 = 2046 (max length lexeme string) + (1) null terminator +
         // 2 (num_pos) + sizeof(int16) * 256 (max_num_pos (positions/wegihts))
@@ -47,7 +47,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
         int _bytesLeft;
         NpgsqlTsVector _value;
 
-        public void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             _buf = buf;
             _lexemes = new List<NpgsqlTsVector.Lexeme>();
@@ -56,7 +56,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             _bytesLeft = len;
         }
 
-        public bool Read(out NpgsqlTsVector result)
+        public override bool Read(out NpgsqlTsVector result)
         {
             result = null;
 
@@ -97,7 +97,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             return true;
         }
 
-        public int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
+        public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             // TODO: Implement length cache
             var vec = value as NpgsqlTsVector;
@@ -108,14 +108,14 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             return 4 + vec.Sum(l => Encoding.UTF8.GetByteCount(l.Text) + 1 + 2 + l.Count * 2);
         }
 
-        public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
+        public override void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             _lexemePos = -1;
             _buf = buf;
             _value = (NpgsqlTsVector)value;
         }
 
-        public bool Write(ref DirectBuffer directBuf)
+        public override bool Write(ref DirectBuffer directBuf)
         {
             if (_lexemePos == -1)
             {

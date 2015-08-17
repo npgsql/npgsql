@@ -40,8 +40,7 @@ namespace Npgsql.TypeHandlers
     /// http://www.postgresql.org/docs/current/static/rangetypes.html
     /// </remarks>
     /// <typeparam name="TElement">the range subtype</typeparam>
-    internal class RangeHandler<TElement> : TypeHandler<NpgsqlRange<TElement>>,
-        IChunkingTypeReader<NpgsqlRange<TElement>>, IChunkingTypeWriter
+    internal class RangeHandler<TElement> : ChunkingTypeHandler<NpgsqlRange<TElement>>
     {
         /// <summary>
         /// The type handler for the element that this range type holds
@@ -77,14 +76,14 @@ namespace Npgsql.TypeHandlers
 
         #region Read
 
-        public void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             _buf = buf;
             _state = State.Flags;
             _elementLen = -1;
         }
 
-        public bool Read(out NpgsqlRange<TElement> result)
+        public override bool Read(out NpgsqlRange<TElement> result)
         {
             switch (_state) {
             case State.Flags:
@@ -156,7 +155,7 @@ namespace Npgsql.TypeHandlers
                     Contract.Assume(_elementLen != -1);
                 }
 
-                var asSimpleReader = ElementHandler as ISimpleTypeReader<TElement>;
+                var asSimpleReader = ElementHandler as ISimpleTypeHandler<TElement>;
                 if (asSimpleReader != null) {
                     if (_buf.ReadBytesLeft < _elementLen) {
                         element = default(TElement);
@@ -167,7 +166,7 @@ namespace Npgsql.TypeHandlers
                     return true;
                 }
 
-                var asChunkingReader = ElementHandler as IChunkingTypeReader<TElement>;
+                var asChunkingReader = ElementHandler as IChunkingTypeHandler<TElement>;
                 if (asChunkingReader != null) {
                     if (!_preparedRead)
                     {
@@ -194,7 +193,7 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        public int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter = null)
+        public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter = null)
         {
             if (!(value is NpgsqlRange<TElement>))
                 throw CreateConversionException(value.GetType());
@@ -205,17 +204,17 @@ namespace Npgsql.TypeHandlers
             var lengthCachePos = lengthCache != null ? lengthCache.Position : 0;
             if (!range.IsEmpty)
             {
-                var asChunkingWriter = ElementHandler as IChunkingTypeWriter;
+                var asChunkingWriter = ElementHandler as IChunkingTypeHandler;
                 if (!range.LowerBoundInfinite) {
                     totalLen += 4 + (asChunkingWriter != null
                         ? asChunkingWriter.ValidateAndGetLength(range.LowerBound, ref lengthCache, null)
-                        : ((ISimpleTypeWriter)ElementHandler).ValidateAndGetLength(range.LowerBound, null));
+                        : ((ISimpleTypeHandler)ElementHandler).ValidateAndGetLength(range.LowerBound, null));
                 }
 
                 if (!range.UpperBoundInfinite) {
                     totalLen += 4 + (asChunkingWriter != null
                         ? asChunkingWriter.ValidateAndGetLength(range.UpperBound, ref lengthCache, null)
-                        : ((ISimpleTypeWriter)ElementHandler).ValidateAndGetLength(range.UpperBound, null));
+                        : ((ISimpleTypeHandler)ElementHandler).ValidateAndGetLength(range.UpperBound, null));
                 }
             }
 
@@ -228,7 +227,7 @@ namespace Npgsql.TypeHandlers
             return totalLen;
         }
 
-        public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter)
+        public override void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter)
         {
             _buf = buf;
             _lengthCache = lengthCache;
@@ -236,7 +235,7 @@ namespace Npgsql.TypeHandlers
             _state = State.Flags;
         }
 
-        public bool Write(ref DirectBuffer directBuf)
+        public override bool Write(ref DirectBuffer directBuf)
         {
             switch (_state)
             {
@@ -288,7 +287,7 @@ namespace Npgsql.TypeHandlers
                 return true;
             }
 
-            var asSimpleWriter = ElementHandler as ISimpleTypeWriter;
+            var asSimpleWriter = ElementHandler as ISimpleTypeHandler;
             if (asSimpleWriter != null)
             {
                 var elementLen = asSimpleWriter.ValidateAndGetLength(element, null);
@@ -298,7 +297,7 @@ namespace Npgsql.TypeHandlers
                 return true;
             }
 
-            var asChunkedWriter = ElementHandler as IChunkingTypeWriter;
+            var asChunkedWriter = ElementHandler as IChunkingTypeHandler;
             if (asChunkedWriter != null)
             {
                 if (!_wroteElementLen)

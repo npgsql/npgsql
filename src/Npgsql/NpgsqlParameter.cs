@@ -643,12 +643,12 @@ namespace Npgsql
             }
 
             // No length caching for simple types
-            var asSimpleWriter = Handler as ISimpleTypeWriter;
+            var asSimpleWriter = Handler as ISimpleTypeHandler;
             if (asSimpleWriter != null) {
                 return asSimpleWriter.ValidateAndGetLength(Value, this);
             }
 
-            var asChunkingWriter = Handler as IChunkingTypeWriter;
+            var asChunkingWriter = Handler as IChunkingTypeHandler;
             Contract.Assert(asChunkingWriter != null, String.Format("Handler {0} doesn't implement either ISimpleTypeWriter or IChunkingTypeWriter", Handler.GetType().Name));
             var lengthCache = LengthCache;
             var len = asChunkingWriter.ValidateAndGetLength(Value, ref lengthCache, this);

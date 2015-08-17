@@ -48,9 +48,7 @@ namespace Npgsql.TypeHandlers
     [TypeMapping("refcursor", NpgsqlDbType.Refcursor,          inferredDbType: DbType.String)]
     [TypeMapping("citext")]
     [TypeMapping("unknown")]
-    internal class TextHandler : TypeHandler<string>,
-        IChunkingTypeWriter,
-        IChunkingTypeReader<string>, IChunkingTypeReader<char[]>
+    internal class TextHandler : ChunkingTypeHandler<string>, IChunkingTypeHandler<char[]>
     {
         public override bool PreferTextWrite { get { return true; } }
 
@@ -75,17 +73,12 @@ namespace Npgsql.TypeHandlers
             _bytePos = -1;
         }
 
-        void IChunkingTypeReader<string>.PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             PrepareRead(buf, fieldDescription, len);
         }
 
-        void IChunkingTypeReader<char[]>.PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            PrepareRead(buf, fieldDescription, len);
-        }
-
-        public bool Read(out string result)
+        public override bool Read(out string result)
         {
             if (_bytePos == -1)
             {
@@ -213,7 +206,7 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        public int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter = null)
+        public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter = null)
         {
             if (lengthCache == null) {
                 lengthCache = new LengthCache(1);
@@ -262,7 +255,7 @@ namespace Npgsql.TypeHandlers
             }
         }
 
-        public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
+        public override void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             _buf = buf;
             _charPos = -1;
@@ -297,7 +290,7 @@ namespace Npgsql.TypeHandlers
             }
         }
 
-        public bool Write(ref DirectBuffer directBuf)
+        public override bool Write(ref DirectBuffer directBuf)
         {
             if (_charPos == -1)
             {

@@ -32,7 +32,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-datetime.html
     /// </remarks>
     [TypeMapping("timestamptz", NpgsqlDbType.TimestampTZ, DbType.DateTimeOffset, typeof(DateTimeOffset))]
-    internal class TimeStampTzHandler : TimeStampHandler, ISimpleTypeReader<NpgsqlDateTime>, ISimpleTypeReader<DateTimeOffset>
+    internal class TimeStampTzHandler : TimeStampHandler, ISimpleTypeHandler<DateTimeOffset>
     {
         public TimeStampTzHandler(TypeHandlerRegistry registry) : base(registry) {}
 
@@ -54,13 +54,13 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             }
         }
 
-        NpgsqlDateTime ISimpleTypeReader<NpgsqlDateTime>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        internal override NpgsqlDateTime ReadPsv(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             var ts = ReadTimeStamp(buf, len, fieldDescription);
             return new NpgsqlDateTime(ts.Date, ts.Time, DateTimeKind.Utc).ToLocalTime();
         }
 
-        DateTimeOffset ISimpleTypeReader<DateTimeOffset>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        DateTimeOffset ISimpleTypeHandler<DateTimeOffset>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             try
             {

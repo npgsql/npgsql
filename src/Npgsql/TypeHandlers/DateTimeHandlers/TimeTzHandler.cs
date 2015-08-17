@@ -31,13 +31,11 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-datetime.html
     /// </remarks>
     [TypeMapping("timetz", NpgsqlDbType.TimeTZ)]
-    internal class TimeTzHandler : TypeHandler<DateTimeOffset>,
-        ISimpleTypeReader<DateTimeOffset>, ISimpleTypeReader<DateTime>, ISimpleTypeReader<TimeSpan>,
-        ISimpleTypeWriter
+    internal class TimeTzHandler : SimpleTypeHandler<DateTimeOffset>, ISimpleTypeHandler<DateTime>, ISimpleTypeHandler<TimeSpan>
     {
         // Binary Format: int64 expressing microseconds, int32 expressing timezone in seconds, negative
 
-        DateTimeOffset ISimpleTypeReader<DateTimeOffset>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override DateTimeOffset Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             // Adjust from 1 microsecond to 100ns. Time zone (in seconds) is inverted.
             var ticks = buf.ReadInt64() * 10;
@@ -45,17 +43,17 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             return new DateTimeOffset(ticks, offset);
         }
 
-        DateTime ISimpleTypeReader<DateTime>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        DateTime ISimpleTypeHandler<DateTime>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
-            return Read<DateTimeOffset>(buf, len, fieldDescription).LocalDateTime;
+            return Read(buf, len, fieldDescription).LocalDateTime;
         }
 
-        TimeSpan ISimpleTypeReader<TimeSpan>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        TimeSpan ISimpleTypeHandler<TimeSpan>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
-            return Read<DateTimeOffset>(buf, len, fieldDescription).LocalDateTime.TimeOfDay;
+            return Read(buf, len, fieldDescription).LocalDateTime.TimeOfDay;
         }
 
-        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
             if (!(value is DateTimeOffset) && !(value is DateTime) && !(value is TimeSpan))
             {
@@ -64,7 +62,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             return 12;
         }
 
-        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
         {
             if (value is DateTimeOffset)
             {

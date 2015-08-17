@@ -38,15 +38,14 @@ namespace Npgsql.TypeHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-money.html
     /// </remarks>
     [TypeMapping("money", NpgsqlDbType.Money, DbType.Currency)]
-    internal class MoneyHandler : TypeHandler<decimal>,
-        ISimpleTypeReader<decimal>, ISimpleTypeWriter
+    internal class MoneyHandler : SimpleTypeHandler<decimal>
     {
-        public decimal Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override decimal Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             return buf.ReadInt64() / 100m;
         }
 
-        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
             if (!(value is decimal))
             {
@@ -60,7 +59,7 @@ namespace Npgsql.TypeHandlers
             return 8;
         }
 
-        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
         {
             var v = (decimal)(parameter != null && parameter.ConvertedValue != null
                 ? parameter.ConvertedValue

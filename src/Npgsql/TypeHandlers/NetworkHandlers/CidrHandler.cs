@@ -37,25 +37,24 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-net-types.html
     /// </remarks>
     [TypeMapping("cidr", NpgsqlDbType.Cidr)]
-    internal class CidrHandler : TypeHandler<NpgsqlInet>,
-        ISimpleTypeReader<NpgsqlInet>, ISimpleTypeWriter, ISimpleTypeReader<string>
+    internal class CidrHandler : SimpleTypeHandler<NpgsqlInet>, ISimpleTypeHandler<string>
     {
-        public NpgsqlInet Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override NpgsqlInet Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             return InetHandler.DoRead(buf, fieldDescription, len, true);
         }
 
-        string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        string ISimpleTypeHandler<string>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             return Read(buf, len, fieldDescription).ToString();
         }
 
-        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
             return InetHandler.DoValidateAndGetLength(value);
         }
 
-        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
         {
             InetHandler.DoWrite(value, buf, true);
         }

@@ -199,7 +199,7 @@ namespace Npgsql
                     throw new InvalidCastException("Column is null");
                 }
 
-                var result = handler.Read<T>(_buf, _columnLen);
+                var result = handler.ReadFully<T>(_buf, _columnLen);
                 _leftToReadInDataMsg -= _columnLen;
                 _columnLen = int.MinValue;   // Mark that the (next) column length hasn't been read yet
                 _column++;

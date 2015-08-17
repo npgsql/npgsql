@@ -36,15 +36,14 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-numeric.html
     /// </remarks>
     [TypeMapping("float8", NpgsqlDbType.Double, DbType.Double, typeof(double))]
-    internal class DoubleHandler : TypeHandler<double>,
-        ISimpleTypeReader<double>, ISimpleTypeWriter
+    internal class DoubleHandler : SimpleTypeHandler<double>
     {
-        public double Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override double Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             return buf.ReadDouble();
         }
 
-        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
             if (!(value is double))
             {
@@ -58,7 +57,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             return 8;
         }
 
-        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
         {
             if (parameter != null && parameter.ConvertedValue != null) {
                 value = parameter.ConvertedValue;

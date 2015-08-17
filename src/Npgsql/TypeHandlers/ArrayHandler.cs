@@ -34,13 +34,19 @@ using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers
 {
+    internal interface IArrayHandler
+    {
+        Type GetElementFieldType(FieldDescription fieldDescription);
+        Type GetElementPsvType(FieldDescription fieldDescription);
+    }
+
     /// <summary>
     /// Base class for all type handlers which handle PostgreSQL arrays.
     /// </summary>
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/arrays.html
     /// </remarks>
-    internal abstract class ArrayHandler : TypeHandler<Array>
+    internal class ArrayHandler<TElement> : ChunkingTypeHandler<Array>, IArrayHandler
     {
         /// <summary>
         /// The lower bound value sent to the backend when writing arrays. Normally 1 (the PG default) but
@@ -77,15 +83,30 @@ namespace Npgsql.TypeHandlers
             return typeof (Array);
         }
 
-        internal abstract Type GetElementFieldType(FieldDescription fieldDescription);
-        internal abstract Type GetElementPsvType(FieldDescription fieldDescription);
+        /// <summary>
+        /// The type of the elements contained within this array
+        /// </summary>
+        /// <param name="fieldDescription"></param>
+        public virtual Type GetElementFieldType(FieldDescription fieldDescription)
+        {
+            return typeof(TElement);
+        }
+
+        /// <summary>
+        /// The provider-specific type of the elements contained within this array,
+        /// </summary>
+        /// <param name="fieldDescription"></param>
+        public virtual Type GetElementPsvType(FieldDescription fieldDescription)
+        {
+            return typeof(TElement);
+        }
 
         /// <summary>
         /// The type handler for the element that this array type holds
         /// </summary>
         internal TypeHandler ElementHandler { get; private set; }
 
-        protected ArrayHandler(TypeHandler elementHandler)
+        public ArrayHandler(TypeHandler elementHandler)
         {
             LowerBound = 1;
             ElementHandler = elementHandler;
@@ -93,7 +114,7 @@ namespace Npgsql.TypeHandlers
 
         #region Read
 
-        protected void PrepareRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public override void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             Contract.Assert(_readState == ReadState.NeedPrepare);
             if (_readState != ReadState.NeedPrepare)  // Checks against recursion and bugs
@@ -106,7 +127,12 @@ namespace Npgsql.TypeHandlers
             _preparedRead = false;
         }
 
-        protected bool Read<TElement>(out Array result)
+        public override bool Read(out Array result)
+        {
+            return Read<TElement>(out result);
+        }
+
+        protected bool Read<TElement2>(out Array result)
         {
             switch (_readState)
             {
@@ -139,18 +165,18 @@ namespace Npgsql.TypeHandlers
                     }
                     if (_dimensions == 0)
                     {
-                        result = new TElement[0];
+                        result = new TElement2[0];
                         _readState = ReadState.NeedPrepare;
                         return true;
                     }
-                    _readValue = Array.CreateInstance(typeof(TElement), _dimLengths);
+                    _readValue = Array.CreateInstance(typeof(TElement2), _dimLengths);
                     _readState = ReadState.ReadingElements;
                     goto case ReadState.ReadingElements;
 
                 case ReadState.ReadingElements:
-                    var completed = _readValue is TElement[]
-                        ? ReadElementsOneDimensional<TElement>()
-                        : ReadElementsMultidimensional<TElement>();
+                    var completed = _readValue is TElement2[]
+                        ? ReadElementsOneDimensional<TElement2>()
+                        : ReadElementsMultidimensional<TElement2>();
 
                     if (!completed)
                     {
@@ -173,13 +199,13 @@ namespace Npgsql.TypeHandlers
         /// <summary>
         /// Optimized population for one-dimensional arrays without boxing/unboxing
         /// </summary>
-        bool ReadElementsOneDimensional<TElement>()
+        bool ReadElementsOneDimensional<TElement2>()
         {
-            var array = (TElement[])_readValue;
+            var array = (TElement2[])_readValue;
 
             for (; _index < array.Length; _index++)
             {
-                TElement element;
+                TElement2 element;
                 if (!ReadSingleElement(out element)) { return false; }
                 array[_index] = element;
             }
@@ -189,11 +215,11 @@ namespace Npgsql.TypeHandlers
         /// <summary>
         /// Recursively populates an array from PB binary data representation.
         /// </summary>
-        bool ReadElementsMultidimensional<TElement>()
+        bool ReadElementsMultidimensional<TElement2>()
         {
             while (true)
             {
-                TElement element;
+                TElement2 element;
                 if (!ReadSingleElement(out element)) { return false; }
                 _readValue.SetValue(element, _indices);
                 if (!MoveNextInMultidimensional()) { return true; }
@@ -219,7 +245,7 @@ namespace Npgsql.TypeHandlers
             return true;
         }
 
-        bool ReadSingleElement<TElement>(out TElement element)
+        bool ReadSingleElement<TElement2>(out TElement2 element)
         {
             try
             {
@@ -227,24 +253,24 @@ namespace Npgsql.TypeHandlers
                 {
                     if (_buf.ReadBytesLeft < 4)
                     {
-                        element = default(TElement);
+                        element = default(TElement2);
                         return false;
                     }
                     _elementLen = _buf.ReadInt32();
                     if (_elementLen == -1)
                     {
                         // TODO: Nullables
-                        element = default(TElement);
+                        element = default(TElement2);
                         return true;
                     }
                 }
 
-                var asSimpleReader = ElementHandler as ISimpleTypeReader<TElement>;
+                var asSimpleReader = ElementHandler as ISimpleTypeHandler<TElement2>;
                 if (asSimpleReader != null)
                 {
                     if (_buf.ReadBytesLeft < _elementLen)
                     {
-                        element = default(TElement);
+                        element = default(TElement2);
                         return false;
                     }
                     element = asSimpleReader.Read(_buf, _elementLen, _fieldDescription);
@@ -252,7 +278,7 @@ namespace Npgsql.TypeHandlers
                     return true;
                 }
 
-                var asChunkingReader = ElementHandler as IChunkingTypeReader<TElement>;
+                var asChunkingReader = ElementHandler as IChunkingTypeHandler<TElement2>;
                 if (asChunkingReader != null)
                 {
                     if (!_preparedRead)
@@ -291,7 +317,7 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        public virtual void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
+        public override void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             Contract.Assert(_readState == ReadState.NeedPrepare);
             if (_writeState != WriteState.NeedPrepare)  // Checks against recursion and bugs
@@ -307,7 +333,12 @@ namespace Npgsql.TypeHandlers
             _writeState = WriteState.WroteNothing;
         }
 
-        public bool Write<TElement>(ref DirectBuffer directBuf)
+        public override bool Write(ref DirectBuffer directBuf)
+        {
+            return Write<TElement>(ref directBuf);
+        }
+
+        public bool Write<TElement2>(ref DirectBuffer directBuf)
         {
             switch (_writeState)
             {
@@ -341,7 +372,7 @@ namespace Npgsql.TypeHandlers
                         _enumerator = _writeValue.GetEnumerator();
                     }
 
-                    var asGeneric = _writeValue as IList<TElement>;
+                    var asGeneric = _writeValue as IList<TElement2>;
                     _enumerator = asGeneric != null ? asGeneric.GetEnumerator() : _writeValue.GetEnumerator();
                     if (!_enumerator.MoveNext()) {
                         goto case WriteState.Cleanup;
@@ -351,7 +382,7 @@ namespace Npgsql.TypeHandlers
                     goto case WriteState.WritingElements;
 
                 case WriteState.WritingElements:
-                    var genericEnumerator = _enumerator as IEnumerator<TElement>;
+                    var genericEnumerator = _enumerator as IEnumerator<TElement2>;
                     if (genericEnumerator != null)
                     {
                         // TODO: Actually call the element writer generically...!
@@ -390,7 +421,7 @@ namespace Npgsql.TypeHandlers
                 return true;
             }
 
-            var asSimpleWriter = ElementHandler as ISimpleTypeWriter;
+            var asSimpleWriter = ElementHandler as ISimpleTypeHandler;
             if (asSimpleWriter != null)
             {
                 var elementLen = asSimpleWriter.ValidateAndGetLength(element, null);
@@ -400,7 +431,7 @@ namespace Npgsql.TypeHandlers
                 return true;
             }
 
-            var asChunkedWriter = ElementHandler as IChunkingTypeWriter;
+            var asChunkedWriter = ElementHandler as IChunkingTypeHandler;
             if (asChunkedWriter != null)
             {
                 if (!_wroteElementLen) {
@@ -421,10 +452,15 @@ namespace Npgsql.TypeHandlers
             throw PGUtil.ThrowIfReached();
         }
 
-        public int ValidateAndGetLength<TElement>(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
+        public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter = null)
+        {
+            return ValidateAndGetLength<TElement>(value, ref lengthCache, parameter);
+        }
+
+        public int ValidateAndGetLength<TElement2>(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             // Take care of single-dimensional arrays and generic IList<T>
-            var asGenericList = value as IList<TElement>;
+            var asGenericList = value as IList<TElement2>;
             if (asGenericList != null)
             {
                 if (lengthCache == null) {
@@ -466,7 +502,7 @@ namespace Npgsql.TypeHandlers
                 return len;
             }
 
-            throw new InvalidCastException(string.Format("Can't write type {0} as an array of {1}", value.GetType(), typeof(TElement)));
+            throw new InvalidCastException(string.Format("Can't write type {0} as an array of {1}", value.GetType(), typeof(TElement2)));
         }
 
         int GetSingleElementLength(object element, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
@@ -474,10 +510,10 @@ namespace Npgsql.TypeHandlers
             if (element == null || element is DBNull) {
                 return 0;
             }
-            var asChunkingWriter = ElementHandler as IChunkingTypeWriter;
+            var asChunkingWriter = ElementHandler as IChunkingTypeHandler;
             return asChunkingWriter != null
                 ? asChunkingWriter.ValidateAndGetLength(element, ref lengthCache, parameter)
-                : ((ISimpleTypeWriter)ElementHandler).ValidateAndGetLength(element, null);
+                : ((ISimpleTypeHandler)ElementHandler).ValidateAndGetLength(element, null);
         }
 
         enum WriteState
@@ -494,55 +530,6 @@ namespace Npgsql.TypeHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/arrays.html
     /// </remarks>
-    /// <typeparam name="TElement">The .NET type contained as an element within this array</typeparam>
-    internal class ArrayHandler<TElement> : ArrayHandler,
-        IChunkingTypeReader<Array>, IChunkingTypeWriter
-    {
-        /// <summary>
-        /// The type of the elements contained within this array
-        /// </summary>
-        /// <param name="fieldDescription"></param>
-        internal override Type GetElementFieldType(FieldDescription fieldDescription)
-        {
-            return typeof(TElement);
-        }
-
-        /// <summary>
-        /// The provider-specific type of the elements contained within this array,
-        /// </summary>
-        /// <param name="fieldDescription"></param>
-        internal override Type GetElementPsvType(FieldDescription fieldDescription)
-        {
-            return typeof(TElement);
-        }
-
-        public ArrayHandler(TypeHandler elementHandler)
-            : base(elementHandler) { }
-
-        public void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            base.PrepareRead(buf, fieldDescription, len);
-        }
-
-        public bool Read(out Array result)
-        {
-            return Read<TElement>(out result);
-        }
-
-        public int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
-        {
-            return ValidateAndGetLength<TElement>(value, ref lengthCache, parameter);
-        }
-
-        public bool Write(ref DirectBuffer directBuf)
-        {
-            return Write<TElement>(ref directBuf);
-        }
-    }
-
-    /// <remarks>
-    /// http://www.postgresql.org/docs/current/static/arrays.html
-    /// </remarks>
     /// <typeparam name="TNormal">The .NET type contained as an element within this array</typeparam>
     /// <typeparam name="TPsv">The .NET provider-specific type contained as an element within this array</typeparam>
     internal class ArrayHandlerWithPsv<TNormal, TPsv> : ArrayHandler<TNormal>, ITypeHandlerWithPsv
@@ -551,12 +538,12 @@ namespace Npgsql.TypeHandlers
         /// The provider-specific type of the elements contained within this array,
         /// </summary>
         /// <param name="fieldDescription"></param>
-        internal override Type GetElementPsvType(FieldDescription fieldDescription)
+        public override Type GetElementPsvType(FieldDescription fieldDescription)
         {
             return typeof(TPsv);
         }
 
-        internal override object ReadPsvAsObject(DataRowMessage row, FieldDescription fieldDescription)
+        internal override object ReadPsvAsObjectFully(DataRowMessage row, FieldDescription fieldDescription)
         {
             PrepareRead(row.Buffer, row.ColumnLen, fieldDescription);
             Array result;

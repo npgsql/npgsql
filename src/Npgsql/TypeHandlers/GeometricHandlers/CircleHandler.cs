@@ -40,28 +40,26 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-geometric.html
     /// </remarks>
     [TypeMapping("circle", NpgsqlDbType.Circle, typeof(NpgsqlCircle))]
-    internal class CircleHandler : TypeHandler<NpgsqlCircle>,
-        ISimpleTypeReader<NpgsqlCircle>, ISimpleTypeWriter,
-        ISimpleTypeReader<string>
+    internal class CircleHandler : SimpleTypeHandler<NpgsqlCircle>, ISimpleTypeHandler<string>
     {
-        public NpgsqlCircle Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override NpgsqlCircle Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             return new NpgsqlCircle(buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble());
         }
 
-        string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        string ISimpleTypeHandler<string>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             return Read(buf, len, fieldDescription).ToString();
         }
 
-        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
             if (!(value is NpgsqlCircle))
                 throw CreateConversionException(value.GetType());
             return 24;
         }
 
-        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
         {
             var v = (NpgsqlCircle)value;
             buf.WriteDouble(v.X);

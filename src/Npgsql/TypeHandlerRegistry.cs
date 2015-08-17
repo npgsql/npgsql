@@ -285,7 +285,7 @@ namespace Npgsql
                 return;
             }
 
-            ArrayHandler arrayHandler;
+            TypeHandler arrayHandler;
 
             var asBitStringHandler = elementHandler as BitStringHandler;
             if (asBitStringHandler != null) {
@@ -293,10 +293,10 @@ namespace Npgsql
                 arrayHandler = new BitStringArrayHandler(asBitStringHandler);
             } else if (elementHandler is ITypeHandlerWithPsv) {
                 var arrayHandlerType = typeof(ArrayHandlerWithPsv<,>).MakeGenericType(elementHandler.GetFieldType(), elementHandler.GetProviderSpecificFieldType());
-                arrayHandler = (ArrayHandler)Activator.CreateInstance(arrayHandlerType, elementHandler);
+                arrayHandler = (TypeHandler)Activator.CreateInstance(arrayHandlerType, elementHandler);
             } else {
                 var arrayHandlerType = typeof(ArrayHandler<>).MakeGenericType(elementHandler.GetFieldType());
-                arrayHandler = (ArrayHandler)Activator.CreateInstance(arrayHandlerType, elementHandler);
+                arrayHandler = (TypeHandler)Activator.CreateInstance(arrayHandlerType, elementHandler);
             }
 
             arrayHandler.PgName = "array";

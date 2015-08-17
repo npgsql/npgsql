@@ -1218,7 +1218,7 @@ namespace Npgsql
 
             object result;
             try {
-                result = handler.ReadValueAsObject(_row, fieldDescription);
+                result = handler.ReadValueAsObjectFully(_row, fieldDescription);
             } catch (SafeReadException e) {
                 throw e.InnerException;
             } catch {
@@ -1295,7 +1295,7 @@ namespace Npgsql
 
             // If the type handler can simply return the requested array, call it as usual. This is the case
             // of reading a string as char[], a bytea as a byte[]...
-            var tHandler = handler as ITypeReader<T>;
+            var tHandler = handler as ITypeHandler<T>;
             if (tHandler != null) {
                 return ReadColumn<T>(ordinal);
             }
@@ -1303,7 +1303,7 @@ namespace Npgsql
             // We need to treat this as an actual array type, these need special treatment because of
             // typing/generics reasons
             var elementType = t.GetElementType();
-            var arrayHandler = handler as ArrayHandler;
+            var arrayHandler = handler as IArrayHandler;
             if (arrayHandler == null) {
                 throw new InvalidCastException(String.Format("Can't cast database type {0} to {1}", fieldDescription.Handler.PgName, typeof(T).Name));
             }
@@ -1348,7 +1348,7 @@ namespace Npgsql
 
             object result;
             try {
-                result = handler.ReadPsvAsObject(_row, fieldDescription);
+                result = handler.ReadPsvAsObjectFully(_row, fieldDescription);
             } catch (SafeReadException e) {
                 throw e.InnerException;
             } catch {
@@ -1467,7 +1467,7 @@ namespace Npgsql
             var fieldDescription = _rowDescription[ordinal];
             try
             {
-                return fieldDescription.Handler.Read<T>(_row, Row.ColumnLen, fieldDescription);
+                return fieldDescription.Handler.ReadFully<T>(_row, Row.ColumnLen, fieldDescription);
             }
             catch (SafeReadException e)
             {
