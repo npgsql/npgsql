@@ -112,7 +112,11 @@ namespace Npgsql
                   (connector.SupportsRangeTypes ? @"WHEN a.typtype='r' THEN rngsubtype " : "")+
                   @"ELSE 0 " +
                 @"END AS elemoid, " +
-                @"CASE WHEN pg_proc.proname IN ('array_recv','oidvectorrecv') OR a.typtype='r' THEN 1 ELSE 0 END AS ord " +
+                @"CASE " +
+                  @"WHEN pg_proc.proname IN ('array_recv','oidvectorrecv') THEN 2 " +  // Arrays last
+                  @"WHEN a.typtype='r' THEN 1 " +                                      // Ranges before
+                  @"ELSE 0 " +                                                         // Base types first
+                @"END AS ord " +
                 @"FROM pg_type AS a " +
                 @"JOIN pg_proc ON pg_proc.oid = a.typreceive " +
                 @"LEFT OUTER JOIN pg_type AS b ON (b.oid = a.typelem) " +
