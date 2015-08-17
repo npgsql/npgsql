@@ -27,6 +27,7 @@ using Npgsql.Logging;
 
 namespace Npgsql.BackendMessages
 {
+    [Serializable]
     class ErrorOrNoticeMessage
     {
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();

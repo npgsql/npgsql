@@ -41,6 +41,7 @@ namespace Npgsql
     /// See http://www.postgresql.org/docs/current/static/errcodes-appendix.html,
     /// http://www.postgresql.org/docs/current/static/protocol-error-fields.html
     /// </remarks>
+    [Serializable]
     public sealed class NpgsqlException : DbException
     {
         readonly ErrorOrNoticeMessage _msg;
