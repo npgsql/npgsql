@@ -32,6 +32,14 @@ using System.Diagnostics.Contracts;
 
 namespace Npgsql.TypeHandlers
 {
+    /// <summary>
+    /// Type handler for PostgreSQL range types
+    /// </summary>
+    /// <remarks>
+    /// Introduced in PostgreSQL 9.2.
+    /// http://www.postgresql.org/docs/current/static/rangetypes.html
+    /// </remarks>
+    /// <typeparam name="TElement">the range subtype</typeparam>
     internal class RangeHandler<TElement> : TypeHandler<NpgsqlRange<TElement>>,
         IChunkingTypeReader<NpgsqlRange<TElement>>, IChunkingTypeWriter
     {

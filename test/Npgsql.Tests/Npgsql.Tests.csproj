@@ -93,6 +93,7 @@
     <Compile Include="TestUtil.cs" />
     <Compile Include="Types\MiscTypeTests.cs" />
     <Compile Include="Types\PostgisTests.cs" />
+    <Compile Include="Types\RangeTests.cs" />
     <Compile Include="Types\TextTests.cs" />
     <Compile Include="TypesTests.cs" />
   </ItemGroup>
