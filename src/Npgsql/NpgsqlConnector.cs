@@ -705,10 +705,12 @@ namespace Npgsql
         /// <summary>
         /// Prepends a message to be sent at the beginning of the next message chain.
         /// </summary>
-        internal void PrependInternalMessage(FrontendMessage msg)
+        internal void PrependInternalMessage(FrontendMessage msg, bool withTimeout=true)
         {
             // Set backend timeout if needed.
-            PrependBackendTimeoutMessage(ActualInternalCommandTimeout);
+            if (withTimeout) {
+                PrependBackendTimeoutMessage(ActualInternalCommandTimeout);
+            }
 
             if (msg is QueryMessage || msg is PregeneratedMessage || msg is SyncMessage)
             {
@@ -1472,7 +1474,9 @@ namespace Npgsql
             // Must rollback transaction before sending DISCARD ALL
             if (InTransaction)
             {
-                PrependInternalMessage(PregeneratedMessage.RollbackTransaction);
+                // If we're in a failed transaction we can't set the timeout
+                var withTimeout = TransactionStatus != TransactionStatus.InFailedTransactionBlock;
+                PrependInternalMessage(PregeneratedMessage.RollbackTransaction, withTimeout);
                 ClearTransaction();
             }
 
