@@ -1,3 +1,3 @@
 param($installPath, $toolsPath, $package, $project)
 
-Add-EFProvider $project 'Npgsql' 'Npgsql.NpgsqlServices, Npgsql.EntityFramework'
+Add-EFProvider $project 'Npgsql' 'Npgsql.NpgsqlServices, EntityFramework6.Npgsql'
