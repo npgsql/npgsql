@@ -9,7 +9,7 @@ using Npgsql.Tests;
 using NpgsqlTypes;
 using NUnit.Framework;
 
-namespace Types
+namespace Npgsql.Tests.Types
 {
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/rangetypes.html
