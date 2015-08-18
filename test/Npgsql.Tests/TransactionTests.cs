@@ -206,6 +206,29 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, Description("Closes a (pooled) connection with a failed transaction and a custom timeout")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/719")]
+        public void FailedTransactionOnCloseWithCustom()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Pooling = true };
+            using (var conn = new NpgsqlConnection(csb))
+            {
+                conn.Open();
+                var backendProcessId = conn.ProcessID;
+                conn.BeginTransaction();
+                using (var badCmd = new NpgsqlCommand("SEL", conn))
+                {
+                    badCmd.CommandTimeout = NpgsqlCommand.DefaultTimeout + 1;
+                    Assert.That(() => badCmd.ExecuteNonQuery(), Throws.Exception.TypeOf<NpgsqlException>());
+                }
+                // Connection now in failed transaction state, and a custom timeout is in place
+                conn.Close();
+                conn.Open();
+                Assert.That(conn.ProcessID, Is.EqualTo(backendProcessId));
+                Assert.That(ExecuteScalar("SELECT 1", conn), Is.EqualTo(1));
+            }
+        }
+
         [Test]
         [IssueLink("https://github.com/npgsql/npgsql/issues/555")]
         public void TransactionOnRecycledConnection()
