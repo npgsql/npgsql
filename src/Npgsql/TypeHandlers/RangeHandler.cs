@@ -32,6 +32,14 @@ using System.Diagnostics.Contracts;
 
 namespace Npgsql.TypeHandlers
 {
+    /// <summary>
+    /// Type handler for PostgreSQL range types
+    /// </summary>
+    /// <remarks>
+    /// Introduced in PostgreSQL 9.2.
+    /// http://www.postgresql.org/docs/current/static/rangetypes.html
+    /// </remarks>
+    /// <typeparam name="TElement">the range subtype</typeparam>
     internal class RangeHandler<TElement> : TypeHandler<NpgsqlRange<TElement>>,
         IChunkingTypeReader<NpgsqlRange<TElement>>, IChunkingTypeWriter
     {
@@ -54,6 +62,8 @@ namespace Npgsql.TypeHandlers
         State _state;
         FieldDescription _fieldDescription;
         int _elementLen;
+        bool _wroteElementLen;
+        bool _preparedRead;
 
         void CleanupState()
         {
@@ -70,14 +80,14 @@ namespace Npgsql.TypeHandlers
         public void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             _buf = buf;
-            _state = State.Start;
+            _state = State.Flags;
             _elementLen = -1;
         }
 
         public bool Read(out NpgsqlRange<TElement> result)
         {
             switch (_state) {
-            case State.Start:
+            case State.Flags:
                 if (_buf.ReadBytesLeft < 1)
                 {
                     result = default(NpgsqlRange<TElement>);
@@ -100,6 +110,7 @@ namespace Npgsql.TypeHandlers
                 goto case State.LowerBound;
 
             case State.LowerBound:
+                _state = State.LowerBound;
                 TElement lowerBound;
                 if (!ReadSingleElement(out lowerBound))
                 {
@@ -110,6 +121,7 @@ namespace Npgsql.TypeHandlers
                 goto case State.UpperBound;
 
             case State.UpperBound:
+                _state = State.UpperBound;
                 if (_value.UpperBoundInfinite) {
                     result = _value;
                     CleanupState();
@@ -157,11 +169,16 @@ namespace Npgsql.TypeHandlers
 
                 var asChunkingReader = ElementHandler as IChunkingTypeReader<TElement>;
                 if (asChunkingReader != null) {
-                    asChunkingReader.PrepareRead(_buf, _elementLen, _fieldDescription);
+                    if (!_preparedRead)
+                    {
+                        asChunkingReader.PrepareRead(_buf, _elementLen, _fieldDescription);
+                        _preparedRead = true;
+                    }
                     if (!asChunkingReader.Read(out element)) {
                         return false;
                     }
                     _elementLen = -1;
+                    _preparedRead = false;
                     return true;
                 }
 
@@ -185,6 +202,7 @@ namespace Npgsql.TypeHandlers
             var range = (NpgsqlRange<TElement>)value;
             var totalLen = 1;
 
+            var lengthCachePos = lengthCache != null ? lengthCache.Position : 0;
             if (!range.IsEmpty)
             {
                 var asChunkingWriter = ElementHandler as IChunkingTypeWriter;
@@ -201,6 +219,12 @@ namespace Npgsql.TypeHandlers
                 }
             }
 
+            // If we're traversing an already-populated length cache, rewind to first element slot so that
+            // the elements' handlers can access their length cache values
+            if (lengthCache != null && lengthCache.IsPopulated) {
+                lengthCache.Position = lengthCachePos;
+            }
+
             return totalLen;
         }
 
@@ -209,7 +233,7 @@ namespace Npgsql.TypeHandlers
             _buf = buf;
             _lengthCache = lengthCache;
             _value = (NpgsqlRange<TElement>)value;
-            _state = State.Start;
+            _state = State.Flags;
         }
 
         public bool Write(ref DirectBuffer directBuf)
@@ -217,77 +241,91 @@ namespace Npgsql.TypeHandlers
             var asChunkingWriter = ElementHandler as IChunkingTypeWriter;
             switch (_state)
             {
-                case State.Start:
-                    if (_buf.WriteSpaceLeft < 1) { return false; }
-                    _buf.WriteByte((byte)_value.Flags);
-
-                    if (_value.IsEmpty)
-                    {
-                        CleanupState();
-                        return true;
-                    }
-
-                    if (_value.LowerBoundInfinite) {
-                        goto case State.BeforeUpperBound;
-                    }
-
-                    if (asChunkingWriter != null) {
-                        asChunkingWriter.PrepareWrite(_value.LowerBound, _buf, _lengthCache, null);
-                    }
-                    _state = State.LowerBound;
-                    goto case State.LowerBound;
-
-                case State.LowerBound:
-                    if (asChunkingWriter == null)
-                    {
-                        var asSimpleWriter = (ISimpleTypeWriter)ElementHandler;
-                        // TODO: Cache length
-                        var len = asSimpleWriter.ValidateAndGetLength(_value.LowerBound, null);
-                        if (_buf.WriteSpaceLeft < len + 4) { return false; }
-                        _buf.WriteInt32(len);
-                        asSimpleWriter.Write(_value.LowerBound, _buf, null);
-                    }
-                    else if (!asChunkingWriter.Write(ref directBuf)) { return false; }
-                    goto case State.BeforeUpperBound;
-
-                case State.BeforeUpperBound:
-                    if (_value.UpperBoundInfinite) {
-                        CleanupState();
-                        return true;
-                    }
-                    if (asChunkingWriter != null) {
-                        asChunkingWriter.PrepareWrite(_value.UpperBound, _buf, _lengthCache, null);
-                    }
-                    _state = State.UpperBound;
-                    goto case State.UpperBound;
-
-                case State.UpperBound:
-                    if (asChunkingWriter == null)
-                    {
-                        var asSimpleWriter = (ISimpleTypeWriter)ElementHandler;
-                        // TODO: Cache length
-                        var len = asSimpleWriter.ValidateAndGetLength(_value.UpperBound, null);
-                        if (_buf.WriteSpaceLeft < len + 4) { return false; }
-                        _buf.WriteInt32(len);
-                        asSimpleWriter.Write(_value.UpperBound, _buf, null);
-                    }
-                    else if (!asChunkingWriter.Write(ref directBuf)) { return false; }
-
+            case State.Flags:
+                if (_buf.WriteSpaceLeft < 1) { return false; }
+                _buf.WriteByte((byte)_value.Flags);
+                if (_value.IsEmpty)
+                {
                     CleanupState();
                     return true;
+                }
+                goto case State.LowerBound;
 
-                default:
-                    throw PGUtil.ThrowIfReached();
+            case State.LowerBound:
+                _state = State.LowerBound;
+                if (_value.LowerBoundInfinite) {
+                    goto case State.UpperBound;
+                }
+
+                if (!WriteSingleElement(_value.LowerBound, ref directBuf)) { return false; }
+                goto case State.UpperBound;
+
+            case State.UpperBound:
+                _state = State.UpperBound;
+                if (_value.UpperBoundInfinite)
+                {
+                    CleanupState();
+                    return true;
+                }
+                if (!WriteSingleElement(_value.UpperBound, ref directBuf)) { return false; }
+                CleanupState();
+                return true;
+
+            default:
+                throw PGUtil.ThrowIfReached();
             }
+        }
+
+        // TODO: Duplicated from ArrayHandler... Refactor...
+        bool WriteSingleElement(object element, ref DirectBuffer directBuf)
+        {
+            if (element == null || element is DBNull)
+            {
+                if (_buf.WriteSpaceLeft < 4)
+                {
+                    return false;
+                }
+                _buf.WriteInt32(-1);
+                return true;
+            }
+
+            var asSimpleWriter = ElementHandler as ISimpleTypeWriter;
+            if (asSimpleWriter != null)
+            {
+                var elementLen = asSimpleWriter.ValidateAndGetLength(element, null);
+                if (_buf.WriteSpaceLeft < 4 + elementLen) { return false; }
+                _buf.WriteInt32(elementLen);
+                asSimpleWriter.Write(element, _buf, null);
+                return true;
+            }
+
+            var asChunkedWriter = ElementHandler as IChunkingTypeWriter;
+            if (asChunkedWriter != null)
+            {
+                if (!_wroteElementLen)
+                {
+                    if (_buf.WriteSpaceLeft < 4) { return false; }
+                    _buf.WriteInt32(asChunkedWriter.ValidateAndGetLength(element, ref _lengthCache, null));
+                    asChunkedWriter.PrepareWrite(element, _buf, _lengthCache, null);
+                    _wroteElementLen = true;
+                }
+                if (!asChunkedWriter.Write(ref directBuf))
+                {
+                    return false;
+                }
+                _wroteElementLen = false;
+                return true;
+            }
+
+            throw PGUtil.ThrowIfReached();
         }
 
         #endregion
 
         enum State
         {
-            Start,
+            Flags,
             LowerBound,
-            BeforeUpperBound,
             UpperBound,
             Done
         }

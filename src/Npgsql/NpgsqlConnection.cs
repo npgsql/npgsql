@@ -164,10 +164,10 @@ namespace Npgsql
         {
             if (string.IsNullOrWhiteSpace(Host))
                 throw new ArgumentException("Host can't be null");
-            if (string.IsNullOrWhiteSpace(Database))
-                throw new ArgumentException("Database can't be null");
             if (string.IsNullOrWhiteSpace(UserName) && !IntegratedSecurity)
                 throw new ArgumentException("Either Username must be specified or IntegratedSecurity must be on");
+            if (Settings.Password == null && !IntegratedSecurity)
+                throw new ArgumentException("Either password must be specified or IntegratedSecurity must be on");
             if (ContinuousProcessing && UseSslStream)
                 throw new ArgumentException("ContinuousProcessing can't be turned on with UseSslStream");
             Contract.EndContractBlock();
@@ -1255,6 +1255,16 @@ namespace Npgsql
         public static void ClearAllPools()
         {
             NpgsqlConnectorPool.ConnectorPoolMgr.ClearAllPools();
+        }
+
+        /// <summary>
+        /// Flushes the type cache for this connection's connection string and reloads the
+        /// types for this connection only.
+        /// </summary>
+        internal void ReloadTypes()
+        {
+            TypeHandlerRegistry.ClearBackendTypeCache(ConnectionString);
+            TypeHandlerRegistry.Setup(Connector);
         }
 
         #endregion Misc

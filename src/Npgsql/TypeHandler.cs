@@ -369,7 +369,7 @@ namespace Npgsql
             : this(pgName, npgsqlDbType, new DbType[0], new[] { type }, null) {}
 
         /// <summary>
-        /// Read-only parameter, only used by "unknown"
+        /// Read-only parameter
         /// </summary>
         internal TypeMappingAttribute(string pgName)
             : this(pgName, null, null, null, null) {}

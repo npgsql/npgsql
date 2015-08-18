@@ -28,6 +28,7 @@ using System.Data.Common;
 using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.Serialization;
 using Npgsql.BackendMessages;
 
 namespace Npgsql
@@ -41,6 +42,7 @@ namespace Npgsql
     /// See http://www.postgresql.org/docs/current/static/errcodes-appendix.html,
     /// http://www.postgresql.org/docs/current/static/protocol-error-fields.html
     /// </remarks>
+    [Serializable]
     public sealed class NpgsqlException : DbException
     {
         readonly ErrorOrNoticeMessage _msg;
@@ -163,6 +165,8 @@ namespace Npgsql
         public string Routine { get { return _msg.Routine; } }
 
         #endregion
+
+        NpgsqlException(SerializationInfo info, StreamingContext context) : base(info, context) { }
 
         internal NpgsqlException(NpgsqlBuffer buf)
         {

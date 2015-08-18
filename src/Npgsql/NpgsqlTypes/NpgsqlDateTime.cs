@@ -63,6 +63,9 @@ namespace NpgsqlTypes
         public static readonly NpgsqlDateTime NegativeInfinity =
             new NpgsqlDateTime(InternalType.NegativeInfinity, NpgsqlDate.Era, TimeSpan.Zero);
 
+        // 9999-12-31
+        private const int MaxDateTimeDay = 3652058;
+
         #endregion
 
         #region Constructors
@@ -158,17 +161,22 @@ namespace NpgsqlTypes
             }
         }
 
+        /// <summary>
+        /// Cast of an <see cref="NpgsqlDateTime"/> to a <see cref="DateTime"/>.
+        /// </summary>
+        /// <returns>An equivalent <see cref="DateTime"/>.</returns>
         public DateTime DateTime
         {
             get
             {
                 if (!IsFinite)
                     throw new InvalidCastException("Can't convert infinite timestamp values to DateTime");
-                if (Year < 1 || Year > 9999)
-                    throw new InvalidCastException("Out of the range of DateTime (year must be between 1 and 9999)");
                 Contract.EndContractBlock();
 
-                return new DateTime(Year, Month, Day, 0, 0, 0, Kind) + Time;
+                if (_date.DaysSinceEra < 0 || _date.DaysSinceEra > MaxDateTimeDay)
+                    throw new InvalidCastException("Out of the range of DateTime (year must be between 1 and 9999)");
+
+                return new DateTime(Ticks, Kind);
             }
         }
 
@@ -188,6 +196,12 @@ namespace NpgsqlTypes
             case InternalType.FiniteUnspecified:
                 // Treat as Local
             case InternalType.FiniteLocal:
+                if (_date.DaysSinceEra >= 1 && _date.DaysSinceEra <= MaxDateTimeDay - 1)
+                {
+                    // Day between 0001-01-02 and 9999-12-30, so we can use DateTime and it will always succeed
+                    return new NpgsqlDateTime(Subtract(TimeZoneInfo.Local.GetUtcOffset(new DateTime(this.DateTime.Ticks, DateTimeKind.Local))).Ticks, DateTimeKind.Utc);
+                }
+                // Else there are no DST rules available in the system for outside the DateTime range, so just use the base offset
                 return new NpgsqlDateTime(Subtract(TimeZoneInfo.Local.BaseUtcOffset).Ticks, DateTimeKind.Utc);
             case InternalType.FiniteUtc:
             case InternalType.Infinity:
@@ -213,6 +227,12 @@ namespace NpgsqlTypes
             case InternalType.FiniteUnspecified:
                 // Treat as UTC
             case InternalType.FiniteUtc:
+                if (_date.DaysSinceEra >= 1 && _date.DaysSinceEra <= MaxDateTimeDay - 1)
+                {
+                    // Day between 0001-01-02 and 9999-12-30, so we can use DateTime and it will always succeed
+                    return new NpgsqlDateTime(TimeZoneInfo.ConvertTimeFromUtc(new DateTime(this.DateTime.Ticks, DateTimeKind.Utc), TimeZoneInfo.Local));
+                }
+                // Else there are no DST rules available in the system for outside the DateTime range, so just use the base offset
                 return new NpgsqlDateTime(Add(TimeZoneInfo.Local.BaseUtcOffset).Ticks, DateTimeKind.Local);
             case InternalType.FiniteLocal:
             case InternalType.Infinity:
@@ -561,15 +581,9 @@ namespace NpgsqlTypes
         /// </summary>
         /// <param name="npgsqlDateTime">An <see cref="NpgsqlDateTime"/>.</param>
         /// <returns>An equivalent <see cref="DateTime"/>.</returns>
-        /// <remarks>Doesn't convert sub-millisecond precision at the moment.</remarks>
         public static explicit operator DateTime(NpgsqlDateTime npgsqlDateTime)
         {
-            // TODO: Convert sub-millisecond precision
-            return new DateTime(
-                npgsqlDateTime.Year, npgsqlDateTime.Month, npgsqlDateTime.Day,
-                npgsqlDateTime.Hour, npgsqlDateTime.Minute, npgsqlDateTime.Second,
-                npgsqlDateTime.Millisecond, npgsqlDateTime.Kind
-            );
+            return npgsqlDateTime.DateTime;
         }
 
         #endregion

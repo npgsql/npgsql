@@ -39,10 +39,16 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         public override DateTime Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             // TODO: Convert directly to DateTime without passing through NpgsqlTimeStamp?
-            var ts = ((ISimpleTypeReader<NpgsqlDateTime>)this).Read(buf, len, fieldDescription);
+            var ts = ReadTimeStamp(buf, len, fieldDescription);
             try
             {
-                return ts.DateTime;
+                if (ts.IsFinite)
+                    return ts.DateTime.ToLocalTime();
+                if (!_convertInfinityDateTime)
+                    throw new InvalidCastException("Can't convert infinite timestamptz values to DateTime");
+                if (ts.IsInfinity)
+                    return DateTime.MaxValue;
+                return DateTime.MinValue;
             } catch (Exception e) {
                 throw new SafeReadException(e);
             }
@@ -56,7 +62,12 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
 
         DateTimeOffset ISimpleTypeReader<DateTimeOffset>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
-            return new DateTimeOffset(ReadTimeStamp(buf, len, fieldDescription).DateTime, TimeSpan.Zero);
+            try
+            {
+                return new DateTimeOffset(ReadTimeStamp(buf, len, fieldDescription).DateTime, TimeSpan.Zero);
+            } catch (Exception e) {
+                throw new SafeReadException(e);
+            }
         }
 
         public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)

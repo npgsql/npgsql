@@ -408,6 +408,36 @@ namespace Npgsql.Tests
 
         #endregion
 
+        #region CommandBehavior.CloseConnection
+
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/693")]
+        public void CloseConnection()
+        {
+            using (var conn = new NpgsqlConnection(ConnectionString))
+            {
+                conn.Open();
+                using (var cmd = new NpgsqlCommand("SELECT 1", conn))
+                using (var reader = cmd.ExecuteReader(CommandBehavior.CloseConnection))
+                    while (reader.Read()) {}
+                Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
+            }
+        }
+
+        [Test]
+        public void CloseConnectionWithException()
+        {
+            using (var conn = new NpgsqlConnection(ConnectionString))
+            {
+                conn.Open();
+                using (var cmd = new NpgsqlCommand("SE", conn))
+                    Assert.That(() => cmd.ExecuteReader(CommandBehavior.CloseConnection), Throws.Exception);
+                Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
+            }
+        }
+
+        #endregion
+
         [Test, Description("Makes sure writing an unset parameter isn't allowed")]
         public void ParameterUnset()
         {

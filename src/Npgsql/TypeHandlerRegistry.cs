@@ -56,14 +56,6 @@ namespace Npgsql
         static readonly Dictionary<Type, DbType> TypeToDbType;
 
         /// <summary>
-        /// Types that aren't to be loaded.
-        /// Currently contains arrays of types without binary I/O.
-        /// </summary>
-        static readonly HashSet<string> IgnoredTypes = new HashSet<string> {
-            "_aclitem", "_ghstore", "_gtsvector"
-        };
-
-        /// <summary>
         /// Caches, for each connection string, the results of the backend type query in the form of a list of type
         /// info structs keyed by the PG name.
         /// Repeated connections to the same connection string reuse the query results and avoid an additional
@@ -120,7 +112,11 @@ namespace Npgsql
                   (connector.SupportsRangeTypes ? @"WHEN a.typtype='r' THEN rngsubtype " : "")+
                   @"ELSE 0 " +
                 @"END AS elemoid, " +
-                @"CASE WHEN pg_proc.proname='array_recv' OR a.typtype='r' THEN 1 ELSE 0 END AS ord " +
+                @"CASE " +
+                  @"WHEN pg_proc.proname IN ('array_recv','oidvectorrecv') THEN 2 " +  // Arrays last
+                  @"WHEN a.typtype='r' THEN 1 " +                                      // Ranges before
+                  @"ELSE 0 " +                                                         // Base types first
+                @"END AS ord " +
                 @"FROM pg_type AS a " +
                 @"JOIN pg_proc ON pg_proc.oid = a.typreceive " +
                 @"LEFT OUTER JOIN pg_type AS b ON (b.oid = a.typelem) " +
@@ -145,10 +141,6 @@ namespace Npgsql
                         Contract.Assume(backendType.Name != null);
                         Contract.Assume(backendType.OID != 0);
 
-                        if (IgnoredTypes.Contains(backendType.Name)) {
-                            continue;
-                        }
-
                         uint elementOID;
                         var typeChar = dr.GetString(2)[0];
                         switch (typeChar)
@@ -161,7 +153,7 @@ namespace Npgsql
                             elementOID = Convert.ToUInt32(dr[3]);
                             Contract.Assume(elementOID > 0);
                             if (!byOID.TryGetValue(elementOID, out backendType.Element)) {
-                                Log.Error(string.Format("Array type '{0}' refers to unknown element with OID {1}, skipping", backendType.Name, elementOID), connector.Id);
+                                Log.Trace(string.Format("Array type '{0}' refers to unknown element with OID {1}, skipping", backendType.Name, elementOID), connector.Id);
                                 continue;
                             }
                             backendType.Element.Array = backendType;
@@ -639,9 +631,23 @@ namespace Npgsql
 
         #region Misc
 
+        /// <summary>
+        /// Clears the internal type cache.
+        /// Useful for forcing a reload of the types after loading an extension.
+        /// </summary>
         static internal void ClearBackendTypeCache()
         {
             BackendTypeCache.Clear();
+        }
+
+        /// <summary>
+        /// Clears the internal type cache.
+        /// Useful for forcing a reload of the types after loading an extension.
+        /// </summary>
+        static internal void ClearBackendTypeCache(string connectionString)
+        {
+            List<BackendType> types;
+            BackendTypeCache.TryRemove(connectionString, out types);
         }
 
         #endregion

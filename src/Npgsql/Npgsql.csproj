@@ -158,6 +158,7 @@
     <Compile Include="BackendMessages\DataRowSequentialMessage.cs" />
     <Compile Include="FrontendMessages\CopyFailMessage.cs" />
     <Compile Include="ICancelable.cs" />
+    <Compile Include="Logging\ConsoleLoggingProvider.cs" />
     <Compile Include="Logging\NoOpLoggingProvider.cs" />
     <Compile Include="Logging\NpgsqlLogger.cs" />
     <Compile Include="Logging\INpgsqlLoggingProvider.cs" />

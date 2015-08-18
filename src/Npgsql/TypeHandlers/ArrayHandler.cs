@@ -62,11 +62,8 @@ namespace Npgsql.TypeHandlers
         int[] _dimLengths, _indices;
         int _index;
         int _elementLen;
-
-        /// <summary>
-        /// The array currently being written
-        /// </summary>
         bool _wroteElementLen;
+        bool _preparedRead;
 
         #endregion
 
@@ -106,6 +103,7 @@ namespace Npgsql.TypeHandlers
             _fieldDescription = fieldDescription;
             _elementLen = -1;
             _readState = ReadState.ReadNothing;
+            _preparedRead = false;
         }
 
         protected bool Read<TElement>(out Array result)
@@ -257,12 +255,17 @@ namespace Npgsql.TypeHandlers
                 var asChunkingReader = ElementHandler as IChunkingTypeReader<TElement>;
                 if (asChunkingReader != null)
                 {
-                    asChunkingReader.PrepareRead(_buf, _elementLen, _fieldDescription);
+                    if (!_preparedRead)
+                    {
+                        asChunkingReader.PrepareRead(_buf, _elementLen, _fieldDescription);
+                        _preparedRead = true;
+                    }
                     if (!asChunkingReader.Read(out element))
                     {
                         return false;
                     }
                     _elementLen = -1;
+                    _preparedRead = false;
                     return true;
                 }
 

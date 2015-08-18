@@ -31,13 +31,13 @@
           <param name="nuget.use.restore" value="restore" />
           <param name="nugetCustomPath" value="?NuGet.CommandLine.DEFAULT.nupkg" />
           <param name="nugetPathSelector" value="?NuGet.CommandLine.DEFAULT.nupkg" />
-          <param name="sln.path" value="Npgsql2015.sln" />
+          <param name="sln.path" value="Npgsql.sln" />
           <param name="teamcity.step.mode" value="default" />
         </parameters>
       </runner>
       <runner id="RUNNER_2" name="Build Debug" type="MSBuild">
         <parameters>
-          <param name="build-file-path" value="Npgsql2015.sln" />
+          <param name="build-file-path" value="Npgsql.sln" />
           <param name="dotNetCoverage.NCover.HTMLReport.File.Sort" value="0" />
           <param name="dotNetCoverage.NCover.HTMLReport.File.Type" value="1" />
           <param name="dotNetCoverage.NCover.Reg" value="selected" />
@@ -80,7 +80,7 @@
           <param name="nunit_enabled" value="checked" />
           <param name="nunit_environment" value="v4.0" />
           <param name="nunit_include"><![CDATA[test/Npgsql.Tests/bin/Debug/Npgsql.Tests.dll
-test/Npgsql.EntityFramework.Tests/bin/Debug/Npgsql.EntityFramework.Tests.dll]]></param>
+test/EntityFramework6.Npgsql.Tests/bin/Debug/EntityFramework6.Npgsql.Tests.dll]]></param>
           <param name="nunit_platform" value="MSIL" />
           <param name="nunit_version" value="NUnit-2.6.4" />
           <param name="teamcity.step.mode" value="default" />
@@ -95,7 +95,7 @@ test/Npgsql.EntityFramework.Tests/bin/Debug/Npgsql.EntityFramework.Tests.dll]]><
       </runner>
       <runner id="RUNNER_14" name="Build Release" type="MSBuild">
         <parameters>
-          <param name="build-file-path" value="Npgsql2015.sln" />
+          <param name="build-file-path" value="Npgsql.sln" />
           <param name="dotNetCoverage.NCover.HTMLReport.File.Sort" value="0" />
           <param name="dotNetCoverage.NCover.HTMLReport.File.Type" value="1" />
           <param name="dotNetCoverage.NCover.Reg" value="selected" />

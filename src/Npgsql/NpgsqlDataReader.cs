@@ -620,15 +620,15 @@ namespace Npgsql
 
         internal void Cleanup()
         {
-            if ((_behavior & CommandBehavior.CloseConnection) != 0)
-            {
-                _connection.Close();
-            }
-
             State = ReaderState.Closed;
             Command.State = CommandState.Idle;
             _connector.CurrentReader = null;
             _connector.EndUserAction();
+
+            if ((_behavior & CommandBehavior.CloseConnection) != 0)
+            {
+                _connection.Close();
+            }
 
             if (ReaderClosed != null)
             {

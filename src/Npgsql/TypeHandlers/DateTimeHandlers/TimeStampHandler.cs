@@ -45,7 +45,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         /// Whether to convert positive and negative infinity values to DateTime.{Max,Min}Value when
         /// a DateTime is requested
         /// </summary>
-        readonly bool _convertInfinityDateTime;
+        protected readonly bool _convertInfinityDateTime;
 
         public TimeStampHandler(TypeHandlerRegistry registry)
         {
