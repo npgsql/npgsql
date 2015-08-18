@@ -23,6 +23,7 @@
 
 using System;
 using System.Diagnostics.Contracts;
+using System.Runtime.Serialization;
 using Npgsql.Logging;
 
 namespace Npgsql.BackendMessages
@@ -49,6 +50,8 @@ namespace Npgsql.BackendMessages
         internal string File { get; private set; }
         internal string Line { get; private set; }
         internal string Routine { get; private set; }
+
+        ErrorOrNoticeMessage(SerializationInfo info, StreamingContext context) { }
 
         // ReSharper disable once FunctionComplexityOverflow
         internal ErrorOrNoticeMessage(NpgsqlBuffer buf)
