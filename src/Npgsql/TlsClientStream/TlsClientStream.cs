@@ -1046,12 +1046,18 @@ namespace TlsClientStream
 
             if (_pendingConnState.CipherSuite.KeyExchange == KeyExchange.DHE_RSA || _pendingConnState.CipherSuite.KeyExchange == KeyExchange.DHE_DSS)
             {
+                // DHE
 
                 // We add 1 extra 0-byte to each array to make sure the sign is positive (BigInteger constructor checks most significant bit)
                 var Plen = Utils.ReadUInt16(buf, ref pos);
                 _handshakeData.P = new byte[Plen + 1];
                 for (var i = 0; i < Plen; i++)
                     _handshakeData.P[i] = buf[pos + Plen - 1 - i];
+                // Reject prime moduli smaller than 1024 bits to prevent the Logjam attack, see weakdh.org
+                if (Plen < 128 || buf[pos] == 0)
+                {
+                    SendAlertFatal(AlertDescription.IllegalParameter, "Diffie-Hellman prime modulus smaller than 1024 bits offered by the server");
+                }
                 pos += Plen;
 
                 var Glen = Utils.ReadUInt16(buf, ref pos);
@@ -1065,6 +1071,9 @@ namespace TlsClientStream
                 for (var i = 0; i < Yslen; i++)
                     _handshakeData.Ys[i] = buf[pos + Yslen - 1 - i];
                 pos += Yslen;
+
+                // We could verify that the parameters are "good", but since we trust the certificate and the parameters are digitally signed,
+                // we trust that the server has made a good choice.
             }
             else if (_pendingConnState.CipherSuite.KeyExchange == KeyExchange.ECDHE_RSA || _pendingConnState.CipherSuite.KeyExchange == KeyExchange.ECDHE_ECDSA)
             {
@@ -1218,14 +1227,14 @@ namespace TlsClientStream
                 SendAlertFatal(AlertDescription.UnexpectedMessage);
             }
 
-            byte[] Xc = new byte[_handshakeData.P.Length];
+            byte[] Xc = new byte[33]; // Use a 256-bit exponent
             _rng.GetBytes(Xc);
-            Xc[Xc.Length - 1] = 0; // Set last byte to 0 to force a positive number. The array is already 1 longer than original P.
+            Xc[Xc.Length - 1] = 0; // Set last byte to 0 to force a positive number.
             var gBig = new BigInteger(_handshakeData.G);
             var pBig = new BigInteger(_handshakeData.P);
             var xcBig = new BigInteger(Xc);
 
-            // var ycBig = BigInteger.ModPow(gBig, xcBig, pBig);
+            // Note: these calculations are not done in constant-time, but should be a minor problem since we generate a new key for each session
             var Yc = Utils.BigEndianFromBigInteger(BigInteger.ModPow(gBig, xcBig, pBig));
             var Z = Utils.BigEndianFromBigInteger(BigInteger.ModPow(new BigInteger(_handshakeData.Ys), xcBig, pBig));
 
