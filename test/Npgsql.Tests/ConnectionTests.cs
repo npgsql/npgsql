@@ -607,7 +607,7 @@ namespace Npgsql.Tests
                 connection.Open();
                 using (var command = connection.CreateCommand())
                 {
-                    const String parameterName = "p_int";
+                    const String parameterName = "@p_int";
                     command.CommandText = "SELECT * FROM data WHERE int=" + String.Format(parameterMarkerFormat, parameterName);
                     command.Parameters.Add(new NpgsqlParameter(parameterName, 4));
                     using (var reader = command.ExecuteReader())
