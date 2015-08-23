@@ -536,20 +536,45 @@ namespace Npgsql
                 _queries.Add(new NpgsqlStatement("SELECT * FROM " + CommandText, new List<NpgsqlParameter>()));
                 break;
             case CommandType.StoredProcedure:
-                var numInput = _parameters.Count(p => p.IsInputDirection);
+                var inputList = _parameters.Where(p => p.IsInputDirection).ToList();
+                var numInput = inputList.Count;
                 var sb = new StringBuilder();
                 sb.Append("SELECT * FROM ");
                 sb.Append(CommandText);
                 sb.Append('(');
+                bool hasWrittenFirst = false;
                 for (var i = 1; i <= numInput; i++) {
-                    sb.Append('$');
-                    sb.Append(i);
-                    if (i < numInput) {
-                        sb.Append(',');
+                    var param = inputList[i - 1];
+                    if (param._autoAssignedName || param.CleanName == "")
+                    {
+                        if (hasWrittenFirst)
+                        {
+                            sb.Append(',');
+                        }
+                        sb.Append('$');
+                        sb.Append(i);
+                        hasWrittenFirst = true;
+                    }
+                }
+                for (var i = 1; i <= numInput; i++)
+                {
+                    var param = inputList[i - 1];
+                    if (!param._autoAssignedName && param.CleanName != "")
+                    {
+                        if (hasWrittenFirst)
+                        {
+                            sb.Append(',');
+                        }
+                        sb.Append('"');
+                        sb.Append(param.CleanName.Replace("\"", "\"\""));
+                        sb.Append("\" := ");
+                        sb.Append('$');
+                        sb.Append(i);
+                        hasWrittenFirst = true;
                     }
                 }
                 sb.Append(')');
-                _queries.Add(new NpgsqlStatement(sb.ToString(), _parameters.Where(p => p.IsInputDirection).ToList()));
+                _queries.Add(new NpgsqlStatement(sb.ToString(), inputList));
                 break;
             default:
                 throw PGUtil.ThrowIfReached();
@@ -1135,10 +1160,7 @@ namespace Npgsql
                 _unknownResultTypeList = _unknownResultTypeList,
                 ObjectResultTypes = ObjectResultTypes
             };
-            foreach (NpgsqlParameter parameter in Parameters)
-            {
-                clone.Parameters.Add(parameter.Clone());
-            }
+            _parameters.CloneTo(clone._parameters);
             return clone;
         }
 

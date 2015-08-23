@@ -74,6 +74,8 @@ namespace Npgsql
         internal TypeHandler Handler { get; private set; }
         internal FormatCode FormatCode { get; private set; }
 
+        internal bool _autoAssignedName;
+
         #endregion
 
         #region Constructors
@@ -486,6 +488,7 @@ namespace Npgsql
                     _collection.InvalidateHashLookups();
                     ClearBind();
                 }
+                _autoAssignedName = false;
             }
         }
 
@@ -577,9 +580,9 @@ namespace Npgsql
             get
             {
                 string name = ParameterName;
-                if (name[0] == ':' || name[0] == '@')
+                if (name.Length > 0 && (name[0] == ':' || name[0] == '@'))
                 {
-                    return name.Length > 1 ? name.Substring(1) : string.Empty;
+                    return name.Substring(1);
                 }
                 return name;
 
@@ -711,6 +714,7 @@ namespace Npgsql
             clone._value = _value;
             clone._npgsqlValue = _npgsqlValue;
             clone.SourceColumnNullMapping = SourceColumnNullMapping;
+            clone._autoAssignedName = _autoAssignedName;
 
             return clone;
         }

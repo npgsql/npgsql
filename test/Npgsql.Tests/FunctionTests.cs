@@ -67,7 +67,7 @@ namespace Npgsql.Tests
             ExecuteNonQuery(@"CREATE FUNCTION pg_temp.echo (IN param_in text, OUT param_out text) AS 'BEGIN param_out=param_in; END;' LANGUAGE 'plpgsql'");
             using (var cmd = new NpgsqlCommand("pg_temp.echo", Conn)) {
                 cmd.CommandType = CommandType.StoredProcedure;
-                cmd.Parameters.AddWithValue("@param", "hello");
+                cmd.Parameters.AddWithValue("@param_in", "hello");
                 var outParam = new NpgsqlParameter("param_out", DbType.String) { Direction = ParameterDirection.Output };
                 cmd.Parameters.Add(outParam);
                 cmd.ExecuteNonQuery();
@@ -96,9 +96,33 @@ namespace Npgsql.Tests
         public void Void()
         {
             var command = new NpgsqlCommand("pg_sleep", Conn);
-            command.Parameters.AddWithValue("sleep_time", 0);
+            command.Parameters.AddWithValue(0);
             command.CommandType = CommandType.StoredProcedure;
             command.ExecuteNonQuery();
+        }
+
+        [Test]
+        [MinPgVersion(9, 4, 0, "make_timestamp was introduced in 9.4")]
+        public void NamedParameters()
+        {
+            using (var command = new NpgsqlCommand("make_timestamp", Conn))
+            {
+                command.CommandType = CommandType.StoredProcedure;
+                command.Parameters.AddWithValue("year", 2015);
+                command.Parameters.AddWithValue("month", 8);
+                command.Parameters.AddWithValue("mday", 1);
+                command.Parameters.AddWithValue("hour", 2);
+                command.Parameters.AddWithValue("min", 3);
+                command.Parameters.AddWithValue("sec", 4);
+                var dt = (DateTime)command.ExecuteScalar();
+
+                Assert.AreEqual(new DateTime(2015, 8, 1, 2, 3, 4), dt);
+
+                command.Parameters[0].Value = 2014;
+                command.Parameters[0].ParameterName = ""; // 2014 will be sent as a positional parameter
+                dt = (DateTime)command.ExecuteScalar();
+                Assert.AreEqual(new DateTime(2014, 8, 1, 2, 3, 4), dt);
+            }
         }
 
         [Test]
