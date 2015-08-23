@@ -404,7 +404,7 @@ namespace NpgsqlTests
                 connection.Open();
                 using (var command = connection.CreateCommand())
                 {
-                    const String parameterName = "p_field_int4";
+                    const String parameterName = "@p_field_int4";
                     command.CommandText = "SELECT * FROM data WHERE field_int4=" + String.Format(parameterMarkerFormat, parameterName);
                     command.Parameters.Add(new NpgsqlParameter(parameterName, 4));
                     using (var reader = command.ExecuteReader())
