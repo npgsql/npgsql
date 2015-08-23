@@ -58,7 +58,7 @@
     <IdentifierPattern>(^\[\p{Lo}\p{Lu}\p{Ll}_@#][\p{Lo}\p{Lu}\p{Ll}\p{Nd}@$#_]*$)|(^\[[^\]\0]|\]\]+\]$)|(^\"[^\"\0]|\"\"+\"$)</IdentifierPattern>
     <IdentifierCase>1</IdentifierCase>
     <OrderByColumnsInSelect>false</OrderByColumnsInSelect>
-    <ParameterMarkerFormat>:{0}</ParameterMarkerFormat>
+    <ParameterMarkerFormat>{0}</ParameterMarkerFormat>
     <ParameterMarkerPattern>@[\p{Lo}\p{Lu}\p{Ll}\p{Lm}_@#][\p{Lo}\p{Lu}\p{Ll}\p{Lm}\p{Nd}\uff3f_@#\$]*(?=\s+|$)</ParameterMarkerPattern>
     <ParameterNameMaxLength>128</ParameterNameMaxLength>
     <ParameterNamePattern>^[\p{Lo}\p{Lu}\p{Ll}\p{Lm}_@#][\p{Lo}\p{Lu}\p{Ll}\p{Lm}\p{Nd}\uff3f_@#\$]*(?=\s+|$)</ParameterNamePattern>
