@@ -455,7 +455,51 @@ namespace NpgsqlTests
             Assert.That(quoted, Is.EqualTo("\"some\"\"column\""));
             Assert.That(cb.UnquoteIdentifier(quoted), Is.EqualTo(orig));
         }
+
+        [Test, Description("Makes sure a correct SQL string is built with GetUpdateCommand(true) using correct parameter names and placeholders")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/397")]
+        public void GetUpdateCommand()
+        {
+            using (var da = new NpgsqlDataAdapter("SELECT field_pk, field_int4 FROM data", Conn))
+            {
+                using (var cb = new NpgsqlCommandBuilder(da))
+                {
+                    var updateCommand = cb.GetUpdateCommand(true);
+                    da.UpdateCommand = updateCommand;
+
+                    var ds = new DataSet();
+                    da.Fill(ds);
+
+                    var table = ds.Tables[0];
+                    var row = table.Rows.Add();
+                    row["field_pk"] = 1;
+                    row["field_int4"] = 1;
+                    da.Update(ds);
+
+                    row["field_int4"] = 2;
+                    da.Update(ds);
+
+                    row.Delete();
+                    da.Update(ds);
+                }
+            }
+        }
+
+        [SetUp]
+        public void SetUp()
+        {
+            ExecuteNonQuery("DROP TABLE IF EXISTS data CASCADE");
+            ExecuteNonQuery("CREATE TABLE data (" +
+                            "field_pk SERIAL PRIMARY KEY," +
+                            "field_serial SERIAL," +
+                            "field_int2 SMALLINT," +
+                            "field_int4 INTEGER," +
+                            "field_numeric NUMERIC," +
+                            "field_timestamp TIMESTAMP" +
+                            ")");
+        }
     }
+
     /*
     [TestFixture]
     public class DataAdapterTestsV2 : DataAdapterTests
