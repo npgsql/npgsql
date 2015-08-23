@@ -238,7 +238,6 @@ namespace Npgsql.TypeHandlers
 
         public bool Write(ref DirectBuffer directBuf)
         {
-            var asChunkingWriter = ElementHandler as IChunkingTypeWriter;
             switch (_state)
             {
             case State.Flags:
