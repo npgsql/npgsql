@@ -37,7 +37,7 @@ namespace Npgsql.TypeHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-money.html
     /// </remarks>
-    [TypeMapping("money", NpgsqlDbType.Money, DbType.Currency)]
+    [TypeMapping("money", NpgsqlDbType.Money, dbType: DbType.Currency)]
     internal class MoneyHandler : SimpleTypeHandler<decimal>
     {
         public override decimal Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)

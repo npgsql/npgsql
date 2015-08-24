@@ -82,18 +82,25 @@ namespace Npgsql.Tests.Types
         /// http://www.postgresql.org/docs/current/static/datatype-money.html
         /// </summary>
         [Test]
-        public void ReadMoney()
+        public void Money()
         {
-            var cmd = new NpgsqlCommand("SELECT '12345.12'::MONEY, '-10.5'::MONEY", Conn);
-            var reader = cmd.ExecuteReader();
-            reader.Read();
-            Assert.That(reader.GetDecimal(0), Is.EqualTo(12345.12m));
-            Assert.That(reader.GetValue(0), Is.EqualTo(12345.12m));
-            Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(12345.12m));
-            Assert.That(reader.GetDecimal(1), Is.EqualTo(-10.5m));
-            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(decimal)));
-            reader.Close();
-            cmd.Dispose();
+            var expected1 = 12345.12m;
+            var expected2 = -10.5m;
+            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", Conn))
+            {
+                cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Money, expected1);
+                cmd.Parameters.Add(new NpgsqlParameter("p2", DbType.Currency) { Value = expected2 });
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetDecimal(0), Is.EqualTo(12345.12m));
+                    Assert.That(reader.GetValue(0), Is.EqualTo(12345.12m));
+                    Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(12345.12m));
+                    Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(decimal)));
+
+                    Assert.That(reader.GetDecimal(1), Is.EqualTo(-10.5m));
+                }
+            }
         }
 
         /// <summary>
