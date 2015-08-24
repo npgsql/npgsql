@@ -247,7 +247,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        [Timeout(5000)]
+        [Timeout(10000)]
         public void ConnectTimeout()
         {
             var unknownIp = Environment.GetEnvironmentVariable("NPGSQL_UNKNOWN_IP");
@@ -257,7 +257,7 @@ namespace Npgsql.Tests
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString) {
                 Host = unknownIp,
                 Pooling = false,
-                Timeout = 120
+                Timeout = 2
             };
             using (var conn = new NpgsqlConnection(csb))
             {
@@ -270,7 +270,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        [Timeout(5000)]
+        [Timeout(10000)]
         public void ConnectTimeoutAsync()
         {
             var unknownIp = Environment.GetEnvironmentVariable("NPGSQL_UNKNOWN_IP");
@@ -281,7 +281,7 @@ namespace Npgsql.Tests
             {
                 Host = unknownIp,
                 Pooling = false,
-                Timeout = 1
+                Timeout = 2
             };
             using (var conn = new NpgsqlConnection(csb))
             {
@@ -291,7 +291,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        [Timeout(5000)]
+        [Timeout(10000)]
         public void ConnectTimeoutCancel()
         {
             var unknownIp = Environment.GetEnvironmentVariable("NPGSQL_UNKNOWN_IP");

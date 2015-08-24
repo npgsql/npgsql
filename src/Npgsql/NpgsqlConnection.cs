@@ -177,30 +177,46 @@ namespace Npgsql
         /// </remarks>
         /// <param name="cancellationToken">The cancellation instruction.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
-        public override Task OpenAsync(CancellationToken cancellationToken)
+        public override async Task OpenAsync(CancellationToken cancellationToken)
         {
             var timeoutTs = TimeSpan.FromSeconds(ConnectionTimeout);
             var timeout = new NpgsqlTimeout(timeoutTs);
+            var timedOut = false;
+            CancellationTokenRegistration? ctRegistration = null;
             if (ConnectionTimeout != 0)
             {
                 // The connection timeout event is transmitted by triggering the cancellation token.
-                // However, since a cancellation token can't be triggered directly we chain it to a
-                // new cancellation token source
-                var cts = new CancellationTokenSource(timeoutTs);
-                cancellationToken.Register(() => cts.Cancel());
-                cancellationToken = cts.Token;
+                // However, a ct can't be triggered directly (need a source), and we also want to distinguish a
+                // timeout-triggered cancellation from a user-triggered cancellation.
+                // So we wire up the user's ct and a new timeout ct to a new composite ct which will be used.
+                var timeoutCts = new CancellationTokenSource(timeoutTs);
+                var compositeCts = new CancellationTokenSource();
+                timeoutCts.Token.Register(() =>
+                {
+                    timedOut = true;
+                    compositeCts.Cancel();
+                });
+                ctRegistration = cancellationToken.Register(() => compositeCts.Cancel());
+                cancellationToken = compositeCts.Token;
             }
             try
             {
-                return OpenInternalAsync(cancellationToken, timeout);
+                await OpenInternalAsync(cancellationToken, timeout);
             }
             catch (TaskCanceledException e)
             {
-                if (timeout.HasExpired)
+                if (timedOut)
                 {
                     throw new TimeoutException("The connection attempt timed out", e);
                 }
                 throw;
+            }
+            finally
+            {
+                if (ctRegistration.HasValue)
+                {
+                    ctRegistration.Value.Dispose();
+                }
             }
         }
 
