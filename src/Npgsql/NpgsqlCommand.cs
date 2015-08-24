@@ -819,16 +819,18 @@ namespace Npgsql
         public override async Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            cancellationToken.Register(Cancel);
-            try
+            using (cancellationToken.Register(Cancel))
             {
-                return await ExecuteNonQueryInternalAsync(cancellationToken).ConfigureAwait(false);
-            }
-            catch (NpgsqlException e)
-            {
-                if (e.Code == "57014")
-                    throw new TaskCanceledException(e.Message);
-                throw;
+                try
+                {
+                    return await ExecuteNonQueryInternalAsync(cancellationToken).ConfigureAwait(false);
+                }
+                catch (NpgsqlException e)
+                {
+                    if (e.Code == "57014")
+                        throw new TaskCanceledException(e.Message);
+                    throw;
+                }
             }
         }
 
@@ -874,16 +876,18 @@ namespace Npgsql
         public override async Task<object> ExecuteScalarAsync(CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            cancellationToken.Register(Cancel);
-            try
+            using (cancellationToken.Register(Cancel))
             {
-                return await ExecuteScalarInternalAsync(cancellationToken).ConfigureAwait(false);
-            }
-            catch (NpgsqlException e)
-            {
-                if (e.Code == "57014")
-                    throw new TaskCanceledException(e.Message);
-                throw;
+                try
+                {
+                    return await ExecuteScalarInternalAsync(cancellationToken).ConfigureAwait(false);
+                }
+                catch (NpgsqlException e)
+                {
+                    if (e.Code == "57014")
+                        throw new TaskCanceledException(e.Message);
+                    throw;
+                }
             }
         }
 
@@ -944,16 +948,18 @@ namespace Npgsql
         protected async override Task<DbDataReader> ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            cancellationToken.Register(Cancel);
-            try
+            using (cancellationToken.Register(Cancel))
             {
-                return await ExecuteDbDataReaderInternalAsync(cancellationToken, behavior).ConfigureAwait(false);
-            }
-            catch (NpgsqlException e)
-            {
-                if (e.Code == "57014")
-                    throw new TaskCanceledException(e.Message);
-                throw;
+                try
+                {
+                    return await ExecuteDbDataReaderInternalAsync(cancellationToken, behavior).ConfigureAwait(false);
+                }
+                catch (NpgsqlException e)
+                {
+                    if (e.Code == "57014")
+                        throw new TaskCanceledException(e.Message);
+                    throw;
+                }
             }
         }
 
