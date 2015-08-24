@@ -126,8 +126,9 @@ namespace Npgsql
                   @"ELSE 0 " +
                 @"END AS elemoid, " +
                 @"CASE " +
-                  @"WHEN pg_proc.proname IN ('array_recv','oidvectorrecv') THEN 2 " +  // Arrays last
-                  @"WHEN a.typtype='r' THEN 1 " +                                      // Ranges before
+                  @"WHEN pg_proc.proname IN ('array_recv','oidvectorrecv') THEN 3 " +  // Arrays last
+                  @"WHEN a.typtype='r' THEN 2 " +                                      // Ranges before
+                  @"WHEN a.typtype='c' THEN 1 " +                                      // Composite types before
                   @"ELSE 0 " +                                                         // Base types first
                 @"END AS ord " +
                 @"FROM pg_type AS a " +
