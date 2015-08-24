@@ -229,6 +229,21 @@ namespace Npgsql.Tests.Types
             }
         }
 
+        [Test, Description("PostgreSQL records should be returned as arrays of objects")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/724")]
+        public void Record()
+        {
+            ExecuteNonQuery("CREATE FUNCTION pg_temp.foo () RETURNS RECORD AS $$ SELECT 1,2 $$ LANGUAGE SQL");
+            using (var cmd = new NpgsqlCommand("SELECT pg_temp.foo()", Conn))
+            {
+                var record = cmd.ExecuteScalar();
+                Assert.That(record, Is.TypeOf<object[]>());
+                var array = (object[])record;
+                Assert.That(array[0], Is.EqualTo(1));
+                Assert.That(array[1], Is.EqualTo(2));
+            }
+        }
+
         [Test, Description("Makes sure that setting DbType.Object makes Npgsql infer the type")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/694")]
         public void DbTypeCausesInference()

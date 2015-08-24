@@ -134,7 +134,12 @@ namespace Npgsql
                 @"JOIN pg_proc ON pg_proc.oid = a.typreceive " +
                 @"LEFT OUTER JOIN pg_type AS b ON (b.oid = a.typelem) " +
                 (connector.SupportsRangeTypes ? @"LEFT OUTER JOIN pg_range ON (pg_range.rngtypid = a.oid) " : "") +
-                @"WHERE a.typtype IN ('b', 'r', 'e', 'c') AND (b.typtype IS NULL OR b.typtype IN ('b', 'r', 'e', 'c')) " +
+                @"WHERE " +
+                @"  (" +
+                @"    a.typtype IN ('b', 'r', 'e', 'c') AND " +
+                @"    (b.typtype IS NULL OR b.typtype IN ('b', 'r', 'e', 'c'))" +  // Either non-array or array of supported element type
+                @"  ) OR " +
+                @"  a.typname = 'record' " +
                 @"ORDER BY ord";
 
             var types = new List<BackendType>();
@@ -188,6 +193,11 @@ namespace Npgsql
                         case 'c':   // Composite
                             backendType.Type = BackendTypeType.Composite;
                             backendType.RelationId = Convert.ToUInt32(dr[2]);
+                            break;
+                        case 'p':   // psuedo-type (record only)
+                            Contract.Assume(backendType.Name == "record");
+                            // Hack this as a base type
+                            backendType.Type = BackendTypeType.Base;
                             break;
                         default:
                             throw new ArgumentOutOfRangeException(String.Format("Unknown typtype for type '{0}' in pg_type: {1}", backendType.Name, typeChar));
