@@ -48,7 +48,9 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
 
         public TimeStampHandler(TypeHandlerRegistry registry)
         {
-            _integerFormat = registry.Connector.BackendParams["integer_datetimes"] == "on";
+            // Check for the legacy floating point timestamps feature, defaulting to integer timestamps
+            string s;
+            _integerFormat = !registry.Connector.BackendParams.TryGetValue("integer_datetimes", out s) || s == "on";
             _convertInfinityDateTime = registry.Connector.ConvertInfinityDateTime;
         }
 
