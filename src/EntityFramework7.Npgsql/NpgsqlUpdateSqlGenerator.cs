@@ -125,7 +125,7 @@ namespace EntityFramework7.Npgsql
                 .Append("@@ROWCOUNT = " + expectedRowsAffected);
         }
 
-        public override string BatchSeparator => "GO";
+        public override string BatchSeparator => ";";
 
         public override string DelimitIdentifier(string identifier)
             => '"' + EscapeIdentifier(Check.NotEmpty(identifier, nameof(identifier))) + '"';
