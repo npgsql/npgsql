@@ -2565,6 +2565,35 @@ namespace NpgsqlTests
         }
 
         [Test]
+        public void ParameterQuoting()
+        {
+            using (var command = new NpgsqlCommand("SELECT ARRAY[:p1, :p2, :p3::text]", Conn))
+            {
+                string value = "a'b";
+
+                var param = command.CreateParameter();
+                param.ParameterName = "p1";
+                param.DbType = DbType.Object;
+                param.Value = value;
+                command.Parameters.Add(param);
+
+                param = command.CreateParameter();
+                param.ParameterName = "p2";
+                param.NpgsqlDbType = NpgsqlDbType.Name;
+                param.Value = value;
+                command.Parameters.Add(param);
+
+                param = command.CreateParameter();
+                param.ParameterName = "p3";
+                param.NpgsqlDbType = NpgsqlDbType.Refcursor;
+                param.Value = value;
+                command.Parameters.Add(param);
+
+                Assert.IsTrue(((string[])command.ExecuteScalar()).All(v => v == value));
+            }
+        }
+
+        [Test]
         public void Int32WithoutQuotesPolygon()
         {
             var a = new NpgsqlCommand("select 'polygon ((:a :b))' ", Conn);

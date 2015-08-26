@@ -262,9 +262,12 @@ namespace NpgsqlTypes
         {
             NpgsqlNativeTypeMapping nativeTypeMapping = new NpgsqlNativeTypeMapping();
 
-            nativeTypeMapping.AddType("name", NpgsqlDbType.Name, DbType.String, true, null);
+            nativeTypeMapping.AddType("name", NpgsqlDbType.Name, DbType.String, false,
+                                            BasicNativeToBackendTypeConverter.StringToTextText,
+                                            BasicNativeToBackendTypeConverter.StringToTextBinary);
 
-            nativeTypeMapping.AddType("oidvector", NpgsqlDbType.Oidvector, DbType.String, true, null);
+            nativeTypeMapping.AddType("oidvector", NpgsqlDbType.Oidvector, DbType.String, false,
+                                            BasicNativeToBackendTypeConverter.StringToTextText);
 
             // Conflicting types should have mapped first the non default mappings.
             // For example, char, varchar and text map to DbType.String. As the most
@@ -272,7 +275,9 @@ namespace NpgsqlTypes
             // to type mapping has the last entry, in this case, text, as the map value
             // for DbType.String.
 
-            nativeTypeMapping.AddType("refcursor", NpgsqlDbType.Refcursor, DbType.String, true, null);
+            nativeTypeMapping.AddType("refcursor", NpgsqlDbType.Refcursor, DbType.String, false,
+                                            BasicNativeToBackendTypeConverter.StringToTextText,
+                                            BasicNativeToBackendTypeConverter.StringToTextBinary);
 
             nativeTypeMapping.AddType("char", NpgsqlDbType.Char, DbType.String, false,
                                             BasicNativeToBackendTypeConverter.StringToTextText,
@@ -288,7 +293,8 @@ namespace NpgsqlTypes
             // text but which are not really text.  Those types cause problems if they are encoded as binary.
             // The mapping NpgsqlDbType.Text => text_nonbinary is removed when text is mapped.
             // DBType.Object will be re-mapped to this type at the end.
-            nativeTypeMapping.AddType("unknown", NpgsqlDbType.Text, DbType.Object, true);
+            nativeTypeMapping.AddType("unknown", NpgsqlDbType.Text, DbType.Object, false,
+                                            BasicNativeToBackendTypeConverter.StringToTextText);
 
             nativeTypeMapping.AddType("text", NpgsqlDbType.Text, DbType.String, false,
                                             BasicNativeToBackendTypeConverter.StringToTextText,
@@ -436,7 +442,8 @@ namespace NpgsqlTypes
             nativeTypeMapping.AddTypeAlias("macaddr", typeof(PhysicalAddress));
             nativeTypeMapping.AddTypeAlias("macaddr", typeof(NpgsqlMacAddress));
 
-            nativeTypeMapping.AddType("uuid", NpgsqlDbType.Uuid, DbType.Guid, true);
+            nativeTypeMapping.AddType("uuid", NpgsqlDbType.Uuid, DbType.Guid, false,
+                                            BasicNativeToBackendTypeConverter.StringToTextText);
             nativeTypeMapping.AddTypeAlias("uuid", typeof (Guid));
 
             nativeTypeMapping.AddType("xml", NpgsqlDbType.Xml, DbType.Xml, false,
