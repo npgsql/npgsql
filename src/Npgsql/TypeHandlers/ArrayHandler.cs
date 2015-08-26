@@ -125,6 +125,7 @@ namespace Npgsql.TypeHandlers
                         _indices = new int[_dimensions];
                     }
                     _index = 0;
+                    _readState = ReadState.ReadHeader;
                     goto case ReadState.ReadHeader;
 
                 case ReadState.ReadHeader:
