@@ -118,6 +118,8 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Migrations\MigrationSqlGeneratorTestBase.cs" />
+    <Compile Include="Migrations\NpgsqlMigrationSqlGeneratorTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
