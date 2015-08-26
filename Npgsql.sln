@@ -29,6 +29,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EntityFramework7.Npgsql", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EntityFramework7.Npgsql.FunctionalTests", "test\EntityFramework7.Npgsql.FunctionalTests\EntityFramework7.Npgsql.FunctionalTests.csproj", "{05A7D0B7-4AE1-4BC8-A1BE-2389F1593B2D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EntityFramework7.Npgsql.Tests", "test\EntityFramework7.Npgsql.Tests\EntityFramework7.Npgsql.Tests.csproj", "{E1D99AD4-D88B-42BA-86DF-90B98B2E9A01}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -67,6 +69,10 @@ Global
 		{05A7D0B7-4AE1-4BC8-A1BE-2389F1593B2D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{05A7D0B7-4AE1-4BC8-A1BE-2389F1593B2D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{05A7D0B7-4AE1-4BC8-A1BE-2389F1593B2D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E1D99AD4-D88B-42BA-86DF-90B98B2E9A01}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E1D99AD4-D88B-42BA-86DF-90B98B2E9A01}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E1D99AD4-D88B-42BA-86DF-90B98B2E9A01}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E1D99AD4-D88B-42BA-86DF-90B98B2E9A01}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -80,6 +86,7 @@ Global
 		{4A0A42DE-C8B8-11E4-8EC9-005056A163A4} = {ED612DB1-AB32-4603-95E7-891BACA71C39}
 		{FADDA2D1-03B4-4DEF-8D24-DD1CA4E81F4A} = {8537E50E-CF7F-49CB-B4EF-3E2A1B11F050}
 		{05A7D0B7-4AE1-4BC8-A1BE-2389F1593B2D} = {ED612DB1-AB32-4603-95E7-891BACA71C39}
+		{E1D99AD4-D88B-42BA-86DF-90B98B2E9A01} = {ED612DB1-AB32-4603-95E7-891BACA71C39}
 	EndGlobalSection
 	GlobalSection(MonoDevelopProperties) = preSolution
 		StartupItem = Npgsql.csproj
