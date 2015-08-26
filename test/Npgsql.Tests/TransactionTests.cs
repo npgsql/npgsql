@@ -230,14 +230,14 @@ namespace Npgsql.Tests
 
             using (var tx = Conn.BeginTransaction())
             {
-                tx.CreateSavepoint(name);
+                tx.Save(name);
 
                 ExecuteNonQuery("INSERT INTO data (name) VALUES ('savepointtest')", tx: tx);
                 Assert.That(ExecuteScalar("SELECT COUNT(*) FROM data", tx: tx), Is.EqualTo(1));
-                tx.RollbackToSavepoint(name);
+                tx.Rollback(name);
                 Assert.That(ExecuteScalar("SELECT COUNT(*) FROM data", tx: tx), Is.EqualTo(0));
                 ExecuteNonQuery("INSERT INTO data (name) VALUES ('savepointtest')", tx: tx);
-                tx.ReleaseSavepoint(name);
+                tx.Release(name);
                 Assert.That(ExecuteScalar("SELECT COUNT(*) FROM data", tx: tx), Is.EqualTo(1));
 
                 tx.Commit();
@@ -249,7 +249,7 @@ namespace Npgsql.Tests
         public void SavepointWithSemicolon()
         {
             using (var tx = Conn.BeginTransaction())
-                Assert.That(() => tx.CreateSavepoint("a;b"), Throws.Exception.TypeOf<ArgumentException>());
+                Assert.That(() => tx.Save("a;b"), Throws.Exception.TypeOf<ArgumentException>());
         }
 
         // Older tests

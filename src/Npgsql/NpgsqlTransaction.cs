@@ -166,7 +166,7 @@ namespace Npgsql
         /// <summary>
         /// Creates a transaction save point.
         /// </summary>
-        public void CreateSavepoint(string name)
+        public void Save(string name)
         {
             if (name == null)
                 throw new ArgumentNullException("name");
@@ -184,7 +184,7 @@ namespace Npgsql
         /// <summary>
         /// Rolls back a transaction from a pending savepoint state.
         /// </summary>
-        public void RollbackToSavepoint(string name)
+        public void Rollback(string name)
         {
             if (name == null)
                 throw new ArgumentNullException("name");
@@ -211,7 +211,7 @@ namespace Npgsql
         /// <summary>
         /// Rolls back a transaction from a pending savepoint state.
         /// </summary>
-        public void ReleaseSavepoint(string name)
+        public void Release(string name)
         {
             if (name == null)
                 throw new ArgumentNullException("name");
@@ -226,6 +226,33 @@ namespace Npgsql
             Log.Debug("Release savepoint", Connection.Connector.Id);
 
             Connector.ExecuteInternalCommand(new QueryMessage(string.Format("RELEASE SAVEPOINT {0}", name)));
+        }
+
+        /// <summary>
+        /// Creates a transaction save point.
+        /// </summary>
+        [Obsolete("Use Save instead")]
+        public void CreateSavepoint(string name)
+        {
+            Save(name);
+        }
+
+        /// <summary>
+        /// Rolls back a transaction from a pending savepoint state.
+        /// </summary>
+        [Obsolete("Use Rollback instead")]
+        public void RollbackToSavepoint(string name)
+        {
+            Rollback(name);
+        }
+
+        /// <summary>
+        /// Rolls back a transaction from a pending savepoint state.
+        /// </summary>
+        [Obsolete("Use Release instead")]
+        public void ReleaseSavepoint(string name)
+        {
+            Release(name);
         }
 
         #endregion
