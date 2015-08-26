@@ -68,7 +68,7 @@ WHERE table_catalog = @db
 	AND table_schema = 'public'
 ORDER BY table_name, ordinal_position
 ";
-            
+
             var dbName = connection.Database;
             var npgConnection = (NpgsqlConnection)connection;
             command.Parameters.Add(new NpgsqlParameter() {ParameterName = "db", Value = dbName});
@@ -117,7 +117,12 @@ ORDER BY table_name, ordinal_position
                 }
             }
 
-            return builder.ToString();
+            return ToUnixNewlines(builder.ToString());
+        }
+
+        static string ToUnixNewlines(string s)
+        {
+            return s.Replace("\r\n", "\n");
         }
     }
 }
