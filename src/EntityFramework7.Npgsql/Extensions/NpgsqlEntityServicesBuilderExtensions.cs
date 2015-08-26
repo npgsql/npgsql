@@ -10,6 +10,7 @@ using JetBrains.Annotations;
 using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Storage;
 using Microsoft.Data.Entity.Utilities;
+using Microsoft.Framework.DependencyInjection.Extensions;
 
 // ReSharper disable once CheckNamespace
 
@@ -30,12 +31,12 @@ namespace Microsoft.Framework.DependencyInjection
                     .AddSingleton<NpgsqlTypeMapper>()
                     .AddSingleton<NpgsqlModelSource>()
                     .AddSingleton<NpgsqlMetadataExtensionProvider>()
-                    .AddSingleton<NpgsqlMigrationAnnotationProvider>()
+                    .AddSingleton<NpgsqlMigrationsAnnotationProvider>()
                     .AddScoped<NpgsqlModificationCommandBatchFactory>()
                     .AddScoped<NpgsqlDatabaseProviderServices>()
                     .AddScoped<NpgsqlDatabase>()
                     .AddScoped<NpgsqlDatabaseConnection>()
-                    .AddScoped<NpgsqlMigrationSqlGenerator>()
+                    .AddScoped<NpgsqlMigrationsSqlGenerator>()
                     .AddScoped<NpgsqlDatabaseCreator>()
                     .AddScoped<NpgsqlHistoryRepository>()
                     .AddScoped<NpgsqlCompositeMethodCallTranslator>()

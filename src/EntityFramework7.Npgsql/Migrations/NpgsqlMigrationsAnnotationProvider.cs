@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using Microsoft.Data.Entity;
 using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Metadata;
-using Microsoft.Data.Entity.Migrations.Infrastructure;
 using EntityFramework7.Npgsql.Metadata;
+using Microsoft.Data.Entity.Migrations;
 
 namespace EntityFramework7.Npgsql.Migrations
 {
-    public class NpgsqlMigrationAnnotationProvider : MigrationAnnotationProvider
+    public class NpgsqlMigrationsAnnotationProvider : MigrationsAnnotationProvider
     {
         public override IEnumerable<IAnnotation> For(IProperty property)
         {

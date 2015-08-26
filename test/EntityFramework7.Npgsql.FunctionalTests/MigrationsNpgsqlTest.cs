@@ -24,7 +24,7 @@ namespace EntityFramework7.Npgsql.FunctionalTests
             {
                 db.Database.EnsureDeleted();
                 db.Database.EnsureCreated();
-                db.Database.ApplyMigrations();
+                db.Database.Migrate();
             }
         }
 

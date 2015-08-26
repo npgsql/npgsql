@@ -9,18 +9,18 @@ using EntityFramework7.Npgsql.Metadata;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Metadata;
+using Microsoft.Data.Entity.Migrations;
 using Microsoft.Data.Entity.Migrations.Operations;
-using Microsoft.Data.Entity.Migrations.Sql;
 using Microsoft.Data.Entity.Utilities;
 
 namespace EntityFramework7.Npgsql.Migrations
 {
-    public class NpgsqlMigrationSqlGenerator : MigrationSqlGenerator
+    public class NpgsqlMigrationsSqlGenerator : MigrationsSqlGenerator
     {
         private readonly NpgsqlUpdateSqlGenerator _sql;
         private readonly NpgsqlTypeMapper _typeMapper;
 
-        public NpgsqlMigrationSqlGenerator(
+        public NpgsqlMigrationsSqlGenerator(
             [NotNull] NpgsqlUpdateSqlGenerator sqlGenerator,
             [NotNull] NpgsqlTypeMapper typeMapper,
             [NotNull] NpgsqlMetadataExtensionProvider annotations)
@@ -30,7 +30,7 @@ namespace EntityFramework7.Npgsql.Migrations
             _typeMapper = typeMapper;
         }
 
-        public override void Generate(
+        protected override void Generate(
             [NotNull] AlterColumnOperation operation,
             [CanBeNull] IModel model,
             [NotNull] SqlBatchBuilder builder)
@@ -110,7 +110,7 @@ namespace EntityFramework7.Npgsql.Migrations
             }
         }
 
-        public override void Generate(
+        protected override void Generate(
             [NotNull] RenameIndexOperation operation,
             [CanBeNull] IModel model,
             [NotNull] SqlBatchBuilder builder)
@@ -124,7 +124,7 @@ namespace EntityFramework7.Npgsql.Migrations
             }
         }
 
-        public override void Generate(RenameSequenceOperation operation, IModel model, SqlBatchBuilder builder)
+        protected override void Generate(RenameSequenceOperation operation, IModel model, SqlBatchBuilder builder)
         {
             Check.NotNull(operation, nameof(operation));
             Check.NotNull(builder, nameof(builder));
@@ -150,7 +150,7 @@ namespace EntityFramework7.Npgsql.Migrations
             }
         }
 
-        public override void Generate(
+        protected override void Generate(
             [NotNull] RenameTableOperation operation,
             [CanBeNull] IModel model,
             [NotNull] SqlBatchBuilder builder)
@@ -179,14 +179,22 @@ namespace EntityFramework7.Npgsql.Migrations
             }
         }
 
-        public override void Generate(CreateSchemaOperation operation, IModel model, SqlBatchBuilder builder)
+        protected override void Generate(EnsureSchemaOperation operation, IModel model, SqlBatchBuilder builder)
         {
             Check.NotNull(operation, nameof(operation));
             Check.NotNull(builder, nameof(builder));
 
-            builder.Append("CREATE SCHEMA ")
-                .Append(_sql.DelimitIdentifier(operation.Name))
-                .EndBatch();
+            if (string.Equals(operation.Name, "DBO", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            // CREATE SCHEMA IF EXISTS is from PG 9.3 only.
+            // See https://github.com/aspnet/EntityFramework/issues/2928
+
+            builder
+                .Append("CREATE SCHEMA IF NOT EXISTS ")
+                .Append(operation.Name);
         }
 
         public virtual void Generate(
@@ -229,7 +237,7 @@ namespace EntityFramework7.Npgsql.Migrations
                 .Append(dbName);
         }
 
-        public override void Generate(
+        protected override void Generate(
             [NotNull] DropIndexOperation operation,
             [CanBeNull] IModel model,
             [NotNull] SqlBatchBuilder builder)
@@ -242,7 +250,7 @@ namespace EntityFramework7.Npgsql.Migrations
                 .Append(_sql.DelimitIdentifier(operation.Name, operation.Schema));
         }
 
-        public override void Generate(
+        protected override void Generate(
             [NotNull] RenameColumnOperation operation,
             [CanBeNull] IModel model,
             [NotNull] SqlBatchBuilder builder)
@@ -258,7 +266,7 @@ namespace EntityFramework7.Npgsql.Migrations
                 .Append(_sql.DelimitIdentifier(operation.NewName));
         }
 
-        public override void ColumnDefinition(
+        protected override void ColumnDefinition(
             string schema,
             string table,
             string name,
@@ -365,7 +373,7 @@ namespace EntityFramework7.Npgsql.Migrations
                 .Append(_sql.DelimitIdentifier(newSchema));
         }
 
-        public override void ForeignKeyAction(ReferentialAction referentialAction, SqlBatchBuilder builder)
+        protected override void ForeignKeyAction(ReferentialAction referentialAction, SqlBatchBuilder builder)
         {
             Check.NotNull(builder, nameof(builder));
 
@@ -381,7 +389,7 @@ namespace EntityFramework7.Npgsql.Migrations
 
         #region Npgsql additions
 
-        public override void Generate(
+        protected override void Generate(
             [NotNull] CreateSequenceOperation operation,
             [CanBeNull] IModel model,
             [NotNull] SqlBatchBuilder builder)
@@ -395,7 +403,7 @@ namespace EntityFramework7.Npgsql.Migrations
 
             builder
                 .Append(" START WITH ")
-                .Append(_sql.GenerateLiteral(operation.StartWith));
+                .Append(_sql.GenerateLiteral(operation.StartValue));
             SequenceOptions(operation, model, builder);
         }
 

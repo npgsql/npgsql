@@ -9,8 +9,7 @@ using EntityFramework7.Npgsql.Migrations;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Internal;
-using Microsoft.Data.Entity.Migrations.History;
-using Microsoft.Data.Entity.Migrations.Infrastructure;
+using Microsoft.Data.Entity.Migrations;
 using Microsoft.Data.Entity.Storage;
 using Microsoft.Data.Entity.Update;
 using Microsoft.Data.Entity.Utilities;
@@ -25,28 +24,24 @@ namespace EntityFramework7.Npgsql.Migrations
             [NotNull] IDatabaseCreator databaseCreator,
             [NotNull] ISqlStatementExecutor executor,
             [NotNull] NpgsqlDatabaseConnection connection,
-            [NotNull] IMigrationModelFactory modelFactory,
             [NotNull] IDbContextOptions options,
-            [NotNull] IModelDiffer modelDiffer,
-            [NotNull] NpgsqlMigrationSqlGenerator migrationSqlGenerator,
+            [NotNull] IMigrationsModelDiffer modelDiffer,
+            [NotNull] NpgsqlMigrationsSqlGenerator sqlGenerator,
             [NotNull] NpgsqlMetadataExtensionProvider annotations,
-            [NotNull] NpgsqlUpdateSqlGenerator updateSqlGenerator,
-            [NotNull] IServiceProvider serviceProvider)
+            [NotNull] NpgsqlUpdateSqlGenerator sql)
             : base(
                   databaseCreator,
                   executor,
                   connection,
-                  modelFactory,
                   options,
                   modelDiffer,
-                  migrationSqlGenerator,
+                  sqlGenerator,
                   annotations,
-                  updateSqlGenerator,
-                  serviceProvider)
+                  sql)
         {
-            Check.NotNull(updateSqlGenerator, nameof(updateSqlGenerator));
+            Check.NotNull(sql, nameof(sql));
 
-            _sql = updateSqlGenerator;
+            _sql = sql;
         }
 
         protected override string ExistsSql
