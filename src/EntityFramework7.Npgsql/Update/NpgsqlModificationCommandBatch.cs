@@ -67,7 +67,7 @@ namespace EntityFramework7.Npgsql.Update
                         {
                             throw new DbUpdateConcurrencyException(
                                 RelationalStrings.UpdateConcurrencyException(1, 0),
-                                ModificationCommands[nextPropagating].Entries
+                                ModificationCommands[commandIndex].Entries
                             );
                         }
                     }

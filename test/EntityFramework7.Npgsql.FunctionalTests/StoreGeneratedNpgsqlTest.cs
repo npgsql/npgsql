@@ -64,25 +64,43 @@ namespace EntityFramework7.Npgsql.FunctionalTests
                 base.OnModelCreating(modelBuilder);
 
                 modelBuilder.Entity<Gumball>(b =>
-                    {
-                        b.Property(e => e.Identity)
-                            .HasDefaultValue("Banana Joe");
+                {
+                    b.Property(e => e.Identity)
+                        .HasDefaultValue("Banana Joe");
 
-                        b.Property(e => e.IdentityReadOnlyBeforeSave)
-                            .HasDefaultValue("Doughnut Sheriff");
+                    b.Property(e => e.IdentityReadOnlyBeforeSave)
+                        .HasDefaultValue("Doughnut Sheriff");
 
-                        b.Property(e => e.IdentityReadOnlyAfterSave)
-                            .HasDefaultValue("Anton");
+                    b.Property(e => e.IdentityReadOnlyAfterSave)
+                        .HasDefaultValue("Anton");
 
-                        b.Property(e => e.Computed)
-                            .HasDefaultValue("Alan");
+                    b.Property(e => e.AlwaysIdentity)
+                        .HasDefaultValue("Banana Joe");
 
-                        b.Property(e => e.ComputedReadOnlyBeforeSave)
-                            .HasDefaultValue("Carmen");
+                    b.Property(e => e.AlwaysIdentityReadOnlyBeforeSave)
+                        .HasDefaultValue("Doughnut Sheriff");
 
-                        b.Property(e => e.ComputedReadOnlyAfterSave)
-                            .HasDefaultValue("Tina Rex");
-                    });
+                    b.Property(e => e.AlwaysIdentityReadOnlyAfterSave)
+                        .HasDefaultValue("Anton");
+
+                    b.Property(e => e.Computed)
+                        .HasDefaultValue("Alan");
+
+                    b.Property(e => e.ComputedReadOnlyBeforeSave)
+                        .HasDefaultValue("Carmen");
+
+                    b.Property(e => e.ComputedReadOnlyAfterSave)
+                        .HasDefaultValue("Tina Rex");
+
+                    b.Property(e => e.AlwaysComputed)
+                        .HasDefaultValue("Alan");
+
+                    b.Property(e => e.AlwaysComputedReadOnlyBeforeSave)
+                        .HasDefaultValue("Carmen");
+
+                    b.Property(e => e.AlwaysComputedReadOnlyAfterSave)
+                        .HasDefaultValue("Tina Rex");
+                });
             }
         }
     }

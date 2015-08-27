@@ -117,12 +117,7 @@ ORDER BY table_name, ordinal_position
                 }
             }
 
-            return ToUnixNewlines(builder.ToString());
-        }
-
-        static string ToUnixNewlines(string s)
-        {
-            return s.Replace("\r\n", "\n");
+            return builder.ToString().ToUnixNewlines();
         }
     }
 }
