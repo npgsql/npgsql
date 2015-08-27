@@ -4,9 +4,9 @@
 using JetBrains.Annotations;
 using Microsoft.Data.Entity.Migrations.Operations;
 
-namespace EntityFramework7.Npgsql.Migrations
+namespace Microsoft.Data.Entity.Migrations.Operations
 {
-    public class CreateDatabaseOperation : MigrationOperation
+    public class DropDatabaseOperation : MigrationOperation
     {
         public virtual string Name { get;[param: NotNull] set; }
     }

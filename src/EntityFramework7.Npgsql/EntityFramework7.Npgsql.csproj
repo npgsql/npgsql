@@ -113,8 +113,8 @@
     <Compile Include="Metadata\INpgsqlPropertyAnnotations.cs" />
     <Compile Include="Metadata\NpgsqlAnnotationNames.cs" />
     <Compile Include="Metadata\NpgsqlMetadataExtensionProvider.cs" />
-    <Compile Include="Migrations\CreateDatabaseOperation.cs" />
-    <Compile Include="Migrations\DropDatabaseOperation.cs" />
+    <Compile Include="Migrations\Operations\CreateDatabaseOperation.cs" />
+    <Compile Include="Migrations\Operations\DropDatabaseOperation.cs" />
     <Compile Include="Migrations\NpgsqlHistoryRepository.cs" />
     <Compile Include="Migrations\NpgsqlMigrationsAnnotationProvider.cs" />
     <Compile Include="Migrations\NpgsqlMigrationsSqlGenerator.cs" />

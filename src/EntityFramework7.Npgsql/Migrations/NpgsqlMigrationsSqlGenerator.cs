@@ -30,6 +30,27 @@ namespace EntityFramework7.Npgsql.Migrations
             _typeMapper = typeMapper;
         }
 
+        protected override void Generate(MigrationOperation operation, IModel model, SqlBatchBuilder builder)
+        {
+            Check.NotNull(operation, nameof(operation));
+            Check.NotNull(builder, nameof(builder));
+
+            var createDatabaseOperation = operation as CreateDatabaseOperation;
+            var dropDatabaseOperation = operation as DropDatabaseOperation;
+            if (createDatabaseOperation != null)
+            {
+                Generate(createDatabaseOperation, model, builder);
+            }
+            else if (dropDatabaseOperation != null)
+            {
+                Generate(dropDatabaseOperation, model, builder);
+            }
+            else
+            {
+                base.Generate(operation, model, builder);
+            }
+        }
+
         protected override void Generate(
             [NotNull] AlterColumnOperation operation,
             [CanBeNull] IModel model,
