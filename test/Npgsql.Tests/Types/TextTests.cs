@@ -376,6 +376,12 @@ namespace Npgsql.Tests.Types
                         Assert.That(reader.GetString(0), Is.EqualTo(value));
                     }
                 }
+                using (var cmd = new NpgsqlCommand("SELECT @p1::CITEXT = @p2::CITEXT", Conn))
+                {
+                    cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Citext, "abc");
+                    cmd.Parameters.AddWithValue("p2", NpgsqlDbType.Citext, "ABC");
+                    Assert.That(cmd.ExecuteScalar(), Is.True);
+                }
             }
         }
 

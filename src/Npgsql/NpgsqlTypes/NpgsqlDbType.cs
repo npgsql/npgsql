@@ -181,6 +181,12 @@ namespace NpgsqlTypes
         Name = 32,
 
         /// <summary>
+        /// Corresponds to the PostgreSQL "citext" type for the citext module.
+        /// </summary>
+        /// <remarks>See http://www.postgresql.org/docs/current/static/citext.html</remarks>
+        Citext = 51,
+
+        /// <summary>
         /// Corresponds to the PostgreSQL "char" type.
         /// </summary>
         /// <remarks>
