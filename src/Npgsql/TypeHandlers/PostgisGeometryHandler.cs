@@ -9,8 +9,7 @@ namespace Npgsql.TypeHandlers
     /// Type Handler for the postgis geometry type.
     /// </summary>
     [TypeMapping("geometry", NpgsqlDbType.Geometry, typeof(PostgisGeometry))]
-    class PostgisGeometryHandler : TypeHandler<PostgisGeometry>
-        , IChunkingTypeReader<PostgisGeometry>, IChunkingTypeWriter
+    class PostgisGeometryHandler : ChunkingTypeHandler<PostgisGeometry>
     {
         class Counter
         {
@@ -42,7 +41,7 @@ namespace Npgsql.TypeHandlers
         readonly Stack<Counter> _icol = new Stack<Counter>();
         PostgisGeometry _toWrite;
 
-        public void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             _buf = buf;
             _srid = default(uint?);
@@ -61,7 +60,7 @@ namespace Npgsql.TypeHandlers
             _id = 0;
         }
 
-        public bool Read(out PostgisGeometry result)
+        public override bool Read(out PostgisGeometry result)
         {
             result = default(PostgisGeometry);
             if (_id == 0)
@@ -274,7 +273,7 @@ namespace Npgsql.TypeHandlers
             }
         }
 
-        public int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter = null)
+        public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter = null)
         {
             var g = value as PostgisGeometry;
             if (g == null)
@@ -282,7 +281,7 @@ namespace Npgsql.TypeHandlers
             return g.GetLen();
         }
 
-        public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter = null)
+        public override void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter = null)
         {
             _toWrite = value as PostgisGeometry;
             if (_toWrite == null)
@@ -486,7 +485,7 @@ namespace Npgsql.TypeHandlers
             }
         }
 
-        public bool Write(ref DirectBuffer buf)
+        public override bool Write(ref DirectBuffer buf)
         {
             return Write(_toWrite);
         }

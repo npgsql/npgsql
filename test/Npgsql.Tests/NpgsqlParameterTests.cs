@@ -905,5 +905,19 @@ namespace Npgsql.Tests
             Assert.AreEqual(param.NpgsqlValue, newParam.NpgsqlValue);
 
         }
+
+        [Test]
+        public void CleanName()
+        {
+            var param = new NpgsqlParameter();
+            var command = new NpgsqlCommand();
+            command.Parameters.Add(param);
+
+            param.ParameterName = "";
+
+            // These should not throw exceptions
+            Assert.AreEqual(0, command.Parameters.IndexOf(""));
+            Assert.AreEqual("", param.CleanName);
+        }
     }
 }

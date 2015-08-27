@@ -34,7 +34,7 @@ namespace Npgsql.TypeHandlers
     /// JSONB binary encoding is a simple UTF8 string, but prepended with a version number.
     /// </summary>
     [TypeMapping("jsonb", NpgsqlDbType.Jsonb)]
-    class JsonbHandler : TypeHandler<string>, IChunkingTypeWriter, IChunkingTypeReader<string>
+    class JsonbHandler : ChunkingTypeHandler<string>, IChunkingTypeHandler<string>
     {
         /// <summary>
         /// Prepended to the string in the wire encoding
@@ -60,7 +60,7 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        public int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
+        public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             if (lengthCache == null) {
                 lengthCache = new LengthCache(1);
@@ -73,14 +73,14 @@ namespace Npgsql.TypeHandlers
             return _textHandler.ValidateAndGetLength(value, ref lengthCache, parameter) + 1;
         }
 
-        public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter)
+        public override void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter)
         {
             _textHandler.PrepareWrite(value, buf, lengthCache, parameter);
             _buf = buf;
             _handledVersion = false;
         }
 
-        public bool Write(ref DirectBuffer directBuf)
+        public override bool Write(ref DirectBuffer directBuf)
         {
             if (!_handledVersion)
             {
@@ -97,7 +97,7 @@ namespace Npgsql.TypeHandlers
 
         #region Read
 
-        public void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             // Subtract one byte for the version number
             _textHandler.PrepareRead(buf, fieldDescription, len-1);
@@ -105,7 +105,7 @@ namespace Npgsql.TypeHandlers
             _handledVersion = false;
         }
 
-        public bool Read(out string result)
+        public override bool Read(out string result)
         {
             if (!_handledVersion)
             {

@@ -37,17 +37,17 @@ namespace Npgsql.TypeHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-money.html
     /// </remarks>
-    [TypeMapping("money", NpgsqlDbType.Money, DbType.Currency)]
-    internal class MoneyHandler : TypeHandler<decimal>,
-        ISimpleTypeReader<decimal>, ISimpleTypeWriter
+    [TypeMapping("money", NpgsqlDbType.Money, dbType: DbType.Currency)]
+    internal class MoneyHandler : SimpleTypeHandler<decimal>
     {
-        public decimal Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override decimal Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             return buf.ReadInt64() / 100m;
         }
 
-        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
+            decimal decimalValue;
             if (!(value is decimal))
             {
                 var converted = Convert.ToDecimal(value);
@@ -55,18 +55,28 @@ namespace Npgsql.TypeHandlers
                 {
                     throw CreateConversionButNoParamException(value.GetType());
                 }
+                decimalValue = converted;
                 parameter.ConvertedValue = converted;
             }
+            else
+            {
+                decimalValue = (decimal)value;
+            }
+            if (decimalValue < -92233720368547758.08M || decimalValue > 92233720368547758.07M)
+            {
+                throw new OverflowException("The supplied value (" + decimalValue + ") is outside the range for a PostgreSQL money value.");
+            }
+
             return 8;
         }
 
-        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
         {
             var v = (decimal)(parameter != null && parameter.ConvertedValue != null
                 ? parameter.ConvertedValue
                 : value);
 
-            buf.WriteInt64((long)(v * 100m + 0.5m /* round */));
+            buf.WriteInt64((long)(decimal.Round(v, 2, MidpointRounding.AwayFromZero) * 100m));
         }
     }
 }

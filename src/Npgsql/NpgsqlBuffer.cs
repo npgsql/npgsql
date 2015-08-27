@@ -450,6 +450,17 @@ namespace Npgsql
             _writePosition = pos;
         }
 
+        internal void WriteUInt32(uint i)
+        {
+            Contract.Requires(WriteSpaceLeft >= sizeof(uint));
+            var pos = _writePosition;
+            _buf[pos++] = (byte)(i >> 24);
+            _buf[pos++] = (byte)(i >> 16);
+            _buf[pos++] = (byte)(i >> 8);
+            _buf[pos++] = (byte)i;
+            _writePosition = pos;
+        }
+
         public void WriteInt64(long i)
         {
             Contract.Requires(WriteSpaceLeft >= sizeof(long));
@@ -629,7 +640,7 @@ namespace Npgsql
         #endregion
 
         #region Postgis
-        
+
         internal int ReadInt32(ByteOrder bo)
         {
             Contract.Requires(ReadBytesLeft >= sizeof(int));
@@ -673,7 +684,7 @@ namespace Npgsql
         internal double ReadDouble(ByteOrder bo)
         {
             Contract.Requires(ReadBytesLeft >= sizeof(double));
-            
+
             if (BitConverter.IsLittleEndian == (ByteOrder.LSB == bo))
             {
                 var result = BitConverter.ToDouble(_buf, ReadPosition);

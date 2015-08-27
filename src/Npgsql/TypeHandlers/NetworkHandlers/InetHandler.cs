@@ -37,16 +37,14 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-net-types.html
     /// </remarks>
     [TypeMapping("inet", NpgsqlDbType.Inet, new[] { typeof(NpgsqlInet), typeof(IPAddress) })]
-    internal class InetHandler : TypeHandlerWithPsv<IPAddress, NpgsqlInet>,
-        ISimpleTypeReader<IPAddress>, ISimpleTypeReader<NpgsqlInet>, ISimpleTypeWriter,
-        ISimpleTypeReader<string>
+    internal class InetHandler : SimpleTypeHandlerWithPsv<IPAddress, NpgsqlInet>, ISimpleTypeHandler<string>
     {
         const byte IPv4 = 2;
         const byte IPv6 = 3;
 
-        public IPAddress Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override IPAddress Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
-            return ((ISimpleTypeReader<NpgsqlInet>)this).Read(buf, len, fieldDescription).Address;
+            return ((ISimpleTypeHandler<NpgsqlInet>)this).Read(buf, len, fieldDescription).Address;
         }
 
         static internal NpgsqlInet DoRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len, bool isCidrHandler)
@@ -63,14 +61,14 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             return new NpgsqlInet(new IPAddress(bytes), mask);
         }
 
-        NpgsqlInet ISimpleTypeReader<NpgsqlInet>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        internal override NpgsqlInet ReadPsv(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             return DoRead(buf, fieldDescription, len, false);
         }
 
-        string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        string ISimpleTypeHandler<string>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
-            return ((ISimpleTypeReader<NpgsqlInet>)this).Read(buf, len, fieldDescription).ToString();
+            return ((ISimpleTypeHandler<NpgsqlInet>)this).Read(buf, len, fieldDescription).ToString();
         }
 
         static internal int DoValidateAndGetLength(object value)
@@ -95,7 +93,7 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             }
         }
 
-        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
             return DoValidateAndGetLength(value);
         }
@@ -140,7 +138,7 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             buf.WriteBytes(bytes, 0, bytes.Length);
         }
 
-        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
         {
             DoWrite(value, buf, false);
         }

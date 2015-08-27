@@ -68,6 +68,7 @@
     <Compile Include="Types\BitStringTests.cs" />
     <Compile Include="Types\ByteaTests.cs" />
     <Compile Include="CopyTests.cs" />
+    <Compile Include="Types\CompositeTests.cs" />
     <Compile Include="Types\DateTimeTests.cs" />
     <Compile Include="FunctionTests.cs">
       <SubType>Code</SubType>
@@ -93,6 +94,7 @@
     <Compile Include="TestUtil.cs" />
     <Compile Include="Types\MiscTypeTests.cs" />
     <Compile Include="Types\PostgisTests.cs" />
+    <Compile Include="Types\RangeTests.cs" />
     <Compile Include="Types\TextTests.cs" />
     <Compile Include="TypesTests.cs" />
   </ItemGroup>

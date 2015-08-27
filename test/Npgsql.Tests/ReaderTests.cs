@@ -811,27 +811,27 @@ namespace Npgsql.Tests
 
     #region Mock Type Handlers
 #if DEBUG
-    internal class SafeExceptionGeneratingHandler : TypeHandler<int>, ISimpleTypeReader<int>, ISimpleTypeWriter
+    internal class SafeExceptionGeneratingHandler : SimpleTypeHandler<int>
     {
-        public int Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override int Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             buf.ReadInt32();
             throw new SafeReadException(new Exception("Safe read exception as requested"));
         }
 
-        public int ValidateAndGetLength(object value, NpgsqlParameter parameter) { throw new NotSupportedException(); }
-        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter) { throw new NotSupportedException(); }
+        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter) { throw new NotSupportedException(); }
+        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter) { throw new NotSupportedException(); }
     }
 
-    internal class NonSafeExceptionGeneratingHandler : TypeHandler<int>, ISimpleTypeReader<int>, ISimpleTypeWriter
+    internal class NonSafeExceptionGeneratingHandler : SimpleTypeHandler<int>
     {
-        public int Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override int Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             throw new Exception("Non-safe read exception as requested");
         }
 
-        public int ValidateAndGetLength(object value, NpgsqlParameter parameter) { throw new NotSupportedException(); }
-        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter) { throw new NotSupportedException();}
+        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter) { throw new NotSupportedException(); }
+        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter) { throw new NotSupportedException();}
     }
 #endif
     #endregion

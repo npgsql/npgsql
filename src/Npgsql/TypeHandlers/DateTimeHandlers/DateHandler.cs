@@ -32,8 +32,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-datetime.html
     /// </remarks>
     [TypeMapping("date", NpgsqlDbType.Date, DbType.Date, typeof(NpgsqlDate))]
-    internal class DateHandler : TypeHandlerWithPsv<DateTime, NpgsqlDate>,
-        ISimpleTypeReader<DateTime>, ISimpleTypeReader<NpgsqlDate>, ISimpleTypeWriter
+    internal class DateHandler : SimpleTypeHandlerWithPsv<DateTime, NpgsqlDate>
     {
         internal const int PostgresEpochJdate = 2451545; // == date2j(2000, 1, 1)
         internal const int MonthsPerYear = 12;
@@ -49,10 +48,10 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             _convertInfinityDateTime = registry.Connector.ConvertInfinityDateTime;
         }
 
-        public DateTime Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override DateTime Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             // TODO: Convert directly to DateTime without passing through NpgsqlDate?
-            var npgsqlDate = ((ISimpleTypeReader<NpgsqlDate>) this).Read(buf, len, fieldDescription);
+            var npgsqlDate = ((ISimpleTypeHandler<NpgsqlDate>) this).Read(buf, len, fieldDescription);
             try {
                 if (npgsqlDate.IsFinite)
                     return (DateTime)npgsqlDate;
@@ -69,7 +68,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         /// <remarks>
         /// Copied wholesale from Postgresql backend/utils/adt/datetime.c:j2date
         /// </remarks>
-        NpgsqlDate ISimpleTypeReader<NpgsqlDate>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        internal override NpgsqlDate ReadPsv(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             var binDate = buf.ReadInt32();
 
@@ -84,7 +83,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             }
         }
 
-        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
             if (!(value is DateTime) && !(value is NpgsqlDate))
             {
@@ -98,7 +97,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             return 4;
         }
 
-        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
         {
             if (parameter != null && parameter.ConvertedValue != null) {
                 value = parameter.ConvertedValue;

@@ -32,8 +32,15 @@ using System.Diagnostics.Contracts;
 
 namespace Npgsql.TypeHandlers
 {
-    internal class RangeHandler<TElement> : TypeHandler<NpgsqlRange<TElement>>,
-        IChunkingTypeReader<NpgsqlRange<TElement>>, IChunkingTypeWriter
+    /// <summary>
+    /// Type handler for PostgreSQL range types
+    /// </summary>
+    /// <remarks>
+    /// Introduced in PostgreSQL 9.2.
+    /// http://www.postgresql.org/docs/current/static/rangetypes.html
+    /// </remarks>
+    /// <typeparam name="TElement">the range subtype</typeparam>
+    internal class RangeHandler<TElement> : ChunkingTypeHandler<NpgsqlRange<TElement>>
     {
         /// <summary>
         /// The type handler for the element that this range type holds
@@ -54,6 +61,8 @@ namespace Npgsql.TypeHandlers
         State _state;
         FieldDescription _fieldDescription;
         int _elementLen;
+        bool _wroteElementLen;
+        bool _preparedRead;
 
         void CleanupState()
         {
@@ -67,17 +76,17 @@ namespace Npgsql.TypeHandlers
 
         #region Read
 
-        public void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             _buf = buf;
-            _state = State.Start;
+            _state = State.Flags;
             _elementLen = -1;
         }
 
-        public bool Read(out NpgsqlRange<TElement> result)
+        public override bool Read(out NpgsqlRange<TElement> result)
         {
             switch (_state) {
-            case State.Start:
+            case State.Flags:
                 if (_buf.ReadBytesLeft < 1)
                 {
                     result = default(NpgsqlRange<TElement>);
@@ -100,6 +109,7 @@ namespace Npgsql.TypeHandlers
                 goto case State.LowerBound;
 
             case State.LowerBound:
+                _state = State.LowerBound;
                 TElement lowerBound;
                 if (!ReadSingleElement(out lowerBound))
                 {
@@ -110,6 +120,7 @@ namespace Npgsql.TypeHandlers
                 goto case State.UpperBound;
 
             case State.UpperBound:
+                _state = State.UpperBound;
                 if (_value.UpperBoundInfinite) {
                     result = _value;
                     CleanupState();
@@ -144,7 +155,7 @@ namespace Npgsql.TypeHandlers
                     Contract.Assume(_elementLen != -1);
                 }
 
-                var asSimpleReader = ElementHandler as ISimpleTypeReader<TElement>;
+                var asSimpleReader = ElementHandler as ISimpleTypeHandler<TElement>;
                 if (asSimpleReader != null) {
                     if (_buf.ReadBytesLeft < _elementLen) {
                         element = default(TElement);
@@ -155,13 +166,18 @@ namespace Npgsql.TypeHandlers
                     return true;
                 }
 
-                var asChunkingReader = ElementHandler as IChunkingTypeReader<TElement>;
+                var asChunkingReader = ElementHandler as IChunkingTypeHandler<TElement>;
                 if (asChunkingReader != null) {
-                    asChunkingReader.PrepareRead(_buf, _elementLen, _fieldDescription);
+                    if (!_preparedRead)
+                    {
+                        asChunkingReader.PrepareRead(_buf, _elementLen, _fieldDescription);
+                        _preparedRead = true;
+                    }
                     if (!asChunkingReader.Read(out element)) {
                         return false;
                     }
                     _elementLen = -1;
+                    _preparedRead = false;
                     return true;
                 }
 
@@ -177,7 +193,7 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        public int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter = null)
+        public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter = null)
         {
             if (!(value is NpgsqlRange<TElement>))
                 throw CreateConversionException(value.GetType());
@@ -185,109 +201,129 @@ namespace Npgsql.TypeHandlers
             var range = (NpgsqlRange<TElement>)value;
             var totalLen = 1;
 
+            var lengthCachePos = lengthCache != null ? lengthCache.Position : 0;
             if (!range.IsEmpty)
             {
-                var asChunkingWriter = ElementHandler as IChunkingTypeWriter;
+                var asChunkingWriter = ElementHandler as IChunkingTypeHandler;
                 if (!range.LowerBoundInfinite) {
                     totalLen += 4 + (asChunkingWriter != null
                         ? asChunkingWriter.ValidateAndGetLength(range.LowerBound, ref lengthCache, null)
-                        : ((ISimpleTypeWriter)ElementHandler).ValidateAndGetLength(range.LowerBound, null));
+                        : ((ISimpleTypeHandler)ElementHandler).ValidateAndGetLength(range.LowerBound, null));
                 }
 
                 if (!range.UpperBoundInfinite) {
                     totalLen += 4 + (asChunkingWriter != null
                         ? asChunkingWriter.ValidateAndGetLength(range.UpperBound, ref lengthCache, null)
-                        : ((ISimpleTypeWriter)ElementHandler).ValidateAndGetLength(range.UpperBound, null));
+                        : ((ISimpleTypeHandler)ElementHandler).ValidateAndGetLength(range.UpperBound, null));
                 }
+            }
+
+            // If we're traversing an already-populated length cache, rewind to first element slot so that
+            // the elements' handlers can access their length cache values
+            if (lengthCache != null && lengthCache.IsPopulated) {
+                lengthCache.Position = lengthCachePos;
             }
 
             return totalLen;
         }
 
-        public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter)
+        public override void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter)
         {
             _buf = buf;
             _lengthCache = lengthCache;
             _value = (NpgsqlRange<TElement>)value;
-            _state = State.Start;
+            _state = State.Flags;
         }
 
-        public bool Write(ref DirectBuffer directBuf)
+        public override bool Write(ref DirectBuffer directBuf)
         {
-            var asChunkingWriter = ElementHandler as IChunkingTypeWriter;
             switch (_state)
             {
-                case State.Start:
-                    if (_buf.WriteSpaceLeft < 1) { return false; }
-                    _buf.WriteByte((byte)_value.Flags);
-
-                    if (_value.IsEmpty)
-                    {
-                        CleanupState();
-                        return true;
-                    }
-
-                    if (_value.LowerBoundInfinite) {
-                        goto case State.BeforeUpperBound;
-                    }
-
-                    if (asChunkingWriter != null) {
-                        asChunkingWriter.PrepareWrite(_value.LowerBound, _buf, _lengthCache, null);
-                    }
-                    _state = State.LowerBound;
-                    goto case State.LowerBound;
-
-                case State.LowerBound:
-                    if (asChunkingWriter == null)
-                    {
-                        var asSimpleWriter = (ISimpleTypeWriter)ElementHandler;
-                        // TODO: Cache length
-                        var len = asSimpleWriter.ValidateAndGetLength(_value.LowerBound, null);
-                        if (_buf.WriteSpaceLeft < len + 4) { return false; }
-                        _buf.WriteInt32(len);
-                        asSimpleWriter.Write(_value.LowerBound, _buf, null);
-                    }
-                    else if (!asChunkingWriter.Write(ref directBuf)) { return false; }
-                    goto case State.BeforeUpperBound;
-
-                case State.BeforeUpperBound:
-                    if (_value.UpperBoundInfinite) {
-                        CleanupState();
-                        return true;
-                    }
-                    if (asChunkingWriter != null) {
-                        asChunkingWriter.PrepareWrite(_value.UpperBound, _buf, _lengthCache, null);
-                    }
-                    _state = State.UpperBound;
-                    goto case State.UpperBound;
-
-                case State.UpperBound:
-                    if (asChunkingWriter == null)
-                    {
-                        var asSimpleWriter = (ISimpleTypeWriter)ElementHandler;
-                        // TODO: Cache length
-                        var len = asSimpleWriter.ValidateAndGetLength(_value.UpperBound, null);
-                        if (_buf.WriteSpaceLeft < len + 4) { return false; }
-                        _buf.WriteInt32(len);
-                        asSimpleWriter.Write(_value.UpperBound, _buf, null);
-                    }
-                    else if (!asChunkingWriter.Write(ref directBuf)) { return false; }
-
+            case State.Flags:
+                if (_buf.WriteSpaceLeft < 1) { return false; }
+                _buf.WriteByte((byte)_value.Flags);
+                if (_value.IsEmpty)
+                {
                     CleanupState();
                     return true;
+                }
+                goto case State.LowerBound;
 
-                default:
-                    throw PGUtil.ThrowIfReached();
+            case State.LowerBound:
+                _state = State.LowerBound;
+                if (_value.LowerBoundInfinite) {
+                    goto case State.UpperBound;
+                }
+
+                if (!WriteSingleElement(_value.LowerBound, ref directBuf)) { return false; }
+                goto case State.UpperBound;
+
+            case State.UpperBound:
+                _state = State.UpperBound;
+                if (_value.UpperBoundInfinite)
+                {
+                    CleanupState();
+                    return true;
+                }
+                if (!WriteSingleElement(_value.UpperBound, ref directBuf)) { return false; }
+                CleanupState();
+                return true;
+
+            default:
+                throw PGUtil.ThrowIfReached();
             }
+        }
+
+        // TODO: Duplicated from ArrayHandler... Refactor...
+        bool WriteSingleElement(object element, ref DirectBuffer directBuf)
+        {
+            if (element == null || element is DBNull)
+            {
+                if (_buf.WriteSpaceLeft < 4)
+                {
+                    return false;
+                }
+                _buf.WriteInt32(-1);
+                return true;
+            }
+
+            var asSimpleWriter = ElementHandler as ISimpleTypeHandler;
+            if (asSimpleWriter != null)
+            {
+                var elementLen = asSimpleWriter.ValidateAndGetLength(element, null);
+                if (_buf.WriteSpaceLeft < 4 + elementLen) { return false; }
+                _buf.WriteInt32(elementLen);
+                asSimpleWriter.Write(element, _buf, null);
+                return true;
+            }
+
+            var asChunkedWriter = ElementHandler as IChunkingTypeHandler;
+            if (asChunkedWriter != null)
+            {
+                if (!_wroteElementLen)
+                {
+                    if (_buf.WriteSpaceLeft < 4) { return false; }
+                    _buf.WriteInt32(asChunkedWriter.ValidateAndGetLength(element, ref _lengthCache, null));
+                    asChunkedWriter.PrepareWrite(element, _buf, _lengthCache, null);
+                    _wroteElementLen = true;
+                }
+                if (!asChunkedWriter.Write(ref directBuf))
+                {
+                    return false;
+                }
+                _wroteElementLen = false;
+                return true;
+            }
+
+            throw PGUtil.ThrowIfReached();
         }
 
         #endregion
 
         enum State
         {
-            Start,
+            Flags,
             LowerBound,
-            BeforeUpperBound,
             UpperBound,
             Done
         }

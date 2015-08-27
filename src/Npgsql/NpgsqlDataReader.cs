@@ -168,7 +168,7 @@ namespace Npgsql
         /// <returns>A task representing the asynchronous operation.</returns>
         public override async Task<bool> ReadAsync(CancellationToken cancellationToken)
         {
-            return await ReadInternalAsync().ConfigureAwait(false);
+            return await ReadInternalAsync(cancellationToken).ConfigureAwait(false);
         }
 
         [RewriteAsync]
@@ -298,7 +298,7 @@ namespace Npgsql
         /// <returns>A task representing the asynchronous operation.</returns>
         public override async sealed Task<bool> NextResultAsync(CancellationToken cancellationToken)
         {
-            return IsSchemaOnly ? NextResultSchemaOnly() : await NextResultInternalAsync().ConfigureAwait(false);
+            return IsSchemaOnly ? NextResultSchemaOnly() : await NextResultInternalAsync(cancellationToken).ConfigureAwait(false);
         }
 
         [RewriteAsync]
@@ -1091,7 +1091,7 @@ namespace Npgsql
         /// <returns><b>true</b> if the specified column value is equivalent to <see cref="DBNull"/> otherwise <b>false</b>.</returns>
         public override async Task<bool> IsDBNullAsync(int ordinal, CancellationToken cancellationToken)
         {
-            return await IsDBNullInternalAsync(ordinal).ConfigureAwait(false);
+            return await IsDBNullInternalAsync(cancellationToken, ordinal).ConfigureAwait(false);
         }
 
         [RewriteAsync]
@@ -1161,6 +1161,15 @@ namespace Npgsql
             CheckOrdinal(ordinal);
             Contract.EndContractBlock();
 
+            if (Command.ObjectResultTypes != null)
+            {
+                var type = Command.ObjectResultTypes[ordinal];
+                if (type != null)
+                {
+                    return type;
+                }
+            }
+
             var fieldDescription = _rowDescription[ordinal];
             return fieldDescription.Handler.GetFieldType(fieldDescription);
         }
@@ -1209,12 +1218,26 @@ namespace Npgsql
 
             object result;
             try {
-                result = handler.ReadValueAsObject(_row, fieldDescription);
+                result = handler.ReadValueAsObjectFully(_row, fieldDescription);
             } catch (SafeReadException e) {
                 throw e.InnerException;
             } catch {
                 _connector.Break();
                 throw;
+            }
+
+            // Used for Entity Framework <= 6 compability
+            if (Command.ObjectResultTypes != null && Command.ObjectResultTypes[ordinal] != null && result != null)
+            {
+                var type = Command.ObjectResultTypes[ordinal];
+                if (type == typeof(DateTimeOffset))
+                {
+                    result = new DateTimeOffset((DateTime)result);
+                }
+                else
+                {
+                    result = Convert.ChangeType(result, type);
+                }
             }
 
             if (IsCaching)
@@ -1247,7 +1270,7 @@ namespace Npgsql
         /// <returns>A task representing the asynchronous operation.</returns>
         public override async Task<T> GetFieldValueAsync<T>(int ordinal, CancellationToken cancellationToken)
         {
-            return await GetFieldValueInternalAsync<T>(ordinal).ConfigureAwait(false);
+            return await GetFieldValueInternalAsync<T>(cancellationToken, ordinal).ConfigureAwait(false);
         }
 
         [RewriteAsync]
@@ -1272,7 +1295,7 @@ namespace Npgsql
 
             // If the type handler can simply return the requested array, call it as usual. This is the case
             // of reading a string as char[], a bytea as a byte[]...
-            var tHandler = handler as ITypeReader<T>;
+            var tHandler = handler as ITypeHandler<T>;
             if (tHandler != null) {
                 return ReadColumn<T>(ordinal);
             }
@@ -1280,7 +1303,7 @@ namespace Npgsql
             // We need to treat this as an actual array type, these need special treatment because of
             // typing/generics reasons
             var elementType = t.GetElementType();
-            var arrayHandler = handler as ArrayHandler;
+            var arrayHandler = handler as IArrayHandler;
             if (arrayHandler == null) {
                 throw new InvalidCastException(String.Format("Can't cast database type {0} to {1}", fieldDescription.Handler.PgName, typeof(T).Name));
             }
@@ -1325,7 +1348,7 @@ namespace Npgsql
 
             object result;
             try {
-                result = handler.ReadPsvAsObject(_row, fieldDescription);
+                result = handler.ReadPsvAsObjectFully(_row, fieldDescription);
             } catch (SafeReadException e) {
                 throw e.InnerException;
             } catch {
@@ -1444,7 +1467,7 @@ namespace Npgsql
             var fieldDescription = _rowDescription[ordinal];
             try
             {
-                return fieldDescription.Handler.Read<T>(_row, Row.ColumnLen, fieldDescription);
+                return fieldDescription.Handler.ReadFully<T>(_row, Row.ColumnLen, fieldDescription);
             }
             catch (SafeReadException e)
             {

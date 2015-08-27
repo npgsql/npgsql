@@ -31,6 +31,12 @@ namespace Npgsql.Tests
 {
     public static class TestUtil
     {
+        public static bool IsOnBuildServer {
+            get {
+                return Environment.GetEnvironmentVariable("TEAMCITY_VERSION") != null;
+            }
+        }
+
         /// <summary>
         /// Calls Assert.Ignore() unless we're on the build server, in which case calls
         /// Assert.Fail(). We don't to miss any regressions just because something was misconfigured
@@ -38,10 +44,10 @@ namespace Npgsql.Tests
         /// </summary>
         public static void IgnoreExceptOnBuildServer(string message)
         {
-            if (Environment.GetEnvironmentVariable("TEAMCITY_VERSION") == null)
-                Assert.Ignore(message);
-            else
+            if (IsOnBuildServer)
                 Assert.Fail(message);
+            else
+                Assert.Ignore(message);
         }
 
         public static void IgnoreExceptOnBuildServer(string message, params object[] args)

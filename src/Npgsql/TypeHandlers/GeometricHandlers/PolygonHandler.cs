@@ -40,8 +40,7 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-geometric.html
     /// </remarks>
     [TypeMapping("polygon", NpgsqlDbType.Polygon, typeof(NpgsqlPolygon))]
-    internal class PolygonHandler : TypeHandler<NpgsqlPolygon>,
-        IChunkingTypeReader<NpgsqlPolygon>, IChunkingTypeWriter
+    internal class PolygonHandler : ChunkingTypeHandler<NpgsqlPolygon>
     {
         #region State
 
@@ -53,13 +52,13 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
 
         #region Read
 
-        public void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             _buf = buf;
             _index = -1;
         }
 
-        public bool Read(out NpgsqlPolygon result)
+        public override bool Read(out NpgsqlPolygon result)
         {
             result = default(NpgsqlPolygon);
 
@@ -85,21 +84,21 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
 
         #region Write
 
-        public int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
+        public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             if (!(value is NpgsqlPolygon))
                 throw CreateConversionException(value.GetType());
             return 4 + ((NpgsqlPolygon)value).Count * 16;
         }
 
-        public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
+        public override void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             _buf = buf;
             _value = (NpgsqlPolygon)value;
             _index = -1;
         }
 
-        public bool Write(ref DirectBuffer directBuf)
+        public override bool Write(ref DirectBuffer directBuf)
         {
             if (_index == -1)
             {

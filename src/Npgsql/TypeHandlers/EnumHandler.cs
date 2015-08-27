@@ -32,13 +32,17 @@ using System.Text;
 
 namespace Npgsql.TypeHandlers
 {
-    internal interface IEnumHandler { }
-    internal class EnumHandler<TEnum> : TypeHandler<TEnum>, IEnumHandler,
-        ISimpleTypeReader<TEnum>, ISimpleTypeWriter
-        where TEnum : struct
+    internal interface IEnumHandler
+    {
+        Type ClrType { get; }
+    }
+
+    internal class EnumHandler<TEnum> : SimpleTypeHandler<TEnum>, IEnumHandler where TEnum : struct
     {
         readonly Dictionary<TEnum, string> _enumToLabel;
         readonly Dictionary<string, TEnum> _labelToEnum;
+
+        public Type ClrType { get { return typeof (TEnum); } }
 
         public EnumHandler()
         {
@@ -61,7 +65,7 @@ namespace Npgsql.TypeHandlers
             }
         }
 
-        public TEnum Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override TEnum Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             var str = buf.ReadString(len);
             TEnum value;
@@ -75,7 +79,7 @@ namespace Npgsql.TypeHandlers
             return value;
         }
 
-        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
             if (!(value is TEnum))
                 throw CreateConversionException(value.GetType());
@@ -96,7 +100,7 @@ namespace Npgsql.TypeHandlers
             return Encoding.UTF8.GetByteCount(str);
         }
 
-        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
         {
             string str;
             if (_enumToLabel == null) {

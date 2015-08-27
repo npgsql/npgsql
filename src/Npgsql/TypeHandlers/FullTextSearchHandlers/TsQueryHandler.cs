@@ -38,7 +38,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
         typeof(NpgsqlTsQuery), typeof(NpgsqlTsQueryAnd), typeof(NpgsqlTsQueryEmpty),
         typeof(NpgsqlTsQueryLexeme), typeof(NpgsqlTsQueryNot), typeof(NpgsqlTsQueryOr), typeof(NpgsqlTsQueryBinOp) })
     ]
-    internal class TsQueryHandler : TypeHandler<NpgsqlTsQuery>, IChunkingTypeReader<NpgsqlTsQuery>, IChunkingTypeWriter
+    internal class TsQueryHandler : ChunkingTypeHandler<NpgsqlTsQuery>
     {
         // 1 (type) + 1 (weight) + 1 (is prefix search) + 2046 (max str len) + 1 (null terminator)
         const int MaxSingleTokenBytes = 2050;
@@ -52,7 +52,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
 
         Stack<NpgsqlTsQuery> _stack;
 
-        public void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             _buf = buf;
             _nodes = new Stack<Tuple<NpgsqlTsQuery, int>>();
@@ -60,7 +60,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             _bytesLeft = len;
         }
 
-        public bool Read(out NpgsqlTsQuery result)
+        public override bool Read(out NpgsqlTsQuery result)
         {
             result = null;
 
@@ -154,7 +154,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             }
         }
 
-        public int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
+        public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             var vec = value as NpgsqlTsQuery;
             if (vec == null) {
@@ -188,7 +188,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             }
         }
 
-        public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
+        public override void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             _buf = buf;
             _value = (NpgsqlTsQuery)value;
@@ -212,7 +212,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             return -1;
         }
 
-        public bool Write(ref DirectBuffer directBuf)
+        public override bool Write(ref DirectBuffer directBuf)
         {
             if (_stack == null)
             {

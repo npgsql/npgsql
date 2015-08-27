@@ -57,7 +57,7 @@ namespace Npgsql
         // Fields to implement IDataParameter
         NpgsqlDbType? _npgsqlDbType;
         DbType? _dbType;
-        Type _enumType;
+        Type _specificType;
         string _name = String.Empty;
         object _value;
         object _npgsqlValue;
@@ -73,6 +73,8 @@ namespace Npgsql
         internal bool IsBound { get; private set; }
         internal TypeHandler Handler { get; private set; }
         internal FormatCode FormatCode { get; private set; }
+
+        internal bool _autoAssignedName;
 
         #endregion
 
@@ -486,6 +488,7 @@ namespace Npgsql
                     _collection.InvalidateHashLookups();
                     ClearBind();
                 }
+                _autoAssignedName = false;
             }
         }
 
@@ -522,12 +525,22 @@ namespace Npgsql
         /// Used in combination with NpgsqlDbType.Enum or NpgsqlDbType.Array | NpgsqlDbType.Enum to indicate the enum type.
         /// For other NpgsqlDbTypes, this field is not used.
         /// </summary>
+        [Obsolete("Use the SpecificType property instead")]
         public Type EnumType
         {
-            get
-            {
-                if (_enumType != null)
-                    return _enumType;
+            get { return SpecificType; }
+            set { SpecificType = value; }
+        }
+
+        /// <summary>
+        /// Used in combination with NpgsqlDbType.Enum or NpgsqlDbType.Composite to indicate the specific enum or composite type.
+        /// For other NpgsqlDbTypes, this field is not used.
+        /// </summary>
+        public Type SpecificType
+        {
+            get {
+                if (_specificType != null)
+                    return _specificType;
 
                 // Try to infer type if NpgsqlDbType is Enum or has not been set
                 if ((!_npgsqlDbType.HasValue || _npgsqlDbType == NpgsqlDbType.Enum) && _value != null)
@@ -540,15 +553,7 @@ namespace Npgsql
                 }
                 return null;
             }
-            set
-            {
-                if (value != null)
-                {
-                    if (!value.GetTypeInfo().IsEnum)
-                        throw new ArgumentException("The type is not an enum type", "value");
-                    _enumType = value;
-                }
-            }
+            set { _specificType = value; }
         }
 
         /// <summary>
@@ -577,9 +582,9 @@ namespace Npgsql
             get
             {
                 string name = ParameterName;
-                if (name[0] == ':' || name[0] == '@')
+                if (name.Length > 0 && (name[0] == ':' || name[0] == '@'))
                 {
-                    return name.Length > 1 ? name.Substring(1) : string.Empty;
+                    return name.Substring(1);
                 }
                 return name;
 
@@ -603,7 +608,7 @@ namespace Npgsql
 
             if (_npgsqlDbType.HasValue)
             {
-                Handler = registry[_npgsqlDbType.Value, EnumType];
+                Handler = registry[_npgsqlDbType.Value, SpecificType];
             }
             else if (_dbType.HasValue)
             {
@@ -640,12 +645,12 @@ namespace Npgsql
             }
 
             // No length caching for simple types
-            var asSimpleWriter = Handler as ISimpleTypeWriter;
+            var asSimpleWriter = Handler as ISimpleTypeHandler;
             if (asSimpleWriter != null) {
                 return asSimpleWriter.ValidateAndGetLength(Value, this);
             }
 
-            var asChunkingWriter = Handler as IChunkingTypeWriter;
+            var asChunkingWriter = Handler as IChunkingTypeHandler;
             Contract.Assert(asChunkingWriter != null, String.Format("Handler {0} doesn't implement either ISimpleTypeWriter or IChunkingTypeWriter", Handler.GetType().Name));
             var lengthCache = LengthCache;
             var len = asChunkingWriter.ValidateAndGetLength(Value, ref lengthCache, this);
@@ -700,7 +705,7 @@ namespace Npgsql
             clone._size = _size;
             clone._dbType = _dbType;
             clone._npgsqlDbType = _npgsqlDbType;
-            clone._enumType = _enumType;
+            clone._specificType = _specificType;
             clone.Direction = Direction;
             clone.IsNullable = IsNullable;
             clone._name = _name;
@@ -711,6 +716,7 @@ namespace Npgsql
             clone._value = _value;
             clone._npgsqlValue = _npgsqlValue;
             clone.SourceColumnNullMapping = SourceColumnNullMapping;
+            clone._autoAssignedName = _autoAssignedName;
 
             return clone;
         }

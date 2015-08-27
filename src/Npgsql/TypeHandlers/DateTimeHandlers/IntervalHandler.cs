@@ -32,8 +32,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-datetime.html
     /// </remarks>
     [TypeMapping("interval", NpgsqlDbType.Interval, typeof(NpgsqlTimeSpan))]
-    internal class IntervalHandler : TypeHandlerWithPsv<TimeSpan, NpgsqlTimeSpan>,
-        ISimpleTypeReader<TimeSpan>, ISimpleTypeReader<NpgsqlTimeSpan>, ISimpleTypeWriter
+    internal class IntervalHandler : SimpleTypeHandlerWithPsv<TimeSpan, NpgsqlTimeSpan>
     {
         /// <summary>
         /// A deprecated compile-time option of PostgreSQL switches to a floating-point representation of some date/time
@@ -43,15 +42,17 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
 
         public IntervalHandler(TypeHandlerRegistry registry)
         {
-            _integerFormat = registry.Connector.BackendParams["integer_datetimes"] == "on";
+            // Check for the legacy floating point timestamps feature, defaulting to integer timestamps
+            string s;
+            _integerFormat = !registry.Connector.BackendParams.TryGetValue("integer_datetimes", out s) || s == "on";
         }
 
-        public TimeSpan Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override TimeSpan Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
-            return (TimeSpan)((ISimpleTypeReader<NpgsqlTimeSpan>)this).Read(buf, len, fieldDescription);
+            return (TimeSpan)((ISimpleTypeHandler<NpgsqlTimeSpan>)this).Read(buf, len, fieldDescription);
         }
 
-        NpgsqlTimeSpan ISimpleTypeReader<NpgsqlTimeSpan>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        internal override NpgsqlTimeSpan ReadPsv(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             if (!_integerFormat) {
                 throw new NotSupportedException("Old floating point representation for timestamps not supported");
@@ -62,7 +63,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             return new NpgsqlTimeSpan(month, day, ticks * 10);
         }
 
-        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
             if (!_integerFormat) {
                 throw new NotSupportedException("Old floating point representation for timestamps not supported");
@@ -85,7 +86,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             return 16;
         }
 
-        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
         {
             if (parameter != null && parameter.ConvertedValue != null) {
                 value = parameter.ConvertedValue;

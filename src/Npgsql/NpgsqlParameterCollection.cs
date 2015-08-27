@@ -169,10 +169,11 @@ namespace Npgsql
             value.Collection = this;
             this.InvalidateHashLookups();
 
-            // Check if there is a name. If not, add a name based in the index of parameter.
+            // Check if there is a name. If not, add a name based of the index+1 of the parameter.
             if (value.ParameterName.Trim() == String.Empty || (value.ParameterName.Length == 1 && value.ParameterName[0] == ':'))
             {
-                value.ParameterName = ":" + "Parameter" + (IndexOf(value) + 1);
+                value.ParameterName = ":" + "Parameter" + this.InternalList.Count;
+                value._autoAssignedName = true;
             }
 
             return value;
@@ -190,11 +191,11 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Adds a <see cref="NpgsqlParameter">NpgsqlParameter</see> to the <see cref="NpgsqlParameterCollection">NpgsqlParameterCollection</see> given the specified parameter name and value.
+        /// Adds a <see cref="NpgsqlParameter">NpgsqlParameter</see> to the <see cref="NpgsqlParameterCollection">NpgsqlParameterCollection</see> given the specified parameter name, data type and value.
         /// </summary>
         /// <param name="parameterName">The name of the <see cref="NpgsqlParameter">NpgsqlParameter</see>.</param>
-        /// <param name="value">The Value of the <see cref="NpgsqlParameter">NpgsqlParameter</see> to add to the collection.</param>
         /// <param name="parameterType">One of the NpgsqlDbType values.</param>
+        /// <param name="value">The Value of the <see cref="NpgsqlParameter">NpgsqlParameter</see> to add to the collection.</param>
         /// <returns>The paramater that was added.</returns>
         public NpgsqlParameter AddWithValue(string parameterName, NpgsqlDbType parameterType, object value)
         {
@@ -230,6 +231,30 @@ namespace Npgsql
         public NpgsqlParameter AddWithValue(string parameterName, NpgsqlDbType parameterType, int size, string sourceColumn, object value)
         {
             NpgsqlParameter param = new NpgsqlParameter(parameterName, parameterType, size, sourceColumn);
+            param.Value = value;
+            return this.Add(param);
+        }
+
+        /// <summary>
+        /// Adds a <see cref="NpgsqlParameter">NpgsqlParameter</see> to the <see cref="NpgsqlParameterCollection">NpgsqlParameterCollection</see> given the specified value.
+        /// </summary>
+        /// <param name="value">The Value of the <see cref="NpgsqlParameter">NpgsqlParameter</see> to add to the collection.</param>
+        /// <returns>The paramater that was added.</returns>
+        public NpgsqlParameter AddWithValue(object value)
+        {
+            return this.Add(new NpgsqlParameter() { Value = value });
+        }
+
+        /// <summary>
+        /// Adds a <see cref="NpgsqlParameter">NpgsqlParameter</see> to the <see cref="NpgsqlParameterCollection">NpgsqlParameterCollection</see> given the specified data type and value.
+        /// </summary>
+        /// <param name="parameterType">One of the NpgsqlDbType values.</param>
+        /// <param name="value">The Value of the <see cref="NpgsqlParameter">NpgsqlParameter</see> to add to the collection.</param>
+        /// <returns>The paramater that was added.</returns>
+        public NpgsqlParameter AddWithValue(NpgsqlDbType parameterType, object value)
+        {
+            NpgsqlParameter param = new NpgsqlParameter();
+            param.NpgsqlDbType = parameterType;
             param.Value = value;
             return this.Add(param);
         }
@@ -300,10 +325,15 @@ namespace Npgsql
         /// <returns>The zero-based location of the <see cref="NpgsqlParameter">NpgsqlParameter</see> in the collection.</returns>
         public override int IndexOf(string parameterName)
         {
+            if (parameterName == null)
+            {
+                return -1;
+            }
+
             int retIndex;
             int scanIndex;
 
-            if ((parameterName[0] == ':') || (parameterName[0] == '@'))
+            if (parameterName.Length > 0 && ((parameterName[0] == ':') || (parameterName[0] == '@')))
             {
                 parameterName = parameterName.Remove(0, 1);
             }
@@ -756,6 +786,19 @@ namespace Npgsql
         public NpgsqlParameter[] ToArray()
         {
             return InternalList.ToArray();
+        }
+
+        internal void CloneTo(NpgsqlParameterCollection other)
+        {
+            other.InternalList.Clear();
+            foreach (var param in InternalList)
+            {
+                var newParam = param.Clone();
+                newParam.Collection = this;
+                other.InternalList.Add(newParam);
+            }
+            other.lookup = lookup;
+            other.lookupIgnoreCase = lookupIgnoreCase;
         }
     }
 }

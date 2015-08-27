@@ -359,6 +359,18 @@ namespace Npgsql
 
         #endregion
 
+        #region Result Types Management
+
+        /// <summary>
+        /// Marks result types to be used when using GetValue on a data reader, on a column-by-column basis.
+        /// Used for Entity Framework 5-6 compability.
+        /// Only primitive numerical types and DateTimeOffset are supported.
+        /// Set the whole array or just a value to null to use default type.
+        /// </summary>
+        internal Type[] ObjectResultTypes { get; set; }
+
+        #endregion
+
         #region State management
 
         int _state;
@@ -524,20 +536,45 @@ namespace Npgsql
                 _queries.Add(new NpgsqlStatement("SELECT * FROM " + CommandText, new List<NpgsqlParameter>()));
                 break;
             case CommandType.StoredProcedure:
-                var numInput = _parameters.Count(p => p.IsInputDirection);
+                var inputList = _parameters.Where(p => p.IsInputDirection).ToList();
+                var numInput = inputList.Count;
                 var sb = new StringBuilder();
                 sb.Append("SELECT * FROM ");
                 sb.Append(CommandText);
                 sb.Append('(');
+                bool hasWrittenFirst = false;
                 for (var i = 1; i <= numInput; i++) {
-                    sb.Append('$');
-                    sb.Append(i);
-                    if (i < numInput) {
-                        sb.Append(',');
+                    var param = inputList[i - 1];
+                    if (param._autoAssignedName || param.CleanName == "")
+                    {
+                        if (hasWrittenFirst)
+                        {
+                            sb.Append(',');
+                        }
+                        sb.Append('$');
+                        sb.Append(i);
+                        hasWrittenFirst = true;
+                    }
+                }
+                for (var i = 1; i <= numInput; i++)
+                {
+                    var param = inputList[i - 1];
+                    if (!param._autoAssignedName && param.CleanName != "")
+                    {
+                        if (hasWrittenFirst)
+                        {
+                            sb.Append(',');
+                        }
+                        sb.Append('"');
+                        sb.Append(param.CleanName.Replace("\"", "\"\""));
+                        sb.Append("\" := ");
+                        sb.Append('$');
+                        sb.Append(i);
+                        hasWrittenFirst = true;
                     }
                 }
                 sb.Append(')');
-                _queries.Add(new NpgsqlStatement(sb.ToString(), _parameters.Where(p => p.IsInputDirection).ToList()));
+                _queries.Add(new NpgsqlStatement(sb.ToString(), inputList));
                 break;
             default:
                 throw PGUtil.ThrowIfReached();
@@ -782,16 +819,18 @@ namespace Npgsql
         public override async Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            cancellationToken.Register(Cancel);
-            try
+            using (cancellationToken.Register(Cancel))
             {
-                return await ExecuteNonQueryInternalAsync().ConfigureAwait(false);
-            }
-            catch (NpgsqlException e)
-            {
-                if (e.Code == "57014")
-                    throw new TaskCanceledException(e.Message);
-                throw;
+                try
+                {
+                    return await ExecuteNonQueryInternalAsync(cancellationToken).ConfigureAwait(false);
+                }
+                catch (NpgsqlException e)
+                {
+                    if (e.Code == "57014")
+                        throw new TaskCanceledException(e.Message);
+                    throw;
+                }
             }
         }
 
@@ -837,16 +876,18 @@ namespace Npgsql
         public override async Task<object> ExecuteScalarAsync(CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            cancellationToken.Register(Cancel);
-            try
+            using (cancellationToken.Register(Cancel))
             {
-                return await ExecuteScalarInternalAsync().ConfigureAwait(false);
-            }
-            catch (NpgsqlException e)
-            {
-                if (e.Code == "57014")
-                    throw new TaskCanceledException(e.Message);
-                throw;
+                try
+                {
+                    return await ExecuteScalarInternalAsync(cancellationToken).ConfigureAwait(false);
+                }
+                catch (NpgsqlException e)
+                {
+                    if (e.Code == "57014")
+                        throw new TaskCanceledException(e.Message);
+                    throw;
+                }
             }
         }
 
@@ -907,16 +948,18 @@ namespace Npgsql
         protected async override Task<DbDataReader> ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            cancellationToken.Register(Cancel);
-            try
+            using (cancellationToken.Register(Cancel))
             {
-                return await ExecuteDbDataReaderInternalAsync(behavior).ConfigureAwait(false);
-            }
-            catch (NpgsqlException e)
-            {
-                if (e.Code == "57014")
-                    throw new TaskCanceledException(e.Message);
-                throw;
+                try
+                {
+                    return await ExecuteDbDataReaderInternalAsync(cancellationToken, behavior).ConfigureAwait(false);
+                }
+                catch (NpgsqlException e)
+                {
+                    if (e.Code == "57014")
+                        throw new TaskCanceledException(e.Message);
+                    throw;
+                }
             }
         }
 
@@ -1081,11 +1124,17 @@ namespace Npgsql
         /// </remarks>
         void FixupRowDescription(RowDescriptionMessage rowDescription, bool isFirst)
         {
-            for (var i = 0; i < rowDescription.NumFields; i++) {
-                rowDescription[i].FormatCode =
+            for (var i = 0; i < rowDescription.NumFields; i++)
+            {
+                var field = rowDescription[i];
+                field.FormatCode =
                     (UnknownResultTypeList == null || !isFirst ? AllResultTypesAreUnknown : UnknownResultTypeList[i])
                     ? FormatCode.Text
                     : FormatCode.Binary;
+                if (field.FormatCode == FormatCode.Text)
+                {
+                    field.Handler = Connection.Connector.TypeHandlerRegistry.UnrecognizedTypeHandler;
+                }
             }
         }
 
@@ -1114,12 +1163,10 @@ namespace Npgsql
                 CommandType = CommandType,
                 DesignTimeVisible = DesignTimeVisible,
                 _allResultTypesAreUnknown = _allResultTypesAreUnknown,
-                _unknownResultTypeList = _unknownResultTypeList
+                _unknownResultTypeList = _unknownResultTypeList,
+                ObjectResultTypes = ObjectResultTypes
             };
-            foreach (NpgsqlParameter parameter in Parameters)
-            {
-                clone.Parameters.Add(parameter.Clone());
-            }
+            _parameters.CloneTo(clone._parameters);
             return clone;
         }
 

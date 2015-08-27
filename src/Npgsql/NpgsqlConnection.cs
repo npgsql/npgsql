@@ -33,10 +33,13 @@ using System.Reflection;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
+using System.Threading.Tasks;
+using AsyncRewriter;
 #if !DNXCORE50
 using System.Transactions;
 #endif
 using Npgsql.Logging;
+using NpgsqlTypes;
 using IsolationLevel = System.Data.IsolationLevel;
 
 namespace Npgsql
@@ -51,7 +54,7 @@ namespace Npgsql
     public sealed class NpgsqlConnection : DbConnection
 #else
     [System.ComponentModel.DesignerCategory("")]
-    public sealed class NpgsqlConnection : DbConnection
+    public sealed partial class NpgsqlConnection : DbConnection
 #endif
     {
         #region Fields
@@ -162,12 +165,119 @@ namespace Npgsql
         /// </summary>
         public override void Open()
         {
+            var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
+            OpenInternal(timeout);
+        }
+
+        /// <summary>
+        /// This is the asynchronous version of <see cref="Open"/>.
+        /// </summary>
+        /// <remarks>
+        /// Do not invoke other methods and properties of the <see cref="NpgsqlConnection"/> object until the returned Task is complete.
+        /// </remarks>
+        /// <param name="cancellationToken">The cancellation instruction.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        public override async Task OpenAsync(CancellationToken cancellationToken)
+        {
+            if (ConnectionTimeout == 0)
+            {
+                await OpenInternalAsync(cancellationToken, NpgsqlTimeout.Infinite);
+                return;
+            }
+
+            // We have a ConnectionTimeout
+            // We transmit the connection timeout event by triggeringing the cancellation token.
+            // However, a ct can't be triggered directly (need a source), and we also want to distinguish a
+            // timeout-triggered cancellation from a user-triggered cancellation.
+            // So we wire up the user's ct and a new timeout ct to a new composite ct which will be used.
+            var timeoutTs = TimeSpan.FromSeconds(ConnectionTimeout);
+            var timeout = new NpgsqlTimeout(timeoutTs);
+            var timedOut = false;
+
+            using (var timeoutCts = new CancellationTokenSource(timeoutTs))
+            using (var compositeCts = new CancellationTokenSource())
+            using (cancellationToken.Register(() => compositeCts.Cancel()))
+            {
+                timeoutCts.Token.Register(() =>
+                {
+                    timedOut = true;
+                    compositeCts.Cancel();
+                });
+                try
+                {
+                    await OpenInternalAsync(compositeCts.Token, timeout);
+                }
+                catch (TaskCanceledException e)
+                {
+                    if (timedOut)
+                    {
+                        throw new TimeoutException("The connection attempt timed out", e);
+                    }
+                    throw;
+                }
+            }
+        }
+
+        /// <summary>
+        /// This is the asynchronous version of <see cref="Open"/>.
+        /// </summary>
+        /// <remarks>
+        /// Do not invoke other methods and properties of the <see cref="NpgsqlConnection"/> object until the returned Task is complete.
+        /// </remarks>
+        /// <param name="cancellationToken">The cancellation instruction.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        public async Task OpenAsyncCrap(CancellationToken cancellationToken)
+        {
+            var timeoutTs = TimeSpan.FromSeconds(ConnectionTimeout);
+            var timeout = new NpgsqlTimeout(timeoutTs);
+            var timedOut = false;
+            CancellationTokenRegistration? ctRegistration = null;
+            if (ConnectionTimeout != 0)
+            {
+                // The connection timeout event is transmitted by triggering the cancellation token.
+                // However, a ct can't be triggered directly (need a source), and we also want to distinguish a
+                // timeout-triggered cancellation from a user-triggered cancellation.
+                // So we wire up the user's ct and a new timeout ct to a new composite ct which will be used.
+                var timeoutCts = new CancellationTokenSource(timeoutTs);
+                var compositeCts = new CancellationTokenSource();
+                timeoutCts.Token.Register(() =>
+                {
+                    timedOut = true;
+                    compositeCts.Cancel();
+                });
+                ctRegistration = cancellationToken.Register(() => compositeCts.Cancel());
+                cancellationToken = compositeCts.Token;
+            }
+            try
+            {
+                await OpenInternalAsync(cancellationToken, timeout);
+            }
+            catch (TaskCanceledException e)
+            {
+                if (timedOut)
+                {
+                    throw new TimeoutException("The connection attempt timed out", e);
+                }
+                throw;
+            }
+            finally
+            {
+                if (ctRegistration.HasValue)
+                {
+                    ctRegistration.Value.Dispose();
+                }
+            }
+        }
+
+        [RewriteAsync]
+        void OpenInternal(NpgsqlTimeout timeout)
+        {
             if (string.IsNullOrWhiteSpace(Host))
                 throw new ArgumentException("Host can't be null");
-            if (string.IsNullOrWhiteSpace(Database))
-                throw new ArgumentException("Database can't be null");
             if (string.IsNullOrWhiteSpace(UserName) && !IntegratedSecurity)
                 throw new ArgumentException("Either Username must be specified or IntegratedSecurity must be on");
+            if (Settings.Password == null && !IntegratedSecurity)
+                throw new ArgumentException("Either password must be specified or IntegratedSecurity must be on");
             if (ContinuousProcessing && UseSslStream)
                 throw new ArgumentException("ContinuousProcessing can't be turned on with UseSslStream");
             Contract.EndContractBlock();
@@ -193,7 +303,7 @@ namespace Npgsql
                 else
                 {
                     Connector = new NpgsqlConnector(this);
-                    Connector.Open();
+                    Connector.Open(timeout);
                 }
 
                 Connector.Notice += NoticeDelegate;
@@ -997,27 +1107,27 @@ namespace Npgsql
 
         #endregion
 
-        #region Enum registration
+        #region Enum mapping
 
         /// <summary>
-        /// Registers an enum type for use with this connection.
-        ///
+        /// Maps a CLR enum to a PostgreSQL enum type for use with this connection.
+        /// </summary>
+        /// <remarks>
         /// Enum labels are mapped by string. The .NET enum labels must correspond exactly to the PostgreSQL labels;
-        /// if another label is used in the database, this can be specified for each label with a EnumLabelAttribute.
+        /// if another label is used in the database, this can be specified for each label with a <see cref="PgNameAttribute"/>.
         /// If there is a discrepancy between the .NET and database labels while an enum is read or written,
         /// an exception will be raised.
         ///
-        /// Can only be invoked on an open connection; if the connection is closed the registration is lost.
-        /// </summary>
-        /// <remarks>
-        /// To avoid registering the type for each connection, use the <see cref="RegisterEnumGlobally{T}"/> method.
+        /// Can only be invoked on an open connection; if the connection is closed the mapping is lost.
+        ///
+        /// To avoid registering the type for each connection, use the <see cref="MapEnumGlobally{T}"/> method.
         /// </remarks>
         /// <param name="pgName">
         /// A PostgreSQL type name for the corresponding enum type in the database.
         /// If null, the .NET type's name in lowercase will be used
         /// </param>
-        /// <typeparam name="TEnum">The .NET enum type to be registered</typeparam>
-        public void RegisterEnum<TEnum>(string pgName = null) where TEnum : struct
+        /// <typeparam name="TEnum">The .NET enum type to be mapped</typeparam>
+        public void MapEnum<TEnum>(string pgName = null) where TEnum : struct
         {
             if (!typeof(TEnum).GetTypeInfo().IsEnum)
                 throw new ArgumentException("An enum type must be provided");
@@ -1031,22 +1141,22 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Registers an enum type for use with all connections created from now on. Existing connections aren't affected.
-        ///
-        /// Enum labels are mapped by string. The .NET enum labels must correspond exactly to the PostgreSQL labels;
-        /// if another label is used in the database, this can be specified for each label with a EnumLabelAttribute.
-        /// If there is a discrepancy between the .NET and database labels while an enum is read or written,
-        /// an exception will be raised.
+        /// Maps a CLR enum to a PostgreSQL enum type for use with all connections created from now on. Existing connections aren't affected.
         /// </summary>
         /// <remarks>
-        /// To register the type for a specific connection, use the <see cref="RegisterEnum{T}"/> method.
+        /// Enum labels are mapped by string. The .NET enum labels must correspond exactly to the PostgreSQL labels;
+        /// if another label is used in the database, this can be specified for each label with a <see cref="PgNameAttribute"/>.
+        /// If there is a discrepancy between the .NET and database labels while an enum is read or written,
+        /// an exception will be raised.
+        ///
+        /// To register the type for a specific connection, use the <see cref="MapEnum{T}"/> method.
         /// </remarks>
         /// <param name="pgName">
         /// A PostgreSQL type name for the corresponding enum type in the database.
         /// If null, the .NET type's name in lowercase will be used
         /// </param>
-        /// <typeparam name="TEnum">The .NET enum type to be associated</typeparam>
-        public static void RegisterEnumGlobally<TEnum>(string pgName = null) where TEnum : struct
+        /// <typeparam name="TEnum">The .NET enum type to be mapped</typeparam>
+        public static void MapEnumGlobally<TEnum>(string pgName = null) where TEnum : struct
         {
             if (!typeof(TEnum).GetTypeInfo().IsEnum)
                 throw new ArgumentException("An enum type must be provided");
@@ -1055,6 +1165,109 @@ namespace Npgsql
             Contract.EndContractBlock();
 
             TypeHandlerRegistry.RegisterEnumTypeGlobally<TEnum>(pgName ?? typeof(TEnum).Name.ToLower());
+        }
+
+        /// <summary>
+        /// Maps a CLR enum to a PostgreSQL enum type for use with this connection.
+        /// </summary>
+        /// <remarks>
+        /// Enum labels are mapped by string. The .NET enum labels must correspond exactly to the PostgreSQL labels;
+        /// if another label is used in the database, this can be specified for each label with a <see cref="PgNameAttribute"/>.
+        /// If there is a discrepancy between the .NET and database labels while an enum is read or written,
+        /// an exception will be raised.
+        ///
+        /// Can only be invoked on an open connection; if the connection is closed the mapping is lost.
+        ///
+        /// To avoid registering the type for each connection, use the <see cref="MapEnumGlobally{T}"/> method.
+        /// </remarks>
+        /// <param name="pgName">
+        /// A PostgreSQL type name for the corresponding enum type in the database.
+        /// If null, the .NET type's name in lowercase will be used
+        /// </param>
+        /// <typeparam name="TEnum">The .NET enum type to be mapped</typeparam>
+        [Obsolete("Use MapEnum instead")]
+        public void RegisterEnum<TEnum>(string pgName = null) where TEnum : struct
+        {
+            MapEnum<TEnum>(pgName);
+        }
+
+        /// <summary>
+        /// Maps a CLR enum to a PostgreSQL enum type for use with all connections created from now on. Existing connections aren't affected.
+        /// </summary>
+        /// <remarks>
+        /// Enum labels are mapped by string. The .NET enum labels must correspond exactly to the PostgreSQL labels;
+        /// if another label is used in the database, this can be specified for each label with a <see cref="PgNameAttribute"/>.
+        /// If there is a discrepancy between the .NET and database labels while an enum is read or written,
+        /// an exception will be raised.
+        ///
+        /// To register the type for a specific connection, use the <see cref="MapEnum{T}"/> method.
+        /// </remarks>
+        /// <param name="pgName">
+        /// A PostgreSQL type name for the corresponding enum type in the database.
+        /// If null, the .NET type's name in lowercase will be used
+        /// </param>
+        /// <typeparam name="TEnum">The .NET enum type to be mapped</typeparam>
+        public static void RegisterEnumGlobally<TEnum>(string pgName = null) where TEnum : struct
+        {
+            MapEnumGlobally<TEnum>(pgName);
+        }
+
+        #endregion
+
+        #region Composite registration
+
+        /// <summary>
+        /// Maps a CLR type to a PostgreSQL composite type for use with this connection.
+        /// </summary>
+        /// <remarks>
+        /// CLR fields and properties are mapped by name to the composite type's attributes, but
+        /// you can use the <see cref="PgNameAttribute"/> attribute to manually control the mapping.
+        /// If there is a discrepancy between the .NET and database labels while an enum is read or written,
+        /// an exception will be raised.
+        ///
+        /// Can only be invoked on an open connection; if the connection is closed the mapping is lost.
+        ///
+        /// To avoid registering the type for each connection, use the <see cref="MapCompositeGlobally{T}"/> method.
+        /// </remarks>
+        /// <param name="pgName">
+        /// A PostgreSQL type name for the corresponding composite type in the database.
+        /// If null, the .NET type's name in lowercase will be used
+        /// </param>
+        /// <typeparam name="T">The .NET type to be mapped</typeparam>
+        public void MapComposite<T>(string pgName = null) where T : new()
+        {
+            if (pgName != null && pgName.Trim() == "")
+                throw new ArgumentException("pgName can't be empty", "pgName");
+            if (State != ConnectionState.Open)
+                throw new InvalidOperationException("Connection must be open and idle to perform registration");
+            Contract.EndContractBlock();
+
+            Connector.TypeHandlerRegistry.RegisterCompositeType<T>(pgName ?? typeof(T).Name.ToLower());
+        }
+
+        /// <summary>
+        /// Maps a CLR type to a PostgreSQL composite type for use with all connections created from now on. Existing connections aren't affected.
+        /// </summary>
+        /// <remarks>
+        /// CLR fields and properties are mapped by name to the composite type's attributes, but
+        /// you can use the <see cref="PgNameAttribute"/> attribute to manually control the mapping.
+        /// If there is a discrepancy between the .NET and database labels while an enum is read or written,
+        /// an exception will be raised.
+        ///
+        /// To register the type for a specific connection, use the <see cref="MapEnum{T}"/> method.
+        /// </remarks>
+        /// <param name="pgName">
+        /// A PostgreSQL type name for the corresponding composite type in the database.
+        /// If null, the .NET type's name in lowercase will be used
+        /// </param>
+        /// <typeparam name="T">The .NET type to be mapped</typeparam>
+        public static void MapCompositeGlobally<T>(string pgName = null) where T : new()
+        {
+            if (pgName != null && pgName.Trim() == "")
+                throw new ArgumentException("pgName can't be empty", "pgName");
+            Contract.EndContractBlock();
+
+            TypeHandlerRegistry.RegisterCompositeTypeGlobally<T>(pgName ?? typeof(T).Name.ToLower());
         }
 
         #endregion
@@ -1248,6 +1461,16 @@ namespace Npgsql
         public static void ClearAllPools()
         {
             NpgsqlConnectorPool.ConnectorPoolMgr.ClearAllPools();
+        }
+
+        /// <summary>
+        /// Flushes the type cache for this connection's connection string and reloads the
+        /// types for this connection only.
+        /// </summary>
+        internal void ReloadTypes()
+        {
+            TypeHandlerRegistry.ClearBackendTypeCache(ConnectionString);
+            TypeHandlerRegistry.Setup(Connector, new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout)));
         }
 
         #endregion Misc

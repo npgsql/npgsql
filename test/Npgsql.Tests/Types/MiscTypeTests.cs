@@ -82,18 +82,25 @@ namespace Npgsql.Tests.Types
         /// http://www.postgresql.org/docs/current/static/datatype-money.html
         /// </summary>
         [Test]
-        public void ReadMoney()
+        public void Money()
         {
-            var cmd = new NpgsqlCommand("SELECT '12345.12'::MONEY, '-10.5'::MONEY", Conn);
-            var reader = cmd.ExecuteReader();
-            reader.Read();
-            Assert.That(reader.GetDecimal(0), Is.EqualTo(12345.12m));
-            Assert.That(reader.GetValue(0), Is.EqualTo(12345.12m));
-            Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(12345.12m));
-            Assert.That(reader.GetDecimal(1), Is.EqualTo(-10.5m));
-            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(decimal)));
-            reader.Close();
-            cmd.Dispose();
+            var expected1 = 12345.12m;
+            var expected2 = -10.5m;
+            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", Conn))
+            {
+                cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Money, expected1);
+                cmd.Parameters.Add(new NpgsqlParameter("p2", DbType.Currency) { Value = expected2 });
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetDecimal(0), Is.EqualTo(12345.12m));
+                    Assert.That(reader.GetValue(0), Is.EqualTo(12345.12m));
+                    Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(12345.12m));
+                    Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(decimal)));
+
+                    Assert.That(reader.GetDecimal(1), Is.EqualTo(-10.5m));
+                }
+            }
         }
 
         /// <summary>
@@ -229,6 +236,21 @@ namespace Npgsql.Tests.Types
             }
         }
 
+        [Test, Description("PostgreSQL records should be returned as arrays of objects")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/724")]
+        public void Record()
+        {
+            ExecuteNonQuery("CREATE FUNCTION pg_temp.foo () RETURNS RECORD AS $$ SELECT 1,2 $$ LANGUAGE SQL");
+            using (var cmd = new NpgsqlCommand("SELECT pg_temp.foo()", Conn))
+            {
+                var record = cmd.ExecuteScalar();
+                Assert.That(record, Is.TypeOf<object[]>());
+                var array = (object[])record;
+                Assert.That(array[0], Is.EqualTo(1));
+                Assert.That(array[1], Is.EqualTo(2));
+            }
+        }
+
         [Test, Description("Makes sure that setting DbType.Object makes Npgsql infer the type")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/694")]
         public void DbTypeCausesInference()
@@ -296,6 +318,17 @@ namespace Npgsql.Tests.Types
             Assert.That(reader.GetInt32(1), Is.EqualTo(8));
             reader.Close();
             cmd.Dispose();
+        }
+
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/711")]
+        public void KnownTypeAsUnknown()
+        {
+            using (var cmd = new NpgsqlCommand("SELECT 8", Conn))
+            {
+                cmd.AllResultTypesAreUnknown = true;
+                Assert.That(cmd.ExecuteScalar(), Is.EqualTo("8"));
+            }
         }
 
         [Test, Description("Sends a null value parameter with no NpgsqlDbType or DbType, but with context for the backend to handle it")]
@@ -475,52 +508,6 @@ namespace Npgsql.Tests.Types
             command = new NpgsqlCommand("SELECT person_uuid::uuid FROM person LIMIT 1", Conn);
             var result = command.ExecuteScalar();
             Assert.AreEqual(typeof(Guid), result.GetType());
-        }
-
-        [Test]
-        [MinPgVersion(9, 2, 0, "Ranges supported only starting PostgreSQL 9.2")]
-        public void Range()
-        {
-            var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4", Conn);
-            var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Range | NpgsqlDbType.Integer) { Value = NpgsqlRange<int>.Empty() };
-            var p2 = new NpgsqlParameter { ParameterName = "p2", Value = new NpgsqlRange<int>(1, 10) };
-            var p3 = new NpgsqlParameter { ParameterName = "p3", Value = new NpgsqlRange<int>(1, false, 10, false) };
-            var p4 = new NpgsqlParameter { ParameterName = "p4", Value = new NpgsqlRange<int>(0, false, true, 10, false, false) };
-            Assert.That(p2.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Range | NpgsqlDbType.Integer));
-            cmd.Parameters.Add(p1);
-            cmd.Parameters.Add(p2);
-            cmd.Parameters.Add(p3);
-            cmd.Parameters.Add(p4);
-            var reader = cmd.ExecuteReader();
-            reader.Read();
-
-            Assert.That(reader[0].ToString(), Is.EqualTo("empty"));
-            Assert.That(reader[1].ToString(), Is.EqualTo("[1,11)"));
-            Assert.That(reader[2].ToString(), Is.EqualTo("[2,10)"));
-            Assert.That(reader[3].ToString(), Is.EqualTo("(,10)"));
-
-            reader.Dispose();
-            cmd.Dispose();
-        }
-
-        [Test]
-        [MinPgVersion(9, 2, 0, "Ranges supported only starting PostgreSQL 9.2")]
-        public void TestRange()
-        {
-            using (var cmd = Conn.CreateCommand())
-            {
-                object obj;
-
-                cmd.CommandText = "select '[2,10)'::int4range";
-                cmd.Prepare();
-                obj = cmd.ExecuteScalar();
-                Assert.AreEqual(new NpgsqlRange<int>(2, true, false, 10, false, false), obj);
-
-                cmd.CommandText = "select array['[2,10)'::int4range, '[3,9)'::int4range]";
-                cmd.Prepare();
-                obj = cmd.ExecuteScalar();
-                Assert.AreEqual(new NpgsqlRange<int>(3, true, false, 9, false, false), ((NpgsqlRange<int>[])obj)[1]);
-            }
         }
 
         [Test]

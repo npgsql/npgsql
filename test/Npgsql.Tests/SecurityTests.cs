@@ -83,6 +83,29 @@ namespace Npgsql.Tests
             Assert.That(Conn.IsSecure, Is.False);
         }
 
+        [Test]
+        public void IntegratedSecurity()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString) {
+                IntegratedSecurity = true,
+                Username = null,
+                Password = null,
+            };
+            using (var conn = new NpgsqlConnection(csb))
+            {
+                try
+                {
+                    conn.Open();
+                }
+                catch (Exception e)
+                {
+                    if (TestUtil.IsOnBuildServer)
+                        throw;
+                    Assert.Ignore("Integrated security (GSS/SSPI) doesn't seem to be set up");
+                }
+            }
+        }
+
         #region Partial Trust
 
         [Test, Description("Makes sure Npgsql works when running under pseudo-medium trust")]

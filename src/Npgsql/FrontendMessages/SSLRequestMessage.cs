@@ -23,47 +23,25 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Text;
 
 namespace Npgsql.FrontendMessages
 {
-    class StartupMessage : SimpleFrontendMessage
+    class SSLRequestMessage : SimpleFrontendMessage
     {
-        readonly Dictionary<byte[], byte[]> _parameters = new Dictionary<byte[], byte[]>();
-        int _length;
+        internal static readonly SSLRequestMessage Instance = new SSLRequestMessage();
 
-        const int ProtocolVersion3 = 3 << 16; // 196608
+        SSLRequestMessage() {}
 
-        internal string this[string key]
-        {
-            set { _parameters[PGUtil.UTF8Encoding.GetBytes(key)] = PGUtil.UTF8Encoding.GetBytes(value); }
-        }
-
-        internal override int Length
-        {
-            get
-            {
-                return _length = 4 + // len
-                                 4 + // protocol version
-                                 _parameters.Select(kv => kv.Key.Length + kv.Value.Length + 2).Sum() +
-                                 1; // trailing zero byte
-            }
-        }
+        internal override int Length { get { return 8; } }
 
         internal override void Write(NpgsqlBuffer buf)
         {
-            buf.WriteInt32(_length);
-            buf.WriteInt32(ProtocolVersion3);
-
-            foreach (var kv in _parameters)
-            {
-                buf.WriteBytesNullTerminated(kv.Key);
-                buf.WriteBytesNullTerminated(kv.Value);
-            }
-
-            buf.WriteByte(0);
+            buf.WriteInt32(Length);
+            buf.WriteInt32(80877103);
         }
+
+        public override string ToString() { return "[SSLRequest]"; }
     }
 }

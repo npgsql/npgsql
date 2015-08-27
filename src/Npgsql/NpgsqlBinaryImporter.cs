@@ -190,7 +190,7 @@ namespace Npgsql
 
                 _dummyParam.ConvertedValue = null;
 
-                var asSimple = handler as ISimpleTypeWriter;
+                var asSimple = handler as ISimpleTypeHandler;
                 if (asSimple != null)
                 {
                     var len = asSimple.ValidateAndGetLength(asObject, _dummyParam);
@@ -205,7 +205,7 @@ namespace Npgsql
                     return;
                 }
 
-                var asChunking = handler as IChunkingTypeWriter;
+                var asChunking = handler as IChunkingTypeHandler;
                 if (asChunking != null)
                 {
                     _lengthCache.Clear();

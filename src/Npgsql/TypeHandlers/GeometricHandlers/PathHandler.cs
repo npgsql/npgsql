@@ -40,8 +40,7 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-geometric.html
     /// </remarks>
     [TypeMapping("path", NpgsqlDbType.Path, typeof(NpgsqlPath))]
-    internal class PathHandler : TypeHandler<NpgsqlPath>,
-        IChunkingTypeReader<NpgsqlPath>, IChunkingTypeWriter
+    internal class PathHandler : ChunkingTypeHandler<NpgsqlPath>
     {
         #region State
 
@@ -53,13 +52,13 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
 
         #region Read
 
-        public void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             _buf = buf;
             _index = -1;
         }
 
-        public bool Read(out NpgsqlPath result)
+        public override bool Read(out NpgsqlPath result)
         {
             result = default(NpgsqlPath);
 
@@ -99,21 +98,21 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
 
         #region Write
 
-        public int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
+        public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             if (!(value is NpgsqlPath))
                     throw CreateConversionException(value.GetType());
             return 5 + ((NpgsqlPath)value).Count * 16;
         }
 
-        public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
+        public override void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             _buf = buf;
             _value = (NpgsqlPath)value;
             _index = -1;
         }
 
-        public bool Write(ref DirectBuffer directBuf)
+        public override bool Write(ref DirectBuffer directBuf)
         {
             if (_index == -1)
             {

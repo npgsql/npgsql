@@ -179,7 +179,7 @@ namespace Npgsql.FrontendMessages
 
                 var handler = param.Handler;
 
-                var asChunkingWriter = handler as IChunkingTypeWriter;
+                var asChunkingWriter = handler as IChunkingTypeHandler;
                 if (asChunkingWriter != null)
                 {
                     if (!_wroteParamLen)
@@ -197,7 +197,7 @@ namespace Npgsql.FrontendMessages
                 }
 
                 var len = param.ValidateAndGetLength();
-                var asSimpleWriter = (ISimpleTypeWriter)handler;
+                var asSimpleWriter = (ISimpleTypeHandler)handler;
                 if (buf.WriteSpaceLeft < len + 4)
                 {
                     Contract.Assume(buf.Size >= len + 4);

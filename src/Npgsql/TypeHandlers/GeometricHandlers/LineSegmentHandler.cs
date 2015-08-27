@@ -40,28 +40,26 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-geometric.html
     /// </remarks>
     [TypeMapping("lseg", NpgsqlDbType.LSeg, typeof(NpgsqlLSeg))]
-    internal class LineSegmentHandler : TypeHandler<NpgsqlLSeg>,
-        ISimpleTypeReader<NpgsqlLSeg>, ISimpleTypeWriter,
-        ISimpleTypeReader<string>
+    internal class LineSegmentHandler : SimpleTypeHandler<NpgsqlLSeg>, ISimpleTypeHandler<string>
     {
-        public NpgsqlLSeg Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override NpgsqlLSeg Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             return new NpgsqlLSeg(buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble());
         }
 
-        string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        string ISimpleTypeHandler<string>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             return Read(buf, len, fieldDescription).ToString();
         }
 
-        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
             if (!(value is NpgsqlLSeg))
                 throw CreateConversionException(value.GetType());
             return 32;
         }
 
-        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
         {
             var v = (NpgsqlLSeg)value;
             buf.WriteDouble(v.Start.X);

@@ -77,14 +77,9 @@ namespace Npgsql
 
             foreach (KeyValuePair<string, TypeUsage> parameter in commandTree.Parameters)
             {
-                NpgsqlParameter dbParameter = command.CreateParameter();
+                NpgsqlParameter dbParameter = new NpgsqlParameter();
                 dbParameter.ParameterName = parameter.Key;
-                dbParameter.DbType = NpgsqlProviderManifest.GetDbType(((PrimitiveType)parameter.Value.EdmType).PrimitiveTypeKind);
-                if (dbParameter.DbType == DbType.String)
-                {
-                    // Send strings as unknowns to be compatible with other datatypes than text
-                    dbParameter.NpgsqlDbType = NpgsqlDbType.Unknown;
-                }
+                dbParameter.NpgsqlDbType = NpgsqlProviderManifest.GetNpgsqlDbType(((PrimitiveType)parameter.Value.EdmType).PrimitiveTypeKind);
                 command.Parameters.Add(dbParameter);
             }
 
@@ -93,7 +88,7 @@ namespace Npgsql
             return command;
         }
 
-        private void TranslateCommandTree(Version serverVersion, DbCommandTree commandTree, DbCommand command)
+        internal void TranslateCommandTree(Version serverVersion, DbCommandTree commandTree, DbCommand command, bool createParametersForNonSelect = true)
         {
             SqlBaseGenerator sqlGenerator = null;
 
@@ -122,6 +117,8 @@ namespace Npgsql
                 // TODO: get a message (unsupported DbCommandTree type)
                 throw new ArgumentException();
             }
+            sqlGenerator._createParametersForConstants = select != null ? false : createParametersForNonSelect;
+            sqlGenerator._command = (NpgsqlCommand)command;
             sqlGenerator.Version = serverVersion;
 
             sqlGenerator.BuildCommand(command);

@@ -156,7 +156,9 @@ src/EntityFramework7.Npgsql/bin/Release/*.nupkg]]></param>
       <build-trigger id="vcsTrigger" type="vcsTrigger">
         <parameters>
           <param name="branchFilter"><![CDATA[+:*
--:refs/heads/2.2]]></param>
+-:support/*
+-:hotfix/2.*
+-:gh-pages*]]></param>
           <param name="quietPeriodMode" value="DO_NOT_USE" />
         </parameters>
       </build-trigger>
