@@ -132,7 +132,8 @@ namespace NpgsqlTests
         [Test]
         public void FunctionCallFromSelect()
         {
-            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION funcB() returns setof data as 'select * from data;' language 'sql';");
+            ExecuteNonQuery(@"DROP FUNCTION IF EXISTS funcB()");
+            ExecuteNonQuery(@"CREATE FUNCTION funcB() returns setof data as 'select * from data;' language 'sql';");
             var command = new NpgsqlCommand("select * from funcB()", Conn);
             var reader = command.ExecuteReader();
             Assert.IsNotNull(reader);
@@ -369,7 +370,8 @@ namespace NpgsqlTests
         [Test]
         public void FunctionCallReturnResultSet()
         {
-            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION funcB() returns setof data as 'select * from data;' language 'sql';");
+            ExecuteNonQuery(@"DROP FUNCTION IF EXISTS funcB()");
+            ExecuteNonQuery(@"CREATE FUNCTION funcB() returns setof data as 'select * from data;' language 'sql';");
             var command = new NpgsqlCommand("funcB()", Conn);
             command.CommandType = CommandType.StoredProcedure;
             var dr = command.ExecuteReader();

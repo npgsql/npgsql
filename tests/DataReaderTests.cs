@@ -625,7 +625,8 @@ namespace NpgsqlTests
         {
             ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('X')");
             ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('Y')");
-            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION funcB() returns setof data as '
+            ExecuteNonQuery(@"DROP FUNCTION IF EXISTS funcB()");
+            ExecuteNonQuery(@"CREATE FUNCTION funcB() returns setof data as '
                               select * from data;
                               ' language 'sql';");
             var command = new NpgsqlCommand("funcb", Conn);
@@ -647,7 +648,8 @@ namespace NpgsqlTests
             // Problem is that prepare plan must already have the limit 1 single row support.
             ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('X')");
             ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('Y')");
-            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION funcB() returns setof data as '
+            ExecuteNonQuery(@"DROP FUNCTION IF EXISTS funcB()");
+            ExecuteNonQuery(@"CREATE FUNCTION funcB() returns setof data as '
                               select * from data;
                               ' language 'sql';");
 
@@ -891,7 +893,8 @@ namespace NpgsqlTests
         [Test]
         public void SchemaOnlyCommandBehaviorSupportFunctioncall()
         {
-            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION funcB() returns setof data as '
+            ExecuteNonQuery(@"DROP FUNCTION IF EXISTS funcB()");
+            ExecuteNonQuery(@"CREATE FUNCTION funcB() returns setof data as '
                               select * from data;
                               ' language 'sql';");
             var command = new NpgsqlCommand("funcb", Conn);
