@@ -162,6 +162,8 @@ namespace Npgsql
         readonly DateTime _expiration;
         internal DateTime Expiration { get { return _expiration; } }
 
+        internal static NpgsqlTimeout Infinite = new NpgsqlTimeout(TimeSpan.Zero);
+
         internal NpgsqlTimeout(TimeSpan expiration)
         {
             _expiration = expiration == TimeSpan.Zero
