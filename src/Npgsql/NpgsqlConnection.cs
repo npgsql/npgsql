@@ -54,7 +54,7 @@ namespace Npgsql
     public sealed class NpgsqlConnection : DbConnection
 #else
     [System.ComponentModel.DesignerCategory("")]
-    public sealed partial class NpgsqlConnection : DbConnection
+    public sealed partial class NpgsqlConnection : DbConnection, ICloneable
 #endif
     {
         #region Fields
@@ -1359,6 +1359,12 @@ namespace Npgsql
         #endregion Schema operations
 
         #region Misc
+
+        object ICloneable.Clone()
+        {
+            CheckNotDisposed();
+            return new NpgsqlConnection(ConnectionString);
+        }
 
         /// <summary>
         /// This method changes the current database by disconnecting from the actual
