@@ -151,6 +151,7 @@
     <Compile Include="PropertyEntryNpgsqlTest.cs" />
     <Compile Include="QueryNpgsqlTest.cs" />
     <Compile Include="StoreGeneratedNpgsqlTest.cs" />
+    <Compile Include="StoreSqlExecutorNpgsqlTest.cs" />
     <Compile Include="TestModels\NpgsqlNorthwindContext.cs" />
     <Compile Include="TestNpgsqlModelSource.cs" />
     <Compile Include="TransactionNpgsqlFixture.cs" />
@@ -172,6 +173,9 @@
       <Project>{9d13b739-62b1-4190-b386-7a9547304eb3}</Project>
       <Name>Npgsql</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Northwind.sql" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
