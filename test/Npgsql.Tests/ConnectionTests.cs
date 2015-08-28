@@ -679,6 +679,14 @@ namespace Npgsql.Tests
                 Assert.That(() => conn.Open(), Throws.Exception.TypeOf<ArgumentException>());
         }
 
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/743")]
+        public void Clone()
+        {
+            var conn2 = (NpgsqlConnection)((ICloneable)Conn).Clone();
+            Assert.That(conn2.ConnectionString, Is.EqualTo(Conn.ConnectionString));
+        }
+
         #region GetSchema
 
         [Test]
