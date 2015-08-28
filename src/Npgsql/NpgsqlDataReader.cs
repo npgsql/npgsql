@@ -494,6 +494,7 @@ namespace Npgsql
                     var msg = _connector.ReadSingleMessage(IsSequential ? DataRowLoadingMode.Sequential : DataRowLoadingMode.NonSequential);
                     switch (msg.Code)
                     {
+                        case BackendMessageCode.BindComplete:
                         case BackendMessageCode.RowDescription:
                             ProcessMessage(msg);
                             continue;

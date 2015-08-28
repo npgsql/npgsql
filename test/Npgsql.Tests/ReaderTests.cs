@@ -704,10 +704,13 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void HasRows()
+        [IssueLink("https://github.com/npgsql/npgsql/issues/742")]
+        public void HasRows([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
         {
             ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
             var command = new NpgsqlCommand("SELECT 1; SELECT * FROM data WHERE name='does_not_exist'", Conn);
+            if (prepare == PrepareOrNot.Prepared)
+                command.Prepare();
             using (var dr = command.ExecuteReader())
             {
                 Assert.That(dr.HasRows, Is.True);
@@ -757,6 +760,12 @@ namespace Npgsql.Tests
                 reader.Read();
                 Console.WriteLine(reader.GetInt32(0));
             }
+        }
+
+        [Test]
+        public void Crap()
+        {
+
         }
 
 #if DEBUG
