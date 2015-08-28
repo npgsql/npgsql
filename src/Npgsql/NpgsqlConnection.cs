@@ -218,57 +218,6 @@ namespace Npgsql
             }
         }
 
-        /// <summary>
-        /// This is the asynchronous version of <see cref="Open"/>.
-        /// </summary>
-        /// <remarks>
-        /// Do not invoke other methods and properties of the <see cref="NpgsqlConnection"/> object until the returned Task is complete.
-        /// </remarks>
-        /// <param name="cancellationToken">The cancellation instruction.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
-        public async Task OpenAsyncCrap(CancellationToken cancellationToken)
-        {
-            var timeoutTs = TimeSpan.FromSeconds(ConnectionTimeout);
-            var timeout = new NpgsqlTimeout(timeoutTs);
-            var timedOut = false;
-            CancellationTokenRegistration? ctRegistration = null;
-            if (ConnectionTimeout != 0)
-            {
-                // The connection timeout event is transmitted by triggering the cancellation token.
-                // However, a ct can't be triggered directly (need a source), and we also want to distinguish a
-                // timeout-triggered cancellation from a user-triggered cancellation.
-                // So we wire up the user's ct and a new timeout ct to a new composite ct which will be used.
-                var timeoutCts = new CancellationTokenSource(timeoutTs);
-                var compositeCts = new CancellationTokenSource();
-                timeoutCts.Token.Register(() =>
-                {
-                    timedOut = true;
-                    compositeCts.Cancel();
-                });
-                ctRegistration = cancellationToken.Register(() => compositeCts.Cancel());
-                cancellationToken = compositeCts.Token;
-            }
-            try
-            {
-                await OpenInternalAsync(cancellationToken, timeout);
-            }
-            catch (TaskCanceledException e)
-            {
-                if (timedOut)
-                {
-                    throw new TimeoutException("The connection attempt timed out", e);
-                }
-                throw;
-            }
-            finally
-            {
-                if (ctRegistration.HasValue)
-                {
-                    ctRegistration.Value.Dispose();
-                }
-            }
-        }
-
         [RewriteAsync]
         void OpenInternal(NpgsqlTimeout timeout)
         {
