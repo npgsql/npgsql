@@ -205,17 +205,17 @@ namespace EntityFramework7.Npgsql.Migrations
             Check.NotNull(operation, nameof(operation));
             Check.NotNull(builder, nameof(builder));
 
-            if (string.Equals(operation.Name, "DBO", StringComparison.OrdinalIgnoreCase))
-            {
-                return;
-            }
-
-            // CREATE SCHEMA IF EXISTS is from PG 9.3 only.
-            // See https://github.com/aspnet/EntityFramework/issues/2928
-
+            // PostgreSQL 9.3 and above ahve a CREATE SCHEMA IF NOT EXISTS which is perfect for this.
+            // But in order to support < 9.3 we create a plpgsql function and call it.
             builder
-                .Append("CREATE SCHEMA IF NOT EXISTS ")
-                .Append(operation.Name);
+                .AppendLine("CREATE OR REPLACE FUNCTION pg_temp.__ef_ensure_schema () RETURNS VOID AS $$")
+                .Append("  BEGIN IF NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname='").Append(operation.Name).AppendLine("') THEN")
+                .Append("    CREATE SCHEMA ").Append(operation.Name).AppendLine(";")
+                .AppendLine("  END IF; END")
+                .AppendLine("$$ LANGUAGE 'plpgsql';")
+                .EndBatch();
+
+            builder.Append("SELECT pg_temp.__ef_ensure_schema()").EndBatch();
         }
 
         public virtual void Generate(
