@@ -164,6 +164,12 @@ namespace Npgsql
         /// </summary>
         public string Routine { get { return _msg.Routine; } }
 
+        /// <summary>
+        /// Same as <see cref="MessageText"/>, for backwards-compatibility with Npgsql 2.x
+        /// </summary>
+        [Obsolete("Use MessageText instead")]
+        public string BaseMessage { get { return _msg.Message; } }
+
         #endregion
 
         NpgsqlException(SerializationInfo info, StreamingContext context) : base(info, context) { }
