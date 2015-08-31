@@ -426,6 +426,15 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        public void BeginTransactionBeforeOpen()
+        {
+            using (var conn = new NpgsqlConnection())
+            {
+                Assert.That(() => conn.BeginTransaction(), Throws.Exception.TypeOf<InvalidOperationException>());
+            }
+        }
+
+        [Test]
         public void SequencialTransaction()
         {
             Conn.BeginTransaction().Rollback();
