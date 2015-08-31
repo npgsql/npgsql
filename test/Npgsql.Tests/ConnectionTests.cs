@@ -696,6 +696,49 @@ namespace Npgsql.Tests
             Assert.That(conn2.ConnectionString, Is.EqualTo(Conn.ConnectionString));
         }
 
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/736")]
+        public void ManyOpenClose()
+        {
+            // The connector's _sentRfqPrependedMessages is a byte, too many open/closes made it overflow
+            for (var i = 0; i < 255; i++)
+            {
+                using (var conn = new NpgsqlConnection(ConnectionString))
+                {
+                    conn.Open();
+                }
+            }
+            using (var conn = new NpgsqlConnection(ConnectionString))
+            {
+                conn.Open();
+            }
+            using (var conn = new NpgsqlConnection(ConnectionString))
+            {
+                conn.Open();
+                Assert.That(ExecuteScalar("SELECT 1", conn), Is.EqualTo(1));
+            }
+        }
+
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/736")]
+        public void ManyOpenCloseWithTransaction()
+        {
+            // The connector's _sentRfqPrependedMessages is a byte, too many open/closes made it overflow
+            for (var i = 0; i < 255; i++)
+            {
+                using (var conn = new NpgsqlConnection(ConnectionString))
+                {
+                    conn.Open();
+                    conn.BeginTransaction();
+                }
+            }
+            using (var conn = new NpgsqlConnection(ConnectionString))
+            {
+                conn.Open();
+                Assert.That(ExecuteScalar("SELECT 1", conn), Is.EqualTo(1));
+            }
+        }
+
         #region GetSchema
 
         [Test]

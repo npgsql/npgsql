@@ -716,7 +716,7 @@ namespace Npgsql
             {
                 // These messages produce a ReadyForQuery response, which we will be looking for when
                 // processing the message chain results
-                _pendingRfqPrependedMessages++;
+                checked { _pendingRfqPrependedMessages++; }
             }
             _messagesToSend.Add(msg);
         }
@@ -728,7 +728,7 @@ namespace Npgsql
             }
 
             _backendTimeout = timeout;
-            _pendingRfqPrependedMessages++;
+            checked { _pendingRfqPrependedMessages++; }
 
             switch (timeout) {
             case 10:
@@ -1471,6 +1471,10 @@ namespace Npgsql
                 EndUserAction();
             }
 
+            // There may be prepending messages (#736), clear everything.
+            _messagesToSend.Clear();
+            _pendingRfqPrependedMessages = 0;
+
             // Must rollback transaction before sending DISCARD ALL
             if (InTransaction)
             {
@@ -1603,8 +1607,8 @@ namespace Npgsql
             }
             finally
             {
-                _asyncLock.Release();
-                _userLock.Release();
+                if (_asyncLock != null) { _asyncLock.Release(); }
+                if (_userLock != null) { _userLock.Release(); }
             }
         }
 
