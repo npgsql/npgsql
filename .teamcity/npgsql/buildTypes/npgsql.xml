@@ -11,6 +11,7 @@
     </options>
     <disabled-settings>
       <setting-ref ref="RUNNER_23" />
+      <setting-ref ref="RUNNER_7" />
     </disabled-settings>
     <parameters>
       <param name="MONO_PREFIX" value="C:\Program Files (x86)\mono" />
@@ -20,6 +21,13 @@
         <parameters>
           <param name="command.executable" value="GitVersion" />
           <param name="command.parameters" value="/output buildserver /UpdateAssemblyInfo src\CommonAssemblyInfo.cs" />
+          <param name="teamcity.step.mode" value="default" />
+        </parameters>
+      </runner>
+      <runner id="RUNNER_9" name="NuGet Restore (1)" type="simpleRunner">
+        <parameters>
+          <param name="command.executable" value="c:\dev\nuget\nuget.exe" />
+          <param name="command.parameters" value="restore Npgsql.sln" />
           <param name="teamcity.step.mode" value="default" />
         </parameters>
       </runner>
