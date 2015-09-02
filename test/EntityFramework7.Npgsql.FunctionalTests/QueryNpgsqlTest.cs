@@ -15,16 +15,6 @@ namespace EntityFramework7.Npgsql.FunctionalTests
         public QueryNpgsqlTest(NorthwindQueryNpgsqlFixture fixture)
             : base(fixture) { }
 
-        #region Skipped tests
-
-        [Fact(Skip = "TODO")]
-        public override void Projection_when_arithmetic_mixed() { }
-
-        [Fact(Skip = "TODO")]
-        public override void Projection_when_arithmetic_expressions() { }
-
-        #endregion
-
         #region Regular Expressions
 
         [Fact(Skip = "Regex support disabled for now")]
