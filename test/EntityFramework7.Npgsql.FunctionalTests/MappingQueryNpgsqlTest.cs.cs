@@ -18,7 +18,7 @@ namespace EntityFramework7.Npgsql.FunctionalTests
             Assert.Equal(
                 @"SELECT ""c"".""CustomerID"", ""c"".""CompanyName""
 FROM ""Customers"" AS ""c""",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void All_employees()
@@ -28,7 +28,7 @@ FROM ""Customers"" AS ""c""",
             Assert.Equal(
                 @"SELECT ""e"".""EmployeeID"", ""e"".""City""
 FROM ""Employees"" AS ""e""",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void All_orders()
@@ -38,7 +38,7 @@ FROM ""Employees"" AS ""e""",
             Assert.Equal(
                 @"SELECT ""o"".""OrderID"", ""o"".""ShipVia""
 FROM ""Orders"" AS ""o""",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Project_nullable_enum()
@@ -48,7 +48,7 @@ FROM ""Orders"" AS ""o""",
             Assert.Equal(
                 @"SELECT ""o"".""ShipVia""
 FROM ""Orders"" AS ""o""",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         private readonly MappingQueryNpgsqlFixture _fixture;
@@ -63,9 +63,6 @@ FROM ""Orders"" AS ""o""",
             return _fixture.CreateContext();
         }
 
-        private static string Sql
-        {
-            get { return TestSqlLoggerFactory.Sql; }
-        }
+        private static string Sql => TestSqlLoggerFactory.Sql.ToUnixNewlines();
     }
 }

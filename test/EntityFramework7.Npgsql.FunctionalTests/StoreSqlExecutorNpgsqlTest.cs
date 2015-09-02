@@ -16,7 +16,7 @@ namespace EntityFramework7.Npgsql.FunctionalTests
 
             Assert.Equal(
                 TenMostExpensiveProductsSproc,
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Executes_stored_procedure_with_parameter()
@@ -27,7 +27,7 @@ namespace EntityFramework7.Npgsql.FunctionalTests
                 @"@p0: ALFKI
 
 SELECT * FROM ""CustOrderHist""(@p0)",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public StoreSqlExecutorNpgsqlTest(NorthwindQueryNpgsqlFixture fixture)
@@ -39,6 +39,6 @@ SELECT * FROM ""CustOrderHist""(@p0)",
 
         protected override string CustomerOrderHistorySproc => @"SELECT * FROM ""CustOrderHist""({0})";
 
-        private static string Sql => TestSqlLoggerFactory.Sql;
+        private static string Sql => TestSqlLoggerFactory.Sql.ToUnixNewlines();
     }
 }

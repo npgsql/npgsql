@@ -35,7 +35,7 @@ WHERE ""e"".""NullableBoolA"" = ""e"".""BoolB""
 SELECT ""e"".""Id""
 FROM ""NullSemanticsEntity1"" AS ""e""
 WHERE (""e"".""NullableBoolA"" = ""e"".""NullableBoolB"" OR (""e"".""NullableBoolA"" IS NULL AND ""e"".""NullableBoolB"" IS NULL))",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Compare_negated_bool_with_bool_equal()
@@ -58,7 +58,7 @@ WHERE (""e"".""NullableBoolA"" <> ""e"".""BoolB"" AND ""e"".""NullableBoolA"" IS
 SELECT ""e"".""Id""
 FROM ""NullSemanticsEntity1"" AS ""e""
 WHERE ((""e"".""NullableBoolA"" <> ""e"".""NullableBoolB"" AND (""e"".""NullableBoolA"" IS NOT NULL AND ""e"".""NullableBoolB"" IS NOT NULL)) OR (""e"".""NullableBoolA"" IS NULL AND ""e"".""NullableBoolB"" IS NULL))",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Compare_bool_with_negated_bool_equal()
@@ -81,7 +81,7 @@ WHERE (""e"".""NullableBoolA"" <> ""e"".""BoolB"" AND ""e"".""NullableBoolA"" IS
 SELECT ""e"".""Id""
 FROM ""NullSemanticsEntity1"" AS ""e""
 WHERE ((""e"".""NullableBoolA"" <> ""e"".""NullableBoolB"" AND (""e"".""NullableBoolA"" IS NOT NULL AND ""e"".""NullableBoolB"" IS NOT NULL)) OR (""e"".""NullableBoolA"" IS NULL AND ""e"".""NullableBoolB"" IS NULL))",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Compare_negated_bool_with_negated_bool_equal()
@@ -104,7 +104,7 @@ WHERE (""e"".""NullableBoolA"" = ""e"".""BoolB"" AND ""e"".""NullableBoolA"" IS 
 SELECT ""e"".""Id""
 FROM ""NullSemanticsEntity1"" AS ""e""
 WHERE ((""e"".""NullableBoolA"" = ""e"".""NullableBoolB"" AND (""e"".""NullableBoolA"" IS NOT NULL AND ""e"".""NullableBoolB"" IS NOT NULL)) OR (""e"".""NullableBoolA"" IS NULL AND ""e"".""NullableBoolB"" IS NULL))",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Compare_bool_with_bool_equal_negated()
@@ -127,7 +127,7 @@ WHERE (""e"".""NullableBoolA"" <> ""e"".""BoolB"" OR ""e"".""NullableBoolA"" IS 
 SELECT ""e"".""Id""
 FROM ""NullSemanticsEntity1"" AS ""e""
 WHERE ((""e"".""NullableBoolA"" <> ""e"".""NullableBoolB"" OR (""e"".""NullableBoolA"" IS NULL OR ""e"".""NullableBoolB"" IS NULL)) AND (""e"".""NullableBoolA"" IS NOT NULL OR ""e"".""NullableBoolB"" IS NOT NULL))",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Compare_negated_bool_with_bool_equal_negated()
@@ -150,7 +150,7 @@ WHERE (""e"".""NullableBoolA"" = ""e"".""BoolB"" OR ""e"".""NullableBoolA"" IS N
 SELECT ""e"".""Id""
 FROM ""NullSemanticsEntity1"" AS ""e""
 WHERE ((""e"".""NullableBoolA"" = ""e"".""NullableBoolB"" OR (""e"".""NullableBoolA"" IS NULL OR ""e"".""NullableBoolB"" IS NULL)) AND (""e"".""NullableBoolA"" IS NOT NULL OR ""e"".""NullableBoolB"" IS NOT NULL))",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Compare_bool_with_negated_bool_equal_negated()
@@ -173,7 +173,7 @@ WHERE (""e"".""NullableBoolA"" = ""e"".""BoolB"" OR ""e"".""NullableBoolA"" IS N
 SELECT ""e"".""Id""
 FROM ""NullSemanticsEntity1"" AS ""e""
 WHERE ((""e"".""NullableBoolA"" = ""e"".""NullableBoolB"" OR (""e"".""NullableBoolA"" IS NULL OR ""e"".""NullableBoolB"" IS NULL)) AND (""e"".""NullableBoolA"" IS NOT NULL OR ""e"".""NullableBoolB"" IS NOT NULL))",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Compare_negated_bool_with_negated_bool_equal_negated()
@@ -196,7 +196,7 @@ WHERE (""e"".""NullableBoolA"" <> ""e"".""BoolB"" OR ""e"".""NullableBoolA"" IS 
 SELECT ""e"".""Id""
 FROM ""NullSemanticsEntity1"" AS ""e""
 WHERE ((""e"".""NullableBoolA"" <> ""e"".""NullableBoolB"" OR (""e"".""NullableBoolA"" IS NULL OR ""e"".""NullableBoolB"" IS NULL)) AND (""e"".""NullableBoolA"" IS NOT NULL OR ""e"".""NullableBoolB"" IS NOT NULL))",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Compare_bool_with_bool_not_equal()
@@ -219,7 +219,7 @@ WHERE (""e"".""NullableBoolA"" <> ""e"".""BoolB"" OR ""e"".""NullableBoolA"" IS 
 SELECT ""e"".""Id""
 FROM ""NullSemanticsEntity1"" AS ""e""
 WHERE ((""e"".""NullableBoolA"" <> ""e"".""NullableBoolB"" OR (""e"".""NullableBoolA"" IS NULL OR ""e"".""NullableBoolB"" IS NULL)) AND (""e"".""NullableBoolA"" IS NOT NULL OR ""e"".""NullableBoolB"" IS NOT NULL))",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Compare_negated_bool_with_bool_not_equal()
@@ -242,7 +242,7 @@ WHERE (""e"".""NullableBoolA"" = ""e"".""BoolB"" OR ""e"".""NullableBoolA"" IS N
 SELECT ""e"".""Id""
 FROM ""NullSemanticsEntity1"" AS ""e""
 WHERE ((""e"".""NullableBoolA"" = ""e"".""NullableBoolB"" OR (""e"".""NullableBoolA"" IS NULL OR ""e"".""NullableBoolB"" IS NULL)) AND (""e"".""NullableBoolA"" IS NOT NULL OR ""e"".""NullableBoolB"" IS NOT NULL))",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Compare_bool_with_negated_bool_not_equal()
@@ -265,7 +265,7 @@ WHERE (""e"".""NullableBoolA"" = ""e"".""BoolB"" OR ""e"".""NullableBoolA"" IS N
 SELECT ""e"".""Id""
 FROM ""NullSemanticsEntity1"" AS ""e""
 WHERE ((""e"".""NullableBoolA"" = ""e"".""NullableBoolB"" OR (""e"".""NullableBoolA"" IS NULL OR ""e"".""NullableBoolB"" IS NULL)) AND (""e"".""NullableBoolA"" IS NOT NULL OR ""e"".""NullableBoolB"" IS NOT NULL))",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Compare_negated_bool_with_negated_bool_not_equal()
@@ -288,7 +288,7 @@ WHERE (""e"".""NullableBoolA"" <> ""e"".""BoolB"" OR ""e"".""NullableBoolA"" IS 
 SELECT ""e"".""Id""
 FROM ""NullSemanticsEntity1"" AS ""e""
 WHERE ((""e"".""NullableBoolA"" <> ""e"".""NullableBoolB"" OR (""e"".""NullableBoolA"" IS NULL OR ""e"".""NullableBoolB"" IS NULL)) AND (""e"".""NullableBoolA"" IS NOT NULL OR ""e"".""NullableBoolB"" IS NOT NULL))",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Compare_bool_with_bool_not_equal_negated()
@@ -311,7 +311,7 @@ WHERE ""e"".""NullableBoolA"" = ""e"".""BoolB""
 SELECT ""e"".""Id""
 FROM ""NullSemanticsEntity1"" AS ""e""
 WHERE (""e"".""NullableBoolA"" = ""e"".""NullableBoolB"" OR (""e"".""NullableBoolA"" IS NULL AND ""e"".""NullableBoolB"" IS NULL))",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Compare_negated_bool_with_bool_not_equal_negated()
@@ -334,7 +334,7 @@ WHERE (""e"".""NullableBoolA"" <> ""e"".""BoolB"" AND ""e"".""NullableBoolA"" IS
 SELECT ""e"".""Id""
 FROM ""NullSemanticsEntity1"" AS ""e""
 WHERE ((""e"".""NullableBoolA"" <> ""e"".""NullableBoolB"" AND (""e"".""NullableBoolA"" IS NOT NULL AND ""e"".""NullableBoolB"" IS NOT NULL)) OR (""e"".""NullableBoolA"" IS NULL AND ""e"".""NullableBoolB"" IS NULL))",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Compare_bool_with_negated_bool_not_equal_negated()
@@ -357,7 +357,7 @@ WHERE (""e"".""NullableBoolA"" <> ""e"".""BoolB"" AND ""e"".""NullableBoolA"" IS
 SELECT ""e"".""Id""
 FROM ""NullSemanticsEntity1"" AS ""e""
 WHERE ((""e"".""NullableBoolA"" <> ""e"".""NullableBoolB"" AND (""e"".""NullableBoolA"" IS NOT NULL AND ""e"".""NullableBoolB"" IS NOT NULL)) OR (""e"".""NullableBoolA"" IS NULL AND ""e"".""NullableBoolB"" IS NULL))",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Compare_negated_bool_with_negated_bool_not_equal_negated()
@@ -380,7 +380,7 @@ WHERE (""e"".""NullableBoolA"" = ""e"".""BoolB"" AND ""e"".""NullableBoolA"" IS 
 SELECT ""e"".""Id""
 FROM ""NullSemanticsEntity1"" AS ""e""
 WHERE ((""e"".""NullableBoolA"" = ""e"".""NullableBoolB"" AND (""e"".""NullableBoolA"" IS NOT NULL AND ""e"".""NullableBoolB"" IS NOT NULL)) OR (""e"".""NullableBoolA"" IS NULL AND ""e"".""NullableBoolB"" IS NULL))",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Compare_equals_method()
@@ -403,7 +403,7 @@ WHERE ""e"".""NullableBoolA"" = ""e"".""BoolB""
 SELECT ""e"".""Id""
 FROM ""NullSemanticsEntity1"" AS ""e""
 WHERE (""e"".""NullableBoolA"" = ""e"".""NullableBoolB"" OR (""e"".""NullableBoolA"" IS NULL AND ""e"".""NullableBoolB"" IS NULL))",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Compare_equals_method_negated()
@@ -426,7 +426,7 @@ WHERE (""e"".""NullableBoolA"" <> ""e"".""BoolB"" OR ""e"".""NullableBoolA"" IS 
 SELECT ""e"".""Id""
 FROM ""NullSemanticsEntity1"" AS ""e""
 WHERE ((""e"".""NullableBoolA"" <> ""e"".""NullableBoolB"" OR (""e"".""NullableBoolA"" IS NULL OR ""e"".""NullableBoolB"" IS NULL)) AND (""e"".""NullableBoolA"" IS NOT NULL OR ""e"".""NullableBoolB"" IS NOT NULL))",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Compare_complex_equal_equal_equal()
@@ -469,7 +469,7 @@ END = CASE
         ((""e"".""NullableIntA"" = ""e"".""NullableIntB"" OR (""e"".""NullableIntA"" IS NULL AND ""e"".""NullableIntB"" IS NULL)))
     THEN TRUE::bool ELSE FALSE::bool
 END)",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Compare_complex_equal_not_equal_equal()
@@ -512,7 +512,7 @@ END <> CASE
         ((""e"".""NullableIntA"" = ""e"".""NullableIntB"" OR (""e"".""NullableIntA"" IS NULL AND ""e"".""NullableIntB"" IS NULL)))
     THEN TRUE::bool ELSE FALSE::bool
 END)",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Compare_complex_not_equal_equal_equal()
@@ -555,7 +555,7 @@ END = CASE
         (((""e"".""NullableIntA"" = ""e"".""NullableIntB"" AND (""e"".""NullableIntA"" IS NOT NULL AND ""e"".""NullableIntB"" IS NOT NULL)) OR (""e"".""NullableIntA"" IS NULL AND ""e"".""NullableIntB"" IS NULL)))
     THEN TRUE::bool ELSE FALSE::bool
 END)",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Compare_complex_not_equal_not_equal_equal()
@@ -598,7 +598,7 @@ END <> CASE
         (((""e"".""NullableIntA"" = ""e"".""NullableIntB"" AND (""e"".""NullableIntA"" IS NOT NULL AND ""e"".""NullableIntB"" IS NOT NULL)) OR (""e"".""NullableIntA"" IS NULL AND ""e"".""NullableIntB"" IS NULL)))
     THEN TRUE::bool ELSE FALSE::bool
 END)",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Compare_complex_not_equal_equal_not_equal()
@@ -641,7 +641,7 @@ END = CASE
         (((""e"".""NullableIntA"" <> ""e"".""NullableIntB"" OR (""e"".""NullableIntA"" IS NULL OR ""e"".""NullableIntB"" IS NULL)) AND (""e"".""NullableIntA"" IS NOT NULL OR ""e"".""NullableIntB"" IS NOT NULL)))
     THEN TRUE::bool ELSE FALSE::bool
 END)",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Compare_complex_not_equal_not_equal_not_equal()
@@ -684,7 +684,7 @@ END <> CASE
         (((""e"".""NullableIntA"" <> ""e"".""NullableIntB"" OR (""e"".""NullableIntA"" IS NULL OR ""e"".""NullableIntB"" IS NULL)) AND (""e"".""NullableIntA"" IS NOT NULL OR ""e"".""NullableIntB"" IS NOT NULL)))
     THEN TRUE::bool ELSE FALSE::bool
 END)",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Compare_nullable_with_null_parameter_equal()
@@ -695,7 +695,7 @@ END)",
                 @"SELECT ""e"".""Id""
 FROM ""NullSemanticsEntity1"" AS ""e""
 WHERE ""e"".""NullableStringA"" IS NULL",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Compare_nullable_with_non_null_parameter_not_equal()
@@ -708,7 +708,7 @@ WHERE ""e"".""NullableStringA"" IS NULL",
 SELECT ""e"".""Id""
 FROM ""NullSemanticsEntity1"" AS ""e""
 WHERE ""e"".""NullableStringA"" = @__prm_0",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Join_uses_database_semantics()
@@ -719,7 +719,7 @@ WHERE ""e"".""NullableStringA"" = @__prm_0",
                 @"SELECT ""e1"".""Id"", ""e2"".""Id"", ""e1"".""NullableIntA"", ""e2"".""NullableIntB""
 FROM ""NullSemanticsEntity1"" AS ""e1""
 INNER JOIN ""NullSemanticsEntity2"" AS ""e2"" ON ""e1"".""NullableIntA"" = ""e2"".""NullableIntB""",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Contains_with_local_array_closure_with_null()
@@ -730,7 +730,7 @@ INNER JOIN ""NullSemanticsEntity2"" AS ""e2"" ON ""e1"".""NullableIntA"" = ""e2"
                 @"SELECT ""e"".""Id""
 FROM ""NullSemanticsEntity1"" AS ""e""
 WHERE (""e"".""NullableStringA"" IN ('Foo') OR ""e"".""NullableStringA"" IS NULL)",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Contains_with_local_array_closure_false_with_null()
@@ -741,7 +741,7 @@ WHERE (""e"".""NullableStringA"" IN ('Foo') OR ""e"".""NullableStringA"" IS NULL
                 @"SELECT ""e"".""Id""
 FROM ""NullSemanticsEntity1"" AS ""e""
 WHERE (""e"".""NullableStringA"" NOT IN ('Foo') AND ""e"".""NullableStringA"" IS NOT NULL)",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Contains_with_local_array_closure_with_multiple_nulls()
@@ -752,7 +752,7 @@ WHERE (""e"".""NullableStringA"" NOT IN ('Foo') AND ""e"".""NullableStringA"" IS
                 @"SELECT ""e"".""Id""
 FROM ""NullSemanticsEntity1"" AS ""e""
 WHERE (""e"".""NullableStringA"" IN ('Foo') OR ""e"".""NullableStringA"" IS NULL)",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Where_multiple_ors_with_null()
@@ -763,7 +763,7 @@ WHERE (""e"".""NullableStringA"" IN ('Foo') OR ""e"".""NullableStringA"" IS NULL
                 @"SELECT ""e"".""Id""
 FROM ""NullSemanticsEntity1"" AS ""e""
 WHERE (""e"".""NullableStringA"" IN ('Foo', 'Blah') OR ""e"".""NullableStringA"" IS NULL)",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Where_multiple_ands_with_null()
@@ -774,7 +774,7 @@ WHERE (""e"".""NullableStringA"" IN ('Foo', 'Blah') OR ""e"".""NullableStringA""
                 @"SELECT ""e"".""Id""
 FROM ""NullSemanticsEntity1"" AS ""e""
 WHERE (""e"".""NullableStringA"" NOT IN ('Foo', 'Blah') AND ""e"".""NullableStringA"" IS NOT NULL)",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Where_multiple_ors_with_nullable_parameter()
@@ -785,7 +785,7 @@ WHERE (""e"".""NullableStringA"" NOT IN ('Foo', 'Blah') AND ""e"".""NullableStri
                 @"SELECT ""e"".""Id""
 FROM ""NullSemanticsEntity1"" AS ""e""
 WHERE (""e"".""NullableStringA"" IN ('Foo') OR ""e"".""NullableStringA"" IS NULL)",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Where_multiple_ands_with_nullable_parameter_and_constant()
@@ -798,7 +798,7 @@ WHERE (""e"".""NullableStringA"" IN ('Foo') OR ""e"".""NullableStringA"" IS NULL
 SELECT ""e"".""Id""
 FROM ""NullSemanticsEntity1"" AS ""e""
 WHERE (""e"".""NullableStringA"" NOT IN ('Foo', @__prm3_2) AND ""e"".""NullableStringA"" IS NOT NULL)",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Where_multiple_ands_with_nullable_parameter_and_constant_not_optimized()
@@ -811,7 +811,7 @@ WHERE (""e"".""NullableStringA"" NOT IN ('Foo', @__prm3_2) AND ""e"".""NullableS
 SELECT ""e"".""Id""
 FROM ""NullSemanticsEntity1"" AS ""e""
 WHERE ((((""e"".""NullableStringB"" IS NOT NULL AND (""e"".""NullableStringA"" <> 'Foo' OR ""e"".""NullableStringA"" IS NULL)) AND ""e"".""NullableStringA"" IS NOT NULL) AND ""e"".""NullableStringA"" IS NOT NULL) AND (""e"".""NullableStringA"" <> @__prm3_2 OR ""e"".""NullableStringA"" IS NULL))",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Where_equal_nullable_with_null_value_parameter()
@@ -822,7 +822,7 @@ WHERE ((((""e"".""NullableStringB"" IS NOT NULL AND (""e"".""NullableStringA"" <
                 @"SELECT ""e"".""Id""
 FROM ""NullSemanticsEntity1"" AS ""e""
 WHERE ""e"".""NullableStringA"" IS NULL",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Where_not_equal_nullable_with_null_value_parameter()
@@ -833,7 +833,7 @@ WHERE ""e"".""NullableStringA"" IS NULL",
                 @"SELECT ""e"".""Id""
 FROM ""NullSemanticsEntity1"" AS ""e""
 WHERE ""e"".""NullableStringA"" IS NOT NULL",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Where_equal_with_coalesce()
@@ -844,7 +844,7 @@ WHERE ""e"".""NullableStringA"" IS NOT NULL",
                 @"SELECT ""e"".""Id""
 FROM ""NullSemanticsEntity1"" AS ""e""
 WHERE ((COALESCE(""e"".""NullableStringA"", ""e"".""NullableStringB"") = ""e"".""NullableStringC"") OR ((""e"".""NullableStringA"" IS NULL AND ""e"".""NullableStringB"" IS NULL) AND ""e"".""NullableStringC"" IS NULL))",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Where_not_equal_with_coalesce()
@@ -855,7 +855,7 @@ WHERE ((COALESCE(""e"".""NullableStringA"", ""e"".""NullableStringB"") = ""e""."
                 @"SELECT ""e"".""Id""
 FROM ""NullSemanticsEntity1"" AS ""e""
 WHERE (((COALESCE(""e"".""NullableStringA"", ""e"".""NullableStringB"") <> ""e"".""NullableStringC"") OR ((""e"".""NullableStringA"" IS NULL AND ""e"".""NullableStringB"" IS NULL) OR ""e"".""NullableStringC"" IS NULL)) AND ((""e"".""NullableStringA"" IS NOT NULL OR ""e"".""NullableStringB"" IS NOT NULL) OR ""e"".""NullableStringC"" IS NOT NULL))",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Where_equal_with_coalesce_both_sides()
@@ -866,7 +866,7 @@ WHERE (((COALESCE(""e"".""NullableStringA"", ""e"".""NullableStringB"") <> ""e""
                 @"SELECT ""e"".""Id""
 FROM ""NullSemanticsEntity1"" AS ""e""
 WHERE (COALESCE(""e"".""NullableStringA"", ""e"".""NullableStringB"") = COALESCE(""e"".""StringA"", ""e"".""StringB""))",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Where_not_equal_with_coalesce_both_sides()
@@ -877,7 +877,7 @@ WHERE (COALESCE(""e"".""NullableStringA"", ""e"".""NullableStringB"") = COALESCE
                 @"SELECT ""e"".""Id""
 FROM ""NullSemanticsEntity1"" AS ""e""
 WHERE (((COALESCE(""e"".""NullableIntA"", ""e"".""NullableIntB"") <> COALESCE(""e"".""NullableIntC"", ""e"".""NullableIntB"")) OR ((""e"".""NullableIntA"" IS NULL AND ""e"".""NullableIntB"" IS NULL) OR (""e"".""NullableIntC"" IS NULL AND ""e"".""NullableIntB"" IS NULL))) AND ((""e"".""NullableIntA"" IS NOT NULL OR ""e"".""NullableIntB"" IS NOT NULL) OR (""e"".""NullableIntC"" IS NOT NULL OR ""e"".""NullableIntB"" IS NOT NULL)))",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Where_equal_with_conditional()
@@ -896,7 +896,7 @@ END = ""e"".""NullableStringC"") OR (CASE
         ((""e"".""NullableStringA"" = ""e"".""NullableStringB"" OR (""e"".""NullableStringA"" IS NULL AND ""e"".""NullableStringB"" IS NULL)))
     THEN ""e"".""NullableStringA"" ELSE ""e"".""NullableStringB""
 END IS NULL AND ""e"".""NullableStringC"" IS NULL))",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Where_not_equal_with_conditional()
@@ -919,7 +919,7 @@ END IS NULL)) AND (""e"".""NullableStringC"" IS NOT NULL OR CASE
         (((""e"".""NullableStringA"" = ""e"".""NullableStringB"" AND (""e"".""NullableStringA"" IS NOT NULL AND ""e"".""NullableStringB"" IS NOT NULL)) OR (""e"".""NullableStringA"" IS NULL AND ""e"".""NullableStringB"" IS NULL)))
     THEN ""e"".""NullableStringA"" ELSE ""e"".""NullableStringB""
 END IS NOT NULL))",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Where_equal_with_conditional_non_nullable()
@@ -934,7 +934,7 @@ WHERE ((""e"".""NullableStringC"" <> CASE
         (((""e"".""NullableStringA"" = ""e"".""NullableStringB"" AND (""e"".""NullableStringA"" IS NOT NULL AND ""e"".""NullableStringB"" IS NOT NULL)) OR (""e"".""NullableStringA"" IS NULL AND ""e"".""NullableStringB"" IS NULL)))
     THEN ""e"".""StringA"" ELSE ""e"".""StringB""
 END) OR ""e"".""NullableStringC"" IS NULL)",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Where_equal_with_and_and_contains()
@@ -945,7 +945,7 @@ END) OR ""e"".""NullableStringC"" IS NULL)",
                 @"SELECT ""e"".""Id""
 FROM ""NullSemanticsEntity1"" AS ""e""
 WHERE (""e"".""NullableStringA"" LIKE ('%' || ""e"".""NullableStringB"" || '%') AND ""e"".""BoolA"" = TRUE)",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Where_equal_using_relational_null_semantics()
@@ -956,7 +956,7 @@ WHERE (""e"".""NullableStringA"" LIKE ('%' || ""e"".""NullableStringB"" || '%') 
                 @"SELECT ""e"".""Id""
 FROM ""NullSemanticsEntity1"" AS ""e""
 WHERE ""e"".""NullableBoolA"" = ""e"".""NullableBoolB""",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Where_equal_using_relational_null_semantics_with_parameter()
@@ -967,7 +967,7 @@ WHERE ""e"".""NullableBoolA"" = ""e"".""NullableBoolB""",
                 @"SELECT ""e"".""Id""
 FROM ""NullSemanticsEntity1"" AS ""e""
 WHERE ""e"".""NullableBoolA"" IS NULL",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Where_equal_using_relational_null_semantics_complex_with_parameter()
@@ -980,7 +980,7 @@ WHERE ""e"".""NullableBoolA"" IS NULL",
 SELECT ""e"".""Id""
 FROM ""NullSemanticsEntity1"" AS ""e""
 WHERE (""e"".""NullableBoolA"" = ""e"".""NullableBoolB"" OR @__prm_0 = TRUE)",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Where_not_equal_using_relational_null_semantics()
@@ -991,7 +991,7 @@ WHERE (""e"".""NullableBoolA"" = ""e"".""NullableBoolB"" OR @__prm_0 = TRUE)",
                 @"SELECT ""e"".""Id""
 FROM ""NullSemanticsEntity1"" AS ""e""
 WHERE ""e"".""NullableBoolA"" <> ""e"".""NullableBoolB""",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Where_not_equal_using_relational_null_semantics_with_parameter()
@@ -1002,7 +1002,7 @@ WHERE ""e"".""NullableBoolA"" <> ""e"".""NullableBoolB""",
                 @"SELECT ""e"".""Id""
 FROM ""NullSemanticsEntity1"" AS ""e""
 WHERE ""e"".""NullableBoolA"" IS NOT NULL",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
         public override void Where_not_equal_using_relational_null_semantics_complex_with_parameter()
@@ -1015,12 +1015,9 @@ WHERE ""e"".""NullableBoolA"" IS NOT NULL",
 SELECT ""e"".""Id""
 FROM ""NullSemanticsEntity1"" AS ""e""
 WHERE (""e"".""NullableBoolA"" <> ""e"".""NullableBoolB"" OR @__prm_0 = TRUE)",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
-        private static string Sql
-        {
-            get { return TestSqlLoggerFactory.Sql; }
-        }
+        private static string Sql => TestSqlLoggerFactory.Sql.ToUnixNewlines();
     }
 }

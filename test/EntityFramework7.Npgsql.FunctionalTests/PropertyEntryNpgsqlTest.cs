@@ -21,15 +21,16 @@ namespace EntityFramework7.Npgsql.FunctionalTests
 
             Assert.Contains(
                 @"SELECT ""e"".""Id"", ""e"".""EngineSupplierId"", ""e"".""Name""
-FROM ""Engines"" AS ""e"" LIMIT 1",
-                Sql.ToUnixNewlines());
+FROM ""Engines"" AS ""e""
+LIMIT 1",
+                Sql);
 
             Assert.Contains(
                 @"UPDATE ""Engines"" SET ""Name"" = @p0
 WHERE ""Id"" = @p1 AND ""EngineSupplierId"" = @p2 AND ""Name"" = @p3",
-                Sql.ToUnixNewlines());
+                Sql);
         }
 
-        private static string Sql => TestSqlLoggerFactory.Sql;
+        private static string Sql => TestSqlLoggerFactory.Sql.ToUnixNewlines();
     }
 }

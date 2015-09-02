@@ -284,21 +284,23 @@ namespace EntityFramework7.Npgsql.FunctionalTests
             }
         }
 
-        public override DbConnection Connection
-        {
-            get { return _connection; }
-        }
+        public override DbConnection Connection => _connection;
 
-        public override DbTransaction Transaction
-        {
-            get { return _transaction; }
-        }
+        public override DbTransaction Transaction => _transaction;
 
         public async Task<T> ExecuteScalarAsync<T>(string sql, CancellationToken cancellationToken, params object[] parameters)
         {
             using (var command = CreateCommand(sql, parameters))
             {
                 return (T)await command.ExecuteScalarAsync(cancellationToken);
+            }
+        }
+
+        public int ExecuteNonQuery(string sql, params object[] parameters)
+        {
+            using (var command = CreateCommand(sql, parameters))
+            {
+                return command.ExecuteNonQuery();
             }
         }
 
