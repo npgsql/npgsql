@@ -89,6 +89,7 @@ namespace EntityFramework7.Npgsql
             {
                 AppendReturningClause(commandStringBuilder, readOperations);
             }
+            commandStringBuilder.Append(BatchCommandSeparator).AppendLine();
         }
 
         // ReSharper disable once ParameterTypeCanBeEnumerable.Local
