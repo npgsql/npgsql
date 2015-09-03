@@ -781,12 +781,14 @@ namespace NpgsqlTypes
             }
         }
 
-        public override String ToString()
+        public override string ToString()
         {
-            if (Netmask != 32) {
-                return string.Format("{0}/{1}", Address, Netmask);
+            if ((Address.AddressFamily == AddressFamily.InterNetwork   && Netmask == 32) ||
+                (Address.AddressFamily == AddressFamily.InterNetworkV6 && Netmask == 128))
+            {
+                return Address.ToString();
             }
-            return Address.ToString();
+            return string.Format("{0}/{1}", Address, Netmask);
         }
 
         public static explicit operator IPAddress(NpgsqlInet x)
