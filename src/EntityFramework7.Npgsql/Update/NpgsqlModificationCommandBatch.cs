@@ -119,7 +119,6 @@ namespace EntityFramework7.Npgsql.Update
 
             try
             {
-                var firstResultSet = true;
                 while (true)
                 {
                     // Find the next propagating command, if any
@@ -138,7 +137,7 @@ namespace EntityFramework7.Npgsql.Update
                         {
                             throw new DbUpdateConcurrencyException(
                                 RelationalStrings.UpdateConcurrencyException(1, 0),
-                                ModificationCommands[nextPropagating].Entries
+                                ModificationCommands[commandIndex].Entries
                             );
                         }
                     }
@@ -147,16 +146,6 @@ namespace EntityFramework7.Npgsql.Update
                     {
                         Debug.Assert(!(await reader.NextResultAsync(cancellationToken)), "Expected less resultsets");
                         break;
-                    }
-
-                    if (firstResultSet)
-                    {
-                        firstResultSet = false;
-                    }
-                    else
-                    {
-                        var hasNextResultSet = await reader.NextResultAsync(cancellationToken);
-                        Debug.Assert(hasNextResultSet, "Expected more resultsets");
                     }
 
                     // Extract result from the command and propagate it
@@ -174,6 +163,8 @@ namespace EntityFramework7.Npgsql.Update
                     }
 
                     modificationCommand.PropagateResults(modificationCommand.ValueBufferFactory.Create(reader));
+
+                    await reader.NextResultAsync(cancellationToken);
                 }
             }
             catch (DbUpdateException)
