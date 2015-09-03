@@ -1198,7 +1198,6 @@ namespace Npgsql
         public override object GetValue(int ordinal)
         {
             CheckRowAndOrdinal(ordinal);
-            Contract.Ensures(Contract.Result<object>() == DBNull.Value || GetFieldType(ordinal).IsInstanceOfType(Contract.Result<object>()));
 
             CachedValue<object> cache = null;
             if (IsCaching)
