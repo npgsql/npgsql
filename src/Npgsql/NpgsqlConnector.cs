@@ -1025,8 +1025,6 @@ namespace Npgsql
         [RewriteAsync]
         IBackendMessage DoReadSingleMessage(DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential, bool returnNullForAsyncMessage = false)
         {
-            Contract.Ensures(returnNullForAsyncMessage || Contract.Result<IBackendMessage>() != null);
-
             NpgsqlException error = null;
 
             while (true)
