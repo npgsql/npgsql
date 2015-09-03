@@ -20,6 +20,7 @@ namespace EntityFramework7.Npgsql
     public class NpgsqlTypeMapper : RelationalTypeMapper
     {
         // No tinyint in PostgreSQL
+        readonly RelationalTypeMapping _tinyint     = new RelationalTypeMapping("smallint", DbType.Byte);
         readonly RelationalTypeMapping _smallint    = new RelationalTypeMapping("smallint", DbType.Int16);
         readonly RelationalTypeMapping _int         = new RelationalTypeMapping("int", DbType.Int32);
         readonly RelationalTypeMapping _bigint      = new RelationalTypeMapping("bigint", DbType.Int64);
@@ -75,6 +76,7 @@ namespace EntityFramework7.Npgsql
             _simpleMappings
                 = new Dictionary<Type, RelationalTypeMapping>
                 {
+                    { typeof(byte),           _tinyint     },
                     { typeof(short),          _smallint    },
                     { typeof(int),            _int         },
                     { typeof(long),           _bigint      },

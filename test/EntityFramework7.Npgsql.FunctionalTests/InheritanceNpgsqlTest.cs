@@ -199,13 +199,12 @@ LIMIT 2
 @p1: 1
 @p2: Kiwi
 @p3: Little spotted kiwi
-@p4:
+@p4: 
 @p5: True
 @p6: North
 
 INSERT INTO ""Animal"" (""Species"", ""CountryId"", ""Discriminator"", ""Name"", ""EagleId"", ""IsFlightless"", ""FoundOn"")
 VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6);
-SELECT changes();
 
 SELECT ""k"".""Species"", ""k"".""CountryId"", ""k"".""Discriminator"", ""k"".""Name"", ""k"".""EagleId"", ""k"".""IsFlightless"", ""k"".""FoundOn""
 FROM ""Animal"" AS ""k""
@@ -217,7 +216,6 @@ LIMIT 2
 
 UPDATE ""Animal"" SET ""EagleId"" = @p0
 WHERE ""Species"" = @p1;
-SELECT changes();
 
 SELECT ""k"".""Species"", ""k"".""CountryId"", ""k"".""Discriminator"", ""k"".""Name"", ""k"".""EagleId"", ""k"".""IsFlightless"", ""k"".""FoundOn""
 FROM ""Animal"" AS ""k""
@@ -228,9 +226,8 @@ LIMIT 2
 
 DELETE FROM ""Animal""
 WHERE ""Species"" = @p0;
-SELECT changes();
 
-SELECT COUNT(*)
+SELECT COUNT(*)::INT4
 FROM ""Animal"" AS ""k""
 WHERE (""k"".""Discriminator"" = 'Kiwi' AND ""k"".""Species"" LIKE '%' || 'owenii')",
                 Sql);
