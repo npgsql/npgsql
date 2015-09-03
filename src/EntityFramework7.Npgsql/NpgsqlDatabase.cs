@@ -31,7 +31,8 @@ namespace EntityFramework7.Npgsql
             [NotNull] IRelationalValueBufferFactoryFactory valueBufferFactoryFactory,
             [NotNull] IMethodCallTranslator compositeMethodCallTranslator,
             [NotNull] IMemberTranslator compositeMemberTranslator,
-            [NotNull] IRelationalTypeMapper typeMapper)
+            [NotNull] IRelationalTypeMapper typeMapper,
+            [NotNull] IRelationalMetadataExtensionProvider relationalExtensions)
             : base(
                 model,
                 entityKeyFactorySource,
@@ -45,7 +46,8 @@ namespace EntityFramework7.Npgsql
                 valueBufferFactoryFactory,
                 compositeMethodCallTranslator,
                 compositeMemberTranslator,
-                typeMapper)
+                typeMapper,
+                relationalExtensions)
         {
         }
 
@@ -74,7 +76,8 @@ namespace EntityFramework7.Npgsql
                 compositeMethodCallTranslator,
                 compositeMemberTranslator,
                 ValueBufferFactoryFactory,
-                TypeMapper);
+                TypeMapper,
+                RelationalExtensions);
         }
     }
 }

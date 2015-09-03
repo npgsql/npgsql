@@ -1,10 +1,7 @@
-// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-
-using EntityFramework7.Npgsql.Metadata;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity.Metadata;
 using Microsoft.Data.Entity.Utilities;
+using EntityFramework7.Npgsql.Metadata;
 
 // ReSharper disable once CheckNamespace
 
@@ -12,88 +9,40 @@ namespace Microsoft.Data.Entity
 {
     public static class NpgsqlMetadataExtensions
     {
-        public static NpgsqlPropertyAnnotations Npgsql([NotNull] this Property property)
-        {
-            Check.NotNull(property, nameof(property));
+        public static IRelationalEntityTypeAnnotations Npgsql([NotNull] this IEntityType entityType)
+            => new RelationalEntityTypeAnnotations(Check.NotNull(entityType, nameof(entityType)), NpgsqlAnnotationNames.Prefix);
 
-            return new NpgsqlPropertyAnnotations(property);
-        }
+        public static RelationalEntityTypeAnnotations Npgsql([NotNull] this EntityType entityType)
+            => (RelationalEntityTypeAnnotations)Npgsql((IEntityType)entityType);
 
-        public static INpgsqlPropertyAnnotations Npgsql([NotNull] this IProperty property)
-        {
-            Check.NotNull(property, nameof(property));
+        public static IRelationalForeignKeyAnnotations Npgsql([NotNull] this IForeignKey foreignKey)
+            => new RelationalForeignKeyAnnotations(Check.NotNull(foreignKey, nameof(foreignKey)), NpgsqlAnnotationNames.Prefix);
 
-            return new ReadOnlyNpgsqlPropertyAnnotations(property);
-        }
+        public static RelationalForeignKeyAnnotations Npgsql([NotNull] this ForeignKey foreignKey)
+            => (RelationalForeignKeyAnnotations)Npgsql((IForeignKey)foreignKey);
 
-        public static NpgsqlEntityTypeAnnotations Npgsql([NotNull] this EntityType entityType)
-        {
-            Check.NotNull(entityType, nameof(entityType));
+        public static IRelationalIndexAnnotations Npgsql([NotNull] this IIndex index)
+            => new RelationalIndexAnnotations(Check.NotNull(index, nameof(index)), NpgsqlAnnotationNames.Prefix);
 
-            return new NpgsqlEntityTypeAnnotations(entityType);
-        }
+        public static RelationalIndexAnnotations Npgsql([NotNull] this Index index)
+            => (RelationalIndexAnnotations)Npgsql((IIndex)index);
 
-        public static INpgsqlEntityTypeAnnotations Npgsql([NotNull] this IEntityType entityType)
-        {
-            Check.NotNull(entityType, nameof(entityType));
+        public static IRelationalKeyAnnotations Npgsql([NotNull] this IKey key)
+            => new RelationalKeyAnnotations(Check.NotNull(key, nameof(key)), NpgsqlAnnotationNames.Prefix);
 
-            return new ReadOnlyNpgsqlEntityTypeAnnotations(entityType);
-        }
+        public static RelationalKeyAnnotations Npgsql([NotNull] this Key key)
+            => (RelationalKeyAnnotations)Npgsql((IKey)key);
 
-        public static NpgsqlKeyAnnotations Npgsql([NotNull] this Key key)
-        {
-            Check.NotNull(key, nameof(key));
+        public static RelationalModelAnnotations Npgsql([NotNull] this Model model)
+            => (RelationalModelAnnotations)Npgsql((IModel)model);
 
-            return new NpgsqlKeyAnnotations(key);
-        }
+        public static IRelationalModelAnnotations Npgsql([NotNull] this IModel model)
+            => new RelationalModelAnnotations(Check.NotNull(model, nameof(model)), NpgsqlAnnotationNames.Prefix);
 
-        public static INpgsqlKeyAnnotations Npgsql([NotNull] this IKey key)
-        {
-            Check.NotNull(key, nameof(key));
+        public static IRelationalPropertyAnnotations Npgsql([NotNull] this IProperty property)
+            => new RelationalPropertyAnnotations(Check.NotNull(property, nameof(property)), NpgsqlAnnotationNames.Prefix);
 
-            return new ReadOnlyNpgsqlKeyAnnotations(key);
-        }
-
-        public static NpgsqlIndexAnnotations Npgsql([NotNull] this Index index)
-        {
-            Check.NotNull(index, nameof(index));
-
-            return new NpgsqlIndexAnnotations(index);
-        }
-
-        public static INpgsqlIndexAnnotations Npgsql([NotNull] this IIndex index)
-        {
-            Check.NotNull(index, nameof(index));
-
-            return new ReadOnlyNpgsqlIndexAnnotations(index);
-        }
-
-        public static NpgsqlForeignKeyAnnotations Npgsql([NotNull] this ForeignKey foreignKey)
-        {
-            Check.NotNull(foreignKey, nameof(foreignKey));
-
-            return new NpgsqlForeignKeyAnnotations(foreignKey);
-        }
-
-        public static INpgsqlForeignKeyAnnotations Npgsql([NotNull] this IForeignKey foreignKey)
-        {
-            Check.NotNull(foreignKey, nameof(foreignKey));
-
-            return new ReadOnlyNpgsqlForeignKeyAnnotations(foreignKey);
-        }
-
-        public static NpgsqlModelAnnotations Npgsql([NotNull] this Model model)
-        {
-            Check.NotNull(model, nameof(model));
-
-            return new NpgsqlModelAnnotations(model);
-        }
-
-        public static INpgsqlModelAnnotations Npgsql([NotNull] this IModel model)
-        {
-            Check.NotNull(model, nameof(model));
-
-            return new ReadOnlyNpgsqlModelAnnotations(model);
-        }
+        public static RelationalPropertyAnnotations Npgsql([NotNull] this Property property)
+            => (RelationalPropertyAnnotations)Npgsql((IProperty)property);
     }
 }

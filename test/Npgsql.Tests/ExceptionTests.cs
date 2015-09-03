@@ -23,6 +23,7 @@
 
 using System;
 using System.Data;
+using System.Threading.Tasks;
 using System.Web.UI.WebControls;
 
 using Npgsql;
@@ -167,6 +168,14 @@ namespace Npgsql.Tests
                 Assert.AreEqual("public", ex.SchemaName);
                 Assert.AreEqual("intnotnull", ex.DataTypeName);
             }
+        }
+
+        [Test]
+        public void NpgsqlExceptionInAsync()
+        {
+            Assert.That(async () => await ExecuteNonQueryAsync("MALFORMED"), Throws.Exception.TypeOf<NpgsqlException>());
+            // Just in case, anything but an NpgsqlException would trigger the connection breaking, check that
+            Assert.That(Conn.FullState, Is.EqualTo(ConnectionState.Open));
         }
     }
 }

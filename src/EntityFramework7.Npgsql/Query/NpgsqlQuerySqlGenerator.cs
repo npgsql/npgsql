@@ -44,12 +44,17 @@ namespace EntityFramework7.Npgsql.Query
 
             if (selectExpression.Limit != null)
             {
-                Sql.Append(" LIMIT ").Append(selectExpression.Limit);
+                Sql.AppendLine().Append("LIMIT ").Append(selectExpression.Limit);
             }
 
             if (selectExpression.Offset != null)
             {
-                Sql.Append(" OFFSET ").Append(selectExpression.Offset);
+                if (selectExpression.Limit == null) {
+                    Sql.AppendLine();
+                } else {
+                    Sql.Append(' ');
+                }
+                Sql.Append("OFFSET ").Append(selectExpression.Offset);
             }
         }
 

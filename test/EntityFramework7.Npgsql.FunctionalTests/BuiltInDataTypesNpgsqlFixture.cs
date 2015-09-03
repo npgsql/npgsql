@@ -60,9 +60,6 @@ namespace EntityFramework7.Npgsql.FunctionalTests
                 b.Ignore(dt => dt.TestUnsignedInt64);
                 b.Ignore(dt => dt.TestCharacter);
                 b.Ignore(dt => dt.TestSignedByte);
-                b.Ignore(dt => dt.TestDateTimeOffset); // TODO?
-                b.Ignore(dt => dt.TestByte); // TODO
-                b.Ignore(dt => dt.Enum8); // TODO
             });
 
             modelBuilder.Entity<BuiltInNullableDataTypes>(b =>
@@ -73,35 +70,33 @@ namespace EntityFramework7.Npgsql.FunctionalTests
                 b.Ignore(dt => dt.TestNullableCharacter);
                 b.Ignore(dt => dt.TestNullableSignedByte);
                 b.Ignore(dt => dt.TestNullableByte);
-                b.Ignore(dt => dt.TestNullableDateTimeOffset); // TODO?
-                b.Ignore(dt => dt.Enum8); // TODO
             });
 
             modelBuilder.Entity<MappedDataTypes>(b =>
             {
                 b.Key(e => e.Int);
                 b.Property(e => e.Int)
-                    .StoreGeneratedPattern(StoreGeneratedPattern.None);
+                 .ValueGeneratedNever();
             });
 
             modelBuilder.Entity<MappedNullableDataTypes>(b =>
             {
                 b.Key(e => e.Int);
                 b.Property(e => e.Int)
-                    .StoreGeneratedPattern(StoreGeneratedPattern.None);
+                 .ValueGeneratedNever();
             });
 
             modelBuilder.Entity<MappedSizedDataTypes>()
                 .Property(e => e.Id)
-                .StoreGeneratedPattern(StoreGeneratedPattern.None);
+                .ValueGeneratedNever();
 
             modelBuilder.Entity<MappedScaledDataTypes>()
                 .Property(e => e.Id)
-                .StoreGeneratedPattern(StoreGeneratedPattern.None);
+                .ValueGeneratedNever();
 
             modelBuilder.Entity<MappedPrecisionAndScaledDataTypes>()
                 .Property(e => e.Id)
-                .StoreGeneratedPattern(StoreGeneratedPattern.None);
+                .ValueGeneratedNever();
 
             MapColumnTypes<MappedDataTypes>(modelBuilder);
             MapColumnTypes<MappedNullableDataTypes>(modelBuilder);
@@ -109,6 +104,11 @@ namespace EntityFramework7.Npgsql.FunctionalTests
             MapSizedColumnTypes<MappedSizedDataTypes>(modelBuilder);
             MapSizedColumnTypes<MappedScaledDataTypes>(modelBuilder);
             MapPreciseColumnTypes<MappedPrecisionAndScaledDataTypes>(modelBuilder);
+
+            // MapColumnTypes automatically mapped column types based on the property name, but
+            // this doesn't work for Tinyint. Remap.
+            modelBuilder.Entity<MappedDataTypes>().Property(e => e.Tinyint).HasColumnType("smallint");
+            modelBuilder.Entity<MappedNullableDataTypes>().Property(e => e.Tinyint).HasColumnType("smallint");
         }
 
         private static void MapColumnTypes<TEntity>(ModelBuilder modelBuilder) where TEntity : class
@@ -159,6 +159,7 @@ namespace EntityFramework7.Npgsql.FunctionalTests
 
     public class MappedDataTypes
     {
+        public byte Tinyint { get; set; }
         public short Smallint { get; set; }
         public int Int { get; set; }
         public long Bigint { get; set; }
@@ -228,6 +229,7 @@ namespace EntityFramework7.Npgsql.FunctionalTests
 
     public class MappedNullableDataTypes
     {
+        public byte? Tinyint { get; set; }
         public short? Smallint { get; set; }
         public int? Int { get; set; }
         public long? Bigint { get; set; }

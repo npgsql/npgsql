@@ -15,20 +15,10 @@ namespace EntityFramework7.Npgsql.FunctionalTests
         public QueryNpgsqlTest(NorthwindQueryNpgsqlFixture fixture)
             : base(fixture) { }
 
-        #region Skipped tests
-
-        [Fact(Skip = "TODO")]
-        public override void Projection_when_arithmetic_mixed() { }
-
-        [Fact(Skip = "TODO")]
-        public override void Projection_when_arithmetic_expressions() { }
-
-        #endregion
-
         #region Regular Expressions
 
-        [Fact]
-        public virtual void Regex_IsMatch()
+        [Fact(Skip = "Regex support disabled for now")]
+        public void Regex_IsMatch()
         {
             AssertQuery<Customer>(
                 cs => cs.Where(c => Regex.IsMatch(c.CompanyName, "^A")),
@@ -36,8 +26,8 @@ namespace EntityFramework7.Npgsql.FunctionalTests
             Assert.Contains("WHERE \"c\".\"CompanyName\" ~ ('(?p)' || '^A')", Sql);
         }
 
-        [Fact]
-        public virtual void Regex_IsMatchOptionsNone()
+        [Fact(Skip = "Regex support disabled for now")]
+        public void Regex_IsMatchOptionsNone()
         {
             AssertQuery<Customer>(
                 cs => cs.Where(c => Regex.IsMatch(c.CompanyName, "^A", RegexOptions.None)),
@@ -45,8 +35,8 @@ namespace EntityFramework7.Npgsql.FunctionalTests
             Assert.Contains("WHERE \"c\".\"CompanyName\" ~ ('(?p)' || '^A')", Sql);
         }
 
-        [Fact]
-        public virtual void Regex_IsMatchOptionsIgnoreCase()
+        [Fact(Skip = "Regex support disabled for now")]
+        public void Regex_IsMatchOptionsIgnoreCase()
         {
             AssertQuery<Customer>(
                 cs => cs.Where(c => Regex.IsMatch(c.CompanyName, "^a", RegexOptions.IgnoreCase)),
@@ -54,8 +44,8 @@ namespace EntityFramework7.Npgsql.FunctionalTests
             Assert.Contains("WHERE \"c\".\"CompanyName\" ~ ('(?ip)' || '^a')", Sql);
         }
 
-        [Fact]
-        public virtual void Regex_IsMatchOptionsMultiline()
+        [Fact(Skip = "Regex support disabled for now")]
+        public void Regex_IsMatchOptionsMultiline()
         {
             AssertQuery<Customer>(
                 cs => cs.Where(c => Regex.IsMatch(c.CompanyName, "^A", RegexOptions.Multiline)),
@@ -63,8 +53,8 @@ namespace EntityFramework7.Npgsql.FunctionalTests
             Assert.Contains("WHERE \"c\".\"CompanyName\" ~ ('(?n)' || '^A')", Sql);
         }
 
-        [Fact]
-        public virtual void Regex_IsMatchOptionsSingleline()
+        [Fact(Skip = "Regex support disabled for now")]
+        public void Regex_IsMatchOptionsSingleline()
         {
             AssertQuery<Customer>(
                 cs => cs.Where(c => Regex.IsMatch(c.CompanyName, "^A", RegexOptions.Singleline)),
@@ -72,8 +62,8 @@ namespace EntityFramework7.Npgsql.FunctionalTests
             Assert.Contains("WHERE \"c\".\"CompanyName\" ~ '^A'", Sql);
         }
 
-        [Fact]
-        public virtual void Regex_IsMatchOptionsIgnorePatternWhitespace()
+        [Fact(Skip = "Regex support disabled for now")]
+        public void Regex_IsMatchOptionsIgnorePatternWhitespace()
         {
             AssertQuery<Customer>(
                 cs => cs.Where(c => Regex.IsMatch(c.CompanyName, "^ A", RegexOptions.IgnorePatternWhitespace)),
@@ -81,8 +71,8 @@ namespace EntityFramework7.Npgsql.FunctionalTests
             Assert.Contains("WHERE \"c\".\"CompanyName\" ~ ('(?px)' || '^ A')", Sql);
         }
 
-        [Fact]
-        public virtual void Regex_IsMatchOptionsUnsupported()
+        [Fact(Skip = "Regex support disabled for now")]
+        public void Regex_IsMatchOptionsUnsupported()
         {
             AssertQuery<Customer>(
                 cs => cs.Where(c => Regex.IsMatch(c.CompanyName, "^A", RegexOptions.RightToLeft)),

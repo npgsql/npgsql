@@ -8,11 +8,11 @@ namespace EntityFramework7.Npgsql.Metadata
 {
     public class NpgsqlMetadataExtensionProvider : IRelationalMetadataExtensionProvider
     {
-        public virtual IRelationalEntityTypeAnnotations Extensions(IEntityType entityType) => entityType.Npgsql();
-        public virtual IRelationalForeignKeyAnnotations Extensions(IForeignKey foreignKey) => foreignKey.Npgsql();
-        public virtual IRelationalIndexAnnotations Extensions(IIndex index) => index.Npgsql();
-        public virtual IRelationalKeyAnnotations Extensions(IKey key) => key.Npgsql();
-        public virtual IRelationalPropertyAnnotations Extensions(IProperty property) => property.Npgsql();
-        public virtual IRelationalModelAnnotations Extensions(IModel model) => model.Npgsql();
+        public virtual IRelationalEntityTypeAnnotations For(IEntityType entityType) => entityType.Npgsql();
+        public virtual IRelationalForeignKeyAnnotations For(IForeignKey foreignKey) => foreignKey.Npgsql();
+        public virtual IRelationalIndexAnnotations For(IIndex index) => index.Npgsql();
+        public virtual IRelationalKeyAnnotations For(IKey key) => key.Npgsql();
+        public virtual IRelationalModelAnnotations For(IModel model) => model.Npgsql();
+        public virtual IRelationalPropertyAnnotations For(IProperty property) => property.Npgsql();
     }
 }
