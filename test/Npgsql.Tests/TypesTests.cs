@@ -23,7 +23,7 @@
 
 using System;
 using System.Data;
-
+using System.Net;
 using NpgsqlTypes;
 using NUnit.Framework;
 using Npgsql;
@@ -492,6 +492,14 @@ namespace Npgsql.Tests
             p.NpgsqlDbType = NpgsqlDbType.Time;
             p.Value = DateTime.Now;
             Object o = p.Value;
+        }
+
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/750")]
+        public void NpgsqlInet()
+        {
+            var v = new NpgsqlInet(IPAddress.Parse("2001:1db8:85a3:1142:1000:8a2e:1370:7334"), 32);
+            Assert.That(v.ToString(), Is.EqualTo("2001:1db8:85a3:1142:1000:8a2e:1370:7334/32"));
         }
     }
 }
