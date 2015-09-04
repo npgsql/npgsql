@@ -34,11 +34,11 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="EntityFramework.Core, Version=7.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\EntityFramework.Core.7.0.0-beta7-15540\lib\net45\EntityFramework.Core.dll</HintPath>
+      <HintPath>..\..\packages\EntityFramework.Core.7.0.0-beta7\lib\net45\EntityFramework.Core.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="EntityFramework.Relational, Version=7.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\EntityFramework.Relational.7.0.0-beta7-15540\lib\net45\EntityFramework.Relational.dll</HintPath>
+      <HintPath>..\..\packages\EntityFramework.Relational.7.0.0-beta7\lib\net45\EntityFramework.Relational.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Framework.Caching.Abstractions, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
