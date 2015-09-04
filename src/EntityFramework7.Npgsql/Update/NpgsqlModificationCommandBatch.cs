@@ -83,8 +83,6 @@ namespace EntityFramework7.Npgsql.Update
 
                     if (!reader.Read())
                     {
-                        // Should never happen? Aren't result-propagating modifications only INSERTs,
-                        // which either succeed or throw an exception (e.g. constraint violation)?
                         throw new DbUpdateConcurrencyException(
                             RelationalStrings.UpdateConcurrencyException(1, 0),
                             modificationCommand.Entries);
@@ -154,8 +152,6 @@ namespace EntityFramework7.Npgsql.Update
 
                     if (!(await reader.ReadAsync(cancellationToken)))
                     {
-                        // Should never happen? Aren't result-propagating modifications only INSERTs,
-                        // which either succeed or throw an exception (e.g. constraint violation)?
                         throw new DbUpdateConcurrencyException(
                             RelationalStrings.UpdateConcurrencyException(1, 0),
                             modificationCommand.Entries
