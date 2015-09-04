@@ -428,6 +428,11 @@ namespace NpgsqlTypes
         /// <remarks>See http://www.postgresql.org/docs/current/static/datatype-oid.html</remarks>
         Cid = 43,
 
+        /// <summary>
+        /// Corresponds to the PostgreSQL "regtype" type, a numeric (OID) ID of a type in the pg_type table.
+        /// </summary>
+        Regtype = 49,
+
         #endregion
 
         #region Special

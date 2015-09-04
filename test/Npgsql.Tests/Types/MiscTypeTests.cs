@@ -213,6 +213,22 @@ namespace Npgsql.Tests.Types
             }
         }
 
+        [Test]
+        public void RegType()
+        {
+            const uint expected = 8u;
+            using (var cmd = new NpgsqlCommand("SELECT @p", Conn))
+            {
+                cmd.Parameters.AddWithValue("p", NpgsqlDbType.Regtype, expected);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(uint)));
+                    Assert.That(reader.GetValue(0), Is.EqualTo(expected));
+                }
+            }
+        }
+
         [Test, Description("Makes sure that setting DbType.Object makes Npgsql infer the type")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/694")]
         public void DbTypeCausesInference()
