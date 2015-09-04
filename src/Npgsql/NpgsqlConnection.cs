@@ -166,8 +166,6 @@ namespace Npgsql
                 throw new ArgumentException("Host can't be null");
             if (string.IsNullOrWhiteSpace(UserName) && !IntegratedSecurity)
                 throw new ArgumentException("Either Username must be specified or IntegratedSecurity must be on");
-            if (Settings.Password == null && !IntegratedSecurity)
-                throw new ArgumentException("Either password must be specified or IntegratedSecurity must be on");
             if (ContinuousProcessing && UseSslStream)
                 throw new ArgumentException("ContinuousProcessing can't be turned on with UseSslStream");
             Contract.EndContractBlock();
