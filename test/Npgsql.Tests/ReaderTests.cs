@@ -762,12 +762,6 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test]
-        public void Crap()
-        {
-
-        }
-
 #if DEBUG
         [Test, Description("Tests that everything goes well when a type handler generates a SafeReadException")]
         [Timeout(5000)]
