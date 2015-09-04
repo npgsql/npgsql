@@ -8,8 +8,7 @@
   <param name="ignoreKnownHosts" value="true" />
   <param name="secure:password" value="zxx9b1a45147d7e64e7775d03cbe80d301b" />
   <param name="submoduleCheckout" value="CHECKOUT" />
-  <param name="teamcity:branchSpec"><![CDATA[-:refs/heads/gh-pages
-+:refs/heads/(*)
+  <param name="teamcity:branchSpec"><![CDATA[+:refs/heads/(*)
 # The following activates building PRs
 # Deactivated pending build server lockdown
 +:refs/pull/*/merge]]></param>

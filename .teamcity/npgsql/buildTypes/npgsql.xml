@@ -165,8 +165,7 @@ src/EntityFramework7.Npgsql/bin/Release/*.nupkg]]></param>
         <parameters>
           <param name="branchFilter"><![CDATA[+:*
 -:support/*
--:hotfix/2.*
--:gh-pages*]]></param>
+-:hotfix/2.*]]></param>
           <param name="quietPeriodMode" value="DO_NOT_USE" />
         </parameters>
       </build-trigger>
