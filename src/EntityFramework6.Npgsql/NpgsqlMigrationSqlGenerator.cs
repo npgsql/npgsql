@@ -165,7 +165,9 @@ namespace Npgsql
         {
             foreach (var command in historyOperation.CommandTrees)
             {
-                AddStatment(NpgsqlServices.Instance.CreateDbCommand(command).CommandText);
+                var npgsqlCommand = new NpgsqlCommand();
+                NpgsqlServices.Instance.TranslateCommandTree(serverVersion, command, npgsqlCommand, false);
+                AddStatment(npgsqlCommand.CommandText);
             }
         }
 

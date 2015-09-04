@@ -426,6 +426,15 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        public void BeginTransactionBeforeOpen()
+        {
+            using (var conn = new NpgsqlConnection())
+            {
+                Assert.That(() => conn.BeginTransaction(), Throws.Exception.TypeOf<InvalidOperationException>());
+            }
+        }
+
+        [Test]
         public void SequencialTransaction()
         {
             Conn.BeginTransaction().Rollback();
@@ -607,7 +616,7 @@ namespace Npgsql.Tests
                 connection.Open();
                 using (var command = connection.CreateCommand())
                 {
-                    const String parameterName = "p_int";
+                    const String parameterName = "@p_int";
                     command.CommandText = "SELECT * FROM data WHERE int=" + String.Format(parameterMarkerFormat, parameterName);
                     command.Parameters.Add(new NpgsqlParameter(parameterName, 4));
                     using (var reader = command.ExecuteReader())
@@ -677,6 +686,84 @@ namespace Npgsql.Tests
         {
             using (var conn = new NpgsqlConnection(ConnectionString + ";UseSslStream=true;ContinuousProcessing=true"))
                 Assert.That(() => conn.Open(), Throws.Exception.TypeOf<ArgumentException>());
+        }
+
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/743")]
+        public void Clone()
+        {
+            var conn2 = (NpgsqlConnection)((ICloneable)Conn).Clone();
+            Assert.That(conn2.ConnectionString, Is.EqualTo(Conn.ConnectionString));
+        }
+
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/736")]
+        public void ManyOpenClose()
+        {
+            // The connector's _sentRfqPrependedMessages is a byte, too many open/closes made it overflow
+            for (var i = 0; i < 255; i++)
+            {
+                using (var conn = new NpgsqlConnection(ConnectionString))
+                {
+                    conn.Open();
+                }
+            }
+            using (var conn = new NpgsqlConnection(ConnectionString))
+            {
+                conn.Open();
+            }
+            using (var conn = new NpgsqlConnection(ConnectionString))
+            {
+                conn.Open();
+                Assert.That(ExecuteScalar("SELECT 1", conn), Is.EqualTo(1));
+            }
+        }
+
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/736")]
+        public void ManyOpenCloseWithTransaction()
+        {
+            // The connector's _sentRfqPrependedMessages is a byte, too many open/closes made it overflow
+            for (var i = 0; i < 255; i++)
+            {
+                using (var conn = new NpgsqlConnection(ConnectionString))
+                {
+                    conn.Open();
+                    conn.BeginTransaction();
+                }
+            }
+            using (var conn = new NpgsqlConnection(ConnectionString))
+            {
+                conn.Open();
+                Assert.That(ExecuteScalar("SELECT 1", conn), Is.EqualTo(1));
+            }
+        }
+
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/736")]
+        public void RollbackOnCloseThenOpenClose()
+        {
+            int processId;
+            using (var conn = new NpgsqlConnection(ConnectionString))
+            {
+                conn.Open();
+                processId = conn.Connector.BackendProcessId;
+                conn.BeginTransaction();
+                ExecuteNonQuery("SELECT 1", conn);
+            }
+            // This close prepended a rollback for the next time the connector is used
+            using (var conn = new NpgsqlConnection(ConnectionString))
+            {
+                conn.Open();
+                Assert.That(conn.Connector.BackendProcessId, Is.EqualTo(processId));
+            }
+            // Make sure the prepended rollback is maintained
+            using (var conn = new NpgsqlConnection(ConnectionString))
+            {
+                conn.Open();
+                Assert.That(conn.Connector.BackendProcessId, Is.EqualTo(processId));
+                Assert.That(ExecuteScalar("SELECT 1", conn), Is.EqualTo(1));
+            }
         }
 
         #region GetSchema

@@ -22,12 +22,15 @@
 #endregion
 
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.Data.Common;
 #if ENTITIES6
 using System.Data.Entity.Core.Common.CommandTrees;
+using System.Data.Entity.Core.Metadata.Edm;
 #else
 using System.Data.Common.CommandTrees;
+using System.Data.Metadata.Edm;
 #endif
 
 namespace Npgsql.SqlGenerators
@@ -121,6 +124,29 @@ namespace Npgsql.SqlGenerators
             System.Diagnostics.Debug.Assert(ve is InputExpression);
             InputExpression pe = (InputExpression)ve;
             command.CommandText = pe.ToString();
+
+            // We retrieve all strings as unknowns in text format in the case the data types aren't really texts
+            ((NpgsqlCommand)command).UnknownResultTypeList = pe.Projection.Arguments.Select(a => ((PrimitiveType)((ColumnExpression)a).ColumnType.EdmType).PrimitiveTypeKind == PrimitiveTypeKind.String).ToArray();
+
+            // We must treat sbyte and DateTimeOffset specially so the value is read correctly
+            if (pe.Projection.Arguments.Any(a => {
+                var kind = ((PrimitiveType)((ColumnExpression)a).ColumnType.EdmType).PrimitiveTypeKind;
+                return kind == PrimitiveTypeKind.SByte || kind == PrimitiveTypeKind.DateTimeOffset;
+            }))
+            {
+                ((NpgsqlCommand)command).ObjectResultTypes = pe.Projection.Arguments.Select(a => {
+                    var kind = ((PrimitiveType)((ColumnExpression)a).ColumnType.EdmType).PrimitiveTypeKind;
+                    if (kind == PrimitiveTypeKind.SByte)
+                    {
+                        return typeof(sbyte);
+                    }
+                    else if (kind == PrimitiveTypeKind.DateTimeOffset)
+                    {
+                        return typeof(DateTimeOffset);
+                    }
+                    return null;
+                }).ToArray();
+            }
         }
     }
 }

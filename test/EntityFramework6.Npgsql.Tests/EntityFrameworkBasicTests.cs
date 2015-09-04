@@ -36,6 +36,7 @@ namespace EntityFramework6.Npgsql.Tests
                 createSequenceConn.Open();
                 ExecuteNonQuery("create sequence blog_int_computed_value_seq", createSequenceConn);
                 ExecuteNonQuery("alter table \"dbo\".\"Blogs\" alter column \"IntComputedValue\" set default nextval('blog_int_computed_value_seq');", createSequenceConn);
+                ExecuteNonQuery("alter table \"dbo\".\"Posts\" alter column \"VarbitColumn\" type varbit using null", createSequenceConn);
 
             }
 
@@ -75,6 +76,7 @@ namespace EntityFramework6.Npgsql.Tests
             public string Content { get; set; }
             public byte Rating { get; set; }
             public DateTime CreationDate { get; set; }
+            public string VarbitColumn { get; set; }
             public int BlogId { get; set; }
             public virtual Blog Blog { get; set; }
         }
@@ -99,6 +101,8 @@ namespace EntityFramework6.Npgsql.Tests
         [Test]
         public void InsertAndSelect()
         {
+            var varbitVal = "10011";
+
             using (var context = new BloggingContext(ConnectionStringEF))
             {
                 var blog = new Blog()
@@ -111,7 +115,8 @@ namespace EntityFramework6.Npgsql.Tests
                     {
                         Content = "Some post content " + i,
                         Rating = (byte)i,
-                        Title = "Some post Title " + i
+                        Title = "Some post Title " + i,
+                        VarbitColumn = varbitVal
                     });
                 context.Blogs.Add(blog);
                 context.NoColumnsEntities.Add(new NoColumnsEntity());
@@ -126,7 +131,12 @@ namespace EntityFramework6.Npgsql.Tests
                 foreach (var post in posts)
                 {
                     StringAssert.StartsWith("Some post Title ", post.Title);
+                    Assert.AreEqual(varbitVal, post.VarbitColumn);
                 }
+                var someParameter = "Some";
+                Assert.IsTrue(context.Posts.Any(p => p.Title.StartsWith(someParameter)));
+                Assert.IsTrue(context.Posts.Select(p => p.VarbitColumn == varbitVal).First());
+                Assert.IsTrue(context.Posts.Select(p => p.VarbitColumn == "10011").First());
                 Assert.AreEqual(1, context.NoColumnsEntities.Count());
             }
         }
@@ -368,6 +378,8 @@ namespace EntityFramework6.Npgsql.Tests
                                                    one + ~(two * three) + ~(two ^ ~three) - one ^ three * ~two / three | four);
                 Assert.AreEqual(oneRow.Select(p => one - (two - three) - four - (- one - two) - (- three)).First(),
                                                    one - (two - three) - four - (- one - two) - (- three));
+                Assert.AreEqual(oneRow.Select(p => one <= (one & one)).First(),
+                                                   one <= (one & one));
                 Assert.AreEqual(oneRow.Select(p => boolArr.Contains(True == true)).First(), true);
                 Assert.AreEqual(oneRow.Select(p => !boolArr.Contains(False == true)).First(), false);
                 Assert.AreEqual(oneRow.Select(p => !boolArr.Contains(False != true)).First(), false);
@@ -375,7 +387,6 @@ namespace EntityFramework6.Npgsql.Tests
         }
 
         [Test]
-        [Category("TodoFor3.0")]
         public void DataTypes()
         {
             using (var context = new BloggingContext(ConnectionStringEF))
@@ -385,7 +396,6 @@ namespace EntityFramework6.Npgsql.Tests
                 IQueryable<int> oneRow = context.Posts.Where(p => false).Select(p => 1).Concat(new int[] { 1 });
 
                 Assert.AreEqual((byte)1, oneRow.Select(p => (byte)1).First());
-                Assert.AreEqual((sbyte)1, oneRow.Select(p => (sbyte)1).First());
                 Assert.AreEqual((short)1, oneRow.Select(p => (short)1).First());
                 Assert.AreEqual((long)1, oneRow.Select(p => (long)1).First());
                 Assert.AreEqual(1.25M, oneRow.Select(p => 1.25M).First());
@@ -400,6 +410,23 @@ namespace EntityFramework6.Npgsql.Tests
                 Assert.AreEqual(1.12e+12f, oneRow.Select(p => 1.12e+12f).First());
                 Assert.AreEqual(1.12e-12f, oneRow.Select(p => 1.12e-12f).First());
                 Assert.AreEqual((short)-32768, oneRow.Select(p => (short)-32768).First());
+                Assert.IsTrue(new byte[] { 1, 2 }.SequenceEqual(oneRow.Select(p => new byte[] { 1, 2 }).First()));
+
+                byte byteVal = 1;
+                short shortVal = -32768;
+                long longVal = 1L << 33;
+                decimal decimalVal = 1.25M;
+                double doubleVal = 1.12;
+                float floatVal = 1.22f;
+                byte[] byteArrVal = new byte[] { 1, 2 };
+
+                Assert.AreEqual(byteVal, oneRow.Select(p => byteVal).First());
+                Assert.AreEqual(shortVal, oneRow.Select(p => shortVal).First());
+                Assert.AreEqual(longVal, oneRow.Select(p => longVal).First());
+                Assert.AreEqual(decimalVal, oneRow.Select(p => decimalVal).First());
+                Assert.AreEqual(doubleVal, oneRow.Select(p => doubleVal).First());
+                Assert.AreEqual(floatVal, oneRow.Select(p => floatVal).First());
+                Assert.IsTrue(byteArrVal.SequenceEqual(oneRow.Select(p => byteArrVal).First()));
 
                 // A literal TimeSpan is written as an interval
                 Assert.AreEqual(new TimeSpan(1, 2, 3, 4), oneRow.Select(p => new TimeSpan(1, 2, 3, 4)).First());
@@ -425,6 +452,19 @@ namespace EntityFramework6.Npgsql.Tests
 
                 // String
                 Assert.AreEqual(@"a'b\c", oneRow.Select(p => @"a'b\c").First());
+            }
+        }
+
+        [Test]
+        public void SByteTest()
+        {
+            using (var context = new BloggingContext(ConnectionStringEF))
+            {
+                IQueryable<int> oneRow = context.Posts.Where(p => false).Select(p => 1).Concat(new int[] { 1 });
+
+                sbyte sbyteVal = -1;
+                Assert.AreEqual(sbyteVal, oneRow.Select(p => sbyteVal).First());
+                Assert.AreEqual((sbyte)1, oneRow.Select(p => (sbyte)1).First());
             }
         }
 

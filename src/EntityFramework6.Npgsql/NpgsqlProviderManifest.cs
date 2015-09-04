@@ -33,14 +33,23 @@ using System.Data.Metadata.Edm;
 #endif
 using System.Xml;
 using System.Data;
+using NpgsqlTypes;
 
 namespace Npgsql
 {
     internal class NpgsqlProviderManifest : DbXmlEnabledProviderManifest
     {
+        private Version _version;
+
+        public Version Version { get { return _version; } }
+
         public NpgsqlProviderManifest(string serverVersion)
             : base(CreateXmlReaderForResource("Npgsql.NpgsqlProviderManifest.Manifest.xml"))
         {
+            if (!Version.TryParse(serverVersion, out _version))
+            {
+                _version = new Version(9, 5);
+            }
         }
 
         protected override XmlReader GetDbInformation(string informationType)
@@ -73,42 +82,41 @@ namespace Npgsql
         private const string PrecisionFacet = "Precision";
         private const string FixedLengthFacet = "FixedLength";
 
-        internal static DbType GetDbType(PrimitiveTypeKind _primitiveType)
+        internal static NpgsqlDbType GetNpgsqlDbType(PrimitiveTypeKind _primitiveType)
         {
             switch (_primitiveType)
             {
                 case PrimitiveTypeKind.Binary:
-                    return DbType.Binary;
+                    return NpgsqlDbType.Bytea;
                 case PrimitiveTypeKind.Boolean:
-                    return DbType.Boolean;
+                    return NpgsqlDbType.Boolean;
                 case PrimitiveTypeKind.Byte:
-                    return DbType.Byte;
                 case PrimitiveTypeKind.SByte:
-                    return DbType.SByte;
-                case PrimitiveTypeKind.DateTime:
-                    return DbType.DateTime;
-                case PrimitiveTypeKind.DateTimeOffset:
-                    return DbType.DateTimeOffset;
-                case PrimitiveTypeKind.Decimal:
-                    return DbType.Decimal;
-                case PrimitiveTypeKind.Double:
-                    return DbType.Double;
                 case PrimitiveTypeKind.Int16:
-                    return DbType.Int16;
+                    return NpgsqlDbType.Smallint;
+                case PrimitiveTypeKind.DateTime:
+                    return NpgsqlDbType.Timestamp;
+                case PrimitiveTypeKind.DateTimeOffset:
+                    return NpgsqlDbType.TimestampTZ;
+                case PrimitiveTypeKind.Decimal:
+                    return NpgsqlDbType.Numeric;
+                case PrimitiveTypeKind.Double:
+                    return NpgsqlDbType.Double;
                 case PrimitiveTypeKind.Int32:
-                    return DbType.Int32;
+                    return NpgsqlDbType.Integer;
                 case PrimitiveTypeKind.Int64:
-                    return DbType.Int64;
+                    return NpgsqlDbType.Bigint;
                 case PrimitiveTypeKind.Single:
-                    return DbType.Single;
+                    return NpgsqlDbType.Real;
                 case PrimitiveTypeKind.Time:
-                    return DbType.Time;
+                    return NpgsqlDbType.Interval;
                 case PrimitiveTypeKind.Guid:
-                    return DbType.Guid;
+                    return NpgsqlDbType.Uuid;
                 case PrimitiveTypeKind.String:
-                    return DbType.String;
+                    // Send strings as unknowns to be compatible with other datatypes than text
+                    return NpgsqlDbType.Unknown;
                 default:
-                    return DbType.Object;
+                    return NpgsqlDbType.Unknown;
             }
         }
 

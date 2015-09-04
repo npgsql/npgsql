@@ -32,15 +32,22 @@ using System.Data.Common.CommandTrees;
 using System.Data.Metadata.Edm;
 #endif
 using System.Linq;
+using NpgsqlTypes;
 
 namespace Npgsql.SqlGenerators
 {
     internal abstract class SqlBaseGenerator : DbExpressionVisitor<VisitedExpression>
     {
+        internal NpgsqlCommand _command;
+        internal bool _createParametersForConstants;
+        private Version _version;
+        internal Version Version { get { return _version; } set { _version = value; _useNewPrecedences = value >= new Version(9, 5); } }
+        private bool _useNewPrecedences;
 
         protected Dictionary<string, PendingProjectsNode> _refToNode = new Dictionary<string, PendingProjectsNode>();
         protected HashSet<InputExpression> _currentExpressions = new HashSet<InputExpression>();
         protected uint _aliasCounter = 0;
+        protected uint _parameterCount = 0;
 
         private static Dictionary<string, string> AggregateFunctionNames = new Dictionary<string, string>()
         {
@@ -592,7 +599,7 @@ namespace Npgsql.SqlGenerators
 
         public override VisitedExpression Visit(DbOrExpression expression)
         {
-            return OperatorExpression.Build(Operator.Or, expression.Left.Accept(this), expression.Right.Accept(this));
+            return OperatorExpression.Build(Operator.Or, _useNewPrecedences, expression.Left.Accept(this), expression.Right.Accept(this));
         }
 
         public override VisitedExpression Visit(DbOfTypeExpression expression)
@@ -612,7 +619,7 @@ namespace Npgsql.SqlGenerators
             // argument can be a "NOT EXISTS" or similar operator that can be negated.
             // Convert the not if that's the case
             VisitedExpression argument = expression.Argument.Accept(this);
-            return OperatorExpression.Negate(argument);
+            return OperatorExpression.Negate(argument, _useNewPrecedences);
         }
 
         public override VisitedExpression Visit(DbNewInstanceExpression expression)
@@ -655,7 +662,7 @@ namespace Npgsql.SqlGenerators
         public override VisitedExpression Visit(DbLikeExpression expression)
         {
             // LIKE keyword
-            return OperatorExpression.Build(Operator.Like, expression.Argument.Accept(this), expression.Pattern.Accept(this));
+            return OperatorExpression.Build(Operator.Like, _useNewPrecedences, expression.Argument.Accept(this), expression.Pattern.Accept(this));
         }
 
         public override VisitedExpression Visit(DbJoinExpression expression)
@@ -671,13 +678,13 @@ namespace Npgsql.SqlGenerators
 
         public override VisitedExpression Visit(DbIsNullExpression expression)
         {
-            return OperatorExpression.Build(Operator.IsNull, expression.Argument.Accept(this));
+            return OperatorExpression.Build(Operator.IsNull, _useNewPrecedences, expression.Argument.Accept(this));
         }
 
         public override VisitedExpression Visit(DbIsEmptyExpression expression)
         {
             // NOT EXISTS
-            return OperatorExpression.Negate(new ExistsExpression(expression.Argument.Accept(this)));
+            return OperatorExpression.Negate(new ExistsExpression(expression.Argument.Accept(this)), _useNewPrecedences);
         }
 
         public override VisitedExpression Visit(DbIntersectExpression expression)
@@ -759,11 +766,19 @@ namespace Npgsql.SqlGenerators
 
         public override VisitedExpression Visit(DbConstantExpression expression)
         {
-            // literals to be inserted into the sql
-            // may require some formatting depending on the type
-            //throw new NotImplementedException();
-            // TODO: this is just for testing
-            return new ConstantExpression(expression.Value, expression.ResultType);
+            if (_createParametersForConstants)
+            {
+                NpgsqlParameter parameter = new NpgsqlParameter();
+                parameter.ParameterName = "p_" + _parameterCount++;
+                parameter.NpgsqlDbType = NpgsqlProviderManifest.GetNpgsqlDbType(((PrimitiveType)expression.ResultType.EdmType).PrimitiveTypeKind);
+                parameter.Value = expression.Value;
+                _command.Parameters.Add(parameter);
+                return new LiteralExpression("@" + parameter.ParameterName);
+            }
+            else
+            {
+                return new ConstantExpression(expression.Value, expression.ResultType);
+            }
         }
 
         public override VisitedExpression Visit(DbComparisonExpression expression)
@@ -780,7 +795,7 @@ namespace Npgsql.SqlGenerators
                 case DbExpressionKind.NotEquals: comparisonOperator = Operator.NotEquals; break;
                 default: throw new NotSupportedException();
             }
-            return OperatorExpression.Build(comparisonOperator, expression.Left.Accept(this), expression.Right.Accept(this));
+            return OperatorExpression.Build(comparisonOperator, _useNewPrecedences, expression.Left.Accept(this), expression.Right.Accept(this));
         }
 
         public override VisitedExpression Visit(DbCastExpression expression)
@@ -806,7 +821,7 @@ namespace Npgsql.SqlGenerators
                 case PrimitiveTypeKind.Int64:
                     return "int8";
                 case PrimitiveTypeKind.String:
-                    return "varchar";
+                    return "text";
                 case PrimitiveTypeKind.Decimal:
                     return "numeric";
                 case PrimitiveTypeKind.Single:
@@ -882,12 +897,12 @@ namespace Npgsql.SqlGenerators
             if (expression.ExpressionKind == DbExpressionKind.UnaryMinus)
             {
                 System.Diagnostics.Debug.Assert(expression.Arguments.Count == 1);
-                return OperatorExpression.Build(arithmeticOperator, expression.Arguments[0].Accept(this));
+                return OperatorExpression.Build(arithmeticOperator, _useNewPrecedences, expression.Arguments[0].Accept(this));
             }
             else
             {
                 System.Diagnostics.Debug.Assert(expression.Arguments.Count == 2);
-                return OperatorExpression.Build(arithmeticOperator, expression.Arguments[0].Accept(this), expression.Arguments[1].Accept(this));
+                return OperatorExpression.Build(arithmeticOperator, _useNewPrecedences, expression.Arguments[0].Accept(this), expression.Arguments[1].Accept(this));
             }
         }
 
@@ -904,7 +919,7 @@ namespace Npgsql.SqlGenerators
 
         public override VisitedExpression Visit(DbAndExpression expression)
         {
-            return OperatorExpression.Build(Operator.And, expression.Left.Accept(this), expression.Right.Accept(this));
+            return OperatorExpression.Build(Operator.And, _useNewPrecedences, expression.Left.Accept(this), expression.Right.Accept(this));
         }
 
         public override VisitedExpression Visit(DbExpression expression)
@@ -959,7 +974,7 @@ namespace Npgsql.SqlGenerators
                     // string functions
                     case "Concat":
                         System.Diagnostics.Debug.Assert(args.Count == 2);
-                        return OperatorExpression.Build(Operator.Concat, args[0].Accept(this), args[1].Accept(this));
+                        return OperatorExpression.Build(Operator.Concat, _useNewPrecedences, args[0].Accept(this), args[1].Accept(this));
                     case "Contains":
                         System.Diagnostics.Debug.Assert(args.Count == 2);
                         FunctionExpression contains = new FunctionExpression("position");
@@ -968,7 +983,7 @@ namespace Npgsql.SqlGenerators
                         arg.Append(args[0].Accept(this));
                         contains.AddArgument(arg);
                         // if position returns zero, then contains is false
-                        return OperatorExpression.Build(Operator.GreaterThan, contains, new LiteralExpression("0"));
+                        return OperatorExpression.Build(Operator.GreaterThan, _useNewPrecedences, contains, new LiteralExpression("0"));
                     // case "EndsWith": - depends on a reverse function to be able to implement with parameterized queries
                     case "IndexOf":
                         System.Diagnostics.Debug.Assert(args.Count == 2);
@@ -1004,7 +1019,7 @@ namespace Npgsql.SqlGenerators
                             var start = new FunctionExpression("char_length");
                             start.AddArgument(arg0);
                             // add one before subtracting count since strings are 1 based in postgresql
-                            return Substring(arg0, OperatorExpression.Build(Operator.Sub, OperatorExpression.Build(Operator.Add, start, new LiteralExpression("1")), arg1));
+                            return Substring(arg0, OperatorExpression.Build(Operator.Sub, _useNewPrecedences, OperatorExpression.Build(Operator.Add, _useNewPrecedences, start, new LiteralExpression("1")), arg1));
                         }
                     case "RTrim":
                         return StringModifier("rtrim", args);
@@ -1018,7 +1033,7 @@ namespace Npgsql.SqlGenerators
                         arg.Append(" in ");
                         arg.Append(args[0].Accept(this));
                         startsWith.AddArgument(arg);
-                        return OperatorExpression.Build(Operator.Equals, startsWith, new LiteralExpression("1"));
+                        return OperatorExpression.Build(Operator.Equals, _useNewPrecedences, startsWith, new LiteralExpression("1"));
                     case "ToLower":
                         return StringModifier("lower", args);
                     case "ToUpper":
@@ -1060,7 +1075,7 @@ namespace Npgsql.SqlGenerators
                         return DatePart("milliseconds", args);
                     case "GetTotalOffsetMinutes":
                         VisitedExpression timezone = DatePart("timezone", args);
-                        return OperatorExpression.Build(Operator.Div, timezone, new LiteralExpression("60"));
+                        return OperatorExpression.Build(Operator.Div, _useNewPrecedences, timezone, new LiteralExpression("60"));
                     case "CurrentDateTime":
                         return new LiteralExpression("LOCALTIMESTAMP");
                     case "CurrentUtcDateTime":
@@ -1081,7 +1096,7 @@ namespace Npgsql.SqlGenerators
                         return BitwiseOperator(args, Operator.BitwiseXor);
                     case "BitwiseNot":
                         System.Diagnostics.Debug.Assert(args.Count == 1);
-                        return OperatorExpression.Build(Operator.BitwiseNot, args[0].Accept(this));
+                        return OperatorExpression.Build(Operator.BitwiseNot, _useNewPrecedences, args[0].Accept(this));
 
                     // math operators
                     case "Abs":
@@ -1188,9 +1203,9 @@ namespace Npgsql.SqlGenerators
             VisitedExpression time = args[0].Accept(this);
             VisitedExpression mulLeft = args[1].Accept(this);
             if (nano)
-                mulLeft = OperatorExpression.Build(Operator.Div, mulLeft, new LiteralExpression("1000"));
+                mulLeft = OperatorExpression.Build(Operator.Div, _useNewPrecedences, mulLeft, new LiteralExpression("1000"));
             LiteralExpression mulRight = new LiteralExpression(String.Format("INTERVAL '1 {0}'", part));
-            return OperatorExpression.Build(Operator.Add, time, OperatorExpression.Build(Operator.Mul, mulLeft, mulRight));
+            return OperatorExpression.Build(Operator.Add, _useNewPrecedences, time, OperatorExpression.Build(Operator.Mul, _useNewPrecedences, mulLeft, mulRight));
         }
 
         private VisitedExpression DateDiff(string functionName, VisitedExpression start, VisitedExpression end)
@@ -1201,43 +1216,43 @@ namespace Npgsql.SqlGenerators
                     start = new FunctionExpression("date_trunc").AddArgument("'day'").AddArgument(start);
                     end = new FunctionExpression("date_trunc").AddArgument("'day'").AddArgument(end);
                     return new FunctionExpression("date_part").AddArgument("'day'").AddArgument(
-                        OperatorExpression.Build(Operator.Sub, end, start)
+                        OperatorExpression.Build(Operator.Sub, _useNewPrecedences, end, start)
                     ).Append("::int4");
                 case "DiffHours":
                     {
                         start = new FunctionExpression("date_trunc").AddArgument("'hour'").AddArgument(start);
                         end = new FunctionExpression("date_trunc").AddArgument("'hour'").AddArgument(end);
                         LiteralExpression epoch = new LiteralExpression("epoch from ");
-                        OperatorExpression diff = OperatorExpression.Build(Operator.Sub, end, start);
+                        OperatorExpression diff = OperatorExpression.Build(Operator.Sub, _useNewPrecedences, end, start);
                         epoch.Append(diff);
-                        return OperatorExpression.Build(Operator.Div, new FunctionExpression("extract").AddArgument(epoch).Append("::int4"), new LiteralExpression("3600"));
+                        return OperatorExpression.Build(Operator.Div, _useNewPrecedences, new FunctionExpression("extract").AddArgument(epoch).Append("::int4"), new LiteralExpression("3600"));
                     }
                 case "DiffMicroseconds":
                     {
                         start = new FunctionExpression("date_trunc").AddArgument("'microseconds'").AddArgument(start);
                         end = new FunctionExpression("date_trunc").AddArgument("'microseconds'").AddArgument(end);
                         LiteralExpression epoch = new LiteralExpression("epoch from ");
-                        OperatorExpression diff = OperatorExpression.Build(Operator.Sub, end, start);
+                        OperatorExpression diff = OperatorExpression.Build(Operator.Sub, _useNewPrecedences, end, start);
                         epoch.Append(diff);
-                        return new CastExpression(OperatorExpression.Build(Operator.Mul, new FunctionExpression("extract").AddArgument(epoch), new LiteralExpression("1000000")), "int4");
+                        return new CastExpression(OperatorExpression.Build(Operator.Mul, _useNewPrecedences, new FunctionExpression("extract").AddArgument(epoch), new LiteralExpression("1000000")), "int4");
                     }
                 case "DiffMilliseconds":
                     {
                         start = new FunctionExpression("date_trunc").AddArgument("'milliseconds'").AddArgument(start);
                         end = new FunctionExpression("date_trunc").AddArgument("'milliseconds'").AddArgument(end);
                         LiteralExpression epoch = new LiteralExpression("epoch from ");
-                        OperatorExpression diff = OperatorExpression.Build(Operator.Sub, end, start);
+                        OperatorExpression diff = OperatorExpression.Build(Operator.Sub, _useNewPrecedences, end, start);
                         epoch.Append(diff);
-                        return new CastExpression(OperatorExpression.Build(Operator.Mul, new FunctionExpression("extract").AddArgument(epoch), new LiteralExpression("1000")), "int4");
+                        return new CastExpression(OperatorExpression.Build(Operator.Mul, _useNewPrecedences, new FunctionExpression("extract").AddArgument(epoch), new LiteralExpression("1000")), "int4");
                     }
                 case "DiffMinutes":
                     {
                         start = new FunctionExpression("date_trunc").AddArgument("'minute'").AddArgument(start);
                         end = new FunctionExpression("date_trunc").AddArgument("'minute'").AddArgument(end);
                         LiteralExpression epoch = new LiteralExpression("epoch from ");
-                        OperatorExpression diff = OperatorExpression.Build(Operator.Sub, end, start);
+                        OperatorExpression diff = OperatorExpression.Build(Operator.Sub, _useNewPrecedences, end, start);
                         epoch.Append(diff);
-                        return OperatorExpression.Build(Operator.Div, new FunctionExpression("extract").AddArgument(epoch).Append("::int4"), new LiteralExpression("60"));
+                        return OperatorExpression.Build(Operator.Div, _useNewPrecedences, new FunctionExpression("extract").AddArgument(epoch).Append("::int4"), new LiteralExpression("60"));
                     }
                 case "DiffMonths":
                     {
@@ -1248,7 +1263,7 @@ namespace Npgsql.SqlGenerators
                         // A month is 30 days and a year is 365.25 days after conversion from interval to seconds.
                         // After rounding and casting, the result will contain the correct number of months as an int4.
                         FunctionExpression seconds = new FunctionExpression("extract").AddArgument(new LiteralExpression("epoch from ").Append(age));
-                        VisitedExpression months = OperatorExpression.Build(Operator.Div, seconds, new LiteralExpression("2629800.0"));
+                        VisitedExpression months = OperatorExpression.Build(Operator.Div, _useNewPrecedences, seconds, new LiteralExpression("2629800.0"));
                         return new FunctionExpression("round").AddArgument(months).Append("::int4");
                     }
                 case "DiffNanoseconds":
@@ -1258,16 +1273,16 @@ namespace Npgsql.SqlGenerators
                         start = new FunctionExpression("date_trunc").AddArgument("'microseconds'").AddArgument(start);
                         end = new FunctionExpression("date_trunc").AddArgument("'microseconds'").AddArgument(end);
                         LiteralExpression epoch = new LiteralExpression("epoch from ");
-                        OperatorExpression diff = OperatorExpression.Build(Operator.Sub, end, start);
+                        OperatorExpression diff = OperatorExpression.Build(Operator.Sub, _useNewPrecedences, end, start);
                         epoch.Append(diff);
-                        return new CastExpression(OperatorExpression.Build(Operator.Mul, new FunctionExpression("extract").AddArgument(epoch), new LiteralExpression("1000000000")), "int4");
+                        return new CastExpression(OperatorExpression.Build(Operator.Mul, _useNewPrecedences, new FunctionExpression("extract").AddArgument(epoch), new LiteralExpression("1000000000")), "int4");
                     }
                 case "DiffSeconds":
                     {
                         start = new FunctionExpression("date_trunc").AddArgument("'second'").AddArgument(start);
                         end = new FunctionExpression("date_trunc").AddArgument("'second'").AddArgument(end);
                         LiteralExpression epoch = new LiteralExpression("epoch from ");
-                        OperatorExpression diff = OperatorExpression.Build(Operator.Sub, end, start);
+                        OperatorExpression diff = OperatorExpression.Build(Operator.Sub, _useNewPrecedences, end, start);
                         epoch.Append(diff);
                         return new FunctionExpression("extract").AddArgument(epoch).Append("::int4");
                     }
@@ -1285,7 +1300,7 @@ namespace Npgsql.SqlGenerators
         private VisitedExpression BitwiseOperator(IList<DbExpression> args, Operator oper)
         {
             System.Diagnostics.Debug.Assert(args.Count == 2);
-            return OperatorExpression.Build(oper, args[0].Accept(this), args[1].Accept(this));
+            return OperatorExpression.Build(oper, _useNewPrecedences, args[0].Accept(this), args[1].Accept(this));
         }
 
 #if ENTITIES6
@@ -1299,7 +1314,7 @@ namespace Npgsql.SqlGenerators
                 elements[i] = (ConstantExpression)expression.List[i].Accept(this);
             }
 
-            return OperatorExpression.Build(Operator.In, item, new ConstantListExpression(elements));
+            return OperatorExpression.Build(Operator.In, _useNewPrecedences, item, new ConstantListExpression(elements));
         }
 
         public override VisitedExpression Visit(DbPropertyExpression expression)

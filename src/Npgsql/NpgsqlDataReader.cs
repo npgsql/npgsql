@@ -494,6 +494,7 @@ namespace Npgsql
                     var msg = _connector.ReadSingleMessage(IsSequential ? DataRowLoadingMode.Sequential : DataRowLoadingMode.NonSequential);
                     switch (msg.Code)
                     {
+                        case BackendMessageCode.BindComplete:
                         case BackendMessageCode.RowDescription:
                             ProcessMessage(msg);
                             continue;
@@ -1161,6 +1162,15 @@ namespace Npgsql
             CheckOrdinal(ordinal);
             Contract.EndContractBlock();
 
+            if (Command.ObjectResultTypes != null)
+            {
+                var type = Command.ObjectResultTypes[ordinal];
+                if (type != null)
+                {
+                    return type;
+                }
+            }
+
             var fieldDescription = _rowDescription[ordinal];
             return fieldDescription.Handler.GetFieldType(fieldDescription);
         }
@@ -1188,7 +1198,6 @@ namespace Npgsql
         public override object GetValue(int ordinal)
         {
             CheckRowAndOrdinal(ordinal);
-            Contract.Ensures(Contract.Result<object>() == DBNull.Value || GetFieldType(ordinal).IsInstanceOfType(Contract.Result<object>()));
 
             CachedValue<object> cache = null;
             if (IsCaching)
@@ -1215,6 +1224,20 @@ namespace Npgsql
             } catch {
                 _connector.Break();
                 throw;
+            }
+
+            // Used for Entity Framework <= 6 compability
+            if (Command.ObjectResultTypes != null && Command.ObjectResultTypes[ordinal] != null && result != null)
+            {
+                var type = Command.ObjectResultTypes[ordinal];
+                if (type == typeof(DateTimeOffset))
+                {
+                    result = new DateTimeOffset((DateTime)result);
+                }
+                else
+                {
+                    result = Convert.ChangeType(result, type);
+                }
             }
 
             if (IsCaching)

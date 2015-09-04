@@ -37,7 +37,7 @@ namespace Npgsql.TypeHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-money.html
     /// </remarks>
-    [TypeMapping("money", NpgsqlDbType.Money, DbType.Currency)]
+    [TypeMapping("money", NpgsqlDbType.Money, dbType: DbType.Currency)]
     internal class MoneyHandler : TypeHandler<decimal>,
         ISimpleTypeReader<decimal>, ISimpleTypeWriter
     {
@@ -48,6 +48,7 @@ namespace Npgsql.TypeHandlers
 
         public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
+            decimal decimalValue;
             if (!(value is decimal))
             {
                 var converted = Convert.ToDecimal(value);
@@ -55,8 +56,18 @@ namespace Npgsql.TypeHandlers
                 {
                     throw CreateConversionButNoParamException(value.GetType());
                 }
+                decimalValue = converted;
                 parameter.ConvertedValue = converted;
             }
+            else
+            {
+                decimalValue = (decimal)value;
+            }
+            if (decimalValue < -92233720368547758.08M || decimalValue > 92233720368547758.07M)
+            {
+                throw new OverflowException("The supplied value (" + decimalValue + ") is outside the range for a PostgreSQL money value.");
+            }
+
             return 8;
         }
 
@@ -66,7 +77,7 @@ namespace Npgsql.TypeHandlers
                 ? parameter.ConvertedValue
                 : value);
 
-            buf.WriteInt64((long)(v * 100m + 0.5m /* round */));
+            buf.WriteInt64((long)(decimal.Round(v, 2, MidpointRounding.AwayFromZero) * 100m));
         }
     }
 }

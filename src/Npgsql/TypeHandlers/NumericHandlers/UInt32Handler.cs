@@ -37,6 +37,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     [TypeMapping("oid", NpgsqlDbType.Oid)]
     [TypeMapping("xid", NpgsqlDbType.Xid)]
     [TypeMapping("cid", NpgsqlDbType.Cid)]
+    [TypeMapping("regtype", NpgsqlDbType.Regtype)]
     internal class UInt32Handler : TypeHandler<uint>,
         ISimpleTypeReader<uint>, ISimpleTypeWriter
     {

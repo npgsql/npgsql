@@ -302,7 +302,7 @@ namespace Npgsql.Tests.Types
         {
             using (var cmd = Conn.CreateCommand())
             {
-                cmd.CommandText = "select '1'::MONEY, '123.45'::MONEY, '1234567890123.45'::MONEY";
+                cmd.CommandText = "select '1'::MONEY, '12345'::MONEY / 100, '123456789012345'::MONEY / 100";
                 if (prepare == PrepareOrNot.Prepared)
                     cmd.Prepare();
                 using (var reader = cmd.ExecuteReader())

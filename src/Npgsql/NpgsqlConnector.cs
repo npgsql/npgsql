@@ -716,7 +716,7 @@ namespace Npgsql
             {
                 // These messages produce a ReadyForQuery response, which we will be looking for when
                 // processing the message chain results
-                _pendingRfqPrependedMessages++;
+                checked { _pendingRfqPrependedMessages++; }
             }
             _messagesToSend.Add(msg);
         }
@@ -728,7 +728,7 @@ namespace Npgsql
             }
 
             _backendTimeout = timeout;
-            _pendingRfqPrependedMessages++;
+            checked { _pendingRfqPrependedMessages++; }
 
             switch (timeout) {
             case 10:
@@ -1471,6 +1471,21 @@ namespace Npgsql
                 EndUserAction();
             }
 
+            // If a begin transaction is pending (i.e. not yet sent to the server), remove it
+            if (PregeneratedMessage.BeginTransactionMessages.Contains(_messagesToSend.LastOrDefault()))
+            {
+                _messagesToSend.RemoveAt(_messagesToSend.Count - 1);
+                checked { _pendingRfqPrependedMessages--; }
+                ClearTransaction();
+            }
+
+            // If a DISCARD ALL is already pending (#736), don't reenqueue rollback/discard
+            var lastEnqueued = _messagesToSend.LastOrDefault();
+            if (lastEnqueued == PregeneratedMessage.DiscardAll || lastEnqueued == PregeneratedMessage.UnlistenAll)
+            {
+                return;
+            }
+
             // Must rollback transaction before sending DISCARD ALL
             if (InTransaction)
             {
@@ -1603,8 +1618,8 @@ namespace Npgsql
             }
             finally
             {
-                _asyncLock.Release();
-                _userLock.Release();
+                if (_asyncLock != null) { _asyncLock.Release(); }
+                if (_userLock != null) { _userLock.Release(); }
             }
         }
 
@@ -1920,7 +1935,7 @@ namespace Npgsql
         /// prepended to the next query.
         /// This is a client-side state option only, and is never transmitted from the backend.
         /// </summary>
-        Pending = Byte.MaxValue,
+        Pending = byte.MaxValue,
     }
 
     /// <summary>

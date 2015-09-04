@@ -359,6 +359,18 @@ namespace Npgsql
 
         #endregion
 
+        #region Result Types Management
+
+        /// <summary>
+        /// Marks result types to be used when using GetValue on a data reader, on a column-by-column basis.
+        /// Used for Entity Framework 5-6 compability.
+        /// Only primitive numerical types and DateTimeOffset are supported.
+        /// Set the whole array or just a value to null to use default type.
+        /// </summary>
+        internal Type[] ObjectResultTypes { get; set; }
+
+        #endregion
+
         #region State management
 
         int _state;
@@ -1081,11 +1093,17 @@ namespace Npgsql
         /// </remarks>
         void FixupRowDescription(RowDescriptionMessage rowDescription, bool isFirst)
         {
-            for (var i = 0; i < rowDescription.NumFields; i++) {
-                rowDescription[i].FormatCode =
+            for (var i = 0; i < rowDescription.NumFields; i++)
+            {
+                var field = rowDescription[i];
+                field.FormatCode =
                     (UnknownResultTypeList == null || !isFirst ? AllResultTypesAreUnknown : UnknownResultTypeList[i])
                     ? FormatCode.Text
                     : FormatCode.Binary;
+                if (field.FormatCode == FormatCode.Text)
+                {
+                    field.Handler = Connection.Connector.TypeHandlerRegistry.UnrecognizedTypeHandler;
+                }
             }
         }
 
@@ -1112,7 +1130,10 @@ namespace Npgsql
             {
                 CommandTimeout = CommandTimeout,
                 CommandType = CommandType,
-                DesignTimeVisible = DesignTimeVisible
+                DesignTimeVisible = DesignTimeVisible,
+                _allResultTypesAreUnknown = _allResultTypesAreUnknown,
+                _unknownResultTypeList = _unknownResultTypeList,
+                ObjectResultTypes = ObjectResultTypes
             };
             foreach (NpgsqlParameter parameter in Parameters)
             {

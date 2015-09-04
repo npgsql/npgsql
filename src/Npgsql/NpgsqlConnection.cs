@@ -51,7 +51,7 @@ namespace Npgsql
     public sealed class NpgsqlConnection : DbConnection
 #else
     [System.ComponentModel.DesignerCategory("")]
-    public sealed class NpgsqlConnection : DbConnection
+    public sealed class NpgsqlConnection : DbConnection, ICloneable
 #endif
     {
         #region Fields
@@ -489,6 +489,7 @@ namespace Npgsql
             if (level == IsolationLevel.Chaos)
                 throw new NotSupportedException("Unsupported IsolationLevel: " + level);
             Contract.EndContractBlock();
+            CheckReady();
 
             // Note that beginning a transaction doesn't actually send anything to the backend
             // (only prepends), so strictly speaking we don't have to start a user action.
@@ -1204,6 +1205,12 @@ namespace Npgsql
         #endregion Schema operations
 
         #region Misc
+
+        object ICloneable.Clone()
+        {
+            CheckNotDisposed();
+            return new NpgsqlConnection(ConnectionString);
+        }
 
         /// <summary>
         /// This method changes the current database by disconnecting from the actual

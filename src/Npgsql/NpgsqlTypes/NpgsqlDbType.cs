@@ -181,6 +181,12 @@ namespace NpgsqlTypes
         Name = 32,
 
         /// <summary>
+        /// Corresponds to the PostgreSQL "citext" type for the citext module.
+        /// </summary>
+        /// <remarks>See http://www.postgresql.org/docs/current/static/citext.html</remarks>
+        Citext = 51,
+
+        /// <summary>
         /// Corresponds to the PostgreSQL "char" type.
         /// </summary>
         /// <remarks>
@@ -421,6 +427,11 @@ namespace NpgsqlTypes
         /// </summary>
         /// <remarks>See http://www.postgresql.org/docs/current/static/datatype-oid.html</remarks>
         Cid = 43,
+
+        /// <summary>
+        /// Corresponds to the PostgreSQL "regtype" type, a numeric (OID) ID of a type in the pg_type table.
+        /// </summary>
+        Regtype = 49,
 
         #endregion
 
