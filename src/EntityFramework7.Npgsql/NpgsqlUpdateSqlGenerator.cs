@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using JetBrains.Annotations;
 using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Update;
 using Microsoft.Data.Entity.Utilities;
@@ -101,6 +102,27 @@ namespace EntityFramework7.Npgsql
                 .AppendLine()
                 .Append("RETURNING ")
                 .AppendJoin(operations.Select(c => DelimitIdentifier(c.ColumnName)));
+        }
+
+        // This function is a temporary workaround for
+        // https://github.com/aspnet/EntityFramework/issues/3023
+        protected override void AppendWhereCondition(
+            [NotNull] StringBuilder commandStringBuilder,
+            [NotNull] ColumnModification columnModification,
+            bool useOriginalValue)
+        {
+            Check.NotNull(commandStringBuilder, nameof(commandStringBuilder));
+            Check.NotNull(columnModification, nameof(columnModification));
+
+            // In PostgreSQL, doing WHERE x = @p doesn't work if @p is null.
+            // IS NOT DISTINCT FROM does the same thing as equality but also returns true for null comparison.
+            // http://www.postgresql.org/docs/current/static/functions-comparison.html
+            commandStringBuilder
+                .Append(DelimitIdentifier(columnModification.ColumnName))
+                .Append(" IS NOT DISTINCT FROM ")
+                .Append(useOriginalValue
+                    ? columnModification.OriginalParameterName
+                    : columnModification.ParameterName);
         }
 
         public override void AppendBatchHeader(StringBuilder commandStringBuilder)
