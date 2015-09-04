@@ -836,6 +836,33 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/736")]
+        public void RollbackOnCloseThenOpenClose()
+        {
+            int processId;
+            using (var conn = new NpgsqlConnection(ConnectionString))
+            {
+                conn.Open();
+                processId = conn.Connector.BackendProcessId;
+                conn.BeginTransaction();
+                ExecuteNonQuery("SELECT 1", conn);
+            }
+            // This close prepended a rollback for the next time the connector is used
+            using (var conn = new NpgsqlConnection(ConnectionString))
+            {
+                conn.Open();
+                Assert.That(conn.Connector.BackendProcessId, Is.EqualTo(processId));
+            }
+            // Make sure the prepended rollback is maintained
+            using (var conn = new NpgsqlConnection(ConnectionString))
+            {
+                conn.Open();
+                Assert.That(conn.Connector.BackendProcessId, Is.EqualTo(processId));
+                Assert.That(ExecuteScalar("SELECT 1", conn), Is.EqualTo(1));
+            }
+        }
+
         #region GetSchema
 
         [Test]

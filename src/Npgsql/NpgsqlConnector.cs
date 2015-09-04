@@ -1583,9 +1583,20 @@ namespace Npgsql
                 EndUserAction();
             }
 
-            // There may be prepending messages (#736), clear everything.
-            _messagesToSend.Clear();
-            _pendingRfqPrependedMessages = 0;
+            // If a begin transaction is pending (i.e. not yet sent to the server), remove it
+            if (PregeneratedMessage.BeginTransactionMessages.Contains(_messagesToSend.LastOrDefault()))
+            {
+                _messagesToSend.RemoveAt(_messagesToSend.Count - 1);
+                checked { _pendingRfqPrependedMessages--; }
+                ClearTransaction();
+            }
+
+            // If a DISCARD ALL is already pending (#736), don't reenqueue rollback/discard
+            var lastEnqueued = _messagesToSend.LastOrDefault();
+            if (lastEnqueued == PregeneratedMessage.DiscardAll || lastEnqueued == PregeneratedMessage.UnlistenAll)
+            {
+                return;
+            }
 
             // Must rollback transaction before sending DISCARD ALL
             if (InTransaction)
@@ -2035,7 +2046,7 @@ namespace Npgsql
         /// prepended to the next query.
         /// This is a client-side state option only, and is never transmitted from the backend.
         /// </summary>
-        Pending = Byte.MaxValue,
+        Pending = byte.MaxValue,
     }
 
     /// <summary>
