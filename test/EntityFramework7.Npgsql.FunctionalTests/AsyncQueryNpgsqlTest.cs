@@ -16,6 +16,19 @@ namespace EntityFramework7.Npgsql.FunctionalTests
             _fixture = fixture;
         }
 
+        #region Skipped tests
+
+        [Fact(Skip = "Test commented out in EF7 (SqlServer/Sqlite)")]
+        public override Task Projection_when_arithmetic_expressions() { return null; }
+
+        [Fact(Skip = "Test commented out in EF7 (SqlServer/Sqlite)")]
+        public override Task Projection_when_arithmetic_mixed() { return null; }
+
+        [Fact(Skip = "Test commented out in EF7 (SqlServer/Sqlite)")]
+        public override Task Projection_when_arithmetic_mixed_subqueries() { return null; }
+
+        #endregion
+
         [Fact]
         public async Task Completes_When_No_Results()
         {
