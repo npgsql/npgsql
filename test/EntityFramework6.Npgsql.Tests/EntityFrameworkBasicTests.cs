@@ -7,6 +7,9 @@ using System.Data.Entity;
 using System.Linq;
 using System.Text;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Data.Entity.Core.Metadata.Edm;
+using System.Data.Entity.Core.Objects;
+using System.Data.Entity.Infrastructure;
 using Npgsql.Tests;
 
 namespace EntityFramework6.Npgsql.Tests
@@ -37,7 +40,7 @@ namespace EntityFramework6.Npgsql.Tests
                 ExecuteNonQuery("create sequence blog_int_computed_value_seq", createSequenceConn);
                 ExecuteNonQuery("alter table \"dbo\".\"Blogs\" alter column \"IntComputedValue\" set default nextval('blog_int_computed_value_seq');", createSequenceConn);
                 ExecuteNonQuery("alter table \"dbo\".\"Posts\" alter column \"VarbitColumn\" type varbit using null", createSequenceConn);
-
+                ExecuteNonQuery("CREATE OR REPLACE FUNCTION \"dbo\".\"StoredAddFunction\"(integer, integer) RETURNS integer AS $$ SELECT $1 + $2; $$ LANGUAGE SQL;", createSequenceConn);
             }
 
 
@@ -89,13 +92,60 @@ namespace EntityFramework6.Npgsql.Tests
         public class BloggingContext : DbContext
         {
             public BloggingContext(string connection)
-                : base(new NpgsqlConnection(connection), true)
+                : base(new NpgsqlConnection(connection), CreateModel(new NpgsqlConnection(connection)), true)
             {
             }
 
             public DbSet<Blog> Blogs { get; set; }
             public DbSet<Post> Posts { get; set; }
             public DbSet<NoColumnsEntity> NoColumnsEntities { get; set; }
+
+            [DbFunction("BloggingContext", "ClrStoredAddFunction")]
+            public static int StoredAddFunction(int val1, int val2)
+            {
+                throw new NotSupportedException();
+            }
+
+            private static DbCompiledModel CreateModel(NpgsqlConnection connection)
+            {
+                var dbModelBuilder = new DbModelBuilder(DbModelBuilderVersion.Latest);
+
+                // Import Sets
+                dbModelBuilder.Entity<Blog>();
+                dbModelBuilder.Entity<Post>();
+                dbModelBuilder.Entity<NoColumnsEntity>();
+
+                // Import function
+                var dbModel = dbModelBuilder.Build(connection);
+                var edmType = PrimitiveType.GetEdmPrimitiveType(PrimitiveTypeKind.Int32);
+
+                var payload = new EdmFunctionPayload
+                {
+                    ParameterTypeSemantics = ParameterTypeSemantics.AllowImplicitConversion,
+                    Schema = "dbo",
+                    IsComposable = true,
+                    IsNiladic = false,
+                    IsBuiltIn = false,
+                    IsAggregate = false,
+                    IsFromProviderManifest = true,
+                    StoreFunctionName = "StoredAddFunction",
+                    ReturnParameters = new[]
+                    {
+                        FunctionParameter.Create("ReturnType", edmType, ParameterMode.ReturnValue)
+                    },
+                    Parameters = new[]
+                    {
+                        FunctionParameter.Create("Value1", edmType, ParameterMode.In),
+                        FunctionParameter.Create("Value2", edmType, ParameterMode.In)
+                    }
+                };
+
+                var myFunc = EdmFunction.Create("ClrStoredAddFunction", "BloggingContext", DataSpace.SSpace, payload, null);
+                dbModel.StoreModel.AddItem(myFunc);
+                var compiledModel = dbModel.Compile();
+
+                return compiledModel;
+            }
         }
 
         [Test]
@@ -631,6 +681,53 @@ namespace EntityFramework6.Npgsql.Tests
                     // Just some really crazy query that results in an apply as well
                     context.Blogs.Select(b => new { b, b.BlogId, n = b.Posts.Select(p => new { t = p.Title + b.Name, n = p.Blog.Posts.Count(p2 => p2.BlogId < 4) }).Take(2) }).ToArray();
                 }
+            }
+        }
+
+        [Test]
+        public void TestScalarValuedStoredFunctions()
+        {
+            using (var context = new BloggingContext(ConnectionStringEF))
+            {
+                context.Database.Log = Console.Out.WriteLine;
+
+                // Try to call stored function using ESQL
+                var directCallQuery = ((IObjectContextAdapter)context).ObjectContext.CreateQuery<int>(
+                    "SELECT VALUE BloggingContext.ClrStoredAddFunction(@p1, @p2) FROM {1}",
+                    new ObjectParameter("p1", 1),
+                    new ObjectParameter("p2", 10)
+                    );
+                var directSQL = directCallQuery.ToTraceString();
+                var directCallResult = directCallQuery.First();
+
+                // Add some data and query it back using Stored Function
+                var blog = new Blog
+                {
+                    Name = "Some blog name",
+                    Posts = new List<Post>()
+                };
+                for (int i = 0; i < 5; i++)
+                    blog.Posts.Add(new Post()
+                    {
+                        Content = "Some post content " + i,
+                        Rating = (byte)i,
+                        Title = "Some post Title " + i
+                    });
+                context.Blogs.Add(blog);
+                context.NoColumnsEntities.Add(new NoColumnsEntity());
+                context.SaveChanges();
+
+                // Query back
+                var modifiedIds = context.Posts
+                    .Select(x => new { Id = x.PostId, Changed = BloggingContext.StoredAddFunction(x.PostId, 100) })
+                    .ToList();
+                var localChangedIds = modifiedIds.Select(x => x.Id + 100).ToList();
+                var remoteChangedIds = modifiedIds.Select(x => x.Changed).ToList();
+
+                // Comapre results
+                Assert.AreEqual(directCallResult, 11);
+                Assert.IsTrue(directSQL.Contains("\"dbo\".\"StoredAddFunction\""));
+                CollectionAssert.AreEqual(localChangedIds, remoteChangedIds);
             }
         }
     }
