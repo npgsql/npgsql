@@ -3,7 +3,7 @@
   <metadata xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
     <id>EntityFramework7.Npgsql</id>
     <title>Npgsql for Entity Framework 7</title>
-    <version>0.0.0</version>
+    <version>3.1.0-beta7-1</version>
     <authors>Shay Rojansky</authors>
     <owners>Shay Rojansky</owners>
     <licenseUrl>https://github.com/npgsql/npgsql/blob/develop/LICENSE.txt</licenseUrl>
@@ -15,8 +15,8 @@
     <language>en-US</language>
     <tags>npgsql postgresql postgres data database entity framework ef orm</tags>
     <dependencies>
-      <dependency id="Npgsql" version="$version$" />
-      <dependency id="EntityFramework" version="(6.999,)" />
+      <dependency id="Npgsql" version="[3.1.0-alpha1]" />
+      <dependency id="EntityFramework.Relational" version="[7.0.0-beta7]" />
     </dependencies>
   </metadata>
   <files>
