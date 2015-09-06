@@ -215,7 +215,7 @@ LIMIT 2
 @p0: Aquila chrysaetos canadensis
 
 UPDATE ""Animal"" SET ""EagleId"" = @p0
-WHERE ""Species"" = @p1;
+WHERE ""Species"" IS NOT DISTINCT FROM @p1;
 
 SELECT ""k"".""Species"", ""k"".""CountryId"", ""k"".""Discriminator"", ""k"".""Name"", ""k"".""EagleId"", ""k"".""IsFlightless"", ""k"".""FoundOn""
 FROM ""Animal"" AS ""k""
@@ -225,7 +225,7 @@ LIMIT 2
 @p0: Apteryx owenii
 
 DELETE FROM ""Animal""
-WHERE ""Species"" = @p0;
+WHERE ""Species"" IS NOT DISTINCT FROM @p0;
 
 SELECT COUNT(*)::INT4
 FROM ""Animal"" AS ""k""

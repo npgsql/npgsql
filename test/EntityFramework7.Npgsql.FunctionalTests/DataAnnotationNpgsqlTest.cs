@@ -36,7 +36,7 @@ LIMIT 1
 @p3: 00000001-0000-0000-0000-000000000001
 
 UPDATE ""Sample"" SET ""Name"" = @p0, ""RowVersion"" = @p1
-WHERE ""UniqueNo"" = @p2 AND ""RowVersion"" = @p3;
+WHERE ""UniqueNo"" IS NOT DISTINCT FROM @p2 AND ""RowVersion"" IS NOT DISTINCT FROM @p3;
 
 @p2: 1
 @p0: ChangedData
@@ -44,7 +44,7 @@ WHERE ""UniqueNo"" = @p2 AND ""RowVersion"" = @p3;
 @p3: 00000001-0000-0000-0000-000000000001
 
 UPDATE ""Sample"" SET ""Name"" = @p0, ""RowVersion"" = @p1
-WHERE ""UniqueNo"" = @p2 AND ""RowVersion"" = @p3;",
+WHERE ""UniqueNo"" IS NOT DISTINCT FROM @p2 AND ""RowVersion"" IS NOT DISTINCT FROM @p3;",
                 Sql);
         }
 
