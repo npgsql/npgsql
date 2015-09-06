@@ -17,7 +17,7 @@ namespace EntityFramework7.Npgsql.FunctionalTests
 
         #region Skipped tests
 
-        [Fact(Skip="Test commented out in EF7 (SqlServer/Sqlite)")]
+        [Fact(Skip ="Test commented out in EF7 (SqlServer/Sqlite)")]
         public override void Projection_when_arithmetic_expressions() {}
 
         [Fact(Skip = "Test commented out in EF7 (SqlServer/Sqlite)")]
@@ -25,6 +25,9 @@ namespace EntityFramework7.Npgsql.FunctionalTests
 
         [Fact(Skip = "Test commented out in EF7 (SqlServer/Sqlite)")]
         public override void Projection_when_arithmetic_mixed_subqueries() {}
+
+        [Fact(Skip = "https://github.com/aspnet/EntityFramework/issues/3036")]
+        public override void GroupJoin_customers_orders_count() {}
 
         #endregion
 

@@ -27,6 +27,9 @@ namespace EntityFramework7.Npgsql.FunctionalTests
         [Fact(Skip = "Test commented out in EF7 (SqlServer/Sqlite)")]
         public override Task Projection_when_arithmetic_mixed_subqueries() { return null; }
 
+        [Fact(Skip = "https://github.com/aspnet/EntityFramework/issues/3036")]
+        public override Task GroupJoin_customers_orders_count() { return null; }
+
         #endregion
 
         [Fact]
