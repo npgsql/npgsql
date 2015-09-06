@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Linq;
@@ -8,6 +9,7 @@ using EntityFramework7.Npgsql.Migrations;
 using Microsoft.Data.Entity;
 using Microsoft.Data.Entity.FunctionalTests;
 using Microsoft.Data.Entity.Internal;
+using Microsoft.Data.Entity.Migrations;
 using Microsoft.Data.Entity.Migrations.Operations;
 using Npgsql;
 using Xunit;
@@ -16,33 +18,71 @@ namespace EntityFramework7.Npgsql.FunctionalTests
 {
     public class MigrationsNpgsqlTest : MigrationsTestBase<MigrationsNpgsqlFixture>
     {
-        NpgsqlMigrationsSqlGenerator SqlGenerator =>
-            new NpgsqlMigrationsSqlGenerator(
-                new NpgsqlUpdateSqlGenerator(),
-                new NpgsqlTypeMapper(),
-                new NpgsqlMetadataExtensionProvider());
-
-        private readonly MigrationsNpgsqlFixture _fixture;
-
-        public MigrationsNpgsqlTest(MigrationsNpgsqlFixture fixture) : base(fixture)
+        public MigrationsNpgsqlTest(MigrationsNpgsqlFixture fixture)
+            : base(fixture)
         {
-            _fixture = fixture;
         }
 
-        [Fact]
-        public void MigrationHistory_Table_Is_Created_On_Empty_Database()
+        public override void Can_generate_up_scripts()
         {
-            using (var db = _fixture.CreateContext())
-            {
-                db.Database.EnsureDeleted();
-                db.Database.EnsureCreated();
-                db.Database.Migrate();
-            }
+            base.Can_generate_up_scripts();
+
+            Assert.Equal(
+                @"CREATE TABLE ""__EFMigrationsHistory"" (
+    ""MigrationId"" text NOT NULL,
+    ""ProductVersion"" text NOT NULL,
+    CONSTRAINT ""PK_HistoryRow"" PRIMARY KEY (""MigrationId"")
+);
+
+CREATE TABLE ""Table1"" (
+    ""Id"" int NOT NULL,
+    CONSTRAINT ""PK_Table1"" PRIMARY KEY (""Id"")
+);
+
+INSERT INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"")
+VALUES ('00000000000001_Migration1', '7.0.0-test');
+
+ALTER TABLE ""Table1"" RENAME TO ""Table2"";
+
+INSERT INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"")
+VALUES ('00000000000002_Migration2', '7.0.0-test');
+
+",
+                Sql);
         }
 
-        protected override async Task AssertFirstMigrationAsync(DbConnection connection)
+        public override void Can_generate_idempotent_up_scripts()
         {
-            var sql = await GetDatabaseSchemaAsync(connection);
+            Assert.Throws<NotSupportedException>(() => base.Can_generate_idempotent_up_scripts());
+        }
+
+        public override void Can_generate_down_scripts()
+        {
+            base.Can_generate_down_scripts();
+
+            Assert.Equal(
+                @"ALTER TABLE ""Table2"" RENAME TO ""Table1"";
+
+DELETE FROM ""__EFMigrationsHistory""
+WHERE ""MigrationId"" = '00000000000002_Migration2';
+
+DROP TABLE ""Table1"";
+
+DELETE FROM ""__EFMigrationsHistory""
+WHERE ""MigrationId"" = '00000000000001_Migration1';
+
+",
+                Sql);
+        }
+
+        public override void Can_generate_idempotent_down_scripts()
+        {
+            Assert.Throws<NotSupportedException>(() => base.Can_generate_idempotent_down_scripts());
+        }
+
+        protected override void AssertFirstMigration(DbConnection connection)
+        {
+            var sql = GetDatabaseSchemaAsync(connection);
             Assert.Equal(
                 @"
 CreatedTable
@@ -53,19 +93,35 @@ CreatedTable
                 sql);
         }
 
-        protected override async Task AssertSecondMigrationAsync(DbConnection connection)
+        protected override void BuildSecondMigration(MigrationBuilder migrationBuilder)
         {
-            var sql = await GetDatabaseSchemaAsync(connection);
+            base.BuildSecondMigration(migrationBuilder);
+
+            for (int i = migrationBuilder.Operations.Count - 1; i >= 0; i--)
+            {
+                var operation = migrationBuilder.Operations[i];
+                if (operation is AlterColumnOperation
+                    || operation is DropColumnOperation)
+                {
+                    migrationBuilder.Operations.RemoveAt(i);
+                }
+            }
+        }
+
+        protected override void AssertSecondMigration(DbConnection connection)
+        {
+            var sql = GetDatabaseSchemaAsync(connection);
             Assert.Equal(
                 @"
 CreatedTable
     Id int4 NOT NULL
-    ColumnWithDefaultToAlter int4 NULL
+    ColumnWithDefaultToDrop int4 NULL DEFAULT 0
+    ColumnWithDefaultToAlter int4 NULL DEFAULT 1
 ",
                 sql);
         }
 
-        private async Task<string> GetDatabaseSchemaAsync(DbConnection connection)
+        private string GetDatabaseSchemaAsync(DbConnection connection)
         {
             var builder = new IndentedStringBuilder();
             var command = connection.CreateCommand();
@@ -83,13 +139,13 @@ ORDER BY table_name, ordinal_position
 
             var dbName = connection.Database;
             var npgConnection = (NpgsqlConnection)connection;
-            command.Parameters.Add(new NpgsqlParameter() {ParameterName = "db", Value = dbName});
+            command.Parameters.Add(new NpgsqlParameter() { ParameterName = "db", Value = dbName });
 
-            using (var reader = await command.ExecuteReaderAsync())
+            using (var reader = command.ExecuteReader())
             {
                 var first = true;
                 string lastTable = null;
-                while (await reader.ReadAsync())
+                while (reader.Read())
                 {
                     var currentTable = reader.GetString(0);
                     if (currentTable != lastTable)
@@ -118,7 +174,7 @@ ORDER BY table_name, ordinal_position
                         .Append(" ")
                         .Append(reader.GetBoolean(3) ? "NULL" : "NOT NULL");
 
-                    if (!await reader.IsDBNullAsync(4))
+                    if (!reader.IsDBNull(4))
                     {
                         builder
                             .Append(" DEFAULT ")
@@ -132,45 +188,6 @@ ORDER BY table_name, ordinal_position
             return builder.ToString().ToUnixNewlines();
         }
 
-        [Fact]
-        public void EnsureSchemaOperation()
-        {
-            using (var db = _fixture.CreateContext())
-            {
-                db.Database.EnsureDeleted();
-                db.Database.EnsureCreated();
-
-                // Run the ensure schema operation twice, once to actually create the schema and another
-                // to check everything's OK when it already exists
-                for (var i = 0; i < 2; i++)
-                {
-                    ExecuteMigration(db, new EnsureSchemaOperation {Name = "test_schema"});
-
-                    using (var cmd = new NpgsqlCommand("SELECT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname='test_schema');"))
-                    {
-                        db.Database.OpenConnection();
-                        cmd.Connection = (NpgsqlConnection) db.Database.GetDbConnection();
-                        Assert.True((bool) cmd.ExecuteScalar());
-                    }
-                }
-            }
-        }
-
-        void ExecuteMigration(DbContext db, MigrationOperation operation)
-        {
-            var batch = SqlGenerator.Generate(new[] { operation });
-            if (db.Database.GetDbConnection().State != ConnectionState.Open) {
-                db.Database.OpenConnection();
-            }
-            var conn = (NpgsqlConnection)db.Database.GetDbConnection();
-            using (var cmd = new NpgsqlCommand("", conn))
-            {
-                foreach (var sql in batch.Select(b => b.Sql))
-                {
-                    cmd.CommandText = sql;
-                    cmd.ExecuteNonQuery();
-                }
-            }
-        }
+        protected new string Sql => base.Sql.ToUnixNewlines();
     }
 }

@@ -164,12 +164,6 @@ namespace EntityFramework7.Npgsql.Tests.Migrations
         {
             // In PostgreSQL, sequence data types are always bigint.
             // http://www.postgresql.org/docs/9.4/static/infoschema-sequences.html
-
-            base.CreateSequenceOperation_with_minValue_and_maxValue_not_long();
-
-            Assert.Equal(
-                "CREATE SEQUENCE \"dbo\".\"DefaultSequence\" START WITH 3 INCREMENT BY 1 MINVALUE 2 MAXVALUE 816 CYCLE;" + EOL,
-                Sql);
         }
 
         public override void CreateSequenceOperation_without_minValue_and_maxValue()

@@ -69,100 +69,26 @@ namespace EntityFramework7.Npgsql.Migrations
             }
         }
 
-        protected override bool Exists(object value) => value != null && value != DBNull.Value;
-
-        public override string GetInsertScript(HistoryRow row)
-        {
-            Check.NotNull(row, nameof(row));
-
-            return new StringBuilder().Append("INSERT INTO ")
-                .Append(_sql.DelimitIdentifier(TableName, TableSchema))
-                .Append(" (")
-                .Append(_sql.DelimitIdentifier(MigrationIdColumnName))
-                .Append(", ")
-                .Append(_sql.DelimitIdentifier(ProductVersionColumnName))
-                .AppendLine(")")
-                .Append("VALUES ('")
-                .Append(_sql.EscapeLiteral(row.MigrationId))
-                .Append("', '")
-                .Append(_sql.EscapeLiteral(row.ProductVersion))
-                .Append("');")
-                .ToString();
-        }
-
-        public override string GetDeleteScript(string migrationId)
-        {
-            Check.NotEmpty(migrationId, nameof(migrationId));
-
-            return new StringBuilder().Append("DELETE FROM ")
-                .AppendLine(_sql.DelimitIdentifier(TableName, TableSchema))
-                .Append("WHERE ")
-                .Append(_sql.DelimitIdentifier(MigrationIdColumnName))
-                .Append(" = '")
-                .Append(_sql.EscapeLiteral(migrationId))
-                .Append("';")
-                .ToString();
-        }
+        protected override bool InterpretExistsResult(object value) => value != DBNull.Value;
 
         public override string GetCreateIfNotExistsScript()
         {
-            var builder = new IndentedStringBuilder();
-
-            builder.Append("IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace WHERE ");
-
-            if (TableSchema != null)
-            {
-                builder
-                    .Append("n.nspname='")
-                    .Append(_sql.EscapeLiteral(TableSchema))
-                    .Append("' AND ");
-            }
-
-            builder
-                .Append("c.relname='")
-                .Append(_sql.EscapeLiteral(TableName))
-                .Append("') THEN");
-
-
-            builder.AppendLines(GetCreateScript());
-
-            builder.Append(GetEndIfScript());
-
-            return builder.ToString();
+            return GetCreateScript();
         }
 
         public override string GetBeginIfNotExistsScript(string migrationId)
         {
-            Check.NotEmpty(migrationId, nameof(migrationId));
-
-            return new StringBuilder()
-                .Append("IF NOT EXISTS(SELECT * FROM ")
-                .Append(_sql.DelimitIdentifier(TableName, TableSchema))
-                .Append(" WHERE ")
-                .Append(_sql.DelimitIdentifier(MigrationIdColumnName))
-                .Append(" = '")
-                .Append(_sql.EscapeLiteral(migrationId))
-                .AppendLine("')")
-                .Append("BEGIN")
-                .ToString();
+            throw new NotSupportedException("Generating idempotent scripts for migration is not currently supported by Npgsql");
         }
 
         public override string GetBeginIfExistsScript(string migrationId)
         {
-            Check.NotEmpty(migrationId, nameof(migrationId));
-
-            return new StringBuilder()
-                .Append("IF EXISTS(SELECT * FROM ")
-                .Append(_sql.DelimitIdentifier(TableName, TableSchema))
-                .Append(" WHERE ")
-                .Append(_sql.DelimitIdentifier(MigrationIdColumnName))
-                .Append(" = '")
-                .Append(_sql.EscapeLiteral(migrationId))
-                .AppendLine("')")
-                .Append("BEGIN")
-                .ToString();
+            throw new NotSupportedException("Generating idempotent scripts for migration is not currently supported by Npgsql");
         }
 
-        public override string GetEndIfScript() => "END IF";
+        public override string GetEndIfScript()
+        {
+            throw new NotSupportedException("Generating idempotent scripts for migration is not currently supported by Npgsql");
+        }
     }
 }

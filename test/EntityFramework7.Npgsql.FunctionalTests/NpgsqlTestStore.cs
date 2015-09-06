@@ -17,11 +17,6 @@ namespace EntityFramework7.Npgsql.FunctionalTests
 
         private static int _scratchCount;
 
-        public static Task<NpgsqlTestStore> GetOrCreateSharedAsync(string name, Func<Task> initializeDatabase)
-        {
-            return new NpgsqlTestStore(name).CreateSharedAsync(initializeDatabase);
-        }
-
         public static NpgsqlTestStore GetOrCreateShared(string name, Action initializeDatabase)
         {
             return new NpgsqlTestStore(name).CreateShared(initializeDatabase);
@@ -54,19 +49,6 @@ namespace EntityFramework7.Npgsql.FunctionalTests
             _name = name;
         }
 
-        private async Task<NpgsqlTestStore> CreateSharedAsync(Func<Task> initializeDatabase)
-        {
-            await CreateSharedAsync(typeof(NpgsqlTestStore).Name + _name, initializeDatabase);
-
-            _connection = new NpgsqlConnection(CreateConnectionString(_name));
-
-            await _connection.OpenAsync();
-
-            _transaction = _connection.BeginTransaction();
-
-            return this;
-        }
-
         private NpgsqlTestStore CreateShared(Action initializeDatabase)
         {
             CreateShared(typeof(NpgsqlTestStore).Name + _name, initializeDatabase);
@@ -80,56 +62,72 @@ namespace EntityFramework7.Npgsql.FunctionalTests
             return this;
         }
 
-        public static async Task CreateDatabaseIfNotExistsAsync(string name, string scriptPath = null)
+        public static async Task CreateDatabaseAsync(string name, string scriptPath = null, bool recreateIfAlreadyExists = false)
         {
             using (var master = new NpgsqlConnection(CreateAdminConnectionString()))
             {
-                await master.OpenAsync();
+                master.OpenAsync();
 
                 using (var command = master.CreateCommand())
                 {
                     command.CommandTimeout = CommandTimeout;
                     command.CommandText
-                        = string.Format(@"SELECT COUNT(*) FROM pg_database WHERE name = '{0}'", name);
+                        = $@"SELECT COUNT(*) FROM pg_database WHERE datname = '{name}'";
 
                     var exists = (long)await command.ExecuteScalarAsync() > 0;
 
-                    if (exists) { return; }
-
-                    command.CommandText = string.Format(@"CREATE DATABASE ""{0}""", name);
-                    await command.ExecuteNonQueryAsync();
-
-                    if (scriptPath != null)
+                    if (exists && recreateIfAlreadyExists)
                     {
-                        // HACK: Probe for script file as current dir
-                        // is different between k build and VS run.
-
-                        if (!File.Exists(scriptPath))
+                        // if scriptPath is non-null assume that the script will handle dropping DB
+                        if (scriptPath == null)
                         {
-                            var appBase = Environment.GetEnvironmentVariable("DNX_APPBASE");
-
-                            if (appBase != null)
-                            {
-                                scriptPath = Path.Combine(appBase, Path.GetFileName(scriptPath));
-                            }
-                        }
-
-                        var script = File.ReadAllText(scriptPath);
-
-                        foreach (var batch
-                            in new Regex("^GO", RegexOptions.IgnoreCase | RegexOptions.Multiline)
-                                .Split(script))
-                        {
-                            command.CommandText = batch;
-
+                            command.CommandText = $@"DROP DATABASE [{name}]";
                             await command.ExecuteNonQueryAsync();
+                        }
+                    }
+
+                    if (!exists || recreateIfAlreadyExists)
+                    {
+                        if (scriptPath == null)
+                        {
+                            command.CommandText = $@"CREATE DATABASE [{name}]";
+                            await command.ExecuteNonQueryAsync();
+                        }
+                        else
+                        {
+                            // HACK: Probe for script file as current dir
+                            // is different between k build and VS run.
+                            if (File.Exists(@"..\..\" + scriptPath))
+                            {
+                                //executing in VS - so path is relative to bin\<config> dir
+                                scriptPath = @"..\..\" + scriptPath;
+                            }
+                            else
+                            {
+                                var appBase = Environment.GetEnvironmentVariable("DNX_APPBASE");
+                                if (appBase != null)
+                                {
+                                    scriptPath = Path.Combine(appBase, scriptPath);
+                                }
+                            }
+
+                            var script = File.ReadAllText(scriptPath);
+
+                            foreach (var batch
+                                in new Regex("^GO", RegexOptions.IgnoreCase | RegexOptions.Multiline, TimeSpan.FromMilliseconds(1000.0))
+                                    .Split(script))
+                            {
+                                command.CommandText = batch;
+                                await command.ExecuteNonQueryAsync();
+                            }
                         }
                     }
                 }
             }
         }
 
-        public static void CreateDatabaseIfNotExists(string name, string scriptPath = null)
+
+        public static void CreateDatabase(string name, string scriptPath = null, bool recreateIfAlreadyExists = false)
         {
             using (var master = new NpgsqlConnection(CreateAdminConnectionString()))
             {
@@ -139,46 +137,55 @@ namespace EntityFramework7.Npgsql.FunctionalTests
                 {
                     command.CommandTimeout = CommandTimeout;
                     command.CommandText
-                        = string.Format(@"SELECT COUNT(*) FROM pg_database WHERE datname = '{0}'", name);
+                        = $@"SELECT COUNT(*) FROM pg_database WHERE datname = '{name}'";
 
                     var exists = (long)command.ExecuteScalar() > 0;
-                    if (exists) { return; }
 
-                    command.CommandText = string.Format(@"CREATE DATABASE ""{0}""", name);
-                    command.ExecuteNonQuery();
-                }
-            }
-
-            using (var conn = new NpgsqlConnection(CreateConnectionString(name)))
-            {
-                conn.Open();
-
-                using (var command = conn.CreateCommand())
-                {
-                    if (scriptPath != null)
+                    if (exists && recreateIfAlreadyExists)
                     {
-                        // HACK: Probe for script file as current dir
-                        // is different between k build and VS run.
-
-                        if (!File.Exists(scriptPath))
+                        // if scriptPath is non-null assume that the script will handle dropping DB
+                        if (scriptPath == null)
                         {
-                            var appBase = Environment.GetEnvironmentVariable("DNX_APPBASE");
-
-                            if (appBase != null)
-                            {
-                                scriptPath = Path.Combine(appBase, Path.GetFileName(scriptPath));
-                            }
-                        }
-
-                        var script = File.ReadAllText(scriptPath);
-
-                        foreach (var batch
-                            in new Regex("^GO", RegexOptions.IgnoreCase | RegexOptions.Multiline)
-                                .Split(script))
-                        {
-                            command.CommandText = batch;
-
+                            command.CommandText = $@"DROP DATABASE [{name}]";
                             command.ExecuteNonQuery();
+                        }
+                    }
+
+                    if (!exists || recreateIfAlreadyExists)
+                    {
+                        if (scriptPath == null)
+                        {
+                            command.CommandText = $@"CREATE DATABASE [{name}]";
+                            command.ExecuteNonQuery();
+                        }
+                        else
+                        {
+                            // HACK: Probe for script file as current dir
+                            // is different between k build and VS run.
+                            if (File.Exists(@"..\..\" + scriptPath))
+                            {
+                                //executing in VS - so path is relative to bin\<config> dir
+                                scriptPath = @"..\..\" + scriptPath;
+                            }
+                            else
+                            {
+                                var appBase = Environment.GetEnvironmentVariable("DNX_APPBASE");
+                                if (appBase != null)
+                                {
+                                    scriptPath = Path.Combine(appBase, scriptPath);
+                                }
+                            }
+
+                            var script = File.ReadAllText(scriptPath);
+
+                            foreach (var batch
+                                in new Regex("^GO", RegexOptions.IgnoreCase | RegexOptions.Multiline, TimeSpan.FromMilliseconds(1000.0))
+                                    .Split(script))
+                            {
+                                command.CommandText = batch;
+
+                                command.ExecuteNonQuery();
+                            }
                         }
                     }
                 }
@@ -198,7 +205,7 @@ namespace EntityFramework7.Npgsql.FunctionalTests
                     await master.OpenAsync();
                     using (var command = master.CreateCommand())
                     {
-                        command.CommandText = string.Format(@"{0}CREATE DATABASE ""{1}""", Environment.NewLine, _name);
+                        command.CommandText = $@"{Environment.NewLine}CREATE DATABASE ""{_name}""";
 
                         await command.ExecuteNonQueryAsync();
                     }
@@ -247,13 +254,14 @@ namespace EntityFramework7.Npgsql.FunctionalTests
 
                     // Kill all connection to the database
                     // TODO: Pre-9.2 PG has column name procid instead of pid
-                    command.CommandText = String.Format(@"
+                    command.CommandText = $@"
                       SELECT pg_terminate_backend (pg_stat_activity.pid)
                       FROM pg_stat_activity
-                      WHERE pg_stat_activity.datname = '{0}'", name);
+                      WHERE pg_stat_activity.datname = '{name}'
+                    ";
                     await command.ExecuteNonQueryAsync();
 
-                    command.CommandText = string.Format(@"DROP DATABASE IF EXISTS ""{0}""", name);
+                    command.CommandText = $@"DROP DATABASE IF EXISTS ""{name}""";
                     await command.ExecuteNonQueryAsync();
                 }
             }
@@ -271,13 +279,14 @@ namespace EntityFramework7.Npgsql.FunctionalTests
 
                     // Kill all connection to the database
                     // TODO: Pre-9.2 PG has column name procid instead of pid
-                    command.CommandText = String.Format(@"
+                    command.CommandText = $@"
                       SELECT pg_terminate_backend (pg_stat_activity.pid)
                       FROM pg_stat_activity
-                      WHERE pg_stat_activity.datname = '{0}'", name);
+                      WHERE pg_stat_activity.datname = '{name}'
+                    ";
                     command.ExecuteNonQuery();
 
-                    command.CommandText = string.Format(@"DROP DATABASE IF EXISTS ""{0}""", name);
+                    command.CommandText = $@"DROP DATABASE IF EXISTS ""{name}""";
 
                     command.ExecuteNonQuery();
                 }
@@ -352,10 +361,7 @@ namespace EntityFramework7.Npgsql.FunctionalTests
 
         public override void Dispose()
         {
-            if (_transaction != null)
-            {
-                _transaction.Dispose();
-            }
+            _transaction?.Dispose();
 
             _connection.Dispose();
 

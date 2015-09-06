@@ -8,7 +8,7 @@ using Xunit;
 
 namespace EntityFramework7.Npgsql.FunctionalTests
 {
-    public class StoreSqlExecutorNpgsqlTest : StoreSqlExecutorTestBase<NorthwindQueryNpgsqlFixture>
+    public class SqlExecutorNpgsqlTest : SqlExecutorTestBase<NorthwindQueryNpgsqlFixture>
     {
         public override void Executes_stored_procedure()
         {
@@ -30,7 +30,7 @@ SELECT * FROM ""CustOrderHist""(@p0)",
                 Sql);
         }
 
-        public StoreSqlExecutorNpgsqlTest(NorthwindQueryNpgsqlFixture fixture)
+        public SqlExecutorNpgsqlTest(NorthwindQueryNpgsqlFixture fixture)
             : base(fixture)
         {
         }

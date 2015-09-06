@@ -13,15 +13,14 @@ using Microsoft.Data.Entity.Utilities;
 using Microsoft.Data.Entity.Migrations;
 using Npgsql;
 using EntityFramework7.Npgsql.Migrations;
+using Microsoft.Data.Entity.Storage.Commands;
 
 namespace EntityFramework7.Npgsql
 {
     public class NpgsqlDatabaseCreator : RelationalDatabaseCreator
     {
         private readonly NpgsqlDatabaseConnection _connection;
-        private readonly IMigrationsModelDiffer _modelDiffer;
         private readonly IMigrationsSqlGenerator _sqlGenerator;
-        private readonly ISqlStatementExecutor _statementExecutor;
 
         public NpgsqlDatabaseCreator(
             [NotNull] NpgsqlDatabaseConnection connection,
@@ -29,7 +28,7 @@ namespace EntityFramework7.Npgsql
             [NotNull] IMigrationsSqlGenerator sqlGenerator,
             [NotNull] ISqlStatementExecutor statementExecutor,
             [NotNull] IModel model)
-            : base(model)
+            : base(model, connection, modelDiffer, sqlGenerator, statementExecutor)
         {
             Check.NotNull(connection, nameof(connection));
             Check.NotNull(modelDiffer, nameof(modelDiffer));
@@ -37,16 +36,14 @@ namespace EntityFramework7.Npgsql
             Check.NotNull(statementExecutor, nameof(statementExecutor));
 
             _connection = connection;
-            _modelDiffer = modelDiffer;
             _sqlGenerator = sqlGenerator;
-            _statementExecutor = statementExecutor;
         }
 
         public override void Create()
         {
             using (var masterConnection = _connection.CreateMasterConnection())
             {
-                _statementExecutor.ExecuteNonQuery(masterConnection, null, CreateCreateOperations());
+                SqlStatementExecutor.ExecuteNonQuery(masterConnection, CreateCreateOperations());
                 ClearPool();
             }
         }
@@ -55,35 +52,18 @@ namespace EntityFramework7.Npgsql
         {
             using (var masterConnection = _connection.CreateMasterConnection())
             {
-                await _statementExecutor
-                    .ExecuteNonQueryAsync(masterConnection, null, CreateCreateOperations(), cancellationToken);
+                await SqlStatementExecutor
+                    .ExecuteNonQueryAsync(masterConnection, CreateCreateOperations(), cancellationToken);
                 ClearPool();
             }
         }
 
-        public override void CreateTables()
-            => _statementExecutor.ExecuteNonQuery(
-                _connection,
-                _connection.DbTransaction,
-                CreateSchemaCommands());
-
-        public override async Task CreateTablesAsync(CancellationToken cancellationToken = default(CancellationToken))
-            => await _statementExecutor
-                .ExecuteNonQueryAsync(
-                    _connection,
-                    _connection.DbTransaction,
-                    CreateSchemaCommands(),
-                    cancellationToken);
-
         public override bool HasTables()
-            => (int)_statementExecutor.ExecuteScalar(_connection, _connection.DbTransaction, CreateHasTablesCommand()) != 0;
+            => (int)SqlStatementExecutor.ExecuteScalar(_connection, CreateHasTablesCommand()) != 0;
 
         public override async Task<bool> HasTablesAsync(CancellationToken cancellationToken = default(CancellationToken))
-            => (int)(await _statementExecutor
-                .ExecuteScalarAsync(_connection, _connection.DbTransaction, CreateHasTablesCommand(), cancellationToken)) != 0;
-
-        private IEnumerable<SqlBatch> CreateSchemaCommands()
-            => _sqlGenerator.Generate(_modelDiffer.GetDifferences(null, Model), Model);
+            => (int)(await SqlStatementExecutor
+                .ExecuteScalarAsync(_connection, CreateHasTablesCommand(), cancellationToken)) != 0;
 
         private string CreateHasTablesCommand()
             => @"
@@ -92,7 +72,7 @@ namespace EntityFramework7.Npgsql
                  WHERE table_type = 'BASE TABLE' AND table_schema NOT IN ('pg_catalog', 'information_schema')
                ";
 
-        private IEnumerable<SqlBatch> CreateCreateOperations()
+        private IEnumerable<RelationalCommand> CreateCreateOperations()
             => _sqlGenerator.Generate(new[] { new CreateDatabaseOperation { Name = _connection.DbConnection.Database } });
 
         public override bool Exists()
@@ -142,7 +122,7 @@ namespace EntityFramework7.Npgsql
 
             using (var masterConnection = _connection.CreateMasterConnection())
             {
-                _statementExecutor.ExecuteNonQuery(masterConnection, null, CreateDropCommands());
+                SqlStatementExecutor.ExecuteNonQuery(masterConnection, CreateDropCommands());
             }
         }
 
@@ -152,12 +132,12 @@ namespace EntityFramework7.Npgsql
 
             using (var masterConnection = _connection.CreateMasterConnection())
             {
-                await _statementExecutor
-                    .ExecuteNonQueryAsync(masterConnection, null, CreateDropCommands(), cancellationToken);
+                await SqlStatementExecutor
+                    .ExecuteNonQueryAsync(masterConnection, CreateDropCommands(), cancellationToken);
             }
         }
 
-        private IEnumerable<SqlBatch> CreateDropCommands()
+        private IEnumerable<RelationalCommand> CreateDropCommands()
         {
             var operations = new MigrationOperation[]
             {

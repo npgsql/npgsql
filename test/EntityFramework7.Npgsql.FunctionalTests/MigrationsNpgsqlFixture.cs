@@ -1,23 +1,31 @@
-﻿using Microsoft.Data.Entity;
+﻿using System;
+using Microsoft.Data.Entity;
 using Microsoft.Data.Entity.FunctionalTests;
+using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Framework.DependencyInjection;
+using Npgsql;
 
 namespace EntityFramework7.Npgsql.FunctionalTests
 {
     public class MigrationsNpgsqlFixture : MigrationsFixtureBase
     {
-        protected override void ConfigureServices(IServiceCollection services)
+        private readonly DbContextOptions _options;
+        private readonly IServiceProvider _serviceProvider;
+
+        public MigrationsNpgsqlFixture()
         {
-            services.AddEntityFramework().AddNpgsql();
+            _serviceProvider = new ServiceCollection()
+                .AddEntityFramework()
+                .AddNpgsql()
+                .ServiceCollection()
+                .BuildServiceProvider();
+
+            var optionsBuilder = new DbContextOptionsBuilder();
+            optionsBuilder.UseNpgsql(NpgsqlTestStore.CreateConnectionString(nameof(MigrationsNpgsqlTest)));
+            _options = optionsBuilder.Options;
         }
 
-        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        {
-            var testStore = NpgsqlTestStore.GetOrCreateShared(nameof(MigrationsNpgsqlTest), async () =>
-            {
-                NpgsqlTestStore.CreateDatabaseIfNotExists(nameof(MigrationsNpgsqlTest));
-            });
-            optionsBuilder.UseNpgsql(testStore.Connection.ConnectionString);
-        }
+        public override MigrationsContext CreateContext()
+            => new MigrationsContext(_serviceProvider, _options);
     }
 }

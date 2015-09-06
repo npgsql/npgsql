@@ -17,16 +17,15 @@ namespace EntityFramework7.Npgsql.Migrations
 {
     public class NpgsqlMigrationsSqlGenerator : MigrationsSqlGenerator
     {
-        private readonly NpgsqlUpdateSqlGenerator _sql;
-        private readonly NpgsqlTypeMapper _typeMapper;
+        // TODO: It's weird that we need this here, other providers don't
+        readonly NpgsqlTypeMapper _typeMapper;
 
         public NpgsqlMigrationsSqlGenerator(
-            [NotNull] NpgsqlUpdateSqlGenerator sqlGenerator,
+            [NotNull] NpgsqlUpdateSqlGenerator sql,
             [NotNull] NpgsqlTypeMapper typeMapper,
             [NotNull] NpgsqlMetadataExtensionProvider annotations)
-            : base(sqlGenerator, typeMapper, annotations)
+            : base(sql, typeMapper, annotations)
         {
-            _sql = sqlGenerator;
             _typeMapper = typeMapper;
         }
 
@@ -51,13 +50,12 @@ namespace EntityFramework7.Npgsql.Migrations
             }
         }
 
-        protected override void Generate(
-            [NotNull] AlterColumnOperation operation,
-            [CanBeNull] IModel model,
-            [NotNull] SqlBatchBuilder builder)
+        protected override void Generate(AlterColumnOperation operation, IModel model, SqlBatchBuilder builder)
         {
             Check.NotNull(operation, nameof(operation));
             Check.NotNull(builder, nameof(builder));
+
+            // TODO: There is probably duplication here with other methods. See ColumnDefinition.
 
             //TODO: this should provide feature parity with the EF6 provider, check if there's anything missing for EF7
 
@@ -74,8 +72,8 @@ namespace EntityFramework7.Npgsql.Migrations
             var serial = operation.Annotations.Where(r => r.Name == NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.Serial).FirstOrDefault();
             isSerial = serial != null && (bool) serial.Value;
 
-            var identifier = _sql.DelimitIdentifier(operation.Table, operation.Schema);
-            var alterBase = $"ALTER TABLE {identifier} ALTER COLUMN {_sql.DelimitIdentifier(operation.Name)}";
+            var identifier = Sql.DelimitIdentifier(operation.Table, operation.Schema);
+            var alterBase = $"ALTER TABLE {identifier} ALTER COLUMN {Sql.DelimitIdentifier(operation.Name)}";
 
             // TYPE
             builder.Append(alterBase)
@@ -93,7 +91,7 @@ namespace EntityFramework7.Npgsql.Migrations
             if (operation.DefaultValue != null)
             {
                 builder.Append(" SET DEFAULT ")
-                    .Append(_sql.GenerateLiteral((dynamic)operation.DefaultValue))
+                    .Append(Sql.GenerateLiteral((dynamic)operation.DefaultValue))
                     .EndBatch();
             }
             else if (!string.IsNullOrWhiteSpace(operation.DefaultValueSql))
@@ -131,10 +129,27 @@ namespace EntityFramework7.Npgsql.Migrations
             }
         }
 
-        protected override void Generate(
-            [NotNull] RenameIndexOperation operation,
-            [CanBeNull] IModel model,
-            [NotNull] SqlBatchBuilder builder)
+        protected override void Generate(CreateSequenceOperation operation, IModel model, SqlBatchBuilder builder)
+        {
+            Check.NotNull(operation, nameof(operation));
+            Check.NotNull(builder, nameof(builder));
+
+            if (operation.ClrType != typeof(long))
+            {
+                throw new NotSupportedException("PostgreSQL sequences can only be bigint (long)");
+            }
+
+            builder
+                .Append("CREATE SEQUENCE ")
+                .Append(Sql.DelimitIdentifier(operation.Name, operation.Schema));
+
+            builder
+                .Append(" START WITH ")
+                .Append(Sql.GenerateLiteral(operation.StartValue));
+            SequenceOptions(operation, model, builder);
+        }
+
+        protected override void Generate(RenameIndexOperation operation, IModel model, SqlBatchBuilder builder)
         {
             Check.NotNull(operation, nameof(operation));
             Check.NotNull(builder, nameof(builder));
@@ -164,17 +179,14 @@ namespace EntityFramework7.Npgsql.Migrations
             {
                 if (separate)
                 {
-                    builder.AppendLine(_sql.BatchCommandSeparator);
+                    builder.AppendLine(Sql.BatchCommandSeparator);
                 }
 
                 Transfer(operation.NewSchema, operation.Schema, name, "SEQUENCE", builder);
             }
         }
 
-        protected override void Generate(
-            [NotNull] RenameTableOperation operation,
-            [CanBeNull] IModel model,
-            [NotNull] SqlBatchBuilder builder)
+        protected override void Generate(RenameTableOperation operation, IModel model, SqlBatchBuilder builder)
         {
             Check.NotNull(operation, nameof(operation));
             Check.NotNull(builder, nameof(builder));
@@ -193,12 +205,14 @@ namespace EntityFramework7.Npgsql.Migrations
             {
                 if (separate)
                 {
-                    builder.AppendLine(_sql.BatchCommandSeparator);
+                    builder.AppendLine(Sql.BatchCommandSeparator);
                 }
 
                 Transfer(operation.NewSchema, operation.Schema, name, "TABLE", builder);
             }
         }
+
+        // TODO: Override CreateIndex here (#769)
 
         protected override void Generate(EnsureSchemaOperation operation, IModel model, SqlBatchBuilder builder)
         {
@@ -218,29 +232,23 @@ namespace EntityFramework7.Npgsql.Migrations
             builder.Append("SELECT pg_temp.__ef_ensure_schema()").EndBatch();
         }
 
-        public virtual void Generate(
-            [NotNull] CreateDatabaseOperation operation,
-            [CanBeNull] IModel model,
-            [NotNull] SqlBatchBuilder builder)
+        public virtual void Generate(CreateDatabaseOperation operation, IModel model, SqlBatchBuilder builder)
         {
             Check.NotNull(operation, nameof(operation));
             Check.NotNull(builder, nameof(builder));
 
             builder
                 .Append("CREATE DATABASE ")
-                .Append(_sql.DelimitIdentifier(operation.Name))
+                .Append(Sql.DelimitIdentifier(operation.Name))
                 .EndBatch();
         }
 
-        public virtual void Generate(
-            [NotNull] DropDatabaseOperation operation,
-            [CanBeNull] IModel model,
-            [NotNull] SqlBatchBuilder builder)
+        public virtual void Generate(DropDatabaseOperation operation, IModel model, SqlBatchBuilder builder)
         {
             Check.NotNull(operation, nameof(operation));
             Check.NotNull(builder, nameof(builder));
 
-            var dbName = _sql.DelimitIdentifier(operation.Name);
+            var dbName = Sql.DelimitIdentifier(operation.Name);
 
             builder
                 // TODO: The following revokes connection only for the public role, what about other connecting roles?
@@ -258,17 +266,14 @@ namespace EntityFramework7.Npgsql.Migrations
                 .Append(dbName);
         }
 
-        protected override void Generate(
-            [NotNull] DropIndexOperation operation,
-            [CanBeNull] IModel model,
-            [NotNull] SqlBatchBuilder builder)
+        protected override void Generate(DropIndexOperation operation, IModel model, SqlBatchBuilder builder)
         {
             Check.NotNull(operation, nameof(operation));
             Check.NotNull(builder, nameof(builder));
 
             builder
                 .Append("DROP INDEX ")
-                .Append(_sql.DelimitIdentifier(operation.Name, operation.Schema));
+                .Append(Sql.DelimitIdentifier(operation.Name, operation.Schema));
         }
 
         protected override void Generate(
@@ -280,11 +285,11 @@ namespace EntityFramework7.Npgsql.Migrations
             Check.NotNull(builder, nameof(builder));
 
             builder.Append("ALTER TABLE ")
-                .Append(_sql.DelimitIdentifier(operation.Table, operation.Schema))
+                .Append(Sql.DelimitIdentifier(operation.Table, operation.Schema))
                 .Append(" RENAME COLUMN ")
-                .Append(_sql.DelimitIdentifier(operation.Name))
+                .Append(Sql.DelimitIdentifier(operation.Name))
                 .Append(" TO ")
-                .Append(_sql.DelimitIdentifier(operation.NewName));
+                .Append(Sql.DelimitIdentifier(operation.NewName));
         }
 
         protected override void ColumnDefinition(
@@ -368,9 +373,9 @@ namespace EntityFramework7.Npgsql.Migrations
                 .Append("ALTER ")
                 .Append(type)
                 .Append(" ")
-                .Append(_sql.DelimitIdentifier(name, schema))
+                .Append(Sql.DelimitIdentifier(name, schema))
                 .Append(" RENAME TO ")
-                .Append(_sql.DelimitIdentifier(newName));
+                .Append(Sql.DelimitIdentifier(newName));
         }
 
         public virtual void Transfer(
@@ -389,9 +394,9 @@ namespace EntityFramework7.Npgsql.Migrations
                 .Append("ALTER ")
                 .Append(type)
                 .Append(" ")
-                .Append(_sql.DelimitIdentifier(name, schema))
+                .Append(Sql.DelimitIdentifier(name, schema))
                 .Append(" SET SCHEMA ")
-                .Append(_sql.DelimitIdentifier(newSchema));
+                .Append(Sql.DelimitIdentifier(newSchema));
         }
 
         protected override void ForeignKeyAction(ReferentialAction referentialAction, SqlBatchBuilder builder)
@@ -407,27 +412,5 @@ namespace EntityFramework7.Npgsql.Migrations
                 base.ForeignKeyAction(referentialAction, builder);
             }
         }
-
-        #region Npgsql additions
-
-        protected override void Generate(
-            [NotNull] CreateSequenceOperation operation,
-            [CanBeNull] IModel model,
-            [NotNull] SqlBatchBuilder builder)
-        {
-            Check.NotNull(operation, nameof(operation));
-            Check.NotNull(builder, nameof(builder));
-
-            builder
-                .Append("CREATE SEQUENCE ")
-                .Append(_sql.DelimitIdentifier(operation.Name, operation.Schema));
-
-            builder
-                .Append(" START WITH ")
-                .Append(_sql.GenerateLiteral(operation.StartValue));
-            SequenceOptions(operation, model, builder);
-        }
-
-        #endregion
     }
 }

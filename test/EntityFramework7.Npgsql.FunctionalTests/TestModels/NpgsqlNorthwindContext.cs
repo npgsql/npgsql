@@ -17,22 +17,11 @@ namespace EntityFramework7.Npgsql.FunctionalTests.TestModels
             : base(serviceProvider, options)
         {
         }
-
-        /// <summary>
-        ///     A transactional test database, pre-populated with Northwind schema/data
-        /// </summary>
-        public static Task<NpgsqlTestStore> GetSharedStoreAsync()
-        {
-            return NpgsqlTestStore.GetOrCreateSharedAsync(
-                DatabaseName,
-                () => NpgsqlTestStore.CreateDatabaseIfNotExistsAsync(DatabaseName, scriptPath: @"..\..\Northwind.sql")); // relative from bin/<config>
-        }
-
         public static NpgsqlTestStore GetSharedStore()
         {
             return NpgsqlTestStore.GetOrCreateShared(
                 DatabaseName,
-                () => NpgsqlTestStore.CreateDatabaseIfNotExists(DatabaseName, scriptPath: @"..\..\Northwind.sql")); // relative from bin/<config>
+                () => NpgsqlTestStore.CreateDatabase(DatabaseName, scriptPath: @"..\..\Northwind.sql")); // relative from bin/<config>
         }
     }
 }

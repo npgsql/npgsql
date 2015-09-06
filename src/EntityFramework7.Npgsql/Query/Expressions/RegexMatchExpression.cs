@@ -4,6 +4,7 @@
 using System;
 using System.Linq.Expressions;
 using System.Text.RegularExpressions;
+using EntityFramework7.Npgsql.Query.Sql;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity.Utilities;
 

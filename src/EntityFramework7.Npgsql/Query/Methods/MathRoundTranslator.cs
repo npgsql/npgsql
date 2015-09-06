@@ -7,7 +7,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity.Query.Expressions;
-using Microsoft.Data.Entity.Query.Methods;
+using Microsoft.Data.Entity.Query.ExpressionTranslators;
 
 namespace EntityFramework7.Npgsql.Query.Methods
 {

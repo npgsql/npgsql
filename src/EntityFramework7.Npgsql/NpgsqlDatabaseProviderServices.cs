@@ -5,6 +5,8 @@ using System;
 using System.Reflection;
 using EntityFramework7.Npgsql.Metadata;
 using EntityFramework7.Npgsql.Migrations;
+using EntityFramework7.Npgsql.Query.ExpressionTranslators;
+using EntityFramework7.Npgsql.Query.Sql;
 using EntityFramework7.Npgsql.Update;
 using EntityFramework7.Npgsql.ValueGeneration;
 using JetBrains.Annotations;
@@ -12,7 +14,8 @@ using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Metadata;
 using Microsoft.Data.Entity.Metadata.Conventions.Internal;
 using Microsoft.Data.Entity.Migrations;
-using Microsoft.Data.Entity.Query.Methods;
+using Microsoft.Data.Entity.Query.ExpressionTranslators;
+using Microsoft.Data.Entity.Query.Sql;
 using Microsoft.Data.Entity.Storage;
 using Microsoft.Data.Entity.Update;
 using Microsoft.Data.Entity.ValueGeneration;
@@ -27,7 +30,6 @@ namespace EntityFramework7.Npgsql
         }
 
         public override string InvariantName => GetType().GetTypeInfo().Assembly.GetName().Name;
-        public override IDatabase Database => GetService<NpgsqlDatabase>();
         public override IDatabaseCreator Creator => GetService<NpgsqlDatabaseCreator>();
         public override IRelationalConnection RelationalConnection => GetService<NpgsqlDatabaseConnection>();
         public override IRelationalDatabaseCreator RelationalDatabaseCreator => GetService<NpgsqlDatabaseCreator>();
@@ -40,9 +42,11 @@ namespace EntityFramework7.Npgsql
         public override IValueGeneratorCache ValueGeneratorCache => GetService<NpgsqlValueGeneratorCache>();
         public override IRelationalTypeMapper TypeMapper => GetService<NpgsqlTypeMapper>();
         public override IModificationCommandBatchFactory ModificationCommandBatchFactory => GetService<NpgsqlModificationCommandBatchFactory>();
-        public override IRelationalValueBufferFactoryFactory ValueBufferFactoryFactory => GetService<TypedValueBufferFactoryFactory>();
+        public override IRelationalValueBufferFactoryFactory ValueBufferFactoryFactory => GetService<TypedRelationalValueBufferFactoryFactory>();
         public override IRelationalMetadataExtensionProvider MetadataExtensionProvider => GetService<NpgsqlMetadataExtensionProvider>();
         public override IMethodCallTranslator CompositeMethodCallTranslator => GetService<NpgsqlCompositeMethodCallTranslator>();
         public override IMemberTranslator CompositeMemberTranslator => GetService<NpgsqlCompositeMemberTranslator>();
+        public override IExpressionFragmentTranslator CompositeExpressionFragmentTranslator => GetService<NpgsqlCompositeExpressionFragmentTranslator>();
+        public override ISqlQueryGeneratorFactory SqlQueryGeneratorFactory => GetService<NpgsqlQuerySqlGeneratorFactory>();
     }
 }

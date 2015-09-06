@@ -11,7 +11,7 @@ using Microsoft.Data.Entity.Storage;
 using Microsoft.Data.Entity.Utilities;
 using EntityFramework7.Npgsql.Query.Expressions;
 
-namespace EntityFramework7.Npgsql.Query
+namespace EntityFramework7.Npgsql.Query.Sql
 {
     public class NpgsqlQuerySqlGenerator : DefaultQuerySqlGenerator
     {
@@ -27,9 +27,9 @@ namespace EntityFramework7.Npgsql.Query
         }
 
         public NpgsqlQuerySqlGenerator(
-            [NotNull] SelectExpression selectExpression,
-            [NotNull] IRelationalTypeMapper typeMapper)
-            : base(selectExpression, typeMapper)
+            [NotNull] IParameterNameGeneratorFactory parameterNameGeneratorFactory,
+            [NotNull] SelectExpression selectExpression)
+            : base(parameterNameGeneratorFactory, selectExpression)
         {
         }
 

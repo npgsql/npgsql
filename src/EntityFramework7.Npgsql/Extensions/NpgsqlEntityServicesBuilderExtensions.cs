@@ -4,8 +4,10 @@
 using EntityFramework7.Npgsql;
 using EntityFramework7.Npgsql.Metadata;
 using EntityFramework7.Npgsql.Migrations;
+using EntityFramework7.Npgsql.Query.Sql;
 using EntityFramework7.Npgsql.Update;
 using EntityFramework7.Npgsql.ValueGeneration;
+using EntityFramework7.Npgsql.Query.ExpressionTranslators;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Storage;
@@ -22,27 +24,37 @@ namespace Microsoft.Framework.DependencyInjection
         {
             Check.NotNull(builder, nameof(builder));
 
-            builder.AddRelational().GetService()
-                .AddSingleton<IDatabaseProvider, DatabaseProvider<NpgsqlDatabaseProviderServices, NpgsqlOptionsExtension>>()
-                .TryAdd(new ServiceCollection()
-                    .AddSingleton<NpgsqlConventionSetBuilder>()
-                    .AddSingleton<NpgsqlValueGeneratorCache>()
-                    .AddSingleton<NpgsqlUpdateSqlGenerator>()
-                    .AddSingleton<NpgsqlTypeMapper>()
-                    .AddSingleton<NpgsqlModelSource>()
-                    .AddSingleton<NpgsqlMetadataExtensionProvider>()
-                    .AddSingleton<NpgsqlMigrationsAnnotationProvider>()
-                    .AddScoped<NpgsqlModificationCommandBatchFactory>()
-                    .AddScoped<NpgsqlDatabaseProviderServices>()
-                    .AddScoped<NpgsqlDatabase>()
-                    .AddScoped<NpgsqlDatabaseConnection>()
-                    .AddScoped<NpgsqlMigrationsSqlGenerator>()
-                    .AddScoped<NpgsqlDatabaseCreator>()
-                    .AddScoped<NpgsqlHistoryRepository>()
-                    .AddScoped<NpgsqlCompositeMethodCallTranslator>()
-                    .AddScoped<NpgsqlCompositeMemberTranslator>());
+            var service = builder.AddRelational().GetService();
+
+            service.TryAddEnumerable(ServiceDescriptor
+                .Singleton<IDatabaseProvider, DatabaseProvider<NpgsqlDatabaseProviderServices, NpgsqlOptionsExtension>>());
+
+            service.TryAdd(new ServiceCollection()
+                .AddSingleton<NpgsqlConventionSetBuilder>()
+                .AddSingleton<NpgsqlValueGeneratorCache>()
+                .AddSingleton<NpgsqlUpdateSqlGenerator>()
+                .AddSingleton<NpgsqlTypeMapper>()
+                .AddSingleton<NpgsqlModelSource>()
+                .AddSingleton<NpgsqlMetadataExtensionProvider>()
+                .AddSingleton<NpgsqlMigrationsAnnotationProvider>()
+                .AddScoped<NpgsqlModificationCommandBatchFactory>()
+                .AddScoped<NpgsqlDatabaseProviderServices>()
+                .AddScoped<NpgsqlDatabaseConnection>()
+                .AddScoped<NpgsqlMigrationsSqlGenerator>()
+                .AddScoped<NpgsqlDatabaseCreator>()
+                .AddScoped<NpgsqlHistoryRepository>()
+                .AddQuery());
 
             return builder;
+        }
+
+        private static IServiceCollection AddQuery(this IServiceCollection serviceCollection)
+        {
+            return serviceCollection
+                .AddScoped<NpgsqlCompositeExpressionFragmentTranslator>()
+                .AddScoped<NpgsqlCompositeMemberTranslator>()
+                .AddScoped<NpgsqlCompositeMethodCallTranslator>()
+                .AddScoped<NpgsqlQuerySqlGeneratorFactory>();
         }
     }
 }

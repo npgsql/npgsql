@@ -18,8 +18,8 @@ namespace EntityFramework7.Npgsql.FunctionalTests
     {
         private static readonly HashSet<string> _createdDatabases = new HashSet<string>();
 
-        private static readonly ConcurrentDictionary<string, AsyncLock> _creationLocks
-            = new ConcurrentDictionary<string, AsyncLock>();
+        private static readonly ConcurrentDictionary<string, object> _creationLocks
+            = new ConcurrentDictionary<string, object>();
 
         protected override IServiceProvider CreateServiceProvider(bool throwingStateManager = false)
         {
@@ -49,10 +49,10 @@ namespace EntityFramework7.Npgsql.FunctionalTests
             return NpgsqlTestStore.CreateConnectionString(name);
         }
 
-        protected override async Task CreateAndSeedDatabase(string databaseName, Func<MonsterContext> createContext)
+        protected override void CreateAndSeedDatabase(string databaseName, Func<MonsterContext> createContext)
         {
-            var creationLock = _creationLocks.GetOrAdd(databaseName, n => new AsyncLock());
-            using (await creationLock.LockAsync())
+            var creationLock = _creationLocks.GetOrAdd(databaseName, n => new object());
+            lock (creationLock)
             {
                 if (!_createdDatabases.Contains(databaseName))
                 {
