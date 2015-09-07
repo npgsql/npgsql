@@ -79,6 +79,10 @@ namespace Npgsql.Logging
 
         public override void Log(NpgsqlLogLevel level, int connectorId, string msg, Exception exception = null)
         {
+            if (!IsEnabled(level)) {
+                return;
+            }
+
             var sb = new StringBuilder();
             if (_printLevel) {
                 sb.Append(level.ToString().ToUpper());
