@@ -64,73 +64,24 @@ namespace EntityFramework7.Npgsql.FunctionalTests
             return this;
         }
 
-        public static async Task CreateDatabaseAsync(string name, string scriptPath = null, bool recreateIfAlreadyExists = false)
-        {
-            using (var master = new NpgsqlConnection(CreateAdminConnectionString()))
-            {
-                master.OpenAsync();
-
-                using (var command = master.CreateCommand())
-                {
-                    command.CommandTimeout = CommandTimeout;
-                    command.CommandText
-                        = $@"SELECT COUNT(*) FROM pg_database WHERE datname = '{name}'";
-
-                    var exists = (long)await command.ExecuteScalarAsync() > 0;
-
-                    if (exists && recreateIfAlreadyExists)
-                    {
-                        // if scriptPath is non-null assume that the script will handle dropping DB
-                        if (scriptPath == null)
-                        {
-                            command.CommandText = $@"DROP DATABASE [{name}]";
-                            await command.ExecuteNonQueryAsync();
-                        }
-                    }
-
-                    if (!exists || recreateIfAlreadyExists)
-                    {
-                        if (scriptPath == null)
-                        {
-                            command.CommandText = $@"CREATE DATABASE [{name}]";
-                            await command.ExecuteNonQueryAsync();
-                        }
-                        else
-                        {
-                            // HACK: Probe for script file as current dir
-                            // is different between k build and VS run.
-                            if (File.Exists(@"..\..\" + scriptPath))
-                            {
-                                //executing in VS - so path is relative to bin\<config> dir
-                                scriptPath = @"..\..\" + scriptPath;
-                            }
-                            else
-                            {
-                                var appBase = Environment.GetEnvironmentVariable("DNX_APPBASE");
-                                if (appBase != null)
-                                {
-                                    scriptPath = Path.Combine(appBase, scriptPath);
-                                }
-                            }
-
-                            var script = File.ReadAllText(scriptPath);
-
-                            foreach (var batch
-                                in new Regex("^GO", RegexOptions.IgnoreCase | RegexOptions.Multiline, TimeSpan.FromMilliseconds(1000.0))
-                                    .Split(script))
-                            {
-                                command.CommandText = batch;
-                                await command.ExecuteNonQueryAsync();
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-
+        /// <summary>
+        ///
+        /// </summary>
+        /// <remarks>
+        /// In PostgreSQL (unlike other DBs) a connection is always to a single database - you can't switch
+        /// databases retaining the same connection. Therefore, a single SQL script drop and create the database
+        /// like with SqlServer, for example.
+        /// </remarks>
+        /// <param name="name"></param>
+        /// <param name="scriptPath"></param>
+        /// <param name="recreateIfAlreadyExists"></param>
         public static void CreateDatabase(string name, string scriptPath = null, bool recreateIfAlreadyExists = false)
         {
+            // If a script is specified we always drop and recreate an existing database
+            if (scriptPath != null) {
+                recreateIfAlreadyExists = true;
+            }
+
             using (var master = new NpgsqlConnection(CreateAdminConnectionString()))
             {
                 master.Open();
@@ -145,49 +96,51 @@ namespace EntityFramework7.Npgsql.FunctionalTests
 
                     if (exists && recreateIfAlreadyExists)
                     {
-                        // if scriptPath is non-null assume that the script will handle dropping DB
-                        if (scriptPath == null)
-                        {
-                            command.CommandText = $@"DROP DATABASE [{name}]";
-                            command.ExecuteNonQuery();
-                        }
+                        command.CommandText = $@"DROP DATABASE ""{name}""";
+                        command.ExecuteNonQuery();
                     }
 
                     if (!exists || recreateIfAlreadyExists)
                     {
-                        if (scriptPath == null)
+                        command.CommandText = $@"CREATE DATABASE ""{name}""";
+                        command.ExecuteNonQuery();
+                    }
+                }
+            }
+
+            if (scriptPath != null)
+            {
+                // HACK: Probe for script file as current dir
+                // is different between k build and VS run.
+                if (File.Exists(@"..\..\" + scriptPath))
+                {
+                    //executing in VS - so path is relative to bin\<config> dir
+                    scriptPath = @"..\..\" + scriptPath;
+                }
+                else
+                {
+                    var appBase = Environment.GetEnvironmentVariable("DNX_APPBASE");
+                    if (appBase != null)
+                    {
+                        scriptPath = Path.Combine(appBase, scriptPath);
+                    }
+                }
+
+                var script = File.ReadAllText(scriptPath);
+
+                using (var conn = new NpgsqlConnection(CreateConnectionString(name)))
+                {
+                    conn.Open();
+                    using (var command = new NpgsqlCommand("", conn))
+                    {
+                        foreach (var batch
+                            in
+                            new Regex("^GO", RegexOptions.IgnoreCase | RegexOptions.Multiline,
+                                TimeSpan.FromMilliseconds(1000.0))
+                                .Split(script))
                         {
-                            command.CommandText = $@"CREATE DATABASE [{name}]";
+                            command.CommandText = batch;
                             command.ExecuteNonQuery();
-                        }
-                        else
-                        {
-                            // HACK: Probe for script file as current dir
-                            // is different between k build and VS run.
-                            if (File.Exists(@"..\..\" + scriptPath))
-                            {
-                                //executing in VS - so path is relative to bin\<config> dir
-                                scriptPath = @"..\..\" + scriptPath;
-                            }
-                            else
-                            {
-                                var appBase = Environment.GetEnvironmentVariable("DNX_APPBASE");
-                                if (appBase != null)
-                                {
-                                    scriptPath = Path.Combine(appBase, scriptPath);
-                                }
-                            }
-
-                            var script = File.ReadAllText(scriptPath);
-
-                            foreach (var batch
-                                in new Regex("^GO", RegexOptions.IgnoreCase | RegexOptions.Multiline, TimeSpan.FromMilliseconds(1000.0))
-                                    .Split(script))
-                            {
-                                command.CommandText = batch;
-
-                                command.ExecuteNonQuery();
-                            }
                         }
                     }
                 }

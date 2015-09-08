@@ -1,0 +1,21 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace E2ETest.Namespace
+{
+    public partial class PropertyConfiguration
+    {
+        public int PropertyConfigurationID { get; set; }
+        public int A { get; set; }
+        public int B { get; set; }
+        public DateTime WithDateDefaultExpression { get; set; }
+        public DateTime WithDateFixedDefault { get; set; }
+        public DateTime? WithDateNullDefault { get; set; }
+        public int WithDefaultValue { get; set; }
+        public decimal WithMoneyDefaultValue { get; set; }
+        public short? WithNullDefaultValue { get; set; }
+        public string WithVarcharNullDefaultValue { get; set; }
+    }
+}

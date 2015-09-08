@@ -3,22 +3,23 @@
   "authors": [
     "Shay Rojansky"
   ],
-  "description" : "PostgreSQL provider for Entity Framework 7",
+  "description": "Design-time Entity Framework Functionality for PostgreSQL",
   "iconUrl": "http://www.npgsql.org/img/postgresql.gif",
   "repository": {
     "type": "git",
     "url": "git://github.com/npgsql/npgsql"
   },
-  "compile": "../Shared/*.cs",
   "compilationOptions": {
     "keyFile": "../../Npgsql.snk"
   },
   "dependencies" : {
     "EntityFramework.Core": "7.0.0-rc1-final",
     "EntityFramework.Relational": "7.0.0-rc1-final",
-    "Microsoft.Extensions.DependencyInjection.Abstractions": "1.0.0-rc1-final",
+    "EntityFramework.Relational.Design": "7.0.0-rc1-final",
     "Microsoft.Extensions.DependencyInjection": "1.0.0-rc1-final",
-    "Npgsql": "3.1.0-*"
+    "Microsoft.Extensions.DependencyInjection.Abstractions": "1.0.0-rc1-final",
+    "EntityFramework7.Npgsql": "3.1.0-*",
+    "Npgsql": "3.1.0-*",
   },
   "frameworks": {
     "net451": {

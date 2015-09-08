@@ -1,0 +1,23 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace E2ETest.Namespace
+{
+    public partial class OneToManyPrincipal
+    {
+        public OneToManyPrincipal()
+        {
+            OneToManyDependent = new HashSet<OneToManyDependent>();
+        }
+
+        public int OneToManyPrincipalID1 { get; set; }
+        public int OneToManyPrincipalID2 { get; set; }
+        [Required]
+        public string Other { get; set; }
+
+        [InverseProperty("OneToManyDependentFK")]
+        public virtual ICollection<OneToManyDependent> OneToManyDependent { get; set; }
+    }
+}
