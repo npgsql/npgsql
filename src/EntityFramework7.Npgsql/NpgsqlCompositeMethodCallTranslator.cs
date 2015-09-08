@@ -3,9 +3,8 @@
 
 using System.Collections.Generic;
 using System.Linq;
-using EntityFramework7.Npgsql.Query.Methods;
+using EntityFramework7.Npgsql.Query.ExpressionTranslators;
 using JetBrains.Annotations;
-using Microsoft.Data.Entity.Query;
 using Microsoft.Data.Entity.Query.ExpressionTranslators;
 using Microsoft.Framework.Logging;
 
@@ -28,7 +27,7 @@ namespace EntityFramework7.Npgsql
                 new StringReplaceTranslator(),
                 new StringToLowerTranslator(),
                 new StringToUpperTranslator(),
-                //new RegexIsMatchTranslator()
+                new RegexIsMatchTranslator()
             };
 
             AddTranslators(npgsqlTranslators);

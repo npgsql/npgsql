@@ -4,12 +4,12 @@
 using System;
 using Microsoft.Data.Entity.Query.ExpressionTranslators;
 
-namespace EntityFramework7.Npgsql.Query.Methods
+namespace EntityFramework7.Npgsql.Query.ExpressionTranslators
 {
-    public class MathPowerTranslator : SingleOverloadStaticMethodCallTranslator
+    public class MathFloorTranslator : MultipleOverloadStaticMethodCallTranslator
     {
-        public MathPowerTranslator()
-            : base(typeof(Math), "Pow", "POWER")
+        public MathFloorTranslator()
+            : base(typeof(Math), "Floor", "FLOOR")
         {
         }
     }

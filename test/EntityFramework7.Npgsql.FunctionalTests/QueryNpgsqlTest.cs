@@ -36,7 +36,7 @@ namespace EntityFramework7.Npgsql.FunctionalTests
 
         #region Regular Expressions
 
-        [Fact(Skip = "Regex support disabled for now")]
+        [Fact]
         public void Regex_IsMatch()
         {
             AssertQuery<Customer>(
@@ -45,7 +45,7 @@ namespace EntityFramework7.Npgsql.FunctionalTests
             Assert.Contains("WHERE \"c\".\"CompanyName\" ~ ('(?p)' || '^A')", Sql);
         }
 
-        [Fact(Skip = "Regex support disabled for now")]
+        [Fact]
         public void Regex_IsMatchOptionsNone()
         {
             AssertQuery<Customer>(
@@ -54,7 +54,7 @@ namespace EntityFramework7.Npgsql.FunctionalTests
             Assert.Contains("WHERE \"c\".\"CompanyName\" ~ ('(?p)' || '^A')", Sql);
         }
 
-        [Fact(Skip = "Regex support disabled for now")]
+        [Fact]
         public void Regex_IsMatchOptionsIgnoreCase()
         {
             AssertQuery<Customer>(
@@ -63,7 +63,7 @@ namespace EntityFramework7.Npgsql.FunctionalTests
             Assert.Contains("WHERE \"c\".\"CompanyName\" ~ ('(?ip)' || '^a')", Sql);
         }
 
-        [Fact(Skip = "Regex support disabled for now")]
+        [Fact]
         public void Regex_IsMatchOptionsMultiline()
         {
             AssertQuery<Customer>(
@@ -72,7 +72,7 @@ namespace EntityFramework7.Npgsql.FunctionalTests
             Assert.Contains("WHERE \"c\".\"CompanyName\" ~ ('(?n)' || '^A')", Sql);
         }
 
-        [Fact(Skip = "Regex support disabled for now")]
+        [Fact]
         public void Regex_IsMatchOptionsSingleline()
         {
             AssertQuery<Customer>(
@@ -81,7 +81,7 @@ namespace EntityFramework7.Npgsql.FunctionalTests
             Assert.Contains("WHERE \"c\".\"CompanyName\" ~ '^A'", Sql);
         }
 
-        [Fact(Skip = "Regex support disabled for now")]
+        [Fact]
         public void Regex_IsMatchOptionsIgnorePatternWhitespace()
         {
             AssertQuery<Customer>(
@@ -90,7 +90,7 @@ namespace EntityFramework7.Npgsql.FunctionalTests
             Assert.Contains("WHERE \"c\".\"CompanyName\" ~ ('(?px)' || '^ A')", Sql);
         }
 
-        [Fact(Skip = "Regex support disabled for now")]
+        [Fact]
         public void Regex_IsMatchOptionsUnsupported()
         {
             AssertQuery<Customer>(

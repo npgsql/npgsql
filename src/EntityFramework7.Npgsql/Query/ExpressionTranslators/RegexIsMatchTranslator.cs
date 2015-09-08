@@ -9,7 +9,7 @@ using EntityFramework7.Npgsql.Query.Expressions;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity.Query.ExpressionTranslators;
 
-namespace EntityFramework7.Npgsql.Query.Methods
+namespace EntityFramework7.Npgsql.Query.ExpressionTranslators
 {
     /// <summary>
     /// Translates Regex.IsMatch calls into PostgreSQL regex expressions for database-side processing.
