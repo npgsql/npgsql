@@ -29,9 +29,6 @@ namespace EntityFramework7.Npgsql.FunctionalTests
         [Fact(Skip = "https://github.com/aspnet/EntityFramework/issues/3036")]
         public override void GroupJoin_customers_orders_count() {}
 
-        [Fact(Skip = "https://github.com/aspnet/EntityFramework/issues/3055")]
-        public override void String_Compare_nested() {}
-
         #endregion
 
         #region Regular Expressions

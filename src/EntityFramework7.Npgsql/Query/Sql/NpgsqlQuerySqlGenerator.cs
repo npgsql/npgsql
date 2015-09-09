@@ -99,6 +99,24 @@ namespace EntityFramework7.Npgsql.Query.Sql
             return sumExpression;
         }
 
+        protected override Expression VisitBinary(BinaryExpression binaryExpression)
+        {
+            // PostgreSQL 9.4 and below has some weird operator precedence fixed in 9.5 and described here:
+            // http://git.postgresql.org/gitweb/?p=postgresql.git&a=commitdiff&h=c6b3c939b7e0f1d35f4ed4996e71420a993810d2
+            // As a result we must surround string concatenation with parentheses
+            if (binaryExpression.NodeType == ExpressionType.Add &&
+                binaryExpression.Left.Type == typeof (string) &&
+                binaryExpression.Right.Type == typeof (string))
+            {
+                Sql.Append("(");
+                var exp = base.VisitBinary(binaryExpression);
+                Sql.Append(")");
+                return exp;
+            }
+
+            return base.VisitBinary(binaryExpression);
+        }
+
         // See http://www.postgresql.org/docs/current/static/functions-matching.html
         public Expression VisitRegexMatch([NotNull] RegexMatchExpression regexMatchExpression)
         {
