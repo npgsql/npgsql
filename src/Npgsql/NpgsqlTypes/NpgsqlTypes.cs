@@ -801,7 +801,9 @@ namespace NpgsqlTypes
 
         public static implicit operator NpgsqlInet(IPAddress ipaddress)
         {
-            return new NpgsqlInet(ipaddress);
+            return ReferenceEquals(ipaddress, null)
+                ? default(NpgsqlInet)
+                : new NpgsqlInet(ipaddress);
         }
 
         public bool Equals(NpgsqlInet other)
