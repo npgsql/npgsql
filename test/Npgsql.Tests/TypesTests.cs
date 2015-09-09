@@ -500,6 +500,8 @@ namespace Npgsql.Tests
         {
             var v = new NpgsqlInet(IPAddress.Parse("2001:1db8:85a3:1142:1000:8a2e:1370:7334"), 32);
             Assert.That(v.ToString(), Is.EqualTo("2001:1db8:85a3:1142:1000:8a2e:1370:7334/32"));
+
+            Assert.That(v != null);  // #776
         }
     }
 }
