@@ -150,6 +150,8 @@
     <Compile Include="Query\ExpressionTranslators\StringSubstringTranslator.cs" />
     <Compile Include="Query\ExpressionTranslators\StringToLowerTranslator.cs" />
     <Compile Include="Query\ExpressionTranslators\StringToUpperTranslator.cs" />
+    <Compile Include="Query\NpgsqlQueryCompilationContext.cs" />
+    <Compile Include="Query\NpgsqlQueryCompilationContextFactory.cs" />
     <Compile Include="Query\Sql\NpgsqlQuerySqlGenerator.cs" />
     <Compile Include="Query\Sql\NpgsqlQuerySqlGeneratorFactory.cs" />
     <Compile Include="Strings.Designer.cs">

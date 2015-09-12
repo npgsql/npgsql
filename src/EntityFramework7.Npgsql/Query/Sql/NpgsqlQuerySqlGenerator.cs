@@ -117,6 +117,14 @@ namespace EntityFramework7.Npgsql.Query.Sql
             return base.VisitBinary(binaryExpression);
         }
 
+        public override Expression VisitCrossApply(CrossApplyExpression crossApplyExpression)
+        {
+            Check.NotNull(crossApplyExpression, nameof(crossApplyExpression));
+            Sql.Append("CROSS JOIN LATERAL ");
+            Visit(crossApplyExpression.TableExpression);
+            return crossApplyExpression;
+        }
+
         // See http://www.postgresql.org/docs/current/static/functions-matching.html
         public Expression VisitRegexMatch([NotNull] RegexMatchExpression regexMatchExpression)
         {

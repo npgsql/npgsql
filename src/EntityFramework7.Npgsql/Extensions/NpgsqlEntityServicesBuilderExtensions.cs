@@ -4,6 +4,7 @@
 using EntityFramework7.Npgsql;
 using EntityFramework7.Npgsql.Metadata;
 using EntityFramework7.Npgsql.Migrations;
+using EntityFramework7.Npgsql.Query;
 using EntityFramework7.Npgsql.Query.Sql;
 using EntityFramework7.Npgsql.Update;
 using EntityFramework7.Npgsql.ValueGeneration;
@@ -51,6 +52,7 @@ namespace Microsoft.Framework.DependencyInjection
         private static IServiceCollection AddQuery(this IServiceCollection serviceCollection)
         {
             return serviceCollection
+                .AddScoped<NpgsqlQueryCompilationContextFactory>()
                 .AddScoped<NpgsqlCompositeExpressionFragmentTranslator>()
                 .AddScoped<NpgsqlCompositeMemberTranslator>()
                 .AddScoped<NpgsqlCompositeMethodCallTranslator>()
