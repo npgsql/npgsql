@@ -156,5 +156,17 @@ namespace EntityFramework7.Npgsql.Query.Sql
             Sql.Append(')');
             return regexMatchExpression;
         }
+
+        public Expression VisitAtTimeZone([NotNull] AtTimeZoneExpression atTimeZoneExpression)
+        {
+            Check.NotNull(atTimeZoneExpression, nameof(atTimeZoneExpression));
+
+            Visit(atTimeZoneExpression.TimestampExpression);
+
+            Sql.Append(" AT TIME ZONE '");
+            Sql.Append(atTimeZoneExpression.TimeZone);
+            Sql.Append('\'');
+            return atTimeZoneExpression;
+        }
     }
 }

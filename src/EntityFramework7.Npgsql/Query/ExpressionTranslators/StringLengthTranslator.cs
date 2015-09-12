@@ -16,7 +16,7 @@ namespace EntityFramework7.Npgsql.Query.ExpressionTranslators
                 && memberExpression.Expression.Type == typeof(string)
                 && memberExpression.Member.Name == "Length")
             {
-                return new SqlFunctionExpression("LENGTH", new[] { memberExpression.Expression }, memberExpression.Type);
+                return new SqlFunctionExpression("length", memberExpression.Type, new[] { memberExpression.Expression });
             }
 
             return null;

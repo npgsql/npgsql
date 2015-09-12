@@ -12,16 +12,16 @@ namespace EntityFramework7.Npgsql.Query.ExpressionTranslators
 {
     public class StringSubstringTranslator : IMethodCallTranslator
     {
+        private static readonly MethodInfo _methodInfo = typeof(string).GetTypeInfo().GetDeclaredMethods(nameof(string.Substring))
+            .Where(m => m.GetParameters().Count() == 2)
+            .Single();
+
         public virtual Expression Translate([NotNull] MethodCallExpression methodCallExpression)
         {
-            var methodInfo = typeof(string).GetTypeInfo().GetDeclaredMethods("Substring")
-                .Where(m => m.GetParameters().Count() == 2)
-                .Single();
-
-            if (methodCallExpression.Method == methodInfo)
+            if (methodCallExpression.Method == _methodInfo)
             {
                 var sqlArguments = new[] { methodCallExpression.Object }.Concat(methodCallExpression.Arguments);
-                return new SqlFunctionExpression("SUBSTRING", sqlArguments, methodCallExpression.Type);
+                return new SqlFunctionExpression("SUBSTRING", methodCallExpression.Type, sqlArguments);
             }
 
             return null;

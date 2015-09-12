@@ -26,9 +26,6 @@ namespace EntityFramework7.Npgsql.FunctionalTests
         [Fact(Skip = "Test commented out in EF7 (SqlServer/Sqlite)")]
         public override void Projection_when_arithmetic_mixed_subqueries() {}
 
-        [Fact(Skip = "https://github.com/aspnet/EntityFramework/issues/3036")]
-        public override void GroupJoin_customers_orders_count() {}
-
         #endregion
 
         #region Regular Expressions
@@ -98,6 +95,6 @@ namespace EntityFramework7.Npgsql.FunctionalTests
 
         #endregion
 
-        static string Sql => TestSqlLoggerFactory.Sql;
+        static string Sql => TestSqlLoggerFactory.Sql.ToUnixNewlines();
     }
 }

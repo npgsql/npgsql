@@ -12,16 +12,16 @@ namespace EntityFramework7.Npgsql.Query.ExpressionTranslators
 {
     public class StringReplaceTranslator : IMethodCallTranslator
     {
+        private static readonly MethodInfo _methodInfo = typeof(string).GetTypeInfo().GetDeclaredMethods(nameof(string.Replace))
+            .Where(m => m.GetParameters()[0].ParameterType == typeof(string))
+            .Single();
+
         public virtual Expression Translate([NotNull] MethodCallExpression methodCallExpression)
         {
-            var methodInfo = typeof(string).GetTypeInfo().GetDeclaredMethods("Replace")
-                .Where(m => m.GetParameters()[0].ParameterType == typeof(string))
-                .Single();
-
-            if (methodInfo == methodCallExpression.Method)
+            if (methodCallExpression.Method == _methodInfo)
             {
                 var sqlArguments = new[] { methodCallExpression.Object }.Concat(methodCallExpression.Arguments);
-                return new SqlFunctionExpression("REPLACE", sqlArguments, methodCallExpression.Type);
+                return new SqlFunctionExpression("REPLACE", methodCallExpression.Type, sqlArguments);
             }
 
             return null;
