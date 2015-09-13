@@ -212,7 +212,41 @@ namespace EntityFramework7.Npgsql.Migrations
             }
         }
 
-        // TODO: Override CreateIndex here (#769)
+        protected override void Generate(
+            [NotNull] CreateIndexOperation operation,
+            [CanBeNull] IModel model,
+            [NotNull] SqlBatchBuilder builder)
+        {
+            Check.NotNull(operation, nameof(operation));
+            Check.NotNull(builder, nameof(builder));
+
+            var method = (string)operation[NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.IndexMethod];
+
+            builder.Append("CREATE ");
+
+            if (operation.IsUnique)
+            {
+                builder.Append("UNIQUE ");
+            }
+
+            builder
+                .Append("INDEX ")
+                .Append(Sql.DelimitIdentifier(operation.Name))
+                .Append(" ON ")
+                .Append(Sql.DelimitIdentifier(operation.Table, operation.Schema));
+
+            if (method != null)
+            {
+                builder
+                    .Append(" USING ")
+                    .Append(method);
+            }
+
+            builder
+                .Append(" (")
+                .Append(ColumnList(operation.Columns))
+                .Append(")");
+        }
 
         protected override void Generate(EnsureSchemaOperation operation, IModel model, SqlBatchBuilder builder)
         {
@@ -412,5 +446,7 @@ namespace EntityFramework7.Npgsql.Migrations
                 base.ForeignKeyAction(referentialAction, builder);
             }
         }
+
+        string ColumnList(string[] columns) => string.Join(", ", columns.Select(Sql.DelimitIdentifier));
     }
 }

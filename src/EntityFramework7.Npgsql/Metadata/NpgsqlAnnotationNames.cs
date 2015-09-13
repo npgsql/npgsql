@@ -11,5 +11,6 @@ namespace EntityFramework7.Npgsql.Metadata
         public const string DefaultSequenceSchema = "DefaultSequenceSchema";
         public const string SequenceName = "SequenceName";
         public const string SequenceSchema = "SequenceSchema";
+        public const string IndexMethod = "IndexMethod";
     }
 }

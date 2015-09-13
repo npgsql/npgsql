@@ -22,5 +22,15 @@ namespace EntityFramework7.Npgsql.Migrations
             // TODO: We don't support ValueGenerated.OnAddOrUpdate, so should we throw an exception?
             // Other providers don't seem to...
         }
+
+        public override IEnumerable<IAnnotation> For(IIndex index)
+        {
+            if (index.Npgsql().Method != null)
+            {
+                yield return new Annotation(
+                     NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.IndexMethod,
+                     index.Npgsql().Method);
+            }
+        }
     }
 }

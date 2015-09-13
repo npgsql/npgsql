@@ -112,6 +112,7 @@
     <Compile Include="Metadata\INpgsqlEntityTypeAnnotations.cs" />
     <Compile Include="Metadata\INpgsqlPropertyAnnotations.cs" />
     <Compile Include="Metadata\NpgsqlAnnotationNames.cs" />
+    <Compile Include="Metadata\NpgsqlIndexAnnotations.cs" />
     <Compile Include="Metadata\NpgsqlMetadataExtensionProvider.cs" />
     <Compile Include="Migrations\Operations\CreateDatabaseOperation.cs" />
     <Compile Include="Migrations\Operations\DropDatabaseOperation.cs" />

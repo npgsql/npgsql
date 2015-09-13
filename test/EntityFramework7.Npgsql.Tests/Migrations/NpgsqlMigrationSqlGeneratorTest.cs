@@ -254,6 +254,28 @@ namespace EntityFramework7.Npgsql.Tests.Migrations
                 Sql);
         }
 
+        #region Npgsql-specific
+
+        [Fact]
+        public void CreateIndexOperation_method()
+        {
+            var op = new CreateIndexOperation
+            {
+                Name = "IX_People_Name",
+                Table = "People",
+                Schema = "dbo",
+                Columns = new[] { "FirstName" }
+            };
+            op.AddAnnotation(NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.IndexMethod, "gin");
+            Generate(op);
+
+            Assert.Equal(
+                "CREATE INDEX \"IX_People_Name\" ON \"dbo\".\"People\" USING gin (\"FirstName\");" + EOL,
+                Sql);
+        }
+
+        #endregion
+
         private class ConcreteUpdateSqlGenerator : UpdateSqlGenerator
         {
             protected override void AppendIdentityWhereCondition(

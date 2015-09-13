@@ -21,8 +21,8 @@ namespace Microsoft.Data.Entity
         public static RelationalForeignKeyAnnotations Npgsql([NotNull] this ForeignKey foreignKey)
             => (RelationalForeignKeyAnnotations)Npgsql((IForeignKey)foreignKey);
 
-        public static IRelationalIndexAnnotations Npgsql([NotNull] this IIndex index)
-            => new RelationalIndexAnnotations(Check.NotNull(index, nameof(index)), NpgsqlAnnotationNames.Prefix);
+        public static NpgsqlIndexAnnotations Npgsql([NotNull] this IIndex index)
+            => new NpgsqlIndexAnnotations(Check.NotNull(index, nameof(index)));
 
         public static RelationalIndexAnnotations Npgsql([NotNull] this Index index)
             => (RelationalIndexAnnotations)Npgsql((IIndex)index);
