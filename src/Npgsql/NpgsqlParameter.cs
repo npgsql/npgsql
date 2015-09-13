@@ -334,7 +334,9 @@ namespace Npgsql
 #if !DNXCORE50
         [Category("Data")]
 #endif
+#pragma warning disable 108,114
         public byte Precision
+#pragma warning restore 108,114
         {
             get { return _precision; }
             set
@@ -354,7 +356,9 @@ namespace Npgsql
 #if !DNXCORE50
         [Category("Data")]
 #endif
+#pragma warning disable 108,114
         public byte Scale
+#pragma warning restore 108,114
         {
             get { return _scale; }
             set
