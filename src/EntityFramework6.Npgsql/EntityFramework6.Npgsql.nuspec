@@ -8,6 +8,7 @@
     <owners>Shay Rojansky, Emil Lenngren, Francisco Figueiredo Jr., Kenji Uno</owners>
     <licenseUrl>https://github.com/npgsql/npgsql/blob/develop/LICENSE.txt</licenseUrl>
     <projectUrl>http://www.npgsql.org</projectUrl>
+    <iconUrl>http://www.npgsql.org/img/postgresql.gif</iconUrl>
     <copyright>Copyright 2002 - 2015 Npgsql Development Team</copyright>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>PostgreSQL provider for Entity Framework 6</description>
