@@ -117,7 +117,7 @@ namespace Npgsql
         /// a transaction is in progress, check <see cref="TransactionStatus"/> instead.
         /// </para>
         /// </remarks>
-        internal NpgsqlTransaction Transaction { private get; set; }
+        internal NpgsqlTransaction Transaction { get; set; }
 
         /// <summary>
         /// The NpgsqlConnection that (currently) owns this connector. Null if the connector isn't
@@ -982,7 +982,7 @@ namespace Npgsql
                     SetFrontendTimeout(ActualInternalCommandTimeout);
                     while (_sentRfqPrependedMessages > 0)
                     {
-                        var msg = DoReadSingleMessage(DataRowLoadingMode.Skip);
+                        var msg = DoReadSingleMessage(DataRowLoadingMode.Skip, isPrependedMessage: true);
                         if (msg is ReadyForQueryMessage)
                         {
                             _sentRfqPrependedMessages--;
@@ -1023,7 +1023,9 @@ namespace Npgsql
         }
 
         [RewriteAsync]
-        IBackendMessage DoReadSingleMessage(DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential, bool returnNullForAsyncMessage = false)
+        IBackendMessage DoReadSingleMessage(DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential,
+                                            bool returnNullForAsyncMessage = false,
+                                            bool isPrependedMessage = false)
         {
             NpgsqlException error = null;
 
@@ -1050,7 +1052,7 @@ namespace Npgsql
                     buf = buf.EnsureOrAllocateTemp(len);
                 }
 
-                var msg = ParseServerMessage(buf, messageCode, len, dataRowLoadingMode);
+                var msg = ParseServerMessage(buf, messageCode, len, dataRowLoadingMode, isPrependedMessage);
 
                 switch (messageCode) {
                 case BackendMessageCode.ErrorResponse:
@@ -1090,7 +1092,7 @@ namespace Npgsql
             }
         }
 
-        IBackendMessage ParseServerMessage(NpgsqlBuffer buf, BackendMessageCode code, int len, DataRowLoadingMode dataRowLoadingMode)
+        IBackendMessage ParseServerMessage(NpgsqlBuffer buf, BackendMessageCode code, int len, DataRowLoadingMode dataRowLoadingMode, bool isPrependedMessage)
         {
             switch (code)
             {
@@ -1107,9 +1109,13 @@ namespace Npgsql
                     return _commandCompleteMessage.Load(buf, len);
                 case BackendMessageCode.ReadyForQuery:
                     var rfq = _readyForQueryMessage.Load(buf);
-                    ProcessNewTransactionStatus(rfq.TransactionStatusIndicator);
+                    if (!isPrependedMessage) {
+                        // Transaction status on prepended messages should never be processed - it could be a timeout
+                        // on a begin new transaction, or even a rollback enqueued from a previous connection (pooled).
+                        ProcessNewTransactionStatus(rfq.TransactionStatusIndicator);
+                    }
                     return rfq;
-                case BackendMessageCode.EmptyQueryResponse:
+            case BackendMessageCode.EmptyQueryResponse:
                     return EmptyQueryMessage.Instance;
                 case BackendMessageCode.ParseComplete:
                     return ParseCompleteMessage.Instance;
@@ -1328,12 +1334,6 @@ namespace Npgsql
 
             switch (newStatus) {
             case TransactionStatus.Idle:
-                if (TransactionStatus == TransactionStatus.Pending) {
-                    // The transaction status must go from Pending through InTransactionBlock to Idle.
-                    // And Idle received during Pending means that the transaction BEGIN message was prepended by another
-                    // message (e.g. DISCARD ALL), whose RFQ had the (irrelevant) indicator Idle.
-                    return;
-                }
                 ClearTransaction();
                 break;
             case TransactionStatus.InTransactionBlock:

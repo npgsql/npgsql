@@ -275,6 +275,36 @@ namespace Npgsql.Tests
                 Assert.That(() => tx.Save("a;b"), Throws.Exception.TypeOf<ArgumentException>());
         }
 
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/765")]
+        public void PrependedRollbackWhileStartingNewTransaction()
+        {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) {
+                CommandTimeout = 600,
+                InternalCommandTimeout = 30
+            };
+
+            int backendId;
+            using (var conn = new NpgsqlConnection(connString))
+            {
+                conn.Open();
+                backendId = conn.Connector.BackendProcessId;
+                conn.BeginTransaction();
+                ExecuteNonQuery("SELECT 1", conn);
+            }
+            // Connector is back in the pool with a queued ROLLBACK
+            using (var conn = new NpgsqlConnection(connString))
+            {
+                conn.Open();
+                Assert.That(conn.Connector.BackendProcessId, Is.EqualTo(backendId));
+                var tx = conn.BeginTransaction();
+                // We've captured the transaction instance, a new begin transaction is now enqueued after the rollback
+                ExecuteNonQuery("SELECT 1", conn);
+                Assert.That(tx.Connection, Is.SameAs(conn));
+                Assert.That(conn.Connector.Transaction, Is.SameAs(tx));
+            }
+        }
+
         // Older tests
 
         [Test]
