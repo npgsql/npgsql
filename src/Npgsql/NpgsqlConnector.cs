@@ -1438,6 +1438,7 @@ namespace Npgsql
         void DoCancelRequest(int backendProcessId, int backendSecretKey, int connectionTimeout)
         {
             Contract.Requires(State == ConnectorState.Closed);
+            Log.Debug("Performing cancel", Id);
 
             try
             {
@@ -1502,6 +1503,8 @@ namespace Npgsql
             Contract.Requires(!IsClosed);
             if (State == ConnectorState.Broken)
                 return;
+
+            Log.Trace("Break connector", Id);
             var prevState = State;
             State = ConnectorState.Broken;
             var conn = Connection;
@@ -1524,6 +1527,7 @@ namespace Npgsql
         /// </summary>
         void Cleanup()
         {
+            Log.Trace("Cleanup connector", Id);
             try { if (_stream != null) _stream.Dispose(); } catch {
                 // ignored
             }
