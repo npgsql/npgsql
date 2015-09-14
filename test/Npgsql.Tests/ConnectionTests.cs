@@ -255,7 +255,7 @@ namespace Npgsql.Tests
             {
                 var sw = Stopwatch.StartNew();
                 Assert.That(() => conn.Open(), Throws.Exception.TypeOf<TimeoutException>());
-                Assert.That(sw.Elapsed.TotalSeconds, Is.GreaterThanOrEqualTo(csb.Timeout),
+                Assert.That(sw.Elapsed.TotalMilliseconds, Is.GreaterThanOrEqualTo((csb.Timeout * 1000) - 100),
                     string.Format("Timeout was supposed to happen after {0} seconds, but fired after {1}", csb.Timeout, sw.Elapsed.TotalSeconds));
                 Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
             }
