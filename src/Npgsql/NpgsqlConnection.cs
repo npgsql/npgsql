@@ -186,30 +186,27 @@ namespace Npgsql
             }
 
             // We have a ConnectionTimeout
-            // We transmit the connection timeout event by triggeringing the cancellation token.
+            // We transmit the connection timeout event by triggering the cancellation token.
             // However, a ct can't be triggered directly (need a source), and we also want to distinguish a
             // timeout-triggered cancellation from a user-triggered cancellation.
             // So we wire up the user's ct and a new timeout ct to a new composite ct which will be used.
             var timeoutTs = TimeSpan.FromSeconds(ConnectionTimeout);
             var timeout = new NpgsqlTimeout(timeoutTs);
-            var timedOut = false;
 
-            using (var timeoutCts = new CancellationTokenSource(timeoutTs))
             using (var compositeCts = new CancellationTokenSource())
+            using (var timeoutCts = new CancellationTokenSource(timeoutTs))
+            // ReSharper disable once AccessToDisposedClosure
+            using (timeoutCts.Token.Register(() => compositeCts.Cancel()))
+            // ReSharper disable once AccessToDisposedClosure
             using (cancellationToken.Register(() => compositeCts.Cancel()))
             {
-                timeoutCts.Token.Register(() =>
-                {
-                    timedOut = true;
-                    compositeCts.Cancel();
-                });
                 try
                 {
                     await OpenInternalAsync(compositeCts.Token, timeout);
                 }
                 catch (TaskCanceledException e)
                 {
-                    if (timedOut)
+                    if (!cancellationToken.IsCancellationRequested)
                     {
                         throw new TimeoutException("The connection attempt timed out", e);
                     }
