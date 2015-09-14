@@ -579,6 +579,27 @@ namespace Npgsql
         }
         bool _includeRealm;
 
+        /// <summary>
+        /// Gets or sets a Boolean value that indicates if security-sensitive information, such as the password, is not returned as part of the connection if the connection is open or has ever been in an open state.
+        /// </summary>
+#if !DNXCORE50
+        [Category("Security")]
+        [DisplayName("Persist Security Info")]
+        [Description("Gets or sets a Boolean value that indicates if security-sensitive information, such as the password, is not returned as part of the connection if the connection is open or has ever been in an open state.")]
+#endif
+        [NpgsqlConnectionStringProperty]
+        public bool PersistSecurityInfo
+        {
+            get { return _persistSecurityInfo; }
+            set
+            {
+                _persistSecurityInfo = value;
+                // TODO: Replace literal name with nameof operator in C# 6.0
+                SetValue("PersistSecurityInfo", value);
+            }
+        }
+        bool _persistSecurityInfo;
+
         #endregion
 
         #region Properties - Pooling

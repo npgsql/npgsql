@@ -778,11 +778,48 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/783")]
+        public void PersistSecurityInfoIsOn()
+        {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) { PersistSecurityInfo = true };
+            using (var conn = new NpgsqlConnection(connString))
+            {
+                var passwd = new NpgsqlConnectionStringBuilder(conn.ConnectionString).Password;
+                Assert.That(passwd, Is.Not.Null);
+                conn.Open();
+                Assert.That(new NpgsqlConnectionStringBuilder(conn.ConnectionString).Password, Is.EqualTo(passwd));
+            }
+        }
+
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/783")]
+        public void NoPasswordWithoutPersistSecurityInfo()
+        {
+            using (var conn = new NpgsqlConnection(ConnectionString))
+            {
+                var csb = new NpgsqlConnectionStringBuilder(conn.ConnectionString);
+                Assert.That(csb.PersistSecurityInfo, Is.False);
+                Assert.That(csb.Password, Is.Not.Null);
+                conn.Open();
+                Assert.That(new NpgsqlConnectionStringBuilder(conn.ConnectionString).Password, Is.Null);
+            }
+        }
+
+        [Test]
         [IssueLink("https://github.com/npgsql/npgsql/issues/743")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/783")]
         public void Clone()
         {
-            var conn2 = (NpgsqlConnection)((ICloneable)Conn).Clone();
-            Assert.That(conn2.ConnectionString, Is.EqualTo(Conn.ConnectionString));
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) { Pooling = false };
+            using (var conn = new NpgsqlConnection(connString))
+            {
+                conn.Open();
+                using (var conn2 = (NpgsqlConnection) ((ICloneable) conn).Clone())
+                {
+                    Assert.That(conn2.ConnectionString, Is.EqualTo(conn.ConnectionString));
+                    conn2.Open();
+                }
+            }
         }
 
         [Test]

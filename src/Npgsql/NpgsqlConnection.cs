@@ -80,6 +80,12 @@ namespace Npgsql
         string _connectionString;
 
         /// <summary>
+        /// Contains the clear text password which was extracted from the user-provided connection string.
+        /// If non-cleartext authentication is requested from the server, this is set to null.
+        /// </summary>
+        internal string Password { get; set; }
+
+        /// <summary>
         /// The connector object connected to the backend.
         /// </summary>
         internal NpgsqlConnector Connector { get; set; }
@@ -110,8 +116,6 @@ namespace Npgsql
         /// Maximum value for connection timeout.
         /// </summary>
         internal const int TimeoutLimit = 1024;
-
-        static readonly ConcurrentDictionary<string, NpgsqlConnectionStringBuilder> BuilderCache = new ConcurrentDictionary<string, NpgsqlConnectionStringBuilder>();
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
@@ -235,6 +239,19 @@ namespace Npgsql
 
             Log.Debug("Opening connnection");
 
+            // Copy the password aside and remove it from the user-provided connection string
+            // (unless PersistSecurityInfo has been requested). Note that cloned connections already
+            // have Password populated and should not be overwritten.
+            if (Password == null)
+            {
+                Password = Settings.Password;
+            }
+            if (!Settings.PersistSecurityInfo)
+            {
+                Settings.Password = null;
+                _connectionString = Settings.ToString();
+            }
+
             WasBroken = false;
 
             try
@@ -293,14 +310,10 @@ namespace Npgsql
                 if (value == null) {
                     value = string.Empty;
                 }
-                NpgsqlConnectionStringBuilder settings;
-                if (!BuilderCache.TryGetValue(value, out settings)) {
-                    BuilderCache[value] = settings = new NpgsqlConnectionStringBuilder(value);
-                }
-                Settings = settings;
+                Settings = new NpgsqlConnectionStringBuilder(value);
                 // Note that settings.ConnectionString is canonical and may therefore be different from
                 // the provided value
-                _connectionString = settings.ConnectionString;
+                _connectionString = Settings.ConnectionString;
             }
         }
 
@@ -1359,7 +1372,7 @@ namespace Npgsql
         object ICloneable.Clone()
         {
             CheckNotDisposed();
-            return new NpgsqlConnection(ConnectionString);
+            return new NpgsqlConnection(ConnectionString) { Password = Password };
         }
 
         /// <summary>

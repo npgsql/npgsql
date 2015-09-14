@@ -1809,7 +1809,7 @@ namespace Npgsql
             string commandText = string.Concat("SELECT current_database(), nc.nspname, c.relname, c.oid FROM pg_namespace nc, pg_class c WHERE c.relnamespace = nc.oid AND (c.relkind = 'r' OR c.relkind = 'v') AND c.oid IN (",
                 string.Join(",", oids), ")");
 
-            using (var connection = new NpgsqlConnection(_connection.ConnectionString))
+            using (var connection = (NpgsqlConnection)((ICloneable)_connection).Clone())
             {
                 connection.Open();
 

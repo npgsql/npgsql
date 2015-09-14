@@ -53,8 +53,6 @@ namespace Npgsql
     {
         #region Fields and Properties
 
-        readonly NpgsqlConnectionStringBuilder _settings;
-
         /// <summary>
         /// The physical connection socket to the backend.
         /// </summary>
@@ -69,6 +67,14 @@ namespace Npgsql
         /// The physical connection stream to the backend, layered with an SSL/TLS stream if in secure mode.
         /// </summary>
         Stream _stream;
+
+        readonly NpgsqlConnectionStringBuilder _settings;
+
+        /// <summary>
+        /// Contains the clear text password which was extracted from the user-provided connection string.
+        /// If non-cleartext authentication is requested from the server, this is set to null.
+        /// </summary>
+        readonly string _password;
 
         /// <summary>
         /// Buffer used for reading data.
@@ -249,7 +255,7 @@ namespace Npgsql
         #region Constructors
 
         internal NpgsqlConnector(NpgsqlConnection connection)
-            : this(connection.Settings)
+            : this(connection.Settings, connection.Password)
         {
             Connection = connection;
             Connection.Connector = this;
@@ -259,11 +265,13 @@ namespace Npgsql
         /// Creates a new connector with the given connection string.
         /// </summary>
         /// <param name="connectionString">The connection string.</param>
-        NpgsqlConnector(NpgsqlConnectionStringBuilder connectionString)
+        /// <param name="password">The clear-text password or null if not using a password.</param>
+        NpgsqlConnector(NpgsqlConnectionStringBuilder connectionString, string password)
         {
             State = ConnectorState.Closed;
             TransactionStatus = TransactionStatus.Idle;
             _settings = connectionString;
+            _password = password;
             BackendParams = new Dictionary<string, string>();
             _messagesToSend = new List<FrontendMessage>();
             _preparedStatementIndex = 0;
@@ -288,7 +296,6 @@ namespace Npgsql
         internal int Port { get { return _settings.Port; } }
         internal string Database { get { return _settings.Database; } }
         internal string UserName { get { return _settings.Username; } }
-        internal string Password { get { return _settings.Password; } }
         internal string KerberosServiceName { get { return _settings.KerberosServiceName; } }
         internal SslMode SslMode { get { return _settings.SslMode; } }
         internal bool UseSslStream { get { return _settings.UseSslStream; } }
@@ -769,16 +776,16 @@ namespace Npgsql
                     return null;
 
                 case AuthenticationRequestType.AuthenticationCleartextPassword:
-                    if (Password == null) {
+                    if (_password == null) {
                         throw new Exception("No password has been provided but the backend requires one (in cleartext)");
                     }
-                    return PasswordMessage.CreateClearText(Password);
+                    return PasswordMessage.CreateClearText(_password);
 
                 case AuthenticationRequestType.AuthenticationMD5Password:
-                    if (Password == null) {
+                    if (_password == null) {
                         throw new Exception("No password has been provided but the backend requires one (in MD5)");
                     }
-                    return PasswordMessage.CreateMD5(Password, UserName, ((AuthenticationMD5PasswordMessage)msg).Salt);
+                    return PasswordMessage.CreateMD5(_password, UserName, ((AuthenticationMD5PasswordMessage)msg).Salt);
 
                 case AuthenticationRequestType.AuthenticationGSS:
                     if (!IntegratedSecurity) {
@@ -1430,7 +1437,7 @@ namespace Npgsql
         {
             lock (_cancelLock)
             {
-                var cancelConnector = new NpgsqlConnector(_settings);
+                var cancelConnector = new NpgsqlConnector(_settings, _password);
                 cancelConnector.DoCancelRequest(BackendProcessId, _backendSecretKey, cancelConnector.ConnectionTimeout);
             }
         }
