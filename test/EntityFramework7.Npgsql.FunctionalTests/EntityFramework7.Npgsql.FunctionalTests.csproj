@@ -153,7 +153,7 @@
     <Compile Include="InheritanceNpgsqlFixture.cs" />
     <Compile Include="InheritanceNpgsqlTest.cs" />
     <Compile Include="MappingQueryNpgsqlFixture.cs" />
-    <Compile Include="MappingQueryNpgsqlTest.cs.cs" />
+    <Compile Include="MappingQueryNpgsqlTest.cs" />
     <Compile Include="MigrationsNpgsqlFixture.cs" />
     <Compile Include="MigrationsNpgsqlTest.cs" />
     <Compile Include="MonsterFixupNpgsqlTest.cs.cs" />
