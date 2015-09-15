@@ -899,6 +899,6 @@ ORDER BY ""c"".""CustomerID""",
                 Sql);
         }
 
-        private static string Sql => TestSqlLoggerFactory.Sql.ToUnixNewlines();
+        private static string Sql => TestSqlLoggerFactory.Sql;
     }
 }

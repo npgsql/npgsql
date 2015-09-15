@@ -63,6 +63,6 @@ FROM ""Orders"" AS ""o""",
             return _fixture.CreateContext();
         }
 
-        private static string Sql => TestSqlLoggerFactory.Sql.ToUnixNewlines();
+        private static string Sql => TestSqlLoggerFactory.Sql;
     }
 }

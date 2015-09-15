@@ -175,7 +175,6 @@
     <Compile Include="TestNpgsqlModelSource.cs" />
     <Compile Include="TransactionNpgsqlFixture.cs" />
     <Compile Include="TransactionNpgsqlTest.cs" />
-    <Compile Include="Util.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />

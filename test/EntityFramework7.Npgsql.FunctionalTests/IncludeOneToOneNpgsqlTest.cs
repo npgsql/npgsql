@@ -67,6 +67,6 @@ LEFT JOIN ""Address2"" AS ""a"" ON ""a"".""PersonId"" = ""p"".""Id""",
             return _fixture.CreateContext();
         }
 
-        private static string Sql => TestSqlLoggerFactory.SqlStatements.Last().ToUnixNewlines();
+        private static string Sql => TestSqlLoggerFactory.SqlStatements.Last();
     }
 }

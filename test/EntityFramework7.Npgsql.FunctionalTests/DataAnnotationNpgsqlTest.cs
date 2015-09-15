@@ -129,6 +129,6 @@ RETURNING ""UniqueNo"";",
             }
         }
 
-        private static string Sql => TestSqlLoggerFactory.Sql.ToUnixNewlines();
+        private static string Sql => TestSqlLoggerFactory.Sql;
     }
 }

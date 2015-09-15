@@ -31,6 +31,6 @@ WHERE ""Id"" IS NOT DISTINCT FROM @p1 AND ""EngineSupplierId"" IS NOT DISTINCT F
                 Sql);
         }
 
-        private static string Sql => TestSqlLoggerFactory.Sql.ToUnixNewlines();
+        private static string Sql => TestSqlLoggerFactory.Sql;
     }
 }

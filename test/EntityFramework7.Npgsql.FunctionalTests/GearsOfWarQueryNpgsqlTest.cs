@@ -218,6 +218,6 @@ WHERE ""w"".""AmmunitionType"" IS NULL",
                 Sql);
         }
 
-        private static string Sql => TestSqlLoggerFactory.Sql.ToUnixNewlines();
+        private static string Sql => TestSqlLoggerFactory.Sql;
     }
 }

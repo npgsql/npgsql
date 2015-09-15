@@ -1018,6 +1018,6 @@ WHERE (""e"".""NullableBoolA"" <> ""e"".""NullableBoolB"" OR @__prm_0 = TRUE)",
                 Sql);
         }
 
-        private static string Sql => TestSqlLoggerFactory.Sql.ToUnixNewlines();
+        private static string Sql => TestSqlLoggerFactory.Sql;
     }
 }

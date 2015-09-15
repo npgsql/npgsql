@@ -217,7 +217,7 @@ WHERE ""e"".""ReportsTo"" IS NULL",
                  Sql);
         }
 
-        private static string Sql => TestSqlLoggerFactory.Sql.ToUnixNewlines();
+        private static string Sql => TestSqlLoggerFactory.Sql;
 
         public QueryNavigationsNpgsqlTest(NorthwindQueryNpgsqlFixture fixture, ITestOutputHelper testOutputHelper)
             : base(fixture)

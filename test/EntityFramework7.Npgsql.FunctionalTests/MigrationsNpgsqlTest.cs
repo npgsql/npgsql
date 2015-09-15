@@ -185,9 +185,9 @@ ORDER BY table_name, ordinal_position
                 }
             }
 
-            return builder.ToString().ToUnixNewlines();
+            return builder.ToString();
         }
 
-        protected new string Sql => base.Sql.ToUnixNewlines();
+        protected new string Sql => base.Sql;
     }
 }

@@ -95,6 +95,6 @@ namespace EntityFramework7.Npgsql.FunctionalTests
 
         #endregion
 
-        static string Sql => TestSqlLoggerFactory.Sql.ToUnixNewlines();
+        static string Sql => TestSqlLoggerFactory.Sql;
     }
 }

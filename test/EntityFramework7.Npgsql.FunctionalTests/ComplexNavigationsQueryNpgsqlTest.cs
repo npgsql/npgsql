@@ -93,6 +93,6 @@ INNER JOIN (
 ORDER BY ""l1"".""Id"", ""l1"".""Id0"", ""l1"".""Id1""", Sql);
         }
 
-        private static string Sql => TestSqlLoggerFactory.Sql.ToUnixNewlines();
+        private static string Sql => TestSqlLoggerFactory.Sql;
     }
 }

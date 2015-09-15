@@ -238,6 +238,6 @@ WHERE (""k"".""Discriminator"" = 'Kiwi' AND ""k"".""Species"" LIKE '%' || 'oweni
         {
         }
 
-        private static string Sql => TestSqlLoggerFactory.Sql.ToUnixNewlines();
+        private static string Sql => TestSqlLoggerFactory.Sql;
     }
 }

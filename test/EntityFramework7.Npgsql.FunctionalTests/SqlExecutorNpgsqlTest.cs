@@ -39,6 +39,6 @@ SELECT * FROM ""CustOrderHist""(@p0)",
 
         protected override string CustomerOrderHistorySproc => @"SELECT * FROM ""CustOrderHist""({0})";
 
-        private static string Sql => TestSqlLoggerFactory.Sql.ToUnixNewlines();
+        private static string Sql => TestSqlLoggerFactory.Sql;
     }
 }
