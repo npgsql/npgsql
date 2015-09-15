@@ -1060,6 +1060,11 @@ namespace Npgsql
             TypeHandlerRegistry.RegisterEnumTypeGlobally<TEnum>(pgName ?? typeof(TEnum).Name.ToLower());
         }
 
+        internal static void UnregisterEnumGlobally<TEnum>() where TEnum : struct
+        {
+            TypeHandlerRegistry.UnregisterEnumTypeGlobally<TEnum>();
+        }
+
         #endregion
 
         #region State checks
