@@ -41,6 +41,41 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
+        public void UnregisteredEnumsActAsText()
+        {
+            ExecuteNonQuery("CREATE TYPE pg_temp.fruit AS ENUM ('Banana', 'Apple', 'Orange')");
+            Conn.ReloadTypes();
+            const string expected = "Banana";
+            var expectedArray = new[] { "Banana", "Orange" };
+            var cmd = new NpgsqlCommand("SELECT @p1::Fruit, @p2::Fruit, @p3", Conn);
+            // explicit typed parameter
+            var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Text) { Value = expected };
+            // implicit parameter
+            var p2 = new NpgsqlParameter { ParameterName = "p2", Value = expected };
+            // implicit typed array
+            cmd.Parameters.AddWithValue("p3", expectedArray);
+            cmd.Parameters.Add(p1);
+            cmd.Parameters.Add(p2);
+            var reader = cmd.ExecuteReader();
+            reader.Read();
+
+            for (var i = 0; i < 2; i++) // check scalars
+            {
+                Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(String)));
+                Assert.That(reader.GetFieldValue<string>(i), Is.EqualTo(expected));
+                Assert.That(reader.GetValue(i), Is.EqualTo(expected));
+            }
+            for (var i = 2; i < 3; i++) { // check arrays
+                Assert.AreEqual(typeof(string[]), reader.GetValue(i).GetType());
+                Assert.IsTrue(expectedArray.SequenceEqual((string[])reader.GetValue(i)));
+            }
+
+
+            reader.Close();
+            cmd.Dispose();
+        }
+
+        [Test]
         public void DualEnums()
         {
             ExecuteNonQuery("CREATE TYPE pg_temp.mood AS ENUM ('Sad', 'Ok', 'Happy')");

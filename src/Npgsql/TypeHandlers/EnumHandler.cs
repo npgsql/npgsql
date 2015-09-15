@@ -33,6 +33,38 @@ using System.Text;
 namespace Npgsql.TypeHandlers
 {
     internal interface IEnumHandler { }
+
+    // Default handler for enums that are not registered. Treats reads and writes as text
+    internal class EnumTextHandler : TypeHandler<String>, ISimpleTypeReader<string>, ISimpleTypeWriter
+    {
+        public string Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        {
+            var str = buf.ReadString(len);
+            return str;
+        }
+
+        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        {
+            string str = value.ToString();
+            return Encoding.UTF8.GetByteCount(str);
+        }
+
+        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        {
+            string str = value.ToString();
+            buf.WriteString(str);
+        }
+        internal EnumTextHandler Clone()
+        {
+            return new EnumTextHandler();
+        }
+
+        internal Type GetFieldType()
+        {
+            return typeof(string);
+        }
+    }
+
     internal class EnumHandler<TEnum> : TypeHandler<TEnum>, IEnumHandler,
         ISimpleTypeReader<TEnum>, ISimpleTypeWriter
         where TEnum : struct
