@@ -15,10 +15,13 @@ namespace EntityFramework7.Npgsql.FunctionalTests
             base.Can_use_of_type_animal();
 
             Assert.Equal(
-                @"SELECT ""a"".""Species"", ""a"".""CountryId"", ""a"".""Discriminator"", ""a"".""Name"", ""a"".""EagleId"", ""a"".""IsFlightless"", ""a"".""Group"", ""a"".""FoundOn""
-FROM ""Animal"" AS ""a""
-WHERE ""a"".""Discriminator"" IN ('Kiwi', 'Eagle')
-ORDER BY ""a"".""Species""",
+                @"SELECT ""t0"".""Species"", ""t0"".""CountryId"", ""t0"".""Discriminator"", ""t0"".""Name"", ""t0"".""EagleId"", ""t0"".""IsFlightless"", ""t0"".""Group"", ""t0"".""FoundOn""
+FROM (
+    SELECT ""a"".""Species"", ""a"".""CountryId"", ""a"".""Discriminator"", ""a"".""Name"", ""a"".""EagleId"", ""a"".""IsFlightless"", ""a"".""Group"", ""a"".""FoundOn""
+    FROM ""Animal"" AS ""a""
+    WHERE ""a"".""Discriminator"" IN ('Kiwi', 'Eagle')
+) AS ""t0""
+ORDER BY ""t0"".""Species""",
                 Sql);
         }
 
@@ -27,10 +30,13 @@ ORDER BY ""a"".""Species""",
             base.Can_use_of_type_bird();
 
             Assert.Equal(
-                @"SELECT ""a"".""Species"", ""a"".""CountryId"", ""a"".""Discriminator"", ""a"".""Name"", ""a"".""EagleId"", ""a"".""IsFlightless"", ""a"".""Group"", ""a"".""FoundOn""
-FROM ""Animal"" AS ""a""
-WHERE ""a"".""Discriminator"" IN ('Kiwi', 'Eagle')
-ORDER BY ""a"".""Species""",
+                @"SELECT ""t0"".""Species"", ""t0"".""CountryId"", ""t0"".""Discriminator"", ""t0"".""Name"", ""t0"".""EagleId"", ""t0"".""IsFlightless"", ""t0"".""Group"", ""t0"".""FoundOn""
+FROM (
+    SELECT ""a"".""Species"", ""a"".""CountryId"", ""a"".""Discriminator"", ""a"".""Name"", ""a"".""EagleId"", ""a"".""IsFlightless"", ""a"".""Group"", ""a"".""FoundOn""
+    FROM ""Animal"" AS ""a""
+    WHERE ""a"".""Discriminator"" IN ('Kiwi', 'Eagle')
+) AS ""t0""
+ORDER BY ""t0"".""Species""",
                 Sql);
         }
 
@@ -39,10 +45,13 @@ ORDER BY ""a"".""Species""",
             base.Can_use_of_type_bird_first();
 
             Assert.Equal(
-                @"SELECT ""a"".""Species"", ""a"".""CountryId"", ""a"".""Discriminator"", ""a"".""Name"", ""a"".""EagleId"", ""a"".""IsFlightless"", ""a"".""Group"", ""a"".""FoundOn""
-FROM ""Animal"" AS ""a""
-WHERE ""a"".""Discriminator"" IN ('Kiwi', 'Eagle')
-ORDER BY ""a"".""Species""
+                @"SELECT ""t0"".""Species"", ""t0"".""CountryId"", ""t0"".""Discriminator"", ""t0"".""Name"", ""t0"".""EagleId"", ""t0"".""IsFlightless"", ""t0"".""Group"", ""t0"".""FoundOn""
+FROM (
+    SELECT ""a"".""Species"", ""a"".""CountryId"", ""a"".""Discriminator"", ""a"".""Name"", ""a"".""EagleId"", ""a"".""IsFlightless"", ""a"".""Group"", ""a"".""FoundOn""
+    FROM ""Animal"" AS ""a""
+    WHERE ""a"".""Discriminator"" IN ('Kiwi', 'Eagle')
+) AS ""t0""
+ORDER BY ""t0"".""Species""
 LIMIT 1",
                 Sql);
         }
@@ -208,7 +217,7 @@ VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6);
 
 SELECT ""k"".""Species"", ""k"".""CountryId"", ""k"".""Discriminator"", ""k"".""Name"", ""k"".""EagleId"", ""k"".""IsFlightless"", ""k"".""FoundOn""
 FROM ""Animal"" AS ""k""
-WHERE (""k"".""Discriminator"" = 'Kiwi' AND ""k"".""Species"" LIKE '%' || 'owenii')
+WHERE (""k"".""Discriminator"" = 'Kiwi' AND ""k"".""Species"" LIKE ('%' || 'owenii'))
 LIMIT 2
 
 @p1: Apteryx owenii
@@ -219,7 +228,7 @@ WHERE ""Species"" IS NOT DISTINCT FROM @p1;
 
 SELECT ""k"".""Species"", ""k"".""CountryId"", ""k"".""Discriminator"", ""k"".""Name"", ""k"".""EagleId"", ""k"".""IsFlightless"", ""k"".""FoundOn""
 FROM ""Animal"" AS ""k""
-WHERE (""k"".""Discriminator"" = 'Kiwi' AND ""k"".""Species"" LIKE '%' || 'owenii')
+WHERE (""k"".""Discriminator"" = 'Kiwi' AND ""k"".""Species"" LIKE ('%' || 'owenii'))
 LIMIT 2
 
 @p0: Apteryx owenii
@@ -229,7 +238,7 @@ WHERE ""Species"" IS NOT DISTINCT FROM @p0;
 
 SELECT COUNT(*)::INT4
 FROM ""Animal"" AS ""k""
-WHERE (""k"".""Discriminator"" = 'Kiwi' AND ""k"".""Species"" LIKE '%' || 'owenii')",
+WHERE (""k"".""Discriminator"" = 'Kiwi' AND ""k"".""Species"" LIKE ('%' || 'owenii'))",
                 Sql);
         }
 

@@ -944,7 +944,7 @@ END) OR ""e"".""NullableStringC"" IS NULL)",
             Assert.Equal(
                 @"SELECT ""e"".""Id""
 FROM ""NullSemanticsEntity1"" AS ""e""
-WHERE (""e"".""NullableStringA"" LIKE ('%' || ""e"".""NullableStringB"" || '%') AND ""e"".""BoolA"" = TRUE)",
+WHERE (""e"".""NullableStringA"" LIKE ((('%' || ""e"".""NullableStringB"") || '%')) AND ""e"".""BoolA"" = TRUE)",
                 Sql);
         }
 
