@@ -1165,6 +1165,7 @@ namespace Npgsql
         /// If null, the .NET type's name in lowercase will be used
         /// </param>
         /// <typeparam name="TEnum">The .NET enum type to be mapped</typeparam>
+        [Obsolete]
         public static void RegisterEnumGlobally<TEnum>(string pgName = null) where TEnum : struct
         {
             MapEnumGlobally<TEnum>(pgName);
