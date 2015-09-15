@@ -1127,6 +1127,11 @@ namespace Npgsql
             TypeHandlerRegistry.RegisterEnumTypeGlobally<TEnum>(pgName ?? typeof(TEnum).Name.ToLower());
         }
 
+        internal static void UnmapEnumGlobally<TEnum>() where TEnum : struct
+        {
+            TypeHandlerRegistry.UnregisterEnumTypeGlobally<TEnum>();
+        }
+
         /// <summary>
         /// Maps a CLR enum to a PostgreSQL enum type for use with this connection.
         /// </summary>
@@ -1229,6 +1234,11 @@ namespace Npgsql
             Contract.EndContractBlock();
 
             TypeHandlerRegistry.RegisterCompositeTypeGlobally<T>(pgName ?? typeof(T).Name.ToLower());
+        }
+
+        internal static void UnmapCompositeGlobally(string pgName)
+        {
+            TypeHandlerRegistry.UnregisterCompositeTypeGlobally(pgName);
         }
 
         #endregion
