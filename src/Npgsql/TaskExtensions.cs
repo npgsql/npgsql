@@ -52,7 +52,7 @@ namespace Npgsql
             using (cancellationToken.Register(
                         s => ((TaskCompletionSource<bool>)s).TrySetResult(true), tcs))
                 if (task != await Task.WhenAny(task, tcs.Task))
-                    throw new OperationCanceledException(cancellationToken);
+                    throw new TaskCanceledException(task);
             return await task;
         }
 
@@ -69,7 +69,7 @@ namespace Npgsql
             using (cancellationToken.Register(
                         s => ((TaskCompletionSource<bool>)s).TrySetResult(true), tcs))
                 if (task != await Task.WhenAny(task, tcs.Task))
-                    throw new OperationCanceledException(cancellationToken);
+                    throw new TaskCanceledException(task);
             await task;
         }
 

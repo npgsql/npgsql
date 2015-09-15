@@ -198,23 +198,25 @@ namespace Npgsql
             var timeout = new NpgsqlTimeout(timeoutTs);
 
             using (var compositeCts = new CancellationTokenSource())
-            using (var timeoutCts = new CancellationTokenSource(timeoutTs))
-            // ReSharper disable once AccessToDisposedClosure
-            using (timeoutCts.Token.Register(() => compositeCts.Cancel()))
-            // ReSharper disable once AccessToDisposedClosure
-            using (cancellationToken.Register(() => compositeCts.Cancel()))
             {
-                try
+                var compositeCts2 = compositeCts;  // For R# "access to disposed closure"
+
+                using (var timeoutCts = new CancellationTokenSource(timeoutTs))
+                using (timeoutCts.Token.Register(() => compositeCts2.Cancel()))
+                using (cancellationToken.Register(() => compositeCts2.Cancel()))
                 {
-                    await OpenInternalAsync(compositeCts.Token, timeout);
-                }
-                catch (TaskCanceledException e)
-                {
-                    if (!cancellationToken.IsCancellationRequested)
+                    try
                     {
-                        throw new TimeoutException("The connection attempt timed out", e);
+                        await OpenInternalAsync(compositeCts.Token, timeout);
                     }
-                    throw;
+                    catch (TaskCanceledException e)
+                    {
+                        if (!cancellationToken.IsCancellationRequested)
+                        {
+                            throw new TimeoutException("The connection attempt timed out", e);
+                        }
+                        throw;
+                    }
                 }
             }
         }
