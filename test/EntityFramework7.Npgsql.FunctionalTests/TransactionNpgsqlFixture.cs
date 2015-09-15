@@ -38,7 +38,7 @@ namespace EntityFramework7.Npgsql.FunctionalTests
         public override DbContext CreateContext(NpgsqlTestStore testStore)
         {
             var optionsBuilder = new DbContextOptionsBuilder();
-            optionsBuilder.UseNpgsql(testStore.Connection.ConnectionString);
+            optionsBuilder.UseNpgsql(testStore.ConnectionString);
 
             return new DbContext(_serviceProvider, optionsBuilder.Options);
         }

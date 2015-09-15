@@ -30,7 +30,7 @@ namespace EntityFramework7.Npgsql.FunctionalTests
             var database = NpgsqlTestStore.CreateScratch();
 
             var optionsBuilder = new DbContextOptionsBuilder();
-            optionsBuilder.UseNpgsql(database.Connection.ConnectionString);
+            optionsBuilder.UseNpgsql(database.ConnectionString);
             _options = optionsBuilder.Options;
 
             using (var context = new DbContext(_serviceProvider, _options))

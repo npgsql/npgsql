@@ -30,7 +30,7 @@ namespace EntityFramework7.Npgsql.FunctionalTests
             _testDatabase = NpgsqlNorthwindContext.GetSharedStore();
 
             var optionsBuilder = new DbContextOptionsBuilder().UseModel(CreateModel());
-            optionsBuilder.UseNpgsql(_testDatabase.Connection.ConnectionString);
+            optionsBuilder.UseNpgsql(_testDatabase.ConnectionString);
             _options = optionsBuilder.Options;
         }
 

@@ -31,7 +31,7 @@ namespace EntityFramework7.Npgsql.FunctionalTests
                 .BuildServiceProvider();
 
             var optionsBuilder = new DbContextOptionsBuilder();
-            optionsBuilder.UseNpgsql(_testStore.Connection.ConnectionString);
+            optionsBuilder.UseNpgsql(_testStore.ConnectionString);
             _options = optionsBuilder.Options;
 
             _serviceProvider.GetRequiredService<ILoggerFactory>()

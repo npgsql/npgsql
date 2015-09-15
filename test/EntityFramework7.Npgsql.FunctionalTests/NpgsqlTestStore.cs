@@ -38,6 +38,7 @@ namespace EntityFramework7.Npgsql.FunctionalTests
             return new NpgsqlTestStore(name).CreateTransient(createDatabase);
         }
 
+        private string _connectionString;
         private NpgsqlConnection _connection;
         private NpgsqlTransaction _transaction;
         private readonly string _name;
@@ -53,7 +54,8 @@ namespace EntityFramework7.Npgsql.FunctionalTests
         {
             CreateShared(typeof(NpgsqlTestStore).Name + _name, initializeDatabase);
 
-            _connection = new NpgsqlConnection(CreateConnectionString(_name));
+            _connectionString = CreateConnectionString(_name);
+            _connection = new NpgsqlConnection(_connectionString);
 
             _connection.Open();
 
@@ -196,7 +198,8 @@ namespace EntityFramework7.Npgsql.FunctionalTests
         {
             await DeleteDatabaseAsync(_name);
 
-            _connection = new NpgsqlConnection(CreateConnectionString(_name));
+            _connectionString = CreateConnectionString(_name);
+            _connection = new NpgsqlConnection(_connectionString);
 
             if (createDatabase)
             {
@@ -221,7 +224,8 @@ namespace EntityFramework7.Npgsql.FunctionalTests
         {
             DeleteDatabase(_name);
 
-            _connection = new NpgsqlConnection(CreateConnectionString(_name));
+            _connectionString = CreateConnectionString(_name);
+            _connection = new NpgsqlConnection(_connectionString);
 
             if (createDatabase)
             {
@@ -292,6 +296,8 @@ namespace EntityFramework7.Npgsql.FunctionalTests
                 }
             }
         }
+
+        public string ConnectionString => _connectionString;
 
         public override DbConnection Connection => _connection;
 
