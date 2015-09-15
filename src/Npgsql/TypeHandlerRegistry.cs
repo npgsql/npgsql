@@ -195,18 +195,22 @@ namespace Npgsql
                 case BackendTypeType.Base:
                     RegisterBaseType(backendType);
                     continue;
+                case BackendTypeType.Enum:
+                    TypeHandler handler;
+                    if (_globalEnumRegistrations != null && _globalEnumRegistrations.TryGetValue(backendType.Name, out handler)) {
+                        ActivateEnumType(handler, backendType);
+                    }
+                    else {
+                        RegisterEnumTextType(backendType);
+                    }
+                    continue;
                 case BackendTypeType.Array:
                     RegisterArrayType(backendType);
                     continue;
                 case BackendTypeType.Range:
                     RegisterRangeType(backendType);
                     continue;
-                case BackendTypeType.Enum:
-                    TypeHandler handler;
-                    if (_globalEnumRegistrations != null && _globalEnumRegistrations.TryGetValue(backendType.Name, out handler)) {
-                        ActivateEnumType(handler, backendType);
-                    }
-                    continue;
+
                 default:
                     Log.Error("Unknown type of type encountered, skipping: " + backendType, Connector.Id);
                     continue;
@@ -215,6 +219,8 @@ namespace Npgsql
 
             _backendTypes = backendTypes;
         }
+
+
 
         void RegisterBaseType(BackendType backendType)
         {
@@ -342,6 +348,20 @@ namespace Npgsql
 
         #region Enum
 
+        internal void RegisterEnumTextType(BackendType backendType)
+        {
+            var handler = new EnumTextHandler();
+            handler.PgName = backendType.Name;
+            handler.OID = backendType.OID;
+            handler.NpgsqlDbType = NpgsqlDbType.Enum;
+            _oidIndex[backendType.OID] = handler;
+            //_byType[handler.GetFieldType()] = handler; // allow string handler to process reads
+
+            if (backendType.Array != null) {
+                RegisterArrayType(backendType.Array);
+            }
+        }
+
         internal void RegisterEnumType<TEnum>(string pgName) where TEnum : struct
         {
             var backendTypeInfo = _backendTypes.FirstOrDefault(t => t.Name == pgName);
@@ -402,10 +422,7 @@ namespace Npgsql
             get
             {
                 TypeHandler handler;
-                if (_byNpgsqlDbType.TryGetValue(npgsqlDbType, out handler)) {
-                    return handler;
-                }
-
+                // Lookup explicitly registered enums first in case EnumTextHandler has been registered for DbType.Enum
                 if (npgsqlDbType == NpgsqlDbType.Enum)
                 {
                     if (enumType == null) {
@@ -428,6 +445,10 @@ namespace Npgsql
                         return handler;
                     }
                     throw new NotSupportedException("This enum array type is not supported (have you registered it in Npsql and set the EnumType property of NpgsqlParameter?)");
+                }
+
+                if (_byNpgsqlDbType.TryGetValue(npgsqlDbType, out handler)) {
+                    return handler;
                 }
 
                 throw new NotSupportedException("This NpgsqlDbType isn't supported in Npgsql yet: " + npgsqlDbType);
