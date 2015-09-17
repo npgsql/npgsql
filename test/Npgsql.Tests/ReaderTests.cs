@@ -198,13 +198,21 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/787")]
         public void GetDataTypeName()
         {
-            var command = new NpgsqlCommand(@"SELECT 1::INT4 AS some_column", Conn);
-            var dr = command.ExecuteReader();
-            dr.Read();
-            Assert.That(dr.GetDataTypeName(0), Is.EqualTo("int4"));
-            command.Dispose();
+            using (var command = new NpgsqlCommand(@"SELECT 1::INT4 AS some_column", Conn))
+            using (var reader = command.ExecuteReader())
+            {
+                reader.Read();
+                Assert.That(reader.GetDataTypeName(0), Is.EqualTo("int4"));
+            }
+            using (var command = new NpgsqlCommand(@"SELECT '{1}'::INT4[] AS some_column", Conn))
+            using (var reader = command.ExecuteReader())
+            {
+                reader.Read();
+                Assert.That(reader.GetDataTypeName(0), Is.EqualTo("_int4"));
+            }
         }
 
         [Test]

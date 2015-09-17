@@ -342,7 +342,7 @@ namespace Npgsql
                 arrayHandler = (TypeHandler)Activator.CreateInstance(arrayHandlerType, elementHandler);
             }
 
-            arrayHandler.PgName = "array";
+            arrayHandler.PgName = backendType.Name;
             arrayHandler.OID = backendType.OID;
             OIDIndex[backendType.OID] = arrayHandler;
 
