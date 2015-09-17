@@ -1138,7 +1138,8 @@ namespace Npgsql
 
         /// <summary>
         /// Gets the data type information for the specified field.
-        /// This will be the Postgresql type name (e.g. int4), not the .NET type (<see cref="GetFieldType"/>)
+        /// This will be the PostgreSQL type name (e.g. int4) as in the pg_type table,
+        /// not the .NET type (see <see cref="GetFieldType"/> for that).
         /// </summary>
         /// <param name="ordinal"></param>
         /// <returns></returns>
