@@ -5,11 +5,10 @@ using System.Text;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity.Query.Expressions;
-using Microsoft.Data.Entity.Query.Sql;
 using Microsoft.Data.Entity.Storage;
 using Microsoft.Data.Entity.Utilities;
 
-namespace EntityFramework7.Npgsql.Query.Sql
+namespace Microsoft.Data.Entity.Query.Sql
 {
     public class NpgsqlQuerySqlGeneratorFactory : ISqlQueryGeneratorFactory
     {

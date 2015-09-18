@@ -4,11 +4,11 @@
 using System;
 using System.Linq.Expressions;
 using System.Text.RegularExpressions;
-using EntityFramework7.Npgsql.Query.Sql;
 using JetBrains.Annotations;
+using Microsoft.Data.Entity.Query.Sql;
 using Microsoft.Data.Entity.Utilities;
 
-namespace EntityFramework7.Npgsql.Query.Expressions
+namespace Microsoft.Data.Entity.Query.Expressions
 {
     public class RegexMatchExpression : Expression
     {

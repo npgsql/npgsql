@@ -6,12 +6,10 @@ using System.Linq.Expressions;
 using System.Text.RegularExpressions;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity.Query.Expressions;
-using Microsoft.Data.Entity.Query.Sql;
 using Microsoft.Data.Entity.Storage;
 using Microsoft.Data.Entity.Utilities;
-using EntityFramework7.Npgsql.Query.Expressions;
 
-namespace EntityFramework7.Npgsql.Query.Sql
+namespace Microsoft.Data.Entity.Query.Sql
 {
     public class NpgsqlQuerySqlGenerator : DefaultQuerySqlGenerator
     {

@@ -5,7 +5,8 @@ using JetBrains.Annotations;
 using Microsoft.Data.Entity.Internal;
 using Microsoft.Data.Entity.Metadata.Conventions.Internal;
 
-namespace EntityFramework7.Npgsql
+// ReSharper disable once CheckNamespace
+namespace Microsoft.Data.Entity.Infrastructure
 {
     public class NpgsqlModelSource : ModelSource
     {

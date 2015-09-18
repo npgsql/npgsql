@@ -35,51 +35,51 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="EntityFramework.Core, Version=7.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\EntityFramework.Core.7.0.0-beta8-15676\lib\net45\EntityFramework.Core.dll</HintPath>
+      <HintPath>..\..\packages\EntityFramework.Core.7.0.0-beta8-15723\lib\net45\EntityFramework.Core.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="EntityFramework.Relational, Version=7.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\EntityFramework.Relational.7.0.0-beta8-15676\lib\net45\EntityFramework.Relational.dll</HintPath>
+      <HintPath>..\..\packages\EntityFramework.Relational.7.0.0-beta8-15723\lib\net45\EntityFramework.Relational.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Framework.Caching.Abstractions, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Framework.Caching.Abstractions.1.0.0-beta8-15565\lib\net45\Microsoft.Framework.Caching.Abstractions.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Framework.Caching.Abstractions.1.0.0-beta8-15583\lib\net45\Microsoft.Framework.Caching.Abstractions.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Framework.Caching.Memory, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Framework.Caching.Memory.1.0.0-beta8-15565\lib\net45\Microsoft.Framework.Caching.Memory.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Framework.Caching.Memory.1.0.0-beta8-15583\lib\net45\Microsoft.Framework.Caching.Memory.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Framework.Configuration, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Framework.Configuration.1.0.0-beta8-15565\lib\net45\Microsoft.Framework.Configuration.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Framework.Configuration.1.0.0-beta8-15586\lib\net45\Microsoft.Framework.Configuration.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Framework.Configuration.Abstractions, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Framework.Configuration.Abstractions.1.0.0-beta8-15565\lib\net45\Microsoft.Framework.Configuration.Abstractions.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Framework.Configuration.Abstractions.1.0.0-beta8-15586\lib\net45\Microsoft.Framework.Configuration.Abstractions.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Framework.Configuration.Binder, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Framework.Configuration.Binder.1.0.0-beta8-15565\lib\net45\Microsoft.Framework.Configuration.Binder.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Framework.Configuration.Binder.1.0.0-beta8-15586\lib\net45\Microsoft.Framework.Configuration.Binder.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Framework.DependencyInjection, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Framework.DependencyInjection.1.0.0-beta8-15560\lib\net45\Microsoft.Framework.DependencyInjection.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Framework.DependencyInjection.1.0.0-beta8-15574\lib\net45\Microsoft.Framework.DependencyInjection.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Framework.DependencyInjection.Abstractions, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Framework.DependencyInjection.Abstractions.1.0.0-beta8-15560\lib\net45\Microsoft.Framework.DependencyInjection.Abstractions.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Framework.DependencyInjection.Abstractions.1.0.0-beta8-15574\lib\net45\Microsoft.Framework.DependencyInjection.Abstractions.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Framework.Logging, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Framework.Logging.1.0.0-beta8-15560\lib\net45\Microsoft.Framework.Logging.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Framework.Logging.1.0.0-beta8-15575\lib\net45\Microsoft.Framework.Logging.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Framework.Logging.Abstractions, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Framework.Logging.Abstractions.1.0.0-beta8-15560\lib\net45\Microsoft.Framework.Logging.Abstractions.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Framework.Logging.Abstractions.1.0.0-beta8-15575\lib\net45\Microsoft.Framework.Logging.Abstractions.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Framework.OptionsModel, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Framework.OptionsModel.1.0.0-beta8-15560\lib\net45\Microsoft.Framework.OptionsModel.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Framework.OptionsModel.1.0.0-beta8-15574\lib\net45\Microsoft.Framework.OptionsModel.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Remotion.Linq, Version=2.0.0.0, Culture=neutral, PublicKeyToken=fee00910d6e5f53b, processorArchitecture=MSIL">
@@ -107,10 +107,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Extensions\NpgsqlDbContextOptionsBuilder.cs" />
+    <Compile Include="Infrastructure\NpgsqlDbContextOptionsBuilder.cs" />
     <Compile Include="Extensions\NpgsqlDbContextOptionsExtensions.cs" />
-    <Compile Include="Extensions\NpgsqlEntityServicesBuilderExtensions.cs" />
-    <Compile Include="Metadata\INpgsqlEntityTypeAnnotations.cs" />
+    <Compile Include="Extensions\NpgsqlEntityFrameworkServicesBuilderExtensions.cs" />
     <Compile Include="Metadata\INpgsqlPropertyAnnotations.cs" />
     <Compile Include="Metadata\NpgsqlAnnotationNames.cs" />
     <Compile Include="Metadata\NpgsqlIndexAnnotations.cs" />
@@ -120,17 +119,17 @@
     <Compile Include="Migrations\NpgsqlHistoryRepository.cs" />
     <Compile Include="Migrations\NpgsqlMigrationsAnnotationProvider.cs" />
     <Compile Include="Migrations\NpgsqlMigrationsSqlGenerator.cs" />
-    <Compile Include="NpgsqlCompositeMemberTranslator.cs" />
-    <Compile Include="NpgsqlCompositeMethodCallTranslator.cs" />
-    <Compile Include="NpgsqlConventionSetBuilder.cs" />
-    <Compile Include="NpgsqlDatabaseConnection.cs" />
-    <Compile Include="NpgsqlDatabaseCreator.cs" />
-    <Compile Include="NpgsqlDatabaseProviderServices.cs" />
-    <Compile Include="NpgsqlMetadataExtensions.cs" />
-    <Compile Include="NpgsqlModelSource.cs" />
-    <Compile Include="NpgsqlOptionsExtension.cs" />
-    <Compile Include="NpgsqlTypeMapper.cs" />
-    <Compile Include="NpgsqlUpdateSqlGenerator.cs" />
+    <Compile Include="Query\ExpressionTranslators\NpgsqlCompositeMemberTranslator.cs" />
+    <Compile Include="Query\ExpressionTranslators\NpgsqlCompositeMethodCallTranslator.cs" />
+    <Compile Include="Metadata\Conventions\Internal\NpgsqlConventionSetBuilder.cs" />
+    <Compile Include="Storage\NpgsqlDatabaseConnection.cs" />
+    <Compile Include="Storage\NpgsqlDatabaseCreator.cs" />
+    <Compile Include="Storage\NpgsqlDatabaseProviderServices.cs" />
+    <Compile Include="Extensions\NpgsqlMetadataExtensions.cs" />
+    <Compile Include="Infrastructure\NpgsqlModelSource.cs" />
+    <Compile Include="Infrastructure\NpgsqlOptionsExtension.cs" />
+    <Compile Include="Storage\NpgsqlTypeMapper.cs" />
+    <Compile Include="Update\NpgsqlUpdateSqlGenerator.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="..\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
@@ -156,11 +155,6 @@
     <Compile Include="Query\NpgsqlQueryCompilationContextFactory.cs" />
     <Compile Include="Query\Sql\NpgsqlQuerySqlGenerator.cs" />
     <Compile Include="Query\Sql\NpgsqlQuerySqlGeneratorFactory.cs" />
-    <Compile Include="Strings.Designer.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-      <DependentUpon>Strings.resx</DependentUpon>
-    </Compile>
     <Compile Include="Update\NpgsqlModificationCommandBatch.cs" />
     <Compile Include="Update\NpgsqlModificationCommandBatchFactory.cs" />
     <Compile Include="Utilities\AsyncEnumerableExtensions.cs" />
@@ -182,6 +176,7 @@
     <None Include="app.config" />
     <None Include="packages.config" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

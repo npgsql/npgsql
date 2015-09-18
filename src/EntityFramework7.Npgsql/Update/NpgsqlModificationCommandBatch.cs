@@ -4,15 +4,9 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
-using Microsoft.Data.Entity;
-using Microsoft.Data.Entity.Infrastructure;
-using Microsoft.Data.Entity.Storage;
-using Microsoft.Data.Entity.Update;
-using Microsoft.Data.Entity.Utilities;
-using Microsoft.Framework.Logging;
 using Npgsql;
 
-namespace EntityFramework7.Npgsql.Update
+namespace Microsoft.Data.Entity.Update
 {
     using RelationalStrings = Microsoft.Data.Entity.Relational.Internal.Strings;
 

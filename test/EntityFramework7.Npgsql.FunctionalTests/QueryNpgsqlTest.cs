@@ -15,19 +15,6 @@ namespace EntityFramework7.Npgsql.FunctionalTests
         public QueryNpgsqlTest(NorthwindQueryNpgsqlFixture fixture)
             : base(fixture) { }
 
-        #region Skipped tests
-
-        [Fact(Skip ="Test commented out in EF7 (SqlServer/Sqlite)")]
-        public override void Projection_when_arithmetic_expressions() {}
-
-        [Fact(Skip = "Test commented out in EF7 (SqlServer/Sqlite)")]
-        public override void Projection_when_arithmetic_mixed() {}
-
-        [Fact(Skip = "Test commented out in EF7 (SqlServer/Sqlite)")]
-        public override void Projection_when_arithmetic_mixed_subqueries() {}
-
-        #endregion
-
         #region Regular Expressions
 
         [Fact]

@@ -1,12 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using Microsoft.Data.Entity;
 using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Metadata;
-using EntityFramework7.Npgsql.Metadata;
-using Microsoft.Data.Entity.Migrations;
 
-namespace EntityFramework7.Npgsql.Migrations
+namespace Microsoft.Data.Entity.Migrations
 {
     public class NpgsqlMigrationsAnnotationProvider : MigrationsAnnotationProvider
     {

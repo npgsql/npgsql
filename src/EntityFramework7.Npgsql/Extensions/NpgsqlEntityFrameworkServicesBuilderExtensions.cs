@@ -1,25 +1,25 @@
 // Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using EntityFramework7.Npgsql;
-using EntityFramework7.Npgsql.Metadata;
-using EntityFramework7.Npgsql.Migrations;
-using EntityFramework7.Npgsql.Query;
-using EntityFramework7.Npgsql.Query.Sql;
-using EntityFramework7.Npgsql.Update;
-using EntityFramework7.Npgsql.ValueGeneration;
-using EntityFramework7.Npgsql.Query.ExpressionTranslators;
 using JetBrains.Annotations;
-using Microsoft.Data.Entity.Infrastructure;
-using Microsoft.Data.Entity.Storage;
-using Microsoft.Data.Entity.Utilities;
 using Microsoft.Framework.DependencyInjection.Extensions;
+using Microsoft.Data.Entity.Infrastructure;
+using Microsoft.Data.Entity.Metadata;
+using Microsoft.Data.Entity.Metadata.Conventions.Internal;
+using Microsoft.Data.Entity.Migrations;
+using Microsoft.Data.Entity.Query;
+using Microsoft.Data.Entity.Query.ExpressionTranslators;
+using Microsoft.Data.Entity.Query.Sql;
+using Microsoft.Data.Entity.Storage;
+using Microsoft.Data.Entity.Update;
+using Microsoft.Data.Entity.Utilities;
+using Microsoft.Data.Entity.ValueGeneration;
 
 // ReSharper disable once CheckNamespace
 
 namespace Microsoft.Framework.DependencyInjection
 {
-    public static class NpgsqlEntityServicesBuilderExtensions
+    public static class NpgsqlEntityFrameworkServicesBuilderExtensions
     {
         public static EntityFrameworkServicesBuilder AddNpgsql([NotNull] this EntityFrameworkServicesBuilder builder)
         {

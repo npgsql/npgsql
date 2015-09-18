@@ -1,15 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Linq.Expressions;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using EntityFramework7.Npgsql.Query.Sql;
 using JetBrains.Annotations;
+using Microsoft.Data.Entity.Query.Sql;
 using Microsoft.Data.Entity.Utilities;
 
-namespace EntityFramework7.Npgsql.Query.Expressions
+namespace Microsoft.Data.Entity.Query.Expressions
 {
     public class AtTimeZoneExpression : Expression
     {

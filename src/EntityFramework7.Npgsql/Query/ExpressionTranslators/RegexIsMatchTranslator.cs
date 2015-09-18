@@ -5,11 +5,10 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text.RegularExpressions;
-using EntityFramework7.Npgsql.Query.Expressions;
 using JetBrains.Annotations;
-using Microsoft.Data.Entity.Query.ExpressionTranslators;
+using Microsoft.Data.Entity.Query.Expressions;
 
-namespace EntityFramework7.Npgsql.Query.ExpressionTranslators
+namespace Microsoft.Data.Entity.Query.ExpressionTranslators
 {
     /// <summary>
     /// Translates Regex.IsMatch calls into PostgreSQL regex expressions for database-side processing.

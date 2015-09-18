@@ -4,13 +4,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
-using Microsoft.Data.Entity.Query;
 using Microsoft.Data.Entity.Query.ExpressionVisitors;
 using Microsoft.Data.Entity.Storage;
 using Microsoft.Data.Entity.Utilities;
 using Microsoft.Framework.Logging;
 
-namespace EntityFramework7.Npgsql.Query
+namespace Microsoft.Data.Entity.Query
 {
     public class NpgsqlQueryCompilationContext : RelationalQueryCompilationContext
     {

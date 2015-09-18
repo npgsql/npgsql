@@ -2,18 +2,16 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using EntityFramework7.Npgsql.Metadata;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Metadata;
-using Microsoft.Data.Entity.Migrations;
 using Microsoft.Data.Entity.Migrations.Operations;
+using Microsoft.Data.Entity.Storage;
+using Microsoft.Data.Entity.Update;
 using Microsoft.Data.Entity.Utilities;
 
-namespace EntityFramework7.Npgsql.Migrations
+namespace Microsoft.Data.Entity.Migrations
 {
     public class NpgsqlMigrationsSqlGenerator : MigrationsSqlGenerator
     {
@@ -29,7 +27,7 @@ namespace EntityFramework7.Npgsql.Migrations
             _typeMapper = typeMapper;
         }
 
-        protected override void Generate(MigrationOperation operation, IModel model, SqlBatchBuilder builder)
+        protected override void Generate(MigrationOperation operation, IModel model, RelationalCommandListBuilder builder)
         {
             Check.NotNull(operation, nameof(operation));
             Check.NotNull(builder, nameof(builder));
@@ -50,7 +48,7 @@ namespace EntityFramework7.Npgsql.Migrations
             }
         }
 
-        protected override void Generate(AlterColumnOperation operation, IModel model, SqlBatchBuilder builder)
+        protected override void Generate(AlterColumnOperation operation, IModel model, RelationalCommandListBuilder builder)
         {
             Check.NotNull(operation, nameof(operation));
             Check.NotNull(builder, nameof(builder));
@@ -64,8 +62,8 @@ namespace EntityFramework7.Npgsql.Migrations
             {
                 var property = FindProperty(model, operation.Schema, operation.Table, operation.Name);
                 type = property != null
-                    ? _typeMapper.MapPropertyType(property).DefaultTypeName
-                    : _typeMapper.GetDefaultMapping(operation.ClrType).DefaultTypeName;
+                    ? _typeMapper.GetMapping(property).DefaultTypeName
+                    : _typeMapper.GetMapping(operation.ClrType).DefaultTypeName;
             }
 
             var isSerial = false;
@@ -79,12 +77,12 @@ namespace EntityFramework7.Npgsql.Migrations
             builder.Append(alterBase)
                 .Append(" TYPE ")
                 .Append(type)
-                .EndBatch();
+                .AppendLine(Sql.BatchCommandSeparator);
 
             // NOT NULL
             builder.Append(alterBase)
                 .Append(operation.IsNullable ? " DROP NOT NULL" : " SET NOT NULL")
-                .EndBatch();
+                .AppendLine(Sql.BatchCommandSeparator);
 
             builder.Append(alterBase);
 
@@ -92,13 +90,13 @@ namespace EntityFramework7.Npgsql.Migrations
             {
                 builder.Append(" SET DEFAULT ")
                     .Append(Sql.GenerateLiteral((dynamic)operation.DefaultValue))
-                    .EndBatch();
+                    .AppendLine(Sql.BatchCommandSeparator);
             }
             else if (!string.IsNullOrWhiteSpace(operation.DefaultValueSql))
             {
                 builder.Append(" SET DEFAULT ")
                     .Append(operation.DefaultValueSql)
-                    .EndBatch();
+                    .AppendLine(Sql.BatchCommandSeparator);
             }
             else if (isSerial)
             {
@@ -129,7 +127,7 @@ namespace EntityFramework7.Npgsql.Migrations
             }
         }
 
-        protected override void Generate(CreateSequenceOperation operation, IModel model, SqlBatchBuilder builder)
+        protected override void Generate(CreateSequenceOperation operation, IModel model, RelationalCommandListBuilder builder)
         {
             Check.NotNull(operation, nameof(operation));
             Check.NotNull(builder, nameof(builder));
@@ -149,7 +147,7 @@ namespace EntityFramework7.Npgsql.Migrations
             SequenceOptions(operation, model, builder);
         }
 
-        protected override void Generate(RenameIndexOperation operation, IModel model, SqlBatchBuilder builder)
+        protected override void Generate(RenameIndexOperation operation, IModel model, RelationalCommandListBuilder builder)
         {
             Check.NotNull(operation, nameof(operation));
             Check.NotNull(builder, nameof(builder));
@@ -160,7 +158,7 @@ namespace EntityFramework7.Npgsql.Migrations
             }
         }
 
-        protected override void Generate(RenameSequenceOperation operation, IModel model, SqlBatchBuilder builder)
+        protected override void Generate(RenameSequenceOperation operation, IModel model, RelationalCommandListBuilder builder)
         {
             Check.NotNull(operation, nameof(operation));
             Check.NotNull(builder, nameof(builder));
@@ -186,7 +184,7 @@ namespace EntityFramework7.Npgsql.Migrations
             }
         }
 
-        protected override void Generate(RenameTableOperation operation, IModel model, SqlBatchBuilder builder)
+        protected override void Generate(RenameTableOperation operation, IModel model, RelationalCommandListBuilder builder)
         {
             Check.NotNull(operation, nameof(operation));
             Check.NotNull(builder, nameof(builder));
@@ -215,7 +213,7 @@ namespace EntityFramework7.Npgsql.Migrations
         protected override void Generate(
             [NotNull] CreateIndexOperation operation,
             [CanBeNull] IModel model,
-            [NotNull] SqlBatchBuilder builder)
+            [NotNull] RelationalCommandListBuilder builder)
         {
             Check.NotNull(operation, nameof(operation));
             Check.NotNull(builder, nameof(builder));
@@ -248,7 +246,7 @@ namespace EntityFramework7.Npgsql.Migrations
                 .Append(")");
         }
 
-        protected override void Generate(EnsureSchemaOperation operation, IModel model, SqlBatchBuilder builder)
+        protected override void Generate(EnsureSchemaOperation operation, IModel model, RelationalCommandListBuilder builder)
         {
             Check.NotNull(operation, nameof(operation));
             Check.NotNull(builder, nameof(builder));
@@ -261,12 +259,12 @@ namespace EntityFramework7.Npgsql.Migrations
                 .Append("    CREATE SCHEMA ").Append(operation.Name).AppendLine(";")
                 .AppendLine("  END IF; END")
                 .AppendLine("$$ LANGUAGE 'plpgsql';")
-                .EndBatch();
+                .AppendLine(Sql.BatchCommandSeparator);
 
-            builder.Append("SELECT pg_temp.__ef_ensure_schema()").EndBatch();
+            builder.Append("SELECT pg_temp.__ef_ensure_schema()").AppendLine(Sql.BatchCommandSeparator);
         }
 
-        public virtual void Generate(CreateDatabaseOperation operation, IModel model, SqlBatchBuilder builder)
+        public virtual void Generate(CreateDatabaseOperation operation, IModel model, RelationalCommandListBuilder builder)
         {
             Check.NotNull(operation, nameof(operation));
             Check.NotNull(builder, nameof(builder));
@@ -274,10 +272,10 @@ namespace EntityFramework7.Npgsql.Migrations
             builder
                 .Append("CREATE DATABASE ")
                 .Append(Sql.DelimitIdentifier(operation.Name))
-                .EndBatch();
+                .AppendLine(Sql.BatchCommandSeparator);
         }
 
-        public virtual void Generate(DropDatabaseOperation operation, IModel model, SqlBatchBuilder builder)
+        public virtual void Generate(DropDatabaseOperation operation, IModel model, RelationalCommandListBuilder builder)
         {
             Check.NotNull(operation, nameof(operation));
             Check.NotNull(builder, nameof(builder));
@@ -289,18 +287,18 @@ namespace EntityFramework7.Npgsql.Migrations
                 .Append("REVOKE CONNECT ON DATABASE ")
                 .Append(dbName)
                 .Append(" FROM PUBLIC")
-                .EndBatch()
+                .AppendLine(Sql.BatchCommandSeparator)
                 // TODO: For PG <= 9.1, the column name is prodpic, not pid (see http://stackoverflow.com/questions/5408156/how-to-drop-a-postgresql-database-if-there-are-active-connections-to-it)
                 .Append(
                     "SELECT pg_terminate_backend(pg_stat_activity.pid) FROM pg_stat_activity WHERE pg_stat_activity.datname = '")
                 .Append(operation.Name)
                 .Append("'")
-                .EndBatch()
+                .AppendLine(Sql.BatchCommandSeparator)
                 .Append("DROP DATABASE ")
                 .Append(dbName);
         }
 
-        protected override void Generate(DropIndexOperation operation, IModel model, SqlBatchBuilder builder)
+        protected override void Generate(DropIndexOperation operation, IModel model, RelationalCommandListBuilder builder)
         {
             Check.NotNull(operation, nameof(operation));
             Check.NotNull(builder, nameof(builder));
@@ -313,7 +311,7 @@ namespace EntityFramework7.Npgsql.Migrations
         protected override void Generate(
             [NotNull] RenameColumnOperation operation,
             [CanBeNull] IModel model,
-            [NotNull] SqlBatchBuilder builder)
+            [NotNull] RelationalCommandListBuilder builder)
         {
             Check.NotNull(operation, nameof(operation));
             Check.NotNull(builder, nameof(builder));
@@ -338,7 +336,7 @@ namespace EntityFramework7.Npgsql.Migrations
             string computedColumnSql,
             IAnnotatable annotatable,
             IModel model,
-            SqlBatchBuilder builder)
+            RelationalCommandListBuilder builder)
         {
             Check.NotEmpty(name, nameof(name));
             Check.NotNull(annotatable, nameof(annotatable));
@@ -349,8 +347,8 @@ namespace EntityFramework7.Npgsql.Migrations
             {
                 var property = FindProperty(model, schema, table, name);
                 type = property != null
-                    ? _typeMapper.MapPropertyType(property).DefaultTypeName
-                    : _typeMapper.GetDefaultMapping(clrType).DefaultTypeName;
+                    ? _typeMapper.GetMapping(property).DefaultTypeName
+                    : _typeMapper.GetMapping(clrType).DefaultTypeName;
             }
 
             // TODO: Maybe implement computed columns via functions?
@@ -395,7 +393,7 @@ namespace EntityFramework7.Npgsql.Migrations
             [NotNull] string name,
             [NotNull] string newName,
             [NotNull] string type,
-            [NotNull] SqlBatchBuilder builder)
+            [NotNull] RelationalCommandListBuilder builder)
         {
             Check.NotEmpty(name, nameof(name));
             Check.NotEmpty(newName, nameof(newName));
@@ -417,7 +415,7 @@ namespace EntityFramework7.Npgsql.Migrations
             [CanBeNull] string schema,
             [NotNull] string name,
             [NotNull] string type,
-            [NotNull] SqlBatchBuilder builder)
+            [NotNull] RelationalCommandListBuilder builder)
         {
             Check.NotEmpty(newSchema, nameof(newSchema));
             Check.NotEmpty(name, nameof(name));
@@ -433,7 +431,7 @@ namespace EntityFramework7.Npgsql.Migrations
                 .Append(Sql.DelimitIdentifier(newSchema));
         }
 
-        protected override void ForeignKeyAction(ReferentialAction referentialAction, SqlBatchBuilder builder)
+        protected override void ForeignKeyAction(ReferentialAction referentialAction, RelationalCommandListBuilder builder)
         {
             Check.NotNull(builder, nameof(builder));
 

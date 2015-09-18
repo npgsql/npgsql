@@ -7,11 +7,9 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using JetBrains.Annotations;
-using Microsoft.Data.Entity.Infrastructure;
-using Microsoft.Data.Entity.Update;
 using Microsoft.Data.Entity.Utilities;
 
-namespace EntityFramework7.Npgsql
+namespace Microsoft.Data.Entity.Update
 {
     public class NpgsqlUpdateSqlGenerator : UpdateSqlGenerator
     {

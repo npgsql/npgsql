@@ -3,18 +3,14 @@
 
 using System;
 using System.Text;
-using EntityFramework7.Npgsql;
-using EntityFramework7.Npgsql.Metadata;
-using EntityFramework7.Npgsql.Migrations;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity.Infrastructure;
-using Microsoft.Data.Entity.Internal;
-using Microsoft.Data.Entity.Migrations;
+using Microsoft.Data.Entity.Metadata;
 using Microsoft.Data.Entity.Storage;
 using Microsoft.Data.Entity.Update;
 using Microsoft.Data.Entity.Utilities;
 
-namespace EntityFramework7.Npgsql.Migrations
+namespace Microsoft.Data.Entity.Migrations
 {
     public class NpgsqlHistoryRepository : HistoryRepository
     {

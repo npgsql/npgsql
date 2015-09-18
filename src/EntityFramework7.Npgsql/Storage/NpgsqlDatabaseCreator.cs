@@ -5,17 +5,13 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
-using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Metadata;
 using Microsoft.Data.Entity.Migrations.Operations;
-using Microsoft.Data.Entity.Storage;
 using Microsoft.Data.Entity.Utilities;
 using Microsoft.Data.Entity.Migrations;
 using Npgsql;
-using EntityFramework7.Npgsql.Migrations;
-using Microsoft.Data.Entity.Storage.Commands;
 
-namespace EntityFramework7.Npgsql
+namespace Microsoft.Data.Entity.Storage
 {
     public class NpgsqlDatabaseCreator : RelationalDatabaseCreator
     {
@@ -58,10 +54,10 @@ namespace EntityFramework7.Npgsql
             }
         }
 
-        public override bool HasTables()
+        protected override bool HasTables()
             => (int)SqlStatementExecutor.ExecuteScalar(_connection, CreateHasTablesCommand()) != 0;
 
-        public override async Task<bool> HasTablesAsync(CancellationToken cancellationToken = default(CancellationToken))
+        protected override async Task<bool> HasTablesAsync(CancellationToken cancellationToken = default(CancellationToken))
             => (int)(await SqlStatementExecutor
                 .ExecuteScalarAsync(_connection, CreateHasTablesCommand(), cancellationToken)) != 0;
 

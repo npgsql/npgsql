@@ -1,7 +1,6 @@
 using JetBrains.Annotations;
 using Microsoft.Data.Entity.Metadata;
 using Microsoft.Data.Entity.Utilities;
-using EntityFramework7.Npgsql.Metadata;
 
 // ReSharper disable once CheckNamespace
 
@@ -25,7 +24,7 @@ namespace Microsoft.Data.Entity
             => new NpgsqlIndexAnnotations(Check.NotNull(index, nameof(index)));
 
         public static RelationalIndexAnnotations Npgsql([NotNull] this Index index)
-            => (RelationalIndexAnnotations)Npgsql((IIndex)index);
+            => Npgsql((IIndex)index);
 
         public static IRelationalKeyAnnotations Npgsql([NotNull] this IKey key)
             => new RelationalKeyAnnotations(Check.NotNull(key, nameof(key)), NpgsqlAnnotationNames.Prefix);

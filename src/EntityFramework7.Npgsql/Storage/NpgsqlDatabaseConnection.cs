@@ -3,14 +3,12 @@
 
 using System.Data.Common;
 using JetBrains.Annotations;
-using Microsoft.Data.Entity;
 using Microsoft.Data.Entity.Infrastructure;
-using Microsoft.Data.Entity.Storage;
 using Microsoft.Data.Entity.Utilities;
 using Microsoft.Framework.Logging;
 using Npgsql;
 
-namespace EntityFramework7.Npgsql
+namespace Microsoft.Data.Entity.Storage
 {
     public class NpgsqlDatabaseConnection : RelationalConnection
     {
