@@ -63,6 +63,8 @@
     <Compile Include="NpgsqlServices.cs" />
     <Compile Include="NpgsqlProviderManifest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Spatial\PostgisDataReader.cs" />
+    <Compile Include="Spatial\PostgisServices.cs" />
     <Compile Include="SqlGenerators\PendingProjectsNode.cs" />
     <Compile Include="SqlGenerators\SqlBaseGenerator.cs" />
     <Compile Include="SqlGenerators\SqlDeleteGenerator.cs" />
