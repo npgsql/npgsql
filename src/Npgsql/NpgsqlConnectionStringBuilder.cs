@@ -26,10 +26,12 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data.Common;
 using System.Diagnostics.Contracts;
-using System.DirectoryServices;
 using System.Linq;
 using System.Reflection;
+#if !DNXCORE50
+using System.DirectoryServices;
 using System.Security.Principal;
+#endif
 
 namespace Npgsql
 {
@@ -39,7 +41,7 @@ namespace Npgsql
     /// </summary>
     public sealed class NpgsqlConnectionStringBuilder : DbConnectionStringBuilder
     {
-        #region Fields
+#region Fields
 
         /// <summary>
         /// Makes all valid keywords for a property to that property (e.g. User Name -> Username, UserId -> Username...)
@@ -59,20 +61,22 @@ namespace Npgsql
 
         static readonly string[] Empty = new string[0];
 
-        #endregion
+#endregion
 
-        #region Constructors
+#region Constructors
 
         /// <summary>
         /// Initializes a new instance of the NpgsqlConnectionStringBuilder class.
         /// </summary>
         public NpgsqlConnectionStringBuilder() { Init(); }
 
+#if !DNXCORE50
         /// <summary>
         /// Initializes a new instance of the NpgsqlConnectionStringBuilder class, optionally using ODBC rules for quoting values.
         /// </summary>
         /// <param name="useOdbcRules">true to use {} to delimit fields; false to use quotation marks.</param>
         public NpgsqlConnectionStringBuilder(bool useOdbcRules) : base(useOdbcRules) { Init(); }
+#endif
 
         /// <summary>
         /// Initializes a new instance of the NpgsqlConnectionStringBuilder class and sets its <see cref="DbConnectionStringBuilder.ConnectionString"/>.
@@ -91,9 +95,9 @@ namespace Npgsql
             }
         }
 
-        #endregion
+#endregion
 
-        #region Static initialization
+#region Static initialization
 
         static NpgsqlConnectionStringBuilder()
         {
@@ -129,13 +133,13 @@ namespace Npgsql
                 p => p,
                 p => p.GetCustomAttribute<DefaultValueAttribute>() != null
                     ? p.GetCustomAttribute<DefaultValueAttribute>().Value
-                    : (p.PropertyType.IsValueType ? Activator.CreateInstance(p.PropertyType) : null)
+                    : (p.PropertyType.GetTypeInfo().IsValueType ? Activator.CreateInstance(p.PropertyType) : null)
             );
         }
 
-        #endregion
+#endregion
 
-        #region Non-static property handling
+#region Non-static property handling
 
         /// <summary>
         /// Gets or sets the value associated with the specified key.
@@ -162,10 +166,10 @@ namespace Npgsql
                 var p = GetProperty(keyword);
                 try {
                     object convertedValue;
-                    if (p.PropertyType.IsEnum && value is string) {
+                    if (p.PropertyType.GetTypeInfo().IsEnum && value is string) {
                         convertedValue = Enum.Parse(p.PropertyType, (string)value);
                     } else {
-                        convertedValue = Convert.ChangeType(value, Type.GetTypeCode(p.PropertyType));
+                        convertedValue = Convert.ChangeType(value, p.PropertyType);
                     }
                     p.SetValue(this, convertedValue);
                 } catch (Exception e) {
@@ -257,18 +261,18 @@ namespace Npgsql
             }
         }
 
-        #endregion
+#endregion
 
-        #region Properties - Connection
+#region Properties - Connection
 
         /// <summary>
         /// The hostname or IP address of the PostgreSQL server to connect to.
         /// </summary>
 #if !DNXCORE50
         [Category("Connection")]
-        [DisplayName("Host")]
         [Description("The hostname or IP address of the PostgreSQL server to connect to.")]
 #endif
+        [DisplayName("Host")]
         [NpgsqlConnectionStringProperty("Server")]
         public string Host
         {
@@ -287,11 +291,11 @@ namespace Npgsql
         /// </summary>
 #if !DNXCORE50
         [Category("Connection")]
-        [DisplayName("Port")]
         [Description("The TCP port of the PostgreSQL server.")]
-        [DefaultValue(NpgsqlConnection.DefaultPort)]
 #endif
+        [DisplayName("Port")]
         [NpgsqlConnectionStringProperty]
+        [DefaultValue(NpgsqlConnection.DefaultPort)]
         public int Port
         {
             get { return _port; }
@@ -313,9 +317,9 @@ namespace Npgsql
         /// </summary>
 #if !DNXCORE50
         [Category("Connection")]
-        [DisplayName("Database")]
         [Description("The PostgreSQL database to connect to.")]
 #endif
+        [DisplayName("Database")]
         [NpgsqlConnectionStringProperty("DB")]
         public string Database
         {
@@ -334,9 +338,9 @@ namespace Npgsql
         /// </summary>
 #if !DNXCORE50
         [Category("Connection")]
-        [DisplayName("Username")]
         [Description("The username to connect with. Not required if using IntegratedSecurity.")]
 #endif
+        [DisplayName("Username")]
         [NpgsqlConnectionStringProperty("User Name", "UserId", "User Id", "UID")]
         public string Username
         {
@@ -365,10 +369,10 @@ namespace Npgsql
         /// </summary>
 #if !DNXCORE50
         [Category("Connection")]
-        [DisplayName("Password")]
         [Description("The password to connect with. Not required if using IntegratedSecurity.")]
         [PasswordPropertyText(true)]
 #endif
+        [DisplayName("Password")]
         [NpgsqlConnectionStringProperty("PSW", "PWD")]
         public string Password
         {
@@ -387,9 +391,9 @@ namespace Npgsql
         /// </summary>
 #if !DNXCORE50
         [Category("Connection")]
-        [DisplayName("Application Name")]
         [Description("The optional application name parameter to be sent to the backend during connection initiation")]
 #endif
+        [DisplayName("Application Name")]
         [NpgsqlConnectionStringProperty]
         public string ApplicationName
         {
@@ -408,9 +412,9 @@ namespace Npgsql
         /// </summary>
 #if !DNXCORE50
         [Category("Connection")]
-        [DisplayName("Enlist")]
         [Description("Whether to enlist in an ambient TransactionScope.")]
 #endif
+        [DisplayName("Enlist")]
         [NpgsqlConnectionStringProperty]
         public bool Enlist
         {
@@ -429,9 +433,9 @@ namespace Npgsql
         /// </summary>
 #if !DNXCORE50
         [Category("Connection")]
-        [DisplayName("Search Path")]
         [Description("Gets or sets the schema search path.")]
 #endif
+        [DisplayName("Search Path")]
         [NpgsqlConnectionStringProperty]
         public string SearchPath
         {
@@ -445,18 +449,18 @@ namespace Npgsql
         }
         string _searchpath;
 
-        #endregion
+#endregion
 
-        #region Properties - Security
+#region Properties - Security
 
         /// <summary>
         /// Controls whether SSL is required, disabled or preferred, depending on server support.
         /// </summary>
 #if !DNXCORE50
         [Category("Security")]
-        [DisplayName("SSL Mode")]
         [Description("Controls whether SSL is required, disabled or preferred, depending on server support.")]
 #endif
+        [DisplayName("SSL Mode")]
         [NpgsqlConnectionStringProperty]
         public SslMode SslMode
         {
@@ -475,9 +479,9 @@ namespace Npgsql
         /// </summary>
 #if !DNXCORE50
         [Category("Security")]
-        [DisplayName("Trust Server Certificate")]
         [Description("Whether to trust the server certificate without validating it.")]
 #endif
+        [DisplayName("Trust Server Certificate")]
         [NpgsqlConnectionStringProperty]
         public bool TrustServerCertificate
         {
@@ -496,9 +500,9 @@ namespace Npgsql
         /// </summary>
 #if !DNXCORE50
         [Category("Security")]
-        [DisplayName("Use SSL Stream")]
         [Description("Npgsql uses its own internal implementation of TLS/SSL. Turn this on to use .NET SslStream instead.")]
 #endif
+        [DisplayName("Use SSL Stream")]
         [NpgsqlConnectionStringProperty]
         public bool UseSslStream
         {
@@ -517,9 +521,9 @@ namespace Npgsql
         /// </summary>
 #if !DNXCORE50
         [Category("Security")]
-        [DisplayName("Integrated Security")]
         [Description("Whether to use Windows integrated security to log in.")]
 #endif
+        [DisplayName("Integrated Security")]
         [NpgsqlConnectionStringProperty]
         public bool IntegratedSecurity
         {
@@ -542,9 +546,9 @@ namespace Npgsql
         /// </summary>
 #if !DNXCORE50
         [Category("Security")]
-        [DisplayName("Kerberos Service Name")]
         [Description("The Kerberos service name to be used for authentication.")]
 #endif
+        [DisplayName("Kerberos Service Name")]
         [NpgsqlConnectionStringProperty("Krbsrvname")]
         public string KerberosServiceName
         {
@@ -563,9 +567,9 @@ namespace Npgsql
         /// </summary>
 #if !DNXCORE50
         [Category("Security")]
-        [DisplayName("Include Realm")]
         [Description("The Kerberos realm to be used for authentication.")]
 #endif
+        [DisplayName("Include Realm")]
         [NpgsqlConnectionStringProperty]
         public bool IncludeRealm
         {
@@ -584,9 +588,9 @@ namespace Npgsql
         /// </summary>
 #if !DNXCORE50
         [Category("Security")]
-        [DisplayName("Persist Security Info")]
         [Description("Gets or sets a Boolean value that indicates if security-sensitive information, such as the password, is not returned as part of the connection if the connection is open or has ever been in an open state.")]
 #endif
+        [DisplayName("Persist Security Info")]
         [NpgsqlConnectionStringProperty]
         public bool PersistSecurityInfo
         {
@@ -600,20 +604,20 @@ namespace Npgsql
         }
         bool _persistSecurityInfo;
 
-        #endregion
+#endregion
 
-        #region Properties - Pooling
+#region Properties - Pooling
 
         /// <summary>
         /// Whether connection pooling should be used.
         /// </summary>
 #if !DNXCORE50
         [Category("Pooling")]
-        [DisplayName("Pooling")]
         [Description("Whether connection pooling should be used.")]
-        [DefaultValue(true)]
 #endif
+        [DisplayName("Pooling")]
         [NpgsqlConnectionStringProperty]
+        [DefaultValue(true)]
         public bool Pooling
         {
             get { return _pooling; }
@@ -631,11 +635,11 @@ namespace Npgsql
         /// </summary>
 #if !DNXCORE50
         [Category("Pooling")]
-        [DisplayName("Minimum Pool Size")]
         [Description("The minimum connection pool size.")]
-        [DefaultValue(1)]
 #endif
+        [DisplayName("Minimum Pool Size")]
         [NpgsqlConnectionStringProperty]
+        [DefaultValue(1)]
         public int MinPoolSize
         {
             get { return _minPoolSize; }
@@ -657,11 +661,11 @@ namespace Npgsql
         /// </summary>
 #if !DNXCORE50
         [Category("Pooling")]
-        [DisplayName("Maximum Pool Size")]
         [Description("The maximum connection pool size.")]
-        [DefaultValue(20)]
 #endif
+        [DisplayName("Maximum Pool Size")]
         [NpgsqlConnectionStringProperty]
+        [DefaultValue(20)]
         public int MaxPoolSize
         {
             get { return _maxPoolSize; }
@@ -691,11 +695,11 @@ namespace Npgsql
         /// <value>The time (in seconds) to wait. The default value is 15 seconds.</value>
 #if !DNXCORE50
         [Category("Pooling")]
-        [DisplayName("Connection Lifetime")]
         [Description("The time to wait before closing unused connections in the pool if the count of all connections exeeds MinPoolSize.")]
-        [DefaultValue(15)]
 #endif
+        [DisplayName("Connection Lifetime")]
         [NpgsqlConnectionStringProperty]
+        [DefaultValue(15)]
         public int ConnectionLifeTime
         {
             get { return _connectionLifeTime; }
@@ -708,9 +712,9 @@ namespace Npgsql
         }
         int _connectionLifeTime;
 
-        #endregion
+#endregion
 
-        #region Properties - Timeouts
+#region Properties - Timeouts
 
         /// <summary>
         /// The time to wait (in seconds) while trying to establish a connection before terminating the attempt and generating an error.
@@ -718,11 +722,11 @@ namespace Npgsql
         /// </summary>
 #if !DNXCORE50
         [Category("Timeouts")]
-        [DisplayName("Timeout")]
         [Description("The time to wait (in seconds) while trying to establish a connection before terminating the attempt and generating an error.")]
-        [DefaultValue(15)]
 #endif
+        [DisplayName("Timeout")]
         [NpgsqlConnectionStringProperty]
+        [DefaultValue(15)]
         public int Timeout
         {
             get { return _timeout; }
@@ -745,11 +749,11 @@ namespace Npgsql
         /// </summary>
 #if !DNXCORE50
         [Category("Timeouts")]
-        [DisplayName("Command Timeout")]
         [Description("The time to wait (in seconds) while trying to execute a command before terminating the attempt and generating an error. Set to zero for infinity.")]
-        [DefaultValue(NpgsqlCommand.DefaultTimeout)]
 #endif
+        [DisplayName("Command Timeout")]
         [NpgsqlConnectionStringProperty]
+        [DefaultValue(NpgsqlCommand.DefaultTimeout)]
         public int CommandTimeout
         {
             get { return _commandTimeout; }
@@ -771,11 +775,11 @@ namespace Npgsql
         /// </summary>
 #if !DNXCORE50
         [Category("Timeouts")]
-        [DisplayName("Internal Command Timeout")]
         [Description("The time to wait (in seconds) while trying to execute a an internal command before terminating the attempt and generating an error. -1 uses CommandTimeout, 0 means no timeout.")]
-        [DefaultValue(-1)]
 #endif
+        [DisplayName("Internal Command Timeout")]
         [NpgsqlConnectionStringProperty]
+        [DefaultValue(-1)]
         public int InternalCommandTimeout
         {
             get { return _internalCommandTimeout; }
@@ -798,11 +802,11 @@ namespace Npgsql
         /// </summary>
 #if !DNXCORE50
         [Category("Timeouts")]
-        [DisplayName("Backend Timeouts")]
         [Description("Whether to have the backend enforce CommandTimeout and InternalCommandTimeout via the statement_timeout variable.")]
-        [DefaultValue(true)]
 #endif
+        [DisplayName("Backend Timeouts")]
         [NpgsqlConnectionStringProperty]
+        [DefaultValue(true)]
         public bool BackendTimeouts
         {
             get { return _backendTimeouts; }
@@ -815,9 +819,9 @@ namespace Npgsql
         }
         bool _backendTimeouts;
 
-        #endregion
+#endregion
 
-        #region Properties - Entity Framework
+#region Properties - Entity Framework
 
         /// <summary>
         /// The database template to specify when creating a database in Entity Framework. If not specified,
@@ -828,9 +832,9 @@ namespace Npgsql
         /// </remarks>
 #if !DNXCORE50
         [Category("Entity Framework")]
-        [DisplayName("EF Template Database")]
         [Description("The database template to specify when creating a database in Entity Framework. If not specified, PostgreSQL defaults to \"template1\".")]
 #endif
+        [DisplayName("EF Template Database")]
         [NpgsqlConnectionStringProperty]
         public string EntityTemplateDatabase
         {
@@ -844,18 +848,18 @@ namespace Npgsql
         }
         string _entityTemplateDatabase;
 
-        #endregion
+#endregion
 
-        #region Properties - Advanced
+#region Properties - Advanced
 
         /// <summary>
         /// Whether to process messages that arrive between command activity.
         /// </summary>
 #if !DNXCORE50
         [Category("Advanced")]
-        [DisplayName("Continuous Processing")]
         [Description("Whether to process messages that arrive between command activity.")]
 #endif
+        [DisplayName("Continuous Processing")]
         [NpgsqlConnectionStringProperty("SyncNotification")]
         public bool ContinuousProcessing
         {
@@ -875,9 +879,9 @@ namespace Npgsql
         /// </summary>
 #if !DNXCORE50
         [Category("Advanced")]
-        [DisplayName("Keepalive")]
         [Description("The number of seconds of connection inactivity before Npgsql sends a keepalive query.")]
 #endif
+        [DisplayName("Keepalive")]
         [NpgsqlConnectionStringProperty]
         public int KeepAlive
         {
@@ -900,11 +904,11 @@ namespace Npgsql
         /// </summary>
 #if !DNXCORE50
         [Category("Advanced")]
-        [DisplayName("Buffer Size")]
         [Description("Determines the size of the internal buffer Npgsql uses when reading or writing. Increasing may improve performance if transferring large values from the database.")]
-        [DefaultValue(NpgsqlBuffer.DefaultBufferSize)]
 #endif
+        [DisplayName("Buffer Size")]
         [NpgsqlConnectionStringProperty]
+        [DefaultValue(NpgsqlBuffer.DefaultBufferSize)]
         public int BufferSize
         {
             get { return _bufferSize; }
@@ -917,18 +921,18 @@ namespace Npgsql
         }
         int _bufferSize;
 
-        #endregion
+#endregion
 
-        #region Properties - Compatibility
+#region Properties - Compatibility
 
         /// <summary>
         /// A compatibility mode for special PostgreSQL server types.
         /// </summary>
 #if !DNXCORE50
         [Category("Compatibility")]
-        [DisplayName("Server Compatibility Mode")]
         [Description("A compatibility mode for special PostgreSQL server types.")]
 #endif
+        [DisplayName("Server Compatibility Mode")]
         [NpgsqlConnectionStringProperty]
         public ServerCompatibilityMode ServerCompatibilityMode
         {
@@ -947,9 +951,9 @@ namespace Npgsql
         /// </summary>
 #if !DNXCORE50
         [Category("Compatibility")]
-        [DisplayName("Convert Infinity DateTime")]
         [Description("Makes MaxValue and MinValue timestamps and dates readable as infinity and negative infinity.")]
 #endif
+        [DisplayName("Convert Infinity DateTime")]
         [NpgsqlConnectionStringProperty]
         public bool ConvertInfinityDateTime
         {
@@ -963,18 +967,18 @@ namespace Npgsql
         }
         bool _convertInfinityDateTime;
 
-        #endregion
+#endregion
 
-        #region Properties - Obsolete
+#region Properties - Obsolete
 
         /// <summary>
         /// Obsolete, see https://github.com/npgsql/Npgsql/wiki/PreloadReader-Removal
         /// </summary>
 #if !DNXCORE50
         [Category("Obsolete")]
-        [DisplayName("Preload Reader")]
         [Description("Obsolete, see https://github.com/npgsql/Npgsql/wiki/PreloadReader-Removal")]
 #endif
+        [DisplayName("Preload Reader")]
         [NpgsqlConnectionStringProperty]
         [Obsolete]
         public bool PreloadReader
@@ -988,9 +992,9 @@ namespace Npgsql
         /// </summary>
 #if !DNXCORE50
         [Category("Obsolete")]
-        [DisplayName("Use Extended Types")]
         [Description("Obsolete, see https://github.com/npgsql/Npgsql/wiki/UseExtendedTypes-Removal")]
 #endif
+        [DisplayName("Use Extended Types")]
         [NpgsqlConnectionStringProperty]
         [Obsolete]
         public bool UseExtendedTypes
@@ -999,9 +1003,9 @@ namespace Npgsql
             set { throw new NotSupportedException("The UseExtendedTypes parameter is no longer supported. Please see https://github.com/npgsql/Npgsql/wiki/UseExtendedTypes-Removal"); }
         }
 
-        #endregion
+#endregion
 
-        #region Integrated security support
+#region Integrated security support
 
         /// <summary>
         /// No integrated security if we're on mono and .NET 4.5 because of ClaimsIdentity,
@@ -1014,7 +1018,6 @@ namespace Npgsql
         }
 
 #if !DNXCORE50
-
         class CachedUpn
         {
             public string Upn;
@@ -1105,21 +1108,20 @@ namespace Npgsql
                 return GetWindowsIdentityUserName();
             }
         }
-
 #endif
 
-        #endregion
+#endregion
 
-        #region Misc
+#region Misc
 
         internal NpgsqlConnectionStringBuilder Clone()
         {
             return new NpgsqlConnectionStringBuilder(ConnectionString);
         }
 
-        #endregion
+#endregion
 
-        #region Attributes
+#region Attributes
 
         [AttributeUsage(AttributeTargets.Property)]
         class NpgsqlConnectionStringPropertyAttribute : Attribute
@@ -1137,10 +1139,22 @@ namespace Npgsql
             }
         }
 
-        #endregion
+#if DNXCORE50
+        [AttributeUsage(AttributeTargets.Property)]
+        class DisplayNameAttribute : Attribute
+        {
+            internal string DisplayName { get; private set; }
+
+            internal DisplayNameAttribute(string displayName)
+            {
+                DisplayName = displayName;
+            }
+        }
+#endif
+#endregion
     }
 
-    #region Enums
+#region Enums
 
     /// <summary>
     /// An option specified in the connection string that activates special compatibility features.
@@ -1176,5 +1190,5 @@ namespace Npgsql
         Require,
     }
 
-    #endregion
+#endregion
 }

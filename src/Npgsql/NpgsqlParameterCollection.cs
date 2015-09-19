@@ -26,6 +26,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data.Common;
+using System.Globalization;
 using NpgsqlTypes;
 
 namespace Npgsql
@@ -365,7 +366,7 @@ namespace Npgsql
                 // Case sensitive lookup failed, generate a case insensitive lookup
                 if (this.lookupIgnoreCase == null)
                 {
-                    this.lookupIgnoreCase = new Dictionary<string, int>(StringComparer.InvariantCultureIgnoreCase);
+                    this.lookupIgnoreCase = new Dictionary<string, int>(PGUtil.InvariantCaseIgnoringStringComparer);
                     for (scanIndex = 0 ; scanIndex < this.InternalList.Count ; scanIndex++)
                     {
                         var item = this.InternalList[scanIndex];
@@ -394,8 +395,8 @@ namespace Npgsql
             for (scanIndex = 0 ; scanIndex < this.InternalList.Count ; scanIndex++)
             {
                 var item = this.InternalList[scanIndex];
-
-                if (string.Compare(parameterName, item.CleanName, StringComparison.InvariantCultureIgnoreCase) == 0)
+                var comparer = PGUtil.InvariantCaseIgnoringStringComparer;
+                if (comparer.Compare(parameterName, item.CleanName) == 0)
                 {
                     retIndex = scanIndex;
 
@@ -419,9 +420,9 @@ namespace Npgsql
             return retIndex;
         }
 
-        #endregion
+#endregion
 
-        #region IList Member
+#region IList Member
 
 #if !DNXCORE50
         /// <summary>
@@ -568,9 +569,9 @@ namespace Npgsql
         public override bool IsFixedSize { get { return false; } }
 #endif
 
-        #endregion
+#endregion
 
-        #region ICollection Member
+#region ICollection Member
 
 #if !DNXCORE50
         /// <summary>
@@ -605,9 +606,9 @@ namespace Npgsql
         /// </summary>
         public override object SyncRoot { get { return (InternalList as ICollection).SyncRoot; } }
 
-        #endregion
+#endregion
 
-        #region IEnumerable Member
+#region IEnumerable Member
 
         IEnumerator<NpgsqlParameter> IEnumerable<NpgsqlParameter>.GetEnumerator()
         {
@@ -623,7 +624,7 @@ namespace Npgsql
             return InternalList.GetEnumerator();
         }
 
-        #endregion
+#endregion
 
         /// <summary>
         /// Add an Array of parameters to the collection.

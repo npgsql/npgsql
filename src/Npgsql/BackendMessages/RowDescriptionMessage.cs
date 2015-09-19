@@ -133,7 +133,11 @@ namespace Npgsql.BackendMessages
             }
             public int GetHashCode(string obj)
             {
+#if NET452
                 return CompareInfo.GetSortKey(obj, CompareOptions.IgnoreWidth).GetHashCode();
+#else
+                return CompareInfo.GetHashCode(obj, CompareOptions.IgnoreWidth);
+#endif
             }
         }
 
@@ -147,7 +151,11 @@ namespace Npgsql.BackendMessages
             }
             public int GetHashCode(string obj)
             {
+#if NET452
                 return CompareInfo.GetSortKey(obj, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase).GetHashCode();
+#else
+                return CompareInfo.GetHashCode(obj, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase);
+#endif
             }
         }
 

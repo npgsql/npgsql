@@ -25,6 +25,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
+using System.Globalization;
 using System.IO;
 using System.Net;
 using System.Runtime.CompilerServices;
@@ -112,6 +113,19 @@ namespace Npgsql
         }
 
         internal static Task CompletedTask = TaskFromResult(0);
+
+        internal static StringComparer InvariantCaseIgnoringStringComparer
+        {
+            get
+            {
+                // Note: not assuming string comparers are threadsafe, although they probably are...
+#if DNXCORE50
+                return CultureInfo.InvariantCulture.CompareInfo.GetStringComparer(CompareOptions.IgnoreCase);
+#else
+                return StringComparer.InvariantCultureIgnoreCase;
+#endif
+            }
+        }
 
         /// <summary>
         /// Throws an exception with the given string and also invokes a contract failure, allowing the static checker

@@ -23,12 +23,16 @@
 
 using System;
 using System.Diagnostics.Contracts;
-using System.Runtime.Serialization;
 using Npgsql.Logging;
+#if !DNXCORE50
+using System.Runtime.Serialization;
+#endif
 
 namespace Npgsql.BackendMessages
 {
+#if !DNXCORE50
     [Serializable]
+#endif
     class ErrorOrNoticeMessage
     {
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();

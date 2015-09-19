@@ -51,7 +51,7 @@ namespace Npgsql
     [System.Drawing.ToolboxBitmapAttribute(typeof(NpgsqlConnection))]
 #endif
 #if DNXCORE50
-    public sealed class NpgsqlConnection : DbConnection
+    public sealed partial class NpgsqlConnection : DbConnection
 #else
     [System.ComponentModel.DesignerCategory("")]
     public sealed partial class NpgsqlConnection : DbConnection, ICloneable
@@ -1295,7 +1295,7 @@ namespace Npgsql
 
         #endregion State checks
 
-        #region Schema operations
+#region Schema operations
 #if !DNXCORE50
         /// <summary>
         /// Returns the supported collections
@@ -1368,15 +1368,17 @@ namespace Npgsql
         }
 
 #endif
-        #endregion Schema operations
+#endregion Schema operations
 
-        #region Misc
+#region Misc
 
+#if !DNXCORE50
         object ICloneable.Clone()
         {
             CheckNotDisposed();
             return new NpgsqlConnection(ConnectionString) { Password = Password };
         }
+#endif
 
         /// <summary>
         /// This method changes the current database by disconnecting from the actual
@@ -1440,10 +1442,10 @@ namespace Npgsql
             TypeHandlerRegistry.Setup(Connector, new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout)));
         }
 
-        #endregion Misc
+#endregion Misc
     }
 
-    #region Delegates
+#region Delegates
 
     /// <summary>
     /// Represents the method that handles the <see cref="NpgsqlConnection.Notification">Notice</see> events.
@@ -1465,5 +1467,5 @@ namespace Npgsql
     /// <param name="certificates">A <see cref="System.Security.Cryptography.X509Certificates.X509CertificateCollection">X509CertificateCollection</see> to be filled with one or more client certificates.</param>
     public delegate void ProvideClientCertificatesCallback(X509CertificateCollection certificates);
 
-    #endregion
+#endregion
 }

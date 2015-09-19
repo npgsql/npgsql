@@ -6,8 +6,8 @@
   </PropertyGroup>
   <Import Project="$(VSToolsPath)\DNX\Microsoft.DNX.Props" Condition="'$(VSToolsPath)' != ''" />
   <PropertyGroup Label="Globals">
-    <ProjectGuid>f33996a5-aab6-4ec0-a865-e80ad16f3163</ProjectGuid>
-    <RootNamespace>EntityFramework7.Npgsql.FunctionalTests</RootNamespace>
+    <ProjectGuid>0f64b74c-8869-4352-9af5-a4bf0927bcf1</ProjectGuid>
+    <RootNamespace>EntityFramework7.Npgsql.Tests</RootNamespace>
     <BaseIntermediateOutputPath Condition="'$(BaseIntermediateOutputPath)'=='' ">..\..\artifacts\obj\$(MSBuildProjectName)</BaseIntermediateOutputPath>
     <OutputPath Condition="'$(OutputPath)'=='' ">..\..\artifacts\bin\$(MSBuildProjectName)\</OutputPath>
   </PropertyGroup>

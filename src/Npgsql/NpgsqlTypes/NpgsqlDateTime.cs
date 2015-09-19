@@ -230,7 +230,7 @@ namespace NpgsqlTypes
                 if (_date.DaysSinceEra >= 1 && _date.DaysSinceEra <= MaxDateTimeDay - 1)
                 {
                     // Day between 0001-01-02 and 9999-12-30, so we can use DateTime and it will always succeed
-                    return new NpgsqlDateTime(TimeZoneInfo.ConvertTimeFromUtc(new DateTime(this.DateTime.Ticks, DateTimeKind.Utc), TimeZoneInfo.Local));
+                    return new NpgsqlDateTime(TimeZoneInfo.ConvertTime(new DateTime(DateTime.Ticks, DateTimeKind.Utc), TimeZoneInfo.Local));
                 }
                 // Else there are no DST rules available in the system for outside the DateTime range, so just use the base offset
                 return new NpgsqlDateTime(Add(TimeZoneInfo.Local.BaseUtcOffset).Ticks, DateTimeKind.Local);

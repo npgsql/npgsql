@@ -33,6 +33,7 @@ using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
+using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
@@ -537,7 +538,7 @@ namespace Npgsql
                         if (!UseSslStream)
                         {
 #if DNXCORE50
-                            throw new NotSupportedException("TLS implementation not yet supported with .NET Core");
+                            throw new NotSupportedException("TLS implementation not yet supported with .NET Core, specify UseSslStream=true for now");
 #else
                             var sslStream = new TlsClientStream.TlsClientStream(_stream);
                             sslStream.PerformInitialHandshake(Host, clientCertificates, certificateValidationCallback, false);
@@ -547,7 +548,7 @@ namespace Npgsql
                         else
                         {
                             var sslStream = new SslStream(_stream, false, certificateValidationCallback);
-                            sslStream.AuthenticateAsClient(Host, clientCertificates, System.Security.Authentication.SslProtocols.Default, false);
+                            sslStream.AuthenticateAsClient(Host, clientCertificates, SslProtocols.None, false);
                             _stream = sslStream;
                         }
                         timeout.Check();
@@ -588,9 +589,14 @@ namespace Npgsql
 
         void Connect(NpgsqlTimeout timeout)
         {
+#if DNXCORE50
+            // .NET Core doesn't appear to have sync DNS methods (yet?)
+            var ips = Dns.GetHostAddressesAsync(Host).Result;
+#else
             // Note that there aren't any timeoutable DNS methods, and we want to use sync-only
             // methods (not to rely on any TP threads etc.)
             var ips = Dns.GetHostAddresses(Host);
+#endif
             timeout.Check();
 
             // Give each IP an equal share of the remaining time
@@ -629,7 +635,7 @@ namespace Npgsql
                     {
                         Log.Warn(string.Format("Timeout after {0} seconds when connecting to {1}",
                                  new TimeSpan(perIpTimeout * 10).TotalSeconds, ips[i]));
-                        try { socket.Close(); }
+                        try { socket.Dispose(); }
                         catch
                         {
                             // ignored
@@ -647,7 +653,7 @@ namespace Npgsql
                 catch (TimeoutException) { throw; }
                 catch
                 {
-                    try { socket.Close(); }
+                    try { socket.Dispose(); }
                     catch
                     {
                         // ignored
@@ -688,7 +694,7 @@ namespace Npgsql
                     {
 #pragma warning disable 4014
                         // ReSharper disable once MethodSupportsCancellation
-                        connectTask.ContinueWith(t => socket.Close());
+                        connectTask.ContinueWith(t => socket.Dispose());
 #pragma warning restore 4014
 
                         if (timeout.HasExpired)
@@ -713,7 +719,7 @@ namespace Npgsql
                 catch (OperationCanceledException) { throw; }
                 catch
                 {
-                    try { socket.Close(); }
+                    try { socket.Dispose(); }
                     catch
                     {
                         // ignored
@@ -827,9 +833,9 @@ namespace Npgsql
             }
         }
 
-        #endregion
+#endregion
 
-        #region Frontend message processing
+#region Frontend message processing
 
         internal void AddMessage(FrontendMessage msg)
         {
@@ -973,9 +979,9 @@ namespace Npgsql
             throw PGUtil.ThrowIfReached();
         }
 
-        #endregion
+#endregion
 
-        #region Backend message processing
+#region Backend message processing
 
         [RewriteAsync]
         internal IBackendMessage ReadSingleMessage(DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential, bool returnNullForAsyncMessage = false)
@@ -1311,9 +1317,9 @@ namespace Npgsql
             return asExpected;
         }
 
-        #endregion Backend message processing
+#endregion Backend message processing
 
-        #region Transactions
+#region Transactions
 
         internal bool InTransaction
         {
@@ -1366,9 +1372,9 @@ namespace Npgsql
             TransactionStatus = TransactionStatus.Idle;
         }
 
-        #endregion
+#endregion
 
-        #region Notifications
+#region Notifications
 
         /// <summary>
         /// Occurs on NoticeResponses from the PostgreSQL backend.
@@ -1412,9 +1418,9 @@ namespace Npgsql
             }
         }
 
-        #endregion Notifications
+#endregion Notifications
 
-        #region SSL
+#region SSL
 
         /// <summary>
         /// Returns whether SSL is being used for the connection
@@ -1426,9 +1432,9 @@ namespace Npgsql
             return sslPolicyErrors == SslPolicyErrors.None;
         }
 
-        #endregion SSL
+#endregion SSL
 
-        #region Cancel
+#region Cancel
 
         /// <summary>
         /// Creates another connector and sends a cancel request through it for this connector.
@@ -1468,9 +1474,9 @@ namespace Npgsql
             }
         }
 
-        #endregion Cancel
+#endregion Cancel
 
-        #region Close / Reset
+#region Close / Reset
 
         /// <summary>
         /// Closes the physical connection to the server.
@@ -1645,9 +1651,9 @@ namespace Npgsql
             }
         }
 
-        #endregion Close
+#endregion Close
 
-        #region Locking
+#region Locking
 
         internal IDisposable StartUserAction(ConnectorState newState=ConnectorState.Executing)
         {
@@ -1770,9 +1776,9 @@ namespace Npgsql
             }
         }
 
-        #endregion
+#endregion
 
-        #region Async message handling
+#region Async message handling
 
         internal async void HandleAsyncMessages()
         {
@@ -1808,9 +1814,9 @@ namespace Npgsql
             }
         }
 
-        #endregion
+#endregion
 
-        #region Keepalive
+#region Keepalive
 
         void PerformKeepAlive(object state)
         {
@@ -1844,9 +1850,9 @@ namespace Npgsql
             }
         }
 
-        #endregion
+#endregion
 
-        #region Supported features
+#region Supported features
 
         internal bool SupportsApplicationName { get; private set; }
         internal bool SupportsExtraFloatDigits3 { get; private set; }
@@ -1910,9 +1916,9 @@ namespace Npgsql
             get { return _settings.ServerCompatibilityMode == ServerCompatibilityMode.Redshift; }
         }
 
-        #endregion Supported features
+#endregion Supported features
 
-        #region Execute internal command
+#region Execute internal command
 
         internal void ExecuteInternalCommand(string query, bool withTimeout=true)
         {
@@ -1933,9 +1939,9 @@ namespace Npgsql
             }
         }
 
-        #endregion
+#endregion
 
-        #region Misc
+#region Misc
 
         /// <summary>
         /// Called in various cases to indicate that the backend's statement_timeout parameter
@@ -1982,9 +1988,9 @@ namespace Npgsql
         int _preparedStatementIndex;
         const string PreparedStatementNamePrefix = "s";
 
-        #endregion Misc
+#endregion Misc
 
-        #region Invariants
+#region Invariants
 
         [ContractInvariantMethod]
         void ObjectInvariants()
@@ -1994,10 +2000,10 @@ namespace Npgsql
             Contract.Invariant((KeepAlive == 0 && _keepAliveTimer == null) || (KeepAlive > 0 && _keepAliveTimer != null));
         }
 
-        #endregion
+#endregion
     }
 
-    #region Enums
+#region Enums
 
     /// <summary>
     /// Expresses the exact state of a connector.
@@ -2079,5 +2085,5 @@ namespace Npgsql
         Skip
     }
 
-    #endregion
+#endregion
 }

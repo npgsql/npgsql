@@ -28,8 +28,10 @@ using System.Data.Common;
 using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.Serialization;
 using Npgsql.BackendMessages;
+#if !DNXCORE50
+using System.Runtime.Serialization;
+#endif
 
 namespace Npgsql
 {
@@ -42,13 +44,15 @@ namespace Npgsql
     /// See http://www.postgresql.org/docs/current/static/errcodes-appendix.html,
     /// http://www.postgresql.org/docs/current/static/protocol-error-fields.html
     /// </remarks>
+#if !DNXCORE50
     [Serializable]
+#endif
     public sealed class NpgsqlException : DbException
     {
         readonly ErrorOrNoticeMessage _msg;
         Dictionary<string, object> _data;
 
-        #region Message Fields
+#region Message Fields
 
         /// <summary>
         /// Severity of the error or notice.
@@ -170,7 +174,7 @@ namespace Npgsql
         [Obsolete("Use MessageText instead")]
         public string BaseMessage { get { return _msg.Message; } }
 
-        #endregion
+#endregion
 
         internal NpgsqlException(NpgsqlBuffer buf)
         {
@@ -204,8 +208,8 @@ namespace Npgsql
             }
         }
 
-        #region Serialization
-
+#region Serialization
+#if !DNXCORE50
         NpgsqlException(SerializationInfo info, StreamingContext context) : base(info, context)
         {
             _msg = (ErrorOrNoticeMessage)info.GetValue("msg", typeof(ErrorOrNoticeMessage));
@@ -221,7 +225,7 @@ namespace Npgsql
             base.GetObjectData(info, context);
             info.AddValue("msg", _msg);
         }
-
-        #endregion
+#endif
+#endregion
     }
 }

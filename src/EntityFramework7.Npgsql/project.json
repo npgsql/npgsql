@@ -1,0 +1,38 @@
+﻿{
+  "version": "3.1.0-beta8-1",
+  "authors": [
+    "Shay Rojansky"
+  ],
+  "description" : "PostgreSQL provider for Entity Framework 7",
+  "dependencies" : {
+    "EntityFramework.Core": "7.0.0-beta8-15723",
+    "EntityFramework.Relational": "7.0.0-beta8-15723",
+    "Microsoft.Framework.DependencyInjection": "1.0.0-*",
+    "Microsoft.Framework.DependencyInjection.Abstractions": "1.0.0-*",
+    "Npgsql": "3.1.0-alpha2",
+  },
+  "frameworks": {
+    "net452": {
+      "frameworkAssemblies": {
+        "System.Collections": "4.0.0.0",
+        "System.Reflection": "4.0.0.0",
+        "System.Diagnostics.Contracts": "4.0.0.0",
+        "System.Linq.Expressions": "4.0.0.0",
+        "System.Runtime": "4.0.0.0",
+      }
+    },
+    "dnx452": {
+      "frameworkAssemblies": {
+        "System.Collections": "4.0.0.0",
+        "System.Reflection": "4.0.0.0",
+        "System.Diagnostics.Contracts": "4.0.0.0",
+        "System.Linq.Expressions": "4.0.0.0",
+        "System.Runtime": "4.0.0.0",
+      }
+    },
+    "dnxcore50": {
+      "dependencies": {
+      }
+    }
+  }
+}

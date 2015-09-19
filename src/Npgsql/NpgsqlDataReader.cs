@@ -591,9 +591,21 @@ namespace Npgsql
         }
 
         /// <summary>
+        /// Releases the resources used by the <see cref="NpgsqlDataReader">NpgsqlDataReader</see>.
+        /// </summary>
+        protected override void Dispose(bool disposing)
+        {
+            Close();
+        }
+
+        /// <summary>
         /// Closes the <see cref="NpgsqlDataReader"/> object.
         /// </summary>
+#if DNXCORE50
+        public void Close()
+#else
         public override void Close()
+#endif
         {
             if (State == ReaderState.Closed) { return; }
 
@@ -638,7 +650,7 @@ namespace Npgsql
             }
         }
 
-        #endregion
+#endregion
 
         /// <summary>
         /// Returns the current row, or throws an exception if a row isn't available
@@ -654,7 +666,7 @@ namespace Npgsql
             }
         }
 
-        #region Simple value getters
+#region Simple value getters
 
         /// <summary>
         /// Gets the value of the specified column as a Boolean.
@@ -819,12 +831,12 @@ namespace Npgsql
         /// <returns>The number of instances of <see cref="object"/> in the array.</returns>
         public override int GetValues(object[] values)
         {
-            #region Contracts
+#region Contracts
             if (values == null)
                 throw new ArgumentNullException("values");
             CheckRow();
             Contract.Ensures(Contract.Result<int>() >= 0 && Contract.Result<int>() <= values.Length);
-            #endregion
+#endregion
 
             var count = Math.Min(FieldCount, values.Length);
             for (var i = 0; i < count; i++) {
@@ -939,9 +951,9 @@ namespace Npgsql
             return ReadColumn<NpgsqlDateTime>(ordinal);
         }
 
-        #endregion
+#endregion
 
-        #region Special binary getters
+#region Special binary getters
 
         /// <summary>
         /// Reads a stream of bytes from the specified column, starting at location indicated by dataOffset, into the buffer, starting at the location indicated by bufferOffset.
@@ -954,7 +966,7 @@ namespace Npgsql
         /// <returns>The actual number of bytes read.</returns>
         public override long GetBytes(int ordinal, long dataOffset, byte[] buffer, int bufferOffset, int length)
         {
-            #region Contracts
+#region Contracts
             CheckRowAndOrdinal(ordinal);
             if (dataOffset < 0 || dataOffset > int.MaxValue)
                 throw new ArgumentOutOfRangeException("dataOffset", dataOffset, String.Format("dataOffset must be between {0} and {1}", 0, int.MaxValue));
@@ -963,7 +975,7 @@ namespace Npgsql
             if (buffer != null && (length < 0 || length > buffer.Length - bufferOffset))
                 throw new IndexOutOfRangeException(String.Format("length must be between {0} and {1}", 0, buffer.Length - bufferOffset));
             Contract.Ensures(Contract.Result<long>() >= 0);
-            #endregion
+#endregion
 
             var fieldDescription = _rowDescription[ordinal];
             var handler = fieldDescription.Handler as ByteaHandler;
@@ -1003,9 +1015,9 @@ namespace Npgsql
             return row.GetStream();
         }
 
-        #endregion
+#endregion
 
-        #region Special text getters
+#region Special text getters
 
         /// <summary>
         /// Reads a stream of characters from the specified column, starting at location indicated by dataOffset, into the buffer, starting at the location indicated by bufferOffset.
@@ -1018,7 +1030,7 @@ namespace Npgsql
         /// <returns>The actual number of characters read.</returns>
         public override long GetChars(int ordinal, long dataOffset, char[] buffer, int bufferOffset, int length)
         {
-            #region Contracts
+#region Contracts
             CheckRowAndOrdinal(ordinal);
             if (dataOffset < 0 || dataOffset > int.MaxValue)
                 throw new ArgumentOutOfRangeException("dataOffset", dataOffset, String.Format("dataOffset must be between {0} and {1}", 0, int.MaxValue));
@@ -1027,7 +1039,7 @@ namespace Npgsql
             if (buffer != null && (length < 0 || length > buffer.Length - bufferOffset))
                 throw new IndexOutOfRangeException(String.Format("length must be between {0} and {1}", 0, buffer.Length - bufferOffset));
             Contract.Ensures(Contract.Result<long>() >= 0);
-            #endregion
+#endregion
 
             var fieldDescription = _rowDescription[ordinal];
             var handler = fieldDescription.Handler as TextHandler;
@@ -1069,9 +1081,9 @@ namespace Npgsql
             return new StreamReader(row.GetStream());
         }
 
-        #endregion
+#endregion
 
-        #region IsDBNull
+#region IsDBNull
 
         /// <summary>
         /// Gets a value that indicates whether the column contains nonexistent or missing values.
@@ -1107,7 +1119,7 @@ namespace Npgsql
             return _row.IsColumnNull;
         }
 
-        #endregion
+#endregion
 
         /// <summary>
         /// Gets the value of the specified column as an instance of <see cref="object"/>.
@@ -1126,12 +1138,12 @@ namespace Npgsql
         /// <returns>The zero-based column ordinal.</returns>
         public override int GetOrdinal(string name)
         {
-            #region Contracts
+#region Contracts
             CheckResultSet();
             if (String.IsNullOrEmpty(name))
                 throw new ArgumentException("name cannot be empty", "name");
             Contract.EndContractBlock();
-            #endregion
+#endregion
 
             return _rowDescription.GetFieldIndex(name);
         }
@@ -1400,12 +1412,12 @@ namespace Npgsql
         /// <returns>The number of instances of <see cref="object"/> in the array.</returns>
         public override int GetProviderSpecificValues(object[] values)
         {
-            #region Contracts
+#region Contracts
             if (values == null)
                 throw new ArgumentNullException("values");
             CheckRow();
             Contract.Ensures(Contract.Result<int>() >= 0 && Contract.Result<int>() <= values.Length);
-            #endregion
+#endregion
 
             var count = Math.Min(FieldCount, values.Length);
             for (var i = 0; i < count; i++)
@@ -1419,12 +1431,14 @@ namespace Npgsql
         /// Returns an <see cref="IEnumerator"/> that can be used to iterate through the rows in the data reader.
         /// </summary>
         /// <returns>An <see cref="IEnumerator"/> that can be used to iterate through the rows in the data reader.</returns>
-#if !DNXCORE50
         public override IEnumerator GetEnumerator()
         {
+#if DNXCORE50
+            throw new NotSupportedException("GetEnumerator not yet supported in .NET Core");
+#else
             return new DbEnumerator(this);
-        }
 #endif
+        }
 
         /// <summary>
         /// The first row in a stored procedure command that has output parameters needs to be traversed twice -
@@ -1531,7 +1545,7 @@ namespace Npgsql
             return result;
         }
 
-        #region Schema metadata table
+#region Schema metadata table
 #if !DNXCORE50
 
         /// <summary>
@@ -1929,9 +1943,9 @@ WHERE a.attnum > 0
         }
 
 #endif
-        #endregion Schema metadata table
+#endregion Schema metadata table
 
-        #region Checks
+#region Checks
 
         [ContractArgumentValidator]
         void CheckRowAndOrdinal(int ordinal)
@@ -1964,9 +1978,9 @@ WHERE a.attnum > 0
                 throw new InvalidOperationException("No resultset is currently being traversed");
         }
 
-        #endregion
+#endregion
 
-        #region Enums
+#region Enums
 
         enum ReaderState
         {
@@ -1983,6 +1997,6 @@ WHERE a.attnum > 0
             ReadAgain,
         }
 
-        #endregion
+#endregion
     }
 }

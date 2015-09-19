@@ -71,6 +71,9 @@ namespace Npgsql.Logging
         // Copied from NLog
         static string GetClassFullName()
         {
+#if DNXCORE50
+            return "<UNKNOWN>";
+#else
             string className;
             Type declaringType;
             int framesToSkip = 2;
@@ -93,6 +96,7 @@ namespace Npgsql.Logging
             } while (declaringType.Module.Name.Equals("mscorlib.dll", StringComparison.OrdinalIgnoreCase));
 
             return className;
+#endif
         }
 
         static NpgsqlLogManager()

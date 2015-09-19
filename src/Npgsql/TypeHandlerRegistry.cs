@@ -658,12 +658,12 @@ namespace Npgsql
                                                                   arrayElementType));
                 }
 
-                if (type.IsEnum) {
+                if (type.GetTypeInfo().IsEnum) {
                     throw new NotSupportedException(string.Format("The CLR enum type {0} must be registered with Npgsql before usage, please refer to the documentation.",
                                                     type.Name));
                 }
 
-                if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(NpgsqlRange<>))
+                if (type.GetTypeInfo().IsGenericType && type.GetGenericTypeDefinition() == typeof(NpgsqlRange<>))
                 {
                     if (!_byType.TryGetValue(type.GetGenericArguments()[0], out handler)) {
                         throw new NotSupportedException("This .NET range type is not supported in your PostgreSQL: " + type);
@@ -739,9 +739,9 @@ namespace Npgsql
             TypeToNpgsqlDbType = new Dictionary<Type, NpgsqlDbType>();
             TypeToDbType = new Dictionary<Type, DbType>();
 
-            foreach (var t in Assembly.GetExecutingAssembly().GetTypes().Where(t => t.IsSubclassOf(typeof(TypeHandler))))
+            foreach (var t in typeof(TypeHandlerRegistry).GetTypeInfo().Assembly.GetTypes().Where(t => t.GetTypeInfo().IsSubclassOf(typeof(TypeHandler))))
             {
-                var mappings = t.GetCustomAttributes(typeof(TypeMappingAttribute), false);
+                var mappings = t.GetTypeInfo().GetCustomAttributes(typeof(TypeMappingAttribute), false);
                 if (!mappings.Any())
                     continue;
 

@@ -76,7 +76,7 @@ namespace Npgsql.TypeHandlers
                 ? parameter.ConvertedValue
                 : value);
 
-            buf.WriteInt64((long)(decimal.Round(v, 2, MidpointRounding.AwayFromZero) * 100m));
+            buf.WriteInt64((long)(Math.Round(v, 2, MidpointRounding.AwayFromZero) * 100m));
         }
     }
 }

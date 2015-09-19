@@ -217,42 +217,45 @@ namespace Npgsql.TypeHandlers
 
             //return lengthCache.Set(DoValidateAndGetLength(value, parameter));
 
-            switch (Type.GetTypeCode(value.GetType()))
+            var asString = value as string;
+            if (asString != null)
             {
-            case TypeCode.String:
-                var asString = (string)value;
                 return lengthCache.Set(
                     parameter == null || parameter.Size <= 0 || parameter.Size >= asString.Length
                   ? PGUtil.UTF8Encoding.GetByteCount(asString)
                   : PGUtil.UTF8Encoding.GetByteCount(asString.ToCharArray(), 0, parameter.Size)
                 );
+            }
 
-            case TypeCode.Object:
-                var asCharArray = value as char[];
-                if (asCharArray != null)
-                {
-                    return lengthCache.Set(
-                        parameter == null || parameter.Size <= 0 || parameter.Size >= asCharArray.Length
-                      ? PGUtil.UTF8Encoding.GetByteCount(asCharArray)
-                      : PGUtil.UTF8Encoding.GetByteCount(asCharArray, 0, parameter.Size)
-                    );
-                }
-                var converted = Convert.ToString(value);
-                if (parameter == null)
-                {
-                    throw CreateConversionButNoParamException(value.GetType());
-                }
-                parameter.ConvertedValue = value = converted;
-                goto case TypeCode.String;
+            var asCharArray = value as char[];
+            if (asCharArray != null)
+            {
+                return lengthCache.Set(
+                    parameter == null || parameter.Size <= 0 || parameter.Size >= asCharArray.Length
+                  ? PGUtil.UTF8Encoding.GetByteCount(asCharArray)
+                  : PGUtil.UTF8Encoding.GetByteCount(asCharArray, 0, parameter.Size)
+                );
+            }
 
-            case TypeCode.Char:
+            if (value is char)
+            {
                 _singleCharArray[0] = (char)value;
                 return lengthCache.Set(PGUtil.UTF8Encoding.GetByteCount(_singleCharArray));
-
-            default:
-                value = Convert.ToString(value);
-                goto case TypeCode.String;
             }
+
+            // Fallback - try to convert the value to string
+            var converted = Convert.ToString(value);
+            if (parameter == null)
+            {
+                throw CreateConversionButNoParamException(value.GetType());
+            }
+            parameter.ConvertedValue = converted;
+
+            return lengthCache.Set(
+                parameter.Size <= 0 || parameter.Size >= converted.Length
+                ? PGUtil.UTF8Encoding.GetByteCount(converted)
+                : PGUtil.UTF8Encoding.GetByteCount(converted.ToCharArray(), 0, parameter.Size)
+            );
         }
 
         public override void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
@@ -265,29 +268,30 @@ namespace Npgsql.TypeHandlers
                 value = parameter.ConvertedValue;
             }
 
-            switch (Type.GetTypeCode(value.GetType()))
+            _str = value as string;
+            if (_str != null)
             {
-            case TypeCode.String:
-                _str = (string)value;
                 _charLen = parameter == null || parameter.Size <= 0 || parameter.Size >= _str.Length ? _str.Length : parameter.Size;
                 return;
+            }
 
-            case TypeCode.Object:
-                Contract.Assert(value is char[]);
-                _chars = (char[])value;
+            _chars = value as char[];
+            if (_chars != null)
+            {
                 _charLen = parameter == null || parameter.Size <= 0 || parameter.Size >= _chars.Length ? _chars.Length : parameter.Size;
                 return;
+            }
 
-            case TypeCode.Char:
+            if (value is char)
+            {
                 _singleCharArray[0] = (char)value;
                 _chars = _singleCharArray;
                 _charLen = 1;
                 return;
-
-            default:
-                value = Convert.ToString(value);
-                goto case TypeCode.String;
             }
+
+            _str = Convert.ToString(value);
+            _charLen = parameter == null || parameter.Size <= 0 || parameter.Size >= _str.Length ? _str.Length : parameter.Size;
         }
 
         public override bool Write(ref DirectBuffer directBuf)
