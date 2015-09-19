@@ -216,6 +216,19 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/791")]
+        public void GetDataTypeOID()
+        {
+            var int4OID = ExecuteScalar("SELECT oid FROM pg_type WHERE typname = 'int4'");
+            using (var command = new NpgsqlCommand(@"SELECT 1::INT4 AS some_column", Conn))
+            using (var reader = command.ExecuteReader())
+            {
+                reader.Read();
+                Assert.That(reader.GetDataTypeOID(0), Is.EqualTo(int4OID));
+            }
+        }
+
+        [Test]
         public void GetName()
         {
             var command = new NpgsqlCommand(@"SELECT 1 AS some_column", Conn);

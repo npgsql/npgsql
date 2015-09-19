@@ -1141,7 +1141,7 @@ namespace Npgsql
         /// This will be the PostgreSQL type name (e.g. int4) as in the pg_type table,
         /// not the .NET type (see <see cref="GetFieldType"/> for that).
         /// </summary>
-        /// <param name="ordinal"></param>
+        /// <param name="ordinal">The zero-based column index.</param>
         /// <returns></returns>
         public override string GetDataTypeName(int ordinal)
         {
@@ -1150,6 +1150,24 @@ namespace Npgsql
             Contract.EndContractBlock();
 
             return _rowDescription[ordinal].Handler.PgName;
+        }
+
+        /// <summary>
+        /// Gets the OID for the PostgreSQL type for the specified field, as it appears in the pg_type table.
+        /// </summary>
+        /// <remarks>
+        /// This is a PostgreSQL-internal value that should not be relied upon and should only be used for
+        /// debugging purposes.
+        /// </remarks>
+        /// <param name="ordinal">The zero-based column index.</param>
+        /// <returns></returns>
+        public uint GetDataTypeOID(int ordinal)
+        {
+            CheckResultSet();
+            CheckOrdinal(ordinal);
+            Contract.EndContractBlock();
+
+            return _rowDescription[ordinal].Handler.OID;
         }
 
         /// <summary>
