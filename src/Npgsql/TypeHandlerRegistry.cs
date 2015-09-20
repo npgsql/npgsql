@@ -42,7 +42,7 @@ namespace Npgsql
         internal NpgsqlConnector Connector { get; private set; }
         internal TypeHandler UnrecognizedTypeHandler { get; private set; }
 
-        readonly Dictionary<uint, TypeHandler> _oidIndex;
+        internal Dictionary<uint, TypeHandler> OIDIndex { get; private set; }
         readonly Dictionary<DbType, TypeHandler> _byDbType;
         readonly Dictionary<NpgsqlDbType, TypeHandler> _byNpgsqlDbType;
         readonly Dictionary<Type, TypeHandler> _byType;
@@ -87,7 +87,7 @@ namespace Npgsql
         {
             Connector = connector;
             UnrecognizedTypeHandler = new UnrecognizedTypeHandler();
-            _oidIndex = new Dictionary<uint, TypeHandler>();
+            OIDIndex = new Dictionary<uint, TypeHandler>();
             _byDbType = new Dictionary<DbType, TypeHandler>();
             _byNpgsqlDbType = new Dictionary<NpgsqlDbType, TypeHandler>();
             _byType = new Dictionary<Type, TypeHandler>();
@@ -236,7 +236,7 @@ namespace Npgsql
             );
 
             handler.OID = backendType.OID;
-            _oidIndex[backendType.OID] = handler;
+            OIDIndex[backendType.OID] = handler;
             handler.PgName = backendType.Name;
 
             if (mapping.NpgsqlDbType.HasValue)
@@ -275,7 +275,7 @@ namespace Npgsql
             Contract.Requires(backendType.Element != null);
 
             TypeHandler elementHandler;
-            if (!_oidIndex.TryGetValue(backendType.Element.OID, out elementHandler)) {
+            if (!OIDIndex.TryGetValue(backendType.Element.OID, out elementHandler)) {
                 // Array type referring to an unhandled element type
                 return;
             }
@@ -296,7 +296,7 @@ namespace Npgsql
 
             arrayHandler.PgName = backendType.Name;
             arrayHandler.OID = backendType.OID;
-            _oidIndex[backendType.OID] = arrayHandler;
+            OIDIndex[backendType.OID] = arrayHandler;
 
             if (elementHandler is IEnumHandler)
             {
@@ -322,7 +322,7 @@ namespace Npgsql
             Contract.Requires(backendType.Element != null);
 
             TypeHandler elementHandler;
-            if (!_oidIndex.TryGetValue(backendType.Element.OID, out elementHandler))
+            if (!OIDIndex.TryGetValue(backendType.Element.OID, out elementHandler))
             {
                 // Range type referring to an unhandled element type
                 return;
@@ -334,7 +334,7 @@ namespace Npgsql
             handler.PgName = backendType.Name;
             handler.NpgsqlDbType = NpgsqlDbType.Range | elementHandler.NpgsqlDbType;
             handler.OID = backendType.OID;
-            _oidIndex[backendType.OID] = handler;
+            OIDIndex[backendType.OID] = handler;
             _byNpgsqlDbType.Add(handler.NpgsqlDbType, handler);
         }
 
@@ -367,7 +367,7 @@ namespace Npgsql
             handler.PgName = backendType.Name;
             handler.OID = backendType.OID;
             handler.NpgsqlDbType = NpgsqlDbType.Enum;
-            _oidIndex[backendType.OID] = handler;
+            OIDIndex[backendType.OID] = handler;
             _byType[handler.GetFieldType()] = handler;
 
             if (backendType.Array != null) {
@@ -389,12 +389,12 @@ namespace Npgsql
             get
             {
                 TypeHandler result;
-                if (!_oidIndex.TryGetValue(oid, out result)) {
+                if (!OIDIndex.TryGetValue(oid, out result)) {
                     result = UnrecognizedTypeHandler;
                 }
                 return result;
             }
-            set { _oidIndex[oid] = value; }
+            set { OIDIndex[oid] = value; }
         }
 
         internal TypeHandler this[NpgsqlDbType npgsqlDbType, Type enumType = null]
@@ -650,12 +650,6 @@ namespace Npgsql
             BackendTypeCache.TryRemove(connectionString, out types);
         }
 
-        #endregion
-
-        #region Debugging / Testing
-#if DEBUG
-        internal Dictionary<uint, TypeHandler> OIDIndex { get { return _oidIndex; } }
-#endif
         #endregion
     }
 
