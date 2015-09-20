@@ -1149,7 +1149,16 @@ namespace Npgsql
             CheckOrdinal(ordinal);
             Contract.EndContractBlock();
 
-            return _rowDescription[ordinal].Handler.PgName;
+            // In AllResultTypesAreUnknown mode, the handler is UnrecognizedTypeHandler but we can still get
+            // the data type name from the handler that would have been used in binary for the type OID
+            var field = _rowDescription[ordinal];
+            TypeHandler binaryHandler;
+            return
+                field.Handler is UnrecognizedTypeHandler &&
+                field.OID != 0 &&
+                _connector.TypeHandlerRegistry.OIDIndex.TryGetValue(field.OID, out binaryHandler)
+                ? binaryHandler.PgName
+                : field.Handler.PgName;
         }
 
         /// <summary>
@@ -1167,7 +1176,7 @@ namespace Npgsql
             CheckOrdinal(ordinal);
             Contract.EndContractBlock();
 
-            return _rowDescription[ordinal].Handler.OID;
+            return _rowDescription[ordinal].OID;
         }
 
         /// <summary>
@@ -1190,8 +1199,16 @@ namespace Npgsql
                 }
             }
 
-            var fieldDescription = _rowDescription[ordinal];
-            return fieldDescription.Handler.GetFieldType(fieldDescription);
+            // In AllResultTypesAreUnknown mode, the handler is UnrecognizedTypeHandler but we can still get
+            // the type from the handler that would have been used in binary for the type OID
+            TypeHandler binaryHandler;
+            var field = _rowDescription[ordinal];
+            return
+                field.Handler is UnrecognizedTypeHandler &&
+                field.OID != 0 &&
+                _connector.TypeHandlerRegistry.OIDIndex.TryGetValue(field.OID, out binaryHandler)
+                ? binaryHandler.GetFieldType(field)
+                : field.Handler.GetFieldType(field);
         }
 
         /// <summary>

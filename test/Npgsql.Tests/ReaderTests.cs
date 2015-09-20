@@ -198,7 +198,29 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/794")]
+        public void GetFieldType()
+        {
+            using (var cmd = new NpgsqlCommand(@"SELECT 1::INT4 AS some_column", Conn))
+            using (var reader = cmd.ExecuteReader())
+            {
+                reader.Read();
+                Assert.That(reader.GetFieldType(0), Is.SameAs(typeof(int)));
+            }
+            using (var cmd = new NpgsqlCommand(@"SELECT 1::INT4 AS some_column", Conn))
+            {
+                cmd.AllResultTypesAreUnknown = true;
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetFieldType(0), Is.SameAs(typeof(int)));
+                }
+            }
+        }
+
+        [Test]
         [IssueLink("https://github.com/npgsql/npgsql/issues/787")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/794")]
         public void GetDataTypeName()
         {
             using (var command = new NpgsqlCommand(@"SELECT 1::INT4 AS some_column", Conn))
@@ -213,18 +235,37 @@ namespace Npgsql.Tests
                 reader.Read();
                 Assert.That(reader.GetDataTypeName(0), Is.EqualTo("_int4"));
             }
+            using (var command = new NpgsqlCommand(@"SELECT 1::INT4 AS some_column", Conn))
+            {
+                command.AllResultTypesAreUnknown = true;
+                using (var reader = command.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo("int4"));
+                }
+            }
         }
 
         [Test]
         [IssueLink("https://github.com/npgsql/npgsql/issues/791")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/794")]
         public void GetDataTypeOID()
         {
             var int4OID = ExecuteScalar("SELECT oid FROM pg_type WHERE typname = 'int4'");
-            using (var command = new NpgsqlCommand(@"SELECT 1::INT4 AS some_column", Conn))
-            using (var reader = command.ExecuteReader())
+            using (var cmd = new NpgsqlCommand(@"SELECT 1::INT4 AS some_column", Conn))
+            using (var reader = cmd.ExecuteReader())
             {
                 reader.Read();
                 Assert.That(reader.GetDataTypeOID(0), Is.EqualTo(int4OID));
+            }
+            using (var cmd = new NpgsqlCommand(@"SELECT 1::INT4 AS some_column", Conn))
+            {
+                cmd.AllResultTypesAreUnknown = true;
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetDataTypeOID(0), Is.EqualTo(int4OID));
+                }
             }
         }
 
