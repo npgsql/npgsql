@@ -1199,16 +1199,8 @@ namespace Npgsql
                 }
             }
 
-            // In AllResultTypesAreUnknown mode, the handler is UnrecognizedTypeHandler but we can still get
-            // the type from the handler that would have been used in binary for the type OID
-            TypeHandler binaryHandler;
             var field = _rowDescription[ordinal];
-            return
-                field.Handler is UnrecognizedTypeHandler &&
-                field.OID != 0 &&
-                _connector.TypeHandlerRegistry.OIDIndex.TryGetValue(field.OID, out binaryHandler)
-                ? binaryHandler.GetFieldType(field)
-                : field.Handler.GetFieldType(field);
+            return field.Handler.GetFieldType(field);
         }
 
         /// <summary>

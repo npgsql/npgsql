@@ -213,7 +213,7 @@ namespace Npgsql.Tests
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();
-                    Assert.That(reader.GetFieldType(0), Is.SameAs(typeof(int)));
+                    Assert.That(reader.GetFieldType(0), Is.SameAs(typeof(string)));
                 }
             }
         }
