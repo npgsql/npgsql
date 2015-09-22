@@ -23,7 +23,7 @@
     </RootNamespace>
     <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
     <WarningLevel>4</WarningLevel>
-    <DefineConstants>TRACE;DEBUG;NET45</DefineConstants>
+    <DefineConstants>TRACE;DEBUG</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <OutputPath>bin\Release\</OutputPath>
@@ -32,7 +32,7 @@
     <Optimize>true</Optimize>
     <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
     <WarningLevel>4</WarningLevel>
-    <DefineConstants>TRACE;NET45</DefineConstants>
+    <DefineConstants>TRACE</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="NLog">

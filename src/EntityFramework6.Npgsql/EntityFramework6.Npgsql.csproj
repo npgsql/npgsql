@@ -22,7 +22,7 @@
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>TRACE;DEBUG;NET45;ENTITIES6</DefineConstants>
+    <DefineConstants>TRACE;DEBUG;NET452;ENTITIES6</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <DocumentationFile>bin\Debug\EntityFramework6.Npgsql.xml</DocumentationFile>
@@ -31,7 +31,7 @@
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE;NET45;ENTITIES6</DefineConstants>
+    <DefineConstants>TRACE;NET452;ENTITIES6</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <DocumentationFile>bin\Release\EntityFramework6.Npgsql.xml</DocumentationFile>
