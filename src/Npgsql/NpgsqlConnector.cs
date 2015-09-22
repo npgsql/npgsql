@@ -548,7 +548,7 @@ namespace Npgsql
                         else
                         {
                             var sslStream = new SslStream(_stream, false, certificateValidationCallback);
-                            sslStream.AuthenticateAsClient(Host, clientCertificates, SslProtocols.Ssl3 | SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, false);
+                            sslStream.AuthenticateAsClient(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, false);
                             _stream = sslStream;
                         }
                         timeout.Check();
