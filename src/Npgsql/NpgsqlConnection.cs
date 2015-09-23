@@ -581,9 +581,6 @@ namespace Npgsql
             else
             {
                 Connector.Close();
-
-                Connector.ProvideClientCertificatesCallback = null;
-                Connector.UserCertificateValidationCallback = null;
             }
 
             Connector = null;

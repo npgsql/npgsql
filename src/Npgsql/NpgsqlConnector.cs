@@ -1433,6 +1433,9 @@ namespace Npgsql
                 CurrentReader = null;
             }
 
+
+            ProvideClientCertificatesCallback = null;
+            UserCertificateValidationCallback = null;
             ClearTransaction();
             _stream = null;
             _baseStream = null;
