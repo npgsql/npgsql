@@ -1485,16 +1485,21 @@ namespace Npgsql
         {
             Log.Debug("Close connector", Id);
 
+            if (IsReady)
+            {
+                try { SendSingleMessage(TerminateMessage.Instance); }
+                catch (Exception e)
+                {
+                    Log.Error("Exception while closing connector", e, Id);
+                    Contract.Assert(IsBroken);
+                }
+            }
+
             switch (State)
             {
-                case ConnectorState.Broken:
-                case ConnectorState.Closed:
-                    return;
-                case ConnectorState.Ready:
-                    try { SendSingleMessage(TerminateMessage.Instance); } catch {
-                        // ignored
-                    }
-                break;
+            case ConnectorState.Broken:
+            case ConnectorState.Closed:
+                return;
             }
 
             State = ConnectorState.Closed;
