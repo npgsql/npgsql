@@ -556,15 +556,13 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void SearchPathSupport()
+        public void SearchPath()
         {
-            using (var conn = new NpgsqlConnection(ConnectionString + ";searchpath=public"))
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) { SearchPath = "foo" };
+            using (var conn = new NpgsqlConnection(connString))
             {
                 conn.Open();
-                var c = new NpgsqlCommand("show search_path", conn);
-                var searchpath = (String)c.ExecuteScalar();
-                //Note, public is no longer implicitly added to paths, so this is no longer "public, public".
-                Assert.AreEqual("public", searchpath);
+                Assert.That(ExecuteScalar("SHOW search_path", conn), Contains.Substring("foo"));
             }
         }
 
