@@ -29,6 +29,7 @@ using System.Text;
 using Npgsql;
 using NpgsqlTypes;
 
+
 namespace Npgsql.Tests.Types
 {
     class EnumTests : TestBase
@@ -199,6 +200,80 @@ namespace Npgsql.Tests.Types
             label2,
             [EnumLabel("label3")]
             Label3
+        }
+
+        [Test]
+        public void EnumWriteStringToBackendEnum()
+        {
+            // Test that a c# string can be written to a backend enum when DbType is unknown
+            ExecuteNonQuery("CREATE TYPE pg_temp.fruit AS ENUM ('Banana', 'Apple', 'Orange')");
+            ExecuteNonQuery("create table pg_temp.test_fruit ( id serial, value1 pg_temp.fruit, value2 pg_temp.fruit );");
+            Conn.ReloadTypes();
+            const string expected = "Banana";
+            var cmd = new NpgsqlCommand("insert into pg_temp.test_fruit(id, value1, value2) values(default, @p1, @p2);", Conn);
+            cmd.Parameters.AddWithValue("p2", NpgsqlDbType.Unknown, expected);
+            var p2 = new NpgsqlParameter("p1", NpgsqlDbType.Unknown) { Value = expected };
+            cmd.Parameters.Add(p2);
+            cmd.ExecuteNonQuery();
+        }
+
+        [Test]
+        public void EnumWriteStringToBackendUnknown()
+        {
+            // tests that a a C# string an be written to a text backend when passed as dbUnknown parameter
+            ExecuteNonQuery("create table pg_temp.test_fruit_text ( id serial, value1 text, value2 text );");
+            Conn.ReloadTypes();
+            const string expected = "Banana";
+            var cmd = new NpgsqlCommand("insert into pg_temp.test_fruit_text(id, value1, value2) values(default, @p1, @p2);", Conn);
+            cmd.Parameters.AddWithValue("p2", NpgsqlDbType.Unknown, expected);
+            var p2 = new NpgsqlParameter("p1", NpgsqlDbType.Unknown) { Value = expected };
+            cmd.Parameters.Add(p2);
+            cmd.ExecuteNonQuery();
+        }
+
+        [Test]
+        public void EnumWriteEnumAsDbUnknwown()
+        {
+            // tests that a a C# enum an be written to an enum backend when passed as dbUnknown
+            ExecuteNonQuery("CREATE TYPE pg_temp.mood AS ENUM ('Sad', 'Ok', 'Happy')", Conn);
+            ExecuteNonQuery("create table pg_temp.test_mood_writes ( value1 pg_temp.mood);");
+            Conn.ReloadTypes();
+            var expected = Mood.Happy;
+            var cmd = new NpgsqlCommand("insert into pg_temp.test_mood_writes(value1) values(@p1);", Conn);
+            cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Unknown, expected);
+            cmd.ExecuteNonQuery();
+        }
+
+        [Test]
+        public void EnumUnregisteredAsParameters()
+        {
+            ExecuteNonQuery("CREATE TYPE pg_temp.fruit AS ENUM ('Banana', 'Apple', 'Orange')");
+            Conn.ReloadTypes();
+            const string expected = "Banana";
+            var expectedArray = new[] { "Banana", "Orange" };
+            var cmd = new NpgsqlCommand("SELECT @p1::Fruit, @p2::Fruit, @p3", Conn);
+            // explicit typed parameter
+            var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Text) { Value = expected };
+            // implicit parameter
+            var p2 = new NpgsqlParameter { ParameterName = "p2", Value = expected };
+            // implicit typed array
+            cmd.Parameters.AddWithValue("p3", expectedArray);
+            cmd.Parameters.Add(p1);
+            cmd.Parameters.Add(p2);
+            var reader = cmd.ExecuteReader();
+            reader.Read();
+            for (var i = 0; i < 2; i++) // check scalars
+            {
+                Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(String)));
+                Assert.That(reader.GetFieldValue<string>(i), Is.EqualTo(expected));
+                Assert.That(reader.GetValue(i), Is.EqualTo(expected));
+            }
+            for (var i = 2; i < 3; i++) { // check arrays
+                Assert.AreEqual(typeof(string[]), reader.GetValue(i).GetType());
+                Assert.IsTrue(expectedArray.SequenceEqual((string[])reader.GetValue(i)));
+            }
+            reader.Close();
+            cmd.Dispose();
         }
     }
 }
