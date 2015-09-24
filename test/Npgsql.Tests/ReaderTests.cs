@@ -606,15 +606,6 @@ namespace Npgsql.Tests
         #endregion
 
         [Test]
-        public void HasRowsWithoutResultset()
-        {
-            ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
-            var command = new NpgsqlCommand("DELETE FROM data WHERE name = 'unknown'", Conn);
-            var dr = command.ExecuteReader();
-            Assert.IsFalse(dr.HasRows);
-        }
-
-        [Test]
         public void SchemaOnlySingleRowCommandBehaviorSupport()
         {
             var command = new NpgsqlCommand("SELECT 1", Conn);
@@ -767,6 +758,7 @@ namespace Npgsql.Tests
 
         [Test]
         [IssueLink("https://github.com/npgsql/npgsql/issues/742")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/800")]
         public void HasRows([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
         {
             ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
@@ -776,12 +768,22 @@ namespace Npgsql.Tests
             using (var dr = command.ExecuteReader())
             {
                 Assert.That(dr.HasRows, Is.True);
+                Assert.That(dr.HasRows, Is.True);
                 Assert.That(dr.Read(), Is.True);
                 Assert.That(dr.HasRows, Is.True);
                 Assert.That(dr.Read(), Is.False);
                 dr.NextResult();
                 Assert.That(dr.HasRows, Is.False);
             }
+        }
+
+        [Test]
+        public void HasRowsWithoutResultset()
+        {
+            ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
+            var command = new NpgsqlCommand("DELETE FROM data WHERE name = 'unknown'", Conn);
+            var dr = command.ExecuteReader();
+            Assert.IsFalse(dr.HasRows);
         }
 
         [Test]

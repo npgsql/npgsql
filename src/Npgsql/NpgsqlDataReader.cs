@@ -500,12 +500,15 @@ namespace Npgsql
                             continue;
                         case BackendMessageCode.DataRow:
                             _pendingMessage = msg;
+                            _hasRows = true;
                             return true;
                         case BackendMessageCode.CompletedResponse:
                         case BackendMessageCode.EmptyQueryResponse:
                             _pendingMessage = msg;
+                            _hasRows = false;
                             return false;
                         case BackendMessageCode.CloseComplete:
+                            _hasRows = false;
                             return false;
                         default:
                             throw new ArgumentOutOfRangeException("Got unexpected message type: " + msg.Code);
