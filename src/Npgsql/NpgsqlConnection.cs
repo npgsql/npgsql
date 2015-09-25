@@ -167,10 +167,7 @@ namespace Npgsql
         /// <see cref="NpgsqlConnection.ConnectionString">ConnectionString</see>.
         /// </summary>
         public override void Open()
-        {
-            var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
-            OpenInternal(timeout);
-        }
+            => OpenInternal();
 
         /// <summary>
         /// This is the asynchronous version of <see cref="Open"/>.
@@ -180,54 +177,19 @@ namespace Npgsql
         /// </remarks>
         /// <param name="cancellationToken">The cancellation instruction.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
-        public override async Task OpenAsync(CancellationToken cancellationToken)
-        {
-            if (ConnectionTimeout == 0)
-            {
-                await OpenInternalAsync(NpgsqlTimeout.Infinite, cancellationToken);
-                return;
-            }
-
-            // We have a ConnectionTimeout
-            // We transmit the connection timeout event by triggering the cancellation token.
-            // However, a ct can't be triggered directly (need a source), and we also want to distinguish a
-            // timeout-triggered cancellation from a user-triggered cancellation.
-            // So we wire up the user's ct and a new timeout ct to a new composite ct which will be used.
-            var timeoutTs = TimeSpan.FromSeconds(ConnectionTimeout);
-            var timeout = new NpgsqlTimeout(timeoutTs);
-
-            using (var compositeCts = new CancellationTokenSource())
-            {
-                var compositeCts2 = compositeCts;  // For R# "access to disposed closure"
-
-                using (var timeoutCts = new CancellationTokenSource(timeoutTs))
-                using (timeoutCts.Token.Register(() => compositeCts2.Cancel()))
-                using (cancellationToken.Register(() => compositeCts2.Cancel()))
-                {
-                    try
-                    {
-                        await OpenInternalAsync(timeout, compositeCts.Token);
-                    }
-                    catch (TaskCanceledException e)
-                    {
-                        if (!cancellationToken.IsCancellationRequested)
-                        {
-                            throw new TimeoutException("The connection attempt timed out", e);
-                        }
-                        throw;
-                    }
-                }
-            }
-        }
+        public override Task OpenAsync(CancellationToken cancellationToken)
+            => OpenInternalAsync(cancellationToken);
 
         [RewriteAsync]
-        void OpenInternal(NpgsqlTimeout timeout)
+        void OpenInternal()
         {
             if (string.IsNullOrWhiteSpace(Host))
                 throw new ArgumentException("Host can't be null");
             if (string.IsNullOrWhiteSpace(UserName) && !IntegratedSecurity)
                 throw new ArgumentException("Either Username must be specified or IntegratedSecurity must be on");
             Contract.EndContractBlock();
+
+            var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
 
             // If we're postponing a close (see doc on this variable), the connection is already
             // open and can be silently reused
@@ -258,7 +220,7 @@ namespace Npgsql
                 // Get a Connector, either from the pool or creating one ourselves.
                 if (Settings.Pooling)
                 {
-                    Connector = NpgsqlConnectorPool.ConnectorPoolMgr.RequestConnector(this);
+                    Connector = PoolManager.GetOrAdd(Settings).Allocate(this, timeout);
 
                     // Since this pooled connector was opened, global enum/composite mappings may have
                     // changed. Bring this up to date if needed.
@@ -362,19 +324,6 @@ namespace Npgsql
         /// </summary>
         /// <value>The time (in seconds) to wait for a command to complete. The default value is 20 seconds.</value>
         public int CommandTimeout => Settings.CommandTimeout;
-
-        /// <summary>
-        /// Gets the time to wait before closing unused connections in the pool if the count
-        /// of all connections exeeds MinPoolSize.
-        /// </summary>
-        /// <remarks>
-        /// If connection pool contains unused connections for ConnectionLifeTime seconds,
-        /// the half of them will be closed. If there will be unused connections in a second
-        /// later then again the half of them will be closed and so on.
-        /// This strategy provide smooth change of connection count in the pool.
-        /// </remarks>
-        /// <value>The time (in seconds) to wait. The default value is 15 seconds.</value>
-        public int ConnectionLifeTime => Settings.ConnectionLifeTime;
 
         ///<summary>
         /// Gets the name of the current database or the database to be used after a connection is opened.
@@ -633,7 +582,7 @@ namespace Npgsql
 
             if (Settings.Pooling)
             {
-                NpgsqlConnectorPool.ConnectorPoolMgr.ReleaseConnector(this, Connector);
+                PoolManager.GetOrAdd(Settings).Release(Connector);
             }
             else
             {
@@ -1465,16 +1414,15 @@ namespace Npgsql
         /// </summary>
         public static void ClearPool(NpgsqlConnection connection)
         {
-            NpgsqlConnectorPool.ConnectorPoolMgr.ClearPool(connection);
+            ConnectorPool pool;
+            if (PoolManager.Pools.TryGetValue(connection.Settings, out pool))
+                pool.Clear();
         }
 
         /// <summary>
         /// Clear all connection pools.
         /// </summary>
-        public static void ClearAllPools()
-        {
-            NpgsqlConnectorPool.ConnectorPoolMgr.ClearAllPools();
-        }
+        public static void ClearAllPools() => PoolManager.ClearAll();
 
         /// <summary>
         /// Flushes the type cache for this connection's connection string and reloads the

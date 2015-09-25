@@ -586,8 +586,8 @@ namespace Npgsql
             get { return _minPoolSize; }
             set
             {
-                if (value < 0 || value > NpgsqlConnectorPool.PoolSizeLimit)
-                    throw new ArgumentOutOfRangeException(nameof(value), value, "MinPoolSize must be between 0 and " + NpgsqlConnectorPool.PoolSizeLimit);
+                if (value < 0 || value > PoolManager.PoolSizeLimit)
+                    throw new ArgumentOutOfRangeException(nameof(value), value, "MinPoolSize must be between 0 and " + PoolManager.PoolSizeLimit);
                 Contract.EndContractBlock();
 
                 _minPoolSize = value;
@@ -603,14 +603,14 @@ namespace Npgsql
         [Description("The maximum connection pool size.")]
         [DisplayName("Maximum Pool Size")]
         [NpgsqlConnectionStringProperty]
-        [DefaultValue(20)]
+        [DefaultValue(100)]
         public int MaxPoolSize
         {
             get { return _maxPoolSize; }
             set
             {
-                if (value < 0 || value > NpgsqlConnectorPool.PoolSizeLimit)
-                    throw new ArgumentOutOfRangeException(nameof(value), value, "MaxPoolSize must be between 0 and " + NpgsqlConnectorPool.PoolSizeLimit);
+                if (value < 0 || value > PoolManager.PoolSizeLimit)
+                    throw new ArgumentOutOfRangeException(nameof(value), value, "MaxPoolSize must be between 0 and " + PoolManager.PoolSizeLimit);
                 Contract.EndContractBlock();
 
                 _maxPoolSize = value;
@@ -620,31 +620,25 @@ namespace Npgsql
         int _maxPoolSize;
 
         /// <summary>
-        /// The time to wait before closing unused connections in the pool if the count
-        /// of all connections exeeds MinPoolSize.
+        /// The time to wait before closing idle connections in the pool if the count
+        /// of all connections exceeds MinPoolSize.
         /// </summary>
-        /// <remarks>
-        /// If connection pool contains unused connections for ConnectionLifeTime seconds,
-        /// the half of them will be closed. If there will be unused connections in a second
-        /// later then again the half of them will be closed and so on.
-        /// This strategy provide smooth change of connection count in the pool.
-        /// </remarks>
-        /// <value>The time (in seconds) to wait. The default value is 15 seconds.</value>
+        /// <value>The time (in seconds) to wait. The default value is 300.</value>
         [Category("Pooling")]
         [Description("The time to wait before closing unused connections in the pool if the count of all connections exeeds MinPoolSize.")]
-        [DisplayName("Connection Lifetime")]
+        [DisplayName("Connection Idle Lifetime")]
         [NpgsqlConnectionStringProperty]
-        [DefaultValue(15)]
-        public int ConnectionLifeTime
+        [DefaultValue(300)]
+        public int ConnectionIdleLifetime
         {
-            get { return _connectionLifeTime; }
+            get { return _connectionIdleLifetime; }
             set
             {
-                _connectionLifeTime = value;
-                SetValue(nameof(ConnectionLifeTime), value);
+                _connectionIdleLifetime = value;
+                SetValue(nameof(ConnectionIdleLifetime), value);
             }
         }
-        int _connectionLifeTime;
+        int _connectionIdleLifetime;
 
         #endregion
 
@@ -863,6 +857,19 @@ namespace Npgsql
         /// </summary>
         [Category("Obsolete")]
         [Description("Obsolete, see http://www.npgsql.org/doc/3.1/migration.html")]
+        [DisplayName("Connection Lifetime")]
+        [NpgsqlConnectionStringProperty]
+        public int ConnectionLifeTime
+        {
+            get { throw new NotSupportedException("The ContinuousProcessing parameter is no longer supported. Please see http://www.npgsql.org/doc/3.1/migration.html"); }
+            set { throw new NotSupportedException("The ContinuousProcessing parameter is no longer supported. Please see http://www.npgsql.org/doc/3.1/migration.html"); }
+        }
+
+        /// <summary>
+        /// Obsolete, see http://www.npgsql.org/doc/3.1/migration.html
+        /// </summary>
+        [Category("Obsolete")]
+        [Description("Obsolete, see http://www.npgsql.org/doc/3.1/migration.html")]
         [DisplayName("Continuous Processing")]
         [NpgsqlConnectionStringProperty]
         [Obsolete]
@@ -921,6 +928,24 @@ namespace Npgsql
         internal NpgsqlConnectionStringBuilder Clone()
         {
             return new NpgsqlConnectionStringBuilder(ConnectionString);
+        }
+
+        /// <summary>
+        /// Determines whether the specified object is equal to the current object.
+        /// </summary>
+        public override bool Equals(object obj)
+        {
+            var o = obj as NpgsqlConnectionStringBuilder;
+            return o != null && o.ConnectionString == ConnectionString;
+        }
+
+        /// <summary>
+        /// Hash function.
+        /// </summary>
+        /// <returns></returns>
+        public override int GetHashCode()
+        {
+            return ConnectionString.GetHashCode();
         }
 
         #endregion

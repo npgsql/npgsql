@@ -1,3 +1,4 @@
+#if OLD
 #region License
 // The PostgreSQL License
 //
@@ -466,3 +467,4 @@ namespace Npgsql
         }
     }
 }
+#endif

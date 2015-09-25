@@ -190,6 +190,13 @@ namespace Npgsql
         readonly UserAction _userAction;
         readonly Timer _keepAliveTimer;
 
+        /// <summary>
+        /// If pooled, the timestamp when this connector was returned to the pool.
+        /// </summary>
+        internal DateTime ReleaseTimestamp { get; set; } = DateTime.MaxValue;
+
+        internal int ClearCounter { get; set; }
+
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         #endregion

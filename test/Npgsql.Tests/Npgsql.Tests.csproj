@@ -49,7 +49,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ConnectionPoolTests.cs" />
+    <Compile Include="PoolTests.cs" />
     <Compile Include="ConnectionStringBuilderTests.cs" />
     <Compile Include="LargeObjectTests.cs" />
     <Compile Include="NLogLoggingProvider.cs" />

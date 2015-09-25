@@ -196,6 +196,7 @@
     <Compile Include="NpgsqlTypes\PostgisTypes.cs" />
     <Compile Include="ReadBuffer.cs" />
     <Compile Include="NameTranslation\NpgsqlSnakeCaseNameTranslator.cs" />
+    <Compile Include="PoolManager.cs" />
     <Compile Include="SqlQueryParser.cs" />
     <Compile Include="TaskExtensions.cs" />
     <Compile Include="TlsClientStream\CipherSuiteInfo.cs" />

@@ -133,6 +133,20 @@ using System.Threading;
 using System.Threading.Tasks;
 #pragma warning disable
 using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Diagnostics.Contracts;
+using System.Linq;
+using System.Net.Security;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using Npgsql.Logging;
+using System.Threading;
+using System.Threading.Tasks;
+#pragma warning disable
+using System;
 using System.Diagnostics.Contracts;
 using System.IO;
 using System.Net;
@@ -324,13 +338,14 @@ namespace Npgsql
 
     public sealed partial class NpgsqlConnection
     {
-        async Task OpenInternalAsync(NpgsqlTimeout timeout, CancellationToken cancellationToken)
+        async Task OpenInternalAsync(CancellationToken cancellationToken)
         {
             if (string.IsNullOrWhiteSpace(Host))
                 throw new ArgumentException("Host can't be null");
             if (string.IsNullOrWhiteSpace(UserName) && !IntegratedSecurity)
                 throw new ArgumentException("Either Username must be specified or IntegratedSecurity must be on");
             Contract.EndContractBlock();
+            var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
             // If we're postponing a close (see doc on this variable), the connection is already
             // open and can be silently reused
             if (_postponingClose)
@@ -357,7 +372,7 @@ namespace Npgsql
                 // Get a Connector, either from the pool or creating one ourselves.
                 if (Settings.Pooling)
                 {
-                    Connector = NpgsqlConnectorPool.ConnectorPoolMgr.RequestConnector(this);
+                    Connector = await (PoolManager.GetOrAdd(Settings).AllocateAsync(this, timeout, cancellationToken));
                     // Since this pooled connector was opened, global enum/composite mappings may have
                     // changed. Bring this up to date if needed.
                     Connector.TypeHandlerRegistry.ActivateGlobalMappings();
@@ -1356,6 +1371,67 @@ namespace Npgsql
             CheckReady();
             await Connector.RollbackAsync(cancellationToken);
             Connection = null;
+        }
+    }
+
+    partial class ConnectorPool
+    {
+        internal async Task<NpgsqlConnector> AllocateAsync(NpgsqlConnection conn, NpgsqlTimeout timeout, CancellationToken cancellationToken)
+        {
+            NpgsqlConnector connector;
+            Monitor.Enter(this);
+            if (Idle.Count > 0)
+            {
+                connector = Idle.Pop();
+                Busy++;
+                Monitor.Exit(this);
+                return connector;
+            }
+
+            if (Busy >= _max)
+            {
+                // TODO: Async cancellation
+                var tcs = new TaskCompletionSource<NpgsqlConnector>();
+                Waiting.Enqueue(tcs);
+                Monitor.Exit(this);
+                try
+                {
+                    await WaitForTaskAsync(tcs.Task, timeout.TimeLeft, cancellationToken);
+                }
+                catch
+                {
+                    // We're here if the timeout expired or the cancellation token was triggered
+                    // Re-lock and check in case the task was set to completed after coming out of the Wait
+                    lock (this)
+                    {
+                        if (!tcs.Task.IsCompleted)
+                        {
+                            tcs.SetCanceled();
+                            throw;
+                        }
+                    }
+                }
+
+                return tcs.Task.Result;
+            }
+
+            // No idle connectors are available, and we're under the pool's maximum capacity.
+            Busy++;
+            Monitor.Exit(this);
+            try
+            {
+                connector = new NpgsqlConnector(conn)
+                {ClearCounter = _clearCounter};
+                await connector.OpenAsync(timeout, cancellationToken);
+                EnsureMinPoolSize(conn);
+                return connector;
+            }
+            catch
+            {
+                lock (this)
+                    Busy--;
+                throw;
+            }
         }
     }
 
