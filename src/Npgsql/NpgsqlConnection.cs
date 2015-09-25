@@ -1386,7 +1386,11 @@ namespace Npgsql
         object ICloneable.Clone()
         {
             CheckNotDisposed();
-            return new NpgsqlConnection(ConnectionString) { Password = Password };
+            return new NpgsqlConnection(ConnectionString) {
+                Password = Password,
+                ProvideClientCertificatesCallback = ProvideClientCertificatesCallback,
+                UserCertificateValidationCallback = UserCertificateValidationCallback
+            };
         }
 #endif
 
