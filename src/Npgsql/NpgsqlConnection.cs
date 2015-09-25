@@ -1209,7 +1209,10 @@ namespace Npgsql
         object ICloneable.Clone()
         {
             CheckNotDisposed();
-            return new NpgsqlConnection(ConnectionString);
+            return new NpgsqlConnection(ConnectionString) {
+                ProvideClientCertificatesCallback = ProvideClientCertificatesCallback,
+                UserCertificateValidationCallback = UserCertificateValidationCallback
+            };
         }
 
         /// <summary>

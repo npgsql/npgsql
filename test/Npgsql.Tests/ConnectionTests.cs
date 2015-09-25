@@ -31,6 +31,7 @@ using System.Resources;
 using NUnit.Framework;
 using System.Collections.Generic;
 using System.IO;
+using System.Net.Security;
 using System.Text.RegularExpressions;
 using NpgsqlTypes;
 
@@ -684,8 +685,23 @@ namespace Npgsql.Tests
         [IssueLink("https://github.com/npgsql/npgsql/issues/743")]
         public void Clone()
         {
-            var conn2 = (NpgsqlConnection)((ICloneable)Conn).Clone();
-            Assert.That(conn2.ConnectionString, Is.EqualTo(Conn.ConnectionString));
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) { Pooling = false };
+            using (var conn = new NpgsqlConnection(connString))
+            {
+                ProvideClientCertificatesCallback callback1 = certificates => { };
+                conn.ProvideClientCertificatesCallback = callback1;
+                RemoteCertificateValidationCallback callback2 = (sender, certificate, chain, errors) => true;
+                conn.UserCertificateValidationCallback = callback2;
+
+                conn.Open();
+                using (var conn2 = (NpgsqlConnection)((ICloneable)conn).Clone())
+                {
+                    Assert.That(conn2.ConnectionString, Is.EqualTo(conn.ConnectionString));
+                    Assert.That(conn2.ProvideClientCertificatesCallback, Is.SameAs(callback1));
+                    Assert.That(conn2.UserCertificateValidationCallback, Is.SameAs(callback2));
+                    conn2.Open();
+                }
+            }
         }
 
         [Test]
