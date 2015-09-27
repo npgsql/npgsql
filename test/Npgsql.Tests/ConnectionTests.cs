@@ -31,6 +31,7 @@ using System.Resources;
 using NUnit.Framework;
 using System.Collections.Generic;
 using System.IO;
+using System.Net.Security;
 using System.Text.RegularExpressions;
 using NpgsqlTypes;
 
@@ -208,14 +209,6 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test]
-        public void NoPassword()
-        {
-            var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Password = null };
-            using (var conn = new NpgsqlConnection(csb))
-                Assert.That(() => conn.Open(), Throws.Exception.TypeOf<ArgumentException>());
-        }
-
         #endregion
 
         #region Notification
@@ -364,7 +357,7 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test, Description("Breaks a connector while it's in the pool, without a keepalive and without")]
+        [Test, Description("Breaks a connector while it's in the pool, with a keepalive and without")]
         [TestCase(false, TestName = "WithoutKeepAlive")]
         [TestCase(false, TestName = "WithKeepAlive")]
         public void BreakConnectorInPool(bool keepAlive)
@@ -692,8 +685,23 @@ namespace Npgsql.Tests
         [IssueLink("https://github.com/npgsql/npgsql/issues/743")]
         public void Clone()
         {
-            var conn2 = (NpgsqlConnection)((ICloneable)Conn).Clone();
-            Assert.That(conn2.ConnectionString, Is.EqualTo(Conn.ConnectionString));
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) { Pooling = false };
+            using (var conn = new NpgsqlConnection(connString))
+            {
+                ProvideClientCertificatesCallback callback1 = certificates => { };
+                conn.ProvideClientCertificatesCallback = callback1;
+                RemoteCertificateValidationCallback callback2 = (sender, certificate, chain, errors) => true;
+                conn.UserCertificateValidationCallback = callback2;
+
+                conn.Open();
+                using (var conn2 = (NpgsqlConnection)((ICloneable)conn).Clone())
+                {
+                    Assert.That(conn2.ConnectionString, Is.EqualTo(conn.ConnectionString));
+                    Assert.That(conn2.ProvideClientCertificatesCallback, Is.SameAs(callback1));
+                    Assert.That(conn2.UserCertificateValidationCallback, Is.SameAs(callback2));
+                    conn2.Open();
+                }
+            }
         }
 
         [Test]
@@ -763,6 +771,23 @@ namespace Npgsql.Tests
                 conn.Open();
                 Assert.That(conn.Connector.BackendProcessId, Is.EqualTo(processId));
                 Assert.That(ExecuteScalar("SELECT 1", conn), Is.EqualTo(1));
+            }
+        }
+
+        [Test, Description("Tests an exception happening when sending the Terminate message while closing a ready connector")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/777")]
+        public void ExceptionDuringClose()
+        {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) { Pooling = false };
+            using (var conn = new NpgsqlConnection(connString))
+            {
+                conn.Open();
+                var connectorId = conn.ProcessID;
+
+                // Use another connection to kill our connector
+                ExecuteNonQuery($"SELECT pg_terminate_backend({connectorId})");
+
+                conn.Close();
             }
         }
 

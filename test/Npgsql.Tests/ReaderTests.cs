@@ -198,13 +198,75 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/794")]
+        public void GetFieldType()
+        {
+            using (var cmd = new NpgsqlCommand(@"SELECT 1::INT4 AS some_column", Conn))
+            using (var reader = cmd.ExecuteReader())
+            {
+                reader.Read();
+                Assert.That(reader.GetFieldType(0), Is.SameAs(typeof(int)));
+            }
+            using (var cmd = new NpgsqlCommand(@"SELECT 1::INT4 AS some_column", Conn))
+            {
+                cmd.AllResultTypesAreUnknown = true;
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetFieldType(0), Is.SameAs(typeof(string)));
+                }
+            }
+        }
+
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/787")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/794")]
         public void GetDataTypeName()
         {
-            var command = new NpgsqlCommand(@"SELECT 1::INT4 AS some_column", Conn);
-            var dr = command.ExecuteReader();
-            dr.Read();
-            Assert.That(dr.GetDataTypeName(0), Is.EqualTo("int4"));
-            command.Dispose();
+            using (var command = new NpgsqlCommand(@"SELECT 1::INT4 AS some_column", Conn))
+            using (var reader = command.ExecuteReader())
+            {
+                reader.Read();
+                Assert.That(reader.GetDataTypeName(0), Is.EqualTo("int4"));
+            }
+            using (var command = new NpgsqlCommand(@"SELECT '{1}'::INT4[] AS some_column", Conn))
+            using (var reader = command.ExecuteReader())
+            {
+                reader.Read();
+                Assert.That(reader.GetDataTypeName(0), Is.EqualTo("_int4"));
+            }
+            using (var command = new NpgsqlCommand(@"SELECT 1::INT4 AS some_column", Conn))
+            {
+                command.AllResultTypesAreUnknown = true;
+                using (var reader = command.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo("int4"));
+                }
+            }
+        }
+
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/791")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/794")]
+        public void GetDataTypeOID()
+        {
+            var int4OID = ExecuteScalar("SELECT oid FROM pg_type WHERE typname = 'int4'");
+            using (var cmd = new NpgsqlCommand(@"SELECT 1::INT4 AS some_column", Conn))
+            using (var reader = cmd.ExecuteReader())
+            {
+                reader.Read();
+                Assert.That(reader.GetDataTypeOID(0), Is.EqualTo(int4OID));
+            }
+            using (var cmd = new NpgsqlCommand(@"SELECT 1::INT4 AS some_column", Conn))
+            {
+                cmd.AllResultTypesAreUnknown = true;
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetDataTypeOID(0), Is.EqualTo(int4OID));
+                }
+            }
         }
 
         [Test]
@@ -544,15 +606,6 @@ namespace Npgsql.Tests
         #endregion
 
         [Test]
-        public void HasRowsWithoutResultset()
-        {
-            ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
-            var command = new NpgsqlCommand("DELETE FROM data WHERE name = 'unknown'", Conn);
-            var dr = command.ExecuteReader();
-            Assert.IsFalse(dr.HasRows);
-        }
-
-        [Test]
         public void SchemaOnlySingleRowCommandBehaviorSupport()
         {
             var command = new NpgsqlCommand("SELECT 1", Conn);
@@ -705,6 +758,7 @@ namespace Npgsql.Tests
 
         [Test]
         [IssueLink("https://github.com/npgsql/npgsql/issues/742")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/800")]
         public void HasRows([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
         {
             ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
@@ -714,12 +768,22 @@ namespace Npgsql.Tests
             using (var dr = command.ExecuteReader())
             {
                 Assert.That(dr.HasRows, Is.True);
+                Assert.That(dr.HasRows, Is.True);
                 Assert.That(dr.Read(), Is.True);
                 Assert.That(dr.HasRows, Is.True);
                 Assert.That(dr.Read(), Is.False);
                 dr.NextResult();
                 Assert.That(dr.HasRows, Is.False);
             }
+        }
+
+        [Test]
+        public void HasRowsWithoutResultset()
+        {
+            ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
+            var command = new NpgsqlCommand("DELETE FROM data WHERE name = 'unknown'", Conn);
+            var dr = command.ExecuteReader();
+            Assert.IsFalse(dr.HasRows);
         }
 
         [Test]

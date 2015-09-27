@@ -500,12 +500,15 @@ namespace Npgsql
                             continue;
                         case BackendMessageCode.DataRow:
                             _pendingMessage = msg;
+                            _hasRows = true;
                             return true;
                         case BackendMessageCode.CompletedResponse:
                         case BackendMessageCode.EmptyQueryResponse:
                             _pendingMessage = msg;
+                            _hasRows = false;
                             return false;
                         case BackendMessageCode.CloseComplete:
+                            _hasRows = false;
                             return false;
                         default:
                             throw new ArgumentOutOfRangeException("Got unexpected message type: " + msg.Code);
@@ -1138,9 +1141,10 @@ namespace Npgsql
 
         /// <summary>
         /// Gets the data type information for the specified field.
-        /// This will be the Postgresql type name (e.g. int4), not the .NET type (<see cref="GetFieldType"/>)
+        /// This will be the PostgreSQL type name (e.g. int4) as in the pg_type table,
+        /// not the .NET type (see <see cref="GetFieldType"/> for that).
         /// </summary>
-        /// <param name="ordinal"></param>
+        /// <param name="ordinal">The zero-based column index.</param>
         /// <returns></returns>
         public override string GetDataTypeName(int ordinal)
         {
@@ -1148,7 +1152,34 @@ namespace Npgsql
             CheckOrdinal(ordinal);
             Contract.EndContractBlock();
 
-            return _rowDescription[ordinal].Handler.PgName;
+            // In AllResultTypesAreUnknown mode, the handler is UnrecognizedTypeHandler but we can still get
+            // the data type name from the handler that would have been used in binary for the type OID
+            var field = _rowDescription[ordinal];
+            TypeHandler binaryHandler;
+            return
+                field.Handler is UnrecognizedTypeHandler &&
+                field.OID != 0 &&
+                _connector.TypeHandlerRegistry.OIDIndex.TryGetValue(field.OID, out binaryHandler)
+                ? binaryHandler.PgName
+                : field.Handler.PgName;
+        }
+
+        /// <summary>
+        /// Gets the OID for the PostgreSQL type for the specified field, as it appears in the pg_type table.
+        /// </summary>
+        /// <remarks>
+        /// This is a PostgreSQL-internal value that should not be relied upon and should only be used for
+        /// debugging purposes.
+        /// </remarks>
+        /// <param name="ordinal">The zero-based column index.</param>
+        /// <returns></returns>
+        public uint GetDataTypeOID(int ordinal)
+        {
+            CheckResultSet();
+            CheckOrdinal(ordinal);
+            Contract.EndContractBlock();
+
+            return _rowDescription[ordinal].OID;
         }
 
         /// <summary>
@@ -1171,8 +1202,8 @@ namespace Npgsql
                 }
             }
 
-            var fieldDescription = _rowDescription[ordinal];
-            return fieldDescription.Handler.GetFieldType(fieldDescription);
+            var field = _rowDescription[ordinal];
+            return field.Handler.GetFieldType(field);
         }
 
         /// <summary>

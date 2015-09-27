@@ -51,8 +51,6 @@ namespace Npgsql.BackendMessages
         internal string Line { get; private set; }
         internal string Routine { get; private set; }
 
-        ErrorOrNoticeMessage(SerializationInfo info, StreamingContext context) { }
-
         // ReSharper disable once FunctionComplexityOverflow
         internal ErrorOrNoticeMessage(NpgsqlBuffer buf)
         {

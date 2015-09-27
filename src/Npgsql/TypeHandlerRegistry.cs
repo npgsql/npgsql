@@ -42,7 +42,7 @@ namespace Npgsql
         internal NpgsqlConnector Connector { get; private set; }
         internal TypeHandler UnrecognizedTypeHandler { get; private set; }
 
-        readonly Dictionary<uint, TypeHandler> _oidIndex;
+        internal Dictionary<uint, TypeHandler> OIDIndex { get; private set; }
         readonly Dictionary<DbType, TypeHandler> _byDbType;
         readonly Dictionary<NpgsqlDbType, TypeHandler> _byNpgsqlDbType;
         readonly Dictionary<Type, TypeHandler> _byType;
@@ -87,7 +87,7 @@ namespace Npgsql
         {
             Connector = connector;
             UnrecognizedTypeHandler = new UnrecognizedTypeHandler();
-            _oidIndex = new Dictionary<uint, TypeHandler>();
+            OIDIndex = new Dictionary<uint, TypeHandler>();
             _byDbType = new Dictionary<DbType, TypeHandler>();
             _byNpgsqlDbType = new Dictionary<NpgsqlDbType, TypeHandler>();
             _byType = new Dictionary<Type, TypeHandler>();
@@ -193,20 +193,34 @@ namespace Npgsql
             {
                 switch (backendType.Type) {
                 case BackendTypeType.Base:
-                    RegisterBaseType(backendType);
+                    TypeAndMapping typeAndMapping;
+                    // Types whose names aren't in HandlerTypes aren't supported by Npgql, skip them
+                    if (HandlerTypes.TryGetValue(backendType.Name, out typeAndMapping))
+                    {
+                        RegisterBaseType(backendType.Name, backendType.OID, typeAndMapping.HandlerType, typeAndMapping.Mapping);
+                    }
                     continue;
+
                 case BackendTypeType.Array:
                     RegisterArrayType(backendType);
                     continue;
+
                 case BackendTypeType.Range:
                     RegisterRangeType(backendType);
                     continue;
+
                 case BackendTypeType.Enum:
                     TypeHandler handler;
                     if (_globalEnumRegistrations != null && _globalEnumRegistrations.TryGetValue(backendType.Name, out handler)) {
                         ActivateEnumType(handler, backendType);
                     }
+                    else
+                    {
+                        // Unregistered enum, register as text
+                        RegisterBaseType(backendType.Name, backendType.OID, typeof(TextHandler), new TypeMappingAttribute(backendType.Name));
+                    }
                     continue;
+
                 default:
                     Log.Error("Unknown type of type encountered, skipping: " + backendType, Connector.Id);
                     continue;
@@ -216,17 +230,8 @@ namespace Npgsql
             _backendTypes = backendTypes;
         }
 
-        void RegisterBaseType(BackendType backendType)
+        void RegisterBaseType(string name, uint oid, Type handlerType, TypeMappingAttribute mapping)
         {
-            TypeAndMapping typeAndMapping;
-            if (!HandlerTypes.TryGetValue(backendType.Name, out typeAndMapping)) {
-                // Backend type not supported by Npgsql
-                return;
-            }
-
-            var handlerType = typeAndMapping.HandlerType;
-            var mapping = typeAndMapping.Mapping;
-
             // Instantiate the type handler. If it has a constructor that accepts an NpgsqlConnector, use that to allow
             // the handler to make connector-specific adjustments. Otherwise (the normal case), use the default constructor.
             var handler = (TypeHandler)(
@@ -235,9 +240,9 @@ namespace Npgsql
                     : Activator.CreateInstance(handlerType)
             );
 
-            handler.OID = backendType.OID;
-            _oidIndex[backendType.OID] = handler;
-            handler.PgName = backendType.Name;
+            handler.OID = oid;
+            OIDIndex[oid] = handler;
+            handler.PgName = name;
 
             if (mapping.NpgsqlDbType.HasValue)
             {
@@ -275,7 +280,7 @@ namespace Npgsql
             Contract.Requires(backendType.Element != null);
 
             TypeHandler elementHandler;
-            if (!_oidIndex.TryGetValue(backendType.Element.OID, out elementHandler)) {
+            if (!OIDIndex.TryGetValue(backendType.Element.OID, out elementHandler)) {
                 // Array type referring to an unhandled element type
                 return;
             }
@@ -294,9 +299,9 @@ namespace Npgsql
                 arrayHandler = (ArrayHandler)Activator.CreateInstance(arrayHandlerType, elementHandler);
             }
 
-            arrayHandler.PgName = "array";
+            arrayHandler.PgName = backendType.Name;
             arrayHandler.OID = backendType.OID;
-            _oidIndex[backendType.OID] = arrayHandler;
+            OIDIndex[backendType.OID] = arrayHandler;
 
             if (elementHandler is IEnumHandler)
             {
@@ -322,7 +327,7 @@ namespace Npgsql
             Contract.Requires(backendType.Element != null);
 
             TypeHandler elementHandler;
-            if (!_oidIndex.TryGetValue(backendType.Element.OID, out elementHandler))
+            if (!OIDIndex.TryGetValue(backendType.Element.OID, out elementHandler))
             {
                 // Range type referring to an unhandled element type
                 return;
@@ -334,7 +339,7 @@ namespace Npgsql
             handler.PgName = backendType.Name;
             handler.NpgsqlDbType = NpgsqlDbType.Range | elementHandler.NpgsqlDbType;
             handler.OID = backendType.OID;
-            _oidIndex[backendType.OID] = handler;
+            OIDIndex[backendType.OID] = handler;
             _byNpgsqlDbType.Add(handler.NpgsqlDbType, handler);
         }
 
@@ -367,12 +372,21 @@ namespace Npgsql
             handler.PgName = backendType.Name;
             handler.OID = backendType.OID;
             handler.NpgsqlDbType = NpgsqlDbType.Enum;
-            _oidIndex[backendType.OID] = handler;
+            OIDIndex[backendType.OID] = handler;
             _byType[handler.GetFieldType()] = handler;
 
             if (backendType.Array != null) {
                 RegisterArrayType(backendType.Array);
             }
+        }
+
+        internal static void UnregisterEnumTypeGlobally<TEnum>() where TEnum : struct
+        {
+            var pgName = _globalEnumRegistrations
+                .Single(kv => kv.Value is EnumHandler<TEnum>)
+                .Key;
+            TypeHandler _;
+            _globalEnumRegistrations.TryRemove(pgName, out _);
         }
 
         #endregion
@@ -389,12 +403,12 @@ namespace Npgsql
             get
             {
                 TypeHandler result;
-                if (!_oidIndex.TryGetValue(oid, out result)) {
+                if (!OIDIndex.TryGetValue(oid, out result)) {
                     result = UnrecognizedTypeHandler;
                 }
                 return result;
             }
-            set { _oidIndex[oid] = value; }
+            set { OIDIndex[oid] = value; }
         }
 
         internal TypeHandler this[NpgsqlDbType npgsqlDbType, Type enumType = null]
@@ -650,12 +664,6 @@ namespace Npgsql
             BackendTypeCache.TryRemove(connectionString, out types);
         }
 
-        #endregion
-
-        #region Debugging / Testing
-#if DEBUG
-        internal Dictionary<uint, TypeHandler> OIDIndex { get { return _oidIndex; } }
-#endif
         #endregion
     }
 

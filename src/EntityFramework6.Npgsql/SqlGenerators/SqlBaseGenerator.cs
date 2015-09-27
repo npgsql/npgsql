@@ -1119,7 +1119,19 @@ namespace Npgsql.SqlGenerators
                         throw new NotSupportedException("NotSupported " + function.Name);
                 }
             }
+
+#if ENTITIES6
+            FunctionExpression customFuncCall = string.IsNullOrEmpty(function.Schema) ?
+                new FunctionExpression(QuoteIdentifier(function.StoreFunctionNameAttribute)) :
+                new FunctionExpression(
+                    QuoteIdentifier(function.Schema) + "." + QuoteIdentifier(function.StoreFunctionNameAttribute));
+
+            foreach (var a in args)
+                customFuncCall.AddArgument(a.Accept(this));
+            return customFuncCall;
+#else
             throw new NotSupportedException();
+#endif
         }
 
         private VisitedExpression Substring(VisitedExpression source, VisitedExpression start, VisitedExpression count)

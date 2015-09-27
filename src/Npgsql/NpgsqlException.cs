@@ -172,8 +172,6 @@ namespace Npgsql
 
         #endregion
 
-        NpgsqlException(SerializationInfo info, StreamingContext context) : base(info, context) { }
-
         internal NpgsqlException(NpgsqlBuffer buf)
         {
             _msg = new ErrorOrNoticeMessage(buf);
@@ -205,5 +203,25 @@ namespace Npgsql
                 );
             }
         }
+
+        #region Serialization
+
+        NpgsqlException(SerializationInfo info, StreamingContext context) : base(info, context)
+        {
+            _msg = (ErrorOrNoticeMessage)info.GetValue("msg", typeof(ErrorOrNoticeMessage));
+        }
+
+        /// <summary>
+        /// Populates a <see cref="SerializationInfo"/> with the data needed to serialize the target object.
+        /// </summary>
+        /// <param name="info">The <see cref="SerializationInfo"/> to populate with data.</param>
+        /// <param name="context">The destination (see <see cref="StreamingContext"/>) for this serialization.</param>
+        public override void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            base.GetObjectData(info, context);
+            info.AddValue("msg", _msg);
+        }
+
+        #endregion
     }
 }
