@@ -5,6 +5,7 @@
 *.sln.docstates
 *.userprefs
 /*.nupkg
+.nuget/
 [Bb]in/
 [Bb]uild/
 [Oo]bj/

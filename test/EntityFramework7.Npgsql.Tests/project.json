@@ -1,5 +1,4 @@
 {
-  "version": "0.0.0",
   "dependencies": {
     "EntityFramework.Relational.FunctionalTests": "7.0.0-*",
     "EntityFramework7.Npgsql": "3.1.0-*"
@@ -10,12 +9,12 @@
   "frameworks": {
     "net46": {
       "frameworkAssemblies": {
-        "System.Threading.Tasks": "4.0.0.0",
+        "System.Threading.Tasks": "4.0.0.0"
       }
     },
     "dnx452": {
       "frameworkAssemblies": {
-        "System.Threading.Tasks": "4.0.0.0",
+        "System.Threading.Tasks": "4.0.0.0"
       }
     },
     "dnxcore50": {

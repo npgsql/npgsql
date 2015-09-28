@@ -15,13 +15,11 @@
     "Brar Piening",
     "Hiroshi Saito"
   ],
-  "description" : "PostgreSQL provider for Entity Framework 6",
+  "description" : "PostgreSQL provider for Entity Framework 5",
   "compilationOptions": {
-    "define": [ "ENTITIES6" ],
     "keyFile": "../../Npgsql.snk"
   },
   "dependencies" : {
-    "EntityFramework": "6.1.3",
     "Npgsql": "3.1.0-alpha2",
   },
   "frameworks": {

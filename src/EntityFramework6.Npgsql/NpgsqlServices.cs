@@ -23,9 +23,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Data.Common;
 using System.Text;
-using System.Xml;
 #if ENTITIES6
 using System.Data.Entity.Core.Common;
 using System.Data.Entity.Core.Common.CommandTrees;
@@ -33,12 +31,13 @@ using System.Data.Entity.Core.Metadata.Edm;
 using System.Data.Entity.Migrations.Sql;
 using System.Data.Entity.Infrastructure.DependencyResolution;
 #else
+using System.Data.Common;
 using System.Data.Common.CommandTrees;
 using System.Data.Metadata.Edm;
 #endif
 using Npgsql.SqlGenerators;
-using System.Data;
-using NpgsqlTypes;
+using DbConnection = System.Data.Common.DbConnection;
+using DbCommand = System.Data.Common.DbCommand;
 
 namespace Npgsql
 {

@@ -24,11 +24,11 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
-using System.Data.Common;
 #if ENTITIES6
 using System.Data.Entity.Core.Common;
 using System.Data.Entity.Core.Metadata.Edm;
 #else
+using System.Data.Common;
 using System.Data.Metadata.Edm;
 #endif
 using System.Xml;
