@@ -5,6 +5,9 @@
         "NLog": "3.2.0.0",
         "Npgsql": "3.1.0-alpha2"
     },
+    "compilationOptions": {
+      "keyFile": "../../Npgsql.snk"
+    },
     "frameworks": {
         "net46": {
             "dependencies": { },
