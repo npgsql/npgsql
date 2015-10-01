@@ -419,6 +419,7 @@ namespace Npgsql
         internal bool Enlist { get { return Settings.Enlist; } }
         internal int BufferSize { get { return Settings.BufferSize; } }
         internal string EntityTemplateDatabase { get { return Settings.EntityTemplateDatabase; } }
+        internal string EntityAdminDatabase { get { return Settings.EntityAdminDatabase; } }
 
         #endregion Configuration settings
 

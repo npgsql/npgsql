@@ -848,6 +848,29 @@ namespace Npgsql
         }
         string _entityTemplateDatabase;
 
+        /// <summary>
+        /// The database admin to specify when creating and dropping a database in Entity Framework. This is needed because
+        /// Npgsql needs to connect to a database in order to send the create/drop database command.
+        /// If not specified, defaults to "template1". Check NpgsqlServices.UsingPostgresDBConnection for more information.
+        /// </summary>
+        #if !DNXCORE50
+        [Category("Entity Framework")]
+        [Description("The database admin to specify when creating and dropping a database in Entity Framework. If not specified, defaults to \"template1\".")]
+        #endif
+        [DisplayName("EF Admin Database")]
+        [NpgsqlConnectionStringProperty]
+        public string EntityAdminDatabase
+        {
+            get { return _entityAdminDatabase; }
+            set
+            {
+                _entityAdminDatabase = value;
+                // TODO: Replace literal name with nameof operator in C# 6.0
+                SetValue("EntityAdminDatabase", value);
+            }
+        }
+        string _entityAdminDatabase;
+
 #endregion
 
 #region Properties - Advanced
