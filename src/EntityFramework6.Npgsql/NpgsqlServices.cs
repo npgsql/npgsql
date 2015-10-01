@@ -196,7 +196,7 @@ namespace Npgsql
         {
             var connectionBuilder = new NpgsqlConnectionStringBuilder(connection.ConnectionString)
             {
-                Database = connection.EntityTemplateDatabase ?? "template1",
+                Database = connection.EntityAdminDatabase ?? "template1",
                 Pooling = false
             };
 
