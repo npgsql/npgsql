@@ -1859,16 +1859,38 @@ namespace Npgsql
 
         #region Supported features
 
-        internal bool SupportsApplicationName { get; private set; }
-        internal bool SupportsExtraFloatDigits3 { get; private set; }
-        internal bool SupportsExtraFloatDigits { get; private set; }
-        internal bool SupportsSslRenegotiationLimit { get; private set; }
-        internal bool SupportsSavepoint { get; private set; }
-        internal bool SupportsDiscard { get; private set; }
-        internal bool SupportsEStringPrefix { get; private set; }
-        internal bool SupportsHexByteFormat { get; private set; }
-        internal bool SupportsRangeTypes { get; private set; }
-        internal bool UseConformantStrings { get; private set; }
+        internal bool SupportsApplicationName   { get { return ServerVersion >= new Version(9, 0, 0); } }
+        internal bool SupportsExtraFloatDigits3 { get { return ServerVersion >= new Version(9, 0, 0); } }
+        internal bool SupportsExtraFloatDigits  { get { return ServerVersion >= new Version(7, 4, 0); } }
+        internal bool SupportsSavepoint         { get { return ServerVersion >= new Version(8, 0, 0); } }
+        internal bool SupportsDiscard           { get { return ServerVersion >= new Version(8, 3, 0); } }
+        internal bool SupportsRangeTypes        { get { return ServerVersion >= new Version(9, 2, 0); } }
+        internal bool UseConformantStrings      { get; private set; }
+
+        internal bool SupportsSslRenegotiationLimit
+        {
+            get
+            {
+                return ServerVersion >= new Version(8, 4, 3) ||
+                       (ServerVersion >= new Version(8, 3, 10) && ServerVersion < new Version(8, 4, 0)) ||
+                       (ServerVersion >= new Version(8, 2, 16) && ServerVersion < new Version(8, 3, 0)) ||
+                       (ServerVersion >= new Version(8, 1, 20) && ServerVersion < new Version(8, 2, 0)) ||
+                       (ServerVersion >= new Version(8, 0, 24) && ServerVersion < new Version(8, 1, 0)) ||
+                       (ServerVersion >= new Version(7, 4, 28) && ServerVersion < new Version(8, 0, 0));
+            }
+        }
+
+        internal bool SupportsEStringPrefix
+        {
+            get
+            {
+                // Per the PG documentation, E string literal prefix support appeared in PG version 8.1.
+                // Note that it is possible that support for this prefix will vanish in some future version
+                // of Postgres, in which case this test will need to be revised.
+                // At that time it may also be necessary to set UseConformantStrings = true here.
+                return ServerVersion >= new Version(8, 1, 0);
+            }
+        }
 
         /// <summary>
         /// This method is required to set all the version dependent features flags.
@@ -1887,30 +1909,6 @@ namespace Npgsql
                 }
             }
             ServerVersion = new Version(versionString);
-
-            SupportsSavepoint = (ServerVersion >= new Version(8, 0, 0));
-            SupportsDiscard = (ServerVersion >= new Version(8, 3, 0));
-            SupportsApplicationName = (ServerVersion >= new Version(9, 0, 0));
-            SupportsExtraFloatDigits3 = (ServerVersion >= new Version(9, 0, 0));
-            SupportsExtraFloatDigits = (ServerVersion >= new Version(7, 4, 0));
-            SupportsSslRenegotiationLimit = ((ServerVersion >= new Version(8, 4, 3)) ||
-                     (ServerVersion >= new Version(8, 3, 10) && ServerVersion < new Version(8, 4, 0)) ||
-                     (ServerVersion >= new Version(8, 2, 16) && ServerVersion < new Version(8, 3, 0)) ||
-                     (ServerVersion >= new Version(8, 1, 20) && ServerVersion < new Version(8, 2, 0)) ||
-                     (ServerVersion >= new Version(8, 0, 24) && ServerVersion < new Version(8, 1, 0)) ||
-                     (ServerVersion >= new Version(7, 4, 28) && ServerVersion < new Version(8, 0, 0)));
-
-            // Per the PG documentation, E string literal prefix support appeared in PG version 8.1.
-            // Note that it is possible that support for this prefix will vanish in some future version
-            // of Postgres, in which case this test will need to be revised.
-            // At that time it may also be necessary to set UseConformantStrings = true here.
-            SupportsEStringPrefix = (ServerVersion >= new Version(8, 1, 0));
-
-            // Per the PG documentation, hex string encoding format support appeared in PG version 9.0.
-            SupportsHexByteFormat = (ServerVersion >= new Version(9, 0, 0));
-
-            // Range data types
-            SupportsRangeTypes = (ServerVersion >= new Version(9, 2, 0));
         }
 
         /// <summary>

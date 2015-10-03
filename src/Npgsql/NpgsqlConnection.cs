@@ -876,28 +876,12 @@ namespace Npgsql
 #if !DNXCORE50
         [Browsable(false)]
 #endif
-            // ReSharper disable once InconsistentNaming
-        public bool Supports_E_StringPrefix
+        public bool SupportsEStringPrefix
         {
             get
             {
                 CheckConnectionOpen();
                 return Connector.SupportsEStringPrefix;
-            }
-        }
-
-        /// <summary>
-        /// Report whether the backend understands the hex byte format (>= 9.0).
-        /// </summary>
-#if !DNXCORE50
-        [Browsable(false)]
-#endif
-        public bool SupportsHexByteFormat
-        {
-            get
-            {
-                CheckConnectionOpen();
-                return Connector.SupportsHexByteFormat;
             }
         }
 
