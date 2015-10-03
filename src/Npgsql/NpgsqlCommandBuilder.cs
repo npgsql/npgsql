@@ -207,7 +207,7 @@ namespace Npgsql
                         }
                     }
                     else
-                        throw new InvalidOperationException(string.Format("{0} does not exist in pg_proc", command.CommandText));
+                        throw new InvalidOperationException($"{command.CommandText} does not exist in pg_proc");
                 }
 
                 command.Parameters.Clear();
@@ -218,7 +218,7 @@ namespace Npgsql
                     // TODO: Fix enums, composite types
                     var npgsqlDbType = c.Connection.Connector.TypeHandlerRegistry[types[i]].NpgsqlDbType;
                     if (npgsqlDbType == NpgsqlDbType.Unknown)
-                        throw new InvalidOperationException(string.Format("Invalid parameter type: {0}", types[i]));
+                        throw new InvalidOperationException($"Invalid parameter type: {types[i]}");
                     param.NpgsqlDbType = npgsqlDbType;
 
                     if (names != null && i < names.Length)
@@ -425,7 +425,7 @@ namespace Npgsql
         {
             var npgsqlAdapter = adapter as NpgsqlDataAdapter;
             if (npgsqlAdapter == null)
-                throw new ArgumentException("adapter needs to be a NpgsqlDataAdapter", "adapter");
+                throw new ArgumentException("adapter needs to be a NpgsqlDataAdapter", nameof(adapter));
 
             // Being called twice for the same adapter means unregister
             if (adapter == DataAdapter)
@@ -461,10 +461,10 @@ namespace Npgsql
             if (unquotedIdentifier == null)
 
             {
-                throw new ArgumentNullException("unquotedIdentifier", "Unquoted identifier parameter cannot be null");
+                throw new ArgumentNullException(nameof(unquotedIdentifier), "Unquoted identifier parameter cannot be null");
             }
 
-            return String.Format("{0}{1}{2}", QuotePrefix, unquotedIdentifier.Replace(QuotePrefix, QuotePrefix + QuotePrefix), QuoteSuffix);
+            return $"{QuotePrefix}{unquotedIdentifier.Replace(QuotePrefix, QuotePrefix + QuotePrefix)}{QuoteSuffix}";
         }
 
         /// <summary>
@@ -484,7 +484,7 @@ namespace Npgsql
             if (quotedIdentifier == null)
 
             {
-                throw new ArgumentNullException("quotedIdentifier", "Quoted identifier parameter cannot be null");
+                throw new ArgumentNullException(nameof(quotedIdentifier), "Quoted identifier parameter cannot be null");
             }
 
             var unquotedIdentifier = quotedIdentifier.Trim().Replace(QuotePrefix + QuotePrefix, QuotePrefix);

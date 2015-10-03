@@ -87,7 +87,7 @@ namespace NpgsqlTypes
         public static NpgsqlTsQuery Parse(string value)
         {
             if (value == null)
-                throw new ArgumentNullException("value");
+                throw new ArgumentNullException(nameof(value));
             Contract.EndContractBlock();
 
             Stack<NpgsqlTsQuery> valStack = new Stack<NpgsqlTsQuery>();
@@ -295,7 +295,7 @@ namespace NpgsqlTypes
             set
             {
                 if (string.IsNullOrEmpty(value))
-                    throw new ArgumentException("Text is null or empty string", "value");
+                    throw new ArgumentException("Text is null or empty string", nameof(value));
                 Contract.EndContractBlock();
 
                 _text = value;
@@ -316,7 +316,7 @@ namespace NpgsqlTypes
             set
             {
                 if (((byte)value >> 4) != 0)
-                    throw new ArgumentOutOfRangeException("value", "Illegal weights");
+                    throw new ArgumentOutOfRangeException(nameof(value), "Illegal weights");
                 Contract.EndContractBlock();
 
                 _weights = value;

@@ -30,7 +30,7 @@ namespace Npgsql.BackendMessages
 {
     internal class ParseCompleteMessage : IBackendMessage
     {
-        public BackendMessageCode Code { get { return BackendMessageCode.ParseComplete; } }
+        public BackendMessageCode Code => BackendMessageCode.ParseComplete;
         internal static readonly ParseCompleteMessage Instance = new ParseCompleteMessage();
         ParseCompleteMessage() { }
     }

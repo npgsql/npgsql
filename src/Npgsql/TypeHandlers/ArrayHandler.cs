@@ -329,7 +329,7 @@ namespace Npgsql.TypeHandlers
             _lengthCache = lengthCache;
             var asArray = value as Array;
             _writeValue = (IList)value;
-            _dimensions = asArray != null ? asArray.Rank : 1;
+            _dimensions = asArray?.Rank ?? 1;
             _index = 0;
             _wroteElementLen = false;
             _writeState = WriteState.WroteNothing;
@@ -375,7 +375,7 @@ namespace Npgsql.TypeHandlers
                     }
 
                     var asGeneric = _writeValue as IList<TElement2>;
-                    _enumerator = asGeneric != null ? asGeneric.GetEnumerator() : _writeValue.GetEnumerator();
+                    _enumerator = asGeneric?.GetEnumerator() ?? _writeValue.GetEnumerator();
                     if (!_enumerator.MoveNext()) {
                         goto case WriteState.Cleanup;
                     }
@@ -412,7 +412,7 @@ namespace Npgsql.TypeHandlers
             }
         }
 
-        bool WriteSingleElement(object element, ref DirectBuffer directBuf)
+        bool WriteSingleElement([CanBeNull] object element, ref DirectBuffer directBuf)
         {
             // TODO: Need generic version of this...
             if (element == null || element is DBNull) {
@@ -492,7 +492,7 @@ namespace Npgsql.TypeHandlers
                     return lengthCache.Get();
                 }
                 var asMultidimensional = value as Array;
-                var dimensions = asMultidimensional != null ? asMultidimensional.Rank : 1;
+                var dimensions = asMultidimensional?.Rank ?? 1;
 
                 // Leave empty slot for the entire array length, and go ahead an populate the element slots
                 var pos = lengthCache.Position;
@@ -504,18 +504,17 @@ namespace Npgsql.TypeHandlers
                 return len;
             }
 
-            throw new InvalidCastException(string.Format("Can't write type {0} as an array of {1}", value.GetType(), typeof(TElement2)));
+            throw new InvalidCastException($"Can't write type {value.GetType()} as an array of {typeof (TElement2)}");
         }
 
-        int GetSingleElementLength(object element, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
+        int GetSingleElementLength([CanBeNull] object element, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             if (element == null || element is DBNull) {
                 return 0;
             }
             var asChunkingWriter = ElementHandler as IChunkingTypeHandler;
-            return asChunkingWriter != null
-                ? asChunkingWriter.ValidateAndGetLength(element, ref lengthCache, parameter)
-                : ((ISimpleTypeHandler)ElementHandler).ValidateAndGetLength(element, null);
+            return asChunkingWriter?.ValidateAndGetLength(element, ref lengthCache, parameter) ??
+                ((ISimpleTypeHandler)ElementHandler).ValidateAndGetLength(element, null);
         }
 
         enum WriteState

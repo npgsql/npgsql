@@ -379,7 +379,8 @@ namespace Npgsql
             set
             {
                 if (value < -1)
-                    throw new ArgumentException(String.Format("Invalid parameter Size value '{0}'. The value must be greater than or equal to 0.", value));
+                    throw new ArgumentException(
+                        $"Invalid parameter Size value '{value}'. The value must be greater than or equal to 0.");
                 Contract.EndContractBlock();
 
                 _size = value;
@@ -450,10 +451,10 @@ namespace Npgsql
             set
             {
                 if (value == NpgsqlDbType.Array) {
-                    throw new ArgumentOutOfRangeException("value", "Cannot set NpgsqlDbType to just Array, Binary-Or with the element type (e.g. Array of Box is NpgsqlDbType.Array | NpgsqlDbType.Box).");
+                    throw new ArgumentOutOfRangeException(nameof(value), "Cannot set NpgsqlDbType to just Array, Binary-Or with the element type (e.g. Array of Box is NpgsqlDbType.Array | NpgsqlDbType.Box).");
                 }
                 if (value == NpgsqlDbType.Range) {
-                    throw new ArgumentOutOfRangeException("value", "Cannot set NpgsqlDbType to just Range, Binary-Or with the element type (e.g. Range of integer is NpgsqlDbType.Range | NpgsqlDbType.Integer)");
+                    throw new ArgumentOutOfRangeException(nameof(value), "Cannot set NpgsqlDbType to just Range, Binary-Or with the element type (e.g. Range of integer is NpgsqlDbType.Range | NpgsqlDbType.Integer)");
                 }
                 Contract.EndContractBlock();
 
@@ -597,10 +598,7 @@ namespace Npgsql
         /// Returns whether this parameter has had its type set explicitly via DbType or NpgsqlDbType
         /// (and not via type inference)
         /// </summary>
-        internal bool IsTypeExplicitlySet
-        {
-            get { return _npgsqlDbType.HasValue || _dbType.HasValue; }
-        }
+        internal bool IsTypeExplicitlySet => _npgsqlDbType.HasValue || _dbType.HasValue;
 
         internal void ResolveHandler(TypeHandlerRegistry registry)
         {
@@ -622,7 +620,7 @@ namespace Npgsql
             }
             else
             {
-                throw new InvalidOperationException(string.Format("Parameter '{0}' must have its value set", ParameterName));
+                throw new InvalidOperationException($"Parameter '{ParameterName}' must have its value set");
             }
         }
 
@@ -637,7 +635,7 @@ namespace Npgsql
         internal int ValidateAndGetLength()
         {
             if (_value == null) {
-                throw new InvalidCastException(string.Format("Parameter {0} must be set", ParameterName));
+                throw new InvalidCastException($"Parameter {ParameterName} must be set");
             }
 
             if (_value is DBNull) {
@@ -651,7 +649,8 @@ namespace Npgsql
             }
 
             var asChunkingWriter = Handler as IChunkingTypeHandler;
-            Contract.Assert(asChunkingWriter != null, String.Format("Handler {0} doesn't implement either ISimpleTypeWriter or IChunkingTypeWriter", Handler.GetType().Name));
+            Contract.Assert(asChunkingWriter != null,
+                $"Handler {Handler.GetType().Name} doesn't implement either ISimpleTypeWriter or IChunkingTypeWriter");
             var lengthCache = LengthCache;
             var len = asChunkingWriter.ValidateAndGetLength(Value, ref lengthCache, this);
             LengthCache = lengthCache;
@@ -675,15 +674,9 @@ namespace Npgsql
             ClearBind();
         }
 
-        internal bool IsInputDirection
-        {
-            get { return Direction == ParameterDirection.InputOutput || Direction == ParameterDirection.Input; }
-        }
+        internal bool IsInputDirection => Direction == ParameterDirection.InputOutput || Direction == ParameterDirection.Input;
 
-        internal bool IsOutputDirection
-        {
-            get { return Direction == ParameterDirection.InputOutput || Direction == ParameterDirection.Output; }
-        }
+        internal bool IsOutputDirection => Direction == ParameterDirection.InputOutput || Direction == ParameterDirection.Output;
 
         #endregion
 

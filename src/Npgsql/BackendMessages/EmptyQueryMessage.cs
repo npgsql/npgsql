@@ -30,7 +30,7 @@ namespace Npgsql.BackendMessages
 {
     internal class EmptyQueryMessage : IBackendMessage
     {
-        public BackendMessageCode Code { get { return BackendMessageCode.EmptyQueryResponse; } }
+        public BackendMessageCode Code => BackendMessageCode.EmptyQueryResponse;
         internal static readonly EmptyQueryMessage Instance = new EmptyQueryMessage();
         EmptyQueryMessage() { }
     }

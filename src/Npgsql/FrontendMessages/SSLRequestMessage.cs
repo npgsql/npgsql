@@ -34,7 +34,7 @@ namespace Npgsql.FrontendMessages
 
         SSLRequestMessage() {}
 
-        internal override int Length { get { return 8; } }
+        internal override int Length => 8;
 
         internal override void Write(NpgsqlBuffer buf)
         {

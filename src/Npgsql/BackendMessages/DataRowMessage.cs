@@ -35,7 +35,7 @@ namespace Npgsql.BackendMessages
 {
     abstract class DataRowMessage : IBackendMessage
     {
-        public BackendMessageCode Code { get { return BackendMessageCode.DataRow; } }
+        public BackendMessageCode Code => BackendMessageCode.DataRow;
 
         protected internal NpgsqlBuffer Buffer { get; protected set; }
 
@@ -62,7 +62,7 @@ namespace Npgsql.BackendMessages
         /// </summary>
         internal int ColumnLen;
 
-        internal bool IsColumnNull { get { return ColumnLen == -1; } }
+        internal bool IsColumnNull => ColumnLen == -1;
 
         internal abstract DataRowMessage Load(NpgsqlBuffer buf);
 
@@ -99,6 +99,7 @@ namespace Npgsql.BackendMessages
 
         #region Checks
 
+        // ReSharper disable once UnusedParameter.Global
         protected void CheckColumnIndex(int column)
         {
             if (column < 0 || column >= NumColumns)

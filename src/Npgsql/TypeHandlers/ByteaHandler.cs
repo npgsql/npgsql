@@ -72,7 +72,7 @@ namespace Npgsql.TypeHandlers
             return false;
         }
 
-        public long GetBytes(DataRowMessage row, int offset, byte[] output, int outputOffset, int len, FieldDescription field)
+        public long GetBytes(DataRowMessage row, int offset, [CanBeNull] byte[] output, int outputOffset, int len, FieldDescription field)
         {
             if (output == null) {
                 return row.ColumnLen;
@@ -223,9 +223,9 @@ namespace Npgsql.TypeHandlers
             _disposed = true;
         }
 
-        public override bool CanRead { get { return true; } }
-        public override bool CanSeek { get { return false; } }
-        public override bool CanWrite { get { return false; } }
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
 
         void CheckDisposed()
         {

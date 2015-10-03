@@ -191,10 +191,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
 
         public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
         {
-            var num = (decimal)(parameter != null && parameter.ConvertedValue != null
-                ? parameter.ConvertedValue
-                : value);
-
+            var num = (decimal) (parameter?.ConvertedValue ?? value);
             if (num == 0M)
             {
                 buf.WriteInt64(0);

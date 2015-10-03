@@ -30,7 +30,7 @@ namespace Npgsql.BackendMessages
 {
     internal class ReadyForQueryMessage : IBackendMessage
     {
-        public BackendMessageCode Code { get { return BackendMessageCode.ReadyForQuery; } }
+        public BackendMessageCode Code => BackendMessageCode.ReadyForQuery;
 
         internal TransactionStatus TransactionStatusIndicator { get; private set; }
 

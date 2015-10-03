@@ -11,6 +11,7 @@ using NpgsqlTypes;
 namespace Npgsql
 {
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
+    [MeansImplicitUse]
     class TypeMappingAttribute : Attribute
     {
         /// <summary>
@@ -40,7 +41,7 @@ namespace Npgsql
         internal TypeMappingAttribute(string pgName, NpgsqlDbType? npgsqlDbType, [CanBeNull] DbType[] dbTypes, [CanBeNull] Type[] types, DbType? inferredDbType)
         {
             if (String.IsNullOrWhiteSpace(pgName))
-                throw new ArgumentException("pgName can't be empty", "pgName");
+                throw new ArgumentException("pgName can't be empty", nameof(pgName));
             Contract.EndContractBlock();
 
             PgName = pgName;

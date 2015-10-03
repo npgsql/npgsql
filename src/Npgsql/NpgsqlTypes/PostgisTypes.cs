@@ -100,10 +100,7 @@ namespace NpgsqlTypes
     public class PostgisPoint : PostgisGeometry, IEquatable<PostgisPoint>
     {
 
-        internal override WkbIdentifier Identifier
-        {
-            get { return WkbIdentifier.Point; }
-        }
+        internal override WkbIdentifier Identifier => WkbIdentifier.Point;
 
         Coordinate2D _coord;
 
@@ -168,10 +165,7 @@ namespace NpgsqlTypes
     {
         readonly Coordinate2D[] _points;
 
-        internal override WkbIdentifier Identifier
-        {
-            get { return WkbIdentifier.LineString; }
-        }
+        internal override WkbIdentifier Identifier => WkbIdentifier.LineString;
 
         protected override int GetLenHelper()
         {
@@ -188,10 +182,7 @@ namespace NpgsqlTypes
             return GetEnumerator();
         }
 
-        public Coordinate2D this[int index]
-        {
-            get { return _points[index]; }
-        }
+        public Coordinate2D this[int index] => _points[index];
 
         public PostgisLineString(IEnumerable<Coordinate2D> points)
         {
@@ -203,10 +194,7 @@ namespace NpgsqlTypes
             _points = points;
         }
 
-        public int PointCount
-        {
-            get { return _points.Length; }
-        }
+        public int PointCount => _points.Length;
 
         public bool Equals([CanBeNull] PostgisLineString other)
         {
@@ -262,26 +250,11 @@ namespace NpgsqlTypes
             return 4 + _rings.Length * 4 + TotalPointCount * 16;
         }
 
-        internal override WkbIdentifier Identifier
-        {
-            get { return WkbIdentifier.Polygon; }
-        }
+        internal override WkbIdentifier Identifier => WkbIdentifier.Polygon;
 
-        public Coordinate2D this[int ringIndex, int pointIndex]
-        {
-            get
-            {
-                return _rings[ringIndex][pointIndex];
-            }
-        }
+        public Coordinate2D this[int ringIndex, int pointIndex] => _rings[ringIndex][pointIndex];
 
-        public Coordinate2D[] this[int ringIndex]
-        {
-            get
-            {
-                return _rings[ringIndex];
-            }
-        }
+        public Coordinate2D[] this[int ringIndex] => _rings[ringIndex];
 
         public PostgisPolygon(Coordinate2D[][] rings)
         {
@@ -330,10 +303,7 @@ namespace NpgsqlTypes
             return !(x == y);
         }
 
-        public int RingCount
-        {
-            get { return _rings.Length; }
-        }
+        public int RingCount => _rings.Length;
 
         public int TotalPointCount
         {
@@ -369,10 +339,7 @@ namespace NpgsqlTypes
     {
         readonly Coordinate2D[] _points;
 
-        internal override WkbIdentifier Identifier
-        {
-            get { return WkbIdentifier.MultiPoint; }
-        }
+        internal override WkbIdentifier Identifier => WkbIdentifier.MultiPoint;
 
         protected override int GetLenHelper()
         {
@@ -404,10 +371,7 @@ namespace NpgsqlTypes
             _points = points.ToArray();
         }
 
-        public Coordinate2D this[int indexer]
-        {
-            get { return _points[indexer]; }
-        }
+        public Coordinate2D this[int indexer] => _points[indexer];
 
         public bool Equals([CanBeNull] PostgisMultiPoint other)
         {
@@ -451,10 +415,7 @@ namespace NpgsqlTypes
             return ret;
         }
 
-        public int PointCount
-        {
-            get { return _points.Length; }
-        }
+        public int PointCount => _points.Length;
     }
 
     /// <summary>
@@ -473,10 +434,7 @@ namespace NpgsqlTypes
             }
         }
 
-        internal override WkbIdentifier Identifier
-        {
-            get { return WkbIdentifier.MultiLineString; }
-        }
+        internal override WkbIdentifier Identifier => WkbIdentifier.MultiLineString;
 
         protected override int GetLenHelper()
         {
@@ -508,10 +466,7 @@ namespace NpgsqlTypes
             _lineStrings = linestrings.ToArray();
         }
 
-        public PostgisLineString this[int index]
-        {
-            get { return _lineStrings[index]; }
-        }
+        public PostgisLineString this[int index] => _lineStrings[index];
 
         public PostgisMultiLineString(IEnumerable<IEnumerable<Coordinate2D>> pointList)
         {
@@ -558,13 +513,7 @@ namespace NpgsqlTypes
             return ret;
         }
 
-        public int LineCount
-        {
-            get
-            {
-                return _lineStrings.Length;
-            }
-        }
+        public int LineCount => _lineStrings.Length;
     }
 
     /// <summary>
@@ -584,15 +533,9 @@ namespace NpgsqlTypes
             return GetEnumerator();
         }
 
-        internal override WkbIdentifier Identifier
-        {
-            get { return WkbIdentifier.MultiPolygon; }
-        }
+        internal override WkbIdentifier Identifier => WkbIdentifier.MultiPolygon;
 
-        public PostgisPolygon this[int index]
-        {
-            get { return _polygons[index]; }
-        }
+        public PostgisPolygon this[int index] => _polygons[index];
 
         public PostgisMultiPolygon(PostgisPolygon[] polygons)
         {
@@ -657,13 +600,7 @@ namespace NpgsqlTypes
         }
 
 
-        public int PolygonCount
-        {
-            get
-            {
-                return _polygons.Length;
-            }
-        }
+        public int PolygonCount => _polygons.Length;
     }
 
     /// <summary>
@@ -673,15 +610,9 @@ namespace NpgsqlTypes
     {
         readonly PostgisGeometry[] _geometries;
 
-        public PostgisGeometry this[int index]
-        {
-            get { return _geometries[index]; }
-        }
+        public PostgisGeometry this[int index] => _geometries[index];
 
-        internal override WkbIdentifier Identifier
-        {
-            get { return WkbIdentifier.GeometryCollection; }
-        }
+        internal override WkbIdentifier Identifier => WkbIdentifier.GeometryCollection;
 
         public IEnumerator<PostgisGeometry> GetEnumerator()
         {
@@ -753,12 +684,6 @@ namespace NpgsqlTypes
             return n;
         }
 
-        public int GeometryCount
-        {
-            get
-            {
-                return _geometries.Length;
-            }
-        }
+        public int GeometryCount => _geometries.Length;
     }
 }

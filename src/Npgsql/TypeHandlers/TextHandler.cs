@@ -51,7 +51,7 @@ namespace Npgsql.TypeHandlers
     [TypeMapping("unknown")]
     internal class TextHandler : ChunkingTypeHandler<string>, IChunkingTypeHandler<char[]>
     {
-        public override bool PreferTextWrite { get { return true; } }
+        public override bool PreferTextWrite => true;
 
         #region State
 
@@ -159,7 +159,7 @@ namespace Npgsql.TypeHandlers
             return true;
         }
 
-        public long GetChars(DataRowMessage row, int charOffset, char[] output, int outputOffset, int charsCount, FieldDescription field)
+        public long GetChars(DataRowMessage row, int charOffset, [CanBeNull] char[] output, int outputOffset, int charsCount, FieldDescription field)
         {
             if (row.PosInColumn == 0) {
                 _charPos = 0;
@@ -265,7 +265,7 @@ namespace Npgsql.TypeHandlers
             _charPos = -1;
             _byteLen = lengthCache.GetLast();
 
-            if (parameter != null && parameter.ConvertedValue != null) {
+            if (parameter?.ConvertedValue != null) {
                 value = parameter.ConvertedValue;
             }
 

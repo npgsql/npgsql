@@ -63,7 +63,8 @@ namespace Npgsql.BackendMessages
 
             if (column < Column)
             {
-                throw new InvalidOperationException(string.Format("Invalid attempt to read from column ordinal '{0}'. With CommandBehavior.SequentialAccess, you may only read from column ordinal '{1}' or greater.", column, Column));
+                throw new InvalidOperationException(
+                    $"Invalid attempt to read from column ordinal '{column}'. With CommandBehavior.SequentialAccess, you may only read from column ordinal '{Column}' or greater.");
             }
 
             if (column == Column)

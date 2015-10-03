@@ -130,7 +130,7 @@ namespace TlsClientStream
         public readonly BigInt yg;
         Func<BigInt, BigInt> modp;
         public readonly int curveLen;
-        public int curveByteLen { get { return (curveLen + 7) >> 3;  } }
+        public int curveByteLen => (curveLen + 7) >> 3;
         public readonly byte[] asnName;
 
         EllipticCurve(BigInt p, BigInteger b, BigInteger q, BigInt xg, BigInt yg, Func<BigInt, BigInt> modp, int curveLen, byte[] asnName)
@@ -152,7 +152,7 @@ namespace TlsClientStream
         {
             public uint[] _bits;
 
-            internal int Length { get { return _bits.Length; } }
+            internal int Length => _bits.Length;
 
             public BigInt(uint[] bits)
             {

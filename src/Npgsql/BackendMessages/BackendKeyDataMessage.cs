@@ -30,7 +30,7 @@ namespace Npgsql.BackendMessages
 {
     internal class BackendKeyDataMessage : IBackendMessage
     {
-        public BackendMessageCode Code { get { return BackendMessageCode.BackendKeyData; } }
+        public BackendMessageCode Code => BackendMessageCode.BackendKeyData;
 
         internal int BackendProcessId { get; private set; }
         internal int BackendSecretKey { get; private set; }

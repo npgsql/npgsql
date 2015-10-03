@@ -177,7 +177,7 @@ namespace Npgsql
         /// Since PostgreSQL 9.3, large objects larger than 2GB can be handled, up to 4TB.
         /// This property returns true whether the PostgreSQL version is >= 9.3.
         /// </summary>
-        public bool Has64BitSupport { get { return _connection.PostgreSqlVersion >= new Version(9, 3); } }
+        public bool Has64BitSupport => _connection.PostgreSqlVersion >= new Version(9, 3);
 
         /*
         internal enum Function : uint

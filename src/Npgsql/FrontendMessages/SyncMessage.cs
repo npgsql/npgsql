@@ -36,7 +36,7 @@ namespace Npgsql.FrontendMessages
 
         SyncMessage() {}
 
-        internal override int Length { get { return 1 + 4; } }
+        internal override int Length => 1 + 4;
 
         internal override void Write(NpgsqlBuffer buf)
         {

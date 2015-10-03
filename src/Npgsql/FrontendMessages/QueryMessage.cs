@@ -50,10 +50,7 @@ namespace Npgsql.FrontendMessages
             Query = query;
         }
 
-        internal override int Length
-        {
-            get { return 1 + 4 + (Query.Length + 1); }
-        }
+        internal override int Length => 1 + 4 + (Query.Length + 1);
 
         internal override void Write(NpgsqlBuffer buf)
         {
@@ -66,7 +63,7 @@ namespace Npgsql.FrontendMessages
 
         public override string ToString()
         {
-            return String.Format("[Query={0}]", Query);
+            return $"[Query={Query}]";
         }
     }
 }

@@ -48,7 +48,7 @@ namespace Npgsql
         /// Severity of the error or notice.
         /// Always present.
         /// </summary>
-        public string Severity { get { return _msg.Severity; } }
+        public string Severity => _msg.Severity;
 
         /// <summary>
         /// The SQLSTATE code for the error.
@@ -57,7 +57,7 @@ namespace Npgsql
         /// Always present.
         /// See http://www.postgresql.org/docs/current/static/errcodes-appendix.html
         /// </remarks>
-        public string Code { get { return _msg.Code; } }
+        public string Code => _msg.Code;
 
         /// <summary>
         /// The primary human-readable error message. This should be accurate but terse.
@@ -65,74 +65,74 @@ namespace Npgsql
         /// <remarks>
         /// Always present.
         /// </remarks>
-        public string MessageText { get { return _msg.Message; } }
+        public string MessageText => _msg.Message;
 
         /// <summary>
         /// An optional secondary error message carrying more detail about the problem.
         /// May run to multiple lines.
         /// </summary>
-        public string Detail { get { return _msg.Detail; } }
+        public string Detail => _msg.Detail;
 
         /// <summary>
         /// An optional suggestion what to do about the problem.
         /// This is intended to differ from Detail in that it offers advice (potentially inappropriate) rather than hard facts.
         /// May run to multiple lines.
         /// </summary>
-        public string Hint { get { return _msg.Hint; } }
+        public string Hint => _msg.Hint;
 
         /// <summary>
         /// The field value is a decimal ASCII integer, indicating an error cursor position as an index into the original query string.
         /// The first character has index 1, and positions are measured in characters not bytes.
         /// 0 means not provided.
         /// </summary>
-        public int Position { get { return _msg.Position; } }
+        public int Position => _msg.Position;
 
         /// <summary>
         /// This is defined the same as the <see cref="Position"/> field, but it is used when the cursor position refers to an internally generated command rather than the one submitted by the client.
         /// The <see cref="InternalQuery" /> field will always appear when this field appears.
         /// 0 means not provided.
         /// </summary>
-        public int InternalPosition { get { return _msg.InternalPosition; } }
+        public int InternalPosition => _msg.InternalPosition;
 
         /// <summary>
         /// The text of a failed internally-generated command.
         /// This could be, for example, a SQL query issued by a PL/pgSQL function.
         /// </summary>
-        public string InternalQuery { get { return _msg.InternalQuery; } }
+        public string InternalQuery => _msg.InternalQuery;
 
         /// <summary>
         /// An indication of the context in which the error occurred.
         /// Presently this includes a call stack traceback of active PL functions.
         /// The trace is one entry per line, most recent first.
         /// </summary>
-        public string Where { get { return _msg.Where; } }
+        public string Where => _msg.Where;
 
         /// <summary>
         /// If the error was associated with a specific database object, the name of the schema containing that object, if any.
         /// </summary>
         /// <remarks>PostgreSQL 9.3 and up.</remarks>
-        public string SchemaName { get { return _msg.SchemaName; } }
+        public string SchemaName => _msg.SchemaName;
 
         /// <summary>
         /// Table name: if the error was associated with a specific table, the name of the table.
         /// (Refer to the schema name field for the name of the table's schema.)
         /// </summary>
         /// <remarks>PostgreSQL 9.3 and up.</remarks>
-        public string TableName { get { return _msg.TableName; } }
+        public string TableName => _msg.TableName;
 
         /// <summary>
         /// If the error was associated with a specific table column, the name of the column.
         /// (Refer to the schema and table name fields to identify the table.)
         /// </summary>
         /// <remarks>PostgreSQL 9.3 and up.</remarks>
-        public string ColumnName { get { return _msg.ColumnName; } }
+        public string ColumnName => _msg.ColumnName;
 
         /// <summary>
         /// If the error was associated with a specific data type, the name of the data type.
         /// (Refer to the schema name field for the name of the data type's schema.)
         /// </summary>
         /// <remarks>PostgreSQL 9.3 and up.</remarks>
-        public string DataTypeName { get { return _msg.DataTypeName; } }
+        public string DataTypeName => _msg.DataTypeName;
 
         /// <summary>
         /// If the error was associated with a specific constraint, the name of the constraint.
@@ -140,23 +140,23 @@ namespace Npgsql
         /// (For this purpose, indexes are treated as constraints, even if they weren't created with constraint syntax.)
         /// </summary>
         /// <remarks>PostgreSQL 9.3 and up.</remarks>
-        public string ConstraintName { get { return _msg.ConstraintName; } }
+        public string ConstraintName => _msg.ConstraintName;
 
         /// <summary>
         /// The file name of the source-code location where the error was reported.
         /// </summary>
         /// <remarks>PostgreSQL 9.3 and up.</remarks>
-        public string File { get { return _msg.File; } }
+        public string File => _msg.File;
 
         /// <summary>
         /// The line number of the source-code location where the error was reported.
         /// </summary>
-        public string Line { get { return _msg.Line; } }
+        public string Line => _msg.Line;
 
         /// <summary>
         /// The name of the source-code routine reporting the error.
         /// </summary>
-        public string Routine { get { return _msg.Routine; } }
+        public string Routine => _msg.Routine;
 
         #endregion
 

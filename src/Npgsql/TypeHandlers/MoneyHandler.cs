@@ -72,10 +72,7 @@ namespace Npgsql.TypeHandlers
 
         public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
         {
-            var v = (decimal)(parameter != null && parameter.ConvertedValue != null
-                ? parameter.ConvertedValue
-                : value);
-
+            var v = (decimal)(parameter?.ConvertedValue ?? value);
             buf.WriteInt64((long)(Math.Round(v, 2, MidpointRounding.AwayFromZero) * 100m));
         }
     }

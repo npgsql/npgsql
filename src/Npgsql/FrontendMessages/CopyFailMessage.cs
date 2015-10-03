@@ -47,7 +47,7 @@ namespace Npgsql.FrontendMessages
             _errorMessageLen = PGUtil.UTF8Encoding.GetByteCount(_errorMessage);
         }
 
-        internal override int Length { get { return 1 + 4 + (_errorMessageLen + 1); } }
+        internal override int Length => 1 + 4 + (_errorMessageLen + 1);
 
         internal override void Write(NpgsqlBuffer buf)
         {

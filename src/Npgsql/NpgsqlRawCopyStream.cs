@@ -56,8 +56,8 @@ namespace Npgsql
 
         internal bool IsBinary { get; private set; }
 
-        public override bool CanWrite { get { return _canWrite; } }
-        public override bool CanRead { get { return _canRead; } }
+        public override bool CanWrite => _canWrite;
+        public override bool CanRead => _canRead;
 
         /// <summary>
         /// The copy binary format header signature
@@ -305,7 +305,7 @@ namespace Npgsql
 
         #region Unsupported
 
-        public override bool CanSeek { get { return false; } }
+        public override bool CanSeek => false;
 
         public override long Seek(long offset, SeekOrigin origin)
         {

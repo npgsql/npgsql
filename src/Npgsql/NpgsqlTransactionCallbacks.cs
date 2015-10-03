@@ -91,7 +91,7 @@ namespace Npgsql
 
             if (_prepared)
             {
-                connection.Connector.ExecuteInternalCommand(string.Format("COMMIT PREPARED '{0}'", _txName));
+                connection.Connector.ExecuteInternalCommand($"COMMIT PREPARED '{_txName}'");
             }
             else
             {
@@ -105,7 +105,7 @@ namespace Npgsql
             {
                 Log.Debug("Prepare transaction");
                 NpgsqlConnection connection = GetConnection();
-                connection.Connector.ExecuteInternalCommand(string.Format("PREPARE TRANSACTION '{0}'", _txName));
+                connection.Connector.ExecuteInternalCommand($"PREPARE TRANSACTION '{_txName}'");
                 _prepared = true;
             }
         }
@@ -119,7 +119,7 @@ namespace Npgsql
             {
                 if (_prepared)
                 {
-                    connection.Connector.ExecuteInternalCommand(string.Format("ROLLBACK PREPARED '{0}'", _txName));
+                    connection.Connector.ExecuteInternalCommand($"ROLLBACK PREPARED '{_txName}'");
                 }
                 else
                 {

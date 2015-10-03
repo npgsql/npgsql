@@ -101,10 +101,7 @@ namespace Npgsql
         internal bool WasBroken { private get; set; }
 
 #if !DNXCORE50
-        NpgsqlPromotableSinglePhaseNotification Promotable
-        {
-            get { return _promotable ?? (_promotable = new NpgsqlPromotableSinglePhaseNotification(this)); }
-        }
+        NpgsqlPromotableSinglePhaseNotification Promotable => _promotable ?? (_promotable = new NpgsqlPromotableSinglePhaseNotification(this));
         NpgsqlPromotableSinglePhaseNotification _promotable;
 #endif
 
@@ -331,7 +328,7 @@ namespace Npgsql
         [Browsable(true)]
 #endif
         [PublicAPI]
-        public string Host { get { return Settings.Host; } }
+        public string Host => Settings.Host;
 
         /// <summary>
         /// Backend server port.
@@ -340,13 +337,13 @@ namespace Npgsql
         [Browsable(true)]
 #endif
         [PublicAPI]
-        public int Port { get { return Settings.Port; } }
+        public int Port => Settings.Port;
 
         /// <summary>
         /// If true, the connection will attempt to use SslStream instead of an internal TlsClientStream.
         /// </summary>
         [PublicAPI]
-        public bool UseSslStream { get { return Settings.UseSslStream; } }
+        public bool UseSslStream => Settings.UseSslStream;
 
         /// <summary>
         /// Gets the time to wait while trying to establish a connection
@@ -358,14 +355,14 @@ namespace Npgsql
         [NpgsqlSysDescription("Description_ConnectionTimeout", typeof(NpgsqlConnection))]
 #endif
 
-        public override int ConnectionTimeout { get { return Settings.Timeout; } }
+        public override int ConnectionTimeout => Settings.Timeout;
 
         /// <summary>
         /// Gets the time to wait while trying to execute a command
         /// before terminating the attempt and generating an error.
         /// </summary>
         /// <value>The time (in seconds) to wait for a command to complete. The default value is 20 seconds.</value>
-        public int CommandTimeout { get { return Settings.CommandTimeout; } }
+        public int CommandTimeout => Settings.CommandTimeout;
 
         /// <summary>
         /// Gets the time to wait before closing unused connections in the pool if the count
@@ -378,7 +375,7 @@ namespace Npgsql
         /// This strategy provide smooth change of connection count in the pool.
         /// </remarks>
         /// <value>The time (in seconds) to wait. The default value is 15 seconds.</value>
-        public int ConnectionLifeTime { get { return Settings.ConnectionLifeTime; } }
+        public int ConnectionLifeTime => Settings.ConnectionLifeTime;
 
         ///<summary>
         /// Gets the name of the current database or the database to be used after a connection is opened.
@@ -389,38 +386,38 @@ namespace Npgsql
         [NpgsqlSysDescription("Description_Database", typeof(NpgsqlConnection))]
 #endif
 
-        public override string Database { get { return Settings.Database; } }
+        public override string Database => Settings.Database;
 
         /// <summary>
         /// Gets the database server name.
         /// </summary>
-        public override string DataSource { get { return Settings.Host; } }
+        public override string DataSource => Settings.Host;
 
         /// <summary>
         /// Gets flag indicating if we are using Synchronous notification or not.
         /// The default value is false.
         /// </summary>
         [PublicAPI]
-        public bool ContinuousProcessing { get { return Settings.ContinuousProcessing; } }
+        public bool ContinuousProcessing => Settings.ContinuousProcessing;
 
         /// <summary>
         /// Whether to use Windows integrated security to log in.
         /// </summary>
         [PublicAPI]
-        public bool IntegratedSecurity { get { return Settings.IntegratedSecurity; } }
+        public bool IntegratedSecurity => Settings.IntegratedSecurity;
 
         /// <summary>
         /// User name.
         /// </summary>
         [PublicAPI]
-        public string UserName { get { return Settings.Username; } }
+        public string UserName => Settings.Username;
 
-        internal int MinPoolSize { get { return Settings.MinPoolSize; } }
-        internal int MaxPoolSize { get { return Settings.MaxPoolSize; } }
-        internal int Timeout { get { return Settings.Timeout; } }
-        internal int BufferSize { get { return Settings.BufferSize; } }
-        internal string EntityTemplateDatabase { get { return Settings.EntityTemplateDatabase; } }
-        internal string EntityAdminDatabase { get { return Settings.EntityAdminDatabase; } }
+        internal int MinPoolSize => Settings.MinPoolSize;
+        internal int MaxPoolSize => Settings.MaxPoolSize;
+        internal int Timeout => Settings.Timeout;
+        internal int BufferSize => Settings.BufferSize;
+        internal string EntityTemplateDatabase => Settings.EntityTemplateDatabase;
+        internal string EntityAdminDatabase => Settings.EntityAdminDatabase;
 
         #endregion Configuration settings
 
@@ -595,7 +592,7 @@ namespace Npgsql
         public override void EnlistTransaction([CanBeNull] Transaction transaction)
         {
             if (transaction == null)
-                throw new ArgumentNullException("transaction");
+                throw new ArgumentNullException(nameof(transaction));
             Contract.EndContractBlock();
 
             Promotable.Enlist(transaction);
@@ -751,18 +748,12 @@ namespace Npgsql
         //
         void OnNotice(object o, NpgsqlNoticeEventArgs e)
         {
-            if (Notice != null)
-            {
-                Notice(this, e);
-            }
+            Notice?.Invoke(this, e);
         }
 
         void OnNotification(object o, NpgsqlNotificationEventArgs e)
         {
-            if (Notification != null)
-            {
-                Notification(this, e);
-            }
+            Notification?.Invoke(this, e);
         }
 
         #endregion Notifications
@@ -821,10 +812,7 @@ namespace Npgsql
         /// <summary>
         /// PostgreSQL server version.
         /// </summary>
-        public override string ServerVersion
-        {
-            get { return PostgreSqlVersion.ToString(); }
-        }
+        public override string ServerVersion => PostgreSqlVersion.ToString();
 
         /// <summary>
         /// Process id of backend server.
@@ -893,9 +881,9 @@ namespace Npgsql
         public NpgsqlBinaryImporter BeginBinaryImport(string copyFromCommand)
         {
             if (copyFromCommand == null)
-                throw new ArgumentNullException("copyFromCommand");
+                throw new ArgumentNullException(nameof(copyFromCommand));
             if (!copyFromCommand.TrimStart().ToUpper().StartsWith("COPY"))
-                throw new ArgumentException("Must contain a COPY FROM STDIN command!", "copyFromCommand");
+                throw new ArgumentException("Must contain a COPY FROM STDIN command!", nameof(copyFromCommand));
             Contract.EndContractBlock();
 
             CheckConnectionOpen();
@@ -908,9 +896,7 @@ namespace Npgsql
             }
             catch
             {
-                if (Connector != null) {  // Connector may have been broken
-                    Connector.EndUserAction();
-                }
+                Connector?.EndUserAction();
                 throw;
             }
         }
@@ -926,9 +912,9 @@ namespace Npgsql
         public NpgsqlBinaryExporter BeginBinaryExport(string copyToCommand)
         {
             if (copyToCommand == null)
-                throw new ArgumentNullException("copyToCommand");
+                throw new ArgumentNullException(nameof(copyToCommand));
             if (!copyToCommand.TrimStart().ToUpper().StartsWith("COPY"))
-                throw new ArgumentException("Must contain a COPY TO STDIN command!", "copyToCommand");
+                throw new ArgumentException("Must contain a COPY TO STDIN command!", nameof(copyToCommand));
             Contract.EndContractBlock();
 
             CheckConnectionOpen();
@@ -942,9 +928,7 @@ namespace Npgsql
             }
             catch
             {
-                if (Connector != null) {  // Connector may have been broken
-                    Connector.EndUserAction();
-                }
+                Connector?.EndUserAction();
                 throw;
             }
         }
@@ -963,9 +947,9 @@ namespace Npgsql
         public TextWriter BeginTextImport(string copyFromCommand)
         {
             if (copyFromCommand == null)
-                throw new ArgumentNullException("copyFromCommand");
+                throw new ArgumentNullException(nameof(copyFromCommand));
             if (!copyFromCommand.TrimStart().ToUpper().StartsWith("COPY"))
-                throw new ArgumentException("Must contain a COPY IN command!", "copyFromCommand");
+                throw new ArgumentException("Must contain a COPY IN command!", nameof(copyFromCommand));
             Contract.EndContractBlock();
 
             CheckConnectionOpen();
@@ -989,9 +973,9 @@ namespace Npgsql
         public TextReader BeginTextExport(string copyToCommand)
         {
             if (copyToCommand == null)
-                throw new ArgumentNullException("copyToCommand");
+                throw new ArgumentNullException(nameof(copyToCommand));
             if (!copyToCommand.TrimStart().ToUpper().StartsWith("COPY"))
-                throw new ArgumentException("Must contain a COPY OUT command!", "copyToCommand");
+                throw new ArgumentException("Must contain a COPY OUT command!", nameof(copyToCommand));
             Contract.EndContractBlock();
 
             CheckConnectionOpen();
@@ -1015,9 +999,9 @@ namespace Npgsql
         public NpgsqlRawCopyStream BeginRawBinaryCopy(string copyCommand)
         {
             if (copyCommand == null)
-                throw new ArgumentNullException("copyCommand");
+                throw new ArgumentNullException(nameof(copyCommand));
             if (!copyCommand.TrimStart().ToUpper().StartsWith("COPY"))
-                throw new ArgumentException("Must contain a COPY IN command!", "copyCommand");
+                throw new ArgumentException("Must contain a COPY IN command!", nameof(copyCommand));
             Contract.EndContractBlock();
 
             CheckConnectionOpen();
@@ -1029,16 +1013,15 @@ namespace Npgsql
                 {
                     // TODO: Stop the COPY operation gracefully, no breaking
                     Connector.Break();
-                    throw new ArgumentException("copyToCommand triggered a text transfer, only binary is allowed", "copyCommand");
+                    throw new ArgumentException("copyToCommand triggered a text transfer, only binary is allowed", nameof(copyCommand));
                 }
                 Connector.CurrentCopyOperation = stream;
                 return stream;
             }
             catch
             {
-                if (Connector != null) {  // Connector may have been broken
-                    Connector.EndUserAction();
-                }
+                // Connector may have been broken
+                Connector?.EndUserAction();
                 throw;
             }
         }
@@ -1071,7 +1054,7 @@ namespace Npgsql
             if (!typeof(TEnum).GetTypeInfo().IsEnum)
                 throw new ArgumentException("An enum type must be provided");
             if (pgName != null && pgName.Trim() == "")
-                throw new ArgumentException("pgName can't be empty", "pgName");
+                throw new ArgumentException("pgName can't be empty", nameof(pgName));
             if (State != ConnectionState.Open)
                 throw new InvalidOperationException("Connection must be open and idle to perform registration");
             Contract.EndContractBlock();
@@ -1101,7 +1084,7 @@ namespace Npgsql
             if (!typeof(TEnum).GetTypeInfo().IsEnum)
                 throw new ArgumentException("An enum type must be provided");
             if (pgName != null && pgName.Trim() == "")
-                throw new ArgumentException("pgName can't be empty", "pgName");
+                throw new ArgumentException("pgName can't be empty", nameof(pgName));
             Contract.EndContractBlock();
 
             TypeHandlerRegistry.RegisterEnumTypeGlobally<TEnum>(pgName ?? typeof(TEnum).Name.ToLower());
@@ -1185,7 +1168,7 @@ namespace Npgsql
         public void MapComposite<T>(string pgName = null) where T : new()
         {
             if (pgName != null && pgName.Trim() == "")
-                throw new ArgumentException("pgName can't be empty", "pgName");
+                throw new ArgumentException("pgName can't be empty", nameof(pgName));
             if (State != ConnectionState.Open)
                 throw new InvalidOperationException("Connection must be open and idle to perform registration");
             Contract.EndContractBlock();
@@ -1212,7 +1195,7 @@ namespace Npgsql
         public static void MapCompositeGlobally<T>(string pgName = null) where T : new()
         {
             if (pgName != null && pgName.Trim() == "")
-                throw new ArgumentException("pgName can't be empty", "pgName");
+                throw new ArgumentException("pgName can't be empty", nameof(pgName));
             Contract.EndContractBlock();
 
             TypeHandlerRegistry.RegisterCompositeTypeGlobally<T>(pgName ?? typeof(T).Name.ToLower());
@@ -1356,7 +1339,7 @@ namespace Npgsql
                 case "ConstraintColumns":
                     return NpgsqlSchema.GetConstraintColumns(this, restrictions);
                 default:
-                    throw new ArgumentOutOfRangeException("collectionName", collectionName, "Invalid collection name");
+                    throw new ArgumentOutOfRangeException(nameof(collectionName), collectionName, "Invalid collection name");
             }
         }
 
@@ -1385,9 +1368,9 @@ namespace Npgsql
         public override void ChangeDatabase(String dbName)
         {
             if (dbName == null)
-                throw new ArgumentNullException("dbName");
+                throw new ArgumentNullException(nameof(dbName));
             if (string.IsNullOrEmpty(dbName))
-                throw new ArgumentOutOfRangeException("dbName", dbName, String.Format("Invalid database name: {0}", dbName));
+                throw new ArgumentOutOfRangeException(nameof(dbName), dbName, $"Invalid database name: {dbName}");
             Contract.EndContractBlock();
 
             CheckNotDisposed();
@@ -1407,10 +1390,7 @@ namespace Npgsql
         /// <summary>
         /// DB provider factory.
         /// </summary>
-        protected override DbProviderFactory DbProviderFactory
-        {
-            get { return NpgsqlFactory.Instance; }
-        }
+        protected override DbProviderFactory DbProviderFactory => NpgsqlFactory.Instance;
 #endif
 
         /// <summary>

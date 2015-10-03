@@ -67,7 +67,7 @@ namespace Npgsql.TypeHandlers
         object _value;
         bool _wroteFieldHeader;
 
-        public Type ClrType { get { return typeof (T); } }
+        public Type ClrType => typeof (T);
 
         internal CompositeHandler() {}
 
@@ -97,8 +97,8 @@ namespace Npgsql.TypeHandlers
                 var fieldCount = _buf.ReadInt32();
                 if (fieldCount != _fields.Count) {
                     // PostgreSQL sanity check
-                    throw new Exception(string.Format("pg_attributes contains {0} rows for type {1}, but {2} fields were received!",
-                                        _fields.Count, PgName, fieldCount));
+                    throw new Exception(
+                        $"pg_attributes contains {_fields.Count} rows for type {PgName}, but {fieldCount} fields were received!");
                 }
                 _fieldIndex = 0;
             }
@@ -175,9 +175,8 @@ namespace Npgsql.TypeHandlers
                 totalLen += 4 + 4;  // type oid + field length
                 var fieldValue = f.GetValue(value);
                 var asChunkingWriter = f.Handler as IChunkingTypeHandler;
-                totalLen += asChunkingWriter != null
-                    ? asChunkingWriter.ValidateAndGetLength(fieldValue, ref lengthCache, parameter)
-                    : ((ISimpleTypeHandler)f.Handler).ValidateAndGetLength(fieldValue, null);
+                totalLen += asChunkingWriter?.ValidateAndGetLength(fieldValue, ref lengthCache, parameter) ??
+                    ((ISimpleTypeHandler)f.Handler).ValidateAndGetLength(fieldValue, null);
             }
             return lengthCache.Lengths[pos] = totalLen;
         }
@@ -256,8 +255,8 @@ namespace Npgsql.TypeHandlers
                 TypeHandler fieldHandler;
                 if (!_registry.OIDIndex.TryGetValue(rawField.Item2, out fieldHandler))
                 {
-                    throw new Exception(string.Format("PostgreSQL composite type {0}, mapped to CLR type {1}, has field {2} with a type that hasn't been registered (OID={3})",
-                                        PgName, typeof(T).Name, rawField.Item1, rawField.Item2));
+                    throw new Exception(
+                        $"PostgreSQL composite type {PgName}, mapped to CLR type {typeof (T).Name}, has field {rawField.Item1} with a type that hasn't been registered (OID={rawField.Item2})");
                 }
 
                 var member = (
@@ -270,8 +269,8 @@ namespace Npgsql.TypeHandlers
 
                 if (member == null)
                 {
-                    throw new Exception(string.Format("PostgreSQL composite type {0} contains field {1} which could not match any on CLR type {2}",
-                                        PgName, rawField.Item1, typeof(T).Name));
+                    throw new Exception(
+                        $"PostgreSQL composite type {PgName} contains field {rawField.Item1} which could not match any on CLR type {typeof (T).Name}");
                 }
 
                 var property = member as PropertyInfo;
@@ -288,8 +287,8 @@ namespace Npgsql.TypeHandlers
                     continue;
                 }
 
-                throw new Exception(string.Format("PostgreSQL composite type {0} contains field {1} which cannot map to CLR type {2}'s field {3} of type {4}",
-                                    PgName, rawField.Item1, typeof(T).Name, member.Name, member.GetType().Name));
+                throw new Exception(
+                    $"PostgreSQL composite type {PgName} contains field {rawField.Item1} which cannot map to CLR type {typeof (T).Name}'s field {member.Name} of type {member.GetType().Name}");
             }
 
             RawFields = null;

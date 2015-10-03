@@ -71,18 +71,7 @@ namespace Npgsql
 
         internal static readonly Task CompletedTask = TaskFromResult(0);
 
-        internal static StringComparer InvariantCaseIgnoringStringComparer
-        {
-            get
-            {
-                // Note: not assuming string comparers are threadsafe, although they probably are...
-#if DNXCORE50
-                return CultureInfo.InvariantCulture.CompareInfo.GetStringComparer(CompareOptions.IgnoreCase);
-#else
-                return StringComparer.InvariantCultureIgnoreCase;
-#endif
-            }
-        }
+        internal static StringComparer InvariantCaseIgnoringStringComparer => StringComparer.InvariantCultureIgnoreCase;
 
         /// <summary>
         /// Throws an exception with the given string and also invokes a contract failure, allowing the static checker
@@ -131,7 +120,7 @@ namespace Npgsql
     internal struct NpgsqlTimeout
     {
         readonly DateTime _expiration;
-        internal DateTime Expiration { get { return _expiration; } }
+        internal DateTime Expiration => _expiration;
 
         internal static NpgsqlTimeout Infinite = new NpgsqlTimeout(TimeSpan.Zero);
 
@@ -148,21 +137,12 @@ namespace Npgsql
                 throw new TimeoutException();
         }
 
-        internal bool IsSet
-        {
-            get { return _expiration != DateTime.MaxValue; }
-        }
+        internal bool IsSet => _expiration != DateTime.MaxValue;
 
-        internal bool HasExpired
-        {
-            get { return DateTime.Now >= Expiration; }
-        }
+        internal bool HasExpired => DateTime.Now >= Expiration;
 
-        internal Task AsTask
-        {
-            get { return Task.Delay(TimeLeft); }
-        }
+        internal Task AsTask => Task.Delay(TimeLeft);
 
-        internal TimeSpan TimeLeft { get { return Expiration - DateTime.Now; } }
+        internal TimeSpan TimeLeft => Expiration - DateTime.Now;
     }
 }

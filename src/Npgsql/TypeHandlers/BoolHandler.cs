@@ -55,7 +55,7 @@ namespace Npgsql.TypeHandlers
 
         public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
         {
-            if (parameter != null && parameter.ConvertedValue != null) {
+            if (parameter?.ConvertedValue != null) {
                 value = parameter.ConvertedValue;
             }
             buf.WriteByte(((bool)value) ? (byte)1 : (byte)0);

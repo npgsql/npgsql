@@ -109,7 +109,7 @@ namespace NpgsqlTypes
         public static NpgsqlTsVector Parse(string value)
         {
             if (value == null)
-                throw new ArgumentNullException("value");
+                throw new ArgumentNullException(nameof(value));
             Contract.EndContractBlock();
 
             List<Lexeme> lexemes = new List<Lexeme>();
@@ -265,7 +265,7 @@ namespace NpgsqlTypes
             get
             {
                 if (index < 0 || index >= _lexemes.Count)
-                    throw new ArgumentOutOfRangeException("index");
+                    throw new ArgumentOutOfRangeException(nameof(index));
 
                 return _lexemes[index];
             }
@@ -274,7 +274,7 @@ namespace NpgsqlTypes
         /// <summary>
         /// Gets the number of lexemes.
         /// </summary>
-        public int Count { get { return _lexemes.Count; } }
+        public int Count => _lexemes.Count;
 
         /// <summary>
         /// Returns an enumerator.
@@ -399,14 +399,14 @@ namespace NpgsqlTypes
                 get
                 {
                     if (index < 0 || _wordEntryPositions == null || index >= _wordEntryPositions.Count)
-                        throw new ArgumentOutOfRangeException("index");
+                        throw new ArgumentOutOfRangeException(nameof(index));
 
                     return _wordEntryPositions[index];
                 }
                 internal set
                 {
                     if (index < 0 || _wordEntryPositions == null || index >= _wordEntryPositions.Count)
-                        throw new ArgumentOutOfRangeException("index");
+                        throw new ArgumentOutOfRangeException(nameof(index));
 
                     _wordEntryPositions[index] = value;
                 }
@@ -415,7 +415,7 @@ namespace NpgsqlTypes
             /// <summary>
             /// Gets the number of word entry positions.
             /// </summary>
-            public int Count { get { return _wordEntryPositions == null ? 0 : _wordEntryPositions.Count; } }
+            public int Count => _wordEntryPositions == null ? 0 : _wordEntryPositions.Count;
 
             /// <summary>
             /// Creates a string representation in PostgreSQL's format.
@@ -449,9 +449,9 @@ namespace NpgsqlTypes
                 public WordEntryPos(int pos, Weight weight = Weight.D)
                 {
                     if (pos == 0)
-                        throw new ArgumentOutOfRangeException("pos", "Lexeme position is out of range. Min value is 1, max value is 2^14-1. Value was: " + pos);
+                        throw new ArgumentOutOfRangeException(nameof(pos), "Lexeme position is out of range. Min value is 1, max value is 2^14-1. Value was: " + pos);
                     if (weight < Weight.D || weight > Weight.A)
-                        throw new ArgumentOutOfRangeException("weight");
+                        throw new ArgumentOutOfRangeException(nameof(weight));
                     Contract.EndContractBlock();
 
                     // Per documentation: "Position values can range from 1 to 16383; larger numbers are silently set to 16383."
@@ -464,24 +464,12 @@ namespace NpgsqlTypes
                 /// <summary>
                 /// The weight is labeled from A to D. D is the default, and not printed.
                 /// </summary>
-                public Weight Weight
-                {
-                    get
-                    {
-                        return (Weight)((_val >> 14) & 3);
-                    }
-                }
+                public Weight Weight => (Weight)((_val >> 14) & 3);
 
                 /// <summary>
                 /// The position is a 14-bit unsigned integer indicating the position in the text this lexeme occurs. Cannot be 0.
                 /// </summary>
-                public int Pos
-                {
-                    get
-                    {
-                        return _val & ((1 << 14) - 1);
-                    }
-                }
+                public int Pos => _val & ((1 << 14) - 1);
 
                 /// <summary>
                 /// Prints this lexeme in PostgreSQL's format, i.e. position is followed by weight (weight is only printed if A, B or C).

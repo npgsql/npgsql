@@ -30,7 +30,7 @@ namespace Npgsql.BackendMessages
 {
     internal class NoDataMessage : IBackendMessage
     {
-        public BackendMessageCode Code { get { return BackendMessageCode.NoData; } }
+        public BackendMessageCode Code => BackendMessageCode.NoData;
         internal static readonly NoDataMessage Instance = new NoDataMessage();
         NoDataMessage() { }
     }

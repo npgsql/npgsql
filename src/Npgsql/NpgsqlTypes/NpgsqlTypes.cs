@@ -257,17 +257,14 @@ namespace NpgsqlTypes
         public NpgsqlBox(double top, double right, double bottom, double left)
             : this(new NpgsqlPoint(right, top), new NpgsqlPoint(left, bottom)) { }
 
-        public double Left   { get { return LowerLeft.X;  } }
-        public double Right  { get { return UpperRight.X; } }
-        public double Bottom { get { return LowerLeft.Y;  } }
-        public double Top    { get { return UpperRight.Y; } }
-        public double Width  { get { return Right - Left; } }
-        public double Height { get { return Top - Bottom; } }
+        public double Left => LowerLeft.X;
+        public double Right => UpperRight.X;
+        public double Bottom => LowerLeft.Y;
+        public double Top => UpperRight.Y;
+        public double Width => Right - Left;
+        public double Height => Top - Bottom;
 
-        public bool IsEmpty
-        {
-            get { return Width == 0 || Height == 0; }
-        }
+        public bool IsEmpty => Width == 0 || Height == 0;
 
         public bool Equals(NpgsqlBox other)
         {
@@ -351,9 +348,9 @@ namespace NpgsqlTypes
             set { _points[index] = value; }
         }
 
-        public int Capacity { get { return _points.Capacity; } }
-        public int Count { get { return _points.Count; } }
-        public bool IsReadOnly { get { return false; } }
+        public int Capacity => _points.Capacity;
+        public int Count => _points.Count;
+        public bool IsReadOnly => false;
 
         public int IndexOf(NpgsqlPoint item)
         {
@@ -520,9 +517,10 @@ namespace NpgsqlTypes
             set { _points[index] = value; }
         }
 
-        public int Capacity { get { return _points.Capacity; } }
-        public int Count { get { return _points.Count; } }
-        public bool IsReadOnly { get { return false; } }
+        public int Capacity => _points.Capacity;
+        public int Count => _points.Count;
+        public bool IsReadOnly => false;
+
         public int IndexOf(NpgsqlPoint item)
         {
             return _points.IndexOf(item);
@@ -746,7 +744,7 @@ namespace NpgsqlTypes
         public NpgsqlInet(IPAddress address, int netmask)
         {
             if (address.AddressFamily != AddressFamily.InterNetwork && address.AddressFamily != AddressFamily.InterNetworkV6)
-                throw new ArgumentException("Only IPAddress of InterNetwork or InterNetworkV6 address families are accepted", "address");
+                throw new ArgumentException("Only IPAddress of InterNetwork or InterNetworkV6 address families are accepted", nameof(address));
             Contract.EndContractBlock();
 
             Address = address;
@@ -756,7 +754,7 @@ namespace NpgsqlTypes
         public NpgsqlInet(IPAddress address)
         {
             if (address.AddressFamily != AddressFamily.InterNetwork && address.AddressFamily != AddressFamily.InterNetworkV6)
-                throw new ArgumentException("Only IPAddress of InterNetwork or InterNetworkV6 address families are accepted", "address");
+                throw new ArgumentException("Only IPAddress of InterNetwork or InterNetworkV6 address families are accepted", nameof(address));
             Contract.EndContractBlock();
 
             Address = address;
@@ -788,7 +786,7 @@ namespace NpgsqlTypes
             {
                 return Address.ToString();
             }
-            return string.Format("{0}/{1}", Address, Netmask);
+            return $"{Address}/{Netmask}";
         }
 
         public static explicit operator IPAddress(NpgsqlInet x)

@@ -31,15 +31,13 @@ namespace Npgsql.BackendMessages
 {
     internal abstract class AuthenticationRequestMessage : IBackendMessage
     {
-        public BackendMessageCode Code { get { return BackendMessageCode.AuthenticationRequest; } }
+        public BackendMessageCode Code => BackendMessageCode.AuthenticationRequest;
         internal abstract AuthenticationRequestType AuthRequestType { get; }
     }
 
     internal class AuthenticationOkMessage : AuthenticationRequestMessage
     {
-        internal override AuthenticationRequestType AuthRequestType {
-            get { return AuthenticationRequestType.AuthenticationOk; }
-        }
+        internal override AuthenticationRequestType AuthRequestType => AuthenticationRequestType.AuthenticationOk;
 
         internal static readonly AuthenticationOkMessage Instance = new AuthenticationOkMessage();
         AuthenticationOkMessage() { }
@@ -47,10 +45,7 @@ namespace Npgsql.BackendMessages
 
     internal class AuthenticationKerberosV5Message : AuthenticationRequestMessage
     {
-        internal override AuthenticationRequestType AuthRequestType
-        {
-            get { return AuthenticationRequestType.AuthenticationKerberosV5; }
-        }
+        internal override AuthenticationRequestType AuthRequestType => AuthenticationRequestType.AuthenticationKerberosV5;
 
         internal static readonly AuthenticationKerberosV5Message Instance = new AuthenticationKerberosV5Message();
         AuthenticationKerberosV5Message() { }
@@ -58,10 +53,7 @@ namespace Npgsql.BackendMessages
 
     internal class AuthenticationCleartextPasswordMessage  : AuthenticationRequestMessage
     {
-        internal override AuthenticationRequestType AuthRequestType
-        {
-            get { return AuthenticationRequestType.AuthenticationCleartextPassword; }
-        }
+        internal override AuthenticationRequestType AuthRequestType => AuthenticationRequestType.AuthenticationCleartextPassword;
 
         internal static readonly AuthenticationCleartextPasswordMessage Instance = new AuthenticationCleartextPasswordMessage();
         AuthenticationCleartextPasswordMessage() { }
@@ -69,10 +61,7 @@ namespace Npgsql.BackendMessages
 
     internal class AuthenticationMD5PasswordMessage  : AuthenticationRequestMessage
     {
-        internal override AuthenticationRequestType AuthRequestType
-        {
-            get { return AuthenticationRequestType.AuthenticationMD5Password; }
-        }
+        internal override AuthenticationRequestType AuthRequestType => AuthenticationRequestType.AuthenticationMD5Password;
 
         internal byte[] Salt { get; private set; }
 
@@ -91,10 +80,7 @@ namespace Npgsql.BackendMessages
 
     internal class AuthenticationSCMCredentialMessage : AuthenticationRequestMessage
     {
-        internal override AuthenticationRequestType AuthRequestType
-        {
-            get { return AuthenticationRequestType.AuthenticationSCMCredential; }
-        }
+        internal override AuthenticationRequestType AuthRequestType => AuthenticationRequestType.AuthenticationSCMCredential;
 
         internal static readonly AuthenticationSCMCredentialMessage Instance = new AuthenticationSCMCredentialMessage();
         AuthenticationSCMCredentialMessage() { }
@@ -102,10 +88,7 @@ namespace Npgsql.BackendMessages
 
     internal class AuthenticationGSSMessage : AuthenticationRequestMessage
     {
-        internal override AuthenticationRequestType AuthRequestType
-        {
-            get { return AuthenticationRequestType.AuthenticationGSS; }
-        }
+        internal override AuthenticationRequestType AuthRequestType => AuthenticationRequestType.AuthenticationGSS;
 
         internal static readonly AuthenticationGSSMessage Instance = new AuthenticationGSSMessage();
         AuthenticationGSSMessage() { }
@@ -113,10 +96,7 @@ namespace Npgsql.BackendMessages
 
     internal class AuthenticationGSSContinueMessage : AuthenticationRequestMessage
     {
-        internal override AuthenticationRequestType AuthRequestType
-        {
-            get { return AuthenticationRequestType.AuthenticationGSSContinue; }
-        }
+        internal override AuthenticationRequestType AuthRequestType => AuthenticationRequestType.AuthenticationGSSContinue;
 
         internal byte[] AuthenticationData { get; private set; }
 
@@ -136,10 +116,7 @@ namespace Npgsql.BackendMessages
 
     internal class AuthenticationSSPIMessage : AuthenticationRequestMessage
     {
-        internal override AuthenticationRequestType AuthRequestType
-        {
-            get { return AuthenticationRequestType.AuthenticationSSPI; }
-        }
+        internal override AuthenticationRequestType AuthRequestType => AuthenticationRequestType.AuthenticationSSPI;
 
         internal static readonly AuthenticationSSPIMessage Instance = new AuthenticationSSPIMessage();
         AuthenticationSSPIMessage() { }

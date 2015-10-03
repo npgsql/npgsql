@@ -52,7 +52,7 @@ namespace Npgsql.FrontendMessages
             _description = description;
         }
 
-        internal override int Length { get { return _data.Length; } }
+        internal override int Length => _data.Length;
 
         internal override void Write(NpgsqlBuffer buf)
         {

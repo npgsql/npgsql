@@ -112,9 +112,9 @@ namespace NpgsqlTypes
                            T upperBound, bool upperBoundIsInclusive, bool upperBoundInfinite) : this()
         {
             if (lowerBoundInfinite && lowerBoundIsInclusive)
-                throw new ArgumentException("Infinite bound can't be inclusive", "lowerBoundIsInclusive");
+                throw new ArgumentException("Infinite bound can't be inclusive", nameof(lowerBoundIsInclusive));
             if (upperBoundInfinite && upperBoundIsInclusive)
-                throw new ArgumentException("Infinite bound can't be inclusive", "upperBoundIsInclusive");
+                throw new ArgumentException("Infinite bound can't be inclusive", nameof(upperBoundIsInclusive));
             Contract.EndContractBlock();
 
             LowerBound = lowerBound;

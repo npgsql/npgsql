@@ -65,7 +65,7 @@ namespace Npgsql
         /// Since PostgreSQL 9.3, large objects larger than 2GB can be handled, up to 4TB.
         /// This property returns true whether the PostgreSQL version is >= 9.3.
         /// </summary>
-        public bool Has64BitSupport { get { return _manager._connection.PostgreSqlVersion >= new Version(9, 3); } }
+        public bool Has64BitSupport => _manager._connection.PostgreSqlVersion >= new Version(9, 3);
 
         /// <summary>
         /// Reads <i>count</i> bytes from the large object. The only case when fewer bytes are read is when end of stream is reached.
@@ -78,11 +78,11 @@ namespace Npgsql
         public override int Read(byte[] buffer, int offset, int count)
         {
             if (buffer == null)
-                throw new ArgumentNullException("buffer");
+                throw new ArgumentNullException(nameof(buffer));
             if (offset < 0)
-                throw new ArgumentOutOfRangeException("offset");
+                throw new ArgumentOutOfRangeException(nameof(offset));
             if (count < 0)
-                throw new ArgumentOutOfRangeException("count");
+                throw new ArgumentOutOfRangeException(nameof(count));
             if (buffer.Length - offset < count)
                 throw new ArgumentException("Invalid offset or count for this buffer");
             Contract.EndContractBlock();
@@ -115,11 +115,11 @@ namespace Npgsql
         public override void Write(byte[] buffer, int offset, int count)
         {
             if (buffer == null)
-                throw new ArgumentNullException("buffer");
+                throw new ArgumentNullException(nameof(buffer));
             if (offset < 0)
-                throw new ArgumentOutOfRangeException("offset");
+                throw new ArgumentOutOfRangeException(nameof(offset));
             if (count < 0)
-                throw new ArgumentOutOfRangeException("count");
+                throw new ArgumentOutOfRangeException(nameof(count));
             if (buffer.Length - offset < count)
                 throw new ArgumentException("Invalid offset or count for this buffer");
             Contract.EndContractBlock();
@@ -147,37 +147,22 @@ namespace Npgsql
         /// <summary>
         /// CanTimeout always returns false.
         /// </summary>
-        public override bool CanTimeout
-        {
-            get
-            {
-                return false; // TODO?
-            }
-        }
+        public override bool CanTimeout => false;
 
         /// <summary>
         /// CanRead always returns true, unless the stream has been closed.
         /// </summary>
-        public override bool CanRead
-        {
-            get { return true && !_disposed; }
-        }
+        public override bool CanRead => true && !_disposed;
 
         /// <summary>
         /// CanWrite returns true if the stream was opened with write permissions, and the stream has not been closed.
         /// </summary>
-        public override bool CanWrite
-        {
-            get { return _writeable && !_disposed; }
-        }
+        public override bool CanWrite => _writeable && !_disposed;
 
         /// <summary>
         /// CanSeek always returns true, unless the stream has been closed.
         /// </summary>
-        public override bool CanSeek
-        {
-            get { return true && !_disposed; }
-        }
+        public override bool CanSeek => true && !_disposed;
 
         /// <summary>
         /// Returns the current position in the stream. Getting the current position does not need a round-trip to the server, however setting the current position does.
@@ -198,10 +183,7 @@ namespace Npgsql
         /// <summary>
         /// Gets the length of the large object. This internally seeks to the end of the stream to retrieve the length, and then back again.
         /// </summary>
-        public override long Length
-        {
-            get { return GetLengthInternal(); }
-        }
+        public override long Length => GetLengthInternal();
 
         // TODO: uncomment this when finally implementing async
         /*public Task<long> GetLengthAsync()
@@ -232,7 +214,7 @@ namespace Npgsql
             if (origin < SeekOrigin.Begin || origin > SeekOrigin.End)
                 throw new ArgumentException("Invalid origin");
             if (!Has64BitSupport && offset != (long)(int)offset)
-                throw new ArgumentOutOfRangeException("offset", "offset must fit in 32 bits for PostgreSQL versions older than 9.3");
+                throw new ArgumentOutOfRangeException(nameof(offset), "offset must fit in 32 bits for PostgreSQL versions older than 9.3");
             Contract.EndContractBlock();
 
             CheckDisposed();
@@ -260,9 +242,9 @@ namespace Npgsql
         public override void SetLength(long value)
         {
             if (value < 0)
-                throw new ArgumentOutOfRangeException("value");
+                throw new ArgumentOutOfRangeException(nameof(value));
             if (!Has64BitSupport && value != (long)(int)value)
-                throw new ArgumentOutOfRangeException("value", "offset must fit in 32 bits for PostgreSQL versions older than 9.3");
+                throw new ArgumentOutOfRangeException(nameof(value), "offset must fit in 32 bits for PostgreSQL versions older than 9.3");
             Contract.EndContractBlock();
 
             CheckDisposed();

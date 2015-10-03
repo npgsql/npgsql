@@ -153,7 +153,7 @@ namespace Npgsql
             {
                 object value;
                 if (!TryGetValue(keyword, out value)) {
-                    throw new ArgumentException("Keyword not supported: " + keyword, "keyword");
+                    throw new ArgumentException("Keyword not supported: " + keyword, nameof(keyword));
                 }
                 return value;
             }
@@ -213,7 +213,7 @@ namespace Npgsql
         public override bool ContainsKey(string keyword)
         {
             if (keyword == null)
-                throw new ArgumentNullException("keyword");
+                throw new ArgumentNullException(nameof(keyword));
             Contract.EndContractBlock();
 
             return PropertiesByKeyword.ContainsKey(keyword.ToUpperInvariant());
@@ -223,7 +223,7 @@ namespace Npgsql
         {
             PropertyInfo p;
             if (!PropertiesByKeyword.TryGetValue(keyword.ToUpperInvariant(), out p)) {
-                throw new ArgumentException("Keyword not supported: " + keyword, "keyword");
+                throw new ArgumentException("Keyword not supported: " + keyword, nameof(keyword));
             }
             return p;
         }
@@ -237,7 +237,7 @@ namespace Npgsql
         public override bool TryGetValue(string keyword, [CanBeNull] out object value)
         {
             if (keyword == null)
-                throw new ArgumentNullException("keyword");
+                throw new ArgumentNullException(nameof(keyword));
             Contract.EndContractBlock();
 
             PropertyInfo p;
@@ -252,7 +252,7 @@ namespace Npgsql
 
         }
 
-        void SetValue(string propertyName, object value)
+        void SetValue(string propertyName, [CanBeNull] object value)
         {
             var canonicalKeyword = PropertyNameToCanonicalKeyword[propertyName];
             if (value == null) {
@@ -281,8 +281,7 @@ namespace Npgsql
             set
             {
                 _host = value;
-                // TODO: Replace literal name with nameof operator in C# 6.0
-                SetValue("Host", value);
+                SetValue(nameof(Host), value);
             }
         }
         string _host;
@@ -303,12 +302,11 @@ namespace Npgsql
             set
             {
                 if (value <= 0)
-                    throw new ArgumentOutOfRangeException("value", value, "Invalid port: " + value);
+                    throw new ArgumentOutOfRangeException(nameof(value), value, "Invalid port: " + value);
                 Contract.EndContractBlock();
 
                 _port = value;
-                // TODO: Replace literal name with nameof operator in C# 6.0
-                SetValue("Port", value);
+                SetValue(nameof(Port), value);
             }
         }
         int _port;
@@ -328,8 +326,7 @@ namespace Npgsql
             set
             {
                 _database = value;
-                // TODO: Replace literal name with nameof operator in C# 6.0
-                SetValue("Database", value);
+                SetValue(nameof(Database), value);
             }
         }
         string _database;
@@ -359,8 +356,7 @@ namespace Npgsql
             set
             {
                 _username = value;
-                // TODO: Replace literal name with nameof operator in C# 6.0
-                SetValue("Username", value);
+                SetValue(nameof(Username), value);
             }
         }
         string _username;
@@ -381,8 +377,7 @@ namespace Npgsql
             set
             {
                 _password = value;
-                // TODO: Replace literal name with nameof operator in C# 6.0
-                SetValue("Password", value);
+                SetValue(nameof(Password), value);
             }
         }
         string _password;
@@ -402,8 +397,7 @@ namespace Npgsql
             set
             {
                 _applicationName = value;
-                // TODO: Replace literal name with nameof operator in C# 6.0
-                SetValue("ApplicationName", value);
+                SetValue(nameof(ApplicationName), value);
             }
         }
         string _applicationName;
@@ -423,8 +417,7 @@ namespace Npgsql
             set
             {
                 _enlist = value;
-                // TODO: Replace literal name with nameof operator in C# 6.0
-                SetValue("Enlist", value);
+                SetValue(nameof(Enlist), value);
             }
         }
         bool _enlist;
@@ -444,8 +437,7 @@ namespace Npgsql
             set
             {
                 _searchpath = value;
-                // TODO: Replace literal name with nameof operator in C# 6.0
-                SetValue("SearchPath", value);
+                SetValue(nameof(SearchPath), value);
             }
         }
         string _searchpath;
@@ -469,8 +461,7 @@ namespace Npgsql
             set
             {
                 _sslmode = value;
-                // TODO: Replace literal name with nameof operator in C# 6.0
-                SetValue("SslMode", value);
+                SetValue(nameof(SslMode), value);
             }
         }
         SslMode _sslmode;
@@ -490,8 +481,7 @@ namespace Npgsql
             set
             {
                 _trustServerCertificate = value;
-                // TODO: Replace literal name with nameof operator in C# 6.0
-                SetValue("TrustServerCertificate", value);
+                SetValue(nameof(TrustServerCertificate), value);
             }
         }
         bool _trustServerCertificate;
@@ -511,8 +501,7 @@ namespace Npgsql
             set
             {
                 _useSslStream = value;
-                // TODO: Replace literal name with nameof operator in C# 6.0
-                SetValue("UseSslStream", value);
+                SetValue(nameof(UseSslStream), value);
             }
         }
         bool _useSslStream;
@@ -536,8 +525,7 @@ namespace Npgsql
                     CheckIntegratedSecuritySupport();
 #endif
                 _integratedSecurity = value;
-                // TODO: Replace literal name with nameof operator in C# 6.0
-                SetValue("IntegratedSecurity", value);
+                SetValue(nameof(IntegratedSecurity), value);
             }
         }
         bool _integratedSecurity;
@@ -557,8 +545,7 @@ namespace Npgsql
             set
             {
                 _kerberosServiceName = value;
-                // TODO: Replace literal name with nameof operator in C# 6.0
-                SetValue("KerberosServiceName", value);
+                SetValue(nameof(KerberosServiceName), value);
             }
         }
         string _kerberosServiceName;
@@ -578,8 +565,7 @@ namespace Npgsql
             set
             {
                 _includeRealm = value;
-                // TODO: Replace literal name with nameof operator in C# 6.0
-                SetValue("IncludeRealm", value);
+                SetValue(nameof(IncludeRealm), value);
             }
         }
         bool _includeRealm;
@@ -599,8 +585,7 @@ namespace Npgsql
             set
             {
                 _persistSecurityInfo = value;
-                // TODO: Replace literal name with nameof operator in C# 6.0
-                SetValue("PersistSecurityInfo", value);
+                SetValue(nameof(PersistSecurityInfo), value);
             }
         }
         bool _persistSecurityInfo;
@@ -625,8 +610,7 @@ namespace Npgsql
             set
             {
                 _pooling = value;
-                // TODO: Replace literal name with nameof operator in C# 6.0
-                SetValue("Pooling", value);
+                SetValue(nameof(Pooling), value);
             }
         }
         bool _pooling;
@@ -647,12 +631,11 @@ namespace Npgsql
             set
             {
                 if (value < 0 || value > NpgsqlConnectorPool.PoolSizeLimit)
-                    throw new ArgumentOutOfRangeException("value", value, "MinPoolSize must be between 0 and " + NpgsqlConnectorPool.PoolSizeLimit);
+                    throw new ArgumentOutOfRangeException(nameof(value), value, "MinPoolSize must be between 0 and " + NpgsqlConnectorPool.PoolSizeLimit);
                 Contract.EndContractBlock();
 
                 _minPoolSize = value;
-                // TODO: Replace literal name with nameof operator in C# 6.0
-                SetValue("MinPoolSize", value);
+                SetValue(nameof(MinPoolSize), value);
             }
         }
         int _minPoolSize;
@@ -673,12 +656,11 @@ namespace Npgsql
             set
             {
                 if (value < 0 || value > NpgsqlConnectorPool.PoolSizeLimit)
-                    throw new ArgumentOutOfRangeException("value", value, "MaxPoolSize must be between 0 and " + NpgsqlConnectorPool.PoolSizeLimit);
+                    throw new ArgumentOutOfRangeException(nameof(value), value, "MaxPoolSize must be between 0 and " + NpgsqlConnectorPool.PoolSizeLimit);
                 Contract.EndContractBlock();
 
                 _maxPoolSize = value;
-                // TODO: Replace literal name with nameof operator in C# 6.0
-                SetValue("MaxPoolSize", value);
+                SetValue(nameof(MaxPoolSize), value);
             }
         }
         int _maxPoolSize;
@@ -707,8 +689,7 @@ namespace Npgsql
             set
             {
                 _connectionLifeTime = value;
-                // TODO: Replace literal name with nameof operator in C# 6.0
-                SetValue("ConnectionLifeTime", value);
+                SetValue(nameof(ConnectionLifeTime), value);
             }
         }
         int _connectionLifeTime;
@@ -734,12 +715,11 @@ namespace Npgsql
             set
             {
                 if (value < 0 || value > NpgsqlConnection.TimeoutLimit)
-                    throw new ArgumentOutOfRangeException("value", value, "Timeout must be between 0 and " + NpgsqlConnection.TimeoutLimit);
+                    throw new ArgumentOutOfRangeException(nameof(value), value, "Timeout must be between 0 and " + NpgsqlConnection.TimeoutLimit);
                 Contract.EndContractBlock();
 
                 _timeout = value;
-                // TODO: Replace literal name with nameof operator in C# 6.0
-                SetValue("Timeout", value);
+                SetValue(nameof(Timeout), value);
             }
         }
         int _timeout;
@@ -761,12 +741,11 @@ namespace Npgsql
             set
             {
                 if (value < 0)
-                    throw new ArgumentOutOfRangeException("value", value, "CommandTimeout can't be negative");
+                    throw new ArgumentOutOfRangeException(nameof(value), value, "CommandTimeout can't be negative");
                 Contract.EndContractBlock();
 
                 _commandTimeout = value;
-                // TODO: Replace literal name with nameof operator in C# 6.0
-                SetValue("CommandTimeout", value);
+                SetValue(nameof(CommandTimeout), value);
             }
         }
         int _commandTimeout;
@@ -787,12 +766,12 @@ namespace Npgsql
             set
             {
                 if (value != 0 && value != -1 && value < NpgsqlConnector.MinimumInternalCommandTimeout)
-                    throw new ArgumentOutOfRangeException("value", value, string.Format("InternalCommandTimeout must be >= {0}, 0 (infinite) or -1 (use CommandTimeout)", NpgsqlConnector.MinimumInternalCommandTimeout));
+                    throw new ArgumentOutOfRangeException(nameof(value), value,
+                        $"InternalCommandTimeout must be >= {NpgsqlConnector.MinimumInternalCommandTimeout}, 0 (infinite) or -1 (use CommandTimeout)");
                 Contract.EndContractBlock();
 
                 _internalCommandTimeout = value;
-                // TODO: Replace literal name with nameof operator in C# 6.0
-                SetValue("InternalCommandTimeout", value);
+                SetValue(nameof(InternalCommandTimeout), value);
             }
         }
         int _internalCommandTimeout;
@@ -814,8 +793,7 @@ namespace Npgsql
             set
             {
                 _backendTimeouts = value;
-                // TODO: Replace literal name with nameof operator in C# 6.0
-                SetValue("BackendTimeouts", value);
+                SetValue(nameof(BackendTimeouts), value);
             }
         }
         bool _backendTimeouts;
@@ -843,8 +821,7 @@ namespace Npgsql
             set
             {
                 _entityTemplateDatabase = value;
-                // TODO: Replace literal name with nameof operator in C# 6.0
-                SetValue("EntityTemplateDatabase", value);
+                SetValue(nameof(EntityTemplateDatabase), value);
             }
         }
         string _entityTemplateDatabase;
@@ -866,8 +843,7 @@ namespace Npgsql
             set
             {
                 _entityAdminDatabase = value;
-                // TODO: Replace literal name with nameof operator in C# 6.0
-                SetValue("EntityAdminDatabase", value);
+                SetValue(nameof(EntityAdminDatabase), value);
             }
         }
         string _entityAdminDatabase;
@@ -891,8 +867,7 @@ namespace Npgsql
             set
             {
                 _continuousProcessing = value;
-                // TODO: Replace literal name with nameof operator in C# 6.0
-                SetValue("ContinuousProcessing", value);
+                SetValue(nameof(ContinuousProcessing), value);
             }
         }
         bool _continuousProcessing;
@@ -913,12 +888,11 @@ namespace Npgsql
             set
             {
                 if (value < 0)
-                    throw new ArgumentOutOfRangeException("value", value, "KeepAlive can't be negative");
+                    throw new ArgumentOutOfRangeException(nameof(value), value, "KeepAlive can't be negative");
                 Contract.EndContractBlock();
 
                 _keepAlive = value;
-                // TODO: Replace literal name with nameof operator in C# 6.0
-                SetValue("KeepAlive", value);
+                SetValue(nameof(KeepAlive), value);
             }
         }
         int _keepAlive;
@@ -939,8 +913,7 @@ namespace Npgsql
             set
             {
                 _bufferSize = value;
-                // TODO: Replace literal name with nameof operator in C# 6.0
-                SetValue("BufferSize", value);
+                SetValue(nameof(BufferSize), value);
             }
         }
         int _bufferSize;
@@ -964,8 +937,7 @@ namespace Npgsql
             set
             {
                 _serverCompatibilityMode = value;
-                // TODO: Replace literal name with nameof operator in C# 6.0
-                SetValue("ServerCompatibilityMode", value);
+                SetValue(nameof(ServerCompatibilityMode), value);
             }
         }
         ServerCompatibilityMode _serverCompatibilityMode;
@@ -985,8 +957,7 @@ namespace Npgsql
             set
             {
                 _convertInfinityDateTime = value;
-                // TODO: Replace literal name with nameof operator in C# 6.0
-                SetValue("ConvertInfinityDateTime", value);
+                SetValue(nameof(ConvertInfinityDateTime), value);
             }
         }
         bool _convertInfinityDateTime;
@@ -1048,7 +1019,7 @@ namespace Npgsql
             public DateTime ExpiryTimeUtc;
         }
 
-        static Dictionary<SecurityIdentifier, CachedUpn> cachedUpns = new Dictionary<SecurityIdentifier, CachedUpn>();
+        static readonly Dictionary<SecurityIdentifier, CachedUpn> CachedUpns = new Dictionary<SecurityIdentifier, CachedUpn>();
 
         private string GetWindowsIdentityUserName()
         {
@@ -1067,19 +1038,19 @@ namespace Npgsql
 
             // Gets the current user's username for integrated security purposes
             var identity = WindowsIdentity.GetCurrent();
-            if (identity == null || identity.User == null) {
+            if (identity?.User == null) {
                 return null;
             }
-            CachedUpn cachedUpn = null;
+            CachedUpn cachedUpn;
             string upn = null;
 
             // Check to see if we already have this UPN cached
-            lock (cachedUpns) {
-                if (cachedUpns.TryGetValue(identity.User, out cachedUpn)) {
+            lock (CachedUpns) {
+                if (CachedUpns.TryGetValue(identity.User, out cachedUpn)) {
                     if (cachedUpn.ExpiryTimeUtc > DateTime.UtcNow)
                         upn = cachedUpn.Upn;
                     else
-                        cachedUpns.Remove(identity.User);
+                        CachedUpns.Remove(identity.User);
                 }
             }
 
@@ -1105,7 +1076,7 @@ namespace Npgsql
                     // Query the domain server by the current user's SID
                     using (DirectoryEntry entry = new DirectoryEntry("LDAP://" + domainHostName) { AuthenticationType = AuthenticationTypes.Secure }) {
                         DirectorySearcher search = new DirectorySearcher(entry,
-                            "(objectSid=" + identity.User.Value + ")", new string[] { "userPrincipalName" });
+                            "(objectSid=" + identity.User.Value + ")", new[] { "userPrincipalName" });
 
                         SearchResult result = search.FindOne();
 
@@ -1117,8 +1088,8 @@ namespace Npgsql
                     // Save this value
                     cachedUpn = new CachedUpn() { Upn = upn, ExpiryTimeUtc = DateTime.UtcNow.AddHours(3.0) };
 
-                    lock (cachedUpns) {
-                        cachedUpns[identity.User] = cachedUpn;
+                    lock (CachedUpns) {
+                        CachedUpns[identity.User] = cachedUpn;
                     }
                 }
 
@@ -1138,23 +1109,24 @@ namespace Npgsql
         }
 #endif
 
-#endregion
+        #endregion
 
-#region Misc
+        #region Misc
 
         internal NpgsqlConnectionStringBuilder Clone()
         {
             return new NpgsqlConnectionStringBuilder(ConnectionString);
         }
 
-#endregion
+        #endregion
 
-#region Attributes
+        #region Attributes
 
         [AttributeUsage(AttributeTargets.Property)]
+        [MeansImplicitUse]
         class NpgsqlConnectionStringPropertyAttribute : Attribute
         {
-            internal string[] Aliases { get; private set; }
+            internal string[] Aliases { get; }
 
             internal NpgsqlConnectionStringPropertyAttribute()
             {
@@ -1179,14 +1151,15 @@ namespace Npgsql
             }
         }
 #endif
-#endregion
+        #endregion
     }
 
-#region Enums
+    #region Enums
 
     /// <summary>
     /// An option specified in the connection string that activates special compatibility features.
     /// </summary>
+    [PublicAPI]
     public enum ServerCompatibilityMode
     {
         /// <summary>
@@ -1202,6 +1175,7 @@ namespace Npgsql
     /// <summary>
     /// Specifies how to manage SSL.
     /// </summary>
+    [PublicAPI]
     public enum SslMode
     {
         /// <summary>
@@ -1218,5 +1192,5 @@ namespace Npgsql
         Require,
     }
 
-#endregion
+    #endregion
 }

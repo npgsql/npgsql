@@ -42,7 +42,7 @@ namespace Npgsql.FrontendMessages
         string Statement { get; set; }
 
         // ReSharper disable once InconsistentNaming
-        internal List<uint> ParameterTypeOIDs { get; private set; }
+        internal List<uint> ParameterTypeOIDs { get; }
 
         byte[] _statementNameBytes;
         int _queryLen;
@@ -152,7 +152,7 @@ namespace Npgsql.FrontendMessages
 
         public override string ToString()
         {
-            return String.Format("[Parse(Statement={0},NumParams={1}]", Statement, ParameterTypeOIDs.Count);
+            return $"[Parse(Statement={Statement},NumParams={ParameterTypeOIDs.Count}]";
         }
 
         private enum State

@@ -147,11 +147,13 @@ namespace Npgsql
                         // Parameter hasn't been seen before in this query
                         NpgsqlParameter parameter;
                         if (!parameters.TryGetValue(paramName, out parameter)) {
-                            throw new Exception(string.Format("Parameter '{0}' referenced in SQL but not found in parameter list", paramName));
+                            throw new Exception(
+                                $"Parameter '{paramName}' referenced in SQL but not found in parameter list");
                         }
 
                         if (!parameter.IsInputDirection) {
-                            throw new Exception(string.Format("Parameter '{0}' referenced in SQL but is an out-only parameter", paramName));
+                            throw new Exception(
+                                $"Parameter '{paramName}' referenced in SQL but is an out-only parameter");
                         }
 
                         currentParameters.Add(parameter);
@@ -387,7 +389,8 @@ namespace Npgsql
                 currTokenBeg = currCharOfs;
                 paramIndexMap.Clear();
                 if (queries.Count > NpgsqlCommand.MaxStatements) {
-                    throw new NotSupportedException(String.Format("A single command cannot contain more than {0} queries", NpgsqlCommand.MaxStatements));
+                    throw new NotSupportedException(
+                        $"A single command cannot contain more than {NpgsqlCommand.MaxStatements} queries");
                 }
                 currentSql = new StringWriter();
                 currentParameters = new List<NpgsqlParameter>();

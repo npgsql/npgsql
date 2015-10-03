@@ -65,7 +65,7 @@ namespace Npgsql.BackendMessages
 
     class CopyInResponseMessage : CopyResponseMessageBase
     {
-        public override BackendMessageCode Code { get { return BackendMessageCode.CopyInResponse; } }
+        public override BackendMessageCode Code => BackendMessageCode.CopyInResponse;
 
         internal new CopyInResponseMessage Load(NpgsqlBuffer buf)
         {
@@ -76,7 +76,7 @@ namespace Npgsql.BackendMessages
 
     class CopyOutResponseMessage : CopyResponseMessageBase
     {
-        public override BackendMessageCode Code { get { return BackendMessageCode.CopyOutResponse; } }
+        public override BackendMessageCode Code => BackendMessageCode.CopyOutResponse;
 
         internal new CopyOutResponseMessage Load(NpgsqlBuffer buf)
         {
@@ -87,7 +87,7 @@ namespace Npgsql.BackendMessages
 
     class CopyBothResponseMessage : CopyResponseMessageBase
     {
-        public override BackendMessageCode Code { get { return BackendMessageCode.CopyBothResponse; } }
+        public override BackendMessageCode Code => BackendMessageCode.CopyBothResponse;
 
         internal new CopyBothResponseMessage Load(NpgsqlBuffer buf)
         {
@@ -102,7 +102,7 @@ namespace Npgsql.BackendMessages
     /// </summary>
     class CopyDataMessage : IBackendMessage
     {
-        public BackendMessageCode Code { get { return BackendMessageCode.CopyData; } }
+        public BackendMessageCode Code => BackendMessageCode.CopyData;
 
         public int Length { get; private set; }
 
@@ -118,11 +118,11 @@ namespace Npgsql.BackendMessages
     /// </remarks>
     class CopyDoneMessage : SimpleFrontendMessage, IBackendMessage
     {
-        public BackendMessageCode Code { get { return BackendMessageCode.CopyDone; } }
+        public BackendMessageCode Code => BackendMessageCode.CopyDone;
         internal static readonly CopyDoneMessage Instance = new CopyDoneMessage();
         CopyDoneMessage() { }
 
-        internal override int Length { get { return 5; } }
+        internal override int Length => 5;
 
         internal override void Write(NpgsqlBuffer buf)
         {

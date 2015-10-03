@@ -50,10 +50,7 @@ namespace Npgsql.FrontendMessages
             return this;
         }
 
-        internal override int Length
-        {
-            get { return 1 + 4 + (Portal.Length + 1) + 4; }
-        }
+        internal override int Length => 1 + 4 + (Portal.Length + 1) + 4;
 
         internal override void Write(NpgsqlBuffer buf)
         {
@@ -69,7 +66,7 @@ namespace Npgsql.FrontendMessages
 
         public override string ToString()
         {
-            return String.Format("[Execute(Portal={0},MaxRows={1}]", Portal, MaxRows);
+            return $"[Execute(Portal={Portal},MaxRows={MaxRows}]";
         }
     }
 }

@@ -143,10 +143,10 @@ namespace Npgsql
         public SSPIHandler(string pghost, string krbsrvname, bool useGssapi)
         {
             if (pghost == null)
-                throw new ArgumentNullException("pghost");
+                throw new ArgumentNullException(nameof(pghost));
             if (krbsrvname == null)
                 krbsrvname = String.Empty;
-            sspitarget = String.Format("{0}/{1}", krbsrvname, pghost);
+            sspitarget = $"{krbsrvname}/{pghost}";
 
             SecHandle expire;
             int status = AcquireCredentialsHandle(

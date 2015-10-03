@@ -49,7 +49,7 @@ namespace Npgsql.FrontendMessages
             return this;
         }
 
-        internal override int Length { get { return 1 + 4 + 1 + (Name.Length + 1); } }
+        internal override int Length => 1 + 4 + 1 + (Name.Length + 1);
 
         internal override void Write(NpgsqlBuffer buf)
         {
@@ -63,7 +63,7 @@ namespace Npgsql.FrontendMessages
 
         public override string ToString()
         {
-            return String.Format("[Describe({0}={1})]", StatementOrPortal, Name);
+            return $"[Describe({StatementOrPortal}={Name})]";
         }
     }
 }

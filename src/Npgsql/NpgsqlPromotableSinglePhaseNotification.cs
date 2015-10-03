@@ -37,7 +37,7 @@ namespace Npgsql
         private NpgsqlTransactionCallbacks _callbacks;
         private INpgsqlResourceManager _rm;
         private bool _inTransaction;
-        internal bool InLocalTransaction { get { return _npgsqlTx != null;  } }
+        internal bool InLocalTransaction => _npgsqlTx != null;
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 

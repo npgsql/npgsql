@@ -1732,7 +1732,7 @@ namespace TlsClientStream
             }
         }
 
-        int WriteSpaceLeft { get { return (1 << 14) + _connState.WriteStartPos - _writePos; } }
+        int WriteSpaceLeft => (1 << 14) + _connState.WriteStartPos - _writePos;
 
         #region Stream overrides
 
@@ -2096,22 +2096,14 @@ namespace TlsClientStream
         {
             get { throw new NotSupportedException(); }
         }
-        public override bool CanRead
-        {
-            get { return !_closed && _connState.IsAuthenticated && _baseStream.CanRead; }
-        }
-        public override bool CanWrite
-        {
-            get { return !_closed && _connState.IsAuthenticated && _baseStream.CanWrite; }
-        }
+        public override bool CanRead => !_closed && _connState.IsAuthenticated && _baseStream.CanRead;
+        public override bool CanWrite => !_closed && _connState.IsAuthenticated && _baseStream.CanWrite;
+
         public override void SetLength(long value)
         {
             throw new NotSupportedException();
         }
-        public override bool CanSeek
-        {
-            get { return false; }
-        }
+        public override bool CanSeek => false;
 
         #endregion
 

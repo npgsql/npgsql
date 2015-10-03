@@ -47,6 +47,6 @@ namespace Npgsql.BackendMessages
             return this;
         }
 
-        public BackendMessageCode Code { get { return BackendMessageCode.ParameterDescription; } }
+        public BackendMessageCode Code => BackendMessageCode.ParameterDescription;
     }
 }

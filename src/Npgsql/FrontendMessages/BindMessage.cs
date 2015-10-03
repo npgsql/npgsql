@@ -24,10 +24,8 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
-using System.IO;
 using System.Linq;
 using System.Text;
-using System.Threading;
 
 namespace Npgsql.FrontendMessages
 {
@@ -54,10 +52,8 @@ namespace Npgsql.FrontendMessages
 
         const byte Code = (byte)'B';
 
-        internal BindMessage Populate(TypeHandlerRegistry typeHandlerRegistry, List<NpgsqlParameter> inputParameters,
-                             string portal="", string statement="")
+        internal BindMessage Populate(List<NpgsqlParameter> inputParameters, string portal = "", string statement = "")
         {
-            Contract.Requires(typeHandlerRegistry != null);
             Contract.Requires(inputParameters != null && inputParameters.All(p => p.IsInputDirection));
             Contract.Requires(portal != null);
             Contract.Requires(statement != null);
@@ -104,7 +100,7 @@ namespace Npgsql.FrontendMessages
                         4 * InputParameters.Count +                                     // Parameter lengths
                         InputParameters.Select(p => p.ValidateAndGetLength()).Sum() +   // Parameter values
                         2 +                                                             // Number of result format codes
-                        2 * (UnknownResultTypeList == null ? 1 : UnknownResultTypeList.Length);  // Result format codes
+                        2 * (UnknownResultTypeList?.Length ?? 1);                       // Result format codes
 
                     buf.WriteByte(Code);
                     buf.WriteInt32(messageLength-1);
@@ -172,9 +168,7 @@ namespace Npgsql.FrontendMessages
                         continue;
                     }
 
-                    if (param.LengthCache != null) {
-                        param.LengthCache.Rewind();
-                    }
+                    param.LengthCache?.Rewind();
                 }
 
                 var handler = param.Handler;
@@ -211,7 +205,7 @@ namespace Npgsql.FrontendMessages
 
         public override string ToString()
         {
-            return String.Format("[Bind(Portal={0},Statement={1},NumParams={2}]", Portal, Statement, InputParameters.Count);
+            return $"[Bind(Portal={Portal},Statement={Statement},NumParams={InputParameters.Count}]";
         }
 
         private enum State

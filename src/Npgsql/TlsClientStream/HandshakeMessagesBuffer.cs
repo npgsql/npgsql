@@ -39,10 +39,10 @@ namespace TlsClientStream
         byte[] _buffer;
         int _bufferLen;
 
-        public List<byte[]> Messages { get { return _messages; } }
+        public List<byte[]> Messages => _messages;
 
         public bool HasServerHelloDone { get; private set; }
-        public bool HasBufferedData { get { return _headerBuffer != null; } }
+        public bool HasBufferedData => _headerBuffer != null;
 
         bool _hasFinished;
         bool _hasHelloRequest;

@@ -30,8 +30,6 @@ using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Reflection;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AsyncRewriter;
@@ -39,7 +37,6 @@ using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.TypeHandlers;
 using Npgsql.TypeHandlers.NumericHandlers;
-using Npgsql.Logging;
 using NpgsqlTypes;
 
 namespace Npgsql
@@ -49,7 +46,7 @@ namespace Npgsql
     /// </summary>
     public partial class NpgsqlDataReader : DbDataReader
     {
-        internal NpgsqlCommand Command { get; private set; }
+        internal NpgsqlCommand Command { get; }
         readonly NpgsqlConnector _connector;
         readonly NpgsqlConnection _connection;
         readonly CommandBehavior _behavior;
@@ -109,9 +106,9 @@ namespace Npgsql
 
         // static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
-        internal bool IsSequential { get { return (_behavior & CommandBehavior.SequentialAccess) != 0; } }
-        internal bool IsCaching { get { return !IsSequential; } }
-        internal bool IsSchemaOnly { get { return (_behavior & CommandBehavior.SchemaOnly) != 0; } }
+        bool IsSequential => (_behavior & CommandBehavior.SequentialAccess) != 0;
+        bool IsCaching => !IsSequential;
+        bool IsSchemaOnly => (_behavior & CommandBehavior.SchemaOnly) != 0;
 
         internal NpgsqlDataReader(NpgsqlCommand command, CommandBehavior behavior, List<NpgsqlStatement> statements)
         {
@@ -402,9 +399,8 @@ namespace Npgsql
         [RewriteAsync]
         IBackendMessage ReadMessage()
         {
-            IBackendMessage msg;
             if (_pendingMessage != null) {
-                msg = _pendingMessage;
+                var msg = _pendingMessage;
                 _pendingMessage = null;
                 return msg;
             }
@@ -444,26 +440,17 @@ namespace Npgsql
         /// <summary>
         /// Gets a value indicating the depth of nesting for the current row.  Always returns zero.
         /// </summary>
-        public override Int32 Depth
-        {
-            get { return 0; }
-        }
+        public override Int32 Depth => 0;
 
         /// <summary>
         /// Gets a value indicating whether the data reader is closed.
         /// </summary>
-        public override bool IsClosed
-        {
-            get { return State == ReaderState.Closed; }
-        }
+        public override bool IsClosed => State == ReaderState.Closed;
 
         /// <summary>
         /// Gets the number of rows changed, inserted, or deleted by execution of the SQL statement.
         /// </summary>
-        public override int RecordsAffected
-        {
-            get { return _recordsAffected.HasValue ? (int)_recordsAffected.Value : -1; }
-        }
+        public override int RecordsAffected => _recordsAffected.HasValue ? (int)_recordsAffected.Value : -1;
 
         /// <summary>
         /// Returns details about each statement that this reader will or has executed.
@@ -476,7 +463,7 @@ namespace Npgsql
         /// a statement-by-statement basis, unlike <see cref="NpgsqlDataReader.RecordsAffected"/>
         /// which exposes an aggregation across all statements.
         /// </remarks>
-        public IReadOnlyList<NpgsqlStatement> Statements { get { return _statements.AsReadOnly(); } }
+        public IReadOnlyList<NpgsqlStatement> Statements => _statements.AsReadOnly();
 
         /// <summary>
         /// Gets a value that indicates whether this DbDataReader contains one or more rows.
@@ -526,7 +513,8 @@ namespace Npgsql
         /// return true even if attempting to read a column will fail, e.g. before <see cref="Read"/>
         /// has been called
         /// </summary>
-        public bool IsOnRow { get { return _row != null; } }
+        [PublicAPI]
+        public bool IsOnRow => _row != null;
 
         /// <summary>
         /// Gets the name of the column, given the zero-based column ordinal.
@@ -545,16 +533,7 @@ namespace Npgsql
         /// <summary>
         /// Gets the number of columns in the current row.
         /// </summary>
-        public override int FieldCount
-        {
-            get
-            {
-                // Note MSDN docs that seem to say we should case -1 in this case:
-                // http://msdn.microsoft.com/en-us/library/system.data.idatarecord.fieldcount(v=vs.110).aspx
-                // But SqlClient returns 0
-                return _rowDescription == null ? 0 : _rowDescription.NumFields;
-            }
-        }
+        public override int FieldCount => _rowDescription?.NumFields ?? 0;
 
         #region Cleanup / Dispose
 
@@ -623,9 +602,7 @@ namespace Npgsql
                 // was still open
                 State = ReaderState.Closed;
                 Command.State = CommandState.Idle;
-                if (ReaderClosed != null) {
-                    ReaderClosed(this, EventArgs.Empty);
-                }
+                ReaderClosed?.Invoke(this, EventArgs.Empty);
                 return;
             }
 
@@ -838,7 +815,7 @@ namespace Npgsql
         {
 #region Contracts
             if (values == null)
-                throw new ArgumentNullException("values");
+                throw new ArgumentNullException(nameof(values));
             CheckRow();
             Contract.Ensures(Contract.Result<int>() >= 0 && Contract.Result<int>() <= values.Length);
 #endregion
@@ -969,16 +946,17 @@ namespace Npgsql
         /// <param name="bufferOffset">The index with the buffer to which the data will be copied.</param>
         /// <param name="length">The maximum number of characters to read.</param>
         /// <returns>The actual number of bytes read.</returns>
-        public override long GetBytes(int ordinal, long dataOffset, byte[] buffer, int bufferOffset, int length)
+        public override long GetBytes(int ordinal, long dataOffset, [CanBeNull] byte[] buffer, int bufferOffset, int length)
         {
 #region Contracts
             CheckRowAndOrdinal(ordinal);
             if (dataOffset < 0 || dataOffset > int.MaxValue)
-                throw new ArgumentOutOfRangeException("dataOffset", dataOffset, String.Format("dataOffset must be between {0} and {1}", 0, int.MaxValue));
+                throw new ArgumentOutOfRangeException(nameof(dataOffset), dataOffset,
+                    $"dataOffset must be between {0} and {int.MaxValue}");
             if (buffer != null && (bufferOffset < 0 || bufferOffset >= buffer.Length))
-                throw new IndexOutOfRangeException(String.Format("bufferOffset must be between {0} and {1}",  0, (buffer.Length - 1)));
+                throw new IndexOutOfRangeException($"bufferOffset must be between {0} and {(buffer.Length - 1)}");
             if (buffer != null && (length < 0 || length > buffer.Length - bufferOffset))
-                throw new IndexOutOfRangeException(String.Format("length must be between {0} and {1}", 0, buffer.Length - bufferOffset));
+                throw new IndexOutOfRangeException($"length must be between {0} and {buffer.Length - bufferOffset}");
             Contract.Ensures(Contract.Result<long>() >= 0);
 #endregion
 
@@ -1038,11 +1016,12 @@ namespace Npgsql
 #region Contracts
             CheckRowAndOrdinal(ordinal);
             if (dataOffset < 0 || dataOffset > int.MaxValue)
-                throw new ArgumentOutOfRangeException("dataOffset", dataOffset, String.Format("dataOffset must be between {0} and {1}", 0, int.MaxValue));
+                throw new ArgumentOutOfRangeException(nameof(dataOffset), dataOffset,
+                    $"dataOffset must be between {0} and {int.MaxValue}");
             if (buffer != null && (bufferOffset < 0 || bufferOffset >= buffer.Length))
-                throw new IndexOutOfRangeException(String.Format("bufferOffset must be between {0} and {1}", 0, (buffer.Length - 1)));
+                throw new IndexOutOfRangeException($"bufferOffset must be between {0} and {(buffer.Length - 1)}");
             if (buffer != null && (length < 0 || length > buffer.Length - bufferOffset))
-                throw new IndexOutOfRangeException(String.Format("length must be between {0} and {1}", 0, buffer.Length - bufferOffset));
+                throw new IndexOutOfRangeException($"length must be between {0} and {buffer.Length - bufferOffset}");
             Contract.Ensures(Contract.Result<long>() >= 0);
 #endregion
 
@@ -1131,10 +1110,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="name">The name of the column.</param>
         /// <returns>The value of the specified column.</returns>
-        public override object this[string name]
-        {
-            get { return GetValue(GetOrdinal(name)); }
-        }
+        public override object this[string name] => GetValue(GetOrdinal(name));
 
         /// <summary>
         /// Gets the column ordinal given the name of the column.
@@ -1146,7 +1122,7 @@ namespace Npgsql
 #region Contracts
             CheckResultSet();
             if (String.IsNullOrEmpty(name))
-                throw new ArgumentException("name cannot be empty", "name");
+                throw new ArgumentException("name cannot be empty", nameof(name));
             Contract.EndContractBlock();
 #endregion
 
@@ -1207,13 +1183,10 @@ namespace Npgsql
             CheckOrdinal(ordinal);
             Contract.EndContractBlock();
 
-            if (Command.ObjectResultTypes != null)
+            var type = Command.ObjectResultTypes?[ordinal];
+            if (type != null)
             {
-                var type = Command.ObjectResultTypes[ordinal];
-                if (type != null)
-                {
-                    return type;
-                }
+                return type;
             }
 
             var field = _rowDescription[ordinal];
@@ -1272,7 +1245,7 @@ namespace Npgsql
             }
 
             // Used for Entity Framework <= 6 compability
-            if (Command.ObjectResultTypes != null && Command.ObjectResultTypes[ordinal] != null && result != null)
+            if (Command.ObjectResultTypes?[ordinal] != null && result != null)
             {
                 var type = Command.ObjectResultTypes[ordinal];
                 if (type == typeof(DateTimeOffset))
@@ -1350,7 +1323,8 @@ namespace Npgsql
             var elementType = t.GetElementType();
             var arrayHandler = handler as IArrayHandler;
             if (arrayHandler == null) {
-                throw new InvalidCastException(String.Format("Can't cast database type {0} to {1}", fieldDescription.Handler.PgName, typeof(T).Name));
+                throw new InvalidCastException(
+                    $"Can't cast database type {fieldDescription.Handler.PgName} to {typeof (T).Name}");
             }
 
             if (arrayHandler.GetElementFieldType(fieldDescription) == elementType)
@@ -1361,7 +1335,7 @@ namespace Npgsql
             {
                 return (T)GetProviderSpecificValue(ordinal);
             }
-            throw new InvalidCastException(String.Format("Can't cast database type {0} to {1}", handler.PgName, typeof(T).Name));
+            throw new InvalidCastException($"Can't cast database type {handler.PgName} to {typeof (T).Name}");
         }
 
         /// <summary>
@@ -1419,7 +1393,7 @@ namespace Npgsql
         {
 #region Contracts
             if (values == null)
-                throw new ArgumentNullException("values");
+                throw new ArgumentNullException(nameof(values));
             CheckRow();
             Contract.Ensures(Contract.Result<int>() >= 0 && Contract.Result<int>() <= values.Length);
 #endregion
@@ -1550,7 +1524,7 @@ namespace Npgsql
             return result;
         }
 
-#region Schema metadata table
+        #region Schema metadata table
 #if !DNXCORE50
 
         /// <summary>
@@ -1711,7 +1685,8 @@ namespace Npgsql
                 return true;
             }
 
-            var lookupKey = string.Format("{0},{1}", _rowDescription[fieldIndex].TableOID, _rowDescription[fieldIndex].ColumnAttributeNumber);
+            var lookupKey =
+                $"{_rowDescription[fieldIndex].TableOID},{_rowDescription[fieldIndex].ColumnAttributeNumber}";
             Column col;
             return !columnLookup.TryGetValue(lookupKey, out col) || !col.NotNull;
         }
@@ -1723,12 +1698,11 @@ namespace Npgsql
                 return false;
             }
 
-            var lookupKey = string.Format("{0},{1}", _rowDescription[fieldIndex].TableOID, _rowDescription[fieldIndex].ColumnAttributeNumber);
+            var lookupKey =
+                $"{_rowDescription[fieldIndex].TableOID},{_rowDescription[fieldIndex].ColumnAttributeNumber}";
             Column col;
             return
-                columnLookup.TryGetValue(lookupKey, out col)
-                    ? col.ColumnDefault is string && col.ColumnDefault.ToString().StartsWith("nextval(")
-                    : true;
+                !columnLookup.TryGetValue(lookupKey, out col) || col.ColumnDefault is string && col.ColumnDefault.ToString().StartsWith("nextval(");
         }
 
         private bool IsReadOnly(Dictionary<string, Column> columnLookup, int fieldIndex)
@@ -1738,7 +1712,8 @@ namespace Npgsql
                 return false;
             }
 
-            var lookupKey = string.Format("{0},{1}", _rowDescription[fieldIndex].TableOID, _rowDescription[fieldIndex].ColumnAttributeNumber);
+            var lookupKey =
+                $"{_rowDescription[fieldIndex].TableOID},{_rowDescription[fieldIndex].ColumnAttributeNumber}";
             Column col;
             return
                 columnLookup.TryGetValue(lookupKey, out col)
@@ -1753,7 +1728,8 @@ namespace Npgsql
                 return GetName(fieldIndex);
             }
 
-            var lookupKey = string.Format("{0},{1}", _rowDescription[fieldIndex].TableOID, _rowDescription[fieldIndex].ColumnAttributeNumber);
+            var lookupKey =
+                $"{_rowDescription[fieldIndex].TableOID},{_rowDescription[fieldIndex].ColumnAttributeNumber}";
             Column col;
             return columnLookup.TryGetValue(lookupKey, out col) ? col.Name : GetName(fieldIndex);
         }
@@ -1878,19 +1854,16 @@ namespace Npgsql
 
         class Column
         {
-            public readonly string Name;
-            public readonly bool NotNull;
-            public readonly uint TableId;
-            public readonly short ColumnNum;
-            public readonly object ColumnDefault;
-            public readonly bool IsUpdateable;
+            internal readonly string Name;
+            internal readonly bool NotNull;
+            readonly uint TableId;
+            readonly short ColumnNum;
+            internal readonly object ColumnDefault;
+            internal readonly bool IsUpdateable;
 
-            public string Key
-            {
-                get { return string.Format("{0},{1}", TableId, ColumnNum); }
-            }
+            internal string Key => $"{TableId},{ColumnNum}";
 
-            public Column(NpgsqlDataReader rdr)
+            internal Column(NpgsqlDataReader rdr)
             {
                 Name = rdr.GetString(0);
                 NotNull = rdr.GetBoolean(1);
@@ -1906,7 +1879,7 @@ namespace Npgsql
         {
             var columnsFilter = _rowDescription.Fields
                 .Where(f => f.TableOID != 0)
-                .Select(f => string.Format("(a.attrelid={0} AND a.attnum={1})", f.TableOID, f.ColumnAttributeNumber))
+                .Select(f => $"(a.attrelid={f.TableOID} AND a.attnum={f.ColumnAttributeNumber})")
                 .Join(" OR ");
 
             if (columnsFilter == "") {
@@ -1915,7 +1888,8 @@ namespace Npgsql
 
             // the column index is used to find data.
             // any changes to the order of the columns needs to be reflected in struct Columns
-            var query = string.Format(@"SELECT a.attname AS column_name, a.attnotnull AS column_notnull, a.attrelid AS table_id, a.attnum AS column_num, ad.adsrc as column_default
+            var query =
+                $@"SELECT a.attname AS column_name, a.attnotnull AS column_notnull, a.attrelid AS table_id, a.attnum AS column_num, ad.adsrc as column_default
 , CAST(CASE WHEN i.is_updatable = 'YES'
        THEN 1 ELSE 0 END AS bit) AS is_updatable
 FROM (pg_attribute a LEFT JOIN pg_attrdef ad ON attrelid = adrelid AND attnum = adnum)
@@ -1927,7 +1901,8 @@ WHERE a.attnum > 0
     AND c.relkind in ('r', 'v', 'f')
     AND (pg_has_role(c.relowner, 'USAGE')
         OR has_column_privilege(c.oid, a.attnum, 'SELECT, INSERT, UPDATE, REFERENCES'))
-    AND ({0})", columnsFilter);
+    AND ({
+                    columnsFilter})";
 
             using (var connection = new NpgsqlConnection(_connection.ConnectionString))
             {
@@ -1949,9 +1924,9 @@ WHERE a.attnum > 0
         }
 
 #endif
-#endregion Schema metadata table
+        #endregion Schema metadata table
 
-#region Checks
+        #region Checks
 
         [ContractArgumentValidator]
         void CheckRowAndOrdinal(int ordinal)
@@ -1970,10 +1945,11 @@ WHERE a.attnum > 0
         }
 
         [ContractArgumentValidator]
+        // ReSharper disable once UnusedParameter.Local
         void CheckOrdinal(int ordinal)
         {
             if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException(String.Format("Column must be between {0} and {1}", 0, (FieldCount - 1)));
+                throw new IndexOutOfRangeException($"Column must be between {0} and {(FieldCount - 1)}");
             Contract.EndContractBlock();
         }
 
@@ -1984,9 +1960,9 @@ WHERE a.attnum > 0
                 throw new InvalidOperationException("No resultset is currently being traversed");
         }
 
-#endregion
+        #endregion
 
-#region Enums
+        #region Enums
 
         enum ReaderState
         {
@@ -2003,6 +1979,6 @@ WHERE a.attnum > 0
             ReadAgain,
         }
 
-#endregion
+        #endregion
     }
 }

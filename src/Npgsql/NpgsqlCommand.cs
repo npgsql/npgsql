@@ -165,7 +165,7 @@ namespace Npgsql
             set
             {
                 if (value == null)
-                    throw new ArgumentNullException("value");
+                    throw new ArgumentNullException(nameof(value));
                 Contract.EndContractBlock();
 
                 _commandText = value;
@@ -182,16 +182,12 @@ namespace Npgsql
         {
             get
             {
-                return _timeout ?? (
-                    _connection != null
-                      ? _connection.CommandTimeout
-                      : DefaultTimeout
-                );
+                return _timeout ?? (_connection?.CommandTimeout ?? DefaultTimeout);
             }
             set
             {
                 if (value < 0) {
-                    throw new ArgumentOutOfRangeException("value", value, "CommandTimeout can't be less than zero.");
+                    throw new ArgumentOutOfRangeException(nameof(value), value, "CommandTimeout can't be less than zero.");
                 }
 
                 _timeout = value;
@@ -421,10 +417,7 @@ namespace Npgsql
         /// <summary>
         /// DB parameter collection.
         /// </summary>
-        protected override DbParameterCollection DbParameterCollection
-        {
-            get { return Parameters; }
-        }
+        protected override DbParameterCollection DbParameterCollection => Parameters;
 
         /// <summary>
         /// Gets the <see cref="NpgsqlParameterCollection">NpgsqlParameterCollection</see>.
@@ -434,7 +427,7 @@ namespace Npgsql
         [Category("Data"), DesignerSerializationVisibility(DesignerSerializationVisibility.Content)]
 #endif
 
-        public new NpgsqlParameterCollection Parameters { get { return _parameters; } }
+        public new NpgsqlParameterCollection Parameters => _parameters;
 
         #endregion
 
@@ -596,9 +589,7 @@ namespace Npgsql
             _connector = Connection.Connector;
             foreach (NpgsqlParameter p in Parameters.Where(p => p.IsInputDirection)) {
                 p.Bind(_connector.TypeHandlerRegistry);
-                if (p.LengthCache != null) {
-                    p.LengthCache.Clear();
-                }
+                p.LengthCache?.Clear();
                 p.ValidateAndGetLength();
             }
 
@@ -659,7 +650,6 @@ namespace Npgsql
                 _connector.AddMessage(describeMessage.Populate(StatementOrPortal.Statement));
 
                 bindMessage.Populate(
-                    _connector.TypeHandlerRegistry,
                     query.InputParameters,
                     _queries.Count == 1 ? "" : portalNames[i]
                 );
@@ -700,7 +690,7 @@ namespace Npgsql
                 }
 
                 var query = _queries[i];
-                bindMessage.Populate(_connector.TypeHandlerRegistry, query.InputParameters, "", query.PreparedStatementName);
+                bindMessage.Populate(query.InputParameters, "", query.PreparedStatementName);
                 if (AllResultTypesAreUnknown) {
                     bindMessage.AllResultTypesAreUnknown = AllResultTypesAreUnknown;
                 } else if (i == 0 && UnknownResultTypeList != null) {
@@ -853,7 +843,7 @@ namespace Npgsql
                 NpgsqlDataReader reader;
                 using (reader = Execute())
                 {
-                    while (reader.NextResult()) ;
+                    while (reader.NextResult()) {}
                 }
                 return reader.RecordsAffected;
             }
@@ -869,6 +859,7 @@ namespace Npgsql
         /// </summary>
         /// <returns>The first column of the first row in the result set,
         /// or a null reference if the result set is empty.</returns>
+        [CanBeNull]
         public override object ExecuteScalar()
         {
             return ExecuteScalarInternal();
@@ -996,9 +987,7 @@ namespace Npgsql
             }
             catch
             {
-                if (Connection.Connector != null) {
-                    Connection.Connector.EndUserAction();
-                }
+                Connection.Connector?.EndUserAction();
 
                 // Close connection if requested even when there is an error.
                 if ((behavior & CommandBehavior.CloseConnection) == CommandBehavior.CloseConnection)
@@ -1066,7 +1055,7 @@ namespace Npgsql
 
             var connector = Connection.Connector;
             if (State != CommandState.InProgress) {
-                Log.Debug(String.Format("Skipping cancel because command is in state {0}", State), connector.Id);
+                Log.Debug($"Skipping cancel because command is in state {State}", connector.Id);
                 return;
             }
 

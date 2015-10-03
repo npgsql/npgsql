@@ -126,6 +126,6 @@ namespace Npgsql.BackendMessages
             }
         }
 
-        public BackendMessageCode Code { get { return BackendMessageCode.CompletedResponse; } }
+        public BackendMessageCode Code => BackendMessageCode.CompletedResponse;
     }
 }

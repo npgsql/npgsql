@@ -61,7 +61,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
 
         public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
         {
-            if (parameter != null && parameter.ConvertedValue != null) {
+            if (parameter?.ConvertedValue != null) {
                 value = parameter.ConvertedValue;
             }
             buf.WriteInt32((int)(uint)value);

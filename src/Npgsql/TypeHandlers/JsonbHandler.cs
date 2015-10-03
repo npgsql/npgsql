@@ -117,7 +117,8 @@ namespace Npgsql.TypeHandlers
                 }
                 var version = _buf.ReadByte();
                 if (version != 1) {
-                    throw new NotSupportedException(String.Format("Don't know how to decode JSONB with wire format {0}, your connection is now broken", version));
+                    throw new NotSupportedException(
+                        $"Don't know how to decode JSONB with wire format {version}, your connection is now broken");
                 }
                 _handledVersion = true;
             }

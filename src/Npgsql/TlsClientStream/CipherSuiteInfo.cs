@@ -46,13 +46,7 @@ namespace TlsClientStream
             AesMode = AesMode.CBC;
         }
 
-        public int MACLen
-        {
-            get
-            {
-                return Utils.GetHashLen(HashAlgorithm);
-            }
-        }
+        public int MACLen => Utils.GetHashLen(HashAlgorithm);
 
         public HMAC CreateHMAC(byte[] key)
         {
@@ -103,7 +97,7 @@ namespace TlsClientStream
             }
         }
 
-        public bool IsAllowedBefore1_2 { get { return AesMode == AesMode.CBC && (ushort)Id < 0xC023; } }
+        public bool IsAllowedBefore1_2 => AesMode == AesMode.CBC && (ushort)Id < 0xC023;
 
         public static readonly CipherSuiteInfo[] Supported = new CipherSuiteInfo[] {
             new CipherSuiteInfo() { Id = CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384, KeyExchange = KeyExchange.ECDHE_RSA, AesKeyLen = 256, HashAlgorithm = TLSHashAlgorithm.SHA384, PRFAlgorithm = PRFAlgorithm.TLSPrfSHA384 },

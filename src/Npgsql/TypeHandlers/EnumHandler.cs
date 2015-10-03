@@ -42,7 +42,7 @@ namespace Npgsql.TypeHandlers
         readonly Dictionary<TEnum, string> _enumToLabel;
         readonly Dictionary<string, TEnum> _labelToEnum;
 
-        public Type ClrType { get { return typeof (TEnum); } }
+        public Type ClrType => typeof (TEnum);
 
         public EnumHandler()
         {
@@ -74,7 +74,8 @@ namespace Npgsql.TypeHandlers
                 : _labelToEnum.TryGetValue(str, out value);
 
             if (!success)
-                throw new SafeReadException(new InvalidCastException(String.Format("Received enum value '{0}' from database which wasn't found on enum {1}", str, typeof(TEnum))));
+                throw new SafeReadException(new InvalidCastException(
+                    $"Received enum value '{str}' from database which wasn't found on enum {typeof (TEnum)}"));
 
             return value;
         }
@@ -93,7 +94,7 @@ namespace Npgsql.TypeHandlers
             {
                 var asEnum = (TEnum)value;
                 if (!_enumToLabel.TryGetValue(asEnum, out str)) {
-                    throw new InvalidCastException(String.Format("Can't write value {0} as enum {1}", asEnum, typeof(TEnum)));
+                    throw new InvalidCastException($"Can't write value {asEnum} as enum {typeof (TEnum)}");
                 }
             }
 
@@ -108,7 +109,7 @@ namespace Npgsql.TypeHandlers
             } else {
                 var asEnum = (TEnum)value;
                 if (!_enumToLabel.TryGetValue(asEnum, out str)) {
-                    throw new InvalidCastException(String.Format("Can't write value {0} as enum {1}", asEnum, typeof(TEnum)));
+                    throw new InvalidCastException($"Can't write value {asEnum} as enum {typeof (TEnum)}");
                 }
             }
 

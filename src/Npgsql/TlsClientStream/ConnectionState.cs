@@ -36,14 +36,14 @@ namespace TlsClientStream
         public CipherSuiteInfo CipherSuite { get; set; }
         public AesCryptoServiceProvider ReadAes { get; set; }
         public AesCryptoServiceProvider WriteAes { get; set; }
-        public int BlockLen { get { return 16; } }
+        public int BlockLen => 16;
         public HMAC ReadMac { get; set; }
         public HMAC WriteMac { get; set; }
         public ICryptoTransform ReadAesECB { get; set; }
         public ICryptoTransform WriteAesECB { get; set; }
         public ulong[] ReadGCMTable { get; set; }
         public ulong[] WriteGCMTable { get; set; }
-        public int MacLen { get { return CipherSuite.MACLen / 8; } }
+        public int MacLen => CipherSuite.MACLen / 8;
         public byte[] MasterSecret { get; set; }
         public byte[] ClientRandom { get; set; }
         public byte[] ServerRandom { get; set; }
@@ -54,11 +54,11 @@ namespace TlsClientStream
         public bool SecureRenegotiation { get; set; }
         public byte[] ClientVerifyData { get; set; }
         public byte[] ServerVerifyData { get; set; }
-        public int IvLen { get { return CipherSuite == null ? 0 : CipherSuite.AesMode == AesMode.GCM ? 8 : TlsVersion != TlsVersion.TLSv1_0 ? 16 : 0; } }
+        public int IvLen => CipherSuite == null ? 0 : CipherSuite.AesMode == AesMode.GCM ? 8 : TlsVersion != TlsVersion.TLSv1_0 ? 16 : 0;
 
-        public PRFAlgorithm PRFAlgorithm { get { return TlsVersion == TlsVersion.TLSv1_2 ? CipherSuite.PRFAlgorithm : PRFAlgorithm.TLSPrfMD5SHA1; } }
+        public PRFAlgorithm PRFAlgorithm => TlsVersion == TlsVersion.TLSv1_2 ? CipherSuite.PRFAlgorithm : PRFAlgorithm.TLSPrfMD5SHA1;
 
-        public bool IsAuthenticated { get { return ReadAes != null; } }
+        public bool IsAuthenticated => ReadAes != null;
 
         public int WriteStartPos
         {

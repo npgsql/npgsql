@@ -309,7 +309,7 @@ namespace Npgsql
         public override void RemoveAt([CanBeNull] string parameterName)
         {
             if (parameterName == null)
-                throw new ArgumentNullException("parameterName");
+                throw new ArgumentNullException(nameof(parameterName));
             Contract.EndContractBlock();
 
             RemoveAt(IndexOf(parameterName));
@@ -323,7 +323,7 @@ namespace Npgsql
         public override bool Contains([CanBeNull] string parameterName)
         {
             if (parameterName == null)
-                throw new ArgumentNullException("parameterName");
+                throw new ArgumentNullException(nameof(parameterName));
             Contract.EndContractBlock();
 
             return (IndexOf(parameterName) != -1);
@@ -438,7 +438,7 @@ namespace Npgsql
         /// <summary>
         /// Report whether the collection is read only.  Always false.
         /// </summary>
-        public override bool IsReadOnly { get { return false; } }
+        public override bool IsReadOnly => false;
 #endif
 
         /// <summary>
@@ -462,7 +462,7 @@ namespace Npgsql
         public override void Insert(int index, object oValue)
         {
             if (oValue == null)
-                throw new ArgumentNullException("oValue");
+                throw new ArgumentNullException(nameof(oValue));
             Contract.EndContractBlock();
 
             CheckType(oValue);
@@ -500,7 +500,7 @@ namespace Npgsql
         public override void Remove(object oValue)
         {
             if (oValue == null)
-                throw new ArgumentNullException("oValue");
+                throw new ArgumentNullException(nameof(oValue));
             Contract.EndContractBlock();
 
             CheckType(oValue);
@@ -572,7 +572,7 @@ namespace Npgsql
         public override int IndexOf([CanBeNull] object value)
         {
             if (value == null)
-                throw new ArgumentNullException("value");
+                throw new ArgumentNullException(nameof(value));
             Contract.EndContractBlock();
 
             CheckType(value);
@@ -595,7 +595,7 @@ namespace Npgsql
         /// <summary>
         /// Report whether the collection is fixed size.  Always false.
         /// </summary>
-        public override bool IsFixedSize { get { return false; } }
+        public override bool IsFixedSize => false;
 #endif
 
 #endregion
@@ -606,7 +606,7 @@ namespace Npgsql
         /// <summary>
         /// Report whether the collection is synchronized.
         /// </summary>
-        public override bool IsSynchronized { get { return (_internalList as ICollection).IsSynchronized; } }
+        public override bool IsSynchronized => (_internalList as ICollection).IsSynchronized;
 #endif
 
         /// <summary>
@@ -618,7 +618,7 @@ namespace Npgsql
         [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 #endif
 
-        public override int Count { get { return _internalList.Count; } }
+        public override int Count => _internalList.Count;
 
         /// <summary>
         /// Copies <see cref="NpgsqlParameter">NpgsqlParameter</see> objects from the <see cref="NpgsqlParameterCollection">NpgsqlParameterCollection</see> to the specified array.
@@ -629,7 +629,7 @@ namespace Npgsql
         public override void CopyTo([CanBeNull] Array array, int index)
         {
             if (array == null)
-                throw new ArgumentNullException("array");
+                throw new ArgumentNullException(nameof(array));
             Contract.EndContractBlock();
 
             (_internalList as ICollection).CopyTo(array, index);
@@ -638,9 +638,9 @@ namespace Npgsql
         /// <summary>
         /// Sync root.
         /// </summary>
-        public override object SyncRoot { get { return (_internalList as ICollection).SyncRoot; } }
+        public override object SyncRoot => (_internalList as ICollection).SyncRoot;
 
-#endregion
+        #endregion
 
 #region IEnumerable Member
 
@@ -679,7 +679,7 @@ namespace Npgsql
         /// <returns></returns>
         protected override DbParameter GetParameter([NotNull] string parameterName)
         {
-            if (parameterName == null) throw new ArgumentNullException("parameterName");
+            if (parameterName == null) throw new ArgumentNullException(nameof(parameterName));
             Contract.EndContractBlock();
 
             return this[parameterName];
@@ -702,7 +702,7 @@ namespace Npgsql
         /// <param name="value"></param>
         protected override void SetParameter([NotNull] string parameterName, DbParameter value)
         {
-            if (parameterName == null) throw new ArgumentNullException("parameterName");
+            if (parameterName == null) throw new ArgumentNullException(nameof(parameterName));
             Contract.EndContractBlock();
 
             this[parameterName] = (NpgsqlParameter) value;
@@ -722,7 +722,7 @@ namespace Npgsql
         {
             if (!(o is NpgsqlParameter))
             {
-                throw new InvalidCastException(string.Format("Can't cast {0} into NpgsqlParameter", o.GetType()));
+                throw new InvalidCastException($"Can't cast {o.GetType()} into NpgsqlParameter");
             }
         }
 
@@ -791,7 +791,7 @@ namespace Npgsql
         [PublicAPI]
         public bool Remove([NotNull] NpgsqlParameter item)
         {
-            if (item == null) throw new ArgumentNullException("item");
+            if (item == null) throw new ArgumentNullException(nameof(item));
             Contract.EndContractBlock();
 
             if (item.Collection != this)

@@ -50,7 +50,7 @@ namespace Npgsql
         /// <summary>
         /// The number of columns, as returned from the backend in the CopyInResponse.
         /// </summary>
-        internal int NumColumns { get; private set; }
+        internal int NumColumns { get; }
 
         #endregion
 
@@ -71,7 +71,7 @@ namespace Npgsql
                 // TODO: Failure will break the connection (e.g. if we get CopyOutResponse), handle more gracefully
                 var copyOutResponse = _connector.ReadExpecting<CopyOutResponseMessage>();
                 if (!copyOutResponse.IsBinary) {
-                    throw new ArgumentException("copyToCommand triggered a text transfer, only binary is allowed", "copyToCommand");
+                    throw new ArgumentException("copyToCommand triggered a text transfer, only binary is allowed", nameof(copyToCommand));
                 }
                 NumColumns = copyOutResponse.NumColumns;
                 ReadHeader();

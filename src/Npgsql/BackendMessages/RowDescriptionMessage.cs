@@ -87,15 +87,9 @@ namespace Npgsql.BackendMessages
             return this;
         }
 
-        internal FieldDescription this[int index]
-        {
-            get { return Fields[index]; }
-        }
+        internal FieldDescription this[int index] => Fields[index];
 
-        internal int NumFields
-        {
-            get { return Fields.Count; }
-        }
+        internal int NumFields => Fields.Count;
 
         /// <summary>
         /// Given a string name, returns the field's ordinal index in the row.
@@ -117,7 +111,7 @@ namespace Npgsql.BackendMessages
                    _caseInsensitiveNameIndex.TryGetValue(name, out fieldIndex);
         }
 
-        public BackendMessageCode Code { get { return BackendMessageCode.RowDescription; } }
+        public BackendMessageCode Code => BackendMessageCode.RowDescription;
 
         #region Kana comparers
 
@@ -210,7 +204,7 @@ namespace Npgsql.BackendMessages
         /// </summary>
         internal TypeHandler Handler { get; set; }
 
-        public bool IsBinaryFormat { get { return FormatCode == FormatCode.Binary; } }
-        public bool IsTextFormat   { get { return FormatCode == FormatCode.Text;   } }
+        public bool IsBinaryFormat => FormatCode == FormatCode.Binary;
+        public bool IsTextFormat => FormatCode == FormatCode.Text;
     }
 }

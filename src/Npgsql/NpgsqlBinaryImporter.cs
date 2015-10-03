@@ -27,6 +27,7 @@ using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
+using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
 using NpgsqlTypes;
@@ -59,13 +60,13 @@ namespace Npgsql
         /// <summary>
         /// The number of columns, as returned from the backend in the CopyInResponse.
         /// </summary>
-        internal int NumColumns { get; private set; }
+        internal int NumColumns { get; }
 
         /// <summary>
         /// NpgsqlParameter instance needed in order to pass the <see cref="NpgsqlParameter.ConvertedValue"/> from
         /// the validation phase to the writing phase.
         /// </summary>
-        NpgsqlParameter _dummyParam;
+        readonly NpgsqlParameter _dummyParam;
 
         #endregion
 
@@ -88,7 +89,7 @@ namespace Npgsql
                 var copyInResponse = _connector.ReadExpecting<CopyInResponseMessage>();
                 if (!copyInResponse.IsBinary)
                 {
-                    throw new ArgumentException("copyFromCommand triggered a text transfer, only binary is allowed", "copyFromCommand");
+                    throw new ArgumentException("copyFromCommand triggered a text transfer, only binary is allowed", nameof(copyFromCommand));
                 }
                 NumColumns = copyInResponse.NumColumns;
                 WriteHeader();
@@ -171,7 +172,7 @@ namespace Npgsql
             DoWrite(handler, value);
         }
 
-        void DoWrite<T>(TypeHandler handler, T value)
+        void DoWrite<T>(TypeHandler handler, [CanBeNull] T value)
         {
             try
             {
@@ -346,6 +347,7 @@ namespace Npgsql
         /// <summary>
         /// Completes the import process and signals to the database to write everything.
         /// </summary>
+        [PublicAPI]
         public void Close()
         {
             if (_isDisposed) { return; }

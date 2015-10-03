@@ -134,7 +134,7 @@ namespace NpgsqlTypes
         {
 
             if (str == null) {
-                throw new ArgumentNullException("str");
+                throw new ArgumentNullException(nameof(str));
             }
 
             if (str == "infinity")
@@ -187,12 +187,12 @@ namespace NpgsqlTypes
 
         #region Public Properties
 
-        [PublicAPI] public static NpgsqlDate Now { get { return new NpgsqlDate(DateTime.Now); } }
-        [PublicAPI] public static NpgsqlDate Today { get { return Now; } }
-        [PublicAPI] public static NpgsqlDate Yesterday { get { return Now.AddDays(-1); } }
-        [PublicAPI] public static NpgsqlDate Tomorrow { get { return Now.AddDays(1); } }
+        [PublicAPI] public static NpgsqlDate Now => new NpgsqlDate(DateTime.Now);
+        [PublicAPI] public static NpgsqlDate Today => Now;
+        [PublicAPI] public static NpgsqlDate Yesterday => Now.AddDays(-1);
+        [PublicAPI] public static NpgsqlDate Tomorrow => Now.AddDays(1);
 
-        [PublicAPI] public int DayOfYear { get { return _daysSinceEra - DaysForYears(Year) + 1; } }
+        [PublicAPI] public int DayOfYear => _daysSinceEra - DaysForYears(Year) + 1;
 
         [PublicAPI] public int Year
         {
@@ -220,19 +220,16 @@ namespace NpgsqlTypes
             }
         }
 
-        [PublicAPI] public int Day
-        {
-            get { return DayOfYear - (IsLeapYear ? LeapYearDays : CommonYearDays)[Month - 1]; }
-        }
+        [PublicAPI] public int Day => DayOfYear - (IsLeapYear ? LeapYearDays : CommonYearDays)[Month - 1];
 
-        [PublicAPI] public DayOfWeek DayOfWeek { get { return (DayOfWeek) ((_daysSinceEra + 1)%7); } }
+        [PublicAPI] public DayOfWeek DayOfWeek => (DayOfWeek) ((_daysSinceEra + 1)%7);
 
-        internal int DaysSinceEra { get { return _daysSinceEra; } }
+        internal int DaysSinceEra => _daysSinceEra;
 
-        [PublicAPI] public bool IsLeapYear { get { return IsLeap(Year); } }
+        [PublicAPI] public bool IsLeapYear => IsLeap(Year);
 
-        [PublicAPI] public bool IsInfinity { get { return _type == InternalType.Infinity; } }
-        [PublicAPI] public bool IsNegativeInfinity { get { return _type == InternalType.NegativeInfinity; } }
+        [PublicAPI] public bool IsInfinity => _type == InternalType.Infinity;
+        [PublicAPI] public bool IsNegativeInfinity => _type == InternalType.NegativeInfinity;
 
         [PublicAPI] public bool IsFinite
         {
