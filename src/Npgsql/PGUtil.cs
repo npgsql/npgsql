@@ -42,49 +42,6 @@ namespace Npgsql
         internal static readonly UTF8Encoding UTF8Encoding = new UTF8Encoding(false, true);
         internal static readonly UTF8Encoding RelaxedUTF8Encoding = new UTF8Encoding(false, false);
 
-        /// <summary>
-        /// This method takes a version string as returned by SELECT VERSION() and returns
-        /// a valid version string ("7.2.2" for example).
-        /// This is only needed when running protocol version 2.
-        /// This does not do any validity checks.
-        /// </summary>
-        public static string ExtractServerVersion(string VersionString)
-        {
-            Int32 Start = 0, End = 0;
-
-            // find the first digit and assume this is the start of the version number
-            for (; Start < VersionString.Length && !Char.IsDigit(VersionString[Start]); Start++)
-            {
-                ;
-            }
-
-            End = Start;
-
-            // read until hitting whitespace, which should terminate the version number
-            for (; End < VersionString.Length && !Char.IsWhiteSpace(VersionString[End]); End++)
-            {
-                ;
-            }
-
-            // Deal with this here so that if there are
-            // changes in a future backend version, we can handle it here in the
-            // protocol handler and leave everybody else put of it.
-
-            VersionString = VersionString.Substring(Start, End - Start + 1);
-
-            for (int idx = 0; idx != VersionString.Length; ++idx)
-            {
-                char c = VersionString[idx];
-                if (!Char.IsDigit(c) && c != '.')
-                {
-                    VersionString = VersionString.Substring(0, idx);
-                    break;
-                }
-            }
-
-            return VersionString;
-        }
-
         public static int RotateShift(int val, int shift)
         {
             return (val << shift) | (val >> (sizeof (int) - shift));
@@ -112,7 +69,7 @@ namespace Npgsql
 #endif
         }
 
-        internal static Task CompletedTask = TaskFromResult(0);
+        internal static readonly Task CompletedTask = TaskFromResult(0);
 
         internal static StringComparer InvariantCaseIgnoringStringComparer
         {

@@ -28,6 +28,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Text;
+using JetBrains.Annotations;
 
 namespace Npgsql.TypeHandlers.FullTextSearchHandlers
 {
@@ -60,7 +61,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             _bytesLeft = len;
         }
 
-        public override bool Read(out NpgsqlTsQuery result)
+        public override bool Read([CanBeNull] out NpgsqlTsQuery result)
         {
             result = null;
 

@@ -26,7 +26,6 @@ using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
-using System.Text;
 
 namespace Npgsql
 {
@@ -57,9 +56,8 @@ namespace Npgsql
             var currCharOfs = 0;
             var end = sql.Length;
             var ch = '\0';
-            var lastChar = '\0';
-            var dollarTagStart = 0;
-            var dollarTagEnd = 0;
+            int dollarTagStart;
+            int dollarTagEnd;
             var currTokenBeg = 0;
             var blockCommentLevel = 0;
 
@@ -73,7 +71,7 @@ namespace Npgsql
             if (currCharOfs >= end) {
                 goto Finish;
             }
-            lastChar = ch;
+            var lastChar = ch;
             ch = sql[currCharOfs++];
         NoneContinue:
             for (; ; lastChar = ch, ch = sql[currCharOfs++]) {
@@ -149,11 +147,11 @@ namespace Npgsql
                         // Parameter hasn't been seen before in this query
                         NpgsqlParameter parameter;
                         if (!parameters.TryGetValue(paramName, out parameter)) {
-                            throw new Exception(String.Format("Parameter '{0}' referenced in SQL but not found in parameter list", paramName));
+                            throw new Exception(string.Format("Parameter '{0}' referenced in SQL but not found in parameter list", paramName));
                         }
 
                         if (!parameter.IsInputDirection) {
-                            throw new Exception(String.Format("Parameter '{0}' referenced in SQL but is an out-only parameter", paramName));
+                            throw new Exception(string.Format("Parameter '{0}' referenced in SQL but is an out-only parameter", paramName));
                         }
 
                         currentParameters.Add(parameter);
@@ -380,7 +378,7 @@ namespace Npgsql
             queries.Add(new NpgsqlStatement(currentSql.ToString(), currentParameters));
             while (currCharOfs < end) {
                 ch = sql[currCharOfs];
-                if (Char.IsWhiteSpace(ch)) {
+                if (char.IsWhiteSpace(ch)) {
                     currCharOfs++;
                     continue;
                 }
@@ -435,7 +433,7 @@ namespace Npgsql
             // Table has lower bound of (int)'.';
             var paramNameCharTable = Array.CreateInstance(typeof(byte), new[] { 'z' - '.' + 1 }, new int[] { '.' });
 
-            paramNameCharTable.SetValue((byte)'.', (int)'.');
+            paramNameCharTable.SetValue((byte)'.', '.');
 
             for (int i = '0'; i <= '9'; i++) {
                 paramNameCharTable.SetValue((byte)i, i);
@@ -445,7 +443,7 @@ namespace Npgsql
                 paramNameCharTable.SetValue((byte)i, i);
             }
 
-            paramNameCharTable.SetValue((byte)'_', (int)'_');
+            paramNameCharTable.SetValue((byte)'_', '_');
 
             for (int i = 'a'; i <= 'z'; i++) {
                 paramNameCharTable.SetValue((byte)i, i);

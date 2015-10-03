@@ -26,7 +26,6 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
-using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -35,6 +34,7 @@ using System.Threading.Tasks;
 using System.Diagnostics.Contracts;
 using System.Net.Sockets;
 using AsyncRewriter;
+using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
 using Npgsql.Logging;
@@ -51,6 +51,7 @@ namespace Npgsql
 #if DNXCORE50
     public sealed partial class NpgsqlCommand : DbCommand
 #else
+    // ReSharper disable once RedundantNameQualifier
     [System.ComponentModel.DesignerCategory("")]
     public sealed partial class NpgsqlCommand : DbCommand, ICloneable
 #endif
@@ -109,20 +110,22 @@ namespace Npgsql
         /// <summary>
         /// Initializes a new instance of the <see cref="NpgsqlCommand">NpgsqlCommand</see> class.
         /// </summary>
-        public NpgsqlCommand() : this(String.Empty, null, null) {}
+        public NpgsqlCommand() : this(string.Empty, null, null) {}
 
         /// <summary>
         /// Initializes a new instance of the <see cref="NpgsqlCommand">NpgsqlCommand</see> class with the text of the query.
         /// </summary>
         /// <param name="cmdText">The text of the query.</param>
-        public NpgsqlCommand(String cmdText) : this(cmdText, null, null) {}
+        // ReSharper disable once IntroduceOptionalParameters.Global
+        public NpgsqlCommand(string cmdText) : this(cmdText, null, null) {}
 
         /// <summary>
         /// Initializes a new instance of the <see cref="NpgsqlCommand">NpgsqlCommand</see> class with the text of the query and a <see cref="NpgsqlConnection">NpgsqlConnection</see>.
         /// </summary>
         /// <param name="cmdText">The text of the query.</param>
         /// <param name="connection">A <see cref="NpgsqlConnection">NpgsqlConnection</see> that represents the connection to a PostgreSQL server.</param>
-        public NpgsqlCommand(String cmdText, NpgsqlConnection connection) : this(cmdText, connection, null) {}
+        // ReSharper disable once IntroduceOptionalParameters.Global
+        public NpgsqlCommand(string cmdText, NpgsqlConnection connection) : this(cmdText, connection, null) {}
 
         /// <summary>
         /// Initializes a new instance of the <see cref="NpgsqlCommand">NpgsqlCommand</see> class with the text of the query, a <see cref="NpgsqlConnection">NpgsqlConnection</see>, and the <see cref="NpgsqlTransaction">NpgsqlTransaction</see>.
@@ -130,7 +133,7 @@ namespace Npgsql
         /// <param name="cmdText">The text of the query.</param>
         /// <param name="connection">A <see cref="NpgsqlConnection">NpgsqlConnection</see> that represents the connection to a PostgreSQL server.</param>
         /// <param name="transaction">The <see cref="NpgsqlTransaction">NpgsqlTransaction</see> in which the <see cref="NpgsqlCommand">NpgsqlCommand</see> executes.</param>
-        public NpgsqlCommand(string cmdText, NpgsqlConnection connection, NpgsqlTransaction transaction)
+        public NpgsqlCommand(string cmdText, [CanBeNull] NpgsqlConnection connection, [CanBeNull] NpgsqlTransaction transaction)
         {
             Init(cmdText);
             Connection = connection;
@@ -156,12 +159,15 @@ namespace Npgsql
 #if !DNXCORE50
         [Category("Data")]
 #endif
-        public override String CommandText
+        public override string CommandText
         {
             get { return _commandText; }
             set
             {
-                // [TODO] Validate commandtext.
+                if (value == null)
+                    throw new ArgumentNullException("value");
+                Contract.EndContractBlock();
+
                 _commandText = value;
                 DeallocatePrepared();
             }
@@ -321,7 +327,7 @@ namespace Npgsql
         /// </summary>
         public bool AllResultTypesAreUnknown
         {
-            get { return _allResultTypesAreUnknown; }
+            private get { return _allResultTypesAreUnknown; }
             set
             {
                 // TODO: Check that this isn't modified after calling prepare
@@ -346,7 +352,7 @@ namespace Npgsql
         /// </remarks>
         public bool[] UnknownResultTypeList
         {
-            get { return _unknownResultTypeList; }
+            private get { return _unknownResultTypeList; }
             set
             {
                 // TODO: Check that this isn't modified after calling prepare
@@ -380,7 +386,7 @@ namespace Npgsql
         /// </summary>
         internal CommandState State
         {
-            get { return (CommandState)_state; }
+            private get { return (CommandState)_state; }
             set
             {
                 var newState = (int)value;
@@ -481,7 +487,7 @@ namespace Npgsql
 
                 while (true)
                 {
-                    var msg = _connector.ReadSingleMessage();
+                    var msg = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential);
                     switch (msg.Code)
                     {
                     case BackendMessageCode.CompletedResponse: // prepended messages, e.g. begin transaction
@@ -545,7 +551,7 @@ namespace Npgsql
                 bool hasWrittenFirst = false;
                 for (var i = 1; i <= numInput; i++) {
                     var param = inputList[i - 1];
-                    if (param._autoAssignedName || param.CleanName == "")
+                    if (param.AutoAssignedName || param.CleanName == "")
                     {
                         if (hasWrittenFirst)
                         {
@@ -559,7 +565,7 @@ namespace Npgsql
                 for (var i = 1; i <= numInput; i++)
                 {
                     var param = inputList[i - 1];
-                    if (!param._autoAssignedName && param.CleanName != "")
+                    if (!param.AutoAssignedName && param.CleanName != "")
                     {
                         if (hasWrittenFirst)
                         {
@@ -585,7 +591,7 @@ namespace Npgsql
 
         #region Frontend message creation
 
-        internal void ValidateAndCreateMessages(CommandBehavior behavior = CommandBehavior.Default)
+        void ValidateAndCreateMessages(CommandBehavior behavior = CommandBehavior.Default)
         {
             _connector = Connection.Connector;
             foreach (NpgsqlParameter p in Parameters.Where(p => p.IsInputDirection)) {
@@ -736,7 +742,7 @@ namespace Npgsql
         #region Execute
 
         [RewriteAsync]
-        internal NpgsqlDataReader Execute(CommandBehavior behavior = CommandBehavior.Default)
+        NpgsqlDataReader Execute(CommandBehavior behavior = CommandBehavior.Default)
         {
             State = CommandState.InProgress;
             try
@@ -749,7 +755,8 @@ namespace Npgsql
                     IBackendMessage msg;
                     do
                     {
-                        msg = _connector.ReadSingleMessage();
+                        msg = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential);
+                        Contract.Assert(msg != null);
                     } while (!ProcessMessageForUnprepared(msg, behavior));
                 }
 
@@ -893,6 +900,7 @@ namespace Npgsql
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [RewriteAsync]
+        [CanBeNull]
         object ExecuteScalarInternal()
         {
             Prechecks();
@@ -1143,7 +1151,7 @@ namespace Npgsql
         /// Create a new command based on this one.
         /// </summary>
         /// <returns>A new NpgsqlCommand object.</returns>
-        Object ICloneable.Clone()
+        object ICloneable.Clone()
         {
             return Clone();
         }
@@ -1153,10 +1161,9 @@ namespace Npgsql
         /// Create a new command based on this one.
         /// </summary>
         /// <returns>A new NpgsqlCommand object.</returns>
+        [PublicAPI]
         public NpgsqlCommand Clone()
         {
-            // TODO: Add consistency checks.
-
             var clone = new NpgsqlCommand(CommandText, Connection, Transaction)
             {
                 CommandTimeout = CommandTimeout,

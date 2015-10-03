@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using JetBrains.Annotations;
 using Npgsql;
 
 namespace NpgsqlTypes
@@ -129,7 +130,7 @@ namespace NpgsqlTypes
             set { _coord.Y = value; }
         }
 
-        public bool Equals(PostgisPoint other)
+        public bool Equals([CanBeNull] PostgisPoint other)
         {
             if (ReferenceEquals(other, null))
                 return false;
@@ -137,12 +138,12 @@ namespace NpgsqlTypes
         }
 
 
-        public override bool Equals(object obj)
+        public override bool Equals([CanBeNull] object obj)
         {
             return Equals(obj as PostgisPoint);
         }
 
-        public static bool operator ==(PostgisPoint x, PostgisPoint y)
+        public static bool operator ==([CanBeNull] PostgisPoint x, [CanBeNull] PostgisPoint y)
         {
             if (ReferenceEquals(x, null))
                 return ReferenceEquals(y, null);
@@ -207,7 +208,7 @@ namespace NpgsqlTypes
             get { return _points.Length; }
         }
 
-        public bool Equals(PostgisLineString other)
+        public bool Equals([CanBeNull] PostgisLineString other)
         {
             if (ReferenceEquals(other , null))
                 return false ;
@@ -221,7 +222,7 @@ namespace NpgsqlTypes
             return true;
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals([CanBeNull] object obj)
         {
             return Equals(obj as PostgisLineString);
         }
@@ -312,12 +313,12 @@ namespace NpgsqlTypes
             return true;
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals([CanBeNull] object obj)
         {
             return Equals(obj as PostgisPolygon);
         }
 
-        public static bool operator ==(PostgisPolygon x, PostgisPolygon y)
+        public static bool operator ==([CanBeNull] PostgisPolygon x, [CanBeNull] PostgisPolygon y)
         {
             if (ReferenceEquals(x, null))
                 return ReferenceEquals(y, null);
@@ -408,7 +409,7 @@ namespace NpgsqlTypes
             get { return _points[indexer]; }
         }
 
-        public bool Equals(PostgisMultiPoint other)
+        public bool Equals([CanBeNull] PostgisMultiPoint other)
         {
             if (ReferenceEquals(other ,null))
                 return false ;
@@ -423,12 +424,12 @@ namespace NpgsqlTypes
             return true;
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals([CanBeNull] object obj)
         {
             return Equals(obj as PostgisMultiPoint);
         }
 
-        public static bool operator ==(PostgisMultiPoint x, PostgisMultiPoint y)
+        public static bool operator ==([CanBeNull] PostgisMultiPoint x, [CanBeNull] PostgisMultiPoint y)
         {
             if (ReferenceEquals(x, null))
                 return ReferenceEquals(y, null);
@@ -517,7 +518,7 @@ namespace NpgsqlTypes
             _lineStrings = pointList.Select(x => new PostgisLineString(x)).ToArray();
         }
 
-        public bool Equals(PostgisMultiLineString other)
+        public bool Equals([CanBeNull] PostgisMultiLineString other)
         {
             if (ReferenceEquals(other ,null))
                 return false ;
@@ -530,12 +531,12 @@ namespace NpgsqlTypes
             return true;
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals([CanBeNull] object obj)
         {
             return Equals(obj as PostgisMultiLineString);
         }
 
-        public static bool operator ==(PostgisMultiLineString x, PostgisMultiLineString y)
+        public static bool operator ==([CanBeNull] PostgisMultiLineString x, [CanBeNull] PostgisMultiLineString y)
         {
             if (ReferenceEquals(x, null))
                 return ReferenceEquals(y, null);
@@ -702,7 +703,7 @@ namespace NpgsqlTypes
             _geometries = geometries.ToArray();
         }
 
-        public bool Equals(PostgisGeometryCollection other)
+        public bool Equals([CanBeNull] PostgisGeometryCollection other)
         {
             if (ReferenceEquals(other, null))
                 return false;
@@ -715,12 +716,12 @@ namespace NpgsqlTypes
             return true;
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals([CanBeNull] object obj)
         {
             return Equals(obj as PostgisGeometryCollection);
         }
 
-        public static bool operator ==(PostgisGeometryCollection x, PostgisGeometryCollection y)
+        public static bool operator ==([CanBeNull] PostgisGeometryCollection x, [CanBeNull] PostgisGeometryCollection y)
         {
             if (ReferenceEquals(x, null))
                 return ReferenceEquals(y, null);

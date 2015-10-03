@@ -77,7 +77,7 @@ namespace Npgsql
             _connector = connector;
             _buf = connector.Buffer;
             _connector.SendSingleMessage(new QueryMessage(copyCommand));
-            var msg = _connector.ReadSingleMessage();
+            var msg = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential);
             switch (msg.Code)
             {
             case BackendMessageCode.CopyInResponse:
@@ -175,7 +175,7 @@ namespace Npgsql
             {
                 // We've consumed the current DataMessage (or haven't yet received the first),
                 // read the next message
-                var msg = _connector.ReadSingleMessage();
+                var msg = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential);
                 switch (msg.Code) {
                 case BackendMessageCode.CopyData:
                     _leftToReadInDataMsg = ((CopyDataMessage)msg).Length;
@@ -228,7 +228,7 @@ namespace Npgsql
                 _connector.SendSingleMessage(new CopyFailMessage());
                 try
                 {
-                    var msg = _connector.ReadSingleMessage();
+                    var msg = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential);
                     // The CopyFail should immediately trigger an exception from the read above.
                     _connector.Break();
                     throw new Exception("Expected ErrorResponse when cancelling COPY but got: " + msg.Code);

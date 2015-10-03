@@ -33,6 +33,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using AsyncRewriter;
+using JetBrains.Annotations;
 
 namespace Npgsql
 {
@@ -120,8 +121,8 @@ namespace Npgsql
 
     internal interface ISimpleTypeHandler
     {
-        int ValidateAndGetLength(object value, NpgsqlParameter parameter);
-        void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter);
+        int ValidateAndGetLength(object value, [CanBeNull] NpgsqlParameter parameter);
+        void Write(object value, NpgsqlBuffer buf, [CanBeNull] NpgsqlParameter parameter);
         object ReadAsObject(NpgsqlBuffer buf, int len, FieldDescription fieldDescription = null);
     }
 
@@ -199,8 +200,8 @@ namespace Npgsql
     internal interface IChunkingTypeHandler
     {
         void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription = null);
-        int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter);
-        void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter);
+        int ValidateAndGetLength(object value, ref LengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter);
+        void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter);
         bool Write(ref DirectBuffer directBuf);
         bool ReadAsObject(out object result);
     }

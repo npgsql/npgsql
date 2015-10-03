@@ -159,7 +159,6 @@
     <Compile Include="Update\NpgsqlModificationCommandBatchFactory.cs" />
     <Compile Include="Utilities\AsyncEnumerableExtensions.cs" />
     <Compile Include="Utilities\Check.cs" />
-    <Compile Include="Utilities\CodeAnnotations.cs" />
     <Compile Include="Utilities\EnumerableExtensions.cs" />
     <Compile Include="Utilities\LoggingExtensions.cs" />
     <Compile Include="Utilities\SharedTypeExtensions.cs" />

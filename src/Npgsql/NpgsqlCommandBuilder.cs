@@ -55,11 +55,10 @@ namespace Npgsql
         /// </summary>
         /// <param name="adapter">The adapter.</param>
         public NpgsqlCommandBuilder(NpgsqlDataAdapter adapter)
-            : base()
         {
             DataAdapter = adapter;
-            this.QuotePrefix = "\"";
-            this.QuoteSuffix = "\"";
+            QuotePrefix = "\"";
+            QuoteSuffix = "\"";
         }
 
         /// <summary>
@@ -490,13 +489,13 @@ namespace Npgsql
 
             var unquotedIdentifier = quotedIdentifier.Trim().Replace(QuotePrefix + QuotePrefix, QuotePrefix);
 
-            if (unquotedIdentifier.StartsWith(this.QuotePrefix))
+            if (unquotedIdentifier.StartsWith(QuotePrefix))
 
             {
                 unquotedIdentifier = unquotedIdentifier.Remove(0, 1);
             }
 
-            if (unquotedIdentifier.EndsWith(this.QuoteSuffix))
+            if (unquotedIdentifier.EndsWith(QuoteSuffix))
 
             {
                 unquotedIdentifier = unquotedIdentifier.Remove(unquotedIdentifier.Length - 1, 1);

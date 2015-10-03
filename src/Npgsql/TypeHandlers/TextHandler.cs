@@ -31,6 +31,7 @@ using System.Text;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
+using JetBrains.Annotations;
 
 namespace Npgsql.TypeHandlers
 {
@@ -78,7 +79,7 @@ namespace Npgsql.TypeHandlers
             PrepareRead(buf, fieldDescription, len);
         }
 
-        public override bool Read(out string result)
+        public override bool Read([CanBeNull] out string result)
         {
             if (_bytePos == -1)
             {
@@ -118,7 +119,7 @@ namespace Npgsql.TypeHandlers
             return true;
         }
 
-        public bool Read(out char[] result)
+        public bool Read([CanBeNull] out char[] result)
         {
             if (_bytePos == -1)
             {

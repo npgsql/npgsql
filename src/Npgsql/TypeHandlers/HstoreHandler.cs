@@ -26,6 +26,7 @@ using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Text;
+using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 
@@ -179,7 +180,7 @@ namespace Npgsql.TypeHandlers
             _state = State.Count;
         }
 
-        public override bool Read(out IDictionary<string, string> result)
+        public override bool Read([CanBeNull] out IDictionary<string, string> result)
         {
             result = null;
             switch (_state)
@@ -244,7 +245,7 @@ namespace Npgsql.TypeHandlers
             }
         }
 
-        public bool Read(out string result)
+        public bool Read([CanBeNull] out string result)
         {
             IDictionary<string, string> dict;
             if (!((IChunkingTypeHandler<IDictionary<string, string>>) this).Read(out dict))

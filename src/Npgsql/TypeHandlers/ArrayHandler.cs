@@ -29,6 +29,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
+using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 
@@ -132,7 +133,7 @@ namespace Npgsql.TypeHandlers
             return Read<TElement>(out result);
         }
 
-        protected bool Read<TElement2>(out Array result)
+        protected bool Read<TElement2>([CanBeNull] out Array result)
         {
             switch (_readState)
             {

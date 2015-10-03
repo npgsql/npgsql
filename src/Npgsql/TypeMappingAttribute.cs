@@ -5,6 +5,7 @@ using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using JetBrains.Annotations;
 using NpgsqlTypes;
 
 namespace Npgsql
@@ -36,7 +37,7 @@ namespace Npgsql
         /// When <see cref="NpgsqlParameter.NpgsqlDbType"/> or <see cref="NpgsqlParameter.Value"/>
         /// set, <see cref="NpgsqlParameter.DbType"/> will be set to this value.
         /// </param>
-        internal TypeMappingAttribute(string pgName, NpgsqlDbType? npgsqlDbType, DbType[] dbTypes, Type[] types, DbType? inferredDbType)
+        internal TypeMappingAttribute(string pgName, NpgsqlDbType? npgsqlDbType, [CanBeNull] DbType[] dbTypes, [CanBeNull] Type[] types, DbType? inferredDbType)
         {
             if (String.IsNullOrWhiteSpace(pgName))
                 throw new ArgumentException("pgName can't be empty", "pgName");
@@ -49,7 +50,7 @@ namespace Npgsql
             InferredDbType = inferredDbType;
         }
 
-        internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, DbType[] dbTypes, Type[] types, DbType inferredDbType)
+        internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, DbType[] dbTypes, [CanBeNull] Type[] types, DbType inferredDbType)
             : this(pgName, (NpgsqlDbType?)npgsqlDbType, dbTypes, types, inferredDbType)
         { }
 

@@ -34,6 +34,7 @@ using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
+using JetBrains.Annotations;
 
 namespace Npgsql.TypeHandlers
 {
@@ -55,7 +56,7 @@ namespace Npgsql.TypeHandlers
             _buf = buf;
         }
 
-        public override bool Read(out byte[] result)
+        public override bool Read([CanBeNull] out byte[] result)
         {
             var toRead = Math.Min(_bytes.Length - _pos, _buf.ReadBytesLeft);
             _buf.ReadBytes(_bytes, _pos, toRead);

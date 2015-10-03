@@ -28,6 +28,7 @@ using System.Data.Common;
 using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Reflection;
+using JetBrains.Annotations;
 #if !DNXCORE50
 using System.DirectoryServices;
 using System.Security.Principal;
@@ -233,7 +234,7 @@ namespace Npgsql
         /// <param name="keyword">The key of the item to retrieve.</param>
         /// <param name="value">The value corresponding to the key.</param>
         /// <returns><b>true</b> if keyword was found within the connection string, <b>false</b> otherwise.</returns>
-        public override bool TryGetValue(string keyword, out object value)
+        public override bool TryGetValue(string keyword, [CanBeNull] out object value)
         {
             if (keyword == null)
                 throw new ArgumentNullException("keyword");
@@ -1055,7 +1056,8 @@ namespace Npgsql
             return identity == null ? string.Empty : identity.Name.Split('\\')[1];
         }
 
-        private string GetIntegratedUserName()
+        [CanBeNull]
+        string GetIntegratedUserName()
         {
             // Side note: This maintains the hack fix mentioned before for https://github.com/npgsql/Npgsql/issues/133.
             // In a nutshell, starting with .NET 4.5 WindowsIdentity inherits from ClaimsIdentity
@@ -1064,7 +1066,10 @@ namespace Npgsql
             // gets called on mono, so never gets JITted and the problem goes away.
 
             // Gets the current user's username for integrated security purposes
-            WindowsIdentity identity = WindowsIdentity.GetCurrent();
+            var identity = WindowsIdentity.GetCurrent();
+            if (identity == null || identity.User == null) {
+                return null;
+            }
             CachedUpn cachedUpn = null;
             string upn = null;
 

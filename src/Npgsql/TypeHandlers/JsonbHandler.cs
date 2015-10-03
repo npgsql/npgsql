@@ -25,6 +25,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 
@@ -105,7 +106,7 @@ namespace Npgsql.TypeHandlers
             _handledVersion = false;
         }
 
-        public override bool Read(out string result)
+        public override bool Read([CanBeNull] out string result)
         {
             if (!_handledVersion)
             {

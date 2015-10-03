@@ -22,7 +22,6 @@
 #endregion
 
 using System;
-using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
@@ -35,6 +34,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using AsyncRewriter;
+using JetBrains.Annotations;
 #if !DNXCORE50
 using System.Transactions;
 #endif
@@ -53,6 +53,7 @@ namespace Npgsql
 #if DNXCORE50
     public sealed partial class NpgsqlConnection : DbConnection
 #else
+    // ReSharper disable once RedundantNameQualifier
     [System.ComponentModel.DesignerCategory("")]
     public sealed partial class NpgsqlConnection : DbConnection, ICloneable
 #endif
@@ -83,7 +84,7 @@ namespace Npgsql
         /// Contains the clear text password which was extracted from the user-provided connection string.
         /// If non-cleartext authentication is requested from the server, this is set to null.
         /// </summary>
-        internal string Password { get; set; }
+        internal string Password { get; private set; }
 
         /// <summary>
         /// The connector object connected to the backend.
@@ -97,7 +98,7 @@ namespace Npgsql
         /// </summary>
         internal int OpenCounter { get; private set; }
 
-        internal bool WasBroken { get; set; }
+        internal bool WasBroken { private get; set; }
 
 #if !DNXCORE50
         NpgsqlPromotableSinglePhaseNotification Promotable
@@ -151,8 +152,8 @@ namespace Npgsql
 
         void Init()
         {
-            NoticeDelegate = OnNotice;
-            NotificationDelegate = OnNotification;
+            _noticeDelegate = OnNotice;
+            _notificationDelegate = OnNotification;
 
 #if !DNXCORE50
             // Fix authentication problems. See https://bugzilla.novell.com/show_bug.cgi?id=MONO77559 and
@@ -259,7 +260,7 @@ namespace Npgsql
             try
             {
                 // Get a Connector, either from the pool or creating one ourselves.
-                if (Pooling)
+                if (Settings.Pooling)
                 {
                     Connector = NpgsqlConnectorPool.ConnectorPoolMgr.RequestConnector(this);
                 }
@@ -269,11 +270,11 @@ namespace Npgsql
                     Connector.Open(timeout);
                 }
 
-                Connector.Notice += NoticeDelegate;
-                Connector.Notification += NotificationDelegate;
+                Connector.Notice += _noticeDelegate;
+                Connector.Notification += _notificationDelegate;
 
 #if !DNXCORE50
-                if (Enlist)
+                if (Settings.Enlist)
                 {
                     Promotable.Enlist(Transaction.Current);
                 }
@@ -329,6 +330,7 @@ namespace Npgsql
 #if !DNXCORE50
         [Browsable(true)]
 #endif
+        [PublicAPI]
         public string Host { get { return Settings.Host; } }
 
         /// <summary>
@@ -337,11 +339,13 @@ namespace Npgsql
 #if !DNXCORE50
         [Browsable(true)]
 #endif
+        [PublicAPI]
         public int Port { get { return Settings.Port; } }
 
         /// <summary>
         /// If true, the connection will attempt to use SslStream instead of an internal TlsClientStream.
         /// </summary>
+        [PublicAPI]
         public bool UseSslStream { get { return Settings.UseSslStream; } }
 
         /// <summary>
@@ -396,27 +400,24 @@ namespace Npgsql
         /// Gets flag indicating if we are using Synchronous notification or not.
         /// The default value is false.
         /// </summary>
+        [PublicAPI]
         public bool ContinuousProcessing { get { return Settings.ContinuousProcessing; } }
 
         /// <summary>
         /// Whether to use Windows integrated security to log in.
         /// </summary>
+        [PublicAPI]
         public bool IntegratedSecurity { get { return Settings.IntegratedSecurity; } }
 
         /// <summary>
         /// User name.
         /// </summary>
+        [PublicAPI]
         public string UserName { get { return Settings.Username; } }
-
-        /// <summary>
-        /// Determine if connection pooling will be used for this connection.
-        /// </summary>
-        internal bool Pooling { get { return Settings.Pooling; } }
 
         internal int MinPoolSize { get { return Settings.MinPoolSize; } }
         internal int MaxPoolSize { get { return Settings.MaxPoolSize; } }
         internal int Timeout { get { return Settings.Timeout; } }
-        internal bool Enlist { get { return Settings.Enlist; } }
         internal int BufferSize { get { return Settings.BufferSize; } }
         internal string EntityTemplateDatabase { get { return Settings.EntityTemplateDatabase; } }
         internal string EntityAdminDatabase { get { return Settings.EntityAdminDatabase; } }
@@ -537,6 +538,7 @@ namespace Npgsql
         /// </remarks>
         public new NpgsqlTransaction BeginTransaction()
         {
+            // ReSharper disable once IntroduceOptionalParameters.Global
             return BeginTransaction(IsolationLevel.Unspecified);
         }
 
@@ -590,8 +592,12 @@ namespace Npgsql
         /// Enlist transation.
         /// </summary>
         /// <param name="transaction"></param>
-        public override void EnlistTransaction(Transaction transaction)
+        public override void EnlistTransaction([CanBeNull] Transaction transaction)
         {
+            if (transaction == null)
+                throw new ArgumentNullException("transaction");
+            Contract.EndContractBlock();
+
             Promotable.Enlist(transaction);
         }
 #endif
@@ -599,11 +605,6 @@ namespace Npgsql
         #endregion
 
         #region Close
-
-        internal void EmergencyClose()
-        {
-            _fakingOpen = true;
-        }
 
         /// <summary>
         /// Releases the connection to the database.  If the connection is pooled, it will be
@@ -637,12 +638,12 @@ namespace Npgsql
             _promotable = null;
 #endif
 
-            Connector.Notification -= NotificationDelegate;
-            Connector.Notice -= NoticeDelegate;
+            Connector.Notification -= _notificationDelegate;
+            Connector.Notice -= _noticeDelegate;
 
             CloseOngoingOperations();
 
-            if (Pooling)
+            if (Settings.Pooling)
             {
                 NpgsqlConnectorPool.ConnectorPoolMgr.ReleaseConnector(this, Connector);
             }
@@ -737,18 +738,18 @@ namespace Npgsql
         /// Occurs on NoticeResponses from the PostgreSQL backend.
         /// </summary>
         public event NoticeEventHandler Notice;
-        internal NoticeEventHandler NoticeDelegate;
+        NoticeEventHandler _noticeDelegate;
 
         /// <summary>
         /// Occurs on NotificationResponses from the PostgreSQL backend.
         /// </summary>
         public event NotificationEventHandler Notification;
-        internal NotificationEventHandler NotificationDelegate;
+        NotificationEventHandler _notificationDelegate;
 
         //
         // Internal methods and properties
         //
-        internal void OnNotice(object o, NpgsqlNoticeEventArgs e)
+        void OnNotice(object o, NpgsqlNoticeEventArgs e)
         {
             if (Notice != null)
             {
@@ -756,7 +757,7 @@ namespace Npgsql
             }
         }
 
-        internal void OnNotification(object o, NpgsqlNotificationEventArgs e)
+        void OnNotification(object o, NpgsqlNotificationEventArgs e)
         {
             if (Notification != null)
             {
@@ -825,16 +826,6 @@ namespace Npgsql
             get { return PostgreSqlVersion.ToString(); }
         }
 
-        internal bool IsRedshift
-        {
-            get
-            {
-                CheckConnectionOpen();
-                return Connector.IsRedshift;
-            }
-        }
-
-
         /// <summary>
         /// Process id of backend server.
         /// This can only be called when there is an active connection.
@@ -861,6 +852,7 @@ namespace Npgsql
 #if !DNXCORE50
         [Browsable(false)]
 #endif
+        [PublicAPI]
         public bool UseConformantStrings
         {
             get
@@ -876,6 +868,7 @@ namespace Npgsql
 #if !DNXCORE50
         [Browsable(false)]
 #endif
+        [PublicAPI]
         public bool SupportsEStringPrefix
         {
             get
@@ -1072,6 +1065,7 @@ namespace Npgsql
         /// If null, the .NET type's name in lowercase will be used
         /// </param>
         /// <typeparam name="TEnum">The .NET enum type to be mapped</typeparam>
+        [PublicAPI]
         public void MapEnum<TEnum>(string pgName = null) where TEnum : struct
         {
             if (!typeof(TEnum).GetTypeInfo().IsEnum)
@@ -1101,6 +1095,7 @@ namespace Npgsql
         /// If null, the .NET type's name in lowercase will be used
         /// </param>
         /// <typeparam name="TEnum">The .NET enum type to be mapped</typeparam>
+        [PublicAPI]
         public static void MapEnumGlobally<TEnum>(string pgName = null) where TEnum : struct
         {
             if (!typeof(TEnum).GetTypeInfo().IsEnum)
@@ -1136,6 +1131,7 @@ namespace Npgsql
         /// </param>
         /// <typeparam name="TEnum">The .NET enum type to be mapped</typeparam>
         [Obsolete("Use MapEnum instead")]
+        [PublicAPI]
         public void RegisterEnum<TEnum>(string pgName = null) where TEnum : struct
         {
             MapEnum<TEnum>(pgName);
@@ -1158,6 +1154,7 @@ namespace Npgsql
         /// </param>
         /// <typeparam name="TEnum">The .NET enum type to be mapped</typeparam>
         [Obsolete]
+        [PublicAPI]
         public static void RegisterEnumGlobally<TEnum>(string pgName = null) where TEnum : struct
         {
             MapEnumGlobally<TEnum>(pgName);
@@ -1221,6 +1218,7 @@ namespace Npgsql
             TypeHandlerRegistry.RegisterCompositeTypeGlobally<T>(pgName ?? typeof(T).Name.ToLower());
         }
 
+        // ReSharper disable once UnusedMember.Global
         internal static void UnmapCompositeGlobally(string pgName)
         {
             TypeHandlerRegistry.UnregisterCompositeTypeGlobally(pgName);
@@ -1305,7 +1303,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="collectionName">The collection name.</param>
         /// <returns>The collection specified.</returns>
-        public override DataTable GetSchema(string collectionName)
+        public override DataTable GetSchema([CanBeNull] string collectionName)
         {
             return GetSchema(collectionName, null);
         }
@@ -1319,7 +1317,7 @@ namespace Npgsql
         /// in the Restrictions collection.
         /// </param>
         /// <returns>The collection specified.</returns>
-        public override DataTable GetSchema(string collectionName, string[] restrictions)
+        public override DataTable GetSchema([CanBeNull] string collectionName, [CanBeNull] string[] restrictions)
         {
             switch (collectionName)
             {

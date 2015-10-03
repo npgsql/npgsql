@@ -28,6 +28,7 @@ using System.Globalization;
 using System.IO;
 using System.Reflection;
 using System.Text;
+using JetBrains.Annotations;
 
 namespace Npgsql
 {
@@ -116,7 +117,7 @@ namespace Npgsql
         /// <param name="conn">The database connection on which to run the metadataquery.</param>
         /// <param name="restrictions">The restrictions to filter the collection.</param>
         /// <returns>The Databases</returns>
-        internal static DataTable GetDatabases(NpgsqlConnection conn, string[] restrictions)
+        internal static DataTable GetDatabases(NpgsqlConnection conn, [CanBeNull] string[] restrictions)
         {
             DataTable databases = new DataTable("Databases");
             databases.Locale = CultureInfo.InvariantCulture;
@@ -140,7 +141,7 @@ namespace Npgsql
             return databases;
         }
 
-        internal static DataTable GetSchemata(NpgsqlConnection conn, string[] restrictions)
+        internal static DataTable GetSchemata(NpgsqlConnection conn, [CanBeNull] string[] restrictions)
         {
             DataTable schemata = new DataTable("Schemata");
             schemata.Locale = CultureInfo.InvariantCulture;
@@ -182,7 +183,7 @@ namespace Npgsql
         /// <param name="conn">The database connection on which to run the metadataquery.</param>
         /// <param name="restrictions">The restrictions to filter the collection.</param>
         /// <returns>The Tables</returns>
-        internal static DataTable GetTables(NpgsqlConnection conn, string[] restrictions)
+        internal static DataTable GetTables(NpgsqlConnection conn, [CanBeNull] string[] restrictions)
         {
             DataTable tables = new DataTable("Tables");
             tables.Locale = CultureInfo.InvariantCulture;
@@ -217,7 +218,7 @@ namespace Npgsql
         /// <param name="conn">The database connection on which to run the metadataquery.</param>
         /// <param name="restrictions">The restrictions to filter the collection.</param>
         /// <returns>The Columns.</returns>
-        internal static DataTable GetColumns(NpgsqlConnection conn, string[] restrictions)
+        internal static DataTable GetColumns(NpgsqlConnection conn, [CanBeNull] string[] restrictions)
         {
             DataTable columns = new DataTable("Columns");
             columns.Locale = CultureInfo.InvariantCulture;
@@ -259,7 +260,7 @@ namespace Npgsql
         /// <param name="conn">The database connection on which to run the metadataquery.</param>
         /// <param name="restrictions">The restrictions to filter the collection.</param>
         /// <returns>The Views</returns>
-        internal static DataTable GetViews(NpgsqlConnection conn, string[] restrictions)
+        internal static DataTable GetViews(NpgsqlConnection conn, [CanBeNull] string[] restrictions)
         {
             DataTable views = new DataTable("Views");
             views.Locale = CultureInfo.InvariantCulture;
@@ -293,7 +294,7 @@ namespace Npgsql
         /// <param name="conn">The database connection on which to run the metadataquery.</param>
         /// <param name="restrictions">The restrictions to filter the collection.</param>
         /// <returns>The Users.</returns>
-        internal static DataTable GetUsers(NpgsqlConnection conn, string[] restrictions)
+        internal static DataTable GetUsers(NpgsqlConnection conn, [CanBeNull] string[] restrictions)
         {
             DataTable users = new DataTable("Users");
             users.Locale = CultureInfo.InvariantCulture;
@@ -315,7 +316,7 @@ namespace Npgsql
             return users;
         }
 
-        internal static DataTable GetIndexes(NpgsqlConnection conn, string[] restrictions)
+        internal static DataTable GetIndexes(NpgsqlConnection conn, [CanBeNull] string[] restrictions)
         {
             DataTable indexes = new DataTable("Indexes");
             indexes.Locale = CultureInfo.InvariantCulture;
@@ -361,7 +362,7 @@ where
             return indexes;
         }
 
-        internal static DataTable GetIndexColumns(NpgsqlConnection conn, string[] restrictions)
+        internal static DataTable GetIndexColumns(NpgsqlConnection conn, [CanBeNull] string[] restrictions)
         {
             DataTable indexColumns = new DataTable("IndexColumns");
             indexColumns.Locale = CultureInfo.InvariantCulture;
@@ -407,7 +408,7 @@ where
             return indexColumns;
         }
 
-        internal static DataTable GetConstraints(NpgsqlConnection conn, string[] restrictions, string constraint_type)
+        internal static DataTable GetConstraints(NpgsqlConnection conn, [CanBeNull] string[] restrictions, [CanBeNull] string constraint_type)
         {
             StringBuilder getConstraints = new StringBuilder();
 
@@ -452,7 +453,7 @@ select 'UNIQUE KEY' as ""CONSTRAINT_TYPE"", 'u' as ""contype""
             }
         }
 
-        internal static DataTable GetConstraintColumns(NpgsqlConnection conn, string[] restrictions)
+        internal static DataTable GetConstraintColumns(NpgsqlConnection conn, [CanBeNull] string[] restrictions)
         {
             StringBuilder getConstraintColumns = new StringBuilder();
 

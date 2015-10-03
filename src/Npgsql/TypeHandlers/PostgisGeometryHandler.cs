@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 
@@ -60,7 +61,7 @@ namespace Npgsql.TypeHandlers
             _id = 0;
         }
 
-        public override bool Read(out PostgisGeometry result)
+        public override bool Read([CanBeNull] out PostgisGeometry result)
         {
             result = default(PostgisGeometry);
             if (_id == 0)

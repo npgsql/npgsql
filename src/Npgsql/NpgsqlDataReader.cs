@@ -35,6 +35,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AsyncRewriter;
+using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.TypeHandlers;
 using Npgsql.TypeHandlers.NumericHandlers;
@@ -401,8 +402,9 @@ namespace Npgsql
         [RewriteAsync]
         IBackendMessage ReadMessage()
         {
+            IBackendMessage msg;
             if (_pendingMessage != null) {
-                var msg = _pendingMessage;
+                msg = _pendingMessage;
                 _pendingMessage = null;
                 return msg;
             }
@@ -1899,6 +1901,7 @@ namespace Npgsql
             }
         }
 
+        [CanBeNull]
         Dictionary<string, Column> GetColumns()
         {
             var columnsFilter = _rowDescription.Fields

@@ -414,7 +414,7 @@ namespace TlsClientStream
             }
             public BigInt Mul3()
             {
-                var tmp = this.Add(this);
+                var tmp = Add(this);
                 tmp._bits[tmp.Length - 1] += BigInt.AddRaw(_bits, tmp._bits, tmp._bits);
                 return tmp;
             }
@@ -587,7 +587,7 @@ namespace TlsClientStream
             }
             public BigInt ModInv(BigInt p, BigInt negP)
             {
-                var u = this.Clone();
+                var u = Clone();
                 var v = p.Clone();
                 var x1 = new BigInt(1, p.Length);
                 var x2 = new BigInt(0, p.Length);

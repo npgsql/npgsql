@@ -27,6 +27,7 @@ using System.Data;
 using System.Data.Common;
 using System.Diagnostics.Contracts;
 using System.Reflection;
+using JetBrains.Annotations;
 using NpgsqlTypes;
 
 #if WITHDESIGN
@@ -70,11 +71,10 @@ namespace Npgsql
         NpgsqlParameterCollection _collection;
         internal LengthCache LengthCache { get; private set; }
 
-        internal bool IsBound { get; private set; }
         internal TypeHandler Handler { get; private set; }
         internal FormatCode FormatCode { get; private set; }
 
-        internal bool _autoAssignedName;
+        internal bool AutoAssignedName;
 
         #endregion
 
@@ -274,7 +274,7 @@ namespace Npgsql
             get
             {
                 return _value;
-            } // [TODO] Check and validate data type.
+            }
             set
             {
                 ClearBind();
@@ -488,7 +488,7 @@ namespace Npgsql
                     _collection.InvalidateHashLookups();
                     ClearBind();
                 }
-                _autoAssignedName = false;
+                AutoAssignedName = false;
             }
         }
 
@@ -526,6 +526,7 @@ namespace Npgsql
         /// For other NpgsqlDbTypes, this field is not used.
         /// </summary>
         [Obsolete("Use the SpecificType property instead")]
+        [PublicAPI]
         public Type EnumType
         {
             get { return SpecificType; }
@@ -536,6 +537,7 @@ namespace Npgsql
         /// Used in combination with NpgsqlDbType.Enum or NpgsqlDbType.Composite to indicate the specific enum or composite type.
         /// For other NpgsqlDbTypes, this field is not used.
         /// </summary>
+        [PublicAPI]
         public Type SpecificType
         {
             get {
@@ -630,8 +632,6 @@ namespace Npgsql
 
             Contract.Assert(Handler != null);
             FormatCode = Handler.PreferTextWrite ? FormatCode.Text : FormatCode.Binary;
-
-            IsBound = true;
         }
 
         internal int ValidateAndGetLength()
@@ -660,7 +660,6 @@ namespace Npgsql
 
         void ClearBind()
         {
-            IsBound = false;
             Handler = null;
         }
 
@@ -699,25 +698,26 @@ namespace Npgsql
         {
             // use fields instead of properties
             // to avoid auto-initializing something like type_info
-            var clone = new NpgsqlParameter();
-            clone._precision = _precision;
-            clone._scale = _scale;
-            clone._size = _size;
-            clone._dbType = _dbType;
-            clone._npgsqlDbType = _npgsqlDbType;
-            clone._specificType = _specificType;
-            clone.Direction = Direction;
-            clone.IsNullable = IsNullable;
-            clone._name = _name;
-            clone.SourceColumn = SourceColumn;
+            var clone = new NpgsqlParameter
+            {
+                _precision = _precision,
+                _scale = _scale,
+                _size = _size,
+                _dbType = _dbType,
+                _npgsqlDbType = _npgsqlDbType,
+                _specificType = _specificType,
+                Direction = Direction,
+                IsNullable = IsNullable,
+                _name = _name,
+                SourceColumn = SourceColumn,
 #if !DNXCORE50
-            clone.SourceVersion = SourceVersion;
+                SourceVersion = SourceVersion,
 #endif
-            clone._value = _value;
-            clone._npgsqlValue = _npgsqlValue;
-            clone.SourceColumnNullMapping = SourceColumnNullMapping;
-            clone._autoAssignedName = _autoAssignedName;
-
+                _value = _value,
+                _npgsqlValue = _npgsqlValue,
+                SourceColumnNullMapping = SourceColumnNullMapping,
+                AutoAssignedName = AutoAssignedName
+            };
             return clone;
         }
 

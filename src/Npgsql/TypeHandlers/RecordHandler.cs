@@ -22,6 +22,7 @@
 #endregion
 
 using System;
+using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 
 namespace Npgsql.TypeHandlers
@@ -62,7 +63,7 @@ namespace Npgsql.TypeHandlers
             _fieldLen = -1;
         }
 
-        public override bool Read(out object[] result)
+        public override bool Read([CanBeNull] out object[] result)
         {
             result = null;
 

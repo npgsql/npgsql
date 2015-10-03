@@ -31,6 +31,7 @@ using System.Text;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
+using JetBrains.Annotations;
 
 namespace Npgsql.TypeHandlers
 {
@@ -103,7 +104,7 @@ namespace Npgsql.TypeHandlers
         /// Reads a BitArray from a binary PostgreSQL value. First 32-bit big endian length,
         /// then the data in big-endian. Zero-padded low bits in the end if length is not multiple of 8.
         /// </summary>
-        public override bool Read(out BitArray result)
+        public override bool Read([CanBeNull] out BitArray result)
         {
             if (_pos == -1)
             {

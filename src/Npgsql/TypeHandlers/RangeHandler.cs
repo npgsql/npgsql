@@ -29,6 +29,7 @@ using System.Linq;
 using System.Text;
 using NpgsqlTypes;
 using System.Diagnostics.Contracts;
+using JetBrains.Annotations;
 
 namespace Npgsql.TypeHandlers
 {
@@ -275,7 +276,7 @@ namespace Npgsql.TypeHandlers
         }
 
         // TODO: Duplicated from ArrayHandler... Refactor...
-        bool WriteSingleElement(object element, ref DirectBuffer directBuf)
+        bool WriteSingleElement([CanBeNull] object element, ref DirectBuffer directBuf)
         {
             if (element == null || element is DBNull)
             {

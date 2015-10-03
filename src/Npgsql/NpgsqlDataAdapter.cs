@@ -26,6 +26,7 @@ using System;
 using System.Data;
 using System.Data.Common;
 using System.Reflection;
+using JetBrains.Annotations;
 using Npgsql.Logging;
 
 namespace Npgsql
@@ -53,6 +54,7 @@ namespace Npgsql
         /// <summary>
         /// Row updated event.
         /// </summary>
+        [PublicAPI]
         public event NpgsqlRowUpdatedEventHandler RowUpdated;
 
         /// <summary>
