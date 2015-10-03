@@ -66,7 +66,7 @@ namespace Npgsql.Tests
         {
             var conn = new NpgsqlConnection(ConnectionString + ";SearchPath=public");
             conn.Open();
-            ExecuteNonQuery("DROP SCHEMA IF EXISTS foo");
+            ExecuteNonQuery("DROP SCHEMA IF EXISTS foo CASCADE");
             ExecuteNonQuery("CREATE SCHEMA foo");
             try
             {
