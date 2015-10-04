@@ -35,51 +35,55 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="EntityFramework.Core, Version=7.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\EntityFramework.Core.7.0.0-beta8-15723\lib\net45\EntityFramework.Core.dll</HintPath>
+      <HintPath>..\..\packages\EntityFramework.Core.7.0.0-beta8-15881\lib\net45\EntityFramework.Core.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="EntityFramework.Relational, Version=7.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\EntityFramework.Relational.7.0.0-beta8-15723\lib\net45\EntityFramework.Relational.dll</HintPath>
+      <HintPath>..\..\packages\EntityFramework.Relational.7.0.0-beta8-15881\lib\net45\EntityFramework.Relational.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Framework.Caching.Abstractions, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Framework.Caching.Abstractions.1.0.0-beta8-15583\lib\net45\Microsoft.Framework.Caching.Abstractions.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Framework.Caching.Abstractions.1.0.0-beta8-15657\lib\net45\Microsoft.Framework.Caching.Abstractions.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Framework.Caching.Memory, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Framework.Caching.Memory.1.0.0-beta8-15583\lib\net45\Microsoft.Framework.Caching.Memory.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Framework.Caching.Memory.1.0.0-beta8-15657\lib\net45\Microsoft.Framework.Caching.Memory.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Framework.Configuration, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Framework.Configuration.1.0.0-beta8-15586\lib\net45\Microsoft.Framework.Configuration.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Framework.Configuration.1.0.0-beta8-15664\lib\net45\Microsoft.Framework.Configuration.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Framework.Configuration.Abstractions, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Framework.Configuration.Abstractions.1.0.0-beta8-15586\lib\net45\Microsoft.Framework.Configuration.Abstractions.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Framework.Configuration.Abstractions.1.0.0-beta8-15664\lib\net45\Microsoft.Framework.Configuration.Abstractions.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Framework.Configuration.Binder, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Framework.Configuration.Binder.1.0.0-beta8-15586\lib\net45\Microsoft.Framework.Configuration.Binder.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Framework.Configuration.Binder.1.0.0-beta8-15664\lib\net45\Microsoft.Framework.Configuration.Binder.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Framework.DependencyInjection, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Framework.DependencyInjection.1.0.0-beta8-15574\lib\net45\Microsoft.Framework.DependencyInjection.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Framework.DependencyInjection.1.0.0-beta8-15643\lib\net45\Microsoft.Framework.DependencyInjection.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Framework.DependencyInjection.Abstractions, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Framework.DependencyInjection.Abstractions.1.0.0-beta8-15574\lib\net45\Microsoft.Framework.DependencyInjection.Abstractions.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Framework.DependencyInjection.Abstractions.1.0.0-beta8-15643\lib\net45\Microsoft.Framework.DependencyInjection.Abstractions.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Framework.Logging, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Framework.Logging.1.0.0-beta8-15575\lib\net45\Microsoft.Framework.Logging.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Framework.Logging.1.0.0-beta8-15643\lib\net45\Microsoft.Framework.Logging.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Framework.Logging.Abstractions, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Framework.Logging.Abstractions.1.0.0-beta8-15575\lib\net45\Microsoft.Framework.Logging.Abstractions.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Framework.Logging.Abstractions.1.0.0-beta8-15643\lib\net45\Microsoft.Framework.Logging.Abstractions.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Framework.OptionsModel, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Framework.OptionsModel.1.0.0-beta8-15574\lib\net45\Microsoft.Framework.OptionsModel.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Framework.OptionsModel.1.0.0-beta8-15641\lib\net45\Microsoft.Framework.OptionsModel.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.Framework.Primitives, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.Framework.Primitives.1.0.0-beta8-15684\lib\net45\Microsoft.Framework.Primitives.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Remotion.Linq, Version=2.0.0.0, Culture=neutral, PublicKeyToken=fee00910d6e5f53b, processorArchitecture=MSIL">
@@ -111,59 +115,59 @@
     <Compile Include="Extensions\NpgsqlDbContextOptionsExtensions.cs" />
     <Compile Include="Extensions\NpgsqlEntityFrameworkServicesBuilderExtensions.cs" />
     <Compile Include="Metadata\INpgsqlPropertyAnnotations.cs" />
-    <Compile Include="Metadata\NpgsqlAnnotationNames.cs" />
+    <Compile Include="Metadata\Internal\NpgsqlAnnotationNames.cs" />
     <Compile Include="Metadata\NpgsqlIndexAnnotations.cs" />
-    <Compile Include="Metadata\NpgsqlMetadataExtensionProvider.cs" />
+    <Compile Include="Metadata\NpgsqlAnnotationProvider.cs" />
     <Compile Include="Migrations\Operations\CreateDatabaseOperation.cs" />
     <Compile Include="Migrations\Operations\DropDatabaseOperation.cs" />
-    <Compile Include="Migrations\NpgsqlHistoryRepository.cs" />
-    <Compile Include="Migrations\NpgsqlMigrationsAnnotationProvider.cs" />
+    <Compile Include="Migrations\Internal\NpgsqlHistoryRepository.cs" />
+    <Compile Include="Migrations\Internal\NpgsqlMigrationsAnnotationProvider.cs" />
     <Compile Include="Migrations\NpgsqlMigrationsSqlGenerator.cs" />
-    <Compile Include="Query\ExpressionTranslators\NpgsqlCompositeMemberTranslator.cs" />
-    <Compile Include="Query\ExpressionTranslators\NpgsqlCompositeMethodCallTranslator.cs" />
+    <Compile Include="Query\ExpressionTranslators\Internal\NpgsqlCompositeMemberTranslator.cs" />
+    <Compile Include="Query\ExpressionTranslators\Internal\NpgsqlCompositeMethodCallTranslator.cs" />
     <Compile Include="Metadata\Conventions\Internal\NpgsqlConventionSetBuilder.cs" />
-    <Compile Include="Storage\NpgsqlDatabaseConnection.cs" />
-    <Compile Include="Storage\NpgsqlDatabaseCreator.cs" />
-    <Compile Include="Storage\NpgsqlDatabaseProviderServices.cs" />
+    <Compile Include="Storage\Internal\NpgsqlSqlGenerator.cs" />
+    <Compile Include="Storage\Internal\NpgsqlDatabaseConnection.cs" />
+    <Compile Include="Storage\Internal\NpgsqlDatabaseCreator.cs" />
+    <Compile Include="Storage\Internal\NpgsqlDatabaseProviderServices.cs" />
     <Compile Include="Extensions\NpgsqlMetadataExtensions.cs" />
-    <Compile Include="Infrastructure\NpgsqlModelSource.cs" />
-    <Compile Include="Infrastructure\NpgsqlOptionsExtension.cs" />
-    <Compile Include="Storage\NpgsqlTypeMapper.cs" />
-    <Compile Include="Update\NpgsqlUpdateSqlGenerator.cs" />
+    <Compile Include="Internal\NpgsqlModelSource.cs" />
+    <Compile Include="Internal\NpgsqlOptionsExtension.cs" />
+    <Compile Include="Storage\Internal\NpgsqlTypeMapper.cs" />
+    <Compile Include="Update\Internal\NpgsqlUpdateSqlGenerator.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="..\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Query\Expressions\AtTimeZoneExpression.cs" />
-    <Compile Include="Query\Expressions\RegexMatchExpression.cs" />
-    <Compile Include="Query\ExpressionTranslators\NpgsqlCompositeExpressionFragmentTranslator.cs" />
-    <Compile Include="Query\ExpressionTranslators\DateTimeNowTranslator.cs" />
-    <Compile Include="Query\ExpressionTranslators\MathAbsTranslator.cs" />
-    <Compile Include="Query\ExpressionTranslators\MathCeilingTranslator.cs" />
-    <Compile Include="Query\ExpressionTranslators\MathFloorTranslator.cs" />
-    <Compile Include="Query\ExpressionTranslators\MathPowerTranslator.cs" />
-    <Compile Include="Query\ExpressionTranslators\MathRoundTranslator.cs" />
-    <Compile Include="Query\ExpressionTranslators\MathTruncateTranslator.cs" />
-    <Compile Include="Query\ExpressionTranslators\RegexIsMatchTranslator.cs" />
-    <Compile Include="Query\ExpressionTranslators\StringLengthTranslator.cs" />
-    <Compile Include="Query\ExpressionTranslators\StringReplaceTranslator.cs" />
-    <Compile Include="Query\ExpressionTranslators\StringSubstringTranslator.cs" />
-    <Compile Include="Query\ExpressionTranslators\StringToLowerTranslator.cs" />
-    <Compile Include="Query\ExpressionTranslators\StringToUpperTranslator.cs" />
-    <Compile Include="Query\NpgsqlQueryCompilationContext.cs" />
-    <Compile Include="Query\NpgsqlQueryCompilationContextFactory.cs" />
-    <Compile Include="Query\Sql\NpgsqlQuerySqlGenerator.cs" />
-    <Compile Include="Query\Sql\NpgsqlQuerySqlGeneratorFactory.cs" />
-    <Compile Include="Update\NpgsqlModificationCommandBatch.cs" />
-    <Compile Include="Update\NpgsqlModificationCommandBatchFactory.cs" />
+    <Compile Include="Query\Expressions\Internal\AtTimeZoneExpression.cs" />
+    <Compile Include="Query\Expressions\Internal\RegexMatchExpression.cs" />
+    <Compile Include="Query\ExpressionTranslators\Internal\NpgsqlDateTimeNowTranslator.cs" />
+    <Compile Include="Query\ExpressionTranslators\Internal\NpgsqlMathAbsTranslator.cs" />
+    <Compile Include="Query\ExpressionTranslators\Internal\NpgsqlMathCeilingTranslator.cs" />
+    <Compile Include="Query\ExpressionTranslators\Internal\NpgsqlMathFloorTranslator.cs" />
+    <Compile Include="Query\ExpressionTranslators\Internal\NpgsqlMathPowerTranslator.cs" />
+    <Compile Include="Query\ExpressionTranslators\Internal\NpgsqlMathRoundTranslator.cs" />
+    <Compile Include="Query\ExpressionTranslators\Internal\NpgsqlMathTruncateTranslator.cs" />
+    <Compile Include="Query\ExpressionTranslators\Internal\NpgsqlRegexIsMatchTranslator.cs" />
+    <Compile Include="Query\ExpressionTranslators\Internal\NpgsqlStringLengthTranslator.cs" />
+    <Compile Include="Query\ExpressionTranslators\Internal\NpgsqlStringReplaceTranslator.cs" />
+    <Compile Include="Query\ExpressionTranslators\Internal\NpgsqlStringSubstringTranslator.cs" />
+    <Compile Include="Query\ExpressionTranslators\Internal\NpgsqlStringToLowerTranslator.cs" />
+    <Compile Include="Query\ExpressionTranslators\Internal\NpgsqlStringToUpperTranslator.cs" />
+    <Compile Include="Query\Internal\NpgsqlQueryCompilationContext.cs" />
+    <Compile Include="Query\Internal\NpgsqlQueryCompilationContextFactory.cs" />
+    <Compile Include="Query\Sql\Internal\NpgsqlQuerySqlGenerator.cs" />
+    <Compile Include="Query\Sql\Internal\NpgsqlQuerySqlGeneratorFactory.cs" />
+    <Compile Include="Update\Internal\NpgsqlModificationCommandBatch.cs" />
+    <Compile Include="Update\Internal\NpgsqlModificationCommandBatchFactory.cs" />
     <Compile Include="Utilities\AsyncEnumerableExtensions.cs" />
     <Compile Include="Utilities\Check.cs" />
     <Compile Include="Utilities\EnumerableExtensions.cs" />
     <Compile Include="Utilities\LoggingExtensions.cs" />
     <Compile Include="Utilities\SharedTypeExtensions.cs" />
     <Compile Include="Utilities\StringBuilderExtensions.cs" />
-    <Compile Include="ValueGeneration\NpgsqlValueGeneratorCache.cs" />
+    <Compile Include="ValueGeneration\Internal\NpgsqlValueGeneratorCache.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Npgsql\Npgsql.csproj">

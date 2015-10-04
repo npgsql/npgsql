@@ -20,9 +20,13 @@ namespace EntityFramework7.Npgsql.FunctionalTests
             base.Include_multiple_one_to_one_and_one_to_many();
 
             Assert.Equal(
-                @"SELECT ""t"".""Id"", ""t"".""GearNickName"", ""t"".""GearSquadId"", ""t"".""Note"", ""g"".""Nickname"", ""g"".""SquadId"", ""g"".""AssignedCityName"", ""g"".""CityOrBirthName"", ""g"".""FullName"", ""g"".""LeaderNickname"", ""g"".""LeaderSquadId"", ""g"".""Rank""
+                @"SELECT ""t"".""Id"", ""t"".""GearNickName"", ""t"".""GearSquadId"", ""t"".""Note"", ""g"".""Nickname"", ""g"".""SquadId"", ""g"".""AssignedCityName"", ""g"".""CityOrBirthName"", ""g"".""Discriminator"", ""g"".""FullName"", ""g"".""LeaderNickname"", ""g"".""LeaderSquadId"", ""g"".""Rank""
 FROM ""CogTag"" AS ""t""
-LEFT JOIN ""Gear"" AS ""g"" ON (""t"".""GearNickName"" = ""g"".""Nickname"") AND (""t"".""GearSquadId"" = ""g"".""SquadId"")
+LEFT JOIN (
+    SELECT ""g"".*
+    FROM ""Gear"" AS ""g""
+    WHERE (""g"".""Discriminator"" = 'Officer') OR (""g"".""Discriminator"" = 'Gear')
+) AS ""g"" ON (""t"".""GearNickName"" = ""g"".""Nickname"") AND (""t"".""GearSquadId"" = ""g"".""SquadId"")
 ORDER BY ""g"".""FullName""
 
 SELECT ""w"".""Id"", ""w"".""AmmunitionType"", ""w"".""Name"", ""w"".""OwnerFullName"", ""w"".""SynergyWithId""
@@ -30,7 +34,11 @@ FROM ""Weapon"" AS ""w""
 INNER JOIN (
     SELECT DISTINCT ""g"".""FullName""
     FROM ""CogTag"" AS ""t""
-    LEFT JOIN ""Gear"" AS ""g"" ON (""t"".""GearNickName"" = ""g"".""Nickname"") AND (""t"".""GearSquadId"" = ""g"".""SquadId"")
+    LEFT JOIN (
+        SELECT ""g"".*
+        FROM ""Gear"" AS ""g""
+        WHERE (""g"".""Discriminator"" = 'Officer') OR (""g"".""Discriminator"" = 'Gear')
+    ) AS ""g"" ON (""t"".""GearNickName"" = ""g"".""Nickname"") AND (""t"".""GearSquadId"" = ""g"".""SquadId"")
 ) AS ""g"" ON ""w"".""OwnerFullName"" = ""g"".""FullName""
 ORDER BY ""g"".""FullName""",
                 Sql);
@@ -41,19 +49,27 @@ ORDER BY ""g"".""FullName""",
             base.Include_multiple_one_to_one_and_one_to_many_self_reference();
 
             Assert.Equal(
-                @"SELECT ""t"".""Id"", ""t"".""GearNickName"", ""t"".""GearSquadId"", ""t"".""Note"", ""g"".""Nickname"", ""g"".""SquadId"", ""g"".""AssignedCityName"", ""g"".""CityOrBirthName"", ""g"".""FullName"", ""g"".""LeaderNickname"", ""g"".""LeaderSquadId"", ""g"".""Rank""
+                @"SELECT ""t"".""Id"", ""t"".""GearNickName"", ""t"".""GearSquadId"", ""t"".""Note"", ""g"".""Nickname"", ""g"".""SquadId"", ""g"".""AssignedCityName"", ""g"".""CityOrBirthName"", ""g"".""Discriminator"", ""g"".""FullName"", ""g"".""LeaderNickname"", ""g"".""LeaderSquadId"", ""g"".""Rank""
 FROM ""CogTag"" AS ""t""
-LEFT JOIN ""Gear"" AS ""g"" ON (""t"".""GearNickName"" = ""g"".""Nickname"") AND (""t"".""GearSquadId"" = ""g"".""SquadId"")
-ORDER BY ""g"".""Nickname"", ""g"".""SquadId""
+LEFT JOIN (
+    SELECT ""g"".*
+    FROM ""Gear"" AS ""g""
+    WHERE (""g"".""Discriminator"" = 'Officer') OR (""g"".""Discriminator"" = 'Gear')
+) AS ""g"" ON (""t"".""GearNickName"" = ""g"".""Nickname"") AND (""t"".""GearSquadId"" = ""g"".""SquadId"")
+ORDER BY ""g"".""FullName""
 
-SELECT ""g"".""Nickname"", ""g"".""SquadId"", ""g"".""AssignedCityName"", ""g"".""CityOrBirthName"", ""g"".""FullName"", ""g"".""LeaderNickname"", ""g"".""LeaderSquadId"", ""g"".""Rank""
-FROM ""Gear"" AS ""g""
+SELECT ""w"".""Id"", ""w"".""AmmunitionType"", ""w"".""Name"", ""w"".""OwnerFullName"", ""w"".""SynergyWithId""
+FROM ""Weapon"" AS ""w""
 INNER JOIN (
-    SELECT DISTINCT ""g"".""Nickname"", ""g"".""SquadId""
+    SELECT DISTINCT ""g"".""FullName""
     FROM ""CogTag"" AS ""t""
-    LEFT JOIN ""Gear"" AS ""g"" ON (""t"".""GearNickName"" = ""g"".""Nickname"") AND (""t"".""GearSquadId"" = ""g"".""SquadId"")
-) AS ""g0"" ON (""g"".""LeaderNickname"" = ""g0"".""Nickname"") AND (""g"".""LeaderSquadId"" = ""g0"".""SquadId"")
-ORDER BY ""g0"".""Nickname"", ""g0"".""SquadId""",
+    LEFT JOIN (
+        SELECT ""g"".*
+        FROM ""Gear"" AS ""g""
+        WHERE (""g"".""Discriminator"" = 'Officer') OR (""g"".""Discriminator"" = 'Gear')
+    ) AS ""g"" ON (""t"".""GearNickName"" = ""g"".""Nickname"") AND (""t"".""GearSquadId"" = ""g"".""SquadId"")
+) AS ""g"" ON ""w"".""OwnerFullName"" = ""g"".""FullName""
+ORDER BY ""g"".""FullName""",
                 Sql);
         }
 
@@ -62,20 +78,29 @@ ORDER BY ""g0"".""Nickname"", ""g0"".""SquadId""",
             base.Include_multiple_one_to_one_and_one_to_one_and_one_to_many();
 
             Assert.Equal(
-                @"SELECT ""t"".""Id"", ""t"".""GearNickName"", ""t"".""GearSquadId"", ""t"".""Note"", ""g"".""Nickname"", ""g"".""SquadId"", ""g"".""AssignedCityName"", ""g"".""CityOrBirthName"", ""g"".""FullName"", ""g"".""LeaderNickname"", ""g"".""LeaderSquadId"", ""g"".""Rank"", ""s"".""Id"", ""s"".""InternalNumber"", ""s"".""Name""
+                @"SELECT ""t"".""Id"", ""t"".""GearNickName"", ""t"".""GearSquadId"", ""t"".""Note"", ""g"".""Nickname"", ""g"".""SquadId"", ""g"".""AssignedCityName"", ""g"".""CityOrBirthName"", ""g"".""Discriminator"", ""g"".""FullName"", ""g"".""LeaderNickname"", ""g"".""LeaderSquadId"", ""g"".""Rank"", ""s"".""Id"", ""s"".""InternalNumber"", ""s"".""Name""
 FROM ""CogTag"" AS ""t""
-LEFT JOIN ""Gear"" AS ""g"" ON (""t"".""GearNickName"" = ""g"".""Nickname"") AND (""t"".""GearSquadId"" = ""g"".""SquadId"")
+LEFT JOIN (
+    SELECT ""g"".*
+    FROM ""Gear"" AS ""g""
+    WHERE (""g"".""Discriminator"" = 'Officer') OR (""g"".""Discriminator"" = 'Gear')
+) AS ""g"" ON (""t"".""GearNickName"" = ""g"".""Nickname"") AND (""t"".""GearSquadId"" = ""g"".""SquadId"")
 LEFT JOIN ""Squad"" AS ""s"" ON ""g"".""SquadId"" = ""s"".""Id""
 ORDER BY ""s"".""Id""
 
-SELECT ""g"".""Nickname"", ""g"".""SquadId"", ""g"".""AssignedCityName"", ""g"".""CityOrBirthName"", ""g"".""FullName"", ""g"".""LeaderNickname"", ""g"".""LeaderSquadId"", ""g"".""Rank""
+SELECT ""g"".""Nickname"", ""g"".""SquadId"", ""g"".""AssignedCityName"", ""g"".""CityOrBirthName"", ""g"".""Discriminator"", ""g"".""FullName"", ""g"".""LeaderNickname"", ""g"".""LeaderSquadId"", ""g"".""Rank""
 FROM ""Gear"" AS ""g""
 INNER JOIN (
     SELECT DISTINCT ""s"".""Id""
     FROM ""CogTag"" AS ""t""
-    LEFT JOIN ""Gear"" AS ""g"" ON (""t"".""GearNickName"" = ""g"".""Nickname"") AND (""t"".""GearSquadId"" = ""g"".""SquadId"")
+    LEFT JOIN (
+        SELECT ""g"".*
+        FROM ""Gear"" AS ""g""
+        WHERE (""g"".""Discriminator"" = 'Officer') OR (""g"".""Discriminator"" = 'Gear')
+    ) AS ""g"" ON (""t"".""GearNickName"" = ""g"".""Nickname"") AND (""t"".""GearSquadId"" = ""g"".""SquadId"")
     LEFT JOIN ""Squad"" AS ""s"" ON ""g"".""SquadId"" = ""s"".""Id""
 ) AS ""s"" ON ""g"".""SquadId"" = ""s"".""Id""
+WHERE (""g"".""Discriminator"" = 'Officer') OR (""g"".""Discriminator"" = 'Gear')
 ORDER BY ""s"".""Id""", Sql);
         }
 
@@ -84,9 +109,13 @@ ORDER BY ""s"".""Id""", Sql);
             base.Include_multiple_one_to_one_optional_and_one_to_one_required();
 
             Assert.Equal(
-                @"SELECT ""t"".""Id"", ""t"".""GearNickName"", ""t"".""GearSquadId"", ""t"".""Note"", ""g"".""Nickname"", ""g"".""SquadId"", ""g"".""AssignedCityName"", ""g"".""CityOrBirthName"", ""g"".""FullName"", ""g"".""LeaderNickname"", ""g"".""LeaderSquadId"", ""g"".""Rank"", ""s"".""Id"", ""s"".""InternalNumber"", ""s"".""Name""
+                @"SELECT ""t"".""Id"", ""t"".""GearNickName"", ""t"".""GearSquadId"", ""t"".""Note"", ""g"".""Nickname"", ""g"".""SquadId"", ""g"".""AssignedCityName"", ""g"".""CityOrBirthName"", ""g"".""Discriminator"", ""g"".""FullName"", ""g"".""LeaderNickname"", ""g"".""LeaderSquadId"", ""g"".""Rank"", ""s"".""Id"", ""s"".""InternalNumber"", ""s"".""Name""
 FROM ""CogTag"" AS ""t""
-LEFT JOIN ""Gear"" AS ""g"" ON (""t"".""GearNickName"" = ""g"".""Nickname"") AND (""t"".""GearSquadId"" = ""g"".""SquadId"")
+LEFT JOIN (
+    SELECT ""g"".*
+    FROM ""Gear"" AS ""g""
+    WHERE (""g"".""Discriminator"" = 'Officer') OR (""g"".""Discriminator"" = 'Gear')
+) AS ""g"" ON (""t"".""GearNickName"" = ""g"".""Nickname"") AND (""t"".""GearSquadId"" = ""g"".""SquadId"")
 LEFT JOIN ""Squad"" AS ""s"" ON ""g"".""SquadId"" = ""s"".""Id""", Sql);
         }
 
@@ -95,18 +124,21 @@ LEFT JOIN ""Squad"" AS ""s"" ON ""g"".""SquadId"" = ""s"".""Id""", Sql);
             base.Include_multiple_circular();
 
             Assert.Equal(
-                @"SELECT ""g"".""Nickname"", ""g"".""SquadId"", ""g"".""AssignedCityName"", ""g"".""CityOrBirthName"", ""g"".""FullName"", ""g"".""LeaderNickname"", ""g"".""LeaderSquadId"", ""g"".""Rank"", ""c"".""Name"", ""c"".""Location""
+                @"SELECT ""g"".""Nickname"", ""g"".""SquadId"", ""g"".""AssignedCityName"", ""g"".""CityOrBirthName"", ""g"".""Discriminator"", ""g"".""FullName"", ""g"".""LeaderNickname"", ""g"".""LeaderSquadId"", ""g"".""Rank"", ""c"".""Name"", ""c"".""Location""
 FROM ""Gear"" AS ""g""
 INNER JOIN ""City"" AS ""c"" ON ""g"".""CityOrBirthName"" = ""c"".""Name""
+WHERE ""g"".""Discriminator"" IN ('Officer', 'Gear')
 ORDER BY ""c"".""Name""
 
-SELECT ""g"".""Nickname"", ""g"".""SquadId"", ""g"".""AssignedCityName"", ""g"".""CityOrBirthName"", ""g"".""FullName"", ""g"".""LeaderNickname"", ""g"".""LeaderSquadId"", ""g"".""Rank""
+SELECT ""g"".""Nickname"", ""g"".""SquadId"", ""g"".""AssignedCityName"", ""g"".""CityOrBirthName"", ""g"".""Discriminator"", ""g"".""FullName"", ""g"".""LeaderNickname"", ""g"".""LeaderSquadId"", ""g"".""Rank""
 FROM ""Gear"" AS ""g""
 INNER JOIN (
     SELECT DISTINCT ""c"".""Name""
     FROM ""Gear"" AS ""g""
     INNER JOIN ""City"" AS ""c"" ON ""g"".""CityOrBirthName"" = ""c"".""Name""
+    WHERE ""g"".""Discriminator"" IN ('Officer', 'Gear')
 ) AS ""c"" ON ""g"".""AssignedCityName"" = ""c"".""Name""
+WHERE (""g"".""Discriminator"" = 'Officer') OR (""g"".""Discriminator"" = 'Gear')
 ORDER BY ""c"".""Name""",
                 Sql);
         }
@@ -116,20 +148,21 @@ ORDER BY ""c"".""Name""",
             base.Include_multiple_circular_with_filter();
 
             Assert.Equal(
-                @"SELECT ""g"".""Nickname"", ""g"".""SquadId"", ""g"".""AssignedCityName"", ""g"".""CityOrBirthName"", ""g"".""FullName"", ""g"".""LeaderNickname"", ""g"".""LeaderSquadId"", ""g"".""Rank"", ""c"".""Name"", ""c"".""Location""
+                @"SELECT ""g"".""Nickname"", ""g"".""SquadId"", ""g"".""AssignedCityName"", ""g"".""CityOrBirthName"", ""g"".""Discriminator"", ""g"".""FullName"", ""g"".""LeaderNickname"", ""g"".""LeaderSquadId"", ""g"".""Rank"", ""c"".""Name"", ""c"".""Location""
 FROM ""Gear"" AS ""g""
 INNER JOIN ""City"" AS ""c"" ON ""g"".""CityOrBirthName"" = ""c"".""Name""
-WHERE ""g"".""Nickname"" = 'Marcus'
+WHERE ""g"".""Discriminator"" IN ('Officer', 'Gear') AND (""g"".""Nickname"" = 'Marcus')
 ORDER BY ""c"".""Name""
 
-SELECT ""g"".""Nickname"", ""g"".""SquadId"", ""g"".""AssignedCityName"", ""g"".""CityOrBirthName"", ""g"".""FullName"", ""g"".""LeaderNickname"", ""g"".""LeaderSquadId"", ""g"".""Rank""
+SELECT ""g"".""Nickname"", ""g"".""SquadId"", ""g"".""AssignedCityName"", ""g"".""CityOrBirthName"", ""g"".""Discriminator"", ""g"".""FullName"", ""g"".""LeaderNickname"", ""g"".""LeaderSquadId"", ""g"".""Rank""
 FROM ""Gear"" AS ""g""
 INNER JOIN (
     SELECT DISTINCT ""c"".""Name""
     FROM ""Gear"" AS ""g""
     INNER JOIN ""City"" AS ""c"" ON ""g"".""CityOrBirthName"" = ""c"".""Name""
-    WHERE ""g"".""Nickname"" = 'Marcus'
+    WHERE ""g"".""Discriminator"" IN ('Officer', 'Gear') AND (""g"".""Nickname"" = 'Marcus')
 ) AS ""c"" ON ""g"".""AssignedCityName"" = ""c"".""Name""
+WHERE (""g"".""Discriminator"" = 'Officer') OR (""g"".""Discriminator"" = 'Gear')
 ORDER BY ""c"".""Name""",
                 Sql);
         }
@@ -139,9 +172,9 @@ ORDER BY ""c"".""Name""",
             base.Include_using_alternate_key();
 
             Assert.Equal(
-                @"SELECT ""g"".""Nickname"", ""g"".""SquadId"", ""g"".""AssignedCityName"", ""g"".""CityOrBirthName"", ""g"".""FullName"", ""g"".""LeaderNickname"", ""g"".""LeaderSquadId"", ""g"".""Rank""
+                @"SELECT ""g"".""Nickname"", ""g"".""SquadId"", ""g"".""AssignedCityName"", ""g"".""CityOrBirthName"", ""g"".""Discriminator"", ""g"".""FullName"", ""g"".""LeaderNickname"", ""g"".""LeaderSquadId"", ""g"".""Rank""
 FROM ""Gear"" AS ""g""
-WHERE ""g"".""Nickname"" = 'Marcus'
+WHERE ""g"".""Discriminator"" IN ('Officer', 'Gear') AND (""g"".""Nickname"" = 'Marcus')
 ORDER BY ""g"".""FullName""
 
 SELECT ""w"".""Id"", ""w"".""AmmunitionType"", ""w"".""Name"", ""w"".""OwnerFullName"", ""w"".""SynergyWithId""
@@ -149,7 +182,7 @@ FROM ""Weapon"" AS ""w""
 INNER JOIN (
     SELECT DISTINCT ""g"".""FullName""
     FROM ""Gear"" AS ""g""
-    WHERE ""g"".""Nickname"" = 'Marcus'
+    WHERE ""g"".""Discriminator"" IN ('Officer', 'Gear') AND (""g"".""Nickname"" = 'Marcus')
 ) AS ""g"" ON ""w"".""OwnerFullName"" = ""g"".""FullName""
 ORDER BY ""g"".""FullName""",
                 Sql);
@@ -160,9 +193,9 @@ ORDER BY ""g"".""FullName""",
             base.Where_enum();
 
             Assert.Equal(
-                @"SELECT ""g"".""Nickname"", ""g"".""SquadId"", ""g"".""AssignedCityName"", ""g"".""CityOrBirthName"", ""g"".""FullName"", ""g"".""LeaderNickname"", ""g"".""LeaderSquadId"", ""g"".""Rank""
+                @"SELECT ""g"".""Nickname"", ""g"".""SquadId"", ""g"".""AssignedCityName"", ""g"".""CityOrBirthName"", ""g"".""Discriminator"", ""g"".""FullName"", ""g"".""LeaderNickname"", ""g"".""LeaderSquadId"", ""g"".""Rank""
 FROM ""Gear"" AS ""g""
-WHERE ""g"".""Rank"" = 2",
+WHERE ""g"".""Discriminator"" IN ('Officer', 'Gear') AND (""g"".""Rank"" = 2)",
                 Sql);
         }
 

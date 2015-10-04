@@ -377,7 +377,7 @@ namespace EntityFramework7.Npgsql.FunctionalTests
             }
         }
 
-        const string DefaultConnectionString = "Server=localhost;User ID=npgsql_tests;Password=npgsql_tests";
+        const string DefaultConnectionString = "Server=localhost;Username=npgsql_tests;Password=npgsql_tests;PersistSecurityInfo=true";
 
         public static string CreateConnectionString(string name)
         {

@@ -4,16 +4,24 @@
 using JetBrains.Annotations;
 using Microsoft.Framework.DependencyInjection.Extensions;
 using Microsoft.Data.Entity.Infrastructure;
+using Microsoft.Data.Entity.Internal;
 using Microsoft.Data.Entity.Metadata;
 using Microsoft.Data.Entity.Metadata.Conventions.Internal;
 using Microsoft.Data.Entity.Migrations;
+using Microsoft.Data.Entity.Migrations.Internal;
 using Microsoft.Data.Entity.Query;
 using Microsoft.Data.Entity.Query.ExpressionTranslators;
+using Microsoft.Data.Entity.Query.ExpressionTranslators.Internal;
+using Microsoft.Data.Entity.Query.Internal;
 using Microsoft.Data.Entity.Query.Sql;
+using Microsoft.Data.Entity.Query.Sql.Internal;
 using Microsoft.Data.Entity.Storage;
+using Microsoft.Data.Entity.Storage.Internal;
 using Microsoft.Data.Entity.Update;
+using Microsoft.Data.Entity.Update.Internal;
 using Microsoft.Data.Entity.Utilities;
 using Microsoft.Data.Entity.ValueGeneration;
+using Microsoft.Data.Entity.ValueGeneration.Internal;
 
 // ReSharper disable once CheckNamespace
 
@@ -33,11 +41,12 @@ namespace Microsoft.Framework.DependencyInjection
             service.TryAdd(new ServiceCollection()
                 .AddSingleton<NpgsqlConventionSetBuilder>()
                 .AddSingleton<NpgsqlValueGeneratorCache>()
-                .AddSingleton<NpgsqlUpdateSqlGenerator>()
                 .AddSingleton<NpgsqlTypeMapper>()
+                .AddSingleton<NpgsqlSqlGenerator>()
                 .AddSingleton<NpgsqlModelSource>()
-                .AddSingleton<NpgsqlMetadataExtensionProvider>()
+                .AddSingleton<NpgsqlAnnotationProvider>()
                 .AddSingleton<NpgsqlMigrationsAnnotationProvider>()
+                .AddScoped<NpgsqlUpdateSqlGenerator>()
                 .AddScoped<NpgsqlModificationCommandBatchFactory>()
                 .AddScoped<NpgsqlDatabaseProviderServices>()
                 .AddScoped<NpgsqlDatabaseConnection>()
@@ -53,7 +62,6 @@ namespace Microsoft.Framework.DependencyInjection
         {
             return serviceCollection
                 .AddScoped<NpgsqlQueryCompilationContextFactory>()
-                .AddScoped<NpgsqlCompositeExpressionFragmentTranslator>()
                 .AddScoped<NpgsqlCompositeMemberTranslator>()
                 .AddScoped<NpgsqlCompositeMethodCallTranslator>()
                 .AddScoped<NpgsqlQuerySqlGeneratorFactory>();

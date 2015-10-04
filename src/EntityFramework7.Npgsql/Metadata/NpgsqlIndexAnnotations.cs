@@ -1,4 +1,5 @@
 ﻿using JetBrains.Annotations;
+using Microsoft.Data.Entity.Metadata.Internal;
 
 namespace Microsoft.Data.Entity.Metadata
 {

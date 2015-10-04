@@ -6,8 +6,10 @@ using System.Linq;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Metadata;
+using Microsoft.Data.Entity.Metadata.Internal;
 using Microsoft.Data.Entity.Migrations.Operations;
 using Microsoft.Data.Entity.Storage;
+using Microsoft.Data.Entity.Storage.Internal;
 using Microsoft.Data.Entity.Update;
 using Microsoft.Data.Entity.Utilities;
 
@@ -19,12 +21,13 @@ namespace Microsoft.Data.Entity.Migrations
         readonly NpgsqlTypeMapper _typeMapper;
 
         public NpgsqlMigrationsSqlGenerator(
-            [NotNull] NpgsqlUpdateSqlGenerator sql,
-            [NotNull] NpgsqlTypeMapper typeMapper,
-            [NotNull] NpgsqlMetadataExtensionProvider annotations)
-            : base(sql, typeMapper, annotations)
+            [NotNull] IRelationalCommandBuilderFactory commandBuilderFactory,
+            [NotNull] ISqlGenerator sqlGenerator,
+            [NotNull] IRelationalTypeMapper typeMapper,
+            [NotNull] IRelationalAnnotationProvider annotations)
+            : base(commandBuilderFactory, sqlGenerator, typeMapper, annotations)
         {
-            _typeMapper = typeMapper;
+            _typeMapper = (NpgsqlTypeMapper)typeMapper;
         }
 
         protected override void Generate(MigrationOperation operation, IModel model, RelationalCommandListBuilder builder)
@@ -70,33 +73,33 @@ namespace Microsoft.Data.Entity.Migrations
             var serial = operation.Annotations.Where(r => r.Name == NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.Serial).FirstOrDefault();
             isSerial = serial != null && (bool) serial.Value;
 
-            var identifier = Sql.DelimitIdentifier(operation.Table, operation.Schema);
-            var alterBase = $"ALTER TABLE {identifier} ALTER COLUMN {Sql.DelimitIdentifier(operation.Name)}";
+            var identifier = SqlGenerator.DelimitIdentifier(operation.Table, operation.Schema);
+            var alterBase = $"ALTER TABLE {identifier} ALTER COLUMN {SqlGenerator.DelimitIdentifier(operation.Name)}";
 
             // TYPE
             builder.Append(alterBase)
                 .Append(" TYPE ")
                 .Append(type)
-                .AppendLine(Sql.BatchCommandSeparator);
+                .AppendLine(SqlGenerator.BatchCommandSeparator);
 
             // NOT NULL
             builder.Append(alterBase)
                 .Append(operation.IsNullable ? " DROP NOT NULL" : " SET NOT NULL")
-                .AppendLine(Sql.BatchCommandSeparator);
+                .AppendLine(SqlGenerator.BatchCommandSeparator);
 
             builder.Append(alterBase);
 
             if (operation.DefaultValue != null)
             {
                 builder.Append(" SET DEFAULT ")
-                    .Append(Sql.GenerateLiteral((dynamic)operation.DefaultValue))
-                    .AppendLine(Sql.BatchCommandSeparator);
+                    .Append(SqlGenerator.GenerateLiteral((dynamic)operation.DefaultValue))
+                    .AppendLine(SqlGenerator.BatchCommandSeparator);
             }
             else if (!string.IsNullOrWhiteSpace(operation.DefaultValueSql))
             {
                 builder.Append(" SET DEFAULT ")
                     .Append(operation.DefaultValueSql)
-                    .AppendLine(Sql.BatchCommandSeparator);
+                    .AppendLine(SqlGenerator.BatchCommandSeparator);
             }
             else if (isSerial)
             {
@@ -139,11 +142,11 @@ namespace Microsoft.Data.Entity.Migrations
 
             builder
                 .Append("CREATE SEQUENCE ")
-                .Append(Sql.DelimitIdentifier(operation.Name, operation.Schema));
+                .Append(SqlGenerator.DelimitIdentifier(operation.Name, operation.Schema));
 
             builder
                 .Append(" START WITH ")
-                .Append(Sql.GenerateLiteral(operation.StartValue));
+                .Append(SqlGenerator.GenerateLiteral(operation.StartValue));
             SequenceOptions(operation, model, builder);
         }
 
@@ -177,7 +180,7 @@ namespace Microsoft.Data.Entity.Migrations
             {
                 if (separate)
                 {
-                    builder.AppendLine(Sql.BatchCommandSeparator);
+                    builder.AppendLine(SqlGenerator.BatchCommandSeparator);
                 }
 
                 Transfer(operation.NewSchema, operation.Schema, name, "SEQUENCE", builder);
@@ -203,7 +206,7 @@ namespace Microsoft.Data.Entity.Migrations
             {
                 if (separate)
                 {
-                    builder.AppendLine(Sql.BatchCommandSeparator);
+                    builder.AppendLine(SqlGenerator.BatchCommandSeparator);
                 }
 
                 Transfer(operation.NewSchema, operation.Schema, name, "TABLE", builder);
@@ -229,9 +232,9 @@ namespace Microsoft.Data.Entity.Migrations
 
             builder
                 .Append("INDEX ")
-                .Append(Sql.DelimitIdentifier(operation.Name))
+                .Append(SqlGenerator.DelimitIdentifier(operation.Name))
                 .Append(" ON ")
-                .Append(Sql.DelimitIdentifier(operation.Table, operation.Schema));
+                .Append(SqlGenerator.DelimitIdentifier(operation.Table, operation.Schema));
 
             if (method != null)
             {
@@ -259,9 +262,9 @@ namespace Microsoft.Data.Entity.Migrations
                 .Append("    CREATE SCHEMA ").Append(operation.Name).AppendLine(";")
                 .AppendLine("  END IF; END")
                 .AppendLine("$$ LANGUAGE 'plpgsql';")
-                .AppendLine(Sql.BatchCommandSeparator);
+                .AppendLine(SqlGenerator.BatchCommandSeparator);
 
-            builder.Append("SELECT pg_temp.__ef_ensure_schema()").AppendLine(Sql.BatchCommandSeparator);
+            builder.Append("SELECT pg_temp.__ef_ensure_schema()").AppendLine(SqlGenerator.BatchCommandSeparator);
         }
 
         public virtual void Generate(CreateDatabaseOperation operation, IModel model, RelationalCommandListBuilder builder)
@@ -271,8 +274,8 @@ namespace Microsoft.Data.Entity.Migrations
 
             builder
                 .Append("CREATE DATABASE ")
-                .Append(Sql.DelimitIdentifier(operation.Name))
-                .AppendLine(Sql.BatchCommandSeparator);
+                .Append(SqlGenerator.DelimitIdentifier(operation.Name))
+                .AppendLine(SqlGenerator.BatchCommandSeparator);
         }
 
         public virtual void Generate(DropDatabaseOperation operation, IModel model, RelationalCommandListBuilder builder)
@@ -280,20 +283,20 @@ namespace Microsoft.Data.Entity.Migrations
             Check.NotNull(operation, nameof(operation));
             Check.NotNull(builder, nameof(builder));
 
-            var dbName = Sql.DelimitIdentifier(operation.Name);
+            var dbName = SqlGenerator.DelimitIdentifier(operation.Name);
 
             builder
                 // TODO: The following revokes connection only for the public role, what about other connecting roles?
                 .Append("REVOKE CONNECT ON DATABASE ")
                 .Append(dbName)
                 .Append(" FROM PUBLIC")
-                .AppendLine(Sql.BatchCommandSeparator)
+                .AppendLine(SqlGenerator.BatchCommandSeparator)
                 // TODO: For PG <= 9.1, the column name is prodpic, not pid (see http://stackoverflow.com/questions/5408156/how-to-drop-a-postgresql-database-if-there-are-active-connections-to-it)
                 .Append(
                     "SELECT pg_terminate_backend(pg_stat_activity.pid) FROM pg_stat_activity WHERE pg_stat_activity.datname = '")
                 .Append(operation.Name)
                 .Append("'")
-                .AppendLine(Sql.BatchCommandSeparator)
+                .AppendLine(SqlGenerator.BatchCommandSeparator)
                 .Append("DROP DATABASE ")
                 .Append(dbName);
         }
@@ -305,7 +308,7 @@ namespace Microsoft.Data.Entity.Migrations
 
             builder
                 .Append("DROP INDEX ")
-                .Append(Sql.DelimitIdentifier(operation.Name, operation.Schema));
+                .Append(SqlGenerator.DelimitIdentifier(operation.Name, operation.Schema));
         }
 
         protected override void Generate(
@@ -317,11 +320,11 @@ namespace Microsoft.Data.Entity.Migrations
             Check.NotNull(builder, nameof(builder));
 
             builder.Append("ALTER TABLE ")
-                .Append(Sql.DelimitIdentifier(operation.Table, operation.Schema))
+                .Append(SqlGenerator.DelimitIdentifier(operation.Table, operation.Schema))
                 .Append(" RENAME COLUMN ")
-                .Append(Sql.DelimitIdentifier(operation.Name))
+                .Append(SqlGenerator.DelimitIdentifier(operation.Name))
                 .Append(" TO ")
-                .Append(Sql.DelimitIdentifier(operation.NewName));
+                .Append(SqlGenerator.DelimitIdentifier(operation.NewName));
         }
 
         protected override void ColumnDefinition(
@@ -405,9 +408,9 @@ namespace Microsoft.Data.Entity.Migrations
                 .Append("ALTER ")
                 .Append(type)
                 .Append(" ")
-                .Append(Sql.DelimitIdentifier(name, schema))
+                .Append(SqlGenerator.DelimitIdentifier(name, schema))
                 .Append(" RENAME TO ")
-                .Append(Sql.DelimitIdentifier(newName));
+                .Append(SqlGenerator.DelimitIdentifier(newName));
         }
 
         public virtual void Transfer(
@@ -426,9 +429,9 @@ namespace Microsoft.Data.Entity.Migrations
                 .Append("ALTER ")
                 .Append(type)
                 .Append(" ")
-                .Append(Sql.DelimitIdentifier(name, schema))
+                .Append(SqlGenerator.DelimitIdentifier(name, schema))
                 .Append(" SET SCHEMA ")
-                .Append(Sql.DelimitIdentifier(newSchema));
+                .Append(SqlGenerator.DelimitIdentifier(newSchema));
         }
 
         protected override void ForeignKeyAction(ReferentialAction referentialAction, RelationalCommandListBuilder builder)
@@ -445,6 +448,6 @@ namespace Microsoft.Data.Entity.Migrations
             }
         }
 
-        string ColumnList(string[] columns) => string.Join(", ", columns.Select(Sql.DelimitIdentifier));
+        string ColumnList(string[] columns) => string.Join(", ", columns.Select(SqlGenerator.DelimitIdentifier));
     }
 }

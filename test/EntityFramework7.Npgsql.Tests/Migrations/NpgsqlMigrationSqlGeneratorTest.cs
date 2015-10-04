@@ -6,9 +6,11 @@ using System.Collections.Generic;
 using System.Text;
 using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Metadata;
+using Microsoft.Data.Entity.Metadata.Internal;
 using Microsoft.Data.Entity.Migrations;
 using Microsoft.Data.Entity.Migrations.Operations;
 using Microsoft.Data.Entity.Storage;
+using Microsoft.Data.Entity.Storage.Internal;
 using Microsoft.Data.Entity.Update;
 using Xunit;
 
@@ -16,11 +18,19 @@ namespace EntityFramework7.Npgsql.Tests.Migrations
 {
     public class MigrationSqlGeneratorTest : MigrationSqlGeneratorTestBase
     {
-        protected override IMigrationsSqlGenerator SqlGenerator =>
-            new NpgsqlMigrationsSqlGenerator(
-                new NpgsqlUpdateSqlGenerator(),
-                new NpgsqlTypeMapper(),
-                new NpgsqlMetadataExtensionProvider());
+        protected override IMigrationsSqlGenerator SqlGenerator
+        {
+            get
+            {
+                var typeMapper = new NpgsqlTypeMapper();
+
+                return new NpgsqlMigrationsSqlGenerator(
+                    new RelationalCommandBuilderFactory(typeMapper),
+                    new NpgsqlSqlGenerator(),
+                    typeMapper,
+                    new NpgsqlAnnotationProvider());
+            }
+        }
 
         public override void AddColumnOperation_with_defaultValue()
         {
@@ -273,72 +283,5 @@ namespace EntityFramework7.Npgsql.Tests.Migrations
         }
 
         #endregion
-
-        private class ConcreteUpdateSqlGenerator : UpdateSqlGenerator
-        {
-            protected override void AppendIdentityWhereCondition(
-                StringBuilder commandStringBuilder,
-                ColumnModification columnModification)
-            {
-            }
-
-            protected override void AppendRowsAffectedWhereCondition(StringBuilder commandStringBuilder, int expectedRowsAffected)
-            {
-            }
-        }
-
-        private class ConcreteRelationalTypeMapper : RelationalTypeMapper
-        {
-            protected override IReadOnlyDictionary<Type, RelationalTypeMapping> SimpleMappings { get; }
-                = new Dictionary<Type, RelationalTypeMapping>
-                {
-                    { typeof(int), new RelationalTypeMapping("int") },
-                    { typeof(string), new RelationalTypeMapping("nvarchar(max)") }
-                };
-
-            protected override IReadOnlyDictionary<string, RelationalTypeMapping> SimpleNameMappings { get; }
-                = new Dictionary<string, RelationalTypeMapping>();
-
-            protected override string GetColumnType(IProperty property) => null;
-        }
-
-        private class ConcreteMigrationSqlGenerator : MigrationsSqlGenerator
-        {
-            public ConcreteMigrationSqlGenerator(
-                IUpdateSqlGenerator sqlGenerator,
-                IRelationalTypeMapper typeMapper,
-                IRelationalMetadataExtensionProvider annotations)
-                : base(sqlGenerator, typeMapper, annotations)
-            {
-            }
-
-            protected override void Generate(RenameTableOperation operation, IModel model, RelationalCommandListBuilder builder)
-            {
-            }
-
-            protected override void Generate(DropIndexOperation operation, IModel model, RelationalCommandListBuilder builder)
-            {
-            }
-
-            protected override void Generate(RenameSequenceOperation operation, IModel model, RelationalCommandListBuilder builder)
-            {
-            }
-
-            protected override void Generate(RenameColumnOperation operation, IModel model, RelationalCommandListBuilder builder)
-            {
-            }
-
-            protected override void Generate(EnsureSchemaOperation operation, IModel model, RelationalCommandListBuilder builder)
-            {
-            }
-
-            protected override void Generate(RenameIndexOperation operation, IModel model, RelationalCommandListBuilder builder)
-            {
-            }
-
-            protected override void Generate(AlterColumnOperation operation, IModel model, RelationalCommandListBuilder builder)
-            {
-            }
-        }
     }
 }
