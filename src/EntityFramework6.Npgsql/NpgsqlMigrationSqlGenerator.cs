@@ -246,8 +246,16 @@ namespace Npgsql
             }
             else
             {
-                //TODO: CREATE PROCEDURE that checks if schema already exists on servers < 9.3
-                AddStatment("CREATE SCHEMA " + schemaName);
+                // PG < 9.3 has no CREATE SCHEMA IF NOT EXISTS, hack around this with a stored procedure
+                AddStatment(
+                     "CREATE OR REPLACE FUNCTION pg_temp.__ef_ensure_schema () RETURNS VOID AS $$" +
+                    $"  BEGIN IF NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname='{schemaName}') THEN" +
+                    $"    CREATE SCHEMA {schemaName};" +
+                     "  END IF; END" +
+                     "$$ LANGUAGE 'plpgsql';"
+                );
+
+                AddStatment("SELECT pg_temp.__ef_ensure_schema()::TEXT");
             }
         }
 
