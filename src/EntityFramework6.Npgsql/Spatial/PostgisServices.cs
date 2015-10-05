@@ -1,10 +1,9 @@
 ﻿using System;
-#if ENTITIE6
-using System.Data.Spatial;
-#else
+#if ENTITIES6
 using System.Data.Entity.Spatial;
+#else
+using System.Data.Spatial;
 #endif
-
 
 namespace Npgsql.Spatial
 {
@@ -1025,7 +1024,7 @@ namespace Npgsql.Spatial
                     rdr.Read();
                     return rdr.GetInt32(0);
                 }
-                    
+
             }
         }
 
@@ -1056,7 +1055,7 @@ namespace Npgsql.Spatial
                     rdr.Read();
                     return rdr.GetInt32(0);
                 }
-                    
+
             }
         }
 

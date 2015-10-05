@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Data;
 
-#if ENTITIE6
-using System.Data.Spatial;
-#else
+#if ENTITIES6
 using System.Data.Entity.Spatial;
+#else
+using System.Data.Spatial;
 #endif
 
 namespace Npgsql.Spatial
@@ -65,7 +65,11 @@ namespace Npgsql.Spatial
         /// </summary>
         /// <param name="ordinal"></param>
         /// <returns></returns>
+#if ENTITIES6
         public override bool IsGeometryColumn(int ordinal)
+#else
+        public bool IsGeometryColumn(int ordinal)
+#endif
         {
             return _rdr[ordinal] is NpgsqlTypes.PostgisGeometry;
         }
@@ -75,7 +79,11 @@ namespace Npgsql.Spatial
         /// </summary>
         /// <param name="ordinal"></param>
         /// <returns></returns>
+#if ENTITIES6
         public override bool IsGeographyColumn(int ordinal)
+#else
+        public bool IsGeographyColumn(int ordinal)
+#endif
         {
             throw new NotImplementedException();
         }
@@ -124,7 +132,7 @@ namespace Npgsql.Spatial
                 return _rdr.FieldCount;
             }
         }
-        
+
         /// <summary>
         /// Gets the value of the specified column name of the current row.
         /// </summary>
