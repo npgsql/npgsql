@@ -71,7 +71,11 @@ namespace Npgsql
 
         internal static readonly Task CompletedTask = TaskFromResult(0);
 
+#if DNXCORE50
+        internal static StringComparer InvariantCaseIgnoringStringComparer => CultureInfo.InvariantCulture.CompareInfo.GetStringComparer(CompareOptions.IgnoreCase);
+#else
         internal static StringComparer InvariantCaseIgnoringStringComparer => StringComparer.InvariantCultureIgnoreCase;
+#endif
 
         /// <summary>
         /// Throws an exception with the given string and also invokes a contract failure, allowing the static checker
