@@ -6,6 +6,9 @@
     <options>
       <option name="checkoutMode" value="ON_AGENT" />
     </options>
+    <disabled-settings>
+      <setting-ref ref="RUNNER_3" />
+    </disabled-settings>
     <parameters>
       <param name="system.Configuration" value="Release-net45" />
     </parameters>
@@ -14,6 +17,13 @@
         <parameters>
           <param name="command.executable" value="GitVersion" />
           <param name="command.parameters" value="/output buildserver" />
+          <param name="teamcity.step.mode" value="default" />
+        </parameters>
+      </runner>
+      <runner id="RUNNER_10" name="NuGet Restore (1)" type="simpleRunner">
+        <parameters>
+          <param name="command.executable" value="c:\dev\nuget\nuget.exe" />
+          <param name="command.parameters" value="restore Npgsql.sln" />
           <param name="teamcity.step.mode" value="default" />
         </parameters>
       </runner>
