@@ -120,18 +120,23 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, Description("Tests some types which are aliased to UInt32")]
-        [TestCase("oid")]
-        [TestCase("xid")]
-        [TestCase("cid")]
-        public void ReadUInt32Aliases(string typename)
+        [TestCase(NpgsqlDbType.Oid, TestName="oid")]
+        [TestCase(NpgsqlDbType.Xid, TestName="xid")]
+        [TestCase(NpgsqlDbType.Cid, TestName="cid")]
+        public void UInt32(NpgsqlDbType npgsqlDbType)
         {
-            const uint expected = 8;
-            var cmd = new NpgsqlCommand(String.Format("SELECT '{0}'::{1}", expected, typename), Conn);
-            var reader = cmd.ExecuteReader();
-            reader.Read();
-            Assert.That(reader.GetValue(0), Is.EqualTo(expected));
-            reader.Dispose();
-            cmd.Dispose();
+            var expected = 8u;
+            using (var cmd = new NpgsqlCommand("SELECT @p", Conn))
+            {
+                cmd.Parameters.Add(new NpgsqlParameter("p", npgsqlDbType) { Value = expected });
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader[0], Is.EqualTo(expected));
+                    Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(expected));
+                    Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(uint)));
+                }
+            }
         }
 
         [Test]
