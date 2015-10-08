@@ -334,7 +334,11 @@ namespace Npgsql
 #if !DNXCORE50
         [Category("Data")]
 #endif
+#if NET45
+        public byte Precision
+#else
         public override byte Precision
+#endif
         {
             get { return _precision; }
             set
@@ -354,7 +358,11 @@ namespace Npgsql
 #if !DNXCORE50
         [Category("Data")]
 #endif
+#if NET45
+        public byte Scale
+#else
         public override byte Scale
+#endif
         {
             get { return _scale; }
             set

@@ -21,6 +21,16 @@
     "keyFile": "../../Npgsql.snk"
   },
   "frameworks": {
+    "net45": {
+      "frameworkAssemblies": {
+        "System.Diagnostics.Contracts": "4.0.0.0",
+        "System.Transactions": "4.0.0.0",
+        "System.DirectoryServices": "4.0.0.0",
+        "System.Data": "4.0.0.0",
+        "System.Numerics": "4.0.0.0",
+        "System.Xml": "4.0.0.0"
+      }
+    },
     "net452": {
       "frameworkAssemblies": {
         "System.Diagnostics.Contracts": "4.0.0.0",

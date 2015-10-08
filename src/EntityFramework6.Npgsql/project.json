@@ -25,7 +25,7 @@
     "Npgsql": "3.1.0-alpha2",
   },
   "frameworks": {
-    "net452": {
+    "net45": {
       "frameworkAssemblies": {
         "System.Collections": "4.0.0.0",
         "System.Data": "4.0.0.0",
