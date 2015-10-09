@@ -1,89 +1,109 @@
-﻿{
-  "version": "3.1.0-alpha2",
-  "authors": [
-    "Shay Rojansky",
-    "Emil Lenngren",
-    "Francisco Figueiredo Jr.",
-    "Kenji Uno",
-    "Jon Asher",
-    "Josh Cooley",
-    "Federico Di Gregorio",
-    "Jon Hanna",
-    "Chris Morgan",
-    "Dave Page",
-    "Glen Parker",
-    "Brar Piening",
-    "Hiroshi Saito"
-  ],
-  "description" : "Npgsql is a .NET data provider for PostgreSQL, 100% implemented in C# code. PostgreSQL 9.x and above is officially supported, other versions may work.",
-  "compilationOptions": {
-    "define": [ "__MonoCS__" ],
-    "keyFile": "../../Npgsql.snk"
-  },
-  "frameworks": {
-    "net45": {
-      "frameworkAssemblies": {
-        "System.Diagnostics.Contracts": "4.0.0.0",
-        "System.Transactions": "4.0.0.0",
-        "System.DirectoryServices": "4.0.0.0",
-        "System.Data": "4.0.0.0",
-        "System.Numerics": "4.0.0.0",
-        "System.Xml": "4.0.0.0"
-      }
+{
+    "version": "3.1.0-*",
+    "owners": [
+        "Shay Rojansky",
+        "Emil Lenngren",
+        "Francisco Figueiredo Jr.",
+        "Kenji Uno"
+    ],
+    "authors": [
+        "Shay Rojansky",
+        "Emil Lenngren",
+        "Francisco Figueiredo Jr.",
+        "Kenji Uno",
+        "Jon Asher",
+        "Josh Cooley",
+        "Federico Di Gregorio",
+        "Jon Hanna",
+        "Chris Morgan",
+        "Dave Page",
+        "Glen Parker",
+        "Brar Piening",
+        "Hiroshi Saito"
+    ],
+    "description": "Npgsql is a .NET data provider for PostgreSQL, 100% implemented in C# code. PostgreSQL 9.x and above is officially supported, other versions may work.",
+    "compilationOptions": {
+        "define": [ "__MonoCS__" ],
+        "keyFile": "../../Npgsql.snk"
     },
-    "net452": {
-      "frameworkAssemblies": {
-        "System.Diagnostics.Contracts": "4.0.0.0",
-        "System.Transactions": "4.0.0.0",
-        "System.DirectoryServices": "4.0.0.0",
-        "System.Data": "4.0.0.0",
-        "System.Numerics": "4.0.0.0",
-        "System.Xml": "4.0.0.0"
-      }
+    "commands": {
+        "rewrite-async": "AsyncRewriter"
     },
-    "dnx452": {
-      "frameworkAssemblies": {
-        "System.Diagnostics.Contracts": "4.0.0.0",
-        "System.Transactions": "4.0.0.0",
-        "System.DirectoryServices": "4.0.0.0",
-        "System.Data": "4.0.0.0",
-        "System.Numerics": "4.0.0.0",
-        "System.Xml": "4.0.0.0"
-      }
+    "scripts": {
+        "prebuild": [
+            "dnx rewrite-async"
+        ]
     },
-    "dnxcore50": {
-      "dependencies": {
-        "System.Collections.Concurrent": "4.0.11-beta-*",
-        "System.Console": "4.0.0-beta-*",
-        "System.ComponentModel": "4.0.1-beta-*",
-        "System.ComponentModel.TypeConverter": "4.0.1-beta-*",
-        "System.Data.Common": "4.0.1-beta-*",
-        "System.Diagnostics.Contracts": "4.0.1-beta-*",
-        "System.Diagnostics.Tools": "4.0.1-beta-*",
-        "System.Globalization": "4.0.11-beta-*",
-        "System.Globalization.Extensions": "4.0.1-beta-*",
-        "System.Linq": "4.0.1-beta-*",
-        "System.Net.NameResolution": "4.0.0-beta-*",
-        "System.Net.Primitives": "4.0.11-beta-*",
-        "System.Net.Sockets": "4.1.0-beta-*",
-        "System.Net.Security": "4.0.0-beta-*",
-        "System.Net.NetworkInformation": "4.1.0-beta-*",
-        "System.Runtime": "4.0.21-beta-*",
-        "System.Runtime.Extensions": "4.0.11-beta-*",
-        "System.Runtime.InteropServices": "4.0.21-beta-*",
-        "System.Runtime.Numerics": "4.0.1-beta-*",
-        "System.Reflection": "4.1.0-beta-*",
-        "System.Reflection.TypeExtensions": "4.0.1-beta-*",
-        "System.Security.Cryptography.Primitives": "4.0.0-beta-*",
-        "System.Security.Cryptography.Algorithms": "4.0.0-beta-*",
-        "System.Security.Cryptography.X509Certificates": "4.0.0-beta-*",
-        "System.Security.Principal": "4.0.1-beta-*",
-        "System.Text.Encoding.Extensions": "4.0.11-beta-*",
-        "System.Text.RegularExpressions": "4.0.11-beta-*",
-        "System.Threading": "4.0.11-beta-*",
-        "System.Threading.Thread": "4.0.0-beta-*",
-        "System.Threading.Timer": "4.0.1-beta-*",
-      }
+    "dependencies": {
+        "AsyncRewriter": { "version": "0.7.2", "type": "build" }
+    },
+    "frameworks": {
+        "net45": {
+            "frameworkAssemblies": {
+                "System.Collections": "4.0.0.0",
+                "System.Diagnostics.Contracts": "4.0.0.0",
+                "System.Transactions": "4.0.0.0",
+                "System.DirectoryServices": "4.0.0.0",
+                "System.Data": "4.0.0.0",
+                "System.Numerics": "4.0.0.0",
+                "System.Xml": "4.0.0.0"
+            }
+        },
+         "net452": {
+            "frameworkAssemblies": {
+                "System.Collections": "4.0.0.0",
+                "System.Diagnostics.Contracts": "4.0.0.0",
+                "System.Transactions": "4.0.0.0",
+                "System.DirectoryServices": "4.0.0.0",
+                "System.Data": "4.0.0.0",
+                "System.Numerics": "4.0.0.0",
+                "System.Xml": "4.0.0.0"
+            }
+        },
+        "dnx452": {
+            "frameworkAssemblies": {
+                "System.Collections": "4.0.0.0",
+                "System.Diagnostics.Contracts": "4.0.0.0",
+                "System.Transactions": "4.0.0.0",
+                "System.DirectoryServices": "4.0.0.0",
+                "System.Data": "4.0.0.0",
+                "System.Numerics": "4.0.0.0",
+                "System.Xml": "4.0.0.0"
+            }
+        },
+        "dnxcore50": {
+            "dependencies": {
+                "System.Collections.Concurrent": "4.0.11-beta-*",
+                "System.Console": "4.0.0-beta-*",
+                "System.ComponentModel": "4.0.1-beta-*",
+                "System.ComponentModel.TypeConverter": "4.0.1-beta-*",
+                "System.Data.Common": "4.0.1-beta-*",
+                "System.Diagnostics.Contracts": "4.0.1-beta-*",
+                "System.Diagnostics.Tools": "4.0.1-beta-*",
+                "System.Globalization": "4.0.11-beta-*",
+                "System.Globalization.Extensions": "4.0.1-beta-*",
+                "System.Linq": "4.0.1-beta-*",
+                "System.Net.NameResolution": "4.0.0-beta-*",
+                "System.Net.Primitives": "4.0.11-beta-*",
+                "System.Net.Sockets": "4.1.0-beta-*",
+                "System.Net.Security": "4.0.0-beta-*",
+                "System.Net.NetworkInformation": "4.1.0-beta-*",
+                "System.Runtime": "4.0.21-beta-*",
+                "System.Runtime.Extensions": "4.0.11-beta-*",
+                "System.Runtime.InteropServices": "4.0.21-beta-*",
+                "System.Runtime.Numerics": "4.0.1-beta-*",
+                "System.Reflection": "4.1.0-beta-*",
+                "System.Reflection.TypeExtensions": "4.0.1-beta-*",
+                "System.Security.Cryptography.Primitives": "4.0.0-beta-*",
+                "System.Security.Cryptography.Algorithms": "4.0.0-beta-*",
+                "System.Security.Cryptography.X509Certificates": "4.0.0-beta-*",
+                "System.Security.Principal": "4.0.1-beta-*",
+                "System.Text.Encoding.Extensions": "4.0.11-beta-*",
+                "System.Text.RegularExpressions": "4.0.11-beta-*",
+                "System.Threading": "4.0.11-beta-*",
+                "System.Threading.Thread": "4.0.0-beta-*",
+                "System.Threading.Timer": "4.0.1-beta-*",
+            }
+        }
     }
-  }
 }

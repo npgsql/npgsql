@@ -1,5 +1,11 @@
 ﻿{
-  "version": "3.1.0-alpha2",
+  "version": "3.1.0-*",
+  "owners": [
+    "Shay Rojansky",
+    "Emil Lenngren",
+    "Francisco Figueiredo Jr.",
+    "Kenji Uno"
+  ],
   "authors": [
     "Shay Rojansky",
     "Emil Lenngren",
@@ -20,7 +26,7 @@
     "keyFile": "../../Npgsql.snk"
   },
   "dependencies" : {
-    "Npgsql": "3.1.0-alpha2",
+    "Npgsql": "3.1.0-*",
   },
   "frameworks": {
     "net45": {

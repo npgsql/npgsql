@@ -1,5 +1,5 @@
 ﻿{
-  "version": "3.1.0-beta8-1",
+  "version": "3.1.0-*",
   "authors": [
     "Shay Rojansky"
   ],
@@ -9,7 +9,7 @@
     "EntityFramework.Relational": "7.0.0-beta8-15881",
     "Microsoft.Framework.DependencyInjection": "1.0.0-*",
     "Microsoft.Framework.DependencyInjection.Abstractions": "1.0.0-*",
-    "Npgsql": "3.1.0-alpha2",
+    "Npgsql": "3.1.0-*",
   },
   "frameworks": {
     "net452": {

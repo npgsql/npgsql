@@ -1,0 +1,26 @@
+{
+  "version": "0.0.0",
+  "dependencies": {
+    "NUnit": "2.6.4",
+    "NLog": "3.2.0.0",
+    "EntityFramework6.Npgsql": "3.1.0-alpha2",
+    "Npgsql.Tests": "0.0.0"
+  },
+  "compilationOptions": {
+    "keyFile": "../../Npgsql.snk"
+  },
+  "frameworks": {
+    "net46": {
+      "dependencies": { },
+      "frameworkAssemblies": {
+        "System.Diagnostics.Contracts": "4.0.0.0",
+        "System.Runtime.Serialization": "4.0.0.0",
+        "System.Transactions": "4.0.0.0",
+        "System.DirectoryServices": "4.0.0.0",
+        "System.Data": "4.0.0.0",
+        "System.Xml": "4.0.0.0",
+        "System.Web": "4.0.0.0"
+      }
+    }
+  }
+}

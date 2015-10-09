@@ -60,7 +60,6 @@
     <Compile Include="EntityFrameworkMigrationTests.cs" />
     <Compile Include="Spatial\PostgisServiceTests.cs" />
     <Compile Include="xmlModel\XmlTest.ObjectLayer.cs" />
-    <Compile Include="xmlModel\XmlTest.Views.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
