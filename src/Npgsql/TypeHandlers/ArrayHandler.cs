@@ -320,7 +320,7 @@ namespace Npgsql.TypeHandlers
                         _dimensions * 8;  // dim (4) + lBound (4)
 
                     if (_buf.WriteSpaceLeft < len) {
-                        Contract.Assume(_buf.Size >= len, "Buffer too small for header");
+                        Contract.Assume(_buf.UsableSize >= len, "Buffer too small for header");
                         return false;
                     }
                     _buf.WriteInt32(_dimensions);
