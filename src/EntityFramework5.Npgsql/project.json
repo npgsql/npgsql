@@ -22,6 +22,7 @@
     "Hiroshi Saito"
   ],
   "description" : "PostgreSQL provider for Entity Framework 5",
+  "iconUrl": "http://www.npgsql.org/img/postgresql.gif",
   "repository": {
     "type": "git",
     "url": "git://github.com/npgsql/npgsql"

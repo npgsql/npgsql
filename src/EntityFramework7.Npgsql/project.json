@@ -4,6 +4,7 @@
     "Shay Rojansky"
   ],
   "description" : "PostgreSQL provider for Entity Framework 7",
+  "iconUrl": "http://www.npgsql.org/img/postgresql.gif",
   "repository": {
     "type": "git",
     "url": "git://github.com/npgsql/npgsql"
