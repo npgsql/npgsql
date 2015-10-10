@@ -45,7 +45,7 @@
         "System.Runtime": "4.0.0.0",
       }
     },
-    "dnx452": {
+    "dnx451": {
       "frameworkAssemblies": {
         "System.Collections": "4.0.0.0",
         "System.Data": "4.0.0.0",
