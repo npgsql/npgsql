@@ -9,6 +9,9 @@
     "type": "git",
     "url": "git://github.com/npgsql/npgsql"
   },
+  "compilationOptions": {
+    "keyFile": "../../Npgsql.snk"
+  },
   "dependencies" : {
     "EntityFramework.Core": "7.0.0-beta8-15964",
     "EntityFramework.Relational": "7.0.0-beta8-15964",
