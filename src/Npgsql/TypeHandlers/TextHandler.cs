@@ -91,7 +91,7 @@ namespace Npgsql.TypeHandlers
                     return true;
                 }
 
-                if (_byteLen <= _buf.Size) {
+                if (_byteLen <= _buf.UsableSize) {
                     // Don't have the entire string in the buffer, but it can fit. Force a read to fill.
                     result = null;
                     return false;
@@ -131,7 +131,7 @@ namespace Npgsql.TypeHandlers
                     return true;
                 }
 
-                if (_byteLen <= _buf.Size)
+                if (_byteLen <= _buf.UsableSize)
                 {
                     // Don't have the entire string in the buffer, but it can fit. Force a read to fill.
                     result = null;
@@ -317,7 +317,7 @@ namespace Npgsql.TypeHandlers
                     return true;
                 }
 
-                if (_byteLen <= _buf.Size)
+                if (_byteLen <= _buf.UsableSize)
                 {
                     // Buffer is currently too full, but the string can fit. Force a write to fill.
                     return false;

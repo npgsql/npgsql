@@ -273,6 +273,21 @@ namespace Npgsql.Tests
             Assert.That(ExecuteScalar("SELECT field FROM data"), Is.EqualTo(data));
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/816")]
+        public void ImportStringWithBufferLength()
+        {
+            ExecuteNonQuery("CREATE TEMP TABLE data (field TEXT)", Conn);
+
+            var data = new string('a', Conn.BufferSize);
+            using (var writer = Conn.BeginBinaryImport("COPY data (field) FROM STDIN BINARY"))
+            {
+                writer.StartRow();
+                writer.Write(data, NpgsqlDbType.Text);
+            }
+            Assert.That(Conn.Connector.Buffer.UsableSize, Is.EqualTo(Conn.Connector.Buffer.Size));
+            Assert.That(ExecuteScalar("SELECT field FROM data"), Is.EqualTo(data));
+        }
+
         [Test]
         [IssueLink("https://github.com/npgsql/npgsql/issues/662")]
         public void ImportDirectBuffer()

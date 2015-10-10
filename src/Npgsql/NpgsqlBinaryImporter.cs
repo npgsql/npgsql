@@ -26,6 +26,7 @@ using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
 using System.Text;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
@@ -93,6 +94,9 @@ namespace Npgsql
                 }
                 NumColumns = copyInResponse.NumColumns;
                 WriteHeader();
+
+                // We will be sending CopyData messages from now on, deduct the header from the buffer's usable size
+                _buf.UsableSize -= 5;
             }
             catch
             {
@@ -370,6 +374,7 @@ namespace Npgsql
         {
             _connector = null;
             _registry = null;
+            _buf.UsableSize = _buf.Size;
             _buf = null;
             _isDisposed = true;
         }

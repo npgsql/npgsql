@@ -36,7 +36,27 @@ namespace Npgsql
         #region Fields and Properties
 
         internal Stream Underlying { get; set; }
+        /// <summary>
+        /// The total byte length of the buffer.
+        /// </summary>
         internal int Size { get; }
+
+        /// <summary>
+        /// During copy operations, the buffer's usable size is smaller than its total size because of the CopyData
+        /// message header. This distinction is important since some type handlers check how much space is left
+        /// in the buffer in their decision making.
+        /// </summary>
+        internal int UsableSize
+        {
+            get { return _usableSize; }
+            set
+            {
+                Contract.Requires(value <= Size);
+                _usableSize = value;
+            }
+        }
+
+        int _usableSize;
         internal Encoding TextEncoding { get; }
 
         internal int ReadPosition { get; private set; }
@@ -82,6 +102,7 @@ namespace Npgsql
 
             Underlying = underlying;
             Size = size;
+            UsableSize = Size;
             _buf = new byte[Size];
             TextEncoding = textEncoding;
             _textDecoder = TextEncoding.GetDecoder();
