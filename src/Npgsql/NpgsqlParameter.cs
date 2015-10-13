@@ -289,9 +289,7 @@ namespace Npgsql
         /// </summary>
         /// <value>An <see cref="System.Object">Object</see> that is the value of the parameter.
         /// The default value is null.</value>
-#if !DNXCORE50
         [Category("Data")]
-#endif
         [TypeConverter(typeof(StringConverter))]
         public object NpgsqlValue
         {
@@ -316,9 +314,7 @@ namespace Npgsql
         /// <value>One of the <see cref="System.Data.ParameterDirection">ParameterDirection</see>
         /// values. The default is <b>Input</b>.</value>
         [DefaultValue(ParameterDirection.Input)]
-#if !DNXCORE50
         [Category("Data")]
-#endif
         public override ParameterDirection Direction { get; set; }
 
         // Implementation of IDbDataParameter
@@ -331,9 +327,7 @@ namespace Npgsql
         /// The default value is 0, which indicates that the data provider
         /// sets the precision for <b>Value</b>.</value>
         [DefaultValue((Byte)0)]
-#if !DNXCORE50
         [Category("Data")]
-#endif
 #if NET45
         public byte Precision
 #else
@@ -355,9 +349,7 @@ namespace Npgsql
         /// <value>The number of decimal places to which
         /// <see cref="NpgsqlParameter.Value">Value</see> is resolved. The default is 0.</value>
         [DefaultValue((Byte)0)]
-#if !DNXCORE50
         [Category("Data")]
-#endif
 #if NET45
         public byte Scale
 #else
@@ -378,9 +370,7 @@ namespace Npgsql
         /// <value>The maximum size, in bytes, of the data within the column.
         /// The default value is inferred from the parameter value.</value>
         [DefaultValue(0)]
-#if !DNXCORE50
         [Category("Data")]
-#endif
         public override int Size
         {
             get { return _size; }
@@ -401,9 +391,7 @@ namespace Npgsql
         /// </summary>
         /// <value>One of the <see cref="System.Data.DbType">DbType</see> values. The default is <b>Object</b>.</value>
         [DefaultValue(DbType.Object)]
-#if !DNXCORE50
         [Category("Data"), RefreshProperties(RefreshProperties.All)]
-#endif
         public override DbType DbType
         {
             get
@@ -439,9 +427,7 @@ namespace Npgsql
         /// </summary>
         /// <value>One of the <see cref="NpgsqlTypes.NpgsqlDbType">NpgsqlDbType</see> values. The default is <b>Unknown</b>.</value>
         [DefaultValue(NpgsqlDbType.Unknown)]
-#if !DNXCORE50
         [Category("Data"), RefreshProperties(RefreshProperties.All)]
-#endif
         public NpgsqlDbType NpgsqlDbType
         {
             get
@@ -509,9 +495,7 @@ namespace Npgsql
         /// <value>The name of the source column that is mapped to the
         /// <see cref="System.Data.DataSet">DataSet</see>. The default is an empty string.</value>
         [DefaultValue("")]
-#if !DNXCORE50
         [Category("Data")]
-#endif
         public override String SourceColumn { get; set; }
 
 #if !DNXCORE50

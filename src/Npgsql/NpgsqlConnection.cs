@@ -324,18 +324,14 @@ namespace Npgsql
         /// <summary>
         /// Backend server host name.
         /// </summary>
-#if !DNXCORE50
         [Browsable(true)]
-#endif
         [PublicAPI]
         public string Host => Settings.Host;
 
         /// <summary>
         /// Backend server port.
         /// </summary>
-#if !DNXCORE50
         [Browsable(true)]
-#endif
         [PublicAPI]
         public int Port => Settings.Port;
 
@@ -427,9 +423,7 @@ namespace Npgsql
         /// Gets the current state of the connection.
         /// </summary>
         /// <value>A bitwise combination of the <see cref="System.Data.ConnectionState">ConnectionState</see> values. The default is <b>Closed</b>.</value>
-#if !DNXCORE50
         [Browsable(false)]
-#endif
         public ConnectionState FullState
         {
             get
@@ -465,9 +459,7 @@ namespace Npgsql
         /// Gets whether the current state of the connection is Open or Closed
         /// </summary>
         /// <value>ConnectionState.Open, ConnectionState.Closed or ConnectionState.Connecting</value>
-#if !DNXCORE50
         [Browsable(false)]
-#endif
         public override ConnectionState State
         {
             get
@@ -797,9 +789,7 @@ namespace Npgsql
         /// Version of the PostgreSQL backend.
         /// This can only be called when there is an active connection.
         /// </summary>
-#if !DNXCORE50
         [Browsable(false)]
-#endif
         public Version PostgreSqlVersion
         {
             get
@@ -818,9 +808,7 @@ namespace Npgsql
         /// Process id of backend server.
         /// This can only be called when there is an active connection.
         /// </summary>
-#if !DNXCORE50
         [Browsable(false)]
-#endif
         // ReSharper disable once InconsistentNaming
         public int ProcessID
         {
@@ -837,9 +825,7 @@ namespace Npgsql
         /// In version 8.2, Postgres began supporting standard conformant strings, but defaulted this flag to false.
         /// As of version 9.1, this flag defaults to true.
         /// </summary>
-#if !DNXCORE50
         [Browsable(false)]
-#endif
         [PublicAPI]
         public bool UseConformantStrings
         {
@@ -853,9 +839,7 @@ namespace Npgsql
         /// <summary>
         /// Report whether the backend understands the string literal E prefix (>= 8.1).
         /// </summary>
-#if !DNXCORE50
         [Browsable(false)]
-#endif
         [PublicAPI]
         public bool SupportsEStringPrefix
         {

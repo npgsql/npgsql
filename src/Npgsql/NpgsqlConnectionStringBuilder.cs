@@ -269,10 +269,8 @@ namespace Npgsql
         /// <summary>
         /// The hostname or IP address of the PostgreSQL server to connect to.
         /// </summary>
-#if !DNXCORE50
         [Category("Connection")]
         [Description("The hostname or IP address of the PostgreSQL server to connect to.")]
-#endif
         [DisplayName("Host")]
         [NpgsqlConnectionStringProperty("Server")]
         public string Host
@@ -289,10 +287,8 @@ namespace Npgsql
         /// <summary>
         /// The TCP/IP port of the PostgreSQL server.
         /// </summary>
-#if !DNXCORE50
         [Category("Connection")]
         [Description("The TCP port of the PostgreSQL server.")]
-#endif
         [DisplayName("Port")]
         [NpgsqlConnectionStringProperty]
         [DefaultValue(NpgsqlConnection.DefaultPort)]
@@ -314,10 +310,8 @@ namespace Npgsql
         ///<summary>
         /// The PostgreSQL database to connect to.
         /// </summary>
-#if !DNXCORE50
         [Category("Connection")]
         [Description("The PostgreSQL database to connect to.")]
-#endif
         [DisplayName("Database")]
         [NpgsqlConnectionStringProperty("DB")]
         public string Database
@@ -334,10 +328,8 @@ namespace Npgsql
         /// <summary>
         /// The username to connect with. Not required if using IntegratedSecurity.
         /// </summary>
-#if !DNXCORE50
         [Category("Connection")]
         [Description("The username to connect with. Not required if using IntegratedSecurity.")]
-#endif
         [DisplayName("Username")]
         [NpgsqlConnectionStringProperty("User Name", "UserId", "User Id", "UID")]
         public string Username
@@ -364,11 +356,9 @@ namespace Npgsql
         /// <summary>
         /// The password to connect with. Not required if using IntegratedSecurity.
         /// </summary>
-#if !DNXCORE50
         [Category("Connection")]
         [Description("The password to connect with. Not required if using IntegratedSecurity.")]
         [PasswordPropertyText(true)]
-#endif
         [DisplayName("Password")]
         [NpgsqlConnectionStringProperty("PSW", "PWD")]
         public string Password
@@ -385,10 +375,8 @@ namespace Npgsql
         /// <summary>
         /// The optional application name parameter to be sent to the backend during connection initiation.
         /// </summary>
-#if !DNXCORE50
         [Category("Connection")]
         [Description("The optional application name parameter to be sent to the backend during connection initiation")]
-#endif
         [DisplayName("Application Name")]
         [NpgsqlConnectionStringProperty]
         public string ApplicationName
@@ -405,10 +393,8 @@ namespace Npgsql
         /// <summary>
         /// Whether to enlist in an ambient TransactionScope.
         /// </summary>
-#if !DNXCORE50
         [Category("Connection")]
         [Description("Whether to enlist in an ambient TransactionScope.")]
-#endif
         [DisplayName("Enlist")]
         [NpgsqlConnectionStringProperty]
         public bool Enlist
@@ -425,10 +411,8 @@ namespace Npgsql
         /// <summary>
         /// Gets or sets the schema search path.
         /// </summary>
-#if !DNXCORE50
         [Category("Connection")]
         [Description("Gets or sets the schema search path.")]
-#endif
         [DisplayName("Search Path")]
         [NpgsqlConnectionStringProperty]
         public string SearchPath
@@ -449,10 +433,8 @@ namespace Npgsql
         /// <summary>
         /// Controls whether SSL is required, disabled or preferred, depending on server support.
         /// </summary>
-#if !DNXCORE50
         [Category("Security")]
         [Description("Controls whether SSL is required, disabled or preferred, depending on server support.")]
-#endif
         [DisplayName("SSL Mode")]
         [NpgsqlConnectionStringProperty]
         public SslMode SslMode
@@ -469,10 +451,8 @@ namespace Npgsql
         /// <summary>
         /// Whether to trust the server certificate without validating it.
         /// </summary>
-#if !DNXCORE50
         [Category("Security")]
         [Description("Whether to trust the server certificate without validating it.")]
-#endif
         [DisplayName("Trust Server Certificate")]
         [NpgsqlConnectionStringProperty]
         public bool TrustServerCertificate
@@ -489,10 +469,8 @@ namespace Npgsql
         /// <summary>
         /// Npgsql uses its own internal implementation of TLS/SSL. Turn this on to use .NET SslStream instead.
         /// </summary>
-#if !DNXCORE50
         [Category("Security")]
         [Description("Npgsql uses its own internal implementation of TLS/SSL. Turn this on to use .NET SslStream instead.")]
-#endif
         [DisplayName("Use SSL Stream")]
         [NpgsqlConnectionStringProperty]
         public bool UseSslStream
@@ -509,10 +487,8 @@ namespace Npgsql
         /// <summary>
         /// Whether to use Windows integrated security to log in.
         /// </summary>
-#if !DNXCORE50
         [Category("Security")]
         [Description("Whether to use Windows integrated security to log in.")]
-#endif
         [DisplayName("Integrated Security")]
         [NpgsqlConnectionStringProperty]
         public bool IntegratedSecurity
@@ -533,10 +509,8 @@ namespace Npgsql
         /// <summary>
         /// The Kerberos service name to be used for authentication.
         /// </summary>
-#if !DNXCORE50
         [Category("Security")]
         [Description("The Kerberos service name to be used for authentication.")]
-#endif
         [DisplayName("Kerberos Service Name")]
         [NpgsqlConnectionStringProperty("Krbsrvname")]
         public string KerberosServiceName
@@ -553,10 +527,8 @@ namespace Npgsql
         /// <summary>
         /// The Kerberos realm to be used for authentication.
         /// </summary>
-#if !DNXCORE50
         [Category("Security")]
         [Description("The Kerberos realm to be used for authentication.")]
-#endif
         [DisplayName("Include Realm")]
         [NpgsqlConnectionStringProperty]
         public bool IncludeRealm
@@ -573,10 +545,8 @@ namespace Npgsql
         /// <summary>
         /// Gets or sets a Boolean value that indicates if security-sensitive information, such as the password, is not returned as part of the connection if the connection is open or has ever been in an open state.
         /// </summary>
-#if !DNXCORE50
         [Category("Security")]
         [Description("Gets or sets a Boolean value that indicates if security-sensitive information, such as the password, is not returned as part of the connection if the connection is open or has ever been in an open state.")]
-#endif
         [DisplayName("Persist Security Info")]
         [NpgsqlConnectionStringProperty]
         public bool PersistSecurityInfo
@@ -597,10 +567,8 @@ namespace Npgsql
         /// <summary>
         /// Whether connection pooling should be used.
         /// </summary>
-#if !DNXCORE50
         [Category("Pooling")]
         [Description("Whether connection pooling should be used.")]
-#endif
         [DisplayName("Pooling")]
         [NpgsqlConnectionStringProperty]
         [DefaultValue(true)]
@@ -618,10 +586,8 @@ namespace Npgsql
         /// <summary>
         /// The minimum connection pool size.
         /// </summary>
-#if !DNXCORE50
         [Category("Pooling")]
         [Description("The minimum connection pool size.")]
-#endif
         [DisplayName("Minimum Pool Size")]
         [NpgsqlConnectionStringProperty]
         [DefaultValue(1)]
@@ -643,10 +609,8 @@ namespace Npgsql
         /// <summary>
         /// The maximum connection pool size.
         /// </summary>
-#if !DNXCORE50
         [Category("Pooling")]
         [Description("The maximum connection pool size.")]
-#endif
         [DisplayName("Maximum Pool Size")]
         [NpgsqlConnectionStringProperty]
         [DefaultValue(20)]
@@ -676,10 +640,8 @@ namespace Npgsql
         /// This strategy provide smooth change of connection count in the pool.
         /// </remarks>
         /// <value>The time (in seconds) to wait. The default value is 15 seconds.</value>
-#if !DNXCORE50
         [Category("Pooling")]
         [Description("The time to wait before closing unused connections in the pool if the count of all connections exeeds MinPoolSize.")]
-#endif
         [DisplayName("Connection Lifetime")]
         [NpgsqlConnectionStringProperty]
         [DefaultValue(15)]
@@ -702,10 +664,8 @@ namespace Npgsql
         /// The time to wait (in seconds) while trying to establish a connection before terminating the attempt and generating an error.
         /// Defaults to 15 seconds.
         /// </summary>
-#if !DNXCORE50
         [Category("Timeouts")]
         [Description("The time to wait (in seconds) while trying to establish a connection before terminating the attempt and generating an error.")]
-#endif
         [DisplayName("Timeout")]
         [NpgsqlConnectionStringProperty]
         [DefaultValue(15)]
@@ -728,10 +688,8 @@ namespace Npgsql
         /// The time to wait (in seconds) while trying to execute a command before terminating the attempt and generating an error.
         /// Defaults to 30 seconds.
         /// </summary>
-#if !DNXCORE50
         [Category("Timeouts")]
         [Description("The time to wait (in seconds) while trying to execute a command before terminating the attempt and generating an error. Set to zero for infinity.")]
-#endif
         [DisplayName("Command Timeout")]
         [NpgsqlConnectionStringProperty]
         [DefaultValue(NpgsqlCommand.DefaultTimeout)]
@@ -753,10 +711,8 @@ namespace Npgsql
         /// <summary>
         /// The time to wait (in seconds) while trying to execute a an internal command before terminating the attempt and generating an error.
         /// </summary>
-#if !DNXCORE50
         [Category("Timeouts")]
         [Description("The time to wait (in seconds) while trying to execute a an internal command before terminating the attempt and generating an error. -1 uses CommandTimeout, 0 means no timeout.")]
-#endif
         [DisplayName("Internal Command Timeout")]
         [NpgsqlConnectionStringProperty]
         [DefaultValue(-1)]
@@ -780,10 +736,8 @@ namespace Npgsql
         /// Whether to have the backend enforce <see cref="CommandTimeout"/> and <see cref="InternalCommandTimeout"/>
         /// via the statement_timeout variable. Defaults to true.
         /// </summary>
-#if !DNXCORE50
         [Category("Timeouts")]
         [Description("Whether to have the backend enforce CommandTimeout and InternalCommandTimeout via the statement_timeout variable.")]
-#endif
         [DisplayName("Backend Timeouts")]
         [NpgsqlConnectionStringProperty]
         [DefaultValue(true)]
@@ -809,10 +763,8 @@ namespace Npgsql
         /// <remarks>
         /// http://www.postgresql.org/docs/current/static/manage-ag-templatedbs.html
         /// </remarks>
-#if !DNXCORE50
         [Category("Entity Framework")]
         [Description("The database template to specify when creating a database in Entity Framework. If not specified, PostgreSQL defaults to \"template1\".")]
-#endif
         [DisplayName("EF Template Database")]
         [NpgsqlConnectionStringProperty]
         public string EntityTemplateDatabase
@@ -831,10 +783,8 @@ namespace Npgsql
         /// Npgsql needs to connect to a database in order to send the create/drop database command.
         /// If not specified, defaults to "template1". Check NpgsqlServices.UsingPostgresDBConnection for more information.
         /// </summary>
-        #if !DNXCORE50
         [Category("Entity Framework")]
         [Description("The database admin to specify when creating and dropping a database in Entity Framework. If not specified, defaults to \"template1\".")]
-        #endif
         [DisplayName("EF Admin Database")]
         [NpgsqlConnectionStringProperty]
         public string EntityAdminDatabase
@@ -855,10 +805,8 @@ namespace Npgsql
         /// <summary>
         /// Whether to process messages that arrive between command activity.
         /// </summary>
-#if !DNXCORE50
         [Category("Advanced")]
         [Description("Whether to process messages that arrive between command activity.")]
-#endif
         [DisplayName("Continuous Processing")]
         [NpgsqlConnectionStringProperty("SyncNotification")]
         public bool ContinuousProcessing
@@ -876,10 +824,8 @@ namespace Npgsql
         /// The number of seconds of connection inactivity before Npgsql sends a keepalive query.
         /// Set to 0 (the default) to disable.
         /// </summary>
-#if !DNXCORE50
         [Category("Advanced")]
         [Description("The number of seconds of connection inactivity before Npgsql sends a keepalive query.")]
-#endif
         [DisplayName("Keepalive")]
         [NpgsqlConnectionStringProperty]
         public int KeepAlive
@@ -900,10 +846,8 @@ namespace Npgsql
         /// <summary>
         /// Gets or sets the buffer size.
         /// </summary>
-#if !DNXCORE50
         [Category("Advanced")]
         [Description("Determines the size of the internal buffer Npgsql uses when reading or writing. Increasing may improve performance if transferring large values from the database.")]
-#endif
         [DisplayName("Buffer Size")]
         [NpgsqlConnectionStringProperty]
         [DefaultValue(NpgsqlBuffer.DefaultBufferSize)]
@@ -925,10 +869,8 @@ namespace Npgsql
         /// <summary>
         /// A compatibility mode for special PostgreSQL server types.
         /// </summary>
-#if !DNXCORE50
         [Category("Compatibility")]
         [Description("A compatibility mode for special PostgreSQL server types.")]
-#endif
         [DisplayName("Server Compatibility Mode")]
         [NpgsqlConnectionStringProperty]
         public ServerCompatibilityMode ServerCompatibilityMode
@@ -945,10 +887,8 @@ namespace Npgsql
         /// <summary>
         /// Makes MaxValue and MinValue timestamps and dates readable as infinity and negative infinity.
         /// </summary>
-#if !DNXCORE50
         [Category("Compatibility")]
         [Description("Makes MaxValue and MinValue timestamps and dates readable as infinity and negative infinity.")]
-#endif
         [DisplayName("Convert Infinity DateTime")]
         [NpgsqlConnectionStringProperty]
         public bool ConvertInfinityDateTime
@@ -969,10 +909,8 @@ namespace Npgsql
         /// <summary>
         /// Obsolete, see https://github.com/npgsql/Npgsql/wiki/PreloadReader-Removal
         /// </summary>
-#if !DNXCORE50
         [Category("Obsolete")]
         [Description("Obsolete, see https://github.com/npgsql/Npgsql/wiki/PreloadReader-Removal")]
-#endif
         [DisplayName("Preload Reader")]
         [NpgsqlConnectionStringProperty]
         [Obsolete]
@@ -985,10 +923,8 @@ namespace Npgsql
         /// <summary>
         /// Obsolete, see https://github.com/npgsql/Npgsql/wiki/UseExtendedTypes-Removal
         /// </summary>
-#if !DNXCORE50
         [Category("Obsolete")]
         [Description("Obsolete, see https://github.com/npgsql/Npgsql/wiki/UseExtendedTypes-Removal")]
-#endif
         [DisplayName("Use Extended Types")]
         [NpgsqlConnectionStringProperty]
         [Obsolete]
@@ -1139,18 +1075,6 @@ namespace Npgsql
             }
         }
 
-#if DNXCORE50
-        [AttributeUsage(AttributeTargets.Property)]
-        class DisplayNameAttribute : Attribute
-        {
-            internal string DisplayName { get; private set; }
-
-            internal DisplayNameAttribute(string displayName)
-            {
-                DisplayName = displayName;
-            }
-        }
-#endif
         #endregion
     }
 

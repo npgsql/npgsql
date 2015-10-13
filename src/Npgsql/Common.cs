@@ -146,4 +146,55 @@ namespace Npgsql
         /// </summary>
         LSB = 1
     }
+
+    #region Component model attributes missing from CoreCLR
+
+#if DNXCORE50
+    [AttributeUsage(AttributeTargets.Property)]
+    class DisplayNameAttribute : Attribute
+    {
+        internal string DisplayName { get; private set; }
+
+        internal DisplayNameAttribute(string displayName)
+        {
+            DisplayName = displayName;
+        }
+    }
+
+    [AttributeUsage(AttributeTargets.Property)]
+    class CategoryAttribute : Attribute
+    {
+        internal CategoryAttribute(string category) {}
+    }
+
+    [AttributeUsage(AttributeTargets.Property)]
+    class DescriptionAttribute : Attribute
+    {
+        internal DescriptionAttribute(string description) {}
+    }
+
+    [AttributeUsage(AttributeTargets.Property)]
+    sealed class BrowsableAttribute : Attribute
+    {
+        public BrowsableAttribute(bool browsable) {}
+    }
+
+    [AttributeUsage(AttributeTargets.Property)]
+    sealed class PasswordPropertyTextAttribute : Attribute
+    {
+        public PasswordPropertyTextAttribute(bool password) {}
+    }
+
+    enum RefreshProperties {
+        All
+    }
+
+    [AttributeUsage(AttributeTargets.Property)]
+    sealed class RefreshPropertiesAttribute : Attribute
+    {
+        public RefreshPropertiesAttribute(RefreshProperties refreshProperties) {}
+    }
+#endif
+
+    #endregion
 }

@@ -156,9 +156,7 @@ namespace Npgsql
         /// </summary>
         /// <value>The Transact-SQL statement or stored procedure to execute. The default is an empty string.</value>
         [DefaultValue("")]
-#if !DNXCORE50
         [Category("Data")]
-#endif
         public override string CommandText
         {
             get { return _commandText; }
@@ -200,9 +198,7 @@ namespace Npgsql
         /// </summary>
         /// <value>One of the <see cref="System.Data.CommandType">CommandType</see> values. The default is <see cref="System.Data.CommandType">CommandType.Text</see>.</value>
         [DefaultValue(CommandType.Text)]
-#if !DNXCORE50
         [Category("Data")]
-#endif
         public override CommandType CommandType { get; set; }
 
         /// <summary>
@@ -220,9 +216,7 @@ namespace Npgsql
         /// </summary>
         /// <value>The connection to a data source. The default value is a null reference.</value>
         [DefaultValue(null)]
-#if !DNXCORE50
         [Category("Behavior")]
-#endif
         public new NpgsqlConnection Connection
         {
             get { return _connection; }
@@ -262,9 +256,7 @@ namespace Npgsql
         /// method of the <see cref="System.Data.Common.DbDataAdapter">DbDataAdapter</see>.
         /// </summary>
         /// <value>One of the <see cref="System.Data.UpdateRowSource">UpdateRowSource</see> values.</value>
-#if WITHDESIGN
         [Category("Behavior"), DefaultValue(UpdateRowSource.Both)]
-#endif
         public override UpdateRowSource UpdatedRowSource
         {
             get { return _updateRowSource; }
