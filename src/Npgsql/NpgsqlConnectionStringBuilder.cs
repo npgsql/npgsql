@@ -42,7 +42,7 @@ namespace Npgsql
     /// </summary>
     public sealed class NpgsqlConnectionStringBuilder : DbConnectionStringBuilder
     {
-#region Fields
+        #region Fields
 
         /// <summary>
         /// Makes all valid keywords for a property to that property (e.g. User Name -> Username, UserId -> Username...)
@@ -62,9 +62,9 @@ namespace Npgsql
 
         static readonly string[] Empty = new string[0];
 
-#endregion
+        #endregion
 
-#region Constructors
+        #region Constructors
 
         /// <summary>
         /// Initializes a new instance of the NpgsqlConnectionStringBuilder class.
@@ -96,9 +96,9 @@ namespace Npgsql
             }
         }
 
-#endregion
+        #endregion
 
-#region Static initialization
+        #region Static initialization
 
         static NpgsqlConnectionStringBuilder()
         {
@@ -138,9 +138,9 @@ namespace Npgsql
             );
         }
 
-#endregion
+        #endregion
 
-#region Non-static property handling
+        #region Non-static property handling
 
         /// <summary>
         /// Gets or sets the value associated with the specified key.
@@ -262,9 +262,9 @@ namespace Npgsql
             }
         }
 
-#endregion
+        #endregion
 
-#region Properties - Connection
+        #region Properties - Connection
 
         /// <summary>
         /// The hostname or IP address of the PostgreSQL server to connect to.
@@ -442,9 +442,9 @@ namespace Npgsql
         }
         string _searchpath;
 
-#endregion
+        #endregion
 
-#region Properties - Security
+        #region Properties - Security
 
         /// <summary>
         /// Controls whether SSL is required, disabled or preferred, depending on server support.
@@ -590,9 +590,9 @@ namespace Npgsql
         }
         bool _persistSecurityInfo;
 
-#endregion
+        #endregion
 
-#region Properties - Pooling
+        #region Properties - Pooling
 
         /// <summary>
         /// Whether connection pooling should be used.
@@ -694,9 +694,9 @@ namespace Npgsql
         }
         int _connectionLifeTime;
 
-#endregion
+        #endregion
 
-#region Properties - Timeouts
+        #region Properties - Timeouts
 
         /// <summary>
         /// The time to wait (in seconds) while trying to establish a connection before terminating the attempt and generating an error.
@@ -798,9 +798,9 @@ namespace Npgsql
         }
         bool _backendTimeouts;
 
-#endregion
+        #endregion
 
-#region Properties - Entity Framework
+        #region Properties - Entity Framework
 
         /// <summary>
         /// The database template to specify when creating a database in Entity Framework. If not specified,
@@ -848,9 +848,9 @@ namespace Npgsql
         }
         string _entityAdminDatabase;
 
-#endregion
+        #endregion
 
-#region Properties - Advanced
+        #region Properties - Advanced
 
         /// <summary>
         /// Whether to process messages that arrive between command activity.
@@ -918,9 +918,9 @@ namespace Npgsql
         }
         int _bufferSize;
 
-#endregion
+        #endregion
 
-#region Properties - Compatibility
+        #region Properties - Compatibility
 
         /// <summary>
         /// A compatibility mode for special PostgreSQL server types.
@@ -962,9 +962,9 @@ namespace Npgsql
         }
         bool _convertInfinityDateTime;
 
-#endregion
+        #endregion
 
-#region Properties - Obsolete
+        #region Properties - Obsolete
 
         /// <summary>
         /// Obsolete, see https://github.com/npgsql/Npgsql/wiki/PreloadReader-Removal
@@ -998,9 +998,9 @@ namespace Npgsql
             set { throw new NotSupportedException("The UseExtendedTypes parameter is no longer supported. Please see https://github.com/npgsql/Npgsql/wiki/UseExtendedTypes-Removal"); }
         }
 
-#endregion
+        #endregion
 
-#region Integrated security support
+        #region Integrated security support
 
         /// <summary>
         /// No integrated security if we're on mono and .NET 4.5 because of ClaimsIdentity,
