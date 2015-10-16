@@ -1,5 +1,5 @@
 ﻿{
-  "version": "3.1.0-*",
+  "version": "3.1.0-alpha2",
   "owners": [
     "Shay Rojansky",
     "Emil Lenngren",
@@ -28,8 +28,7 @@
     "url": "git://github.com/npgsql/npgsql"
   },
   "compilationOptions": {
-    "define": [ "ENTITIES6" ],
-    "keyFile": "../../Npgsql.snk"
+    "define": [ "ENTITIES6" ]
   },
   "dependencies" : {
     "EntityFramework": "6.1.3",

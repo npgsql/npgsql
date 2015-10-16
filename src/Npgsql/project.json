@@ -1,5 +1,5 @@
 {
-  "version": "3.1.0-*",
+  "version": "3.1.0-alpha2",
   "owners": [
     "Shay Rojansky",
     "Emil Lenngren",
@@ -28,8 +28,7 @@
     "url": "git://github.com/npgsql/npgsql"
   },
   "compilationOptions": {
-    "define": [ "__MonoCS__" ],
-    "keyFile": "../../Npgsql.snk"
+    "define": [ "__MonoCS__" ]
   },
   "commands": {
     "rewrite-async": "AsyncRewriter"

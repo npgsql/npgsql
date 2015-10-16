@@ -1,5 +1,5 @@
 ﻿{
-  "version": "3.1.0-*",
+  "version": "3.1.0-beta8-1",
   "authors": [
     "Shay Rojansky"
   ],
@@ -9,15 +9,12 @@
     "type": "git",
     "url": "git://github.com/npgsql/npgsql"
   },
-  "compilationOptions": {
-    "keyFile": "../../Npgsql.snk"
-  },
   "dependencies" : {
-    "EntityFramework.Core": "7.0.0-beta8-15964",
-    "EntityFramework.Relational": "7.0.0-beta8-15964",
-    "Microsoft.Framework.DependencyInjection": "1.0.0-*",
-    "Microsoft.Framework.DependencyInjection.Abstractions": "1.0.0-*",
-    "Npgsql": "3.1.0-*",
+    "EntityFramework.Core": "7.0.0-beta8",
+    "EntityFramework.Relational": "7.0.0-beta8",
+    "Microsoft.Framework.DependencyInjection": "1.0.0-beta8",
+    "Microsoft.Framework.DependencyInjection.Abstractions": "1.0.0-beta8",
+    "Npgsql": "3.1.0-alpha2",
   },
   "frameworks": {
     "net45": {
