@@ -16,8 +16,6 @@ namespace EntityFramework7.Npgsql.FunctionalTests
         public class GraphUpdatesNpgsqlFixture : GraphUpdatesNpgsqlFixtureBase
         {
             protected override string DatabaseName => "GraphUpdatesTest";
-
-            public override int IntSentinel => 0;
         }
     }
 }

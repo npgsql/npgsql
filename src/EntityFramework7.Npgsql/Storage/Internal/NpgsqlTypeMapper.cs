@@ -19,30 +19,31 @@ namespace Microsoft.Data.Entity.Storage.Internal
     public class NpgsqlTypeMapper : RelationalTypeMapper
     {
         // No tinyint in PostgreSQL
-        readonly RelationalTypeMapping _tinyint     = new RelationalTypeMapping("smallint", DbType.Byte);
-        readonly RelationalTypeMapping _smallint    = new RelationalTypeMapping("smallint", DbType.Int16);
-        readonly RelationalTypeMapping _int         = new RelationalTypeMapping("int", DbType.Int32);
-        readonly RelationalTypeMapping _bigint      = new RelationalTypeMapping("bigint", DbType.Int64);
-        readonly RelationalTypeMapping _real        = new RelationalTypeMapping("real", DbType.Single);
-        readonly RelationalTypeMapping _double      = new RelationalTypeMapping("double precision", DbType.Double);
-        readonly RelationalTypeMapping _decimal     = new RelationalTypeMapping("numeric", DbType.Decimal);
+        readonly RelationalTypeMapping _tinyint     = new RelationalTypeMapping("smallint", typeof(byte), DbType.Byte);
+        readonly RelationalTypeMapping _smallint    = new RelationalTypeMapping("smallint", typeof(byte), DbType.Int16);
+        readonly RelationalTypeMapping _int         = new RelationalTypeMapping("int", typeof(int), DbType.Int32);
+        readonly RelationalTypeMapping _bigint      = new RelationalTypeMapping("bigint", typeof(long), DbType.Int64);
+        readonly RelationalTypeMapping _real        = new RelationalTypeMapping("real", typeof(float), DbType.Single);
+        readonly RelationalTypeMapping _double      = new RelationalTypeMapping("double precision", typeof(double), DbType.Double);
+        readonly RelationalTypeMapping _decimal     = new RelationalTypeMapping("numeric", typeof(decimal), DbType.Decimal);
 
         // TODO: Look at the SqlServerMaxLengthMapping optimization, it may be relevant for us too
-        readonly RelationalTypeMapping _text        = new RelationalTypeMapping("text", DbType.String);
+        readonly RelationalTypeMapping _text        = new RelationalTypeMapping("text", typeof(string), DbType.String);
         // TODO: The other text types, char
-        readonly RelationalTypeMapping _bytea       = new RelationalTypeMapping("bytea", DbType.Binary);
+        readonly RelationalTypeMapping _bytea       = new RelationalTypeMapping("bytea", typeof(byte[]), DbType.Binary);
 
-        readonly RelationalTypeMapping _timestamp   = new RelationalTypeMapping("timestamp", DbType.DateTime);
-        readonly RelationalTypeMapping _timestamptz = new RelationalTypeMapping("timestamptz", DbType.DateTimeOffset);
-        readonly RelationalTypeMapping _date        = new RelationalTypeMapping("date", DbType.Date);
-        readonly RelationalTypeMapping _time        = new RelationalTypeMapping("time", DbType.Time);
+        readonly RelationalTypeMapping _timestamp   = new RelationalTypeMapping("timestamp", typeof(DateTime), DbType.DateTime);
+        readonly RelationalTypeMapping _timestamptz = new RelationalTypeMapping("timestamptz", typeof(DateTime), DbType.DateTimeOffset);
+        readonly RelationalTypeMapping _date        = new RelationalTypeMapping("date", typeof(DateTime), DbType.Date);
+        readonly RelationalTypeMapping _time        = new RelationalTypeMapping("time", typeof(TimeSpan), DbType.Time);
         // TODO: DbType?
-        readonly RelationalTypeMapping _timetz      = new RelationalTypeMapping("timetz");
-        readonly RelationalTypeMapping _interval    = new RelationalTypeMapping("interval");
+        readonly RelationalTypeMapping _timetz      = new RelationalTypeMapping("timetz", typeof(DateTimeOffset));
+        readonly RelationalTypeMapping _interval    = new RelationalTypeMapping("interval", typeof(TimeSpan));
 
-        readonly RelationalTypeMapping _uuid        = new RelationalTypeMapping("uuid", DbType.Guid);
-        readonly RelationalTypeMapping _bit         = new RelationalTypeMapping("bit");
-        readonly RelationalTypeMapping _bool        = new RelationalTypeMapping("bool", DbType.Boolean);
+        readonly RelationalTypeMapping _uuid        = new RelationalTypeMapping("uuid", typeof(Guid), DbType.Guid);
+        // TODO: BIT(1) vs. BIT(N)
+        readonly RelationalTypeMapping _bit         = new RelationalTypeMapping("bit", typeof(BitArray));
+        readonly RelationalTypeMapping _bool        = new RelationalTypeMapping("bool", typeof(bool), DbType.Boolean);
 
         private readonly Dictionary<string, RelationalTypeMapping> _simpleNameMappings;
         private readonly Dictionary<Type, RelationalTypeMapping> _simpleMappings;

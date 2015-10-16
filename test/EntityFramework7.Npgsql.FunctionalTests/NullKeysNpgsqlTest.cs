@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.Data.Entity;
 using Microsoft.Data.Entity.FunctionalTests;
 using Microsoft.Data.Entity.Infrastructure;
-using Microsoft.Framework.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace EntityFramework7.Npgsql.FunctionalTests
 {

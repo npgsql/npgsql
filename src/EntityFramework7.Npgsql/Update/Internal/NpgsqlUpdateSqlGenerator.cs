@@ -123,9 +123,11 @@ namespace Microsoft.Data.Entity.Update.Internal
             commandStringBuilder
                 .Append(SqlGenerator.DelimitIdentifier(columnModification.ColumnName))
                 .Append(" IS NOT DISTINCT FROM ")
-                .Append(useOriginalValue
-                    ? columnModification.OriginalParameterName
-                    : columnModification.ParameterName);
+                .Append(
+                    SqlGenerator.GenerateParameterName(
+                        useOriginalValue
+                            ? columnModification.OriginalParameterName
+                            : columnModification.ParameterName));
         }
 
         public override void AppendBatchHeader(StringBuilder commandStringBuilder)

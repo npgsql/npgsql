@@ -17,9 +17,6 @@ namespace Microsoft.Data.Entity.Migrations
 {
     public class NpgsqlMigrationsSqlGenerator : MigrationsSqlGenerator
     {
-        // TODO: It's weird that we need this here, other providers don't
-        readonly NpgsqlTypeMapper _typeMapper;
-
         public NpgsqlMigrationsSqlGenerator(
             [NotNull] IRelationalCommandBuilderFactory commandBuilderFactory,
             [NotNull] ISqlGenerator sqlGenerator,
@@ -27,7 +24,6 @@ namespace Microsoft.Data.Entity.Migrations
             [NotNull] IRelationalAnnotationProvider annotations)
             : base(commandBuilderFactory, sqlGenerator, typeMapper, annotations)
         {
-            _typeMapper = (NpgsqlTypeMapper)typeMapper;
         }
 
         protected override void Generate(MigrationOperation operation, IModel model, RelationalCommandListBuilder builder)
@@ -35,8 +31,8 @@ namespace Microsoft.Data.Entity.Migrations
             Check.NotNull(operation, nameof(operation));
             Check.NotNull(builder, nameof(builder));
 
-            var createDatabaseOperation = operation as CreateDatabaseOperation;
-            var dropDatabaseOperation = operation as DropDatabaseOperation;
+            var createDatabaseOperation = operation as NpgsqlCreateDatabaseOperation;
+            var dropDatabaseOperation = operation as NpgsqlDropDatabaseOperation;
             if (createDatabaseOperation != null)
             {
                 Generate(createDatabaseOperation, model, builder);
@@ -65,8 +61,8 @@ namespace Microsoft.Data.Entity.Migrations
             {
                 var property = FindProperty(model, operation.Schema, operation.Table, operation.Name);
                 type = property != null
-                    ? _typeMapper.GetMapping(property).DefaultTypeName
-                    : _typeMapper.GetMapping(operation.ClrType).DefaultTypeName;
+                    ? TypeMapper.GetMapping(property).DefaultTypeName
+                    : TypeMapper.GetMapping(operation.ClrType).DefaultTypeName;
             }
 
             var isSerial = false;
@@ -267,7 +263,7 @@ namespace Microsoft.Data.Entity.Migrations
             builder.Append("SELECT pg_temp.__ef_ensure_schema()").AppendLine(SqlGenerator.BatchCommandSeparator);
         }
 
-        public virtual void Generate(CreateDatabaseOperation operation, IModel model, RelationalCommandListBuilder builder)
+        public virtual void Generate(NpgsqlCreateDatabaseOperation operation, IModel model, RelationalCommandListBuilder builder)
         {
             Check.NotNull(operation, nameof(operation));
             Check.NotNull(builder, nameof(builder));
@@ -278,7 +274,7 @@ namespace Microsoft.Data.Entity.Migrations
                 .AppendLine(SqlGenerator.BatchCommandSeparator);
         }
 
-        public virtual void Generate(DropDatabaseOperation operation, IModel model, RelationalCommandListBuilder builder)
+        public virtual void Generate(NpgsqlDropDatabaseOperation operation, IModel model, RelationalCommandListBuilder builder)
         {
             Check.NotNull(operation, nameof(operation));
             Check.NotNull(builder, nameof(builder));
@@ -350,8 +346,8 @@ namespace Microsoft.Data.Entity.Migrations
             {
                 var property = FindProperty(model, schema, table, name);
                 type = property != null
-                    ? _typeMapper.GetMapping(property).DefaultTypeName
-                    : _typeMapper.GetMapping(clrType).DefaultTypeName;
+                    ? TypeMapper.GetMapping(property).DefaultTypeName
+                    : TypeMapper.GetMapping(clrType).DefaultTypeName;
             }
 
             // TODO: Maybe implement computed columns via functions?

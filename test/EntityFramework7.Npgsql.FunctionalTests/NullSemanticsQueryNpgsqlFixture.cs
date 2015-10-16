@@ -6,8 +6,8 @@ using Microsoft.Data.Entity;
 using Microsoft.Data.Entity.FunctionalTests;
 using Microsoft.Data.Entity.FunctionalTests.TestModels.NullSemantics;
 using Microsoft.Data.Entity.FunctionalTests.TestModels.NullSemanticsModel;
-using Microsoft.Framework.DependencyInjection;
-using Microsoft.Framework.Logging;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace EntityFramework7.Npgsql.FunctionalTests
 {
@@ -55,11 +55,14 @@ namespace EntityFramework7.Npgsql.FunctionalTests
         {
             var optionsBuilder = new DbContextOptionsBuilder();
 
-            var NpgsqlOptions = optionsBuilder.UseNpgsql(testStore.Connection);
+            var npgsqlOptions
+                = optionsBuilder
+                    .EnableSensitiveDataLogging()
+                    .UseNpgsql(testStore.Connection);
 
             if (useRelationalNulls)
             {
-                NpgsqlOptions.UseRelationalNulls();
+                npgsqlOptions.UseRelationalNulls();
             }
 
             var context = new NullSemanticsContext(_serviceProvider, optionsBuilder.Options);

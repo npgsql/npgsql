@@ -9,7 +9,7 @@ using Microsoft.Data.Entity.ChangeTracking.Internal;
 using Microsoft.Data.Entity.FunctionalTests;
 using Microsoft.Data.Entity.FunctionalTests.TestModels;
 using Microsoft.Data.Entity.Infrastructure;
-using Microsoft.Framework.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 
 namespace EntityFramework7.Npgsql.FunctionalTests

@@ -6,8 +6,8 @@ using System.Threading.Tasks;
 using Microsoft.Data.Entity;
 using Microsoft.Data.Entity.FunctionalTests;
 using Microsoft.Data.Entity.FunctionalTests.TestModels.GearsOfWarModel;
-using Microsoft.Framework.DependencyInjection;
-using Microsoft.Framework.Logging;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace EntityFramework7.Npgsql.FunctionalTests
 {
@@ -54,7 +54,9 @@ namespace EntityFramework7.Npgsql.FunctionalTests
         public override GearsOfWarContext CreateContext(NpgsqlTestStore testStore)
         {
             var optionsBuilder = new DbContextOptionsBuilder();
-            optionsBuilder.UseNpgsql(testStore.Connection);
+            optionsBuilder
+                .EnableSensitiveDataLogging()
+                .UseNpgsql(testStore.Connection);
 
             var context = new GearsOfWarContext(_serviceProvider, optionsBuilder.Options);
             context.Database.UseTransaction(testStore.Transaction);

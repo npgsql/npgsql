@@ -7,8 +7,8 @@ using Microsoft.Data.Entity;
 using Microsoft.Data.Entity.FunctionalTests;
 using Microsoft.Data.Entity.FunctionalTests.TestModels.Inheritance;
 using Microsoft.Data.Entity.Infrastructure;
-using Microsoft.Framework.DependencyInjection;
-using Microsoft.Framework.Logging;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace EntityFramework7.Npgsql.FunctionalTests
 {
@@ -31,7 +31,11 @@ namespace EntityFramework7.Npgsql.FunctionalTests
             var testStore = NpgsqlTestStore.CreateScratch();
 
             var optionsBuilder = new DbContextOptionsBuilder();
-            optionsBuilder.UseNpgsql(testStore.Connection);
+
+            optionsBuilder
+                .EnableSensitiveDataLogging()
+                .UseNpgsql(testStore.Connection);
+
             _options = optionsBuilder.Options;
 
             // TODO: Do this via migrations & update pipeline

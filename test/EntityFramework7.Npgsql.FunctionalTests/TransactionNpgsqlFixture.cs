@@ -4,7 +4,7 @@
 using System;
 using System.Data.Common;
 using Microsoft.Data.Entity;
-using Microsoft.Framework.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Data.Entity.FunctionalTests;
 
 namespace EntityFramework7.Npgsql.FunctionalTests

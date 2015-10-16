@@ -29,17 +29,13 @@ namespace Microsoft.Data.Entity.Update.Internal
     /// </remarks>
     public class NpgsqlModificationCommandBatch : ReaderModificationCommandBatch
     {
-        private readonly IRelationalValueBufferFactoryFactory _valueBufferFactoryFactory;
-
         public NpgsqlModificationCommandBatch(
             [NotNull] IRelationalCommandBuilderFactory commandBuilderFactory,
-            [NotNull] IUpdateSqlGenerator sqlGenerator,
+            [NotNull] ISqlGenerator sqlGenerator,
+            [NotNull] IUpdateSqlGenerator updateSqlGenerator,
             [NotNull] IRelationalValueBufferFactoryFactory valueBufferFactoryFactory)
-            : base(commandBuilderFactory, sqlGenerator)
+            : base(commandBuilderFactory, sqlGenerator, updateSqlGenerator, valueBufferFactoryFactory)
         {
-            Check.NotNull(valueBufferFactoryFactory, nameof(valueBufferFactoryFactory));
-
-            _valueBufferFactoryFactory = valueBufferFactoryFactory;
         }
 
         protected override bool CanAddCommand(ModificationCommand modificationCommand)
@@ -183,15 +179,5 @@ namespace Microsoft.Data.Entity.Update.Internal
                     ModificationCommands[commandIndex].Entries);
             }
         }
-
-        // TODO: Remove this after https://github.com/aspnet/EntityFramework/pull/3319 is merged
-        private IRelationalValueBufferFactory CreateValueBufferFactory(IReadOnlyList<ColumnModification> columnModifications)
-            => _valueBufferFactoryFactory
-                .Create(
-                    columnModifications
-                        .Where(c => c.IsRead)
-                        .Select(c => c.Property.ClrType)
-                        .ToArray(),
-                    indexMap: null);
     }
 }

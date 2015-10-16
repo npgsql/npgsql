@@ -9,8 +9,8 @@ using Microsoft.Data.Entity;
 using Microsoft.Data.Entity.FunctionalTests;
 using Microsoft.Data.Entity.FunctionalTests.TestModels.Northwind;
 using Microsoft.Data.Entity.Infrastructure;
-using Microsoft.Framework.DependencyInjection;
-using Microsoft.Framework.Logging;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace EntityFramework7.Npgsql.FunctionalTests
 {
@@ -43,7 +43,9 @@ namespace EntityFramework7.Npgsql.FunctionalTests
             var optionsBuilder = new DbContextOptionsBuilder();
 
             var NpgsqlDbContextOptionsBuilder
-                = optionsBuilder.UseNpgsql(_testStore.Connection.ConnectionString);
+                = optionsBuilder
+                    .EnableSensitiveDataLogging()
+                    .UseNpgsql(_testStore.Connection.ConnectionString);
 
             ConfigureOptions(NpgsqlDbContextOptionsBuilder);
 

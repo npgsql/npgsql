@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "EntityFramework.Relational.FunctionalTests": "7.0.0-beta8-15964",
+    "EntityFramework.Relational.FunctionalTests": "7.0.0-rc1-16105",
     "EntityFramework7.Npgsql": "3.1.0-*"
   },
   "commands": {

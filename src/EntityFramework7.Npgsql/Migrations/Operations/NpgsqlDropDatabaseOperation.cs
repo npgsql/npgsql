@@ -5,7 +5,7 @@ using JetBrains.Annotations;
 
 namespace Microsoft.Data.Entity.Migrations.Operations
 {
-    public class DropDatabaseOperation : MigrationOperation
+    public class NpgsqlDropDatabaseOperation : MigrationOperation
     {
         public virtual string Name { get;[param: NotNull] set; }
     }

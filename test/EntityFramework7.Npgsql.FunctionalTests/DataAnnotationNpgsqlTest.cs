@@ -52,7 +52,7 @@ WHERE ""UniqueNo"" IS NOT DISTINCT FROM @p2 AND ""RowVersion"" IS NOT DISTINCT F
         {
             base.DatabaseGeneratedAttribute_autogenerates_values_when_set_to_identity();
 
-            Assert.Equal(@"@p0: 
+            Assert.Equal(@"@p0:
 @p1: Third
 @p2: 00000000-0000-0000-0000-000000000003
 
@@ -75,17 +75,17 @@ RETURNING ""UniqueNo"";",
         {
             base.RequiredAttribute_for_navigation_throws_while_inserting_null_value();
 
-            Assert.Equal(@"@p0: Book1
+            Assert.Equal(@"@p0: 0
+@p1: Book1
 
-INSERT INTO ""BookDetail"" (""BookId"")
-VALUES (@p0)
-RETURNING ""Id"";
+INSERT INTO ""BookDetail"" (""Id"", ""BookId"")
+VALUES (@p0, @p1);
 
-@p0:
+@p0: 0
+@p1: 
 
-INSERT INTO ""BookDetail"" (""BookId"")
-VALUES (@p0)
-RETURNING ""Id"";",
+INSERT INTO ""BookDetail"" (""Id"", ""BookId"")
+VALUES (@p0, @p1);",
                 Sql);
         }
 
@@ -93,7 +93,7 @@ RETURNING ""Id"";",
         {
             base.RequiredAttribute_for_property_throws_while_inserting_null_value();
 
-            Assert.Equal(@"@p0: 
+            Assert.Equal(@"@p0:
 @p1: ValidString
 @p2: 00000000-0000-0000-0000-000000000001
 
@@ -101,8 +101,8 @@ INSERT INTO ""Sample"" (""MaxLengthProperty"", ""Name"", ""RowVersion"")
 VALUES (@p0, @p1, @p2)
 RETURNING ""UniqueNo"";
 
-@p0: 
-@p1: 
+@p0:
+@p1:
 @p2: 00000000-0000-0000-0000-000000000002
 
 INSERT INTO ""Sample"" (""MaxLengthProperty"", ""Name"", ""RowVersion"")
