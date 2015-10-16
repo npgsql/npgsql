@@ -9,7 +9,7 @@
   "frameworks": {
     "net46": {
       "frameworkAssemblies": {
-        "System.Threading.Tasks": "4.0.0.0"
+        "System.Threading.Tasks": { "version": "4.0.0.0", "type": "build" }
       }
     },
     "dnx452": {
