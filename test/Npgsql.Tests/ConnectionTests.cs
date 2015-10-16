@@ -704,6 +704,20 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/824")]
+        public void ReloadTypes()
+        {
+            using (var conn = new NpgsqlConnection(ConnectionString))
+            {
+                conn.Open();
+                Assert.That(ExecuteScalar("SELECT EXISTS (SELECT * FROM pg_type WHERE typname='reload_types_enum')"), Is.False);
+                ExecuteNonQuery("CREATE TYPE pg_temp.reload_types_enum AS ENUM ('First', 'Second')");
+                conn.ReloadTypes();
+                conn.RegisterEnum<ReloadTypesEnum>("reload_types_enum");
+            }
+        }
+        enum ReloadTypesEnum { First, Second };
+
         [Test]
         [IssueLink("https://github.com/npgsql/npgsql/issues/736")]
         public void ManyOpenClose()

@@ -1272,7 +1272,7 @@ namespace Npgsql
         /// Flushes the type cache for this connection's connection string and reloads the
         /// types for this connection only.
         /// </summary>
-        internal void ReloadTypes()
+        public void ReloadTypes()
         {
             TypeHandlerRegistry.ClearBackendTypeCache(ConnectionString);
             TypeHandlerRegistry.Setup(Connector);
