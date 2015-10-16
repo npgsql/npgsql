@@ -1255,7 +1255,7 @@ namespace Npgsql
 
         #endregion State checks
 
-#region Schema operations
+        #region Schema operations
 #if !DNXCORE50
         /// <summary>
         /// Returns the supported collections
@@ -1328,9 +1328,9 @@ namespace Npgsql
         }
 
 #endif
-#endregion Schema operations
+        #endregion Schema operations
 
-#region Misc
+        #region Misc
 
 #if !DNXCORE50
         object ICloneable.Clone()
@@ -1403,10 +1403,10 @@ namespace Npgsql
             TypeHandlerRegistry.Setup(Connector, new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout)));
         }
 
-#endregion Misc
+        #endregion Misc
     }
 
-#region Delegates
+    #region Delegates
 
     /// <summary>
     /// Represents the method that handles the <see cref="NpgsqlConnection.Notification">Notice</see> events.
@@ -1428,5 +1428,5 @@ namespace Npgsql
     /// <param name="certificates">A <see cref="System.Security.Cryptography.X509Certificates.X509CertificateCollection">X509CertificateCollection</see> to be filled with one or more client certificates.</param>
     public delegate void ProvideClientCertificatesCallback(X509CertificateCollection certificates);
 
-#endregion
+    #endregion
 }
