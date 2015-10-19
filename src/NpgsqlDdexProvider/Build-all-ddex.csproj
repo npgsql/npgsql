@@ -27,14 +27,12 @@
     </ProjectToBuild>
     
     <ProjectToBuild Include="NpgsqlDdexProvider2012.csproj">
-      <Properties Condition="'$(Configuration)' == 'Debug'">Configuration=Debug-net45</Properties>
-      <Properties Condition="'$(Configuration)' == 'Release'">Configuration=Release-net45</Properties>
     </ProjectToBuild>
     
     <ProjectToBuild Include="NpgsqlDdexProvider2013.csproj">
     </ProjectToBuild>
     
-    <ProjectToBuild Include="../NpgsqlDdexProvider2015/NpgsqlDdexProvider2015.csproj">
+    <ProjectToBuild Include="NpgsqlDdexProvider2015.csproj">
     </ProjectToBuild>
     
   </ItemGroup>
