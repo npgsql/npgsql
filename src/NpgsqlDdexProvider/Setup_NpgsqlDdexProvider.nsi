@@ -110,6 +110,7 @@ Section "NpgsqlDdexProvider(Vs2015)" SecDdex2015
     ReadRegStr $0 HKLM "SOFTWARE\Microsoft\VisualStudio\14.0" "InstallDir"
     StrCpy $1 "$0VSIXInstaller.exe"
     StrCpy $2 "$0devenv.exe.config"
+    StrCpy $3 "$0Extensions\Microsoft\Entity Framework Tools\DBGen"
   ${EndIf}
 
   ${If} ${FileExists} $1
@@ -130,6 +131,10 @@ Section "NpgsqlDdexProvider(Vs2015)" SecDdex2015
 
     ExecWait '$0' $1
     DetailPrint "RetCode: $1"
+  ${EndIf}
+
+  ${If} ${FileExists} $3
+    File "/oname=$3\SSDLToPgSQL.tt" "SSDLToPgSQL.tt"
   ${EndIf}
 SectionEnd
 
@@ -148,6 +153,7 @@ Section "NpgsqlDdexProvider(Vs2013)" SecDdex2013
     ReadRegStr $0 HKLM "SOFTWARE\Microsoft\VisualStudio\12.0" "InstallDir"
     StrCpy $1 "$0VSIXInstaller.exe"
     StrCpy $2 "$0devenv.exe.config"
+    StrCpy $3 "$0Extensions\Microsoft\Entity Framework Tools\DBGen"
   ${EndIf}
 
   ${If} ${FileExists} $1
@@ -168,6 +174,10 @@ Section "NpgsqlDdexProvider(Vs2013)" SecDdex2013
 
     ExecWait '$0' $1
     DetailPrint "RetCode: $1"
+  ${EndIf}
+
+  ${If} ${FileExists} $3
+    File "/oname=$3\SSDLToPgSQL.tt" "SSDLToPgSQL.tt"
   ${EndIf}
 SectionEnd
 
@@ -186,6 +196,7 @@ Section "NpgsqlDdexProvider(Vs2012)" SecDdex2012
     ReadRegStr $0 HKLM "SOFTWARE\Microsoft\VisualStudio\11.0" "InstallDir"
     StrCpy $1 "$0VSIXInstaller.exe"
     StrCpy $2 "$0devenv.exe.config"
+    StrCpy $3 "$0Extensions\Microsoft\Entity Framework Tools\DBGen"
   ${EndIf}
 
   ${If} ${FileExists} $1
@@ -206,6 +217,10 @@ Section "NpgsqlDdexProvider(Vs2012)" SecDdex2012
 
     ExecWait '$0' $1
     DetailPrint "RetCode: $1"
+  ${EndIf}
+
+  ${If} ${FileExists} $3
+    File "/oname=$3\SSDLToPgSQL.tt" "SSDLToPgSQL.tt"
   ${EndIf}
 SectionEnd
 
@@ -227,6 +242,23 @@ Section ""
   WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP}" "NoRepair" 1
   WriteUninstaller "$INSTDIR\uninstall.exe"
 SectionEnd
+
+Function .onInit
+  ReadRegStr $0 HKLM "SOFTWARE\Microsoft\VisualStudio\14.0" "InstallDir"
+  ${IfNot} ${FileExists} "$0\*"
+    SectionSetFlags ${SecDdex2015} 0 ; uncheck item
+  ${EndIf}
+
+  ReadRegStr $0 HKLM "SOFTWARE\Microsoft\VisualStudio\12.0" "InstallDir"
+  ${IfNot} ${FileExists} "$0\*"
+    SectionSetFlags ${SecDdex2013} 0 ; uncheck item
+  ${EndIf}
+
+  ReadRegStr $0 HKLM "SOFTWARE\Microsoft\VisualStudio\11.0" "InstallDir"
+  ${IfNot} ${FileExists} "$0\*"
+    SectionSetFlags ${SecDdex2012} 0 ; uncheck item
+  ${EndIf}
+FunctionEnd
 
 ;--------------------------------
 ;Uninstaller Section
