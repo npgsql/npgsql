@@ -84,7 +84,9 @@ namespace Npgsql.VisualStudio.Provider
         System.Reflection.Assembly CurrentDomain_AssemblyResolve(object sender, ResolveEventArgs e)
         {
             var npgsqlAssembly = typeof(NpgsqlConnection).Assembly;
-            if (e.Name.Equals(npgsqlAssembly.FullName))
+            if (e.Name.Equals(npgsqlAssembly.FullName)) // explicit version specified
+                return npgsqlAssembly;
+            if (e.Name.Equals("Npgsql")) // no version specified
                 return npgsqlAssembly;
             return null;
         }
