@@ -72,13 +72,6 @@ namespace Npgsql.VisualStudio.Provider
 
             AppDomain.CurrentDomain.AssemblyResolve += CurrentDomain_AssemblyResolve;
 
-            if (CheckNpgsqlStatus.NeedInst)
-            {
-                UIUt.Alert(this, "It needs setup before using .NET Framework Data Provider for PostgreSQL \n"
-                    + "\n"
-                    + "[Tool]→[Setup NpgsqlDdexProvider]"
-                    , "NpgsqlDdexProvider");
-            }
         }
 
         System.Reflection.Assembly CurrentDomain_AssemblyResolve(object sender, ResolveEventArgs e)
@@ -88,8 +81,20 @@ namespace Npgsql.VisualStudio.Provider
                 return npgsqlAssembly;
             if (e.Name.Equals("Npgsql")) // no version specified
                 return npgsqlAssembly;
+            if (e.Name.Equals(entityFramework5NpgsqlAssembly.FullName))
+                return entityFramework5NpgsqlAssembly;
+            if (e.Name.Equals(entityFramework5NpgsqlAssembly.FullName.Replace("EntityFramework5.Npgsql", "Npgsql.EntityFrameworkLegacy")))
+                return entityFramework5NpgsqlAssembly;
             return null;
         }
+
+        System.Reflection.Assembly entityFramework5NpgsqlAssembly = System.Reflection.Assembly.LoadFrom(
+            System.IO.Path.Combine(
+                typeof(NpgsqlDdexProviderPackage).Assembly.Location, 
+                "..", 
+                "EntityFramework5.Npgsql.dll"
+                )
+            );
 
         /// <summary>
         /// This function is the callback used to execute a command when the a menu item is clicked.
