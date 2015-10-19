@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
   <Metadata>
-    <Identity Id="b803e32d-de1d-4e62-953b-1ed2013e8738" Version="3.0.1" Language="en-US" Publisher="Npgsql" />
+    <Identity Id="b803e32d-de1d-4e62-953b-1ed2013e8738" Version="3.1.0.0" Language="en-US" Publisher="Npgsql" />
     <DisplayName>NpgsqlDdexProvider</DisplayName>
     <Description>Npgsql Ddex Provider</Description>
     <License>License.rtf</License>

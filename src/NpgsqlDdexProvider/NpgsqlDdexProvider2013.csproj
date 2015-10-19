@@ -38,11 +38,11 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>bin\Debug-vs2013\</OutputPath>
+    <OutputPath>bin\Debug-net452-vs2013\</OutputPath>
     <DefineConstants>TRACE;DEBUG;NET35;NET40;NET45;ENTITIES</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <DocumentationFile>bin\Debug\Npgsql.xml</DocumentationFile>
+    <DocumentationFile>bin\Debug-net452-vs2013\Npgsql.xml</DocumentationFile>
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <UseVSHostingProcess>true</UseVSHostingProcess>
     <DeployExtension>False</DeployExtension>
@@ -50,11 +50,11 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>bin\Release-vs2013\</OutputPath>
+    <OutputPath>bin\Release-net452-vs2013\</OutputPath>
     <DefineConstants>TRACE;NET35;NET40;NET45;ENTITIES</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <DocumentationFile>bin\Release\Npgsql.xml</DocumentationFile>
+    <DocumentationFile>bin\Release-net452-vs2013\Npgsql.xml</DocumentationFile>
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <UseVSHostingProcess>true</UseVSHostingProcess>
   </PropertyGroup>
@@ -158,6 +158,10 @@
     <WCFMetadata Include="Service References\" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\EntityFramework5.Npgsql\EntityFramework5.Npgsql.csproj">
+      <Project>{100998c4-5b85-11e3-911c-0022198ab089}</Project>
+      <Name>EntityFramework5.Npgsql</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Npgsql\Npgsql.csproj">
       <Project>{9d13b739-62b1-4190-b386-7a9547304eb3}</Project>
       <Name>Npgsql</Name>
