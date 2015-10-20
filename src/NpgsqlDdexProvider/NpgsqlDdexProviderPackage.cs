@@ -103,21 +103,8 @@ namespace Npgsql.VisualStudio.Provider
         /// </summary>
         private void MenuItemSetupNpgsqlDdexProvider(object sender, EventArgs e)
         {
-            if (UIUt.Confirm(this, "Could we modify the host config file in order to enable NpgsqlDdexProvider? \n"
-                + "\n"
-                + CheckNpgsqlStatus.Ut.HostConfig + "\n"
-                + "\n"
-                + "The assembly version: \n"
-                + "\n"
-                + typeof(Npgsql.NpgsqlFactory).Assembly.FullName
-                , "NpgsqlDdexProvider"))
-            {
-                CheckNpgsqlStatus.DoInst();
-
-                UIUt.Alert(this, "Modification successful. \n"
-                    + "\n"
-                    + "Please restart this VisualStudio."
-                    , "NpgsqlDdexProvider");
+            using (CheckNpgsqlForm form = new CheckNpgsqlForm()) {
+                form.ShowDialog();
             }
         }
 

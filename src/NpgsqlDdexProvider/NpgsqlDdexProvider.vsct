@@ -65,7 +65,7 @@
         <Parent guid="guidNpgsqlDdexProviderCmdSet" id="MyMenuGroup" />
         <Icon guid="guidImages" id="bmpPic1" />
         <Strings>
-          <ButtonText>Setup NpgsqlDdexProvider...</ButtonText>
+          <ButtonText>Check NpgsqlDdexProvider...</ButtonText>
         </Strings>
       </Button>
 
