@@ -1,0 +1,1 @@
+"H:\Program Files (x86)\Microsoft Visual Studio 14.0\Common7\IDE\VSIXInstaller.exe" /u:958b9481-2712-4670-9a62-8fe65e5beea7

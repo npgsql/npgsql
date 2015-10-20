@@ -17,7 +17,8 @@ namespace Npgsql.VisualStudio.Provider {
         }
 
         private void bCopy_Click(object sender, EventArgs e) {
-            Clipboard.SetText(rtb.Text.Replace("\r\n", "\n").Replace("\n", "\r\n"));
+            rtb.SelectAll();
+            rtb.Copy();
 
             MessageBox.Show("Copied to clipboard.");
         }

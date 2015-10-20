@@ -71,6 +71,7 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Data" />
     <Reference Include="System.Design" />
+    <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.XML" />
   </ItemGroup>
@@ -122,6 +123,12 @@
     </COMReference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CheckNpgsqlForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="CheckNpgsqlForm.Designer.cs">
+      <DependentUpon>CheckNpgsqlForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="CheckNpgsqlStatus.cs" />
     <Compile Include="Guids.cs" />
     <Compile Include="NpgsqlDataProviderRegistration.cs" />
@@ -142,6 +149,9 @@
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
     <None Include="Vs2012\source.extension.vsixmanifest" />
+    <EmbeddedResource Include="CheckNpgsqlForm.resx">
+      <DependentUpon>CheckNpgsqlForm.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Resources.resx">
       <Generator>PublicResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>

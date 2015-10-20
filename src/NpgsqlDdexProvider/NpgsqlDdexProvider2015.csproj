@@ -59,6 +59,11 @@
     <UseVSHostingProcess>true</UseVSHostingProcess>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="envdte, Version=8.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+      <EmbedInteropTypes>False</EmbedInteropTypes>
+      <HintPath>..\..\packages\VSSDK.DTE.7.0.4\lib\net20\envdte.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="Microsoft.Data.ConnectionUI, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Data.ConnectionUI.14.0.23205\lib\net45\Microsoft.Data.ConnectionUI.dll</HintPath>
       <Private>True</Private>
@@ -116,12 +121,25 @@
       <HintPath>..\..\packages\Microsoft.VisualStudio.TextManager.Interop.8.0.8.0.50727\lib\Microsoft.VisualStudio.TextManager.Interop.8.0.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="stdole, Version=7.0.3300.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+      <EmbedInteropTypes>False</EmbedInteropTypes>
+      <HintPath>..\..\packages\VSSDK.DTE.7.0.4\lib\net20\stdole.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
     <Reference Include="System.Design" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
     <Reference Include="System.XML" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CheckNpgsqlForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="CheckNpgsqlForm.Designer.cs">
+      <DependentUpon>CheckNpgsqlForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="CheckNpgsqlStatus.cs" />
     <Compile Include="Guids.cs" />
     <Compile Include="NpgsqlDataProviderRegistration.cs" />
@@ -137,6 +155,9 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="CheckNpgsqlForm.resx">
+      <DependentUpon>CheckNpgsqlForm.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Resources.resx">
       <Generator>PublicResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
