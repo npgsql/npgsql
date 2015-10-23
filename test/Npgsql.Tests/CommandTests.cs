@@ -946,6 +946,24 @@ namespace Npgsql.Tests
             Assert.That(ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(0));
         }
 
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/400")]
+        public void ExceptionThrownFromExecuteQuery([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
+        {
+            ExecuteNonQuery(@"
+                 CREATE OR REPLACE FUNCTION emit_exception() RETURNS VOID AS
+                    'BEGIN RAISE EXCEPTION ''testexception'' USING ERRCODE = ''12345''; END;'
+                 LANGUAGE 'plpgsql';
+            ");
+
+            using (var cmd = new NpgsqlCommand("SELECT emit_exception()", Conn))
+            {
+                if (prepare == PrepareOrNot.Prepared)
+                    cmd.Prepare();
+                Assert.That(() => cmd.ExecuteReader(), Throws.Exception.TypeOf<NpgsqlException>());
+            }
+        }
+
         public CommandTests(string backendVersion) : base(backendVersion) { }
     }
 }
