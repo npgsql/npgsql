@@ -732,7 +732,18 @@ namespace Npgsql
                 _queryIndex = 0;
                 _connector.SendAllMessages();
 
-                if (!IsPrepared)
+                // We consume response messages, positioning ourselves before the response of the first
+                // Execute.
+                if (IsPrepared)
+                {
+                    if ((behavior & CommandBehavior.SchemaOnly) == 0)
+                    {
+                        // No binding in SchemaOnly mode
+                        var msg = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential);
+                        Contract.Assert(msg is BindCompleteMessage);
+                    }
+                }
+                else
                 {
                     IBackendMessage msg;
                     do
