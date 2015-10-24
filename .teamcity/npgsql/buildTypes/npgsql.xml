@@ -24,6 +24,15 @@
           <param name="teamcity.step.mode" value="default" />
         </parameters>
       </runner>
+      <runner id="RUNNER_14" name="Build Release" type="simpleRunner">
+        <parameters>
+          <param name="script.content"><![CDATA[for /f "tokens=1,2 delims=-" %%%%a in ("%GitVersion.NuGetVersion%") do set base=%%%%a&set DNX_BUILD_VERSION=-%%%%b
+set Configuration=Release
+build compile]]></param>
+          <param name="teamcity.step.mode" value="default" />
+          <param name="use.custom.script" value="true" />
+        </parameters>
+      </runner>
       <runner id="RUNNER_9" name="NuGet Restore (1)" type="simpleRunner">
         <parameters>
           <param name="command.executable" value="c:\dev\nuget\nuget.exe" />
@@ -98,15 +107,6 @@ test/EntityFramework6.Npgsql.Tests/bin/Debug/EntityFramework6.Npgsql.Tests.dll]]
           <param name="command.executable" value="%MONO_PREFIX%\bin\mono.exe" />
           <param name="command.parameters" value="--runtime=v4.0 %system.teamcity.dotnet.nunitlauncher% v4.0 MSIL NUnit-2.6.4 %teamcity.build.checkoutDir%\test\Npgsql.Tests\bin\Debug\Npgsql.Tests.dll" />
           <param name="teamcity.step.mode" value="default" />
-        </parameters>
-      </runner>
-      <runner id="RUNNER_14" name="Build Release" type="simpleRunner">
-        <parameters>
-          <param name="script.content"><![CDATA[for /f "tokens=1,2 delims=-" %%%%a in ("%GitVersion.NuGetVersion%") do set base=%%%%a&set DNX_BUILD_VERSION=-%%%%b
-set Configuration=Release
-build compile]]></param>
-          <param name="teamcity.step.mode" value="default" />
-          <param name="use.custom.script" value="true" />
         </parameters>
       </runner>
       <runner id="RUNNER_22" name="Publish nugets to myget" type="jb.nuget.publish">
