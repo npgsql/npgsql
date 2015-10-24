@@ -1,4 +1,4 @@
-#if !DNXCORE50
+#if NET45 || NET452 || DNX452
 #region License
 // The PostgreSQL License
 //
@@ -96,7 +96,7 @@ namespace Npgsql
             }
         }
 
-        #region IPromotableSinglePhaseNotification Members
+#region IPromotableSinglePhaseNotification Members
 
         public void Initialize()
         {
@@ -164,9 +164,9 @@ namespace Npgsql
             _inTransaction = false;
         }
 
-        #endregion
+#endregion
 
-        #region ITransactionPromoter Members
+#region ITransactionPromoter Members
 
         public byte[] Promote()
         {
@@ -191,7 +191,7 @@ namespace Npgsql
             return token;
         }
 
-        #endregion
+#endregion
 
         private static INpgsqlResourceManager _resourceManager;
         private static System.Runtime.Remoting.Lifetime.ClientSponsor _sponser;

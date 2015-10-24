@@ -88,7 +88,7 @@ namespace Npgsql
         /// </summary>
         IBackendMessage _pendingMessage;
 
-#if !DNXCORE50
+#if NET45 || NET452 || DNX452
         /// <summary>
         /// If <see cref="GetSchemaTable"/> has been called, its results are cached here.
         /// </summary>
@@ -407,7 +407,7 @@ namespace Npgsql
 
                 Contract.Assert(State == ReaderState.BetweenResults);
                 _hasRows = null;
-#if !DNXCORE50
+#if NET45 || NET452 || DNX452
                 _cachedSchemaTable = null;
 #endif
 
@@ -659,10 +659,10 @@ namespace Npgsql
         /// <summary>
         /// Closes the <see cref="NpgsqlDataReader"/> object.
         /// </summary>
-#if DNXCORE50
-        public void Close()
-#else
+#if NET45 || NET452 || DNX452
         public override void Close()
+#else
+        public void Close()
 #endif
         {
             if (State == ReaderState.Closed) { return; }
@@ -1486,10 +1486,10 @@ namespace Npgsql
         /// <returns>An <see cref="IEnumerator"/> that can be used to iterate through the rows in the data reader.</returns>
         public override IEnumerator GetEnumerator()
         {
-#if DNXCORE50
-            throw new NotSupportedException("GetEnumerator not yet supported in .NET Core");
-#else
+#if NET45 || NET452 || DNX452
             return new DbEnumerator(this);
+#else
+            throw new NotSupportedException("GetEnumerator not yet supported in .NET Core");
 #endif
         }
 
@@ -1541,7 +1541,7 @@ namespace Npgsql
         }
 
         #region Schema metadata table
-#if !DNXCORE50
+#if NET45 || NET452 || DNX452
 
         /// <summary>
         /// Returns a System.Data.DataTable that describes the column metadata of the DataReader.

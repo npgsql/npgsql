@@ -30,7 +30,7 @@ using System.Linq;
 using System.Reflection;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
-#if !DNXCORE50
+#if NET45 || NET452 || DNX452
 using System.Runtime.Serialization;
 #endif
 
@@ -45,7 +45,7 @@ namespace Npgsql
     /// See http://www.postgresql.org/docs/current/static/errcodes-appendix.html,
     /// http://www.postgresql.org/docs/current/static/protocol-error-fields.html
     /// </remarks>
-#if !DNXCORE50
+#if NET45 || NET452 || DNX452
     [Serializable]
 #endif
     public sealed class NpgsqlException : DbException
@@ -224,8 +224,8 @@ namespace Npgsql
             }
         }
 
-#region Serialization
-#if !DNXCORE50
+        #region Serialization
+#if NET45 || NET452 || DNX452
         NpgsqlException(SerializationInfo info, StreamingContext context) : base(info, context)
         {
             _msg = (ErrorOrNoticeMessage)info.GetValue("msg", typeof(ErrorOrNoticeMessage));
@@ -242,6 +242,6 @@ namespace Npgsql
             info.AddValue("msg", _msg);
         }
 #endif
-#endregion
+        #endregion
     }
 }

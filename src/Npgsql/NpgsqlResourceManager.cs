@@ -1,4 +1,4 @@
-#if !DNXCORE50
+#if NET45 || NET452 || DNX452
 #region License
 // The PostgreSQL License
 //
@@ -40,7 +40,7 @@ namespace Npgsql
     {
         private readonly Dictionary<string, CommittableTransaction> _transactions = new Dictionary<string, CommittableTransaction>();
 
-        #region INpgsqlTransactionManager Members
+#region INpgsqlTransactionManager Members
 
         public byte[] Promote(INpgsqlTransactionCallbacks callbacks)
         {
@@ -81,7 +81,7 @@ namespace Npgsql
             }
         }
 
-        #endregion
+#endregion
 
         private class DurableResourceManager : ISinglePhaseNotification
         {
@@ -112,7 +112,7 @@ namespace Npgsql
                 }
             }
 
-            #region IEnlistmentNotification Members
+#region IEnlistmentNotification Members
 
             public void Commit(Enlistment enlistment)
             {
@@ -143,9 +143,9 @@ namespace Npgsql
                 _callbacks.Dispose();
             }
 
-            #endregion
+#endregion
 
-            #region ISinglePhaseNotification Members
+#region ISinglePhaseNotification Members
 
             public void SinglePhaseCommit(SinglePhaseEnlistment singlePhaseEnlistment)
             {
@@ -154,7 +154,7 @@ namespace Npgsql
                 _callbacks.Dispose();
             }
 
-            #endregion
+#endregion
 
             private static readonly Guid rmGuid = new Guid("9e1b6d2d-8cdb-40ce-ac37-edfe5f880716");
 

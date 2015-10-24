@@ -48,7 +48,7 @@ namespace Npgsql
 #if WITHDESIGN
     [System.Drawing.ToolboxBitmapAttribute(typeof(NpgsqlCommand)), ToolboxItem(true)]
 #endif
-#if DNXCORE50
+#if DNXCORE50 || DOTNET
     public sealed partial class NpgsqlCommand : DbCommand
 #else
     // ReSharper disable once RedundantNameQualifier
@@ -1138,7 +1138,7 @@ namespace Npgsql
             }
         }
 
-#if !DNXCORE50
+#if NET45 || NET452 || DNX452
         /// <summary>
         /// Create a new command based on this one.
         /// </summary>

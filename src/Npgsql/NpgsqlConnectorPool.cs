@@ -441,7 +441,7 @@ namespace Npgsql
         static NpgsqlConnectorPool()
         {
             ConnectorPoolMgr = new NpgsqlConnectorPool();
-#if !DNXCORE50
+#if NET45 || NET452 || DNX452
             AppDomain.CurrentDomain.DomainUnload += (sender, args) => { Thread.Sleep(3); ConnectorPoolMgr.ClearAllPools(); };
             AppDomain.CurrentDomain.ProcessExit += (sender, args) => { Thread.Sleep(3); ConnectorPoolMgr.ClearAllPools(); };
 #endif

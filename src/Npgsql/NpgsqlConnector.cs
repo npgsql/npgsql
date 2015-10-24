@@ -159,7 +159,7 @@ namespace Npgsql
         /// </summary>
         internal readonly Dictionary<string, string> BackendParams;
 
-#if !DNXCORE50
+#if NET45 || NET452 || DNX452
         SSPIHandler _sspi;
 #endif
 
@@ -506,12 +506,12 @@ namespace Npgsql
 
                         if (!UseSslStream)
                         {
-#if DNXCORE50
-                            throw new NotSupportedException("TLS implementation not yet supported with .NET Core, specify UseSslStream=true for now");
-#else
+#if NET45 || NET452 || DNX452
                             var sslStream = new TlsClientStream.TlsClientStream(_stream);
                             sslStream.PerformInitialHandshake(Host, clientCertificates, certificateValidationCallback, false);
                             _stream = sslStream;
+#else
+                            throw new NotSupportedException("TLS implementation not yet supported with .NET Core, specify UseSslStream=true for now");
 #endif
                         }
                         else
@@ -558,13 +558,13 @@ namespace Npgsql
 
         void Connect(NpgsqlTimeout timeout)
         {
-#if DNXCORE50
-            // .NET Core doesn't appear to have sync DNS methods (yet?)
-            var ips = Dns.GetHostAddressesAsync(Host).Result;
-#else
+#if NET45 || NET452 || DNX452
             // Note that there aren't any timeoutable DNS methods, and we want to use sync-only
             // methods (not to rely on any TP threads etc.)
             var ips = Dns.GetHostAddresses(Host);
+#else
+            // .NET Core doesn't appear to have sync DNS methods (yet?)
+            var ips = Dns.GetHostAddressesAsync(Host).Result;
 #endif
             timeout.Check();
 
@@ -766,35 +766,35 @@ namespace Npgsql
                     if (!IntegratedSecurity) {
                         throw new Exception("GSS authentication but IntegratedSecurity not enabled");
                     }
-#if DNXCORE50
-                    throw new NotSupportedException("SSPI not yet supported in .NET Core");
-#else
+#if NET45 || NET452 || DNX452
                     // For GSSAPI we have to use the supplied hostname
                     _sspi = new SSPIHandler(Host, KerberosServiceName, true);
                     return new PasswordMessage(_sspi.Continue(null));
+#else
+                    throw new NotSupportedException("SSPI not yet supported in .NET Core");
 #endif
 
                 case AuthenticationRequestType.AuthenticationSSPI:
                     if (!IntegratedSecurity) {
                         throw new Exception("SSPI authentication but IntegratedSecurity not enabled");
                     }
-#if DNXCORE50
-                    throw new NotSupportedException("SSPI not yet supported in .NET Core");
-#else
+#if NET45 || NET452 || DNX452
                     _sspi = new SSPIHandler(Host, KerberosServiceName, false);
                     return new PasswordMessage(_sspi.Continue(null));
+#else
+                    throw new NotSupportedException("SSPI not yet supported in .NET Core");
 #endif
 
                 case AuthenticationRequestType.AuthenticationGSSContinue:
-#if DNXCORE50
-                    throw new NotSupportedException("SSPI not yet supported in .NET Core");
-#else
+#if NET45 || NET452 || DNX452
                     var passwdRead = _sspi.Continue(((AuthenticationGSSContinueMessage)msg).AuthenticationData);
                     if (passwdRead.Length != 0)
                     {
                         return new PasswordMessage(passwdRead);
                     }
                     return null;
+#else
+                    throw new NotSupportedException("SSPI not yet supported in .NET Core");
 #endif
 
                 default:
@@ -1224,7 +1224,7 @@ namespace Npgsql
 
         bool HasDataInBuffers => Buffer.ReadBytesLeft > 0 ||
                                  (_stream is NetworkStream && ((NetworkStream) _stream).DataAvailable)
-#if !DNXCORE50
+#if NET45 || NET452 || DNX452
                                  || (_stream is TlsClientStream.TlsClientStream && ((TlsClientStream.TlsClientStream) _stream).HasBufferedReadData(false))
 #endif
                                  ;

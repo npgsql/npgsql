@@ -1,4 +1,4 @@
-﻿#if !DNXCORE50
+﻿#if NET45 || NET452 || DNX452
 #region License
 // The PostgreSQL License
 //
@@ -119,7 +119,7 @@ namespace TlsClientStream
             _baseStream = baseStream;
         }
 
-        #region Record layer
+#region Record layer
 
         /// <summary>
         /// Makes sure there is at least one full record available at _readStart.
@@ -336,9 +336,9 @@ namespace TlsClientStream
             }
         }
 
-        #endregion
+#endregion
 
-        #region Handshake infrastructure
+#region Handshake infrastructure
 
         void UpdateHandshakeHash(byte[] buf, int offset, int len)
         {
@@ -639,9 +639,9 @@ namespace TlsClientStream
             }
         }
 
-        #endregion
+#endregion
 
-        #region Handshake messages
+#region Handshake messages
 
         HandshakeType SendClientHello(ref int offset)
         {
@@ -1567,9 +1567,9 @@ namespace TlsClientStream
             _handshakeData = null;
         }
 
-        #endregion
+#endregion
 
-        #region Alerts
+#region Alerts
 
         void SendAlertFatal(AlertDescription description, string message = null)
         {
@@ -1647,7 +1647,7 @@ namespace TlsClientStream
             }
         }
 
-        #endregion
+#endregion
 
         void ResetWritePos()
         {
@@ -1734,7 +1734,7 @@ namespace TlsClientStream
 
         int WriteSpaceLeft => (1 << 14) + _connState.WriteStartPos - _writePos;
 
-        #region Stream overrides
+#region Stream overrides
 
 #if ASYNC_DISABLED
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
@@ -2105,7 +2105,7 @@ namespace TlsClientStream
         }
         public override bool CanSeek => false;
 
-        #endregion
+#endregion
 
         /// <summary>
         /// This method checks whether there are at least 1 byte that can be read in the buffer.

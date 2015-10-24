@@ -24,13 +24,13 @@
 using System;
 using System.Diagnostics.Contracts;
 using Npgsql.Logging;
-#if !DNXCORE50
+#if NET45 || NET452 || DNX452
 using System.Runtime.Serialization;
 #endif
 
 namespace Npgsql.BackendMessages
 {
-#if !DNXCORE50
+#if NET45 || NET452 || DNX452
     [Serializable]
 #endif
     class ErrorOrNoticeMessage

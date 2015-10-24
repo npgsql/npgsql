@@ -127,7 +127,7 @@ namespace Npgsql.BackendMessages
             }
             public int GetHashCode(string obj)
             {
-#if NET45 || NET452
+#if NET45 || NET452 || DNX452
                 return CompareInfo.GetSortKey(obj, CompareOptions.IgnoreWidth).GetHashCode();
 #else
                 return CompareInfo.GetHashCode(obj, CompareOptions.IgnoreWidth);
@@ -145,7 +145,7 @@ namespace Npgsql.BackendMessages
             }
             public int GetHashCode(string obj)
             {
-#if NET45 || NET452
+#if NET45 || NET452 || DNX452
                 return CompareInfo.GetSortKey(obj, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase).GetHashCode();
 #else
                 return CompareInfo.GetHashCode(obj, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase);

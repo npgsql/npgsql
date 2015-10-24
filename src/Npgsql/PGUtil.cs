@@ -71,10 +71,10 @@ namespace Npgsql
 
         internal static readonly Task CompletedTask = TaskFromResult(0);
 
-#if DNXCORE50
-        internal static StringComparer InvariantCaseIgnoringStringComparer => CultureInfo.InvariantCulture.CompareInfo.GetStringComparer(CompareOptions.IgnoreCase);
-#else
+#if NET45 || NET452 || DNX452
         internal static StringComparer InvariantCaseIgnoringStringComparer => StringComparer.InvariantCultureIgnoreCase;
+#else
+        internal static StringComparer InvariantCaseIgnoringStringComparer => CultureInfo.InvariantCulture.CompareInfo.GetStringComparer(CompareOptions.IgnoreCase);
 #endif
 
         /// <summary>

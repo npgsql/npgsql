@@ -261,10 +261,10 @@ namespace Npgsql
         /// <summary>
         /// Releases resources at the backend allocated for this stream.
         /// </summary>
-#if DNXCORE50
-        void Close()
-#else
+#if NET45 || NET452 || DNX452
         public override void Close()
+#else
+        void Close()
 #endif
         {
             if (!_disposed)

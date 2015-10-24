@@ -35,7 +35,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AsyncRewriter;
 using JetBrains.Annotations;
-#if !DNXCORE50
+#if NET45 || NET452 || DNX452
 using System.Transactions;
 #endif
 using Npgsql.Logging;
@@ -50,7 +50,7 @@ namespace Npgsql
 #if WITHDESIGN
     [System.Drawing.ToolboxBitmapAttribute(typeof(NpgsqlConnection))]
 #endif
-#if DNXCORE50
+#if DNXCORE50 || DOTNET
     public sealed partial class NpgsqlConnection : DbConnection
 #else
     // ReSharper disable once RedundantNameQualifier
@@ -100,7 +100,7 @@ namespace Npgsql
 
         internal bool WasBroken { private get; set; }
 
-#if !DNXCORE50
+#if NET45 || NET452 || DNX452
         NpgsqlPromotableSinglePhaseNotification Promotable => _promotable ?? (_promotable = new NpgsqlPromotableSinglePhaseNotification(this));
         NpgsqlPromotableSinglePhaseNotification _promotable;
 #endif
@@ -152,7 +152,7 @@ namespace Npgsql
             _noticeDelegate = OnNotice;
             _notificationDelegate = OnNotification;
 
-#if !DNXCORE50
+#if NET45 || NET452 || DNX452
             // Fix authentication problems. See https://bugzilla.novell.com/show_bug.cgi?id=MONO77559 and
             // http://pgfoundry.org/forum/message.php?msg_id=1002377 for more info.
             RSACryptoServiceProvider.UseMachineKeyStore = true;
@@ -270,7 +270,7 @@ namespace Npgsql
                 Connector.Notice += _noticeDelegate;
                 Connector.Notification += _notificationDelegate;
 
-#if !DNXCORE50
+#if NET45 || NET452 || DNX452
                 if (Settings.Enlist)
                 {
                     Promotable.Enlist(Transaction.Current);
@@ -576,7 +576,7 @@ namespace Npgsql
                 ReallyClose();
         }
 
-#if !DNXCORE50
+#if NET45 || NET452 || DNX452
         /// <summary>
         /// Enlist transation.
         /// </summary>
@@ -606,7 +606,7 @@ namespace Npgsql
 
             Log.Debug("Closing connection", Connector.Id);
 
-#if !DNXCORE50
+#if NET45 || NET452 || DNX452
             if (_promotable != null && _promotable.InLocalTransaction)
             {
                 _postponingClose = true;
@@ -622,7 +622,7 @@ namespace Npgsql
             Log.Trace("Really closing connection", Connector.Id);
             _postponingClose = false;
 
-#if !DNXCORE50
+#if NET45 || NET452 || DNX452
             // clear the way for another promotable transaction
             _promotable = null;
 #endif
@@ -1256,7 +1256,7 @@ namespace Npgsql
         #endregion State checks
 
         #region Schema operations
-#if !DNXCORE50
+#if NET45 || NET452 || DNX452
         /// <summary>
         /// Returns the supported collections
         /// </summary>
@@ -1332,7 +1332,7 @@ namespace Npgsql
 
         #region Misc
 
-#if !DNXCORE50
+#if NET45 || NET452 || DNX452
         object ICloneable.Clone()
         {
             CheckNotDisposed();
@@ -1370,7 +1370,7 @@ namespace Npgsql
             Open();
         }
 
-#if !DNXCORE50
+#if NET45 || NET452 || DNX452
         /// <summary>
         /// DB provider factory.
         /// </summary>

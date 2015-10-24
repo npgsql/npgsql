@@ -1,4 +1,4 @@
-#if !DNXCORE50
+#if NET45 || NET452 || DNX452
 #region License
 // The PostgreSQL License
 //
@@ -77,7 +77,7 @@ namespace Npgsql
             }
         }
 
-        #region INpgsqlTransactionCallbacks Members
+#region INpgsqlTransactionCallbacks Members
 
         public string GetName()
         {
@@ -133,9 +133,9 @@ namespace Npgsql
             }
         }
 
-        #endregion
+#endregion
 
-        #region IDisposable Members
+#region IDisposable Members
 
         public void Dispose()
         {
@@ -146,7 +146,7 @@ namespace Npgsql
             _closeConnectionRequired = false;
         }
 
-        #endregion
+#endregion
     }
 }
 #endif

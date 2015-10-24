@@ -29,7 +29,7 @@ using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Reflection;
 using JetBrains.Annotations;
-#if !DNXCORE50
+#if NET45 || NET452 || DNX452
 using System.DirectoryServices;
 using System.Security.Principal;
 #endif
@@ -71,7 +71,7 @@ namespace Npgsql
         /// </summary>
         public NpgsqlConnectionStringBuilder() { Init(); }
 
-#if !DNXCORE50
+#if NET45 || NET452 || DNX452
         /// <summary>
         /// Initializes a new instance of the NpgsqlConnectionStringBuilder class, optionally using ODBC rules for quoting values.
         /// </summary>
@@ -336,7 +336,7 @@ namespace Npgsql
         {
             get
             {
-#if !DNXCORE50
+#if NET45 || NET452 || DNX452
                 if ((_integratedSecurity) && (String.IsNullOrEmpty(_username))) {
                     _username = GetIntegratedUserName();
                 }
@@ -948,7 +948,7 @@ namespace Npgsql
                 throw new NotSupportedException("IntegratedSecurity is currently unsupported on mono and .NET 4.5 (see https://github.com/npgsql/Npgsql/issues/133)");
         }
 
-#if !DNXCORE50
+#if NET45 || NET452 || DNX452
         class CachedUpn
         {
             public string Upn;

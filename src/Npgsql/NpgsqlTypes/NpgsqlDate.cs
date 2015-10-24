@@ -34,7 +34,7 @@ using Npgsql;
 // ReSharper disable once CheckNamespace
 namespace NpgsqlTypes
 {
-#if !DNXCORE50
+#if NET45 || NET452 || DNX452
     [Serializable]
 #endif
     public struct NpgsqlDate : IEquatable<NpgsqlDate>, IComparable<NpgsqlDate>, IComparable, IComparer<NpgsqlDate>,

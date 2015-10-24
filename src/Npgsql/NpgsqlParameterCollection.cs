@@ -434,7 +434,7 @@ namespace Npgsql
 
         #region IList Member
 
-#if !DNXCORE50
+#if NET45 || NET452 || DNX452
         /// <summary>
         /// Report whether the collection is read only.  Always false.
         /// </summary>
@@ -591,18 +591,18 @@ namespace Npgsql
             return Count - 1;
         }
 
-#if !DNXCORE50
+#if NET45 || NET452 || DNX452
         /// <summary>
         /// Report whether the collection is fixed size.  Always false.
         /// </summary>
         public override bool IsFixedSize => false;
 #endif
 
-#endregion
+        #endregion
 
-#region ICollection Member
+        #region ICollection Member
 
-#if !DNXCORE50
+#if NET45 || NET452 || DNX452
         /// <summary>
         /// Report whether the collection is synchronized.
         /// </summary>
