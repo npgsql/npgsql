@@ -9,6 +9,7 @@
     "type": "git",
     "url": "git://github.com/npgsql/npgsql"
   },
+  "compile": "../Shared/*.cs",
   "compilationOptions": {
     "keyFile": "../../Npgsql.snk"
   },

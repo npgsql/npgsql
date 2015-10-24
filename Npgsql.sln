@@ -21,7 +21,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EntityFramework5.Npgsql", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Npgsql.Tests", "test\Npgsql.Tests\Npgsql.Tests.csproj", "{E9C258D7-0D8E-4E6A-9857-5C6438591755}"
 EndProject
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EntityFramework6.Npgsql.Tests", "test\EntityFramework6.Npgsql.Tests\EntityFramework6.Npgsql.Tests.csproj", "{4A0A42DE-C8B8-11E4-8EC9-005056A163A4}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EntityFramework7.Npgsql", "src\EntityFramework7.Npgsql\EntityFramework7.Npgsql.csproj", "{FADDA2D1-03B4-4DEF-8D24-DD1CA4E81F4A}"
@@ -29,6 +28,11 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EntityFramework7.Npgsql.FunctionalTests", "test\EntityFramework7.Npgsql.FunctionalTests\EntityFramework7.Npgsql.FunctionalTests.csproj", "{05A7D0B7-4AE1-4BC8-A1BE-2389F1593B2D}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EntityFramework7.Npgsql.Tests", "test\EntityFramework7.Npgsql.Tests\EntityFramework7.Npgsql.Tests.csproj", "{E1D99AD4-D88B-42BA-86DF-90B98B2E9A01}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Shared", "Shared", "{8D01DA20-AA83-4590-B014-4CD6FF2686B1}"
+	ProjectSection(SolutionItems) = preProject
+		src\Shared\CodeAnnotations.cs = src\Shared\CodeAnnotations.cs
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -81,6 +85,7 @@ Global
 		{FADDA2D1-03B4-4DEF-8D24-DD1CA4E81F4A} = {8537E50E-CF7F-49CB-B4EF-3E2A1B11F050}
 		{05A7D0B7-4AE1-4BC8-A1BE-2389F1593B2D} = {ED612DB1-AB32-4603-95E7-891BACA71C39}
 		{E1D99AD4-D88B-42BA-86DF-90B98B2E9A01} = {ED612DB1-AB32-4603-95E7-891BACA71C39}
+		{8D01DA20-AA83-4590-B014-4CD6FF2686B1} = {8537E50E-CF7F-49CB-B4EF-3E2A1B11F050}
 	EndGlobalSection
 	GlobalSection(MonoDevelopProperties) = preSolution
 		StartupItem = Npgsql.csproj

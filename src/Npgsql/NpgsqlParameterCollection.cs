@@ -306,7 +306,8 @@ namespace Npgsql
         /// </summary>
         /// <param name="parameterName">The name of the <see cref="NpgsqlParameter">NpgsqlParameter</see> object to retrieve.</param>
         [PublicAPI]
-        public override void RemoveAt([CanBeNull] string parameterName)
+        // ReSharper disable once ImplicitNotNullOverridesUnknownExternalMember
+        public override void RemoveAt(string parameterName)
         {
             if (parameterName == null)
                 throw new ArgumentNullException(nameof(parameterName));
@@ -320,7 +321,8 @@ namespace Npgsql
         /// </summary>
         /// <param name="parameterName">The name of the <see cref="NpgsqlParameter">NpgsqlParameter</see> object to find.</param>
         /// <returns><b>true</b> if the collection contains the parameter; otherwise, <b>false</b>.</returns>
-        public override bool Contains([CanBeNull] string parameterName)
+        // ReSharper disable once ImplicitNotNullOverridesUnknownExternalMember
+        public override bool Contains(string parameterName)
         {
             if (parameterName == null)
                 throw new ArgumentNullException(nameof(parameterName));
@@ -568,8 +570,8 @@ namespace Npgsql
         /// </summary>
         /// <param name="value">The value of the <see cref="NpgsqlParameter">NpgsqlParameter</see> object to find.</param>
         /// <returns>The zero-based index of the <see cref="NpgsqlParameter">NpgsqlParameter</see> object in the collection.</returns>
-        // ReSharper disable once AnnotationRedundancyInHierarchy
-        public override int IndexOf([CanBeNull] object value)
+        // ReSharper disable once ImplicitNotNullConflictInHierarchy
+        public override int IndexOf(object value)
         {
             if (value == null)
                 throw new ArgumentNullException(nameof(value));
@@ -625,8 +627,8 @@ namespace Npgsql
         /// </summary>
         /// <param name="array">An <see cref="System.Array">Array</see> to which to copy the <see cref="NpgsqlParameter">NpgsqlParameter</see> objects in the collection.</param>
         /// <param name="index">The starting index of the array.</param>
-        // ReSharper disable once AnnotationRedundancyInHierarchy
-        public override void CopyTo([CanBeNull] Array array, int index)
+        // ReSharper disable once ImplicitNotNullConflictInHierarchy
+        public override void CopyTo(Array array, int index)
         {
             if (array == null)
                 throw new ArgumentNullException(nameof(array));
@@ -677,7 +679,8 @@ namespace Npgsql
         /// </summary>
         /// <param name="parameterName"></param>
         /// <returns></returns>
-        protected override DbParameter GetParameter([NotNull] string parameterName)
+        // ReSharper disable once ImplicitNotNullOverridesUnknownExternalMember
+        protected override DbParameter GetParameter(string parameterName)
         {
             if (parameterName == null) throw new ArgumentNullException(nameof(parameterName));
             Contract.EndContractBlock();
@@ -700,7 +703,8 @@ namespace Npgsql
         /// </summary>
         /// <param name="parameterName"></param>
         /// <param name="value"></param>
-        protected override void SetParameter([NotNull] string parameterName, DbParameter value)
+        // ReSharper disable once ImplicitNotNullOverridesUnknownExternalMember
+        protected override void SetParameter(string parameterName, DbParameter value)
         {
             if (parameterName == null) throw new ArgumentNullException(nameof(parameterName));
             Contract.EndContractBlock();
@@ -789,7 +793,7 @@ namespace Npgsql
         /// <param name="item">Parameter to remove.</param>
         /// <returns>True if the parameter was found and removed, otherwise false.</returns>
         [PublicAPI]
-        public bool Remove([NotNull] NpgsqlParameter item)
+        public bool Remove(NpgsqlParameter item)
         {
             if (item == null) throw new ArgumentNullException(nameof(item));
             Contract.EndContractBlock();

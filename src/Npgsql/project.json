@@ -27,6 +27,7 @@
     "type": "git",
     "url": "git://github.com/npgsql/npgsql"
   },
+  "compile": "../Shared/*.cs",
   "compilationOptions": {
     "define": [ "__MonoCS__" ],
     "keyFile": "../../Npgsql.snk"

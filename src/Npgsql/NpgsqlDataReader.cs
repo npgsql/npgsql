@@ -1020,7 +1020,7 @@ namespace Npgsql
         /// <param name="bufferOffset">The index with the buffer to which the data will be copied.</param>
         /// <param name="length">The maximum number of characters to read.</param>
         /// <returns>The actual number of bytes read.</returns>
-        public override long GetBytes(int ordinal, long dataOffset, [CanBeNull] byte[] buffer, int bufferOffset, int length)
+        public override long GetBytes(int ordinal, long dataOffset, byte[] buffer, int bufferOffset, int length)
         {
 #region Contracts
             CheckRowAndOrdinal(ordinal);

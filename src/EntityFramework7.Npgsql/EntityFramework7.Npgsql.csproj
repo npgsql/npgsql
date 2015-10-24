@@ -142,6 +142,10 @@
       <Link>Properties\CommonAssemblyInfo.cs</Link>
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="..\Shared\CodeAnnotations.cs">
+      <Link>CodeAnnotations.cs</Link>
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Query\Expressions\Internal\AtTimeZoneExpression.cs" />
     <Compile Include="Query\Expressions\Internal\RegexMatchExpression.cs" />
     <Compile Include="Query\ExpressionTranslators\Internal\NpgsqlDateTimeNowTranslator.cs" />

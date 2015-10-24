@@ -581,7 +581,8 @@ namespace Npgsql
         /// Enlist transation.
         /// </summary>
         /// <param name="transaction"></param>
-        public override void EnlistTransaction([CanBeNull] Transaction transaction)
+        // ReSharper disable once ImplicitNotNullOverridesUnknownExternalMember
+        public override void EnlistTransaction(Transaction transaction)
         {
             if (transaction == null)
                 throw new ArgumentNullException(nameof(transaction));
