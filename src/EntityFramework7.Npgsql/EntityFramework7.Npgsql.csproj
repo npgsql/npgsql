@@ -147,11 +147,13 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Extensions\NpgsqlEntityTypeBuilderExtensions.cs" />
     <Compile Include="Infrastructure\NpgsqlDbContextOptionsBuilder.cs" />
     <Compile Include="Extensions\NpgsqlDbContextOptionsExtensions.cs" />
     <Compile Include="Extensions\NpgsqlEntityFrameworkServicesBuilderExtensions.cs" />
     <Compile Include="Metadata\INpgsqlPropertyAnnotations.cs" />
     <Compile Include="Metadata\Internal\NpgsqlAnnotationNames.cs" />
+    <Compile Include="Metadata\Internal\NpgsqlInternalMetadataBuilderExtensions.cs" />
     <Compile Include="Metadata\NpgsqlIndexAnnotations.cs" />
     <Compile Include="Metadata\NpgsqlAnnotationProvider.cs" />
     <Compile Include="Migrations\Operations\NpgsqlCreateDatabaseOperation.cs" />

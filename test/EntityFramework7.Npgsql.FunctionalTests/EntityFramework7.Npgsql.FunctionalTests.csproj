@@ -174,15 +174,22 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AsNoTrackingNpgsqlTest.cs" />
+    <Compile Include="AsTrackingNpgsqlTest.cs" />
+    <Compile Include="AsyncFromSqlQueryNpgsqlTest.cs" />
     <Compile Include="AsyncQueryNpgsqlTest.cs" />
+    <Compile Include="BatchingTest.cs" />
     <Compile Include="BuiltInDataTypesNpgsqlFixture.cs" />
     <Compile Include="BuiltInDataTypesNpgsqlTest.cs" />
     <Compile Include="ChangeTrackingNpgsqlTest.cs" />
     <Compile Include="ComplexNavigationsQueryNpgsqlFixture.cs" />
     <Compile Include="ComplexNavigationsQueryNpgsqlTest.cs" />
+    <Compile Include="ConnectionSpecificationTest.cs" />
     <Compile Include="DataAnnotationNpgsqlFixture.cs" />
     <Compile Include="DataAnnotationNpgsqlTest.cs" />
+    <Compile Include="DefaultValuesTest.cs" />
+    <Compile Include="ExistingConnectionTest.cs" />
     <Compile Include="F1NpgsqlFixture.cs" />
+    <Compile Include="FromSqlQueryNpgsqlTest.cs" />
     <Compile Include="GearsOfWarQueryNpgsqlFixture.cs" />
     <Compile Include="GearsOfWarQueryNpgsqlTest.cs" />
     <Compile Include="GraphUpdatesNpgsqlTest.cs" />
@@ -192,12 +199,16 @@
     <Compile Include="IncludeOneToOneNpgsqlTest.cs" />
     <Compile Include="InheritanceNpgsqlFixture.cs" />
     <Compile Include="InheritanceNpgsqlTest.cs" />
+    <Compile Include="InheritanceRelationshipsQueryNpgsqlFixture.cs" />
+    <Compile Include="InheritanceRelationshipsQueryNpgsqlTest.cs" />
     <Compile Include="MappingQueryNpgsqlFixture.cs" />
     <Compile Include="MappingQueryNpgsqlTest.cs" />
     <Compile Include="MigrationsNpgsqlFixture.cs" />
     <Compile Include="MigrationsNpgsqlTest.cs" />
     <Compile Include="MonsterFixupNpgsqlTest.cs.cs" />
+    <Compile Include="NavigationTest.cs" />
     <Compile Include="NorthwindQueryNpgsqlFixture.cs" />
+    <Compile Include="NpgsqlFixture.cs" />
     <Compile Include="NpgsqlTestStore.cs" />
     <Compile Include="NullKeysNpgsqlTest.cs" />
     <Compile Include="NullSemanticsQueryNpgsqlFixture.cs" />
@@ -206,7 +217,11 @@
     <Compile Include="OptimisticConcurrencyNpgsqlTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="PropertyEntryNpgsqlTest.cs" />
+    <Compile Include="QueryBugsTest.cs" />
+    <Compile Include="QueryLoggingNpgsqlTest.cs" />
     <Compile Include="QueryNavigationsNpgsqlTest.cs" />
+    <Compile Include="QueryNoClientEvalNpgsqlFixture.cs" />
+    <Compile Include="QueryNoClientEvalNpgsqlTest.cs" />
     <Compile Include="QueryNpgsqlTest.cs" />
     <Compile Include="StoreGeneratedNpgsqlTest.cs" />
     <Compile Include="SqlExecutorNpgsqlTest.cs" />
