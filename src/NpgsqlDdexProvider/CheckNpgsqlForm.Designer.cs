@@ -49,16 +49,27 @@
             // tsc.ContentPanel
             // 
             tsc.ContentPanel.Controls.Add(this.rtb);
-            tsc.ContentPanel.Size = new System.Drawing.Size(976, 420);
+            tsc.ContentPanel.Size = new System.Drawing.Size(1005, 383);
             tsc.Dock = System.Windows.Forms.DockStyle.Fill;
             tsc.Location = new System.Drawing.Point(0, 0);
             tsc.Name = "tsc";
-            tsc.Size = new System.Drawing.Size(976, 447);
+            tsc.Size = new System.Drawing.Size(1005, 410);
             tsc.TabIndex = 0;
             // 
             // tsc.TopToolStripPanel
             // 
             tsc.TopToolStripPanel.Controls.Add(toolStrip1);
+            // 
+            // rtb
+            // 
+            this.rtb.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.rtb.Font = new System.Drawing.Font("Arial", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
+            this.rtb.Location = new System.Drawing.Point(0, 0);
+            this.rtb.Name = "rtb";
+            this.rtb.Size = new System.Drawing.Size(1005, 383);
+            this.rtb.TabIndex = 2;
+            this.rtb.Text = "";
+            this.rtb.WordWrap = false;
             // 
             // toolStrip1
             // 
@@ -71,7 +82,7 @@
             bCopy});
             toolStrip1.Location = new System.Drawing.Point(3, 0);
             toolStrip1.Name = "toolStrip1";
-            toolStrip1.Size = new System.Drawing.Size(298, 27);
+            toolStrip1.Size = new System.Drawing.Size(337, 27);
             toolStrip1.TabIndex = 0;
             // 
             // bEFv5
@@ -90,6 +101,7 @@
             bEFv6.Name = "bEFv6";
             bEFv6.Size = new System.Drawing.Size(92, 24);
             bEFv6.Text = "Test EFv6";
+            bEFv6.Click += new System.EventHandler(this.bEFv6_Click);
             // 
             // toolStripSeparator1
             // 
@@ -105,26 +117,16 @@
             bCopy.Text = "&Copy text";
             bCopy.Click += new System.EventHandler(this.bCopy_Click);
             // 
-            // rtb
-            // 
-            this.rtb.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.rtb.Font = new System.Drawing.Font("Arial", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
-            this.rtb.Location = new System.Drawing.Point(0, 0);
-            this.rtb.Name = "rtb";
-            this.rtb.Size = new System.Drawing.Size(976, 420);
-            this.rtb.TabIndex = 2;
-            this.rtb.Text = "";
-            this.rtb.WordWrap = false;
-            // 
             // CheckNpgsqlForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(976, 447);
+            this.ClientSize = new System.Drawing.Size(1005, 410);
             this.Controls.Add(tsc);
             this.Name = "CheckNpgsqlForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             this.Text = "CheckNpgsqlForm";
+            this.Load += new System.EventHandler(this.CheckNpgsqlForm_Load);
             tsc.ContentPanel.ResumeLayout(false);
             tsc.TopToolStripPanel.ResumeLayout(false);
             tsc.TopToolStripPanel.PerformLayout();
