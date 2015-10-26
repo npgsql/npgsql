@@ -3,12 +3,14 @@
 
 using System;
 using System.Linq;
+using System.Net.NetworkInformation;
 using System.Reflection;
 using Microsoft.Data.Entity;
 using Microsoft.Data.Entity.FunctionalTests;
 using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Metadata;
 using Microsoft.Extensions.DependencyInjection;
+using NpgsqlTypes;
 
 namespace EntityFramework7.Npgsql.FunctionalTests
 {
@@ -169,18 +171,21 @@ namespace EntityFramework7.Npgsql.FunctionalTests
         public decimal Numeric { get; set; }
 
         public string Text { get; set; }
-        public byte[] Bytea{ get; set; }
+        public byte[] Bytea { get; set; }
 
-        public DateTimeOffset Timestamp { get; set; }
-        public DateTimeOffset Timestamptz { get; set; }
+        public DateTime Timestamp { get; set; }
+        public DateTime Timestamptz { get; set; }
         public DateTime Date { get; set; }
         public TimeSpan Time { get; set; }
         public DateTimeOffset Timetz { get; set; }
         public TimeSpan Interval { get; set; }
 
         public Guid Uuid { get; set; }
-        public bool Bit { get; set; }
-        //public decimal Money { get; set; }
+        public bool Bool { get; set; }
+
+        // Types supported only on PostgreSQL
+        public PhysicalAddress Macaddr { get; set; }
+        public NpgsqlPoint Point { get; set; }
     }
 
     public class MappedSizedDataTypes
@@ -241,14 +246,18 @@ namespace EntityFramework7.Npgsql.FunctionalTests
         public string Text { get; set; }
         public byte[] Bytea { get; set; }
 
-        public DateTimeOffset? Timestamp { get; set; }
-        public DateTimeOffset? Timestamptz { get; set; }
+        public DateTime? Timestamp { get; set; }
+        public DateTime? Timestamptz { get; set; }
         public DateTime? Date { get; set; }
         public TimeSpan? Time { get; set; }
         public DateTimeOffset? Timetz { get; set; }
         public TimeSpan? Interval { get; set; }
 
         public Guid? Uuid { get; set; }
-        public bool? Bit { get; set; }
+        public bool? Bool { get; set; }
+
+        // Types supported only on PostgreSQL
+        public PhysicalAddress Macaddr { get; set; }
+        public NpgsqlPoint? Point { get; set; }
     }
 }

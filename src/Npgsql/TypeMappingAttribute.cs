@@ -10,9 +10,12 @@ using NpgsqlTypes;
 
 namespace Npgsql
 {
+    /// <summary>
+    ///
+    /// </summary>
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
     [MeansImplicitUse]
-    class TypeMappingAttribute : Attribute
+    public class TypeMappingAttribute : Attribute
     {
         /// <summary>
         /// Maps an Npgsql type handler to a PostgreSQL type.
@@ -101,12 +104,25 @@ namespace Npgsql
             : this(pgName, null, null, null, null)
         { }
 
-        internal string PgName { get; private set; }
-        internal NpgsqlDbType? NpgsqlDbType { get; private set; }
+        /// <summary>
+        ///
+        /// </summary>
+        public string PgName { get; private set; }
+        /// <summary>
+        ///
+        /// </summary>
+        public NpgsqlDbType? NpgsqlDbType { get; private set; }
         internal DbType[] DbTypes { get; private set; }
-        internal Type[] Types { get; private set; }
+        /// <summary>
+        ///
+        /// </summary>
+        public Type[] Types { get; private set; }
         internal DbType? InferredDbType { get; private set; }
 
+        /// <summary>
+        /// Returns a string that represents the current object.
+        /// </summary>
+        /// <returns></returns>
         public override string ToString()
         {
             var sb = new StringBuilder();

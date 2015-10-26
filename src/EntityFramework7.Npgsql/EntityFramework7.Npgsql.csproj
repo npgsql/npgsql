@@ -144,6 +144,7 @@
     <Compile Include="Internal\NpgsqlModelSource.cs" />
     <Compile Include="Internal\NpgsqlOptionsExtension.cs" />
     <Compile Include="Storage\Internal\NpgsqlTypeMapper.cs" />
+    <Compile Include="Storage\Internal\NpgsqlTypeMapping.cs" />
     <Compile Include="Update\Internal\NpgsqlUpdateSqlGenerator.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="..\CommonAssemblyInfo.cs">

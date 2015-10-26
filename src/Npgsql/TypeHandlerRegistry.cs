@@ -36,7 +36,10 @@ using AsyncRewriter;
 
 namespace Npgsql
 {
-    internal partial class TypeHandlerRegistry
+    /// <summary>
+    ///
+    /// </summary>
+    public partial class TypeHandlerRegistry
     {
         #region Members
 
@@ -59,7 +62,10 @@ namespace Npgsql
         Dictionary<Type, TypeHandler> _arrayHandlerByType;
         List<BackendType> _backendTypes;
 
-        static internal readonly Dictionary<string, TypeAndMapping> HandlerTypes;
+        /// <summary>
+        ///
+        /// </summary>
+        public static readonly Dictionary<string, TypeAndMapping> HandlerTypes;
         static readonly Dictionary<NpgsqlDbType, DbType> NpgsqlDbTypeToDbType;
         static readonly Dictionary<DbType, NpgsqlDbType> DbTypeToNpgsqlDbType;
         static readonly Dictionary<Type, NpgsqlDbType> TypeToNpgsqlDbType;
@@ -850,10 +856,19 @@ namespace Npgsql
         }
     }
 
-    struct TypeAndMapping
+    /// <summary>
+    ///
+    /// </summary>
+    public struct TypeAndMapping
     {
-        internal Type HandlerType;
-        internal TypeMappingAttribute Mapping;
+        /// <summary>
+        ///
+        /// </summary>
+        public Type HandlerType;
+        /// <summary>
+        ///
+        /// </summary>
+        public TypeMappingAttribute Mapping;
     }
 
     /// <summary>

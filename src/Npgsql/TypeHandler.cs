@@ -34,7 +34,10 @@ namespace Npgsql
 {
     interface ITypeHandler<T> {}
 
-    internal abstract partial class TypeHandler
+    /// <summary>
+    ///
+    /// </summary>
+    public abstract partial class TypeHandler
     {
         internal string PgName { get; set; }
         internal uint OID { get; set; }
@@ -49,6 +52,9 @@ namespace Npgsql
             return ReadValueAsObjectFully(row, fieldDescription);
         }
 
+        /// <summary>
+        ///
+        /// </summary>
         public virtual bool PreferTextWrite => false;
 
         internal T ReadFully<T>(DataRowMessage row, int len, FieldDescription fieldDescription = null)
@@ -72,11 +78,21 @@ namespace Npgsql
         internal abstract T ReadFully<T>(NpgsqlBuffer buf, int len, FieldDescription fieldDescription = null);
         internal abstract Task<T> ReadFullyAsync<T>(CancellationToken cancellationToken, NpgsqlBuffer buf, int len, FieldDescription fieldDescription = null);
 
+        /// <summary>
+        ///
+        /// </summary>
+        /// <param name="clrType"></param>
+        /// <returns></returns>
         protected Exception CreateConversionException(Type clrType)
         {
             return new InvalidCastException($"Can't convert .NET type {clrType} to PostgreSQL {PgName}");
         }
 
+        /// <summary>
+        ///
+        /// </summary>
+        /// <param name="clrType"></param>
+        /// <returns></returns>
         protected Exception CreateConversionButNoParamException(Type clrType)
         {
             return new InvalidCastException($"Can't convert .NET type {clrType} to PostgreSQL {PgName} within an array");
@@ -89,7 +105,11 @@ namespace Npgsql
         }
     }
 
-    internal abstract class TypeHandler<T> : TypeHandler
+    /// <summary>
+    ///
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    public abstract class TypeHandler<T> : TypeHandler
     {
         internal override Type GetFieldType(FieldDescription fieldDescription = null)
         {
