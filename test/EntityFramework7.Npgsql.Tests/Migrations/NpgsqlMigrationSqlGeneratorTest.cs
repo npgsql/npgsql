@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text;
 using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Metadata;
@@ -11,6 +12,7 @@ using Microsoft.Data.Entity.Migrations;
 using Microsoft.Data.Entity.Migrations.Operations;
 using Microsoft.Data.Entity.Storage;
 using Microsoft.Data.Entity.Storage.Internal;
+using Microsoft.Data.Entity.TestUtilities;
 using Microsoft.Data.Entity.Update;
 using Xunit;
 
@@ -25,7 +27,10 @@ namespace EntityFramework7.Npgsql.Tests.Migrations
                 var typeMapper = new NpgsqlTypeMapper();
 
                 return new NpgsqlMigrationsSqlGenerator(
-                    new RelationalCommandBuilderFactory(typeMapper),
+                    new RelationalCommandBuilderFactory(
+                        new FakeSensitiveDataLogger<RelationalCommandBuilderFactory>(),
+                        new DiagnosticListener("Fake"),
+                        typeMapper),
                     new NpgsqlSqlGenerator(),
                     typeMapper,
                     new NpgsqlAnnotationProvider());
