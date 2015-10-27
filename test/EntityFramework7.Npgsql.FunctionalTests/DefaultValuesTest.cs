@@ -3,12 +3,12 @@
 
 using System;
 using System.Linq;
-using EntityFramework7.Npgsql.FunctionalTests;
+using Microsoft.Data.Entity;
 using Microsoft.Data.Entity.FunctionalTests;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
-namespace Microsoft.Data.Entity.Npgsql.FunctionalTests
+namespace EntityFramework7.Npgsql.FunctionalTests
 {
     public class DefaultValuesTest : IDisposable
     {
