@@ -197,6 +197,20 @@ namespace Npgsql.Tests.Types
             cmd.Dispose();
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/835")]
+        public void MacaddrMultiple()
+        {
+            using (var cmd = new NpgsqlCommand("SELECT unnest(ARRAY['08-00-2B-01-02-03'::MACADDR, '08-00-2B-01-02-04'::MACADDR])", Conn))
+            using (var r = cmd.ExecuteReader())
+            {
+                r.Read();
+                var p1 = (PhysicalAddress)r[0];
+                r.Read();
+                var p2 = (PhysicalAddress)r[0];
+                Assert.That(p1, Is.EqualTo(PhysicalAddress.Parse("08-00-2B-01-02-03")));
+            }
+        }
+
         // Older tests from here
 
         [Test]
