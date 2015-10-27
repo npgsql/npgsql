@@ -403,7 +403,6 @@ namespace Npgsql
 
                 HandleAuthentication(timeout);
                 TypeHandlerRegistry.Setup(this, timeout);
-                State = ConnectorState.Ready;
                 Log.Debug($"Opened connection to {Host}:{Port}", Id);
 
                 if (ContinuousProcessing) {
