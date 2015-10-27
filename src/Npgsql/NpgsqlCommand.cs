@@ -436,7 +436,7 @@ namespace Npgsql
             }
 
             _connector = Connection.Connector;
-            Log.Debug("Prepare command", _connector.Id);
+            Log.Debug("Preparing: " + CommandText, _connector.Id);
 
             using (_connector.StartUserAction())
             {
@@ -726,6 +726,7 @@ namespace Npgsql
         [RewriteAsync]
         NpgsqlDataReader Execute(CommandBehavior behavior = CommandBehavior.Default)
         {
+            Log.Debug("Executing: " + CommandText, Connection.Connector.Id);
             State = CommandState.InProgress;
             try
             {
@@ -839,7 +840,7 @@ namespace Npgsql
         int ExecuteNonQueryInternal()
         {
             Prechecks();
-            Log.Debug("ExecuteNonQuery", Connection.Connector.Id);
+            Log.Trace("ExecuteNonQuery", Connection.Connector.Id);
             using (Connection.Connector.StartUserAction())
             {
                 ValidateAndCreateMessages();
@@ -898,7 +899,7 @@ namespace Npgsql
         object ExecuteScalarInternal()
         {
             Prechecks();
-            Log.Debug("ExecuteNonScalar", Connection.Connector.Id);
+            Log.Trace("ExecuteNonScalar", Connection.Connector.Id);
             using (Connection.Connector.StartUserAction())
             {
                 var behavior = CommandBehavior.SequentialAccess | CommandBehavior.SingleRow;
@@ -970,7 +971,6 @@ namespace Npgsql
         /// </summary>
         protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior)
         {
-            Log.Debug("ExecuteReader with CommandBehavior=" + behavior);
             return ExecuteDbDataReaderInternal(behavior);
         }
 
@@ -980,7 +980,7 @@ namespace Npgsql
         {
             Prechecks();
 
-            Log.Debug("ExecuteReader", Connection.Connector.Id);
+            Log.Trace("ExecuteReader", Connection.Connector.Id);
 
             Connection.Connector.StartUserAction();
             try

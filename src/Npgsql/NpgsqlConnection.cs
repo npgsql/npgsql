@@ -237,7 +237,7 @@ namespace Npgsql
 
             CheckConnectionClosed();
 
-            Log.Debug("Opening connnection");
+            Log.Trace("Opening connnection");
 
             // Copy the password aside and remove it from the user-provided connection string
             // (unless PersistSecurityInfo has been requested). Note that cloned connections already
@@ -605,7 +605,7 @@ namespace Npgsql
             if (Connector == null)
                 return;
 
-            Log.Debug("Closing connection", Connector.Id);
+            Log.Trace("Closing connection", Connector.Id);
 
 #if NET45 || NET452 || DNX452
             if (_promotable != null && _promotable.InLocalTransaction)
@@ -620,7 +620,8 @@ namespace Npgsql
 
         internal void ReallyClose()
         {
-            Log.Trace("Really closing connection", Connector.Id);
+            var connectorId = Connector.Id;
+            Log.Trace("Really closing connection", connectorId);
             _postponingClose = false;
 
 #if NET45 || NET452 || DNX452
@@ -641,6 +642,8 @@ namespace Npgsql
             {
                 Connector.Close();
             }
+
+            Log.Debug("Connection closed", Connector.Id);
 
             Connector = null;
 

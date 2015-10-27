@@ -404,6 +404,7 @@ namespace Npgsql
                 HandleAuthentication(timeout);
                 TypeHandlerRegistry.Setup(this, timeout);
                 State = ConnectorState.Ready;
+                Log.Debug($"Opened connection to {Host}:{Port}", Id);
 
                 if (ContinuousProcessing) {
                     HandleAsyncMessages();
@@ -469,6 +470,7 @@ namespace Npgsql
 
                 if (SslMode == SslMode.Require || SslMode == SslMode.Prefer)
                 {
+                    Log.Trace("Attempting SSL negotiation");
                     SSLRequestMessage.Instance.Write(Buffer);
                     Buffer.Flush();
 
@@ -523,11 +525,12 @@ namespace Npgsql
                         timeout.Check();
                         Buffer.Underlying = _stream;
                         IsSecure = true;
+                        Log.Trace("SSL negotiation successful");
                         break;
                     }
                 }
 
-                Log.Debug($"Connected to {Host}:{Port}");
+                Log.Trace($"Socket connected to {Host}:{Port}");
             }
             catch
             {
@@ -573,7 +576,7 @@ namespace Npgsql
 
             for (var i = 0; i < ips.Length; i++)
             {
-                Log.Trace("Attempting to connect to " + ips[i], Id);
+                Log.Trace("Attempting to connect to " + ips[i]);
                 var ep = new IPEndPoint(ips[i], Port);
                 var socket = new Socket(ep.AddressFamily, SocketType.Stream, ProtocolType.Tcp)
                 {
@@ -706,7 +709,7 @@ namespace Npgsql
         [RewriteAsync]
         void HandleAuthentication(NpgsqlTimeout timeout)
         {
-            Log.Debug("Authenticating...", Id);
+            Log.Trace("Authenticating...", Id);
             while (true)
             {
                 var msg = ReadSingleMessage(DataRowLoadingMode.NonSequential);
@@ -1470,7 +1473,7 @@ namespace Npgsql
         /// </summary>
         internal void Close()
         {
-            Log.Debug("Close connector", Id);
+            Log.Trace("Closing connector", Id);
 
             if (IsReady)
             {
