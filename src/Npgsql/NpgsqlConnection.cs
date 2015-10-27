@@ -177,7 +177,7 @@ namespace Npgsql
 
             CheckConnectionClosed();
 
-            Log.Debug("Opening connnection");
+            Log.Trace("Opening connnection");
 
             WasBroken = false;
 
@@ -547,7 +547,7 @@ namespace Npgsql
             if (Connector == null)
                 return;
 
-            Log.Debug("Closing connection", Connector.Id);
+            Log.Trace("Closing connection", Connector.Id);
 
 #if !DNXCORE50
             if (_promotable != null && _promotable.InLocalTransaction)
@@ -562,7 +562,8 @@ namespace Npgsql
 
         internal void ReallyClose()
         {
-            Log.Trace("Really closing connection", Connector.Id);
+            var connectorId = Connector.Id;
+            Log.Trace("Really closing connection", connectorId);
             _postponingClose = false;
 
 #if !DNXCORE50
@@ -583,6 +584,8 @@ namespace Npgsql
             {
                 Connector.Close();
             }
+
+            Log.Debug("Connection closed", Connector.Id);
 
             Connector = null;
 

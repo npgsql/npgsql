@@ -448,6 +448,7 @@ namespace Npgsql
                 ProcessServerVersion();
                 TypeHandlerRegistry.Setup(this);
                 State = ConnectorState.Ready;
+                Log.Debug(String.Format("Opened connection to {0}:{1}", Host, Port), Id);
 
                 if (ContinuousProcessing) {
                     HandleAsyncMessages();
@@ -487,7 +488,7 @@ namespace Npgsql
                 // time we have left between all the remaining ip's in the list.
                 for (var i = 0; i < ips.Length; i++)
                 {
-                    Log.Trace("Attempting to connect to " + ips[i], Id);
+                    Log.Trace("Attempting to connect to " + ips[i]);
                     var ep = new IPEndPoint(ips[i], Port);
                     _socket = new Socket(ep.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
                     attemptStart = DateTime.Now;
@@ -527,6 +528,7 @@ namespace Npgsql
                 // If the PostgreSQL server has SSL connectors enabled Open SslClientStream if (response == 'S') {
                 if (SslMode == SslMode.Require || SslMode == SslMode.Prefer)
                 {
+                    Log.Trace("Attempting SSL negotiation");
                     _stream
                         .WriteInt32(8)
                         .WriteInt32(80877103);
@@ -573,11 +575,12 @@ namespace Npgsql
                             _stream = sslStream;
                         }
                         IsSecure = true;
+                        Log.Trace("SSL negotiation successful");
                     }
                 }
 
                 Buffer = new NpgsqlBuffer(_stream, BufferSize, PGUtil.UTF8Encoding);
-                Log.Debug(String.Format("Connected to {0}:{1}", Host, Port));
+                Log.Trace(String.Format("Socket connected to {0}:{1}", Host, Port));
             }
             catch
             {
@@ -608,7 +611,7 @@ namespace Npgsql
 
         void HandleAuthentication()
         {
-            Log.Debug("Authenticating...", Id);
+            Log.Trace("Authenticating...", Id);
             while (true)
             {
                 var msg = ReadSingleMessage();
@@ -1358,7 +1361,7 @@ namespace Npgsql
         /// </summary>
         internal void Close()
         {
-            Log.Debug("Close connector", Id);
+            Log.Trace("Closing connector", Id);
 
             if (IsReady)
             {
