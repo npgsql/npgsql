@@ -59,10 +59,12 @@ namespace Npgsql.VisualStudio.Provider {
         }
 
         private void CheckNpgsqlForm_Load(object sender, EventArgs e) {
-
+            llGrab.Text = llGrab.Text.Replace("%ver%", typeof(NpgsqlConnection).Assembly.GetName().Version.ToString());
         }
 
         private void bEFv5_Click(object sender, EventArgs e) {
+            tabControl1.SelectedTab = tabPage2;
+
             rtb.Clear();
 
             try {
@@ -135,6 +137,8 @@ namespace Npgsql.VisualStudio.Provider {
                                 }
                                 else {
                                     Log("No", Color.Red);
+
+                                    SuggestIt(llGrab);
                                 }
                                 Newl();
                             }
@@ -334,13 +338,22 @@ namespace Npgsql.VisualStudio.Provider {
                         Newl();
                     }
                 }
+                tabControl1.SelectedTab = tabPage3;
             }
             catch (Exception err) {
                 Log("" + err, Color.Purple);
             }
         }
+        private void SuggestIt(LinkLabel ll) {
+            ll.Text = "⇒" + ll.Text.Substring(1);
+        }
+        private void UnsuggestIt(LinkLabel ll) {
+            ll.Text = " " + ll.Text.Substring(1);
+        }
 
         private void bEFv6_Click(object sender, EventArgs e) {
+            tabControl1.SelectedTab = tabPage2;
+
             rtb.Clear();
 
             try {
@@ -572,23 +585,27 @@ namespace Npgsql.VisualStudio.Provider {
                                                                     else {
                                                                         Log("No", Color.Red);
                                                                         Newl();
+                                                                        SuggestIt(llADONet);
                                                                     }
                                                                 }
                                                             }
                                                             else {
                                                                 Log("No", Color.Red);
                                                                 Newl();
+                                                                SuggestIt(llADONet);
                                                             }
                                                         }
                                                     }
                                                     else {
                                                         Log("No", Color.Red);
                                                         Newl();
+                                                        SuggestIt(llADONet);
                                                     }
                                                 }
                                                 else {
                                                     Log("No", Color.Red);
                                                     Newl();
+                                                    SuggestIt(llADONet);
                                                 }
                                             }
                                             {
@@ -644,21 +661,25 @@ namespace Npgsql.VisualStudio.Provider {
                                                             else {
                                                                 Log("No", Color.Red);
                                                                 Newl();
+                                                                SuggestIt(llProvider);
                                                             }
                                                         }
                                                         else {
                                                             Log("No", Color.Red);
                                                             Newl();
+                                                            SuggestIt(llProvider);
                                                         }
                                                     }
                                                     else {
                                                         Log("No", Color.Red);
                                                         Newl();
+                                                        SuggestIt(llProvider);
                                                     }
                                                 }
                                                 else {
                                                     Log("No", Color.Red);
                                                     Newl();
+                                                    SuggestIt(llProvider);
                                                 }
                                             }
                                         }
@@ -684,10 +705,155 @@ namespace Npgsql.VisualStudio.Provider {
                         Newl();
                     }
                 }
+                tabControl1.SelectedTab = tabPage3;
             }
             catch (Exception err) {
                 Log("" + err, Color.Purple);
             }
+
+        }
+
+        private void TryOpen(String url) {
+            if (MessageBox.Show(this, "Open?\n\n" + url, null, MessageBoxButtons.OKCancel, MessageBoxIcon.Exclamation) == DialogResult.OK) {
+                System.Diagnostics.Process.Start(url);
+            }
+        }
+
+        private void llGrab_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e) {
+            TryOpen("https://github.com/npgsql/npgsql/releases");
+        }
+
+        private void llADONet_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e) {
+            if (MessageBox.Show(this, "Are you really?", null, MessageBoxButtons.OKCancel, MessageBoxIcon.Exclamation) == DialogResult.OK) {
+                var proj = GetActiveProject();
+                if (proj != null) {
+                    String fpXml = null;
+                    foreach (EnvDTE.ProjectItem pi in proj.ProjectItems) {
+                        if (false
+                            || "App.config".Equals(pi.Name, StringComparison.InvariantCultureIgnoreCase)
+                            || "Web.config".Equals(pi.Name, StringComparison.InvariantCultureIgnoreCase)
+                        ) {
+                            fpXml = pi.FileNames[1];
+                            break;
+                        }
+                    }
+                    if (fpXml != null) {
+                        XmlDocument xd = new XmlDocument();
+                        xd.Load(fpXml);
+
+                        var el1 = xd.SelectSingleNode("/configuration") as XmlElement;
+                        if (el1 != null) {
+                            var el2 = el1.SelectSingleNode("system.data") as XmlElement;
+                            if (el2 == null) {
+                                el2 = xd.CreateElement("system.data");
+                                el1.AppendChild(el2);
+                            }
+                            {
+                                var el3 = el2.SelectSingleNode("DbProviderFactories") as XmlElement;
+                                if (el3 == null) {
+                                    el3 = xd.CreateElement("DbProviderFactories");
+                                    el2.AppendChild(el3);
+                                }
+                                {
+                                    {
+                                        var el = xd.CreateElement("remove");
+                                        el.SetAttribute("invariant", "Npgsql");
+                                        el3.AppendChild(el);
+                                    }
+                                    {
+                                        var el = xd.CreateElement("add");
+                                        el.SetAttribute("invariant", "Npgsql");
+                                        el.SetAttribute("name", "Npgsql Data Provider");
+                                        el.SetAttribute("description", ".Net Data Provider for PostgreSQL");
+                                        el.SetAttribute("type", "Npgsql.NpgsqlFactory, Npgsql");
+                                        el3.AppendChild(el);
+                                    }
+
+                                    xd.Save(fpXml);
+                                    MessageBox.Show(this, "Done.", null, MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            MessageBox.Show(this, "Not changed.", null, MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+            return;
+        }
+
+        private void llProvider_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e) {
+            if (MessageBox.Show(this, "Are you really?", null, MessageBoxButtons.OKCancel, MessageBoxIcon.Exclamation) == DialogResult.OK) {
+                var proj = GetActiveProject();
+                if (proj != null) {
+                    String fpXml = null;
+                    foreach (EnvDTE.ProjectItem pi in proj.ProjectItems) {
+                        if (false
+                            || "App.config".Equals(pi.Name, StringComparison.InvariantCultureIgnoreCase)
+                            || "Web.config".Equals(pi.Name, StringComparison.InvariantCultureIgnoreCase)
+                        ) {
+                            fpXml = pi.FileNames[1];
+                            break;
+                        }
+                    }
+                    if (fpXml != null) {
+                        XmlDocument xd = new XmlDocument();
+                        xd.Load(fpXml);
+
+                        var el1 = xd.SelectSingleNode("/configuration") as XmlElement;
+                        if (el1 != null) {
+                            {
+                                var el2 = el1.SelectSingleNode("configSections") as XmlElement;
+                                if (el2 == null) {
+                                    el2 = xd.CreateElement("configSections");
+                                    el1.AppendChild(el2);
+                                }
+                                {
+                                    var el3 = el2.SelectSingleNode("section[@name='entityFramework']") as XmlElement;
+                                    if (el3 == null) {
+                                        el3 = xd.CreateElement("section");
+                                        el3.SetAttribute("name", "entityFramework");
+                                        el3.SetAttribute("type", "System.Data.Entity.Internal.ConfigFile.EntityFrameworkSection, EntityFramework, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089");
+                                        el3.SetAttribute("requirePermission", "false");
+                                    }
+                                }
+                            }
+                            {
+                                var el2 = el1.SelectSingleNode("entityFramework") as XmlElement;
+                                if (el2 == null) {
+                                    el2 = xd.CreateElement("entityFramework");
+                                    el1.AppendChild(el2);
+                                }
+                                {
+                                    var el3 = el2.SelectSingleNode("providers") as XmlElement;
+                                    if (el3 == null) {
+                                        el3 = xd.CreateElement("providers");
+                                        el2.AppendChild(el3);
+                                    }
+                                    {
+                                        var el4 = el3.SelectSingleNode("provider[@invariantName='Npgsql']") as XmlElement;
+                                        if (el4 == null) {
+                                            var el = xd.CreateElement("provider");
+                                            el.SetAttribute("invariantName", "Npgsql");
+                                            el.SetAttribute("type", "Npgsql.NpgsqlServices, Npgsql.EntityFramework");
+                                            el3.AppendChild(el);
+
+                                            xd.Save(fpXml);
+                                            MessageBox.Show(this, "Done.", null, MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+                                            return;
+                                        }
+                                    }
+
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            MessageBox.Show(this, "Not changed.", null, MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+            return;
         }
     }
 }
