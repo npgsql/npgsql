@@ -4,4 +4,4 @@ clone_depth: 1
 test: off
 deploy: off
 artifacts:
-  - path: 'artifacts\build\**\*.nupkg'
+  - path: 'artifacts\build\*.nupkg'
