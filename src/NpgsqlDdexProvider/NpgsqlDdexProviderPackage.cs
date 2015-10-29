@@ -104,6 +104,7 @@ namespace Npgsql.VisualStudio.Provider
         private void MenuItemSetupNpgsqlDdexProvider(object sender, EventArgs e)
         {
             using (CheckNpgsqlForm form = new CheckNpgsqlForm()) {
+                form.sp = this;
                 form.ShowDialog();
             }
         }

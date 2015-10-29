@@ -1,5 +1,7 @@
-﻿using Microsoft.VisualStudio.Shell;
+﻿using Microsoft.VisualStudio.ComponentModelHost;
+using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
+using NuGet.VisualStudio;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -17,6 +19,8 @@ namespace Npgsql.VisualStudio.Provider {
         public CheckNpgsqlForm() {
             InitializeComponent();
         }
+
+        public System.IServiceProvider sp { get; set; }
 
         private void bCopy_Click(object sender, EventArgs e) {
             rtb.SelectAll();
@@ -64,6 +68,8 @@ namespace Npgsql.VisualStudio.Provider {
 
         private void bEFv5_Click(object sender, EventArgs e) {
             tabControl1.SelectedTab = tabPage2;
+
+            UnsuggestAll();
 
             rtb.Clear();
 
@@ -209,6 +215,7 @@ namespace Npgsql.VisualStudio.Provider {
                                 if (found == null) {
                                     Log("Not found in assembly reference", Color.Red);
                                     Newl();
+                                    SuggestIt(llEFv5);
                                 }
                                 else if (need == found) {
                                     Log("Yes", Color.Blue);
@@ -217,6 +224,7 @@ namespace Npgsql.VisualStudio.Provider {
                                 else {
                                     Log("No, " + found + " is referenced", Color.Red);
                                     Newl();
+                                    SuggestIt(llEFv5);
                                 }
                             }
 
@@ -344,15 +352,28 @@ namespace Npgsql.VisualStudio.Provider {
                 Log("" + err, Color.Purple);
             }
         }
+
+        private void UnsuggestAll() {
+            UnsuggestIt(llGrab);
+            UnsuggestIt(llADONet);
+            UnsuggestIt(llProvider);
+            UnsuggestIt(llEFv5);
+            UnsuggestIt(llEFv6);
+        }
+
         private void SuggestIt(LinkLabel ll) {
             ll.Text = "⇒" + ll.Text.Substring(1);
+            ll.LinkArea = new LinkArea(0, 1);
         }
         private void UnsuggestIt(LinkLabel ll) {
             ll.Text = " " + ll.Text.Substring(1);
+            ll.LinkArea = new LinkArea(0, 0);
         }
 
         private void bEFv6_Click(object sender, EventArgs e) {
             tabControl1.SelectedTab = tabPage2;
+
+            UnsuggestAll();
 
             rtb.Clear();
 
@@ -466,6 +487,7 @@ namespace Npgsql.VisualStudio.Provider {
                                 if (found == null) {
                                     Log("Not found in assembly reference", Color.Red);
                                     Newl();
+                                    SuggestIt(llEFv6);
                                 }
                                 else if (need == found) {
                                     Log("Yes", Color.Blue);
@@ -474,6 +496,7 @@ namespace Npgsql.VisualStudio.Provider {
                                 else {
                                     Log("No, " + found + " is referenced", Color.Red);
                                     Newl();
+                                    SuggestIt(llEFv6);
                                 }
                             }
 
@@ -645,24 +668,11 @@ namespace Npgsql.VisualStudio.Provider {
                                                         Log("Yes", Color.Blue);
                                                         Newl();
 
-                                                        Log("Check <provider>... ");
-                                                        var el4 = el3.SelectSingleNode("provider") as XmlElement;
+                                                        Log("Check <provider invariantName=\"Npgsql\" type=\"Npgsql.NpgsqlServices, Npgsql.EntityFramework\">... ");
+                                                        var el4 = el3.SelectSingleNode("provider[@invariantName='Npgsql' and @type='Npgsql.NpgsqlServices, Npgsql.EntityFramework']") as XmlElement;
                                                         if (el4 != null) {
                                                             Log("Yes", Color.Blue);
                                                             Newl();
-
-                                                            Log("Check <provider invariantName=\"Npgsql\" type=\"Npgsql.NpgsqlServices, Npgsql.EntityFramework\">... ");
-                                                            var el5 = el4.SelectSingleNode("provider[@invariantName='Npgsql' and @type='Npgsql.NpgsqlServices, Npgsql.EntityFramework']") as XmlElement;
-                                                            if (el5 != null) {
-                                                                Log("Yes", Color.Blue);
-                                                                Newl();
-
-                                                            }
-                                                            else {
-                                                                Log("No", Color.Red);
-                                                                Newl();
-                                                                SuggestIt(llProvider);
-                                                            }
                                                         }
                                                         else {
                                                             Log("No", Color.Red);
@@ -713,14 +723,18 @@ namespace Npgsql.VisualStudio.Provider {
 
         }
 
-        private void TryOpen(String url) {
+        private bool TryOpen(String url) {
             if (MessageBox.Show(this, "Open?\n\n" + url, null, MessageBoxButtons.OKCancel, MessageBoxIcon.Exclamation) == DialogResult.OK) {
                 System.Diagnostics.Process.Start(url);
+                return true;
             }
+            return false;
         }
 
         private void llGrab_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e) {
-            TryOpen("https://github.com/npgsql/npgsql/releases");
+            if (TryOpen("https://github.com/npgsql/npgsql/releases")) {
+                //UnsuggestIt((LinkLabel)sender);
+            }
         }
 
         private void llADONet_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e) {
@@ -771,6 +785,7 @@ namespace Npgsql.VisualStudio.Provider {
 
                                     xd.Save(fpXml);
                                     MessageBox.Show(this, "Done.", null, MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+                                    UnsuggestIt((LinkLabel)sender);
                                     return;
                                 }
                             }
@@ -841,6 +856,7 @@ namespace Npgsql.VisualStudio.Provider {
 
                                             xd.Save(fpXml);
                                             MessageBox.Show(this, "Done.", null, MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+                                            UnsuggestIt((LinkLabel)sender);
                                             return;
                                         }
                                     }
@@ -854,6 +870,38 @@ namespace Npgsql.VisualStudio.Provider {
 
             MessageBox.Show(this, "Not changed.", null, MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
             return;
+        }
+
+        private void llEFv5_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e) {
+            // https://docs.nuget.org/create/invoking-nuget-services-from-inside-visual-studio
+
+            var proj = GetActiveProject();
+
+            try {
+                var componentModel = (IComponentModel)sp.GetService(typeof(SComponentModel));
+                IVsPackageInstaller installer = componentModel.GetService<IVsPackageInstaller>();
+                installer.InstallPackage(null, proj, "EntityFramework5.Npgsql", typeof(NpgsqlConnection).Assembly.GetName().Version, false);
+
+                MessageBox.Show(this, "Done.", null, MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception err) {
+                MessageBox.Show(this, "InstallPackage failed.\n\n" + err, null, MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+            }
+        }
+
+        private void llEFv6_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e) {
+            var proj = GetActiveProject();
+
+            try {
+                var componentModel = (IComponentModel)sp.GetService(typeof(SComponentModel));
+                IVsPackageInstaller installer = componentModel.GetService<IVsPackageInstaller>();
+                installer.InstallPackage(null, proj, "EntityFramework6.Npgsql", typeof(NpgsqlConnection).Assembly.GetName().Version, false);
+
+                MessageBox.Show(this, "Done.", null, MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception err) {
+                MessageBox.Show(this, "InstallPackage failed.\n\n" + err, null, MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+            }
         }
     }
 }

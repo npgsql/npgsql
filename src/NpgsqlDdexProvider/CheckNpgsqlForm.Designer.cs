@@ -43,6 +43,8 @@
             this.tabPage2 = new System.Windows.Forms.TabPage();
             this.rtb = new System.Windows.Forms.RichTextBox();
             this.tabPage3 = new System.Windows.Forms.TabPage();
+            this.llEFv5 = new System.Windows.Forms.LinkLabel();
+            this.llEFv6 = new System.Windows.Forms.LinkLabel();
             this.llProvider = new System.Windows.Forms.LinkLabel();
             this.llADONet = new System.Windows.Forms.LinkLabel();
             this.llGrab = new System.Windows.Forms.LinkLabel();
@@ -231,6 +233,8 @@
             // 
             // tabPage3
             // 
+            this.tabPage3.Controls.Add(this.llEFv5);
+            this.tabPage3.Controls.Add(this.llEFv6);
             this.tabPage3.Controls.Add(this.llProvider);
             this.tabPage3.Controls.Add(this.llADONet);
             this.tabPage3.Controls.Add(this.llGrab);
@@ -242,10 +246,32 @@
             this.tabPage3.Text = "Suggestions";
             this.tabPage3.UseVisualStyleBackColor = true;
             // 
+            // llEFv5
+            // 
+            this.llEFv5.AutoSize = true;
+            this.llEFv5.Location = new System.Drawing.Point(8, 175);
+            this.llEFv5.Name = "llEFv5";
+            this.llEFv5.Size = new System.Drawing.Size(202, 15);
+            this.llEFv5.TabIndex = 3;
+            this.llEFv5.TabStop = true;
+            this.llEFv5.Text = "  Add EntityFramework5.Npgsql";
+            this.llEFv5.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.llEFv5_LinkClicked);
+            // 
+            // llEFv6
+            // 
+            this.llEFv6.AutoSize = true;
+            this.llEFv6.Location = new System.Drawing.Point(8, 223);
+            this.llEFv6.Name = "llEFv6";
+            this.llEFv6.Size = new System.Drawing.Size(202, 15);
+            this.llEFv6.TabIndex = 4;
+            this.llEFv6.TabStop = true;
+            this.llEFv6.Text = "  Add EntityFramework6.Npgsql";
+            this.llEFv6.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.llEFv6_LinkClicked);
+            // 
             // llProvider
             // 
             this.llProvider.AutoSize = true;
-            this.llProvider.Location = new System.Drawing.Point(8, 125);
+            this.llProvider.Location = new System.Drawing.Point(8, 127);
             this.llProvider.Name = "llProvider";
             this.llProvider.Size = new System.Drawing.Size(356, 15);
             this.llProvider.TabIndex = 2;
@@ -256,7 +282,7 @@
             // llADONet
             // 
             this.llADONet.AutoSize = true;
-            this.llADONet.Location = new System.Drawing.Point(8, 76);
+            this.llADONet.Location = new System.Drawing.Point(8, 79);
             this.llADONet.Name = "llADONet";
             this.llADONet.Size = new System.Drawing.Size(379, 15);
             this.llADONet.TabIndex = 1;
@@ -267,7 +293,7 @@
             // llGrab
             // 
             this.llGrab.AutoSize = true;
-            this.llGrab.Location = new System.Drawing.Point(8, 27);
+            this.llGrab.Location = new System.Drawing.Point(8, 31);
             this.llGrab.Name = "llGrab";
             this.llGrab.Size = new System.Drawing.Size(304, 15);
             this.llGrab.TabIndex = 0;
@@ -316,5 +342,7 @@
         private System.Windows.Forms.LinkLabel llGrab;
         private System.Windows.Forms.LinkLabel llADONet;
         private System.Windows.Forms.LinkLabel llProvider;
+        private System.Windows.Forms.LinkLabel llEFv5;
+        private System.Windows.Forms.LinkLabel llEFv6;
     }
 }
