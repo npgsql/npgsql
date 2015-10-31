@@ -33,11 +33,19 @@ using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers
 {
-    internal interface ICompositeHandler
+    /// <summary>
+    /// Interface implemented by all concrete handlers which handle enums
+    /// </summary>
+    public interface ICompositeHandler
     {
-        Type ClrType { get; }
+        /// <summary>
+        /// The CLR type mapped to the PostgreSQL composite type.
+        /// </summary>
+        Type CompositeType { get; }
+#pragma warning disable 1591
         List<Tuple<string, uint>> RawFields { get; set; }
         ICompositeHandler Clone(TypeHandlerRegistry registry);
+#pragma warning restore 1591
     }
 
     /// <summary>
@@ -67,7 +75,7 @@ namespace Npgsql.TypeHandlers
         object _value;
         bool _wroteFieldHeader;
 
-        public Type ClrType => typeof (T);
+        public Type CompositeType => typeof (T);
 
         internal CompositeHandler() {}
 

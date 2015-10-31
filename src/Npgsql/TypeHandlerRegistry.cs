@@ -79,8 +79,21 @@ namespace Npgsql
         /// </summary>
         static readonly ConcurrentDictionary<string, List<BackendType>> BackendTypeCache = new ConcurrentDictionary<string, List<BackendType>>();
 
-        static ConcurrentDictionary<string, TypeHandler> _globalEnumRegistrations;
-        static ConcurrentDictionary<string, TypeHandler> _globalCompositeRegistrations;
+        static readonly ConcurrentDictionary<string, TypeHandler> _globalEnumMappings;
+
+        /// <summary>
+        ///
+        /// </summary>
+        public static IReadOnlyDictionary<string, TypeHandler> GlobalEnumMappings
+            => (IReadOnlyDictionary<string, TypeHandler>)_globalEnumMappings;
+
+        static readonly ConcurrentDictionary<string, TypeHandler> _globalCompositeMappings;
+
+        /// <summary>
+        ///
+        /// </summary>
+        public static IReadOnlyDictionary<string, TypeHandler> GlobalCompositeMappings
+            => (IReadOnlyDictionary<string, TypeHandler>)_globalCompositeMappings;
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
@@ -252,8 +265,7 @@ namespace Npgsql
 
                     case BackendTypeType.Enum:
                         TypeHandler handler;
-                        if (_globalEnumRegistrations != null &&
-                            _globalEnumRegistrations.TryGetValue(backendType.Name, out handler))
+                        if (_globalEnumMappings.TryGetValue(backendType.Name, out handler))
                         {
                             ActivateEnumType(handler, backendType);
                         }
@@ -265,8 +277,8 @@ namespace Npgsql
                         continue;
 
                     case BackendTypeType.Composite:
-                        if (_globalCompositeRegistrations != null &&
-                            _globalCompositeRegistrations.TryGetValue(backendType.Name, out handler))
+                        if (_globalCompositeMappings != null &&
+                            _globalCompositeMappings.TryGetValue(backendType.Name, out handler))
                         {
                             ActivateCompositeType(handler, backendType);
                         }
@@ -365,7 +377,7 @@ namespace Npgsql
                 if (_arrayHandlerByType == null) {
                     _arrayHandlerByType = new Dictionary<Type, TypeHandler>();
                 }
-                _arrayHandlerByType[asEnumHandler.ClrType] = arrayHandler;
+                _arrayHandlerByType[asEnumHandler.EnumType] = arrayHandler;
                 return;
             }
 
@@ -375,7 +387,7 @@ namespace Npgsql
                 if (_arrayHandlerByType == null) {
                     _arrayHandlerByType = new Dictionary<Type, TypeHandler>();
                 }
-                _arrayHandlerByType[asCompositeHandler.ClrType] = arrayHandler;
+                _arrayHandlerByType[asCompositeHandler.CompositeType] = arrayHandler;
                 return;
             }
 
@@ -422,13 +434,9 @@ namespace Npgsql
             ActivateEnumType(handler, backendTypeInfo);
         }
 
-        internal static void RegisterEnumTypeGlobally<TEnum>(string pgName) where TEnum : struct
+        internal static void MapEnumTypeGlobally<TEnum>(string pgName) where TEnum : struct
         {
-            if (_globalEnumRegistrations == null) {
-                _globalEnumRegistrations = new ConcurrentDictionary<string, TypeHandler>();
-            }
-
-            _globalEnumRegistrations[pgName] = new EnumHandler<TEnum>();
+            _globalEnumMappings[pgName] = new EnumHandler<TEnum>();
         }
 
         void ActivateEnumType(TypeHandler handler, BackendType backendType)
@@ -450,18 +458,18 @@ namespace Npgsql
 
         internal static void UnregisterEnumTypeGlobally<TEnum>() where TEnum : struct
         {
-            var pgName = _globalEnumRegistrations
+            var pgName = _globalEnumMappings
                 .Single(kv => kv.Value is EnumHandler<TEnum>)
                 .Key;
             TypeHandler _;
-            _globalEnumRegistrations.TryRemove(pgName, out _);
+            _globalEnumMappings.TryRemove(pgName, out _);
         }
 
         #endregion
 
         #region Composite
 
-        internal void RegisterCompositeType<T>(string pgName) where T : new()
+        internal void MapCompositeType<T>(string pgName) where T : new()
         {
             var backendTypeInfo = _backendTypes.FirstOrDefault(t => t.Name == pgName);
             if (backendTypeInfo == null)
@@ -473,14 +481,9 @@ namespace Npgsql
             ActivateCompositeType(handler, backendTypeInfo);
         }
 
-        internal static void RegisterCompositeTypeGlobally<T>(string pgName) where T : new()
+        internal static void MapCompositeTypeGlobally<T>(string pgName) where T : new()
         {
-            if (_globalCompositeRegistrations == null)
-            {
-                _globalCompositeRegistrations = new ConcurrentDictionary<string, TypeHandler>();
-            }
-
-            _globalCompositeRegistrations[pgName] = new CompositeHandler<T>();
+            _globalCompositeMappings[pgName] = new CompositeHandler<T>();
         }
 
         void ActivateCompositeType(TypeHandler templateHandler, BackendType backendType)
@@ -531,7 +534,7 @@ namespace Npgsql
         internal static void UnregisterCompositeTypeGlobally(string pgName)
         {
             TypeHandler _;
-            _globalCompositeRegistrations.TryRemove(pgName, out _);
+            _globalCompositeMappings.TryRemove(pgName, out _);
         }
 
         #endregion
@@ -687,6 +690,8 @@ namespace Npgsql
                         "If you wish to map it to a PostgreSQL composite type you need to register it before usage, please refer to the documentation.");
                 }
 
+                // Only errors from here
+
                 if (type.GetTypeInfo().IsEnum) {
                     throw new NotSupportedException(
                         $"The CLR enum type {type.Name} must be registered with Npgsql before usage, please refer to the documentation.");
@@ -761,6 +766,9 @@ namespace Npgsql
 
         static TypeHandlerRegistry()
         {
+            _globalEnumMappings = new ConcurrentDictionary<string, TypeHandler>();
+            _globalCompositeMappings = new ConcurrentDictionary<string, TypeHandler>();
+
             HandlerTypes = new Dictionary<string, TypeAndMapping>();
             NpgsqlDbTypeToDbType = new Dictionary<NpgsqlDbType, DbType>();
             DbTypeToNpgsqlDbType = new Dictionary<DbType, NpgsqlDbType>();

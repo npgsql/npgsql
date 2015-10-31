@@ -10,6 +10,7 @@ using Microsoft.Data.Entity.FunctionalTests;
 using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Metadata;
 using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
 using NpgsqlTypes;
 
 namespace EntityFramework7.Npgsql.FunctionalTests
@@ -23,6 +24,10 @@ namespace EntityFramework7.Npgsql.FunctionalTests
         public BuiltInDataTypesNpgsqlFixture()
         {
             _testStore = NpgsqlTestStore.CreateScratch();
+
+            _testStore.ExecuteNonQuery("CREATE TYPE somecomposite AS (some_number int, some_text text)");
+            NpgsqlConnection.MapCompositeGlobally<SomeComposite>("somecomposite");
+            ((NpgsqlConnection)_testStore.Connection).ReloadTypes();
 
             _serviceProvider = new ServiceCollection()
                 .AddEntityFramework()
@@ -186,6 +191,9 @@ namespace EntityFramework7.Npgsql.FunctionalTests
         // Types supported only on PostgreSQL
         public PhysicalAddress Macaddr { get; set; }
         public NpgsqlPoint Point { get; set; }
+
+        // Composite
+        public SomeComposite SomeComposite { get; set; }
     }
 
     public class MappedSizedDataTypes
@@ -259,5 +267,22 @@ namespace EntityFramework7.Npgsql.FunctionalTests
         // Types supported only on PostgreSQL
         public PhysicalAddress Macaddr { get; set; }
         public NpgsqlPoint? Point { get; set; }
+
+        // Composite
+        public SomeComposite SomeComposite { get; set; }
+    }
+
+    public class SomeComposite
+    {
+        [PgName("some_number")]
+        public int SomeNumber { get; set; }
+        [PgName("some_text")]
+        public string SomeText { get; set; }
+
+        public override bool Equals(object obj)
+        {
+            var o = obj as SomeComposite;
+            return o != null && o.SomeNumber == SomeNumber && o.SomeText == o.SomeText;
+        }
     }
 }

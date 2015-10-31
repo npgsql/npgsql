@@ -14,7 +14,7 @@ namespace Microsoft.Data.Entity.Storage.Internal
 {
     public class NpgsqlTypeMapping : RelationalTypeMapping
     {
-        public new NpgsqlDbType StoreType { get; }
+        public new NpgsqlDbType? StoreType { get; }
 
         internal NpgsqlTypeMapping([NotNull] string defaultTypeName, [NotNull] Type clrType, NpgsqlDbType storeType)
             : base(defaultTypeName, clrType)
@@ -22,9 +22,16 @@ namespace Microsoft.Data.Entity.Storage.Internal
             StoreType = storeType;
         }
 
+        internal NpgsqlTypeMapping([NotNull] string defaultTypeName, [NotNull] Type clrType)
+            : base(defaultTypeName, clrType)
+        { }
+
         protected override void ConfigureParameter([NotNull] DbParameter parameter)
         {
-         ((NpgsqlParameter)parameter).NpgsqlDbType = StoreType;
+            if (StoreType.HasValue)
+            {
+                ((NpgsqlParameter) parameter).NpgsqlDbType = StoreType.Value;
+            }
         }
     }
 }

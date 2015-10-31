@@ -32,9 +32,15 @@ using System.Text;
 
 namespace Npgsql.TypeHandlers
 {
-    internal interface IEnumHandler
+    /// <summary>
+    /// Interface implemented by all concrete handlers which handle enums
+    /// </summary>
+    public interface IEnumHandler
     {
-        Type ClrType { get; }
+        /// <summary>
+        /// The CLR enum type mapped to the PostgreSQL enum
+        /// </summary>
+        Type EnumType { get; }
     }
 
     internal class EnumHandler<TEnum> : SimpleTypeHandler<TEnum>, IEnumHandler where TEnum : struct
@@ -42,7 +48,7 @@ namespace Npgsql.TypeHandlers
         readonly Dictionary<TEnum, string> _enumToLabel;
         readonly Dictionary<string, TEnum> _labelToEnum;
 
-        public Type ClrType => typeof (TEnum);
+        public Type EnumType => typeof (TEnum);
 
         public EnumHandler()
         {
