@@ -52,47 +52,47 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Extensions.Caching.Abstractions, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Extensions.Caching.Abstractions.1.0.0-rc1-15768\lib\net451\Microsoft.Extensions.Caching.Abstractions.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Extensions.Caching.Abstractions.1.0.0-rc1-15787\lib\net451\Microsoft.Extensions.Caching.Abstractions.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Extensions.Caching.Memory, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Extensions.Caching.Memory.1.0.0-rc1-15768\lib\net451\Microsoft.Extensions.Caching.Memory.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Extensions.Caching.Memory.1.0.0-rc1-15787\lib\net451\Microsoft.Extensions.Caching.Memory.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Extensions.Configuration, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Extensions.Configuration.1.0.0-rc1-15770\lib\net451\Microsoft.Extensions.Configuration.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Extensions.Configuration.1.0.0-rc1-15785\lib\net451\Microsoft.Extensions.Configuration.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Extensions.Configuration.Abstractions, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Extensions.Configuration.Abstractions.1.0.0-rc1-15770\lib\net451\Microsoft.Extensions.Configuration.Abstractions.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Extensions.Configuration.Abstractions.1.0.0-rc1-15785\lib\net451\Microsoft.Extensions.Configuration.Abstractions.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Extensions.Configuration.Binder, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Extensions.Configuration.Binder.1.0.0-rc1-15770\lib\net451\Microsoft.Extensions.Configuration.Binder.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Extensions.Configuration.Binder.1.0.0-rc1-15785\lib\net451\Microsoft.Extensions.Configuration.Binder.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Extensions.DependencyInjection, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Extensions.DependencyInjection.1.0.0-rc1-15742\lib\net451\Microsoft.Extensions.DependencyInjection.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Extensions.DependencyInjection.1.0.0-rc1-15755\lib\net451\Microsoft.Extensions.DependencyInjection.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Extensions.DependencyInjection.Abstractions, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Extensions.DependencyInjection.Abstractions.1.0.0-rc1-15742\lib\net451\Microsoft.Extensions.DependencyInjection.Abstractions.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Extensions.DependencyInjection.Abstractions.1.0.0-rc1-15755\lib\net451\Microsoft.Extensions.DependencyInjection.Abstractions.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Extensions.Logging, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Extensions.Logging.1.0.0-rc1-15751\lib\net451\Microsoft.Extensions.Logging.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Extensions.Logging.1.0.0-rc1-15768\lib\net451\Microsoft.Extensions.Logging.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Extensions.Logging.Abstractions, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Extensions.Logging.Abstractions.1.0.0-rc1-15751\lib\net451\Microsoft.Extensions.Logging.Abstractions.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Extensions.Logging.Abstractions.1.0.0-rc1-15768\lib\net451\Microsoft.Extensions.Logging.Abstractions.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Extensions.OptionsModel, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Extensions.OptionsModel.1.0.0-rc1-15745\lib\net451\Microsoft.Extensions.OptionsModel.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Extensions.OptionsModel.1.0.0-rc1-15761\lib\net451\Microsoft.Extensions.OptionsModel.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Extensions.Primitives, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Extensions.Primitives.1.0.0-rc1-15795\lib\net451\Microsoft.Extensions.Primitives.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Extensions.Primitives.1.0.0-rc1-15807\lib\net451\Microsoft.Extensions.Primitives.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Remotion.Linq, Version=2.0.0.0, Culture=neutral, PublicKeyToken=fee00910d6e5f53b, processorArchitecture=MSIL">
