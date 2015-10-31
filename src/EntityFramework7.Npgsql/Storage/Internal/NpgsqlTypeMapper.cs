@@ -91,9 +91,9 @@ namespace Microsoft.Data.Entity.Storage.Internal
 
         static Type GetTypeHandlerTypeArgument(Type handler)
         {
-            while (!handler.IsGenericType || handler.GetGenericTypeDefinition() != typeof(TypeHandler<>))
+            while (!handler.GetTypeInfo().IsGenericType || handler.GetGenericTypeDefinition() != typeof(TypeHandler<>))
             {
-                handler = handler.BaseType;
+                handler = handler.GetTypeInfo().BaseType;
                 if (handler == null)
                 {
                     throw new Exception("Npgsql type handler doesn't inherit from TypeHandler<>?");
