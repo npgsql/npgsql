@@ -654,7 +654,11 @@ namespace Npgsql
                 Log.Trace("Attempting to connect to " + ips[i], Id);
                 var ep = new IPEndPoint(ips[i], Port);
                 var socket = new Socket(ep.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+#if DNXCORE50
+                var connectTask = socket.ConnectAsync(ep);
+#else
                 var connectTask = Task.Factory.FromAsync(socket.BeginConnect, socket.EndConnect, ep, null);
+#endif
                 try
                 {
                     try
