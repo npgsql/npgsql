@@ -17,7 +17,7 @@ namespace Microsoft.Data.Entity.Migrations.Internal
         public NpgsqlHistoryRepository(
             [NotNull] IDatabaseCreator databaseCreator,
             [NotNull] ISqlCommandBuilder sqlCommandBuilder,
-            [NotNull] NpgsqlDatabaseConnection connection,
+            [NotNull] NpgsqlRelationalConnection connection,
             [NotNull] IDbContextOptions options,
             [NotNull] IMigrationsModelDiffer modelDiffer,
             [NotNull] NpgsqlMigrationsSqlGenerator migrationsSqlGenerator,

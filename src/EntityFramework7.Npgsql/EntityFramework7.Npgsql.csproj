@@ -137,7 +137,7 @@
     <Compile Include="Query\ExpressionTranslators\Internal\NpgsqlCompositeMethodCallTranslator.cs" />
     <Compile Include="Metadata\Conventions\Internal\NpgsqlConventionSetBuilder.cs" />
     <Compile Include="Storage\Internal\NpgsqlSqlGenerator.cs" />
-    <Compile Include="Storage\Internal\NpgsqlDatabaseConnection.cs" />
+    <Compile Include="Storage\Internal\NpgsqlRelationalConnection.cs" />
     <Compile Include="Storage\Internal\NpgsqlDatabaseCreator.cs" />
     <Compile Include="Storage\Internal\NpgsqlDatabaseProviderServices.cs" />
     <Compile Include="Extensions\NpgsqlMetadataExtensions.cs" />

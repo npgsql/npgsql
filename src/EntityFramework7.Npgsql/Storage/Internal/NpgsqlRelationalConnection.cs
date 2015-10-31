@@ -11,9 +11,9 @@ using Npgsql;
 // ReSharper disable once CheckNamespace
 namespace Microsoft.Data.Entity.Storage.Internal
 {
-    public class NpgsqlDatabaseConnection : RelationalConnection
+    public class NpgsqlRelationalConnection : RelationalConnection
     {
-        public NpgsqlDatabaseConnection(
+        public NpgsqlRelationalConnection(
             [NotNull] IDbContextOptions options,
             // ReSharper disable once SuggestBaseTypeForParameter
             [NotNull] ILogger<NpgsqlConnection> logger)
@@ -21,7 +21,7 @@ namespace Microsoft.Data.Entity.Storage.Internal
         {
         }
 
-        private NpgsqlDatabaseConnection(
+        private NpgsqlRelationalConnection(
             [NotNull] IDbContextOptions options, [NotNull] ILogger logger)
             : base(options, logger)
         {
@@ -31,7 +31,7 @@ namespace Microsoft.Data.Entity.Storage.Internal
         // Issue #774
         protected override DbConnection CreateDbConnection() => new NpgsqlConnection(ConnectionString);
 
-        public NpgsqlDatabaseConnection CreateMasterConnection()
+        public NpgsqlRelationalConnection CreateMasterConnection()
         {
             var builder = new NpgsqlConnectionStringBuilder { ConnectionString = ConnectionString };
 
@@ -43,7 +43,7 @@ namespace Microsoft.Data.Entity.Storage.Internal
             var optionsBuilder = new DbContextOptionsBuilder();
             optionsBuilder.UseNpgsql(builder.ConnectionString).CommandTimeout(CommandTimeout);
 
-            return new NpgsqlDatabaseConnection(optionsBuilder.Options, Logger);
+            return new NpgsqlRelationalConnection(optionsBuilder.Options, Logger);
         }
     }
 }

@@ -33,7 +33,7 @@ namespace Microsoft.Data.Entity.Storage.Internal
 
         public override string InvariantName => GetType().GetTypeInfo().Assembly.GetName().Name;
         public override IDatabaseCreator Creator => GetService<NpgsqlDatabaseCreator>();
-        public override IRelationalConnection RelationalConnection => GetService<NpgsqlDatabaseConnection>();
+        public override IRelationalConnection RelationalConnection => GetService<NpgsqlRelationalConnection>();
         public override ISqlGenerator SqlGenerator => GetService<NpgsqlSqlGenerator>();
         public override IRelationalDatabaseCreator RelationalDatabaseCreator => GetService<NpgsqlDatabaseCreator>();
         public override IConventionSetBuilder ConventionSetBuilder => GetService<NpgsqlConventionSetBuilder>();

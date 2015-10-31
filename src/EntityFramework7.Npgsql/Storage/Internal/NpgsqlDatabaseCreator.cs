@@ -16,12 +16,12 @@ namespace Microsoft.Data.Entity.Storage.Internal
 {
     public class NpgsqlDatabaseCreator : RelationalDatabaseCreator
     {
-        private readonly NpgsqlDatabaseConnection _connection;
+        private readonly NpgsqlRelationalConnection _connection;
         private readonly IMigrationsSqlGenerator _migrationsSqlGenerator;
         private readonly ISqlCommandBuilder _sqlCommandBuilder;
 
         public NpgsqlDatabaseCreator(
-            [NotNull] NpgsqlDatabaseConnection connection,
+            [NotNull] NpgsqlRelationalConnection connection,
             [NotNull] IMigrationsModelDiffer modelDiffer,
             [NotNull] IMigrationsSqlGenerator migrationsSqlGenerator,
             [NotNull] ISqlCommandBuilder sqlCommandBuilder,

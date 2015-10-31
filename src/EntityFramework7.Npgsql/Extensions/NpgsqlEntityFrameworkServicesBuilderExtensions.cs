@@ -45,7 +45,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 .AddScoped<NpgsqlUpdateSqlGenerator>()
                 .AddScoped<NpgsqlModificationCommandBatchFactory>()
                 .AddScoped<NpgsqlDatabaseProviderServices>()
-                .AddScoped<NpgsqlDatabaseConnection>()
+                .AddScoped<NpgsqlRelationalConnection>()
                 .AddScoped<NpgsqlMigrationsSqlGenerator>()
                 .AddScoped<NpgsqlDatabaseCreator>()
                 .AddScoped<NpgsqlHistoryRepository>()
