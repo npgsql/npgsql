@@ -8,6 +8,7 @@ using EntityFramework7.Npgsql.FunctionalTests.TestModels;
 using Microsoft.Data.Entity;
 using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Internal;
+using Microsoft.Data.Entity.Storage.Internal;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using Xunit;
@@ -494,5 +495,35 @@ namespace EntityFramework7.Npgsql.FunctionalTests
             public string CompanyName { get; set; }
             public string Fax { get; set; }
         }
+
+        #region Added for Npgsql
+
+        [Fact]
+        public void Can_specify_connection_in_OnConfiguring_and_create_master_connection()
+        {
+            using (var conn = new NpgsqlConnection(NpgsqlNorthwindContext.ConnectionString))
+            {
+                conn.Open();
+
+                var serviceCollection = new ServiceCollection();
+                serviceCollection
+                    .AddEntityFramework()
+                    .AddNpgsql();
+
+                using (NpgsqlNorthwindContext.GetSharedStore())
+                {
+                    using (var context = new ConnectionInOnConfiguringContext(conn))
+                    {
+                        var relationalConn = context.GetService<NpgsqlRelationalConnection>();
+                        using (var masterConn = relationalConn.CreateMasterConnection())
+                        {
+                            masterConn.Open();
+                        }
+                    }
+                }
+            }
+        }
+
+        #endregion
     }
 }

@@ -82,7 +82,6 @@ namespace Npgsql
 
         /// <summary>
         /// Contains the clear text password which was extracted from the user-provided connection string.
-        /// If non-cleartext authentication is requested from the server, this is set to null.
         /// </summary>
         internal string Password { get; private set; }
 
@@ -1349,6 +1348,26 @@ namespace Npgsql
 #endif
 
         /// <summary>
+        /// Clones this connection, replacing its connection string with the given one.
+        /// This allows creating a new connection with the same security information
+        /// (password, SSL callbacks) while changing other connection parameters (e.g.
+        /// database or pooling)
+        /// </summary>
+        public NpgsqlConnection CloneWith(string connectionString)
+        {
+            CheckNotDisposed();
+            var csb = new NpgsqlConnectionStringBuilder(connectionString);
+            if (csb.Password == null && Password != null)
+            {
+                csb.Password = Password;
+            }
+            return new NpgsqlConnection(csb) {
+                ProvideClientCertificatesCallback = ProvideClientCertificatesCallback,
+                UserCertificateValidationCallback = UserCertificateValidationCallback
+            };
+        }
+
+        /// <summary>
         /// This method changes the current database by disconnecting from the actual
         /// database and connecting to the specified.
         /// </summary>
@@ -1366,7 +1385,6 @@ namespace Npgsql
 
             Close();
 
-            // Mutating the current `settings` object would invalidate the cached instance, so work on a copy instead.
             Settings = Settings.Clone();
             Settings.Database = dbName;
             _connectionString = Settings.ConnectionString;

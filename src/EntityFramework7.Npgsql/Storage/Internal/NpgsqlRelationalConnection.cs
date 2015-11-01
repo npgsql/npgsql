@@ -33,16 +33,13 @@ namespace Microsoft.Data.Entity.Storage.Internal
 
         public NpgsqlRelationalConnection CreateMasterConnection()
         {
-            var builder = new NpgsqlConnectionStringBuilder { ConnectionString = ConnectionString };
-
-            // TODO: See #566
-            builder.Database = "postgres";
-            builder.Pooling = false;
-
-            // TODO use clone connection method once implimented see #1406
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString) {
+                Database = "postgres",
+                Pooling = false
+            };
+            var masterConn = ((NpgsqlConnection)DbConnection).CloneWith(csb.ToString());
             var optionsBuilder = new DbContextOptionsBuilder();
-            optionsBuilder.UseNpgsql(builder.ConnectionString).CommandTimeout(CommandTimeout);
-
+            optionsBuilder.UseNpgsql(masterConn);
             return new NpgsqlRelationalConnection(optionsBuilder.Options, Logger);
         }
     }
