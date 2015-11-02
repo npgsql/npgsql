@@ -359,12 +359,15 @@ namespace Microsoft.Data.Entity.Migrations
                 switch (type)
                 {
                 case "int":
+                case "int4":
                     type = "serial";
                     break;
                 case "bigint":
+                case "int8":
                     type = "bigserial";
                     break;
                 case "smallint":
+                case "int2":
                     type = "smallserial";
                     break;
                 default:
