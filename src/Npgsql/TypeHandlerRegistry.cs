@@ -531,6 +531,11 @@ namespace Npgsql
                     throw new Exception("Enums must be registered with Npgsql via Connection.RegisterEnumType or RegisterEnumTypeGlobally");
                 }
 
+                if (typeof(IEnumerable).IsAssignableFrom(type))
+                {
+                    throw new NotSupportedException("Npgsql > 3.x removed support for writing a parameter with an IEnumerable value, use .ToList()/.ToArray() instead");
+                }
+
                 if (typeInfo.IsGenericType && type.GetGenericTypeDefinition() == typeof(NpgsqlRange<>))
                 {
                     if (!_byType.TryGetValue(type.GetGenericArguments()[0], out handler)) {
