@@ -228,16 +228,28 @@ namespace Npgsql.Tests.Types
         public void IListGeneric()
         {
             var expected = new[] { 1, 2, 3 };
-            var cmd = new NpgsqlCommand("SELECT @p1, @p2", Conn);
-            var p1 = new NpgsqlParameter { ParameterName = "p1", Value = expected.ToList() };
-            var p2 = new NpgsqlParameter { ParameterName = "p2", Value = expected.ToList() };
-            cmd.Parameters.Add(p1);
-            cmd.Parameters.Add(p2);
-            var reader = cmd.ExecuteReader();
-            reader.Read();
-            Assert.That(reader[0], Is.EqualTo(expected.ToArray()));
-            Assert.That(reader[1], Is.EqualTo(expected.ToArray()));
-            cmd.Dispose();
+            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", Conn)) {
+                var p1 = new NpgsqlParameter {ParameterName = "p1", Value = expected.ToList()};
+                var p2 = new NpgsqlParameter {ParameterName = "p2", Value = expected.ToList()};
+                cmd.Parameters.Add(p1);
+                cmd.Parameters.Add(p2);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader[0], Is.EqualTo(expected.ToArray()));
+                    Assert.That(reader[1], Is.EqualTo(expected.ToArray()));
+                }
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/844")]
+        public void IEnumerableThrowsFriendlyException()
+        {
+            using (var cmd = new NpgsqlCommand("SELECT @p1", Conn))
+            {
+                cmd.Parameters.AddWithValue("p1", Enumerable.Range(1, 3));
+                Assert.That(() => cmd.ExecuteScalar(), Throws.Exception.TypeOf<NotSupportedException>().With.Message.Contains("use .ToList()/.ToArray() instead"));
+            }
         }
     }
 }

@@ -697,6 +697,11 @@ namespace Npgsql
                         $"The CLR enum type {type.Name} must be registered with Npgsql before usage, please refer to the documentation.");
                 }
 
+                if (typeof (IEnumerable).IsAssignableFrom(type))
+                {
+                    throw new NotSupportedException($"Npgsql > 3.x removed support for writing a parameter with an IEnumerable value, use .ToList()/.ToArray() instead");
+                }
+
                 if (type.GetTypeInfo().IsGenericType && type.GetGenericTypeDefinition() == typeof(NpgsqlRange<>))
                 {
                     if (!_byType.TryGetValue(type.GetGenericArguments()[0], out handler)) {
