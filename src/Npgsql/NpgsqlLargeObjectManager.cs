@@ -106,7 +106,6 @@ namespace Npgsql
         /// <returns>The oid for the large object created</returns>
         /// <exception cref="NpgsqlException">If an oid is already in use</exception>
         [RewriteAsync]
-        [CLSCompliant(false)]
         public uint Create(uint preferredOid = 0)
         {
 
