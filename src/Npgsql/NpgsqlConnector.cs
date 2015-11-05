@@ -1630,7 +1630,7 @@ namespace Npgsql
             {
                 PrependInternalMessage(PregeneratedMessage.DiscardAll);
             }
-            else
+            else if (SupportsUnlisten)
             {
                 PrependInternalMessage(PregeneratedMessage.UnlistenAll);
                 /*
@@ -1852,6 +1852,7 @@ namespace Npgsql
 
         bool SupportsDiscard => ServerVersion >= new Version(8, 3, 0);
         internal bool SupportsRangeTypes => ServerVersion >= new Version(9, 2, 0);
+        bool SupportsUnlisten => ServerVersion >= new Version(6, 4, 0) && !IsRedshift;
         internal bool UseConformantStrings      { get; private set; }
 
 /*
