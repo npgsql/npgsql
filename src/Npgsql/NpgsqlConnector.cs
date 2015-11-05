@@ -1514,7 +1514,7 @@ namespace Npgsql
             {
                 PrependInternalMessage(PregeneratedMessage.DiscardAll);
             }
-            else
+            else if (SupportsUnlisten)
             {
                 PrependInternalMessage(PregeneratedMessage.UnlistenAll);
                 /*
@@ -1749,6 +1749,7 @@ namespace Npgsql
         internal bool SupportsEStringPrefix { get; private set; }
         internal bool SupportsHexByteFormat { get; private set; }
         internal bool SupportsRangeTypes { get; private set; }
+        internal bool SupportsUnlisten { get; private set; }
         internal bool UseConformantStrings { get; private set; }
 
         /// <summary>
@@ -1780,6 +1781,8 @@ namespace Npgsql
 
             // Range data types
             SupportsRangeTypes = (ServerVersion >= new Version(9, 2, 0));
+
+            SupportsUnlisten = ServerVersion>= new Version(6, 4, 0) && !IsRedshift;
         }
 
         /// <summary>
