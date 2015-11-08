@@ -14,11 +14,11 @@
     "keyFile": "../../Npgsql.snk"
   },
   "dependencies" : {
-    "EntityFramework.Core": "7.0.0-rc1-16195",
-    "EntityFramework.Relational": "7.0.0-rc1-16195",
+    "EntityFramework.Core": "7.0.0-rc1-16282",
+    "EntityFramework.Relational": "7.0.0-rc1-16282",
     "Microsoft.Extensions.DependencyInjection.Abstractions": "1.0.0-rc1-*",
     "Microsoft.Extensions.DependencyInjection": "1.0.0-rc1-*",
-    "Npgsql": "3.1.0-*",
+    "Npgsql": "3.1.0-*"
   },
   "frameworks": {
     "net451": {
@@ -36,7 +36,7 @@
         "System.Reflection": "4.0.0.0",
         "System.Diagnostics.Contracts": "4.0.0.0",
         "System.Linq.Expressions": "4.0.0.0",
-        "System.Runtime": "4.0.0.0",
+        "System.Runtime": "4.0.0.0"
       }
     },
     "dnxcore50": {

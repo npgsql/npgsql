@@ -65,9 +65,8 @@ namespace Microsoft.Data.Entity.Migrations
                     : TypeMapper.GetMapping(operation.ClrType).DefaultTypeName;
             }
 
-            var isSerial = false;
-            var serial = operation.Annotations.Where(r => r.Name == NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.Serial).FirstOrDefault();
-            isSerial = serial != null && (bool) serial.Value;
+            var serial = operation.FindAnnotation(NpgsqlAnnotationNames.Prefix + NpgsqlAnnotationNames.Serial);
+            var isSerial = serial != null && (bool)serial.Value;
 
             var identifier = SqlGenerator.DelimitIdentifier(operation.Table, operation.Schema);
             var alterBase = $"ALTER TABLE {identifier} ALTER COLUMN {SqlGenerator.DelimitIdentifier(operation.Name)}";

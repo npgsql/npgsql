@@ -51,7 +51,7 @@ namespace Npgsql.TypeHandlers
     [TypeMapping("unknown")]
     internal class TextHandler : ChunkingTypeHandler<string>, IChunkingTypeHandler<char[]>
     {
-        public override bool PreferTextWrite => true;
+        internal override bool PreferTextWrite => true;
 
         #region State
 

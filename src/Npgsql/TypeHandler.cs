@@ -34,10 +34,7 @@ namespace Npgsql
 {
     interface ITypeHandler<T> {}
 
-    /// <summary>
-    ///
-    /// </summary>
-    public abstract partial class TypeHandler
+    internal abstract partial class TypeHandler
     {
         internal string PgName { get; set; }
         internal uint OID { get; set; }
@@ -52,10 +49,7 @@ namespace Npgsql
             return ReadValueAsObjectFully(row, fieldDescription);
         }
 
-        /// <summary>
-        ///
-        /// </summary>
-        public virtual bool PreferTextWrite => false;
+        internal virtual bool PreferTextWrite => false;
 
         internal T ReadFully<T>(DataRowMessage row, int len, FieldDescription fieldDescription = null)
         {
@@ -105,11 +99,7 @@ namespace Npgsql
         }
     }
 
-    /// <summary>
-    ///
-    /// </summary>
-    /// <typeparam name="T"></typeparam>
-    public abstract class TypeHandler<T> : TypeHandler
+    internal abstract class TypeHandler<T> : TypeHandler
     {
         internal override Type GetFieldType(FieldDescription fieldDescription = null)
         {

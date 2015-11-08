@@ -36,10 +36,7 @@ using AsyncRewriter;
 
 namespace Npgsql
 {
-    /// <summary>
-    ///
-    /// </summary>
-    public partial class TypeHandlerRegistry
+    internal partial class TypeHandlerRegistry
     {
         #region Members
 
@@ -62,10 +59,7 @@ namespace Npgsql
         Dictionary<Type, TypeHandler> _arrayHandlerByType;
         List<BackendType> _backendTypes;
 
-        /// <summary>
-        ///
-        /// </summary>
-        public static readonly Dictionary<string, TypeAndMapping> HandlerTypes;
+        internal static readonly Dictionary<string, TypeAndMapping> HandlerTypes;
         static readonly Dictionary<NpgsqlDbType, DbType> NpgsqlDbTypeToDbType;
         static readonly Dictionary<DbType, NpgsqlDbType> DbTypeToNpgsqlDbType;
         static readonly Dictionary<Type, NpgsqlDbType> TypeToNpgsqlDbType;
@@ -81,18 +75,12 @@ namespace Npgsql
 
         static readonly ConcurrentDictionary<string, TypeHandler> _globalEnumMappings;
 
-        /// <summary>
-        ///
-        /// </summary>
-        public static IReadOnlyDictionary<string, TypeHandler> GlobalEnumMappings
+        internal static IReadOnlyDictionary<string, TypeHandler> GlobalEnumMappings
             => (IReadOnlyDictionary<string, TypeHandler>)_globalEnumMappings;
 
         static readonly ConcurrentDictionary<string, TypeHandler> _globalCompositeMappings;
 
-        /// <summary>
-        ///
-        /// </summary>
-        public static IReadOnlyDictionary<string, TypeHandler> GlobalCompositeMappings
+        internal static IReadOnlyDictionary<string, TypeHandler> GlobalCompositeMappings
             => (IReadOnlyDictionary<string, TypeHandler>)_globalCompositeMappings;
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
@@ -102,7 +90,7 @@ namespace Npgsql
         #region Initialization and Loading
 
         [RewriteAsync]
-        static internal void Setup(NpgsqlConnector connector, NpgsqlTimeout timeout)
+        internal static void Setup(NpgsqlConnector connector, NpgsqlTimeout timeout)
         {
             connector.TypeHandlerRegistry = new TypeHandlerRegistry(connector);
 
@@ -869,19 +857,10 @@ namespace Npgsql
         }
     }
 
-    /// <summary>
-    ///
-    /// </summary>
-    public struct TypeAndMapping
+    struct TypeAndMapping
     {
-        /// <summary>
-        ///
-        /// </summary>
-        public Type HandlerType;
-        /// <summary>
-        ///
-        /// </summary>
-        public TypeMappingAttribute Mapping;
+        internal Type HandlerType;
+        internal TypeMappingAttribute Mapping;
     }
 
     /// <summary>

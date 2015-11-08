@@ -36,7 +36,7 @@ namespace Npgsql.TypeHandlers
     /// <summary>
     /// Interface implemented by all concrete handlers which handle enums
     /// </summary>
-    public interface ICompositeHandler
+    internal interface ICompositeHandler
     {
         /// <summary>
         /// The CLR type mapped to the PostgreSQL composite type.

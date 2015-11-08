@@ -35,7 +35,7 @@ namespace Npgsql.TypeHandlers
     /// <summary>
     /// Interface implemented by all concrete handlers which handle enums
     /// </summary>
-    public interface IEnumHandler
+    interface IEnumHandler
     {
         /// <summary>
         /// The CLR enum type mapped to the PostgreSQL enum
