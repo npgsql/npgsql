@@ -32,6 +32,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Diagnostics.Contracts;
+using System.Globalization;
 using System.Net.Sockets;
 using AsyncRewriter;
 using JetBrains.Annotations;
@@ -726,7 +727,7 @@ namespace Npgsql
         [RewriteAsync]
         NpgsqlDataReader Execute(CommandBehavior behavior = CommandBehavior.Default)
         {
-            Log.Debug("Executing: " + CommandText, Connection.Connector.Id);
+            LogCommand();
             State = CommandState.InProgress;
             try
             {
@@ -1136,6 +1137,40 @@ namespace Npgsql
                     field.Handler = Connection.Connector.TypeHandlerRegistry.UnrecognizedTypeHandler;
                 }
             }
+        }
+
+        void LogCommand()
+        {
+            if (!Log.IsEnabled(NpgsqlLogLevel.Debug)) {
+                return;
+            }
+
+            var sb = new StringBuilder();
+            sb.Append("Executing statement(s):");
+            foreach (var s in _queries)
+            {
+                sb
+                    .AppendLine()
+                    .Append("\t")
+                    .Append(s.SQL);
+            }
+
+            if (NpgsqlLogManager.IsParameterLoggingEnabled && Parameters.Any())
+            {
+                sb
+                    .AppendLine()
+                    .AppendLine("Parameters:");
+                for (var i = 0; i < Parameters.Count; i++)
+                {
+                    sb
+                        .Append("\t$")
+                        .Append(i + 1)
+                        .Append(": ")
+                        .Append(Convert.ToString(Parameters[i].Value, CultureInfo.InvariantCulture));
+                }
+            }
+
+            Log.Debug(sb.ToString(), Connection.Connector.Id);
         }
 
 #if NET45 || NET452 || DNX452

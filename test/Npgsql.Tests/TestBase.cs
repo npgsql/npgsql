@@ -198,6 +198,7 @@ namespace Npgsql.Tests
             if (!_loggingSetUp)
             {
                 NpgsqlLogManager.Provider = new NLogLoggingProvider();
+                NpgsqlLogManager.IsParameterLoggingEnabled = true;
                 _loggingSetUp = true;
             }
         }
