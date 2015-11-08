@@ -29,11 +29,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EntityFramework7.Npgsql.Fun
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EntityFramework7.Npgsql.Tests", "test\EntityFramework7.Npgsql.Tests\EntityFramework7.Npgsql.Tests.csproj", "{E1D99AD4-D88B-42BA-86DF-90B98B2E9A01}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Shared", "Shared", "{8D01DA20-AA83-4590-B014-4CD6FF2686B1}"
-	ProjectSection(SolutionItems) = preProject
-		src\Shared\CodeAnnotations.cs = src\Shared\CodeAnnotations.cs
-	EndProjectSection
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
