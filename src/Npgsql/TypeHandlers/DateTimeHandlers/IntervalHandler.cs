@@ -31,7 +31,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-datetime.html
     /// </remarks>
-    [TypeMapping("interval", NpgsqlDbType.Interval, typeof(NpgsqlTimeSpan))]
+    [TypeMapping("interval", NpgsqlDbType.Interval, new[] { typeof(TimeSpan), typeof(NpgsqlTimeSpan) })]
     internal class IntervalHandler : SimpleTypeHandlerWithPsv<TimeSpan, NpgsqlTimeSpan>
     {
         /// <summary>

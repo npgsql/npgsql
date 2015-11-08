@@ -24,6 +24,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Data.SqlClient;
 using System.Globalization;
 using System.Linq;
 using System.Text;
@@ -133,15 +134,10 @@ namespace Npgsql.Tests.Types
         {
             var expected = new TimeSpan(0, 10, 45, 34, 500);
 
-            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", Conn))
+            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", Conn))
             {
-                var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Time);
-                var p2 = new NpgsqlParameter("p2", DbType.Time);
-                var p3 = new NpgsqlParameter("p3", expected);
-                cmd.Parameters.Add(p1);
-                cmd.Parameters.Add(p2);
-                cmd.Parameters.Add(p3);
-                p1.Value = p2.Value = expected;
+                cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.Time) { Value = expected });
+                cmd.Parameters.Add(new NpgsqlParameter("p2", DbType.Time) { Value = expected });
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();
@@ -384,14 +380,18 @@ namespace Npgsql.Tests.Types
             var expectedNpgsqlInterval = new NpgsqlTimeSpan(1, 2, 3, 4, 5);
             var expectedTimeSpan = new TimeSpan(1, 2, 3, 4, 5);
 
-            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", Conn))
+            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", Conn))
             {
                 var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Interval);
-                var p2 = new NpgsqlParameter("p2", expectedNpgsqlInterval);
+                var p2 = new NpgsqlParameter("p2", expectedTimeSpan);
+                var p3 = new NpgsqlParameter("p3", expectedNpgsqlInterval);
                 Assert.That(p2.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Interval));
                 Assert.That(p2.DbType, Is.EqualTo(DbType.Object));
+                Assert.That(p3.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Interval));
+                Assert.That(p3.DbType, Is.EqualTo(DbType.Object));
                 cmd.Parameters.Add(p1);
                 cmd.Parameters.Add(p2);
+                cmd.Parameters.Add(p3);
                 p1.Value = expectedNpgsqlInterval;
 
                 using (var reader = cmd.ExecuteReader())
