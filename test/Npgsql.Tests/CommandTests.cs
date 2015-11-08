@@ -135,6 +135,7 @@ namespace Npgsql.Tests
         [Test]
         public void TimeoutFromConnectionString()
         {
+            Assert.That(NpgsqlConnector.MinimumInternalCommandTimeout, Is.Not.EqualTo(NpgsqlCommand.DefaultTimeout));
             var timeout = NpgsqlConnector.MinimumInternalCommandTimeout;
             int connId;
             using (var conn = new NpgsqlConnection(ConnectionString + ";CommandTimeout=" + timeout))
@@ -957,6 +958,18 @@ namespace Npgsql.Tests
                 if (prepare == PrepareOrNot.Prepared)
                     cmd.Prepare();
                 Assert.That(() => cmd.ExecuteReader(), Throws.Exception.TypeOf<NpgsqlException>());
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/831")]
+        [Timeout(10000)]
+        public void ManyParameters()
+        {
+            using (var cmd = new NpgsqlCommand("SELECT 1", Conn))
+            {
+                for (var i = 0; i < Conn.BufferSize; i++)
+                    cmd.Parameters.Add(new NpgsqlParameter("p" + i, 8));
+                cmd.ExecuteNonQuery();
             }
         }
 

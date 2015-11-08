@@ -48,6 +48,7 @@ namespace Npgsql.FrontendMessages
         int _queryLen;
         char[] _queryChars;
         int _charPos;
+        int _parameterTypePos;
 
         State _state;
 
@@ -61,6 +62,7 @@ namespace Npgsql.FrontendMessages
         internal ParseMessage Populate(NpgsqlStatement statement, TypeHandlerRegistry typeHandlerRegistry)
         {
             _state = State.WroteNothing;
+            _parameterTypePos = 0;
             ParameterTypeOIDs.Clear();
             Query = statement.SQL;
             Statement = statement.PreparedStatementName ?? "";
@@ -132,14 +134,22 @@ namespace Npgsql.FrontendMessages
 
                 case State.WroteQuery:
                     _state = State.WroteQuery;
-                    if (buf.WriteSpaceLeft < 1 + 2 + ParameterTypeOIDs.Count * 4) {
+                    if (buf.WriteSpaceLeft < 1 + 2) {
                         return false;
                     }
                     buf.WriteByte(0); // Null terminator for the query
                     buf.WriteInt16((short)ParameterTypeOIDs.Count);
+                    goto case State.WritingParameterTypes;
 
-                    foreach (var t in ParameterTypeOIDs) {
-                        buf.WriteInt32((int)t);
+                case State.WritingParameterTypes:
+                    _state = State.WritingParameterTypes;
+                    for (; _parameterTypePos < ParameterTypeOIDs.Count; _parameterTypePos++)
+                    {
+                        if (buf.WriteSpaceLeft < 4)
+                        {
+                            return false;
+                        }
+                        buf.WriteInt32((int)ParameterTypeOIDs[_parameterTypePos]);
                     }
 
                     _state = State.WroteAll;
@@ -161,6 +171,7 @@ namespace Npgsql.FrontendMessages
             WroteHeader,
             WritingQuery,
             WroteQuery,
+            WritingParameterTypes,
             WroteAll
         }
     }
