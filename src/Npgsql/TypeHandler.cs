@@ -350,6 +350,10 @@ namespace Npgsql
         internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, DbType[] dbTypes, Type type, DbType inferredDbType)
             : this(pgName, npgsqlDbType, dbTypes, new[] { type }, inferredDbType) { }
 
+        internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, DbType[] dbTypes)
+            : this(pgName, npgsqlDbType, dbTypes, new Type[0], null)
+        { }
+
         internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, DbType dbType, Type[] types)
             : this(pgName, npgsqlDbType, new[] { dbType }, types, dbType) {}
 
