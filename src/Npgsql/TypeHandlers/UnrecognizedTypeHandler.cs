@@ -51,7 +51,7 @@ namespace Npgsql.TypeHandlers
         {
             if (fieldDescription.IsBinaryFormat) {
                 buf.Skip(len);
-                throw new SafeReadException(new NotSupportedException(String.Format("The field {0} has a type currently unknown to Npgsql (OID {1}). You can retrieve it as a string by marking it as unknown, please see the FAQ.", fieldDescription.Name, fieldDescription.OID)));
+                throw new SafeReadException(new NotSupportedException(String.Format("The field '{0}' has a type currently unknown to Npgsql (OID {1}). You can retrieve it as a string by marking it as unknown, please see the FAQ.", fieldDescription.Name, fieldDescription.OID)));
             }
             base.PrepareRead(buf, fieldDescription, len);
         }
