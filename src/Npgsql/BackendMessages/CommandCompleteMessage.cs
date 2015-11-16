@@ -46,6 +46,10 @@ namespace Npgsql.BackendMessages
             buf.Skip(1);   // Null terminator
             var tokens = tag.Split();
 
+            if (tokens.Length == 0) {
+                return this;
+            }
+
             switch (tokens[0])
             {
             case "INSERT":
@@ -94,7 +98,9 @@ namespace Npgsql.BackendMessages
 
             case "COPY":
                 StatementType = StatementType.Copy;
-                ParseRows(tokens[1]);
+                if (tokens.Length > 1) {
+                    ParseRows(tokens[1]);
+                }
                 break;
 
             case "CREATE":
