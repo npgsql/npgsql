@@ -411,6 +411,11 @@ namespace NpgsqlTypes
         Oidvector = 29,
 
         /// <summary>
+        /// Corresponds to the PostgreSQL internal "int2vector" type.
+        /// </summary>
+        Int2Vector = 52,
+
+        /// <summary>
         /// Corresponds to the PostgreSQL "oid" type.
         /// </summary>
         /// <remarks>See http://www.postgresql.org/docs/current/static/datatype-oid.html</remarks>

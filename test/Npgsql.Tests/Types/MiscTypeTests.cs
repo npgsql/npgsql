@@ -377,6 +377,22 @@ namespace Npgsql.Tests.Types
 
         #endregion
 
+        [Test]
+        public void Int2Vector()
+        {
+            var expected = new short[] { 4, 5, 6 };
+            using (var cmd = Conn.CreateCommand())
+            {
+                cmd.CommandText = "SELECT @p::int2vector";
+                cmd.Parameters.AddWithValue("p", NpgsqlDbType.Int2Vector, expected);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetFieldValue<short[]>(0), Is.EqualTo(expected));
+                }
+            }
+        }
+
         // Older tests
 
         [Test]

@@ -22,33 +22,28 @@
 #endregion
 
 using NpgsqlTypes;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using Npgsql.Logging;
-using Npgsql.BackendMessages;
 using Npgsql.TypeHandlers.NumericHandlers;
 
 namespace Npgsql.TypeHandlers.InternalTypesHandlers
 {
     /// <summary>
-    /// An OIDVector is simply a regular array of uints, with the sole exception that its lower bound must
+    /// An int2vector is simply a regular array of shorts, with the sole exception that its lower bound must
     /// be 0 (we send 1 for regular arrays).
     /// </summary>
-    [TypeMapping("oidvector", NpgsqlDbType.Oidvector)]
-    internal class OIDVectorHandler : ArrayHandler<uint>
+    [TypeMapping("int2vector", NpgsqlDbType.Int2Vector)]
+    internal class Int2VectorHandler : ArrayHandler<short>
     {
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
-        public OIDVectorHandler(TypeHandlerRegistry registry) : base(new UInt32Handler { PgName = "oid" })
+        public Int2VectorHandler(TypeHandlerRegistry registry) : base(new Int16Handler { PgName = "int2" })
         {
-            // The pg_type SQL query makes sure that the oid type comes before oidvector, so we can
+            // The pg_type SQL query makes sure that the int2 type comes before int2vector, so we can
             // depend on it already being in the registry
-            var oidHandler = registry[NpgsqlDbType.Oid];
+            var oidHandler = registry[NpgsqlDbType.Smallint];
             if (oidHandler == registry.UnrecognizedTypeHandler)
             {
-                Log.Warn("oid type not present when setting up oidvector type. oidvector will not work.");
+                Log.Warn("smallint type not present when setting up int2vector type. int2vector will not work.");
                 return;
             }
             LowerBound = 0;
