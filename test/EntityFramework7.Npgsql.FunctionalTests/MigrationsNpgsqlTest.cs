@@ -32,7 +32,7 @@ namespace EntityFramework7.Npgsql.FunctionalTests
 );
 
 CREATE TABLE ""Table1"" (
-    ""Id"" int NOT NULL,
+    ""Id"" int4 NOT NULL,
     CONSTRAINT ""PK_Table1"" PRIMARY KEY (""Id"")
 );
 

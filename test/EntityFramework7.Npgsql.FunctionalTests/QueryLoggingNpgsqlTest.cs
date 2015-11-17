@@ -31,21 +31,20 @@ namespace EntityFramework7.Npgsql.FunctionalTests
     Optimized query model: 'value(Microsoft.Data.Entity.Query.Internal.EntityQueryable`1[Microsoft.Data.Entity.FunctionalTests.TestModels.Northwind.Customer])'
     TRACKED: True
 (QueryContext prm0) => IEnumerable<Customer> _ShapedQuery(
-    queryContext: prm0,
-    commandBuilder: SelectExpression:
+    queryContext: prm0, 
+    commandBuilder: SelectExpression: 
         SELECT ""c"".""CustomerID"", ""c"".""Address"", ""c"".""City"", ""c"".""CompanyName"", ""c"".""ContactName"", ""c"".""ContactTitle"", ""c"".""Country"", ""c"".""Fax"", ""c"".""Phone"", ""c"".""PostalCode"", ""c"".""Region""
         FROM ""Customers"" AS ""c""
-    ,
+    , 
     shaper: (ValueBuffer prm1) => Customer CreateEntity(
-        querySource: from Customer <generated>_0 in value(Internal.EntityQueryable`1[FunctionalTests.TestModels.Northwind.Customer]),
-        valueBuffer: prm1,
-        valueBufferOffset: 0,
-        queryContext: prm0,
-        entityType: FunctionalTests.TestModels.Northwind.Customer,
-        trackingQuery: True,
-        keyValueFactory: SimpleKeyValueFactory`1,
-        keyProperties: List<Property> { Customer.CustomerID, },
-        materializer: (ValueBuffer prm2) =>
+        querySource: from Customer <generated>_0 in value(Internal.EntityQueryable`1[FunctionalTests.TestModels.Northwind.Customer]), 
+        valueBuffer: prm1, 
+        valueBufferOffset: 0, 
+        queryContext: prm0, 
+        entityType: FunctionalTests.TestModels.Northwind.Customer, 
+        trackingQuery: True, 
+        keyValueFactory: SimpleKeyValueFactory`1, 
+        materializer: (ValueBuffer prm2) => 
         {
             var var3
             var3 = new Customer()
@@ -62,8 +61,8 @@ namespace EntityFramework7.Npgsql.FunctionalTests
             var3.Region = (string) object prm2.get_Item(10)
             var3
         }
-        ,
-        allowNullResult: False,
+        , 
+        allowNullResult: False, 
         useQueryBuffer: True
     )
 )",
@@ -105,24 +104,23 @@ namespace EntityFramework7.Npgsql.FunctionalTests
     Including navigation: 'Microsoft.Data.Entity.FunctionalTests.TestModels.Northwind.Customer.Orders'
     TRACKED: True
 (QueryContext prm0) => IEnumerable<Customer> _Include(
-    queryContext: (RelationalQueryContext) prm0,
+    queryContext: (RelationalQueryContext) prm0, 
     innerResults: IEnumerable<Customer> _ShapedQuery(
-        queryContext: prm0,
-        commandBuilder: SelectExpression:
+        queryContext: prm0, 
+        commandBuilder: SelectExpression: 
             SELECT ""c"".""CustomerID"", ""c"".""Address"", ""c"".""City"", ""c"".""CompanyName"", ""c"".""ContactName"", ""c"".""ContactTitle"", ""c"".""Country"", ""c"".""Fax"", ""c"".""Phone"", ""c"".""PostalCode"", ""c"".""Region""
             FROM ""Customers"" AS ""c""
             ORDER BY ""c"".""CustomerID""
-        ,
+        , 
         shaper: (ValueBuffer prm1) => Customer CreateEntity(
-            querySource: from Customer c in value(Internal.EntityQueryable`1[FunctionalTests.TestModels.Northwind.Customer]),
-            valueBuffer: prm1,
-            valueBufferOffset: 0,
-            queryContext: prm0,
-            entityType: FunctionalTests.TestModels.Northwind.Customer,
-            trackingQuery: True,
-            keyValueFactory: SimpleKeyValueFactory`1,
-            keyProperties: List<Property> { Customer.CustomerID, },
-            materializer: (ValueBuffer prm2) =>
+            querySource: from Customer c in value(Internal.EntityQueryable`1[FunctionalTests.TestModels.Northwind.Customer]), 
+            valueBuffer: prm1, 
+            valueBufferOffset: 0, 
+            queryContext: prm0, 
+            entityType: FunctionalTests.TestModels.Northwind.Customer, 
+            trackingQuery: True, 
+            keyValueFactory: SimpleKeyValueFactory`1, 
+            materializer: (ValueBuffer prm2) => 
             {
                 var var3
                 var3 = new Customer()
@@ -139,19 +137,19 @@ namespace EntityFramework7.Npgsql.FunctionalTests
                 var3.Region = (string) object prm2.get_Item(10)
                 var3
             }
-            ,
-            allowNullResult: False,
+            , 
+            allowNullResult: False, 
             useQueryBuffer: True
         )
     )
-    ,
+    , 
     entityAccessor: Unhandled expression type: Default
-    ,
-    navigationPath: INavigation[] { Customer.Orders, },
+    , 
+    navigationPath: INavigation[] { Customer.Orders, }, 
     includeRelatedValuesStrategyFactories: new Func<IIncludeRelatedValuesStrategy>[]{ () => IIncludeRelatedValuesStrategy _CreateCollectionIncludeStrategy(
             relatedValueBuffers: IEnumerable<ValueBuffer> _Query(
-                queryContext: prm0,
-                commandBuilder: SelectExpression:
+                queryContext: prm0, 
+                commandBuilder: SelectExpression: 
                     SELECT ""o"".""OrderID"", ""o"".""CustomerID"", ""o"".""EmployeeID"", ""o"".""OrderDate""
                     FROM ""Orders"" AS ""o""
                     INNER JOIN (
@@ -159,11 +157,11 @@ namespace EntityFramework7.Npgsql.FunctionalTests
                         FROM ""Customers"" AS ""c""
                     ) AS ""c"" ON ""o"".""CustomerID"" = ""c"".""CustomerID""
                     ORDER BY ""c"".""CustomerID""
-                ,
+                , 
                 queryIndex: 1
             )
-            ,
-            materializer: (ValueBuffer prm4) =>
+            , 
+            materializer: (ValueBuffer prm4) => 
             {
                 var var5
                 var5 = new Order()
@@ -175,7 +173,7 @@ namespace EntityFramework7.Npgsql.FunctionalTests
             }
         )
          }
-    ,
+    , 
     querySourceRequiresTracking: True
 )",
                     TestSqlLoggerFactory.Log);

@@ -14,8 +14,8 @@
     "keyFile": "../../Npgsql.snk"
   },
   "dependencies" : {
-    "EntityFramework.Core": "7.0.0-rc1-16282",
-    "EntityFramework.Relational": "7.0.0-rc1-16282",
+    "EntityFramework.Core": "7.0.0-rc1-final",
+    "EntityFramework.Relational": "7.0.0-rc1-final",
     "Microsoft.Extensions.DependencyInjection.Abstractions": "1.0.0-rc1-*",
     "Microsoft.Extensions.DependencyInjection": "1.0.0-rc1-*",
     "Npgsql": "3.1.0-*"
