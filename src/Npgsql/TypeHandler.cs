@@ -23,6 +23,7 @@
 
 using System;
 using System.Diagnostics.Contracts;
+using System.IO;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Threading;
@@ -313,6 +314,15 @@ namespace Npgsql
             Contract.Ensures(Contract.Result<bool>() == false || directBuf.Buffer == null);
             return default(bool);
         }
+    }
+
+    /// <summary>
+    /// Implemented by handlers which support <see cref="NpgsqlDataReader.GetTextReader"/>, returns a standard
+    /// TextReader given a binary Stream.
+    /// </summary>
+    interface ITextReaderHandler
+    {
+        TextReader GetTextReader(Stream stream);
     }
 
     struct DirectBuffer

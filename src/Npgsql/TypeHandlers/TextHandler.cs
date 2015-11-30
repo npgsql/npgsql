@@ -49,7 +49,7 @@ namespace Npgsql.TypeHandlers
     [TypeMapping("refcursor", NpgsqlDbType.Refcursor,          inferredDbType: DbType.String)]
     [TypeMapping("citext",    NpgsqlDbType.Citext,             inferredDbType: DbType.String)]
     [TypeMapping("unknown")]
-    internal class TextHandler : ChunkingTypeHandler<string>, IChunkingTypeHandler<char[]>
+    internal class TextHandler : ChunkingTypeHandler<string>, IChunkingTypeHandler<char[]>, ITextReaderHandler
     {
         internal override bool PreferTextWrite => true;
 
@@ -364,5 +364,10 @@ namespace Npgsql.TypeHandlers
         }
 
         #endregion
+
+        public TextReader GetTextReader(Stream stream)
+        {
+            return new StreamReader(stream);
+        }
     }
 }

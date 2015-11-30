@@ -23,6 +23,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using JetBrains.Annotations;
@@ -35,12 +36,12 @@ namespace Npgsql.TypeHandlers
     /// JSONB binary encoding is a simple UTF8 string, but prepended with a version number.
     /// </summary>
     [TypeMapping("jsonb", NpgsqlDbType.Jsonb)]
-    class JsonbHandler : ChunkingTypeHandler<string>, IChunkingTypeHandler<string>
+    class JsonbHandler : ChunkingTypeHandler<string>, ITextReaderHandler
     {
         /// <summary>
         /// Prepended to the string in the wire encoding
         /// </summary>
-        const byte ProtocolVersion = 1;
+        const byte JsonbProtocolVersion = 1;
 
         /// <summary>
         /// Indicates whether the prepended version byte has already been read or written
@@ -86,7 +87,7 @@ namespace Npgsql.TypeHandlers
             if (!_handledVersion)
             {
                 if (_buf.WriteSpaceLeft < 1) { return false; }
-                _buf.WriteByte(ProtocolVersion);
+                _buf.WriteByte(JsonbProtocolVersion);
                 _handledVersion = true;
             }
             if (!_textHandler.Write(ref directBuf)) { return false; }
@@ -116,9 +117,8 @@ namespace Npgsql.TypeHandlers
                     return false;
                 }
                 var version = _buf.ReadByte();
-                if (version != 1) {
-                    throw new NotSupportedException(
-                        $"Don't know how to decode JSONB with wire format {version}, your connection is now broken");
+                if (version != JsonbProtocolVersion) {
+                    throw new NotSupportedException($"Don't know how to decode JSONB with wire format {version}, your connection is now broken");
                 }
                 _handledVersion = true;
             }
@@ -129,5 +129,16 @@ namespace Npgsql.TypeHandlers
         }
 
         #endregion
+
+        public TextReader GetTextReader(Stream stream)
+        {
+            var version = stream.ReadByte();
+            if (version != JsonbProtocolVersion)
+            {
+                throw new NotSupportedException($"Don't know how to decode JSONB with wire format {version}, your connection is now broken");
+            }
+
+            return new StreamReader(stream);
+        }
     }
 }
