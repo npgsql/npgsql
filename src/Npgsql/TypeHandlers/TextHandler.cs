@@ -50,7 +50,7 @@ namespace Npgsql.TypeHandlers
     [TypeMapping("unknown")]
     internal class TextHandler : TypeHandler<string>,
         IChunkingTypeWriter,
-        IChunkingTypeReader<string>, IChunkingTypeReader<char[]>
+        IChunkingTypeReader<string>, IChunkingTypeReader<char[]>, ITextReaderHandler
     {
         public override bool PreferTextWrite { get { return true; } }
 
@@ -366,5 +366,10 @@ namespace Npgsql.TypeHandlers
         }
 
         #endregion
+
+        public TextReader GetTextReader(Stream stream)
+        {
+            return new StreamReader(stream);
+        }
     }
 }

@@ -1070,7 +1070,7 @@ namespace Npgsql
             var fieldDescription = _rowDescription[ordinal];
             var handler = fieldDescription.Handler as ByteaHandler;
             if (handler == null) {
-                throw new InvalidCastException("GetStream() not supported for type " + fieldDescription.Name);
+                throw new InvalidCastException("GetStream() not supported for type " + fieldDescription.Handler.PgName);
             }
 
             var row = Row;
@@ -1132,17 +1132,17 @@ namespace Npgsql
             Contract.Ensures(Contract.Result<TextReader>() != null);
 
             var fieldDescription = _rowDescription[ordinal];
-            var handler = fieldDescription.Handler as TextHandler;
+            var handler = fieldDescription.Handler as ITextReaderHandler;
             if (handler == null)
             {
-                throw new InvalidCastException("GetTextReader() not supported for type " + fieldDescription.Name);
+                throw new InvalidCastException("GetTextReader() not supported for type " + fieldDescription.Handler.PgName);
             }
 
             var row = Row;
             row.SeekToColumnStart(ordinal);
             row.CheckNotNull();
 
-            return new StreamReader(row.GetStream());
+            return handler.GetTextReader(row.GetStream());
         }
 
         #endregion

@@ -30,6 +30,7 @@ using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using AsyncRewriter;
 
 namespace Npgsql
@@ -272,6 +273,15 @@ namespace Npgsql
         {
             return Read<TPsv>(row, row.ColumnLen, fieldDescription);
         }
+    }
+
+    /// <summary>
+    /// Implemented by handlers which support <see cref="NpgsqlDataReader.GetTextReader"/>, returns a standard
+    /// TextReader given a binary Stream.
+    /// </summary>
+    interface ITextReaderHandler
+    {
+        TextReader GetTextReader(Stream stream);
     }
 
     struct DirectBuffer
