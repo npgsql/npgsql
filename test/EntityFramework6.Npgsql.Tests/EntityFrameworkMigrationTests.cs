@@ -364,13 +364,12 @@ namespace EntityFramework6.Npgsql.Tests
 
             operations.Add(operation);
             var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, BackendVersion.ToString());
-            var i = 0;
+            Assert.AreEqual(2, statments.Count());
             if (BackendVersion.Major > 9 || (BackendVersion.Major == 9 && BackendVersion.Minor > 2))
-                Assert.AreEqual("CREATE SCHEMA IF NOT EXISTS someSchema", statments.ElementAt(i++).Sql);
+                Assert.AreEqual("CREATE SCHEMA IF NOT EXISTS someSchema", statments.ElementAt(0).Sql);
             else
-                i += 2;
-            Assert.AreEqual("CREATE TABLE \"someSchema\".\"someTable\"(\"SomeString\" varchar(233) NOT NULL DEFAULT '',\"AnotherString\" text,\"SomeBytes\" bytea,\"SomeLong\" serial8,\"SomeDateTime\" timestamp)", statments.ElementAt(i++).Sql);
-            Assert.AreEqual(statments.Count(), i);
+                Assert.AreEqual("CREATE SCHEMA someSchema", statments.ElementAt(0).Sql);
+            Assert.AreEqual("CREATE TABLE \"someSchema\".\"someTable\"(\"SomeString\" varchar(233) NOT NULL DEFAULT '',\"AnotherString\" text,\"SomeBytes\" bytea,\"SomeLong\" serial8,\"SomeDateTime\" timestamp)", statments.ElementAt(1).Sql);
         }
 
         [Test]
@@ -480,13 +479,12 @@ namespace EntityFramework6.Npgsql.Tests
             var operations = new List<MigrationOperation>();
             operations.Add(new MoveTableOperation("someOldSchema.someTable", "someNewSchema"));
             var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, BackendVersion.ToString());
-            var i = 0;
+            Assert.AreEqual(2, statments.Count());
             if (BackendVersion.Major > 9 || (BackendVersion.Major == 9 && BackendVersion.Minor > 2))
-                Assert.AreEqual("CREATE SCHEMA IF NOT EXISTS someNewSchema", statments.ElementAt(i++).Sql);
+                Assert.AreEqual("CREATE SCHEMA IF NOT EXISTS someNewSchema", statments.ElementAt(0).Sql);
             else
-                i += 2;
-            Assert.AreEqual("ALTER TABLE \"someOldSchema\".\"someTable\" SET SCHEMA someNewSchema", statments.ElementAt(i++).Sql);
-            Assert.AreEqual(statments.Count(), i);
+                Assert.AreEqual("CREATE SCHEMA someNewSchema", statments.ElementAt(0).Sql);
+            Assert.AreEqual("ALTER TABLE \"someOldSchema\".\"someTable\" SET SCHEMA someNewSchema", statments.ElementAt(1).Sql);
         }
 
         [Test]
@@ -495,13 +493,12 @@ namespace EntityFramework6.Npgsql.Tests
             var operations = new List<MigrationOperation>();
             operations.Add(new MoveTableOperation("someOldSchema.someTable", null));
             var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, BackendVersion.ToString());
-            var i = 0;
+            Assert.AreEqual(2, statments.Count());
             if (BackendVersion.Major > 9 || (BackendVersion.Major == 9 && BackendVersion.Minor > 2))
-                Assert.AreEqual("CREATE SCHEMA IF NOT EXISTS dbo", statments.ElementAt(i++).Sql);
+                Assert.AreEqual("CREATE SCHEMA IF NOT EXISTS dbo", statments.ElementAt(0).Sql);
             else
-                i += 2;
-            Assert.AreEqual("ALTER TABLE \"someOldSchema\".\"someTable\" SET SCHEMA dbo", statments.ElementAt(i++).Sql);
-            Assert.AreEqual(statments.Count(), i);
+                Assert.AreEqual("CREATE SCHEMA dbo", statments.ElementAt(0).Sql);
+            Assert.AreEqual("ALTER TABLE \"someOldSchema\".\"someTable\" SET SCHEMA dbo", statments.ElementAt(1).Sql);
         }
 
         [Test]
