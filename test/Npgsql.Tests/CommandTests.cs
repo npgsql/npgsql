@@ -973,6 +973,32 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, Description("Bypasses PostgreSQL's int16 limitation on the number of parameters")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/831")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/858")]
+        [Timeout(10000)]
+        public void TooManyParameters()
+        {
+            using (var cmd = new NpgsqlCommand { Connection = Conn })
+            {
+                var sb = new StringBuilder("SELECT ");
+                for (var i = 0; i < 65536; i++)
+                {
+                    var paramName = "p" + i;
+                    cmd.Parameters.Add(new NpgsqlParameter(paramName, 8));
+                    if (i > 0)
+                        sb.Append(", ");
+                    sb.Append('@');
+                    sb.Append(paramName);
+                }
+                cmd.CommandText = sb.ToString();
+                Assert.That(() => cmd.ExecuteNonQuery(), Throws.Exception
+                    .InstanceOf<Exception>()
+                    .With.Message.EqualTo("A command cannot have more than 65535 parameters")
+                );
+            }
+        }
+
         public CommandTests(string backendVersion) : base(backendVersion) { }
     }
 }

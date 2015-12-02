@@ -580,6 +580,9 @@ namespace Npgsql
         void ValidateAndCreateMessages(CommandBehavior behavior = CommandBehavior.Default)
         {
             _connector = Connection.Connector;
+            if (Parameters.Count > 65535) {
+                throw new Exception("A command cannot have more than 65535 parameters");
+            }
             foreach (NpgsqlParameter p in Parameters.Where(p => p.IsInputDirection)) {
                 p.Bind(_connector.TypeHandlerRegistry);
                 p.LengthCache?.Clear();
