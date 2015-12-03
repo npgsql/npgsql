@@ -194,8 +194,8 @@ namespace EntityFramework7.Npgsql.Tests.Migrations
 
             Assert.Equal(
                 "CREATE TABLE \"dbo\".\"People\" (" + EOL +
-                "    \"Id\" int NOT NULL," + EOL +
-                "    \"EmployerId\" int," + EOL +
+                "    \"Id\" int4 NOT NULL," + EOL +
+                "    \"EmployerId\" int4," + EOL +
                 "    \"SSN\" char(11)," + EOL +
                 "    PRIMARY KEY (\"Id\")," + EOL +
                 "    UNIQUE (\"SSN\")," + EOL +
