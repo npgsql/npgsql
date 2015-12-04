@@ -553,7 +553,26 @@ namespace Npgsql
             return DbTypeToNpgsqlDbType[dbType];
         }
 
-        internal static NpgsqlDbType ToNpgsqlDbType(Type type)
+        internal static NpgsqlDbType ToNpgsqlDbType(object value)
+        {
+            if (value is DateTime)
+            {
+                return ((DateTime)value).Kind == DateTimeKind.Utc
+                    ? NpgsqlDbType.TimestampTZ
+                    : NpgsqlDbType.Timestamp;
+            }
+
+            if (value is NpgsqlDateTime)
+            {
+                return ((NpgsqlDateTime)value).Kind == DateTimeKind.Utc
+                    ? NpgsqlDbType.TimestampTZ
+                    : NpgsqlDbType.Timestamp;
+            }
+
+            return ToNpgsqlDbType(value.GetType());
+        }
+
+        static NpgsqlDbType ToNpgsqlDbType(Type type)
         {
             NpgsqlDbType npgsqlDbType;
             if (TypeToNpgsqlDbType.TryGetValue(type, out npgsqlDbType)) {
