@@ -41,7 +41,7 @@ namespace Microsoft.Data.Entity.Migrations.Internal
             {
                 var builder = new StringBuilder();
 
-                builder.Append("SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace WHERE ");
+                builder.Append("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace WHERE ");
 
                 if (TableSchema != null)
                 {
@@ -54,13 +54,13 @@ namespace Microsoft.Data.Entity.Migrations.Internal
                 builder
                     .Append("c.relname='")
                     .Append(SqlGenerator.EscapeLiteral(TableName))
-                    .Append("';");
+                    .Append("');");
 
                 return builder.ToString();
             }
         }
 
-        protected override bool InterpretExistsResult(object value) => value != DBNull.Value;
+        protected override bool InterpretExistsResult(object value) => (bool)value;
 
         public override string GetCreateIfNotExistsScript()
         {
