@@ -3,6 +3,10 @@
 
 using System.Reflection;
 using System.Resources;
+using Microsoft.Data.Entity.Infrastructure;
 
 [assembly: AssemblyTitle("EntityFramework7.Npgsql")]
 [assembly: AssemblyDescription("PostgreSQL provider for Entity Framework 7")]
+[assembly: DesignTimeProviderServices(
+    fullyQualifiedTypeName: "Microsoft.Data.Entity.Scaffolding.NpgsqlDesignTimeServices, EntityFramework7.Npgsql.Design",
+    packageName: "EntityFramework7.Npgsql.Design")]
