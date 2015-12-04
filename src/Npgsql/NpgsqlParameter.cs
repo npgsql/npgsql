@@ -437,7 +437,7 @@ namespace Npgsql
                 }
 
                 if (_value != null) {   // Infer from value
-                    return TypeHandlerRegistry.ToNpgsqlDbType(_value.GetType());
+                    return TypeHandlerRegistry.ToNpgsqlDbType(_value);
                 }
 
                 return NpgsqlDbType.Unknown;

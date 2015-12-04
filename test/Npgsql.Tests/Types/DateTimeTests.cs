@@ -337,8 +337,11 @@ namespace Npgsql.Tests.Types
                 cmd.Parameters.AddWithValue("p5", NpgsqlDbType.TimestampTZ, nDateTimeLocal);
                 cmd.Parameters.AddWithValue("p6", NpgsqlDbType.TimestampTZ, nDateTimeUnspecified);
                 cmd.Parameters.AddWithValue("p7", dateTimeUtc);
+                Assert.That(cmd.Parameters["p7"].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.TimestampTZ));
                 cmd.Parameters.AddWithValue("p8", nDateTimeUtc);
+                Assert.That(cmd.Parameters["p8"].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.TimestampTZ));
                 cmd.Parameters.AddWithValue("p9", dateTimeOffset);
+                Assert.That(cmd.Parameters["p9"].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.TimestampTZ));
 
                 using (var reader = cmd.ExecuteReader())
                 {
