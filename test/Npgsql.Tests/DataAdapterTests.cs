@@ -33,8 +33,6 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests
 {
-
-    [TestFixture]
     public class DataAdapterTests : TestBase
     {
         public DataAdapterTests(string backendVersion) : base(backendVersion) { }
@@ -125,7 +123,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        [Ignore]
+        [Ignore("")]
         public void DataAdapterUpdateReturnValue2()
         {
             var cmd = Conn.CreateCommand();
@@ -167,7 +165,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        [Ignore]
+        [Ignore("")]
         public void FillAddWithKey()
         {
             var ds = new DataSet();
@@ -298,7 +296,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        [Ignore]
+        [Ignore("")]
         public void UpdateWithDataSet()
         {
             DoUpdateWithDataSet();
@@ -336,7 +334,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        [Ignore]
+        [Ignore("")]
         public void InsertWithCommandBuilderCaseSensitive()
         {
             DoInsertWithCommandBuilderCaseSensitive();

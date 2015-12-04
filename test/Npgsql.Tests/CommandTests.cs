@@ -428,7 +428,7 @@ namespace Npgsql.Tests
             {
                 conn.Open();
                 using (var cmd = new NpgsqlCommand("SE", conn))
-                    Assert.That(() => cmd.ExecuteReader(CommandBehavior.CloseConnection), Throws.Exception);
+                    Assert.That(() => cmd.ExecuteReader(CommandBehavior.CloseConnection), Throws.Exception.TypeOf<NpgsqlException>());
                 Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
             }
         }
@@ -441,7 +441,7 @@ namespace Npgsql.Tests
             using (var cmd = new NpgsqlCommand("SELECT @p", Conn))
             {
                 cmd.Parameters.Add(new NpgsqlParameter("@p", NpgsqlDbType.Integer));
-                Assert.That(() => cmd.ExecuteScalar(), Throws.Exception);
+                Assert.That(() => cmd.ExecuteScalar(), Throws.Exception.TypeOf<InvalidCastException>());
             }
         }
 
@@ -746,12 +746,11 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        [ExpectedException(typeof (NpgsqlException))]
         public void TestErrorInPreparedStatementCausesReleaseConnectionToThrowException()
         {
             // This is caused by having an error with the prepared statement and later, Npgsql is trying to release the plan as it was successful created.
             var cmd = new NpgsqlCommand("sele", Conn);
-            cmd.Prepare();
+            Assert.That(() => cmd.Prepare(), Throws.Exception.TypeOf<NpgsqlException>());
         }
 
         [Test]

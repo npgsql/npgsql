@@ -31,7 +31,6 @@ using System.Text;
 
 namespace Npgsql.Tests
 {
-    [TestFixture]
     public class LargeObjectTests : TestBase
     {
         public LargeObjectTests(string backendVersion) : base(backendVersion) { }

@@ -38,7 +38,7 @@ namespace Npgsql.Tests
         public AsyncTests(string backendVersion) : base(backendVersion) {}
 
         [Test]
-        public async void NonQuery()
+        public async Task NonQuery()
         {
             ExecuteNonQuery("CREATE TEMP TABLE data (int INTEGER)");
             using (var cmd = new NpgsqlCommand("INSERT INTO data (int) VALUES (4)", Conn))
@@ -49,7 +49,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async void Scalar()
+        public async Task Scalar()
         {
             using (var cmd = new NpgsqlCommand("SELECT 1", Conn)) {
                 Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(1));
@@ -57,7 +57,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async void Reader()
+        public async Task Reader()
         {
             using (var cmd = new NpgsqlCommand("SELECT 1", Conn))
             using (var reader = await cmd.ExecuteReaderAsync())
@@ -68,7 +68,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async void Columnar()
+        public async Task Columnar()
         {
             using (var cmd = new NpgsqlCommand("SELECT NULL, 2, 'Some Text'", Conn))
             using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess))

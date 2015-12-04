@@ -513,7 +513,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        [Ignore]
+        [Ignore("")]
         public void TestBoolParameterPrepared2()
         {
             // will throw exception if bool parameter can't be used as boolean expression

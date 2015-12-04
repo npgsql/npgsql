@@ -31,7 +31,6 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests
 {
-    [TestFixture]
     public class SystemTransactionTests : TestBase
     {
         public SystemTransactionTests(string backendVersion) : base(backendVersion) { }
