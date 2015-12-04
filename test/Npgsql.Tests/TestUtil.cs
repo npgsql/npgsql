@@ -25,7 +25,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using JetBrains.Annotations;
 using NUnit.Framework;
+using NUnit.Framework.Interfaces;
 
 namespace Npgsql.Tests
 {
@@ -80,7 +82,7 @@ namespace Npgsql.Tests
 
         public MonoIgnore(string ignoreText = null) { _ignoreText = ignoreText; }
 
-        public void BeforeTest(TestDetails testDetails)
+        public void BeforeTest([NotNull] ITest test)
         {
             if (Type.GetType("Mono.Runtime") != null)
             {
@@ -91,8 +93,8 @@ namespace Npgsql.Tests
             }
         }
 
-        public void AfterTest(TestDetails testDetails) { }
-        public ActionTargets Targets { get { return ActionTargets.Test; } }
+        public void AfterTest([NotNull] ITest test) { }
+        public ActionTargets Targets => ActionTargets.Test;
     }
 
     /// <summary>
@@ -110,24 +112,23 @@ namespace Npgsql.Tests
             _ignoreText = ignoreText;
         }
 
-        public void BeforeTest(TestDetails testDetails)
+        public void BeforeTest([NotNull] ITest test)
         {
-            var asTestBase = testDetails.Fixture as TestBase;
+            var asTestBase = test.Fixture as TestBase;
             if (asTestBase == null)
                 throw new Exception("[MinPgsqlVersion] can only be used in fixtures inheriting from TestBase");
 
             if (asTestBase.Conn.PostgreSqlVersion < _minVersion)
             {
-                var msg = String.Format("Postgresql backend version {0} is less than the required {1}",
-                                        asTestBase.Conn.PostgreSqlVersion, _minVersion);
+                var msg = $"Postgresql backend version {asTestBase.Conn.PostgreSqlVersion} is less than the required {_minVersion}";
                 if (_ignoreText != null)
                     msg += ": " + _ignoreText;
                 Assert.Ignore(msg);
             }
         }
 
-        public void AfterTest(TestDetails testDetails) { }
-        public ActionTargets Targets { get { return ActionTargets.Test; } }
+        public void AfterTest([NotNull] ITest test) { }
+        public ActionTargets Targets => ActionTargets.Test;
     }
 
     public enum PrepareOrNot

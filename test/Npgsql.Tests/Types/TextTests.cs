@@ -233,9 +233,9 @@ namespace Npgsql.Tests.Types
             var reader = cmd.ExecuteReader(behavior);
             reader.Read();
             Assert.That(reader.IsDBNull(0), Is.True);
-            Assert.That(() => reader.GetChars(0, 0, buf, 0, 1), Throws.Exception, "GetChars");
-            Assert.That(() => reader.GetTextReader(0), Throws.Exception, "GetTextReader");
-            Assert.That(() => reader.GetChars(0, 0, null, 0, 0), Throws.Exception, "GetChars with null buffer");
+            Assert.That(() => reader.GetChars(0, 0, buf, 0, 1), Throws.Exception.TypeOf<InvalidCastException>(), "GetChars");
+            Assert.That(() => reader.GetTextReader(0), Throws.Exception.TypeOf<InvalidCastException>(), "GetTextReader");
+            Assert.That(() => reader.GetChars(0, 0, null, 0, 0), Throws.Exception.TypeOf<InvalidCastException>(), "GetChars with null buffer");
             reader.Close();
             cmd.Dispose();
         }
@@ -348,7 +348,7 @@ namespace Npgsql.Tests.Types
                 {
                     reader.Read();
                     Assert.That(reader.GetString(0), Is.EqualTo(expected.ToString()));
-                    Assert.That(() => reader.GetChar(0), Throws.Exception);
+                    Assert.That(() => reader.GetChar(0), Throws.Exception.TypeOf<InvalidCastException>());
                 }
             }
         }

@@ -35,7 +35,6 @@ using NUnit.Framework.Constraints;
 
 namespace Npgsql.Tests
 {
-    [TestFixture]
     public class ReaderTests : TestBase
     {
         public ReaderTests(string backendVersion) : base(backendVersion) { }
@@ -346,7 +345,6 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        [ExpectedException(typeof(InvalidOperationException))]
         public void GetValueFromEmptyResultset()
         {
             ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
@@ -366,7 +364,7 @@ namespace Npgsql.Tests
                 dr.Read();
                 // This line should throw the invalid operation exception as the datareader will
                 // have an empty resultset.
-                Console.WriteLine(dr.IsDBNull(1));
+                Assert.That(() => Console.WriteLine(dr.IsDBNull(1)), Throws.Exception.TypeOf<InvalidOperationException>());
             }
         }
 
@@ -374,7 +372,7 @@ namespace Npgsql.Tests
         public void NonExistentParameterName()
         {
             var cmd = new NpgsqlCommand("SELECT @x::TEXT", Conn);
-            Assert.That(() => cmd.ExecuteReader(), Throws.Exception);
+            Assert.That(() => cmd.ExecuteReader(), Throws.Exception.TypeOf<Exception>());
         }
 
         [Test]
@@ -438,14 +436,14 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        [ExpectedException(typeof(InvalidOperationException))]
         public void ReadPastDataReaderEnd()
         {
             var command = new NpgsqlCommand("SELECT 1", Conn);
-            var dr = command.ExecuteReader();
-            while (dr.Read()) {}
-            Object o = dr[0];
-            Assert.IsNotNull(o);
+            using (var dr = command.ExecuteReader())
+            {
+                while (dr.Read()) {}
+                Assert.That(() => dr[0], Throws.Exception.TypeOf<InvalidOperationException>());
+            }
         }
 
         [Test]

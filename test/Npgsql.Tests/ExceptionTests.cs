@@ -34,7 +34,6 @@ using NUnit.Framework.Constraints;
 
 namespace Npgsql.Tests
 {
-    [TestFixture]
     public class ExceptionTests : TestBase
     {
         public ExceptionTests(string backendVersion) : base(backendVersion) { }

@@ -5,9 +5,7 @@ using Npgsql.Spatial;
 
 namespace Npgsql.Tests.Spatial
 {
-    [TestFixture()]
-    public class PostgisServiceTests
-        : TestBase
+    public class PostgisServiceTests : TestBase
     {
         public PostgisServiceTests(string backendversion)
             : base(backendversion)

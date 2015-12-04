@@ -38,7 +38,6 @@ using NpgsqlTypes;
 
 namespace Npgsql.Tests
 {
-    [TestFixture]
     public class ConnectionTests : TestBase
     {
         public ConnectionTests(string backendVersion) : base(backendVersion) { }
@@ -466,7 +465,7 @@ namespace Npgsql.Tests
                 conn.Close();
 
                 // Use another connection to kill the connector currently in the pool
-                ExecuteNonQuery(string.Format("SELECT pg_terminate_backend({0})", connectorId));
+                ExecuteNonQuery($"SELECT pg_terminate_backend({connectorId})");
 
                 conn.Open();
                 Assert.That(conn.ProcessID, Is.EqualTo(connectorId));
@@ -474,7 +473,7 @@ namespace Npgsql.Tests
                 if (keepAlive)
                     Assert.That(ExecuteScalar("SELECT 1", conn), Is.EqualTo(1));
                 else
-                    Assert.That(() => ExecuteScalar("SELECT 1", conn), Throws.Exception);
+                    Assert.That(() => ExecuteScalar("SELECT 1", conn), Throws.Exception.TypeOf<IOException>());
             }
         }
 
@@ -587,7 +586,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        [Ignore]
+        [Ignore("")]
         public void NpgsqlErrorRepro1()
         {
             throw new NotImplementedException();

@@ -92,7 +92,7 @@ namespace Npgsql.Tests
             ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
             var tx = Conn.BeginTransaction();
             ExecuteNonQuery("INSERT INTO data (name) VALUES ('X')", tx: tx);
-            Assert.That(() => ExecuteNonQuery("BAD QUERY"), Throws.Exception);
+            Assert.That(() => ExecuteNonQuery("BAD QUERY"), Throws.Exception.TypeOf<NpgsqlException>());
             tx.Rollback();
             Assert.That(tx.Connection, Is.Null);
             Assert.That(ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
