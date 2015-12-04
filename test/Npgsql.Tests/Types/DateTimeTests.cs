@@ -98,7 +98,7 @@ namespace Npgsql.Tests.Types
                 using (var reader = cmd.ExecuteReader()) {
                     reader.Read();
                     Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(value));
-                    Assert.That(() => reader.GetDateTime(0), Throws.Exception);
+                    Assert.That(() => reader.GetDateTime(0), Throws.Exception.TypeOf<InvalidCastException>());
                 }
                 Assert.That(ExecuteScalar("SELECT 1"), Is.EqualTo(1));
             }
@@ -258,7 +258,7 @@ namespace Npgsql.Tests.Types
                         Assert.That(reader.GetFieldValue<NpgsqlDateTime>(i), Is.EqualTo(npgsqlTimeStamp));
 
                         // DateTimeOffset
-                        Assert.That(() => reader.GetFieldValue<DateTimeOffset>(i), Throws.Exception);
+                        Assert.That(() => reader.GetFieldValue<DateTimeOffset>(i), Throws.Exception.TypeOf<InvalidCastException>());
                     }
                 }
             }
@@ -278,7 +278,7 @@ namespace Npgsql.Tests.Types
                 using (var reader = cmd.ExecuteReader()) {
                     reader.Read();
                     Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(value));
-                    Assert.That(() => reader.GetDateTime(0), Throws.Exception);
+                    Assert.That(() => reader.GetDateTime(0), Throws.Exception.TypeOf<InvalidCastException>());
                 }
                 Assert.That(ExecuteScalar("SELECT 1"), Is.EqualTo(1));
             }

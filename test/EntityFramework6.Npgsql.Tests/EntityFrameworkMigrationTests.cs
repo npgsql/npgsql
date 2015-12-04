@@ -41,7 +41,6 @@ using Npgsql.Tests;
 
 namespace EntityFramework6.Npgsql.Tests
 {
-    [TestFixture]
     public class EntityFrameworkMigrationTests : TestBase
     {
         public EntityFrameworkMigrationTests(string backendVersion) : base(backendVersion) { }
@@ -108,7 +107,7 @@ namespace EntityFramework6.Npgsql.Tests
                                     expectedColumns.Remove((string)reader[0]);
                                     Assert.AreEqual("text", (string)reader[1]);
                                     Assert.AreEqual("YES", (string)reader[2]);
-                                    Assert.IsNullOrEmpty(reader[3] as string);
+                                    Assert.That(string.IsNullOrEmpty(reader[3] as string));
                                     break;
                                 case "BlogId":
                                     expectedColumns.Remove((string)reader[0]);
@@ -149,13 +148,13 @@ namespace EntityFramework6.Npgsql.Tests
                                     expectedColumns.Remove((string)reader[0]);
                                     Assert.AreEqual("text", (string)reader[1]);
                                     Assert.AreEqual("YES", (string)reader[2]);
-                                    Assert.IsNullOrEmpty(reader[3] as string);
+                                    Assert.That(string.IsNullOrEmpty(reader[3] as string));
                                     break;
                                 case "Content":
                                     expectedColumns.Remove((string)reader[0]);
                                     Assert.AreEqual("text", (string)reader[1]);
                                     Assert.AreEqual("YES", (string)reader[2]);
-                                    Assert.IsNullOrEmpty(reader[3] as string);
+                                    Assert.That(string.IsNullOrEmpty(reader[3] as string));
                                     break;
                                 case "BlogId":
                                     expectedColumns.Remove((string)reader[0]);
@@ -174,7 +173,7 @@ namespace EntityFramework6.Npgsql.Tests
                                     expectedColumns.Remove((string)reader[0]);
                                     Assert.AreEqual("smallint", (string)reader[1]);
                                     Assert.AreEqual("YES", (string)reader[2]);
-                                    Assert.IsNullOrEmpty(reader[3] as string);
+                                    Assert.That(string.IsNullOrEmpty(reader[3] as string));
                                     break;
                                 default:
                                     Assert.Fail("Unknown column '" + (string)reader[0] + "' in Post table.");

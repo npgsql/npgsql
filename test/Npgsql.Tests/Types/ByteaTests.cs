@@ -222,9 +222,9 @@ namespace Npgsql.Tests.Types
             var reader = cmd.ExecuteReader(behavior);
             reader.Read();
             Assert.That(reader.IsDBNull(0), Is.True);
-            Assert.That(() => reader.GetBytes(0, 0, buf, 0, 1), Throws.Exception, "GetBytes");
-            Assert.That(() => reader.GetStream(0), Throws.Exception, "GetStream");
-            Assert.That(() => reader.GetBytes(0, 0, null, 0, 0), Throws.Exception, "GetBytes with null buffer");
+            Assert.That(() => reader.GetBytes(0, 0, buf, 0, 1), Throws.Exception.TypeOf<InvalidCastException>(), "GetBytes");
+            Assert.That(() => reader.GetStream(0), Throws.Exception.TypeOf<InvalidCastException>(), "GetStream");
+            Assert.That(() => reader.GetBytes(0, 0, null, 0, 0), Throws.Exception.TypeOf<InvalidCastException>(), "GetBytes with null buffer");
             reader.Close();
             cmd.Dispose();
         }

@@ -37,7 +37,6 @@ using Npgsql.Tests;
 
 namespace EntityFramework6.Npgsql.Tests
 {
-    [TestFixture]
     public class EntityFrameworkBasicTests : TestBase
     {
         public EntityFrameworkBasicTests(string backendVersion)

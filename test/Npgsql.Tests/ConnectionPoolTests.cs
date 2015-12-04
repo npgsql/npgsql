@@ -44,21 +44,16 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        [ExpectedException(typeof(ArgumentException))]
         public void MinPoolSizeLargeThanMaxPoolSize()
         {
             var conn = new NpgsqlConnection(ConnectionString + ";MinPoolSize=2;MaxPoolSize=1");
-            conn.Open();
-            conn.Close();
+            Assert.That(() => conn.Open(), Throws.Exception.TypeOf<ArgumentException>());
         }
 
         [Test]
-        [ExpectedException(typeof(ArgumentException))]
         public void MinPoolSizeLargeThanPoolSizeLimit()
         {
-            var conn = new NpgsqlConnection(ConnectionString + ";MinPoolSize=1025;");
-            conn.Open();
-            conn.Close();
+            Assert.That(() => new NpgsqlConnection(ConnectionString + ";MinPoolSize=1025;"), Throws.Exception.TypeOf<ArgumentException>());
         }
 
         [Test, Description("Makes sure that when a pooled connection is closed it's properly reset, and that parameter settings aren't leaked")]
@@ -111,17 +106,18 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        [ExpectedException]
         public void ExceedConnectionsInPool()
         {
             var openedConnections = new List<NpgsqlConnection>();
             try {
                 // exceed default pool size of 20
-                for (var i = 0; i < 21; ++i) {
-                    var connection = new NpgsqlConnection(ConnectionString + ";Timeout=1");
-                    connection.Open();
-                    openedConnections.Add(connection);
-                }
+                Assert.That(() => {
+                    for (var i = 0; i < 21; ++i) {
+                        var connection = new NpgsqlConnection(ConnectionString + ";Timeout=1");
+                        connection.Open();
+                        openedConnections.Add(connection);
+                    }
+                }, Throws.Exception);
             } finally {
                 openedConnections.ForEach(delegate(NpgsqlConnection con) { con.Dispose(); });
                 NpgsqlConnection.ClearAllPools();
