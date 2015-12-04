@@ -150,7 +150,6 @@ namespace EntityFramework7.Npgsql.Design.FunctionalTests.ReverseEngineering
                         }
             });
             */
-            //throw new Exception(actualFileSet.Contents(0));
             AssertEqualFileContents(expectedFileSet, actualFileSet);
             AssertCompile(actualFileSet);
         }
@@ -202,7 +201,6 @@ namespace EntityFramework7.Npgsql.Design.FunctionalTests.ReverseEngineering
             });
             */
 
-            //throw new Exception(actualFileSet.Contents(0));
             AssertEqualFileContents(expectedFileSet, actualFileSet);
             AssertCompile(actualFileSet);
         }

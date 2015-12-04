@@ -1,6 +1,4 @@
 ﻿DROP TABLE IF EXISTS "AllDataTypes";
-DROP TABLE IF EXISTS "PropertyConfiguration";
-
 CREATE TABLE "AllDataTypes" (
 	"AllDataTypesID"    serial    PRIMARY KEY,
 
@@ -27,6 +25,7 @@ CREATE TABLE "AllDataTypes" (
 	"uuidColumn"        uuid                NULL
 );
 
+DROP TABLE IF EXISTS "PropertyConfiguration";
 CREATE TABLE "PropertyConfiguration" (
 	"PropertyConfigurationID" serial PRIMARY KEY,
 --	"PropertyConfigurationID" tinyint IDENTITY(1, 1) PRIMARY KEY, -- tests error message about tinyint identity columns
@@ -45,6 +44,7 @@ CREATE TABLE "PropertyConfiguration" (
 CREATE INDEX "Test_PropertyConfiguration_Index"
 	ON "PropertyConfiguration" ("A", "B");
 
+DROP TABLE IF EXISTS "Test Spaces Keywords Table";
 CREATE TABLE "Test Spaces Keywords Table" (
 	"Test Spaces Keywords TableID" int PRIMARY KEY,
 	"abstract" int NOT NULL,
@@ -61,6 +61,7 @@ CREATE TABLE "Test Spaces Keywords Table" (
 	"\Backslashes\In\Column" int NULL
 );
 
+DROP TABLE IF EXISTS "SelfReferencing";
 CREATE TABLE "SelfReferencing" (
 	"SelfReferencingID" int PRIMARY KEY,
 	"Name" text NOT NULL,
@@ -74,6 +75,7 @@ CREATE TABLE "SelfReferencing" (
 	)
 );
 
+DROP TABLE IF EXISTS "OneToManyPrincipal";
 CREATE TABLE "OneToManyPrincipal" (
 	"OneToManyPrincipalID1" int,
 	"OneToManyPrincipalID2" int,
@@ -84,6 +86,7 @@ CREATE TABLE "OneToManyPrincipal" (
 	)
 );
 
+DROP TABLE IF EXISTS "OneToManyDependent";
 CREATE TABLE "OneToManyDependent" (
 	"OneToManyDependentID1" int,
 	"OneToManyDependentID2" int,
@@ -102,6 +105,7 @@ CREATE TABLE "OneToManyDependent" (
 	)
 );
 
+DROP TABLE IF EXISTS "OneToOnePrincipal";
 CREATE TABLE "OneToOnePrincipal" (
 	"OneToOnePrincipalID1" int,
 	"OneToOnePrincipalID2" int,
@@ -112,6 +116,7 @@ CREATE TABLE "OneToOnePrincipal" (
 	)
 );
 
+DROP TABLE IF EXISTS "OneToOneDependent";
 CREATE TABLE "OneToOneDependent" (
 	"OneToOneDependentID1" int,
 	"OneToOneDependentID2" int,
@@ -128,6 +133,7 @@ CREATE TABLE "OneToOneDependent" (
 	)
 );
 
+DROP TABLE IF EXISTS "OneToOneSeparateFKPrincipal";
 CREATE TABLE "OneToOneSeparateFKPrincipal" (
 	"OneToOneSeparateFKPrincipalID1" int,
 	"OneToOneSeparateFKPrincipalID2" int,
@@ -138,6 +144,7 @@ CREATE TABLE "OneToOneSeparateFKPrincipal" (
 	)
 );
 
+DROP TABLE IF EXISTS "OneToOneSeparateFKDependent";
 CREATE TABLE "OneToOneSeparateFKDependent" (
 	"OneToOneSeparateFKDependentID1" int,
 	"OneToOneSeparateFKDependentID2" int,
@@ -160,6 +167,7 @@ CREATE TABLE "OneToOneSeparateFKDependent" (
 	)
 );
 
+DROP TABLE IF EXISTS "OneToOneFKToUniqueKeyPrincipal";
 CREATE TABLE "OneToOneFKToUniqueKeyPrincipal" (
 	"OneToOneFKToUniqueKeyPrincipalID1" int,
 	"OneToOneFKToUniqueKeyPrincipalID2" int,
@@ -176,6 +184,7 @@ CREATE TABLE "OneToOneFKToUniqueKeyPrincipal" (
 	)
 );
 
+DROP TABLE IF EXISTS "OneToOneFKToUniqueKeyDependent";
 CREATE TABLE "OneToOneFKToUniqueKeyDependent" (
 	"OneToOneFKToUniqueKeyDependentID1" int,
 	"OneToOneFKToUniqueKeyDependentID2" int,
@@ -198,6 +207,7 @@ CREATE TABLE "OneToOneFKToUniqueKeyDependent" (
 	)
 );
 
+DROP TABLE IF EXISTS "FilteredOut";
 CREATE TABLE "FilteredOut" (
 	"FilteredOutID" int PRIMARY KEY,
 	"Unused1" text NOT NULL,

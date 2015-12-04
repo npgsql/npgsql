@@ -118,6 +118,8 @@ namespace E2ETest.Namespace
 
             modelBuilder.Entity<SelfReferencing>(entity =>
             {
+                entity.Property(e => e.SelfReferencingID).ValueGeneratedNever();
+
                 entity.Property(e => e.Description).IsRequired();
 
                 entity.Property(e => e.Name).IsRequired();
@@ -129,7 +131,9 @@ namespace E2ETest.Namespace
             {
                 entity.ToTable("Test Spaces Keywords Table");
 
-                entity.Property(e => e.Test_Spaces_Keywords_TableID).HasColumnName("Test Spaces Keywords TableID");
+                entity.Property(e => e.Test_Spaces_Keywords_TableID)
+                    .HasColumnName("Test Spaces Keywords TableID")
+                    .ValueGeneratedNever();
 
                 entity.Property(e => e.@Multiple_At_Symbols_In_Column).HasColumnName("@Multiple@At@Symbols@In@Column");
 

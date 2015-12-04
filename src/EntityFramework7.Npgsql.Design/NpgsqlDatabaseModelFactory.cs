@@ -5,6 +5,7 @@ using System.Linq;
 using Microsoft.Data.Entity.Metadata;
 using Microsoft.Data.Entity.Migrations;
 using Microsoft.Data.Entity.Migrations.Internal;
+using Microsoft.Data.Entity.Scaffolding.Internal;
 using Microsoft.Data.Entity.Scaffolding.Metadata;
 using Microsoft.Data.Entity.Utilities;
 using Npgsql;
@@ -144,20 +145,8 @@ namespace Microsoft.Data.Entity.Scaffolding
                         }
                     }
 
-                    // Somewhat hacky... We identify serial columns by examining their default expression,
-                    // and reverse-engineer these as ValueGenerated.OnAdd
-                    ValueGenerated? valueGenerated = null;
-                    if (defaultValue != null && (
-                          defaultValue == $"nextval('{tableName}_{columnName}_seq'::regclass)" ||
-                          defaultValue == $"nextval('\"{tableName}_{columnName}_seq\"'::regclass)")
-                       )
-                    {
-                        valueGenerated = ValueGenerated.OnAdd;
-                        defaultValue = null;
-                    }
-
                     var table = _tables[TableKey(tableName, schemaName)];
-                    var column = new ColumnModel
+                    var column = new NpgsqlColumnModel
                     {
                         Table          = table,
                         Name           = columnName,
@@ -167,9 +156,20 @@ namespace Microsoft.Data.Entity.Scaffolding
                         MaxLength      = maxLength,
                         Precision      = precision,
                         Scale          = scale,
-                        DefaultValue   = defaultValue,
-                        ValueGenerated = valueGenerated
+                        DefaultValue   = defaultValue
                     };
+
+                    // Somewhat hacky... We identify serial columns by examining their default expression,
+                    // and reverse-engineer these as ValueGenerated.OnAdd
+                    if (defaultValue != null && (
+                          defaultValue == $"nextval('{tableName}_{columnName}_seq'::regclass)" ||
+                          defaultValue == $"nextval('\"{tableName}_{columnName}_seq\"'::regclass)")
+                       )
+                    {
+                        column.IsSerial = true;
+                        column.ValueGenerated = ValueGenerated.OnAdd;
+                        column.DefaultValue = null;
+                    }
 
                     table.Columns.Add(column);
                     _tableColumns.Add(ColumnKey(table, column.Name), column);

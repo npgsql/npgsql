@@ -29,5 +29,39 @@ namespace Microsoft.Data.Entity.Scaffolding
             model.Scaffolding().UseProviderMethodName = nameof(NpgsqlDbContextOptionsExtensions.UseNpgsql);
             return model;
         }
+
+        [CanBeNull]
+        protected override KeyBuilder VisitPrimaryKey(EntityTypeBuilder builder, TableModel table)
+        {
+            var keyBuilder = base.VisitPrimaryKey(builder, table);
+
+            if (keyBuilder == null)
+            {
+                return null;
+            }
+
+            // If this property is the single integer primary key on the EntityType then
+            // KeyConvention assumes ValueGeneratedOnAdd(). If the underlying column does
+            // not have Serial set then we need to set to ValueGeneratedNever() to
+            // override this behavior.
+
+            // TODO use KeyConvention directly to detect when it will be applied
+            var pkColumns = table.Columns.Where(c => c.PrimaryKeyOrdinal.HasValue).Cast<NpgsqlColumnModel>().ToList();
+            if (pkColumns.Count != 1 || pkColumns[0].IsSerial)
+            {
+                return keyBuilder;
+            }
+
+            // TODO 
+            var property = builder.Metadata.FindProperty(GetPropertyName(pkColumns[0]));
+            var propertyType = property?.ClrType?.UnwrapNullableType();
+
+            if (propertyType?.IsIntegerForSerial() == true || propertyType == typeof(Guid))
+            {
+                property.ValueGenerated = ValueGenerated.Never;
+            }
+
+            return keyBuilder;
+        }
     }
 }

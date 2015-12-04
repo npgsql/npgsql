@@ -91,6 +91,16 @@ namespace E2ETest.Namespace
 
                 entity.Property(e => e.WithVarcharNullDefaultValue).HasColumnType("varchar");
             });
+
+            modelBuilder.Entity<SelfReferencing>(entity =>
+            {
+                entity.Property(e => e.SelfReferencingID).ValueGeneratedNever();
+            });
+
+            modelBuilder.Entity<Test_Spaces_Keywords_Table>(entity =>
+            {
+                entity.Property(e => e.Test_Spaces_Keywords_TableID).ValueGeneratedNever();
+            });
         }
 
         public virtual DbSet<AllDataTypes> AllDataTypes { get; set; }
