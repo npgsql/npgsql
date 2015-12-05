@@ -197,7 +197,8 @@ namespace Npgsql
             var connectionBuilder = new NpgsqlConnectionStringBuilder(connection.ConnectionString)
             {
                 Database = connection.EntityAdminDatabase ?? "template1",
-                Pooling = false
+                Pooling = false,
+                Password = connection.Password,
             };
 
             using (var masterConnection = new NpgsqlConnection(connectionBuilder.ConnectionString))
