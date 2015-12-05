@@ -1162,7 +1162,7 @@ namespace Npgsql
         /// <returns><b>true</b> if the specified column value is equivalent to <see cref="DBNull"/> otherwise <b>false</b>.</returns>
         public override async Task<bool> IsDBNullAsync(int ordinal, CancellationToken cancellationToken)
         {
-            return await IsDBNullInternalAsync(cancellationToken, ordinal).ConfigureAwait(false);
+            return await IsDBNullInternalAsync(ordinal, cancellationToken).ConfigureAwait(false);
         }
 
         [RewriteAsync]
@@ -1362,7 +1362,7 @@ namespace Npgsql
         /// <returns>A task representing the asynchronous operation.</returns>
         public override async Task<T> GetFieldValueAsync<T>(int ordinal, CancellationToken cancellationToken)
         {
-            return await GetFieldValueInternalAsync<T>(cancellationToken, ordinal).ConfigureAwait(false);
+            return await GetFieldValueInternalAsync<T>(ordinal, cancellationToken).ConfigureAwait(false);
         }
 
         [RewriteAsync]

@@ -959,7 +959,7 @@ namespace Npgsql
             {
                 try
                 {
-                    return await ExecuteDbDataReaderInternalAsync(cancellationToken, behavior).ConfigureAwait(false);
+                    return await ExecuteDbDataReaderInternalAsync(behavior, cancellationToken).ConfigureAwait(false);
                 }
                 catch (NpgsqlException e)
                 {

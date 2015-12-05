@@ -182,7 +182,7 @@ namespace Npgsql
         {
             if (ConnectionTimeout == 0)
             {
-                await OpenInternalAsync(cancellationToken, NpgsqlTimeout.Infinite);
+                await OpenInternalAsync(NpgsqlTimeout.Infinite, cancellationToken);
                 return;
             }
 
@@ -204,7 +204,7 @@ namespace Npgsql
                 {
                     try
                     {
-                        await OpenInternalAsync(compositeCts.Token, timeout);
+                        await OpenInternalAsync(timeout, compositeCts.Token);
                     }
                     catch (TaskCanceledException e)
                     {

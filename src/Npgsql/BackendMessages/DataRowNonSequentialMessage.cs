@@ -75,7 +75,7 @@ namespace Npgsql.BackendMessages
             }
         }
 
-        internal override Task SeekToColumnAsync(CancellationToken cancellationToken, int column)
+        internal override Task SeekToColumnAsync(int column, CancellationToken cancellationToken)
         {
             SeekToColumn(column);
             return PGUtil.CompletedTask;

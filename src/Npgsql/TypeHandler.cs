@@ -52,6 +52,7 @@ namespace Npgsql
 
         internal virtual bool PreferTextWrite => false;
 
+        [RewriteAsync]
         internal T ReadFully<T>(DataRowMessage row, int len, FieldDescription fieldDescription = null)
         {
             Contract.Requires(row.PosInColumn == 0);
@@ -71,7 +72,7 @@ namespace Npgsql
         }
 
         internal abstract T ReadFully<T>(NpgsqlBuffer buf, int len, FieldDescription fieldDescription = null);
-        internal abstract Task<T> ReadFullyAsync<T>(CancellationToken cancellationToken, NpgsqlBuffer buf, int len, FieldDescription fieldDescription = null);
+        internal abstract Task<T> ReadFullyAsync<T>(NpgsqlBuffer buf, int len, CancellationToken cancellationToken, FieldDescription fieldDescription = null);
 
         /// <summary>
         ///
