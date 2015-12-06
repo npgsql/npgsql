@@ -29,6 +29,7 @@ using System.Globalization;
 using System.Text;
 using System.Data.Entity.Core.Metadata.Edm;
 using System.Data.Entity.Spatial;
+using System.Text.RegularExpressions;
 
 namespace Npgsql
 {
@@ -605,6 +606,13 @@ namespace Npgsql
 
         private void AppendColumnType(ColumnModel column, StringBuilder sql, bool setSerial)
         {
+            if (column.StoreType != null)
+            {
+                if (Regex.IsMatch(column.StoreType, "^[a-zA-Z]+$"))
+                    throw new ArgumentException("StoreType has SQL Injection:" + column.StoreType);
+                sql.Append(column.StoreType);
+                return;
+            }
             switch (column.Type)
             {
                 case PrimitiveTypeKind.Binary:
