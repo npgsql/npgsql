@@ -7,6 +7,7 @@
     <param name="env.NPGSQL_TEST_DB_9_2" value="Server=localhost;port=5492;User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests" />
     <param name="env.NPGSQL_TEST_DB_9_3" value="Server=localhost;port=5493;User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests" />
     <param name="env.NPGSQL_TEST_DB_9_4" value="Server=localhost;port=5494;User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests" />
+    <param name="env.NPGSQL_TEST_DB_9_5" value="Server=localhost;port=5495;User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests" />
     <param name="env.NPGSQL_UNKNOWN_IP" value="199.119.121.87" />
     <param name="GitVersion.NuGetVersion" value="" />
     <param name="MONO_PREFIX" value="c:\dev\mono-3.2.3" />
