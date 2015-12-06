@@ -249,7 +249,7 @@ namespace EntityFramework6.Npgsql.Tests
         }
 
         [Test]
-        public void TestAddColumnOperation()
+        public void AddColumnOperation()
         {
             var operations = new List<MigrationOperation>();
             operations.Add(new AddColumnOperation("tableName", new ColumnModel(PrimitiveTypeKind.Double)
@@ -262,7 +262,7 @@ namespace EntityFramework6.Npgsql.Tests
         }
 
         [Test]
-        public void TestAddColumnOperationDefaultValue()
+        public void AddColumnOperationDefaultValue()
         {
             var operations = new List<MigrationOperation>();
             operations.Add(new AddColumnOperation("tableName", new ColumnModel(PrimitiveTypeKind.Single)
@@ -276,7 +276,7 @@ namespace EntityFramework6.Npgsql.Tests
         }
 
         [Test]
-        public void TestAddColumnOperationDefaultValueSql()
+        public void AddColumnOperationDefaultValueSql()
         {
             var operations = new List<MigrationOperation>();
             operations.Add(new AddColumnOperation("tableName", new ColumnModel(PrimitiveTypeKind.Single)
@@ -290,7 +290,7 @@ namespace EntityFramework6.Npgsql.Tests
         }
 
         [Test]
-        public void TestAlterColumnOperation()
+        public void AlterColumnOperation()
         {
             var operations = new List<MigrationOperation>();
             operations.Add(new AlterColumnOperation("tableName", new ColumnModel(PrimitiveTypeKind.Double)
@@ -305,7 +305,7 @@ namespace EntityFramework6.Npgsql.Tests
         }
 
         [Test]
-        public void TestAlterColumnOperationDefaultAndNullable()
+        public void AlterColumnOperationDefaultAndNullable()
         {
             var operations = new List<MigrationOperation>();
             operations.Add(new AlterColumnOperation("tableName", new ColumnModel(PrimitiveTypeKind.Double)
@@ -322,7 +322,7 @@ namespace EntityFramework6.Npgsql.Tests
         }
 
         [Test]
-        public void TestCreateTableOperation()
+        public void CreateTableOperation()
         {
             var operations = new List<MigrationOperation>();
             var operation = new CreateTableOperation("someSchema.someTable");
@@ -372,7 +372,23 @@ namespace EntityFramework6.Npgsql.Tests
         }
 
         [Test]
-        public void TestDropColumnOperation()
+        public void CreateTableWithoutSchema()
+        {
+            var statements = new NpgsqlMigrationSqlGenerator().Generate(new List<MigrationOperation> { new CreateTableOperation("some_table") }, BackendVersion.ToString()).ToList();
+            Assert.That(statements.Count, Is.EqualTo(1));
+            Assert.That(statements[0].Sql, Is.EqualTo("CREATE TABLE \"some_table\"()"));
+        }
+
+        [Test]
+        public void CreateTableInPublicSchema()
+        {
+            var statements = new NpgsqlMigrationSqlGenerator().Generate(new List<MigrationOperation> { new CreateTableOperation("public.some_table") }, BackendVersion.ToString()).ToList();
+            Assert.That(statements.Count, Is.EqualTo(1));
+            Assert.That(statements[0].Sql, Is.EqualTo("CREATE TABLE \"public\".\"some_table\"()"));
+        }
+
+        [Test]
+        public void DropColumnOperation()
         {
             var operations = new List<MigrationOperation>();
             operations.Add(new DropColumnOperation("someTable", "someColumn"));
@@ -382,7 +398,7 @@ namespace EntityFramework6.Npgsql.Tests
         }
 
         [Test]
-        public void TestDropTableOperation()
+        public void DropTableOperation()
         {
             var operations = new List<MigrationOperation>();
             operations.Add(new DropTableOperation("someTable"));
@@ -392,7 +408,7 @@ namespace EntityFramework6.Npgsql.Tests
         }
 
         [Test]
-        public void TestRenameTableOperation()
+        public void RenameTableOperation()
         {
             var operations = new List<MigrationOperation>();
             operations.Add(new RenameTableOperation("schema.someOldTableName", "someNewTablename"));
@@ -402,7 +418,7 @@ namespace EntityFramework6.Npgsql.Tests
         }
 
         [Test]
-        public void TestHistoryOperation()
+        public void HistoryOperation()
         {
             var operations = new List<MigrationOperation>();
             //TODO: fill operations
@@ -411,7 +427,7 @@ namespace EntityFramework6.Npgsql.Tests
         }
 
         [Test]
-        public void TestDropIndexOperation()
+        public void DropIndexOperation()
         {
             var operations = new List<MigrationOperation>();
             operations.Add(new DropIndexOperation()
@@ -425,7 +441,7 @@ namespace EntityFramework6.Npgsql.Tests
         }
 
         [Test]
-        public void TestDropIndexOperationTableNameWithSchema()
+        public void DropIndexOperationTableNameWithSchema()
         {
             var operations = new List<MigrationOperation>();
             operations.Add(new DropIndexOperation()
@@ -439,7 +455,7 @@ namespace EntityFramework6.Npgsql.Tests
         }
 
         [Test]
-        public void TestCreateIndexOperation()
+        public void CreateIndexOperation()
         {
             var operations = new List<MigrationOperation>();
             var operation = new CreateIndexOperation();
@@ -456,7 +472,7 @@ namespace EntityFramework6.Npgsql.Tests
         }
 
         [Test]
-        public void TestCreateIndexOperationUnique()
+        public void CreateIndexOperationUnique()
         {
             var operations = new List<MigrationOperation>();
             var operation = new CreateIndexOperation();
@@ -473,7 +489,7 @@ namespace EntityFramework6.Npgsql.Tests
         }
 
         [Test]
-        public void TestRenameIndexOperation()
+        public void RenameIndexOperation()
         {
             var operations = new List<MigrationOperation>();
             operations.Add(new RenameIndexOperation("someSchema.someTable", "someOldIndexName", "someNewIndexName"));
@@ -490,7 +506,7 @@ namespace EntityFramework6.Npgsql.Tests
         }
 
         [Test]
-        public void TestMoveTableOperation()
+        public void MoveTableOperation()
         {
             var operations = new List<MigrationOperation>();
             operations.Add(new MoveTableOperation("someOldSchema.someTable", "someNewSchema"));
@@ -504,7 +520,7 @@ namespace EntityFramework6.Npgsql.Tests
         }
 
         [Test]
-        public void TestMoveTableOperationNewSchemaIsNull()
+        public void MoveTableOperationNewSchemaIsNull()
         {
             var operations = new List<MigrationOperation>();
             operations.Add(new MoveTableOperation("someOldSchema.someTable", null));
@@ -518,7 +534,7 @@ namespace EntityFramework6.Npgsql.Tests
         }
 
         [Test]
-        public void TestAddPrimaryKeyOperation()
+        public void AddPrimaryKeyOperation()
         {
             var operations = new List<MigrationOperation>();
             var operation = new AddPrimaryKeyOperation();
@@ -535,7 +551,7 @@ namespace EntityFramework6.Npgsql.Tests
         }
 
         [Test]
-        public void TestAddPrimaryKeyOperationClustered()
+        public void AddPrimaryKeyOperationClustered()
         {
             var operations = new List<MigrationOperation>();
             var operation = new AddPrimaryKeyOperation();
@@ -553,7 +569,7 @@ namespace EntityFramework6.Npgsql.Tests
         }
 
         [Test]
-        public void TestDropPrimaryKeyOperation()
+        public void DropPrimaryKeyOperation()
         {
             var operations = new List<MigrationOperation>();
             var operation = new DropPrimaryKeyOperation();
@@ -566,7 +582,7 @@ namespace EntityFramework6.Npgsql.Tests
         }
 
         [Test]
-        public void TestRenameColumnOperation()
+        public void RenameColumnOperation()
         {
             var operations = new List<MigrationOperation>();
             operations.Add(new RenameColumnOperation("someTable", "someOldColumnName", "someNewColumnName"));
@@ -576,7 +592,7 @@ namespace EntityFramework6.Npgsql.Tests
         }
 
         [Test]
-        public void TestSqlOperation()
+        public void SqlOperation()
         {
             var operations = new List<MigrationOperation>();
             operations.Add(new SqlOperation("SELECT someColumn FROM someTable"));
@@ -586,7 +602,7 @@ namespace EntityFramework6.Npgsql.Tests
         }
 
         [Test]
-        public void TestUpdateDatabaseOperation()
+        public void UpdateDatabaseOperation()
         {
             var operations = new List<MigrationOperation>();
             //TODO: fill operations
@@ -595,7 +611,7 @@ namespace EntityFramework6.Npgsql.Tests
         }
 
         [Test]
-        public void TestAddForeignKeyOperation()
+        public void AddForeignKeyOperation()
         {
             var operations = new List<MigrationOperation>();
             var operation = new AddForeignKeyOperation();
@@ -613,7 +629,7 @@ namespace EntityFramework6.Npgsql.Tests
         }
 
         [Test]
-        public void TestAddForeignKeyOperationCascadeDelete()
+        public void AddForeignKeyOperationCascadeDelete()
         {
             var operations = new List<MigrationOperation>();
             var operation = new AddForeignKeyOperation();
@@ -632,7 +648,7 @@ namespace EntityFramework6.Npgsql.Tests
 
 
         [Test]
-        public void TestDropForeignKeyOperation()
+        public void DropForeignKeyOperation()
         {
             var operations = new List<MigrationOperation>();
             var operation = new DropForeignKeyOperation();
@@ -648,7 +664,7 @@ namespace EntityFramework6.Npgsql.Tests
         }
 
         [Test]
-        public void TestDefaultTypes()
+        public void DefaultTypes()
         {
             var operations = new List<MigrationOperation>();
             operations.Add(new AddColumnOperation("someTable",
