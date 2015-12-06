@@ -63,5 +63,18 @@ namespace Microsoft.Data.Entity.Scaffolding
 
             return keyBuilder;
         }
+
+        [CanBeNull]
+        protected override IndexBuilder VisitIndex(EntityTypeBuilder builder, IndexModel index)
+        {
+            var npgsqlIndex = (NpgsqlIndexModel)index;
+            if (npgsqlIndex.Expression != null)
+            {
+                Logger.LogWarning($"Ignoring unsupported index {index.Name} which contains an expression ({npgsqlIndex.Expression})");
+                return null;
+            }
+
+            return base.VisitIndex(builder, index);
+        }
     }
 }

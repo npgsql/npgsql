@@ -118,6 +118,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Internal\NpgsqlColumnModel.cs" />
+    <Compile Include="Internal\NpgsqlIndexModel.cs" />
     <Compile Include="NpgsqlDatabaseModelFactory.cs" />
     <Compile Include="NpgsqlDesignTimeServices.cs" />
     <Compile Include="NpgsqlScaffoldingModelFactory.cs" />

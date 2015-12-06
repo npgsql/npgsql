@@ -8,6 +8,7 @@ using Microsoft.Data.Entity.Migrations.Internal;
 using Microsoft.Data.Entity.Scaffolding.Internal;
 using Microsoft.Data.Entity.Scaffolding.Metadata;
 using Microsoft.Data.Entity.Utilities;
+using Microsoft.Extensions.Logging;
 using Npgsql;
 
 namespace Microsoft.Data.Entity.Scaffolding
@@ -179,7 +180,8 @@ namespace Microsoft.Data.Entity.Scaffolding
 
         const string GetIndexesQuery = @"
             SELECT
-                nspname, cls.relname, idxcls.relname, indisunique, indkey    
+                nspname, cls.relname, idxcls.relname, indisunique, indkey,
+                CASE WHEN indexprs IS NULL THEN NULL ELSE pg_get_expr(indexprs, cls.oid) END
             FROM pg_class AS cls
             JOIN pg_namespace AS ns ON ns.oid = cls.relnamespace
             JOIN pg_index AS idx ON indrelid = cls.oid
@@ -215,9 +217,7 @@ namespace Microsoft.Data.Entity.Scaffolding
                         continue;
                     }
 
-                    var columnIndices = reader.GetFieldValue<short[]>(4);
-
-                    var index = new IndexModel
+                    var index = new NpgsqlIndexModel
                     {
                         Table = table,
                         Name = indexName,
@@ -225,7 +225,17 @@ namespace Microsoft.Data.Entity.Scaffolding
                     };
 
                     table.Indexes.Add(index);
-                    foreach (var column in columnIndices.Select(i => table.Columns[i - 1])) {
+
+                    var columnIndices = reader.GetFieldValue<short[]>(4);
+                    if (columnIndices.Any(i => i == 0))
+                    {
+                        if (reader.IsDBNull(5)) {
+                            throw new Exception($"Seen 0 in indkey for index {indexName} but indexprs is null");
+                        }
+                        index.Expression = reader.GetString(5);
+                    }
+                    else foreach (var column in columnIndices.Select(i => table.Columns[i - 1]))
+                    {
                         index.Columns.Add(column);
                     }
                 }
