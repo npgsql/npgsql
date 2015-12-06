@@ -41,18 +41,14 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
         ISimpleTypeReader<PhysicalAddress>, ISimpleTypeWriter,
         ISimpleTypeReader<string>
     {
-        byte[] _bytes;
-
         public PhysicalAddress Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             Contract.Assume(len == 6);
 
-            if (_bytes == null) {
-                _bytes = new byte[6];
-            }
+            var bytes = new byte[6];
 
-            buf.ReadBytes(_bytes, 0, 6);
-            return new PhysicalAddress(_bytes);
+            buf.ReadBytes(bytes, 0, 6);
+            return new PhysicalAddress(bytes);
         }
 
         string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)

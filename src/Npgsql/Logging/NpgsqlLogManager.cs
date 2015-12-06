@@ -55,15 +55,21 @@ namespace Npgsql.Logging
             }
         }
 
+        /// <summary>
+        /// Determines whether parameter contents will be logged alongside SQL statements - this may reveal sensitive information.
+        /// Defaults to false.
+        /// </summary>
+        public static bool IsParameterLoggingEnabled { get; set; }
+
         static INpgsqlLoggingProvider _provider;
         static bool _providerRetrieved;
 
-        static internal NpgsqlLogger CreateLogger(string name)
+        internal static NpgsqlLogger CreateLogger(string name)
         {
             return Provider.CreateLogger(name);
         }
 
-        static internal NpgsqlLogger GetCurrentClassLogger()
+        internal static NpgsqlLogger GetCurrentClassLogger()
         {
             return CreateLogger(GetClassFullName());
         }

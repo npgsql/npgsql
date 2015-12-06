@@ -531,6 +531,11 @@ namespace Npgsql
                     throw new Exception("Enums must be registered with Npgsql via Connection.RegisterEnumType or RegisterEnumTypeGlobally");
                 }
 
+                if (typeof(IEnumerable).IsAssignableFrom(type))
+                {
+                    throw new NotSupportedException("Npgsql > 3.x removed support for writing a parameter with an IEnumerable value, use .ToList()/.ToArray() instead");
+                }
+
                 if (typeInfo.IsGenericType && type.GetGenericTypeDefinition() == typeof(NpgsqlRange<>))
                 {
                     if (!_byType.TryGetValue(type.GetGenericArguments()[0], out handler)) {
@@ -548,7 +553,26 @@ namespace Npgsql
             return DbTypeToNpgsqlDbType[dbType];
         }
 
-        internal static NpgsqlDbType ToNpgsqlDbType(Type type)
+        internal static NpgsqlDbType ToNpgsqlDbType(object value)
+        {
+            if (value is DateTime)
+            {
+                return ((DateTime)value).Kind == DateTimeKind.Utc
+                    ? NpgsqlDbType.TimestampTZ
+                    : NpgsqlDbType.Timestamp;
+            }
+
+            if (value is NpgsqlDateTime)
+            {
+                return ((NpgsqlDateTime)value).Kind == DateTimeKind.Utc
+                    ? NpgsqlDbType.TimestampTZ
+                    : NpgsqlDbType.Timestamp;
+            }
+
+            return ToNpgsqlDbType(value.GetType());
+        }
+
+        static NpgsqlDbType ToNpgsqlDbType(Type type)
         {
             NpgsqlDbType npgsqlDbType;
             if (TypeToNpgsqlDbType.TryGetValue(type, out npgsqlDbType)) {

@@ -50,7 +50,7 @@ namespace Npgsql.TypeHandlers
     [TypeMapping("unknown")]
     internal class TextHandler : TypeHandler<string>,
         IChunkingTypeWriter,
-        IChunkingTypeReader<string>, IChunkingTypeReader<char[]>
+        IChunkingTypeReader<string>, IChunkingTypeReader<char[]>, ITextReaderHandler
     {
         public override bool PreferTextWrite { get { return true; } }
 
@@ -97,7 +97,7 @@ namespace Npgsql.TypeHandlers
                     return true;
                 }
 
-                if (_byteLen <= _buf.Size) {
+                if (_byteLen <= _buf.UsableSize) {
                     // Don't have the entire string in the buffer, but it can fit. Force a read to fill.
                     result = null;
                     return false;
@@ -137,7 +137,7 @@ namespace Npgsql.TypeHandlers
                     return true;
                 }
 
-                if (_byteLen <= _buf.Size)
+                if (_byteLen <= _buf.UsableSize)
                 {
                     // Don't have the entire string in the buffer, but it can fit. Force a read to fill.
                     result = null;
@@ -319,7 +319,7 @@ namespace Npgsql.TypeHandlers
                     return true;
                 }
 
-                if (_byteLen <= _buf.Size)
+                if (_byteLen <= _buf.UsableSize)
                 {
                     // Buffer is currently too full, but the string can fit. Force a write to fill.
                     return false;
@@ -366,5 +366,10 @@ namespace Npgsql.TypeHandlers
         }
 
         #endregion
+
+        public TextReader GetTextReader(Stream stream)
+        {
+            return new StreamReader(stream);
+        }
     }
 }

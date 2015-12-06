@@ -30,6 +30,7 @@ using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using AsyncRewriter;
 
 namespace Npgsql
@@ -274,6 +275,15 @@ namespace Npgsql
         }
     }
 
+    /// <summary>
+    /// Implemented by handlers which support <see cref="NpgsqlDataReader.GetTextReader"/>, returns a standard
+    /// TextReader given a binary Stream.
+    /// </summary>
+    interface ITextReaderHandler
+    {
+        TextReader GetTextReader(Stream stream);
+    }
+
     struct DirectBuffer
     {
         public byte[] Buffer;
@@ -349,6 +359,10 @@ namespace Npgsql
 
         internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, DbType[] dbTypes, Type type, DbType inferredDbType)
             : this(pgName, npgsqlDbType, dbTypes, new[] { type }, inferredDbType) { }
+
+        internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, DbType[] dbTypes)
+            : this(pgName, npgsqlDbType, dbTypes, new Type[0], null)
+        { }
 
         internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, DbType dbType, Type[] types)
             : this(pgName, npgsqlDbType, new[] { dbType }, types, dbType) {}

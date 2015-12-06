@@ -33,6 +33,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Diagnostics.Contracts;
+using System.Globalization;
 using System.Net.Sockets;
 using AsyncRewriter;
 using Npgsql.BackendMessages;
@@ -445,7 +446,7 @@ namespace Npgsql
             }
 
             _connector = Connection.Connector;
-            Log.Debug("Prepare command", _connector.Id);
+            Log.Debug("Preparing: " + CommandText, _connector.Id);
 
             using (_connector.StartUserAction())
             {
@@ -563,6 +564,9 @@ namespace Npgsql
         internal void ValidateAndCreateMessages(CommandBehavior behavior = CommandBehavior.Default)
         {
             _connector = Connection.Connector;
+            if (Parameters.Count > 65535) {
+                throw new Exception("A command cannot have more than 65535 parameters");
+            }
             foreach (NpgsqlParameter p in Parameters.Where(p => p.IsInputDirection)) {
                 p.Bind(_connector.TypeHandlerRegistry);
                 if (p.LengthCache != null) {
@@ -713,13 +717,25 @@ namespace Npgsql
         [RewriteAsync]
         internal NpgsqlDataReader Execute(CommandBehavior behavior = CommandBehavior.Default)
         {
+            LogCommand();
             State = CommandState.InProgress;
             try
             {
                 _queryIndex = 0;
                 _connector.SendAllMessages();
 
-                if (!IsPrepared)
+                // We consume response messages, positioning ourselves before the response of the first
+                // Execute.
+                if (IsPrepared)
+                {
+                    if ((behavior & CommandBehavior.SchemaOnly) == 0)
+                    {
+                        // No binding in SchemaOnly mode
+                        var msg = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential);
+                        Contract.Assert(msg is BindCompleteMessage);
+                    }
+                }
+                else
                 {
                     IBackendMessage msg;
                     do
@@ -814,7 +830,7 @@ namespace Npgsql
         int ExecuteNonQueryInternal()
         {
             Prechecks();
-            Log.Debug("ExecuteNonQuery", Connection.Connector.Id);
+            Log.Trace("ExecuteNonQuery", Connection.Connector.Id);
             using (Connection.Connector.StartUserAction())
             {
                 ValidateAndCreateMessages();
@@ -871,7 +887,7 @@ namespace Npgsql
         object ExecuteScalarInternal()
         {
             Prechecks();
-            Log.Debug("ExecuteNonScalar", Connection.Connector.Id);
+            Log.Trace("ExecuteNonScalar", Connection.Connector.Id);
             using (Connection.Connector.StartUserAction())
             {
                 var behavior = CommandBehavior.SequentialAccess | CommandBehavior.SingleRow;
@@ -943,7 +959,6 @@ namespace Npgsql
         /// </summary>
         protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior)
         {
-            Log.Debug("ExecuteReader with CommandBehavior=" + behavior);
             return ExecuteDbDataReaderInternal(behavior);
         }
 
@@ -953,7 +968,7 @@ namespace Npgsql
         {
             Prechecks();
 
-            Log.Debug("ExecuteReader", Connection.Connector.Id);
+            Log.Trace("ExecuteReader", Connection.Connector.Id);
 
             Connection.Connector.StartUserAction();
             try
@@ -1111,6 +1126,41 @@ namespace Npgsql
                     field.Handler = Connection.Connector.TypeHandlerRegistry.UnrecognizedTypeHandler;
                 }
             }
+        }
+
+        void LogCommand()
+        {
+            if (!Log.IsEnabled(NpgsqlLogLevel.Debug))
+            {
+                return;
+            }
+
+            var sb = new StringBuilder();
+            sb.Append("Executing statement(s):");
+            foreach (var s in _queries)
+            {
+                sb
+                    .AppendLine()
+                    .Append("\t")
+                    .Append(s.SQL);
+            }
+
+            if (NpgsqlLogManager.IsParameterLoggingEnabled && Parameters.Any())
+            {
+                sb
+                    .AppendLine()
+                    .AppendLine("Parameters:");
+                for (var i = 0; i < Parameters.Count; i++)
+                {
+                    sb
+                        .Append("\t$")
+                        .Append(i + 1)
+                        .Append(": ")
+                        .Append(Convert.ToString(Parameters[i].Value, CultureInfo.InvariantCulture));
+                }
+            }
+
+            Log.Debug(sb.ToString(), Connection.Connector.Id);
         }
 
 #if !DNXCORE50

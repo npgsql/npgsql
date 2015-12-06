@@ -131,9 +131,12 @@ namespace Npgsql
         internal void Init()
         {
             _rowDescription = _statements[0].Description;
+
             if (_rowDescription == null)
             {
-                // The first query has not result set, seek forward to the first query that does (if any)
+                // This happens if the first (or only) statement does not return a resultset (e.g. INSERT).
+                // At the end of Init the reader should be positioned at the beginning of the first resultset,
+                // so we seek it here.
                 if (!NextResult())
                 {
                     // No resultsets at all
@@ -141,9 +144,79 @@ namespace Npgsql
                 }
             }
 
+            // If we have any output parameters, we need to read the first data row (in non-sequential mode)
+            // and extract them
             if (Command.Parameters.Any(p => p.IsOutputDirection))
             {
                 PopulateOutputParameters();
+            }
+            else
+            {
+                // If the query generated an error, we want an exception thrown here (i.e. from ExecuteQuery).
+                // So read the first message
+                // Note this isn't necessary if we're in SchemaOnly mode (we don't execute the query so no error
+                // is possible). Also, if we have output parameters as we already read the first message above.
+                if (!IsSchemaOnly)
+                {
+                    _pendingMessage = ReadMessage();
+                }
+            }
+        }
+
+        /// <summary>
+        /// The first row in a stored procedure command that has output parameters needs to be traversed twice -
+        /// once for populating the output parameters and once for the actual result set traversal. So in this
+        /// case we can't be sequential.
+        /// </summary>
+        void PopulateOutputParameters()
+        {
+            Contract.Requires(_rowDescription != null);
+            Contract.Requires(Command.Parameters.Any(p => p.IsOutputDirection));
+
+            while (_row == null)
+            {
+                var msg = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential);
+                switch (msg.Code)
+                {
+                case BackendMessageCode.DataRow:
+                    _pendingMessage = msg;
+                    _row = (DataRowNonSequentialMessage)msg;
+                    break;
+                case BackendMessageCode.CompletedResponse:
+                case BackendMessageCode.EmptyQueryResponse:
+                    _pendingMessage = msg;
+                    return;
+                default:
+                    throw new ArgumentOutOfRangeException("Unexpected message type while populating output parameter: " + msg.Code);
+                }
+            }
+
+            Contract.Assume(_rowDescription.NumFields == _row.NumColumns);
+            if (IsCaching) { _rowCache.Clear(); }
+
+            var pending = new Queue<NpgsqlParameter>();
+            var taken = new List<int>();
+            foreach (var p in Command.Parameters.Where(p => p.IsOutputDirection))
+            {
+                int idx;
+                if (_rowDescription.TryGetFieldIndex(p.CleanName, out idx))
+                {
+                    // TODO: Provider-specific check?
+                    p.Value = GetValue(idx);
+                    taken.Add(idx);
+                }
+                else
+                {
+                    pending.Enqueue(p);
+                }
+            }
+            for (var i = 0; pending.Count != 0 && i != _row.NumColumns; ++i)
+            {
+                if (!taken.Contains(i))
+                {
+                    // TODO: Need to get the provider-specific value based on the out param's type
+                    pending.Dequeue().Value = GetValue(i);
+                }
             }
         }
 
@@ -491,7 +564,7 @@ namespace Npgsql
                 }
                 while (true)
                 {
-                    var msg = _connector.ReadSingleMessage(IsSequential ? DataRowLoadingMode.Sequential : DataRowLoadingMode.NonSequential);
+                    var msg = ReadMessage();
                     switch (msg.Code)
                     {
                         case BackendMessageCode.BindComplete:
@@ -997,7 +1070,7 @@ namespace Npgsql
             var fieldDescription = _rowDescription[ordinal];
             var handler = fieldDescription.Handler as ByteaHandler;
             if (handler == null) {
-                throw new InvalidCastException("GetStream() not supported for type " + fieldDescription.Name);
+                throw new InvalidCastException("GetStream() not supported for type " + fieldDescription.Handler.PgName);
             }
 
             var row = Row;
@@ -1059,17 +1132,17 @@ namespace Npgsql
             Contract.Ensures(Contract.Result<TextReader>() != null);
 
             var fieldDescription = _rowDescription[ordinal];
-            var handler = fieldDescription.Handler as TextHandler;
+            var handler = fieldDescription.Handler as ITextReaderHandler;
             if (handler == null)
             {
-                throw new InvalidCastException("GetTextReader() not supported for type " + fieldDescription.Name);
+                throw new InvalidCastException("GetTextReader() not supported for type " + fieldDescription.Handler.PgName);
             }
 
             var row = Row;
             row.SeekToColumnStart(ordinal);
             row.CheckNotNull();
 
-            return new StreamReader(row.GetStream());
+            return handler.GetTextReader(row.GetStream());
         }
 
         #endregion
@@ -1428,64 +1501,6 @@ namespace Npgsql
             return new DbEnumerator(this);
         }
 #endif
-
-        /// <summary>
-        /// The first row in a stored procedure command that has output parameters needs to be traversed twice -
-        /// once for populating the output parameters and once for the actual result set traversal. So in this
-        /// case we can't be sequential.
-        /// </summary>
-        void PopulateOutputParameters()
-        {
-            // TODO: Should we really use Contract here, instead of throwing an Exception?
-            Contract.Requires(_rowDescription != null);
-            Contract.Requires(Command.Parameters.Any(p => p.IsOutputDirection));
-
-            while (_row == null)
-            {
-                var msg = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential);
-                switch (msg.Code)
-                {
-                    case BackendMessageCode.DataRow:
-                        _pendingMessage = msg;
-                        _row = (DataRowNonSequentialMessage) msg;
-                        break;
-                    case BackendMessageCode.CompletedResponse:
-                    case BackendMessageCode.EmptyQueryResponse:
-                        _pendingMessage = msg;
-                        return;
-                    default:
-                        throw new ArgumentOutOfRangeException("Unexpected message type while populating output parameter: " + msg.Code);
-                }
-            }
-
-            Contract.Assume(_rowDescription.NumFields == _row.NumColumns);
-            if (IsCaching) { _rowCache.Clear(); }
-
-            var pending = new Queue<NpgsqlParameter>();
-            var taken = new List<int>();
-            foreach (var p in Command.Parameters.Where(p => p.IsOutputDirection))
-            {
-                int idx;
-                if (_rowDescription.TryGetFieldIndex(p.CleanName, out idx))
-                {
-                    // TODO: Provider-specific check?
-                    p.Value = GetValue(idx);
-                    taken.Add(idx);
-                }
-                else
-                {
-                    pending.Enqueue(p);
-                }
-            }
-            for (var i = 0; pending.Count != 0 && i != _row.NumColumns; ++i)
-            {
-                if (!taken.Contains(i))
-                {
-                    // TODO: Need to get the provider-specific value based on the out param's type
-                    pending.Dequeue().Value = GetValue(i);
-                }
-            }
-        }
 
 #if !NET40
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

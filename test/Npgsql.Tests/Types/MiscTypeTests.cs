@@ -162,11 +162,15 @@ namespace Npgsql.Tests.Types
             using (var cmd = new NpgsqlCommand("SELECT @p", Conn))
             {
                 cmd.Parameters.AddWithValue("p", NpgsqlDbType.Json, expected);
-                var reader = cmd.ExecuteReader();
-                reader.Read();
-                Assert.That(reader.GetString(0), Is.EqualTo(expected));
-                Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(string)));
-                reader.Close();
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetString(0), Is.EqualTo(expected));
+                    Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(string)));
+
+                    using (var textReader = reader.GetTextReader(0))
+                        Assert.That(textReader.ReadToEnd(), Is.EqualTo(expected));
+                }
             }
         }
 
@@ -182,11 +186,15 @@ namespace Npgsql.Tests.Types
             using (var cmd = new NpgsqlCommand("SELECT @p", Conn))
             {
                 cmd.Parameters.AddWithValue("p", NpgsqlDbType.Jsonb, value);
-                var reader = cmd.ExecuteReader();
-                reader.Read();
-                Assert.That(reader.GetString(0), Is.EqualTo(value));
-                Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(string)));
-                reader.Close();
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetString(0), Is.EqualTo(value));
+                    Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(string)));
+
+                    using (var textReader = reader.GetTextReader(0))
+                        Assert.That(textReader.ReadToEnd(), Is.EqualTo(value));
+                }
             }
         }
 

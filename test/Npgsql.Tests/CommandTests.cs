@@ -43,6 +43,7 @@ using System.Resources;
 using System.Threading;
 using System.Reflection;
 using System.Text;
+using Npgsql.Logging;
 using NUnit.Framework.Constraints;
 
 namespace Npgsql.Tests
@@ -139,6 +140,7 @@ namespace Npgsql.Tests
         [Test]
         public void TimeoutFromConnectionString()
         {
+            Assert.That(NpgsqlConnector.MinimumInternalCommandTimeout, Is.Not.EqualTo(NpgsqlCommand.DefaultTimeout));
             var timeout = NpgsqlConnector.MinimumInternalCommandTimeout;
             int connId;
             using (var conn = new NpgsqlConnection(ConnectionString + ";CommandTimeout=" + timeout))
@@ -944,6 +946,62 @@ namespace Npgsql.Tests
             cmd2.Dispose();
             reader.Close();
             Assert.That(ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(0));
+        }
+
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/400")]
+        public void ExceptionThrownFromExecuteQuery([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
+        {
+            ExecuteNonQuery(@"
+                 CREATE OR REPLACE FUNCTION emit_exception() RETURNS VOID AS
+                    'BEGIN RAISE EXCEPTION ''testexception'' USING ERRCODE = ''12345''; END;'
+                 LANGUAGE 'plpgsql';
+            ");
+
+            using (var cmd = new NpgsqlCommand("SELECT emit_exception()", Conn))
+            {
+                if (prepare == PrepareOrNot.Prepared)
+                    cmd.Prepare();
+                Assert.That(() => cmd.ExecuteReader(), Throws.Exception.TypeOf<NpgsqlException>());
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/831")]
+        [Timeout(10000)]
+        public void ManyParameters()
+        {
+            using (var cmd = new NpgsqlCommand("SELECT 1", Conn))
+            {
+                for (var i = 0; i < Conn.BufferSize; i++)
+                    cmd.Parameters.Add(new NpgsqlParameter("p" + i, 8));
+                cmd.ExecuteNonQuery();
+            }
+        }
+
+        [Test, Description("Bypasses PostgreSQL's int16 limitation on the number of parameters")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/831")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/858")]
+        [Timeout(10000)]
+        public void TooManyParameters()
+        {
+            using (var cmd = new NpgsqlCommand { Connection = Conn })
+            {
+                var sb = new StringBuilder("SELECT ");
+                for (var i = 0; i < 65536; i++)
+                {
+                    var paramName = "p" + i;
+                    cmd.Parameters.Add(new NpgsqlParameter(paramName, 8));
+                    if (i > 0)
+                        sb.Append(", ");
+                    sb.Append('@');
+                    sb.Append(paramName);
+                }
+                cmd.CommandText = sb.ToString();
+                Assert.That(() => cmd.ExecuteNonQuery(), Throws.Exception
+                    .InstanceOf<Exception>()
+                    .With.Message.EqualTo("A command cannot have more than 65535 parameters")
+                );
+            }
         }
 
         public CommandTests(string backendVersion) : base(backendVersion) { }

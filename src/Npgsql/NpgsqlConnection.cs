@@ -177,7 +177,7 @@ namespace Npgsql
 
             CheckConnectionClosed();
 
-            Log.Debug("Opening connnection");
+            Log.Trace("Opening connnection");
 
             WasBroken = false;
 
@@ -352,6 +352,7 @@ namespace Npgsql
         internal bool Enlist { get { return Settings.Enlist; } }
         internal int BufferSize { get { return Settings.BufferSize; } }
         internal string EntityTemplateDatabase { get { return Settings.EntityTemplateDatabase; } }
+        internal string EntityAdminDatabase { get { return Settings.EntityAdminDatabase; } }
 
         #endregion Configuration settings
 
@@ -546,7 +547,7 @@ namespace Npgsql
             if (Connector == null)
                 return;
 
-            Log.Debug("Closing connection", Connector.Id);
+            Log.Trace("Closing connection", Connector.Id);
 
 #if !DNXCORE50
             if (_promotable != null && _promotable.InLocalTransaction)
@@ -561,7 +562,8 @@ namespace Npgsql
 
         internal void ReallyClose()
         {
-            Log.Trace("Really closing connection", Connector.Id);
+            var connectorId = Connector.Id;
+            Log.Trace("Really closing connection", connectorId);
             _postponingClose = false;
 
 #if !DNXCORE50
@@ -582,6 +584,8 @@ namespace Npgsql
             {
                 Connector.Close();
             }
+
+            Log.Debug("Connection closed", Connector.Id);
 
             Connector = null;
 
@@ -1271,7 +1275,7 @@ namespace Npgsql
         /// Flushes the type cache for this connection's connection string and reloads the
         /// types for this connection only.
         /// </summary>
-        internal void ReloadTypes()
+        public void ReloadTypes()
         {
             TypeHandlerRegistry.ClearBackendTypeCache(ConnectionString);
             TypeHandlerRegistry.Setup(Connector);
