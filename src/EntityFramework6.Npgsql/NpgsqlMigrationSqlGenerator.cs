@@ -605,6 +605,11 @@ namespace Npgsql
 
         private void AppendColumnType(ColumnModel column, StringBuilder sql, bool setSerial)
         {
+            if (column.StoreType != null)
+            {
+                sql.Append(column.StoreType);
+                return;
+            }
             switch (column.Type)
             {
                 case PrimitiveTypeKind.Binary:
