@@ -74,14 +74,10 @@ namespace Npgsql
         static readonly ConcurrentDictionary<string, List<BackendType>> BackendTypeCache = new ConcurrentDictionary<string, List<BackendType>>();
 
         static readonly ConcurrentDictionary<string, TypeHandler> _globalEnumMappings;
-
-        internal static IReadOnlyDictionary<string, TypeHandler> GlobalEnumMappings
-            => (IReadOnlyDictionary<string, TypeHandler>)_globalEnumMappings;
-
         static readonly ConcurrentDictionary<string, TypeHandler> _globalCompositeMappings;
 
-        internal static IReadOnlyDictionary<string, TypeHandler> GlobalCompositeMappings
-            => (IReadOnlyDictionary<string, TypeHandler>)_globalCompositeMappings;
+        internal static IDictionary<string, TypeHandler> GlobalEnumMappings => _globalEnumMappings;
+        internal static IDictionary<string, TypeHandler> GlobalCompositeMappings => _globalCompositeMappings;
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
