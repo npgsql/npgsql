@@ -67,6 +67,17 @@
         "System.Xml": { "version": "4.0.0.0", "type": "build" }
       }
     },
+    "dnx451": {
+      "frameworkAssemblies": {
+        "System.Collections": "4.0.0.0",
+        "System.Diagnostics.Contracts": "4.0.0.0",
+        "System.Transactions": "4.0.0.0",
+        "System.DirectoryServices": "4.0.0.0",
+        "System.Data": "4.0.0.0",
+        "System.Numerics": "4.0.0.0",
+        "System.Xml": "4.0.0.0"
+      }
+    },
     "dnx452": {
       "frameworkAssemblies": {
         "System.Collections": "4.0.0.0",
@@ -109,7 +120,7 @@
         "System.Text.RegularExpressions": "4.0.11-*",
         "System.Threading": "4.0.11-*",
         "System.Threading.Thread": "4.0.0-*",
-        "System.Threading.Timer": "4.0.1-*",
+        "System.Threading.Timer": "4.0.1-*"
       }
     }
   }

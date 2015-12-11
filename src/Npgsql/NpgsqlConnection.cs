@@ -1335,7 +1335,7 @@ namespace Npgsql
 
         #region Misc
 
-#if NET45 || NET452 || DNX452
+#if NET45 || NET452 || DNX452 || DNX451
         object ICloneable.Clone()
         {
             CheckNotDisposed();

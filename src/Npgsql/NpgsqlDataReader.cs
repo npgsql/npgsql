@@ -659,7 +659,7 @@ namespace Npgsql
         /// <summary>
         /// Closes the <see cref="NpgsqlDataReader"/> object.
         /// </summary>
-#if NET45 || NET452 || DNX452
+#if NET45 || NET452 || DNX452 || DNX451
         public override void Close()
 #else
         public void Close()
