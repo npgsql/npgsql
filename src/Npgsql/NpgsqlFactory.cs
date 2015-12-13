@@ -33,7 +33,7 @@ namespace Npgsql
     /// <summary>
     /// A factory to create instances of various Npgsql objects.
     /// </summary>
-#if NET45 || NET452 || DNX452
+#if NET45 || NET451 || DNX451
     [Serializable]
 #endif
     public sealed class NpgsqlFactory : DbProviderFactory, IServiceProvider
@@ -68,7 +68,7 @@ namespace Npgsql
             return new NpgsqlConnectionStringBuilder();
         }
 
-#if NET45 || NET452 || DNX452
+#if NET45 || NET451 || DNX451
         public override DbCommandBuilder CreateCommandBuilder()
         {
             return new NpgsqlCommandBuilder();

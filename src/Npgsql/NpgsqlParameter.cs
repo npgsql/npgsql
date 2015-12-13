@@ -87,7 +87,7 @@ namespace Npgsql
         {
             SourceColumn = String.Empty;
             Direction = ParameterDirection.Input;
-#if NET45 || NET452 || DNX452
+#if NET45 || NET451 || DNX451
             SourceVersion = DataRowVersion.Current;
 #endif
         }
@@ -187,7 +187,7 @@ namespace Npgsql
             SourceColumn = sourceColumn;
         }
 
-#if NET45 || NET452 || DNX452
+#if NET45 || NET451 || DNX451
         /// <summary>
         /// Initializes a new instance of the <see cref="NpgsqlParameter">NpgsqlParameter</see>.
         /// </summary>
@@ -266,7 +266,7 @@ namespace Npgsql
         /// </summary>
         /// <value>An <see cref="System.Object">Object</see> that is the value of the parameter.
         /// The default value is null.</value>
-#if NET45 || NET452 || DNX452
+#if NET45 || NET451 || DNX451
         [TypeConverter(typeof(StringConverter)), Category("Data")]
 #endif
         public override object Value
@@ -329,7 +329,10 @@ namespace Npgsql
         [DefaultValue((Byte)0)]
         [Category("Data")]
 #if NET45
+// In mono .NET 4.5 is actually a later version, meaning that virtual Precision and Scale already exist in DbParameter
+#pragma warning disable CS0114
         public byte Precision
+#pragma warning restore CS0114
 #else
         public override byte Precision
 #endif
@@ -351,7 +354,10 @@ namespace Npgsql
         [DefaultValue((Byte)0)]
         [Category("Data")]
 #if NET45
+// In mono .NET 4.5 is actually a later version, meaning that virtual Precision and Scale already exist in DbParameter
+#pragma warning disable CS0114
         public byte Scale
+#pragma warning restore CS0114
 #else
         public override byte Scale
 #endif
@@ -498,7 +504,7 @@ namespace Npgsql
         [Category("Data")]
         public override String SourceColumn { get; set; }
 
-#if NET45 || NET452 || DNX452
+#if NET45 || NET451 || DNX451
         /// <summary>
         /// Gets or sets the <see cref="System.Data.DataRowVersion">DataRowVersion</see>
         /// to use when loading <see cref="NpgsqlParameter.Value">Value</see>.
@@ -695,7 +701,7 @@ namespace Npgsql
                 IsNullable = IsNullable,
                 _name = _name,
                 SourceColumn = SourceColumn,
-#if NET45 || NET452 || DNX452
+#if NET45 || NET451 || DNX451
                 SourceVersion = SourceVersion,
 #endif
                 _value = _value,
@@ -706,7 +712,7 @@ namespace Npgsql
             return clone;
         }
 
-#if NET45 || NET452 || DNX452
+#if NET45 || NET451 || DNX451
         object ICloneable.Clone()
         {
             return Clone();

@@ -159,7 +159,7 @@ namespace Npgsql
         /// </summary>
         internal readonly Dictionary<string, string> BackendParams;
 
-#if NET45 || NET452 || DNX452
+#if NET45 || NET451 || DNX451
         SSPIHandler _sspi;
 #endif
 
@@ -507,7 +507,7 @@ namespace Npgsql
 
                         if (!UseSslStream)
                         {
-#if NET45 || NET452 || DNX452
+#if NET45 || NET451 || DNX451
                             var sslStream = new TlsClientStream.TlsClientStream(_stream);
                             sslStream.PerformInitialHandshake(Host, clientCertificates, certificateValidationCallback, false);
                             _stream = sslStream;
@@ -560,7 +560,7 @@ namespace Npgsql
 
         void Connect(NpgsqlTimeout timeout)
         {
-#if NET45 || NET452 || DNX452
+#if NET45 || NET451 || DNX451
             // Note that there aren't any timeoutable DNS methods, and we want to use sync-only
             // methods (not to rely on any TP threads etc.)
             var ips = Dns.GetHostAddresses(Host);
@@ -772,7 +772,7 @@ namespace Npgsql
                     if (!IntegratedSecurity) {
                         throw new Exception("GSS authentication but IntegratedSecurity not enabled");
                     }
-#if NET45 || NET452 || DNX452
+#if NET45 || NET451 || DNX451
                     // For GSSAPI we have to use the supplied hostname
                     _sspi = new SSPIHandler(Host, KerberosServiceName, true);
                     return new PasswordMessage(_sspi.Continue(null));
@@ -784,7 +784,7 @@ namespace Npgsql
                     if (!IntegratedSecurity) {
                         throw new Exception("SSPI authentication but IntegratedSecurity not enabled");
                     }
-#if NET45 || NET452 || DNX452
+#if NET45 || NET451 || DNX451
                     _sspi = new SSPIHandler(Host, KerberosServiceName, false);
                     return new PasswordMessage(_sspi.Continue(null));
 #else
@@ -792,7 +792,7 @@ namespace Npgsql
 #endif
 
                 case AuthenticationRequestType.AuthenticationGSSContinue:
-#if NET45 || NET452 || DNX452
+#if NET45 || NET451 || DNX451
                     var passwdRead = _sspi.Continue(((AuthenticationGSSContinueMessage)msg).AuthenticationData);
                     if (passwdRead.Length != 0)
                     {
@@ -1230,7 +1230,7 @@ namespace Npgsql
 
         bool HasDataInBuffers => Buffer.ReadBytesLeft > 0 ||
                                  (_stream is NetworkStream && ((NetworkStream) _stream).DataAvailable)
-#if NET45 || NET452 || DNX452
+#if NET45 || NET451 || DNX451
                                  || (_stream is TlsClientStream.TlsClientStream && ((TlsClientStream.TlsClientStream) _stream).HasBufferedReadData(false))
 #endif
                                  ;

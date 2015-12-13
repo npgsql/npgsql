@@ -1176,7 +1176,7 @@ namespace Npgsql
             Log.Debug(sb.ToString(), Connection.Connector.Id);
         }
 
-#if NET45 || NET452 || DNX452
+#if NET45 || NET451 || DNX451
         /// <summary>
         /// Create a new command based on this one.
         /// </summary>

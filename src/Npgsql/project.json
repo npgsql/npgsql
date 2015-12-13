@@ -56,7 +56,7 @@
         "System.Xml": { "version": "4.0.0.0", "type": "build" }
       }
     },
-    "net452": {
+    "net451": {
       "frameworkAssemblies": {
         "System.Collections": { "version": "4.0.0.0", "type": "build" },
         "System.Diagnostics.Contracts": { "version": "4.0.0.0", "type": "build" },
@@ -67,7 +67,7 @@
         "System.Xml": { "version": "4.0.0.0", "type": "build" }
       }
     },
-    "dnx452": {
+    "dnx451": {
       "frameworkAssemblies": {
         "System.Collections": "4.0.0.0",
         "System.Diagnostics.Contracts": "4.0.0.0",
@@ -109,7 +109,7 @@
         "System.Text.RegularExpressions": "4.0.11-*",
         "System.Threading": "4.0.11-*",
         "System.Threading.Thread": "4.0.0-*",
-        "System.Threading.Timer": "4.0.1-*",
+        "System.Threading.Timer": "4.0.1-*"
       }
     }
   }

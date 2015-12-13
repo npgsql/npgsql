@@ -1,4 +1,4 @@
-#if NET45 || NET452 || DNX452
+#if NET45 || NET451 || DNX451
 #region License
 // The PostgreSQL License
 //
