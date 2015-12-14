@@ -345,6 +345,13 @@ namespace Npgsql.Tests
 
         #endregion
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/903")]
+        public void DataSource()
+        {
+            using (var conn = new NpgsqlConnection(ConnectionString))
+                Assert.That(conn.DataSource, Is.EqualTo(String.Format("tcp://{0}:{1}", conn.Host, conn.Port)));
+        }
+
         [Test]
         [IssueLink("https://github.com/npgsql/npgsql/issues/703")]
         public void NoDatabaseDefaultsToUsername()
