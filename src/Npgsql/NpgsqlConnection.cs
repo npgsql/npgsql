@@ -384,9 +384,9 @@ namespace Npgsql
         public override string Database => Settings.Database;
 
         /// <summary>
-        /// Gets the database server name.
+        /// Gets the string identifying the database server (host and port)
         /// </summary>
-        public override string DataSource => Settings.Host;
+        public override string DataSource => $"tcp://{Host}:{Port}";
 
         /// <summary>
         /// Gets flag indicating if we are using Synchronous notification or not.
