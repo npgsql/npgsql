@@ -249,17 +249,21 @@ namespace Microsoft.Data.Entity.Migrations
             Check.NotNull(operation, nameof(operation));
             Check.NotNull(builder, nameof(builder));
 
-            // PostgreSQL 9.3 and above ahve a CREATE SCHEMA IF NOT EXISTS which is perfect for this.
-            // But in order to support < 9.3 we create a plpgsql function and call it.
-            builder
-                .AppendLine("CREATE OR REPLACE FUNCTION pg_temp.__ef_ensure_schema () RETURNS VOID AS $$")
-                .Append("  BEGIN IF NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname='").Append(operation.Name).AppendLine("') THEN")
-                .Append("    CREATE SCHEMA ").Append(operation.Name).AppendLine(";")
-                .AppendLine("  END IF; END")
-                .AppendLine("$$ LANGUAGE 'plpgsql';")
-                .AppendLine(SqlGenerator.BatchCommandSeparator);
+            // PostgreSQL 9.2 and below unfortunately doesn't have CREATE SCHEMA IF NOT EXISTS.
+            // An attempted workaround by creating a function which checks and creates the schema, and then invoking it, failed because
+            // of #641 (pg_temp doesn't exist yet).
+            // So the only workaround for pre-9.3 PostgreSQL, at least for now, is to define all tables in the public schema.
 
-            builder.Append("SELECT pg_temp.__ef_ensure_schema()").AppendLine(SqlGenerator.BatchCommandSeparator);
+            // NOTE: Technically the public schema can be dropped so we should also be ensuring it, but this is a rare case and
+            // we want to allow pre-9.3
+            if (operation.Name == "public") {
+                return;
+            }
+
+            builder
+                .Append("CREATE SCHEMA IF NOT EXISTS ")
+                .Append(SqlGenerator.DelimitIdentifier(operation.Name))
+                .AppendLine(SqlGenerator.BatchCommandSeparator);
         }
 
         public virtual void Generate(NpgsqlCreateDatabaseOperation operation, IModel model, RelationalCommandListBuilder builder)
