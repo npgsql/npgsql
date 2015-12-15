@@ -62,7 +62,7 @@ namespace Npgsql
 
         #region General
 
-        private void Convert(IEnumerable<MigrationOperation> operations)
+        protected virtual void Convert(IEnumerable<MigrationOperation> operations)
         {
             foreach (var migrationOperation in operations)
             {
@@ -147,12 +147,11 @@ namespace Npgsql
 
         private void AddStatment(string sql, bool suppressTransacion = false)
         {
-            migrationStatments.Add(new MigrationStatement()
+            migrationStatments.Add(new MigrationStatement
             {
                 Sql = sql,
                 SuppressTransaction = suppressTransacion,
                 BatchTerminator = ";"
-
             });
         }
 
@@ -165,7 +164,7 @@ namespace Npgsql
 
         #region History
 
-        private void Convert(HistoryOperation historyOperation)
+        protected virtual void Convert(HistoryOperation historyOperation)
         {
             foreach (var command in historyOperation.CommandTrees)
             {
@@ -179,7 +178,7 @@ namespace Npgsql
 
         #region Tables
 
-        private void Convert(CreateTableOperation createTableOperation)
+        protected virtual void Convert(CreateTableOperation createTableOperation)
         {
             StringBuilder sql = new StringBuilder();
             CreateSchema(createTableOperation.Name);
@@ -214,7 +213,7 @@ namespace Npgsql
             AddStatment(sql);
         }
 
-        private void Convert(DropTableOperation dropTableOperation)
+        protected virtual void Convert(DropTableOperation dropTableOperation)
         {
             StringBuilder sql = new StringBuilder();
             sql.Append("DROP TABLE ");
@@ -222,7 +221,7 @@ namespace Npgsql
             AddStatment(sql);
         }
 
-        private void Convert(RenameTableOperation renameTableOperation)
+        protected virtual void Convert(RenameTableOperation renameTableOperation)
         {
             StringBuilder sql = new StringBuilder();
             sql.Append("ALTER TABLE ");
@@ -263,7 +262,7 @@ namespace Npgsql
         //    }
         //}
 
-        private void Convert(MoveTableOperation moveTableOperation)
+        protected virtual void Convert(MoveTableOperation moveTableOperation)
         {
             StringBuilder sql = new StringBuilder();
             var newSchema = moveTableOperation.NewSchema ?? "dbo";
@@ -278,7 +277,7 @@ namespace Npgsql
         #endregion
 
         #region Columns
-        private void Convert(AddColumnOperation addColumnOperation)
+        protected virtual void Convert(AddColumnOperation addColumnOperation)
         {
             StringBuilder sql = new StringBuilder();
             sql.Append("ALTER TABLE ");
@@ -288,7 +287,7 @@ namespace Npgsql
             AddStatment(sql);
         }
 
-        private void Convert(DropColumnOperation dropColumnOperation)
+        protected virtual void Convert(DropColumnOperation dropColumnOperation)
         {
             StringBuilder sql = new StringBuilder();
             sql.Append("ALTER TABLE ");
@@ -299,7 +298,7 @@ namespace Npgsql
             AddStatment(sql);
         }
 
-        private void Convert(AlterColumnOperation alterColumnOperation)
+        protected virtual void Convert(AlterColumnOperation alterColumnOperation)
         {
             StringBuilder sql = new StringBuilder();
 
@@ -371,7 +370,7 @@ namespace Npgsql
             sql.Append('"');
         }
 
-        private void Convert(RenameColumnOperation renameColumnOperation)
+        protected virtual void Convert(RenameColumnOperation renameColumnOperation)
         {
             StringBuilder sql = new StringBuilder();
             sql.Append("ALTER TABLE ");
@@ -388,7 +387,7 @@ namespace Npgsql
 
         #region Keys and indexes
 
-        private void Convert(AddForeignKeyOperation addForeignKeyOperation)
+        protected virtual void Convert(AddForeignKeyOperation addForeignKeyOperation)
         {
             StringBuilder sql = new StringBuilder();
             sql.Append("ALTER TABLE ");
@@ -422,7 +421,7 @@ namespace Npgsql
             AddStatment(sql);
         }
 
-        private void Convert(DropForeignKeyOperation dropForeignKeyOperation)
+        protected virtual void Convert(DropForeignKeyOperation dropForeignKeyOperation)
         {
             StringBuilder sql = new StringBuilder();
             sql.Append("ALTER TABLE ");
@@ -436,7 +435,7 @@ namespace Npgsql
             AddStatment(sql);
         }
 
-        private void Convert(CreateIndexOperation createIndexOperation)
+        protected virtual void Convert(CreateIndexOperation createIndexOperation)
         {
             StringBuilder sql = new StringBuilder();
             sql.Append("CREATE ");
@@ -460,7 +459,7 @@ namespace Npgsql
             AddStatment(sql);
         }
 
-        private void Convert(RenameIndexOperation renameIndexOperation)
+        protected virtual void Convert(RenameIndexOperation renameIndexOperation)
         {
             StringBuilder sql = new StringBuilder();
 
@@ -505,7 +504,7 @@ namespace Npgsql
                 return tableName;
         }
 
-        private void Convert(DropIndexOperation dropIndexOperation)
+        protected virtual void Convert(DropIndexOperation dropIndexOperation)
         {
             StringBuilder sql = new StringBuilder();
             sql.Append("DROP INDEX IF EXISTS ");
@@ -516,7 +515,7 @@ namespace Npgsql
             AddStatment(sql);
         }
 
-        private void Convert(AddPrimaryKeyOperation addPrimaryKeyOperation)
+        protected virtual void Convert(AddPrimaryKeyOperation addPrimaryKeyOperation)
         {
             StringBuilder sql = new StringBuilder();
             sql.Append("ALTER TABLE ");
@@ -537,7 +536,7 @@ namespace Npgsql
             AddStatment(sql);
         }
 
-        private void Convert(DropPrimaryKeyOperation dropPrimaryKeyOperation)
+        protected virtual void Convert(DropPrimaryKeyOperation dropPrimaryKeyOperation)
         {
             StringBuilder sql = new StringBuilder();
             sql.Append("ALTER TABLE ");
