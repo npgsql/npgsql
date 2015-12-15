@@ -4,6 +4,7 @@ Npgsql - .NET Data Provider for PostgreSQL
 [![Stable nuget](https://img.shields.io/nuget/v/Npgsql.svg?label=stable%20nuget)](https://www.nuget.org/packages/Npgsql/)
 ![Unstable nuget](https://img.shields.io/myget/npgsql-unstable/v/npgsql.svg?label=unstable%20nuget)
 [![Build Status](https://img.shields.io/teamcity/http/build.npgsql.org/s/npgsql.svg?label=TeamCity)](http://build.npgsql.org/viewType.html?buildTypeId=npgsql&guest=1) [![Join the chat at https://gitter.im/npgsql/npsgl](https://img.shields.io/badge/GITTER-JOIN%20CHAT-brightgreen.svg)](https://gitter.im/npgsql/npgsql)
+[![Circle CI](https://circleci.com/gh/npgsql/npgsql.svg?style=svg)](https://circleci.com/gh/npgsql/npgsql)
 
 ###What Is Npgsql?
 
