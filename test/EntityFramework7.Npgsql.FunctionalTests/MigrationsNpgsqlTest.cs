@@ -28,7 +28,7 @@ namespace EntityFramework7.Npgsql.FunctionalTests
                 @"CREATE TABLE ""__EFMigrationsHistory"" (
     ""MigrationId"" text NOT NULL,
     ""ProductVersion"" text NOT NULL,
-    CONSTRAINT ""PK_HistoryRow"" PRIMARY KEY (""MigrationId"")
+    CONSTRAINT ""PK___EFMigrationsHistory"" PRIMARY KEY (""MigrationId"")
 );
 
 CREATE TABLE ""Table1"" (

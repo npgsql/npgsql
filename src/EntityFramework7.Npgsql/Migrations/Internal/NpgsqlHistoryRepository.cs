@@ -16,22 +16,22 @@ namespace Microsoft.Data.Entity.Migrations.Internal
     {
         public NpgsqlHistoryRepository(
             [NotNull] IDatabaseCreator databaseCreator,
-            [NotNull] ISqlCommandBuilder sqlCommandBuilder,
+            [NotNull] IRawSqlCommandBuilder rawSqlCommandBuilder,
             [NotNull] NpgsqlRelationalConnection connection,
             [NotNull] IDbContextOptions options,
             [NotNull] IMigrationsModelDiffer modelDiffer,
-            [NotNull] NpgsqlMigrationsSqlGenerator migrationsSqlGenerator,
-            [NotNull] NpgsqlAnnotationProvider annotations,
-            [NotNull] ISqlGenerator sqlGenerator)
+            [NotNull] IMigrationsSqlGenerator migrationsSqlGenerator,
+            [NotNull] IRelationalAnnotationProvider annotations,
+            [NotNull] ISqlGenerationHelper sqlGenerationHelper)
             : base(
                   databaseCreator,
-                  sqlCommandBuilder,
+                  rawSqlCommandBuilder,
                   connection,
                   options,
                   modelDiffer,
                   migrationsSqlGenerator,
                   annotations,
-                  sqlGenerator)
+                  sqlGenerationHelper)
         {
         }
 
@@ -47,13 +47,13 @@ namespace Microsoft.Data.Entity.Migrations.Internal
                 {
                     builder
                         .Append("n.nspname='")
-                        .Append(SqlGenerator.EscapeLiteral(TableSchema))
+                        .Append(SqlGenerationHelper.EscapeLiteral(TableSchema))
                         .Append("' AND ");
                 }
 
                 builder
                     .Append("c.relname='")
-                    .Append(SqlGenerator.EscapeLiteral(TableName))
+                    .Append(SqlGenerationHelper.EscapeLiteral(TableName))
                     .Append("');");
 
                 return builder.ToString();

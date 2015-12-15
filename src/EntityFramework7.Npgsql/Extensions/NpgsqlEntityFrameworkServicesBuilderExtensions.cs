@@ -36,7 +36,7 @@ namespace Microsoft.Extensions.DependencyInjection
             service.TryAdd(new ServiceCollection()
                 .AddSingleton<NpgsqlValueGeneratorCache>()
                 .AddSingleton<NpgsqlTypeMapper>()
-                .AddSingleton<NpgsqlSqlGenerator>()
+                .AddSingleton<NpgsqlSqlGenerationHelper>()
                 .AddSingleton<NpgsqlModelSource>()
                 .AddSingleton<NpgsqlAnnotationProvider>()
                 .AddSingleton<NpgsqlMigrationsAnnotationProvider>()

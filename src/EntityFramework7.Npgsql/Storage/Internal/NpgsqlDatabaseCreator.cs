@@ -18,24 +18,21 @@ namespace Microsoft.Data.Entity.Storage.Internal
     {
         private readonly NpgsqlRelationalConnection _connection;
         private readonly IMigrationsSqlGenerator _migrationsSqlGenerator;
-        private readonly ISqlCommandBuilder _sqlCommandBuilder;
+        private readonly IRawSqlCommandBuilder _rawSqlCommandBuilder;
 
         public NpgsqlDatabaseCreator(
             [NotNull] NpgsqlRelationalConnection connection,
             [NotNull] IMigrationsModelDiffer modelDiffer,
             [NotNull] IMigrationsSqlGenerator migrationsSqlGenerator,
-            [NotNull] ISqlCommandBuilder sqlCommandBuilder,
-            [NotNull] IModel model)
+            [NotNull] IModel model,
+            [NotNull] IRawSqlCommandBuilder rawSqlCommandBuilder)
             : base(model, connection, modelDiffer, migrationsSqlGenerator)
         {
-            Check.NotNull(connection, nameof(connection));
-            Check.NotNull(modelDiffer, nameof(modelDiffer));
-            Check.NotNull(migrationsSqlGenerator, nameof(migrationsSqlGenerator));
-            Check.NotNull(sqlCommandBuilder, nameof(sqlCommandBuilder));
+            Check.NotNull(rawSqlCommandBuilder, nameof(rawSqlCommandBuilder));
 
             _connection = connection;
             _migrationsSqlGenerator = migrationsSqlGenerator;
-            _sqlCommandBuilder = sqlCommandBuilder;
+            _rawSqlCommandBuilder = rawSqlCommandBuilder;
         }
 
         public override void Create()
@@ -62,10 +59,10 @@ namespace Microsoft.Data.Entity.Storage.Internal
             => (bool)CreateHasTablesCommand().ExecuteScalar(_connection);
 
         protected override async Task<bool> HasTablesAsync(CancellationToken cancellationToken = default(CancellationToken))
-            => (bool)(await CreateHasTablesCommand().ExecuteScalarAsync(_connection, cancellationToken));
+            => (bool)(await CreateHasTablesCommand().ExecuteScalarAsync(_connection, cancellationToken: cancellationToken));
 
         private IRelationalCommand CreateHasTablesCommand()
-            => _sqlCommandBuilder
+            => _rawSqlCommandBuilder
                 .Build(@"
                     SELECT CASE WHEN COUNT(*) = 0 THEN FALSE ELSE TRUE END
                     FROM information_schema.tables

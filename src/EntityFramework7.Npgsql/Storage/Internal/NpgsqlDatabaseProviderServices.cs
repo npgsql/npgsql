@@ -34,7 +34,7 @@ namespace Microsoft.Data.Entity.Storage.Internal
         public override string InvariantName => GetType().GetTypeInfo().Assembly.GetName().Name;
         public override IDatabaseCreator Creator => GetService<NpgsqlDatabaseCreator>();
         public override IRelationalConnection RelationalConnection => GetService<NpgsqlRelationalConnection>();
-        public override ISqlGenerator SqlGenerator => GetService<NpgsqlSqlGenerator>();
+        public override ISqlGenerationHelper SqlGenerationHelper => GetService<NpgsqlSqlGenerationHelper>();
         public override IRelationalDatabaseCreator RelationalDatabaseCreator => GetService<NpgsqlDatabaseCreator>();
         public override IConventionSetBuilder ConventionSetBuilder => GetService<NpgsqlConventionSetBuilder>();
         public override IMigrationsAnnotationProvider MigrationsAnnotationProvider => GetService<NpgsqlMigrationsAnnotationProvider>();
@@ -50,6 +50,6 @@ namespace Microsoft.Data.Entity.Storage.Internal
         public override IMethodCallTranslator CompositeMethodCallTranslator => GetService<NpgsqlCompositeMethodCallTranslator>();
         public override IMemberTranslator CompositeMemberTranslator => GetService<NpgsqlCompositeMemberTranslator>();
         public override IQueryCompilationContextFactory QueryCompilationContextFactory => GetService<NpgsqlQueryCompilationContextFactory>();
-        public override ISqlQueryGeneratorFactory SqlQueryGeneratorFactory => GetService<NpgsqlQuerySqlGeneratorFactory>();
+        public override IQuerySqlGeneratorFactory QuerySqlGeneratorFactory => GetService<NpgsqlQuerySqlGeneratorFactory>();
     }
 }

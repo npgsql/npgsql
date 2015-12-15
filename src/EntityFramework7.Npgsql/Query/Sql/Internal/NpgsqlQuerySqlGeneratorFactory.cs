@@ -9,45 +9,27 @@ using Microsoft.Data.Entity.Utilities;
 // ReSharper disable once CheckNamespace
 namespace Microsoft.Data.Entity.Query.Sql.Internal
 {
-    public class NpgsqlQuerySqlGeneratorFactory : ISqlQueryGeneratorFactory
+    public class NpgsqlQuerySqlGeneratorFactory : QuerySqlGeneratorFactoryBase
     {
-        private readonly IRelationalCommandBuilderFactory _commandBuilderFactory;
-        private readonly ISqlGenerator _sqlGenerator;
-        private readonly IParameterNameGeneratorFactory _parameterNameGeneratorFactory;
-        private readonly ISqlCommandBuilder _sqlCommandBuilder;
-
         public NpgsqlQuerySqlGeneratorFactory(
             [NotNull] IRelationalCommandBuilderFactory commandBuilderFactory,
-            [NotNull] ISqlGenerator sqlGenerator,
+            [NotNull] ISqlGenerationHelper sqlGenerationHelper,
             [NotNull] IParameterNameGeneratorFactory parameterNameGeneratorFactory,
-            [NotNull] ISqlCommandBuilder sqlCommandBuilder)
+            [NotNull] IRelationalTypeMapper relationalTypeMapper)
+            : base(
+                Check.NotNull(commandBuilderFactory, nameof(commandBuilderFactory)),
+                Check.NotNull(sqlGenerationHelper, nameof(sqlGenerationHelper)),
+                Check.NotNull(parameterNameGeneratorFactory, nameof(parameterNameGeneratorFactory)),
+                Check.NotNull(relationalTypeMapper, nameof(relationalTypeMapper)))
         {
-            Check.NotNull(commandBuilderFactory, nameof(commandBuilderFactory));
-            Check.NotNull(sqlGenerator, nameof(sqlGenerator));
-            Check.NotNull(parameterNameGeneratorFactory, nameof(parameterNameGeneratorFactory));
-            Check.NotNull(sqlCommandBuilder, nameof(sqlCommandBuilder));
-
-            _commandBuilderFactory = commandBuilderFactory;
-            _sqlGenerator = sqlGenerator;
-            _parameterNameGeneratorFactory = parameterNameGeneratorFactory;
-            _sqlCommandBuilder = sqlCommandBuilder;
         }
 
-        public virtual ISqlQueryGenerator CreateGenerator(SelectExpression selectExpression)
+        public override IQuerySqlGenerator CreateDefault(SelectExpression selectExpression)
             => new NpgsqlQuerySqlGenerator(
-                _commandBuilderFactory,
-                _sqlGenerator,
-                _parameterNameGeneratorFactory,
+                CommandBuilderFactory,
+                SqlGenerationHelper,
+                ParameterNameGeneratorFactory,
+                RelationalTypeMapper,
                 Check.NotNull(selectExpression, nameof(selectExpression)));
-
-        public virtual ISqlQueryGenerator CreateRawCommandGenerator(
-            SelectExpression selectExpression,
-            string sql,
-            object[] parameters)
-            => new RawSqlQueryGenerator(
-                _sqlCommandBuilder,
-                Check.NotNull(selectExpression, nameof(selectExpression)),
-                Check.NotNull(sql, nameof(sql)),
-                Check.NotNull(parameters, nameof(parameters)));
     }
 }

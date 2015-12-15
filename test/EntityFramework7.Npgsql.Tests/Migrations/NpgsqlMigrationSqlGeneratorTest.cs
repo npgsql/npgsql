@@ -31,7 +31,7 @@ namespace EntityFramework7.Npgsql.Tests.Migrations
                         new FakeSensitiveDataLogger<RelationalCommandBuilderFactory>(),
                         new DiagnosticListener("Fake"),
                         typeMapper),
-                    new NpgsqlSqlGenerator(),
+                    new NpgsqlSqlGenerationHelper(),
                     typeMapper,
                     new NpgsqlAnnotationProvider());
             }

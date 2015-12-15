@@ -298,10 +298,16 @@ namespace Microsoft.Data.Entity.Scaffolding
                             Name = constraintName,
                             Table = table,
                             PrincipalTable = principalTable,
-                            Columns = reader.GetFieldValue<short[]>(4).Select(i => table.Columns[i-1]).ToList(),
-                            PrincipalColumns = reader.GetFieldValue<short[]>(7).Select(i => principalTable.Columns[i-1]).ToList(),
                             OnDelete = ConvertToReferentialAction(reader.GetChar(8))
                         };
+
+                        foreach (var column in reader.GetFieldValue<short[]>(4).Select(i => table.Columns[i - 1])) {
+                            fkInfo.Columns.Add(column);
+                        }
+
+                        foreach (var principalColumn in reader.GetFieldValue<short[]>(7).Select(i => principalTable.Columns[i - 1])) {
+                            fkInfo.PrincipalColumns.Add(principalColumn);
+                        }
 
                         table.ForeignKeys.Add(fkInfo);
                         break;

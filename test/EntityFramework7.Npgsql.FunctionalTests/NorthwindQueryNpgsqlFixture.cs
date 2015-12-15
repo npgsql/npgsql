@@ -30,12 +30,10 @@ namespace EntityFramework7.Npgsql.FunctionalTests
                     .AddNpgsql()
                     .ServiceCollection()
                     .AddSingleton(TestNpgsqlModelSource.GetFactory(OnModelCreating))
-                    .AddInstance<ILoggerFactory>(_testSqlLoggerFactory)
+                    .AddSingleton<ILoggerFactory>(_testSqlLoggerFactory)
                     .BuildServiceProvider();
 
             _options = BuildOptions();
-
-            _serviceProvider.GetRequiredService<ILoggerFactory>().MinimumLevel = LogLevel.Debug;
         }
 
         protected DbContextOptions BuildOptions()

@@ -2,29 +2,18 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Data;
-using System.Data.Common;
 using System.Linq;
 using System.Reflection;
-using System.Threading;
-using System.Threading.Tasks;
-using JetBrains.Annotations;
 using Microsoft.Data.Entity.Metadata;
-using Microsoft.Data.Entity.Utilities;
 using Npgsql;
-using Npgsql.BackendMessages;
 using Npgsql.TypeHandlers;
-using Npgsql.TypeHandlers.NumericHandlers;
-using NpgsqlTypes;
 
 // ReSharper disable once CheckNamespace
 namespace Microsoft.Data.Entity.Storage.Internal
 {
-    // TODO: Provider-specific types?
     // TODO: BIT(1) vs. BIT(N)
-    // TODO: Enums? Ranges? Composite?
+    // TODO: Enums - https://github.com/aspnet/EntityFramework/issues/3620
     // TODO: Arrays? But this would conflict with navigation...
     public class NpgsqlTypeMapper : RelationalTypeMapper
     {
@@ -33,10 +22,6 @@ namespace Microsoft.Data.Entity.Storage.Internal
 
         public NpgsqlTypeMapper()
         {
-            // Reflect over Npgsql's type mappings and generate EF7 type mappings from them
-
-            // Note that enums aren't supported yet, see https://github.com/aspnet/EntityFramework/issues/3620
-
             // First, PostgreSQL type name (string) -> RelationalTypeMapping
             _simpleNameMappings = TypeHandlerRegistry.HandlerTypes.Values
                 // Base types
@@ -83,10 +68,10 @@ namespace Microsoft.Data.Entity.Storage.Internal
 
         protected override string GetColumnType(IProperty property) => property.Npgsql().ColumnType;
 
-        protected override IReadOnlyDictionary<Type, RelationalTypeMapping> SimpleMappings
+        protected override IReadOnlyDictionary<Type, RelationalTypeMapping> GetSimpleMappings()
             => _simpleMappings;
 
-        protected override IReadOnlyDictionary<string, RelationalTypeMapping> SimpleNameMappings
+        protected override IReadOnlyDictionary<string, RelationalTypeMapping> GetSimpleNameMappings()
             => _simpleNameMappings;
 
         static Type GetTypeHandlerTypeArgument(Type handler)

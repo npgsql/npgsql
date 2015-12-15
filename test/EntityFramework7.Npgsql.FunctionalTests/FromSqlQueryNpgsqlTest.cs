@@ -69,15 +69,15 @@ WHERE ""c"".""CustomerID"" = ""o"".""CustomerID""",
             base.From_sql_queryable_multiple_composed_with_closure_parameters();
 
             Assert.Equal(
-                @"@p0: 01/01/1997 00:00:00
-@p1: 01/01/1998 00:00:00
+                @"@__8__locals1_startDate_1: 01/01/1997 00:00:00
+@__8__locals1_endDate_2: 01/01/1998 00:00:00
 
 SELECT ""c"".""CustomerID"", ""c"".""Address"", ""c"".""City"", ""c"".""CompanyName"", ""c"".""ContactName"", ""c"".""ContactTitle"", ""c"".""Country"", ""c"".""Fax"", ""c"".""Phone"", ""c"".""PostalCode"", ""c"".""Region"", ""o"".""OrderID"", ""o"".""CustomerID"", ""o"".""EmployeeID"", ""o"".""OrderDate""
 FROM (
     SELECT * FROM ""Customers""
 ) AS ""c""
 CROSS JOIN (
-    SELECT * FROM ""Orders"" WHERE ""OrderDate"" BETWEEN @p0 AND @p1
+    SELECT * FROM ""Orders"" WHERE ""OrderDate"" BETWEEN @__8__locals1_startDate_1 AND @__8__locals1_endDate_2
 ) AS ""o""
 WHERE ""c"".""CustomerID"" = ""o"".""CustomerID""",
                 Sql);
@@ -89,15 +89,15 @@ WHERE ""c"".""CustomerID"" = ""o"".""CustomerID""",
 
             Assert.Equal(
                 @"@p0: London
-@p1: 01/01/1997 00:00:00
-@p2: 01/01/1998 00:00:00
+@__8__locals1_startDate_1: 01/01/1997 00:00:00
+@__8__locals1_endDate_2: 01/01/1998 00:00:00
 
 SELECT ""c"".""CustomerID"", ""c"".""Address"", ""c"".""City"", ""c"".""CompanyName"", ""c"".""ContactName"", ""c"".""ContactTitle"", ""c"".""Country"", ""c"".""Fax"", ""c"".""Phone"", ""c"".""PostalCode"", ""c"".""Region"", ""o"".""OrderID"", ""o"".""CustomerID"", ""o"".""EmployeeID"", ""o"".""OrderDate""
 FROM (
     SELECT * FROM ""Customers"" WHERE ""City"" = @p0
 ) AS ""c""
 CROSS JOIN (
-    SELECT * FROM ""Orders"" WHERE ""OrderDate"" BETWEEN @p1 AND @p2
+    SELECT * FROM ""Orders"" WHERE ""OrderDate"" BETWEEN @__8__locals1_startDate_1 AND @__8__locals1_endDate_2
 ) AS ""o""
 WHERE ""c"".""CustomerID"" = ""o"".""CustomerID""",
                 Sql);
@@ -157,13 +157,13 @@ SELECT * FROM ""Employees"" WHERE ""ReportsTo"" = @p0 OR (""ReportsTo"" IS NULL 
 
             Assert.Equal(
                 @"@p0: London
-@__contactTitle_0: Sales Representative
+@__contactTitle_1: Sales Representative
 
 SELECT ""c"".""CustomerID"", ""c"".""Address"", ""c"".""City"", ""c"".""CompanyName"", ""c"".""ContactName"", ""c"".""ContactTitle"", ""c"".""Country"", ""c"".""Fax"", ""c"".""Phone"", ""c"".""PostalCode"", ""c"".""Region""
 FROM (
     SELECT * FROM ""Customers"" WHERE ""City"" = @p0
 ) AS ""c""
-WHERE ""c"".""ContactTitle"" = @__contactTitle_0",
+WHERE ""c"".""ContactTitle"" = @__contactTitle_1",
                 Sql);
         }
 
@@ -225,7 +225,11 @@ FROM (
             base.From_sql_queryable_simple_include();
 
             Assert.Equal(
-                @"SELECT * FROM ""Customers""
+                @"SELECT ""c"".""CustomerID"", ""c"".""Address"", ""c"".""City"", ""c"".""CompanyName"", ""c"".""ContactName"", ""c"".""ContactTitle"", ""c"".""Country"", ""c"".""Fax"", ""c"".""Phone"", ""c"".""PostalCode"", ""c"".""Region""
+FROM (
+    SELECT * FROM ""Customers""
+) AS ""c""
+ORDER BY ""c"".""CustomerID""
 
 SELECT ""o"".""OrderID"", ""o"".""CustomerID"", ""o"".""EmployeeID"", ""o"".""OrderDate""
 FROM ""Orders"" AS ""o""

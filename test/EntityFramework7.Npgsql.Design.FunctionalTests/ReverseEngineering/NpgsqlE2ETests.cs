@@ -22,7 +22,6 @@ namespace EntityFramework7.Npgsql.Design.FunctionalTests.ReverseEngineering
 
         protected override void ConfigureDesignTimeServices(IServiceCollection services)
         {
-            base.ConfigureDesignTimeServices(services);
             new NpgsqlDesignTimeServices().ConfigureDesignTimeServices(services);
         }
 
@@ -119,7 +118,7 @@ namespace EntityFramework7.Npgsql.Design.FunctionalTests.ReverseEngineering
 
             var filePaths = Generator.GenerateAsync(configuration).GetAwaiter().GetResult();
 
-            var actualFileSet = new FileSet(InMemoryFiles, Path.Combine(TestProjectDir, TestSubDir))
+            var actualFileSet = new FileSet(InMemoryFiles, Path.GetFullPath(Path.Combine(TestProjectDir, TestSubDir)))
             {
                 Files = Enumerable.Repeat(filePaths.ContextFile, 1).Concat(filePaths.EntityTypeFiles).Select(Path.GetFileName).ToList()
             };
@@ -170,7 +169,7 @@ namespace EntityFramework7.Npgsql.Design.FunctionalTests.ReverseEngineering
 
             var filePaths = Generator.GenerateAsync(configuration).GetAwaiter().GetResult();
 
-            var actualFileSet = new FileSet(InMemoryFiles, TestProjectDir)
+            var actualFileSet = new FileSet(InMemoryFiles, Path.GetFullPath(TestProjectDir))
             {
                 Files = Enumerable.Repeat(filePaths.ContextFile, 1).Concat(filePaths.EntityTypeFiles).Select(Path.GetFileName).ToList()
             };

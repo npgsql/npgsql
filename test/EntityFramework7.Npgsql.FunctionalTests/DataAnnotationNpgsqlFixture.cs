@@ -25,7 +25,7 @@ namespace EntityFramework7.Npgsql.FunctionalTests
                 .AddNpgsql()
                 .ServiceCollection()
                 .AddSingleton(TestNpgsqlModelSource.GetFactory(OnModelCreating))
-                .AddInstance<ILoggerFactory>(new TestSqlLoggerFactory())
+                .AddSingleton<ILoggerFactory>(new TestSqlLoggerFactory())
                 .BuildServiceProvider();
         }
 

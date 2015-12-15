@@ -11,7 +11,7 @@ using Microsoft.Data.Entity.Utilities;
 // ReSharper disable once CheckNamespace
 namespace Microsoft.Data.Entity.Storage.Internal
 {
-    public class NpgsqlSqlGenerator : RelationalSqlGenerator
+    public class NpgsqlSqlGenerationHelper : RelationalSqlGenerationHelper
     {
         public override string EscapeIdentifier([NotNull] string identifier)
             => Check.NotEmpty(identifier, nameof(identifier)).Replace("\"", "\"\"");
@@ -23,15 +23,13 @@ namespace Microsoft.Data.Entity.Storage.Internal
         {
             Check.NotNull(literal, nameof(literal));
 
-            var builder = new StringBuilder();
+            var builder = new StringBuilder(literal.Length * 2 + 6);
 
-            builder.Append("0x");
-
-            var parts = literal.Select(b => b.ToString("X2", CultureInfo.InvariantCulture));
-            foreach (var part in parts)
-            {
-                builder.Append(part);
+            builder.Append("E'\\\\x");
+            foreach (var b in literal) {
+                builder.Append(b.ToString("X2", CultureInfo.InvariantCulture));
             }
+            builder.Append('\'');
 
             return builder.ToString();
         }

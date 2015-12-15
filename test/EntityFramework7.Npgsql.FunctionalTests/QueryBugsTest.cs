@@ -34,7 +34,7 @@ namespace EntityFramework7.Npgsql.FunctionalTests
                 using (var context = new NullKeyContext(testStore.Connection.ConnectionString))
                 {
                     Assert.Equal(
-                        RelationalStrings.InvalidKeyValue("ZeroKey"),
+                        CoreStrings.InvalidKeyValue("ZeroKey"),
                         Assert.Throws<InvalidOperationException>(() => context.ZeroKeys.ToList()).Message);
                 }
             }
@@ -130,7 +130,7 @@ namespace EntityFramework7.Npgsql.FunctionalTests
                 .AddEntityFramework()
                 .AddNpgsql()
                 .ServiceCollection()
-                .AddInstance<ILoggerFactory>(loggingFactory)
+                .AddSingleton<ILoggerFactory>(loggingFactory)
                 .BuildServiceProvider();
 
             using (var ctx = new MyContext925(serviceProvider))
@@ -169,7 +169,7 @@ ORDER BY ""c"".""FirstName"", ""c"".""LastName""";
                 .AddEntityFramework()
                 .AddNpgsql().
                 ServiceCollection()
-                .AddInstance<ILoggerFactory>(loggingFactory)
+                .AddSingleton<ILoggerFactory>(loggingFactory)
                 .BuildServiceProvider();
 
             using (var ctx = new MyContext925(serviceProvider))
@@ -406,7 +406,7 @@ Queen of the Andals and the Rhoynar and the First Men, Khaleesi of the Great Gra
                 .AddEntityFramework()
                 .AddNpgsql()
                 .ServiceCollection()
-                .AddInstance<ILoggerFactory>(loggingFactory)
+                .AddSingleton<ILoggerFactory>(loggingFactory)
                 .BuildServiceProvider();
 
             using (var ctx = new MyContext925(serviceProvider))

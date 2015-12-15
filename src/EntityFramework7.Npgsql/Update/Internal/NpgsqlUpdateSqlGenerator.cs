@@ -13,68 +13,37 @@ namespace Microsoft.Data.Entity.Update.Internal
 {
     public class NpgsqlUpdateSqlGenerator : UpdateSqlGenerator
     {
-        public NpgsqlUpdateSqlGenerator([NotNull] ISqlGenerator sqlGenerator)
-            : base(sqlGenerator)
+        public NpgsqlUpdateSqlGenerator([NotNull] ISqlGenerationHelper sqlGenerationHelper)
+            : base(sqlGenerationHelper)
         {
         }
 
-        public override void AppendInsertOperation(
-            StringBuilder commandStringBuilder,
-            ModificationCommand command)
-        {
-            Check.NotNull(command, nameof(command));
-
-            AppendBulkInsertOperation(commandStringBuilder, new[] { command });
-        }
-
-        public virtual ResultsGrouping AppendBulkInsertOperation(
-            StringBuilder commandStringBuilder,
-            IReadOnlyList<ModificationCommand> modificationCommands)
+        public override ResultSetMapping AppendInsertOperation(StringBuilder commandStringBuilder, ModificationCommand command, int commandPosition)
         {
             Check.NotNull(commandStringBuilder, nameof(commandStringBuilder));
-            Check.NotEmpty(modificationCommands, nameof(modificationCommands));
+            Check.NotNull(command, nameof(command));
 
-            var tableName = modificationCommands[0].TableName;
-            var schemaName = modificationCommands[0].Schema;
+            var operations = command.ColumnModifications;
 
-            // TODO: Support TPH
-            var defaultValuesOnly = !modificationCommands.First().ColumnModifications.Any(o => o.IsWrite);
-            var statementCount = defaultValuesOnly
-                ? modificationCommands.Count
-                : 1;
-            var valueSetCount = defaultValuesOnly
-                ? 1
-                : modificationCommands.Count;
+            var writeOperations = operations.Where(o => o.IsWrite).ToArray();
+            var readOperations = operations.Where(o => o.IsRead).ToArray();
 
-            for (var i = 0; i < statementCount; i++)
+            AppendInsertCommandHeader(commandStringBuilder, command.TableName, command.Schema, writeOperations);
+            AppendValuesHeader(commandStringBuilder, writeOperations);
+            AppendValues(commandStringBuilder, writeOperations);
+            if (readOperations.Length > 0)
             {
-                var operations = modificationCommands[i].ColumnModifications;
-                var writeOperations = operations.Where(o => o.IsWrite).ToArray();
-                var readOperations = operations.Where(o => o.IsRead).ToArray();
-
-                AppendInsertCommandHeader(commandStringBuilder, tableName, schemaName, writeOperations);
-                AppendValuesHeader(commandStringBuilder, writeOperations);
-                AppendValues(commandStringBuilder, writeOperations);
-                for (var j = 1; j < valueSetCount; j++)
-                {
-                    commandStringBuilder.Append(",").AppendLine();
-                    AppendValues(commandStringBuilder, modificationCommands[j].ColumnModifications.Where(o => o.IsWrite).ToArray());
-                }
-                if (readOperations.Length > 0)
-                {
-                    AppendReturningClause(commandStringBuilder, readOperations);
-                }
-                commandStringBuilder.Append(SqlGenerator.BatchCommandSeparator).AppendLine();
+                AppendReturningClause(commandStringBuilder, readOperations);
             }
+            commandStringBuilder.Append(SqlGenerationHelper.StatementTerminator).AppendLine();
 
-            return defaultValuesOnly
-                ? ResultsGrouping.OneCommandPerResultSet
-                : ResultsGrouping.OneResultSet;
+            return ResultSetMapping.NoResultSet;
         }
 
-        public override void AppendUpdateOperation(
+        public override ResultSetMapping AppendUpdateOperation(
             StringBuilder commandStringBuilder,
-            ModificationCommand command)
+            ModificationCommand command,
+            int commandPosition)
         {
             Check.NotNull(commandStringBuilder, nameof(commandStringBuilder));
             Check.NotNull(command, nameof(command));
@@ -93,7 +62,8 @@ namespace Microsoft.Data.Entity.Update.Internal
             {
                 AppendReturningClause(commandStringBuilder, readOperations);
             }
-            commandStringBuilder.Append(SqlGenerator.BatchCommandSeparator).AppendLine();
+            commandStringBuilder.Append(SqlGenerationHelper.StatementTerminator).AppendLine();
+            return ResultSetMapping.NoResultSet;
         }
 
         // ReSharper disable once ParameterTypeCanBeEnumerable.Local
@@ -104,7 +74,7 @@ namespace Microsoft.Data.Entity.Update.Internal
             commandStringBuilder
                 .AppendLine()
                 .Append("RETURNING ")
-                .AppendJoin(operations.Select(c => SqlGenerator.DelimitIdentifier(c.ColumnName)));
+                .AppendJoin(operations.Select(c => SqlGenerationHelper.DelimitIdentifier(c.ColumnName)));
         }
 
         // This function is a temporary workaround for
@@ -121,10 +91,10 @@ namespace Microsoft.Data.Entity.Update.Internal
             // IS NOT DISTINCT FROM does the same thing as equality but also returns true for null comparison.
             // http://www.postgresql.org/docs/current/static/functions-comparison.html
             commandStringBuilder
-                .Append(SqlGenerator.DelimitIdentifier(columnModification.ColumnName))
+                .Append(SqlGenerationHelper.DelimitIdentifier(columnModification.ColumnName))
                 .Append(" IS NOT DISTINCT FROM ")
                 .Append(
-                    SqlGenerator.GenerateParameterName(
+                    SqlGenerationHelper.GenerateParameterName(
                         useOriginalValue
                             ? columnModification.OriginalParameterName
                             : columnModification.ParameterName));

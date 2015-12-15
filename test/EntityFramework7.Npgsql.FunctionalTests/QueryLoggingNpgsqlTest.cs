@@ -30,41 +30,13 @@ namespace EntityFramework7.Npgsql.FunctionalTests
                     @"    Compiling query model: 'value(Microsoft.Data.Entity.Query.Internal.EntityQueryable`1[Microsoft.Data.Entity.FunctionalTests.TestModels.Northwind.Customer])'
     Optimized query model: 'value(Microsoft.Data.Entity.Query.Internal.EntityQueryable`1[Microsoft.Data.Entity.FunctionalTests.TestModels.Northwind.Customer])'
     TRACKED: True
-(QueryContext prm0) => IEnumerable<Customer> _ShapedQuery(
-    queryContext: prm0, 
-    commandBuilder: SelectExpression: 
+(QueryContext queryContext) => IEnumerable<Customer> _ShapedQuery(
+    queryContext: queryContext, 
+    shaperCommandContext: SelectExpression: 
         SELECT ""c"".""CustomerID"", ""c"".""Address"", ""c"".""City"", ""c"".""CompanyName"", ""c"".""ContactName"", ""c"".""ContactTitle"", ""c"".""Country"", ""c"".""Fax"", ""c"".""Phone"", ""c"".""PostalCode"", ""c"".""Region""
         FROM ""Customers"" AS ""c""
     , 
-    shaper: (ValueBuffer prm1) => Customer CreateEntity(
-        querySource: from Customer <generated>_0 in value(Internal.EntityQueryable`1[FunctionalTests.TestModels.Northwind.Customer]), 
-        valueBuffer: prm1, 
-        valueBufferOffset: 0, 
-        queryContext: prm0, 
-        entityType: FunctionalTests.TestModels.Northwind.Customer, 
-        trackingQuery: True, 
-        keyValueFactory: SimpleKeyValueFactory`1, 
-        materializer: (ValueBuffer prm2) => 
-        {
-            var var3
-            var3 = new Customer()
-            var3.CustomerID = (string) object prm2.get_Item(0)
-            var3.Address = (string) object prm2.get_Item(1)
-            var3.City = (string) object prm2.get_Item(2)
-            var3.CompanyName = (string) object prm2.get_Item(3)
-            var3.ContactName = (string) object prm2.get_Item(4)
-            var3.ContactTitle = (string) object prm2.get_Item(5)
-            var3.Country = (string) object prm2.get_Item(6)
-            var3.Fax = (string) object prm2.get_Item(7)
-            var3.Phone = (string) object prm2.get_Item(8)
-            var3.PostalCode = (string) object prm2.get_Item(9)
-            var3.Region = (string) object prm2.get_Item(10)
-            var3
-        }
-        , 
-        allowNullResult: False, 
-        useQueryBuffer: True
-    )
+    shaper: UnbufferedEntityShaper`1
 )",
                     TestSqlLoggerFactory.Log);
             }
@@ -84,7 +56,7 @@ namespace EntityFramework7.Npgsql.FunctionalTests
                         .ToList();
 
                 Assert.NotNull(customers);
-                Assert.Contains(RelationalStrings.ParameterLoggingEnabled, TestSqlLoggerFactory.Log);
+                Assert.Contains(CoreStrings.SensitiveDataLoggingEnabled, TestSqlLoggerFactory.Log);
             }
         }
 
@@ -99,57 +71,28 @@ namespace EntityFramework7.Npgsql.FunctionalTests
                         .ToList();
 
                 Assert.NotNull(customers);
-                Assert.StartsWith(@"    Compiling query model: 'value(Microsoft.Data.Entity.Query.Internal.EntityQueryable`1[Microsoft.Data.Entity.FunctionalTests.TestModels.Northwind.Customer]) => AnnotateQuery(Include([c].Orders))'
+                Assert.StartsWith(@"    Compiling query model: 'value(Microsoft.Data.Entity.Query.Internal.EntityQueryable`1[Microsoft.Data.Entity.FunctionalTests.TestModels.Northwind.Customer]) => Include([c].Orders)'
     Optimized query model: 'value(Microsoft.Data.Entity.Query.Internal.EntityQueryable`1[Microsoft.Data.Entity.FunctionalTests.TestModels.Northwind.Customer])'
     Including navigation: 'Microsoft.Data.Entity.FunctionalTests.TestModels.Northwind.Customer.Orders'
     TRACKED: True
-(QueryContext prm0) => IEnumerable<Customer> _Include(
-    queryContext: (RelationalQueryContext) prm0, 
+(QueryContext queryContext) => IEnumerable<Customer> _Include(
+    queryContext: (RelationalQueryContext) queryContext, 
     innerResults: IEnumerable<Customer> _ShapedQuery(
-        queryContext: prm0, 
-        commandBuilder: SelectExpression: 
+        queryContext: queryContext, 
+        shaperCommandContext: SelectExpression: 
             SELECT ""c"".""CustomerID"", ""c"".""Address"", ""c"".""City"", ""c"".""CompanyName"", ""c"".""ContactName"", ""c"".""ContactTitle"", ""c"".""Country"", ""c"".""Fax"", ""c"".""Phone"", ""c"".""PostalCode"", ""c"".""Region""
             FROM ""Customers"" AS ""c""
             ORDER BY ""c"".""CustomerID""
         , 
-        shaper: (ValueBuffer prm1) => Customer CreateEntity(
-            querySource: from Customer c in value(Internal.EntityQueryable`1[FunctionalTests.TestModels.Northwind.Customer]), 
-            valueBuffer: prm1, 
-            valueBufferOffset: 0, 
-            queryContext: prm0, 
-            entityType: FunctionalTests.TestModels.Northwind.Customer, 
-            trackingQuery: True, 
-            keyValueFactory: SimpleKeyValueFactory`1, 
-            materializer: (ValueBuffer prm2) => 
-            {
-                var var3
-                var3 = new Customer()
-                var3.CustomerID = (string) object prm2.get_Item(0)
-                var3.Address = (string) object prm2.get_Item(1)
-                var3.City = (string) object prm2.get_Item(2)
-                var3.CompanyName = (string) object prm2.get_Item(3)
-                var3.ContactName = (string) object prm2.get_Item(4)
-                var3.ContactTitle = (string) object prm2.get_Item(5)
-                var3.Country = (string) object prm2.get_Item(6)
-                var3.Fax = (string) object prm2.get_Item(7)
-                var3.Phone = (string) object prm2.get_Item(8)
-                var3.PostalCode = (string) object prm2.get_Item(9)
-                var3.Region = (string) object prm2.get_Item(10)
-                var3
-            }
-            , 
-            allowNullResult: False, 
-            useQueryBuffer: True
-        )
+        shaper: BufferedEntityShaper`1
     )
     , 
-    entityAccessor: Unhandled expression type: Default
-    , 
+    entityAccessor: default(System.Func`2[FunctionalTests.TestModels.Northwind.Customer,System.Object]), 
     navigationPath: INavigation[] { Customer.Orders, }, 
     includeRelatedValuesStrategyFactories: new Func<IIncludeRelatedValuesStrategy>[]{ () => IIncludeRelatedValuesStrategy _CreateCollectionIncludeStrategy(
             relatedValueBuffers: IEnumerable<ValueBuffer> _Query(
-                queryContext: prm0, 
-                commandBuilder: SelectExpression: 
+                queryContext: queryContext, 
+                shaperCommandContext: SelectExpression: 
                     SELECT ""o"".""OrderID"", ""o"".""CustomerID"", ""o"".""EmployeeID"", ""o"".""OrderDate""
                     FROM ""Orders"" AS ""o""
                     INNER JOIN (
@@ -161,15 +104,15 @@ namespace EntityFramework7.Npgsql.FunctionalTests
                 queryIndex: 1
             )
             , 
-            materializer: (ValueBuffer prm4) => 
+            materializer: (ValueBuffer valueBuffer) => 
             {
-                var var5
-                var5 = new Order()
-                var5.OrderID = (int) object prm4.get_Item(0)
-                var5.CustomerID = (string) object prm4.get_Item(1)
-                var5.EmployeeID = (Nullable<int>) object prm4.get_Item(2)
-                var5.OrderDate = (Nullable<DateTime>) object prm4.get_Item(3)
-                var5
+                var var2
+                var2 = new Order()
+                var2.OrderID = (int) object valueBuffer.get_Item(0)
+                var2.CustomerID = (string) object valueBuffer.get_Item(1)
+                var2.EmployeeID = (Nullable<int>) object valueBuffer.get_Item(2)
+                var2.OrderDate = (Nullable<DateTime>) object valueBuffer.get_Item(3)
+                var2
             }
         )
          }

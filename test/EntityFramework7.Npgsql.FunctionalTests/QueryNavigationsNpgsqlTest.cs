@@ -28,12 +28,14 @@ WHERE ""o.Customer"".""City"" = 'Seattle'",
             base.Select_Where_Navigation_Deep();
 
             Assert.StartsWith(
-                @"SELECT ""od"".""OrderID"", ""od"".""ProductID"", ""od"".""Discount"", ""od"".""Quantity"", ""od"".""UnitPrice""
+                @"@__p_0: 1
+
+SELECT ""od"".""OrderID"", ""od"".""ProductID"", ""od"".""Discount"", ""od"".""Quantity"", ""od"".""UnitPrice""
 FROM ""Order Details"" AS ""od""
 INNER JOIN ""Orders"" AS ""od.Order"" ON ""od"".""OrderID"" = ""od.Order"".""OrderID""
 INNER JOIN ""Customers"" AS ""od.Order.Customer"" ON ""od.Order"".""CustomerID"" = ""od.Order.Customer"".""CustomerID""
 WHERE ""od.Order.Customer"".""City"" = 'Seattle'
-LIMIT 1",
+LIMIT @__p_0",
                 Sql);
         }
 
@@ -283,7 +285,7 @@ WHERE (
         WHEN NOT (EXISTS (
             SELECT 1
             FROM ""Orders"" AS ""o""
-            WHERE (""c"".""CustomerID"" = ""o"".""CustomerID"") AND NOT (""o"".""CustomerID"" = 'ALFKI')))
+            WHERE ((""c"".""CustomerID"" = ""o"".""CustomerID"") AND ""o"".""CustomerID"" IS NOT NULL) AND NOT ((""o"".""CustomerID"" = 'ALFKI') AND ""o"".""CustomerID"" IS NOT NULL)))
         THEN TRUE::bool ELSE FALSE::bool
     END
 )
@@ -316,7 +318,7 @@ WHERE (
         WHEN NOT (EXISTS (
             SELECT 1
             FROM ""Orders"" AS ""o""
-            WHERE (""c"".""CustomerID"" = ""o"".""CustomerID"") AND NOT (""o"".""CustomerID"" = 'ALFKI')))
+            WHERE ((""c"".""CustomerID"" = ""o"".""CustomerID"") AND ""o"".""CustomerID"" IS NOT NULL) AND NOT ((""o"".""CustomerID"" = 'ALFKI') AND ""o"".""CustomerID"" IS NOT NULL)))
         THEN TRUE::bool ELSE FALSE::bool
     END
 ) = TRUE",

@@ -24,7 +24,7 @@ namespace EntityFramework7.Npgsql.FunctionalTests
                 .AddEntityFramework()
                 .AddNpgsql()
                 .ServiceCollection()
-                .AddInstance<ILoggerFactory>(new TestSqlLoggerFactory())
+                .AddSingleton<ILoggerFactory>(new TestSqlLoggerFactory())
                 .BuildServiceProvider();
 
             _testDatabase = NpgsqlNorthwindContext.GetSharedStore();
