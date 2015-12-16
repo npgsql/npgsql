@@ -125,6 +125,7 @@
     <Compile Include="NpgsqlTableSelectionSetExtensions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Utilities\Check.cs" />
+    <Compile Include="Utilities\LoggingExtensions.cs" />
     <Compile Include="Utilities\SharedTypeExtensions.cs" />
   </ItemGroup>
   <ItemGroup>

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using JetBrains.Annotations;
 using Microsoft.Data.Entity.Metadata;
 using Microsoft.Data.Entity.Migrations;
 using Microsoft.Data.Entity.Migrations.Internal;
@@ -24,6 +25,15 @@ namespace Microsoft.Data.Entity.Scaffolding
         private static string TableKey(TableModel table) => TableKey(table.Name, table.SchemaName);
         private static string TableKey(string name, string schema = null) => "[" + (schema ?? "") + "].[" + name + "]";
         private static string ColumnKey(TableModel table, string columnName) => TableKey(table) + ".[" + columnName + "]";
+
+        public NpgsqlDatabaseModelFactory([NotNull] ILoggerFactory loggerFactory)
+        {
+            Check.NotNull(loggerFactory, nameof(loggerFactory));
+
+            Logger = loggerFactory.CreateCommandsLogger();
+        }
+
+        public virtual ILogger Logger { get; }
 
         private void ResetState()
         {
@@ -51,8 +61,9 @@ namespace Microsoft.Data.Entity.Scaffolding
 
                 GetTables();
                 GetColumns();
-                GetConstraints();
                 GetIndexes();
+                GetConstraints();
+                GetSequences();
                 return _databaseModel;
             }
         }
@@ -335,6 +346,66 @@ namespace Microsoft.Data.Entity.Scaffolding
                 return ReferentialAction.SetDefault;
             default:
                 throw new ArgumentOutOfRangeException($"Unknown value {onDeleteAction} for foreign key deletion action code");
+            }
+        }
+
+        const string GetSequencesQuery = @"
+            SELECT
+                sequence_schema, sequence_name, data_type, start_value::bigint, minimum_value::bigint, maximum_value::bigint, increment::int,
+                CASE WHEN cycle_option = 'YES' THEN TRUE ELSE FALSE END
+            FROM information_schema.sequences";
+
+        void GetSequences()
+        {
+            using (var command = new NpgsqlCommand(GetSequencesQuery, _connection))
+            using (var reader = command.ExecuteReader())
+            {
+                while (reader.Read())
+                {
+                    var sequence = new SequenceModel
+                    {
+                        SchemaName = reader.GetString(0),
+                        Name = reader.GetString(1),
+                        DataType = reader.GetString(2),
+                        Start = reader.GetInt64(3),
+                        Min = reader.GetInt64(4),
+                        Max = reader.GetInt64(5),
+                        IncrementBy = reader.GetInt32(6),
+                        IsCyclic = reader.GetBoolean(7)
+                    };
+
+                    if (sequence.DataType == "bigint")
+                    {
+                        long defaultStart, defaultMin, defaultMax;
+                        if (sequence.IncrementBy > 0)
+                        {
+                            defaultMin = 1;
+                            defaultMax = long.MaxValue;
+                            Debug.Assert(sequence.Min.HasValue);
+                            defaultStart = sequence.Min.Value;
+                        } else {
+                            defaultMin = long.MinValue + 1;
+                            defaultMax = -1;
+                            Debug.Assert(sequence.Max.HasValue);
+                            defaultStart = sequence.Max.Value;
+                        }
+                        if (sequence.Start == defaultStart) {
+                            sequence.Start = null;
+                        }
+                        if (sequence.Min == defaultMin) {
+                            sequence.Min = null;
+                        }
+                        if (sequence.Max == defaultMax) {
+                            sequence.Max = null;
+                        }
+                    }
+                    else
+                    {
+                        Logger.LogWarning($"Sequence with datatype {sequence.DataType} which isn't the expected bigint.");
+                    }
+
+                    _databaseModel.Sequences.Add(sequence);
+                }
             }
         }
     }

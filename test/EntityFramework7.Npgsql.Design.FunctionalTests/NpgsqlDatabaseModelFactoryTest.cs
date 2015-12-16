@@ -7,6 +7,7 @@ using Microsoft.Data.Entity.Scaffolding;
 using Microsoft.Data.Entity.Scaffolding.Metadata;
 using Xunit;
 using EntityFramework7.Npgsql.FunctionalTests;
+using Microsoft.Extensions.Logging;
 
 namespace EntityFramework7.Npgsql.Design.FunctionalTests
 {
@@ -18,9 +19,9 @@ namespace EntityFramework7.Npgsql.Design.FunctionalTests
             var sql = @"
 CREATE TABLE public.everest (id int);
 CREATE TABLE public.denali (id int);";
-            var dbInfo = CreateModel(sql, new TableSelectionSet(new List<string> { "everest", "denali" }));
+            var dbModel = CreateModel(sql, new TableSelectionSet(new List<string> { "everest", "denali" }));
 
-            Assert.Collection(dbInfo.Tables.OrderBy(t => t.Name),
+            Assert.Collection(dbModel.Tables.OrderBy(t => t.Name),
                 d =>
                 {
                     Assert.Equal("public", d.SchemaName);
@@ -39,9 +40,9 @@ CREATE TABLE public.denali (id int);";
             _fixture.ExecuteNonQuery("CREATE SCHEMA db2");
             var sql = "CREATE TABLE public.ranges (id INT PRIMARY KEY);" +
                       "CREATE TABLE db2.mountains (range_id INT NOT NULL, FOREIGN KEY (range_id) REFERENCES ranges(id) ON DELETE CASCADE)";
-            var dbInfo = CreateModel(sql, new TableSelectionSet(new List<string> { "ranges", "mountains" }));
+            var dbModel = CreateModel(sql, new TableSelectionSet(new List<string> { "ranges", "mountains" }));
 
-            var fk = Assert.Single(dbInfo.Tables.Single(t => t.ForeignKeys.Count > 0).ForeignKeys);
+            var fk = Assert.Single(dbModel.Tables.Single(t => t.ForeignKeys.Count > 0).ForeignKeys);
 
             Assert.Equal("db2", fk.Table.SchemaName);
             Assert.Equal("mountains", fk.Table.Name);
@@ -58,9 +59,9 @@ CREATE TABLE public.denali (id int);";
             _fixture.ExecuteNonQuery("CREATE SCHEMA db3");
             var sql = "CREATE TABLE public.ranges1 (id INT, alt_id INT, PRIMARY KEY(id, alt_id));" +
                       "CREATE TABLE db3.mountains1 (range_id INT NOT NULL, range_alt_id INT NOT NULL, FOREIGN KEY (range_id, range_alt_id) REFERENCES ranges1(id, alt_id) ON DELETE NO ACTION)";
-            var dbInfo = CreateModel(sql, new TableSelectionSet(new List<string> { "ranges1", "mountains1" }));
+            var dbModel = CreateModel(sql, new TableSelectionSet(new List<string> { "ranges1", "mountains1" }));
 
-            var fk = Assert.Single(dbInfo.Tables.Single(t => t.ForeignKeys.Count > 0).ForeignKeys);
+            var fk = Assert.Single(dbModel.Tables.Single(t => t.ForeignKeys.Count > 0).ForeignKeys);
 
             Assert.Equal("db3", fk.Table.SchemaName);
             Assert.Equal("mountains1", fk.Table.Name);
@@ -76,9 +77,9 @@ CREATE TABLE public.denali (id int);";
         {
             var sql = @"CREATE TABLE place (id int PRIMARY KEY, name int UNIQUE, location int);" +
                       @"CREATE INDEX ""IX_name_location"" ON place (name, location)";
-            var dbInfo = CreateModel(sql, new TableSelectionSet(new List<string> { "place" }));
+            var dbModel = CreateModel(sql, new TableSelectionSet(new List<string> { "place" }));
 
-            var indexes = dbInfo.Tables.Single().Indexes;
+            var indexes = dbModel.Tables.Single().Indexes;
 
             Assert.All(indexes, c =>
             {
@@ -112,9 +113,9 @@ CREATE TABLE public.mountains_columns (
     created timestamp DEFAULT now(),
     PRIMARY KEY (name, id)
 );";
-            var dbInfo = CreateModel(sql, new TableSelectionSet(new List<string> { "mountains_columns" }));
+            var dbModel = CreateModel(sql, new TableSelectionSet(new List<string> { "mountains_columns" }));
 
-            var columns = dbInfo.Tables.Single().Columns.OrderBy(c => c.Ordinal);
+            var columns = dbModel.Tables.Single().Columns.OrderBy(c => c.Ordinal);
 
             Assert.All(columns, c =>
             {
@@ -191,9 +192,9 @@ CREATE TABLE public.mountains_columns (
         public void It_reads_pk()
         {
             var sql = "CREATE TABLE pks (id int PRIMARY KEY, non_id int)";
-            var dbInfo = CreateModel(sql, new TableSelectionSet(new List<string> { "pks" }));
+            var dbModel = CreateModel(sql, new TableSelectionSet(new List<string> { "pks" }));
 
-            var columns = dbInfo.Tables.Single().Columns.OrderBy(c => c.Ordinal);
+            var columns = dbModel.Tables.Single().Columns.OrderBy(c => c.Ordinal);
             Assert.Collection(columns,
                 id =>
                 {
@@ -215,12 +216,63 @@ CREATE TABLE public.mountains_columns (
 
             var selectionSet = new TableSelectionSet(new List<string> { "k2" });
 
-            var dbInfo = CreateModel(sql, selectionSet);
-            var table = Assert.Single(dbInfo.Tables);
+            var dbModel = CreateModel(sql, selectionSet);
+            var table = Assert.Single(dbModel.Tables);
             Assert.Equal("k2", table.Name);
             Assert.Equal(2, table.Columns.Count);
             Assert.Equal(1, table.Indexes.Count);
             Assert.Empty(table.ForeignKeys);
+        }
+
+        [Fact]
+        public void It_reads_sequences()
+        {
+            var sql = @"CREATE SEQUENCE ""DefaultValues_ascending_read"";
+ 
+CREATE SEQUENCE ""DefaultValues_descending_read"" INCREMENT BY -1;
+
+CREATE SEQUENCE ""CustomSequence_read""
+    START WITH 1 
+    INCREMENT BY 2 
+    MAXVALUE 8 
+    MINVALUE -3 
+    CYCLE;";
+
+            var dbModel = CreateModel(sql);
+            Assert.Collection(dbModel.Sequences.Where(s => s.Name.EndsWith("_read")).OrderBy(s => s.Name),
+                c =>
+                    {
+                        Assert.Equal(c.Name, "CustomSequence_read");
+                        Assert.Equal(c.SchemaName, "public");
+                        Assert.Equal(c.DataType, "bigint");
+                        Assert.Equal(1, c.Start);
+                        Assert.Equal(2, c.IncrementBy);
+                        Assert.Equal(8, c.Max);
+                        Assert.Equal(-3, c.Min);
+                        Assert.True(c.IsCyclic);
+                    },
+                da =>
+                    {
+                        Assert.Equal(da.Name, "DefaultValues_ascending_read");
+                        Assert.Equal(da.SchemaName, "public");
+                        Assert.Equal(da.DataType, "bigint");
+                        Assert.Equal(1, da.IncrementBy);
+                        Assert.False(da.IsCyclic);
+                        Assert.Null(da.Max);
+                        Assert.Null(da.Min);
+                        Assert.Null(da.Start);
+                    },
+                dd =>
+                {
+                    Assert.Equal(dd.Name, "DefaultValues_descending_read");
+                    Assert.Equal(dd.SchemaName, "public");
+                    Assert.Equal(dd.DataType, "bigint");
+                    Assert.Equal(-1, dd.IncrementBy);
+                    Assert.False(dd.IsCyclic);
+                    Assert.Null(dd.Max);
+                    Assert.Null(dd.Min);
+                    Assert.Null(dd.Start);
+                });
         }
 
         private readonly NpgsqlDatabaseModelFixture _fixture;
@@ -247,7 +299,7 @@ CREATE TABLE public.mountains_columns (
         {
             _testStore.ExecuteNonQuery(createSql);
 
-            var reader = new NpgsqlDatabaseModelFactory();
+            var reader = new NpgsqlDatabaseModelFactory(new LoggerFactory());
 
             return reader.Create(_testStore.Connection.ConnectionString, selection ?? TableSelectionSet.All);
         }
