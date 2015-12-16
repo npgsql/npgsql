@@ -518,7 +518,13 @@ namespace Npgsql
                         else
                         {
                             var sslStream = new SslStream(_stream, false, certificateValidationCallback);
+#if DNXCORE50
+                            // CoreCLR removed sync methods from SslStream, see https://github.com/dotnet/corefx/pull/4868.
+                            // Consider exactly what to do here.
+                            sslStream.AuthenticateAsClientAsync(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, false).Wait();
+#else
                             sslStream.AuthenticateAsClient(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, false);
+#endif
                             _stream = sslStream;
                         }
                         timeout.Check();
