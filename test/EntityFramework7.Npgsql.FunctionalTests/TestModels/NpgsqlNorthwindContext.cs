@@ -21,7 +21,7 @@ namespace EntityFramework7.Npgsql.FunctionalTests.TestModels
         {
             return NpgsqlTestStore.GetOrCreateShared(
                 DatabaseName,
-                () => NpgsqlTestStore.CreateDatabase(DatabaseName, scriptPath: @"..\..\Northwind.sql")); // relative from bin/<config>
+                () => NpgsqlTestStore.CreateDatabase(DatabaseName, scriptPath: "Northwind.sql")); // relative from bin/<config>
         }
     }
 }

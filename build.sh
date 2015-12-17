@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# Set the following because xunit won't work with rc2 runtimes, which is what gets installed by default
+export DNX_FEED=https://www.nuget.org/api/v2
+
 if test `uname` = Darwin; then
     cachedir=~/Library/Caches/KBuild
 else
@@ -24,18 +27,20 @@ if test ! -e .nuget; then
     cp $cachePath .nuget/nuget.exe
 fi
 
-if test ! -d packages/KoreBuild; then
+if test ! -d packages/Sake; then
     mono .nuget/nuget.exe install KoreBuild -ExcludeVersion -o packages -nocache -pre
-    mono .nuget/nuget.exe install Sake -ExcludeVersion -Out packages
+    mono .nuget/nuget.exe install Sake -ExcludeVersion -Source https://www.nuget.org/api/v2/ -Out packages
 fi
 
 if ! type dnvm > /dev/null 2>&1; then
     source packages/KoreBuild/build/dnvm.sh
 fi
 
-if ! type dnx > /dev/null 2>&1; then
-    dnvm upgrade
+if ! type dnx > /dev/null 2>&1 || [ -z "$SKIP_DNX_INSTALL" ]; then
+    dnvm install latest -runtime coreclr -alias default
+    dnvm install default -runtime mono -alias default
+else
+    dnvm use default -runtime mono
 fi
 
 mono packages/Sake/tools/Sake.exe -I packages/KoreBuild/build -f makefile.shade "$@"
-

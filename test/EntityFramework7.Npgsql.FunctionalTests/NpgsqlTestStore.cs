@@ -7,6 +7,9 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Data.Entity.FunctionalTests;
+#if DNX452 || DNXCORE50
+using Microsoft.Extensions.PlatformAbstractions;
+#endif
 using Npgsql;
 
 namespace EntityFramework7.Npgsql.FunctionalTests
@@ -117,15 +120,17 @@ namespace EntityFramework7.Npgsql.FunctionalTests
                     //executing in VS - so path is relative to bin\<config> dir
                     scriptPath = @"..\..\" + scriptPath;
                 }
-                else
-                {
-                    var appBase = Environment.GetEnvironmentVariable("DNX_APPBASE");
+
+#if DNXCORE50 || DNX452
+                else {
+                    var appBase = PlatformServices.Default.Application.ApplicationBasePath;
+                    //throw new Exception("AppBase: " + appBase);
                     if (appBase != null)
                     {
                         scriptPath = Path.Combine(appBase, scriptPath);
                     }
                 }
-
+#endif
                 var script = File.ReadAllText(scriptPath);
 
                 using (var conn = new NpgsqlConnection(CreateConnectionString(name)))
