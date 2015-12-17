@@ -275,6 +275,13 @@ CREATE SEQUENCE ""CustomSequence_read""
                 });
         }
 
+        // Sequences which belong to a serial column should not get reverse engineered
+        [Fact]
+        public void Serial_sequences()
+        {
+            Assert.Empty(CreateModel(@"CREATE TABLE ""Foo"" (""FooId"" serial primary key);").Sequences);
+        }
+
         private readonly NpgsqlDatabaseModelFixture _fixture;
 
         public DatabaseModel CreateModel(string createSql, TableSelectionSet selection = null)

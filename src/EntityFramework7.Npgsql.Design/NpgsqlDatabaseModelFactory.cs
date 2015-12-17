@@ -20,11 +20,11 @@ namespace Microsoft.Data.Entity.Scaffolding
         private TableSelectionSet _tableSelectionSet;
         private DatabaseModel _databaseModel;
         private Dictionary<string, TableModel> _tables;
-        private Dictionary<string, ColumnModel> _tableColumns;
+        private Dictionary<string, NpgsqlColumnModel> _tableColumns;
 
         private static string TableKey(TableModel table) => TableKey(table.Name, table.SchemaName);
-        private static string TableKey(string name, string schema = null) => "[" + (schema ?? "") + "].[" + name + "]";
-        private static string ColumnKey(TableModel table, string columnName) => TableKey(table) + ".[" + columnName + "]";
+        private static string TableKey(string name, string schema) => $"\"{schema}\".\"{name}\"";
+        private static string ColumnKey(TableModel table, string columnName) => $"{TableKey(table)}.\"{columnName}\"";
 
         public NpgsqlDatabaseModelFactory([NotNull] ILoggerFactory loggerFactory)
         {
@@ -41,7 +41,7 @@ namespace Microsoft.Data.Entity.Scaffolding
             _tableSelectionSet = null;
             _databaseModel = new DatabaseModel();
             _tables = new Dictionary<string, TableModel>();
-            _tableColumns = new Dictionary<string, ColumnModel>(StringComparer.OrdinalIgnoreCase);
+            _tableColumns = new Dictionary<string, NpgsqlColumnModel>(StringComparer.OrdinalIgnoreCase);
         }
 
         public DatabaseModel Create(string connectionString, TableSelectionSet tableSelectionSet)
@@ -352,8 +352,17 @@ namespace Microsoft.Data.Entity.Scaffolding
         const string GetSequencesQuery = @"
             SELECT
                 sequence_schema, sequence_name, data_type, start_value::bigint, minimum_value::bigint, maximum_value::bigint, increment::int,
-                CASE WHEN cycle_option = 'YES' THEN TRUE ELSE FALSE END
-            FROM information_schema.sequences";
+                CASE WHEN cycle_option = 'YES' THEN TRUE ELSE FALSE END,
+                ownerns.nspname AS owner_schema,
+                tblcls.relname AS owner_table,
+                attname AS owner_column
+            FROM information_schema.sequences
+            JOIN pg_namespace AS seqns ON seqns.nspname = sequence_schema
+            JOIN pg_class AS seqcls ON seqcls.relnamespace = seqns.oid AND seqcls.relname = sequence_name AND seqcls.relkind = 'S'
+            LEFT OUTER JOIN pg_depend AS dep ON dep.objid = seqcls.oid AND deptype='a'
+            LEFT OUTER JOIN pg_class AS tblcls ON tblcls.oid = dep.refobjid
+            LEFT OUTER JOIN pg_attribute AS att ON attrelid = dep.refobjid AND attnum = dep.refobjsubid
+            LEFT OUTER JOIN pg_namespace AS ownerns ON ownerns.oid = tblcls.relnamespace";
 
         void GetSequences()
         {
@@ -362,6 +371,23 @@ namespace Microsoft.Data.Entity.Scaffolding
             {
                 while (reader.Read())
                 {
+                    // If the sequence is OWNED BY a column which is a serial, we skip it. The sequence will be created implicitly.
+                    if (!reader.IsDBNull(10))
+                    {
+                        var ownerSchema = reader.GetString(8);
+                        var ownerTable = reader.GetString(9);
+                        var ownerColumn = reader.GetString(10);
+
+                        TableModel ownerTableModel;
+                        NpgsqlColumnModel ownerColumnModel;
+                        if (_tables.TryGetValue(TableKey(ownerTable, ownerSchema), out ownerTableModel) &&
+                            _tableColumns.TryGetValue(ColumnKey(ownerTableModel, ownerColumn), out ownerColumnModel) &&
+                            ownerColumnModel.IsSerial)
+                        {
+                            continue;
+                        }
+                    }
+
                     var sequence = new SequenceModel
                     {
                         SchemaName = reader.GetString(0),
