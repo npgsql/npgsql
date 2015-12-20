@@ -124,135 +124,15 @@ namespace Npgsql
         {
             try
             {
-                DoDeriveParameters(command);
+
+                INpgsqlParameterDeriver d = NpgsqlParameterDeriverFactory.GetDeriver(
+                    command.Connection.Connector.ServerVersion);
+                d.DeriveParameters(command);
             }
             catch
             {
                 command.Parameters.Clear();
                 throw;
-            }
-        }
-
-        private static void DoDeriveParameters(NpgsqlCommand command)
-        {
-            // See http://www.postgresql.org/docs/current/static/catalog-pg-proc.html
-            command.Parameters.Clear();
-            // Updated after 0.99.3 to support the optional existence of a name qualifying schema and case insensitivity when the schema ror procedure name do not contain a quote.
-            // This fixed an incompatibility with NpgsqlCommand.CheckFunctionReturn(String ReturnType)
-            var serverVersion = command.Connection.Connector.ServerVersion;
-            string query;
-            string procedureName;
-            string schemaName = null;
-            var fullName = command.CommandText.Split('.');
-            if (fullName.Length > 1 && fullName[0].Length > 0)
-            {
-                // proargsmodes is supported for Postgresql 8.1 and above
-                query = serverVersion >= new Version(8, 1, 0)
-                    ? "select proargnames, proargtypes, proallargtypes, proargmodes from pg_proc p left join pg_namespace n on p.pronamespace = n.oid where proname=:proname and n.nspname=:nspname"
-                    : "select proargnames, proargtypes from pg_proc p left join pg_namespace n on p.pronamespace = n.oid where proname=:proname and n.nspname=:nspname";
-                schemaName = (fullName[0].IndexOf("\"") != -1) ? fullName[0] : fullName[0].ToLower();
-                procedureName = (fullName[1].IndexOf("\"") != -1) ? fullName[1] : fullName[1].ToLower();
-
-                // The pg_temp pseudo-schema is special - it's an alias to a real schema name (e.g. pg_temp_2).
-                // We get the real name with pg_my_temp_schema().
-                if (schemaName == "pg_temp")
-                {
-                    using (var c = new NpgsqlCommand("SELECT nspname FROM pg_namespace WHERE oid=pg_my_temp_schema()", command.Connection))
-                    {
-                        schemaName = (string)c.ExecuteScalar();
-                    }
-                }
-            }
-            else
-            {
-                // proargsmodes is supported for Postgresql 8.1 and above
-                query = serverVersion >= new Version(8, 1, 0)
-                    ? "select proargnames, proargtypes, proallargtypes, proargmodes from pg_proc where proname = :proname"
-                    : "select proargnames, proargtypes from pg_proc where proname = :proname";
-                procedureName = (fullName[0].IndexOf("\"") != -1) ? fullName[0] : fullName[0].ToLower();
-            }
-
-            using (var c = new NpgsqlCommand(query, command.Connection))
-            {
-                c.Parameters.Add(new NpgsqlParameter("proname", NpgsqlDbType.Text));
-                c.Parameters[0].Value = procedureName.Replace("\"", "").Trim();
-                if (fullName.Length > 1 && !string.IsNullOrEmpty(schemaName))
-                {
-                    var prm = c.Parameters.Add(new NpgsqlParameter("nspname", NpgsqlDbType.Text));
-                    prm.Value = schemaName.Replace("\"", "").Trim();
-                }
-
-                string[] names = null;
-                uint[] types = null;
-                char[] modes = null;
-
-                using (var rdr = c.ExecuteReader(CommandBehavior.SingleRow | CommandBehavior.SingleResult))
-                {
-                    if (rdr.Read())
-                    {
-                        if (!rdr.IsDBNull(0))
-                            names = rdr.GetValue(0) as string[];
-                        if (serverVersion >= new Version("8.1.0"))
-                        {
-                            if (!rdr.IsDBNull(2))
-                                types = rdr.GetValue(2) as uint[];
-                            if (!rdr.IsDBNull(3))
-                                modes = rdr.GetValue(3) as char[];
-                        }
-                        if (types == null)
-                        {
-                            if (rdr.IsDBNull(1) || rdr.GetFieldValue<uint[]>(1).Length == 0)
-                                return;  // Parameterless function
-                            types = rdr.GetFieldValue<uint[]>(1);
-                        }
-                    }
-                    else
-                        throw new InvalidOperationException($"{command.CommandText} does not exist in pg_proc");
-                }
-
-                command.Parameters.Clear();
-                for (var i = 0; i < types.Length; i++)
-                {
-                    var param = new NpgsqlParameter();
-
-                    // TODO: Fix enums, composite types
-                    var npgsqlDbType = c.Connection.Connector.TypeHandlerRegistry[types[i]].NpgsqlDbType;
-                    if (npgsqlDbType == NpgsqlDbType.Unknown)
-                        throw new InvalidOperationException($"Invalid parameter type: {types[i]}");
-                    param.NpgsqlDbType = npgsqlDbType;
-
-                    if (names != null && i < names.Length)
-                        param.ParameterName = ":" + names[i];
-                    else
-                        param.ParameterName = "parameter" + (i + 1);
-
-                    if (modes == null) // All params are IN, or server < 8.1.0 (and only IN is supported)
-                        param.Direction = ParameterDirection.Input;
-                    else
-                    {
-                        switch (modes[i])
-                        {
-                            case 'i':
-                                param.Direction = ParameterDirection.Input;
-                                break;
-                            case 'o':
-                                param.Direction = ParameterDirection.Output;
-                                break;
-                            case 'b':
-                                param.Direction = ParameterDirection.InputOutput;
-                                break;
-                            case 'v':
-                                throw new NotImplementedException("Cannot derive function parameter of type VARIADIC");
-                            case 't':
-                                throw new NotImplementedException("Cannot derive function parameter of type TABLE");
-                            default:
-                                throw new ArgumentOutOfRangeException("proargmode", modes[i],
-                                    "Unknown code in proargmodes while deriving: " + modes[i]);
-                        }
-                    }
-
-                    command.Parameters.Add(param);
-                }
             }
         }
 
