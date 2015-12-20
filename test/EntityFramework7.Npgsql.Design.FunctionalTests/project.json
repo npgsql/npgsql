@@ -1,7 +1,7 @@
 {
   "dependencies": {
-    "EntityFramework.Relational.FunctionalTests": "7.0.0-rc2-16563",
-    "EntityFramework.Relational.Design.FunctionalTests": "7.0.0-rc2-16563",
+    "EntityFramework.Relational.FunctionalTests": "7.0.0-rc2-16583",
+    "EntityFramework.Relational.Design.FunctionalTests": "7.0.0-rc2-16583",
     "EntityFramework7.Npgsql.Design": "3.1.0-*",
     "EntityFramework7.Npgsql": "3.1.0-*",
     "EntityFramework7.Npgsql.FunctionalTests": "1.0.0",
