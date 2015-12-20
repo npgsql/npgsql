@@ -117,6 +117,11 @@ namespace E2ETest.Namespace
                 entity.Property(e => e.SelfReferencingID).ValueGeneratedNever();
             });
 
+            modelBuilder.Entity<SpecialTypes>(entity =>
+            {
+                entity.Property(e => e.SpecialTypesID).ValueGeneratedNever();
+            });
+
             modelBuilder.Entity<Test_Spaces_Keywords_Table>(entity =>
             {
                 entity.Property(e => e.Test_Spaces_Keywords_TableID).ValueGeneratedNever();
@@ -134,6 +139,7 @@ namespace E2ETest.Namespace
         public virtual DbSet<OneToOneSeparateFKPrincipal> OneToOneSeparateFKPrincipal { get; set; }
         public virtual DbSet<PropertyConfiguration> PropertyConfiguration { get; set; }
         public virtual DbSet<SelfReferencing> SelfReferencing { get; set; }
+        public virtual DbSet<SpecialTypes> SpecialTypes { get; set; }
         public virtual DbSet<Test_Spaces_Keywords_Table> Test_Spaces_Keywords_Table { get; set; }
     }
 }

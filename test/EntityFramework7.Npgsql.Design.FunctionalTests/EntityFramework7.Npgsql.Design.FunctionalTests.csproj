@@ -236,6 +236,9 @@
     <None Include="ReverseEngineering\ExpectedResults\E2E_AllFluentApi\ReferredToByTableWithUnmappablePrimaryKeyColumn.expected">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Include="ReverseEngineering\ExpectedResults\E2E_AllFluentApi\SpecialTypes.expected">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Include="ReverseEngineering\ExpectedResults\E2E_AllFluentApi\SelfReferencing.expected">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

@@ -48,6 +48,7 @@ namespace EntityFramework7.Npgsql.Design.FunctionalTests.ReverseEngineering
                 "TableWithUnmappablePrimaryKeyColumn",
                 */
                 "SelfReferencing",
+                "SpecialTypes"
             });
 
         public NpgsqlE2ETests(NpgsqlE2EFixture fixture, ITestOutputHelper output)
@@ -99,8 +100,9 @@ namespace EntityFramework7.Npgsql.Design.FunctionalTests.ReverseEngineering
                 "ReferredToByTableWithUnmappablePrimaryKeyColumn.expected",
                 */
                 "SelfReferencing.expected",
-                "Test_Spaces_Keywords_Table.expected"
-            };
+                "SpecialTypes.expected",
+                "Test_Spaces_Keywords_Table.expected",
+           };
 
         [Fact]
         [UseCulture("en-US")]
@@ -149,6 +151,7 @@ namespace EntityFramework7.Npgsql.Design.FunctionalTests.ReverseEngineering
                         }
             });
             */
+
             AssertEqualFileContents(expectedFileSet, actualFileSet);
             AssertCompile(actualFileSet);
         }
