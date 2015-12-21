@@ -29,6 +29,7 @@ using System.Globalization;
 using System.Text;
 using System.Data.Entity.Core.Metadata.Edm;
 using System.Data.Entity.Spatial;
+using System.Linq;
 
 namespace Npgsql
 {
@@ -177,7 +178,12 @@ namespace Npgsql
         protected virtual void Convert(CreateTableOperation createTableOperation)
         {
             StringBuilder sql = new StringBuilder();
-            CreateSchema(createTableOperation.Name);
+            int dotIndex = createTableOperation.Name.IndexOf('.');
+            if (dotIndex != -1)
+            {
+                CreateSchema(createTableOperation.Name.Remove(dotIndex));
+            }
+
             sql.Append("CREATE TABLE ");
             AppendTableName(createTableOperation.Name, sql);
             sql.Append('(');
@@ -186,7 +192,8 @@ namespace Npgsql
                 AppendColumn(column, sql);
                 sql.Append(",");
             }
-            sql.Remove(sql.Length - 1, 1);
+            if (createTableOperation.Columns.Any())
+                sql.Remove(sql.Length - 1, 1);
             if (createTableOperation.PrimaryKey != null)
             {
                 sql.Append(",");
@@ -229,10 +236,7 @@ namespace Npgsql
 
         private void CreateSchema(string schemaName)
         {
-            int dotIndex = schemaName.IndexOf('.');
-            if (dotIndex != -1)
-                schemaName = schemaName.Remove(dotIndex);
-            if (addedSchemas.Contains(schemaName))
+            if (schemaName == "public" || addedSchemas.Contains(schemaName))
                 return;
             addedSchemas.Add(schemaName);
             if (serverVersion.Major > 9 || (serverVersion.Major == 9 && serverVersion.Minor >= 3))
