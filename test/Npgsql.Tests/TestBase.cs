@@ -69,6 +69,12 @@ namespace Npgsql.Tests
         internal NpgsqlConnection Conn { get; set; }
 
         /// <summary>
+        /// A list of database schemas that have been created using the <see cref="CreateSchema"/> method.
+        /// These schemas and all their object will automatically get dropped after the test has finished.
+        /// </summary>
+        protected ICollection<string> Schemas { get; private set; }
+
+        /// <summary>
         /// The connection string that will be used when opening the connection to the tests database.
         /// May be overridden in fixtures, e.g. to set special connection parameters
         /// </summary>
@@ -132,6 +138,7 @@ namespace Npgsql.Tests
         [SetUp]
         protected virtual void SetUp()
         {
+            Schemas = new List<string>();
             Conn = new NpgsqlConnection(ConnectionString);
             try
             {
@@ -151,7 +158,14 @@ namespace Npgsql.Tests
         [TearDown]
         protected virtual void TearDown()
         {
-            try { Conn.Close(); }
+            try
+            {
+                foreach (string schema in Schemas)
+                {
+                    DropSchema(schema);
+                }
+                Conn.Close();
+            }
             finally { Conn = null; }
         }
 
@@ -162,8 +176,25 @@ namespace Npgsql.Tests
             else
             {
                 try { ExecuteNonQuery(String.Format("CREATE SCHEMA {0}", schemaName)); }
-                catch (NpgsqlException e) {
+                catch (NpgsqlException e)
+                {
                     if (e.Code != "42P06")
+                        throw;
+                }
+            }
+            Schemas.Add(schemaName);
+        }
+
+        protected void DropSchema(string schemaName)
+        {
+            if (Conn.PostgreSqlVersion >= new Version(8, 2))
+                ExecuteNonQuery(String.Format("DROP SCHEMA IF EXISTS {0} CASCADE", schemaName));
+            else
+            {
+                try { ExecuteNonQuery(String.Format("DROP SCHEMA {0} CASCADE", schemaName)); }
+                catch (NpgsqlException e)
+                {
+                    if (e.Code != "3F000")
                         throw;
                 }
             }
