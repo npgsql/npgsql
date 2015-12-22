@@ -25,6 +25,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using JetBrains.Annotations;
 using NUnit.Framework;
 using NUnit.Framework.Interfaces;
@@ -55,6 +57,46 @@ namespace Npgsql.Tests
         public static void IgnoreExceptOnBuildServer(string message, params object[] args)
         {
             IgnoreExceptOnBuildServer(String.Format(message, args));
+        }
+
+        public static string GetUniqueIdentifier(string prefix)
+        {
+            return prefix + Interlocked.Increment(ref _counter);
+        }
+
+        static int _counter;
+    }
+
+    public static class NpgsqlConnectionExtensions
+    {
+        public static int ExecuteNonQuery(this NpgsqlConnection conn, string sql, NpgsqlTransaction tx = null)
+        {
+            var cmd = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
+            using (cmd)
+                return cmd.ExecuteNonQuery();
+        }
+
+        [CanBeNull]
+        public static object ExecuteScalar(this NpgsqlConnection conn, string sql, NpgsqlTransaction tx = null)
+        {
+            var cmd = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
+            using (cmd)
+                return cmd.ExecuteScalar();
+        }
+
+        public static async Task<int> ExecuteNonQueryAsync(this NpgsqlConnection conn, string sql, NpgsqlTransaction tx = null)
+        {
+            var cmd = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
+            using (cmd)
+                return await cmd.ExecuteNonQueryAsync();
+        }
+
+        [CanBeNull]
+        public static async Task<object> ExecuteScalarAsync(this NpgsqlConnection conn, string sql, NpgsqlTransaction tx = null)
+        {
+            var cmd = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
+            using (cmd)
+                return await cmd.ExecuteScalarAsync();
         }
     }
 
@@ -118,9 +160,9 @@ namespace Npgsql.Tests
             if (asTestBase == null)
                 throw new Exception("[MinPgsqlVersion] can only be used in fixtures inheriting from TestBase");
 
-            if (asTestBase.Conn.PostgreSqlVersion < _minVersion)
+            if (asTestBase.BackendVersion < _minVersion)
             {
-                var msg = $"Postgresql backend version {asTestBase.Conn.PostgreSqlVersion} is less than the required {_minVersion}";
+                var msg = $"Postgresql backend version {asTestBase.BackendVersion} is less than the required {_minVersion}";
                 if (_ignoreText != null)
                     msg += ": " + _ignoreText;
                 Assert.Ignore(msg);

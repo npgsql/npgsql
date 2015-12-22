@@ -38,9 +38,10 @@ namespace Npgsql.Tests
         [Test]
         public void Test()
         {
-            using (var transaction = Conn.BeginTransaction())
+            using (var conn = OpenConnection())
+            using (var transaction = conn.BeginTransaction())
             {
-                var manager = new NpgsqlLargeObjectManager(Conn);
+                var manager = new NpgsqlLargeObjectManager(conn);
                 uint oid = manager.Create();
                 using (var stream = manager.OpenReadWrite(oid))
                 {

@@ -29,6 +29,9 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests
 {
+    // At least most connection pool tests should actually be parallelizable, since they operate on their own specific pool.
+    // Do this properly as part of the pool redo.
+    [Parallelizable(ParallelScope.None)]
     class ConnectionPoolTests : TestBase
     {
         [Test]
@@ -61,23 +64,25 @@ namespace Npgsql.Tests
         {
             var conn = new NpgsqlConnection(ConnectionString + ";SearchPath=public");
             conn.Open();
-            ExecuteNonQuery("DROP SCHEMA IF EXISTS foo CASCADE");
-            ExecuteNonQuery("CREATE SCHEMA foo");
+            conn.ExecuteNonQuery("DROP SCHEMA IF EXISTS foo CASCADE");
+            conn.ExecuteNonQuery("CREATE SCHEMA foo");
             try
             {
-                ExecuteNonQuery("SET search_path=foo", conn);
+                conn.ExecuteNonQuery("SET search_path=foo");
                 conn.Close();
                 conn.Open();
-                Assert.That(ExecuteScalar("SHOW search_path", conn), Is.EqualTo("public"));
+                Assert.That(conn.ExecuteScalar("SHOW search_path"), Is.EqualTo("public"));
                 conn.Close();
             }
             finally
             {
-                ExecuteNonQuery("DROP SCHEMA foo");
+                using (conn = OpenConnection())
+                    conn.ExecuteNonQuery("DROP SCHEMA foo");
             }
         }
 
         [Test]
+        [Ignore("Very slow test, pool about to be rewritten anyway")]
         public void UseAllConnectionsInPool()
         {
             // As this method uses a lot of connections, clear all connections from all pools before starting.
@@ -106,6 +111,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        [Ignore("Very slow test, pool about to be rewritten anyway")]
         public void ExceedConnectionsInPool()
         {
             var openedConnections = new List<NpgsqlConnection>();

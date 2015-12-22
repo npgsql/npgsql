@@ -41,70 +41,61 @@ namespace Npgsql.Tests
         [Test, Description("Generates a basic server-side exception, checks that it's properly raised and populated")]
         public void Basic()
         {
-            // Make sure messages are in English
-            ExecuteNonQuery(@"SET lc_messages='English_United States.1252'");
-            ExecuteNonQuery(@"
-                 CREATE OR REPLACE FUNCTION emit_exception() RETURNS VOID AS
-                    'BEGIN RAISE EXCEPTION ''testexception'' USING ERRCODE = ''12345''; END;'
-                 LANGUAGE 'plpgsql';
-            ");
-
-            NpgsqlException ex = null;
-            try
+            using (var conn = OpenConnection())
             {
-                ExecuteNonQuery("SELECT emit_exception()");
-                Assert.Fail("No exception was thrown");
+                // Make sure messages are in English
+                conn.ExecuteNonQuery(@"SET lc_messages='English_United States.1252'");
+                conn.ExecuteNonQuery(@"
+                     CREATE OR REPLACE FUNCTION pg_temp.emit_exception() RETURNS VOID AS
+                        'BEGIN RAISE EXCEPTION ''testexception'' USING ERRCODE = ''12345''; END;'
+                     LANGUAGE 'plpgsql';
+                ");
+
+                NpgsqlException ex = null;
+                try
+                {
+                    conn.ExecuteNonQuery("SELECT pg_temp.emit_exception()");
+                    Assert.Fail("No exception was thrown");
+                }
+                catch (NpgsqlException e)
+                {
+                    ex = e;
+                }
+
+                Assert.That(ex.MessageText, Is.EqualTo("testexception"));
+                Assert.That(ex.Severity, Is.EqualTo("ERROR"));
+                Assert.That(ex.Code, Is.EqualTo("12345"));
+                Assert.That(ex.Position, Is.EqualTo(0));
+
+                var data = ex.Data;
+                Assert.That(data["Severity"], Is.EqualTo("ERROR"));
+                Assert.That(data["Code"], Is.EqualTo("12345"));
+                Assert.That(data.Contains("Position"), Is.False);
+
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1), "Connection in bad state after an exception");
             }
-            catch (NpgsqlException e)
-            {
-                ex = e;
-            }
-
-            Assert.That(ex.MessageText, Is.EqualTo("testexception"));
-            Assert.That(ex.Severity, Is.EqualTo("ERROR"));
-            Assert.That(ex.Code, Is.EqualTo("12345"));
-            Assert.That(ex.Position, Is.EqualTo(0));
-
-            var data = ex.Data;
-            Assert.That(data["Severity"], Is.EqualTo("ERROR"));
-            Assert.That(data["Code"], Is.EqualTo("12345"));
-            Assert.That(data.Contains("Position"), Is.False);
-
-            Assert.That(ExecuteScalar("SELECT 1"), Is.EqualTo(1), "Connection in bad state after an exception");
         }
 
         [Test]
         [MinPgVersion(9, 3, 0, "5 error fields haven't been added yet")]
         public void ExceptionFieldsArePopulated()
         {
-            const string dropTable = @"DROP TABLE IF EXISTS public.uniqueviolation";
-            const string createTable = @"CREATE TABLE public.uniqueviolation (id INT NOT NULL, CONSTRAINT uniqueviolation_pkey PRIMARY KEY (id))";
-            const string insertStatement = @"INSERT INTO public.uniqueviolation (id) VALUES(1)";
-
-            // In this case we'll test a simple unique violation, we're not too interested in testing more
-            // cases than this as the same code is executed in all error situations.
-            try
+            using (var conn = OpenConnection())
             {
-                var command = new NpgsqlCommand(dropTable, Conn);
-                command.ExecuteNonQuery();
-
-                command = new NpgsqlCommand(createTable, Conn);
-                command.ExecuteNonQuery();
-
-                command = new NpgsqlCommand(insertStatement, Conn);
-                command.ExecuteNonQuery();
-
-                //Now cause the unique violation...
-                command.ExecuteNonQuery();
-
-            }
-            catch (NpgsqlException ex)
-            {
-                Assert.That(ex.ColumnName, Is.Null, "ColumnName should not be populated for unique violations");
-                Assert.That(ex.TableName, Is.EqualTo("uniqueviolation"));
-                Assert.That(ex.SchemaName, Is.EqualTo("public"));
-                Assert.That(ex.ConstraintName, Is.EqualTo("uniqueviolation_pkey"));
-                Assert.That(ex.DataTypeName, Is.Null, "DataTypeName should not be populated for unique violations");
+                conn.ExecuteNonQuery("CREATE TEMP TABLE uniqueviolation (id INT NOT NULL, CONSTRAINT uniqueviolation_pkey PRIMARY KEY (id))");
+                conn.ExecuteNonQuery("INSERT INTO uniqueviolation (id) VALUES(1)");
+                try
+                {
+                    conn.ExecuteNonQuery("INSERT INTO uniqueviolation (id) VALUES(1)");
+                }
+                catch (NpgsqlException ex)
+                {
+                    Assert.That(ex.ColumnName, Is.Null, "ColumnName should not be populated for unique violations");
+                    Assert.That(ex.TableName, Is.EqualTo("uniqueviolation"));
+                    Assert.That(ex.SchemaName, Does.StartWith("pg_temp"));
+                    Assert.That(ex.ConstraintName, Is.EqualTo("uniqueviolation_pkey"));
+                    Assert.That(ex.DataTypeName, Is.Null, "DataTypeName should not be populated for unique violations");
+                }
             }
         }
 
@@ -112,33 +103,25 @@ namespace Npgsql.Tests
         [MinPgVersion(9, 3, 0, "5 error fields haven't been added yet")]
         public void ColumnNameExceptionFieldIsPopulated()
         {
-            const string dropTable = @"DROP TABLE IF EXISTS public.notnullviolation";
-            const string createTable = @"CREATE TABLE public.notnullviolation (id INT NOT NULL)";
-            const string insertStatement = @"INSERT INTO public.notnullviolation (id) VALUES(NULL)";
-
-            try
+            using (var conn = OpenConnection())
             {
-                var command = new NpgsqlCommand(dropTable, Conn);
-                command.ExecuteNonQuery();
-
-                command = new NpgsqlCommand(createTable, Conn);
-                command.ExecuteNonQuery();
-
-                command = new NpgsqlCommand(insertStatement, Conn);
-                //Cause the NOT NULL violation
-                command.ExecuteNonQuery();
-
-            }
-            catch (NpgsqlException ex)
-            {
-                Assert.AreEqual("public", ex.SchemaName);
-                Assert.AreEqual("notnullviolation", ex.TableName);
-                Assert.AreEqual("id", ex.ColumnName);
+                conn.ExecuteNonQuery("CREATE TEMP TABLE notnullviolation (id INT NOT NULL)");
+                try
+                {
+                    conn.ExecuteNonQuery("INSERT INTO notnullviolation (id) VALUES(NULL)");
+                }
+                catch (NpgsqlException ex)
+                {
+                    Assert.That(ex.SchemaName, Does.StartWith("pg_temp"));
+                    Assert.That(ex.TableName, Is.EqualTo("notnullviolation"));
+                    Assert.That(ex.ColumnName, Is.EqualTo("id"));
+                }
             }
         }
 
         [Test]
         [MinPgVersion(9, 3, 0, "5 error fields haven't been added yet")]
+        [Parallelizable(ParallelScope.None)]
         public void DataTypeNameExceptionFieldIsPopulated()
         {
             // On reading the source code for PostgreSQL9.3beta1, the only time that the
@@ -149,32 +132,39 @@ namespace Npgsql.Tests
             const string createDomain = @"CREATE DOMAIN public.intnotnull AS INT NOT NULL";
             const string castStatement = @"SELECT CAST(NULL AS public.intnotnull)";
 
-            try
+            using (var conn = OpenConnection())
             {
-                var command = new NpgsqlCommand(dropDomain, Conn);
-                command.ExecuteNonQuery();
+                try
+                {
+                    var command = new NpgsqlCommand(dropDomain, conn);
+                    command.ExecuteNonQuery();
 
-                command = new NpgsqlCommand(createDomain, Conn);
-                command.ExecuteNonQuery();
+                    command = new NpgsqlCommand(createDomain, conn);
+                    command.ExecuteNonQuery();
 
-                command = new NpgsqlCommand(castStatement, Conn);
-                //Cause the NOT NULL violation
-                command.ExecuteNonQuery();
+                    command = new NpgsqlCommand(castStatement, conn);
+                    //Cause the NOT NULL violation
+                    command.ExecuteNonQuery();
 
-            }
-            catch (NpgsqlException ex)
-            {
-                Assert.AreEqual("public", ex.SchemaName);
-                Assert.AreEqual("intnotnull", ex.DataTypeName);
+                }
+                catch (NpgsqlException ex)
+                {
+                    Assert.AreEqual("public", ex.SchemaName);
+                    Assert.AreEqual("intnotnull", ex.DataTypeName);
+                }
             }
         }
 
         [Test]
         public void NpgsqlExceptionInAsync()
         {
-            Assert.That(async () => await ExecuteNonQueryAsync("MALFORMED"), Throws.Exception.TypeOf<NpgsqlException>());
-            // Just in case, anything but an NpgsqlException would trigger the connection breaking, check that
-            Assert.That(Conn.FullState, Is.EqualTo(ConnectionState.Open));
+            using (var conn = OpenConnection())
+            {
+                Assert.That(async () => await conn.ExecuteNonQueryAsync("MALFORMED"),
+                    Throws.Exception.TypeOf<NpgsqlException>());
+                // Just in case, anything but an NpgsqlException would trigger the connection breaking, check that
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
+            }
         }
     }
 }
