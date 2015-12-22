@@ -109,7 +109,9 @@
         "System.Text.RegularExpressions": "4.0.11-*",
         "System.Threading": "4.0.11-*",
         "System.Threading.Thread": "4.0.0-*",
-        "System.Threading.Timer": "4.0.1-*"
+        "System.Threading.Timer": "4.0.1-*",
+        "runtime.linux.System.Net.NetworkInformation": "4.1.0-beta-*",
+        "runtime.unix.System.Net.Security": "4.0.0-beta-*"
       }
     }
   }
