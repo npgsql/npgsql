@@ -268,9 +268,219 @@ namespace Npgsql.Tests
         {
             var invalidCommandName = new NpgsqlCommand("invalidfunctionname", Conn);
             Assert.That(() => NpgsqlCommandBuilder.DeriveParameters(invalidCommandName),
-                Throws.Exception.TypeOf<InvalidOperationException>()
-                .With.Message.Contains("does not exist"));
+                Throws.Exception.TypeOf<NpgsqlException>()
+                .With.Property("Code").EqualTo("42883"));
         }
+
+        [Test, Description("Tests if resolving quoted functions with dots in the name works")]
+        public void DeriveParametersWithDotsInFunctionName()
+        {
+            ExecuteNonQuery(@"
+CREATE OR REPLACE FUNCTION pg_temp.""My.Dotted.Function""() RETURNS int AS
+'
+BEGIN
+    RETURN 1;
+END;
+' LANGUAGE 'plpgsql';", Conn);
+
+            var cmd = new NpgsqlCommand(@"pg_temp.""My.Dotted.Function""", Conn);
+            cmd.CommandType = CommandType.StoredProcedure;
+            NpgsqlCommandBuilder.DeriveParameters(cmd);
+        }
+
+        [Test, Description("Tests if the right function is resolved according to search_path")]
+        public void DeriveParametersWithCorrectSchemaResolution()
+        {
+            CreateSchema("schema1");
+            CreateSchema("schema2");
+            ExecuteNonQuery(@"
+CREATE OR REPLACE FUNCTION schema1.redundantfunc() RETURNS int AS
+'
+BEGIN
+    RETURN 1;
+END;
+' LANGUAGE 'plpgsql';
+
+CREATE OR REPLACE FUNCTION schema2.redundantfunc(IN param1 INT, IN param2 INT) RETURNS int AS
+'
+BEGIN
+RETURN param1 + param2;
+END;
+' LANGUAGE 'plpgsql';
+
+SET search_path TO schema2;
+", Conn);
+
+            var cmd = new NpgsqlCommand(@"redundantfunc", Conn);
+            cmd.CommandType = CommandType.StoredProcedure;
+            NpgsqlCommandBuilder.DeriveParameters(cmd);
+            Assert.That(cmd.Parameters, Has.Count.EqualTo(2));
+            Assert.That(cmd.Parameters[0].Direction, Is.EqualTo(ParameterDirection.Input));
+            Assert.That(cmd.Parameters[1].Direction, Is.EqualTo(ParameterDirection.Input));
+            cmd.Parameters[0].Value = 5;
+            cmd.Parameters[1].Value = 4;
+            Assert.That(cmd.ExecuteScalar(), Is.EqualTo(9));
+        }
+
+        [Test, Description("Tests if an exception is thrown if the specified function is not in the search_path")]
+        public void DeriveThrowsForExistingFunctionThatIsNotInSearchPath()
+        {
+            CreateSchema("schema1");
+            ExecuteNonQuery(@"
+CREATE OR REPLACE FUNCTION schema1.schema1func() RETURNS int AS
+'
+BEGIN
+    RETURN 1;
+END;
+' LANGUAGE 'plpgsql';
+
+RESET search_path;
+", Conn);
+
+            var cmd = new NpgsqlCommand(@"schema1func", Conn);
+            cmd.CommandType = CommandType.StoredProcedure;
+            Assert.That(() => NpgsqlCommandBuilder.DeriveParameters(cmd),
+                Throws.Exception.TypeOf<NpgsqlException>()
+                .With.Property("Code").EqualTo("42883"));
+        }
+
+        [Test, Description("Tests if an exception is thrown if multiple functions with the specified name are in the search_path")]
+        public void DeriveThrowsForMultipleFunctionNameHitsInSearchPath()
+        {
+            CreateSchema("schema1");
+            CreateSchema("schema2");
+            ExecuteNonQuery(@"
+CREATE OR REPLACE FUNCTION schema1.redundantfunc() RETURNS int AS
+'
+BEGIN
+    RETURN 1;
+END;
+' LANGUAGE 'plpgsql';
+
+CREATE OR REPLACE FUNCTION schema2.redundantfunc(IN param1 INT, IN param2 INT) RETURNS int AS
+'
+BEGIN
+RETURN param1 + param2;
+END;
+' LANGUAGE 'plpgsql';
+
+SET search_path TO schema1, schema2;
+", Conn);
+
+            var cmd = new NpgsqlCommand(@"redundantfunc", Conn);
+            cmd.CommandType = CommandType.StoredProcedure;
+            Assert.That(() => NpgsqlCommandBuilder.DeriveParameters(cmd),
+                Throws.Exception.TypeOf<NpgsqlException>()
+                .With.Property("Code").EqualTo("42725"));
+        }
+
+        #region Set returning functions
+
+        // As of Npgsql 3.0.3 DeriveParameters ignores the fact that a function with OUT parameters returns a set
+        // and derives IN and OUT parameters without moaning.
+        // On the other hand it denies to derive parameters for functions that return TABLE and derives only IN
+        // parameters for functions returning SETOF sometype.
+        // I'd argue that set returning functions should be executed using NpgsqlCommand.ExecuteReader() where
+        // output parameters are useless but changing this will probably break things out there.
+        // In any case we should at least be consistent about whether we allow to derive named return
+        // parameters (out or table) from set returning functions.
+        // As it would be pretty hard to implement this kind of consistency for functions returning SETOF
+        // sometype I chose to always discard OUT parameters for set returning functions.
+
+        [Test, Description("Tests parameter derivation for a function that returns SETOF sometype")]
+        public void DeriveParametersFunctionReturningSetofType()
+        {
+            ExecuteNonQuery(@"
+DROP FUNCTION IF EXISTS getfoo(int);
+DROP TABLE IF EXISTS foo CASCADE;
+", Conn);
+            ExecuteNonQuery(@"
+CREATE TABLE foo (fooid int, foosubid int, fooname text);
+", Conn);
+            ExecuteNonQuery(@"
+INSERT INTO foo VALUES (1, 1, 'Joe');
+INSERT INTO foo VALUES (1, 2, 'Ed');
+INSERT INTO foo VALUES (2, 1, 'Mary');
+", Conn);
+            ExecuteNonQuery(@"
+CREATE FUNCTION getfoo(int) RETURNS SETOF foo AS $$
+    SELECT * FROM foo WHERE foo.fooid = $1 ORDER BY foo.foosubid;
+$$ LANGUAGE SQL;
+", Conn);
+
+            var cmd = new NpgsqlCommand("getfoo", Conn);
+            cmd.CommandType = CommandType.StoredProcedure;
+            NpgsqlCommandBuilder.DeriveParameters(cmd);
+            Assert.That(cmd.Parameters, Has.Count.EqualTo(1));
+            Assert.That(cmd.Parameters[0].Direction, Is.EqualTo(ParameterDirection.Input));
+            cmd.Parameters[0].Value = 1;
+            cmd.ExecuteNonQuery();
+            Assert.That(cmd.Parameters[0].Value, Is.EqualTo(1));
+        }
+
+        [Test, Description("Tests parameter derivation for a function that returns TABLE")]
+        public void DeriveParametersFunctionReturningTable()
+        {
+            ExecuteNonQuery(@"
+DROP FUNCTION IF EXISTS getfoo(int);
+DROP TABLE IF EXISTS foo CASCADE;
+", Conn);
+            ExecuteNonQuery(@"
+CREATE TABLE foo (fooid int, foosubid int, fooname text);
+", Conn);
+            ExecuteNonQuery(@"
+INSERT INTO foo VALUES (1, 1, 'Joe');
+INSERT INTO foo VALUES (1, 2, 'Ed');
+INSERT INTO foo VALUES (2, 1, 'Mary');
+", Conn);
+            ExecuteNonQuery(@"
+CREATE FUNCTION getfoo(int) RETURNS TABLE(fooid int, foosubid int, fooname text) AS $$
+    SELECT * FROM foo WHERE foo.fooid = $1 ORDER BY foo.foosubid;
+$$ LANGUAGE SQL;
+", Conn);
+
+            var cmd = new NpgsqlCommand("getfoo", Conn);
+            cmd.CommandType = CommandType.StoredProcedure;
+            NpgsqlCommandBuilder.DeriveParameters(cmd);
+            Assert.That(cmd.Parameters, Has.Count.EqualTo(1));
+            Assert.That(cmd.Parameters[0].Direction, Is.EqualTo(ParameterDirection.Input));
+            cmd.Parameters[0].Value = 1;
+            cmd.ExecuteNonQuery();
+            Assert.That(cmd.Parameters[0].Value, Is.EqualTo(1));
+        }
+
+        [Test, Description("Tests parameter derivation for a function that returns TABLE")]
+        public void DeriveParametersFunctionReturningSetofRecord()
+        {
+            ExecuteNonQuery(@"
+DROP FUNCTION IF EXISTS getfoo(int);
+DROP TABLE IF EXISTS foo CASCADE;
+", Conn);
+            ExecuteNonQuery(@"
+CREATE TABLE foo (fooid int, foosubid int, fooname text);
+", Conn);
+            ExecuteNonQuery(@"
+INSERT INTO foo VALUES (1, 1, 'Joe');
+INSERT INTO foo VALUES (1, 2, 'Ed');
+INSERT INTO foo VALUES (2, 1, 'Mary');
+", Conn);
+            ExecuteNonQuery(@"
+CREATE FUNCTION getfoo(int, OUT fooid int, OUT foosubid int, OUT fooname text) RETURNS SETOF record AS $$
+    SELECT * FROM foo WHERE foo.fooid = $1 ORDER BY foo.foosubid;
+$$ LANGUAGE SQL;
+", Conn);
+
+            var cmd = new NpgsqlCommand("getfoo", Conn);
+            cmd.CommandType = CommandType.StoredProcedure;
+            NpgsqlCommandBuilder.DeriveParameters(cmd);
+            Assert.That(cmd.Parameters, Has.Count.EqualTo(1));
+            Assert.That(cmd.Parameters[0].Direction, Is.EqualTo(ParameterDirection.Input));
+            cmd.Parameters[0].Value = 1;
+            cmd.ExecuteNonQuery();
+            Assert.That(cmd.Parameters[0].Value, Is.EqualTo(1));
+        }
+
+        #endregion
 
         #endregion
 
