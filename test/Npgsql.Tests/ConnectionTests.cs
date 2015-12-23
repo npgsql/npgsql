@@ -806,7 +806,7 @@ namespace Npgsql.Tests
                 var connectorId = conn.ProcessID;
 
                 // Use another connection to kill our connector
-                ExecuteNonQuery(string.Format("SELECT pg_terminate_backend({0})", connectorId);
+                ExecuteNonQuery(string.Format("SELECT pg_terminate_backend({0})", connectorId));
 
                 conn.Close();
             }
