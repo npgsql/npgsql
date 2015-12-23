@@ -1,4 +1,5 @@
-﻿using NpgsqlTypes;
+﻿using Npgsql.TypeHandlers;
+using NpgsqlTypes;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -110,7 +111,15 @@ SELECT proretset, proargnames, proargtypes
                 }
                 else
                 {
-                    param.NpgsqlDbType = typeHandler.NpgsqlDbType;
+                    ArrayHandler arrayHandler = typeHandler as ArrayHandler;
+                    if (arrayHandler == null)
+                    {
+                        param.NpgsqlDbType = typeHandler.NpgsqlDbType;
+                    }
+                    else
+                    {
+                        param.NpgsqlDbType = NpgsqlDbType.Array | arrayHandler.ElementHandler.NpgsqlDbType;
+                    }
                 }
 
                 if (direction == ParameterDirection.Output || direction == ParameterDirection.InputOutput)
