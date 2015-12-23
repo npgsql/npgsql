@@ -3,6 +3,7 @@ using NpgsqlTypes;
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -111,6 +112,8 @@ SELECT proretset, proargnames, proargtypes
                 }
                 else
                 {
+                    Debug.WriteLine(typeHandler.GetType());
+                    Debug.WriteLine(typeHandler.NpgsqlDbType);
                     ArrayHandler arrayHandler = typeHandler as ArrayHandler;
                     if (arrayHandler == null)
                     {
@@ -118,6 +121,9 @@ SELECT proretset, proargnames, proargtypes
                     }
                     else
                     {
+                        Debug.WriteLine(arrayHandler.ElementHandler.NpgsqlDbType);
+                        Debug.WriteLine(arrayHandler.NpgsqlDbType);
+                        Debug.WriteLine(NpgsqlDbType.Array | arrayHandler.ElementHandler.NpgsqlDbType);
                         param.NpgsqlDbType = NpgsqlDbType.Array | arrayHandler.ElementHandler.NpgsqlDbType;
                     }
                 }

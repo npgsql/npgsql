@@ -370,6 +370,11 @@ namespace NpgsqlTypes
         /// <remarks>See http://www.postgresql.org/docs/current/static/arrays.html</remarks>
         Array = int.MinValue,
 
+        /// <summary>
+        /// Named shortcut for <see cref="NpgsqlDbType.Array"/> | <see cref="NpgsqlDbType.Enum"/>/>
+        /// </summary>
+        EnumArray = NpgsqlDbType.Array | NpgsqlDbType.Enum,
+
         #endregion
 
         #region Composite Types
@@ -385,7 +390,7 @@ namespace NpgsqlTypes
         #region Range Types
 
         /// <summary>
-        /// Corresponds to the PostgreSQL "array" type, a variable-length multidimensional array of
+        /// Corresponds to the PostgreSQL "range" type, a variable-length multidimensional array of
         /// another type. This value must be combined with another value from <see cref="NpgsqlDbType"/>
         /// via a bit OR (e.g. NpgsqlDbType.Array | NpgsqlDbType.Integer)
         /// </summary>
