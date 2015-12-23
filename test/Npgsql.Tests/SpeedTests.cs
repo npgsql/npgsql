@@ -28,6 +28,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.IO;
+using System.Threading.Tasks;
 using NUnit.Framework;
 
 using Npgsql;
@@ -555,6 +556,49 @@ namespace Npgsql.Tests
                     }
                 }
             }
+        }
+
+        [Test]
+        public void PoolTest()
+        {
+            var maxNumThreads = 8;
+            var numIterations = 100000;
+            var maxPoolSize = 4;
+
+            Console.WriteLine($"Testing {numIterations} across up to {maxNumThreads} threads with max pool size {maxPoolSize}");
+            for (var i = 1; i <= maxNumThreads; i++)
+            {
+                var iterations = numIterations / i;
+                Console.WriteLine($"{i} threads ({iterations} iterations): {PoolTestCase(i, iterations, maxPoolSize)}");
+            }
+        }
+
+        TimeSpan PoolTestCase(int numThreads, int numIterations, int maxPoolSize)
+        {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) {
+                 MaxPoolSize = maxPoolSize,
+                 Host = "mammoth",
+                 Port=5432
+            };
+
+            //connString = new NpgsqlConnectionStringBuilder("Host=mammoth;Port=5432;Database=npgsql_tests;Username=npgsql_tests;Port=npgsql_tests;MaxPoolSize=" + maxPoolSize);
+            Func<TimeSpan> testMethod = () =>
+            {
+                var openWatch = new Stopwatch();
+                for (var i = 0; i < numIterations; i++)
+                {
+                    openWatch.Start();
+                    var conn = new NpgsqlConnection("Host=mammoth;Port=5432;Database=npgsql_tests;Username=npgsql_tests;Password=npgsql_tests;MaxPoolSize=" + maxPoolSize);
+                    openWatch.Stop();
+                    conn.Close();
+                }
+                return openWatch.Elapsed;
+            };
+
+            var tasks = Enumerable.Range(0, numThreads).Select(i => Task.Run(testMethod)).ToArray();
+            Task.WaitAll(tasks);
+
+            return new TimeSpan(tasks.Sum(t => t.Result.Ticks));
         }
 
         #region Setup / Teardown / Utils
