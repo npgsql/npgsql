@@ -27,6 +27,7 @@ using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
 using Npgsql.BackendMessages;
@@ -89,6 +90,7 @@ namespace Npgsql.TypeHandlers
         {
             LowerBound = 1;
             ElementHandler = elementHandler;
+            NpgsqlDbType = NpgsqlDbType.Array | elementHandler.NpgsqlDbType;
         }
 
         #region Read
@@ -519,6 +521,19 @@ namespace Npgsql.TypeHandlers
 
         public ArrayHandler(TypeHandler elementHandler)
             : base(elementHandler) { }
+
+        public override Type EnumType
+        {
+            get
+            {
+                Type t = typeof(TElement);
+                if (t.GetTypeInfo().IsEnum)
+                {
+                    return t;
+                }
+                return base.EnumType;
+            }
+        }
 
         public void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {

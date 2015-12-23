@@ -6,6 +6,7 @@ using System.Text;
 using Npgsql;
 using NpgsqlTypes;
 using NUnit.Framework;
+using Mood = Npgsql.Tests.Types.EnumTests.Mood;
 
 namespace Npgsql.Tests
 {
@@ -326,6 +327,112 @@ SET search_path TO schema1, schema2;
                 Throws.Exception.TypeOf<NpgsqlException>()
                 .With.Property("Code").EqualTo("42725"));
         }
+
+        #region Enums
+
+        [Test]
+        public void DeriveEnum()
+        {
+            ExecuteNonQuery("CREATE TYPE pg_temp.mood AS ENUM ('Sad', 'Ok', 'Happy')");
+            Conn.ReloadTypes();
+            Conn.RegisterEnum<Mood>("mood");
+
+            ExecuteNonQuery(@"
+CREATE OR REPLACE FUNCTION pg_temp.make_happy(IN param1 mood, OUT param2 mood)
+AS
+$BODY$
+BEGIN
+    param2 = 'Happy'::mood;
+END;
+$BODY$ LANGUAGE 'plpgsql';
+");
+
+            var cmd = new NpgsqlCommand("pg_temp.make_happy", Conn);
+            cmd.CommandType = CommandType.StoredProcedure;
+            NpgsqlCommandBuilder.DeriveParameters(cmd);
+            Assert.That(cmd.Parameters, Has.Count.EqualTo(2));
+            Assert.That(cmd.Parameters[0].Direction, Is.EqualTo(ParameterDirection.Input));
+            Assert.That(cmd.Parameters[0].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Enum));
+            Assert.That(cmd.Parameters[0].EnumType, Is.EqualTo(typeof(Mood)));
+            Assert.That(cmd.Parameters[1].Direction, Is.EqualTo(ParameterDirection.Output));
+            Assert.That(cmd.Parameters[1].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Enum));
+            Assert.That(cmd.Parameters[1].EnumType, Is.EqualTo(typeof(Mood)));
+            cmd.Parameters[0].Value = Mood.Sad;
+            cmd.ExecuteNonQuery();
+            Assert.That(cmd.Parameters[0].Value, Is.EqualTo(Mood.Sad));
+            Assert.That(cmd.Parameters[1].Value, Is.EqualTo(Mood.Happy));
+        }
+
+        [Test]
+        public void DeriveEnumArray()
+        {
+            ExecuteNonQuery("CREATE TYPE pg_temp.mood AS ENUM ('Sad', 'Ok', 'Happy')");
+            Conn.ReloadTypes();
+            Conn.RegisterEnum<Mood>("mood");
+
+            ExecuteNonQuery(@"
+CREATE OR REPLACE FUNCTION pg_temp.get_moods(IN param1 mood[], OUT param2 mood[])
+AS
+$BODY$
+BEGIN
+    param2 = enum_range('Ok'::mood, NULL);
+END;
+$BODY$ LANGUAGE 'plpgsql';
+");
+
+            var cmd = new NpgsqlCommand("pg_temp.get_moods", Conn);
+            cmd.CommandType = CommandType.StoredProcedure;
+            NpgsqlCommandBuilder.DeriveParameters(cmd);
+            Assert.That(cmd.Parameters, Has.Count.EqualTo(2));
+            Assert.That(cmd.Parameters[0].Direction, Is.EqualTo(ParameterDirection.Input));
+            Assert.That(cmd.Parameters[0].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Enum | NpgsqlDbType.Array));
+            Assert.That(cmd.Parameters[0].EnumType, Is.EqualTo(typeof(Mood)));
+            Assert.That(cmd.Parameters[1].Direction, Is.EqualTo(ParameterDirection.Output));
+            Assert.That(cmd.Parameters[1].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Enum | NpgsqlDbType.Array));
+            Assert.That(cmd.Parameters[1].EnumType, Is.EqualTo(typeof(Mood)));
+            Mood[] input = new Mood[] { Mood.Sad, Mood.Sad };
+            Mood[] output = new Mood[] { Mood.Ok, Mood.Happy };
+            cmd.Parameters[0].Value = input;
+            cmd.ExecuteNonQuery();
+            Assert.That(cmd.Parameters[0].Value, Is.EqualTo(input));
+            Assert.That(cmd.Parameters[1].Value, Is.EqualTo(output));
+        }
+
+        [Test]
+        public void DeriveUnmappedEnumAsString()
+        {
+            using (var conn = new NpgsqlConnection(ConnectionString))
+            {
+                conn.Open();
+                ExecuteNonQuery("CREATE TYPE pg_temp.mood AS ENUM ('Sad', 'Ok', 'Happy')", conn);
+                ExecuteNonQuery(@"
+CREATE OR REPLACE FUNCTION pg_temp.make_happy(IN param1 mood, OUT param2 mood)
+AS
+$BODY$
+BEGIN
+    param2 = 'Happy'::mood;
+END;
+$BODY$ LANGUAGE 'plpgsql';
+", conn);
+
+                var cmd = new NpgsqlCommand("pg_temp.make_happy", conn);
+                cmd.CommandType = CommandType.StoredProcedure;
+                NpgsqlCommandBuilder.DeriveParameters(cmd);
+                Assert.That(cmd.Parameters, Has.Count.EqualTo(2));
+                Assert.That(cmd.Parameters[0].Direction, Is.EqualTo(ParameterDirection.Input));
+                Assert.That(cmd.Parameters[0].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Unknown));
+                Assert.That(cmd.Parameters[0].EnumType, Is.Null);
+                Assert.That(cmd.Parameters[1].Direction, Is.EqualTo(ParameterDirection.Output));
+                Assert.That(cmd.Parameters[1].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Unknown));
+                Assert.That(cmd.Parameters[1].EnumType, Is.Null);
+                cmd.Parameters[0].Value = Mood.Sad;
+                cmd.ExecuteNonQuery();
+                Assert.That(cmd.Parameters[0].Value, Is.EqualTo(Mood.Sad));
+                Assert.That(cmd.Parameters[1].Value, Is.EqualTo("Happy"));
+            }
+        }
+
+        #endregion
 
         #region Set returning functions
 

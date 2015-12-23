@@ -61,6 +61,14 @@ namespace Npgsql.TypeHandlers
             }
         }
 
+        public override Type EnumType
+        {
+            get
+            {
+                return typeof(TEnum);
+            }
+        }
+
         public TEnum Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             var str = buf.ReadString(len);

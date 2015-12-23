@@ -156,6 +156,14 @@ namespace Npgsql
 
         public virtual bool PreferTextWrite { get { return false; } }
 
+        public virtual Type EnumType
+        {
+            get
+            {
+                return null;
+            }
+        }
+
         [RewriteAsync]
         internal T Read<T>(DataRowMessage row, int len, FieldDescription fieldDescription = null)
         {

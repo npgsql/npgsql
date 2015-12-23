@@ -52,6 +52,7 @@ SELECT proretset, proargnames, proargtypes
         public void DeriveParameters(NpgsqlCommand command)
         {
             command.Parameters.Clear();
+            command.UnknownResultTypeList = null;
             using (var c = new NpgsqlCommand(PgProcQuery, command.Connection))
             {
                 c.Parameters.AddWithValue("proname", NpgsqlDbType.Text, command.CommandText);
@@ -59,8 +60,9 @@ SELECT proretset, proargnames, proargtypes
                 {
                     if (rdr.Read())
                     {
-                        DeriveParametersFromPgProcRow(rdr, command.Parameters,
+                        bool[] unknownOutParameters = DeriveParametersFromPgProcRow(rdr, command.Parameters,
                             command.Connection.Connector.TypeHandlerRegistry);
+                        command.UnknownResultTypeList = ((unknownOutParameters.Length > 0) ? unknownOutParameters : null);
                     }
                     else
                     {
@@ -71,12 +73,13 @@ SELECT proretset, proargnames, proargtypes
             }
         }
 
-        protected virtual void DeriveParametersFromPgProcRow(NpgsqlDataReader row,
+        protected virtual bool[] DeriveParametersFromPgProcRow(NpgsqlDataReader row,
             NpgsqlParameterCollection parameters, TypeHandlerRegistry typeInfo)
         {
             uint[] argTypes = GetArgTypeOIDs(row);
             string[] argNames = GetArgNames(row);
             char[] argmodes = GetArgModes(row);
+            List<bool> unknownResultTypes = new List<bool>();
 
             bool isSetReturning = IsSetReturningFunction(row);
 
@@ -93,17 +96,36 @@ SELECT proretset, proargnames, proargtypes
                     direction = ParameterDirection.Input;
                 }
 
-                if(isSetReturning && direction == ParameterDirection.Output)
-                {
-                    continue;
-                }
 
                 NpgsqlParameter param = new NpgsqlParameter();
                 param.Direction = direction;
 
-                // TODO: Fix enums, composite types
+                // TODO: Fix composite types
                 uint argOID = argTypes[i];
-                param.NpgsqlDbType = GetNpgsqlDbTypeFromOID(typeInfo, argOID);
+
+                var typeHandler = typeInfo[argOID];
+                if (typeHandler.NpgsqlDbType == (NpgsqlDbType)0)
+                {
+                    param.NpgsqlDbType = NpgsqlDbType.Unknown;
+                }
+                else
+                {
+                    param.NpgsqlDbType = typeHandler.NpgsqlDbType;
+                }
+
+                if (direction == ParameterDirection.Output || direction == ParameterDirection.InputOutput)
+                {
+                    unknownResultTypes.Add(param.NpgsqlDbType == NpgsqlDbType.Unknown ? true : false);
+                    if (direction == ParameterDirection.Output && isSetReturning)
+                    {
+                        continue;
+                    }
+                }
+
+                if (typeHandler.EnumType != null)
+                {
+                    param.EnumType = typeHandler.EnumType;
+                }
 
                 if (i < argNames.Length)
                 {
@@ -116,6 +138,7 @@ SELECT proretset, proargnames, proargtypes
 
                 parameters.Add(param);
             }
+            return unknownResultTypes.ToArray();
         }
 
         protected virtual ParameterDirection GetParameterDirectionFromArgMode(char argMode)

@@ -8,11 +8,11 @@ using NpgsqlTypes;
 
 namespace Npgsql.Tests.Types
 {
-    class EnumTests : TestBase
+    public class EnumTests : TestBase
     {
         public EnumTests(string backendVersion) : base(backendVersion) {}
 
-        enum Mood { Sad, Ok, Happy };
+        public enum Mood { Sad, Ok, Happy };
 
         [Test]
         public void LateRegistration()
