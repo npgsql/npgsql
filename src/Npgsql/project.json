@@ -114,7 +114,7 @@
         "System.Console": "4.0.0-*",
         "System.ComponentModel": "4.0.1-*",
         "System.ComponentModel.TypeConverter": "4.0.1-*",
-        "System.Data.Common": "4.0.1-*",
+        "System.Data.Common": "4.0.0-*",
         "System.Diagnostics.Contracts": "4.0.1-*",
         "System.Diagnostics.Tools": "4.0.1-*",
         "System.Globalization": "4.0.11-*",
