@@ -1,23 +1,27 @@
 {
-    "version": "0.0.0",
-    "dependencies": {
-        "NUnit": "3.0.1",
-        "NLog": "3.2.0.0",
-        "Npgsql": "3.1.0-alpha2"
-    },
-    "compilationOptions": {
-      "keyFile": "../../Npgsql.snk"
-    },
-    "frameworks": {
-        "net46": {
-            "frameworkAssemblies": {
-                "System.Diagnostics.Contracts": { "version": "4.0.0.0", "type": "build" },
-                "System.Transactions": { "version": "4.0.0.0", "type": "build" },
-                "System.DirectoryServices": { "version": "4.0.0.0", "type": "build" },
-                "System.Data": { "version": "4.0.0.0", "type": "build" },
-                "System.Xml": { "version": "4.0.0.0", "type": "build" },
-                "System.Web": { "version": "4.0.0.0", "type": "build" }
-            }
-        }
+  "version": "0.0.0",
+  "dependencies": {
+      "NUnit": "3.0.1",
+      "NUnitLite": "3.0.1",
+      "NLog": "3.2.0.0",
+      "Npgsql": "3.1.0-*"
+  },
+  "compilationOptions": {
+    "keyFile": "../../Npgsql.snk"
+  },
+  "commands": {
+    "test": "Npgsql.Tests"
+  },
+  "frameworks": {
+    "dnx46": {
+      "frameworkAssemblies": {
+        "System.Diagnostics.Contracts": { "version": "4.0.0.0", "type": "build" },
+        "System.Transactions": { "version": "4.0.0.0", "type": "build" },
+        "System.DirectoryServices": { "version": "4.0.0.0", "type": "build" },
+        "System.Data": { "version": "4.0.0.0", "type": "build" },
+        "System.Xml": { "version": "4.0.0.0", "type": "build" },
+        "System.Web": { "version": "4.0.0.0", "type": "build" }
+      }
     }
+  }
 }
