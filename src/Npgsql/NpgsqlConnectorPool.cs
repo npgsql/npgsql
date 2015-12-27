@@ -66,6 +66,8 @@ namespace Npgsql
 
         private object locker = new object();
 
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+
         internal NpgsqlConnectorPool()
         {
             PooledConnectors = new Dictionary<string, ConnectorQueue>();
@@ -280,16 +282,23 @@ namespace Npgsql
                 if (Connection.MinPoolSize > 1)
                 {
 
-                    lock (Queue)
+                    try
                     {
-
-                        while (Queue.Available.Count + Queue.Busy.Count < Connection.MinPoolSize)
+                        lock (Queue)
                         {
-                            NpgsqlConnector spare = new NpgsqlConnector(Connection);
-                            spare.Open();
-                            spare.Connection = null;
-                            Queue.Available.Enqueue(spare);
+
+                            while (Queue.Available.Count + Queue.Busy.Count < Connection.MinPoolSize)
+                            {
+                                NpgsqlConnector spare = new NpgsqlConnector(Connection);
+                                spare.Open();
+                                spare.Connection = null;
+                                Queue.Available.Enqueue(spare);
+                            }
                         }
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Warn("Exception while trying to open spare connectors to meet MinPoolSize", e);
                     }
                 }
             }

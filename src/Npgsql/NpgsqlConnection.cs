@@ -97,7 +97,7 @@ namespace Npgsql
         /// </summary>
         internal int OpenCounter { get; private set; }
 
-        internal bool WasBroken { private get; set; }
+        bool _wasBroken;
 
 #if NET45 || NET451 || DNX451
         NpgsqlPromotableSinglePhaseNotification Promotable => _promotable ?? (_promotable = new NpgsqlPromotableSinglePhaseNotification(this));
@@ -251,7 +251,7 @@ namespace Npgsql
                 _connectionString = Settings.ToString();
             }
 
-            WasBroken = false;
+            _wasBroken = false;
 
             try
             {
@@ -429,7 +429,7 @@ namespace Npgsql
             {
                 if (Connector == null || _disposed)
                 {
-                    return WasBroken ? ConnectionState.Broken : ConnectionState.Closed;
+                    return _wasBroken ? ConnectionState.Broken : ConnectionState.Closed;
                 }
 
                 switch (Connector.State)
@@ -617,11 +617,12 @@ namespace Npgsql
             ReallyClose();
         }
 
-        internal void ReallyClose()
+        internal void ReallyClose(bool wasBroken=false)
         {
             var connectorId = Connector.Id;
             Log.Trace("Really closing connection", connectorId);
             _postponingClose = false;
+            _wasBroken = wasBroken;
 
 #if NET45 || NET451 || DNX451
             // clear the way for another promotable transaction
