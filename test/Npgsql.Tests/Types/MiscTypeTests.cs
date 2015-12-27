@@ -385,7 +385,7 @@ namespace Npgsql.Tests.Types
 
         #endregion
 
-        [Test]
+        [Test, MinPgVersion(9, 1, 0)]
         public void Int2Vector()
         {
             var expected = new short[] { 4, 5, 6 };
