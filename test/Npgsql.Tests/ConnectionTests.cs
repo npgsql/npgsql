@@ -122,7 +122,11 @@ namespace Npgsql.Tests
                     if (args.CurrentState == ConnectionState.Closed)
                         eventBroken = true;
                 };
-                Assert.That(() => ExecuteScalar("SELECT 1", conn), Throws.Exception.TypeOf<IOException>());
+
+                // Allow some time for the pg_terminate to kill our connection
+                using (var cmd = CreateSleepCommand(conn, 10))
+                    Assert.That(() => cmd.ExecuteNonQuery(), Throws.Exception.TypeOf<IOException>());
+
                 Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
                 Assert.That(eventBroken, Is.True);
@@ -473,6 +477,9 @@ namespace Npgsql.Tests
 
                 // Use another connection to kill the connector currently in the pool
                 ExecuteNonQuery($"SELECT pg_terminate_backend({connectorId})");
+
+                // Allow some time for the terminate to occur
+                Thread.Sleep(2000);
 
                 conn.Open();
                 Assert.That(conn.ProcessID, Is.EqualTo(connectorId));
