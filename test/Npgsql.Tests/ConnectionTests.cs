@@ -407,6 +407,9 @@ namespace Npgsql.Tests
                         }
                     }
 
+                    // Allow some time for the notification to get delivered
+                    Thread.Sleep(2000);
+
                     Assert.IsTrue(reader.Read());
                     Assert.AreEqual(1, reader.GetValue(0));
                 }
