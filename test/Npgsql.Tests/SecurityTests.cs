@@ -109,6 +109,7 @@ namespace Npgsql.Tests
         #region Partial Trust
 
         [Test, Description("Makes sure Npgsql works when running under pseudo-medium trust")]
+        [Ignore("Doesn't work via DNX testing")]
         public void RestrictedTrust()
         {
             var domainSetup = new AppDomainSetup { ApplicationBase = AppDomain.CurrentDomain.BaseDirectory };

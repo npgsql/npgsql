@@ -10,7 +10,6 @@
       <option name="executionTimeoutMin" value="30" />
     </options>
     <disabled-settings>
-      <setting-ref ref="RUNNER_1" />
       <setting-ref ref="RUNNER_23" />
     </disabled-settings>
     <parameters>
@@ -31,31 +30,13 @@
           <param name="teamcity.step.mode" value="default" />
         </parameters>
       </runner>
-      <runner id="RUNNER_1" name="Test NUnit" type="NUnit">
+      <runner id="RUNNER_1" name="Npgsql Tests (NUnit)" type="simpleRunner">
         <parameters>
-          <param name="dotNetCoverage.NCover.HTMLReport.File.Sort" value="0" />
-          <param name="dotNetCoverage.NCover.HTMLReport.File.Type" value="1" />
-          <param name="dotNetCoverage.NCover.Reg" value="selected" />
-          <param name="dotNetCoverage.NCover.platformBitness" value="x86" />
-          <param name="dotNetCoverage.NCover.platformVersion" value="v2.0" />
-          <param name="dotNetCoverage.NCover3.Reg" value="selected" />
-          <param name="dotNetCoverage.NCover3.args" value="//ias .*" />
-          <param name="dotNetCoverage.NCover3.platformBitness" value="x86" />
-          <param name="dotNetCoverage.NCover3.platformVersion" value="v2.0" />
-          <param name="dotNetCoverage.NCover3.reporter.executable.args" value="//or FullCoverageReport:Html:{teamcity.report.path}" />
-          <param name="dotNetCoverage.PartCover.Reg" value="selected" />
-          <param name="dotNetCoverage.PartCover.includes" value="[*]*" />
-          <param name="dotNetCoverage.PartCover.platformBitness" value="x86" />
-          <param name="dotNetCoverage.PartCover.platformVersion" value="v2.0" />
-          <param name="dotNetTestRunner.Type" value="NUnit" />
-          <param name="nunit_categery_exclude" value="TodoFor3.0" />
-          <param name="nunit_enabled" value="checked" />
-          <param name="nunit_environment" value="v4.0" />
-          <param name="nunit_include"><![CDATA[test/Npgsql.Tests/bin/Debug/Npgsql.Tests.dll
-test/EntityFramework6.Npgsql.Tests/bin/Debug/EntityFramework6.Npgsql.Tests.dll]]></param>
-          <param name="nunit_platform" value="MSIL" />
-          <param name="nunit_version" value="NUnit-2.6.4" />
+          <param name="script.content"><![CDATA[call dnvm use default
+call dnx test --teamcity]]></param>
+          <param name="teamcity.build.workingDir" value="test/Npgsql.Tests" />
           <param name="teamcity.step.mode" value="default" />
+          <param name="use.custom.script" value="true" />
         </parameters>
       </runner>
       <runner id="RUNNER_23" name="Test Mono" type="simpleRunner">
