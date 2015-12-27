@@ -456,10 +456,7 @@ namespace Npgsql
             }
             catch
             {
-                try { Break(); }
-                catch {
-                    // ignored
-                }
+                BreakFromOpen();
                 throw;
             }
         }
@@ -1394,9 +1391,16 @@ namespace Npgsql
             return new Exception(string.Format("Received unexpected backend message {0}. Please file a bug.", received));
         }
 
+        /// <summary>
+        /// Called when a connector becomes completely unusable, e.g. when an unexpected I/O exception is raised or when
+        /// we lose protocol sync.
+        /// Note that fatal errors during the Open phase do *not* pass through here.
+        /// </summary>
         internal void Break()
         {
             Contract.Requires(!IsClosed);
+            Contract.Requires(State != ConnectorState.Connecting);
+
             if (State == ConnectorState.Broken)
                 return;
 
@@ -1409,13 +1413,24 @@ namespace Npgsql
             // We have no connection if we're broken by a keepalive occuring while the connector is in the pool
             if (conn != null)
             {
+                // The connection's full state is usually calculated from the connector's, but in states closed/broken the
+                // connector is null. We therefore need a way to distinguish between Closed and Broken on the connection.
                 if (prevState != ConnectorState.Connecting)
-                {
-                    // A break during a connection attempt puts the connection in state closed, not broken
-                    conn.WasBroken = true;
-                }
-                conn.ReallyClose();
+                conn.ReallyClose(true);
             }
+        }
+
+        /// <summary>
+        /// Called when an open attempt fails (e.g. I/O error, timeout).
+        /// </summary>
+        internal void BreakFromOpen()
+        {
+            Contract.Requires(State == ConnectorState.Connecting);
+            Contract.Requires(Connection != null);
+
+            Log.Trace("Break connector during Open", Id);
+            State = ConnectorState.Broken;
+            Cleanup();
         }
 
         /// <summary>

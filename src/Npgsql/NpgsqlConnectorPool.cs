@@ -66,6 +66,8 @@ namespace Npgsql
 
         private object locker = new object();
 
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+
         internal NpgsqlConnectorPool()
         {
             PooledConnectors = new Dictionary<string, ConnectorQueue>();
@@ -281,26 +283,32 @@ namespace Npgsql
                 // Meet the MinPoolSize requirement if needed.
                 if (Connection.MinPoolSize > 1)
                 {
-
-                    lock (Queue)
+                    try
                     {
-
-                        while (Queue.Available.Count + Queue.Busy.Count < Connection.MinPoolSize)
+                        lock (Queue)
                         {
-                            NpgsqlConnector spare = new NpgsqlConnector(Connection) {
-                                ProvideClientCertificatesCallback = Connection.ProvideClientCertificatesCallback,
-                                UserCertificateValidationCallback = Connection.UserCertificateValidationCallback
-                            };
+
+                            while (Queue.Available.Count + Queue.Busy.Count < Connection.MinPoolSize)
+                            {
+                                NpgsqlConnector spare = new NpgsqlConnector(Connection) {
+                                    ProvideClientCertificatesCallback = Connection.ProvideClientCertificatesCallback,
+                                    UserCertificateValidationCallback = Connection.UserCertificateValidationCallback
+                                };
 
 
-                            spare.Open();
+                                spare.Open();
 
-                            spare.ProvideClientCertificatesCallback = null;
-                            spare.UserCertificateValidationCallback = null;
+                                spare.ProvideClientCertificatesCallback = null;
+                                spare.UserCertificateValidationCallback = null;
 
-                            spare.Connection = null;
-                            Queue.Available.Enqueue(spare);
+                                spare.Connection = null;
+                                Queue.Available.Enqueue(spare);
+                            }
                         }
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Warn("Exception while trying to open spare connectors to meet MinPoolSize", e);
                     }
                 }
             }
