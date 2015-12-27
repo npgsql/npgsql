@@ -86,8 +86,18 @@ namespace Npgsql.Tests
         [Test]
         public void IntegratedSecurity()
         {
+            // Connect once to check whether we're on PostgreSQL 9.5 or earlier; starting with PG 9.5 include_realm is true
+            // by default so we need to send it
+            bool includeRealm;
+            using (var conn = new NpgsqlConnection(ConnectionString))
+            {
+                conn.Open();
+                includeRealm = conn.PostgreSqlVersion >= new Version(9, 5, 0);
+            }
+
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString) {
                 IntegratedSecurity = true,
+                IncludeRealm = includeRealm,
                 Username = null,
                 Password = null,
             };
