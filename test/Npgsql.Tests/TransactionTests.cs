@@ -27,6 +27,7 @@ using System.Data;
 using System.Data.Common;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using Npgsql;
 using NUnit.Framework;
 
@@ -44,6 +45,16 @@ namespace Npgsql.Tests
             Assert.That(ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(1));
         }
 
+        [Test]
+        public async Task CommitAsync()
+        {
+            ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
+            var tx = Conn.BeginTransaction();
+            ExecuteNonQuery("INSERT INTO data (name) VALUES ('X')", tx: tx);
+            await tx.CommitAsync();
+            Assert.That(ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(1));
+        }
+
         [Test, Description("Basic insert within a rolled back transaction")]
         public void Rollback([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
         {
@@ -54,6 +65,20 @@ namespace Npgsql.Tests
             cmd.ExecuteNonQuery();
             Assert.That(ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(1));
             tx.Rollback();
+            Assert.That(tx.Connection, Is.Null);
+            Assert.That(ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
+        }
+
+        [Test, Description("Basic insert within a rolled back transaction")]
+        public async Task RollbackAsync([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
+        {
+            ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
+            var tx = Conn.BeginTransaction();
+            var cmd = new NpgsqlCommand("INSERT INTO data (name) VALUES ('X')", Conn, tx);
+            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
+            cmd.ExecuteNonQuery();
+            Assert.That(ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(1));
+            await tx.RollbackAsync();
             Assert.That(tx.Connection, Is.Null);
             Assert.That(ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
         }

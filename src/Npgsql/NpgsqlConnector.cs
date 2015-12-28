@@ -1300,6 +1300,7 @@ namespace Npgsql
         /// Asynchronous messages (e.g. Notice) are treated and ignored. ErrorResponses raise an
         /// exception but do not cause the connector to break.
         /// </summary>
+        [RewriteAsync]
         internal T ReadExpecting<T>() where T : class, IBackendMessage
         {
             var msg = ReadSingleMessage(DataRowLoadingMode.NonSequential);
@@ -1307,8 +1308,7 @@ namespace Npgsql
             if (asExpected == null)
             {
                 Break();
-                throw new Exception(
-                    $"Received backend message {msg.Code} while expecting {typeof (T).Name}. Please file a bug.");
+                throw new Exception($"Received backend message {msg.Code} while expecting {typeof (T).Name}. Please file a bug.");
             }
             return asExpected;
         }
@@ -1926,6 +1926,7 @@ namespace Npgsql
             ExecuteInternalCommand(new QueryMessage(query), withTimeout);
         }
 
+        [RewriteAsync]
         internal void ExecuteInternalCommand(SimpleFrontendMessage message, bool withTimeout=true)
         {
             using (StartUserAction())
