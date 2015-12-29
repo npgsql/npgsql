@@ -1,0 +1,58 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Release</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{3B74B136-DCA7-4F0D-BA95-193DB06D18C4}</ProjectGuid>
+    <OutputType>Exe</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>Build_all_ddex</RootNamespace>
+    <AssemblyName>Build-all-ddex</AssemblyName>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Idea from https://msdn.microsoft.com/en-us/library/z7f65y0d.aspx -->
+    <ProjectToBuild Include="../Npgsql/Npgsql.csproj">
+    </ProjectToBuild>
+    
+    <ProjectToBuild Include="../EntityFramework5.Npgsql/EntityFramework5.Npgsql.csproj">
+    </ProjectToBuild>
+    
+    <ProjectToBuild Include="NpgsqlDdexProvider2012.csproj">
+    </ProjectToBuild>
+    
+    <ProjectToBuild Include="NpgsqlDdexProvider2013.csproj">
+    </ProjectToBuild>
+    
+    <ProjectToBuild Include="NpgsqlDdexProvider2015.csproj">
+    </ProjectToBuild>
+    
+  </ItemGroup>
+  <Target Name="Build">
+    <MSBuild RebaseOutputs="true" Targets="Build" Projects="@(ProjectToBuild)" />
+  </Target>
+  <Target Name="Rebuild">
+    <MSBuild RebaseOutputs="true" Targets="Rebuild" Projects="@(ProjectToBuild)" />
+  </Target>
+  <Target Name="Clean">
+    <MSBuild RebaseOutputs="true" Targets="Clean" Projects="@(ProjectToBuild)" />
+  </Target>
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

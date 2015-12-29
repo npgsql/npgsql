@@ -38,7 +38,7 @@ namespace Npgsql
 #endif
     public sealed class NpgsqlFactory : DbProviderFactory, IServiceProvider
     {
-        public static NpgsqlFactory Instance = new NpgsqlFactory();
+        public static readonly NpgsqlFactory Instance = new NpgsqlFactory();
 
         private NpgsqlFactory()
         {

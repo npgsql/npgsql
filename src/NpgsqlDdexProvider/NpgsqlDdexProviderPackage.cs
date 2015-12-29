@@ -6,6 +6,7 @@ using System.ComponentModel.Design;
 using Microsoft.Win32;
 using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Shell.Interop;
 
 namespace Npgsql.VisualStudio.Provider
 {
@@ -25,6 +26,8 @@ namespace Npgsql.VisualStudio.Provider
     // This attribute is used to register the information needed to show this package
     // in the Help/About dialog of Visual Studio.
     [InstalledProductRegistration("#110", "#112", "1.0", IconResourceID = 400)]
+    // This attribute is needed to let the shell know that this package exposes some menus.
+    [ProvideMenuResource("Menus.ctmenu", 1)]
     [ProvideService(typeof(NpgsqlProviderObjectFactory), ServiceName = "PostgreSQL Provider Object Factory")]
     [NpgsqlDataProviderRegistration]
     [Guid(GuidList.guidNpgsqlDdexProviderPkgString)]
@@ -56,8 +59,104 @@ namespace Npgsql.VisualStudio.Provider
         {
             ((IServiceContainer)this).AddService(typeof(NpgsqlProviderObjectFactory), new NpgsqlProviderObjectFactory(), true);
             base.Initialize();
+
+            // Add our command handlers for menu (commands must exist in the .vsct file)
+            OleMenuCommandService mcs = GetService(typeof(IMenuCommandService)) as OleMenuCommandService;
+            if (null != mcs)
+            {
+                // Create the command for the menu item.
+                CommandID menuCommandID = new CommandID(GuidList.guidNpgsqlDdexProviderCmdSet, (int)PkgCmdIDList.cmdidMyCommand);
+                MenuCommand menuItem = new MenuCommand(MenuItemSetupNpgsqlDdexProvider, menuCommandID);
+                mcs.AddCommand(menuItem);
+            }
+
+            AppDomain.CurrentDomain.AssemblyResolve += CurrentDomain_AssemblyResolve;
+
         }
+
+        System.Reflection.Assembly CurrentDomain_AssemblyResolve(object sender, ResolveEventArgs e)
+        {
+            var npgsqlAssembly = typeof(NpgsqlConnection).Assembly;
+            if (e.Name.Equals(npgsqlAssembly.FullName)) // explicit version specified
+                return npgsqlAssembly;
+            if (e.Name.Equals("Npgsql")) // no version specified
+                return npgsqlAssembly;
+            if (e.Name.Equals(entityFramework5NpgsqlAssembly.FullName))
+                return entityFramework5NpgsqlAssembly;
+            if (e.Name.Equals(entityFramework5NpgsqlAssembly.FullName.Replace("EntityFramework5.Npgsql", "Npgsql.EntityFrameworkLegacy")))
+                return entityFramework5NpgsqlAssembly;
+            return null;
+        }
+
+        System.Reflection.Assembly entityFramework5NpgsqlAssembly = System.Reflection.Assembly.LoadFrom(
+            System.IO.Path.Combine(
+                typeof(NpgsqlDdexProviderPackage).Assembly.Location, 
+                "..", 
+                "EntityFramework5.Npgsql.dll"
+                )
+            );
+
+        /// <summary>
+        /// This function is the callback used to execute a command when the a menu item is clicked.
+        /// See the Initialize method to see how the menu item is associated to this function using
+        /// the OleMenuCommandService service and the MenuCommand class.
+        /// </summary>
+        private void MenuItemSetupNpgsqlDdexProvider(object sender, EventArgs e)
+        {
+            using (CheckNpgsqlForm form = new CheckNpgsqlForm()) {
+                form.sp = this;
+                form.ShowDialog();
+            }
+        }
+
         #endregion
 
+        class UIUt
+        {
+            internal static void Alert(IServiceProvider host, String text, String title)
+            {
+                // Show a Message Box to prove we were here
+                IVsUIShell uiShell = (IVsUIShell)host.GetService(typeof(SVsUIShell));
+                Guid clsid = Guid.Empty;
+                int result;
+
+                Microsoft.VisualStudio.ErrorHandler.ThrowOnFailure(uiShell.ShowMessageBox(
+                           0,
+                           ref clsid,
+                           title,
+                           text,
+                           string.Empty,
+                           0,
+                           OLEMSGBUTTON.OLEMSGBUTTON_OK,
+                           OLEMSGDEFBUTTON.OLEMSGDEFBUTTON_FIRST,
+                           OLEMSGICON.OLEMSGICON_WARNING,
+                           0,        // false
+                           out result));
+            }
+
+            internal static bool Confirm(IServiceProvider host, String text, String title)
+            {
+                // Show a Message Box to prove we were here
+                IVsUIShell uiShell = (IVsUIShell)host.GetService(typeof(SVsUIShell));
+                Guid clsid = Guid.Empty;
+                int result;
+
+                Microsoft.VisualStudio.ErrorHandler.ThrowOnFailure(uiShell.ShowMessageBox(
+                           0,
+                           ref clsid,
+                           title,
+                           text,
+                           string.Empty,
+                           0,
+                           OLEMSGBUTTON.OLEMSGBUTTON_OKCANCEL,
+                           OLEMSGDEFBUTTON.OLEMSGDEFBUTTON_FIRST,
+                           OLEMSGICON.OLEMSGICON_WARNING,
+                           0,        // false
+                           out result));
+
+                return (result == 1); // IDOK
+            }
+        }
     }
+
 }

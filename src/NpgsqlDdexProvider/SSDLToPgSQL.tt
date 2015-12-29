@@ -1,0 +1,170 @@
+<# 
+//---------------------------------------------------------------------
+// This T4 template generates PostgreSQL queries from an instance of 
+// System.Data.Metadata.Edm.StoreItemCollection, an object representation
+// of the SSDL. This query set is compatible with PostgreSQL x.x and higher.
+//---------------------------------------------------------------------
+// Inherited from:
+//  SSDLToFB.tt at http://sourceforge.net/p/firebird/NETProvider/ci/cb43606e32048b8c5175013ad4f296fc598c1844/tree/NETProvider/source/FirebirdSql/Data/Entity/SSDLToFB.tt
+// History:
+//  SSDLToPgSQL.tt v0.1 2015/01/26 created by kenji uno
+#>
+<#@ template language="C#" #>
+<#@ output extension = ".sql" #>
+<#@ assembly name="System.Core" #>
+<#@ assembly name="System.Data.Entity" #>
+<#@ assembly name="System.Xml" #>
+<#@ import namespace="System.Data.Metadata.Edm" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.Runtime.Remoting.Messaging" #>
+<#@ import namespace="System.IO" #>
+<#@ import namespace="System.Xml" #>
+<#@ import namespace="System.Collections.Generic" #>
+-- Created: <#=DateTime.Now.ToString()#>
+<# 
+	if (StoreItems == null)
+	{
+#>
+-- No input.
+<#
+	}
+	else
+	{
+ #>
+-- Tables
+<#
+
+		IDictionary<string, string> additionalColumnComments = new Dictionary<string, string>();
+		foreach (EntitySet entitySet in StoreItems.GetItems<EntityContainer>()[0].BaseEntitySets.OfType<EntitySet>())
+		{
+			additionalColumnComments.Clear();
+#>
+CREATE TABLE <#=Quote(SchemaName(entitySet))#>.<#=Quote(TableName(entitySet))#> (
+<#
+			PushIndent("\t");
+			foreach (EdmProperty property in entitySet.ElementType.Properties)
+			{
+#>
+<#=GenerateColumn(property, ref additionalColumnComments)#>,
+<#
+			}
+			PopIndent();
+#>
+CONSTRAINT <#=Quote("PK_" + TableName(entitySet))#> PRIMARY KEY (<#=string.Join(", ", entitySet.ElementType.KeyMembers.Select(pk => Quote(ColumnName(pk))).ToArray())#>)
+);
+<#
+		}
+#>
+-- Foreign Key Constraints
+<#
+		foreach (AssociationSet associationSet in StoreItems.GetItems<EntityContainer>()[0].BaseEntitySets.OfType<AssociationSet>())
+		{
+			ReferentialConstraint constraint = associationSet.ElementType.ReferentialConstraints.Single<ReferentialConstraint>(); 
+			AssociationSetEnd end = associationSet.AssociationSetEnds[constraint.FromRole.Name];
+			AssociationSetEnd end2 = associationSet.AssociationSetEnds[constraint.ToRole.Name];
+#>
+ALTER TABLE <#=Quote(SchemaName(end2.EntitySet))#>.<#=Quote(TableName(end2.EntitySet))#> ADD CONSTRAINT <#=Quote("FK_" + AssociationSetName(associationSet))#> FOREIGN KEY (<#=string.Join(", ", constraint.ToProperties.Select(fk => Quote(ColumnName(fk))).ToArray())#>)
+REFERENCES <#=Quote(SchemaName(end.EntitySet))#>.<#=Quote(TableName(end.EntitySet))#>(<#=string.Join(", ", constraint.FromProperties.Select(pk => Quote(ColumnName(pk))).ToArray())#>)
+ON DELETE <#=(end.CorrespondingAssociationEndMember.DeleteBehavior == OperationAction.Cascade ? "CASCADE" : "NO ACTION")#>
+;
+
+<#
+		}
+#>
+<#
+	}
+#>
+-- EOF
+<#+
+public StoreItemCollection StoreItemCollection { private get; set; }
+
+private StoreItemCollection _storeItems;
+private StoreItemCollection StoreItems
+{
+	get
+	{
+		if (_storeItems == null)
+		{
+			var ssdl = this.GetInput<string>("Ssdl");
+
+			if (StoreItemCollection != null)
+			{
+				_storeItems = StoreItemCollection;
+			}
+			else if (ssdl != null)
+			{
+				 using (TextReader text = new StringReader(ssdl))
+				 {
+					using (XmlReader xml = XmlReader.Create(text))
+					{
+						_storeItems = new StoreItemCollection(new[] { xml });
+					}
+				}
+			}
+		}
+		return _storeItems;
+	}
+}
+
+private string Quote(string s)
+{
+	return "\"" + s + "\"";
+}
+
+private string GenerateColumn(EdmProperty property, ref IDictionary<string, string> columnComments)
+{
+	StringBuilder result = new StringBuilder();
+	result.Append(Quote(ColumnName(property)));
+	result.Append(" ");
+	switch (property.TypeUsage.EdmType.Name)
+	{
+		case "varchar":
+		case "char":
+			result.Append(property.TypeUsage.EdmType.Name.ToUpperInvariant());
+			result.AppendFormat("({0})", property.TypeUsage.Facets["MaxLength"].Value);
+			break;
+		case "decimal":
+		case "numeric":
+			result.Append(property.TypeUsage.EdmType.Name.ToUpperInvariant());
+			result.AppendFormat("({0},{1})", property.TypeUsage.Facets["Precision"].Value, property.TypeUsage.Facets["Scale"].Value);
+			break;
+		case "double":
+			result.Append("DOUBLE PRECISION");
+			break;
+		default:
+			result.Append(property.TypeUsage.EdmType.Name.ToUpperInvariant());
+			break;
+	}
+	if (!property.Nullable)
+	{
+	  result.Append(" NOT NULL");
+	}
+	return result.ToString();
+}
+
+private string ColumnName(EdmMember member)
+{
+	return (string)member.MetadataProperties["Name"].Value;
+}
+
+private string TableName(EntitySet entitySet)
+{
+	return (string)entitySet.MetadataProperties["Table"].Value ?? (string)entitySet.MetadataProperties["Name"].Value;
+}
+
+private string SchemaName(EntitySet entitySet)
+{
+	return (string)entitySet.MetadataProperties["Schema"].Value;
+}
+
+private string AssociationSetName(AssociationSet associationSet)
+{
+	return (string)associationSet.MetadataProperties["Name"].Value;
+}
+
+private T GetInput<T>(string identity) where T : class
+{
+    return CallContext.GetData(identity) as T;
+}
+#>
