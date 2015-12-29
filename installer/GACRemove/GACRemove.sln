@@ -1,0 +1,23 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Express 2012 for Windows Desktop
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GACRemove", "GACRemove.csproj", "{2D6BDB2D-3871-45B3-99CE-58E51650B6CB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug-net20|Any CPU = Debug-net20|Any CPU
+		Debug-net40|Any CPU = Debug-net40|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2D6BDB2D-3871-45B3-99CE-58E51650B6CB}.Debug-net20|Any CPU.ActiveCfg = Debug-net20|Any CPU
+		{2D6BDB2D-3871-45B3-99CE-58E51650B6CB}.Debug-net20|Any CPU.Build.0 = Debug-net20|Any CPU
+		{2D6BDB2D-3871-45B3-99CE-58E51650B6CB}.Debug-net40|Any CPU.ActiveCfg = Debug-net40|Any CPU
+		{2D6BDB2D-3871-45B3-99CE-58E51650B6CB}.Debug-net40|Any CPU.Build.0 = Debug-net40|Any CPU
+		{2D6BDB2D-3871-45B3-99CE-58E51650B6CB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2D6BDB2D-3871-45B3-99CE-58E51650B6CB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

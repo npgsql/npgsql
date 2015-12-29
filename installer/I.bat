@@ -1,0 +1,1 @@
+msiexec.exe /i Npgsql-2.2.0.0-KU20140825-8f70c8b7.msi /l*vx inst.log

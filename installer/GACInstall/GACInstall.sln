@@ -1,0 +1,23 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Express 2012 for Windows Desktop
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GACInstall", "GACInstall.csproj", "{A0CAD6EB-E3FF-4FAE-A075-E9A568E6B1AB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug-net20|Any CPU = Debug-net20|Any CPU
+		Debug-net40|Any CPU = Debug-net40|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A0CAD6EB-E3FF-4FAE-A075-E9A568E6B1AB}.Debug-net20|Any CPU.ActiveCfg = Debug-net20|Any CPU
+		{A0CAD6EB-E3FF-4FAE-A075-E9A568E6B1AB}.Debug-net20|Any CPU.Build.0 = Debug-net20|Any CPU
+		{A0CAD6EB-E3FF-4FAE-A075-E9A568E6B1AB}.Debug-net40|Any CPU.ActiveCfg = Debug-net40|Any CPU
+		{A0CAD6EB-E3FF-4FAE-A075-E9A568E6B1AB}.Debug-net40|Any CPU.Build.0 = Debug-net40|Any CPU
+		{A0CAD6EB-E3FF-4FAE-A075-E9A568E6B1AB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A0CAD6EB-E3FF-4FAE-A075-E9A568E6B1AB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
