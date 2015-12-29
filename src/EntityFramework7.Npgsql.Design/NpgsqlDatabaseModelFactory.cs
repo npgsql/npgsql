@@ -109,6 +109,7 @@ namespace Microsoft.Data.Entity.Scaffolding
             LEFT OUTER JOIN pg_attribute AS attr ON attrelid = cls.oid
             LEFT OUTER JOIN pg_type AS typ ON attr.atttypid = typ.oid
             WHERE
+              atttypid <> 0 AND
               relkind = 'r' AND
               nspname NOT IN ('pg_catalog', 'information_schema') AND
               relname <> '" + HistoryRepository.DefaultTableName + @"' AND
