@@ -293,15 +293,14 @@ namespace Npgsql
             );
 
             handler.OID = oid;
-            OIDIndex[oid] = handler;
             handler.PgName = name;
+            OIDIndex[oid] = handler;
 
             if (mapping.NpgsqlDbType.HasValue)
             {
                 var npgsqlDbType = mapping.NpgsqlDbType.Value;
                 if (_byNpgsqlDbType.ContainsKey(npgsqlDbType))
-                    throw new Exception(
-                        $"Two type handlers registered on same NpgsqlDbType {npgsqlDbType}: {_byNpgsqlDbType[npgsqlDbType].GetType().Name} and {handlerType.Name}");
+                    throw new Exception($"Two type handlers registered on same NpgsqlDbType {npgsqlDbType}: {_byNpgsqlDbType[npgsqlDbType].GetType().Name} and {handlerType.Name}");
                 _byNpgsqlDbType[npgsqlDbType] = handler;
                 handler.NpgsqlDbType = npgsqlDbType;
             }
@@ -309,16 +308,14 @@ namespace Npgsql
             foreach (var dbType in mapping.DbTypes)
             {
                 if (_byDbType.ContainsKey(dbType))
-                    throw new Exception(
-                        $"Two type handlers registered on same DbType {dbType}: {_byDbType[dbType].GetType().Name} and {handlerType.Name}");
+                    throw new Exception($"Two type handlers registered on same DbType {dbType}: {_byDbType[dbType].GetType().Name} and {handlerType.Name}");
                 _byDbType[dbType] = handler;
             }
 
             foreach (var type in mapping.Types)
             {
                 if (_byType.ContainsKey(type))
-                    throw new Exception(
-                        $"Two type handlers registered on same .NET type {type}: {_byType[type].GetType().Name} and {handlerType.Name}");
+                    throw new Exception($"Two type handlers registered on same .NET type {type}: {_byType[type].GetType().Name} and {handlerType.Name}");
                 _byType[type] = handler;
             }
         }
@@ -337,22 +334,7 @@ namespace Npgsql
                 return;
             }
 
-            TypeHandler arrayHandler;
-
-            var asBitStringHandler = elementHandler as BitStringHandler;
-            if (asBitStringHandler != null) {
-                // BitString requires a special array handler which returns bool or BitArray
-                arrayHandler = new BitStringArrayHandler(asBitStringHandler);
-            } else if (elementHandler is ITypeHandlerWithPsv) {
-                var arrayHandlerType = typeof(ArrayHandlerWithPsv<,>).MakeGenericType(elementHandler.GetFieldType(), elementHandler.GetProviderSpecificFieldType());
-                arrayHandler = (TypeHandler)Activator.CreateInstance(arrayHandlerType, elementHandler);
-            } else {
-                var arrayHandlerType = typeof(ArrayHandler<>).MakeGenericType(elementHandler.GetFieldType());
-                arrayHandler = (TypeHandler)Activator.CreateInstance(arrayHandlerType, elementHandler);
-            }
-
-            arrayHandler.PgName = backendType.Name;
-            arrayHandler.OID = backendType.OID;
+            var arrayHandler = elementHandler.CreateArrayHandler(backendType.Name, backendType.OID);
             OIDIndex[backendType.OID] = arrayHandler;
 
             var asEnumHandler = elementHandler as IEnumHandler;
@@ -375,7 +357,7 @@ namespace Npgsql
                 return;
             }
 
-            _byNpgsqlDbType[NpgsqlDbType.Array | elementHandler.NpgsqlDbType] = arrayHandler;
+            _byNpgsqlDbType[arrayHandler.NpgsqlDbType] = arrayHandler;
         }
 
         #endregion
@@ -393,12 +375,7 @@ namespace Npgsql
                 return;
             }
 
-            var rangeHandlerType = typeof(RangeHandler<>).MakeGenericType(elementHandler.GetFieldType());
-            var handler = (TypeHandler)Activator.CreateInstance(rangeHandlerType, elementHandler, backendType.Name);
-
-            handler.PgName = backendType.Name;
-            handler.NpgsqlDbType = NpgsqlDbType.Range | elementHandler.NpgsqlDbType;
-            handler.OID = backendType.OID;
+            var handler = elementHandler.CreateRangeHandler(backendType.Name, backendType.OID);
             OIDIndex[backendType.OID] = handler;
             _byNpgsqlDbType.Add(handler.NpgsqlDbType, handler);
         }
