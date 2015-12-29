@@ -60,6 +60,7 @@ namespace Npgsql
         List<BackendType> _backendTypes;
 
         internal static readonly Dictionary<string, TypeAndMapping> HandlerTypes;
+        static readonly Dictionary<NpgsqlDbType, TypeAndMapping> HandlerTypesByNpsgqlDbType;
         static readonly Dictionary<NpgsqlDbType, DbType> NpgsqlDbTypeToDbType;
         static readonly Dictionary<DbType, NpgsqlDbType> DbTypeToNpgsqlDbType;
         static readonly Dictionary<Type, NpgsqlDbType> TypeToNpgsqlDbType;
@@ -536,7 +537,12 @@ namespace Npgsql
                         throw new InvalidCastException(string.Format("When specifying NpgsqlDbType.{0}, {0}Type must be specified as well",
                                                        npgsqlDbType == NpgsqlDbType.Enum ? "Enum" : "Composite"));
                     }
-                    throw new NotSupportedException("This NpgsqlDbType isn't supported in Npgsql yet: " + npgsqlDbType);
+                    TypeAndMapping typeAndMapping;
+                    if (!HandlerTypesByNpsgqlDbType.TryGetValue(npgsqlDbType, out typeAndMapping)) {
+                        throw new NotSupportedException("This NpgsqlDbType isn't supported in Npgsql yet: " + npgsqlDbType);
+                    }
+                    throw new NotSupportedException($"The PostgreSQL type '{typeAndMapping.Mapping.PgName}', mapped to NpgsqlDbType '{npgsqlDbType}' isn't present in your database. " +
+                                                     "You may need to install an extension or upgrade to a newer version.");
                 }
 
                 if ((npgsqlDbType & NpgsqlDbType.Array) != 0)
@@ -555,8 +561,7 @@ namespace Npgsql
                 {
                     throw new ArgumentException("specificType can only be set if NpgsqlDbType is set to Enum or Composite");
                 }
-                throw new NotSupportedException(
-                    $"The CLR type {specificType.Name} must be registered with Npgsql before usage, please refer to the documentation");
+                throw new NotSupportedException($"The CLR type {specificType.Name} must be registered with Npgsql before usage, please refer to the documentation");
             }
         }
 
@@ -755,6 +760,7 @@ namespace Npgsql
             _globalCompositeMappings = new ConcurrentDictionary<string, TypeHandler>();
 
             HandlerTypes = new Dictionary<string, TypeAndMapping>();
+            HandlerTypesByNpsgqlDbType = new Dictionary<NpgsqlDbType, TypeAndMapping>();
             NpgsqlDbTypeToDbType = new Dictionary<NpgsqlDbType, DbType>();
             DbTypeToNpgsqlDbType = new Dictionary<DbType, NpgsqlDbType>();
             TypeToNpgsqlDbType = new Dictionary<Type, NpgsqlDbType>();
@@ -771,7 +777,17 @@ namespace Npgsql
                     if (HandlerTypes.ContainsKey(m.PgName)) {
                         throw new Exception("Two type handlers registered on same PostgreSQL type name: " + m.PgName);
                     }
-                    HandlerTypes[m.PgName] = new TypeAndMapping { HandlerType=t, Mapping=m };
+                    var typeAndMapping = new TypeAndMapping { HandlerType = t, Mapping = m };
+                    HandlerTypes[m.PgName] = typeAndMapping;
+
+                    if (m.NpgsqlDbType.HasValue)
+                    {
+                        if (HandlerTypesByNpsgqlDbType.ContainsKey(m.NpgsqlDbType.Value)) {
+                            throw new Exception("Two type handlers registered on same NpgsqlDbType: " + m.NpgsqlDbType);
+                        }
+                        HandlerTypesByNpsgqlDbType[m.NpgsqlDbType.Value] = typeAndMapping;
+                    }
+
                     if (!m.NpgsqlDbType.HasValue) {
                         continue;
                     }
