@@ -93,20 +93,20 @@ namespace Npgsql
                 if (_legacyEntityFrameworkServices != null)
                     return _legacyEntityFrameworkServices;
 
-                // First time, attempt to find the Npgsql.EntityFrameworkLegacy assembly and load the type via reflection
+                // First time, attempt to find the EntityFramework5.Npgsql assembly and load the type via reflection
                 var assemblyName = typeof(NpgsqlFactory).GetTypeInfo().Assembly.GetName();
-                assemblyName.Name = "Npgsql.EntityFrameworkLegacy";
+                assemblyName.Name = "EntityFramework5.Npgsql";
                 Assembly npgsqlEfAssembly;
                 try {
                     npgsqlEfAssembly = Assembly.Load(new AssemblyName(assemblyName.FullName));
                 } catch (Exception e) {
-                    throw new Exception("Could not load Npgsql.EntityFrameworkLegacy assembly, is it installed?", e);
+                    throw new Exception("Could not load EntityFramework5.Npgsql assembly, is it installed?", e);
                 }
 
                 Type npgsqlServicesType;
                 if ((npgsqlServicesType = npgsqlEfAssembly.GetType("Npgsql.NpgsqlServices")) == null ||
                     npgsqlServicesType.GetProperty("Instance") == null)
-                    throw new Exception("Npgsql.EntityFrameworkLegacy assembly does not seem to contain the correct type!");
+                    throw new Exception("EntityFramework5.Npgsql assembly does not seem to contain the correct type!");
 
                 return _legacyEntityFrameworkServices = npgsqlServicesType.GetProperty("Instance", BindingFlags.Public | BindingFlags.Static).GetMethod.Invoke(null, new object[0]);
             }
