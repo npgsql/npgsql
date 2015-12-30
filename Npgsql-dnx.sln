@@ -30,6 +30,7 @@ EndProject
 Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "EntityFramework7.Npgsql.Design.FunctionalTests", "test\EntityFramework7.Npgsql.Design.FunctionalTests\EntityFramework7.Npgsql.Design.FunctionalTests.xproj", "{5336F099-DFF4-4439-9022-169AEB1FA737}"
 EndProject
 Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "EntityFramework5.Npgsql", "src\EntityFramework5.Npgsql\EntityFramework5.Npgsql.xproj", "{62CFD550-7F37-499E-BE88-7113E48BF06B}"
+EndProject
 Project("{930C7802-8A8C-48F9-8165-68863BCCD9DD}") = "GACInstaller", "src\GACInstaller\GACInstaller.wixproj", "{3E9D78D3-C5D4-40E3-9FDD-AC91E19618AB}"
 EndProject
 Global
