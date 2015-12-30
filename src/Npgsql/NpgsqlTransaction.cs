@@ -177,23 +177,7 @@ namespace Npgsql
         void RollbackInternal()
         {
             CheckReady();
-
-            Log.Debug("Rollback transaction", Connection.Connector.Id);
-
-            var connector = Connector;
-
-            try
-            {
-                // If we're in a failed transaction we can't set the timeout
-                var withTimeout = connector.TransactionStatus != TransactionStatus.InFailedTransactionBlock;
-                connector.ExecuteInternalCommand(PregeneratedMessage.RollbackTransaction, withTimeout);
-            }
-            finally
-            {
-                // The rollback may change the value of statement_value, set to unknown
-                connector.SetBackendTimeoutToUnknown();
-            }
-
+            Connector.Rollback();
             Connection = null;
         }
 
