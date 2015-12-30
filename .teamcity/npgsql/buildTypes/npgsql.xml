@@ -137,7 +137,7 @@ src\EntityFramework6.Npgsql\EntityFramework5.Npgsql.nuspec]]></param>
       </runner>
       <runner id="RUNNER_11" name="Build GAC Installer" type="MSBuild">
         <parameters>
-          <param name="build-file-path" value="GACInstaller.wixproj" />
+          <param name="build-file-path" value="src\GACInstaller\GACInstaller.wixproj" />
           <param name="dotNetCoverage.NCover.HTMLReport.File.Sort" value="0" />
           <param name="dotNetCoverage.NCover.HTMLReport.File.Type" value="1" />
           <param name="dotNetCoverage.NCover.Reg" value="selected" />
@@ -155,7 +155,7 @@ src\EntityFramework6.Npgsql\EntityFramework5.Npgsql.nuspec]]></param>
           <param name="msbuild_version" value="14.0" />
           <param name="run-platform" value="x86" />
           <param name="runnerArgs" value="/p:Configuration=Release" />
-          <param name="teamcity.build.workingDir" value="src\GACInstall" />
+          <param name="teamcity.build.workingDir" value="src\GACInstaller" />
           <param name="teamcity.step.mode" value="default" />
           <param name="toolsVersion" value="14.0" />
         </parameters>
