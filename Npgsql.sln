@@ -7,7 +7,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Npgsql", "src\Npgsql\Npgsql
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EntityFramework6.Npgsql", "src\EntityFramework6.Npgsql\EntityFramework6.Npgsql.csproj", "{3EC85CBA-5B79-11E3-8104-0022198AB089}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EntityFramework5.Npgsql", "src\EntityFramework6.Npgsql\EntityFramework5.Npgsql.csproj", "{100998C4-5B85-11E3-911C-0022198AB089}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EntityFramework5.Npgsql", "src\EntityFramework5.Npgsql\EntityFramework5.Npgsql.csproj", "{100998C4-5B85-11E3-911C-0022198AB089}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Npgsql.Tests", "test\Npgsql.Tests\Npgsql.Tests.csproj", "{E9C258D7-0D8E-4E6A-9857-5C6438591755}"
 EndProject
