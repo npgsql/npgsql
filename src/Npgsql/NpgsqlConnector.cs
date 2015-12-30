@@ -1183,6 +1183,22 @@ namespace Npgsql
 
         #region Transactions
 
+        internal void Rollback()
+        {
+            Log.Debug("Rollback transaction", Id);
+            try
+            {
+                // If we're in a failed transaction we can't set the timeout
+                var withTimeout = TransactionStatus != TransactionStatus.InFailedTransactionBlock;
+                ExecuteInternalCommand(PregeneratedMessage.RollbackTransaction, withTimeout);
+            }
+            finally
+            {
+                // The rollback may change the value of statement_value, set to unknown
+                SetBackendTimeoutToUnknown();
+            }
+        }
+
         internal bool InTransaction
         {
             get
@@ -1519,10 +1535,7 @@ namespace Npgsql
             // Must rollback transaction before sending DISCARD ALL
             if (InTransaction)
             {
-                // If we're in a failed transaction we can't set the timeout
-                var withTimeout = TransactionStatus != TransactionStatus.InFailedTransactionBlock;
-                PrependInternalMessage(PregeneratedMessage.RollbackTransaction, withTimeout);
-                ClearTransaction();
+                Rollback();
             }
 
             if (SupportsDiscard)
