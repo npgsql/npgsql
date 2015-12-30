@@ -1,0 +1,309 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"
+     xmlns:util="http://schemas.microsoft.com/wix/UtilExtension"
+  >
+  <!--
+  Prerequisites:
+    - WiX Toolset v3.10.1 or later
+      https://wix.codeplex.com/releases/view/618180
+    
+  Inputs:
+    ..\src\Npgsql\bin\Release\Npgsql.dll
+    ..\src\EntityFramework5.Npgsql\bin\Release\EntityFramework5.Npgsql.dll
+    
+  Build:
+    candle -dTITLE="Npgsql 3.1.0" -dASMVER=3.1.0.0 -ext WixUtilExtension NpgsqlSetup.wxs && light -sval -ext WixUIExtension -ext WixUtilExtension NpgsqlSetup.wixobj -o NpgsqlSetup.msi
+    
+  Outputs:
+    NpgsqlSetup.msi
+    
+  Install:
+    msiexec.exe /i NpgsqlSetup.msi
+    
+  Uninstall:
+    msiexec.exe /x "{772a9e26-9ab8-4011-bce6-d95b19d22b57}"
+    
+    -->
+  <Product Id="772a9e26-9ab8-4011-bce6-d95b19d22b57"
+           Name="$(var.TITLE)"
+           Language="1033"
+           Version="$(var.ASMVER)"
+           Manufacturer="You"
+           UpgradeCode="df971e89-5e78-4142-9ed2-179c0255a800">
+    <Package InstallerVersion="200"
+             Compressed="yes"
+             InstallScope="perMachine"
+             ShortNames="no" />
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+
+    <MediaTemplate EmbedCab="yes" />
+
+    <Feature Id="Npgsql45" 
+          Title="Npgsql.dll (.NET4.5) to GAC" 
+          Level="1" 
+          Description=".Net Data Provider for PostgreSQL&#x0a;Also includes EntityFramework5.Npgsql.dll."
+          Display="expand" >
+      <ComponentRef Id="Npgsql45" />
+      <ComponentRef Id="EntityFramework5.Npgsql45" />
+      
+      <Feature Id="DbProviderFactory4" 
+             Title="Edit machine.config" 
+             Level="1" 
+             Description="Register Npgsql as an ADO.NET Data Provider for PostgreSQL databases. &#x0a;Useful for Visual Studio 2012/2013, DDEX, and PowerQuery">
+        <ComponentRef Id="DbProviderFactory4_x86" />
+        <ComponentRef Id="DbProviderFactory4_x86_uninst" />
+        <ComponentRef Id="DbProviderFactory4_x64" />
+        <ComponentRef Id="DbProviderFactory4_x64_uninst" />
+      </Feature>
+    </Feature>
+
+    <UIRef Id="WixUI_FeatureTree" />
+
+    <WixVariable Id="WixUILicenseRtf" Value="License.rtf" />
+
+    <!-- ICE Reference
+          http://technet.microsoft.com/ja-jp/events/aa369206 
+          -->
+    <!-- http://blogs.msdn.com/b/heaths/archive/2006/09/20/installing-assemblies-for-runtime-and-design_2d00_time-use.aspx -->
+    <!-- http://stackoverflow.com/questions/17090689/wix-deploy-two-assemblies-to-gac -->
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="Npgsql45" Name="GAC">
+        <Component Id="Npgsql45" Guid="f842fa5e-5623-41aa-80aa-6d2e5bf97435">
+          <File Id="Npgsql45"
+                Name="Npgsql.dll"
+                Source="..\src\Npgsql\bin\Release\Npgsql.dll"
+                KeyPath="yes"
+                Assembly=".net" />
+        </Component>
+        <Component Id="EntityFramework5.Npgsql45" Guid="96c679d6-4e7a-483e-981a-d62deefde58d">
+          <File Id="EntityFramework5.Npgsql45"
+                Name="EntityFramework5.Npgsql.dll"
+                Source="..\src\EntityFramework5.Npgsql\bin\Release\EntityFramework5.Npgsql.dll"
+                KeyPath="yes"
+                Assembly=".net" />
+        </Component>
+      </Directory>
+
+      <!-- http://stackoverflow.com/questions/791455/how-do-i-modify-machine-config-via-an-msi-package -->
+      <!-- http://wixtoolset.org/documentation/manual/v3/xsd/util/xmlconfig.html -->
+      
+      <!-- 
+        XmlConfig cannot do:
+        - remove all 'add' elements. Only one element can be removed.
+        - select last 'add' element. XmlConfig uses obsoleted XSLPattern. last() isn't supported.
+        
+        So we have to add 'remove' invariant='Npgsql' element.
+        
+        http://stackoverflow.com/questions/8224918/adding-xml-nodes-with-similar-names-using-wix/8265578#8265578
+        -->
+      
+      <Directory Id="WindowsFolder">
+        <Directory Id="Dir_Microsoft.NET" Name="Microsoft.NET">
+          <Directory Id="Dir_Framework" Name="Framework">
+            <Directory Id="Dir_v4.0.30319" Name="v4.0.30319">
+              <Directory Id="Dir_CONFIG" Name="CONFIG">
+                <Component Id="DbProviderFactory4_x86" Guid="faf79467-d78b-4535-9f0f-86ff446a4294">
+                  
+                  <!-- instX86: add an 'remove' element -->
+                  <util:XmlConfig 
+                              Id="Machine_Config4_Xml_RemoveElem"
+                            File="[WindowsFolder]Microsoft.NET\Framework\v4.0.30319\CONFIG\machine.config"
+                          Action="create" 
+                              On="install"
+                     ElementPath="//configuration/system.data/DbProviderFactories" 
+                            Name="remove"
+                            Node="element" 
+                        Sequence="1"> 
+                  </util:XmlConfig> 
+                  <!-- instX86: set 'invariant' attribute -->
+                  <util:XmlConfig 
+                              Id="Machine_Config4_Xml_RemoveElem_Invariant"
+                            File="[WindowsFolder]Microsoft.NET\Framework\v4.0.30319\CONFIG\machine.config"
+                       ElementId="Machine_Config4_Xml_RemoveElem"
+                            Name="invariant"
+                           Value="Npgsql" 
+                        Sequence="2"> 
+                  </util:XmlConfig>
+
+                  <!-- instX86: add an 'add' element -->
+                  <util:XmlConfig 
+                              Id="Machine_Config4_Xml_AddElem"
+                            File="[WindowsFolder]Microsoft.NET\Framework\v4.0.30319\CONFIG\machine.config"
+                          Action="create" 
+                              On="install"
+                     ElementPath="//configuration/system.data/DbProviderFactories" 
+                            Name="add"
+                            Node="element" 
+                        Sequence="3"> 
+                  </util:XmlConfig> 
+                  <!-- instX86: set 'name' attribute -->
+                  <util:XmlConfig 
+                              Id="Machine_Config4_Xml_AddElem_Name"
+                            File="[WindowsFolder]Microsoft.NET\Framework\v4.0.30319\CONFIG\machine.config"
+                       ElementId="Machine_Config4_Xml_AddElem"
+                            Name="name"
+                           Value="Npgsql Data Provider" 
+                        Sequence="4"> 
+                  </util:XmlConfig>
+                  <!-- instX86: set 'invariant' attribute -->
+                  <util:XmlConfig 
+                              Id="Machine_Config4_Xml_AddElem_Invariant"
+                            File="[WindowsFolder]Microsoft.NET\Framework\v4.0.30319\CONFIG\machine.config"
+                       ElementId="Machine_Config4_Xml_AddElem"
+                            Name="invariant"
+                           Value="Npgsql" 
+                        Sequence="5"> 
+                  </util:XmlConfig>
+                  <!-- instX86: set 'description' attribute -->
+                  <util:XmlConfig 
+                              Id="Machine_Config4_Xml_AddElem_Desc"
+                            File="[WindowsFolder]Microsoft.NET\Framework\v4.0.30319\CONFIG\machine.config"
+                       ElementId="Machine_Config4_Xml_AddElem"
+                            Name="description"
+                           Value=".Net Data Provider for PostgreSQL" 
+                        Sequence="6"> 
+                  </util:XmlConfig>
+                  <!-- instX86: set 'type' attribute -->
+                  <util:XmlConfig 
+                              Id="Machine_Config4_Xml_AddElem_Type"
+                            File="[WindowsFolder]Microsoft.NET\Framework\v4.0.30319\CONFIG\machine.config"
+                       ElementId="Machine_Config4_Xml_AddElem"
+                            Name="type"
+                           Value="Npgsql.NpgsqlFactory, Npgsql, Version=$(var.ASMVER), Culture=neutral, PublicKeyToken=5d8b90d52f46fda7" 
+                        Sequence="7"> 
+                  </util:XmlConfig>
+                </Component>
+
+                <Component Id="DbProviderFactory4_x86_uninst" Guid="ea01fb71-40c8-4b54-bc7c-c8a8142e0a19">
+                  <!-- uninstX86: add 'remove' element -->
+                  <util:XmlConfig 
+                              Id="Machine_Config4_x86_Xml_Uninst_RemoveElem"
+                            File="[WindowsFolder]Microsoft.NET\Framework\v4.0.30319\CONFIG\machine.config"
+                          Action="create" 
+                              On="uninstall"
+                     ElementPath="//configuration/system.data/DbProviderFactories" 
+                            Name="remove"
+                            Node="element" 
+                        Sequence="18"> 
+                  </util:XmlConfig>
+                  <!-- uninstX86: set 'invariant' attribute -->
+                  <util:XmlConfig 
+                              Id="Machine_Config4_x86_Xml_Uninst_RemoveElem_Invariant"
+                            File="[WindowsFolder]Microsoft.NET\Framework\v4.0.30319\CONFIG\machine.config"
+                       ElementId="Machine_Config4_x86_Xml_Uninst_RemoveElem"
+                            Name="invariant"
+                           Value="Npgsql" 
+                        Sequence="19"> 
+                  </util:XmlConfig>
+                </Component>
+              </Directory>
+            </Directory>
+          </Directory>
+          <Directory Id="Dir_Framework_x64" Name="Framework64">
+            <Directory Id="Dir_v4.0.30319_x64" Name="v4.0.30319">
+              <Directory Id="Dir_CONFIG_x64" Name="CONFIG">
+                <Component Id="DbProviderFactory4_x64" Guid="68e3c228-18c3-4481-8b02-088e3d0186ff">
+                  <Condition>VersionNT64</Condition>
+                  
+                  <!-- instX64: add an 'remove' element -->
+                  <util:XmlConfig 
+                              Id="Machine_Config4_x64_Xml_RemoveElem"
+                            File="[WindowsFolder]Microsoft.NET\Framework64\v4.0.30319\CONFIG\machine.config"
+                          Action="create" 
+                              On="install"
+                     ElementPath="//configuration/system.data/DbProviderFactories" 
+                            Name="remove"
+                            Node="element" 
+                        Sequence="11"> 
+                  </util:XmlConfig> 
+                  <!-- instX64: set 'invariant' attribute -->
+                  <util:XmlConfig 
+                              Id="Machine_Config4_x64_Xml_RemoveElem_Invariant"
+                            File="[WindowsFolder]Microsoft.NET\Framework64\v4.0.30319\CONFIG\machine.config"
+                       ElementId="Machine_Config4_x64_Xml_RemoveElem"
+                            Name="invariant"
+                           Value="Npgsql" 
+                        Sequence="12"> 
+                  </util:XmlConfig>
+
+                  <!-- instX64: add an 'add' element -->
+                  <util:XmlConfig 
+                              Id="Machine_Config4_x64_Xml_AddElem"
+                            File="[WindowsFolder]Microsoft.NET\Framework64\v4.0.30319\CONFIG\machine.config"
+                          Action="create" 
+                              On="install"
+                     ElementPath="//configuration/system.data/DbProviderFactories" 
+                            Name="add"
+                            Node="element" 
+                        Sequence="13"> 
+                  </util:XmlConfig> 
+                  <!-- instX64: set 'name' attribute -->
+                  <util:XmlConfig 
+                              Id="Machine_Config4_x64_Xml_AddElem_Name"
+                            File="[WindowsFolder]Microsoft.NET\Framework64\v4.0.30319\CONFIG\machine.config"
+                       ElementId="Machine_Config4_x64_Xml_AddElem"
+                            Name="name"
+                           Value="Npgsql Data Provider" 
+                        Sequence="14"> 
+                  </util:XmlConfig>
+                  <!-- instX64: set 'invariant' attribute -->
+                  <util:XmlConfig 
+                              Id="Machine_Config4_x64_Xml_AddElem_Invariant"
+                            File="[WindowsFolder]Microsoft.NET\Framework64\v4.0.30319\CONFIG\machine.config"
+                       ElementId="Machine_Config4_x64_Xml_AddElem"
+                            Name="invariant"
+                           Value="Npgsql" 
+                        Sequence="15"> 
+                  </util:XmlConfig>
+                  <!-- instX64: set 'description' attribute -->
+                  <util:XmlConfig 
+                              Id="Machine_Config4_x64_Xml_AddElem_Desc"
+                            File="[WindowsFolder]Microsoft.NET\Framework64\v4.0.30319\CONFIG\machine.config"
+                       ElementId="Machine_Config4_x64_Xml_AddElem"
+                            Name="description"
+                           Value=".Net Data Provider for PostgreSQL" 
+                        Sequence="16"> 
+                  </util:XmlConfig>
+                  <!-- instX64: set 'type' attribute -->
+                  <util:XmlConfig 
+                              Id="Machine_Config4_x64_Xml_AddElem_Type"
+                            File="[WindowsFolder]Microsoft.NET\Framework64\v4.0.30319\CONFIG\machine.config"
+                       ElementId="Machine_Config4_x64_Xml_AddElem"
+                            Name="type"
+                           Value="Npgsql.NpgsqlFactory, Npgsql, Version=$(var.ASMVER), Culture=neutral, PublicKeyToken=5d8b90d52f46fda7" 
+                        Sequence="17"> 
+                  </util:XmlConfig>
+                </Component>
+
+                <Component Id="DbProviderFactory4_x64_uninst" Guid="1a386d7f-8ef6-446a-a425-f4c551cd85b2">
+                  <Condition>VersionNT64</Condition>
+                  <!-- uninstX64: add 'remove' element -->
+                  <util:XmlConfig 
+                              Id="Machine_Config4_x64_Xml_Uninst_RemoveElem"
+                            File="[WindowsFolder]Microsoft.NET\Framework64\v4.0.30319\CONFIG\machine.config"
+                          Action="create" 
+                              On="uninstall"
+                     ElementPath="//configuration/system.data/DbProviderFactories" 
+                            Name="remove"
+                            Node="element" 
+                        Sequence="18"> 
+                  </util:XmlConfig>
+                  <!-- uninstX64: set 'invariant' attribute -->
+                  <util:XmlConfig 
+                              Id="Machine_Config4_x64_Xml_Uninst_RemoveElem_Invariant"
+                            File="[WindowsFolder]Microsoft.NET\Framework64\v4.0.30319\CONFIG\machine.config"
+                       ElementId="Machine_Config4_x64_Xml_Uninst_RemoveElem"
+                            Name="invariant"
+                           Value="Npgsql" 
+                        Sequence="19"> 
+                  </util:XmlConfig>
+                </Component>
+              </Directory>
+            </Directory>
+          </Directory>
+        </Directory>
+      </Directory>
+    </Directory>
+  </Product>
+</Wix>
