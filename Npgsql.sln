@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.23107.0
+VisualStudioVersion = 14.0.24720.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{4A5A60DD-41B6-40BF-B677-227A921ECCC8}"
 	ProjectSection(SolutionItems) = preProject
@@ -18,6 +18,9 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EntityFramework6.Npgsql", "src\EntityFramework6.Npgsql\EntityFramework6.Npgsql.csproj", "{3EC85CBA-5B79-11E3-8104-0022198AB089}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EntityFramework5.Npgsql", "src\EntityFramework5.Npgsql\EntityFramework5.Npgsql.csproj", "{100998C4-5B85-11E3-911C-0022198AB089}"
+	ProjectSection(ProjectDependencies) = postProject
+		{E9C258D7-0D8E-4E6A-9857-5C6438591755} = {E9C258D7-0D8E-4E6A-9857-5C6438591755}
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Npgsql.Tests", "test\Npgsql.Tests\Npgsql.Tests.csproj", "{E9C258D7-0D8E-4E6A-9857-5C6438591755}"
 EndProject
@@ -32,6 +35,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EntityFramework7.Npgsql.Design", "src\EntityFramework7.Npgsql.Design\EntityFramework7.Npgsql.Design.csproj", "{8EDCED17-2D1D-45BE-9B61-0F715876DA94}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EntityFramework7.Npgsql.Design.FunctionalTests", "test\EntityFramework7.Npgsql.Design.FunctionalTests\EntityFramework7.Npgsql.Design.FunctionalTests.csproj", "{1410D291-C519-4E74-AE3D-6BC6C4A7C1DC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EntityFramework5.Npgsql.Tests", "test\EntityFramework5.Npgsql.Tests\EntityFramework5.Npgsql.Tests.csproj", "{4EB6FD81-6A30-4C35-AA89-BD2B0EDDAFF3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -79,6 +84,10 @@ Global
 		{1410D291-C519-4E74-AE3D-6BC6C4A7C1DC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1410D291-C519-4E74-AE3D-6BC6C4A7C1DC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1410D291-C519-4E74-AE3D-6BC6C4A7C1DC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4EB6FD81-6A30-4C35-AA89-BD2B0EDDAFF3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4EB6FD81-6A30-4C35-AA89-BD2B0EDDAFF3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4EB6FD81-6A30-4C35-AA89-BD2B0EDDAFF3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4EB6FD81-6A30-4C35-AA89-BD2B0EDDAFF3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -94,6 +103,7 @@ Global
 		{E1D99AD4-D88B-42BA-86DF-90B98B2E9A01} = {ED612DB1-AB32-4603-95E7-891BACA71C39}
 		{8EDCED17-2D1D-45BE-9B61-0F715876DA94} = {8537E50E-CF7F-49CB-B4EF-3E2A1B11F050}
 		{1410D291-C519-4E74-AE3D-6BC6C4A7C1DC} = {ED612DB1-AB32-4603-95E7-891BACA71C39}
+		{4EB6FD81-6A30-4C35-AA89-BD2B0EDDAFF3} = {ED612DB1-AB32-4603-95E7-891BACA71C39}
 	EndGlobalSection
 	GlobalSection(MonoDevelopProperties) = preSolution
 		StartupItem = Npgsql.csproj
