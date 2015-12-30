@@ -534,11 +534,6 @@ namespace Npgsql.TypeHandlers
         }
 
         #endregion
-
-        internal override ArrayHandler CreateArrayHandler(string pgName, uint oid)
-        {
-            throw new Exception("Can't create array handler of array types, this is an Npgsql bug, please report.");
-        }
     }
 
     /// <remarks>
