@@ -14,12 +14,12 @@ namespace Npgsql.VisualStudio.Provider
                 providerKey = context.CreateKey(@"DataProviders\{" + GuidList.guidNpgsqlDdexProviderDataProviderString + @"}");
                 providerKey.SetValue(null, ".NET Framework Data Provider for PostgreSQL");
                 providerKey.SetValue("AssociatedSource", "{" + GuidList.guidNpgsqlDdexProviderDataSourceString + "}");
-                providerKey.SetValue("Description", "Provider_Description, " + this.GetType().Namespace + ".Resources");
-                providerKey.SetValue("DisplayName", "Provider_DisplayName, " + this.GetType().Namespace + ".Resources");
+                providerKey.SetValue("Description", "Provider_Description, " + this.GetType().Namespace + ".Resources, NpgsqlDdexProvider");
+                providerKey.SetValue("DisplayName", "Provider_DisplayName, " + this.GetType().Namespace + ".Resources, NpgsqlDdexProvider");
                 providerKey.SetValue("FactoryService", "{" + GuidList.guidNpgsqlDdexProviderObjectFactoryString + "}");
                 providerKey.SetValue("InvariantName", "Npgsql");
                 providerKey.SetValue("PlatformVersion", "2.0");
-                providerKey.SetValue("ShortDisplayName", "Provider_ShortDisplayName, " + this.GetType().Namespace + ".Resources");
+                providerKey.SetValue("ShortDisplayName", "Provider_ShortDisplayName, " + this.GetType().Namespace + ".Resources, NpgsqlDdexProvider");
                 providerKey.SetValue("Technology", "{77AB9A9D-78B9-4ba7-91AC-873F5338F1D2}");
                 
                 providerKey = providerKey.CreateSubkey("SupportedObjects");
@@ -34,8 +34,8 @@ namespace Npgsql.VisualStudio.Provider
                 providerKey.SetValue("DefaultProvider", "{" + GuidList.guidNpgsqlDdexProviderDataProviderString + "}");
                 providerKey = providerKey.CreateSubkey("SupportingProviders");
                 providerKey = providerKey.CreateSubkey("{" + GuidList.guidNpgsqlDdexProviderDataProviderString + "}");
-                providerKey.SetValue("Description", "Provider_Description, " + this.GetType().Namespace + ".Resources");
-                providerKey.SetValue("DisplayName", "Provider_DisplayName, " + this.GetType().Namespace + ".Resources");
+                providerKey.SetValue("Description", "Provider_Description, " + this.GetType().Namespace + ".Resources, NpgsqlDdexProvider");
+                providerKey.SetValue("DisplayName", "Provider_DisplayName, " + this.GetType().Namespace + ".Resources, NpgsqlDdexProvider");
             }
             finally
             {

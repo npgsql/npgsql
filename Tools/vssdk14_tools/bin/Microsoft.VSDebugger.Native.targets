@@ -1,0 +1,30 @@
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <!--Code for creating the .contract.h file.-->
+  <PropertyGroup Condition="'$(OutputType)'=='library'">
+    <VsdConfigContractFile Condition="'$(VsdConfigContractFile)'==''">$(IntDir)$(ProjectName).Contract.h</VsdConfigContractFile>
+  </PropertyGroup>
+  <Target Name="CreateVsdbgConfigContract"
+    Inputs="@(VsdConfigXmlFiles)"
+    Outputs="$(VsdConfigContractFile)"
+    Condition="'@(VsdConfigXmlFiles)'!='' and '$(VsdConfigContractFile)'!=''"
+    BeforeTargets="ClCompile">
+
+    <Error Condition="'$(ConcordSDKDir)'==''"
+      Text="The 'ConcordSDKDir' property must be set in the root project file."/>
+    <Error Condition="!Exists('$(ConcordSDKDir)Tools\Bin\vsdconfigtool.exe')"
+      Text="The 'ConcordSDKDir' property is not correctly set. $(ConcordSDKDir)Tools\Bin\vsdconfigtool.exe does not exist"/>
+
+    <Exec Command="&quot;$(ConcordSDKDir)Tools\Bin\vsdconfigtool.exe&quot; @(VsdConfigXmlFiles, ' ') $(VsdConfigContractFile)" />
+  </Target>
+
+  <!--Code for cleaning the contract file-->
+  <Target Name="CleanVsdbgConfigContract"
+    Condition="'@(VsdConfigXmlFiles)'!=''">
+    <Delete Files="$(VsdConfigContractFile)"/>
+  </Target>
+  <PropertyGroup Condition="'$(VsdConfigContractFile)'!=''">
+    <CleanDependsOn>$(CleanDependsOn);CleanVsdbgConfigContract</CleanDependsOn>
+  </PropertyGroup>
+
+</Project>
