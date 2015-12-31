@@ -4,7 +4,7 @@
   >
   
   <Product Id="772a9e26-9ab8-4011-bce6-d95b19d22b57"
-           Name="Npgsql"
+           Name="Npgsql $(var.Version)"
            Language="1033"
            Version="$(var.Version)"
            Manufacturer="The Npgsql Development Team"
