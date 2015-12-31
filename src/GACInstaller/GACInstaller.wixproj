@@ -78,8 +78,8 @@
     <CreateProperty Value="$(FullVersion.Substring(0, $(FullVersion.LastIndexOf('.'))))">
       <Output TaskParameter="Value" PropertyName="Version" />
     </CreateProperty>
-    <!-- Store the assembly version number in Version preprocessor variable -->
-    <CreateProperty Value="$(DefineConstants);Version=$(Version)">
+    <!-- Store the version numbers in Version preprocessor variable -->
+    <CreateProperty Value="$(DefineConstants);Version=$(Version);FullVersion=$(FullVersion)">
       <Output TaskParameter="Value" PropertyName="DefineConstants" />
     </CreateProperty>
     <!-- Store the assembly public key token in AssemblyPublicKeyToken preprocessor variable -->
