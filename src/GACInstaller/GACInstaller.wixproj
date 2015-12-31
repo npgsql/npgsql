@@ -61,6 +61,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="License.rtf" />
+    <Content Include="postgresql.ico" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Strings1.wxl" />

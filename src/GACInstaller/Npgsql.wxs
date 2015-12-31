@@ -14,6 +14,9 @@
              InstallScope="perMachine"
              ShortNames="no" />
 
+    <Icon Id="postgresql.ico" SourceFile="postgresql.ico"/>
+    <Property Id="ARPPRODUCTICON" Value="postgresql.ico" />
+
     <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
 
     <MediaTemplate EmbedCab="yes" />
