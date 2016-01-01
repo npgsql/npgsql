@@ -42,7 +42,7 @@ namespace Npgsql
 #if WITHDESIGN
     [TypeConverter(typeof(NpgsqlParameterConverter))]
 #endif
-#if DNXCORE50 || DOTNET
+#if DNXCORE50 || UAP10_0 || DOTNET
     public sealed class NpgsqlParameter : DbParameter
 #else
     public sealed class NpgsqlParameter : DbParameter, ICloneable
