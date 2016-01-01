@@ -13,4 +13,3 @@ packages/*/
 artifacts/
 # Roslyn cache directories
 *.ide/
-*.lock.json

@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<package xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <metadata xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+    <id>EntityFramework5.Npgsql</id>
+    <title>Npgsql for Entity Framework 5</title>
+    <version>0.0.0</version>
+    <authors>Shay Rojansky, Emil Lenngren, Francisco Figueiredo Jr., Kenji Uno, Jon Asher, John Cooley, Federico Di Gregorio, Jon Hanna, Chris Morgan, Dave Page, Glen Parker, Brar Piening, Hiroshi Saito</authors>
+    <owners>Shay Rojansky, Emil Lenngren, Francisco Figueiredo Jr., Kenji Uno</owners>
+    <licenseUrl>https://github.com/npgsql/npgsql/blob/develop/LICENSE.txt</licenseUrl>
+    <projectUrl>http://www.npgsql.org</projectUrl>
+    <iconUrl>http://www.npgsql.org/img/postgresql.gif</iconUrl>
+    <copyright>Copyright 2002 - 2015 Npgsql Development Team</copyright>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>PostgreSQL provider for Entity Framework 5</description>
+    <summary>PostgreSQL provider for Entity Framework 5</summary>
+    <language>en-US</language>
+    <tags>npgsql postgresql postgres data database entity framework ef orm</tags>
+    <dependencies>
+      <dependency id="Npgsql" version="[$version$]" />
+      <dependency id="EntityFramework" version="(,6.0.0)" />
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="bin\Release\EntityFramework5.Npgsql.dll" target="lib\net45"/>
+    <file src="bin\Release\EntityFramework5.Npgsql.pdb" target="lib\net45"/>
+    <file src="bin\Release\EntityFramework5.Npgsql.xml" target="lib\net45"/>
+    <file src="**\*.cs" target="src" />
+  </files>
+</package>

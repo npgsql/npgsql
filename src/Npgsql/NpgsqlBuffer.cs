@@ -63,7 +63,7 @@ namespace Npgsql
 
         int _usableSize;
 
-        internal Encoding TextEncoding { get; }
+        internal Encoding TextEncoding { get; private set;}
 
         internal int ReadPosition { get; private set; }
         internal int ReadBytesLeft { get { return _filledBytes - ReadPosition; } }

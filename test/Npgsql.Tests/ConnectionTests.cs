@@ -345,6 +345,13 @@ namespace Npgsql.Tests
 
         #endregion
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/903")]
+        public void DataSource()
+        {
+            using (var conn = new NpgsqlConnection(ConnectionString))
+                Assert.That(conn.DataSource, Is.EqualTo(String.Format("tcp://{0}:{1}", conn.Host, conn.Port)));
+        }
+
         [Test]
         [IssueLink("https://github.com/npgsql/npgsql/issues/703")]
         public void NoDatabaseDefaultsToUsername()
@@ -762,9 +769,12 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/927")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/736")]
-        public void RollbackOnCloseThenOpenClose()
+        public void RollbackOnClose()
         {
+            // Npgsql 3.0.0 to 3.0.4 prepended a rollback for the next time the connector is used, as an optimization.
+            // This caused some issues (#927) and was removed.
             int processId;
             using (var conn = new NpgsqlConnection(ConnectionString))
             {
@@ -772,19 +782,13 @@ namespace Npgsql.Tests
                 processId = conn.Connector.BackendProcessId;
                 conn.BeginTransaction();
                 ExecuteNonQuery("SELECT 1", conn);
+                Assert.That(conn.Connector.TransactionStatus, Is.EqualTo(TransactionStatus.InTransactionBlock));
             }
-            // This close prepended a rollback for the next time the connector is used
             using (var conn = new NpgsqlConnection(ConnectionString))
             {
                 conn.Open();
                 Assert.That(conn.Connector.BackendProcessId, Is.EqualTo(processId));
-            }
-            // Make sure the prepended rollback is maintained
-            using (var conn = new NpgsqlConnection(ConnectionString))
-            {
-                conn.Open();
-                Assert.That(conn.Connector.BackendProcessId, Is.EqualTo(processId));
-                Assert.That(ExecuteScalar("SELECT 1", conn), Is.EqualTo(1));
+                Assert.That(conn.Connector.TransactionStatus, Is.EqualTo(TransactionStatus.Idle));
             }
         }
 
@@ -799,7 +803,7 @@ namespace Npgsql.Tests
                 var connectorId = conn.ProcessID;
 
                 // Use another connection to kill our connector
-                ExecuteNonQuery($"SELECT pg_terminate_backend({connectorId})");
+                ExecuteNonQuery(string.Format("SELECT pg_terminate_backend({0})", connectorId));
 
                 conn.Close();
             }

@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"
+     xmlns:util="http://schemas.microsoft.com/wix/UtilExtension"
+  >
+  
+  <Product Id="772a9e26-9ab8-4011-bce6-d95b19d22b57"
+           Name="Npgsql $(var.Version)"
+           Language="1033"
+           Version="$(var.Version)"
+           Manufacturer="The Npgsql Development Team"
+           UpgradeCode="df971e89-5e78-4142-9ed2-179c0255a800">
+    <Package InstallerVersion="200"
+             Compressed="yes"
+             InstallScope="perMachine"
+             ShortNames="no" />
+
+    <Icon Id="postgresql.ico" SourceFile="postgresql.ico"/>
+    <Property Id="ARPPRODUCTICON" Value="postgresql.ico" />
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+
+    <MediaTemplate EmbedCab="yes" />
+
+    <Feature Id="Npgsql" 
+             Title="Npgsql" 
+             Level="1" 
+             Description="Installs Npgsql into the GAC and adds it to your machine.config."
+             Absent="disallow"
+             AllowAdvertise="no"
+             Display="expand" >
+      <ComponentRef Id="Npgsql" />
+      <ComponentRef Id="MachineConfig_x86" />
+      <ComponentRef Id="MachineConfig_x64" />
+
+      <Feature Id="EntityFramework6.Npgsql"
+         Title="Entity Framework 6"
+         Level="10"
+         AllowAdvertise="no"
+         Description="Installs the the Npgsql Entity Framework 6 provider into the GAC.">
+        <ComponentRef Id="EntityFramework6.Npgsql" />
+      </Feature>
+
+      <Feature Id="EntityFramework5.Npgsql"
+         Title="Entity Framework 5"
+         Level="10"
+         AllowAdvertise="no"
+         Description="Installs the the Npgsql Entity Framework 5 provider into the GAC.">
+        <ComponentRef Id="EntityFramework5.Npgsql" />
+      </Feature>
+      
+    </Feature>
+
+    <UIRef Id="WixUI_FeatureTree" />
+
+    <WixVariable Id="WixUILicenseRtf" Value="License.rtf" />
+
+    <!-- ICE Reference
+          http://technet.microsoft.com/ja-jp/events/aa369206 
+          -->
+    <!-- http://blogs.msdn.com/b/heaths/archive/2006/09/20/installing-assemblies-for-runtime-and-design_2d00_time-use.aspx -->
+    <!-- http://stackoverflow.com/questions/17090689/wix-deploy-two-assemblies-to-gac -->
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="Npgsql" Name="GAC">
+        <Component Id="Npgsql" Guid="f842fa5e-5623-41aa-80aa-6d2e5bf97435">
+          <File Id="Npgsql"
+                Name="Npgsql.dll"
+                Source="$(var.Npgsql.ProjectDir)bin\$(var.Configuration)\Npgsql.dll"
+                KeyPath="yes"
+                Assembly=".net" />
+        </Component>
+        <Component Id="EntityFramework6.Npgsql" Guid="474ce704-44cb-4fe1-9c04-87ba458a77e0">
+          <File Id="EntityFramework6.Npgsql"
+                Name="EntityFramework6.Npgsql.dll"
+                Source="$(var.EntityFramework6.Npgsql.ProjectDir)bin\$(var.Configuration)\EntityFramework6.Npgsql.dll"
+                KeyPath="yes"
+                Assembly=".net" />
+        </Component>
+        <Component Id="EntityFramework5.Npgsql" Guid="96c679d6-4e7a-483e-981a-d62deefde58d">
+          <File Id="EntityFramework5.Npgsql"
+                Name="EntityFramework5.Npgsql.dll"
+                Source="$(var.EntityFramework5.Npgsql.ProjectDir)bin\$(var.Configuration)\EntityFramework5.Npgsql.dll"
+                KeyPath="yes"
+                Assembly=".net" />
+        </Component>
+      </Directory>
+
+      <!-- http://stackoverflow.com/questions/791455/how-do-i-modify-machine-config-via-an-msi-package -->
+      <!-- http://wixtoolset.org/documentation/manual/v3/xsd/util/xmlconfig.html -->
+      
+      <!-- 
+        XmlConfig cannot do:
+        - remove all 'add' elements. Only one element can be removed.
+        - select last 'add' element. XmlConfig uses obsoleted XSLPattern. last() isn't supported.
+        
+        So we have to add 'remove' invariant='Npgsql' element.
+        
+        http://stackoverflow.com/questions/8224918/adding-xml-nodes-with-similar-names-using-wix/8265578#8265578
+        -->
+
+      <Directory Id="WindowsFolder">
+        <Directory Id="Dir_Microsoft.NET" Name="Microsoft.NET">
+          <Directory Id="Dir_Framework" Name="Framework">
+            <Directory Id="Dir_v4.0.30319" Name="v4.0.30319">
+              <Directory Id="Dir_CONFIG" Name="CONFIG">
+                <Component Id="MachineConfig_x86" Guid="faf79467-d78b-4535-9f0f-86ff446a4294">
+                  <CreateFolder/>
+
+                  <?define MachineConfigPath = "[WindowsFolder]Microsoft.NET\Framework\v4.0.30319\CONFIG\machine.config" ?>
+
+                  <util:XmlConfig Id="CreateAddElement32" File="$(var.MachineConfigPath)" Action="create" On="install" ElementPath="//configuration/system.data/DbProviderFactories" Name="add" Node="element" VerifyPath="//configuration/system.data/DbProviderFactories/add[\[]@invariant='Npgsql'[\]]" Sequence="1">
+                    <util:XmlConfig Id="NameAttribute32" ElementId="CreateAddElement32" Name="name" Value="Npgsql Data Provider" File="$(var.MachineConfigPath)" />
+                    <util:XmlConfig Id="InvariantAttribute32" ElementId="CreateAddElement32" Name="invariant" Value="Npgsql" File="$(var.MachineConfigPath)" />
+                    <util:XmlConfig Id="DescriptionAttribute32" ElementId="CreateAddElement32" Name="description" Value=".NET Data Provider for PostgreSQL" File="$(var.MachineConfigPath)" />
+                    <util:XmlConfig Id="TypeAttribute32" ElementId="CreateAddElement32" Name="type" Value="Npgsql.NpgsqlFactory, Npgsql, Version=$(var.FullVersion), Culture=neutral, PublicKeyToken=$(var.AssemblyPublicKeyToken)" File="$(var.MachineConfigPath)" />
+                  </util:XmlConfig>
+
+                  <util:XmlConfig Id="DeleteAddElement32" File="$(var.MachineConfigPath)" Action="delete" On="uninstall" ElementPath="//configuration/system.data/DbProviderFactories" VerifyPath="//configuration/system.data/DbProviderFactories/add[\[]@invariant='Npgsql'[\]]" Node="element" Sequence="1"/>
+
+                </Component>
+              </Directory>
+            </Directory>
+          </Directory>
+          
+          <Directory Id="Dir_Framework_x64" Name="Framework64">
+            <Directory Id="Dir_v4.0.30319_x64" Name="v4.0.30319">
+              <Directory Id="Dir_CONFIG_x64" Name="CONFIG">
+                <Component Id="MachineConfig_x64" Guid="68e3c228-18c3-4481-8b02-088e3d0186ff">
+                  <Condition>VersionNT64</Condition>
+                  <CreateFolder/>
+
+                  <?define MachineConfigPath = "[WindowsFolder]Microsoft.NET\Framework64\v4.0.30319\CONFIG\machine.config" ?>
+
+                  <util:XmlConfig Id="CreateAddElement64" File="$(var.MachineConfigPath)" Action="create" On="install" ElementPath="//configuration/system.data/DbProviderFactories" Name="add" Node="element" VerifyPath="//configuration/system.data/DbProviderFactories/add[\[]@invariant='Npgsql'[\]]" Sequence="1">
+                    <util:XmlConfig Id="NameAttribute64" ElementId="CreateAddElement64" Name="name" Value="Npgsql Data Provider" File="$(var.MachineConfigPath)" />
+                    <util:XmlConfig Id="InvariantAttribute64" ElementId="CreateAddElement64" Name="invariant" Value="Npgsql" File="$(var.MachineConfigPath)" />
+                    <util:XmlConfig Id="DescriptionAttribute64" ElementId="CreateAddElement64" Name="description" Value=".NET Data Provider for PostgreSQL" File="$(var.MachineConfigPath)" />
+                    <util:XmlConfig Id="TypeAttribute64" ElementId="CreateAddElement64" Name="type" Value="Npgsql.NpgsqlFactory, Npgsql, Version=$(var.FullVersion), Culture=neutral, PublicKeyToken=$(var.AssemblyPublicKeyToken)" File="$(var.MachineConfigPath)" />
+                  </util:XmlConfig>
+
+                  <util:XmlConfig Id="DeleteAddElement64" File="$(var.MachineConfigPath)" Action="delete" On="uninstall" ElementPath="//configuration/system.data/DbProviderFactories" VerifyPath="//configuration/system.data/DbProviderFactories/add[\[]@invariant='Npgsql'[\]]" Node="element" Sequence="1"/>
+                  
+                </Component>
+              </Directory>
+            </Directory>
+          </Directory>
+        </Directory>
+      </Directory>
+    </Directory>
+  </Product>
+</Wix>

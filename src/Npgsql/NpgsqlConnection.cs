@@ -88,7 +88,7 @@ namespace Npgsql
         /// </summary>
         internal int OpenCounter { get; private set; }
 
-        internal bool WasBroken { get; set; }
+        bool _wasBroken;
 
 #if !DNXCORE50
         NpgsqlPromotableSinglePhaseNotification Promotable
@@ -179,7 +179,7 @@ namespace Npgsql
 
             Log.Trace("Opening connnection");
 
-            WasBroken = false;
+            _wasBroken = false;
 
             try
             {
@@ -321,9 +321,9 @@ namespace Npgsql
         public override string Database { get { return Settings.Database; } }
 
         /// <summary>
-        /// Gets the database server name.
+        /// Gets the string identifying the database server (host and port)
         /// </summary>
-        public override string DataSource { get { return Settings.Host; } }
+        public override string DataSource { get { return String.Format("tcp://{0}:{1}", Host, Port); } }
 
         /// <summary>
         /// Gets flag indicating if we are using Synchronous notification or not.
@@ -371,7 +371,7 @@ namespace Npgsql
             {
                 if (Connector == null || _disposed)
                 {
-                    return WasBroken ? ConnectionState.Broken : ConnectionState.Closed;
+                    return _wasBroken ? ConnectionState.Broken : ConnectionState.Closed;
                 }
 
                 switch (Connector.State)
@@ -560,11 +560,12 @@ namespace Npgsql
             ReallyClose();
         }
 
-        internal void ReallyClose()
+        internal void ReallyClose(bool wasBroken=false)
         {
             var connectorId = Connector.Id;
             Log.Trace("Really closing connection", connectorId);
             _postponingClose = false;
+            _wasBroken = wasBroken;
 
 #if !DNXCORE50
             // clear the way for another promotable transaction
