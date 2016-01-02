@@ -101,6 +101,7 @@ namespace Npgsql.Tests
                 {
                     if (TestUtil.IsOnBuildServer)
                         throw;
+                    Console.WriteLine(e);
                     Assert.Ignore("Integrated security (GSS/SSPI) doesn't seem to be set up");
                 }
             }
@@ -155,9 +156,11 @@ namespace Npgsql.Tests
         [SetUp]
         public void CheckSslSupport()
         {
+            /*
             var sslSupport = (string) ExecuteScalar("SHOW ssl", Conn);
             if (sslSupport == "off")
                 TestUtil.IgnoreExceptOnBuildServer("SSL support isn't enabled at the backend");
+                */
         }
 
         #endregion
