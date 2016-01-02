@@ -959,7 +959,11 @@ namespace Npgsql
 
         private string GetWindowsIdentityUserName()
         {
-            return WindowsIdentity.GetCurrent()?.Name ?? string.Empty;
+            var s = WindowsIdentity.GetCurrent()?.Name;
+            if (s == null)
+                return string.Empty;
+            var machineAndUser = s.Split('\\');
+            return _includeRealm ? $"{machineAndUser[1]}@{machineAndUser[0]}" : machineAndUser[1];
         }
 
         [CanBeNull]
@@ -998,8 +1002,7 @@ namespace Npgsql
                     string domainName = System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties().DomainName;
                     if (domainName.Equals(string.Empty))
                     {
-                        var machineAndUser = GetWindowsIdentityUserName().Split('\\');
-                        return _includeRealm ? $"{machineAndUser[1]}@{machineAndUser[0]}" : machineAndUser[1];
+                        return GetWindowsIdentityUserName();
                     }
 
                     // First, find a domain server we can talk to
