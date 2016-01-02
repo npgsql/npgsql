@@ -31,7 +31,7 @@
     "keyFile": "../../Npgsql.snk"
   },
   "dependencies" : {
-    "Npgsql": "3.1.0-*",
+    "Npgsql": "3.1.0-*"
   },
   "frameworks": {
     "net45": {
@@ -53,7 +53,7 @@
         "System.Reflection": "4.0.0.0",
         "System.Diagnostics.Contracts": "4.0.0.0",
         "System.Linq.Expressions": "4.0.0.0",
-        "System.Runtime": "4.0.0.0",
+        "System.Runtime": "4.0.0.0"
       }
     }
   }

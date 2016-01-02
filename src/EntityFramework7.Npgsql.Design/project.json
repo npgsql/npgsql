@@ -19,7 +19,7 @@
     "Microsoft.Extensions.DependencyInjection": "1.0.0-rc2-*",
     "Microsoft.Extensions.DependencyInjection.Abstractions": "1.0.0-rc2-*",
     "EntityFramework7.Npgsql": "3.1.0-*",
-    "Npgsql": "3.1.0-*",
+    "Npgsql": "3.1.0-*"
   },
   "frameworks": {
     "net451": {
@@ -40,7 +40,7 @@
         "System.Runtime": "4.0.0.0"
       }
     },
-    "dnxcore50": {
+    "dotnet54": {
       "dependencies": {
       }
     }
