@@ -104,7 +104,7 @@ namespace Npgsql.Tests
         #region Setup / Teardown
 
         [TestFixtureSetUp]
-        public virtual void TestFixtureSetup()
+        public void TestFixtureSetup()
         {
             SetupLogging();
 
@@ -124,6 +124,42 @@ namespace Npgsql.Tests
             else
             {
                 Assert.Ignore("Skipping tests for backend version {0}, environment variable {1} isn't defined", BackendVersion, connStringEnvVar);
+            }
+
+            CreateDatabaseIfDoesntExist();
+        }
+
+        /// <summary>
+        /// Connect to the database, create it if it doesn't yet exist.
+        /// </summary>
+        void CreateDatabaseIfDoesntExist()
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                try
+                {
+                    conn.Open();
+                }
+                catch (NpgsqlException e) when (e.Code == "3D000")
+                {
+                    var csb = new NpgsqlConnectionStringBuilder(_connectionString);
+                    var requiredDatabase = csb.Database;
+                    var username = csb.Username;
+                    csb.Database = "template1";
+                    csb.Pooling = false;
+                    conn.ConnectionString = csb.ToString();
+
+                    _log.Info($"Creating test database {requiredDatabase} for owner {username}");
+                    try
+                    {
+                        conn.Open();
+                        conn.ExecuteNonQuery($"CREATE DATABASE {requiredDatabase} OWNER {username}");
+                    }
+                    catch (Exception e2)
+                    {
+                        throw new Exception("Exception while trying to create test database", e2);
+                    }
+                }
             }
         }
 
