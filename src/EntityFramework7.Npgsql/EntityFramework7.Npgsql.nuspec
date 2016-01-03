@@ -8,7 +8,7 @@
     <owners>Shay Rojansky</owners>
     <licenseUrl>https://github.com/npgsql/npgsql/blob/develop/LICENSE.txt</licenseUrl>
     <projectUrl>http://www.npgsql.org</projectUrl>
-    <copyright>Copyright 2002 - 2015 Npgsql Development Team</copyright>
+    <copyright>Copyright 2002 - 2016 Npgsql Development Team</copyright>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>PostgreSQL provider for Entity Framework 7</description>
     <summary>PostgreSQL provider for Entity Framework 7</summary>
