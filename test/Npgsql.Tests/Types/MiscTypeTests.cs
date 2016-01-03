@@ -239,6 +239,7 @@ namespace Npgsql.Tests.Types
             using (var conn = OpenConnection())
             {
                 conn.ExecuteNonQuery(@"CREATE EXTENSION IF NOT EXISTS hstore");
+                conn.ReloadTypes();
 
                 var expected = new Dictionary<string, string> {
                     {"a", "3"},
