@@ -29,7 +29,7 @@ using System.Text;
 
 namespace Npgsql.FrontendMessages
 {
-    class ParseMessage : ChunkingFrontendMessage
+    class ParseMessage : FrontendMessage
     {
         /// <summary>
         /// The query string to be parsed.

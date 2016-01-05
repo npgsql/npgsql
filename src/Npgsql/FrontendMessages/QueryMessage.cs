@@ -32,7 +32,7 @@ namespace Npgsql.FrontendMessages
     /// <summary>
     /// A simple query message.
     /// </summary>
-    class QueryMessage : ChunkingFrontendMessage
+    class QueryMessage : FrontendMessage
     {
         string Query { get; set; }
 

@@ -29,7 +29,7 @@ using System.Text;
 
 namespace Npgsql.FrontendMessages
 {
-    class BindMessage : ChunkingFrontendMessage
+    class BindMessage : FrontendMessage
     {
         /// <summary>
         /// The name of the destination portal (an empty string selects the unnamed portal).

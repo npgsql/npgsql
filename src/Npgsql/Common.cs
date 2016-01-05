@@ -38,8 +38,21 @@ namespace Npgsql
 
     /// <summary>
     /// Base class for all classes which represent a message sent to the PostgreSQL backend.
+    /// Concrete classes which directly inherit this represent arbitrary-length messages which can chunked.
     /// </summary>
-    internal abstract class FrontendMessage {}
+    internal abstract class FrontendMessage
+    {
+        /// <param name="buf">the buffer into which to write the message.</param>
+        /// <param name="directBuf">
+        /// an option buffer that, if returned, will be written to the server directly, bypassing our
+        /// NpgsqlBuffer. This is an optimization hack for bytea.
+        /// </param>
+        /// <returns>
+        /// Whether there was enough space in the buffer to contain the entire message.
+        /// If false, the buffer should be flushed and write should be called again.
+        /// </returns>
+        internal abstract bool Write(NpgsqlBuffer buf, ref DirectBuffer directBuf);
+    }
 
     /// <summary>
     /// Represents a simple frontend message which is typically small and fits well within
@@ -57,24 +70,15 @@ namespace Npgsql
         /// Writes the message contents into the buffer.
         /// </summary>
         internal abstract void Write(NpgsqlBuffer buf);
-    }
 
-    /// <summary>
-    /// Represents an arbitrary-length message capable of flushing the buffer internally as it's
-    /// writing itself out.
-    /// </summary>
-    internal abstract class ChunkingFrontendMessage : FrontendMessage
-    {
-        /// <param name="buf">the buffer into which to write the message.</param>
-        /// <param name="directBuf">
-        /// an option buffer that, if returned, will be written to the server directly, bypassing our
-        /// NpgsqlBuffer. This is an optimization hack for bytea.
-        /// </param>
-        /// <returns>
-        /// Whether there was enough space in the buffer to contain the entire message.
-        /// If false, the buffer should be flushed and write should be called again.
-        /// </returns>
-        internal abstract bool Write(NpgsqlBuffer buf, ref DirectBuffer directBuf);
+        internal sealed override bool Write(NpgsqlBuffer buf, ref DirectBuffer directBuf)
+        {
+            Contract.Assume(Length < buf.UsableSize, $"Message of type {GetType().Name} has length {Length} which is bigger than the buffer ({buf.UsableSize})");
+            if (buf.WriteSpaceLeft < Length)
+                return false;
+            Write(buf);
+            return true;
+        }
     }
 
     internal enum BackendMessageCode : byte

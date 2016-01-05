@@ -923,39 +923,20 @@ namespace Npgsql
         {
             Log.Trace($"Sending: {msg}", Id);
 
-            var asSimple = msg as SimpleFrontendMessage;
-            if (asSimple != null)
+            var directBuf = new DirectBuffer();
+            while (!msg.Write(Buffer, ref directBuf))
             {
-                if (asSimple.Length > Buffer.WriteSpaceLeft)
+                Buffer.Flush();
+
+                // The following is an optimization hack for writing large byte arrays without passing
+                // through our buffer
+                if (directBuf.Buffer != null)
                 {
-                    Buffer.Flush();
+                    Buffer.Underlying.Write(directBuf.Buffer, directBuf.Offset, directBuf.Size == 0 ? directBuf.Buffer.Length : directBuf.Size);
+                    directBuf.Buffer = null;
+                    directBuf.Size = 0;
                 }
-                Contract.Assume(Buffer.WriteSpaceLeft >= asSimple.Length);
-                asSimple.Write(Buffer);
-                return;
             }
-
-            var asComplex = msg as ChunkingFrontendMessage;
-            if (asComplex != null)
-            {
-                var directBuf = new DirectBuffer();
-                while (!asComplex.Write(Buffer, ref directBuf))
-                {
-                    Buffer.Flush();
-
-                    // The following is an optimization hack for writing large byte arrays without passing
-                    // through our buffer
-                    if (directBuf.Buffer != null)
-                    {
-                        Buffer.Underlying.Write(directBuf.Buffer, directBuf.Offset, directBuf.Size == 0 ? directBuf.Buffer.Length : directBuf.Size);
-                        directBuf.Buffer = null;
-                        directBuf.Size = 0;
-                    }
-                }
-                return;
-            }
-
-            throw PGUtil.ThrowIfReached();
         }
 
         #endregion
