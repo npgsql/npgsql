@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -35,10 +35,10 @@ using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers
 {
-    internal interface IArrayHandler
+    internal abstract class ArrayHandler : ChunkingTypeHandler<Array>
     {
-        Type GetElementFieldType(FieldDescription fieldDescription);
-        Type GetElementPsvType(FieldDescription fieldDescription);
+        internal abstract Type GetElementFieldType(FieldDescription fieldDescription);
+        internal abstract Type GetElementPsvType(FieldDescription fieldDescription);
     }
 
     /// <summary>
@@ -47,7 +47,7 @@ namespace Npgsql.TypeHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/arrays.html
     /// </remarks>
-    internal class ArrayHandler<TElement> : ChunkingTypeHandler<Array>, IArrayHandler
+    internal class ArrayHandler<TElement> : ArrayHandler
     {
         /// <summary>
         /// The lower bound value sent to the backend when writing arrays. Normally 1 (the PG default) but
@@ -88,7 +88,7 @@ namespace Npgsql.TypeHandlers
         /// The type of the elements contained within this array
         /// </summary>
         /// <param name="fieldDescription"></param>
-        public virtual Type GetElementFieldType(FieldDescription fieldDescription)
+        internal override Type GetElementFieldType(FieldDescription fieldDescription)
         {
             return typeof(TElement);
         }
@@ -97,7 +97,7 @@ namespace Npgsql.TypeHandlers
         /// The provider-specific type of the elements contained within this array,
         /// </summary>
         /// <param name="fieldDescription"></param>
-        public virtual Type GetElementPsvType(FieldDescription fieldDescription)
+        internal override Type GetElementPsvType(FieldDescription fieldDescription)
         {
             return typeof(TElement);
         }
@@ -111,6 +111,14 @@ namespace Npgsql.TypeHandlers
         {
             LowerBound = 1;
             ElementHandler = elementHandler;
+            NpgsqlDbType = NpgsqlDbType.Array | elementHandler.NpgsqlDbType;
+        }
+
+        public ArrayHandler(TypeHandler elementHandler, string pgName, uint oid)
+            : this(elementHandler)
+        {
+            PgName = pgName;
+            OID = oid;
         }
 
         #region Read
@@ -539,7 +547,7 @@ namespace Npgsql.TypeHandlers
         /// The provider-specific type of the elements contained within this array,
         /// </summary>
         /// <param name="fieldDescription"></param>
-        public override Type GetElementPsvType(FieldDescription fieldDescription)
+        internal override Type GetElementPsvType(FieldDescription fieldDescription)
         {
             return typeof(TPsv);
         }
@@ -554,7 +562,7 @@ namespace Npgsql.TypeHandlers
             return result;
         }
 
-        public ArrayHandlerWithPsv(TypeHandler elementHandler)
-            : base(elementHandler) {}
+        public ArrayHandlerWithPsv(TypeHandler elementHandler, string pgName, uint oid)
+            : base(elementHandler, pgName, oid) {}
     }
 }

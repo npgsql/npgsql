@@ -28,6 +28,7 @@
     "url": "git://github.com/npgsql/npgsql"
   },
   "compile": "../Shared/*.cs",
+  "resourceFiles": "NpgsqlMetaData.xml",
   "compilationOptions": {
     "warningsAsErrors": true,
     "define": [ "__MonoCS__" ],
@@ -42,7 +43,7 @@
     ]
   },
   "dependencies": {
-    "AsyncRewriter": { "version": "0.7.8", "type": "build" }
+    "AsyncRewriter": { "version": "0.7.9", "type": "build" }
   },
   "frameworks": {
     "net45": {
@@ -78,7 +79,7 @@
         "System.Xml": "4.0.0.0"
       }
     },
-    "dnxcore50": {
+    "dotnet54": {
       "dependencies": {
         "System.Collections.Concurrent": "4.0.11-*",
         "System.Console": "4.0.0-*",

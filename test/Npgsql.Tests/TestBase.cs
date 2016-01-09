@@ -1,7 +1,7 @@
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -33,6 +33,7 @@ using System.Threading.Tasks;
 using NLog.Config;
 using NLog.Targets;
 using System.Text;
+using NLog;
 using Npgsql;
 using Npgsql.Logging;
 using Npgsql.Tests;
@@ -42,7 +43,6 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests
 {
-    [TestFixture("9.5")]
     [TestFixture("9.4")]
     [TestFixture("9.3")]
     [TestFixture("9.2")]
@@ -50,7 +50,9 @@ namespace Npgsql.Tests
     [TestFixture("9.0")]
     public abstract class TestBase
     {
-        protected Version BackendVersion { get; private set; }
+        public Version BackendVersion { get; }
+
+        static readonly Logger _log = LogManager.GetCurrentClassLogger();
 
         /// <summary>
         /// Constructs the parameterized test fixture
@@ -63,11 +65,6 @@ namespace Npgsql.Tests
         {
             BackendVersion = new Version(backendVersion);
         }
-
-        /// <summary>
-        /// A connection to the test database, set up prior to running each test.
-        /// </summary>
-        internal NpgsqlConnection Conn { get; set; }
 
         /// <summary>
         /// The connection string that will be used when opening the connection to the tests database.
@@ -107,7 +104,7 @@ namespace Npgsql.Tests
         #region Setup / Teardown
 
         [TestFixtureSetUp]
-        public virtual void TestFixtureSetup()
+        public void TestFixtureSetup()
         {
             SetupLogging();
 
@@ -115,57 +112,53 @@ namespace Npgsql.Tests
             _connectionString = Environment.GetEnvironmentVariable(connStringEnvVar);
             if (_connectionString != null)
             {
-                Console.WriteLine("Using connection string provided in env var {0}: {1}", connStringEnvVar, _connectionString);
+                _log.Debug("Using connection string provided in env var {0}: {1}", connStringEnvVar, _connectionString);
                 return;
             }
 
             if (BackendVersion == LatestBackendVersion)
             {
                 _connectionString = DEFAULT_CONNECTION_STRING;
-                Console.WriteLine("Using internal default connection string: " + _connectionString);
+                _log.Debug("Using internal default connection string: " + _connectionString);
             }
             else
             {
                 Assert.Ignore("Skipping tests for backend version {0}, environment variable {1} isn't defined", BackendVersion, connStringEnvVar);
             }
+
+            CreateDatabaseIfDoesntExist();
         }
 
-        [SetUp]
-        protected virtual void SetUp()
+        /// <summary>
+        /// Connect to the database, create it if it doesn't yet exist.
+        /// </summary>
+        void CreateDatabaseIfDoesntExist()
         {
-            Conn = new NpgsqlConnection(ConnectionString);
-            try
+            using (var conn = new NpgsqlConnection(_connectionString))
             {
-                Conn.Open();
-            }
-            catch (NpgsqlException e)
-            {
-                if (e.Code == "3D000")
-                    TestUtil.IgnoreExceptOnBuildServer("Please create a database npgsql_tests, owned by user npgsql_tests");
-                else if (e.Code == "28P01")
-                    TestUtil.IgnoreExceptOnBuildServer("Please create a user npgsql_tests as follows: create user npgsql_tests with password 'npgsql_tests'");
-                else
-                    throw;
-            }
-        }
+                try
+                {
+                    conn.Open();
+                }
+                catch (NpgsqlException e) when (e.Code == "3D000")
+                {
+                    var csb = new NpgsqlConnectionStringBuilder(_connectionString);
+                    var requiredDatabase = csb.Database;
+                    var username = csb.Username;
+                    csb.Database = "template1";
+                    csb.Pooling = false;
+                    conn.ConnectionString = csb.ToString();
 
-        [TearDown]
-        protected virtual void TearDown()
-        {
-            try { Conn.Close(); }
-            finally { Conn = null; }
-        }
-
-        protected void CreateSchema(string schemaName)
-        {
-            if (Conn.PostgreSqlVersion >= new Version(9, 3))
-                ExecuteNonQuery(String.Format("CREATE SCHEMA IF NOT EXISTS {0}", schemaName));
-            else
-            {
-                try { ExecuteNonQuery(String.Format("CREATE SCHEMA {0}", schemaName)); }
-                catch (NpgsqlException e) {
-                    if (e.Code != "42P06")
-                        throw;
+                    _log.Info($"Creating test database {requiredDatabase} for owner {username}");
+                    try
+                    {
+                        conn.Open();
+                        conn.ExecuteNonQuery($"CREATE DATABASE {requiredDatabase} OWNER {username}");
+                    }
+                    catch (Exception e2)
+                    {
+                        throw new Exception("Exception while trying to create test database", e2);
+                    }
                 }
             }
         }
@@ -179,7 +172,7 @@ namespace Npgsql.Tests
             get
             {
                 return typeof(TestBase)
-                    .GetCustomAttributes(typeof (TestFixtureAttribute), false)
+                    .GetCustomAttributes(typeof(TestFixtureAttribute), false)
                     .Cast<TestFixtureAttribute>()
                     .Select(a => new Version((string) a.Arguments[0]))
                     .Max();
@@ -208,49 +201,37 @@ namespace Npgsql.Tests
 
         #region Utilities for use by tests
 
-        protected int ExecuteNonQuery(string sql, NpgsqlConnection conn = null, NpgsqlTransaction tx = null)
+        protected NpgsqlConnection OpenConnection(string connectionString = null)
         {
-            if (conn == null)
-                conn = Conn;
-            var cmd = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
-            using (cmd)
-                return cmd.ExecuteNonQuery();
+            if (connectionString == null)
+                connectionString = ConnectionString;
+            var conn = new NpgsqlConnection(connectionString);
+            try
+            {
+                conn.Open();
+            }
+            catch (NpgsqlException e)
+            {
+                if (e.Code == "3D000")
+                    TestUtil.IgnoreExceptOnBuildServer("Please create a database npgsql_tests, owned by user npgsql_tests");
+                else if (e.Code == "28P01")
+                    TestUtil.IgnoreExceptOnBuildServer("Please create a user npgsql_tests as follows: create user npgsql_tests with password 'npgsql_tests'");
+                else
+                    throw;
+            }
+
+            return conn;
         }
 
-        protected object ExecuteScalar(string sql, NpgsqlConnection conn = null, NpgsqlTransaction tx = null)
+        protected NpgsqlConnection OpenConnection(NpgsqlConnectionStringBuilder csb)
         {
-            if (conn == null)
-                conn = Conn;
-            var cmd = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
-            using (cmd)
-                return cmd.ExecuteScalar();
+            return OpenConnection(csb.ToString());
         }
-
-#if !NET40
-        protected async Task<int> ExecuteNonQueryAsync(string sql, NpgsqlConnection conn = null, NpgsqlTransaction tx = null)
-        {
-            if (conn == null)
-                conn = Conn;
-            var cmd = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
-            using (cmd)
-                return await cmd.ExecuteNonQueryAsync();
-        }
-
-        protected async Task<object> ExecuteScalarAsync(string sql, NpgsqlConnection conn = null, NpgsqlTransaction tx = null)
-        {
-            if (conn == null)
-                conn = Conn;
-            var cmd = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
-            using (cmd)
-                return await cmd.ExecuteScalarAsync();
-        }
-#endif
 
         protected static bool IsSequential(CommandBehavior behavior)
         {
             return (behavior & CommandBehavior.SequentialAccess) != 0;
         }
-
 
         /// <summary>
         /// In PG under 9.1 you can't do SELECT pg_sleep(2) in binary because that function returns void and PG doesn't know

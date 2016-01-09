@@ -1,7 +1,7 @@
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -1395,10 +1395,9 @@ namespace Npgsql
             // We need to treat this as an actual array type, these need special treatment because of
             // typing/generics reasons
             var elementType = t.GetElementType();
-            var arrayHandler = handler as IArrayHandler;
+            var arrayHandler = handler as ArrayHandler;
             if (arrayHandler == null) {
-                throw new InvalidCastException(
-                    $"Can't cast database type {fieldDescription.Handler.PgName} to {typeof (T).Name}");
+                throw new InvalidCastException($"Can't cast database type {fieldDescription.Handler.PgName} to {typeof (T).Name}");
             }
 
             if (arrayHandler.GetElementFieldType(fieldDescription) == elementType)

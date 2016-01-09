@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -38,28 +38,31 @@ namespace Npgsql.Tests
         public AsyncTests(string backendVersion) : base(backendVersion) {}
 
         [Test]
-        public async void NonQuery()
+        public async Task NonQuery()
         {
-            ExecuteNonQuery("CREATE TEMP TABLE data (int INTEGER)");
-            using (var cmd = new NpgsqlCommand("INSERT INTO data (int) VALUES (4)", Conn))
+            using (var conn = OpenConnection())
             {
-                await cmd.ExecuteNonQueryAsync();
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (int INTEGER)");
+                using (var cmd = new NpgsqlCommand("INSERT INTO data (int) VALUES (4)", conn))
+                    await cmd.ExecuteNonQueryAsync();
+                Assert.That(conn.ExecuteScalar("SELECT int FROM data"), Is.EqualTo(4));
             }
-            Assert.That(ExecuteScalar("SELECT int FROM data"), Is.EqualTo(4));
         }
 
         [Test]
-        public async void Scalar()
+        public async Task Scalar()
         {
-            using (var cmd = new NpgsqlCommand("SELECT 1", Conn)) {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT 1", conn)) {
                 Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(1));
             }
         }
 
         [Test]
-        public async void Reader()
+        public async Task Reader()
         {
-            using (var cmd = new NpgsqlCommand("SELECT 1", Conn))
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT 1", conn))
             using (var reader = await cmd.ExecuteReaderAsync())
             {
                 await reader.ReadAsync();
@@ -68,9 +71,10 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async void Columnar()
+        public async Task Columnar()
         {
-            using (var cmd = new NpgsqlCommand("SELECT NULL, 2, 'Some Text'", Conn))
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT NULL, 2, 'Some Text'", conn))
             using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess))
             {
                 await reader.ReadAsync();
@@ -85,7 +89,8 @@ namespace Npgsql.Tests
         public void Cancel()
         {
             var cancellationSource = new CancellationTokenSource();
-            using (var cmd = CreateSleepCommand(Conn, 5))
+            using (var conn = OpenConnection())
+            using (var cmd = CreateSleepCommand(conn, 5))
             {
                 Task.Factory.StartNew(() =>
                                         {

@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -37,7 +37,6 @@ using Npgsql.Tests;
 
 namespace EntityFramework6.Npgsql.Tests
 {
-    [TestFixture]
     public class EntityFrameworkBasicTests : TestBase
     {
         public EntityFrameworkBasicTests(string backendVersion)
@@ -57,25 +56,21 @@ namespace EntityFramework6.Npgsql.Tests
             }
 
             // Create sequence for the IntComputedValue property.
-            using (var createSequenceConn = new NpgsqlConnection(ConnectionStringEF))
+            using (var createSequenceConn = OpenConnection(ConnectionStringEF))
             {
-                createSequenceConn.Open();
-                ExecuteNonQuery("create sequence blog_int_computed_value_seq", createSequenceConn);
-                ExecuteNonQuery("alter table \"dbo\".\"Blogs\" alter column \"IntComputedValue\" set default nextval('blog_int_computed_value_seq');", createSequenceConn);
-                ExecuteNonQuery("alter table \"dbo\".\"Posts\" alter column \"VarbitColumn\" type varbit using null", createSequenceConn);
-                ExecuteNonQuery("CREATE OR REPLACE FUNCTION \"dbo\".\"StoredAddFunction\"(integer, integer) RETURNS integer AS $$ SELECT $1 + $2; $$ LANGUAGE SQL;", createSequenceConn);
+                createSequenceConn.ExecuteNonQuery("create sequence blog_int_computed_value_seq");
+                createSequenceConn.ExecuteNonQuery("alter table \"dbo\".\"Blogs\" alter column \"IntComputedValue\" set default nextval('blog_int_computed_value_seq');");
+                createSequenceConn.ExecuteNonQuery("alter table \"dbo\".\"Posts\" alter column \"VarbitColumn\" type varbit using null");
+                createSequenceConn.ExecuteNonQuery("CREATE OR REPLACE FUNCTION \"dbo\".\"StoredAddFunction\"(integer, integer) RETURNS integer AS $$ SELECT $1 + $2; $$ LANGUAGE SQL;");
             }
-
-
         }
 
         /// <summary>
         /// Clean any previous entites before our test
         /// </summary>
         [SetUp]
-        protected override void SetUp()
+        protected void SetUp()
         {
-            base.SetUp();
             using (var context = new BloggingContext(ConnectionStringEF))
             {
                 context.Blogs.RemoveRange(context.Blogs);

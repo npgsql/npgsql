@@ -1,0 +1,75 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Release</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{3B74B136-DCA7-4F0D-BA95-193DB06D18C4}</ProjectGuid>
+    <OutputType>Exe</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>Build_nsis_installer</RootNamespace>
+    <AssemblyName>Setup_NpgsqlDdexProvider</AssemblyName>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <Target Name="Build">
+    <!-- Detect assembly version -->
+    <GetAssemblyIdentity AssemblyFiles="..\Npgsql\bin\Release\Npgsql.dll" Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+      <Output TaskParameter="Assemblies" ItemName="Npgsql" />
+    </GetAssemblyIdentity>
+
+    <!-- $(SetupVersion) is set like '3.1.0.0' -->
+    <CreateProperty Value="%(Npgsql.Version)" Condition=" '$(SetupVersion)' == '' ">
+      <Output TaskParameter="Value" PropertyName="SetupVersion" />
+    </CreateProperty>
+    
+    <!-- Edit VSIX package's version -->
+    <XmlPoke XmlInputPath="Vs2012\source.extension.vsixmanifest"
+             Query="/x:PackageManifest/x:Metadata/x:Identity/@Version"
+             Value="$(SetupVersion)"
+             Namespaces="&lt;Namespace Prefix='x' Uri='http://schemas.microsoft.com/developer/vsx-schema/2011' /&gt;" />
+
+    <XmlPoke XmlInputPath="Vs2013\source.extension.vsixmanifest"
+             Query="/x:PackageManifest/x:Metadata/x:Identity/@Version"
+             Value="$(SetupVersion)"
+             Namespaces="&lt;Namespace Prefix='x' Uri='http://schemas.microsoft.com/developer/vsx-schema/2011' /&gt;" />
+
+    <XmlPoke XmlInputPath="Vs2015\source.extension.vsixmanifest"
+             Query="/x:PackageManifest/x:Metadata/x:Identity/@Version"
+             Value="$(SetupVersion)"
+             Namespaces="&lt;Namespace Prefix='x' Uri='http://schemas.microsoft.com/developer/vsx-schema/2011' /&gt;" />
+
+    <!-- Build all supported DDEX packages -->
+    <MSBuild RebaseOutputs="true" Targets="Build" Projects="Build-all-ddex.csproj" />
+
+    <!-- The MakeDir task creates a folder that is named by the OutputPath property, provided that no folder by that name currently exists. -->
+    <MakeDir Directories="$(OutputPath)" Condition="!Exists('$(OutputPath)')" />
+
+    <!-- Build DDEX setup. -->
+    <Exec Command="&quot;C:\Program Files (x86)\NSIS\makensis.exe&quot; /DDDEX2012 /DDDEX2013 /DDDEX2015 /DOutFile=$(OutputPath)$(AssemblyName).exe /DVER=$(SetupVersion) Setup_NpgsqlDdexProvider.nsi " />
+  </Target>
+  <Target Name="Rebuild">
+    <CallTarget Targets="Clean;Build" />
+  </Target>
+  <Target Name="Clean">
+    <MSBuild RebaseOutputs="true" Targets="Clean" Projects="Build-all-ddex.csproj" />
+    
+    <Delete Files="$(OutputPath)$(AssemblyName).exe" />
+  </Target>
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

@@ -1,7 +1,7 @@
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -411,10 +411,7 @@ namespace Npgsql
             }
             catch
             {
-                try { Break(); }
-                catch {
-                    // ignored
-                }
+                BreakFromOpen();
                 throw;
             }
         }
@@ -518,7 +515,7 @@ namespace Npgsql
                         else
                         {
                             var sslStream = new SslStream(_stream, false, certificateValidationCallback);
-#if DNXCORE50
+#if DOTNET5_4
                             // CoreCLR removed sync methods from SslStream, see https://github.com/dotnet/corefx/pull/4868.
                             // Consider exactly what to do here.
                             sslStream.AuthenticateAsClientAsync(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, false).Wait();
@@ -660,7 +657,7 @@ namespace Npgsql
                 Log.Trace("Attempting to connect to " + ips[i], Id);
                 var ep = new IPEndPoint(ips[i], Port);
                 var socket = new Socket(ep.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-#if DNXCORE50
+#if DOTNET5_4
                 var connectTask = socket.ConnectAsync(ep);
 #else
                 var connectTask = Task.Factory.FromAsync(socket.BeginConnect, socket.EndConnect, ep, null);
@@ -1303,6 +1300,7 @@ namespace Npgsql
         /// Asynchronous messages (e.g. Notice) are treated and ignored. ErrorResponses raise an
         /// exception but do not cause the connector to break.
         /// </summary>
+        [RewriteAsync]
         internal T ReadExpecting<T>() where T : class, IBackendMessage
         {
             var msg = ReadSingleMessage(DataRowLoadingMode.NonSequential);
@@ -1310,8 +1308,7 @@ namespace Npgsql
             if (asExpected == null)
             {
                 Break();
-                throw new Exception(
-                    $"Received backend message {msg.Code} while expecting {typeof (T).Name}. Please file a bug.");
+                throw new Exception($"Received backend message {msg.Code} while expecting {typeof (T).Name}. Please file a bug.");
             }
             return asExpected;
         }
@@ -1319,6 +1316,23 @@ namespace Npgsql
         #endregion Backend message processing
 
         #region Transactions
+
+        [RewriteAsync]
+        internal void Rollback()
+        {
+            Log.Debug("Rollback transaction", Id);
+            try
+            {
+                // If we're in a failed transaction we can't set the timeout
+                var withTimeout = TransactionStatus != TransactionStatus.InFailedTransactionBlock;
+                ExecuteInternalCommand(PregeneratedMessage.RollbackTransaction, withTimeout);
+            }
+            finally
+            {
+                // The rollback may change the value of statement_value, set to unknown
+                SetBackendTimeoutToUnknown();
+            }
+        }
 
         internal bool InTransaction
         {
@@ -1515,9 +1529,16 @@ namespace Npgsql
             return new Exception($"Received unexpected backend message {received}. Please file a bug.");
         }
 
+        /// <summary>
+        /// Called when a connector becomes completely unusable, e.g. when an unexpected I/O exception is raised or when
+        /// we lose protocol sync.
+        /// Note that fatal errors during the Open phase do *not* pass through here.
+        /// </summary>
         internal void Break()
         {
             Contract.Requires(!IsClosed);
+            Contract.Requires(State != ConnectorState.Connecting);
+
             if (State == ConnectorState.Broken)
                 return;
 
@@ -1530,13 +1551,24 @@ namespace Npgsql
             // We have no connection if we're broken by a keepalive occuring while the connector is in the pool
             if (conn != null)
             {
+                // The connection's full state is usually calculated from the connector's, but in states closed/broken the
+                // connector is null. We therefore need a way to distinguish between Closed and Broken on the connection.
                 if (prevState != ConnectorState.Connecting)
-                {
-                    // A break during a connection attempt puts the connection in state closed, not broken
-                    conn.WasBroken = true;
-                }
-                conn.ReallyClose();
+                conn.ReallyClose(true);
             }
+        }
+
+        /// <summary>
+        /// Called when an open attempt fails (e.g. I/O error, timeout).
+        /// </summary>
+        internal void BreakFromOpen()
+        {
+            Contract.Requires(State == ConnectorState.Connecting);
+            Contract.Requires(Connection != null);
+
+            Log.Trace("Break connector during Open", Id);
+            State = ConnectorState.Broken;
+            Cleanup();
         }
 
         /// <summary>
@@ -1626,10 +1658,7 @@ namespace Npgsql
             // Must rollback transaction before sending DISCARD ALL
             if (InTransaction)
             {
-                // If we're in a failed transaction we can't set the timeout
-                var withTimeout = TransactionStatus != TransactionStatus.InFailedTransactionBlock;
-                PrependInternalMessage(PregeneratedMessage.RollbackTransaction, withTimeout);
-                ClearTransaction();
+                Rollback();
             }
 
             if (SupportsDiscard)
@@ -1911,6 +1940,7 @@ namespace Npgsql
             ExecuteInternalCommand(new QueryMessage(query), withTimeout);
         }
 
+        [RewriteAsync]
         internal void ExecuteInternalCommand(SimpleFrontendMessage message, bool withTimeout=true)
         {
             using (StartUserAction())

@@ -9,7 +9,7 @@
     <licenseUrl>https://github.com/npgsql/npgsql/blob/develop/LICENSE.txt</licenseUrl>
     <projectUrl>http://www.npgsql.org</projectUrl>
     <iconUrl>http://www.npgsql.org/img/postgresql.gif</iconUrl>
-    <copyright>Copyright 2002 - 2015 Npgsql Development Team</copyright>
+    <copyright>Copyright 2002 - 2016 Npgsql Development Team</copyright>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>PostgreSQL provider for Entity Framework 5</description>
     <summary>PostgreSQL provider for Entity Framework 5</summary>

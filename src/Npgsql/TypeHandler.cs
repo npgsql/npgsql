@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -30,6 +30,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AsyncRewriter;
 using JetBrains.Annotations;
+using Npgsql.TypeHandlers;
 
 namespace Npgsql
 {
@@ -75,6 +76,16 @@ namespace Npgsql
         internal abstract Task<T> ReadFullyAsync<T>(NpgsqlBuffer buf, int len, CancellationToken cancellationToken, FieldDescription fieldDescription = null);
 
         /// <summary>
+        /// Creates a type handler for arrays of this handler's type.
+        /// </summary>
+        internal abstract ArrayHandler CreateArrayHandler(string pgName, uint oid);
+
+        /// <summary>
+        /// Creates a type handler for ranges of this handler's type.
+        /// </summary>
+        internal abstract TypeHandler CreateRangeHandler(string pgName, uint oid);
+
+        /// <summary>
         ///
         /// </summary>
         /// <param name="clrType"></param>
@@ -117,6 +128,10 @@ namespace Npgsql
         {
             return ReadFully<T>(row, row.ColumnLen, fieldDescription);
         }
+
+        internal override ArrayHandler CreateArrayHandler(string pgName, uint oid) => new ArrayHandler<T>(this, pgName, oid);
+
+        internal override TypeHandler CreateRangeHandler(string pgName, uint oid) => new RangeHandler<T>(this, pgName, oid);
 
         [ContractInvariantMethod]
         void ObjectInvariants()
@@ -195,6 +210,11 @@ namespace Npgsql
         TPsv ISimpleTypeHandler<TPsv>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             return ReadPsv(buf, len, fieldDescription);
+        }
+
+        internal override ArrayHandler CreateArrayHandler(string pgName, uint oid)
+        {
+            return new ArrayHandlerWithPsv<T, TPsv>(this, pgName, oid);
         }
     }
 

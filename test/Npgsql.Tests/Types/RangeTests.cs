@@ -22,48 +22,53 @@ namespace Npgsql.Tests.Types
         [Test]
         public void Range()
         {
-            var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4", Conn);
-            var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Range | NpgsqlDbType.Integer) { Value = NpgsqlRange<int>.Empty() };
-            var p2 = new NpgsqlParameter { ParameterName = "p2", Value = new NpgsqlRange<int>(1, 10) };
-            var p3 = new NpgsqlParameter { ParameterName = "p3", Value = new NpgsqlRange<int>(1, false, 10, false) };
-            var p4 = new NpgsqlParameter { ParameterName = "p4", Value = new NpgsqlRange<int>(0, false, true, 10, false, false) };
-            Assert.That(p2.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Range | NpgsqlDbType.Integer));
-            cmd.Parameters.Add(p1);
-            cmd.Parameters.Add(p2);
-            cmd.Parameters.Add(p3);
-            cmd.Parameters.Add(p4);
-            var reader = cmd.ExecuteReader();
-            reader.Read();
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4", conn))
+            {
+                var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Range | NpgsqlDbType.Integer) { Value = NpgsqlRange<int>.Empty() };
+                var p2 = new NpgsqlParameter { ParameterName = "p2", Value = new NpgsqlRange<int>(1, 10) };
+                var p3 = new NpgsqlParameter { ParameterName = "p3", Value = new NpgsqlRange<int>(1, false, 10, false) };
+                var p4 = new NpgsqlParameter { ParameterName = "p4", Value = new NpgsqlRange<int>(0, false, true, 10, false, false) };
+                Assert.That(p2.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Range | NpgsqlDbType.Integer));
+                cmd.Parameters.Add(p1);
+                cmd.Parameters.Add(p2);
+                cmd.Parameters.Add(p3);
+                cmd.Parameters.Add(p4);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
 
-            Assert.That(reader[0].ToString(), Is.EqualTo("empty"));
-            Assert.That(reader[1].ToString(), Is.EqualTo("[1,11)"));
-            Assert.That(reader[2].ToString(), Is.EqualTo("[2,10)"));
-            Assert.That(reader[3].ToString(), Is.EqualTo("(,10)"));
-
-            reader.Dispose();
-            cmd.Dispose();
+                    Assert.That(reader[0].ToString(), Is.EqualTo("empty"));
+                    Assert.That(reader[1].ToString(), Is.EqualTo("[1,11)"));
+                    Assert.That(reader[2].ToString(), Is.EqualTo("[2,10)"));
+                    Assert.That(reader[3].ToString(), Is.EqualTo("(,10)"));
+                }
+            }
         }
 
         [Test]
         public void RangeWithLongSubtype()
         {
-            ExecuteNonQuery("CREATE TYPE pg_temp.textrange AS RANGE(subtype=text)");
-            Conn.ReloadTypes();
-            Assert.That(ExecuteScalar("SELECT 1"), Is.EqualTo(1));
-
-            var value = new NpgsqlRange<string>(
-                new string('a', Conn.BufferSize + 10),
-                new string('z', Conn.BufferSize + 10)
-            );
-
-            //var value = new NpgsqlRange<string>("bar", "foo");
-            using (var cmd = new NpgsqlCommand("SELECT @p", Conn))
+            using (var conn = OpenConnection())
             {
-                cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType.Range | NpgsqlDbType.Text) { Value = value });
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SequentialAccess))
+                conn.ExecuteNonQuery("CREATE TYPE pg_temp.textrange AS RANGE(subtype=text)");
+                conn.ReloadTypes();
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+
+                var value = new NpgsqlRange<string>(
+                    new string('a', conn.BufferSize + 10),
+                    new string('z', conn.BufferSize + 10)
+                    );
+
+                //var value = new NpgsqlRange<string>("bar", "foo");
+                using (var cmd = new NpgsqlCommand("SELECT @p", conn))
                 {
-                    reader.Read();
-                    Assert.That(reader[0], Is.EqualTo(value));
+                    cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType.Range | NpgsqlDbType.Text) {Value = value});
+                    using (var reader = cmd.ExecuteReader(CommandBehavior.SequentialAccess))
+                    {
+                        reader.Read();
+                        Assert.That(reader[0], Is.EqualTo(value));
+                    }
                 }
             }
         }
@@ -71,7 +76,8 @@ namespace Npgsql.Tests.Types
         [Test]
         public void TestRange()
         {
-            using (var cmd = Conn.CreateCommand())
+            using (var conn = OpenConnection())
+            using (var cmd = conn.CreateCommand())
             {
                 object obj;
 

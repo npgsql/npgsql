@@ -1,7 +1,7 @@
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -959,8 +959,11 @@ namespace Npgsql
 
         private string GetWindowsIdentityUserName()
         {
-            var identity = WindowsIdentity.GetCurrent();
-            return identity == null ? string.Empty : identity.Name.Split('\\')[1];
+            var s = WindowsIdentity.GetCurrent()?.Name;
+            if (s == null)
+                return string.Empty;
+            var machineAndUser = s.Split('\\');
+            return _includeRealm ? $"{machineAndUser[1]}@{machineAndUser[0]}" : machineAndUser[1];
         }
 
         [CanBeNull]

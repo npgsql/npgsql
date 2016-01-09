@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -44,120 +44,153 @@ namespace Npgsql.Tests.Types
         [Test]
         public void Point()
         {
-            var expected = new NpgsqlPoint(1.2, 3.4);
-            var cmd = new NpgsqlCommand("SELECT @p1, @p2", Conn);
-            var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Point) { Value = expected };
-            var p2 = new NpgsqlParameter { ParameterName = "p2", Value = expected };
-            Assert.That(p2.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Point));
-            cmd.Parameters.Add(p1);
-            cmd.Parameters.Add(p2);
-            var reader = cmd.ExecuteReader();
-            reader.Read();
-
-            for (var i = 0; i < cmd.Parameters.Count; i++)
+            using (var conn = OpenConnection())
             {
-                Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(NpgsqlPoint)));
-                Assert.That(reader[i], Is.EqualTo(expected));
+                var expected = new NpgsqlPoint(1.2, 3.4);
+                var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
+                var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Point) {Value = expected};
+                var p2 = new NpgsqlParameter {ParameterName = "p2", Value = expected};
+                Assert.That(p2.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Point));
+                cmd.Parameters.Add(p1);
+                cmd.Parameters.Add(p2);
+                using (var reader = cmd.ExecuteReader()) {
+                    reader.Read();
+
+                    for (var i = 0; i < cmd.Parameters.Count; i++)
+                    {
+                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof (NpgsqlPoint)));
+                        Assert.That(reader[i], Is.EqualTo(expected));
+                    }
+                }
             }
         }
 
         [Test]
         public void LineSegment()
         {
-            var expected = new NpgsqlLSeg(1, 2 ,3, 4);
-            var cmd = new NpgsqlCommand("SELECT @p1, @p2", Conn);
-            var p1 = new NpgsqlParameter("p1", NpgsqlDbType.LSeg) { Value = expected };
-            var p2 = new NpgsqlParameter { ParameterName = "p2", Value = expected };
-            Assert.That(p2.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.LSeg));
-            cmd.Parameters.Add(p1);
-            cmd.Parameters.Add(p2);
-            var reader = cmd.ExecuteReader();
-            reader.Read();
+            using (var conn = OpenConnection())
+            {
+                var expected = new NpgsqlLSeg(1, 2, 3, 4);
+                var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
+                var p1 = new NpgsqlParameter("p1", NpgsqlDbType.LSeg) {Value = expected};
+                var p2 = new NpgsqlParameter {ParameterName = "p2", Value = expected};
+                Assert.That(p2.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.LSeg));
+                cmd.Parameters.Add(p1);
+                cmd.Parameters.Add(p2);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
 
-            for (var i = 0; i < cmd.Parameters.Count; i++) {
-                Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(NpgsqlLSeg)));
-                Assert.That(reader[i], Is.EqualTo(expected));
+                    for (var i = 0; i < cmd.Parameters.Count; i++)
+                    {
+                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof (NpgsqlLSeg)));
+                        Assert.That(reader[i], Is.EqualTo(expected));
+                    }
+                }
             }
         }
 
         [Test]
         public void Box()
         {
-            var expected = new NpgsqlBox(2, 4, 1, 3);
-            var cmd = new NpgsqlCommand("SELECT @p1, @p2", Conn);
-            var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Box) { Value = expected };
-            var p2 = new NpgsqlParameter { ParameterName = "p2", Value = expected };
-            Assert.That(p2.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Box));
-            cmd.Parameters.Add(p1);
-            cmd.Parameters.Add(p2);
-            var reader = cmd.ExecuteReader();
-            reader.Read();
+            using (var conn = OpenConnection())
+            {
+                var expected = new NpgsqlBox(2, 4, 1, 3);
+                var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
+                var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Box) {Value = expected};
+                var p2 = new NpgsqlParameter {ParameterName = "p2", Value = expected};
+                Assert.That(p2.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Box));
+                cmd.Parameters.Add(p1);
+                cmd.Parameters.Add(p2);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
 
-            for (var i = 0; i < cmd.Parameters.Count; i++) {
-                Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(NpgsqlBox)));
-                Assert.That(reader[i], Is.EqualTo(expected));
+                    for (var i = 0; i < cmd.Parameters.Count; i++)
+                    {
+                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof (NpgsqlBox)));
+                        Assert.That(reader[i], Is.EqualTo(expected));
+                    }
+                }
             }
         }
 
         [Test]
         public void Path()
         {
-            var expectedOpen = new NpgsqlPath(new[] { new NpgsqlPoint(1, 2), new NpgsqlPoint(3, 4) }, true);
-            var expectedClosed = new NpgsqlPath(new[] { new NpgsqlPoint(1, 2), new NpgsqlPoint(3, 4) }, false);
-            var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", Conn);
-            var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Path) { Value = expectedOpen };
-            var p2 = new NpgsqlParameter("p2", NpgsqlDbType.Path) { Value = expectedClosed };
-            var p3 = new NpgsqlParameter { ParameterName = "p3", Value = expectedClosed };
-            Assert.That(p3.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Path));
-            cmd.Parameters.Add(p1);
-            cmd.Parameters.Add(p2);
-            cmd.Parameters.Add(p3);
-            var reader = cmd.ExecuteReader();
-            reader.Read();
-
-            for (var i = 0; i < cmd.Parameters.Count; i++)
+            using (var conn = OpenConnection())
             {
-                var expected = i == 0 ? expectedOpen : expectedClosed;
-                Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(NpgsqlPath)));
-                Assert.That(reader[i], Is.EqualTo(expected));
+                var expectedOpen = new NpgsqlPath(new[] {new NpgsqlPoint(1, 2), new NpgsqlPoint(3, 4)}, true);
+                var expectedClosed = new NpgsqlPath(new[] {new NpgsqlPoint(1, 2), new NpgsqlPoint(3, 4)}, false);
+                var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", conn);
+                var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Path) {Value = expectedOpen};
+                var p2 = new NpgsqlParameter("p2", NpgsqlDbType.Path) {Value = expectedClosed};
+                var p3 = new NpgsqlParameter {ParameterName = "p3", Value = expectedClosed};
+                Assert.That(p3.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Path));
+                cmd.Parameters.Add(p1);
+                cmd.Parameters.Add(p2);
+                cmd.Parameters.Add(p3);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+
+                    for (var i = 0; i < cmd.Parameters.Count; i++)
+                    {
+                        var expected = i == 0 ? expectedOpen : expectedClosed;
+                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof (NpgsqlPath)));
+                        Assert.That(reader[i], Is.EqualTo(expected));
+                    }
+                }
             }
         }
 
         [Test]
         public void Polygon()
         {
-            var expected = new NpgsqlPolygon(new NpgsqlPoint(1, 2), new NpgsqlPoint(3, 4));
-            var cmd = new NpgsqlCommand("SELECT @p1, @p2", Conn);
-            var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Polygon) { Value = expected };
-            var p2 = new NpgsqlParameter { ParameterName = "p2", Value = expected };
-            Assert.That(p2.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Polygon));
-            cmd.Parameters.Add(p1);
-            cmd.Parameters.Add(p2);
-            var reader = cmd.ExecuteReader();
-            reader.Read();
+            using (var conn = OpenConnection())
+            {
+                var expected = new NpgsqlPolygon(new NpgsqlPoint(1, 2), new NpgsqlPoint(3, 4));
+                var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
+                var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Polygon) {Value = expected};
+                var p2 = new NpgsqlParameter {ParameterName = "p2", Value = expected};
+                Assert.That(p2.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Polygon));
+                cmd.Parameters.Add(p1);
+                cmd.Parameters.Add(p2);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
 
-            for (var i = 0; i < cmd.Parameters.Count; i++) {
-                Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(NpgsqlPolygon)));
-                Assert.That(reader[i], Is.EqualTo(expected));
+                    for (var i = 0; i < cmd.Parameters.Count; i++)
+                    {
+                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof (NpgsqlPolygon)));
+                        Assert.That(reader[i], Is.EqualTo(expected));
+                    }
+                }
             }
         }
 
         [Test]
         public void Circle()
         {
-            var expected = new NpgsqlCircle(1, 2, 0.5);
-            var cmd = new NpgsqlCommand("SELECT @p1, @p2", Conn);
-            var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Circle) { Value = expected };
-            var p2 = new NpgsqlParameter { ParameterName = "p2", Value = expected };
-            Assert.That(p2.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Circle));
-            cmd.Parameters.Add(p1);
-            cmd.Parameters.Add(p2);
-            var reader = cmd.ExecuteReader();
-            reader.Read();
+            using (var conn = OpenConnection())
+            {
+                var expected = new NpgsqlCircle(1, 2, 0.5);
+                var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
+                var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Circle) {Value = expected};
+                var p2 = new NpgsqlParameter {ParameterName = "p2", Value = expected};
+                Assert.That(p2.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Circle));
+                cmd.Parameters.Add(p1);
+                cmd.Parameters.Add(p2);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
 
-            for (var i = 0; i < cmd.Parameters.Count; i++) {
-                Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(NpgsqlCircle)));
-                Assert.That(reader[i], Is.EqualTo(expected));
+                    for (var i = 0; i < cmd.Parameters.Count; i++)
+                    {
+                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof (NpgsqlCircle)));
+                        Assert.That(reader[i], Is.EqualTo(expected));
+                    }
+                }
             }
         }
 

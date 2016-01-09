@@ -1,4 +1,7 @@
-﻿using System;
+﻿// With RC2 these tests fail apparently because CompilationServices.Default is null
+// (see https://github.com/aspnet/dnx/issues/3248). Follow EF7 on this.
+#if NET46
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -251,3 +254,4 @@ CREATE SEQUENCE ""CyclicalCountByThree""
         }
     }
 }
+#endif

@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -112,7 +112,8 @@ namespace Npgsql.Tests.Types
         [Test,TestCaseSource("Tests")]
         public void PostgisTestRead(TestAtt att)
         {
-            using (var cmd = Conn.CreateCommand())
+            using (var conn = OpenConnection())
+            using (var cmd = conn.CreateCommand())
             {
                 var a = att;
                 cmd.CommandText = "Select " + a.SQL;
@@ -124,7 +125,8 @@ namespace Npgsql.Tests.Types
         [Test, TestCaseSource("Tests")]
         public void PostgisTestWrite(TestAtt a)
         {
-            using (var cmd = Conn.CreateCommand())
+            using (var conn = OpenConnection())
+            using (var cmd = conn.CreateCommand())
             {
                 cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Geometry,a.Geom);
                 a.Geom.SRID = 0;
@@ -144,7 +146,8 @@ namespace Npgsql.Tests.Types
         [Test, TestCaseSource("Tests")]
         public void PostgisTestWriteSrid(TestAtt a)
         {
-            using (var cmd = Conn.CreateCommand())
+            using (var conn = OpenConnection())
+            using (var cmd = conn.CreateCommand())
             {
                 cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Geometry, a.Geom);
                 a.Geom.SRID = 3942;
@@ -157,7 +160,8 @@ namespace Npgsql.Tests.Types
         [Test, TestCaseSource("Tests")]
         public void PostgisTestReadSrid(TestAtt a)
         {
-            using (var cmd = Conn.CreateCommand())
+            using (var conn = OpenConnection())
+            using (var cmd = conn.CreateCommand())
             {
                 cmd.CommandText = "Select st_setsrid(" + a.SQL + ",3942)";
                 var p = cmd.ExecuteScalar();
@@ -169,7 +173,8 @@ namespace Npgsql.Tests.Types
         [Test]
         public void PostgisTestArrayRead()
         {
-            using (var cmd = Conn.CreateCommand())
+            using (var conn = OpenConnection())
+            using (var cmd = conn.CreateCommand())
             {
                 cmd.CommandText = "Select ARRAY(select st_makepoint(1,1))";
                 var p = cmd.ExecuteScalar() as PostgisGeometry[];
@@ -181,7 +186,8 @@ namespace Npgsql.Tests.Types
         [Test]
         public void PostgisTestArrayWrite()
         {
-            using (var cmd = Conn.CreateCommand())
+            using (var conn = OpenConnection())
+            using (var cmd = conn.CreateCommand())
             {
                 var p = new PostgisPoint[1] { new PostgisPoint(1d, 1d) };
                 cmd.Parameters.AddWithValue(":p1", NpgsqlDbType.Array | NpgsqlDbType.Geometry, p);
@@ -190,10 +196,11 @@ namespace Npgsql.Tests.Types
             }
         }
 
-        protected override void SetUp()
+        [SetUp]
+        public void SetUp()
         {
-            base.SetUp();
-            using (var cmd = Conn.CreateCommand())
+            using (var conn = OpenConnection())
+            using (var cmd = conn.CreateCommand())
             {
                 cmd.CommandText = "SELECT postgis_version();";
                 try

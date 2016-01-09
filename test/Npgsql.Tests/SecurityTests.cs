@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -42,11 +42,15 @@ namespace Npgsql.Tests
         [TestCase(true,  TestName = "SslStream")]
         public void BasicSsl(bool useSslStream)
         {
-            using (var conn = new NpgsqlConnection(ConnectionString + ";SslMode=Require;TrustServerCertificate=true;" + (useSslStream ? ";UseSslStream=true" : "")))
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                conn.Open();
+                SslMode = SslMode.Require,
+                TrustServerCertificate = true,
+                UseSslStream = useSslStream
+            };
+
+            using (var conn = OpenConnection(csb))
                 Assert.That(conn.IsSecure, Is.True);
-            }
         }
 
         [Test, Description("Makes sure a certificate whose root CA isn't known isn't accepted")]
@@ -54,7 +58,13 @@ namespace Npgsql.Tests
         [TestCase(true,  TestName = "SslStream")]
         public void RejectSelfSignedCertificate(bool useSslStream)
         {
-            using (var conn = new NpgsqlConnection(ConnectionString + ";SslMode=Require;" + (useSslStream ? ";UseSslStream=true" : "")))
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                SslMode = SslMode.Require,
+                UseSslStream = useSslStream
+            };
+
+            using (var conn = new NpgsqlConnection(csb))
             {
                 // The following is necessary since a pooled connector may exist from a previous
                 // SSL test
@@ -68,19 +78,25 @@ namespace Npgsql.Tests
         [Test, Description("Makes sure that ssl_renegotiation_limit is always 0, renegotiation is buggy")]
         public void NoSslRenegotiation()
         {
-            using (var conn = new NpgsqlConnection(ConnectionString + ";SslMode=Require;TrustServerCertificate=true"))
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                conn.Open();
-                Assert.That(ExecuteScalar("SHOW ssl_renegotiation_limit", conn), Is.EqualTo("0"));
-                ExecuteNonQuery("DISCARD ALL");
-                Assert.That(ExecuteScalar("SHOW ssl_renegotiation_limit", conn), Is.EqualTo("0"));
+                SslMode = SslMode.Require,
+                TrustServerCertificate = true
+            };
+
+            using (var conn = OpenConnection(csb))
+            {
+                Assert.That(conn.ExecuteScalar("SHOW ssl_renegotiation_limit"), Is.EqualTo("0"));
+                conn.ExecuteNonQuery("DISCARD ALL");
+                Assert.That(conn.ExecuteScalar("SHOW ssl_renegotiation_limit"), Is.EqualTo("0"));
             }
         }
 
         [Test, Description("Makes sure that when SSL is disabled IsSecure returns false")]
         public void NonSecure()
         {
-            Assert.That(Conn.IsSecure, Is.False);
+            using (var conn = OpenConnection())
+                Assert.That(conn.IsSecure, Is.False);
         }
 
         [Test]
@@ -101,6 +117,7 @@ namespace Npgsql.Tests
                 {
                     if (TestUtil.IsOnBuildServer)
                         throw;
+                    Console.WriteLine(e);
                     Assert.Ignore("Integrated security (GSS/SSPI) doesn't seem to be set up");
                 }
             }
@@ -109,6 +126,7 @@ namespace Npgsql.Tests
         #region Partial Trust
 
         [Test, Description("Makes sure Npgsql works when running under pseudo-medium trust")]
+        [Ignore("Doesn't work via DNX testing")]
         public void RestrictedTrust()
         {
             var domainSetup = new AppDomainSetup { ApplicationBase = AppDomain.CurrentDomain.BaseDirectory };
@@ -154,9 +172,12 @@ namespace Npgsql.Tests
         [SetUp]
         public void CheckSslSupport()
         {
-            var sslSupport = (string) ExecuteScalar("SHOW ssl", Conn);
-            if (sslSupport == "off")
-                TestUtil.IgnoreExceptOnBuildServer("SSL support isn't enabled at the backend");
+            using (var conn = OpenConnection())
+            {
+                var sslSupport = (string)conn.ExecuteScalar("SHOW ssl");
+                if (sslSupport == "off")
+                    TestUtil.IgnoreExceptOnBuildServer("SSL support isn't enabled at the backend");
+            }
         }
 
         #endregion

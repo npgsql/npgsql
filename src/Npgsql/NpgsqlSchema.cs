@@ -2,7 +2,7 @@
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -37,6 +37,8 @@ namespace Npgsql
     /// </summary>
     internal static class NpgsqlSchema
     {
+        const string MetaDataResourceName = "Npgsql.NpgsqlMetaData.xml";
+
         /// <summary>
         /// Returns the MetaDataCollections that lists all possible collections.
         /// </summary>
@@ -45,10 +47,7 @@ namespace Npgsql
         {
             DataSet ds = new DataSet();
             ds.Locale = CultureInfo.InvariantCulture;
-            using (Stream xmlStream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Npgsql.NpgsqlMetaData.xml"))
-            {
-                ds.ReadXml(xmlStream);
-            }
+            LoadMetaDataXmlResource(ds);
             return ds.Tables["MetaDataCollections"].Copy();
         }
 
@@ -60,10 +59,7 @@ namespace Npgsql
         {
             DataSet ds = new DataSet();
             ds.Locale = CultureInfo.InvariantCulture;
-            using (Stream xmlStream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Npgsql.NpgsqlMetaData.xml"))
-            {
-                ds.ReadXml(xmlStream);
-            }
+            LoadMetaDataXmlResource(ds);
             return ds.Tables["Restrictions"].Copy();
         }
 
@@ -494,10 +490,7 @@ and n.nspname not in ('pg_catalog', 'pg_toast')");
         internal static DataTable GetDataSourceInformation()
         {
             DataSet ds = new DataSet();
-            using (Stream xmlStream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Npgsql.NpgsqlMetaData.xml"))
-            {
-                ds.ReadXml(xmlStream);
-            }
+            LoadMetaDataXmlResource(ds);
             return ds.Tables["DataSourceInformation"].Copy();
         }
 
@@ -613,6 +606,16 @@ and n.nspname not in ('pg_catalog', 'pg_toast')");
                 table.Rows.Add(keyword);
             }
             return table;
+        }
+
+        static void LoadMetaDataXmlResource(DataSet dataSet)
+        {
+            var xmlStream = Assembly.GetExecutingAssembly().GetManifestResourceStream(MetaDataResourceName);
+            if (xmlStream == null)
+                throw new Exception($"Couldn't load {MetaDataResourceName} resource from assembly, Npgsql was compiled badly");
+
+            using (xmlStream)
+                dataSet.ReadXml(xmlStream);
         }
     }
 }

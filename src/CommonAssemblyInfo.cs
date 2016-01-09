@@ -11,7 +11,7 @@ using System.Resources;
 [assembly: SecurityRules(SecurityRuleSet.Level1)]
 [assembly: AssemblyCompany("Npgsql Development Team")]
 [assembly: AssemblyProduct("Npgsql")]
-[assembly: AssemblyCopyright("Copyright © 2002 - 2014 Npgsql Development Team")]
+[assembly: AssemblyCopyright("Copyright © 2002 - 2016 Npgsql Development Team")]
 [assembly: AssemblyTrademark("")]
 [assembly: NeutralResourcesLanguage("en", UltimateResourceFallbackLocation.MainAssembly)]
 

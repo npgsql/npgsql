@@ -1,7 +1,7 @@
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -65,6 +65,8 @@ namespace Npgsql
         internal const int PoolSizeLimit = 1024;
 
         private object locker = new object();
+
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         internal NpgsqlConnectorPool()
         {
@@ -280,16 +282,23 @@ namespace Npgsql
                 if (Connection.MinPoolSize > 1)
                 {
 
-                    lock (Queue)
+                    try
                     {
-
-                        while (Queue.Available.Count + Queue.Busy.Count < Connection.MinPoolSize)
+                        lock (Queue)
                         {
-                            NpgsqlConnector spare = new NpgsqlConnector(Connection);
-                            spare.Open();
-                            spare.Connection = null;
-                            Queue.Available.Enqueue(spare);
+
+                            while (Queue.Available.Count + Queue.Busy.Count < Connection.MinPoolSize)
+                            {
+                                NpgsqlConnector spare = new NpgsqlConnector(Connection);
+                                spare.Open();
+                                spare.Connection = null;
+                                Queue.Available.Enqueue(spare);
+                            }
                         }
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Warn("Exception while trying to open spare connectors to meet MinPoolSize", e);
                     }
                 }
             }

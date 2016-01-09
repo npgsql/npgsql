@@ -1,7 +1,7 @@
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -25,6 +25,10 @@ using System;
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics.Contracts;
+using System.Threading;
+using System.Threading.Tasks;
+using AsyncRewriter;
+using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
 using Npgsql.Logging;
@@ -34,7 +38,7 @@ namespace Npgsql
     /// <summary>
     /// Represents a transaction to be made in a PostgreSQL database. This class cannot be inherited.
     /// </summary>
-    public sealed class NpgsqlTransaction : DbTransaction
+    public sealed partial class NpgsqlTransaction : DbTransaction
     {
         #region Fields and Properties
 
@@ -120,12 +124,18 @@ namespace Npgsql
 
         #endregion
 
-        #region Commit and Rollback
+        #region Commit
 
         /// <summary>
         /// Commits the database transaction.
         /// </summary>
         public override void Commit()
+        {
+            CommitInternal();
+        }
+
+        [RewriteAsync]
+        void CommitInternal()
         {
             CheckReady();
             Log.Debug("Commit transaction", Connection.Connector.Id);
@@ -134,29 +144,59 @@ namespace Npgsql
         }
 
         /// <summary>
+        /// Commits the database transaction.
+        /// </summary>
+        [PublicAPI]
+        public Task CommitAsync(CancellationToken cancellationToken)
+        {
+            return CommitInternalAsync(cancellationToken);
+        }
+
+        /// <summary>
+        /// Commits the database transaction.
+        /// </summary>
+        [PublicAPI]
+        public Task CommitAsync()
+        {
+            return CommitAsync(CancellationToken.None);
+        }
+
+        #endregion
+
+        #region Rollback
+
+        /// <summary>
         /// Rolls back a transaction from a pending state.
         /// </summary>
         public override void Rollback()
         {
+            RollbackInternal();
+        }
+
+        [RewriteAsync]
+        void RollbackInternal()
+        {
             CheckReady();
-
-            Log.Debug("Rollback transaction", Connection.Connector.Id);
-
-            var connector = Connector;
-
-            try
-            {
-                // If we're in a failed transaction we can't set the timeout
-                var withTimeout = connector.TransactionStatus != TransactionStatus.InFailedTransactionBlock;
-                connector.ExecuteInternalCommand(PregeneratedMessage.RollbackTransaction, withTimeout);
-            }
-            finally
-            {
-                // The rollback may change the value of statement_value, set to unknown
-                connector.SetBackendTimeoutToUnknown();
-            }
-
+            Connector.Rollback();
             Connection = null;
+        }
+
+        /// <summary>
+        /// Rolls back a transaction from a pending state.
+        /// </summary>
+        [PublicAPI]
+        public Task RollbackAsync(CancellationToken cancellationToken)
+        {
+            return RollbackInternalAsync(cancellationToken);
+        }
+
+        /// <summary>
+        /// Rolls back a transaction from a pending state.
+        /// </summary>
+        [PublicAPI]
+        public Task RollbackAsync()
+        {
+            return RollbackInternalAsync(CancellationToken.None);
         }
 
         #endregion

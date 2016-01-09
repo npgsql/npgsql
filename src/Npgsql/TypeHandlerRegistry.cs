@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -60,6 +60,7 @@ namespace Npgsql
         List<BackendType> _backendTypes;
 
         internal static readonly Dictionary<string, TypeAndMapping> HandlerTypes;
+        static readonly Dictionary<NpgsqlDbType, TypeAndMapping> HandlerTypesByNpsgqlDbType;
         static readonly Dictionary<NpgsqlDbType, DbType> NpgsqlDbTypeToDbType;
         static readonly Dictionary<DbType, NpgsqlDbType> DbTypeToNpgsqlDbType;
         static readonly Dictionary<Type, NpgsqlDbType> TypeToNpgsqlDbType;
@@ -293,15 +294,14 @@ namespace Npgsql
             );
 
             handler.OID = oid;
-            OIDIndex[oid] = handler;
             handler.PgName = name;
+            OIDIndex[oid] = handler;
 
             if (mapping.NpgsqlDbType.HasValue)
             {
                 var npgsqlDbType = mapping.NpgsqlDbType.Value;
                 if (_byNpgsqlDbType.ContainsKey(npgsqlDbType))
-                    throw new Exception(
-                        $"Two type handlers registered on same NpgsqlDbType {npgsqlDbType}: {_byNpgsqlDbType[npgsqlDbType].GetType().Name} and {handlerType.Name}");
+                    throw new Exception($"Two type handlers registered on same NpgsqlDbType {npgsqlDbType}: {_byNpgsqlDbType[npgsqlDbType].GetType().Name} and {handlerType.Name}");
                 _byNpgsqlDbType[npgsqlDbType] = handler;
                 handler.NpgsqlDbType = npgsqlDbType;
             }
@@ -309,16 +309,14 @@ namespace Npgsql
             foreach (var dbType in mapping.DbTypes)
             {
                 if (_byDbType.ContainsKey(dbType))
-                    throw new Exception(
-                        $"Two type handlers registered on same DbType {dbType}: {_byDbType[dbType].GetType().Name} and {handlerType.Name}");
+                    throw new Exception($"Two type handlers registered on same DbType {dbType}: {_byDbType[dbType].GetType().Name} and {handlerType.Name}");
                 _byDbType[dbType] = handler;
             }
 
             foreach (var type in mapping.Types)
             {
                 if (_byType.ContainsKey(type))
-                    throw new Exception(
-                        $"Two type handlers registered on same .NET type {type}: {_byType[type].GetType().Name} and {handlerType.Name}");
+                    throw new Exception($"Two type handlers registered on same .NET type {type}: {_byType[type].GetType().Name} and {handlerType.Name}");
                 _byType[type] = handler;
             }
         }
@@ -337,22 +335,7 @@ namespace Npgsql
                 return;
             }
 
-            TypeHandler arrayHandler;
-
-            var asBitStringHandler = elementHandler as BitStringHandler;
-            if (asBitStringHandler != null) {
-                // BitString requires a special array handler which returns bool or BitArray
-                arrayHandler = new BitStringArrayHandler(asBitStringHandler);
-            } else if (elementHandler is ITypeHandlerWithPsv) {
-                var arrayHandlerType = typeof(ArrayHandlerWithPsv<,>).MakeGenericType(elementHandler.GetFieldType(), elementHandler.GetProviderSpecificFieldType());
-                arrayHandler = (TypeHandler)Activator.CreateInstance(arrayHandlerType, elementHandler);
-            } else {
-                var arrayHandlerType = typeof(ArrayHandler<>).MakeGenericType(elementHandler.GetFieldType());
-                arrayHandler = (TypeHandler)Activator.CreateInstance(arrayHandlerType, elementHandler);
-            }
-
-            arrayHandler.PgName = backendType.Name;
-            arrayHandler.OID = backendType.OID;
+            var arrayHandler = elementHandler.CreateArrayHandler(backendType.Name, backendType.OID);
             OIDIndex[backendType.OID] = arrayHandler;
 
             var asEnumHandler = elementHandler as IEnumHandler;
@@ -375,7 +358,7 @@ namespace Npgsql
                 return;
             }
 
-            _byNpgsqlDbType[NpgsqlDbType.Array | elementHandler.NpgsqlDbType] = arrayHandler;
+            _byNpgsqlDbType[arrayHandler.NpgsqlDbType] = arrayHandler;
         }
 
         #endregion
@@ -393,12 +376,7 @@ namespace Npgsql
                 return;
             }
 
-            var rangeHandlerType = typeof(RangeHandler<>).MakeGenericType(elementHandler.GetFieldType());
-            var handler = (TypeHandler)Activator.CreateInstance(rangeHandlerType, elementHandler, backendType.Name);
-
-            handler.PgName = backendType.Name;
-            handler.NpgsqlDbType = NpgsqlDbType.Range | elementHandler.NpgsqlDbType;
-            handler.OID = backendType.OID;
+            var handler = elementHandler.CreateRangeHandler(backendType.Name, backendType.OID);
             OIDIndex[backendType.OID] = handler;
             _byNpgsqlDbType.Add(handler.NpgsqlDbType, handler);
         }
@@ -559,7 +537,12 @@ namespace Npgsql
                         throw new InvalidCastException(string.Format("When specifying NpgsqlDbType.{0}, {0}Type must be specified as well",
                                                        npgsqlDbType == NpgsqlDbType.Enum ? "Enum" : "Composite"));
                     }
-                    throw new NotSupportedException("This NpgsqlDbType isn't supported in Npgsql yet: " + npgsqlDbType);
+                    TypeAndMapping typeAndMapping;
+                    if (!HandlerTypesByNpsgqlDbType.TryGetValue(npgsqlDbType, out typeAndMapping)) {
+                        throw new NotSupportedException("This NpgsqlDbType isn't supported in Npgsql yet: " + npgsqlDbType);
+                    }
+                    throw new NotSupportedException($"The PostgreSQL type '{typeAndMapping.Mapping.PgName}', mapped to NpgsqlDbType '{npgsqlDbType}' isn't present in your database. " +
+                                                     "You may need to install an extension or upgrade to a newer version.");
                 }
 
                 if ((npgsqlDbType & NpgsqlDbType.Array) != 0)
@@ -578,8 +561,7 @@ namespace Npgsql
                 {
                     throw new ArgumentException("specificType can only be set if NpgsqlDbType is set to Enum or Composite");
                 }
-                throw new NotSupportedException(
-                    $"The CLR type {specificType.Name} must be registered with Npgsql before usage, please refer to the documentation");
+                throw new NotSupportedException($"The CLR type {specificType.Name} must be registered with Npgsql before usage, please refer to the documentation");
             }
         }
 
@@ -778,6 +760,7 @@ namespace Npgsql
             _globalCompositeMappings = new ConcurrentDictionary<string, TypeHandler>();
 
             HandlerTypes = new Dictionary<string, TypeAndMapping>();
+            HandlerTypesByNpsgqlDbType = new Dictionary<NpgsqlDbType, TypeAndMapping>();
             NpgsqlDbTypeToDbType = new Dictionary<NpgsqlDbType, DbType>();
             DbTypeToNpgsqlDbType = new Dictionary<DbType, NpgsqlDbType>();
             TypeToNpgsqlDbType = new Dictionary<Type, NpgsqlDbType>();
@@ -794,7 +777,17 @@ namespace Npgsql
                     if (HandlerTypes.ContainsKey(m.PgName)) {
                         throw new Exception("Two type handlers registered on same PostgreSQL type name: " + m.PgName);
                     }
-                    HandlerTypes[m.PgName] = new TypeAndMapping { HandlerType=t, Mapping=m };
+                    var typeAndMapping = new TypeAndMapping { HandlerType = t, Mapping = m };
+                    HandlerTypes[m.PgName] = typeAndMapping;
+
+                    if (m.NpgsqlDbType.HasValue)
+                    {
+                        if (HandlerTypesByNpsgqlDbType.ContainsKey(m.NpgsqlDbType.Value)) {
+                            throw new Exception("Two type handlers registered on same NpgsqlDbType: " + m.NpgsqlDbType);
+                        }
+                        HandlerTypesByNpsgqlDbType[m.NpgsqlDbType.Value] = typeAndMapping;
+                    }
+
                     if (!m.NpgsqlDbType.HasValue) {
                         continue;
                     }

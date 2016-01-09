@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -25,7 +25,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using JetBrains.Annotations;
 using NUnit.Framework;
+using NUnit.Framework.Interfaces;
 
 namespace Npgsql.Tests
 {
@@ -54,6 +58,46 @@ namespace Npgsql.Tests
         {
             IgnoreExceptOnBuildServer(String.Format(message, args));
         }
+
+        public static string GetUniqueIdentifier(string prefix)
+        {
+            return prefix + Interlocked.Increment(ref _counter);
+        }
+
+        static int _counter;
+    }
+
+    public static class NpgsqlConnectionExtensions
+    {
+        public static int ExecuteNonQuery(this NpgsqlConnection conn, string sql, NpgsqlTransaction tx = null)
+        {
+            var cmd = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
+            using (cmd)
+                return cmd.ExecuteNonQuery();
+        }
+
+        [CanBeNull]
+        public static object ExecuteScalar(this NpgsqlConnection conn, string sql, NpgsqlTransaction tx = null)
+        {
+            var cmd = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
+            using (cmd)
+                return cmd.ExecuteScalar();
+        }
+
+        public static async Task<int> ExecuteNonQueryAsync(this NpgsqlConnection conn, string sql, NpgsqlTransaction tx = null)
+        {
+            var cmd = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
+            using (cmd)
+                return await cmd.ExecuteNonQueryAsync();
+        }
+
+        [CanBeNull]
+        public static async Task<object> ExecuteScalarAsync(this NpgsqlConnection conn, string sql, NpgsqlTransaction tx = null)
+        {
+            var cmd = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
+            using (cmd)
+                return await cmd.ExecuteScalarAsync();
+        }
     }
 
     /// <summary>
@@ -80,7 +124,7 @@ namespace Npgsql.Tests
 
         public MonoIgnore(string ignoreText = null) { _ignoreText = ignoreText; }
 
-        public void BeforeTest(TestDetails testDetails)
+        public void BeforeTest([NotNull] ITest test)
         {
             if (Type.GetType("Mono.Runtime") != null)
             {
@@ -91,8 +135,8 @@ namespace Npgsql.Tests
             }
         }
 
-        public void AfterTest(TestDetails testDetails) { }
-        public ActionTargets Targets { get { return ActionTargets.Test; } }
+        public void AfterTest([NotNull] ITest test) { }
+        public ActionTargets Targets => ActionTargets.Test;
     }
 
     /// <summary>
@@ -110,24 +154,23 @@ namespace Npgsql.Tests
             _ignoreText = ignoreText;
         }
 
-        public void BeforeTest(TestDetails testDetails)
+        public void BeforeTest([NotNull] ITest test)
         {
-            var asTestBase = testDetails.Fixture as TestBase;
+            var asTestBase = test.Fixture as TestBase;
             if (asTestBase == null)
                 throw new Exception("[MinPgsqlVersion] can only be used in fixtures inheriting from TestBase");
 
-            if (asTestBase.Conn.PostgreSqlVersion < _minVersion)
+            if (asTestBase.BackendVersion < _minVersion)
             {
-                var msg = String.Format("Postgresql backend version {0} is less than the required {1}",
-                                        asTestBase.Conn.PostgreSqlVersion, _minVersion);
+                var msg = $"Postgresql backend version {asTestBase.BackendVersion} is less than the required {_minVersion}";
                 if (_ignoreText != null)
                     msg += ": " + _ignoreText;
                 Assert.Ignore(msg);
             }
         }
 
-        public void AfterTest(TestDetails testDetails) { }
-        public ActionTargets Targets { get { return ActionTargets.Test; } }
+        public void AfterTest([NotNull] ITest test) { }
+        public ActionTargets Targets => ActionTargets.Test;
     }
 
     public enum PrepareOrNot

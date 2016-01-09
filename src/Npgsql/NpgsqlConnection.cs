@@ -1,7 +1,7 @@
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -50,7 +50,7 @@ namespace Npgsql
 #if WITHDESIGN
     [System.Drawing.ToolboxBitmapAttribute(typeof(NpgsqlConnection))]
 #endif
-#if DNXCORE50 || DOTNET
+#if DOTNET5_4
     public sealed partial class NpgsqlConnection : DbConnection
 #else
     // ReSharper disable once RedundantNameQualifier
@@ -97,7 +97,7 @@ namespace Npgsql
         /// </summary>
         internal int OpenCounter { get; private set; }
 
-        internal bool WasBroken { private get; set; }
+        bool _wasBroken;
 
 #if NET45 || NET451 || DNX451
         NpgsqlPromotableSinglePhaseNotification Promotable => _promotable ?? (_promotable = new NpgsqlPromotableSinglePhaseNotification(this));
@@ -251,7 +251,7 @@ namespace Npgsql
                 _connectionString = Settings.ToString();
             }
 
-            WasBroken = false;
+            _wasBroken = false;
 
             try
             {
@@ -429,7 +429,7 @@ namespace Npgsql
             {
                 if (Connector == null || _disposed)
                 {
-                    return WasBroken ? ConnectionState.Broken : ConnectionState.Closed;
+                    return _wasBroken ? ConnectionState.Broken : ConnectionState.Closed;
                 }
 
                 switch (Connector.State)
@@ -617,11 +617,12 @@ namespace Npgsql
             ReallyClose();
         }
 
-        internal void ReallyClose()
+        internal void ReallyClose(bool wasBroken=false)
         {
             var connectorId = Connector.Id;
             Log.Trace("Really closing connection", connectorId);
             _postponingClose = false;
+            _wasBroken = wasBroken;
 
 #if NET45 || NET451 || DNX451
             // clear the way for another promotable transaction

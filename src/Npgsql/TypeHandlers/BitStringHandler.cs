@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -62,6 +62,12 @@ namespace Npgsql.TypeHandlers
         internal override Type GetProviderSpecificFieldType(FieldDescription fieldDescription)
         {
             return GetFieldType(fieldDescription);
+        }
+
+        internal override ArrayHandler CreateArrayHandler(string pgName, uint oid)
+        {
+            // BitString requires a special array handler which returns bool or BitArray
+            return new BitStringArrayHandler(this, pgName, oid);
         }
 
         internal override object ReadValueAsObjectFully(DataRowMessage row, FieldDescription fieldDescription)
@@ -300,18 +306,18 @@ namespace Npgsql.TypeHandlers
         FieldDescription _fieldDescription;
         object _value;
 
-        public override Type GetElementFieldType(FieldDescription fieldDescription)
+        internal override Type GetElementFieldType(FieldDescription fieldDescription)
         {
             return fieldDescription.TypeModifier == 1 ? typeof(bool) : typeof(BitArray);
         }
 
-        public override Type GetElementPsvType(FieldDescription fieldDescription)
+        internal override Type GetElementPsvType(FieldDescription fieldDescription)
         {
             return GetElementFieldType(fieldDescription);
         }
 
-        public BitStringArrayHandler(BitStringHandler elementHandler)
-            : base(elementHandler) {}
+        public BitStringArrayHandler(BitStringHandler elementHandler, string pgName, uint oid)
+            : base(elementHandler, pgName, oid) {}
 
         public override void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
