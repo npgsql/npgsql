@@ -7,7 +7,7 @@
     "Npgsql": "3.1.0-*"
   },
   "commands": {
-    "test": "xunit.runner.dnx"
+    "test": "xunit.runner.aspnet"
   },
   "frameworks": {
     "net46": {
@@ -18,15 +18,9 @@
     "dnx452": {
       "frameworkAssemblies": {
         "System.Threading.Tasks": "4.0.0.0"
-      },
-      "dependencies": {
-        "xunit.runner.dnx": "2.1.0-rc1-*"
       }
     },
     "dnxcore50": {
-      "dependencies": {
-        "xunit.runner.dnx": "2.1.0-rc1-*"
-      }
     }
   }
 }

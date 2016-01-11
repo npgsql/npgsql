@@ -4,8 +4,8 @@ machine:
 
 dependencies:
   override:
-     - docker build -f Dockerfile.test -t npgsql .
+     - docker build -f test/Dockerfile.test -t local/tests .
 
 test:
   override:
-    - docker run npgsql
+    - docker run local/tests dnx -p test/EntityFramework7.Npgsql.Tests/project.json test

@@ -1,0 +1,14 @@
+FROM microsoft/aspnet:1.0.0-rc1-update1-coreclr
+COPY . /app/
+WORKDIR /app
+# HACK to get around problems with AsyncRewriter
+RUN mv src/Npgsql/project.json src/Npgsql/_project.json \
+    && mv src/Npgsql/project.dnx.json src/Npgsql/project.json \
+    && dnu restore src/Npgsql/project.json \
+    && dnu build --framework dnxcore50 src/Npgsql/project.json \
+    && mv -f src/Npgsql/_project.json src/Npgsql/project.json
+RUN dnu restore --parallel -s NuGet -s AspNetVNext --runtime dnxcore50 \
+    src/Npgsql/project.json \
+    src/EntityFramework7.Npgsql/project.json \
+    test/EntityFramework7.Npgsql.Tests/project.json \
+    test/EntityFramework7.Npgsql.FunctionalTests/project.json

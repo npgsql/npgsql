@@ -1,0 +1,22 @@
+
+{
+  "version": "3.1.0-*",
+  "commands": {
+    "rewrite-async": "AsyncRewriter"
+  },
+  "scripts": {
+    "prebuild": [
+      "dnx rewrite-async"
+    ]
+  },
+  "compileExclude": "*",
+  "dependencies": {
+    "AsyncRewriter": { "version": "0.7.9", "type": "build" }
+  },
+  "frameworks": {
+    "dnxcore50": {
+      "dependencies": {
+      }
+    }
+  }
+}
