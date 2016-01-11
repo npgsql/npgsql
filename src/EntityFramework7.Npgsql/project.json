@@ -39,7 +39,7 @@
         "System.Runtime": "4.0.0.0"
       }
     },
-    "dotnet54": {
+    "dotnet5.4": {
       "dependencies": {
       }
     }
