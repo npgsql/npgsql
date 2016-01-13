@@ -522,7 +522,7 @@ namespace Npgsql
         /// <returns>A <see cref="NpgsqlTransaction">NpgsqlTransaction</see>
         /// object representing the new transaction.</returns>
         /// <remarks>
-        /// Currently there's no support for nested transactions.
+        /// Currently there's no support for nested transactions. Transactions created by this method will have Read Committed isolation level.
         /// </remarks>
         public new NpgsqlTransaction BeginTransaction()
         {
