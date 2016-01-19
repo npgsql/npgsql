@@ -663,6 +663,16 @@ namespace Npgsql
         }
 
         /// <summary>
+        /// Read a 32-bit integer from the given stream in the correct byte order.
+        /// </summary>
+        public static uint ReadUint32(Stream stream)
+        {
+            byte[] buffer = new byte[4];
+            CheckedStreamRead(stream, buffer, 0, 4);
+            return (uint)IPAddress.NetworkToHostOrder(BitConverter.ToInt32(buffer, 0));
+        }
+
+        /// <summary>
         /// Read a 32-bit integer from the given array in the correct byte order.
         /// </summary>
         public static Int32 ReadInt32(byte[] src, Int32 offset)

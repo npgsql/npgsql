@@ -81,7 +81,7 @@ namespace Npgsql
             private int _typeOID; // Protocol 2/3
             private short _typeSize; // Protocol 2/3
             private int _typeModifier; // Protocol 2/3
-            private int _tableOID; // Protocol 3
+            private long _tableOID; // Protocol 3
             private short _columnAttributeNumber; // Protocol 3
             private FormatCode _formatCode; // Protocol 3. 0 text, 1 binary
             private NpgsqlBackendTypeInfo _typeInfo; // everything we know about this field type
@@ -89,7 +89,7 @@ namespace Npgsql
             public FieldData(Stream stream, NpgsqlBackendTypeMapping typeMapping)
             {
                 Name = PGUtil.ReadString(stream);
-                TableOID = PGUtil.ReadInt32(stream);
+                TableOID = PGUtil.ReadUint32(stream);
                 ColumnAttributeNumber = PGUtil.ReadInt16(stream);
                 TypeInfo = typeMapping[TypeOID = PGUtil.ReadInt32(stream)];
                 TypeSize = PGUtil.ReadInt16(stream);
@@ -121,7 +121,7 @@ namespace Npgsql
                 private set { _typeModifier = value; }
             }
 
-            public int TableOID
+            public long TableOID
             {
                 get { return _tableOID; }
                 private set { _tableOID = value; }
