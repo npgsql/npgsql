@@ -703,7 +703,7 @@ namespace Npgsql
             {
                 using (NpgsqlCommand c = new NpgsqlCommand(getKeys, metadataConn))
                 {
-                    c.Parameters.Add(new NpgsqlParameter("tableOid", NpgsqlDbType.Integer)).Value = tableOid;
+                    c.Parameters.Add(new NpgsqlParameter("tableOid", NpgsqlDbType.Bigint)).Value = tableOid;
 
                     using (NpgsqlDataReader dr = c.GetReader(CommandBehavior.SequentialAccess | CommandBehavior.SingleResult))
                     {
