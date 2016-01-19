@@ -876,9 +876,9 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Begins a binary COPY TO STDIN operation, a high-performance data export mechanism from a PostgreSQL table.
+        /// Begins a binary COPY TO STDOUT operation, a high-performance data export mechanism from a PostgreSQL table.
         /// </summary>
-        /// <param name="copyToCommand">A COPY TO STDIN SQL command</param>
+        /// <param name="copyToCommand">A COPY TO STDOUT SQL command</param>
         /// <returns>A <see cref="NpgsqlBinaryExporter"/> which can be used to read rows and columns</returns>
         /// <remarks>
         /// See http://www.postgresql.org/docs/current/static/sql-copy.html.
@@ -888,7 +888,7 @@ namespace Npgsql
             if (copyToCommand == null)
                 throw new ArgumentNullException("copyToCommand");
             if (!copyToCommand.TrimStart().ToUpper().StartsWith("COPY"))
-                throw new ArgumentException("Must contain a COPY TO STDIN command!", "copyToCommand");
+                throw new ArgumentException("Must contain a COPY TO STDOUT command!", "copyToCommand");
             Contract.EndContractBlock();
 
             CheckConnectionOpen();
@@ -925,7 +925,7 @@ namespace Npgsql
             if (copyFromCommand == null)
                 throw new ArgumentNullException("copyFromCommand");
             if (!copyFromCommand.TrimStart().ToUpper().StartsWith("COPY"))
-                throw new ArgumentException("Must contain a COPY IN command!", "copyFromCommand");
+                throw new ArgumentException("Must contain a COPY FROM STDIN command!", "copyFromCommand");
             Contract.EndContractBlock();
 
             CheckConnectionOpen();
@@ -936,11 +936,11 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Begins a textual COPY FROM STDIN operation, a data import mechanism to a PostgreSQL table.
+        /// Begins a textual COPY TO STDOUT operation, a data export mechanism from a PostgreSQL table.
         /// It is the user's responsibility to parse the textual input according to the format specified
         /// in <paramref name="copyToCommand"/>.
         /// </summary>
-        /// <param name="copyToCommand">A COPY TO STDIN SQL command</param>
+        /// <param name="copyToCommand">A COPY TO STDOUT SQL command</param>
         /// <returns>
         /// A TextReader that can be used to read textual data.</returns>
         /// <remarks>
@@ -951,7 +951,7 @@ namespace Npgsql
             if (copyToCommand == null)
                 throw new ArgumentNullException("copyToCommand");
             if (!copyToCommand.TrimStart().ToUpper().StartsWith("COPY"))
-                throw new ArgumentException("Must contain a COPY OUT command!", "copyToCommand");
+                throw new ArgumentException("Must contain a COPY TO STDOUT command!", "copyToCommand");
             Contract.EndContractBlock();
 
             CheckConnectionOpen();
@@ -962,12 +962,12 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Begins a raw binary COPY operation (TO or FROM), a high-performance data export/import mechanism to a PostgreSQL table.
+        /// Begins a raw binary COPY operation (TO STDOUT or FROM STDIN), a high-performance data export/import mechanism to a PostgreSQL table.
         /// Note that unlike the other COPY API methods, <see cref="BeginRawBinaryCopy"/> doesn't implement any encoding/decoding
         /// and is unsuitable for structured import/export operation. It is useful mainly for exporting a table as an opaque
         /// blob, for the purpose of importing it back later.
         /// </summary>
-        /// <param name="copyCommand">A COPY FROM STDIN or COPY TO STDIN SQL command</param>
+        /// <param name="copyCommand">A COPY TO STDOUT or COPY FROM STDIN SQL command</param>
         /// <returns>A <see cref="NpgsqlRawCopyStream"/> that can be used to read or write raw binary data.</returns>
         /// <remarks>
         /// See http://www.postgresql.org/docs/current/static/sql-copy.html.
@@ -977,7 +977,7 @@ namespace Npgsql
             if (copyCommand == null)
                 throw new ArgumentNullException("copyCommand");
             if (!copyCommand.TrimStart().ToUpper().StartsWith("COPY"))
-                throw new ArgumentException("Must contain a COPY IN command!", "copyCommand");
+                throw new ArgumentException("Must contain a COPY TO STDOUT or COPY FROM STDIN command!", "copyCommand");
             Contract.EndContractBlock();
 
             CheckConnectionOpen();
