@@ -540,7 +540,7 @@ namespace Npgsql
 
             if ((_behavior & CommandBehavior.KeyInfo) == CommandBehavior.KeyInfo)
             {
-                List<int> tableOids = new List<int>();
+                List<long> tableOids = new List<long>();
                 for (int i = 0; i != CurrentDescription.NumFields; ++i)
                 {
                     if (CurrentDescription[i].TableOID != 0 && !tableOids.Contains(CurrentDescription[i].TableOID))
@@ -837,18 +837,18 @@ namespace Npgsql
             public readonly string Catalog;
             public readonly string Schema;
             public readonly string Name;
-            public readonly int Id;
+            public readonly long Id;
 
             public Table(IDataReader rdr)
             {
                 Catalog = rdr.GetString(0);
                 Schema = rdr.GetString(1);
                 Name = rdr.GetString(2);
-                Id = rdr.GetInt32(3);
+                Id = rdr.GetInt64(3);
             }
         }
 
-        private Dictionary<long, Table> GetTablesFromOids(List<int> oids)
+        private Dictionary<long, Table> GetTablesFromOids(List<long> oids)
         {
             if (oids.Count == 0)
             {
@@ -857,7 +857,7 @@ namespace Npgsql
 
             // the column index is used to find data.
             // any changes to the order of the columns needs to be reflected in struct Tables
-            string commandText = string.Concat("SELECT current_database(), nc.nspname, c.relname, c.oid FROM pg_namespace nc, pg_class c WHERE c.relnamespace = nc.oid AND (c.relkind = 'r' OR c.relkind = 'v') AND c.oid IN (",
+            string commandText = string.Concat("SELECT current_database(), nc.nspname, c.relname, c.oid::int8 FROM pg_namespace nc, pg_class c WHERE c.relnamespace = nc.oid AND (c.relkind = 'r' OR c.relkind = 'v') AND c.oid IN (",
                 string.Join(",", oids.Select(o => o.ToString()).ToArray()), ")");
 
             using (NpgsqlConnection connection = _connection.Clone())
@@ -882,7 +882,7 @@ namespace Npgsql
         {
             public readonly string Name;
             public readonly bool NotNull;
-            public readonly int TableId;
+            public readonly long TableId;
             public readonly short ColumnNum;
             public readonly object ColumnDefault;
             public readonly bool IsUpdateable;
@@ -896,7 +896,7 @@ namespace Npgsql
             {
                 Name = rdr.GetString(0);
                 NotNull = rdr.GetBoolean(1);
-                TableId = rdr.GetInt32(2);
+                TableId = rdr.GetInt64(2);
                 ColumnNum = rdr.GetInt16(3);
                 ColumnDefault = rdr.GetValue(4);
                 IsUpdateable = rdr.GetBoolean(5);
@@ -912,7 +912,7 @@ namespace Npgsql
             sb.Append(@"SELECT 
     a.attname AS column_name, 
     a.attnotnull AS column_notnull, 
-    a.attrelid AS table_id, 
+    a.attrelid::int8 AS table_id, 
     a.attnum AS column_num, 
     ad.adsrc as column_default, 
     CAST(CASE WHEN i.is_updatable = 'YES'
