@@ -553,7 +553,7 @@ namespace Npgsql
                 if (oidTableLookup.Count == 1)
                 {
                     // only 1, but we can't index into the Dictionary
-                    foreach (int key in oidTableLookup.Keys)
+                    foreach (var key in oidTableLookup.Keys)
                     {
                         keyLookup = GetKeys(key);
                     }
