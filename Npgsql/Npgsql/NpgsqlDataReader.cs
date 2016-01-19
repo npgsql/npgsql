@@ -692,7 +692,7 @@ namespace Npgsql
             public readonly List<string> uniqueColumns = new List<string>();
         }
 
-        private KeyLookup GetKeys(Int32 tableOid)
+        private KeyLookup GetKeys(long tableOid)
         {
             const string getKeys =
                 "select a.attname, ci.relname, i.indisprimary from pg_catalog.pg_class ct, pg_catalog.pg_class ci, pg_catalog.pg_attribute a, pg_catalog.pg_index i WHERE ct.oid=i.indrelid AND ci.oid=i.indexrelid AND a.attrelid=ci.oid AND i.indisunique AND ct.oid = :tableOid order by ci.relname";
