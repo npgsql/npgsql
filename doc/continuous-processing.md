@@ -50,7 +50,7 @@ using (var conn = new NpgsqlConnection(ConnectionString + ";ContinuousProcessing
 Clients in continuous processing mode can sometimes wait for hours, even days before getting a single notification. In this scenario,
 how can the client know the connection is still up, and hasn't been broken by a server or network outage? For this purpose, Npgsql
 has a keepalive feature, which makes it send periodic `SELECT 1` queries. This feature is by default disabled, and must be enabled via
-the [Keepalive](connection-string-parameter.html#keepalive) connection string parameter, setting the number of seconds between each
+the [Keepalive](connection-string-parameters.html#keepalive) connection string parameter, setting the number of seconds between each
 keepalive.
 
 When keepalive is enabled, Npgsql will emit an
