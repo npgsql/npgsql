@@ -28,7 +28,7 @@ namespace Npgsql
         /// An <see cref="NpgsqlParameter"/> with <see cref="NpgsqlParameter.DbType"/> set to
         /// one of these values will be sent with the type handler mapped by this attribute.
         /// </param>
-        /// <param name="types">
+        /// <param name="clrTypes">
         /// Any .NET type which corresponds to this PostgreSQL type.
         /// An <see cref="NpgsqlParameter"/> with <see cref="NpgsqlParameter.Value"/> set to
         /// one of these values will be sent with the type handler mapped by this attribute.
@@ -38,7 +38,7 @@ namespace Npgsql
         /// When <see cref="NpgsqlParameter.NpgsqlDbType"/> or <see cref="NpgsqlParameter.Value"/>
         /// set, <see cref="NpgsqlParameter.DbType"/> will be set to this value.
         /// </param>
-        internal TypeMappingAttribute(string pgName, NpgsqlDbType? npgsqlDbType, [CanBeNull] DbType[] dbTypes, [CanBeNull] Type[] types, DbType? inferredDbType)
+        internal TypeMappingAttribute(string pgName, NpgsqlDbType? npgsqlDbType, [CanBeNull] DbType[] dbTypes, [CanBeNull] Type[] clrTypes, DbType? inferredDbType)
         {
             if (String.IsNullOrWhiteSpace(pgName))
                 throw new ArgumentException("pgName can't be empty", nameof(pgName));
@@ -47,12 +47,12 @@ namespace Npgsql
             PgName = pgName;
             NpgsqlDbType = npgsqlDbType;
             DbTypes = dbTypes ?? new DbType[0];
-            Types = types ?? new Type[0];
+            ClrTypes = clrTypes ?? new Type[0];
             InferredDbType = inferredDbType;
         }
 
-        internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, DbType[] dbTypes, [CanBeNull] Type[] types, DbType inferredDbType)
-            : this(pgName, (NpgsqlDbType?)npgsqlDbType, dbTypes, types, inferredDbType)
+        internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, DbType[] dbTypes, [CanBeNull] Type[] clrTypes, DbType inferredDbType)
+            : this(pgName, (NpgsqlDbType?)npgsqlDbType, dbTypes, clrTypes, inferredDbType)
         { }
 
         //internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, DbType[] dbTypes=null, Type type=null)
@@ -66,36 +66,36 @@ namespace Npgsql
             : this(pgName, npgsqlDbType, new DbType[0], new Type[0], inferredDbType)
         { }
 
-        internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, DbType[] dbTypes, Type type, DbType inferredDbType)
-            : this(pgName, npgsqlDbType, dbTypes, new[] { type }, inferredDbType)
+        internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, DbType[] dbTypes, Type clrType, DbType inferredDbType)
+            : this(pgName, npgsqlDbType, dbTypes, new[] { clrType }, inferredDbType)
         { }
 
         internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, DbType[] dbTypes)
             : this(pgName, npgsqlDbType, dbTypes, new Type[0], null)
         { }
 
-        internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, DbType dbType, Type[] types)
-            : this(pgName, npgsqlDbType, new[] { dbType }, types, dbType)
+        internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, DbType dbType, Type[] clrTypes)
+            : this(pgName, npgsqlDbType, new[] { dbType }, clrTypes, dbType)
         { }
 
-        internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, DbType dbType, Type type = null)
-            : this(pgName, npgsqlDbType, new[] { dbType }, type == null ? null : new[] { type }, dbType)
+        internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, DbType dbType, Type clrType = null)
+            : this(pgName, npgsqlDbType, new[] { dbType }, clrType == null ? null : new[] { clrType }, dbType)
         { }
 
-        internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, Type[] types, DbType inferredDbType)
-            : this(pgName, npgsqlDbType, new DbType[0], types, inferredDbType)
+        internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, Type[] clrTypes, DbType inferredDbType)
+            : this(pgName, npgsqlDbType, new DbType[0], clrTypes, inferredDbType)
         { }
 
-        internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, Type[] types)
-            : this(pgName, npgsqlDbType, new DbType[0], types, null)
+        internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, Type[] clrTypes)
+            : this(pgName, npgsqlDbType, new DbType[0], clrTypes, null)
         { }
 
-        internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, Type type, DbType inferredDbType)
-            : this(pgName, npgsqlDbType, new DbType[0], new[] { type }, inferredDbType)
+        internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, Type clrType, DbType inferredDbType)
+            : this(pgName, npgsqlDbType, new DbType[0], new[] { clrType }, inferredDbType)
         { }
 
-        internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, Type type)
-            : this(pgName, npgsqlDbType, new DbType[0], new[] { type }, null)
+        internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, Type clrType)
+            : this(pgName, npgsqlDbType, new DbType[0], new[] { clrType }, null)
         { }
 
         /// <summary>
@@ -108,7 +108,7 @@ namespace Npgsql
         internal string PgName { get; private set; }
         internal NpgsqlDbType? NpgsqlDbType { get; private set; }
         internal DbType[] DbTypes { get; private set; }
-        internal Type[] Types { get; private set; }
+        internal Type[] ClrTypes { get; private set; }
         internal DbType? InferredDbType { get; private set; }
 
         /// <summary>
@@ -124,10 +124,10 @@ namespace Npgsql
                 sb.Append(" DbTypes=");
                 sb.Append(String.Join(",", DbTypes.Select(t => t.ToString())));
             }
-            if (Types.Length > 0)
+            if (ClrTypes.Length > 0)
             {
-                sb.Append(" Types=");
-                sb.Append(String.Join(",", Types.Select(t => t.Name)));
+                sb.Append(" ClrTypes=");
+                sb.Append(String.Join(",", ClrTypes.Select(t => t.Name)));
             }
             sb.AppendFormat("]");
             return sb.ToString();
@@ -137,7 +137,7 @@ namespace Npgsql
         void ObjectInvariants()
         {
             Contract.Invariant(!String.IsNullOrWhiteSpace(PgName));
-            Contract.Invariant(Types != null);
+            Contract.Invariant(ClrTypes != null);
             Contract.Invariant(DbTypes != null);
         }
     }

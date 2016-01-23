@@ -40,6 +40,63 @@ namespace Npgsql.Tests.Types
     /// </summary>
     class MiscTypeTests : TestBase
     {
+        [Test, Description("Resolves a base type handler via the different pathways")]
+        public void BaseTypeResolution()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ApplicationName = nameof(BaseTypeResolution),  // Prevent backend type caching in TypeHandlerRegistry
+                Pooling = false
+            };
+
+            using (var conn = OpenConnection(csb))
+            {
+                // Resolve type by NpgsqlDbType
+                using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+                {
+                    cmd.Parameters.AddWithValue("p", NpgsqlDbType.Integer, DBNull.Value);
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        reader.Read();
+                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("int4"));
+                    }
+                }
+
+                // Resolve type by DbType
+                conn.ReloadTypes();
+                using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+                {
+                    cmd.Parameters.Add(new NpgsqlParameter("p", DbType.Int32) { Value = DBNull.Value });
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        reader.Read();
+                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("int4"));
+                    }
+                }
+
+                // Resolve type by ClrType (type inference)
+                conn.ReloadTypes();
+                using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+                {
+                    cmd.Parameters.Add(new NpgsqlParameter { ParameterName="p", Value = 8 });
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        reader.Read();
+                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("int4"));
+                    }
+                }
+
+                // Resolve type by OID (read)
+                conn.ReloadTypes();
+                using (var cmd = new NpgsqlCommand("SELECT 8", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo("int4"));
+                }
+            }
+        }
+
         /// <summary>
         /// http://www.postgresql.org/docs/current/static/datatype-boolean.html
         /// </summary>

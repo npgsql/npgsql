@@ -48,7 +48,7 @@ namespace Microsoft.Data.Entity.Storage.Internal
                 // Base types
                 .Select(tam => tam.Mapping)
                 .Where(m => m.NpgsqlDbType.HasValue)
-                .SelectMany(m => m.Types, (m, t) => new {
+                .SelectMany(m => m.ClrTypes, (m, t) => new {
                     Type = t,
                     Mapping = (RelationalTypeMapping)new NpgsqlTypeMapping(m.PgName, t, m.NpgsqlDbType.Value)
                 })

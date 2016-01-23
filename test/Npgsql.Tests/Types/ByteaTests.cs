@@ -332,6 +332,27 @@ namespace Npgsql.Tests.Types
             }
         }
 
+        [Test]
+        public void ByteaOverArrayOfBytes()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ApplicationName = nameof(ByteaOverArrayOfBytes),  // Prevent backend type caching in TypeHandlerRegistry
+                Pooling = false
+            };
+
+            using (var conn = OpenConnection(csb))
+            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+            {
+                cmd.Parameters.AddWithValue("p", new byte[3]);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo("bytea"));
+                }
+            }
+        }
+
         // Older tests from here
 
         [Test]

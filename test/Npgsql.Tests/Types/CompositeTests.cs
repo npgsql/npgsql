@@ -61,6 +61,115 @@ namespace Npgsql.Tests.Types
 
         #endregion
 
+        [Test, Description("Resolves an enum type handler via the different pathways, with global mapping")]
+        public void CompositeTypeResolutionWithGlobalMapping()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ApplicationName = nameof(CompositeTypeResolutionWithGlobalMapping),  // Prevent backend type caching in TypeHandlerRegistry
+                Pooling = false
+            };
+
+            using (var conn = OpenConnection(csb))
+            {
+                conn.ExecuteNonQuery("CREATE TYPE pg_temp.composite1 AS (x int, some_text text)");
+                NpgsqlConnection.MapCompositeGlobally<Composite1>();
+                try
+                {
+                    conn.ReloadTypes();
+
+                    // Resolve type by NpgsqlDbType
+                    using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+                    {
+                        cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType.Composite) { SpecificType = typeof(Composite1), Value = DBNull.Value });
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            reader.Read();
+                            Assert.That(reader.GetDataTypeName(0), Is.EqualTo("composite1"));
+                            Assert.That(reader.IsDBNull(0), Is.True);
+                        }
+                    }
+
+                    // Resolve type by ClrType (type inference)
+                    conn.ReloadTypes();
+                    using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+                    {
+                        cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Value = new Composite1 { x = 8, SomeText = "foo" }});
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            reader.Read();
+                            Assert.That(reader.GetDataTypeName(0), Is.EqualTo("composite1"));
+                        }
+                    }
+
+                    // Resolve type by OID (read)
+                    conn.ReloadTypes();
+                    using (var cmd = new NpgsqlCommand("SELECT ROW(1, 'foo')::COMPOSITE1", conn))
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        reader.Read();
+                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("composite1"));
+                    }
+                }
+                finally
+                {
+                    NpgsqlConnection.UnmapCompositeGlobally("composite1");
+                }
+            }
+        }
+
+        [Test, Description("Resolves an enum type handler via the different pathways, with late mapping")]
+        public void EnumTypeResolutionWithLateMapping()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ApplicationName = nameof(EnumTypeResolutionWithLateMapping),  // Prevent backend type caching in TypeHandlerRegistry
+                Pooling = false
+            };
+
+            using (var conn = OpenConnection(csb))
+            {
+                conn.ExecuteNonQuery("CREATE TYPE pg_temp.composite1 AS (x int, some_text text)");
+
+                // Resolve type by NpgsqlDbType
+                conn.ReloadTypes();
+                conn.MapComposite<Composite1>("composite1");
+                using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+                {
+                    cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType.Enum) { SpecificType = typeof(Composite1), Value = DBNull.Value });
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        reader.Read();
+                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("composite1"));
+                        Assert.That(reader.IsDBNull(0), Is.True);
+                    }
+                }
+
+                // Resolve type by ClrType (type inference)
+                conn.ReloadTypes();
+                conn.MapComposite<Composite1>("composite1");
+                using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+                {
+                    cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Value = new Composite1 { x = 8, SomeText = "foo" } });
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        reader.Read();
+                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("composite1"));
+                    }
+                }
+
+                // Resolve type by OID (read)
+                conn.ReloadTypes();
+                conn.MapComposite<Composite1>("composite1");
+                using (var cmd = new NpgsqlCommand("SELECT ROW(1, 'foo')::COMPOSITE1", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo("composite1"));
+                }
+            }
+        }
+
         [Test, Parallelizable(ParallelScope.None)]
         public void LateMapping()
         {

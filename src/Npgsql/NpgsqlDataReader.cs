@@ -1223,7 +1223,7 @@ namespace Npgsql
             return
                 field.Handler is UnrecognizedTypeHandler &&
                 field.OID != 0 &&
-                _connector.TypeHandlerRegistry.OIDIndex.TryGetValue(field.OID, out binaryHandler)
+                _connector.TypeHandlerRegistry.TryGetByOID(field.OID, out binaryHandler)
                 ? binaryHandler.PgName
                 : field.Handler.PgName;
         }

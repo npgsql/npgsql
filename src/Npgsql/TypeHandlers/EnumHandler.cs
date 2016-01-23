@@ -41,6 +41,7 @@ namespace Npgsql.TypeHandlers
         /// The CLR enum type mapped to the PostgreSQL enum
         /// </summary>
         Type EnumType { get; }
+        IEnumHandler Clone();
     }
 
     internal class EnumHandler<TEnum> : SimpleTypeHandler<TEnum>, IEnumHandler where TEnum : struct
@@ -48,11 +49,14 @@ namespace Npgsql.TypeHandlers
         readonly Dictionary<TEnum, string> _enumToLabel;
         readonly Dictionary<string, TEnum> _labelToEnum;
 
-        public Type EnumType => typeof (TEnum);
+        public Type EnumType => typeof(TEnum);
 
-        public EnumHandler()
+        public EnumHandler(string pgName)
         {
             Contract.Requires(typeof(TEnum).GetTypeInfo().IsEnum, "EnumHandler instantiated for non-enum type");
+
+            NpgsqlDbType = NpgsqlDbType.Enum;
+            PgName = pgName;
 
             // Reflect on our enum type to find any explicit mappings
             if (!typeof(TEnum).GetFields(BindingFlags.Static | BindingFlags.Public).Any(t => t.GetCustomAttributes(typeof(EnumLabelAttribute), false).Any())) {
@@ -80,8 +84,7 @@ namespace Npgsql.TypeHandlers
                 : _labelToEnum.TryGetValue(str, out value);
 
             if (!success)
-                throw new SafeReadException(new InvalidCastException(
-                    $"Received enum value '{str}' from database which wasn't found on enum {typeof (TEnum)}"));
+                throw new SafeReadException(new InvalidCastException($"Received enum value '{str}' from database which wasn't found on enum {typeof (TEnum)}"));
 
             return value;
         }
@@ -122,9 +125,9 @@ namespace Npgsql.TypeHandlers
             buf.WriteString(str);
         }
 
-        internal EnumHandler<TEnum> Clone()
+        public IEnumHandler Clone()
         {
-            return new EnumHandler<TEnum>();
+            return new EnumHandler<TEnum>(PgName);
         }
     }
 }

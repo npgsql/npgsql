@@ -935,7 +935,7 @@ namespace Npgsql.Tests
                 // Temporarily reroute integer to go to a type handler which generates SafeReadExceptions
                 var registry = conn.Connector.TypeHandlerRegistry;
                 var intHandler = registry[typeof (int)];
-                registry.OIDIndex[intHandler.OID] = new SafeExceptionGeneratingHandler();
+                registry.ByOID[intHandler.OID] = new SafeExceptionGeneratingHandler();
                 try
                 {
                     using (var cmd = new NpgsqlCommand(@"SELECT 1, 'hello'", conn))
@@ -949,7 +949,7 @@ namespace Npgsql.Tests
                 }
                 finally
                 {
-                    registry.OIDIndex[intHandler.OID] = intHandler;
+                    registry.ByOID[intHandler.OID] = intHandler;
                 }
             }
         }
@@ -963,7 +963,7 @@ namespace Npgsql.Tests
                 // Temporarily reroute integer to go to a type handler which generates some exception
                 var registry = conn.Connector.TypeHandlerRegistry;
                 var intHandler = registry[typeof (int)];
-                registry.OIDIndex[intHandler.OID] = new NonSafeExceptionGeneratingHandler();
+                registry.ByOID[intHandler.OID] = new NonSafeExceptionGeneratingHandler();
                 try
                 {
                     using (var cmd = new NpgsqlCommand(@"SELECT 1, 'hello'", conn))
@@ -978,7 +978,7 @@ namespace Npgsql.Tests
                 }
                 finally
                 {
-                    registry.OIDIndex[intHandler.OID] = intHandler;
+                    registry.ByOID[intHandler.OID] = intHandler;
                 }
             }
         }

@@ -77,10 +77,14 @@ namespace Npgsql.TypeHandlers
 
         public Type CompositeType => typeof (T);
 
-        internal CompositeHandler() {}
-
-        CompositeHandler(TypeHandlerRegistry registry)
+        internal CompositeHandler(string pgName)
         {
+            PgName = pgName;
+        }
+
+        internal CompositeHandler(string pgName, TypeHandlerRegistry registry) : this(pgName)
+        {
+            NpgsqlDbType = NpgsqlDbType.Composite;
             _registry = registry;
         }
 
@@ -261,11 +265,8 @@ namespace Npgsql.TypeHandlers
             foreach (var rawField in RawFields)
             {
                 TypeHandler fieldHandler;
-                if (!_registry.OIDIndex.TryGetValue(rawField.Item2, out fieldHandler))
-                {
-                    throw new Exception(
-                        $"PostgreSQL composite type {PgName}, mapped to CLR type {typeof (T).Name}, has field {rawField.Item1} with a type that hasn't been registered (OID={rawField.Item2})");
-                }
+                if (!_registry.TryGetByOID(rawField.Item2, out fieldHandler))
+                    throw new Exception($"PostgreSQL composite type {PgName}, mapped to CLR type {typeof (T).Name}, has field {rawField.Item1} with a type that hasn't been registered (OID={rawField.Item2})");
 
                 var member = (
                     from m in typeof (T).GetMembers()
@@ -276,10 +277,7 @@ namespace Npgsql.TypeHandlers
                 ).SingleOrDefault();
 
                 if (member == null)
-                {
-                    throw new Exception(
-                        $"PostgreSQL composite type {PgName} contains field {rawField.Item1} which could not match any on CLR type {typeof (T).Name}");
-                }
+                    throw new Exception($"PostgreSQL composite type {PgName} contains field {rawField.Item1} which could not match any on CLR type {typeof (T).Name}");
 
                 var property = member as PropertyInfo;
                 if (property != null)
@@ -295,8 +293,7 @@ namespace Npgsql.TypeHandlers
                     continue;
                 }
 
-                throw new Exception(
-                    $"PostgreSQL composite type {PgName} contains field {rawField.Item1} which cannot map to CLR type {typeof (T).Name}'s field {member.Name} of type {member.GetType().Name}");
+                throw new Exception($"PostgreSQL composite type {PgName} contains field {rawField.Item1} which cannot map to CLR type {typeof (T).Name}'s field {member.Name} of type {member.GetType().Name}");
             }
 
             RawFields = null;
@@ -304,7 +301,7 @@ namespace Npgsql.TypeHandlers
 
         public ICompositeHandler Clone(TypeHandlerRegistry registry)
         {
-            return new CompositeHandler<T>(registry);
+            return new CompositeHandler<T>(PgName, registry);
         }
 
         struct FieldDescriptor

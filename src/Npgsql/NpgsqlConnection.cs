@@ -1048,7 +1048,7 @@ namespace Npgsql
                 throw new InvalidOperationException("Connection must be open and idle to perform registration");
             Contract.EndContractBlock();
 
-            Connector.TypeHandlerRegistry.RegisterEnumType<TEnum>(pgName ?? typeof(TEnum).Name.ToLower());
+            Connector.TypeHandlerRegistry.MapEnum<TEnum>(pgName ?? typeof(TEnum).Name.ToLower());
         }
 
         /// <summary>
@@ -1076,12 +1076,12 @@ namespace Npgsql
                 throw new ArgumentException("pgName can't be empty", nameof(pgName));
             Contract.EndContractBlock();
 
-            TypeHandlerRegistry.MapEnumTypeGlobally<TEnum>(pgName ?? typeof(TEnum).Name.ToLower());
+            TypeHandlerRegistry.MapEnumGlobally<TEnum>(pgName ?? typeof(TEnum).Name.ToLower());
         }
 
-        internal static void UnmapEnumGlobally<TEnum>() where TEnum : struct
+        internal static void UnmapEnumGlobally(string pgName)
         {
-            TypeHandlerRegistry.UnregisterEnumTypeGlobally<TEnum>();
+            TypeHandlerRegistry.UnmapEnumGlobally(pgName);
         }
 
         /// <summary>
@@ -1162,7 +1162,7 @@ namespace Npgsql
                 throw new InvalidOperationException("Connection must be open and idle to perform registration");
             Contract.EndContractBlock();
 
-            Connector.TypeHandlerRegistry.MapCompositeType<T>(pgName ?? typeof(T).Name.ToLower());
+            Connector.TypeHandlerRegistry.MapComposite<T>(pgName ?? typeof(T).Name.ToLower());
         }
 
         /// <summary>
@@ -1187,13 +1187,13 @@ namespace Npgsql
                 throw new ArgumentException("pgName can't be empty", nameof(pgName));
             Contract.EndContractBlock();
 
-            TypeHandlerRegistry.MapCompositeTypeGlobally<T>(pgName ?? typeof(T).Name.ToLower());
+            TypeHandlerRegistry.MapCompositeGlobally<T>(pgName ?? typeof(T).Name.ToLower());
         }
 
         // ReSharper disable once UnusedMember.Global
         internal static void UnmapCompositeGlobally(string pgName)
         {
-            TypeHandlerRegistry.UnregisterCompositeTypeGlobally(pgName);
+            TypeHandlerRegistry.UnmapCompositeGlobally(pgName);
         }
 
         #endregion

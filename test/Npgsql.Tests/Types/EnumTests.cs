@@ -40,6 +40,115 @@ namespace Npgsql.Tests.Types
 
         enum Mood { Sad, Ok, Happy };
 
+        [Test, Description("Resolves an enum type handler via the different pathways, with global mapping")]
+        public void EnumTypeResolutionWithGlobalMapping()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ApplicationName = nameof(EnumTypeResolutionWithGlobalMapping),  // Prevent backend type caching in TypeHandlerRegistry
+                Pooling = false
+            };
+
+            using (var conn = OpenConnection(csb))
+            {
+                conn.ExecuteNonQuery("CREATE TYPE pg_temp.mood AS ENUM ('Sad', 'Ok', 'Happy')");
+                NpgsqlConnection.MapEnumGlobally<Mood>();
+                try
+                {
+                    conn.ReloadTypes();
+
+                    // Resolve type by NpgsqlDbType
+                    using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+                    {
+                        cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType.Enum) { SpecificType = typeof(Mood), Value=DBNull.Value });
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            reader.Read();
+                            Assert.That(reader.GetDataTypeName(0), Is.EqualTo("mood"));
+                            Assert.That(reader.IsDBNull(0), Is.True);
+                        }
+                    }
+
+                    // Resolve type by ClrType (type inference)
+                    conn.ReloadTypes();
+                    using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+                    {
+                        cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Value = Mood.Ok });
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            reader.Read();
+                            Assert.That(reader.GetDataTypeName(0), Is.EqualTo("mood"));
+                        }
+                    }
+
+                    // Resolve type by OID (read)
+                    conn.ReloadTypes();
+                    using (var cmd = new NpgsqlCommand("SELECT 'Happy'::MOOD", conn))
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        reader.Read();
+                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("mood"));
+                    }
+                }
+                finally
+                {
+                    NpgsqlConnection.UnmapEnumGlobally("mood");
+                }
+            }
+        }
+
+        [Test, Description("Resolves an enum type handler via the different pathways, with late mapping")]
+        public void EnumTypeResolutionWithLateMapping()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ApplicationName = nameof(EnumTypeResolutionWithLateMapping),  // Prevent backend type caching in TypeHandlerRegistry
+                Pooling = false
+            };
+
+            using (var conn = OpenConnection(csb))
+            {
+                conn.ExecuteNonQuery("CREATE TYPE pg_temp.mood AS ENUM ('Sad', 'Ok', 'Happy')");
+
+                // Resolve type by NpgsqlDbType
+                conn.ReloadTypes();
+                conn.MapEnum<Mood>("mood");
+                using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+                {
+                    cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType.Enum) { SpecificType = typeof(Mood), Value = DBNull.Value });
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        reader.Read();
+                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("mood"));
+                        Assert.That(reader.IsDBNull(0), Is.True);
+                    }
+                }
+
+                // Resolve type by ClrType (type inference)
+                conn.ReloadTypes();
+                conn.MapEnum<Mood>("mood");
+                using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+                {
+                    cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Value = Mood.Ok });
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        reader.Read();
+                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("mood"));
+                    }
+                }
+
+                // Resolve type by OID (read)
+                conn.ReloadTypes();
+                conn.MapEnum<Mood>("mood");
+                using (var cmd = new NpgsqlCommand("SELECT 'Happy'::MOOD", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo("mood"));
+                }
+            }
+        }
+
         [Test]
         public void LateMapping()
         {
@@ -115,7 +224,7 @@ namespace Npgsql.Tests.Types
                 }
                 finally
                 {
-                    NpgsqlConnection.UnmapEnumGlobally<Mood>();
+                    NpgsqlConnection.UnmapEnumGlobally("mood");
                 }
             }
         }
