@@ -136,6 +136,7 @@ namespace Npgsql
         /// <param name="transaction">The <see cref="NpgsqlTransaction">NpgsqlTransaction</see> in which the <see cref="NpgsqlCommand">NpgsqlCommand</see> executes.</param>
         public NpgsqlCommand(string cmdText, [CanBeNull] NpgsqlConnection connection, [CanBeNull] NpgsqlTransaction transaction)
         {
+            GC.SuppressFinalize(this);
             Init(cmdText);
             Connection = connection;
             Transaction = transaction;
