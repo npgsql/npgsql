@@ -1,5 +1,4 @@
-﻿#if NET45 || NET451 || DNX451
-#region License
+﻿#region License
 // The PostgreSQL License
 //
 // Copyright (C) 2016 The Npgsql Development Team
@@ -205,4 +204,3 @@ namespace TlsClientStream
         }
     }
 }
-#endif

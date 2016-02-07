@@ -550,13 +550,9 @@ namespace Npgsql
 
                             if (!UseSslStream)
                             {
-#if NET45 || NET451 || DNX451
-                            var sslStream = new TlsClientStream.TlsClientStream(_stream);
-                            sslStream.PerformInitialHandshake(Host, clientCertificates, certificateValidationCallback, false);
-                            _stream = sslStream;
-#else
-                                throw new NotSupportedException("TLS implementation not yet supported with .NET Core, specify UseSslStream=true for now");
-#endif
+                                var sslStream = new TlsClientStream.TlsClientStream(_stream);
+                                sslStream.PerformInitialHandshake(Host, clientCertificates, certificateValidationCallback, false);
+                                _stream = sslStream;
                             }
                             else
                             {
