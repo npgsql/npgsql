@@ -1,4 +1,4 @@
-﻿#if NET45 || NET451 || DNX451
+//#if !DNXCORE50
 #region License
 // The PostgreSQL License
 //
@@ -48,10 +48,17 @@ namespace TlsClientStream
 
         public int MACLen => Utils.GetHashLen(HashAlgorithm);
 
-        public HMAC CreateHMAC(byte[] key)
+        public
+#if NET45 || NET451 || NET452 || DNX451
+            HMAC
+#else
+            IncrementalHash
+#endif
+            CreateHMAC(byte[] key)
         {
             switch (HashAlgorithm)
             {
+#if NET45 || NET451 || NET452 || DNX451
                 case TLSHashAlgorithm.SHA1:
                     return new HMACSHA1(key);
                 case TLSHashAlgorithm.SHA256:
@@ -60,6 +67,16 @@ namespace TlsClientStream
                     return new HMACSHA384(key);
                 case TLSHashAlgorithm.SHA512:
                     return new HMACSHA512(key);
+#else
+                case TLSHashAlgorithm.SHA1:
+                    return IncrementalHash.CreateHMAC(HashAlgorithmName.SHA1, key);
+                case TLSHashAlgorithm.SHA256:
+                    return IncrementalHash.CreateHMAC(HashAlgorithmName.SHA256, key);
+                case TLSHashAlgorithm.SHA384:
+                    return IncrementalHash.CreateHMAC(HashAlgorithmName.SHA384, key);
+                case TLSHashAlgorithm.SHA512:
+                    return IncrementalHash.CreateHMAC(HashAlgorithmName.SHA512, key);
+#endif
                 default:
                     throw new NotSupportedException();
             }
@@ -143,4 +160,4 @@ namespace TlsClientStream
         };
     }
 }
-#endif
+//#endif

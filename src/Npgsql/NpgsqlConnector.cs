@@ -504,13 +504,9 @@ namespace Npgsql
 
                         if (!UseSslStream)
                         {
-#if NET45 || NET451 || DNX451
                             var sslStream = new TlsClientStream.TlsClientStream(_stream);
                             sslStream.PerformInitialHandshake(Host, clientCertificates, certificateValidationCallback, false);
                             _stream = sslStream;
-#else
-                            throw new NotSupportedException("TLS implementation not yet supported with .NET Core, specify UseSslStream=true for now");
-#endif
                         }
                         else
                         {
@@ -1233,10 +1229,7 @@ namespace Npgsql
 
         bool HasDataInBuffers => Buffer.ReadBytesLeft > 0 ||
                                  (_stream is NetworkStream && ((NetworkStream) _stream).DataAvailable)
-#if NET45 || NET451 || DNX451
-                                 || (_stream is TlsClientStream.TlsClientStream && ((TlsClientStream.TlsClientStream) _stream).HasBufferedReadData(false))
-#endif
-                                 ;
+                                 || (_stream is TlsClientStream.TlsClientStream && ((TlsClientStream.TlsClientStream) _stream).HasBufferedReadData(false));
 
         /// <summary>
         /// Reads and processes any messages that are already in our buffers (either Npgsql or TCP).

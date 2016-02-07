@@ -1,4 +1,4 @@
-﻿#if NET45 || NET451 || DNX451
+﻿//#if !DNXCORE50
 #region License
 // The PostgreSQL License
 //
@@ -60,7 +60,7 @@ namespace TlsClientStream
         ConnectionState _readConnState;
         ConnectionState _pendingConnState;
 
-        RNGCryptoServiceProvider _rng = new RNGCryptoServiceProvider();
+        RandomNumberGenerator _rng = RandomNumberGenerator.Create();
 
         // Info about the current message in the buffer
         ContentType _contentType;
@@ -223,15 +223,13 @@ namespace TlsClientStream
                 Utils.WriteUInt64(_buf, cipherStartPos - 5 - 8, _readConnState.ReadSeqNum);*/
 
                 // We should use the plaintext len, not the encrypted len for the MAC
-                _readConnState.ReadMac.Initialize();
+                //_readConnState.ReadMac.Initialize();
                 Utils.WriteUInt64(_tempBuf8, 0, _readConnState.ReadSeqNum);
-                _readConnState.ReadMac.TransformBlock(_tempBuf8, 0, 8);
+                _readConnState.ReadMac.AppendData(_tempBuf8, 0, 8);
                 Utils.WriteUInt16(_buf, _readStart + 3, (ushort)plaintextLen);
-                _readConnState.ReadMac.TransformBlock(_buf, _readStart, 5);
-                _readConnState.ReadMac.TransformBlock(_buf, cipherStartPos, plaintextLen);
-                _readConnState.ReadMac.TransformFinalBlock(_tempBuf8, 0, 0);
-
-                var hmac = _readConnState.ReadMac.Hash;
+                _readConnState.ReadMac.AppendData(_buf, _readStart, 5);
+                _readConnState.ReadMac.AppendData(_buf, cipherStartPos, plaintextLen);
+                var hmac = _readConnState.ReadMac.GetHashAndReset();
 
                 if (!Utils.ArraysEqual(hmac, 0, _buf, cipherStartPos + plaintextLen, hmac.Length))
                     SendAlertFatal(AlertDescription.BadRecordMac);
@@ -284,12 +282,11 @@ namespace TlsClientStream
 
                 Utils.WriteUInt64(_tempBuf8, 0, _connState.WriteSeqNum++);
 
-                _connState.WriteMac.Initialize();
-                _connState.WriteMac.TransformBlock(_tempBuf8, 0, 8);
-                _connState.WriteMac.TransformBlock(_buf, startPos, 5);
-                _connState.WriteMac.TransformBlock(_buf, startPos + 5 + _connState.IvLen, len);
-                _connState.WriteMac.TransformFinalBlock(_buf, 0, 0);
-                var mac = _connState.WriteMac.Hash;
+                //_connState.WriteMac.Initialize();
+                _connState.WriteMac.AppendData(_tempBuf8, 0, 8);
+                _connState.WriteMac.AppendData(_buf, startPos, 5);
+                _connState.WriteMac.AppendData(_buf, startPos + 5 + _connState.IvLen, len);
+                var mac = _connState.WriteMac.GetHashAndReset();
 
                 Buffer.BlockCopy(mac, 0, _buf, startPos + 5 + _connState.IvLen + len, mac.Length);
                 Utils.ClearArray(mac);
@@ -344,21 +341,21 @@ namespace TlsClientStream
         {
             // .NET hash api does not allow us to clone hash states ...
             if (_handshakeData.HandshakeHash1 != null)
-                _handshakeData.HandshakeHash1.TransformBlock(buf, offset, len);
+                _handshakeData.HandshakeHash1.Update(buf, offset, len);
             if (_handshakeData.HandshakeHash1_384 != null)
-                _handshakeData.HandshakeHash1_384.TransformBlock(buf, offset, len);
+                _handshakeData.HandshakeHash1_384.Update(buf, offset, len);
             if (_handshakeData.HandshakeHash2 != null)
-                _handshakeData.HandshakeHash2.TransformBlock(buf, offset, len);
+                _handshakeData.HandshakeHash2.Update(buf, offset, len);
             if (_handshakeData.HandshakeHash2_384 != null)
-                _handshakeData.HandshakeHash2_384.TransformBlock(buf, offset, len);
+                _handshakeData.HandshakeHash2_384.Update(buf, offset, len);
             if (_handshakeData.HandshakeHash1_MD5SHA1 != null)
-                _handshakeData.HandshakeHash1_MD5SHA1.TransformBlock(buf, offset, len);
+                _handshakeData.HandshakeHash1_MD5SHA1.Update(buf, offset, len);
             if (_handshakeData.HandshakeHash2_MD5SHA1 != null)
-                _handshakeData.HandshakeHash2_MD5SHA1.TransformBlock(buf, offset, len);
+                _handshakeData.HandshakeHash2_MD5SHA1.Update(buf, offset, len);
             if (_handshakeData.CertificateVerifyHash_MD5 != null)
-                _handshakeData.CertificateVerifyHash_MD5.TransformBlock(buf, offset, len);
+                _handshakeData.CertificateVerifyHash_MD5.Update(buf, offset, len);
             if (_handshakeData.CertificateVerifyHash_SHA1 != null)
-                _handshakeData.CertificateVerifyHash_SHA1.TransformBlock(buf, offset, len);
+                _handshakeData.CertificateVerifyHash_SHA1.Update(buf, offset, len);
         }
 
         //[RewriteAsync]
@@ -529,8 +526,17 @@ namespace TlsClientStream
             {
                 _pendingConnState.ReadIv = _pendingConnState.WriteIv = new byte[_pendingConnState.BlockLen];
             }
-            _pendingConnState.WriteAes = new AesCryptoServiceProvider() { Key = writeKey, Mode = isCbc ? CipherMode.CBC : CipherMode.ECB, Padding = PaddingMode.None };
-            _pendingConnState.ReadAes = new AesCryptoServiceProvider() { Key = readKey, Mode = isCbc ? CipherMode.CBC : CipherMode.ECB, Padding = PaddingMode.None };
+
+            _pendingConnState.WriteAes = Aes.Create();
+            _pendingConnState.WriteAes.Key = writeKey;
+            _pendingConnState.WriteAes.Mode = isCbc ? CipherMode.CBC : CipherMode.ECB;
+            _pendingConnState.WriteAes.Padding = PaddingMode.None;
+
+            _pendingConnState.ReadAes = Aes.Create();
+            _pendingConnState.ReadAes.Key = readKey;
+            _pendingConnState.ReadAes.Mode = isCbc ? CipherMode.CBC : CipherMode.ECB;
+            _pendingConnState.ReadAes.Padding = PaddingMode.None;
+
             // int tmpOffset = macLen * 2 + aesKeyLen * 2;
             if (isGcm)
             {
@@ -549,7 +555,7 @@ namespace TlsClientStream
 
             _connState = _pendingConnState;
             SendHandshakeMessage(SendFinished, ref offset, ivLen);
-            _handshakeData.HandshakeHash2.TransformFinalBlock(_buf, 0, 0);
+            //_handshakeData.HandshakeHash2.Final();
 
             // _buf is now ready to be written to the base stream, from pos 0 to offset
             return offset;
@@ -647,14 +653,14 @@ namespace TlsClientStream
         {
             _pendingConnState = new ConnectionState();
             _handshakeData = new HandshakeData();
-            _handshakeData.HandshakeHash1 = new SHA256CryptoServiceProvider();
-            _handshakeData.HandshakeHash2 = new SHA256CryptoServiceProvider();
-            _handshakeData.HandshakeHash1_384 = new SHA384CryptoServiceProvider();
-            _handshakeData.HandshakeHash2_384 = new SHA384CryptoServiceProvider();
-            _handshakeData.HandshakeHash1_MD5SHA1 = new MD5SHA1();
-            _handshakeData.HandshakeHash2_MD5SHA1 = new MD5SHA1();
-            _handshakeData.CertificateVerifyHash_MD5 = new MD5CryptoServiceProvider();
-            _handshakeData.CertificateVerifyHash_SHA1 = new SHA1CryptoServiceProvider();
+            _handshakeData.HandshakeHash1 = Hasher.Create(TLSHashAlgorithm.SHA256);
+            _handshakeData.HandshakeHash2 = Hasher.Create(TLSHashAlgorithm.SHA256);
+            _handshakeData.HandshakeHash1_384 = Hasher.Create(TLSHashAlgorithm.SHA384);
+            _handshakeData.HandshakeHash2_384 = Hasher.Create(TLSHashAlgorithm.SHA384);
+            _handshakeData.HandshakeHash1_MD5SHA1 = Hasher.Create(TLSHashAlgorithm.MD5SHA1);
+            _handshakeData.HandshakeHash2_MD5SHA1 = Hasher.Create(TLSHashAlgorithm.MD5SHA1);
+            _handshakeData.CertificateVerifyHash_MD5 = Hasher.Create(TLSHashAlgorithm.MD5);
+            _handshakeData.CertificateVerifyHash_SHA1 = Hasher.Create(TLSHashAlgorithm.SHA1);
 
             // Highest version supported
             offset += Utils.WriteUInt16(_buf, offset, (ushort)HighestTlsVersionSupported);
@@ -817,38 +823,38 @@ namespace TlsClientStream
                 switch (_pendingConnState.CipherSuite.PRFAlgorithm)
                 {
                     case PRFAlgorithm.TLSPrfSHA256:
-                        _handshakeData.HandshakeHash1_384.Clear();
+                        _handshakeData.HandshakeHash1_384.Dispose();
                         _handshakeData.HandshakeHash1_384 = null;
-                        _handshakeData.HandshakeHash2_384.Clear();
+                        _handshakeData.HandshakeHash2_384.Dispose();
                         _handshakeData.HandshakeHash2_384 = null;
                         break;
                     case PRFAlgorithm.TLSPrfSHA384:
-                        _handshakeData.HandshakeHash1.Clear();
+                        _handshakeData.HandshakeHash1.Dispose();
                         _handshakeData.HandshakeHash1 = _handshakeData.HandshakeHash1_384;
                         _handshakeData.HandshakeHash1_384 = null;
-                        _handshakeData.HandshakeHash2.Clear();
+                        _handshakeData.HandshakeHash2.Dispose();
                         _handshakeData.HandshakeHash2 = _handshakeData.HandshakeHash2_384;
                         _handshakeData.HandshakeHash2_384 = null;
                         break;
                     default:
                         throw new InvalidOperationException();
                 }
-                _handshakeData.HandshakeHash1_MD5SHA1.Clear();
+                _handshakeData.HandshakeHash1_MD5SHA1.Dispose();
                 _handshakeData.HandshakeHash1_MD5SHA1 = null;
-                _handshakeData.HandshakeHash2_MD5SHA1.Clear();
+                _handshakeData.HandshakeHash2_MD5SHA1.Dispose();
                 _handshakeData.HandshakeHash2_MD5SHA1 = null;
-                _handshakeData.CertificateVerifyHash_MD5.Clear();
+                _handshakeData.CertificateVerifyHash_MD5.Dispose();
                 _handshakeData.CertificateVerifyHash_MD5 = null;
             }
             else
             {
-                _handshakeData.HandshakeHash1.Clear();
+                _handshakeData.HandshakeHash1.Dispose();
                 _handshakeData.HandshakeHash1 = null;
-                _handshakeData.HandshakeHash2.Clear();
+                _handshakeData.HandshakeHash2.Dispose();
                 _handshakeData.HandshakeHash2 = null;
-                _handshakeData.HandshakeHash1_384.Clear();
+                _handshakeData.HandshakeHash1_384.Dispose();
                 _handshakeData.HandshakeHash1_384 = null;
-                _handshakeData.HandshakeHash2_384.Clear();
+                _handshakeData.HandshakeHash2_384.Dispose();
                 _handshakeData.HandshakeHash2_384 = null;
                 _handshakeData.HandshakeHash1 = _handshakeData.HandshakeHash1_MD5SHA1;
                 _handshakeData.HandshakeHash1_MD5SHA1 = null;
@@ -1028,8 +1034,9 @@ namespace TlsClientStream
             // Highest version supported
             Utils.WriteUInt16(preMasterSecret, 0, (ushort)HighestTlsVersionSupported);
 
-            var rsa = (RSACryptoServiceProvider)_handshakeData.CertList[0].PublicKey.Key;
-            var encryptedPreMasterSecret = rsa.Encrypt(preMasterSecret, false);
+            byte[] encryptedPreMasterSecret = Utils.EncryptPkcsPadding(_handshakeData.CertList[0], preMasterSecret);
+            /*var rsa = (RSACryptoServiceProvider)_handshakeData.CertList[0].PublicKey.Key;
+            var encryptedPreMasterSecret = rsa.Encrypt(preMasterSecret, false);*/
             SetMasterSecret(preMasterSecret);
 
             // Message content
@@ -1142,17 +1149,18 @@ namespace TlsClientStream
             Buffer.BlockCopy(buf, pos, signature, 0, signatureLen);
             pos += signatureLen;
 
-            System.Security.Cryptography.HashAlgorithm alg = null;
+            Hasher alg = null;
             switch (hashAlgorithm)
             {
-                case TLSHashAlgorithm.SHA1: alg = new SHA1CryptoServiceProvider(); break;
-                case TLSHashAlgorithm.SHA256: alg = new SHA256CryptoServiceProvider(); break;
-                case TLSHashAlgorithm.SHA384: alg = new SHA384CryptoServiceProvider(); break;
-                case TLSHashAlgorithm.SHA512: alg = new SHA512CryptoServiceProvider(); break;
+                case TLSHashAlgorithm.SHA1:
+                case TLSHashAlgorithm.SHA256:
+                case TLSHashAlgorithm.SHA384:
+                case TLSHashAlgorithm.SHA512:
+                    alg = Hasher.Create(hashAlgorithm); break;
                 case TLSHashAlgorithm.MD5SHA1:
                     if (_pendingConnState.TlsVersion != TlsVersion.TLSv1_2)
                     {
-                        alg = new MD5SHA1();
+                        alg = Hasher.Create(hashAlgorithm);
                         break;
                     }
                     else
@@ -1162,11 +1170,11 @@ namespace TlsClientStream
                 default: SendAlertFatal(AlertDescription.IllegalParameter); break;
             }
 
-            alg.TransformBlock(_pendingConnState.ClientRandom, 0, 32);
-            alg.TransformBlock(_pendingConnState.ServerRandom, 0, 32);
-            alg.TransformBlock(buf, secParamStart, parametersEnd - secParamStart);
-            alg.TransformFinalBlock(buf, 0, 0);
-            var hash = alg.Hash;
+            alg.Update(_pendingConnState.ClientRandom, 0, 32);
+            alg.Update(_pendingConnState.ServerRandom, 0, 32);
+            alg.Update(buf, secParamStart, parametersEnd - secParamStart);
+            var hash = alg.Final();
+            alg.Dispose();
 
             if (signatureAlgorithm == SignatureAlgorithm.ECDSA)
             {
@@ -1188,6 +1196,7 @@ namespace TlsClientStream
             }
             else
             {
+#if NET45 || NET451 || NET452 || DNX451
                 var pubKey = _handshakeData.CertList[0].PublicKey.Key;
                 var rsa = pubKey as RSACryptoServiceProvider;
                 var dsa = pubKey as DSACryptoServiceProvider;
@@ -1216,6 +1225,26 @@ namespace TlsClientStream
                 {
                     SendAlertFatal(AlertDescription.IllegalParameter);
                 }
+#else
+                bool ok = false;
+                if (signatureAlgorithm == SignatureAlgorithm.RSA)
+                {
+                    using (var rsa = _handshakeData.CertList[0].GetRSAPrivateKey())
+                    {
+                        if (rsa != null)
+                        {
+                            ok = _pendingConnState.TlsVersion == TlsVersion.TLSv1_2 ?
+                                rsa.VerifyHash(hash, signature, Hasher.GetHashAlgorithmName(hashAlgorithm), RSASignaturePadding.Pkcs1) :
+                                RsaPKCS1.VerifyRsaPKCS1(rsa, signature, hash, _pendingConnState.TlsVersion == TlsVersion.TLSv1_0 && _pendingConnState.CipherSuite.KeyExchange == KeyExchange.DHE_RSA);
+                        }
+                    }
+                }
+
+                if (!ok)
+                {
+                    SendAlertFatal(AlertDescription.IllegalParameter);
+                }
+#endif
             }
         }
 
@@ -1351,7 +1380,11 @@ namespace TlsClientStream
                 {
                     var cert2 = cert as X509Certificate2;
                     if (cert2 == null)
-                        cert2 = new X509Certificate2(cert);
+                        cert2 = new X509Certificate2(cert
+#if !(NET45 || NET451 || NET452 || DNX451)
+                            .Export(X509ContentType.Cert)
+#endif
+                            );
                     var chain = new X509Chain();
                     chain.Build(cert2);
                     foreach (var elem in chain.ChainElements)
@@ -1394,21 +1427,25 @@ namespace TlsClientStream
 
         HandshakeType SendCertificateVerify(ref int offset)
         {
+#if NET45 || NET451 || NET452 || DNX451
             var key = new X509Certificate2(_clientCertificates[0]).PrivateKey;
 
             var keyDsa = key as DSACryptoServiceProvider;
             var keyRsa = key as RSACryptoServiceProvider;
+#else
+            var keyRsa = new X509Certificate2(_clientCertificates[0].Export(X509ContentType.Cert)).GetRSAPrivateKey();
+#endif
 
             byte[] signature = null, hash = null;
 
+#if NET45 || NET451 || NET452 || DNX451
             if (keyDsa != null)
             {
                 if (_pendingConnState.TlsVersion == TlsVersion.TLSv1_2 && !_handshakeData.SupportedSignatureAlgorithms.Contains(Tuple.Create(TLSHashAlgorithm.SHA1, SignatureAlgorithm.DSA)))
                 {
                     SendAlertFatal(AlertDescription.HandshakeFailure, "Server does not support client certificate sha1-dsa signatures");
                 }
-                _handshakeData.CertificateVerifyHash_SHA1.TransformFinalBlock(_buf, 0, 0);
-                hash = _handshakeData.CertificateVerifyHash_SHA1.Hash;
+                hash = _handshakeData.CertificateVerifyHash_SHA1.Final();
                 signature = keyDsa.SignHash(hash, Utils.HashNameToOID["SHA1"]);
 
                 // Convert to DER
@@ -1439,20 +1476,20 @@ namespace TlsClientStream
                     _buf[offset++] = (byte)SignatureAlgorithm.DSA;
                 }
             }
-            else if (keyRsa != null)
+            else
+#endif
+            if (keyRsa != null)
             {
                 if (_pendingConnState.TlsVersion == TlsVersion.TLSv1_2 && !_handshakeData.SupportedSignatureAlgorithms.Contains(Tuple.Create(TLSHashAlgorithm.SHA1, SignatureAlgorithm.RSA)))
                 {
                     SendAlertFatal(AlertDescription.HandshakeFailure, "Server does not support client certificate sha1-rsa signatures");
                 }
 
-                _handshakeData.CertificateVerifyHash_SHA1.TransformFinalBlock(_buf, 0, 0);
-                hash = _handshakeData.CertificateVerifyHash_SHA1.Hash;
+                hash = _handshakeData.CertificateVerifyHash_SHA1.Final();
                 byte[] md5Hash = null;
                 if (_handshakeData.CertificateVerifyHash_MD5 != null)
                 {
-                    _handshakeData.CertificateVerifyHash_MD5.TransformFinalBlock(_buf, 0, 0);
-                    md5Hash = _handshakeData.CertificateVerifyHash_MD5.Hash;
+                    md5Hash = _handshakeData.CertificateVerifyHash_MD5.Final();
                 }
 
                 // NOTE: It seems problematic to support other hash algorithms than SHA1 since the PrivateKey included in the certificate
@@ -1475,7 +1512,11 @@ namespace TlsClientStream
                 }
                 else
                 {
+#if NET45 || NET451 || NET452 || DNX451
                     signature = keyRsa.SignHash(hash, Utils.HashNameToOID["SHA1"]);
+#else
+                    signature = keyRsa.SignHash(hash, HashAlgorithmName.SHA1, RSASignaturePadding.Pkcs1);
+#endif
 
                     if (_pendingConnState.TlsVersion == TlsVersion.TLSv1_2)
                     {
@@ -1488,15 +1529,17 @@ namespace TlsClientStream
             {
                 SendAlertFatal(AlertDescription.HandshakeFailure);
             }
-            _handshakeData.CertificateVerifyHash_SHA1.Clear();
+            _handshakeData.CertificateVerifyHash_SHA1.Dispose();
             _handshakeData.CertificateVerifyHash_SHA1 = null;
             if (_handshakeData.CertificateVerifyHash_MD5 != null)
             {
-                _handshakeData.CertificateVerifyHash_MD5.Clear();
+                _handshakeData.CertificateVerifyHash_MD5.Dispose();
                 _handshakeData.CertificateVerifyHash_MD5 = null;
             }
 
+#if NET45 || NET451 || NET452 || DNX451
             key.Dispose();
+#endif
 
             offset += Utils.WriteUInt16(_buf, offset, (ushort)signature.Length);
             Buffer.BlockCopy(signature, 0, _buf, offset, signature.Length);
@@ -1522,8 +1565,7 @@ namespace TlsClientStream
 
         HandshakeType SendFinished(ref int offset)
         {
-            _handshakeData.HandshakeHash1.TransformFinalBlock(_buf, 0, 0);
-            byte[] inputHash = _handshakeData.HandshakeHash1.Hash;
+            byte[] inputHash = _handshakeData.HandshakeHash1.Final();
             byte[] hash = Utils.PRF(_connState.PRFAlgorithm, _connState.MasterSecret, "client finished", inputHash, 12);
             Buffer.BlockCopy(hash, 0, _buf, offset, 12);
             offset += 12;
@@ -1533,7 +1575,7 @@ namespace TlsClientStream
                 Utils.ClearArray(hash);
             Utils.ClearArray(inputHash);
 
-            _handshakeData.HandshakeHash1.Clear();
+            _handshakeData.HandshakeHash1.Dispose();
             _handshakeData.HandshakeHash1 = null;
 
             return HandshakeType.Finished;
@@ -1558,7 +1600,7 @@ namespace TlsClientStream
 
         void ParseFinishedMessage(byte[] buf)
         {
-            byte[] hash = Utils.PRF(_connState.PRFAlgorithm, _connState.MasterSecret, "server finished", _handshakeData.HandshakeHash2.Hash, 12);
+            byte[] hash = Utils.PRF(_connState.PRFAlgorithm, _connState.MasterSecret, "server finished", _handshakeData.HandshakeHash2.Final(), 12);
             if (buf.Length != 4 + 12 || !hash.SequenceEqual(buf.Skip(4)))
                 SendAlertFatal(AlertDescription.DecryptError);
             if (_connState.SecureRenegotiation)
@@ -1586,7 +1628,7 @@ namespace TlsClientStream
             int endPos = Encrypt(0, 2);
             _baseStream.Write(_buf, 0, endPos);
             _baseStream.Flush();
-            _baseStream.Close();
+            _baseStream.Dispose();
             _eof = true;
             _closed = true;
             _connState.Dispose();
@@ -1633,13 +1675,13 @@ namespace TlsClientStream
                     // TODO: what to do with _closed? (_eof is true)
                     _baseStream.Read(_buf, 0, 0);
 
-                    _baseStream.Close();
+                    _baseStream.Dispose();
                     break;
                 default:
                     if (alertLevel == AlertLevel.Fatal)
                     {
                         _eof = true;
-                        _baseStream.Close();
+                        _baseStream.Dispose();
                         Dispose();
                         throw new IOException("TLS Fatal alert: " + alertDescription);
                     }
@@ -2057,7 +2099,7 @@ namespace TlsClientStream
                         // TODO: Ok or not if this throws an exception?
 
                         SendClosureAlert();
-                        _baseStream.Close();
+                        _baseStream.Dispose();
                     }
                 }
                 finally
@@ -2146,4 +2188,4 @@ namespace TlsClientStream
         }
     }
 }
-#endif
+//#endif
