@@ -49,6 +49,12 @@ namespace Npgsql
         public new NpgsqlConnection Connection { get; internal set; }
 
         /// <summary>
+        /// Specifies the completion state of the transaction.
+        /// </summary>
+        /// <value>The completion state of the transaction.</value>
+        public bool IsCompleted { get { return Connection == null; } }
+
+        /// <summary>
         /// Specifies the <see cref="NpgsqlConnection"/> object associated with the transaction.
         /// </summary>
         /// <value>The <see cref="NpgsqlConnection"/> object associated with the transaction.</value>
@@ -302,7 +308,7 @@ namespace Npgsql
         [ContractArgumentValidator]
         void CheckCompleted()
         {
-            if (Connection == null)
+            if (IsCompleted)
                 throw new InvalidOperationException("This NpgsqlTransaction has completed; it is no longer usable.");
             Contract.EndContractBlock();
         }

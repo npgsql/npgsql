@@ -386,6 +386,49 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, Description("Check IsCompleted before, during and after a normal committed transaction")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/985")]
+        public void IsCompletedCommit()
+        {
+            ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
+            var tx = Conn.BeginTransaction();
+            Assert.That(!tx.IsCompleted);
+            ExecuteNonQuery("INSERT INTO data (name) VALUES ('X')", tx: tx);
+            Assert.That(!tx.IsCompleted);
+            tx.Commit();
+            Assert.That(tx.IsCompleted);
+        }
+
+        [Test, Description("Check IsCompleted before, during, and after a successful but rolled back transaction")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/985")]
+        public void IsCompletedRollback()
+        {
+            ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
+            var tx = Conn.BeginTransaction();
+            Assert.That(!tx.IsCompleted);
+            ExecuteNonQuery("INSERT INTO data (name) VALUES ('X')", tx: tx);
+            Assert.That(!tx.IsCompleted);
+            tx.Rollback();
+            Assert.That(tx.IsCompleted);
+        }
+
+
+        [Test, Description("Check IsCompleted before, during, and after a failed then rolled back transaction")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/985")]
+        public void IsCompletedRollbackFailed()
+        {
+            ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
+            var tx = Conn.BeginTransaction();
+            Assert.That(!tx.IsCompleted);
+            ExecuteNonQuery("INSERT INTO data (name) VALUES ('X')", tx: tx);
+            Assert.That(!tx.IsCompleted);
+            Assert.That(() => ExecuteNonQuery("BAD QUERY"), Throws.Exception);
+            Assert.That(!tx.IsCompleted);
+            tx.Rollback();
+            Assert.That(tx.IsCompleted);
+            Assert.That(ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
+        }
+
         // Older tests
 
         [Test]
