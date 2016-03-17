@@ -448,7 +448,7 @@ namespace Npgsql.Tests.Types
             using (var conn = OpenConnection())
             using (var cmd = conn.CreateCommand())
             {
-                cmd.CommandText = "SELECT '(1234,40000)'::tid, @p";
+                cmd.CommandText = "SELECT '(1234,40000)'::tid, @p::tid";
                 cmd.Parameters.AddWithValue("p", NpgsqlDbType.Tid, expected);
                 using (var reader = cmd.ExecuteReader())
                 {
