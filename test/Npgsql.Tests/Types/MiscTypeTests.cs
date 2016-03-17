@@ -441,6 +441,26 @@ namespace Npgsql.Tests.Types
             }
         }
 
+        [Test]
+        public void Tid()
+        {
+            var expected = new NpgsqlTid(3, 5);
+            using (var conn = OpenConnection())
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = "SELECT '(1234,40000)'::tid, @p";
+                cmd.Parameters.AddWithValue("p", NpgsqlDbType.Tid, expected);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.AreEqual(1234, reader.GetFieldValue<NpgsqlTid>(0).BlockNumber);
+                    Assert.AreEqual(40000, reader.GetFieldValue<NpgsqlTid>(0).OffsetNumber);
+                    Assert.AreEqual(expected.BlockNumber, reader.GetFieldValue<NpgsqlTid>(1).BlockNumber);
+                    Assert.AreEqual(expected.OffsetNumber, reader.GetFieldValue<NpgsqlTid>(1).OffsetNumber);
+                }
+            }
+        }
+
         // Older tests
 
         [Test]

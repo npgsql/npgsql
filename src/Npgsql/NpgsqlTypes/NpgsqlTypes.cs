@@ -829,6 +829,36 @@ namespace NpgsqlTypes
             return !(x == y);
         }
     }
+
+    /// <summary>
+    /// Represents a PostgreSQL tid value
+    /// </summary>
+    /// <remarks>
+    /// http://www.postgresql.org/docs/current/static/datatype-oid.html
+    /// </remarks>
+    public struct NpgsqlTid
+    {
+        /// <summary>
+        /// Block number
+        /// </summary>
+        public uint BlockNumber;
+
+        /// <summary>
+        /// Tuple index within block
+        /// </summary>
+        public ushort OffsetNumber;
+
+        public NpgsqlTid(uint blockNumber, ushort offsetNumber)
+        {
+            BlockNumber = blockNumber;
+            OffsetNumber = offsetNumber;
+        }
+
+        public override string ToString()
+        {
+            return "(" + BlockNumber + "," + OffsetNumber + ")";
+        }
+    }
 }
 
 #pragma warning restore 1591
