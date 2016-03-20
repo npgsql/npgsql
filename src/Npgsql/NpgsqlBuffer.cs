@@ -222,6 +222,14 @@ namespace Npgsql
             return result;
         }
 
+        internal ushort ReadUInt16()
+        {
+            Contract.Requires(ReadBytesLeft >= sizeof(short));
+            var result = (ushort)IPAddress.NetworkToHostOrder(BitConverter.ToInt16(_buf, ReadPosition));
+            ReadPosition += 2;
+            return result;
+        }
+
         internal int ReadInt32()
         {
             Contract.Requires(ReadBytesLeft >= sizeof(int));
@@ -449,6 +457,13 @@ namespace Npgsql
         public void WriteInt16(int i)
         {
             Contract.Requires(WriteSpaceLeft >= sizeof(short));
+            _buf[_writePosition++] = (byte)(i >> 8);
+            _buf[_writePosition++] = (byte)i;
+        }
+
+        public void WriteUInt16(int i)
+        {
+            Contract.Requires(WriteSpaceLeft >= sizeof(ushort));
             _buf[_writePosition++] = (byte)(i >> 8);
             _buf[_writePosition++] = (byte)i;
         }

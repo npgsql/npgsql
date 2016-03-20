@@ -438,6 +438,11 @@ namespace NpgsqlTypes
         /// </summary>
         Regtype = 49,
 
+        /// <summary>
+        /// Corresponds to the PostgreSQL "tid" type, a tuple id identifying the physical location of a row within its table.
+        /// </summary>
+        Tid = 53,
+
         #endregion
 
         #region Special
