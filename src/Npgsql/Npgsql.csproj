@@ -222,6 +222,7 @@
     <Compile Include="TypeHandlers\HstoreHandler.cs" />
     <Compile Include="TypeHandlers\InternalTypesHandlers\Int2VectorHandler.cs" />
     <Compile Include="TypeHandlers\InternalTypesHandlers\OIDVectorHandler.cs" />
+    <Compile Include="TypeHandlers\InternalTypesHandlers\TidHandler.cs" />
     <Compile Include="TypeHandlers\JsonbHandler.cs" />
     <Compile Include="TypeHandlers\NetworkHandlers\CidrHandler.cs" />
     <Compile Include="TypeHandlers\NetworkHandlers\MacaddrHandler.cs" />
