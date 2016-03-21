@@ -14,10 +14,10 @@
     "keyFile": "../../Npgsql.snk"
   },
   "dependencies" : {
-    "EntityFramework.Core": "7.0.0-rc2-16649",
-    "EntityFramework.Relational": "7.0.0-rc2-16649",
-    "Microsoft.Extensions.DependencyInjection.Abstractions": "1.0.0-rc2-16059",
-    "Microsoft.Extensions.DependencyInjection": "1.0.0-rc2-16059",
+    "EntityFramework.Core": "7.0.0-rc2-*",
+    "EntityFramework.Relational": "7.0.0-rc2-*",
+    "Microsoft.Extensions.DependencyInjection.Abstractions": "<1.0.0-rc2-20000",
+    "Microsoft.Extensions.DependencyInjection": "<1.0.0-rc2-20000",
     "Npgsql": "3.1.0-*"
   },
   "frameworks": {
