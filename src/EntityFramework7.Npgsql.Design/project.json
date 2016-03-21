@@ -41,8 +41,7 @@
       }
     },
     "dotnet54": {
-      "dependencies": {
-      }
+      "dependencies": { }
     }
   }
 }
