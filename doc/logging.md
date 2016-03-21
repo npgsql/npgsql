@@ -27,7 +27,7 @@ Npgsql comes with one built-in logging provider: ConsoleLoggingProvider. It will
 You can set it up by including the following line at the beginning of your application:
 
 {% highlight C# %}
-NpgsqlLogManager.Provider = new ConsoleLogManager(<min level>, <print level?>, <print connector id?>);
+NpgsqlLogManager.Provider = new ConsoleLoggingProvider(<min level>, <print level?>, <print connector id?>);
 {% endhighlight %}
 
 Level defaults to `NpgsqlLogLevel.Info` (which will only print warnings and errors).
