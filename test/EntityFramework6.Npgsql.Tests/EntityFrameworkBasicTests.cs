@@ -10,6 +10,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Data.Entity.Core.Metadata.Edm;
 using System.Data.Entity.Core.Objects;
 using System.Data.Entity.Infrastructure;
+using Npgsql.Linq;
 using Npgsql.Tests;
 
 namespace EntityFramework6.Npgsql.Tests
@@ -728,6 +729,67 @@ namespace EntityFramework6.Npgsql.Tests
                 Assert.AreEqual(directCallResult, 11);
                 Assert.IsTrue(directSQL.Contains("\"dbo\".\"StoredAddFunction\""));
                 CollectionAssert.AreEqual(localChangedIds, remoteChangedIds);
+            }
+        }
+
+        [Test]
+        public void TestFullTextSearch()
+        {
+            using (var context = new BloggingContext(ConnectionStringEF))
+            {
+                context.Database.Log = Console.Out.WriteLine;
+
+                var blog1 = new Blog
+                {
+                    Name = "The quick brown fox jumps over the lazy dog."
+                };
+                var blog2 = new Blog
+                {
+                    Name = "Jackdaws loves my big sphinx of quartz."
+                };
+                context.Blogs.Add(blog1);
+                context.Blogs.Add(blog2);
+                context.SaveChanges();
+
+                var foundBlog = context
+                    .Blogs
+                    .FirstOrDefault(
+                        x => PgSqlTextFunctions.Match(
+                            PgSqlTextFunctions.ToTsVector(x.Name),
+                            PgSqlTextFunctions.PlainToTsQuery("jump")));
+
+                Assert.That(foundBlog != null);
+                Assert.That(foundBlog.Name, Is.EqualTo(blog1.Name));
+
+                foundBlog = context
+                    .Blogs
+                    .FirstOrDefault(
+                        x => PgSqlTextFunctions.Match(
+                            PgSqlTextFunctions.ToTsVector(x.Name),
+                            PgSqlTextFunctions.ToTsQuery("jump & dog")));
+
+                Assert.That(foundBlog != null);
+                Assert.That(foundBlog.Name, Is.EqualTo(blog1.Name));
+
+                foundBlog = context
+                    .Blogs
+                    .FirstOrDefault(
+                        x => PgSqlTextFunctions.Match(
+                            PgSqlTextFunctions.ToTsVector("english", x.Name),
+                            PgSqlTextFunctions.PlainToTsQuery("english", "jump")));
+
+                Assert.That(foundBlog != null);
+                Assert.That(foundBlog.Name, Is.EqualTo(blog1.Name));
+
+                foundBlog = context
+                    .Blogs
+                    .FirstOrDefault(
+                        x => PgSqlTextFunctions.Match(
+                            PgSqlTextFunctions.ToTsVector("english", x.Name),
+                            PgSqlTextFunctions.ToTsQuery("english", "jump & dog")));
+
+                Assert.That(foundBlog != null);
+                Assert.That(foundBlog.Name, Is.EqualTo(blog1.Name));
             }
         }
     }
