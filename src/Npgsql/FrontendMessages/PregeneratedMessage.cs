@@ -100,8 +100,9 @@ namespace Npgsql.FrontendMessages
             var totalLen = 5 + query.Length;
             var ms = new MemoryStream(totalLen);
             _tempBuf.Underlying = ms;
+            var directBuf = new DirectBuffer();
             var simpleQuery = new QueryMessage(query);
-            simpleQuery.Write(_tempBuf);
+            simpleQuery.Write(_tempBuf, ref directBuf);
             _tempBuf.Flush();
             return new PregeneratedMessage(ms.ToArray(), simpleQuery.ToString());
         }

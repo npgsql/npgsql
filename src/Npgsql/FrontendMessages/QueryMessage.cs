@@ -31,34 +31,57 @@ namespace Npgsql.FrontendMessages
 {
     /// <summary>
     /// A simple query message.
-    ///
-    /// Note that since this is only used to send some specific control messages (e.g. start transaction)
-    /// and never arbitrary-length user-provided queries, this message is treated as simple and not chunking,
-    /// and only ASCII is supported.
     /// </summary>
-    class QueryMessage : SimpleFrontendMessage
+    class QueryMessage : ChunkingFrontendMessage
     {
         string Query { get; set; }
+
+        char[] _queryChars;
+        int _charPos;
 
         internal const byte Code = (byte)'Q';
 
         internal QueryMessage(string query)
         {
-            Contract.Requires(query != null && query.All(c => c < 128), "Not ASCII");
-            Contract.Requires(PGUtil.UTF8Encoding.GetByteCount(query) + 5 < NpgsqlBuffer.MinimumBufferSize, "Too long");
+            Contract.Requires(query != null);
 
             Query = query;
+            _charPos = -1;
         }
 
-        internal override int Length => 1 + 4 + (Query.Length + 1);
-
-        internal override void Write(NpgsqlBuffer buf)
+        internal override bool Write(NpgsqlBuffer buf, ref DirectBuffer directBuf)
         {
-            Contract.Requires(Query != null && Query.All(c => c < 128));
+            if (_charPos == -1)
+            {
+                // Start new query
+                if (buf.WriteSpaceLeft < 1 + 4)
+                    return false;
+                _charPos = 0;
+                var queryByteLen = PGUtil.UTF8Encoding.GetByteCount(Query);
+                _queryChars = Query.ToCharArray();
+                buf.WriteByte(Code);
+                buf.WriteInt32(4 +            // Message length (including self excluding code)
+                               queryByteLen + // Query byte length
+                               1);            // Null terminator
+            }
 
-            buf.WriteByte(Code);
-            buf.WriteInt32(Length - 1);
-            buf.WriteBytesNullTerminated(Encoding.ASCII.GetBytes(Query));
+            if (_charPos < _queryChars.Length)
+            {
+                int charsUsed;
+                bool completed;
+                buf.WriteStringChunked(_queryChars, _charPos, _queryChars.Length - _charPos, true,
+                                       out charsUsed, out completed);
+                _charPos += charsUsed;
+                if (!completed)
+                    return false;
+            }
+
+            if (buf.WriteSpaceLeft < 1)
+                return false;
+            buf.WriteByte(0);
+
+            _charPos = -1;
+            return true;
         }
 
         public override string ToString()
