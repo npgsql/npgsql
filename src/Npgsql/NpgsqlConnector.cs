@@ -1830,7 +1830,7 @@ namespace Npgsql
             ExecuteInternalCommand(new QueryMessage(query), withTimeout);
         }
 
-        internal void ExecuteInternalCommand(SimpleFrontendMessage message, bool withTimeout=true)
+        internal void ExecuteInternalCommand(FrontendMessage message, bool withTimeout=true)
         {
             using (StartUserAction())
             {
