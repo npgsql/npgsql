@@ -10,6 +10,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Data.Entity.Core.Metadata.Edm;
 using System.Data.Entity.Core.Objects;
 using System.Data.Entity.Infrastructure;
+using Npgsql.Linq;
 using Npgsql.Tests;
 
 namespace EntityFramework6.Npgsql.Tests
@@ -728,6 +729,32 @@ namespace EntityFramework6.Npgsql.Tests
                 Assert.AreEqual(directCallResult, 11);
                 Assert.IsTrue(directSQL.Contains("\"dbo\".\"StoredAddFunction\""));
                 CollectionAssert.AreEqual(localChangedIds, remoteChangedIds);
+            }
+        }
+
+        [Test]
+        public void TestFullTextSearch()
+        {
+            using (var context = new BloggingContext(ConnectionStringEF))
+            {
+                context.Database.Log = Console.Out.WriteLine;
+
+                var blog = new Blog
+                {
+                    Name = "The quick brown fox jumps over the lazy dog."
+                };
+                context.Blogs.Add(blog);
+                context.SaveChanges();
+
+                var foundBlog = context
+                    .Blogs
+                    .FirstOrDefault(
+                        x => PgSqlTextFunctions.Match(
+                            PgSqlTextFunctions.ToTsVector(x.Name),
+                            PgSqlTextFunctions.PlainToTsQuery("jump")));
+
+                Assert.That(foundBlog != null);
+                Assert.That(foundBlog.Name, Is.EqualTo(blog.Name));
             }
         }
     }

@@ -1121,6 +1121,16 @@ namespace Npgsql.SqlGenerators
             }
 
 #if ENTITIES6
+            if (function.NamespaceName == "Npgsql" && function.Name == "Match")
+            {
+                if (args.Count != 2)
+                {
+                    throw new ArgumentException("Invalid number of operator arguments. Expected 2.", "args");
+                }
+
+                return new MatchOperatorExpression(args[0].Accept(this), args[1].Accept(this));
+            }
+
             FunctionExpression customFuncCall = string.IsNullOrEmpty(function.Schema) ?
                 new FunctionExpression(QuoteIdentifier(function.StoreFunctionNameAttribute)) :
                 new FunctionExpression(
