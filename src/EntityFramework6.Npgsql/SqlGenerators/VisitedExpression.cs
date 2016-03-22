@@ -1230,4 +1230,26 @@ namespace Npgsql.SqlGenerators
             base.WriteSql(sqlText);
         }
     }
+
+    internal class MatchOperatorExpression : VisitedExpression
+    {
+        private readonly VisitedExpression _leftHand;
+        private readonly VisitedExpression _rightHand;
+
+        public MatchOperatorExpression(VisitedExpression leftHand, VisitedExpression rightHand)
+        {
+            if (leftHand == null) throw new ArgumentNullException("leftHand");
+            if (rightHand == null) throw new ArgumentNullException("rightHand");
+
+            _leftHand = leftHand;
+            _rightHand = rightHand;
+        }
+
+        internal override void WriteSql(StringBuilder sqlText)
+        {
+            _leftHand.WriteSql(sqlText);
+            sqlText.Append(" @@ ");
+            _rightHand.WriteSql(sqlText);
+        }
+    }
 }

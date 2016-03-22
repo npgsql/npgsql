@@ -63,6 +63,7 @@
     <Compile Include="NpgsqlMigrationSqlGenerator.cs" />
     <Compile Include="NpgsqlServices.cs" />
     <Compile Include="NpgsqlProviderManifest.cs" />
+    <Compile Include="Linq\PgSqlTextFunctions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SqlGenerators\PendingProjectsNode.cs" />
     <Compile Include="SqlGenerators\SqlBaseGenerator.cs" />

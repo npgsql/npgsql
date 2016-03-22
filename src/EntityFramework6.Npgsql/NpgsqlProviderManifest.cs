@@ -28,6 +28,7 @@ using System.Data.Common;
 #if ENTITIES6
 using System.Data.Entity.Core.Common;
 using System.Data.Entity.Core.Metadata.Edm;
+using System.Collections.ObjectModel;
 #else
 using System.Data.Metadata.Edm;
 #endif
@@ -364,6 +365,108 @@ namespace Npgsql
         public override bool SupportsInExpression()
         {
             return true;
+        }
+
+        public override ReadOnlyCollection<EdmFunction> GetStoreFunctions()
+        {
+            var functions = new List<EdmFunction>();
+
+            functions.Add(
+                EdmFunction.Create(
+                    "Match",
+                    "Npgsql",
+                    DataSpace.SSpace,
+                    new EdmFunctionPayload
+                    {
+                        ParameterTypeSemantics = ParameterTypeSemantics.AllowImplicitConversion,
+                        Schema = string.Empty,
+                        IsBuiltIn = true,
+                        IsAggregate = false,
+                        IsFromProviderManifest = true,
+                        StoreFunctionName = "OperatorName",
+                        ReturnParameters = new[]
+                        {
+                            FunctionParameter.Create(
+                                "ReturnType",
+                                PrimitiveType.GetEdmPrimitiveType(PrimitiveTypeKind.Boolean),
+                                ParameterMode.ReturnValue)
+                        },
+                        Parameters = new[]
+                        {
+                            FunctionParameter.Create(
+                                "tsvector",
+                                PrimitiveType.GetEdmPrimitiveType(PrimitiveTypeKind.String),
+                                ParameterMode.In),
+
+                            FunctionParameter.Create(
+                                "tsquery",
+                                PrimitiveType.GetEdmPrimitiveType(PrimitiveTypeKind.String),
+                                ParameterMode.In)
+                        }
+                    },
+                    new List<MetadataProperty>()));
+
+            functions.Add(
+                EdmFunction.Create(
+                    "ToTsVector",
+                    "Npgsql",
+                    DataSpace.SSpace,
+                    new EdmFunctionPayload
+                    {
+                        ParameterTypeSemantics = ParameterTypeSemantics.AllowImplicitConversion,
+                        Schema = string.Empty,
+                        IsBuiltIn = true,
+                        IsAggregate = false,
+                        IsFromProviderManifest = true,
+                        StoreFunctionName = "to_tsvector",
+                        ReturnParameters = new[]
+                        {
+                            FunctionParameter.Create(
+                                "ReturnType",
+                                PrimitiveType.GetEdmPrimitiveType(PrimitiveTypeKind.String),
+                                ParameterMode.ReturnValue)
+                        },
+                        Parameters = new[]
+                        {
+                            FunctionParameter.Create(
+                                "text",
+                                PrimitiveType.GetEdmPrimitiveType(PrimitiveTypeKind.String),
+                                ParameterMode.In)
+                        }
+                    },
+                    new List<MetadataProperty>()));
+
+            functions.Add(
+                EdmFunction.Create(
+                    "PlainToTsQuery",
+                    "Npgsql",
+                    DataSpace.SSpace,
+                    new EdmFunctionPayload
+                    {
+                        ParameterTypeSemantics = ParameterTypeSemantics.AllowImplicitConversion,
+                        Schema = string.Empty,
+                        IsBuiltIn = true,
+                        IsAggregate = false,
+                        IsFromProviderManifest = true,
+                        StoreFunctionName = "plainto_tsquery",
+                        ReturnParameters = new[]
+                        {
+                            FunctionParameter.Create(
+                                "ReturnType",
+                                PrimitiveType.GetEdmPrimitiveType(PrimitiveTypeKind.String),
+                                ParameterMode.ReturnValue)
+                        },
+                        Parameters = new[]
+                        {
+                            FunctionParameter.Create(
+                                "text",
+                                PrimitiveType.GetEdmPrimitiveType(PrimitiveTypeKind.String),
+                                ParameterMode.In)
+                        }
+                    },
+                    new List<MetadataProperty>()));
+
+            return functions.AsReadOnly();
         }
 #endif
     }
