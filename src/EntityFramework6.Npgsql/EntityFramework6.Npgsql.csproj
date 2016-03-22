@@ -59,6 +59,7 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Linq\DbFunctionStoreNameAttribute.cs" />
     <Compile Include="NpgsqlConnectionFactory.cs" />
     <Compile Include="NpgsqlMigrationSqlGenerator.cs" />
     <Compile Include="NpgsqlServices.cs" />

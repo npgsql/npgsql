@@ -739,11 +739,16 @@ namespace EntityFramework6.Npgsql.Tests
             {
                 context.Database.Log = Console.Out.WriteLine;
 
-                var blog = new Blog
+                var blog1 = new Blog
                 {
                     Name = "The quick brown fox jumps over the lazy dog."
                 };
-                context.Blogs.Add(blog);
+                var blog2 = new Blog
+                {
+                    Name = "Jackdaws loves my big sphinx of quartz."
+                };
+                context.Blogs.Add(blog1);
+                context.Blogs.Add(blog2);
                 context.SaveChanges();
 
                 var foundBlog = context
@@ -754,7 +759,37 @@ namespace EntityFramework6.Npgsql.Tests
                             PgSqlTextFunctions.PlainToTsQuery("jump")));
 
                 Assert.That(foundBlog != null);
-                Assert.That(foundBlog.Name, Is.EqualTo(blog.Name));
+                Assert.That(foundBlog.Name, Is.EqualTo(blog1.Name));
+
+                foundBlog = context
+                    .Blogs
+                    .FirstOrDefault(
+                        x => PgSqlTextFunctions.Match(
+                            PgSqlTextFunctions.ToTsVector(x.Name),
+                            PgSqlTextFunctions.ToTsQuery("jump & dog")));
+
+                Assert.That(foundBlog != null);
+                Assert.That(foundBlog.Name, Is.EqualTo(blog1.Name));
+
+                foundBlog = context
+                    .Blogs
+                    .FirstOrDefault(
+                        x => PgSqlTextFunctions.Match(
+                            PgSqlTextFunctions.ToTsVector("english", x.Name),
+                            PgSqlTextFunctions.PlainToTsQuery("english", "jump")));
+
+                Assert.That(foundBlog != null);
+                Assert.That(foundBlog.Name, Is.EqualTo(blog1.Name));
+
+                foundBlog = context
+                    .Blogs
+                    .FirstOrDefault(
+                        x => PgSqlTextFunctions.Match(
+                            PgSqlTextFunctions.ToTsVector("english", x.Name),
+                            PgSqlTextFunctions.ToTsQuery("english", "jump & dog")));
+
+                Assert.That(foundBlog != null);
+                Assert.That(foundBlog.Name, Is.EqualTo(blog1.Name));
             }
         }
     }
