@@ -12,6 +12,7 @@ using System.Data.Entity.Core.Objects;
 using System.Data.Entity.Infrastructure;
 using Npgsql.Linq;
 using Npgsql.Tests;
+using NpgsqlTypes;
 
 namespace EntityFramework6.Npgsql.Tests
 {
@@ -733,7 +734,7 @@ namespace EntityFramework6.Npgsql.Tests
         }
 
         [Test]
-        public void TestFullTextSearch()
+        public void TestFullTextSearch_ToTsVector_ToTsQuery_PlainToTsQuery()
         {
             using (var context = new BloggingContext(ConnectionStringEF))
             {
@@ -790,6 +791,53 @@ namespace EntityFramework6.Npgsql.Tests
 
                 Assert.That(foundBlog != null);
                 Assert.That(foundBlog.Name, Is.EqualTo(blog1.Name));
+            }
+        }
+
+        [Test]
+        public void TestFullTextSearch_SetWeight()
+        {
+            using (var context = new BloggingContext(ConnectionStringEF))
+            {
+                context.Database.Log = Console.Out.WriteLine;
+
+                var blog1 = new Blog
+                {
+                    Name = "The quick brown fox jumps over the lazy dog."
+                };
+                context.Blogs.Add(blog1);
+
+                var post1 = new Post
+                {
+                    Blog = blog1,
+                    Title = "Lorem ipsum",
+                    Content = "Dolor sit amet",
+                    Rating = 5
+                };
+                context.Posts.Add(post1);
+
+                var post2 = new Post
+                {
+                    Blog = blog1,
+                    Title = "consectetur adipiscing elit",
+                    Content = "Sed sed rhoncus",
+                    Rating = 4
+                };
+                context.Posts.Add(post2);
+                context.SaveChanges();
+
+                var foundPost = context.Posts.FirstOrDefault(
+                    x => PgSqlTextFunctions.Match(
+                        PgSqlTextFunctions.SetWeight(
+                            PgSqlTextFunctions.ToTsVector(x.Title ?? string.Empty),
+                            "D")
+                        + PgSqlTextFunctions.SetWeight(
+                            PgSqlTextFunctions.ToTsVector(x.Content ?? string.Empty),
+                            "C"),
+                        PgSqlTextFunctions.PlainToTsQuery("dolor")));
+
+                Assert.That(foundPost != null);
+                Assert.That(foundPost.Title, Is.EqualTo(post1.Title));
             }
         }
     }

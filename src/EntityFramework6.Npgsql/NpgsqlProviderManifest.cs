@@ -391,9 +391,9 @@ namespace Npgsql
                             x.DbFunction.FunctionName,
                             x.DbFunction.NamespaceName,
                             x.DbFunctionStoreName.StoreName,
-                            MapTypeToPrimitiveTypeKind(x.Method.ReturnType),
+                            MapTypeToEdmType(x.Method.ReturnType),
                             x.Method.GetParameters()
-                                .ToDictionary(p => p.Name, p => MapTypeToPrimitiveTypeKind(p.ParameterType)))));
+                                .ToDictionary(p => p.Name, p => MapTypeToEdmType(p.ParameterType)))));
 
             return functions.AsReadOnly();
         }
@@ -402,8 +402,8 @@ namespace Npgsql
             string name,
             string namespaceName,
             string dbFunctionName,
-            PrimitiveTypeKind returnKind,
-            IReadOnlyCollection<KeyValuePair<string, PrimitiveTypeKind>> parameters)
+            EdmType returnEdmType,
+            IReadOnlyCollection<KeyValuePair<string, EdmType>> parameters)
         {
             if (string.IsNullOrWhiteSpace(name))
             {
@@ -431,22 +431,28 @@ namespace Npgsql
                     {
                         FunctionParameter.Create(
                             "ReturnType",
-                            PrimitiveType.GetEdmPrimitiveType(returnKind),
+                            returnEdmType,
                             ParameterMode.ReturnValue)
                     },
                     Parameters = parameters.Select(
                         x => FunctionParameter.Create(
                             x.Key,
-                            PrimitiveType.GetEdmPrimitiveType(x.Value),
+                            x.Value,
                             ParameterMode.In)).ToList()
                 },
                 new List<MetadataProperty>());
         }
 
-        private static PrimitiveTypeKind MapTypeToPrimitiveTypeKind(Type type)
+        private static EdmType MapTypeToEdmType(Type type)
         {
-            if (type == typeof(string)) return PrimitiveTypeKind.String;
-            if (type == typeof(bool)) return PrimitiveTypeKind.Boolean;
+            var fromClrType = PrimitiveType
+                .GetEdmPrimitiveTypes()
+                .FirstOrDefault(t => t.ClrEquivalentType == type);
+
+            if (fromClrType != null)
+            {
+                return fromClrType;
+            }
 
             throw new NotSupportedException(
                 string.Format("Unsupported type for mapping to EdmType: {0}", type.FullName));

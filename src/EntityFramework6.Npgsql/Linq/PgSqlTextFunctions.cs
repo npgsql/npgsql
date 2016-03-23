@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Data.Entity;
+using NpgsqlTypes;
 
 namespace Npgsql.Linq
 {
@@ -58,6 +59,12 @@ namespace Npgsql.Linq
 
         [DbFunction("Npgsql", "ToTsQuery"), DbFunctionStoreName("to_tsquery")]
         public static string ToTsQuery(string config, string text)
+        {
+            throw new NotSupportedException();
+        }
+
+        [DbFunction("Npgsql", "SetWeight"), DbFunctionStoreName("setweight")]
+        public static string SetWeight(string tsvector, string weightAbcd)
         {
             throw new NotSupportedException();
         }
