@@ -25,6 +25,7 @@ using System;
 using System.Collections.Generic;
 using System.Data.Common;
 #if ENTITIES6
+using System.Globalization;
 using System.Data.Entity.Core.Common.CommandTrees;
 using System.Data.Entity.Core.Metadata.Edm;
 #else
@@ -62,6 +63,17 @@ namespace Npgsql.SqlGenerators
             {"Var","var_samp"},
             {"VarP","var_pop"},
         };
+
+#if ENTITIES6
+        private static readonly Dictionary<string, Operator> BinaryOperatorFunctionNames = new Dictionary<string, Operator>()
+        {
+            {"@@",Operator.QueryMatch},
+            {"operator_tsquery_and",Operator.QueryAnd},
+            {"operator_tsquery_or",Operator.QueryOr},
+            {"operator_tsquery_contains",Operator.QueryContains},
+            {"operator_tsquery_is_contained",Operator.QueryIsContained}
+        };
+#endif
 
         protected SqlBaseGenerator()
         {
@@ -1121,6 +1133,103 @@ namespace Npgsql.SqlGenerators
             }
 
 #if ENTITIES6
+            if (function.NamespaceName == "Npgsql")
+            {
+                Operator binaryOperator;
+                if (BinaryOperatorFunctionNames.TryGetValue(function.Name, out binaryOperator))
+                {
+                    if (args.Count != 2)
+                    {
+                        throw new ArgumentException(
+                            string.Format("Invalid number of {0} arguments. Expected 2.", function.Name),
+                            "args");
+                    }
+
+                    return OperatorExpression.Build(
+                        binaryOperator,
+                        _useNewPrecedences,
+                        args[0].Accept(this),
+                        args[1].Accept(this));
+                }
+
+                if (function.Name == "operator_tsquery_negate")
+                {
+                    if (args.Count != 1)
+                    {
+                        throw new ArgumentException(
+                            "Invalid number of operator_tsquery_not arguments. Expected 1.",
+                            "args");
+                    }
+
+                    return OperatorExpression.Build(Operator.QueryNegate, _useNewPrecedences, args[0].Accept(this));
+                }
+
+                if (function.Name == "ts_rank" || function.Name == "ts_rank_cd")
+                {
+                    if (args.Count > 4)
+                    {
+                        var weightD = args[0] as DbConstantExpression;
+                        var weightC = args[1] as DbConstantExpression;
+                        var weightB = args[2] as DbConstantExpression;
+                        var weightA = args[3] as DbConstantExpression;
+
+                        if (weightD == null || weightC == null || weightB == null || weightA == null)
+                        {
+                            throw new NotSupportedException("All weight values must be constant expressions.");
+                        }
+
+                        var newValue = string.Format(
+                            CultureInfo.InvariantCulture,
+                            "{{ {0:r}, {1:r}, {2:r}, {3:r} }}",
+                            weightD.Value,
+                            weightC.Value,
+                            weightB.Value,
+                            weightA.Value);
+
+                        args = new[] { DbExpression.FromString(newValue) }.Concat(args.Skip(4)).ToList();
+                    }
+                }
+                else if (function.Name == "setweight")
+                {
+                    if (args.Count != 2)
+                    {
+                        throw new ArgumentException("Invalid number of setweight arguments. Expected 2.", "args");
+                    }
+
+                    var weightLabelExpression = args[1] as DbConstantExpression;
+                    if (weightLabelExpression == null)
+                    {
+                        throw new NotSupportedException("setweight label argument must be a constant expression.");
+                    }
+
+                    var weightLabel = (NpgsqlWeightLabel)weightLabelExpression.Value;
+                    if (!Enum.IsDefined(typeof(NpgsqlWeightLabel), weightLabelExpression.Value))
+                    {
+                        throw new NotSupportedException("Unsupported weight label value: " + weightLabel);
+                    }
+
+                    args = new[] { args[0], DbExpression.FromString(weightLabel.ToString()) };
+                }
+                else if (function.Name == "as_tsvector")
+                {
+                    if (args.Count != 1)
+                    {
+                        throw new ArgumentException("Invalid number of arguments. Expected 1.", "args");
+                    }
+
+                    return new CastExpression(args[0].Accept(this), "tsvector");
+                }
+                else if (function.Name == "as_tsquery")
+                {
+                    if (args.Count != 1)
+                    {
+                        throw new ArgumentException("Invalid number of arguments. Expected 1.", "args");
+                    }
+
+                    return new CastExpression(args[0].Accept(this), "tsquery");
+                }
+            }
+
             var functionName = function.StoreFunctionNameAttribute ?? function.Name;
             FunctionExpression customFuncCall = string.IsNullOrEmpty(function.Schema) ?
                 new FunctionExpression(QuoteIdentifier(functionName)) :

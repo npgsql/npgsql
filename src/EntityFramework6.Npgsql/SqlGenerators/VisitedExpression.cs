@@ -957,6 +957,13 @@ namespace Npgsql.SqlGenerators
         public static readonly Operator And = new Operator("AND", 2, 2);
         public static readonly Operator Or = new Operator("OR", 1, 1);
 
+        public static readonly Operator QueryMatch = new Operator("@@", 10, 8);
+        public static readonly Operator QueryAnd = new Operator("&&", 10, 8);
+        public static readonly Operator QueryOr = Concat;
+        public static readonly Operator QueryNegate = new Operator("!!", 10, 8, UnaryTypes.Prefix, true);
+        public static readonly Operator QueryContains = new Operator("@>", 10, 8);
+        public static readonly Operator QueryIsContained = new Operator("<@", 10, 8);
+
         public static readonly Dictionary<Operator, Operator> NegateDict;
 
         static Operator()

@@ -26,8 +26,12 @@ using System.Collections.Generic;
 using System.Text;
 using System.Data.Common;
 #if ENTITIES6
+using System.Data.Entity;
 using System.Data.Entity.Core.Common;
 using System.Data.Entity.Core.Metadata.Edm;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Reflection;
 #else
 using System.Data.Metadata.Edm;
 #endif
@@ -364,6 +368,73 @@ namespace Npgsql
         public override bool SupportsInExpression()
         {
             return true;
+        }
+
+        public override ReadOnlyCollection<EdmFunction> GetStoreFunctions()
+        {
+            var functions = new List<EdmFunction>();
+
+            functions.AddRange(
+                typeof(NpgsqlTextFunctions).GetTypeInfo()
+                    .GetMethods(BindingFlags.Public | BindingFlags.Static)
+                    .Select(x => new { Method = x, DbFunction = x.GetCustomAttribute<DbFunctionAttribute>() })
+                    .Where(x => x.DbFunction != null)
+                    .Select(x => CreateFullTextEdmFunction(x.Method, x.DbFunction)));
+
+            return functions.AsReadOnly();
+        }
+
+        private static EdmFunction CreateFullTextEdmFunction(MethodInfo method, DbFunctionAttribute dbFunctionInfo)
+        {
+            if (method == null) throw new ArgumentNullException("method");
+            if (dbFunctionInfo == null) throw new ArgumentNullException("dbFunctionInfo");
+
+            return EdmFunction.Create(
+                dbFunctionInfo.FunctionName,
+                dbFunctionInfo.NamespaceName,
+                DataSpace.SSpace,
+                new EdmFunctionPayload
+                {
+                    ParameterTypeSemantics = ParameterTypeSemantics.AllowImplicitConversion,
+                    Schema = string.Empty,
+                    IsBuiltIn = true,
+                    IsAggregate = false,
+                    IsFromProviderManifest = true,
+                    StoreFunctionName = dbFunctionInfo.FunctionName,
+                    ReturnParameters = new[]
+                    {
+                        FunctionParameter.Create(
+                            "ReturnType",
+                            MapTypeToEdmType(method.ReturnType),
+                            ParameterMode.ReturnValue)
+                    },
+                    Parameters = method.GetParameters().Select(
+                        x => FunctionParameter.Create(
+                            x.Name,
+                            MapTypeToEdmType(x.ParameterType),
+                            ParameterMode.In)).ToList()
+                },
+                new List<MetadataProperty>());
+        }
+
+        private static EdmType MapTypeToEdmType(Type type)
+        {
+            var fromClrType = PrimitiveType
+                .GetEdmPrimitiveTypes()
+                .FirstOrDefault(t => t.ClrEquivalentType == type);
+
+            if (fromClrType != null)
+            {
+                return fromClrType;
+            }
+
+            if (type.IsEnum)
+            {
+                return MapTypeToEdmType(Enum.GetUnderlyingType(type));
+            }
+
+            throw new NotSupportedException(
+                string.Format("Unsupported type for mapping to EdmType: {0}", type.FullName));
         }
 #endif
     }
