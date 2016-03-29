@@ -52,7 +52,7 @@ namespace Npgsql
         /// Specifies the completion state of the transaction.
         /// </summary>
         /// <value>The completion state of the transaction.</value>
-        public bool IsCompleted { get { return Connection == null; } }
+        public bool IsCompleted => Connection == null;
 
         /// <summary>
         /// Specifies the <see cref="NpgsqlConnection"/> object associated with the transaction.
