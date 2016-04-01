@@ -142,6 +142,7 @@ namespace Npgsql
         /// <param name="connectionString">The connection used to open the PostgreSQL database.</param>
         public NpgsqlConnection(string connectionString)
         {
+            GC.SuppressFinalize(this);
             ConnectionString = connectionString;
             Init();
         }
