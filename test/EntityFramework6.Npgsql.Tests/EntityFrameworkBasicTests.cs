@@ -41,6 +41,7 @@ namespace EntityFramework6.Npgsql.Tests
                 ExecuteNonQuery("alter table \"dbo\".\"Blogs\" alter column \"IntComputedValue\" set default nextval('blog_int_computed_value_seq');", createSequenceConn);
                 ExecuteNonQuery("alter table \"dbo\".\"Posts\" alter column \"VarbitColumn\" type varbit using null", createSequenceConn);
                 ExecuteNonQuery("CREATE OR REPLACE FUNCTION \"dbo\".\"StoredAddFunction\"(integer, integer) RETURNS integer AS $$ SELECT $1 + $2; $$ LANGUAGE SQL;", createSequenceConn);
+                ExecuteNonQuery("CREATE OR REPLACE FUNCTION \"dbo\".\"StoredEchoFunction\"(integer) RETURNS integer AS $$ SELECT $1; $$ LANGUAGE SQL;", createSequenceConn);
             }
 
 
@@ -106,6 +107,12 @@ namespace EntityFramework6.Npgsql.Tests
                 throw new NotSupportedException();
             }
 
+            [DbFunction("BloggingContext", "StoredEchoFunction")]
+            public static int StoredEchoFunction(int value)
+            {
+                throw new NotSupportedException();
+            }
+
             private static DbCompiledModel CreateModel(NpgsqlConnection connection)
             {
                 var dbModelBuilder = new DbModelBuilder(DbModelBuilderVersion.Latest);
@@ -119,31 +126,60 @@ namespace EntityFramework6.Npgsql.Tests
                 var dbModel = dbModelBuilder.Build(connection);
                 var edmType = PrimitiveType.GetEdmPrimitiveType(PrimitiveTypeKind.Int32);
 
-                var payload = new EdmFunctionPayload
-                {
-                    ParameterTypeSemantics = ParameterTypeSemantics.AllowImplicitConversion,
-                    Schema = "dbo",
-                    IsComposable = true,
-                    IsNiladic = false,
-                    IsBuiltIn = false,
-                    IsAggregate = false,
-                    IsFromProviderManifest = true,
-                    StoreFunctionName = "StoredAddFunction",
-                    ReturnParameters = new[]
+                var addFunc = EdmFunction.Create(
+                    "ClrStoredAddFunction",
+                    "BloggingContext",
+                    DataSpace.SSpace,
+                    new EdmFunctionPayload
                     {
-                        FunctionParameter.Create("ReturnType", edmType, ParameterMode.ReturnValue)
+                        ParameterTypeSemantics = ParameterTypeSemantics.AllowImplicitConversion,
+                        Schema = "dbo",
+                        IsComposable = true,
+                        IsNiladic = false,
+                        IsBuiltIn = false,
+                        IsAggregate = false,
+                        IsFromProviderManifest = true,
+                        StoreFunctionName = "StoredAddFunction",
+                        ReturnParameters = new[]
+                        {
+                            FunctionParameter.Create("ReturnType", edmType, ParameterMode.ReturnValue)
+                        },
+                        Parameters = new[]
+                        {
+                            FunctionParameter.Create("Value1", edmType, ParameterMode.In),
+                            FunctionParameter.Create("Value2", edmType, ParameterMode.In)
+                        }
                     },
-                    Parameters = new[]
+                    null);
+                dbModel.StoreModel.AddItem(addFunc);
+
+                var echoFunc = EdmFunction.Create(
+                    "StoredEchoFunction",
+                    "BloggingContext",
+                    DataSpace.SSpace,
+                    new EdmFunctionPayload
                     {
-                        FunctionParameter.Create("Value1", edmType, ParameterMode.In),
-                        FunctionParameter.Create("Value2", edmType, ParameterMode.In)
-                    }
-                };
+                        ParameterTypeSemantics = ParameterTypeSemantics.AllowImplicitConversion,
+                        Schema = "dbo",
+                        IsComposable = true,
+                        IsNiladic = false,
+                        IsBuiltIn = false,
+                        IsAggregate = false,
+                        IsFromProviderManifest = true,
+                        StoreFunctionName = null, // intentional
+                        ReturnParameters = new[]
+                        {
+                            FunctionParameter.Create("ReturnType", edmType, ParameterMode.ReturnValue)
+                        },
+                        Parameters = new[]
+                        {
+                            FunctionParameter.Create("Value1", edmType, ParameterMode.In)
+                        }
+                    },
+                    null);
+                dbModel.StoreModel.AddItem(echoFunc);
 
-                var myFunc = EdmFunction.Create("ClrStoredAddFunction", "BloggingContext", DataSpace.SSpace, payload, null);
-                dbModel.StoreModel.AddItem(myFunc);
                 var compiledModel = dbModel.Compile();
-
                 return compiledModel;
             }
         }
@@ -728,6 +764,35 @@ namespace EntityFramework6.Npgsql.Tests
                 Assert.AreEqual(directCallResult, 11);
                 Assert.IsTrue(directSQL.Contains("\"dbo\".\"StoredAddFunction\""));
                 CollectionAssert.AreEqual(localChangedIds, remoteChangedIds);
+            }
+        }
+
+        [Test]
+        public void TestScalarValuedStoredFunctions_with_null_StoreFunctionName()
+        {
+            using (var context = new BloggingContext(ConnectionStringEF))
+            {
+                context.Database.Log = Console.Out.WriteLine;
+
+                context.Blogs.Add(new Blog { Name = "_" });
+                context.SaveChanges();
+
+                // Direct ESQL
+                var directCallQuery = ((IObjectContextAdapter)context).ObjectContext.CreateQuery<int>(
+                    "SELECT VALUE BloggingContext.StoredEchoFunction(@p1) FROM {1}",
+                    new ObjectParameter("p1", 1337));
+                var directSQL = directCallQuery.ToTraceString();
+                var directCallResult = directCallQuery.First();
+
+                // LINQ
+                var echo = context.Blogs
+                    .Select(x => BloggingContext.StoredEchoFunction(1337))
+                    .First();
+
+                // Comapre results
+                Assert.AreEqual(directCallResult, 1337);
+                Assert.IsTrue(directSQL.Contains("\"dbo\".\"StoredEchoFunction\""));
+                Assert.That(echo, Is.EqualTo(1337));
             }
         }
     }
