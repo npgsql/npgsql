@@ -401,6 +401,7 @@ namespace Npgsql
                     IsAggregate = false,
                     IsFromProviderManifest = true,
                     StoreFunctionName = dbFunctionInfo.FunctionName,
+                    IsComposable = true,
                     ReturnParameters = new[]
                     {
                         FunctionParameter.Create(
