@@ -1121,10 +1121,11 @@ namespace Npgsql.SqlGenerators
             }
 
 #if ENTITIES6
+            var functionName = function.StoreFunctionNameAttribute ?? function.Name;
             FunctionExpression customFuncCall = string.IsNullOrEmpty(function.Schema) ?
-                new FunctionExpression(QuoteIdentifier(function.StoreFunctionNameAttribute)) :
+                new FunctionExpression(QuoteIdentifier(functionName)) :
                 new FunctionExpression(
-                    QuoteIdentifier(function.Schema) + "." + QuoteIdentifier(function.StoreFunctionNameAttribute));
+                    QuoteIdentifier(function.Schema) + "." + QuoteIdentifier(functionName));
 
             foreach (var a in args)
                 customFuncCall.AddArgument(a.Accept(this));
