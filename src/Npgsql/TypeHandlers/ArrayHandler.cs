@@ -521,8 +521,15 @@ namespace Npgsql.TypeHandlers
                 return 0;
             }
             var asChunkingWriter = ElementHandler as IChunkingTypeHandler;
-            return asChunkingWriter?.ValidateAndGetLength(element, ref lengthCache, parameter) ??
-                ((ISimpleTypeHandler)ElementHandler).ValidateAndGetLength(element, null);
+            try
+            {
+                return asChunkingWriter?.ValidateAndGetLength(element, ref lengthCache, parameter) ??
+                       ((ISimpleTypeHandler) ElementHandler).ValidateAndGetLength(element, null);
+            }
+            catch (Exception e)
+            {
+                throw new Exception("While trying to write an array, one of its elements failed validation. You may be trying to mix types in a non-generic IList, or to write a jagged array.", e);
+            }
         }
 
         enum WriteState
