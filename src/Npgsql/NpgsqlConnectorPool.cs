@@ -79,7 +79,11 @@ namespace Npgsql
         {
             lock (locker)
             {
-                _timer.Change(TimerInterval, Timeout.Infinite);
+                if (!timerStarted)
+                {
+                    _timer.Change(TimerInterval, Timeout.Infinite);
+                    timerStarted = true;
+                }
             }
         }
 
@@ -140,8 +144,11 @@ namespace Npgsql
                 }
                 finally
                 {
+                    timerStarted = false;
                     if (activeConnectionsExist)
-                        _timer.Change(TimerInterval, Timeout.Infinite);
+                    {
+                        StartTimer();
+                    }
                 }
             }
         }
@@ -153,6 +160,7 @@ namespace Npgsql
         private readonly Dictionary<string, ConnectorQueue> PooledConnectors;
 
         readonly Timer _timer;
+        bool timerStarted = false;
 
         const int TimerInterval = 1000;
 
