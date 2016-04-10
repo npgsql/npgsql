@@ -1056,13 +1056,12 @@ namespace Npgsql
         /// <remarks>As per the specs, no exception will be thrown by this method in case of failure</remarks>
         public override void Cancel()
         {
-            if (State == CommandState.Disposed)
-                throw new ObjectDisposedException(GetType().FullName);
-            if (Connection == null)
-                throw new InvalidOperationException("Connection property has not been initialized.");
+            var connector = Connection?.Connector;
+            if (connector == null)
+                return;
 
-            var connector = Connection.Connector;
-            if (State != CommandState.InProgress) {
+            if (State != CommandState.InProgress)
+            {
                 Log.Debug($"Skipping cancel because command is in state {State}", connector.Id);
                 return;
             }
@@ -1076,9 +1075,7 @@ namespace Npgsql
             {
                 var socketException = e.InnerException as SocketException;
                 if (socketException == null || socketException.SocketErrorCode != SocketError.ConnectionReset)
-                {
-                    Log.Warn("Exception caught while attempting to cancel command", e, connector.Id);
-                }
+                    Log.Debug("Exception caught while attempting to cancel command", e, connector.Id);
             }
         }
 
