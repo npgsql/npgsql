@@ -104,7 +104,7 @@ namespace Npgsql.Tests
         #region Setup / Teardown
 
         [TestFixtureSetUp]
-        public void TestFixtureSetup()
+        public virtual void TestFixtureSetup()
         {
             SetupLogging();
 
