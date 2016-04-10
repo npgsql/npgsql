@@ -1133,17 +1133,14 @@ namespace Npgsql.SqlGenerators
             }
 
 #if ENTITIES6
+            var functionName = function.StoreFunctionNameAttribute ?? function.Name;
             if (function.NamespaceName == "Npgsql")
             {
                 Operator binaryOperator;
-                if (BinaryOperatorFunctionNames.TryGetValue(function.Name, out binaryOperator))
+                if (BinaryOperatorFunctionNames.TryGetValue(functionName, out binaryOperator))
                 {
                     if (args.Count != 2)
-                    {
-                        throw new ArgumentException(
-                            string.Format("Invalid number of {0} arguments. Expected 2.", function.Name),
-                            "args");
-                    }
+                        throw new ArgumentException(string.Format("Invalid number of {0} arguments. Expected 2.", function.Name), "args");
 
                     return OperatorExpression.Build(
                         binaryOperator,
@@ -1152,19 +1149,15 @@ namespace Npgsql.SqlGenerators
                         args[1].Accept(this));
                 }
 
-                if (function.Name == "operator_tsquery_negate")
+                if (functionName == "operator_tsquery_negate")
                 {
                     if (args.Count != 1)
-                    {
-                        throw new ArgumentException(
-                            "Invalid number of operator_tsquery_not arguments. Expected 1.",
-                            "args");
-                    }
+                        throw new ArgumentException("Invalid number of operator_tsquery_not arguments. Expected 1.", "args");
 
                     return OperatorExpression.Build(Operator.QueryNegate, _useNewPrecedences, args[0].Accept(this));
                 }
 
-                if (function.Name == "ts_rank" || function.Name == "ts_rank_cd")
+                if (functionName == "ts_rank" || functionName == "ts_rank_cd")
                 {
                     if (args.Count > 4)
                     {
@@ -1174,9 +1167,7 @@ namespace Npgsql.SqlGenerators
                         var weightA = args[3] as DbConstantExpression;
 
                         if (weightD == null || weightC == null || weightB == null || weightA == null)
-                        {
                             throw new NotSupportedException("All weight values must be constant expressions.");
-                        }
 
                         var newValue = string.Format(
                             CultureInfo.InvariantCulture,
@@ -1189,52 +1180,42 @@ namespace Npgsql.SqlGenerators
                         args = new[] { DbExpression.FromString(newValue) }.Concat(args.Skip(4)).ToList();
                     }
                 }
-                else if (function.Name == "setweight")
+                else if (functionName == "setweight")
                 {
                     if (args.Count != 2)
-                    {
                         throw new ArgumentException("Invalid number of setweight arguments. Expected 2.", "args");
-                    }
 
                     var weightLabelExpression = args[1] as DbConstantExpression;
                     if (weightLabelExpression == null)
-                    {
                         throw new NotSupportedException("setweight label argument must be a constant expression.");
-                    }
 
                     var weightLabel = (NpgsqlWeightLabel)weightLabelExpression.Value;
                     if (!Enum.IsDefined(typeof(NpgsqlWeightLabel), weightLabelExpression.Value))
-                    {
                         throw new NotSupportedException("Unsupported weight label value: " + weightLabel);
-                    }
 
                     args = new[] { args[0], DbExpression.FromString(weightLabel.ToString()) };
                 }
-                else if (function.Name == "as_tsvector")
+                else if (functionName == "as_tsvector")
                 {
                     if (args.Count != 1)
-                    {
                         throw new ArgumentException("Invalid number of arguments. Expected 1.", "args");
-                    }
 
                     return new CastExpression(args[0].Accept(this), "tsvector");
                 }
-                else if (function.Name == "as_tsquery")
+                else if (functionName == "as_tsquery")
                 {
                     if (args.Count != 1)
-                    {
                         throw new ArgumentException("Invalid number of arguments. Expected 1.", "args");
-                    }
 
                     return new CastExpression(args[0].Accept(this), "tsquery");
                 }
             }
 
-            var functionName = function.StoreFunctionNameAttribute ?? function.Name;
-            FunctionExpression customFuncCall = string.IsNullOrEmpty(function.Schema) ?
-                new FunctionExpression(QuoteIdentifier(functionName)) :
-                new FunctionExpression(
-                    QuoteIdentifier(function.Schema) + "." + QuoteIdentifier(functionName));
+            var customFuncCall = new FunctionExpression(
+                string.IsNullOrEmpty(function.Schema)
+                    ? QuoteIdentifier(functionName)
+                    : QuoteIdentifier(function.Schema) + "." + QuoteIdentifier(functionName)
+            );
 
             foreach (var a in args)
                 customFuncCall.AddArgument(a.Accept(this));
