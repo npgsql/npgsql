@@ -59,6 +59,8 @@
   <ItemGroup>
     <Compile Include="EntityFrameworkBasicTests.cs" />
     <Compile Include="EntityFrameworkMigrationTests.cs" />
+    <Compile Include="EntityFrameworkTestBase.cs" />
+    <Compile Include="FullTextSearchTests.cs" />
     <Compile Include="Spatial\PostgisServiceTests.cs" />
     <Compile Include="xmlModel\XmlTest.ObjectLayer.cs" />
   </ItemGroup>
