@@ -31,11 +31,13 @@ namespace Npgsql
 {
     static class SqlQueryParser
     {
-        static readonly Array ParamNameCharTable;
+        static readonly bool[] ParamNameCharTable;
+        static readonly bool[] ParamNameStartCharTable;
 
         static SqlQueryParser()
         {
             ParamNameCharTable = BuildParameterNameCharacterTable();
+            ParamNameStartCharTable = BuildParameterNameStartCharacterTable();
         }
 
         /// <summary>
@@ -122,7 +124,7 @@ namespace Npgsql
             if (currCharOfs < end) {
                 lastChar = ch;
                 ch = sql[currCharOfs];
-                if (IsParamNameChar(ch)) {
+                if (IsParamNameStartChar(ch)) {
                     if (currCharOfs - 1 > currTokenBeg) {
                         currentSql.Write(sql.Substring(currTokenBeg, currCharOfs - 1 - currTokenBeg));
                     }
@@ -423,36 +425,32 @@ namespace Npgsql
             return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || '0' <= ch && ch <= '9' || ch == '_' || ch == '$' || 128 <= ch && ch <= 255;
         }
 
-        static bool IsParamNameChar(char ch)
+        static bool IsParamNameChar(char ch) => ch <= 'z' && ParamNameCharTable[ch];
+        static bool IsParamNameStartChar(char ch) => ch <= 'z' && ParamNameStartCharTable[ch];
+
+        static bool[] BuildParameterNameCharacterTable()
         {
-            if (ch < '.' || ch > 'z') {
-                return false;
-            }
-            return ((byte)ParamNameCharTable.GetValue(ch) != 0);
+            var table = new bool['z' + 1];
+            table['.'] = true;  // why??
+            table['_'] = true;
+            for (int i = '0'; i <= '9'; i++)
+                table[i] = true;
+            for (int i = 'A'; i <= 'Z'; i++)
+                table[i] = true;
+            for (int i = 'a'; i <= 'z'; i++)
+                table[i] = true;
+            return table;
         }
 
-        static Array BuildParameterNameCharacterTable()
+        static bool[] BuildParameterNameStartCharacterTable()
         {
-            // Table has lower bound of (int)'.';
-            var paramNameCharTable = Array.CreateInstance(typeof(byte), new[] { 'z' - '.' + 1 }, new int[] { '.' });
-
-            paramNameCharTable.SetValue((byte)'.', '.');
-
-            for (int i = '0'; i <= '9'; i++) {
-                paramNameCharTable.SetValue((byte)i, i);
-            }
-
-            for (int i = 'A'; i <= 'Z'; i++) {
-                paramNameCharTable.SetValue((byte)i, i);
-            }
-
-            paramNameCharTable.SetValue((byte)'_', '_');
-
-            for (int i = 'a'; i <= 'z'; i++) {
-                paramNameCharTable.SetValue((byte)i, i);
-            }
-
-            return paramNameCharTable;
+            var table = new bool['z' + 1];
+            table['_'] = true;
+            for (int i = 'A'; i <= 'Z'; i++)
+                table[i] = true;
+            for (int i = 'a'; i <= 'z'; i++)
+                table[i] = true;
+            return table;
         }
     }
 }
