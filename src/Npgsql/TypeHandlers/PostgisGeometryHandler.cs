@@ -457,9 +457,11 @@ namespace Npgsql.TypeHandlers
                                 _buf.WriteDouble(mpl[_ipol][_irng][_ipts].X);
                                 _buf.WriteDouble(mpl[_ipol][_irng][_ipts].Y);
                             }
+                            _ipts = -1;
                         }
                         _irng = -1;
                     }
+                    _ipol = -1;
                     return true;
 
                 case WkbIdentifier.GeometryCollection:
