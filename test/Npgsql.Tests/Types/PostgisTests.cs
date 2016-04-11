@@ -196,6 +196,44 @@ namespace Npgsql.Tests.Types
             }
         }
 
+        [Test]
+        public void TestBug1022()
+        {
+            PostgisMultiPolygon geom2 = new PostgisMultiPolygon(new[]
+            {
+                                        new PostgisPolygon(new[]
+                                        {
+                                        new[]
+                                        {
+                                            new Coordinate2D(40, 40),
+                                            new Coordinate2D(20, 45),
+                                            new Coordinate2D(45, 30),
+                                            new Coordinate2D(40, 40)
+                                        }
+                                        }),
+                                        new PostgisPolygon(new[]
+                                        {
+                                        new[]
+                                        {
+                                            new Coordinate2D(20, 35),
+                                            new Coordinate2D(10, 30),
+                                            new Coordinate2D(10, 10),
+                                            new Coordinate2D(30, 5),
+                                            new Coordinate2D(45, 20),
+                                            new Coordinate2D(20, 35)
+                                        }
+                                        })
+                                        })
+                                        { SRID = 4326 };
+            using (var conn = OpenConnection())
+            using (var command = conn.CreateCommand())
+            {
+                command.Parameters.AddWithValue("p1", NpgsqlDbType.Geometry, geom2);
+                command.CommandText = "Select :p1";
+                command.ExecuteScalar();
+            }
+        }
+
         [SetUp]
         public void SetUp()
         {
