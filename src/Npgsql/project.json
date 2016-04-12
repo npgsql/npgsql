@@ -43,7 +43,7 @@
     ]
   },
   "dependencies": {
-    "AsyncRewriter": { "version": "0.7.9", "type": "build" }
+    "AsyncRewriter": { "version": "0.7.10", "type": "build" }
   },
   "frameworks": {
     "net45": {
