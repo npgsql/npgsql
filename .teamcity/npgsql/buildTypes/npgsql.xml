@@ -48,8 +48,7 @@
       </runner>
       <runner id="RUNNER_14" name="Build Release" type="simpleRunner">
         <parameters>
-          <param name="script.content"><![CDATA[for /f "tokens=1,2 delims=-" %%%%a in ("%GitVersion.NuGetVersion%") do set base=%%%%a&set DNX_BUILD_VERSION=-%%%%b
-set Configuration=Release
+          <param name="script.content"><![CDATA[set Configuration=Release
 build compile]]></param>
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
