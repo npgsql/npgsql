@@ -31,10 +31,9 @@
           <param name="teamcity.step.mode" value="default" />
         </parameters>
       </runner>
-      <runner id="RUNNER_1" name="Npgsql Tests (NUnit)" type="simpleRunner">
+      <runner id="RUNNER_1" name="Test" type="simpleRunner">
         <parameters>
-          <param name="script.content"><![CDATA[call dnvm use default
-call dnx test --teamcity]]></param>
+          <param name="script.content" value="dotnet run -- --teamcity" />
           <param name="teamcity.build.workingDir" value="test/Npgsql.Tests" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
