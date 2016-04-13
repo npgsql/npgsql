@@ -49,7 +49,7 @@ namespace Npgsql
 #if WITHDESIGN
     [System.Drawing.ToolboxBitmapAttribute(typeof(NpgsqlCommand)), ToolboxItem(true)]
 #endif
-#if DOTNET5_4
+#if NETSTANDARD1_3
     public sealed partial class NpgsqlCommand : DbCommand
 #else
     // ReSharper disable once RedundantNameQualifier

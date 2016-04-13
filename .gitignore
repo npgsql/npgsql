@@ -16,3 +16,5 @@ artifacts/
 # Roslyn cache directories
 *.ide/
 *.lock.json
+.build
+TestResult.xml

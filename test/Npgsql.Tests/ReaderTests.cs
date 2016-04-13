@@ -24,14 +24,11 @@
 using System;
 using System.Data;
 using System.Linq;
-using System.Web.UI.WebControls;
-
+using NUnit.Framework;
+using NUnit.Framework.Constraints;
 using Npgsql;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
-
-using NUnit.Framework;
-using NUnit.Framework.Constraints;
 
 namespace Npgsql.Tests
 {
@@ -484,20 +481,6 @@ namespace Npgsql.Tests
             var ds = new DataSet();
             da.Fill(ds);
             //ds.WriteXml("TestUseDataAdapterStringStringConstructor2.xml");
-        }
-
-        [Test]
-        public void DataGridWebControlSupport()
-        {
-            using (var conn = OpenConnection())
-            {
-                var command = new NpgsqlCommand("SELECT 1", conn);
-                var dr = command.ExecuteReader();
-                //Console.WriteLine(dr.FieldCount);
-                var dg = new DataGrid();
-                dg.DataSource = dr;
-                dg.DataBind();
-            }
         }
 
         [Test]

@@ -153,7 +153,7 @@ namespace Npgsql
 
     #region Component model attributes missing from CoreCLR
 
-#if DOTNET5_4
+#if NETSTANDARD1_3
     [AttributeUsage(AttributeTargets.Property)]
     class DisplayNameAttribute : Attribute
     {

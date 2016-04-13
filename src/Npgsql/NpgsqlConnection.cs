@@ -50,7 +50,7 @@ namespace Npgsql
 #if WITHDESIGN
     [System.Drawing.ToolboxBitmapAttribute(typeof(NpgsqlConnection))]
 #endif
-#if DOTNET5_4
+#if NETSTANDARD1_3
     public sealed partial class NpgsqlConnection : DbConnection
 #else
     // ReSharper disable once RedundantNameQualifier

@@ -1,13 +1,15 @@
 {
   "version": "0.0.0",
-  "dependencies": {
-    "NUnit": "3.0.1",
-    "NLog": "3.2.0.0",
-    "EntityFramework6.Npgsql": "3.1.0-alpha2",
-    "Npgsql.Tests": "0.0.0"
-  },
   "compilationOptions": {
-    "keyFile": "../../Npgsql.snk"
+    "keyFile": "../../Npgsql.snk",
+    "emitEntryPoint": true
+  },
+  "dependencies": {
+    "NUnit": "3.2.0",
+    "NUnitLite": "3.2.0",
+    "NLog": "3.2.0.0",
+    "EntityFramework6.Npgsql": "3.1.0-*",
+    "Npgsql.Tests": "0.0.0"
   },
   "frameworks": {
     "net46": {
