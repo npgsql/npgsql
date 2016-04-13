@@ -31,10 +31,9 @@
           <param name="teamcity.step.mode" value="default" />
         </parameters>
       </runner>
-      <runner id="RUNNER_1" name="Npgsql Tests (NUnit)" type="simpleRunner">
+      <runner id="RUNNER_1" name="Test" type="simpleRunner">
         <parameters>
-          <param name="script.content"><![CDATA[call dnvm use default
-call dnx test --teamcity]]></param>
+          <param name="script.content" value="%teamcity.agent.jvm.user.home%\AppData\Local\Microsoft\dotnet\dotnet run -- --teamcity" />
           <param name="teamcity.build.workingDir" value="test/Npgsql.Tests" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
@@ -49,8 +48,7 @@ call dnx test --teamcity]]></param>
       </runner>
       <runner id="RUNNER_14" name="Build Release" type="simpleRunner">
         <parameters>
-          <param name="script.content"><![CDATA[for /f "tokens=1,2 delims=-" %%%%a in ("%GitVersion.NuGetVersion%") do set base=%%%%a&set DNX_BUILD_VERSION=-%%%%b
-set Configuration=Release
+          <param name="script.content"><![CDATA[set Configuration=Release
 build compile]]></param>
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
@@ -83,14 +81,13 @@ build compile]]></param>
       </runner>
       <runner id="RUNNER_22" name="Publish nugets to myget" type="jb.nuget.publish">
         <parameters>
-          <param name="nuget.path" value="?NuGet.CommandLine.DEFAULT.nupkg" />
+          <param name="nuget.path" value="?NuGet.CommandLine.DEFAULT" />
           <param name="nuget.publish.files"><![CDATA[src/Npgsql/bin/Release/*.nupkg
 src/EntityFramework5.Npgsql/bin/Release/*.nupkg
-src/EntityFramework6.Npgsql/bin/Release/*.nupkg
-src/EntityFramework7.Npgsql/bin/Release/*.nupkg]]></param>
+src/EntityFramework6.Npgsql/bin/Release/*.nupkg]]></param>
           <param name="nuget.publish.source" value="https://www.myget.org/F/npgsql-unstable" />
-          <param name="nugetCustomPath" value="?NuGet.CommandLine.DEFAULT.nupkg" />
-          <param name="nugetPathSelector" value="?NuGet.CommandLine.DEFAULT.nupkg" />
+          <param name="nugetCustomPath" value="?NuGet.CommandLine.DEFAULT" />
+          <param name="nugetPathSelector" value="?NuGet.CommandLine.DEFAULT" />
           <param name="secure:nuget.api.key" value="zxxca89988ce5b6f9ad529c572cd56e162ccda4fdff046b0cdb8bff3560c8e35dcbda3e64637e4ca2f1" />
           <param name="teamcity.step.mode" value="default" />
         </parameters>

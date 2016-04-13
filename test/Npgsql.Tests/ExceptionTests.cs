@@ -24,13 +24,11 @@
 using System;
 using System.Data;
 using System.Threading.Tasks;
-using System.Web.UI.WebControls;
-
+using NUnit.Framework;
+using NUnit.Framework.Constraints;
 using Npgsql;
 using NpgsqlTypes;
 
-using NUnit.Framework;
-using NUnit.Framework.Constraints;
 
 namespace Npgsql.Tests
 {

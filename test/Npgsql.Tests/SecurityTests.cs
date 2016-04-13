@@ -125,6 +125,7 @@ namespace Npgsql.Tests
 
         #region Partial Trust
 
+#if NET46
         [Test, Description("Makes sure Npgsql works when running under pseudo-medium trust")]
         [Ignore("Doesn't work via DNX testing")]
         public void RestrictedTrust()
@@ -164,7 +165,7 @@ namespace Npgsql.Tests
                 }
             }
         }
-
+#endif
         #endregion
 
         #region Setup / Teardown / Utils
