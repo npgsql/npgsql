@@ -1547,8 +1547,8 @@ namespace Npgsql
         /// </summary>
         public override DataTable GetSchemaTable()
         {
-            CheckResultSet();
-            Contract.Ensures(Contract.Result<DataTable>() != null);
+            if (FieldCount == 0) // No resultset
+                return null;
 
             if (_cachedSchemaTable != null) {
                 return _cachedSchemaTable;

@@ -673,6 +673,20 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/1027")]
+        public void GetSchemaTableWithoutResult()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT 1", conn))
+            using (var reader = cmd.ExecuteReader())
+            {
+                reader.NextResult();
+                // We're no longer on a result
+                Assert.That(reader.GetSchemaTable(), Is.Null);
+            }
+        }
+
         #endregion
 
         [Test]
