@@ -381,6 +381,7 @@ namespace Npgsql.Tests
 
         [Test, Description("Receive an asynchronous notification when a message has already been prepended")]
         [Timeout(10000)]
+        [Ignore("Ignoring since we're dropping ContinuousProcessing in 3.1")]
         public void NotificationAsyncWithPrepend()
         {
             using (var notifyingConn = OpenConnection())

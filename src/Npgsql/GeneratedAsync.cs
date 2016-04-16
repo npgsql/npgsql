@@ -76,6 +76,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
@@ -85,6 +86,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
+using Npgsql.FrontendMessages;
 using Npgsql.TypeHandlers;
 using Npgsql.TypeHandlers.NumericHandlers;
 using NpgsqlTypes;
@@ -308,35 +310,39 @@ namespace Npgsql
     {
         async Task<NpgsqlDataReader> ExecuteAsync(CancellationToken cancellationToken, CommandBehavior behavior = CommandBehavior.Default)
         {
+            Validate();
+            if (!IsPrepared)
+                ProcessRawQuery();
             LogCommand();
             State = CommandState.InProgress;
             try
             {
-                _queryIndex = 0;
-                await _connector.SendAllMessagesAsync(cancellationToken);
-                // We consume response messages, positioning ourselves before the response of the first
-                // Execute.
-                if (IsPrepared)
+                _connector = Connection.Connector;
+                // If a cancellation is in progress, wait for it to "complete" before proceeding (#615)
+                lock (_connector.CancelLock)
                 {
-                    if ((behavior & CommandBehavior.SchemaOnly) == 0)
-                    {
-                        // No binding in SchemaOnly mode
-                        var msg = await (_connector.ReadSingleMessageAsync(DataRowLoadingMode.NonSequential, cancellationToken));
-                        Contract.Assert(msg is BindCompleteMessage);
-                    }
-                }
-                else
-                {
-                    IBackendMessage msg;
-                    do
-                    {
-                        msg = await (_connector.ReadSingleMessageAsync(DataRowLoadingMode.NonSequential, cancellationToken));
-                        Contract.Assert(msg != null);
-                    }
-                    while (!ProcessMessageForUnprepared(msg, behavior));
                 }
 
-                var reader = new NpgsqlDataReader(this, behavior, _queries);
+                // Send protocol messages for the command
+                // Unless this is a prepared SchemaOnly command, in which case we already have the RowDescriptions
+                // from the Prepare phase (no need to send anything).
+                if (!IsPrepared || (behavior & CommandBehavior.SchemaOnly) == 0)
+                {
+                    // Set the frontend timeout
+                    _connector.UserCommandFrontendTimeout = CommandTimeout;
+                    // If needed, prepend a "SET statement_timeout" message to set the backend timeout
+                    _connector.PrependBackendTimeoutMessage(CommandTimeout);
+                    _sendState = SendState.Start;
+                    _writeStatementIndex = 0;
+                    if (IsPrepared)
+                        await SendAsync(PopulateExecutePrepared, cancellationToken);
+                    else if ((behavior & CommandBehavior.SchemaOnly) == 0)
+                        await SendAsync(PopulateExecuteNonPrepared, cancellationToken);
+                    else
+                        await SendAsync(PopulateExecuteSchemaOnly, cancellationToken);
+                }
+
+                var reader = new NpgsqlDataReader(this, behavior, _statements);
                 await reader.InitAsync(cancellationToken);
                 _connector.CurrentReader = reader;
                 return reader;
@@ -348,13 +354,43 @@ namespace Npgsql
             }
         }
 
+        async Task SendAsync(PopulateMethod populateMethod, CancellationToken cancellationToken)
+        {
+            while (true)
+            {
+                var directBuf = new DirectBuffer();
+                var completed = populateMethod(ref directBuf);
+                await _connector.SendBufferAsync(cancellationToken);
+                if (completed)
+                    break; // Sent all messages
+                // The following is an optimization hack for writing large byte arrays without passing
+                // through our buffer
+                if (directBuf.Buffer != null)
+                {
+                    await _connector.Stream.WriteAsync(directBuf.Buffer, directBuf.Offset, directBuf.Size == 0 ? directBuf.Buffer.Length : directBuf.Size, cancellationToken);
+                    directBuf.Buffer = null;
+                    directBuf.Size = 0;
+                }
+
+                if (_writeStatementIndex > 0)
+                {
+                    // We've send all the messages for the first statement in a multistatement command.
+                    // If we continue blocking writes for the rest of the messages, we risk a deadlock where
+                    // PostgreSQL sends large results for the first statement, while we're sending large
+                    // parameter data for the second. To avoid this, switch to async sends.
+                    // See #641
+                    RemainingSendTask = SendRemaining(populateMethod, CancellationToken.None);
+                    return;
+                }
+            }
+        }
+
         async Task<int> ExecuteNonQueryInternalAsync(CancellationToken cancellationToken)
         {
             Prechecks();
             Log.Trace("ExecuteNonQuery", Connection.Connector.Id);
             using (Connection.Connector.StartUserAction())
             {
-                ValidateAndCreateMessages();
                 NpgsqlDataReader reader;
                 using (reader = await (ExecuteAsync(cancellationToken)))
                 {
@@ -374,7 +410,6 @@ namespace Npgsql
             using (Connection.Connector.StartUserAction())
             {
                 var behavior = CommandBehavior.SequentialAccess | CommandBehavior.SingleRow;
-                ValidateAndCreateMessages(behavior);
                 using (var reader = Execute(behavior))
                 {
                     return await (reader.ReadAsync(cancellationToken)) && reader.FieldCount != 0 ? reader.GetValue(0) : null;
@@ -389,7 +424,6 @@ namespace Npgsql
             Connection.Connector.StartUserAction();
             try
             {
-                ValidateAndCreateMessages(behavior);
                 return await ExecuteAsync(cancellationToken, behavior);
             }
             catch
@@ -510,12 +544,12 @@ namespace Npgsql
                 await ConnectAsync(timeout, cancellationToken);
                 Contract.Assert(_socket != null);
                 _baseStream = new NetworkStream(_socket, true);
-                _stream = _baseStream;
-                Buffer = new NpgsqlBuffer(_stream, BufferSize, PGUtil.UTF8Encoding);
+                Stream = _baseStream;
+                Buffer = new NpgsqlBuffer(Stream, BufferSize, PGUtil.UTF8Encoding);
                 if (SslMode == SslMode.Require || SslMode == SslMode.Prefer)
                 {
                     Log.Trace("Attempting SSL negotiation");
-                    SSLRequestMessage.Instance.Write(Buffer);
+                    SSLRequestMessage.Instance.WriteFully(Buffer);
                     await Buffer.FlushAsync(cancellationToken);
                     await Buffer.EnsureAsync(1, cancellationToken);
                     var response = (char)Buffer.ReadByte();
@@ -550,13 +584,13 @@ namespace Npgsql
 
                             if (!UseSslStream)
                             {
-                                var sslStream = new TlsClientStream.TlsClientStream(_stream);
+                                var sslStream = new TlsClientStream.TlsClientStream(Stream);
                                 sslStream.PerformInitialHandshake(Host, clientCertificates, certificateValidationCallback, false);
-                                _stream = sslStream;
+                                Stream = sslStream;
                             }
                             else
                             {
-                                var sslStream = new SslStream(_stream, false, certificateValidationCallback);
+                                var sslStream = new SslStream(Stream, false, certificateValidationCallback);
 #if NETSTANDARD1_3
                             // CoreCLR removed sync methods from SslStream, see https://github.com/dotnet/corefx/pull/4868.
                             // Consider exactly what to do here.
@@ -564,11 +598,11 @@ namespace Npgsql
 #else
                                 sslStream.AuthenticateAsClient(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, false);
 #endif
-                                _stream = sslStream;
+                                Stream = sslStream;
                             }
 
                             timeout.Check();
-                            Buffer.Underlying = _stream;
+                            Buffer.Underlying = Stream;
                             IsSecure = true;
                             Log.Trace("SSL negotiation successful");
                             break;
@@ -579,18 +613,18 @@ namespace Npgsql
             }
             catch
             {
-                if (_stream != null)
+                if (Stream != null)
                 {
                     try
                     {
-                        _stream.Dispose();
+                        Stream.Dispose();
                     }
                     catch
                     {
                     // ignored
                     }
 
-                    _stream = null;
+                    Stream = null;
                 }
 
                 if (_baseStream != null)
@@ -638,7 +672,7 @@ namespace Npgsql
                         var passwordMessage = ProcessAuthenticationMessage((AuthenticationRequestMessage)msg);
                         if (passwordMessage != null)
                         {
-                            passwordMessage.Write(Buffer);
+                            passwordMessage.WriteFully(Buffer);
                             await Buffer.FlushAsync(cancellationToken);
                             timeout.Check();
                         }
@@ -658,27 +692,22 @@ namespace Npgsql
             }
         }
 
-        internal async Task SendAllMessagesAsync(CancellationToken cancellationToken)
+        internal async Task SendSingleMessageAsync(FrontendMessage msg, CancellationToken cancellationToken)
         {
-            if (!_messagesToSend.Any())
+            Log.Trace($"Sending: {msg}", Id);
+            while (true)
             {
-                return;
+                var completed = msg.Write(Buffer);
+                await SendBufferAsync(cancellationToken);
+                if (completed)
+                    break; // Sent all messages
             }
+        }
 
-            // If a cancellation is in progress, wait for it to "complete" before proceeding (#615)
-            lock (_cancelLock)
-            {
-            }
-
-            _sentRfqPrependedMessages = _pendingRfqPrependedMessages;
-            _pendingRfqPrependedMessages = 0;
+        internal async Task SendBufferAsync(CancellationToken cancellationToken)
+        {
             try
             {
-                foreach (var msg in _messagesToSend)
-                {
-                    await SendMessageAsync(msg, cancellationToken);
-                }
-
                 await Buffer.FlushAsync(cancellationToken);
             }
             catch
@@ -686,45 +715,23 @@ namespace Npgsql
                 Break();
                 throw;
             }
-            finally
-            {
-                _messagesToSend.Clear();
-            }
-        }
-
-        async Task SendMessageAsync(FrontendMessage msg, CancellationToken cancellationToken)
-        {
-            Log.Trace($"Sending: {msg}", Id);
-            var directBuf = new DirectBuffer();
-            while (!msg.Write(Buffer, ref directBuf))
-            {
-                await Buffer.FlushAsync(cancellationToken);
-                // The following is an optimization hack for writing large byte arrays without passing
-                // through our buffer
-                if (directBuf.Buffer != null)
-                {
-                    await Buffer.Underlying.WriteAsync(directBuf.Buffer, directBuf.Offset, directBuf.Size == 0 ? directBuf.Buffer.Length : directBuf.Size, cancellationToken);
-                    directBuf.Buffer = null;
-                    directBuf.Size = 0;
-                }
-            }
         }
 
         async Task<IBackendMessage> ReadSingleMessageWithPrependedAsync(CancellationToken cancellationToken, DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential, bool returnNullForAsyncMessage = false)
         {
             // First read the responses of any prepended messages.
             // Exceptions shouldn't happen here, we break the connector if they do
-            if (_sentRfqPrependedMessages > 0)
+            if (_pendingRfqPrependedMessages > 0)
             {
                 try
                 {
                     SetFrontendTimeout(ActualInternalCommandTimeout);
-                    while (_sentRfqPrependedMessages > 0)
+                    while (_pendingRfqPrependedMessages > 0)
                     {
                         var msg = await (DoReadSingleMessageAsync(cancellationToken, DataRowLoadingMode.Skip, isPrependedMessage: true));
                         if (msg is ReadyForQueryMessage)
                         {
-                            _sentRfqPrependedMessages--;
+                            _pendingRfqPrependedMessages--;
                         }
                     }
                 }
@@ -886,15 +893,12 @@ namespace Npgsql
 
         internal async Task ExecuteInternalCommandAsync(FrontendMessage message, CancellationToken cancellationToken, bool withTimeout = true)
         {
+            Contract.Requires(message is QueryMessage || message is PregeneratedMessage);
             using (StartUserAction())
             {
                 if (withTimeout)
-                {
                     PrependBackendTimeoutMessage(ActualInternalCommandTimeout);
-                }
-
-                AddMessage(message);
-                await SendAllMessagesAsync(cancellationToken);
+                await SendSingleMessageAsync(message, cancellationToken);
                 await ReadExpectingAsync<CommandCompleteMessage>(cancellationToken);
                 await ReadExpectingAsync<ReadyForQueryMessage>(cancellationToken);
             }
@@ -908,25 +912,16 @@ namespace Npgsql
     {
         internal async Task InitAsync(CancellationToken cancellationToken)
         {
-            _rowDescription = _statements[0].Description;
-            if (_rowDescription == null)
+            if (!await (NextResultAsync(cancellationToken)))
             {
-                // This happens if the first (or only) statement does not return a resultset (e.g. INSERT).
-                // At the end of Init the reader should be positioned at the beginning of the first resultset,
-                // so we seek it here.
-                if (!await (NextResultAsync(cancellationToken)))
-                {
-                    // No resultsets at all
-                    return;
-                }
+                // No resultsets at all, the below is irrelevant
+                return;
             }
 
             // If we have any output parameters, we need to read the first data row (in non-sequential mode)
             // and extract them
             if (Command.Parameters.Any(p => p.IsOutputDirection))
-            {
                 PopulateOutputParameters();
-            }
             else
             {
                 // If the query generated an error, we want an exception thrown here (i.e. from ExecuteQuery).
@@ -948,7 +943,7 @@ namespace Npgsql
                 _row = null;
             }
 
-            switch (State)
+            switch (_state)
             {
                 case ReaderState.InResult:
                     break;
@@ -986,7 +981,7 @@ namespace Npgsql
             }
             catch (NpgsqlException)
             {
-                State = ReaderState.Consumed;
+                _state = ReaderState.Consumed;
                 throw;
             }
         }
@@ -998,7 +993,7 @@ namespace Npgsql
             try
             {
                 // If we're in the middle of a resultset, consume it
-                switch (State)
+                switch (_state)
                 {
                     case ReaderState.InResult:
                         if (_row != null)
@@ -1020,45 +1015,73 @@ namespace Npgsql
                         throw new ArgumentOutOfRangeException();
                 }
 
-                Contract.Assert(State == ReaderState.BetweenResults);
+                Contract.Assert(_state == ReaderState.BetweenResults);
                 _hasRows = null;
 #if NET45 || NET451 || DNX451
                 _cachedSchemaTable = null;
 #endif
-                if ((_behavior & CommandBehavior.SingleResult) != 0)
+                if ((_behavior & CommandBehavior.SingleResult) != 0 && _statementIndex == 0)
                 {
-                    if (State == ReaderState.BetweenResults)
-                    {
+                    if (_state == ReaderState.BetweenResults)
                         await ConsumeAsync(cancellationToken);
-                    }
-
                     return false;
                 }
 
                 // We are now at the end of the previous result set. Read up to the next result set, if any.
+                // Non-prepared statements receive ParseComplete, BindComplete, DescriptionRow/NoData,
+                // prepared statements receive only BindComplete
                 for (_statementIndex++; _statementIndex < _statements.Count; _statementIndex++)
                 {
-                    _rowDescription = _statements[_statementIndex].Description;
-                    if (_rowDescription != null)
+                    if (IsPrepared)
                     {
-                        State = ReaderState.InResult;
-                        // Found a resultset
-                        return true;
+                        await _connector.ReadExpectingAsync<BindCompleteMessage>(cancellationToken);
+                        // Row descriptions have already been populated in the statement objects at the
+                        // Prepare phase
+                        _rowDescription = _statements[_statementIndex].Description;
+                    }
+                    else // Non-prepared flow
+                    {
+                        await _connector.ReadExpectingAsync<ParseCompleteMessage>(cancellationToken);
+                        await _connector.ReadExpectingAsync<BindCompleteMessage>(cancellationToken);
+                        var msg = await (_connector.ReadSingleMessageAsync(DataRowLoadingMode.NonSequential, cancellationToken));
+                        switch (msg.Code)
+                        {
+                            case BackendMessageCode.NoData:
+                                _rowDescription = _statements[_statementIndex].Description = null;
+                                break;
+                            case BackendMessageCode.RowDescription:
+                                // We have a resultset
+                                _rowDescription = _statements[_statementIndex].Description = (RowDescriptionMessage)msg;
+                                break;
+                            default:
+                                throw _connector.UnexpectedMessageReceived(msg.Code);
+                        }
                     }
 
-                    // Next query has no resultset, read and process its completion message and move on to the next
-                    var completedMsg = await (SkipUntilAsync(BackendMessageCode.CompletedResponse, BackendMessageCode.EmptyQueryResponse, cancellationToken));
-                    ProcessMessage(completedMsg);
+                    if (_rowDescription == null)
+                    {
+                        // Statement did not generate a resultset (e.g. INSERT)
+                        // Read and process its completion message and move on to the next
+                        var msg = await (_connector.ReadSingleMessageAsync(DataRowLoadingMode.NonSequential, cancellationToken));
+                        if (msg.Code != BackendMessageCode.CompletedResponse && msg.Code != BackendMessageCode.EmptyQueryResponse)
+                            throw _connector.UnexpectedMessageReceived(msg.Code);
+                        ProcessMessage(msg);
+                        continue;
+                    }
+
+                    // We got a new resultset
+                    _state = ReaderState.InResult;
+                    return true;
                 }
 
                 // There are no more queries, we're done. Read to the RFQ.
-                ProcessMessage(SkipUntil(BackendMessageCode.ReadyForQuery));
+                ProcessMessage(_connector.ReadExpecting<ReadyForQueryMessage>());
                 _rowDescription = null;
                 return false;
             }
             catch (NpgsqlException)
             {
-                State = ReaderState.Consumed;
+                _state = ReaderState.Consumed;
                 throw;
             }
         }
@@ -1113,9 +1136,9 @@ namespace Npgsql
 
         async Task ConsumeAsync(CancellationToken cancellationToken)
         {
-            if (IsSchemaOnly)
+            if (IsSchemaOnly && IsPrepared)
             {
-                State = ReaderState.Consumed;
+                _state = ReaderState.Consumed;
                 return;
             }
 

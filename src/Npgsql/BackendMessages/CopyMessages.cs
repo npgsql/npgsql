@@ -124,7 +124,7 @@ namespace Npgsql.BackendMessages
 
         internal override int Length => 5;
 
-        internal override void Write(NpgsqlBuffer buf)
+        internal override void WriteFully(NpgsqlBuffer buf)
         {
             buf.WriteByte((byte)BackendMessageCode.CopyDone);
             buf.WriteInt32(4);

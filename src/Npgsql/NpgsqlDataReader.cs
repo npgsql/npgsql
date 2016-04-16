@@ -26,6 +26,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
@@ -36,6 +37,7 @@ using System.Threading.Tasks;
 using AsyncRewriter;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
+using Npgsql.FrontendMessages;
 using Npgsql.TypeHandlers;
 using Npgsql.TypeHandlers.NumericHandlers;
 using NpgsqlTypes;
@@ -52,7 +54,7 @@ namespace Npgsql
         readonly NpgsqlConnection _connection;
         readonly CommandBehavior _behavior;
 
-        ReaderState State { get; set; }
+        ReaderState _state;
 
         /// <summary>
         /// Holds the list of statements being executed by this reader.
@@ -110,6 +112,7 @@ namespace Npgsql
         bool IsSequential => (_behavior & CommandBehavior.SequentialAccess) != 0;
         bool IsCaching => !IsSequential;
         bool IsSchemaOnly => (_behavior & CommandBehavior.SchemaOnly) != 0;
+        bool IsPrepared { get; }
 
         internal NpgsqlDataReader(NpgsqlCommand command, CommandBehavior behavior, List<NpgsqlStatement> statements)
         {
@@ -117,38 +120,28 @@ namespace Npgsql
             _connection = command.Connection;
             _connector = _connection.Connector;
             _behavior = behavior;
-
-            State = IsSchemaOnly ? ReaderState.BetweenResults : ReaderState.InResult;
-
-            if (IsCaching) {
-                _rowCache = new RowCache();
-            }
             _statements = statements;
+            _statementIndex = -1;
+            _state = ReaderState.BetweenResults;
+            IsPrepared = command.IsPrepared;
+
+            if (IsCaching)
+                _rowCache = new RowCache();
         }
 
         [RewriteAsync]
         internal void Init()
         {
-            _rowDescription = _statements[0].Description;
-
-            if (_rowDescription == null)
+            if (!NextResult())
             {
-                // This happens if the first (or only) statement does not return a resultset (e.g. INSERT).
-                // At the end of Init the reader should be positioned at the beginning of the first resultset,
-                // so we seek it here.
-                if (!NextResult())
-                {
-                    // No resultsets at all
-                    return;
-                }
+                // No resultsets at all, the below is irrelevant
+                return;
             }
 
             // If we have any output parameters, we need to read the first data row (in non-sequential mode)
             // and extract them
             if (Command.Parameters.Any(p => p.IsOutputDirection))
-            {
                 PopulateOutputParameters();
-            }
             else
             {
                 // If the query generated an error, we want an exception thrown here (i.e. from ExecuteQuery).
@@ -251,7 +244,7 @@ namespace Npgsql
                 _row = null;
             }
 
-            switch (State)
+            switch (_state)
             {
                 case ReaderState.InResult:
                     break;
@@ -290,7 +283,7 @@ namespace Npgsql
             }
             catch (NpgsqlException)
             {
-                State = ReaderState.Consumed;
+                _state = ReaderState.Consumed;
                 throw;
             }
         }
@@ -333,11 +326,11 @@ namespace Npgsql
                     goto case BackendMessageCode.EmptyQueryResponse;
 
                 case BackendMessageCode.EmptyQueryResponse:
-                    State = ReaderState.BetweenResults;
+                    _state = ReaderState.BetweenResults;
                     return ReadResult.RowNotRead;
 
                 case BackendMessageCode.ReadyForQuery:
-                    State = ReaderState.Consumed;
+                    _state = ReaderState.Consumed;
                     return ReadResult.RowNotRead;
 
                 case BackendMessageCode.BindComplete:
@@ -357,7 +350,7 @@ namespace Npgsql
         /// Advances the reader to the next result when reading the results of a batch of statements.
         /// </summary>
         /// <returns></returns>
-        public override sealed bool NextResult()
+        public sealed override bool NextResult()
         {
             return IsSchemaOnly ? NextResultSchemaOnly() : NextResultInternal();
         }
@@ -368,7 +361,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="cancellationToken">Currently ignored.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
-        public override async sealed Task<bool> NextResultAsync(CancellationToken cancellationToken)
+        public sealed override async Task<bool> NextResultAsync(CancellationToken cancellationToken)
         {
             return IsSchemaOnly ? NextResultSchemaOnly() : await NextResultInternalAsync(cancellationToken).ConfigureAwait(false);
         }
@@ -382,7 +375,7 @@ namespace Npgsql
             try
             {
                 // If we're in the middle of a resultset, consume it
-                switch (State)
+                switch (_state)
                 {
                     case ReaderState.InResult:
                         if (_row != null) {
@@ -405,44 +398,74 @@ namespace Npgsql
                         throw new ArgumentOutOfRangeException();
                 }
 
-                Contract.Assert(State == ReaderState.BetweenResults);
+                Contract.Assert(_state == ReaderState.BetweenResults);
                 _hasRows = null;
 #if NET45 || NET451 || DNX451
                 _cachedSchemaTable = null;
 #endif
 
-                if ((_behavior & CommandBehavior.SingleResult) != 0)
+                if ((_behavior & CommandBehavior.SingleResult) != 0 && _statementIndex == 0)
                 {
-                    if (State == ReaderState.BetweenResults) {
+                    if (_state == ReaderState.BetweenResults)
                         Consume();
-                    }
                     return false;
                 }
 
                 // We are now at the end of the previous result set. Read up to the next result set, if any.
+                // Non-prepared statements receive ParseComplete, BindComplete, DescriptionRow/NoData,
+                // prepared statements receive only BindComplete
                 for (_statementIndex++; _statementIndex < _statements.Count; _statementIndex++)
                 {
-                    _rowDescription = _statements[_statementIndex].Description;
-                    if (_rowDescription != null)
+                    if (IsPrepared)
                     {
-                        State = ReaderState.InResult;
-                        // Found a resultset
-                        return true;
+                        _connector.ReadExpecting<BindCompleteMessage>();
+                        // Row descriptions have already been populated in the statement objects at the
+                        // Prepare phase
+                        _rowDescription = _statements[_statementIndex].Description;
+                    }
+                    else  // Non-prepared flow
+                    {
+                        _connector.ReadExpecting<ParseCompleteMessage>();
+                        _connector.ReadExpecting<BindCompleteMessage>();
+                        var msg = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential);
+                        switch (msg.Code)
+                        {
+                        case BackendMessageCode.NoData:
+                            _rowDescription = _statements[_statementIndex].Description = null;
+                            break;
+                        case BackendMessageCode.RowDescription:
+                            // We have a resultset
+                            _rowDescription = _statements[_statementIndex].Description = (RowDescriptionMessage)msg;
+                            break;
+                        default:
+                            throw _connector.UnexpectedMessageReceived(msg.Code);
+                        }
                     }
 
-                    // Next query has no resultset, read and process its completion message and move on to the next
-                    var completedMsg = SkipUntil(BackendMessageCode.CompletedResponse, BackendMessageCode.EmptyQueryResponse);
-                    ProcessMessage(completedMsg);
+                    if (_rowDescription == null)
+                    {
+                        // Statement did not generate a resultset (e.g. INSERT)
+                        // Read and process its completion message and move on to the next
+                        var msg = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential);
+                        if (msg.Code != BackendMessageCode.CompletedResponse && msg.Code != BackendMessageCode.EmptyQueryResponse)
+                            throw _connector.UnexpectedMessageReceived(msg.Code);
+                        ProcessMessage(msg);
+                        continue;
+                    }
+
+                    // We got a new resultset
+                    _state = ReaderState.InResult;
+                    return true;
                 }
 
                 // There are no more queries, we're done. Read to the RFQ.
-                ProcessMessage(SkipUntil(BackendMessageCode.ReadyForQuery));
+                ProcessMessage(_connector.ReadExpecting<ReadyForQueryMessage>());
                 _rowDescription = null;
                 return false;
             }
             catch (NpgsqlException)
             {
-                State = ReaderState.Consumed;
+                _state = ReaderState.Consumed;
                 throw;
             }
         }
@@ -457,7 +480,31 @@ namespace Npgsql
 
             for (_statementIndex++; _statementIndex < _statements.Count; _statementIndex++)
             {
-                _rowDescription = _statements[_statementIndex].Description;
+                if (IsPrepared)
+                {
+                    // Row descriptions have already been populated in the statement objects at the
+                    // Prepare phase
+                    _rowDescription = _statements[_statementIndex].Description;
+                }
+                else
+                {
+                    _connector.ReadExpecting<ParseCompleteMessage>();
+                    _connector.ReadExpecting<ParameterDescriptionMessage>();
+                    var msg = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential);
+                    switch (msg.Code)
+                    {
+                    case BackendMessageCode.NoData:
+                        _rowDescription = _statements[_statementIndex].Description = null;
+                        break;
+                    case BackendMessageCode.RowDescription:
+                        // We have a resultset
+                        _rowDescription = _statements[_statementIndex].Description = (RowDescriptionMessage)msg;
+                        break;
+                    default:
+                        throw _connector.UnexpectedMessageReceived(msg.Code);
+                    }
+                }
+
                 if (_rowDescription != null)
                 {
                     // Found a resultset
@@ -465,6 +512,12 @@ namespace Npgsql
                 }
             }
 
+            // There are no more queries, we're done. Read to the RFQ.
+            if (!IsPrepared)
+            {
+                ProcessMessage(_connector.ReadExpecting<ReadyForQueryMessage>());
+                _rowDescription = null;
+            }
             return false;
         }
 
@@ -521,7 +574,7 @@ namespace Npgsql
         /// <summary>
         /// Gets a value indicating whether the data reader is closed.
         /// </summary>
-        public override bool IsClosed => State == ReaderState.Closed;
+        public override bool IsClosed => _state == ReaderState.Closed;
 
         /// <summary>
         /// Gets the number of rows changed, inserted, or deleted by execution of the SQL statement.
@@ -620,9 +673,9 @@ namespace Npgsql
         [RewriteAsync]
         void Consume()
         {
-            if (IsSchemaOnly)
+            if (IsSchemaOnly && IsPrepared)
             {
-                State = ReaderState.Consumed;
+                _state = ReaderState.Consumed;
                 return;
             }
 
@@ -667,7 +720,7 @@ namespace Npgsql
         public void Close()
 #endif
         {
-            if (State == ReaderState.Closed) { return; }
+            if (_state == ReaderState.Closed) { return; }
 
             switch (_connector.State)
             {
@@ -676,14 +729,22 @@ namespace Npgsql
                 // This may have happen because an I/O error while reading a value, or some non-safe
                 // exception thrown from a type handler. Or if the connection was closed while the reader
                 // was still open
-                State = ReaderState.Closed;
+                _state = ReaderState.Closed;
                 Command.State = CommandState.Idle;
                 ReaderClosed?.Invoke(this, EventArgs.Empty);
                 return;
             }
 
-            if (State != ReaderState.Consumed) {
+            if (_state != ReaderState.Consumed) {
                 Consume();
+            }
+
+            // The following is a safety measure, to make absolutely sure that if an async send task
+            // is running in the background, it terminates before the NpgsqlDataReader is closed.
+            if (Command.RemainingSendTask != null)
+            {
+                Command.RemainingSendTask.Wait();
+                Command.RemainingSendTask = null;
             }
 
             Cleanup();
@@ -691,7 +752,7 @@ namespace Npgsql
 
         internal void Cleanup()
         {
-            State = ReaderState.Closed;
+            _state = ReaderState.Closed;
             Command.State = CommandState.Idle;
             _connector.CurrentReader = null;
             _connector.EndUserAction();
@@ -1218,16 +1279,7 @@ namespace Npgsql
             CheckOrdinal(ordinal);
             Contract.EndContractBlock();
 
-            // In AllResultTypesAreUnknown mode, the handler is UnrecognizedTypeHandler but we can still get
-            // the data type name from the handler that would have been used in binary for the type OID
-            var field = _rowDescription[ordinal];
-            TypeHandler binaryHandler;
-            return
-                field.Handler is UnrecognizedTypeHandler &&
-                field.OID != 0 &&
-                _connector.TypeHandlerRegistry.TryGetByOID(field.OID, out binaryHandler)
-                ? binaryHandler.PgName
-                : field.Handler.PgName;
+            return _rowDescription[ordinal].RealHandler.PgName;
         }
 
         /// <summary>

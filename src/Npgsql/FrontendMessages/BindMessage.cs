@@ -69,7 +69,19 @@ namespace Npgsql.FrontendMessages
             return this;
         }
 
-        internal override bool Write(NpgsqlBuffer buf, ref DirectBuffer directBuf)
+        /// <summary>
+        /// Bind is a special message in that it supports the "direct buffer" optimization, which allows us to write
+        /// user byte[] data directly to the stream rather than copying it into our buffer. It therefore has its own
+        /// special overload of Write below.
+        /// </summary>
+        /// <param name="buf"></param>
+        /// <returns></returns>
+        internal override bool Write(NpgsqlBuffer buf)
+        {
+            throw new NotSupportedException($"Internal error, call the overload of {nameof(Write)} which accepts a {nameof(DirectBuffer)}");
+        }
+
+        internal bool Write(NpgsqlBuffer buf, ref DirectBuffer directBuf)
         {
             Contract.Requires(Statement != null && Statement.All(c => c < 128));
             Contract.Requires(Portal != null && Portal.All(c => c < 128));

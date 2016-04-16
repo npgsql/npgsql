@@ -76,7 +76,7 @@ namespace Npgsql
         {
             _connector = connector;
             _buf = connector.Buffer;
-            _connector.SendSingleMessage(new QueryMessage(copyCommand));
+            _connector.SendSingleQuery(copyCommand);
             var msg = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential);
             switch (msg.Code)
             {

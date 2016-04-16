@@ -43,15 +43,11 @@ namespace Npgsql
     internal abstract class FrontendMessage
     {
         /// <param name="buf">the buffer into which to write the message.</param>
-        /// <param name="directBuf">
-        /// an option buffer that, if returned, will be written to the server directly, bypassing our
-        /// NpgsqlBuffer. This is an optimization hack for bytea.
-        /// </param>
         /// <returns>
         /// Whether there was enough space in the buffer to contain the entire message.
         /// If false, the buffer should be flushed and write should be called again.
         /// </returns>
-        internal abstract bool Write(NpgsqlBuffer buf, ref DirectBuffer directBuf);
+        internal abstract bool Write(NpgsqlBuffer buf);
     }
 
     /// <summary>
@@ -69,14 +65,14 @@ namespace Npgsql
         /// <summary>
         /// Writes the message contents into the buffer.
         /// </summary>
-        internal abstract void Write(NpgsqlBuffer buf);
+        internal abstract void WriteFully(NpgsqlBuffer buf);
 
-        internal sealed override bool Write(NpgsqlBuffer buf, ref DirectBuffer directBuf)
+        internal sealed override bool Write(NpgsqlBuffer buf)
         {
             Contract.Assume(Length < buf.UsableSize, $"Message of type {GetType().Name} has length {Length} which is bigger than the buffer ({buf.UsableSize})");
             if (buf.WriteSpaceLeft < Length)
                 return false;
-            Write(buf);
+            WriteFully(buf);
             return true;
         }
     }

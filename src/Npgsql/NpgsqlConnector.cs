@@ -64,7 +64,7 @@ namespace Npgsql
         /// <summary>
         /// The physical connection stream to the backend, layered with an SSL/TLS stream if in secure mode.
         /// </summary>
-        Stream _stream;
+        internal Stream Stream { get; private set; }
 
         readonly NpgsqlConnectionStringBuilder _settings;
 
@@ -135,17 +135,6 @@ namespace Npgsql
         /// </summary>
         byte _pendingRfqPrependedMessages;
 
-        /// <summary>
-        /// The number of messages that were prepended and sent to the last message chain.
-        /// Note that this only tracks messages which produce a ReadyForQuery message
-        /// </summary>
-        byte _sentRfqPrependedMessages;
-
-        /// <summary>
-        /// A chain of messages to be sent to the backend.
-        /// </summary>
-        readonly List<FrontendMessage> _messagesToSend;
-
         internal NpgsqlDataReader CurrentReader;
 
         /// <summary>
@@ -202,7 +191,7 @@ namespace Npgsql
         /// cancellation is delivered. This reduces the chance that a cancellation meant for a previous
         /// command will accidentally cancel a later one, see #615.
         /// </summary>
-        readonly object _cancelLock;
+        internal object CancelLock { get; }
 
         readonly UserAction _userAction;
         readonly Timer _keepAliveTimer;
@@ -230,11 +219,12 @@ namespace Npgsql
 
         #region Reusable Message Objects
 
-        // Frontend. Note that these are only used for single-query commands.
+        // Frontend
         internal readonly ParseMessage    ParseMessage    = new ParseMessage();
         internal readonly BindMessage     BindMessage     = new BindMessage();
         internal readonly DescribeMessage DescribeMessage = new DescribeMessage();
         internal readonly ExecuteMessage  ExecuteMessage  = new ExecuteMessage();
+        internal readonly QueryMessage    QueryMessage    = new QueryMessage();
 
         // Backend
         readonly CommandCompleteMessage      _commandCompleteMessage      = new CommandCompleteMessage();
@@ -271,13 +261,12 @@ namespace Npgsql
             _settings = connectionString;
             _password = password;
             BackendParams = new Dictionary<string, string>();
-            _messagesToSend = new List<FrontendMessage>();
             _preparedStatementIndex = 0;
 
             _userLock = new SemaphoreSlim(1, 1);
             _asyncLock = new SemaphoreSlim(1, 1);
             _userAction = new UserAction(this);
-            _cancelLock = new object();
+            CancelLock = new object();
 
             if (KeepAlive > 0) {
                 _keepAliveTimer = new Timer(PerformKeepAlive, null, Timeout.Infinite, Timeout.Infinite);
@@ -449,7 +438,7 @@ namespace Npgsql
             {  // Should really never happen, just in case
                 throw new Exception("Startup message bigger than buffer");
             }
-            startupMessage.Write(Buffer);
+            startupMessage.WriteFully(Buffer);
         }
 
         [RewriteAsync]
@@ -461,13 +450,13 @@ namespace Npgsql
 
                 Contract.Assert(_socket != null);
                 _baseStream = new NetworkStream(_socket, true);
-                _stream = _baseStream;
-                Buffer = new NpgsqlBuffer(_stream, BufferSize, PGUtil.UTF8Encoding);
+                Stream = _baseStream;
+                Buffer = new NpgsqlBuffer(Stream, BufferSize, PGUtil.UTF8Encoding);
 
                 if (SslMode == SslMode.Require || SslMode == SslMode.Prefer)
                 {
                     Log.Trace("Attempting SSL negotiation");
-                    SSLRequestMessage.Instance.Write(Buffer);
+                    SSLRequestMessage.Instance.WriteFully(Buffer);
                     Buffer.Flush();
 
                     Buffer.Ensure(1);
@@ -504,13 +493,13 @@ namespace Npgsql
 
                         if (!UseSslStream)
                         {
-                            var sslStream = new TlsClientStream.TlsClientStream(_stream);
+                            var sslStream = new TlsClientStream.TlsClientStream(Stream);
                             sslStream.PerformInitialHandshake(Host, clientCertificates, certificateValidationCallback, false);
-                            _stream = sslStream;
+                            Stream = sslStream;
                         }
                         else
                         {
-                            var sslStream = new SslStream(_stream, false, certificateValidationCallback);
+                            var sslStream = new SslStream(Stream, false, certificateValidationCallback);
 #if NETSTANDARD1_3
                             // CoreCLR removed sync methods from SslStream, see https://github.com/dotnet/corefx/pull/4868.
                             // Consider exactly what to do here.
@@ -518,10 +507,10 @@ namespace Npgsql
 #else
                             sslStream.AuthenticateAsClient(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, false);
 #endif
-                            _stream = sslStream;
+                            Stream = sslStream;
                         }
                         timeout.Check();
-                        Buffer.Underlying = _stream;
+                        Buffer.Underlying = Stream;
                         IsSecure = true;
                         Log.Trace("SSL negotiation successful");
                         break;
@@ -532,12 +521,12 @@ namespace Npgsql
             }
             catch
             {
-                if (_stream != null)
+                if (Stream != null)
                 {
-                    try { _stream.Dispose(); } catch {
+                    try { Stream.Dispose(); } catch {
                         // ignored
                     }
-                    _stream = null;
+                    Stream = null;
                 }
                 if (_baseStream != null)
                 {
@@ -722,7 +711,7 @@ namespace Npgsql
                     var passwordMessage = ProcessAuthenticationMessage((AuthenticationRequestMessage)msg);
                     if (passwordMessage != null)
                     {
-                        passwordMessage.Write(Buffer);
+                        passwordMessage.WriteFully(Buffer);
                         Buffer.Flush();
                         timeout.Check();
                     }
@@ -803,19 +792,13 @@ namespace Npgsql
 #endif
 
                 default:
-                    throw new NotSupportedException(
-                        $"Authentication method not supported (Received: {msg.AuthRequestType})");
+                    throw new NotSupportedException($"Authentication method not supported (Received: {msg.AuthRequestType})");
             }
         }
 
         #endregion
 
         #region Frontend message processing
-
-        internal void AddMessage(FrontendMessage msg)
-        {
-            _messagesToSend.Add(msg);
-        }
 
         /// <summary>
         /// Prepends a message to be sent at the beginning of the next message chain.
@@ -833,7 +816,8 @@ namespace Npgsql
                 // processing the message chain results
                 checked { _pendingRfqPrependedMessages++; }
             }
-            _messagesToSend.Add(msg);
+            if (!msg.Write(Buffer))
+                throw new Exception($"Could not fully write message of type {msg.GetType().Name} into the buffer");
         }
 
         internal void PrependBackendTimeoutMessage(int timeout)
@@ -845,61 +829,32 @@ namespace Npgsql
             _backendTimeout = timeout;
             checked { _pendingRfqPrependedMessages++; }
 
+            FrontendMessage msg;
             switch (timeout) {
             case 10:
-                _messagesToSend.Add(PregeneratedMessage.SetStmtTimeout10Sec);
-                return;
+                msg = PregeneratedMessage.SetStmtTimeout10Sec;
+                break;
             case 20:
-                _messagesToSend.Add(PregeneratedMessage.SetStmtTimeout20Sec);
-                return;
+                msg = PregeneratedMessage.SetStmtTimeout20Sec;
+                break;
             case 30:
-                _messagesToSend.Add(PregeneratedMessage.SetStmtTimeout30Sec);
-                return;
+                msg = PregeneratedMessage.SetStmtTimeout30Sec;
+                break;
             case 60:
-                _messagesToSend.Add(PregeneratedMessage.SetStmtTimeout60Sec);
-                return;
+                msg = PregeneratedMessage.SetStmtTimeout60Sec;
+                break;
             case 90:
-                _messagesToSend.Add(PregeneratedMessage.SetStmtTimeout90Sec);
-                return;
+                msg = PregeneratedMessage.SetStmtTimeout90Sec;
+                break;
             case 120:
-                _messagesToSend.Add(PregeneratedMessage.SetStmtTimeout120Sec);
-                return;
+                msg = PregeneratedMessage.SetStmtTimeout120Sec;
+                break;
             default:
-                _messagesToSend.Add(new QueryMessage($"SET statement_timeout = {timeout*1000}"));
-                return;
+                msg = QueryMessage.Populate($"SET statement_timeout = {timeout * 1000}");
+                break;
             }
-        }
-
-        [RewriteAsync]
-        internal void SendAllMessages()
-        {
-            if (!_messagesToSend.Any()) {
-                return;
-            }
-
-            // If a cancellation is in progress, wait for it to "complete" before proceeding (#615)
-            lock (_cancelLock) { }
-
-            _sentRfqPrependedMessages = _pendingRfqPrependedMessages;
-            _pendingRfqPrependedMessages = 0;
-
-            try
-            {
-                foreach (var msg in _messagesToSend)
-                {
-                    SendMessage(msg);
-                }
-                Buffer.Flush();
-            }
-            catch
-            {
-                Break();
-                throw;
-            }
-            finally
-            {
-                _messagesToSend.Clear();
-            }
+            if (!msg.Write(Buffer))
+                throw new Exception($"Could not fully write message of type {msg.GetType().Name} into the buffer");
         }
 
         /// <summary>
@@ -908,30 +863,32 @@ namespace Npgsql
         /// with this message.
         /// </summary>
         /// <param name="msg"></param>
+        [RewriteAsync]
         internal void SendSingleMessage(FrontendMessage msg)
         {
-            AddMessage(msg);
-            SendAllMessages();
+            Log.Trace($"Sending: {msg}", Id);
+            while (true)
+            {
+                var completed = msg.Write(Buffer);
+                SendBuffer();
+                if (completed)
+                    break;  // Sent all messages
+            }
         }
 
-        [RewriteAsync]
-        void SendMessage(FrontendMessage msg)
-        {
-            Log.Trace($"Sending: {msg}", Id);
+        internal void SendSingleQuery(string query) => SendSingleMessage(QueryMessage.Populate(query));
 
-            var directBuf = new DirectBuffer();
-            while (!msg.Write(Buffer, ref directBuf))
+        [RewriteAsync]
+        internal void SendBuffer()
+        {
+            try
             {
                 Buffer.Flush();
-
-                // The following is an optimization hack for writing large byte arrays without passing
-                // through our buffer
-                if (directBuf.Buffer != null)
-                {
-                    Buffer.Underlying.Write(directBuf.Buffer, directBuf.Offset, directBuf.Size == 0 ? directBuf.Buffer.Length : directBuf.Size);
-                    directBuf.Buffer = null;
-                    directBuf.Size = 0;
-                }
+            }
+            catch
+            {
+                Break();
+                throw;
             }
         }
 
@@ -964,17 +921,17 @@ namespace Npgsql
         {
             // First read the responses of any prepended messages.
             // Exceptions shouldn't happen here, we break the connector if they do
-            if (_sentRfqPrependedMessages > 0)
+            if (_pendingRfqPrependedMessages > 0)
             {
                 try
                 {
                     SetFrontendTimeout(ActualInternalCommandTimeout);
-                    while (_sentRfqPrependedMessages > 0)
+                    while (_pendingRfqPrependedMessages > 0)
                     {
                         var msg = DoReadSingleMessage(DataRowLoadingMode.Skip, isPrependedMessage: true);
                         if (msg is ReadyForQueryMessage)
                         {
-                            _sentRfqPrependedMessages--;
+                            _pendingRfqPrependedMessages--;
                         }
                     }
                 }
@@ -1209,8 +1166,8 @@ namespace Npgsql
         }
 
         bool HasDataInBuffers => Buffer.ReadBytesLeft > 0 ||
-                                 (_stream is NetworkStream && ((NetworkStream) _stream).DataAvailable)
-                                 || (_stream is TlsClientStream.TlsClientStream && ((TlsClientStream.TlsClientStream) _stream).HasBufferedReadData(false));
+                                 (Stream is NetworkStream && ((NetworkStream) Stream).DataAvailable)
+                                 || (Stream is TlsClientStream.TlsClientStream && ((TlsClientStream.TlsClientStream) Stream).HasBufferedReadData(false));
 
         /// <summary>
         /// Reads and processes any messages that are already in our buffers (either Npgsql or TCP).
@@ -1428,7 +1385,7 @@ namespace Npgsql
         /// </summary>
         internal void CancelRequest()
         {
-            lock (_cancelLock)
+            lock (CancelLock)
             {
                 var cancelConnector = new NpgsqlConnector(_settings, _password);
                 cancelConnector.DoCancelRequest(BackendProcessId, _backendSecretKey, cancelConnector.ConnectionTimeout);
@@ -1449,7 +1406,7 @@ namespace Npgsql
 
                 // Now wait for the server to close the connection, better chance of the cancellation
                 // actually being delivered.
-                var count = _stream.Read(Buffer._buf, 0, 1);
+                var count = Stream.Read(Buffer._buf, 0, 1);
                 if (count != -1)
                 {
                     Log.Error("Received response after sending cancel request, shouldn't happen! First byte: " + Buffer._buf[0]);
@@ -1553,7 +1510,7 @@ namespace Npgsql
             Log.Trace("Cleanup connector", Id);
             try
             {
-                _stream?.Dispose();
+                Stream?.Dispose();
             }
             catch {
                 // ignored
@@ -1568,7 +1525,7 @@ namespace Npgsql
             }
 
             ClearTransaction();
-            _stream = null;
+            Stream = null;
             _baseStream = null;
             Buffer = null;
             Connection = null;
@@ -1610,35 +1567,18 @@ namespace Npgsql
             }
 
             if (IsInUserAction)
-            {
                 EndUserAction();
-            }
 
-            // If a begin transaction is pending (i.e. not yet sent to the server), remove it
-            if (PregeneratedMessage.BeginTransactionMessages.Contains(_messagesToSend.LastOrDefault()))
-            {
-                _messagesToSend.RemoveAt(_messagesToSend.Count - 1);
-                checked { _pendingRfqPrependedMessages--; }
-                ClearTransaction();
-            }
-
-            // If a DISCARD ALL is already pending (#736), don't reenqueue rollback/discard
-            var lastEnqueued = _messagesToSend.LastOrDefault();
-            if (lastEnqueued == PregeneratedMessage.DiscardAll || lastEnqueued == PregeneratedMessage.UnlistenAll)
-            {
-                return;
-            }
+            // Our buffer may contain unsent prepended messages (such as BeginTransaction), clear it out completely
+            Buffer.Clear();
+            _pendingRfqPrependedMessages = 0;
 
             // Must rollback transaction before sending DISCARD ALL
             if (InTransaction)
-            {
                 Rollback();
-            }
 
             if (SupportsDiscard)
-            {
                 PrependInternalMessage(PregeneratedMessage.DiscardAll);
-            }
             else if (SupportsUnlisten)
             {
                 PrependInternalMessage(PregeneratedMessage.UnlistenAll);
@@ -1656,9 +1596,7 @@ namespace Npgsql
 
             // DISCARD ALL has reset statement_timeout to the default specified on the connection string.
             if (_settings.BackendTimeouts)
-            {
                 _backendTimeout = _settings.CommandTimeout;
-            }
         }
 
         #endregion Close
@@ -1713,7 +1651,6 @@ namespace Npgsql
 
             Contract.Assume(IsReady);
             Contract.Assume(Buffer.ReadBytesLeft == 0, "The read buffer should be read completely before sending Parse message");
-            Contract.Assume(Buffer.WritePosition == 0, "WritePosition should be 0");
 
             State = newState;
             return _userAction;
@@ -1911,19 +1848,18 @@ namespace Npgsql
 
         internal void ExecuteInternalCommand(string query, bool withTimeout=true)
         {
-            ExecuteInternalCommand(new QueryMessage(query), withTimeout);
+            ExecuteInternalCommand(QueryMessage.Populate(query), withTimeout);
         }
 
         [RewriteAsync]
         internal void ExecuteInternalCommand(FrontendMessage message, bool withTimeout=true)
         {
+            Contract.Requires(message is QueryMessage || message is PregeneratedMessage);
             using (StartUserAction())
             {
-                if (withTimeout) {
+                if (withTimeout)
                     PrependBackendTimeoutMessage(ActualInternalCommandTimeout);
-                }
-                AddMessage(message);
-                SendAllMessages();
+                SendSingleMessage(message);
                 ReadExpecting<CommandCompleteMessage>();
                 ReadExpecting<ReadyForQueryMessage>();
             }

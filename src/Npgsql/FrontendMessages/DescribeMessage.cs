@@ -42,16 +42,16 @@ namespace Npgsql.FrontendMessages
 
         const byte Code = (byte)'D';
 
-        internal DescribeMessage Populate(StatementOrPortal type, string name = "")
+        internal DescribeMessage Populate(StatementOrPortal type, string name = null)
         {
             StatementOrPortal = type;
-            Name = name;
+            Name = name ?? "";
             return this;
         }
 
         internal override int Length => 1 + 4 + 1 + (Name.Length + 1);
 
-        internal override void Write(NpgsqlBuffer buf)
+        internal override void WriteFully(NpgsqlBuffer buf)
         {
             Contract.Requires(Name != null && Name.All(c => c < 128));
 

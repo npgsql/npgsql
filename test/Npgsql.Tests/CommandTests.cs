@@ -44,7 +44,7 @@ namespace Npgsql.Tests
 {
     public class CommandTests : TestBase
     {
-        #region Multiquery
+        #region Multiple Commands
 
         /// <summary>
         /// Tests various configurations of queries and non-queries within a multiquery
@@ -56,7 +56,7 @@ namespace Npgsql.Tests
         [TestCase(new[] { false, false }, TestName = "TwoNonQueries")]
         [TestCase(new[] { false, true }, TestName = "NonQueryQuery")]
         [TestCase(new[] { true, false }, TestName = "QueryNonQuery")]
-        public void Multiqueries(bool[] queries)
+        public void MultipleCommands(bool[] queries)
         {
             using (var conn = OpenConnection())
             {
@@ -87,7 +87,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void MultipleQueriesWithParameters([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
+        public void MultipleCommandsWithParameters([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
         {
             using (var conn = OpenConnection())
             {
@@ -115,7 +115,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void MultipleQueriesSingleRow([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
+        public void MultipleCommandsSingleRow([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
         {
             using (var conn = OpenConnection())
             {
@@ -130,6 +130,38 @@ namespace Npgsql.Tests
                         Assert.That(reader.Read(), Is.False);
                         Assert.That(reader.NextResult(), Is.False);
                     }
+                }
+            }
+        }
+
+        [Test, Description("Makes sure a later command can depend on an earlier one")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/641")]
+        public void MultipleCommandsWithDependencies()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TABLE pg_temp.data (a INT); INSERT INTO pg_temp.data (a) VALUES (8)");
+                Assert.That(conn.ExecuteScalar("SELECT * FROM pg_temp.data"), Is.EqualTo(8));
+            }
+        }
+
+        [Test, Description("Forces async write mode when the first statement in a multi-statement command is big")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/641")]
+        public void MultipleCommandsLargeFirstCommand()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand($"SELECT repeat('X', {conn.BufferSize}); SELECT @p", conn))
+            {
+                var expected1 = new string('X', conn.BufferSize);
+                var expected2 = new string('Y', conn.BufferSize);
+                cmd.Parameters.AddWithValue("p", expected2);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetString(0), Is.EqualTo(expected1));
+                    reader.NextResult();
+                    reader.Read();
+                    Assert.That(reader.GetString(0), Is.EqualTo(expected2));
                 }
             }
         }
@@ -599,10 +631,10 @@ namespace Npgsql.Tests
                 {
                     cmd.Parameters.Add(new NpgsqlParameter("p0", NpgsqlDbType.Text));
                     cmd.Prepare();
+                    Assert.That(cmd.IsPrepared, Is.True);
                     cmd.Parameters["p0"].Value = "test";
                     using (var dr = cmd.ExecuteReader())
                     {
-                        Assert.IsNotNull(dr);
                         dr.Close();
                         Assert.That(dr.RecordsAffected, Is.EqualTo(1));
                     }
@@ -610,6 +642,17 @@ namespace Npgsql.Tests
                 }
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data WHERE name = 'test'"), Is.EqualTo(1));
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(0), "Prepared statements are being leaked");
+
+                // Another prepared statement, this time with a resultset
+                using (var cmd = new NpgsqlCommand("SELECT 8", conn))
+                {
+                    cmd.Prepare();
+                    using (var dr = cmd.ExecuteReader())
+                    {
+                        dr.Read();
+                        Assert.That(dr.GetInt32(0), Is.EqualTo(8));
+                    }
+                }
             }
         }
 
@@ -988,7 +1031,8 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/416")]
+        [Test, Description("This scenario used to be supported in 3.0, but isn't supported starting 3.1")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/416")]
         public void PreparedDisposeWithOpenReader()
         {
             using (var conn = OpenConnection())
@@ -999,9 +1043,10 @@ namespace Npgsql.Tests
                 cmd2.Prepare();
                 var reader = cmd2.ExecuteReader();
                 reader.Read();
+                Assert.That(() => cmd1.Dispose(), Throws.Exception.TypeOf<InvalidOperationException>());
+                reader.Close();
                 cmd1.Dispose();
                 cmd2.Dispose();
-                reader.Close();
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(0));
             }
         }

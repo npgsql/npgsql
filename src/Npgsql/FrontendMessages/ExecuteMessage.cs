@@ -52,7 +52,7 @@ namespace Npgsql.FrontendMessages
 
         internal override int Length => 1 + 4 + (Portal.Length + 1) + 4;
 
-        internal override void Write(NpgsqlBuffer buf)
+        internal override void WriteFully(NpgsqlBuffer buf)
         {
             Contract.Requires(Portal != null && Portal.All(c => c < 128));
 

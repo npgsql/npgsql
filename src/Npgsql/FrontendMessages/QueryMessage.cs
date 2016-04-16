@@ -34,22 +34,22 @@ namespace Npgsql.FrontendMessages
     /// </summary>
     class QueryMessage : FrontendMessage
     {
-        string Query { get; set; }
-
+        string _query;
         char[] _queryChars;
         int _charPos;
 
         internal const byte Code = (byte)'Q';
 
-        internal QueryMessage(string query)
+        internal QueryMessage Populate(string query)
         {
             Contract.Requires(query != null);
 
-            Query = query;
+            _query = query;
             _charPos = -1;
+            return this;
         }
 
-        internal override bool Write(NpgsqlBuffer buf, ref DirectBuffer directBuf)
+        internal override bool Write(NpgsqlBuffer buf)
         {
             if (_charPos == -1)
             {
@@ -57,8 +57,8 @@ namespace Npgsql.FrontendMessages
                 if (buf.WriteSpaceLeft < 1 + 4)
                     return false;
                 _charPos = 0;
-                var queryByteLen = PGUtil.UTF8Encoding.GetByteCount(Query);
-                _queryChars = Query.ToCharArray();
+                var queryByteLen = PGUtil.UTF8Encoding.GetByteCount(_query);
+                _queryChars = _query.ToCharArray();
                 buf.WriteByte(Code);
                 buf.WriteInt32(4 +            // Message length (including self excluding code)
                                queryByteLen + // Query byte length
@@ -86,7 +86,7 @@ namespace Npgsql.FrontendMessages
 
         public override string ToString()
         {
-            return $"[Query={Query}]";
+            return $"[Query={_query}]";
         }
     }
 }

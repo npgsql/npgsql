@@ -522,6 +522,10 @@ namespace Npgsql.Tests
                         Assert.That(t.Rows[0]["ColumnName"], Is.EqualTo("some_other_column"));
                         Assert.That(reader.NextResult(), Is.False);
                     }
+
+                    // Close reader in the middle
+                    using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                        reader.Read();
                 }
             }
         }

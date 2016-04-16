@@ -36,7 +36,7 @@ namespace Npgsql.FrontendMessages
 
         internal override int Length => 8;
 
-        internal override void Write(NpgsqlBuffer buf)
+        internal override void WriteFully(NpgsqlBuffer buf)
         {
             buf.WriteInt32(Length);
             buf.WriteInt32(80877103);
