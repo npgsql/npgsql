@@ -38,7 +38,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     [TypeMapping("float8", NpgsqlDbType.Double, DbType.Double, typeof(double))]
     internal class DoubleHandler : SimpleTypeHandler<double>
     {
-        public override double Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override double Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return buf.ReadDouble();
         }
@@ -57,7 +57,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             return 8;
         }
 
-        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
         {
             if (parameter?.ConvertedValue != null) {
                 value = parameter.ConvertedValue;

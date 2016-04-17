@@ -42,12 +42,12 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     [TypeMapping("lseg", NpgsqlDbType.LSeg, typeof(NpgsqlLSeg))]
     internal class LineSegmentHandler : SimpleTypeHandler<NpgsqlLSeg>, ISimpleTypeHandler<string>
     {
-        public override NpgsqlLSeg Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override NpgsqlLSeg Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return new NpgsqlLSeg(buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble());
         }
 
-        string ISimpleTypeHandler<string>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return Read(buf, len, fieldDescription).ToString();
         }
@@ -59,7 +59,7 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
             return 32;
         }
 
-        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
         {
             var v = (NpgsqlLSeg)value;
             buf.WriteDouble(v.Start.X);

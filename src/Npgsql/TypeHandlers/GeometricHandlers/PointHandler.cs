@@ -42,12 +42,12 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     [TypeMapping("point", NpgsqlDbType.Point, typeof(NpgsqlPoint))]
     internal class PointHandler : SimpleTypeHandler<NpgsqlPoint>, ISimpleTypeHandler<string>
     {
-        public override NpgsqlPoint Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override NpgsqlPoint Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return new NpgsqlPoint(buf.ReadDouble(), buf.ReadDouble());
         }
 
-        string ISimpleTypeHandler<string>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return Read(buf, len, fieldDescription).ToString();
         }
@@ -59,7 +59,7 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
             return 16;
         }
 
-        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
         {
             var v = (NpgsqlPoint)value;
             buf.WriteDouble(v.X);

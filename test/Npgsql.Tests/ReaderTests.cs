@@ -1003,25 +1003,25 @@ namespace Npgsql.Tests
 #if DEBUG
     internal class SafeExceptionGeneratingHandler : SimpleTypeHandler<int>
     {
-        public override int Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override int Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             buf.ReadInt32();
             throw new SafeReadException(new Exception("Safe read exception as requested"));
         }
 
         public override int ValidateAndGetLength(object value, NpgsqlParameter parameter) { throw new NotSupportedException(); }
-        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter) { throw new NotSupportedException(); }
+        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter) { throw new NotSupportedException(); }
     }
 
     internal class NonSafeExceptionGeneratingHandler : SimpleTypeHandler<int>
     {
-        public override int Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override int Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             throw new Exception("Non-safe read exception as requested");
         }
 
         public override int ValidateAndGetLength(object value, NpgsqlParameter parameter) { throw new NotSupportedException(); }
-        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter) { throw new NotSupportedException();}
+        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter) { throw new NotSupportedException();}
     }
 #endif
     #endregion

@@ -42,7 +42,7 @@ namespace Npgsql.TypeHandlers
     [TypeMapping("uuid", NpgsqlDbType.Uuid, DbType.Guid, typeof(Guid))]
     internal class UuidHandler : SimpleTypeHandler<Guid>, ISimpleTypeHandler<string>
     {
-        public override Guid Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override Guid Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             buf.Ensure(16);
             var a = buf.ReadInt32();
@@ -53,7 +53,7 @@ namespace Npgsql.TypeHandlers
             return new Guid(a, b, c, d);
         }
 
-        string ISimpleTypeHandler<string>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return Read(buf, len, fieldDescription).ToString();
         }
@@ -79,7 +79,7 @@ namespace Npgsql.TypeHandlers
             return 16;
         }
 
-        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
         {
             if (parameter?.ConvertedValue != null) {
                 value = parameter.ConvertedValue;

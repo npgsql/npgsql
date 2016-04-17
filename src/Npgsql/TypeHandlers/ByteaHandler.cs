@@ -47,25 +47,26 @@ namespace Npgsql.TypeHandlers
         bool _returnedBuffer;
         byte[] _bytes;
         int _pos;
-        NpgsqlBuffer _buf;
+        ReadBuffer _readBuf;
+        WriteBuffer _writeBuf;
 
-        public override void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             _bytes = new byte[len];
             _pos = 0;
-            _buf = buf;
+            _readBuf = buf;
         }
 
         public override bool Read([CanBeNull] out byte[] result)
         {
-            var toRead = Math.Min(_bytes.Length - _pos, _buf.ReadBytesLeft);
-            _buf.ReadBytes(_bytes, _pos, toRead);
+            var toRead = Math.Min(_bytes.Length - _pos, _readBuf.ReadBytesLeft);
+            _readBuf.ReadBytes(_bytes, _pos, toRead);
             _pos += toRead;
             if (_pos == _bytes.Length)
             {
                 result = _bytes;
                 _bytes = null;
-                _buf = null;
+                _readBuf = null;
                 return true;
             }
             result = null;
@@ -119,9 +120,9 @@ namespace Npgsql.TypeHandlers
             throw CreateConversionException(value.GetType());
         }
 
-        public override void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
+        public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
-            _buf = buf;
+            _writeBuf = buf;
 
             if (value is ArraySegment<byte>)
             {
@@ -153,9 +154,9 @@ namespace Npgsql.TypeHandlers
 
             // If the entire array fits in our buffer, copy it as usual.
             // Otherwise, switch to direct write from the user-provided buffer
-            if (_value.Count <= _buf.WriteSpaceLeft)
+            if (_value.Count <= _writeBuf.WriteSpaceLeft)
             {
-                _buf.WriteBytes(_value.Array, _value.Offset, _value.Count);
+                _writeBuf.WriteBytes(_value.Array, _value.Offset, _value.Count);
                 return true;
             }
 

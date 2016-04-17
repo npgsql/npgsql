@@ -34,7 +34,7 @@ namespace Npgsql.TypeHandlers
     [TypeMapping("bool", NpgsqlDbType.Boolean, DbType.Boolean, typeof(bool))]
     internal class BoolHandler : SimpleTypeHandler<bool>
     {
-        public override bool Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override bool Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return buf.ReadByte() != 0;
         }
@@ -53,7 +53,7 @@ namespace Npgsql.TypeHandlers
             return 1;
         }
 
-        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
         {
             if (parameter?.ConvertedValue != null) {
                 value = parameter.ConvertedValue;

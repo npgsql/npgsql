@@ -719,7 +719,7 @@ namespace Npgsql
         {
             Contract.Requires(_connector != null);
 
-            var buf = _connector.Buffer;
+            var buf = _connector.WriteBuffer;
             for (; _writeStatementIndex < _statements.Count; _writeStatementIndex++)
             {
                 var statement = _statements[_writeStatementIndex];
@@ -789,7 +789,7 @@ namespace Npgsql
         {
             Contract.Requires(_connector != null);
 
-            var buf = _connector.Buffer;
+            var buf = _connector.WriteBuffer;
             for (; _writeStatementIndex < _statements.Count; _writeStatementIndex++)
             {
                 var statement = _statements[_writeStatementIndex];
@@ -855,7 +855,7 @@ namespace Npgsql
         {
             Contract.Requires(_connector != null);
 
-            var buf = _connector.Buffer;
+            var buf = _connector.WriteBuffer;
             for (; _writeStatementIndex < _statements.Count; _writeStatementIndex++)
             {
                 var statement = _statements[_writeStatementIndex];
@@ -898,7 +898,7 @@ namespace Npgsql
         {
             Contract.Requires(_connector != null);
 
-            var buf = _connector.Buffer;
+            var buf = _connector.WriteBuffer;
             for (; _writeStatementIndex < _statements.Count; _writeStatementIndex++)
             {
                 var statement = _statements[_writeStatementIndex];

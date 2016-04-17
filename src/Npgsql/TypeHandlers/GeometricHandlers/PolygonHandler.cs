@@ -45,16 +45,17 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
         #region State
 
         NpgsqlPolygon _value;
-        NpgsqlBuffer _buf;
+        ReadBuffer _readBuf;
+        WriteBuffer _writeBuf;
         int _index;
 
         #endregion
 
         #region Read
 
-        public override void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
-            _buf = buf;
+            _readBuf = buf;
             _index = -1;
         }
 
@@ -64,19 +65,19 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
 
             if (_index == -1)
             {
-                if (_buf.ReadBytesLeft < 4) { return false; }
-                var numPoints = _buf.ReadInt32();
+                if (_readBuf.ReadBytesLeft < 4) { return false; }
+                var numPoints = _readBuf.ReadInt32();
                 _value = new NpgsqlPolygon(numPoints);
                 _index = 0;
             }
 
             for (; _index < _value.Capacity; _index++) {
-                if (_buf.ReadBytesLeft < 16) { return false; }
-                _value.Add(new NpgsqlPoint(_buf.ReadDouble(), _buf.ReadDouble()));
+                if (_readBuf.ReadBytesLeft < 16) { return false; }
+                _value.Add(new NpgsqlPoint(_readBuf.ReadDouble(), _readBuf.ReadDouble()));
             }
             result = _value;
             _value = default(NpgsqlPolygon);
-            _buf = null;
+            _readBuf = null;
             return true;
         }
 
@@ -91,9 +92,9 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
             return 4 + ((NpgsqlPolygon)value).Count * 16;
         }
 
-        public override void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
+        public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
-            _buf = buf;
+            _writeBuf = buf;
             _value = (NpgsqlPolygon)value;
             _index = -1;
         }
@@ -102,19 +103,19 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
         {
             if (_index == -1)
             {
-                if (_buf.WriteSpaceLeft < 4) { return false; }
-                _buf.WriteInt32(_value.Count);
+                if (_writeBuf.WriteSpaceLeft < 4) { return false; }
+                _writeBuf.WriteInt32(_value.Count);
                 _index = 0;
             }
 
             for (; _index < _value.Count; _index++)
             {
-                if (_buf.WriteSpaceLeft < 16) { return false; }
+                if (_writeBuf.WriteSpaceLeft < 16) { return false; }
                 var p = _value[_index];
-                _buf.WriteDouble(p.X);
-                _buf.WriteDouble(p.Y);
+                _writeBuf.WriteDouble(p.X);
+                _writeBuf.WriteDouble(p.Y);
             }
-            _buf = null;
+            _writeBuf = null;
             _value = default(NpgsqlPolygon);
             return true;
         }

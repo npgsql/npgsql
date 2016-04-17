@@ -48,7 +48,8 @@ namespace Npgsql.TypeHandlers
         /// </summary>
         bool _handledVersion;
 
-        NpgsqlBuffer _buf;
+        ReadBuffer _readBuf;
+        WriteBuffer _writeBuf;
 
         /// <summary>
         /// The text handler which does most of the encoding/decoding work.
@@ -75,10 +76,10 @@ namespace Npgsql.TypeHandlers
             return _textHandler.ValidateAndGetLength(value, ref lengthCache, parameter) + 1;
         }
 
-        public override void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter)
+        public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter)
         {
             _textHandler.PrepareWrite(value, buf, lengthCache, parameter);
-            _buf = buf;
+            _writeBuf = buf;
             _handledVersion = false;
         }
 
@@ -86,12 +87,12 @@ namespace Npgsql.TypeHandlers
         {
             if (!_handledVersion)
             {
-                if (_buf.WriteSpaceLeft < 1) { return false; }
-                _buf.WriteByte(JsonbProtocolVersion);
+                if (_writeBuf.WriteSpaceLeft < 1) { return false; }
+                _writeBuf.WriteByte(JsonbProtocolVersion);
                 _handledVersion = true;
             }
             if (!_textHandler.Write(ref directBuf)) { return false; }
-            _buf = null;
+            _writeBuf = null;
             return true;
         }
 
@@ -99,11 +100,11 @@ namespace Npgsql.TypeHandlers
 
         #region Read
 
-        public override void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             // Subtract one byte for the version number
             _textHandler.PrepareRead(buf, fieldDescription, len-1);
-            _buf = buf;
+            _readBuf = buf;
             _handledVersion = false;
         }
 
@@ -111,12 +112,12 @@ namespace Npgsql.TypeHandlers
         {
             if (!_handledVersion)
             {
-                if (_buf.ReadBytesLeft < 1)
+                if (_readBuf.ReadBytesLeft < 1)
                 {
                     result = null;
                     return false;
                 }
-                var version = _buf.ReadByte();
+                var version = _readBuf.ReadByte();
                 if (version != JsonbProtocolVersion) {
                     throw new NotSupportedException($"Don't know how to decode JSONB with wire format {version}, your connection is now broken");
                 }
@@ -124,7 +125,7 @@ namespace Npgsql.TypeHandlers
             }
 
             if (!_textHandler.Read(out result)) { return false; }
-            _buf = null;
+            _readBuf = null;
             return true;
         }
 

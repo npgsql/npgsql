@@ -47,7 +47,7 @@ namespace Npgsql.TypeHandlers
             PgName = "<unknown>";
         }
 
-        internal override void PrepareRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        internal override void PrepareRead(ReadBuffer buf, FieldDescription fieldDescription, int len)
         {
             if (fieldDescription.IsBinaryFormat) {
                 buf.Skip(len);

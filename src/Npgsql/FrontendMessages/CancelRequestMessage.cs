@@ -44,7 +44,7 @@ namespace Npgsql.FrontendMessages
 
         internal override int Length => 16;
 
-        internal override void WriteFully(NpgsqlBuffer buf)
+        internal override void WriteFully(WriteBuffer buf)
         {
             Contract.Requires(BackendProcessId != 0);
 

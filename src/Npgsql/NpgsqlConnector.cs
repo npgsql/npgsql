@@ -77,7 +77,12 @@ namespace Npgsql
         /// <summary>
         /// Buffer used for reading data.
         /// </summary>
-        internal NpgsqlBuffer Buffer { get; private set; }
+        internal ReadBuffer ReadBuffer { get; private set; }
+
+        /// <summary>
+        /// Buffer used for writing data.
+        /// </summary>
+        internal WriteBuffer WriteBuffer { get; private set; }
 
         /// <summary>
         /// Version of backend server this connector is connected to.
@@ -387,7 +392,7 @@ namespace Npgsql
                 RawOpen(timeout);
 
                 WriteStartupMessage();
-                Buffer.Flush();
+                WriteBuffer.Flush();
                 timeout.Check();
 
                 HandleAuthentication(timeout);
@@ -434,11 +439,11 @@ namespace Npgsql
                 startupMessage["ssl_renegotiation_limit"] = "0";
             }
 
-            if (startupMessage.Length > Buffer.Size)
+            if (startupMessage.Length > WriteBuffer.Size)
             {  // Should really never happen, just in case
                 throw new Exception("Startup message bigger than buffer");
             }
-            startupMessage.WriteFully(Buffer);
+            startupMessage.WriteFully(WriteBuffer);
         }
 
         [RewriteAsync]
@@ -451,16 +456,17 @@ namespace Npgsql
                 Contract.Assert(_socket != null);
                 _baseStream = new NetworkStream(_socket, true);
                 Stream = _baseStream;
-                Buffer = new NpgsqlBuffer(Stream, BufferSize, PGUtil.UTF8Encoding);
+                ReadBuffer = new ReadBuffer(Stream, BufferSize, PGUtil.UTF8Encoding);
+                WriteBuffer = new WriteBuffer(Stream, BufferSize, PGUtil.UTF8Encoding);
 
                 if (SslMode == SslMode.Require || SslMode == SslMode.Prefer)
                 {
                     Log.Trace("Attempting SSL negotiation");
-                    SSLRequestMessage.Instance.WriteFully(Buffer);
-                    Buffer.Flush();
+                    SSLRequestMessage.Instance.WriteFully(WriteBuffer);
+                    WriteBuffer.Flush();
 
-                    Buffer.Ensure(1);
-                    var response = (char)Buffer.ReadByte();
+                    ReadBuffer.Ensure(1);
+                    var response = (char)ReadBuffer.ReadByte();
                     timeout.Check();
 
                     switch (response)
@@ -510,7 +516,8 @@ namespace Npgsql
                             Stream = sslStream;
                         }
                         timeout.Check();
-                        Buffer.Underlying = Stream;
+                        ReadBuffer.Underlying = Stream;
+                        WriteBuffer.Underlying = Stream;
                         IsSecure = true;
                         Log.Trace("SSL negotiation successful");
                         break;
@@ -711,8 +718,8 @@ namespace Npgsql
                     var passwordMessage = ProcessAuthenticationMessage((AuthenticationRequestMessage)msg);
                     if (passwordMessage != null)
                     {
-                        passwordMessage.WriteFully(Buffer);
-                        Buffer.Flush();
+                        passwordMessage.WriteFully(WriteBuffer);
+                        WriteBuffer.Flush();
                         timeout.Check();
                     }
 
@@ -816,7 +823,7 @@ namespace Npgsql
                 // processing the message chain results
                 checked { _pendingRfqPrependedMessages++; }
             }
-            if (!msg.Write(Buffer))
+            if (!msg.Write(WriteBuffer))
                 throw new Exception($"Could not fully write message of type {msg.GetType().Name} into the buffer");
         }
 
@@ -853,7 +860,7 @@ namespace Npgsql
                 msg = QueryMessage.Populate($"SET statement_timeout = {timeout * 1000}");
                 break;
             }
-            if (!msg.Write(Buffer))
+            if (!msg.Write(WriteBuffer))
                 throw new Exception($"Could not fully write message of type {msg.GetType().Name} into the buffer");
         }
 
@@ -869,7 +876,7 @@ namespace Npgsql
             Log.Trace($"Sending: {msg}", Id);
             while (true)
             {
-                var completed = msg.Write(Buffer);
+                var completed = msg.Write(WriteBuffer);
                 SendBuffer();
                 if (completed)
                     break;  // Sent all messages
@@ -883,7 +890,7 @@ namespace Npgsql
         {
             try
             {
-                Buffer.Flush();
+                WriteBuffer.Flush();
             }
             catch
             {
@@ -978,23 +985,23 @@ namespace Npgsql
 
             while (true)
             {
-                var buf = Buffer;
+                var buf = ReadBuffer;
 
-                Buffer.Ensure(5);
-                var messageCode = (BackendMessageCode) Buffer.ReadByte();
+                ReadBuffer.Ensure(5);
+                var messageCode = (BackendMessageCode)ReadBuffer.ReadByte();
                 Contract.Assume(Enum.IsDefined(typeof(BackendMessageCode), messageCode), "Unknown message code: " + messageCode);
-                var len = Buffer.ReadInt32() - 4;  // Transmitted length includes itself
+                var len = ReadBuffer.ReadInt32() - 4;  // Transmitted length includes itself
 
                 if ((messageCode == BackendMessageCode.DataRow && dataRowLoadingMode != DataRowLoadingMode.NonSequential) ||
                      messageCode == BackendMessageCode.CopyData)
                 {
                     if (dataRowLoadingMode == DataRowLoadingMode.Skip)
                     {
-                        Buffer.Skip(len);
+                        ReadBuffer.Skip(len);
                         continue;
                     }
                 }
-                else if (len > Buffer.ReadBytesLeft)
+                else if (len > ReadBuffer.ReadBytesLeft)
                 {
                     buf = buf.EnsureOrAllocateTemp(len);
                 }
@@ -1040,7 +1047,7 @@ namespace Npgsql
         }
 
         [CanBeNull]
-        IBackendMessage ParseServerMessage(NpgsqlBuffer buf, BackendMessageCode code, int len, DataRowLoadingMode dataRowLoadingMode, bool isPrependedMessage)
+        IBackendMessage ParseServerMessage(ReadBuffer buf, BackendMessageCode code, int len, DataRowLoadingMode dataRowLoadingMode, bool isPrependedMessage)
         {
             switch (code)
             {
@@ -1114,13 +1121,13 @@ namespace Npgsql
                     if (_copyInResponseMessage == null) {
                         _copyInResponseMessage = new CopyInResponseMessage();
                     }
-                    return _copyInResponseMessage.Load(Buffer);
+                    return _copyInResponseMessage.Load(ReadBuffer);
 
                 case BackendMessageCode.CopyOutResponse:
                     if (_copyOutResponseMessage == null) {
                         _copyOutResponseMessage = new CopyOutResponseMessage();
                     }
-                    return _copyOutResponseMessage.Load(Buffer);
+                    return _copyOutResponseMessage.Load(ReadBuffer);
 
                 case BackendMessageCode.CopyData:
                     if (_copyDataMessage == null) {
@@ -1165,7 +1172,7 @@ namespace Npgsql
             }
         }
 
-        bool HasDataInBuffers => Buffer.ReadBytesLeft > 0 ||
+        bool HasDataInBuffers => ReadBuffer.ReadBytesLeft > 0 ||
                                  (Stream is NetworkStream && ((NetworkStream) Stream).DataAvailable)
                                  || (Stream is TlsClientStream.TlsClientStream && ((TlsClientStream.TlsClientStream) Stream).HasBufferedReadData(false));
 
@@ -1402,14 +1409,14 @@ namespace Npgsql
                 RawOpen(new NpgsqlTimeout(TimeSpan.FromSeconds(connectionTimeout)));
                 SendSingleMessage(new CancelRequestMessage(backendProcessId, backendSecretKey));
 
-                Contract.Assert(Buffer.ReadPosition == 0);
+                Contract.Assert(ReadBuffer.ReadPosition == 0);
 
                 // Now wait for the server to close the connection, better chance of the cancellation
                 // actually being delivered.
-                var count = Stream.Read(Buffer._buf, 0, 1);
+                var count = Stream.Read(ReadBuffer._buf, 0, 1);
                 if (count != -1)
                 {
-                    Log.Error("Received response after sending cancel request, shouldn't happen! First byte: " + Buffer._buf[0]);
+                    Log.Error("Received response after sending cancel request, shouldn't happen! First byte: " + ReadBuffer._buf[0]);
                 }
             }
             finally
@@ -1527,7 +1534,8 @@ namespace Npgsql
             ClearTransaction();
             Stream = null;
             _baseStream = null;
-            Buffer = null;
+            ReadBuffer = null;
+            WriteBuffer = null;
             Connection = null;
             BackendParams.Clear();
             ServerVersion = null;
@@ -1570,7 +1578,7 @@ namespace Npgsql
                 EndUserAction();
 
             // Our buffer may contain unsent prepended messages (such as BeginTransaction), clear it out completely
-            Buffer.Clear();
+            WriteBuffer.Clear();
             _pendingRfqPrependedMessages = 0;
 
             // Must rollback transaction before sending DISCARD ALL
@@ -1650,7 +1658,7 @@ namespace Npgsql
             }
 
             Contract.Assume(IsReady);
-            Contract.Assume(Buffer.ReadBytesLeft == 0, "The read buffer should be read completely before sending Parse message");
+            Contract.Assume(ReadBuffer.ReadBytesLeft == 0, "The read buffer should be read completely before sending Parse message");
 
             State = newState;
             return _userAction;

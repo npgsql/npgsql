@@ -47,7 +47,8 @@ namespace Npgsql.TypeHandlers
     [TypeMapping("bit", NpgsqlDbType.Bit)]
     internal class BitStringHandler : ChunkingTypeHandler<BitArray>, IChunkingTypeHandler<bool>
     {
-        NpgsqlBuffer _buf;
+        ReadBuffer _readBuf;
+        WriteBuffer _writeBuf;
         int _len;
         BitArray _bitArray;
         object _value;
@@ -84,10 +85,10 @@ namespace Npgsql.TypeHandlers
 
         #region Read
 
-        public override void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             _isSingleBit = fieldDescription.TypeModifier == 1;
-            _buf = buf;
+            _readBuf = buf;
             _pos = -1;
             _len = len - 4;   // Subtract leading bit length field
         }
@@ -98,10 +99,10 @@ namespace Npgsql.TypeHandlers
             if (!_isSingleBit) {
                 throw new InvalidCastException("Can't convert a BIT(N) type to bool, only BIT(1)");
             }
-            if (_buf.ReadBytesLeft < 4) { return false; }
-            var bitLen = _buf.ReadInt32();
+            if (_readBuf.ReadBytesLeft < 4) { return false; }
+            var bitLen = _readBuf.ReadInt32();
             Contract.Assume(bitLen == 1);
-            var b = _buf.ReadByte();
+            var b = _readBuf.ReadByte();
             result = (b & 128) != 0;
             return true;
         }
@@ -114,21 +115,21 @@ namespace Npgsql.TypeHandlers
         {
             if (_pos == -1)
             {
-                if (_buf.ReadBytesLeft < 4)
+                if (_readBuf.ReadBytesLeft < 4)
                 {
                     result = null;
                     return false;
                 }
-                var numBits = _buf.ReadInt32();
+                var numBits = _readBuf.ReadInt32();
                 _bitArray = new BitArray(numBits);
                 _pos = 0;
             }
 
             var bitNo = _pos * 8;
-            var maxBytes = _pos + Math.Min(_len - _pos - 1, _buf.ReadBytesLeft);
+            var maxBytes = _pos + Math.Min(_len - _pos - 1, _readBuf.ReadBytesLeft);
             for (; _pos < maxBytes; _pos++)
             {
-                var chunk = _buf.ReadByte();
+                var chunk = _readBuf.ReadByte();
                 _bitArray[bitNo++] = (chunk & (1 << 7)) != 0;
                 _bitArray[bitNo++] = (chunk & (1 << 6)) != 0;
                 _bitArray[bitNo++] = (chunk & (1 << 5)) != 0;
@@ -148,7 +149,7 @@ namespace Npgsql.TypeHandlers
             if (bitNo < _bitArray.Length)
             {
                 var remainder = _bitArray.Length - bitNo;
-                var lastChunk = _buf.ReadByte();
+                var lastChunk = _readBuf.ReadByte();
                 for (var i = 7; i >= 8 - remainder; i--)
                 {
                     _bitArray[bitNo++] = (lastChunk & (1 << i)) != 0;
@@ -183,9 +184,9 @@ namespace Npgsql.TypeHandlers
             throw CreateConversionException(value.GetType());
         }
 
-        public override void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
+        public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
-            _buf = buf;
+            _writeBuf = buf;
             _pos = -1;
 
             _value = value;
@@ -215,34 +216,34 @@ namespace Npgsql.TypeHandlers
             if (_pos < 0)
             {
                 // Initial bitlength byte
-                if (_buf.WriteSpaceLeft < 4) { return false; }
-                _buf.WriteInt32(bitArray.Length);
+                if (_writeBuf.WriteSpaceLeft < 4) { return false; }
+                _writeBuf.WriteInt32(bitArray.Length);
                 _pos = 0;
             }
             var byteLen = (bitArray.Length + 7) / 8;
-            var endPos = _pos + Math.Min(byteLen - _pos, _buf.WriteSpaceLeft);
+            var endPos = _pos + Math.Min(byteLen - _pos, _writeBuf.WriteSpaceLeft);
             for (; _pos < endPos; _pos++) {
                 var bitPos = _pos * 8;
                 var b = 0;
                 for (var i = 0; i < Math.Min(8, bitArray.Length - bitPos); i++)
                     b += (bitArray[bitPos + i] ? 1 : 0) << (8 - i - 1);
-                _buf.WriteByte((byte)b);
+                _writeBuf.WriteByte((byte)b);
             }
 
             if (_pos < byteLen) { return false; }
 
-            _buf = null;
+            _writeBuf = null;
             _value = null;
             return true;
         }
 
         bool WriteBool(bool b)
         {
-            if (_buf.WriteSpaceLeft < 5)
+            if (_writeBuf.WriteSpaceLeft < 5)
                 return false;
-            _buf.WriteInt32(1);
-            _buf.WriteByte(b ? (byte)0x80 : (byte)0);
-            _buf = null;
+            _writeBuf.WriteInt32(1);
+            _writeBuf.WriteByte(b ? (byte)0x80 : (byte)0);
+            _writeBuf = null;
             _value = null;
             return true;
         }
@@ -252,14 +253,14 @@ namespace Npgsql.TypeHandlers
             if (_pos < 0)
             {
                 // Initial bitlength byte
-                if (_buf.WriteSpaceLeft < 4) { return false; }
-                _buf.WriteInt32(str.Length);
+                if (_writeBuf.WriteSpaceLeft < 4) { return false; }
+                _writeBuf.WriteInt32(str.Length);
                 _pos = 0;
             }
 
             var byteLen = (str.Length + 7) / 8;
             var bytePos = (_pos + 7) / 8;
-            var endBytePos = bytePos + Math.Min(byteLen - bytePos - 1, _buf.WriteSpaceLeft);
+            var endBytePos = bytePos + Math.Min(byteLen - bytePos - 1, _writeBuf.WriteSpaceLeft);
 
             for (; bytePos < endBytePos; bytePos++)
             {
@@ -272,7 +273,7 @@ namespace Npgsql.TypeHandlers
                 b += (str[_pos++] - '0') << 2;
                 b += (str[_pos++] - '0') << 1;
                 b += (str[_pos++] - '0');
-                _buf.WriteByte((byte)b);
+                _writeBuf.WriteByte((byte)b);
             }
 
             if (bytePos < byteLen - 1) { return false; }
@@ -285,10 +286,10 @@ namespace Npgsql.TypeHandlers
                 {
                     lastChunk += (str[_pos++] - '0') << i;
                 }
-                _buf.WriteByte((byte)lastChunk);
+                _writeBuf.WriteByte((byte)lastChunk);
             }
 
-            _buf = null;
+            _writeBuf = null;
             _value = null;
             return true;
         }
@@ -319,7 +320,7 @@ namespace Npgsql.TypeHandlers
         public BitStringArrayHandler(BitStringHandler elementHandler, string pgName, uint oid)
             : base(elementHandler, pgName, oid) {}
 
-        public override void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             base.PrepareRead(buf, len, fieldDescription);
             _fieldDescription = fieldDescription;
@@ -332,7 +333,7 @@ namespace Npgsql.TypeHandlers
                 : Read<BitArray>(out result);
         }
 
-        public override void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
+        public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             base.PrepareWrite(value, buf, lengthCache, parameter);
             _value = value;

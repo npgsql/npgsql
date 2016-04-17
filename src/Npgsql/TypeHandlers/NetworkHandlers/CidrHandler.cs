@@ -39,12 +39,12 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
     [TypeMapping("cidr", NpgsqlDbType.Cidr)]
     internal class CidrHandler : SimpleTypeHandler<NpgsqlInet>, ISimpleTypeHandler<string>
     {
-        public override NpgsqlInet Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override NpgsqlInet Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return InetHandler.DoRead(buf, fieldDescription, len, true);
         }
 
-        string ISimpleTypeHandler<string>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return Read(buf, len, fieldDescription).ToString();
         }
@@ -54,7 +54,7 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             return InetHandler.DoValidateAndGetLength(value);
         }
 
-        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
         {
             InetHandler.DoWrite(value, buf, true);
         }

@@ -76,12 +76,12 @@ namespace Npgsql.FrontendMessages
         /// </summary>
         /// <param name="buf"></param>
         /// <returns></returns>
-        internal override bool Write(NpgsqlBuffer buf)
+        internal override bool Write(WriteBuffer buf)
         {
             throw new NotSupportedException($"Internal error, call the overload of {nameof(Write)} which accepts a {nameof(DirectBuffer)}");
         }
 
-        internal bool Write(NpgsqlBuffer buf, ref DirectBuffer directBuf)
+        internal bool Write(WriteBuffer buf, ref DirectBuffer directBuf)
         {
             Contract.Requires(Statement != null && Statement.All(c => c < 128));
             Contract.Requires(Portal != null && Portal.All(c => c < 128));
@@ -165,7 +165,7 @@ namespace Npgsql.FrontendMessages
             }
         }
 
-        bool WriteParameters(NpgsqlBuffer buf, ref DirectBuffer directBuf)
+        bool WriteParameters(WriteBuffer buf, ref DirectBuffer directBuf)
         {
             for (; _paramIndex < InputParameters.Count; _paramIndex++)
             {

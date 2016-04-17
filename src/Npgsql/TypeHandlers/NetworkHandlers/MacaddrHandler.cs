@@ -39,7 +39,7 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
     [TypeMapping("macaddr", NpgsqlDbType.MacAddr, typeof(PhysicalAddress))]
     internal class MacaddrHandler : SimpleTypeHandler<PhysicalAddress>, ISimpleTypeHandler<string>
     {
-        public override PhysicalAddress Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override PhysicalAddress Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             Contract.Assume(len == 6);
 
@@ -49,7 +49,7 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             return new PhysicalAddress(bytes);
         }
 
-        string ISimpleTypeHandler<string>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return Read(buf, len, fieldDescription).ToString();
         }
@@ -64,7 +64,7 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             return 6;
         }
 
-        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
         {
             buf.WriteBytes(((PhysicalAddress)value).GetAddressBytes(), 0, 6);
         }

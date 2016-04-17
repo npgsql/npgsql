@@ -38,12 +38,12 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     [TypeMapping("float4", NpgsqlDbType.Real, DbType.Single, typeof(float))]
     internal class SingleHandler : SimpleTypeHandler<float>, ISimpleTypeHandler<double>
     {
-        public override float Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override float Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return buf.ReadSingle();
         }
 
-        double ISimpleTypeHandler<double>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        double ISimpleTypeHandler<double>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return Read(buf, len, fieldDescription);
         }
@@ -62,7 +62,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             return 4;
         }
 
-        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
         {
             if (parameter?.ConvertedValue != null) {
                 value = parameter.ConvertedValue;

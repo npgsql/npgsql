@@ -49,7 +49,7 @@ namespace Npgsql.FrontendMessages
             return this;
         }
 
-        internal override bool Write(NpgsqlBuffer buf)
+        internal override bool Write(WriteBuffer buf)
         {
             if (_charPos == -1)
             {

@@ -46,7 +46,7 @@ namespace Npgsql.FrontendMessages
         /// <param name="description">Optional string form/description for debugging</param>
         internal PregeneratedMessage(byte[] data, string description=null)
         {
-            Contract.Requires(data.Length < NpgsqlBuffer.MinimumBufferSize);
+            Contract.Requires(data.Length < WriteBuffer.MinimumBufferSize);
 
             _data = data;
             _description = description;
@@ -54,7 +54,7 @@ namespace Npgsql.FrontendMessages
 
         internal override int Length => _data.Length;
 
-        internal override void WriteFully(NpgsqlBuffer buf)
+        internal override void WriteFully(WriteBuffer buf)
         {
             buf.WriteBytes(_data, 0, _data.Length);
         }
@@ -64,12 +64,12 @@ namespace Npgsql.FrontendMessages
             return _description ?? "[?]";
         }
 
-        static readonly NpgsqlBuffer _tempBuf;
+        static readonly WriteBuffer _tempBuf;
         static readonly QueryMessage _tempQuery;
 
         static PregeneratedMessage()
         {
-            _tempBuf = new NpgsqlBuffer(new MemoryStream(), NpgsqlBuffer.MinimumBufferSize, Encoding.ASCII);
+            _tempBuf = new WriteBuffer(new MemoryStream(), WriteBuffer.MinimumBufferSize, Encoding.ASCII);
             _tempQuery = new QueryMessage();
 
             BeginTransRepeatableRead  = BuildQuery("BEGIN; SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;");

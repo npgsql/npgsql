@@ -1,14 +1,5 @@
 #pragma warning disable
 using System;
-using System.Diagnostics.Contracts;
-using System.IO;
-using System.Net;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-#pragma warning disable
-using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -143,6 +134,15 @@ using System.Threading.Tasks;
 using System;
 using System.Diagnostics.Contracts;
 using System.IO;
+using System.Net;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+#pragma warning disable
+using System;
+using System.Diagnostics.Contracts;
+using System.IO;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Threading;
@@ -168,6 +168,15 @@ using System.Threading;
 using System.Threading.Tasks;
 #pragma warning disable
 using System;
+using System.Diagnostics.Contracts;
+using System.IO;
+using System.Net;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+#pragma warning disable
+using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.IO;
@@ -181,131 +190,6 @@ using System.Threading.Tasks;
 
 namespace Npgsql
 {
-    internal partial class NpgsqlBuffer
-    {
-        internal async Task EnsureAsync(int count, CancellationToken cancellationToken)
-        {
-            Contract.Requires(count <= Size);
-            count -= ReadBytesLeft;
-            if (count <= 0)
-            {
-                return;
-            }
-
-            if (ReadPosition == _filledBytes)
-            {
-                Clear();
-            }
-            else if (count > Size - _filledBytes)
-            {
-                Array.Copy(_buf, ReadPosition, _buf, 0, ReadBytesLeft);
-                _filledBytes = ReadBytesLeft;
-                ReadPosition = 0;
-            }
-
-            while (count > 0)
-            {
-                var toRead = Size - _filledBytes;
-                var read = await (Underlying.ReadAsync(_buf, _filledBytes, toRead, cancellationToken));
-                if (read == 0)
-                {
-                    throw new EndOfStreamException();
-                }
-
-                count -= read;
-                _filledBytes += read;
-            }
-        }
-
-        internal async Task ReadMoreAsync(CancellationToken cancellationToken)
-        {
-            await EnsureAsync(ReadBytesLeft + 1, cancellationToken);
-        }
-
-        internal async Task<NpgsqlBuffer> EnsureOrAllocateTempAsync(int count, CancellationToken cancellationToken)
-        {
-            if (count <= Size)
-            {
-                await EnsureAsync(count, cancellationToken);
-                return this;
-            }
-
-            // Worst case: our buffer isn't big enough. For now, allocate a new buffer
-            // and copy into it
-            // TODO: Optimize with a pool later?
-            var tempBuf = new NpgsqlBuffer(Underlying, count, TextEncoding);
-            CopyTo(tempBuf);
-            Clear();
-            await tempBuf.EnsureAsync(count, cancellationToken);
-            return tempBuf;
-        }
-
-        internal async Task SkipAsync(long len, CancellationToken cancellationToken)
-        {
-            Contract.Requires(len >= 0);
-            if (len > ReadBytesLeft)
-            {
-                len -= ReadBytesLeft;
-                while (len > Size)
-                {
-                    Clear();
-                    await EnsureAsync(Size, cancellationToken);
-                    len -= Size;
-                }
-
-                Clear();
-                await EnsureAsync((int)len, cancellationToken);
-            }
-
-            ReadPosition += (int)len;
-        }
-
-        public async Task FlushAsync(CancellationToken cancellationToken)
-        {
-            if (_writePosition != 0)
-            {
-                Contract.Assert(ReadBytesLeft == 0, "There cannot be read bytes buffered while a write operation is going on.");
-                await Underlying.WriteAsync(_buf, 0, _writePosition, cancellationToken);
-                await Underlying.FlushAsync(cancellationToken);
-                TotalBytesFlushed += _writePosition;
-                _writePosition = 0;
-            }
-        }
-
-        internal async Task<int> ReadAllBytesAsync(byte[] output, int outputOffset, int len, bool readOnce, CancellationToken cancellationToken)
-        {
-            if (len <= ReadBytesLeft)
-            {
-                Array.Copy(_buf, ReadPosition, output, outputOffset, len);
-                ReadPosition += len;
-                return len;
-            }
-
-            Array.Copy(_buf, ReadPosition, output, outputOffset, ReadBytesLeft);
-            var offset = outputOffset + ReadBytesLeft;
-            var totalRead = ReadBytesLeft;
-            Clear();
-            while (totalRead < len)
-            {
-                var read = await (Underlying.ReadAsync(output, offset, len - totalRead, cancellationToken));
-                if (read == 0)
-                {
-                    throw new EndOfStreamException();
-                }
-
-                totalRead += read;
-                if (readOnce)
-                {
-                    return totalRead;
-                }
-
-                offset += read;
-            }
-
-            return len;
-        }
-    }
-
     public sealed partial class NpgsqlCommand
     {
         async Task<NpgsqlDataReader> ExecuteAsync(CancellationToken cancellationToken, CommandBehavior behavior = CommandBehavior.Default)
@@ -520,7 +404,7 @@ namespace Npgsql
             {
                 await RawOpenAsync(timeout, cancellationToken);
                 WriteStartupMessage();
-                await Buffer.FlushAsync(cancellationToken);
+                await WriteBuffer.FlushAsync(cancellationToken);
                 timeout.Check();
                 await HandleAuthenticationAsync(timeout, cancellationToken);
                 await TypeHandlerRegistry.SetupAsync(this, timeout, cancellationToken);
@@ -545,14 +429,15 @@ namespace Npgsql
                 Contract.Assert(_socket != null);
                 _baseStream = new NetworkStream(_socket, true);
                 Stream = _baseStream;
-                Buffer = new NpgsqlBuffer(Stream, BufferSize, PGUtil.UTF8Encoding);
+                ReadBuffer = new ReadBuffer(Stream, BufferSize, PGUtil.UTF8Encoding);
+                WriteBuffer = new WriteBuffer(Stream, BufferSize, PGUtil.UTF8Encoding);
                 if (SslMode == SslMode.Require || SslMode == SslMode.Prefer)
                 {
                     Log.Trace("Attempting SSL negotiation");
-                    SSLRequestMessage.Instance.WriteFully(Buffer);
-                    await Buffer.FlushAsync(cancellationToken);
-                    await Buffer.EnsureAsync(1, cancellationToken);
-                    var response = (char)Buffer.ReadByte();
+                    SSLRequestMessage.Instance.WriteFully(WriteBuffer);
+                    await WriteBuffer.FlushAsync(cancellationToken);
+                    await ReadBuffer.EnsureAsync(1, cancellationToken);
+                    var response = (char)ReadBuffer.ReadByte();
                     timeout.Check();
                     switch (response)
                     {
@@ -602,7 +487,8 @@ namespace Npgsql
                             }
 
                             timeout.Check();
-                            Buffer.Underlying = Stream;
+                            ReadBuffer.Underlying = Stream;
+                            WriteBuffer.Underlying = Stream;
                             IsSecure = true;
                             Log.Trace("SSL negotiation successful");
                             break;
@@ -672,8 +558,8 @@ namespace Npgsql
                         var passwordMessage = ProcessAuthenticationMessage((AuthenticationRequestMessage)msg);
                         if (passwordMessage != null)
                         {
-                            passwordMessage.WriteFully(Buffer);
-                            await Buffer.FlushAsync(cancellationToken);
+                            passwordMessage.WriteFully(WriteBuffer);
+                            await WriteBuffer.FlushAsync(cancellationToken);
                             timeout.Check();
                         }
 
@@ -697,7 +583,7 @@ namespace Npgsql
             Log.Trace($"Sending: {msg}", Id);
             while (true)
             {
-                var completed = msg.Write(Buffer);
+                var completed = msg.Write(WriteBuffer);
                 await SendBufferAsync(cancellationToken);
                 if (completed)
                     break; // Sent all messages
@@ -708,7 +594,7 @@ namespace Npgsql
         {
             try
             {
-                await Buffer.FlushAsync(cancellationToken);
+                await WriteBuffer.FlushAsync(cancellationToken);
             }
             catch
             {
@@ -774,20 +660,20 @@ namespace Npgsql
             NpgsqlException error = null;
             while (true)
             {
-                var buf = Buffer;
-                await Buffer.EnsureAsync(5, cancellationToken);
-                var messageCode = (BackendMessageCode)Buffer.ReadByte();
+                var buf = ReadBuffer;
+                await ReadBuffer.EnsureAsync(5, cancellationToken);
+                var messageCode = (BackendMessageCode)ReadBuffer.ReadByte();
                 Contract.Assume(Enum.IsDefined(typeof (BackendMessageCode), messageCode), "Unknown message code: " + messageCode);
-                var len = Buffer.ReadInt32() - 4; // Transmitted length includes itself
+                var len = ReadBuffer.ReadInt32() - 4; // Transmitted length includes itself
                 if ((messageCode == BackendMessageCode.DataRow && dataRowLoadingMode != DataRowLoadingMode.NonSequential) || messageCode == BackendMessageCode.CopyData)
                 {
                     if (dataRowLoadingMode == DataRowLoadingMode.Skip)
                     {
-                        await Buffer.SkipAsync(len, cancellationToken);
+                        await ReadBuffer.SkipAsync(len, cancellationToken);
                         continue;
                     }
                 }
-                else if (len > Buffer.ReadBytesLeft)
+                else if (len > ReadBuffer.ReadBytesLeft)
                 {
                     buf = await (buf.EnsureOrAllocateTempAsync(len, cancellationToken));
                 }
@@ -1464,6 +1350,119 @@ namespace Npgsql
         }
     }
 
+    internal partial class ReadBuffer
+    {
+        internal async Task EnsureAsync(int count, CancellationToken cancellationToken)
+        {
+            Contract.Requires(count <= Size);
+            count -= ReadBytesLeft;
+            if (count <= 0)
+            {
+                return;
+            }
+
+            if (ReadPosition == _filledBytes)
+            {
+                Clear();
+            }
+            else if (count > Size - _filledBytes)
+            {
+                Array.Copy(_buf, ReadPosition, _buf, 0, ReadBytesLeft);
+                _filledBytes = ReadBytesLeft;
+                ReadPosition = 0;
+            }
+
+            while (count > 0)
+            {
+                var toRead = Size - _filledBytes;
+                var read = await (Underlying.ReadAsync(_buf, _filledBytes, toRead, cancellationToken));
+                if (read == 0)
+                {
+                    throw new EndOfStreamException();
+                }
+
+                count -= read;
+                _filledBytes += read;
+            }
+        }
+
+        internal async Task ReadMoreAsync(CancellationToken cancellationToken)
+        {
+            await EnsureAsync(ReadBytesLeft + 1, cancellationToken);
+        }
+
+        internal async Task<ReadBuffer> EnsureOrAllocateTempAsync(int count, CancellationToken cancellationToken)
+        {
+            if (count <= Size)
+            {
+                await EnsureAsync(count, cancellationToken);
+                return this;
+            }
+
+            // Worst case: our buffer isn't big enough. For now, allocate a new buffer
+            // and copy into it
+            // TODO: Optimize with a pool later?
+            var tempBuf = new ReadBuffer(Underlying, count, TextEncoding);
+            CopyTo(tempBuf);
+            Clear();
+            await tempBuf.EnsureAsync(count, cancellationToken);
+            return tempBuf;
+        }
+
+        internal async Task SkipAsync(long len, CancellationToken cancellationToken)
+        {
+            Contract.Requires(len >= 0);
+            if (len > ReadBytesLeft)
+            {
+                len -= ReadBytesLeft;
+                while (len > Size)
+                {
+                    Clear();
+                    await EnsureAsync(Size, cancellationToken);
+                    len -= Size;
+                }
+
+                Clear();
+                await EnsureAsync((int)len, cancellationToken);
+            }
+
+            ReadPosition += (int)len;
+        }
+
+        internal async Task<int> ReadAllBytesAsync(byte[] output, int outputOffset, int len, bool readOnce, CancellationToken cancellationToken)
+        {
+            if (len <= ReadBytesLeft)
+            {
+                Array.Copy(_buf, ReadPosition, output, outputOffset, len);
+                ReadPosition += len;
+                return len;
+            }
+
+            Array.Copy(_buf, ReadPosition, output, outputOffset, ReadBytesLeft);
+            var offset = outputOffset + ReadBytesLeft;
+            var totalRead = ReadBytesLeft;
+            Clear();
+            while (totalRead < len)
+            {
+                var read = await (Underlying.ReadAsync(output, offset, len - totalRead, cancellationToken));
+                if (read == 0)
+                {
+                    throw new EndOfStreamException();
+                }
+
+                totalRead += read;
+                if (readOnce)
+                {
+                    return totalRead;
+                }
+
+                offset += read;
+            }
+
+            return len;
+        }
+    }
+
     internal abstract partial class TypeHandler
     {
         internal async Task<T> ReadFullyAsync<T>(DataRowMessage row, int len, CancellationToken cancellationToken, FieldDescription fieldDescription = null)
@@ -1487,7 +1486,7 @@ namespace Npgsql
 
     internal abstract partial class SimpleTypeHandler<T>
     {
-        internal async override Task<T2> ReadFullyAsync<T2>(NpgsqlBuffer buf, int len, CancellationToken cancellationToken, FieldDescription fieldDescription = null)
+        internal async override Task<T2> ReadFullyAsync<T2>(ReadBuffer buf, int len, CancellationToken cancellationToken, FieldDescription fieldDescription = null)
         {
             await buf.EnsureAsync(len, cancellationToken);
             var asTypedHandler = this as ISimpleTypeHandler<T2>;
@@ -1504,7 +1503,7 @@ namespace Npgsql
 
     internal abstract partial class ChunkingTypeHandler<T>
     {
-        internal async override Task<T2> ReadFullyAsync<T2>(NpgsqlBuffer buf, int len, CancellationToken cancellationToken, FieldDescription fieldDescription = null)
+        internal async override Task<T2> ReadFullyAsync<T2>(ReadBuffer buf, int len, CancellationToken cancellationToken, FieldDescription fieldDescription = null)
         {
             var asTypedHandler = this as IChunkingTypeHandler<T2>;
             if (asTypedHandler == null)
@@ -1557,6 +1556,20 @@ namespace Npgsql
             }
 
             return types;
+        }
+    }
+
+    internal partial class WriteBuffer
+    {
+        public async Task FlushAsync(CancellationToken cancellationToken)
+        {
+            if (_writePosition != 0)
+            {
+                await Underlying.WriteAsync(_buf, 0, _writePosition, cancellationToken);
+                await Underlying.FlushAsync(cancellationToken);
+                TotalBytesFlushed += _writePosition;
+                _writePosition = 0;
+            }
         }
     }
 }

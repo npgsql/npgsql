@@ -42,12 +42,12 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
         const byte IPv4 = 2;
         const byte IPv6 = 3;
 
-        public override IPAddress Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override IPAddress Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return ((ISimpleTypeHandler<NpgsqlInet>)this).Read(buf, len, fieldDescription).Address;
         }
 
-        static internal NpgsqlInet DoRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len, bool isCidrHandler)
+        internal static NpgsqlInet DoRead(ReadBuffer buf, FieldDescription fieldDescription, int len, bool isCidrHandler)
         {
             buf.ReadByte();  // addressFamily
             var mask = buf.ReadByte();
@@ -61,12 +61,12 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             return new NpgsqlInet(new IPAddress(bytes), mask);
         }
 
-        internal override NpgsqlInet ReadPsv(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        internal override NpgsqlInet ReadPsv(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return DoRead(buf, fieldDescription, len, false);
         }
 
-        string ISimpleTypeHandler<string>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return ((ISimpleTypeHandler<NpgsqlInet>)this).Read(buf, len, fieldDescription).ToString();
         }
@@ -99,7 +99,7 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             return DoValidateAndGetLength(value);
         }
 
-        internal static void DoWrite(object value, NpgsqlBuffer buf, bool isCidrHandler)
+        internal static void DoWrite(object value, WriteBuffer buf, bool isCidrHandler)
         {
             IPAddress ip;
             int mask;
@@ -140,7 +140,7 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             buf.WriteBytes(bytes, 0, bytes.Length);
         }
 
-        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
         {
             DoWrite(value, buf, false);
         }

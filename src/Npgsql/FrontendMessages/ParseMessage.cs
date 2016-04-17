@@ -73,7 +73,7 @@ namespace Npgsql.FrontendMessages
             return this;
         }
 
-        internal override bool Write(NpgsqlBuffer buf)
+        internal override bool Write(WriteBuffer buf)
         {
             Contract.Requires(Statement != null);
 

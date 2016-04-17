@@ -47,7 +47,7 @@ namespace Npgsql
         #region Fields and Properties
 
         NpgsqlConnector _connector;
-        NpgsqlBuffer _buf;
+        WriteBuffer _buf;
         TypeHandlerRegistry _registry;
         LengthCache _lengthCache;
         bool _isDisposed;
@@ -76,7 +76,7 @@ namespace Npgsql
         internal NpgsqlBinaryImporter(NpgsqlConnector connector, string copyFromCommand)
         {
             _connector = connector;
-            _buf = connector.Buffer;
+            _buf = connector.WriteBuffer;
             _registry = connector.TypeHandlerRegistry;
             _lengthCache = new LengthCache();
             _column = -1;

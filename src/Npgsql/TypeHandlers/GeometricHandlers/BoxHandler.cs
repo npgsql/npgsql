@@ -42,7 +42,7 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     [TypeMapping("box", NpgsqlDbType.Box, typeof(NpgsqlBox))]
     internal class BoxHandler : SimpleTypeHandler<NpgsqlBox>, ISimpleTypeHandler<string>
     {
-        public override NpgsqlBox Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override NpgsqlBox Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return new NpgsqlBox(
                 new NpgsqlPoint(buf.ReadDouble(), buf.ReadDouble()),
@@ -50,7 +50,7 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
             );
         }
 
-        string ISimpleTypeHandler<string>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return Read(buf, len, fieldDescription).ToString();
         }
@@ -62,7 +62,7 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
             return 32;
         }
 
-        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
         {
             var v = (NpgsqlBox)value;
             buf.WriteDouble(v.Right);

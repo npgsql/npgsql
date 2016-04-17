@@ -35,7 +35,8 @@ namespace Npgsql.TypeHandlers
     [TypeMapping("hstore", NpgsqlDbType.Hstore)]
     class HstoreHandler : ChunkingTypeHandler<IDictionary<string, string>>, IChunkingTypeHandler<string>
     {
-        NpgsqlBuffer _buf;
+        ReadBuffer _readBuf;
+        WriteBuffer _writeBuf;
         NpgsqlParameter _parameter;
         LengthCache _lengthCache;
         FieldDescription _fieldDescription;
@@ -92,9 +93,9 @@ namespace Npgsql.TypeHandlers
             throw CreateConversionException(value.GetType());
         }
 
-        public override void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter)
+        public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter)
         {
-            _buf = buf;
+            _writeBuf = buf;
             _lengthCache = lengthCache;
             _parameter = parameter;
             _state = State.Count;
@@ -113,8 +114,8 @@ namespace Npgsql.TypeHandlers
             switch (_state)
             {
                 case State.Count:
-                    if (_buf.WriteSpaceLeft < 4) { return false; }
-                    _buf.WriteInt32(_value.Count);
+                    if (_writeBuf.WriteSpaceLeft < 4) { return false; }
+                    _writeBuf.WriteInt32(_value.Count);
                     if (_value.Count == 0)
                     {
                         CleanupState();
@@ -126,10 +127,10 @@ namespace Npgsql.TypeHandlers
 
                 case State.KeyLen:
                     _state = State.KeyLen;
-                    if (_buf.WriteSpaceLeft < 4) { return false; }
+                    if (_writeBuf.WriteSpaceLeft < 4) { return false; }
                     var keyLen = _lengthCache.Get();
-                    _buf.WriteInt32(keyLen);
-                    _textHandler.PrepareWrite(_enumerator.Current.Key, _buf, _lengthCache, _parameter);
+                    _writeBuf.WriteInt32(keyLen);
+                    _textHandler.PrepareWrite(_enumerator.Current.Key, _writeBuf, _lengthCache, _parameter);
                     goto case State.KeyData;
 
                 case State.KeyData:
@@ -139,10 +140,10 @@ namespace Npgsql.TypeHandlers
 
                 case State.ValueLen:
                     _state = State.ValueLen;
-                    if (_buf.WriteSpaceLeft < 4) { return false; }
+                    if (_writeBuf.WriteSpaceLeft < 4) { return false; }
                     if (_enumerator.Current.Value == null)
                     {
-                        _buf.WriteInt32(-1);
+                        _writeBuf.WriteInt32(-1);
                         if (!_enumerator.MoveNext()) {
                             CleanupState();
                             return true;
@@ -150,8 +151,8 @@ namespace Npgsql.TypeHandlers
                         goto case State.KeyLen;
                     }
                     var valueLen = _lengthCache.Get();
-                    _buf.WriteInt32(valueLen);
-                    _textHandler.PrepareWrite(_enumerator.Current.Value, _buf, _lengthCache, _parameter);
+                    _writeBuf.WriteInt32(valueLen);
+                    _textHandler.PrepareWrite(_enumerator.Current.Value, _writeBuf, _lengthCache, _parameter);
                     goto case State.ValueData;
 
                 case State.ValueData:
@@ -173,9 +174,9 @@ namespace Npgsql.TypeHandlers
 
         #region Read
 
-        public override void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
-            _buf = buf;
+            _readBuf = buf;
             _fieldDescription = fieldDescription;
             _state = State.Count;
         }
@@ -186,8 +187,8 @@ namespace Npgsql.TypeHandlers
             switch (_state)
             {
                 case State.Count:
-                    if (_buf.ReadBytesLeft < 4) { return false; }
-                    _numElements = _buf.ReadInt32();
+                    if (_readBuf.ReadBytesLeft < 4) { return false; }
+                    _numElements = _readBuf.ReadInt32();
                     _value = new Dictionary<string, string>(_numElements);
                     if (_numElements == 0)
                     {
@@ -198,10 +199,10 @@ namespace Npgsql.TypeHandlers
 
                 case State.KeyLen:
                     _state = State.KeyLen;
-                    if (_buf.ReadBytesLeft < 4) { return false; }
-                    var keyLen = _buf.ReadInt32();
+                    if (_readBuf.ReadBytesLeft < 4) { return false; }
+                    var keyLen = _readBuf.ReadInt32();
                     Contract.Assume(keyLen != -1);
-                    _textHandler.PrepareRead(_buf, _fieldDescription, keyLen);
+                    _textHandler.PrepareRead(_readBuf, _fieldDescription, keyLen);
                     goto case State.KeyData;
 
                 case State.KeyData:
@@ -211,8 +212,8 @@ namespace Npgsql.TypeHandlers
 
                 case State.ValueLen:
                     _state = State.ValueLen;
-                    if (_buf.ReadBytesLeft < 4) { return false; }
-                    var valueLen = _buf.ReadInt32();
+                    if (_readBuf.ReadBytesLeft < 4) { return false; }
+                    var valueLen = _readBuf.ReadInt32();
                     if (valueLen == -1)
                     {
                         _value[_key] = null;
@@ -224,7 +225,7 @@ namespace Npgsql.TypeHandlers
                         }
                         goto case State.KeyLen;
                     }
-                    _textHandler.PrepareRead(_buf, _fieldDescription, valueLen);
+                    _textHandler.PrepareRead(_readBuf, _fieldDescription, valueLen);
                     goto case State.ValueData;
 
                 case State.ValueData:
@@ -283,7 +284,8 @@ namespace Npgsql.TypeHandlers
 
         void CleanupState()
         {
-            _buf = null;
+            _readBuf = null;
+            _writeBuf = null;
             _value = null;
             _parameter = null;
             _fieldDescription = null;

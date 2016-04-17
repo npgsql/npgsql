@@ -34,7 +34,7 @@ namespace Npgsql.BackendMessages
 
         internal TransactionStatus TransactionStatusIndicator { get; private set; }
 
-        internal ReadyForQueryMessage Load(NpgsqlBuffer buf) {
+        internal ReadyForQueryMessage Load(ReadBuffer buf) {
             TransactionStatusIndicator = (TransactionStatus)buf.ReadByte();
             return this;
         }

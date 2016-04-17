@@ -35,7 +35,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     {
         // Binary Format: int64 expressing microseconds, int32 expressing timezone in seconds, negative
 
-        public override DateTimeOffset Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override DateTimeOffset Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             // Adjust from 1 microsecond to 100ns. Time zone (in seconds) is inverted.
             var ticks = buf.ReadInt64() * 10;
@@ -43,12 +43,12 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             return new DateTimeOffset(ticks, offset);
         }
 
-        DateTime ISimpleTypeHandler<DateTime>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        DateTime ISimpleTypeHandler<DateTime>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return Read(buf, len, fieldDescription).LocalDateTime;
         }
 
-        TimeSpan ISimpleTypeHandler<TimeSpan>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        TimeSpan ISimpleTypeHandler<TimeSpan>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return Read(buf, len, fieldDescription).LocalDateTime.TimeOfDay;
         }
@@ -62,7 +62,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             return 12;
         }
 
-        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
         {
             if (value is DateTimeOffset)
             {

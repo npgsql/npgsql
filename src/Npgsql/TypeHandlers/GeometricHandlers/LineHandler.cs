@@ -42,12 +42,12 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     [TypeMapping("line", NpgsqlDbType.Line, typeof(NpgsqlLine))]
     internal class LineHandler : SimpleTypeHandler<NpgsqlLine>, ISimpleTypeHandler<string>
     {
-        public override NpgsqlLine Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override NpgsqlLine Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return new NpgsqlLine(buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble());
         }
 
-        string ISimpleTypeHandler<string>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return Read(buf, len, fieldDescription).ToString();
         }
@@ -59,7 +59,7 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
             return 24;
         }
 
-        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
         {
             var v = (NpgsqlLine)value;
             buf.WriteDouble(v.A);

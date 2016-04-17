@@ -47,12 +47,12 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             _integerFormat = !registry.Connector.BackendParams.TryGetValue("integer_datetimes", out s) || s == "on";
         }
 
-        public override TimeSpan Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override TimeSpan Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return (TimeSpan)((ISimpleTypeHandler<NpgsqlTimeSpan>)this).Read(buf, len, fieldDescription);
         }
 
-        internal override NpgsqlTimeSpan ReadPsv(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        internal override NpgsqlTimeSpan ReadPsv(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             if (!_integerFormat) {
                 throw new NotSupportedException("Old floating point representation for timestamps not supported");
@@ -86,7 +86,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             return 16;
         }
 
-        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
         {
             if (parameter != null && parameter.ConvertedValue != null) {
                 value = parameter.ConvertedValue;

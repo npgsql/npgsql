@@ -195,7 +195,7 @@ namespace Npgsql
 
         #endregion
 
-        internal NpgsqlException(NpgsqlBuffer buf)
+        internal NpgsqlException(ReadBuffer buf)
         {
             _msg = new ErrorOrNoticeMessage(buf);
         }

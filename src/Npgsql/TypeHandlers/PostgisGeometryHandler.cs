@@ -33,7 +33,8 @@ namespace Npgsql.TypeHandlers
         bool _newGeom;
         int _ipol, _ipts, _irng;
 
-        NpgsqlBuffer _buf;
+        ReadBuffer _readBuf;
+        WriteBuffer _writeBuf;
         ByteOrder _bo;
         Coordinate2D[] _points;
         Coordinate2D[][] _rings;
@@ -42,9 +43,9 @@ namespace Npgsql.TypeHandlers
         readonly Stack<Counter> _icol = new Stack<Counter>();
         PostgisGeometry _toWrite;
 
-        public override void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
-            _buf = buf;
+            _readBuf = buf;
             _srid = default(uint?);
             _geoms.Clear();
             _icol.Clear();
@@ -66,18 +67,18 @@ namespace Npgsql.TypeHandlers
             result = default(PostgisGeometry);
             if (_id == 0)
             {
-                if (_buf.ReadBytesLeft < 5)
+                if (_readBuf.ReadBytesLeft < 5)
                     return false;
-                _bo = (ByteOrder)_buf.ReadByte();
-                _id = _buf.ReadUInt32(_bo);
+                _bo = (ByteOrder)_readBuf.ReadByte();
+                _id = _readBuf.ReadUInt32(_bo);
             }
             if (!_srid.HasValue)
             {
                 if ((_id & (uint)EwkbModifier.HasSRID) != 0)
                 {
-                    if (_buf.ReadBytesLeft < 4)
+                    if (_readBuf.ReadBytesLeft < 4)
                         return false;
-                    _srid = _buf.ReadUInt32(_bo);
+                    _srid = _readBuf.ReadUInt32(_bo);
                 }
                 else
                 {
@@ -88,9 +89,9 @@ namespace Npgsql.TypeHandlers
             switch ((WkbIdentifier)(_id & (uint)7))
             {
                 case WkbIdentifier.Point:
-                    if (_buf.ReadBytesLeft < 16)
+                    if (_readBuf.ReadBytesLeft < 16)
                         return false;
-                    result = new PostgisPoint(_buf.ReadDouble(_bo), _buf.ReadDouble(_bo)) {
+                    result = new PostgisPoint(_readBuf.ReadDouble(_bo), _readBuf.ReadDouble(_bo)) {
                         SRID = _srid.Value
                     };
                     return true;
@@ -98,16 +99,16 @@ namespace Npgsql.TypeHandlers
                 case WkbIdentifier.LineString:
                     if (_ipts == -1)
                     {
-                        if (_buf.ReadBytesLeft < 4)
+                        if (_readBuf.ReadBytesLeft < 4)
                             return false;
-                        _points = new Coordinate2D[_buf.ReadInt32(_bo)];
+                        _points = new Coordinate2D[_readBuf.ReadInt32(_bo)];
                         _ipts = 0;
                     }
                     for (; _ipts < _points.Length; _ipts++)
                     {
-                        if (_buf.ReadBytesLeft < 16)
+                        if (_readBuf.ReadBytesLeft < 16)
                             return false;
-                        _points[_ipts] = new Coordinate2D(_buf.ReadDouble(_bo), _buf.ReadDouble(_bo));
+                        _points[_ipts] = new Coordinate2D(_readBuf.ReadDouble(_bo), _readBuf.ReadDouble(_bo));
                     }
                     result = new PostgisLineString(_points) {
                         SRID = _srid.Value
@@ -117,9 +118,9 @@ namespace Npgsql.TypeHandlers
                 case WkbIdentifier.Polygon:
                     if (_irng == -1)
                     {
-                        if (_buf.ReadBytesLeft < 4)
+                        if (_readBuf.ReadBytesLeft < 4)
                             return false;
-                        _rings = new Coordinate2D[_buf.ReadInt32(_bo)][];
+                        _rings = new Coordinate2D[_readBuf.ReadInt32(_bo)][];
                         _irng = 0;
                     }
 
@@ -127,16 +128,16 @@ namespace Npgsql.TypeHandlers
                     {
                         if (_ipts == -1)
                         {
-                            if (_buf.ReadBytesLeft < 4)
+                            if (_readBuf.ReadBytesLeft < 4)
                                 return false;
-                            _rings[_irng] = new Coordinate2D[_buf.ReadInt32(_bo)];
+                            _rings[_irng] = new Coordinate2D[_readBuf.ReadInt32(_bo)];
                             _ipts = 0;
                         }
                         for (; _ipts < _rings[_irng].Length; _ipts++)
                         {
-                            if (_buf.ReadBytesLeft < 16)
+                            if (_readBuf.ReadBytesLeft < 16)
                                 return false;
-                            _rings[_irng][_ipts] = new Coordinate2D(_buf.ReadDouble(_bo), _buf.ReadDouble(_bo));
+                            _rings[_irng][_ipts] = new Coordinate2D(_readBuf.ReadDouble(_bo), _readBuf.ReadDouble(_bo));
                         }
                         _ipts = -1;
                     }
@@ -148,17 +149,17 @@ namespace Npgsql.TypeHandlers
                 case WkbIdentifier.MultiPoint:
                     if (_ipts == -1)
                     {
-                        if (_buf.ReadBytesLeft < 4)
+                        if (_readBuf.ReadBytesLeft < 4)
                             return false;
-                        _points = new Coordinate2D[_buf.ReadInt32(_bo)];
+                        _points = new Coordinate2D[_readBuf.ReadInt32(_bo)];
                         _ipts = 0;
                     }
                     for (; _ipts < _points.Length; _ipts++)
                     {
-                        if (_buf.ReadBytesLeft < 21)
+                        if (_readBuf.ReadBytesLeft < 21)
                             return false;
-                        _buf.Skip(5);
-                        _points[_ipts] = new Coordinate2D(_buf.ReadDouble(_bo), _buf.ReadDouble(_bo));
+                        _readBuf.Skip(5);
+                        _points[_ipts] = new Coordinate2D(_readBuf.ReadDouble(_bo), _readBuf.ReadDouble(_bo));
                     }
                     result = new PostgisMultiPoint(_points) {
                         SRID = _srid.Value
@@ -168,9 +169,9 @@ namespace Npgsql.TypeHandlers
                 case WkbIdentifier.MultiLineString:
                     if (_irng == -1)
                     {
-                        if (_buf.ReadBytesLeft < 4)
+                        if (_readBuf.ReadBytesLeft < 4)
                             return false;
-                        _rings = new Coordinate2D[_buf.ReadInt32(_bo)][];
+                        _rings = new Coordinate2D[_readBuf.ReadInt32(_bo)][];
                         _irng = 0;
                     }
 
@@ -178,17 +179,17 @@ namespace Npgsql.TypeHandlers
                     {
                         if (_ipts == -1)
                         {
-                            if (_buf.ReadBytesLeft < 9)
+                            if (_readBuf.ReadBytesLeft < 9)
                                 return false;
-                            _buf.Skip(5);
-                            _rings[_irng] = new Coordinate2D[_buf.ReadInt32(_bo)];
+                            _readBuf.Skip(5);
+                            _rings[_irng] = new Coordinate2D[_readBuf.ReadInt32(_bo)];
                             _ipts = 0;
                         }
                         for (; _ipts < _rings[_irng].Length; _ipts++)
                         {
-                            if (_buf.ReadBytesLeft < 16)
+                            if (_readBuf.ReadBytesLeft < 16)
                                 return false;
-                            _rings[_irng][_ipts] = new Coordinate2D(_buf.ReadDouble(_bo), _buf.ReadDouble(_bo));
+                            _rings[_irng][_ipts] = new Coordinate2D(_readBuf.ReadDouble(_bo), _readBuf.ReadDouble(_bo));
                         }
                         _ipts = -1;
                     }
@@ -200,9 +201,9 @@ namespace Npgsql.TypeHandlers
                 case WkbIdentifier.MultiPolygon:
                     if (_ipol == -1)
                     {
-                        if (_buf.ReadBytesLeft < 4)
+                        if (_readBuf.ReadBytesLeft < 4)
                             return false;
-                        _pols = new Coordinate2D[_buf.ReadInt32(_bo)][][];
+                        _pols = new Coordinate2D[_readBuf.ReadInt32(_bo)][][];
                         _ipol = 0;
                     }
 
@@ -210,26 +211,26 @@ namespace Npgsql.TypeHandlers
                     {
                         if (_irng == -1)
                         {
-                            if (_buf.ReadBytesLeft < 9)
+                            if (_readBuf.ReadBytesLeft < 9)
                                 return false;
-                            _buf.Skip(5);
-                            _pols[_ipol] = new Coordinate2D[_buf.ReadInt32(_bo)][];
+                            _readBuf.Skip(5);
+                            _pols[_ipol] = new Coordinate2D[_readBuf.ReadInt32(_bo)][];
                             _irng = 0;
                         }
                         for (; _irng < _pols[_ipol].Length; _irng++)
                         {
                             if (_ipts == -1)
                             {
-                                if (_buf.ReadBytesLeft < 4)
+                                if (_readBuf.ReadBytesLeft < 4)
                                     return false;
-                                _pols[_ipol][_irng] = new Coordinate2D[_buf.ReadInt32(_bo)];
+                                _pols[_ipol][_irng] = new Coordinate2D[_readBuf.ReadInt32(_bo)];
                                 _ipts = 0;
                             }
                             for (; _ipts < _pols[_ipol][_irng].Length; _ipts++)
                             {
-                                if (_buf.ReadBytesLeft < 16)
+                                if (_readBuf.ReadBytesLeft < 16)
                                     return false;
-                                _pols[_ipol][_irng][_ipts] = new Coordinate2D(_buf.ReadDouble(_bo), _buf.ReadDouble(_bo));
+                                _pols[_ipol][_irng][_ipts] = new Coordinate2D(_readBuf.ReadDouble(_bo), _readBuf.ReadDouble(_bo));
                             }
                             _ipts = -1;
                         }
@@ -243,9 +244,9 @@ namespace Npgsql.TypeHandlers
                 case WkbIdentifier.GeometryCollection:
                     if (_newGeom)
                     {
-                        if (_buf.ReadBytesLeft < 4)
+                        if (_readBuf.ReadBytesLeft < 4)
                             return false;
-                        _geoms.Push(new PostgisGeometry[_buf.ReadInt32(_bo)]);
+                        _geoms.Push(new PostgisGeometry[_readBuf.ReadInt32(_bo)]);
                         _icol.Push(new Counter());
                     }
                     _id = 0;
@@ -282,12 +283,12 @@ namespace Npgsql.TypeHandlers
             return g.GetLen();
         }
 
-        public override void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter = null)
+        public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter = null)
         {
             _toWrite = value as PostgisGeometry;
             if (_toWrite == null)
                 throw new InvalidCastException("IGeometry type expected.");
-            _buf = buf;
+            _writeBuf = buf;
             _icol.Clear();
             Reset();
         }
@@ -298,46 +299,46 @@ namespace Npgsql.TypeHandlers
             {
                 if (geom.SRID == 0)
                 {
-                    if (_buf.WriteSpaceLeft < 5)
+                    if (_writeBuf.WriteSpaceLeft < 5)
                         return false;
-                    _buf.WriteByte(0); // We choose to ouput only XDR structure
-                    _buf.WriteInt32((int)geom.Identifier);
+                    _writeBuf.WriteByte(0); // We choose to ouput only XDR structure
+                    _writeBuf.WriteInt32((int)geom.Identifier);
                 }
                 else
                 {
-                    if (_buf.WriteSpaceLeft < 9)
+                    if (_writeBuf.WriteSpaceLeft < 9)
                         return false;
-                    _buf.WriteByte(0);
-                    _buf.WriteInt32((int) ((uint)geom.Identifier | (uint)EwkbModifier.HasSRID));
-                    _buf.WriteInt32((int) geom.SRID);
+                    _writeBuf.WriteByte(0);
+                    _writeBuf.WriteInt32((int) ((uint)geom.Identifier | (uint)EwkbModifier.HasSRID));
+                    _writeBuf.WriteInt32((int) geom.SRID);
                 }
                 _newGeom = false;
             }
             switch (geom.Identifier)
             {
                 case WkbIdentifier.Point:
-                    if (_buf.WriteSpaceLeft < 16)
+                    if (_writeBuf.WriteSpaceLeft < 16)
                         return false;
                     var p = (PostgisPoint)geom;
-                    _buf.WriteDouble(p.X);
-                    _buf.WriteDouble(p.Y);
+                    _writeBuf.WriteDouble(p.X);
+                    _writeBuf.WriteDouble(p.Y);
                     return true;
 
                 case WkbIdentifier.LineString:
                     var l = (PostgisLineString)geom;
                     if (_ipts == -1)
                     {
-                        if (_buf.WriteSpaceLeft < 4)
+                        if (_writeBuf.WriteSpaceLeft < 4)
                             return false;
-                        _buf.WriteInt32(l.PointCount);
+                        _writeBuf.WriteInt32(l.PointCount);
                         _ipts = 0;
                     }
                     for (; _ipts < l.PointCount; _ipts++)
                     {
-                        if (_buf.WriteSpaceLeft < 16)
+                        if (_writeBuf.WriteSpaceLeft < 16)
                             return false;
-                        _buf.WriteDouble(l[_ipts].X);
-                        _buf.WriteDouble(l[_ipts].Y);
+                        _writeBuf.WriteDouble(l[_ipts].X);
+                        _writeBuf.WriteDouble(l[_ipts].Y);
                     }
                     return true;
 
@@ -345,26 +346,26 @@ namespace Npgsql.TypeHandlers
                     var pol = (PostgisPolygon)geom;
                     if (_irng == -1)
                     {
-                        if (_buf.WriteSpaceLeft < 4)
+                        if (_writeBuf.WriteSpaceLeft < 4)
                             return false;
-                        _buf.WriteInt32(pol.RingCount);
+                        _writeBuf.WriteInt32(pol.RingCount);
                         _irng = 0;
                     }
                     for (; _irng < pol.RingCount; _irng++)
                     {
                         if (_ipts == -1)
                         {
-                            if (_buf.WriteSpaceLeft < 4)
+                            if (_writeBuf.WriteSpaceLeft < 4)
                                 return false;
-                            _buf.WriteInt32(pol[_irng].Length);
+                            _writeBuf.WriteInt32(pol[_irng].Length);
                             _ipts = 0;
                         }
                         for (; _ipts < pol[_irng].Length; _ipts++)
                         {
-                            if (_buf.WriteSpaceLeft < 16)
+                            if (_writeBuf.WriteSpaceLeft < 16)
                                 return false;
-                            _buf.WriteDouble(pol[_irng][_ipts].X);
-                            _buf.WriteDouble(pol[_irng][_ipts].Y);
+                            _writeBuf.WriteDouble(pol[_irng][_ipts].X);
+                            _writeBuf.WriteDouble(pol[_irng][_ipts].Y);
                         }
                         _ipts = -1;
                     }
@@ -374,19 +375,19 @@ namespace Npgsql.TypeHandlers
                     var mp = (PostgisMultiPoint)geom;
                     if (_ipts == -1)
                     {
-                        if (_buf.WriteSpaceLeft < 4)
+                        if (_writeBuf.WriteSpaceLeft < 4)
                             return false;
-                        _buf.WriteInt32(mp.PointCount);
+                        _writeBuf.WriteInt32(mp.PointCount);
                         _ipts = 0;
                     }
                     for (; _ipts < mp.PointCount; _ipts++)
                     {
-                        if (_buf.WriteSpaceLeft < 21)
+                        if (_writeBuf.WriteSpaceLeft < 21)
                             return false;
-                        _buf.WriteByte(0);
-                        _buf.WriteInt32((int)WkbIdentifier.Point);
-                        _buf.WriteDouble(mp[_ipts].X);
-                        _buf.WriteDouble(mp[_ipts].Y);
+                        _writeBuf.WriteByte(0);
+                        _writeBuf.WriteInt32((int)WkbIdentifier.Point);
+                        _writeBuf.WriteDouble(mp[_ipts].X);
+                        _writeBuf.WriteDouble(mp[_ipts].Y);
                     }
                     return true;
 
@@ -394,28 +395,28 @@ namespace Npgsql.TypeHandlers
                     var ml = (PostgisMultiLineString)geom;
                     if (_irng == -1)
                     {
-                        if (_buf.WriteSpaceLeft < 4)
+                        if (_writeBuf.WriteSpaceLeft < 4)
                             return false;
-                        _buf.WriteInt32(ml.LineCount);
+                        _writeBuf.WriteInt32(ml.LineCount);
                         _irng = 0;
                     }
                     for (; _irng < ml.LineCount; _irng++)
                     {
                         if (_ipts == -1)
                         {
-                            if (_buf.WriteSpaceLeft < 9)
+                            if (_writeBuf.WriteSpaceLeft < 9)
                                 return false;
-                            _buf.WriteByte(0);
-                            _buf.WriteInt32((int)WkbIdentifier.LineString);
-                            _buf.WriteInt32(ml[_irng].PointCount);
+                            _writeBuf.WriteByte(0);
+                            _writeBuf.WriteInt32((int)WkbIdentifier.LineString);
+                            _writeBuf.WriteInt32(ml[_irng].PointCount);
                             _ipts = 0;
                         }
                         for (; _ipts < ml[_irng].PointCount; _ipts++)
                         {
-                            if (_buf.WriteSpaceLeft < 16)
+                            if (_writeBuf.WriteSpaceLeft < 16)
                                 return false;
-                            _buf.WriteDouble(ml[_irng][_ipts].X);
-                            _buf.WriteDouble(ml[_irng][_ipts].Y);
+                            _writeBuf.WriteDouble(ml[_irng][_ipts].X);
+                            _writeBuf.WriteDouble(ml[_irng][_ipts].Y);
                         }
                         _ipts = -1;
                     }
@@ -425,37 +426,37 @@ namespace Npgsql.TypeHandlers
                     var mpl = (PostgisMultiPolygon)geom;
                     if (_ipol == -1)
                     {
-                        if (_buf.WriteSpaceLeft < 4)
+                        if (_writeBuf.WriteSpaceLeft < 4)
                             return false;
-                        _buf.WriteInt32(mpl.PolygonCount);
+                        _writeBuf.WriteInt32(mpl.PolygonCount);
                         _ipol = 0;
                     }
                     for (; _ipol < mpl.PolygonCount; _ipol++)
                     {
                         if (_irng == -1)
                         {
-                            if (_buf.WriteSpaceLeft < 9)
+                            if (_writeBuf.WriteSpaceLeft < 9)
                                 return false;
-                            _buf.WriteByte(0);
-                            _buf.WriteInt32((int)WkbIdentifier.Polygon);
-                            _buf.WriteInt32(mpl[_ipol].RingCount);
+                            _writeBuf.WriteByte(0);
+                            _writeBuf.WriteInt32((int)WkbIdentifier.Polygon);
+                            _writeBuf.WriteInt32(mpl[_ipol].RingCount);
                             _irng = 0;
                         }
                         for (; _irng < mpl[_ipol].RingCount; _irng++)
                         {
                             if (_ipts == -1)
                             {
-                                if (_buf.WriteSpaceLeft < 4)
+                                if (_writeBuf.WriteSpaceLeft < 4)
                                     return false;
-                                _buf.WriteInt32(mpl[_ipol][_irng].Length);
+                                _writeBuf.WriteInt32(mpl[_ipol][_irng].Length);
                                 _ipts = 0;
                             }
                             for (; _ipts < mpl[_ipol][_irng].Length; _ipts++)
                             {
-                                if (_buf.WriteSpaceLeft < 16)
+                                if (_writeBuf.WriteSpaceLeft < 16)
                                     return false;
-                                _buf.WriteDouble(mpl[_ipol][_irng][_ipts].X);
-                                _buf.WriteDouble(mpl[_ipol][_irng][_ipts].Y);
+                                _writeBuf.WriteDouble(mpl[_ipol][_irng][_ipts].X);
+                                _writeBuf.WriteDouble(mpl[_ipol][_irng][_ipts].Y);
                             }
                             _ipts = -1;
                         }
@@ -468,9 +469,9 @@ namespace Npgsql.TypeHandlers
                     var coll = (PostgisGeometryCollection)geom;
                     if (!_newGeom)
                     {
-                        if (_buf.WriteSpaceLeft < 4)
+                        if (_writeBuf.WriteSpaceLeft < 4)
                             return false;
-                        _buf.WriteInt32(coll.GeometryCount);
+                        _writeBuf.WriteInt32(coll.GeometryCount);
                         _icol.Push(new Counter());
                         _newGeom = true;
                     }

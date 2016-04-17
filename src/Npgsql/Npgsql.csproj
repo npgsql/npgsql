@@ -183,7 +183,6 @@
     <Compile Include="FrontendMessages\StartupMessage.cs" />
     <Compile Include="FrontendMessages\ParseMessage.cs" />
     <Compile Include="LengthCache.cs" />
-    <Compile Include="NpgsqlBuffer.cs" />
     <Compile Include="NpgsqlStatement.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlTimeSpan.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlRange.cs" />
@@ -192,6 +191,7 @@
     <Compile Include="NpgsqlTypes\NpgsqlTsVector.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlUserTypes.cs" />
     <Compile Include="NpgsqlTypes\PostgisTypes.cs" />
+    <Compile Include="ReadBuffer.cs" />
     <Compile Include="SqlQueryParser.cs" />
     <Compile Include="TaskExtensions.cs" />
     <Compile Include="TlsClientStream\CipherSuiteInfo.cs" />
@@ -287,6 +287,7 @@
     <Compile Include="TypeHandlers\UnrecognizedTypeHandler.cs" />
     <Compile Include="GeneratedAsync.cs" />
     <Compile Include="TypeMappingAttribute.cs" />
+    <Compile Include="WriteBuffer.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="NpgsqlMetaData.xml" />

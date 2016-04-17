@@ -75,7 +75,7 @@ namespace Npgsql.TypeHandlers
             }
         }
 
-        public override TEnum Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override TEnum Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             var str = buf.ReadString(len);
             TEnum value;
@@ -110,7 +110,7 @@ namespace Npgsql.TypeHandlers
             return Encoding.UTF8.GetByteCount(str);
         }
 
-        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
         {
             string str;
             if (_enumToLabel == null) {

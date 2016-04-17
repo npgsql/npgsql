@@ -41,16 +41,17 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
         // 2 (num_pos) + sizeof(int16) * 256 (max_num_pos (positions/wegihts))
         const int MaxSingleLexemeBytes = 2561;
 
-        NpgsqlBuffer _buf;
+        ReadBuffer _readBuf;
+        WriteBuffer _writeBuf;
         List<NpgsqlTsVector.Lexeme> _lexemes;
         int _numLexemes;
         int _lexemePos;
         int _bytesLeft;
         NpgsqlTsVector _value;
 
-        public override void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
-            _buf = buf;
+            _readBuf = buf;
             _lexemes = new List<NpgsqlTsVector.Lexeme>();
             _numLexemes = -1;
             _lexemePos = 0;
@@ -63,25 +64,25 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
 
             if (_numLexemes == -1)
             {
-                if (_buf.ReadBytesLeft < 4)
+                if (_readBuf.ReadBytesLeft < 4)
                     return false;
-                _numLexemes = _buf.ReadInt32();
+                _numLexemes = _readBuf.ReadInt32();
                 _bytesLeft -= 4;
             }
 
             for (; _lexemePos < _numLexemes; _lexemePos++)
             {
-                if (_buf.ReadBytesLeft < Math.Min(_bytesLeft, MaxSingleLexemeBytes))
+                if (_readBuf.ReadBytesLeft < Math.Min(_bytesLeft, MaxSingleLexemeBytes))
                     return false;
-                int posBefore = _buf.ReadPosition;
+                int posBefore = _readBuf.ReadPosition;
 
                 List<NpgsqlTsVector.Lexeme.WordEntryPos> positions = null;
 
-                var lexemeString = _buf.ReadNullTerminatedString();
-                int numPositions = _buf.ReadInt16();
+                var lexemeString = _readBuf.ReadNullTerminatedString();
+                int numPositions = _readBuf.ReadInt16();
                 for (var i = 0; i < numPositions; i++)
                 {
-                    var _wordEntryPos = _buf.ReadInt16();
+                    var _wordEntryPos = _readBuf.ReadInt16();
                     if (positions == null)
                         positions = new List<NpgsqlTsVector.Lexeme.WordEntryPos>();
                     positions.Add(new NpgsqlTsVector.Lexeme.WordEntryPos(_wordEntryPos));
@@ -89,12 +90,12 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
 
                 _lexemes.Add(new NpgsqlTsVector.Lexeme(lexemeString, positions, true));
 
-                _bytesLeft -= _buf.ReadPosition - posBefore;
+                _bytesLeft -= _readBuf.ReadPosition - posBefore;
             }
 
             result = new NpgsqlTsVector(_lexemes, true);
             _lexemes = null;
-            _buf = null;
+            _readBuf = null;
             return true;
         }
 
@@ -109,10 +110,10 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             return 4 + vec.Sum(l => Encoding.UTF8.GetByteCount(l.Text) + 1 + 2 + l.Count * 2);
         }
 
-        public override void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
+        public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             _lexemePos = -1;
-            _buf = buf;
+            _writeBuf = buf;
             _value = (NpgsqlTsVector)value;
         }
 
@@ -120,23 +121,23 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
         {
             if (_lexemePos == -1)
             {
-                if (_buf.WriteSpaceLeft < 4)
+                if (_writeBuf.WriteSpaceLeft < 4)
                     return false;
-                _buf.WriteInt32(_value.Count);
+                _writeBuf.WriteInt32(_value.Count);
                 _lexemePos = 0;
             }
 
             for (; _lexemePos < _value.Count; _lexemePos++)
             {
-                if (_buf.WriteSpaceLeft < MaxSingleLexemeBytes)
+                if (_writeBuf.WriteSpaceLeft < MaxSingleLexemeBytes)
                     return false;
 
-                _buf.WriteString(_value[_lexemePos].Text);
-                _buf.WriteByte(0);
-                _buf.WriteInt16(_value[_lexemePos].Count);
+                _writeBuf.WriteString(_value[_lexemePos].Text);
+                _writeBuf.WriteByte(0);
+                _writeBuf.WriteInt16(_value[_lexemePos].Count);
                 for (var i = 0; i < _value[_lexemePos].Count; i++)
                 {
-                    _buf.WriteInt16(_value[_lexemePos][i]._val);
+                    _writeBuf.WriteInt16(_value[_lexemePos][i]._val);
                 }
             }
 

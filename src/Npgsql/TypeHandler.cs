@@ -72,8 +72,8 @@ namespace Npgsql
             return result;
         }
 
-        internal abstract T ReadFully<T>(NpgsqlBuffer buf, int len, FieldDescription fieldDescription = null);
-        internal abstract Task<T> ReadFullyAsync<T>(NpgsqlBuffer buf, int len, CancellationToken cancellationToken, FieldDescription fieldDescription = null);
+        internal abstract T ReadFully<T>(ReadBuffer buf, int len, FieldDescription fieldDescription = null);
+        internal abstract Task<T> ReadFullyAsync<T>(ReadBuffer buf, int len, CancellationToken cancellationToken, FieldDescription fieldDescription = null);
 
         /// <summary>
         /// Creates a type handler for arrays of this handler's type.
@@ -143,22 +143,22 @@ namespace Npgsql
     internal interface ISimpleTypeHandler
     {
         int ValidateAndGetLength(object value, [CanBeNull] NpgsqlParameter parameter);
-        void Write(object value, NpgsqlBuffer buf, [CanBeNull] NpgsqlParameter parameter);
-        object ReadAsObject(NpgsqlBuffer buf, int len, FieldDescription fieldDescription = null);
+        void Write(object value, WriteBuffer buf, [CanBeNull] NpgsqlParameter parameter);
+        object ReadAsObject(ReadBuffer buf, int len, FieldDescription fieldDescription = null);
     }
 
     internal abstract partial class SimpleTypeHandler<T> : TypeHandler<T>, ISimpleTypeHandler<T>
     {
-        public abstract T Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription = null);
+        public abstract T Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null);
         public abstract int ValidateAndGetLength(object value, NpgsqlParameter parameter);
-        public abstract void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter);
+        public abstract void Write(object value, WriteBuffer buf, NpgsqlParameter parameter);
 
         /// <remarks>
         /// A type handler may implement ISimpleTypeHandler for types other than its primary one.
         /// This is why this method has type parameter T2 and not T.
         /// </remarks>
         [RewriteAsync(true)]
-        internal override T2 ReadFully<T2>(NpgsqlBuffer buf, int len, FieldDescription fieldDescription = null)
+        internal override T2 ReadFully<T2>(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             buf.Ensure(len);
             var asTypedHandler = this as ISimpleTypeHandler<T2>;
@@ -172,7 +172,7 @@ namespace Npgsql
             return asTypedHandler.Read(buf, len, fieldDescription);
         }
 
-        public object ReadAsObject(NpgsqlBuffer buf, int len, FieldDescription fieldDescription = null)
+        public object ReadAsObject(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             return Read(buf, len, fieldDescription);
         }
@@ -184,7 +184,7 @@ namespace Npgsql
     /// </summary>
     interface ISimpleTypeHandler<T> : ISimpleTypeHandler, ITypeHandler<T>
     {
-        T Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription = null);
+        T Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null);
     }
 
     /// <summary>
@@ -205,9 +205,9 @@ namespace Npgsql
             return ReadFully<TPsv>(row, row.ColumnLen, fieldDescription);
         }
 
-        internal abstract TPsv ReadPsv(NpgsqlBuffer buf, int len, FieldDescription fieldDescription);
+        internal abstract TPsv ReadPsv(ReadBuffer buf, int len, FieldDescription fieldDescription);
 
-        TPsv ISimpleTypeHandler<TPsv>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        TPsv ISimpleTypeHandler<TPsv>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return ReadPsv(buf, len, fieldDescription);
         }
@@ -226,9 +226,9 @@ namespace Npgsql
 
     internal interface IChunkingTypeHandler
     {
-        void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription = null);
+        void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null);
         int ValidateAndGetLength(object value, ref LengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter);
-        void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter);
+        void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter);
         bool Write(ref DirectBuffer directBuf);
         bool ReadAsObject(out object result);
     }
@@ -236,7 +236,7 @@ namespace Npgsql
     [ContractClass(typeof(ChunkingTypeHandlerContracts<>))]
     internal abstract partial class ChunkingTypeHandler<T> : TypeHandler<T>, IChunkingTypeHandler<T>
     {
-        public abstract void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription = null);
+        public abstract void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null);
         public abstract bool Read(out T result);
 
         /// <param name="value">the value to be examined</param>
@@ -255,7 +255,7 @@ namespace Npgsql
         /// which impact how to send the parameter, e.g. <see cref="NpgsqlParameter.Size"/>. Can be null.
         /// <see cref="NpgsqlParameter.Size"/>.
         /// </param>
-        public abstract void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter);
+        public abstract void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter);
 
         public abstract bool Write(ref DirectBuffer directBuf);
 
@@ -264,7 +264,7 @@ namespace Npgsql
         /// This is why this method has type parameter T2 and not T.
         /// </remarks>
         [RewriteAsync(true)]
-        internal override T2 ReadFully<T2>(NpgsqlBuffer buf, int len, FieldDescription fieldDescription = null)
+        internal override T2 ReadFully<T2>(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             var asTypedHandler = this as IChunkingTypeHandler<T2>;
             if (asTypedHandler == null)
@@ -306,7 +306,7 @@ namespace Npgsql
     // ReSharper disable once InconsistentNaming
     class ChunkingTypeHandlerContracts<T> : ChunkingTypeHandler<T>
     {
-        public override void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             Contract.Requires(buf != null);
         }
@@ -324,7 +324,7 @@ namespace Npgsql
             return default(int);
         }
 
-        public override void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter = null)
+        public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter = null)
         {
             Contract.Requires(buf != null);
             Contract.Requires(value != null);

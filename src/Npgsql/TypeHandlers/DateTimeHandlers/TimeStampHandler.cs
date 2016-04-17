@@ -54,7 +54,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             _convertInfinityDateTime = registry.Connector.ConvertInfinityDateTime;
         }
 
-        public override DateTime Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override DateTime Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             // TODO: Convert directly to DateTime without passing through NpgsqlTimeStamp?
             var ts = ReadTimeStamp(buf, len, fieldDescription);
@@ -74,12 +74,12 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             }
         }
 
-        internal override NpgsqlDateTime ReadPsv(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        internal override NpgsqlDateTime ReadPsv(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return ReadTimeStamp(buf, len, fieldDescription);
         }
 
-        protected NpgsqlDateTime ReadTimeStamp(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        protected NpgsqlDateTime ReadTimeStamp(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             if (!_integerFormat) {
                 throw new NotSupportedException("Old floating point representation for timestamps not supported");
@@ -127,7 +127,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             return 8;
         }
 
-        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
         {
             if (parameter != null && parameter.ConvertedValue != null) {
                 value = parameter.ConvertedValue;

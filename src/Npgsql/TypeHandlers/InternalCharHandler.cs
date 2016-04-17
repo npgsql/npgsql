@@ -43,27 +43,27 @@ namespace Npgsql.TypeHandlers
     {
         #region Read
 
-        public override char Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override char Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return (char)buf.ReadByte();
         }
 
-        byte ISimpleTypeHandler<byte>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        byte ISimpleTypeHandler<byte>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return buf.ReadByte();
         }
 
-        short ISimpleTypeHandler<short>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        short ISimpleTypeHandler<short>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return buf.ReadByte();
         }
 
-        int ISimpleTypeHandler<int>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        int ISimpleTypeHandler<int>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return buf.ReadByte();
         }
 
-        long ISimpleTypeHandler<long>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        long ISimpleTypeHandler<long>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return buf.ReadByte();
         }
@@ -82,7 +82,7 @@ namespace Npgsql.TypeHandlers
             return 1;
         }
 
-        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
         {
             buf.WriteByte(value as byte? ?? Convert.ToByte(value));
         }

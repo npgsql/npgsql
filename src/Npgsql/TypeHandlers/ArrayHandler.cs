@@ -62,7 +62,8 @@ namespace Npgsql.TypeHandlers
         ReadState _readState;
         WriteState _writeState;
         IEnumerator _enumerator;
-        NpgsqlBuffer _buf;
+        ReadBuffer _readBuf;
+        WriteBuffer _writeBuf;
         LengthCache _lengthCache;
         FieldDescription _fieldDescription;
         int _dimensions;
@@ -123,13 +124,13 @@ namespace Npgsql.TypeHandlers
 
         #region Read
 
-        public override void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             Contract.Assert(_readState == ReadState.NeedPrepare);
             if (_readState != ReadState.NeedPrepare)  // Checks against recursion and bugs
                 throw new InvalidOperationException("Started reading a value before completing a previous value");
 
-            _buf = buf;
+            _readBuf = buf;
             _fieldDescription = fieldDescription;
             _elementLen = -1;
             _readState = ReadState.ReadNothing;
@@ -146,14 +147,14 @@ namespace Npgsql.TypeHandlers
             switch (_readState)
             {
                 case ReadState.ReadNothing:
-                    if (_buf.ReadBytesLeft < 12)
+                    if (_readBuf.ReadBytesLeft < 12)
                     {
                         result = null;
                         return false;
                     }
-                    _dimensions = _buf.ReadInt32();
-                    _buf.ReadInt32();        // Has nulls. Not populated by PG?
-                    var elementOID = _buf.ReadUInt32();
+                    _dimensions = _readBuf.ReadInt32();
+                    _readBuf.ReadInt32();        // Has nulls. Not populated by PG?
+                    var elementOID = _readBuf.ReadUInt32();
                     Contract.Assume(elementOID == ElementHandler.OID);
                     _dimLengths = new int[_dimensions];
                     if (_dimensions > 1) {
@@ -164,14 +165,14 @@ namespace Npgsql.TypeHandlers
                     goto case ReadState.ReadHeader;
 
                 case ReadState.ReadHeader:
-                    if (_buf.ReadBytesLeft < _dimensions * 8) {
+                    if (_readBuf.ReadBytesLeft < _dimensions * 8) {
                         result = null;
                         return false;
                     }
                     for (var i = 0; i < _dimensions; i++)
                     {
-                        _dimLengths[i] = _buf.ReadInt32();
-                        _buf.ReadInt32(); // We don't care about the lower bounds
+                        _dimLengths[i] = _readBuf.ReadInt32();
+                        _readBuf.ReadInt32(); // We don't care about the lower bounds
                     }
                     if (_dimensions == 0)
                     {
@@ -196,7 +197,7 @@ namespace Npgsql.TypeHandlers
 
                     result = _readValue;
                     _readValue = null;
-                    _buf = null;
+                    _readBuf = null;
                     _fieldDescription = null;
                     _readState = ReadState.NeedPrepare;
                     return true;
@@ -261,12 +262,12 @@ namespace Npgsql.TypeHandlers
             {
                 if (_elementLen == -1)
                 {
-                    if (_buf.ReadBytesLeft < 4)
+                    if (_readBuf.ReadBytesLeft < 4)
                     {
                         element = default(TElement2);
                         return false;
                     }
-                    _elementLen = _buf.ReadInt32();
+                    _elementLen = _readBuf.ReadInt32();
                     if (_elementLen == -1)
                     {
                         // TODO: Nullables
@@ -278,12 +279,12 @@ namespace Npgsql.TypeHandlers
                 var asSimpleReader = ElementHandler as ISimpleTypeHandler<TElement2>;
                 if (asSimpleReader != null)
                 {
-                    if (_buf.ReadBytesLeft < _elementLen)
+                    if (_readBuf.ReadBytesLeft < _elementLen)
                     {
                         element = default(TElement2);
                         return false;
                     }
-                    element = asSimpleReader.Read(_buf, _elementLen, _fieldDescription);
+                    element = asSimpleReader.Read(_readBuf, _elementLen, _fieldDescription);
                     _elementLen = -1;
                     return true;
                 }
@@ -293,7 +294,7 @@ namespace Npgsql.TypeHandlers
                 {
                     if (!_preparedRead)
                     {
-                        asChunkingReader.PrepareRead(_buf, _elementLen, _fieldDescription);
+                        asChunkingReader.PrepareRead(_readBuf, _elementLen, _fieldDescription);
                         _preparedRead = true;
                     }
                     if (!asChunkingReader.Read(out element))
@@ -327,13 +328,13 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        public override void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
+        public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             Contract.Assert(_readState == ReadState.NeedPrepare);
             if (_writeState != WriteState.NeedPrepare)  // Checks against recursion and bugs
                 throw new InvalidOperationException("Started reading a value before completing a previous value");
 
-            _buf = buf;
+            _writeBuf = buf;
             _lengthCache = lengthCache;
             var asArray = value as Array;
             _writeValue = (IList)value;
@@ -359,26 +360,26 @@ namespace Npgsql.TypeHandlers
                         4 +               // element_oid
                         _dimensions * 8;  // dim (4) + lBound (4)
 
-                    if (_buf.WriteSpaceLeft < len) {
-                        Contract.Assume(_buf.UsableSize >= len, "Buffer too small for header");
+                    if (_writeBuf.WriteSpaceLeft < len) {
+                        Contract.Assume(_writeBuf.UsableSize >= len, "Buffer too small for header");
                         return false;
                     }
-                    _buf.WriteInt32(_dimensions);
-                    _buf.WriteInt32(1);  // HasNulls=1. Not actually used by the backend.
-                    _buf.WriteUInt32(ElementHandler.OID);
+                    _writeBuf.WriteInt32(_dimensions);
+                    _writeBuf.WriteInt32(1);  // HasNulls=1. Not actually used by the backend.
+                    _writeBuf.WriteUInt32(ElementHandler.OID);
                     var asArray = _writeValue as Array;
                     if (asArray != null)
                     {
                         for (var i = 0; i < _dimensions; i++)
                         {
-                            _buf.WriteInt32(asArray.GetLength(i));
-                            _buf.WriteInt32(LowerBound);  // We don't map .NET lower bounds to PG
+                            _writeBuf.WriteInt32(asArray.GetLength(i));
+                            _writeBuf.WriteInt32(LowerBound);  // We don't map .NET lower bounds to PG
                         }
                     }
                     else
                     {
-                        _buf.WriteInt32(_writeValue.Count);
-                        _buf.WriteInt32(LowerBound);  // We don't map .NET lower bounds to PG
+                        _writeBuf.WriteInt32(_writeValue.Count);
+                        _writeBuf.WriteInt32(LowerBound);  // We don't map .NET lower bounds to PG
                         _enumerator = _writeValue.GetEnumerator();
                     }
 
@@ -411,7 +412,7 @@ namespace Npgsql.TypeHandlers
 
                 case WriteState.Cleanup:
                     _writeValue = null;
-                    _buf = null;
+                    _writeBuf = null;
                     _writeState = WriteState.NeedPrepare;
                     return true;
 
@@ -424,10 +425,10 @@ namespace Npgsql.TypeHandlers
         {
             // TODO: Need generic version of this...
             if (element == null || element is DBNull) {
-                if (_buf.WriteSpaceLeft < 4) {
+                if (_writeBuf.WriteSpaceLeft < 4) {
                     return false;
                 }
-                _buf.WriteInt32(-1);
+                _writeBuf.WriteInt32(-1);
                 return true;
             }
 
@@ -435,9 +436,9 @@ namespace Npgsql.TypeHandlers
             if (asSimpleWriter != null)
             {
                 var elementLen = asSimpleWriter.ValidateAndGetLength(element, null);
-                if (_buf.WriteSpaceLeft < 4 + elementLen) { return false; }
-                _buf.WriteInt32(elementLen);
-                asSimpleWriter.Write(element, _buf, null);
+                if (_writeBuf.WriteSpaceLeft < 4 + elementLen) { return false; }
+                _writeBuf.WriteInt32(elementLen);
+                asSimpleWriter.Write(element, _writeBuf, null);
                 return true;
             }
 
@@ -445,11 +446,11 @@ namespace Npgsql.TypeHandlers
             if (asChunkedWriter != null)
             {
                 if (!_wroteElementLen) {
-                    if (_buf.WriteSpaceLeft < 4) {
+                    if (_writeBuf.WriteSpaceLeft < 4) {
                         return false;
                     }
-                    _buf.WriteInt32(asChunkedWriter.ValidateAndGetLength(element, ref _lengthCache, null));
-                    asChunkedWriter.PrepareWrite(element, _buf, _lengthCache, null);
+                    _writeBuf.WriteInt32(asChunkedWriter.ValidateAndGetLength(element, ref _lengthCache, null));
+                    asChunkedWriter.PrepareWrite(element, _writeBuf, _lengthCache, null);
                     _wroteElementLen = true;
                 }
                 if (!asChunkedWriter.Write(ref directBuf)) {

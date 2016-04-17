@@ -40,7 +40,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     [TypeMapping("regtype", NpgsqlDbType.Regtype)]
     internal class UInt32Handler : SimpleTypeHandler<uint>
     {
-        public override uint Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override uint Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return (uint)buf.ReadInt32();
         }
@@ -59,7 +59,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             return 4;
         }
 
-        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
         {
             if (parameter?.ConvertedValue != null) {
                 value = parameter.ConvertedValue;

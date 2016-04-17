@@ -43,7 +43,7 @@ namespace Npgsql.TypeHandlers
     internal class RecordHandler : ChunkingTypeHandler<object[]>
     {
         readonly TypeHandlerRegistry _registry;
-        NpgsqlBuffer _buf;
+        ReadBuffer _readBuf;
 
         int _fieldIndex, _fieldCount, _fieldLen;
         TypeHandler _fieldHandler;
@@ -56,9 +56,9 @@ namespace Npgsql.TypeHandlers
 
         #region Read
 
-        public override void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
-            _buf = buf;
+            _readBuf = buf;
             _fieldIndex = _fieldCount = - 1;
             _fieldLen = -1;
         }
@@ -69,8 +69,8 @@ namespace Npgsql.TypeHandlers
 
             if (_fieldIndex == -1)
             {
-                if (_buf.ReadBytesLeft < 4) { return false; }
-                _fieldCount = _buf.ReadInt32();
+                if (_readBuf.ReadBytesLeft < 4) { return false; }
+                _fieldCount = _readBuf.ReadInt32();
                 _value = new object[_fieldCount];
                 _fieldIndex = 0;
             }
@@ -81,9 +81,9 @@ namespace Npgsql.TypeHandlers
                 // Read the type OID, then the length.
                 if (_fieldLen == -1)
                 {
-                    if (_buf.ReadBytesLeft < 8) { return false; }
-                    var typeOID = _buf.ReadInt32();
-                    _fieldLen = _buf.ReadInt32();
+                    if (_readBuf.ReadBytesLeft < 8) { return false; }
+                    var typeOID = _readBuf.ReadInt32();
+                    _fieldLen = _readBuf.ReadInt32();
                     if (_fieldLen == -1)
                     {
                         // Null field, simply skip it and leave at default
@@ -97,13 +97,13 @@ namespace Npgsql.TypeHandlers
                 if (_fieldHandler is ISimpleTypeHandler)
                 {
                     var asSimpleReader = (ISimpleTypeHandler)_fieldHandler;
-                    if (_buf.ReadBytesLeft < _fieldLen) { return false; }
-                    fieldValue = asSimpleReader.ReadAsObject(_buf, _fieldLen);
+                    if (_readBuf.ReadBytesLeft < _fieldLen) { return false; }
+                    fieldValue = asSimpleReader.ReadAsObject(_readBuf, _fieldLen);
                 }
                 else if (_fieldHandler is IChunkingTypeHandler)
                 {
                     var asChunkingReader = (IChunkingTypeHandler)_fieldHandler;
-                    asChunkingReader.PrepareRead(_buf, _fieldLen);
+                    asChunkingReader.PrepareRead(_readBuf, _fieldLen);
                     if (!asChunkingReader.ReadAsObject(out fieldValue))
                     {
                         return false;
@@ -129,7 +129,7 @@ namespace Npgsql.TypeHandlers
             throw new NotSupportedException("Can't write record types");
         }
 
-        public override void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter)
+        public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter)
         {
             throw new NotSupportedException("Can't write record types");
         }
