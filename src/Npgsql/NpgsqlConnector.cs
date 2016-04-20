@@ -185,11 +185,10 @@ namespace Npgsql
         SemaphoreSlim _userLock;
 
         /// <summary>
-        /// A lock that's taken while a non-user-triggered async action is in progress, e.g. handling of an
-        /// asynchronous notification or a connection keepalive. Does <b>not</b> get taken for a user async
-        /// action such as <see cref="DbCommand.ExecuteReaderAsync()"/>.
+        /// A lock that's taken while a connection keepalive is in progress. Used to make sure
+        /// keepalives and user actions don't interfere with one another.
         /// </summary>
-        SemaphoreSlim _asyncLock;
+        SemaphoreSlim _keepAliveLock;
 
         /// <summary>
         /// A lock that's taken while a cancellation is being delivered; new queries are blocked until the
@@ -269,12 +268,12 @@ namespace Npgsql
             _preparedStatementIndex = 0;
 
             _userLock = new SemaphoreSlim(1, 1);
-            _asyncLock = new SemaphoreSlim(1, 1);
             _userAction = new UserAction(this);
             CancelLock = new object();
 
-            if (KeepAlive > 0) {
+            if (IsKeepAliveEnabled) {
                 _keepAliveTimer = new Timer(PerformKeepAlive, null, Timeout.Infinite, Timeout.Infinite);
+                _keepAliveLock = new SemaphoreSlim(1, 1);
             }
         }
 
@@ -294,8 +293,8 @@ namespace Npgsql
         int ConnectionTimeout => _settings.Timeout;
         bool BackendTimeouts => _settings.BackendTimeouts;
         int KeepAlive => _settings.KeepAlive;
+        bool IsKeepAliveEnabled => KeepAlive > 0;
         bool IntegratedSecurity => _settings.IntegratedSecurity;
-        bool ContinuousProcessing => _settings.ContinuousProcessing;
         internal bool ConvertInfinityDateTime => _settings.ConvertInfinityDateTime;
 
         int ActualInternalCommandTimeout
@@ -398,10 +397,6 @@ namespace Npgsql
                 HandleAuthentication(timeout);
                 TypeHandlerRegistry.Setup(this, timeout);
                 Log.Debug($"Opened connection to {Host}:{Port}", Id);
-
-                if (ContinuousProcessing) {
-                    HandleAsyncMessages();
-                }
             }
             catch
             {
@@ -1172,28 +1167,6 @@ namespace Npgsql
             }
         }
 
-        bool HasDataInBuffers => ReadBuffer.ReadBytesLeft > 0 ||
-                                 (Stream is NetworkStream && ((NetworkStream) Stream).DataAvailable)
-                                 || (Stream is TlsClientStream.TlsClientStream && ((TlsClientStream.TlsClientStream) Stream).HasBufferedReadData(false));
-
-        /// <summary>
-        /// Reads and processes any messages that are already in our buffers (either Npgsql or TCP).
-        /// Handles asynchronous messages (Notification, Notice, ParameterStatus) that may after a
-        /// ReadyForQuery, as well as async notification mode.
-        /// </summary>
-        void DrainBufferedMessages()
-        {
-            while (HasDataInBuffers)
-            {
-                var msg = ReadSingleMessageWithNulls(DataRowLoadingMode.NonSequential);
-                if (msg != null)
-                {
-                    Break();
-                    throw new Exception($"Got unexpected non-async message with code {msg.Code} while draining: {msg}");
-                }
-            }
-        }
-
         /// <summary>
         /// Reads backend messages and discards them, stopping only after a message of the given type has
         /// been seen.
@@ -1541,8 +1514,12 @@ namespace Npgsql
             ServerVersion = null;
             _userLock.Dispose();
             _userLock = null;
-            _asyncLock.Dispose();
-            _asyncLock = null;
+            if (IsKeepAliveEnabled)
+            {
+                _keepAliveTimer.Change(Timeout.Infinite, Timeout.Infinite);
+                _keepAliveLock.Dispose();
+                _keepAliveLock = null;
+            }
         }
 
         /// <summary>
@@ -1639,26 +1616,24 @@ namespace Npgsql
                 }
             }
 
-            // If an async operation happens to be in progress (async notification, keepalive),
-            // wait until it's done
-            _asyncLock.Wait();
-
-            // The connection might not have been open, or the async operation which just finished
-            // may have led to the connection being broken
-            if (!IsConnected)
+            if (IsKeepAliveEnabled)
             {
-                _asyncLock.Release();
-                _userLock.Release();
-                throw new InvalidOperationException();
-            }
+                // If keepalive happens to be in progress wait until it's done
+                _keepAliveLock.Wait();
 
-            // Disable keepalive
-            if (KeepAlive > 0) {
-                _keepAliveTimer.Change(Timeout.Infinite, Timeout.Infinite);
-            }
+                // The keepalive which just finished may have led to the connection being broken
+                if (!IsConnected)
+                {
+                    _keepAliveLock.Release();
+                    _userLock.Release();
+                    throw new InvalidOperationException("The connection broke during a keepalive");
+                }
 
+                // Disable keepalive, it will be restarted at the end of the user action
+                if (KeepAlive > 0)
+                    _keepAliveTimer.Change(Timeout.Infinite, Timeout.Infinite);
+            }
             Contract.Assume(IsReady);
-            Contract.Assume(ReadBuffer.ReadBytesLeft == 0, "The read buffer should be read completely before sending Parse message");
 
             State = newState;
             return _userAction;
@@ -1686,12 +1661,6 @@ namespace Npgsql
 
             try
             {
-                // Asynchronous messages (Notification, Notice, ParameterStatus) may have arrived
-                // during the user action, and may be in our buffer. Since we have one buffer for
-                // both reading and writing, and since we want to process these messages early,
-                // we drain any remaining buffered messages.
-                DrainBufferedMessages();
-
                 if (KeepAlive > 0)
                 {
                     var keepAlive = KeepAlive*1000;
@@ -1702,7 +1671,7 @@ namespace Npgsql
             }
             finally
             {
-                _asyncLock?.Release();
+                _keepAliveLock?.Release();
                 _userLock?.Release();
             }
         }
@@ -1730,51 +1699,15 @@ namespace Npgsql
 
         #endregion
 
-        #region Async message handling
-
-        async void HandleAsyncMessages()
-        {
-            try
-            {
-                while (true)
-                {
-                    await _baseStream.ReadAsync(EmptyBuffer, 0, 0);
-
-                    if (_asyncLock == null) {
-                        return;
-                    }
-
-                    // If the semaphore is disposed while we're (async) waiting on it, the continuation
-                    // never gets called and this method doesn't continue
-                    await _asyncLock.WaitAsync();
-
-                    try
-                    {
-                        DrainBufferedMessages();
-                    }
-                    finally
-                    {
-                        _asyncLock?.Release();
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                Log.Error("Exception while handling async messages", e, Id);
-            }
-        }
-
-        #endregion
-
         #region Keepalive
 
         void PerformKeepAlive(object state)
         {
-            if (_asyncLock == null) { return; }
+            Contract.Requires(IsKeepAliveEnabled);
 
-            if (!_asyncLock.Wait(0)) {
+            if (!_keepAliveLock.Wait(0)) {
                 // The async semaphore has already been acquired, either by a user action,
-                // or an async notification being handled, or, improbably, by a previous keepalive.
+                // or, improbably, by a previous keepalive.
                 // Whatever the case, exit immediately, no need to perform a keepalive.
                 return;
             }
@@ -1791,7 +1724,7 @@ namespace Npgsql
                 }
                 SendSingleMessage(PregeneratedMessage.KeepAlive);
                 SkipUntil(BackendMessageCode.ReadyForQuery);
-                _asyncLock.Release();
+                _keepAliveLock.Release();
             }
             catch (Exception e)
             {
@@ -1919,7 +1852,6 @@ namespace Npgsql
         void ObjectInvariants()
         {
             Contract.Invariant(!IsReady || !IsInUserAction);
-            Contract.Invariant(!IsReady || !HasDataInBuffers, "Connector in Ready state but has data in buffer");
             Contract.Invariant((KeepAlive == 0 && _keepAliveTimer == null) || (KeepAlive > 0 && _keepAliveTimer != null));
         }
 

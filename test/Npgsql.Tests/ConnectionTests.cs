@@ -317,8 +317,8 @@ namespace Npgsql.Tests
 
         #region Notification
 
-        [Test, Description("Simple synchronous LISTEN/NOTIFY scenario")]
-        public void NotificationSync()
+        [Test, Description("Simple LISTEN/NOTIFY scenario")]
+        public void Notification()
         {
             using (var conn = OpenConnection())
             {
@@ -327,77 +327,6 @@ namespace Npgsql.Tests
                 conn.Notification += (o, e) => receivedNotification = true;
                 conn.ExecuteNonQuery("NOTIFY notifytest");
                 Assert.IsTrue(receivedNotification);
-            }
-        }
-
-        [Test, Description("An asynchronous LISTEN/NOTIFY scenario")]
-        [Timeout(10000)]
-        public void NotificationAsync()
-        {
-            using (var notifyingConn = OpenConnection())
-            {
-                var mre = new ManualResetEvent(false);
-                using (var listeningConn = new NpgsqlConnection(ConnectionString + ";ContinuousProcessing=true"))
-                {
-                    listeningConn.Open();
-                    listeningConn.ExecuteNonQuery("LISTEN notifytest2");
-                    listeningConn.Notification += (o, e) => mre.Set();
-
-                    // Send notify via the other connection
-                    notifyingConn.ExecuteNonQuery("NOTIFY notifytest2");
-                    mre.WaitOne();
-
-                    // And again
-                    mre.Reset();
-                    notifyingConn.ExecuteNonQuery("NOTIFY notifytest2");
-                    mre.WaitOne();
-                }
-            }
-        }
-
-        [Test, Description("A notification arriving while we have an open Reader")]
-        public void NotificationDuringReader()
-        {
-            using (var notifyingConn = OpenConnection())
-            {
-                var receivedNotification = false;
-                using (var listeningConn = new NpgsqlConnection(ConnectionString + ";ContinuousProcessing=true"))
-                {
-                    listeningConn.Open();
-                    listeningConn.ExecuteNonQuery("LISTEN notifytest2");
-                    listeningConn.Notification += (o, e) => receivedNotification = true;
-
-                    using (var cmd = new NpgsqlCommand("SELECT 1", listeningConn))
-                    using (cmd.ExecuteReader())
-                    {
-                        // Send notify via the other connection
-                        notifyingConn.ExecuteNonQuery("NOTIFY notifytest2");
-                        Thread.Sleep(500);
-                    }
-                }
-                Assert.That(receivedNotification, Is.True);
-            }
-        }
-
-        [Test, Description("Receive an asynchronous notification when a message has already been prepended")]
-        [Timeout(10000)]
-        [Ignore("Ignoring since we're dropping ContinuousProcessing in 3.1")]
-        public void NotificationAsyncWithPrepend()
-        {
-            using (var notifyingConn = OpenConnection())
-            {
-                var mre = new ManualResetEvent(false);
-                using (var listeningConn = new NpgsqlConnection(ConnectionString + ";ContinuousProcessing=true"))
-                {
-                    listeningConn.Open();
-                    listeningConn.ExecuteNonQuery("LISTEN notifytest2");
-                    listeningConn.BeginTransaction();
-
-                    // Send notify via the other connection
-                    listeningConn.Notification += (o, e) => mre.Set();
-                    notifyingConn.ExecuteNonQuery("NOTIFY notifytest2");
-                    mre.WaitOne();
-                }
             }
         }
 
@@ -416,7 +345,6 @@ namespace Npgsql.Tests
                 cmd.CommandText = "SELECT generate_series(1,10000)";
                 using (var reader = cmd.ExecuteReader())
                 {
-
                     //After "notify notifytest1", a notification message will be sent to client,
                     //And so the notification message will stick with the last response message of "select generate_series(1,10000)" in Npgsql's tcp receiving buffer.
                     using (var conn2 = new NpgsqlConnection(ConnectionString))
@@ -449,25 +377,22 @@ namespace Npgsql.Tests
         [Timeout(10000)]
         public void Keepalive()
         {
+            var csbWithKeepAlive = new NpgsqlConnectionStringBuilder(ConnectionString) { KeepAlive = 1 };
+            var mre = new ManualResetEvent(false);
             using (var conn1 = OpenConnection())
+            using (var conn2 = OpenConnection(csbWithKeepAlive))
             {
-                var mre = new ManualResetEvent(false);
-                using (var conn2 = new NpgsqlConnection(ConnectionString + ";KeepAlive=1;ContinuousProcessing=true"))
+                conn2.StateChange += (sender, args) =>
                 {
-                    conn2.Open();
+                    if (args.CurrentState == ConnectionState.Closed)
+                        mre.Set();
+                };
 
-                    conn2.StateChange += (sender, args) =>
-                    {
-                        if (args.CurrentState == ConnectionState.Closed)
-                            mre.Set();
-                    };
-
-                    // Use another connection to kill our keepalive connection
-                    conn1.ExecuteNonQuery($"SELECT pg_terminate_backend({conn2.ProcessID})");
-                    mre.WaitOne();
-                    Assert.That(conn2.State, Is.EqualTo(ConnectionState.Closed));
-                    Assert.That(conn2.FullState, Is.EqualTo(ConnectionState.Broken));
-                }
+                // Use another connection to kill our keepalive connection
+                conn1.ExecuteNonQuery($"SELECT pg_terminate_backend({conn2.ProcessID})");
+                mre.WaitOne();
+                Assert.That(conn2.State, Is.EqualTo(ConnectionState.Closed));
+                Assert.That(conn2.FullState, Is.EqualTo(ConnectionState.Broken));
             }
         }
 
@@ -827,13 +752,6 @@ namespace Npgsql.Tests
             using (var cmd = new NpgsqlCommand("SELECT 1", conn))
             using (cmd.ExecuteReader())
                 Assert.That(() => conn.ExecuteScalar("SELECT 1"), Throws.Exception.TypeOf<InvalidOperationException>());
-        }
-
-        [Test]
-        public void NoContinuousProcessingWithSslStream()
-        {
-            using (var conn = new NpgsqlConnection(ConnectionString + ";UseSslStream=true;ContinuousProcessing=true"))
-                Assert.That(() => conn.Open(), Throws.Exception.TypeOf<ArgumentException>());
         }
 
         [Test]

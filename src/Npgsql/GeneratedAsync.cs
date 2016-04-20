@@ -332,8 +332,6 @@ namespace Npgsql
                 throw new ArgumentException("Host can't be null");
             if (string.IsNullOrWhiteSpace(UserName) && !IntegratedSecurity)
                 throw new ArgumentException("Either Username must be specified or IntegratedSecurity must be on");
-            if (ContinuousProcessing && UseSslStream)
-                throw new ArgumentException("ContinuousProcessing can't be turned on with UseSslStream");
             Contract.EndContractBlock();
             // If we're postponing a close (see doc on this variable), the connection is already
             // open and can be silently reused
@@ -409,10 +407,6 @@ namespace Npgsql
                 await HandleAuthenticationAsync(timeout, cancellationToken);
                 await TypeHandlerRegistry.SetupAsync(this, timeout, cancellationToken);
                 Log.Debug($"Opened connection to {Host}:{Port}", Id);
-                if (ContinuousProcessing)
-                {
-                    HandleAsyncMessages();
-                }
             }
             catch
             {

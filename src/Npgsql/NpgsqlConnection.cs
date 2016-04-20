@@ -226,8 +226,6 @@ namespace Npgsql
                 throw new ArgumentException("Host can't be null");
             if (string.IsNullOrWhiteSpace(UserName) && !IntegratedSecurity)
                 throw new ArgumentException("Either Username must be specified or IntegratedSecurity must be on");
-            if (ContinuousProcessing && UseSslStream)
-                throw new ArgumentException("ContinuousProcessing can't be turned on with UseSslStream");
             Contract.EndContractBlock();
 
             // If we're postponing a close (see doc on this variable), the connection is already
@@ -388,13 +386,6 @@ namespace Npgsql
         /// Gets the string identifying the database server (host and port)
         /// </summary>
         public override string DataSource => $"tcp://{Host}:{Port}";
-
-        /// <summary>
-        /// Gets flag indicating if we are using Synchronous notification or not.
-        /// The default value is false.
-        /// </summary>
-        [PublicAPI]
-        public bool ContinuousProcessing => Settings.ContinuousProcessing;
 
         /// <summary>
         /// Whether to use Windows integrated security to log in.
