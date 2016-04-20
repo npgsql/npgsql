@@ -200,8 +200,6 @@ namespace Npgsql
         readonly UserAction _userAction;
         readonly Timer _keepAliveTimer;
 
-        static readonly byte[] EmptyBuffer = new byte[0];
-
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         #endregion
