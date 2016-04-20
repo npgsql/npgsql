@@ -493,6 +493,9 @@ namespace Npgsql
                     _pendingMessage = null;
                     return msg;
                 }
+                var asDataRow = _pendingMessage as DataRowMessage;
+                if (asDataRow != null)
+                    asDataRow.Consume();
                 _pendingMessage = null;
             }
             return _connector.SkipUntil(stopAt);
@@ -507,6 +510,9 @@ namespace Npgsql
                     _pendingMessage = null;
                     return msg;
                 }
+                var asDataRow = _pendingMessage as DataRowMessage;
+                if (asDataRow != null)
+                    asDataRow.Consume();
                 _pendingMessage = null;
             }
             return _connector.SkipUntil(stopAt1, stopAt2);
