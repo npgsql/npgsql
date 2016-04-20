@@ -158,26 +158,16 @@ namespace Npgsql
 #endif
 
         /// <summary>
-        /// The frontend timeout for reading messages that are part of the user's command
+        /// The timeout for reading messages that are part of the user's command
         /// (i.e. which aren't internal prepended commands).
         /// </summary>
-        internal int UserCommandFrontendTimeout { private get; set; }
-
-        /// <summary>
-        /// Contains the current value of the statement_timeout parameter at the backend,
-        /// used to determine whether we need to change it when commands are sent.
-        /// </summary>
-        /// <remarks>
-        /// 0 means means no timeout.
-        /// -1 means that the current value is unknown.
-        /// </remarks>
-        int _backendTimeout;
+        internal int UserTimeout { private get; set; }
 
         /// <summary>
         /// Contains the current value of the socket's ReceiveTimeout, used to determine whether
         /// we need to change it when commands are received.
         /// </summary>
-        int _frontendTimeout;
+        int _currentTimeout;
 
         /// <summary>
         /// A lock that's taken while a user action is in progress, e.g. a command being executed.
@@ -205,12 +195,6 @@ namespace Npgsql
         #endregion
 
         #region Constants
-
-        /// <summary>
-        /// Number of seconds added as a margin to the backend timeout to yield the frontend timeout.
-        /// We prefer the backend to timeout - it's a clean error which doesn't break the connector.
-        /// </summary>
-        const int FrontendTimeoutMargin = 3;
 
         /// <summary>
         /// The minimum timeout that can be set on internal commands such as COMMIT, ROLLBACK.
@@ -289,25 +273,23 @@ namespace Npgsql
         bool UseSslStream => _settings.UseSslStream;
         int BufferSize => _settings.BufferSize;
         int ConnectionTimeout => _settings.Timeout;
-        bool BackendTimeouts => _settings.BackendTimeouts;
         int KeepAlive => _settings.KeepAlive;
         bool IsKeepAliveEnabled => KeepAlive > 0;
         bool IntegratedSecurity => _settings.IntegratedSecurity;
         internal bool ConvertInfinityDateTime => _settings.ConvertInfinityDateTime;
 
-        int ActualInternalCommandTimeout
+        int InternalCommandTimeout
         {
             get
             {
                 Contract.Ensures(Contract.Result<int>() == 0 || Contract.Result<int>() >= MinimumInternalCommandTimeout);
 
                 var internalTimeout = _settings.InternalCommandTimeout;
-                if (internalTimeout == -1) {
+                if (internalTimeout == -1)
                     return Math.Max(_settings.CommandTimeout, MinimumInternalCommandTimeout);
-                }
 
                 Contract.Assert(internalTimeout == 0 || internalTimeout >= MinimumInternalCommandTimeout);
-                return internalTimeout;
+                return internalTimeout * 1000;
             }
         }
 
@@ -421,11 +403,6 @@ namespace Npgsql
             if (!string.IsNullOrEmpty(_settings.SearchPath))
             {
                 startupMessage["search_path"] = _settings.SearchPath;
-            }
-            if (_settings.BackendTimeouts && _settings.CommandTimeout != 0)
-            {
-                startupMessage["statement_timeout"] = (_settings.CommandTimeout * 1000).ToString();
-                _backendTimeout = _settings.CommandTimeout;
             }
             if (IsSecure && !IsRedshift)
             {
@@ -803,56 +780,14 @@ namespace Npgsql
         /// <summary>
         /// Prepends a message to be sent at the beginning of the next message chain.
         /// </summary>
-        internal void PrependInternalMessage(FrontendMessage msg, bool withTimeout=true)
+        internal void PrependInternalMessage(FrontendMessage msg)
         {
-            // Set backend timeout if needed.
-            if (withTimeout) {
-                PrependBackendTimeoutMessage(ActualInternalCommandTimeout);
-            }
+            Contract.Requires(msg is PregeneratedMessage);
 
-            if (msg is QueryMessage || msg is PregeneratedMessage || msg is SyncMessage)
-            {
-                // These messages produce a ReadyForQuery response, which we will be looking for when
-                // processing the message chain results
-                checked { _pendingRfqPrependedMessages++; }
-            }
-            if (!msg.Write(WriteBuffer))
-                throw new Exception($"Could not fully write message of type {msg.GetType().Name} into the buffer");
-        }
+            // Prepended messages are simple queries (pregenerated, which produce a ReadyForQuery response,
+            // which we will be looking for as we're reading the results
+            _pendingRfqPrependedMessages++;
 
-        internal void PrependBackendTimeoutMessage(int timeout)
-        {
-            if (_backendTimeout == timeout || !BackendTimeouts) {
-                return;
-            }
-
-            _backendTimeout = timeout;
-            checked { _pendingRfqPrependedMessages++; }
-
-            FrontendMessage msg;
-            switch (timeout) {
-            case 10:
-                msg = PregeneratedMessage.SetStmtTimeout10Sec;
-                break;
-            case 20:
-                msg = PregeneratedMessage.SetStmtTimeout20Sec;
-                break;
-            case 30:
-                msg = PregeneratedMessage.SetStmtTimeout30Sec;
-                break;
-            case 60:
-                msg = PregeneratedMessage.SetStmtTimeout60Sec;
-                break;
-            case 90:
-                msg = PregeneratedMessage.SetStmtTimeout90Sec;
-                break;
-            case 120:
-                msg = PregeneratedMessage.SetStmtTimeout120Sec;
-                break;
-            default:
-                msg = QueryMessage.Populate($"SET statement_timeout = {timeout * 1000}");
-                break;
-            }
             if (!msg.Write(WriteBuffer))
                 throw new Exception($"Could not fully write message of type {msg.GetType().Name} into the buffer");
         }
@@ -925,7 +860,7 @@ namespace Npgsql
             {
                 try
                 {
-                    SetFrontendTimeout(ActualInternalCommandTimeout);
+                    ReceiveTimeout = InternalCommandTimeout;
                     while (_pendingRfqPrependedMessages > 0)
                     {
                         var msg = DoReadSingleMessage(DataRowLoadingMode.Skip, isPrependedMessage: true);
@@ -945,7 +880,7 @@ namespace Npgsql
             // Now read a non-prepended message
             try
             {
-                SetFrontendTimeout(UserCommandFrontendTimeout);
+                ReceiveTimeout = UserTimeout;
                 return DoReadSingleMessage(dataRowLoadingMode, returnNullForAsyncMessage);
             }
             catch (NpgsqlException)
@@ -1143,25 +1078,14 @@ namespace Npgsql
             }
         }
 
-        /// <summary>
-        /// Given a user timeout in seconds, sets the socket's ReceiveTimeout (if needed).
-        /// Note that if backend timeouts are enabled, we add a few seconds of margin to allow
-        /// the backend timeout to happen first.
-        /// </summary>
-        void SetFrontendTimeout(int userTimeout)
+        int ReceiveTimeout
         {
-            // TODO: Socket.ReceiveTimeout doesn't work for async.
-
-            int timeout;
-            if (userTimeout == 0)
-                timeout = 0;
-            else if (BackendTimeouts)
-                timeout = (userTimeout + FrontendTimeoutMargin) * 1000;
-            else
-                timeout = userTimeout * 1000;
-
-            if (timeout != _frontendTimeout) {
-                _socket.ReceiveTimeout = _frontendTimeout = timeout;
+            get { return _currentTimeout; }
+            set
+            {
+                // TODO: Socket.ReceiveTimeout doesn't work for async.
+                if (value != _currentTimeout)
+                    _socket.ReceiveTimeout = _currentTimeout = value;
             }
         }
 
@@ -1230,17 +1154,7 @@ namespace Npgsql
         internal void Rollback()
         {
             Log.Debug("Rollback transaction", Id);
-            try
-            {
-                // If we're in a failed transaction we can't set the timeout
-                var withTimeout = TransactionStatus != TransactionStatus.InFailedTransactionBlock;
-                ExecuteInternalCommand(PregeneratedMessage.RollbackTransaction, withTimeout);
-            }
-            finally
-            {
-                // The rollback may change the value of statement_value, set to unknown
-                SetBackendTimeoutToUnknown();
-            }
+            ExecuteInternalCommand(PregeneratedMessage.RollbackTransaction);
         }
 
         internal bool InTransaction
@@ -1576,10 +1490,6 @@ namespace Npgsql
 
                 _preparedStatementIndex = 0;
             }
-
-            // DISCARD ALL has reset statement_timeout to the default specified on the connection string.
-            if (_settings.BackendTimeouts)
-                _backendTimeout = _settings.CommandTimeout;
         }
 
         #endregion Close
@@ -1714,12 +1624,6 @@ namespace Npgsql
 
             try
             {
-                // Note: we can't use a regular command to execute the SQL query, because that would
-                // acquire the user lock (and prevent real user queries from running).
-                if (TransactionStatus != TransactionStatus.InFailedTransactionBlock)
-                {
-                    PrependBackendTimeoutMessage(ActualInternalCommandTimeout);
-                }
                 SendSingleMessage(PregeneratedMessage.KeepAlive);
                 SkipUntil(BackendMessageCode.ReadyForQuery);
                 _keepAliveLock.Release();
@@ -1785,19 +1689,17 @@ namespace Npgsql
 
         #region Execute internal command
 
-        internal void ExecuteInternalCommand(string query, bool withTimeout=true)
+        internal void ExecuteInternalCommand(string query)
         {
-            ExecuteInternalCommand(QueryMessage.Populate(query), withTimeout);
+            ExecuteInternalCommand(QueryMessage.Populate(query));
         }
 
         [RewriteAsync]
-        internal void ExecuteInternalCommand(FrontendMessage message, bool withTimeout=true)
+        internal void ExecuteInternalCommand(FrontendMessage message)
         {
             Contract.Requires(message is QueryMessage || message is PregeneratedMessage);
             using (StartUserAction())
             {
-                if (withTimeout)
-                    PrependBackendTimeoutMessage(ActualInternalCommandTimeout);
                 SendSingleMessage(message);
                 ReadExpecting<CommandCompleteMessage>();
                 ReadExpecting<ReadyForQueryMessage>();
@@ -1807,13 +1709,6 @@ namespace Npgsql
         #endregion
 
         #region Misc
-
-        /// <summary>
-        /// Called in various cases to indicate that the backend's statement_timeout parameter
-        /// may have changed and is currently unknown. It will be set the next time a command
-        /// is sent.
-        /// </summary>
-        internal void SetBackendTimeoutToUnknown() { _backendTimeout = -1; }
 
         void HandleParameterStatus(string name, string value)
         {

@@ -241,17 +241,8 @@ namespace Npgsql
             Contract.EndContractBlock();
 
             CheckReady();
-
             Log.Debug("Rollback savepoint", Connection.Connector.Id);
-
-            try {
-                // If we're in a failed transaction we can't set the timeout
-                var withTimeout = Connector.TransactionStatus != TransactionStatus.InFailedTransactionBlock;
-                Connector.ExecuteInternalCommand($"ROLLBACK TO SAVEPOINT {name}", withTimeout);
-            } finally {
-                // The rollback may change the value of statement_value, set to unknown
-                Connection.Connector.SetBackendTimeoutToUnknown();
-            }
+            Connector.ExecuteInternalCommand($"ROLLBACK TO SAVEPOINT {name}");
         }
 
         /// <summary>

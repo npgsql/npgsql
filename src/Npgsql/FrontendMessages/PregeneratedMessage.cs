@@ -81,12 +81,6 @@ namespace Npgsql.FrontendMessages
             DiscardAll                = BuildQuery("DISCARD ALL");
             UnlistenAll               = BuildQuery("UNLISTEN *");
             KeepAlive                 = BuildQuery("SELECT NULL");
-            SetStmtTimeout10Sec       = BuildQuery("SET statement_timeout = 10000");
-            SetStmtTimeout20Sec       = BuildQuery("SET statement_timeout = 20000");
-            SetStmtTimeout30Sec       = BuildQuery("SET statement_timeout = 30000");
-            SetStmtTimeout60Sec       = BuildQuery("SET statement_timeout = 60000");
-            SetStmtTimeout90Sec       = BuildQuery("SET statement_timeout = 90000");
-            SetStmtTimeout120Sec      = BuildQuery("SET statement_timeout = 120000");
 
             _tempBuf = null;
             _tempQuery = null;
@@ -114,11 +108,5 @@ namespace Npgsql.FrontendMessages
         internal static readonly PregeneratedMessage DiscardAll;
         internal static readonly PregeneratedMessage UnlistenAll;
         internal static readonly PregeneratedMessage KeepAlive;
-        internal static readonly PregeneratedMessage SetStmtTimeout10Sec;
-        internal static readonly PregeneratedMessage SetStmtTimeout20Sec;
-        internal static readonly PregeneratedMessage SetStmtTimeout30Sec;
-        internal static readonly PregeneratedMessage SetStmtTimeout60Sec;
-        internal static readonly PregeneratedMessage SetStmtTimeout90Sec;
-        internal static readonly PregeneratedMessage SetStmtTimeout120Sec;
     }
 }

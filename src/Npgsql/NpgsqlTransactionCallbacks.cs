@@ -115,22 +115,10 @@ namespace Npgsql
             Log.Debug("Rollback transaction");
             NpgsqlConnection connection = GetConnection();
 
-            try
-            {
-                if (_prepared)
-                {
-                    connection.Connector.ExecuteInternalCommand($"ROLLBACK PREPARED '{_txName}'");
-                }
-                else
-                {
-                    connection.Connector.ExecuteInternalCommand(PregeneratedMessage.RollbackTransaction);
-                }
-            }
-            finally
-            {
-                // The rollback may change the value of statement_value, set to unknown
-                connection.Connector.SetBackendTimeoutToUnknown();
-            }
+            if (_prepared)
+                connection.Connector.ExecuteInternalCommand($"ROLLBACK PREPARED '{_txName}'");
+            else
+                connection.Connector.ExecuteInternalCommand(PregeneratedMessage.RollbackTransaction);
         }
 
 #endregion

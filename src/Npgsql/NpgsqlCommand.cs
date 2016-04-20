@@ -607,10 +607,7 @@ namespace Npgsql
                 // from the Prepare phase (no need to send anything).
                 if (!IsPrepared || (behavior & CommandBehavior.SchemaOnly) == 0)
                 {
-                    // Set the frontend timeout
-                    _connector.UserCommandFrontendTimeout = CommandTimeout;
-                    // If needed, prepend a "SET statement_timeout" message to set the backend timeout
-                    _connector.PrependBackendTimeoutMessage(CommandTimeout);
+                    _connector.UserTimeout = CommandTimeout * 1000;
 
                     _sendState = SendState.Start;
                     _writeStatementIndex = 0;
