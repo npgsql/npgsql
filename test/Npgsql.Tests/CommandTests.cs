@@ -1051,27 +1051,6 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test]
-        [IssueLink("https://github.com/npgsql/npgsql/issues/400")]
-        public void ExceptionThrownFromExecuteQuery([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
-        {
-            using (var conn = OpenConnection())
-            {
-                conn.ExecuteNonQuery(@"
-                     CREATE OR REPLACE FUNCTION pg_temp.emit_exception() RETURNS VOID AS
-                        'BEGIN RAISE EXCEPTION ''testexception'' USING ERRCODE = ''12345''; END;'
-                     LANGUAGE 'plpgsql';
-                ");
-
-                using (var cmd = new NpgsqlCommand("SELECT pg_temp.emit_exception()", conn))
-                {
-                    if (prepare == PrepareOrNot.Prepared)
-                        cmd.Prepare();
-                    Assert.That(() => cmd.ExecuteReader(), Throws.Exception.TypeOf<NpgsqlException>());
-                }
-            }
-        }
-
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/831")]
         [Timeout(10000)]
         public void ManyParameters()

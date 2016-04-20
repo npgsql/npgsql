@@ -227,7 +227,7 @@ namespace Npgsql
                 }
 
                 var reader = new NpgsqlDataReader(this, behavior, _statements);
-                await reader.InitAsync(cancellationToken);
+                await reader.NextResultAsync(cancellationToken);
                 _connector.CurrentReader = reader;
                 return reader;
             }
@@ -790,31 +790,6 @@ namespace Npgsql
     /// </summary>
     public partial class NpgsqlDataReader
     {
-        internal async Task InitAsync(CancellationToken cancellationToken)
-        {
-            if (!await (NextResultAsync(cancellationToken)))
-            {
-                // No resultsets at all, the below is irrelevant
-                return;
-            }
-
-            // If we have any output parameters, we need to read the first data row (in non-sequential mode)
-            // and extract them
-            if (Command.Parameters.Any(p => p.IsOutputDirection))
-                PopulateOutputParameters();
-            else
-            {
-                // If the query generated an error, we want an exception thrown here (i.e. from ExecuteQuery).
-                // So read the first message
-                // Note this isn't necessary if we're in SchemaOnly mode (we don't execute the query so no error
-                // is possible). Also, if we have output parameters as we already read the first message above.
-                if (!IsSchemaOnly)
-                {
-                    _pendingMessage = await (ReadMessageAsync(cancellationToken));
-                }
-            }
-        }
-
         async Task<bool> ReadInternalAsync(CancellationToken cancellationToken)
         {
             if (_row != null)
@@ -949,7 +924,19 @@ namespace Npgsql
                         continue;
                     }
 
-                    // We got a new resultset
+                    // We got a new resultset.
+                    // Read the next message and store it in _pendingRow, this is to make sure that if the
+                    // statement generated an error, it gets thrown here and not on the first call to Read().
+                    if (_statementIndex == 0 && Command.Parameters.Any(p => p.IsOutputDirection))
+                    {
+                        // If output parameters are present and this is the first row of the first resultset,
+                        // we must read it in non-sequential mode because it will be traversed twice (once
+                        // here for the parameters, then as a regular row).
+                        _pendingMessage = await (_connector.ReadSingleMessageAsync(DataRowLoadingMode.NonSequential, cancellationToken));
+                        PopulateOutputParameters();
+                    }
+                    else
+                        _pendingMessage = await (_connector.ReadSingleMessageAsync(IsSequential ? DataRowLoadingMode.Sequential : DataRowLoadingMode.NonSequential, cancellationToken));
                     _state = ReaderState.InResult;
                     return true;
                 }

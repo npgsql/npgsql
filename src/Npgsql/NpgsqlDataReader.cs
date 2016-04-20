@@ -129,32 +129,6 @@ namespace Npgsql
                 _rowCache = new RowCache();
         }
 
-        [RewriteAsync]
-        internal void Init()
-        {
-            if (!NextResult())
-            {
-                // No resultsets at all, the below is irrelevant
-                return;
-            }
-
-            // If we have any output parameters, we need to read the first data row (in non-sequential mode)
-            // and extract them
-            if (Command.Parameters.Any(p => p.IsOutputDirection))
-                PopulateOutputParameters();
-            else
-            {
-                // If the query generated an error, we want an exception thrown here (i.e. from ExecuteQuery).
-                // So read the first message
-                // Note this isn't necessary if we're in SchemaOnly mode (we don't execute the query so no error
-                // is possible). Also, if we have output parameters as we already read the first message above.
-                if (!IsSchemaOnly)
-                {
-                    _pendingMessage = ReadMessage();
-                }
-            }
-        }
-
         /// <summary>
         /// The first row in a stored procedure command that has output parameters needs to be traversed twice -
         /// once for populating the output parameters and once for the actual result set traversal. So in this
@@ -162,28 +136,20 @@ namespace Npgsql
         /// </summary>
         void PopulateOutputParameters()
         {
-            Contract.Requires(_rowDescription != null);
             Contract.Requires(Command.Parameters.Any(p => p.IsOutputDirection));
+            Contract.Requires(_statementIndex == 0);
+            Contract.Requires(_pendingMessage != null);
+            Contract.Requires(_rowDescription != null);
 
-            while (_row == null)
-            {
-                var msg = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential);
-                switch (msg.Code)
-                {
-                case BackendMessageCode.DataRow:
-                    _pendingMessage = msg;
-                    _row = (DataRowNonSequentialMessage)msg;
-                    break;
-                case BackendMessageCode.CompletedResponse:
-                case BackendMessageCode.EmptyQueryResponse:
-                    _pendingMessage = msg;
-                    return;
-                default:
-                    throw new ArgumentOutOfRangeException("Unexpected message type while populating output parameter: " + msg.Code);
-                }
-            }
+            var asDataRow = _pendingMessage as DataRowMessage;
+            if (asDataRow == null) // The first resultset was empty
+                return;
+            Contract.Assume(asDataRow is DataRowNonSequentialMessage);
+            Contract.Assume(asDataRow.NumColumns == _rowDescription.NumFields);
 
-            Contract.Assume(_rowDescription.NumFields == _row.NumColumns);
+            // Temporarily set _row to the pending data row in order to retrieve the values
+            _row = asDataRow;
+
             if (IsCaching) { _rowCache.Clear(); }
 
             var pending = new Queue<NpgsqlParameter>();
@@ -210,6 +176,8 @@ namespace Npgsql
                     pending.Dequeue().Value = GetValue(i);
                 }
             }
+
+            _row = null;
         }
 
         #region Read
@@ -453,7 +421,21 @@ namespace Npgsql
                         continue;
                     }
 
-                    // We got a new resultset
+                    // We got a new resultset.
+
+                    // Read the next message and store it in _pendingRow, this is to make sure that if the
+                    // statement generated an error, it gets thrown here and not on the first call to Read().
+                    if (_statementIndex == 0 && Command.Parameters.Any(p => p.IsOutputDirection))
+                    {
+                        // If output parameters are present and this is the first row of the first resultset,
+                        // we must read it in non-sequential mode because it will be traversed twice (once
+                        // here for the parameters, then as a regular row).
+                        _pendingMessage = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential);
+                        PopulateOutputParameters();
+                    }
+                    else
+                        _pendingMessage = _connector.ReadSingleMessage(IsSequential ? DataRowLoadingMode.Sequential : DataRowLoadingMode.NonSequential);
+
                     _state = ReaderState.InResult;
                     return true;
                 }

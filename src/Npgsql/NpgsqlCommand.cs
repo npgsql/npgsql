@@ -618,7 +618,7 @@ namespace Npgsql
                 }
 
                 var reader = new NpgsqlDataReader(this, behavior, _statements);
-                reader.Init();
+                reader.NextResult();
                 _connector.CurrentReader = reader;
                 return reader;
             }
