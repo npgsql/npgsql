@@ -492,6 +492,7 @@ namespace Npgsql
                     _pendingMessage = null;
                     return msg;
                 }
+                (_pendingMessage as DataRowMessage)?.Consume();
                 _pendingMessage = null;
             }
             return _connector.SkipUntil(stopAt);
@@ -506,6 +507,7 @@ namespace Npgsql
                     _pendingMessage = null;
                     return msg;
                 }
+                (_pendingMessage as DataRowMessage)?.Consume();
                 _pendingMessage = null;
             }
             return _connector.SkipUntil(stopAt1, stopAt2);

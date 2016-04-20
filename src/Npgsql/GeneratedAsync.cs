@@ -204,7 +204,7 @@ namespace Npgsql
             while (count > 0)
             {
                 var toRead = Size - _filledBytes;
-                var read = (await Underlying.ReadAsync(_buf, _filledBytes, toRead, cancellationToken));
+                var read = await (Underlying.ReadAsync(_buf, _filledBytes, toRead, cancellationToken));
                 if (read == 0)
                 {
                     throw new EndOfStreamException();
@@ -285,7 +285,7 @@ namespace Npgsql
             Clear();
             while (totalRead < len)
             {
-                var read = (await Underlying.ReadAsync(output, offset, len - totalRead, cancellationToken));
+                var read = await (Underlying.ReadAsync(output, offset, len - totalRead, cancellationToken));
                 if (read == 0)
                 {
                     throw new EndOfStreamException();
@@ -321,7 +321,7 @@ namespace Npgsql
                     if ((behavior & CommandBehavior.SchemaOnly) == 0)
                     {
                         // No binding in SchemaOnly mode
-                        var msg = (await _connector.ReadSingleMessageAsync(DataRowLoadingMode.NonSequential, cancellationToken));
+                        var msg = await (_connector.ReadSingleMessageAsync(DataRowLoadingMode.NonSequential, cancellationToken));
                         Contract.Assert(msg is BindCompleteMessage);
                     }
                 }
@@ -330,7 +330,7 @@ namespace Npgsql
                     IBackendMessage msg;
                     do
                     {
-                        msg = (await _connector.ReadSingleMessageAsync(DataRowLoadingMode.NonSequential, cancellationToken));
+                        msg = await (_connector.ReadSingleMessageAsync(DataRowLoadingMode.NonSequential, cancellationToken));
                         Contract.Assert(msg != null);
                     }
                     while (!ProcessMessageForUnprepared(msg, behavior));
@@ -356,7 +356,7 @@ namespace Npgsql
             {
                 ValidateAndCreateMessages();
                 NpgsqlDataReader reader;
-                using (reader = (await ExecuteAsync(cancellationToken)))
+                using (reader = await (ExecuteAsync(cancellationToken)))
                 {
                     while (await reader.NextResultAsync(cancellationToken))
                     {
@@ -377,7 +377,7 @@ namespace Npgsql
                 ValidateAndCreateMessages(behavior);
                 using (var reader = Execute(behavior))
                 {
-                    return (await reader.ReadAsync(cancellationToken)) && reader.FieldCount != 0 ? reader.GetValue(0) : null;
+                    return await (reader.ReadAsync(cancellationToken)) && reader.FieldCount != 0 ? reader.GetValue(0) : null;
                 }
             }
         }
@@ -634,7 +634,7 @@ namespace Npgsql
             Log.Trace("Authenticating...", Id);
             while (true)
             {
-                var msg = (await ReadSingleMessageAsync(DataRowLoadingMode.NonSequential, cancellationToken));
+                var msg = await (ReadSingleMessageAsync(DataRowLoadingMode.NonSequential, cancellationToken));
                 timeout.Check();
                 switch (msg.Code)
                 {
@@ -725,7 +725,7 @@ namespace Npgsql
                     SetFrontendTimeout(ActualInternalCommandTimeout);
                     while (_sentRfqPrependedMessages > 0)
                     {
-                        var msg = (await DoReadSingleMessageAsync(cancellationToken, DataRowLoadingMode.Skip, isPrependedMessage: true));
+                        var msg = await (DoReadSingleMessageAsync(cancellationToken, DataRowLoadingMode.Skip, isPrependedMessage: true));
                         if (msg is ReadyForQueryMessage)
                         {
                             _sentRfqPrependedMessages--;
@@ -786,7 +786,7 @@ namespace Npgsql
                 }
                 else if (len > Buffer.ReadBytesLeft)
                 {
-                    buf = (await buf.EnsureOrAllocateTempAsync(len, cancellationToken));
+                    buf = await (buf.EnsureOrAllocateTempAsync(len, cancellationToken));
                 }
 
                 var msg = ParseServerMessage(buf, messageCode, len, dataRowLoadingMode, isPrependedMessage);
@@ -835,7 +835,7 @@ namespace Npgsql
             Contract.Requires(stopAt != BackendMessageCode.DataRow, "Shouldn't be used for rows, doesn't know about sequential");
             while (true)
             {
-                var msg = (await ReadSingleMessageAsync(DataRowLoadingMode.Skip, cancellationToken));
+                var msg = await (ReadSingleMessageAsync(DataRowLoadingMode.Skip, cancellationToken));
                 Contract.Assert(!(msg is DataRowMessage));
                 if (msg.Code == stopAt)
                 {
@@ -850,7 +850,7 @@ namespace Npgsql
             Contract.Requires(stopAt2 != BackendMessageCode.DataRow, "Shouldn't be used for rows, doesn't know about sequential");
             while (true)
             {
-                var msg = (await ReadSingleMessageAsync(DataRowLoadingMode.Skip, cancellationToken));
+                var msg = await (ReadSingleMessageAsync(DataRowLoadingMode.Skip, cancellationToken));
                 Contract.Assert(!(msg is DataRowMessage));
                 if (msg.Code == stopAt1 || msg.Code == stopAt2)
                 {
@@ -861,7 +861,7 @@ namespace Npgsql
 
         internal async Task<T> ReadExpectingAsync<T>(CancellationToken cancellationToken)where T : class, IBackendMessage
         {
-            var msg = (await ReadSingleMessageAsync(DataRowLoadingMode.NonSequential, cancellationToken));
+            var msg = await (ReadSingleMessageAsync(DataRowLoadingMode.NonSequential, cancellationToken));
             var asExpected = msg as T;
             if (asExpected == null)
             {
@@ -918,7 +918,7 @@ namespace Npgsql
                 // This happens if the first (or only) statement does not return a resultset (e.g. INSERT).
                 // At the end of Init the reader should be positioned at the beginning of the first resultset,
                 // so we seek it here.
-                if (!(await NextResultAsync(cancellationToken)))
+                if (!await (NextResultAsync(cancellationToken)))
                 {
                     // No resultsets at all
                     return;
@@ -939,7 +939,7 @@ namespace Npgsql
                 // is possible). Also, if we have output parameters as we already read the first message above.
                 if (!IsSchemaOnly)
                 {
-                    _pendingMessage = (await ReadMessageAsync(cancellationToken));
+                    _pendingMessage = await (ReadMessageAsync(cancellationToken));
                 }
             }
         }
@@ -974,7 +974,7 @@ namespace Npgsql
 
                 while (true)
                 {
-                    var msg = (await ReadMessageAsync(cancellationToken));
+                    var msg = await (ReadMessageAsync(cancellationToken));
                     switch (ProcessMessage(msg))
                     {
                         case ReadResult.RowRead:
@@ -1012,7 +1012,7 @@ namespace Npgsql
                         }
 
                         // TODO: Duplication with SingleResult handling above
-                        var completedMsg = (await SkipUntilAsync(BackendMessageCode.CompletedResponse, BackendMessageCode.EmptyQueryResponse, cancellationToken));
+                        var completedMsg = await (SkipUntilAsync(BackendMessageCode.CompletedResponse, BackendMessageCode.EmptyQueryResponse, cancellationToken));
                         ProcessMessage(completedMsg);
                         break;
                     case ReaderState.BetweenResults:
@@ -1051,7 +1051,7 @@ namespace Npgsql
                     }
 
                     // Next query has no resultset, read and process its completion message and move on to the next
-                    var completedMsg = (await SkipUntilAsync(BackendMessageCode.CompletedResponse, BackendMessageCode.EmptyQueryResponse, cancellationToken));
+                    var completedMsg = await (SkipUntilAsync(BackendMessageCode.CompletedResponse, BackendMessageCode.EmptyQueryResponse, cancellationToken));
                     ProcessMessage(completedMsg);
                 }
 
@@ -1090,6 +1090,7 @@ namespace Npgsql
                     return msg;
                 }
 
+                await ((_pendingMessage as DataRowMessage)?.ConsumeAsync(cancellationToken));
                 _pendingMessage = null;
             }
 
@@ -1107,6 +1108,7 @@ namespace Npgsql
                     return msg;
                 }
 
+                await ((_pendingMessage as DataRowMessage)?.ConsumeAsync(cancellationToken));
                 _pendingMessage = null;
             }
 
@@ -1130,7 +1132,7 @@ namespace Npgsql
             // Skip over the other result sets, processing only CommandCompleted for RecordsAffected
             while (true)
             {
-                var msg = (await SkipUntilAsync(BackendMessageCode.CompletedResponse, BackendMessageCode.ReadyForQuery, cancellationToken));
+                var msg = await (SkipUntilAsync(BackendMessageCode.CompletedResponse, BackendMessageCode.ReadyForQuery, cancellationToken));
                 switch (msg.Code)
                 {
                     case BackendMessageCode.CompletedResponse:
@@ -1233,7 +1235,7 @@ namespace Npgsql
                 }
             }
 
-            var result = (await ReadColumnWithoutCacheAsync<T>(ordinal, cancellationToken));
+            var result = await (ReadColumnWithoutCacheAsync<T>(ordinal, cancellationToken));
             if (IsCaching)
             {
                 Contract.Assert(cache != null);
@@ -1261,7 +1263,7 @@ namespace Npgsql
                     {Value = argument});
                 }
 
-                return (T)(await command.ExecuteScalarAsync(cancellationToken));
+                return (T)await (command.ExecuteScalarAsync(cancellationToken));
             }
         }
 
@@ -1291,13 +1293,13 @@ namespace Npgsql
 
         public async Task<NpgsqlLargeObjectStream> OpenReadAsync(uint oid, CancellationToken cancellationToken)
         {
-            var fd = (await ExecuteFunctionAsync<int>("lo_open", cancellationToken, (int)oid, INV_READ));
+            var fd = await (ExecuteFunctionAsync<int>("lo_open", cancellationToken, (int)oid, INV_READ));
             return new NpgsqlLargeObjectStream(this, oid, fd, false);
         }
 
         public async Task<NpgsqlLargeObjectStream> OpenReadWriteAsync(uint oid, CancellationToken cancellationToken)
         {
-            var fd = (await ExecuteFunctionAsync<int>("lo_open", cancellationToken, (int)oid, INV_READ | INV_WRITE));
+            var fd = await (ExecuteFunctionAsync<int>("lo_open", cancellationToken, (int)oid, INV_READ | INV_WRITE));
             return new NpgsqlLargeObjectStream(this, oid, fd, true);
         }
 
@@ -1339,7 +1341,7 @@ namespace Npgsql
             int read = 0;
             while (read < count)
             {
-                var bytesRead = (await _manager.ExecuteFunctionGetBytesAsync("loread", buffer, offset + read, count - read, cancellationToken, _fd, chunkCount));
+                var bytesRead = await (_manager.ExecuteFunctionGetBytesAsync("loread", buffer, offset + read, count - read, cancellationToken, _fd, chunkCount));
                 _pos += bytesRead;
                 read += bytesRead;
                 if (bytesRead < chunkCount)
@@ -1369,7 +1371,7 @@ namespace Npgsql
             while (totalWritten < count)
             {
                 var chunkSize = Math.Min(count - totalWritten, _manager.MaxTransferBlockSize);
-                var bytesWritten = (await _manager.ExecuteFunctionAsync<int>("lowrite", cancellationToken, _fd, new ArraySegment<byte>(buffer, offset + totalWritten, chunkSize)));
+                var bytesWritten = await (_manager.ExecuteFunctionAsync<int>("lowrite", cancellationToken, _fd, new ArraySegment<byte>(buffer, offset + totalWritten, chunkSize)));
                 totalWritten += bytesWritten;
                 if (bytesWritten != chunkSize)
                     throw PGUtil.ThrowIfReached();
@@ -1381,7 +1383,7 @@ namespace Npgsql
         {
             CheckDisposed();
             long old = _pos;
-            long retval = (await SeekAsync(0, SeekOrigin.End, cancellationToken));
+            long retval = await (SeekAsync(0, SeekOrigin.End, cancellationToken));
             if (retval != old)
                 await SeekAsync(old, SeekOrigin.Begin, cancellationToken);
             return retval;
@@ -1396,9 +1398,9 @@ namespace Npgsql
             Contract.EndContractBlock();
             CheckDisposed();
             if (_manager.Has64BitSupport)
-                return _pos = (await _manager.ExecuteFunctionAsync<long>("lo_lseek64", cancellationToken, _fd, offset, (int)origin));
+                return _pos = await (_manager.ExecuteFunctionAsync<long>("lo_lseek64", cancellationToken, _fd, offset, (int)origin));
             else
-                return _pos = (await _manager.ExecuteFunctionAsync<int>("lo_lseek", cancellationToken, _fd, (int)offset, (int)origin));
+                return _pos = await (_manager.ExecuteFunctionAsync<int>("lo_lseek", cancellationToken, _fd, (int)offset, (int)origin));
         }
 
         public async Task FlushAsync(CancellationToken cancellationToken)
@@ -1452,7 +1454,7 @@ namespace Npgsql
             T result;
             try
             {
-                result = (await ReadFullyAsync<T>(row.Buffer, len, cancellationToken, fieldDescription));
+                result = await (ReadFullyAsync<T>(row.Buffer, len, cancellationToken, fieldDescription));
             }
             finally
             {
@@ -1513,7 +1515,7 @@ namespace Npgsql
             connector.TypeHandlerRegistry = new TypeHandlerRegistry(connector);
             BackendTypes types;
             if (!BackendTypeCache.TryGetValue(connector.ConnectionString, out types))
-                types = BackendTypeCache[connector.ConnectionString] = (await LoadBackendTypesAsync(connector, timeout, cancellationToken));
+                types = BackendTypeCache[connector.ConnectionString] = await (LoadBackendTypesAsync(connector, timeout, cancellationToken));
             connector.TypeHandlerRegistry._backendTypes = types;
             connector.TypeHandlerRegistry.ActivateGlobalMappings();
         }
