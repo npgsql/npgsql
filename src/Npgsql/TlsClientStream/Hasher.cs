@@ -20,6 +20,7 @@ namespace TlsClientStream
         {
             switch (hashAlgorithm)
             {
+                case TLSHashAlgorithm.MD5: return HashAlgorithmName.MD5;
                 case TLSHashAlgorithm.SHA1: return HashAlgorithmName.SHA1;
                 case TLSHashAlgorithm.SHA256: return HashAlgorithmName.SHA256;
                 case TLSHashAlgorithm.SHA384: return HashAlgorithmName.SHA384;
@@ -34,6 +35,7 @@ namespace TlsClientStream
             switch (hashAlgorithm)
             {
 #if NET45 || NET451
+                case TLSHashAlgorithm.MD5: return new HashAlgorithmHasher(new MD5CryptoServiceProvider());
                 case TLSHashAlgorithm.SHA1: return new HashAlgorithmHasher(new SHA1CryptoServiceProvider());
                 case TLSHashAlgorithm.SHA256: return new HashAlgorithmHasher(new SHA256CryptoServiceProvider());
                 case TLSHashAlgorithm.SHA384: return new HashAlgorithmHasher(new SHA384CryptoServiceProvider());
@@ -41,6 +43,7 @@ namespace TlsClientStream
                 case TLSHashAlgorithm.MD5SHA1: return new HashAlgorithmHasher(new MD5SHA1());
                 default: throw new NotSupportedException();
 #else
+                case TLSHashAlgorithm.MD5: return new IncrementalHashHasher(HashAlgorithmName.MD5);
                 case TLSHashAlgorithm.SHA1: return new IncrementalHashHasher(HashAlgorithmName.SHA1);
                 case TLSHashAlgorithm.SHA256: return new IncrementalHashHasher(HashAlgorithmName.SHA256);
                 case TLSHashAlgorithm.SHA384: return new IncrementalHashHasher(HashAlgorithmName.SHA384);
