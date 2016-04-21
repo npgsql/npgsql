@@ -945,6 +945,53 @@ namespace Npgsql
             return false;
         }
 
+        async Task<bool> NextResultSchemaOnlyAsync(CancellationToken cancellationToken)
+        {
+            Contract.Requires(IsSchemaOnly);
+            for (_statementIndex++; _statementIndex < _statements.Count; _statementIndex++)
+            {
+                if (IsPrepared)
+                {
+                    // Row descriptions have already been populated in the statement objects at the
+                    // Prepare phase
+                    _rowDescription = _statements[_statementIndex].Description;
+                }
+                else
+                {
+                    await _connector.ReadExpectingAsync<ParseCompleteMessage>(cancellationToken);
+                    await _connector.ReadExpectingAsync<ParameterDescriptionMessage>(cancellationToken);
+                    var msg = await (_connector.ReadSingleMessageAsync(DataRowLoadingMode.NonSequential, cancellationToken));
+                    switch (msg.Code)
+                    {
+                        case BackendMessageCode.NoData:
+                            _rowDescription = _statements[_statementIndex].Description = null;
+                            break;
+                        case BackendMessageCode.RowDescription:
+                            // We have a resultset
+                            _rowDescription = _statements[_statementIndex].Description = (RowDescriptionMessage)msg;
+                            break;
+                        default:
+                            throw _connector.UnexpectedMessageReceived(msg.Code);
+                    }
+                }
+
+                if (_rowDescription != null)
+                {
+                    // Found a resultset
+                    return true;
+                }
+            }
+
+            // There are no more queries, we're done. Read to the RFQ.
+            if (!IsPrepared)
+            {
+                ProcessMessage(_connector.ReadExpecting<ReadyForQueryMessage>());
+                _rowDescription = null;
+            }
+
+            return false;
+        }
+
         async Task<IBackendMessage> ReadMessageAsync(CancellationToken cancellationToken)
         {
             if (_pendingMessage != null)

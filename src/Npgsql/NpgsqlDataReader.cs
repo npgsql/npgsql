@@ -343,7 +343,7 @@ namespace Npgsql
             try
             {
                 return IsSchemaOnly
-                    ? NextResultSchemaOnly()
+                    ? await NextResultSchemaOnlyAsync(cancellationToken).ConfigureAwait(false)
                     : await NextResultInternalAsync(cancellationToken).ConfigureAwait(false);
             }
             catch (NpgsqlException e)
@@ -469,6 +469,7 @@ namespace Npgsql
         /// Note that in SchemaOnly mode there are no resultsets, and we read nothing from the backend (all
         /// RowDescriptions have already been processed and are available)
         /// </summary>
+        [RewriteAsync]
         bool NextResultSchemaOnly()
         {
             Contract.Requires(IsSchemaOnly);
