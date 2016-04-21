@@ -1091,6 +1091,36 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1037")]
+        public void Statements()
+        {
+            // See also ReaderTests.Statements()
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT) WITH OIDS");
+                using (var cmd = new NpgsqlCommand(
+                    "INSERT INTO data (name) VALUES ('a');" +
+                    "UPDATE data SET name='b' WHERE name='doesnt_exist'",
+                    conn)
+                )
+                {
+                    cmd.ExecuteNonQuery();
+
+                    Assert.That(cmd.Statements, Has.Count.EqualTo(2));
+                    Assert.That(cmd.Statements, Has.Count.EqualTo(2));
+                    Assert.That(cmd.Statements[0].SQL, Is.EqualTo("INSERT INTO data (name) VALUES ('a')"));
+                    Assert.That(cmd.Statements[0].StatementType, Is.EqualTo(StatementType.Insert));
+                    Assert.That(cmd.Statements[0].Rows, Is.EqualTo(1));
+                    Assert.That(cmd.Statements[0].OID, Is.Not.EqualTo(0));
+                    Assert.That(cmd.Statements[1].SQL,
+                        Is.EqualTo("UPDATE data SET name='b' WHERE name='doesnt_exist'"));
+                    Assert.That(cmd.Statements[1].StatementType, Is.EqualTo(StatementType.Update));
+                    Assert.That(cmd.Statements[1].Rows, Is.EqualTo(0));
+                    Assert.That(cmd.Statements[1].OID, Is.EqualTo(0));
+                }
+            }
+        }
+
         public CommandTests(string backendVersion) : base(backendVersion) { }
     }
 }

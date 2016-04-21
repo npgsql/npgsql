@@ -113,6 +113,7 @@ namespace Npgsql.Tests
         [Test]
         public void Statements()
         {
+            // See also CommandTests.Statements()
             using (var conn = OpenConnection())
             {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT) WITH OIDS");
@@ -123,6 +124,7 @@ namespace Npgsql.Tests
                     )
                 using (var reader = cmd.ExecuteReader())
                 {
+                    Assert.That(reader.Statements, Has.Count.EqualTo(2));
                     Assert.That(reader.Statements[0].SQL, Is.EqualTo("INSERT INTO data (name) VALUES ('a')"));
                     Assert.That(reader.Statements[0].StatementType, Is.EqualTo(StatementType.Insert));
                     Assert.That(reader.Statements[0].Rows, Is.EqualTo(1));
@@ -138,6 +140,7 @@ namespace Npgsql.Tests
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.NextResult(); // Consume SELECT result set
+                    Assert.That(reader.Statements, Has.Count.EqualTo(2));
                     Assert.That(reader.Statements[0].SQL, Is.EqualTo("SELECT name FROM data"));
                     Assert.That(reader.Statements[0].StatementType, Is.EqualTo(StatementType.Select));
                     Assert.That(reader.Statements[0].Rows, Is.EqualTo(1));

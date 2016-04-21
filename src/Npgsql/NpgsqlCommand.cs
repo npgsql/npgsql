@@ -71,6 +71,12 @@ namespace Npgsql
 
         List<NpgsqlStatement> _statements;
 
+        /// <summary>
+        /// Returns details about each statement that this command has executed.
+        /// Is only populated when an Execute* method is called.
+        /// </summary>
+        public IReadOnlyList<NpgsqlStatement> Statements => _statements.AsReadOnly();
+
         int _readStatementIndex;
         int _writeStatementIndex;
 
