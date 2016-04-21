@@ -1,4 +1,4 @@
-﻿#if NET45 || NET451 || DNX451
+//#if !DNXCORE50
 #region License
 // The PostgreSQL License
 //
@@ -34,7 +34,7 @@ namespace TlsClientStream
 {
     internal static class RsaPKCS1
     {
-        public static bool VerifyRsaPKCS1(RSACryptoServiceProvider key, byte[] signature, byte[] hash, bool allowNoPadding)
+        public static bool VerifyRsaPKCS1(RSA key, byte[] signature, byte[] hash, bool allowNoPadding)
         {
             var parameters = key.ExportParameters(false);
 
@@ -77,7 +77,7 @@ namespace TlsClientStream
 
             return Utils.ArraysEqual(decryptedArr, decryptedArr.Length - hash.Length, hash, 0, hash.Length);
         }
-        public static byte[] SignRsaPKCS1(RSACryptoServiceProvider key, byte[] hash)
+        public static byte[] SignRsaPKCS1(RSA key, byte[] hash)
         {
             // NOTE: The X509Certificate2 must be initialized with the X509KeyStorageFlags.Exportable flag
             var parameters = key.ExportParameters(true);
@@ -117,4 +117,4 @@ namespace TlsClientStream
         }
     }
 }
-#endif
+//#endif

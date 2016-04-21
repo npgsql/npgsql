@@ -1,4 +1,4 @@
-﻿#if NET45 || NET451 || DNX451
+//#if !DNXCORE50
 #region License
 // The PostgreSQL License
 //
@@ -341,4 +341,4 @@ namespace TlsClientStream
         }
     }
 }
-#endif
+//#endif

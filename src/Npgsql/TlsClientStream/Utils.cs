@@ -1,4 +1,4 @@
-﻿#if NET45 || NET451 || DNX451
+﻿//#if !DNXCORE50
 #region License
 // The PostgreSQL License
 //
@@ -366,10 +366,36 @@ namespace TlsClientStream
             return bigEndian;
         }
 
+#if NET45 || NET451 || NET452 || DNX451
         public static void TransformBlock(this HashAlgorithm hashAlg, byte[] buf, int offset, int len)
         {
             hashAlg.TransformBlock(buf, offset, len, null, 0);
         }
+
+        public static void AppendData(this HashAlgorithm hash, byte[] data, int offset, int len)
+        {
+            hash.TransformBlock(data, offset, len);
+        }
+
+        public static byte[] GetHashAndReset(this HashAlgorithm hash)
+        {
+            byte[] data = hash.TransformFinalBlock(Hasher.EmptyByteArray, 0, 0);
+            hash.Initialize();
+            return data;
+        }
+#endif
+
+        public static byte[] EncryptPkcsPadding(X509Certificate2 cert, byte[] rgb)
+        {
+#if NET45 || NET451 || NET452 || DNX451
+            return ((RSACryptoServiceProvider)cert.PublicKey.Key).Encrypt(rgb, false);
+#else
+            using (var rsa = cert.GetRSAPublicKey())
+            {
+                return rsa.Encrypt(rgb, RSAEncryptionPadding.Pkcs1);
+            }
+#endif
+        }
     }
 }
-#endif
+//#endif
