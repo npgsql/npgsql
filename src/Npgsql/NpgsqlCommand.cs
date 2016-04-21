@@ -515,6 +515,45 @@ namespace Npgsql
 
         #region Query analysis
 
+        static string QuoteObjectName(string name, CommandType cmdType)
+        {
+            if (name == null)
+                throw new ArgumentNullException(nameof(name));
+
+            if (name.Length == 0)
+                throw new ArgumentOutOfRangeException(nameof(name), "Empty string is not a valid name.");
+
+            if (name[0] == '"')
+            {
+                if (name[name.Length - 1] != '"')
+                    throw new ArgumentException(nameof(name));
+
+                for (var i = 1; i < name.Length; i++)
+                {
+                    var c = name[i];
+                    if (c != '"')
+                        continue;
+                    if (++i == name.Length)
+                        break;
+                    c = name[i];
+                    if (c != '"')
+                        throw new ArgumentException(nameof(name));
+                }
+                return name;
+            }
+
+            switch (cmdType)
+            {
+                case CommandType.TableDirect:
+                case CommandType.StoredProcedure:
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(cmdType), $"Can not quote text for {cmdType}.");
+            }
+
+            return "\"" + name.Replace("\"", "\"\"") + "\"";
+        }
+
         void ProcessRawQuery()
         {
             _queries.Clear();
@@ -526,14 +565,14 @@ namespace Npgsql
                 }
                 break;
             case CommandType.TableDirect:
-                _queries.Add(new NpgsqlStatement("SELECT * FROM " + CommandText, new List<NpgsqlParameter>()));
+                _queries.Add(new NpgsqlStatement("SELECT * FROM " + QuoteObjectName(CommandText, CommandType), new List<NpgsqlParameter>()));
                 break;
             case CommandType.StoredProcedure:
                 var inputList = _parameters.Where(p => p.IsInputDirection).ToList();
                 var numInput = inputList.Count;
                 var sb = new StringBuilder();
                 sb.Append("SELECT * FROM ");
-                sb.Append(CommandText);
+                sb.Append(QuoteObjectName(CommandText, CommandType));
                 sb.Append('(');
                 bool hasWrittenFirst = false;
                 for (var i = 1; i <= numInput; i++) {
