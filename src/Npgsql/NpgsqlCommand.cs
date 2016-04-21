@@ -515,7 +515,7 @@ namespace Npgsql
 
         #region Query analysis
 
-        static string QuoteObjectName(string name, CommandType cmdType)
+        static string QuoteIdentifier(string name)
         {
             if (name == null)
                 throw new ArgumentNullException(nameof(name));
@@ -542,15 +542,6 @@ namespace Npgsql
                 return name;
             }
 
-            switch (cmdType)
-            {
-                case CommandType.TableDirect:
-                case CommandType.StoredProcedure:
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(cmdType), $"Can not quote text for {cmdType}.");
-            }
-
             return "\"" + name.Replace("\"", "\"\"") + "\"";
         }
 
@@ -565,14 +556,14 @@ namespace Npgsql
                 }
                 break;
             case CommandType.TableDirect:
-                _queries.Add(new NpgsqlStatement("SELECT * FROM " + QuoteObjectName(CommandText, CommandType), new List<NpgsqlParameter>()));
+                _queries.Add(new NpgsqlStatement("SELECT * FROM " + QuoteIdentifier(CommandText), new List<NpgsqlParameter>()));
                 break;
             case CommandType.StoredProcedure:
                 var inputList = _parameters.Where(p => p.IsInputDirection).ToList();
                 var numInput = inputList.Count;
                 var sb = new StringBuilder();
                 sb.Append("SELECT * FROM ");
-                sb.Append(QuoteObjectName(CommandText, CommandType));
+                sb.Append(QuoteIdentifier(CommandText));
                 sb.Append('(');
                 bool hasWrittenFirst = false;
                 for (var i = 1; i <= numInput; i++) {
@@ -597,9 +588,8 @@ namespace Npgsql
                         {
                             sb.Append(',');
                         }
-                        sb.Append('"');
-                        sb.Append(param.CleanName.Replace("\"", "\"\""));
-                        sb.Append("\" := ");
+                        sb.Append(QuoteIdentifier(param.CleanName));
+                        sb.Append(" := ");
                         sb.Append('$');
                         sb.Append(i);
                         hasWrittenFirst = true;
