@@ -628,6 +628,48 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/967")]
+        public void NpgsqlExceptionReferencesStatement()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery(@"
+                     CREATE OR REPLACE FUNCTION pg_temp.emit_exception() RETURNS VOID AS
+                        'BEGIN RAISE EXCEPTION ''testexception'' USING ERRCODE = ''12345''; END;'
+                     LANGUAGE 'plpgsql';
+                ");
+
+                // Exception in single-statement command
+                using (var cmd = new NpgsqlCommand("SELECT pg_temp.emit_exception()", conn))
+                {
+                    try
+                    {
+                        cmd.ExecuteReader();
+                        Assert.Fail();
+                    }
+                    catch (NpgsqlException e)
+                    {
+                        Assert.That(e.Statement, Is.SameAs(cmd.Statements[0]));
+                    }
+                }
+
+                // Exception in multi-statement command
+                using (var cmd = new NpgsqlCommand("SELECT 1; SELECT pg_temp.emit_exception()", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    try
+                    {
+                        reader.NextResult();
+                        Assert.Fail();
+                    }
+                    catch (NpgsqlException e)
+                    {
+                        Assert.That(e.Statement, Is.SameAs(cmd.Statements[1]));
+                    }
+                }
+            }
+        }
+
         #region GetSchemaTable
 
         [Test]

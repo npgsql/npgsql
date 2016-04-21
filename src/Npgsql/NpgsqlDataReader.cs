@@ -320,7 +320,16 @@ namespace Npgsql
         /// <returns></returns>
         public sealed override bool NextResult()
         {
-            return IsSchemaOnly ? NextResultSchemaOnly() : NextResultInternal();
+            try
+            {
+                return IsSchemaOnly ? NextResultSchemaOnly() : NextResultInternal();
+            }
+            catch (NpgsqlException e)
+            {
+                _state = ReaderState.Consumed;
+                e.Statement = _statements[_statementIndex];
+                throw;
+            }
         }
 
         /// <summary>
@@ -331,7 +340,19 @@ namespace Npgsql
         /// <returns>A task representing the asynchronous operation.</returns>
         public sealed override async Task<bool> NextResultAsync(CancellationToken cancellationToken)
         {
-            return IsSchemaOnly ? NextResultSchemaOnly() : await NextResultInternalAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                return IsSchemaOnly
+                    ? NextResultSchemaOnly()
+                    : await NextResultInternalAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (NpgsqlException e)
+            {
+                _state = ReaderState.Consumed;
+                e.Statement = _statements[_statementIndex];
+                throw;
+            }
+
         }
 
         [RewriteAsync]
@@ -340,116 +361,108 @@ namespace Npgsql
             Contract.Requires(!IsSchemaOnly);
             // Contract.Ensures(Command.CommandType != CommandType.StoredProcedure || Contract.Result<bool>() == false);
 
-            try
+            // If we're in the middle of a resultset, consume it
+            switch (_state)
             {
-                // If we're in the middle of a resultset, consume it
-                switch (_state)
-                {
-                    case ReaderState.InResult:
-                        if (_row != null) {
-                            _row.Consume();
-                            _row = null;
-                        }
+                case ReaderState.InResult:
+                    if (_row != null) {
+                        _row.Consume();
+                        _row = null;
+                    }
 
-                        // TODO: Duplication with SingleResult handling above
-                        var completedMsg = SkipUntil(BackendMessageCode.CompletedResponse, BackendMessageCode.EmptyQueryResponse);
-                        ProcessMessage(completedMsg);
-                        break;
+                    // TODO: Duplication with SingleResult handling above
+                    var completedMsg = SkipUntil(BackendMessageCode.CompletedResponse, BackendMessageCode.EmptyQueryResponse);
+                    ProcessMessage(completedMsg);
+                    break;
 
-                    case ReaderState.BetweenResults:
-                        break;
+                case ReaderState.BetweenResults:
+                    break;
 
-                    case ReaderState.Consumed:
-                    case ReaderState.Closed:
-                        return false;
-                    default:
-                        throw new ArgumentOutOfRangeException();
-                }
+                case ReaderState.Consumed:
+                case ReaderState.Closed:
+                    return false;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
 
-                Contract.Assert(_state == ReaderState.BetweenResults);
-                _hasRows = null;
+            Contract.Assert(_state == ReaderState.BetweenResults);
+            _hasRows = null;
 #if NET45 || NET451 || DNX451
-                _cachedSchemaTable = null;
+            _cachedSchemaTable = null;
 #endif
 
-                if ((_behavior & CommandBehavior.SingleResult) != 0 && _statementIndex == 0)
-                {
-                    if (_state == ReaderState.BetweenResults)
-                        Consume();
-                    return false;
-                }
-
-                // We are now at the end of the previous result set. Read up to the next result set, if any.
-                // Non-prepared statements receive ParseComplete, BindComplete, DescriptionRow/NoData,
-                // prepared statements receive only BindComplete
-                for (_statementIndex++; _statementIndex < _statements.Count; _statementIndex++)
-                {
-                    if (IsPrepared)
-                    {
-                        _connector.ReadExpecting<BindCompleteMessage>();
-                        // Row descriptions have already been populated in the statement objects at the
-                        // Prepare phase
-                        _rowDescription = _statements[_statementIndex].Description;
-                    }
-                    else  // Non-prepared flow
-                    {
-                        _connector.ReadExpecting<ParseCompleteMessage>();
-                        _connector.ReadExpecting<BindCompleteMessage>();
-                        var msg = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential);
-                        switch (msg.Code)
-                        {
-                        case BackendMessageCode.NoData:
-                            _rowDescription = _statements[_statementIndex].Description = null;
-                            break;
-                        case BackendMessageCode.RowDescription:
-                            // We have a resultset
-                            _rowDescription = _statements[_statementIndex].Description = (RowDescriptionMessage)msg;
-                            break;
-                        default:
-                            throw _connector.UnexpectedMessageReceived(msg.Code);
-                        }
-                    }
-
-                    if (_rowDescription == null)
-                    {
-                        // Statement did not generate a resultset (e.g. INSERT)
-                        // Read and process its completion message and move on to the next
-                        var msg = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential);
-                        if (msg.Code != BackendMessageCode.CompletedResponse && msg.Code != BackendMessageCode.EmptyQueryResponse)
-                            throw _connector.UnexpectedMessageReceived(msg.Code);
-                        ProcessMessage(msg);
-                        continue;
-                    }
-
-                    // We got a new resultset.
-
-                    // Read the next message and store it in _pendingRow, this is to make sure that if the
-                    // statement generated an error, it gets thrown here and not on the first call to Read().
-                    if (_statementIndex == 0 && Command.Parameters.Any(p => p.IsOutputDirection))
-                    {
-                        // If output parameters are present and this is the first row of the first resultset,
-                        // we must read it in non-sequential mode because it will be traversed twice (once
-                        // here for the parameters, then as a regular row).
-                        _pendingMessage = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential);
-                        PopulateOutputParameters();
-                    }
-                    else
-                        _pendingMessage = _connector.ReadSingleMessage(IsSequential ? DataRowLoadingMode.Sequential : DataRowLoadingMode.NonSequential);
-
-                    _state = ReaderState.InResult;
-                    return true;
-                }
-
-                // There are no more queries, we're done. Read to the RFQ.
-                ProcessMessage(_connector.ReadExpecting<ReadyForQueryMessage>());
-                _rowDescription = null;
+            if ((_behavior & CommandBehavior.SingleResult) != 0 && _statementIndex == 0)
+            {
+                if (_state == ReaderState.BetweenResults)
+                    Consume();
                 return false;
             }
-            catch (NpgsqlException)
+
+            // We are now at the end of the previous result set. Read up to the next result set, if any.
+            // Non-prepared statements receive ParseComplete, BindComplete, DescriptionRow/NoData,
+            // prepared statements receive only BindComplete
+            for (_statementIndex++; _statementIndex < _statements.Count; _statementIndex++)
             {
-                _state = ReaderState.Consumed;
-                throw;
+                if (IsPrepared)
+                {
+                    _connector.ReadExpecting<BindCompleteMessage>();
+                    // Row descriptions have already been populated in the statement objects at the
+                    // Prepare phase
+                    _rowDescription = _statements[_statementIndex].Description;
+                }
+                else  // Non-prepared flow
+                {
+                    _connector.ReadExpecting<ParseCompleteMessage>();
+                    _connector.ReadExpecting<BindCompleteMessage>();
+                    var msg = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential);
+                    switch (msg.Code)
+                    {
+                    case BackendMessageCode.NoData:
+                        _rowDescription = _statements[_statementIndex].Description = null;
+                        break;
+                    case BackendMessageCode.RowDescription:
+                        // We have a resultset
+                        _rowDescription = _statements[_statementIndex].Description = (RowDescriptionMessage)msg;
+                        break;
+                    default:
+                        throw _connector.UnexpectedMessageReceived(msg.Code);
+                    }
+                }
+
+                if (_rowDescription == null)
+                {
+                    // Statement did not generate a resultset (e.g. INSERT)
+                    // Read and process its completion message and move on to the next
+                    var msg = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential);
+                    if (msg.Code != BackendMessageCode.CompletedResponse && msg.Code != BackendMessageCode.EmptyQueryResponse)
+                        throw _connector.UnexpectedMessageReceived(msg.Code);
+                    ProcessMessage(msg);
+                    continue;
+                }
+
+                // We got a new resultset.
+
+                // Read the next message and store it in _pendingRow, this is to make sure that if the
+                // statement generated an error, it gets thrown here and not on the first call to Read().
+                if (_statementIndex == 0 && Command.Parameters.Any(p => p.IsOutputDirection))
+                {
+                    // If output parameters are present and this is the first row of the first resultset,
+                    // we must read it in non-sequential mode because it will be traversed twice (once
+                    // here for the parameters, then as a regular row).
+                    _pendingMessage = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential);
+                    PopulateOutputParameters();
+                }
+                else
+                    _pendingMessage = _connector.ReadSingleMessage(IsSequential ? DataRowLoadingMode.Sequential : DataRowLoadingMode.NonSequential);
+
+                _state = ReaderState.InResult;
+                return true;
             }
+
+            // There are no more queries, we're done. Read to the RFQ.
+            ProcessMessage(_connector.ReadExpecting<ReadyForQueryMessage>());
+            _rowDescription = null;
+            return false;
         }
 
         /// <summary>

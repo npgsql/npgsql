@@ -53,7 +53,7 @@ namespace Npgsql
         readonly ErrorOrNoticeMessage _msg;
         Dictionary<string, object> _data;
 
-#region Message Fields
+        #region Message Fields
 
         /// <summary>
         /// Severity of the error or notice.
@@ -204,6 +204,11 @@ namespace Npgsql
         /// Gets a the PostgreSQL error message and code.
         /// </summary>
         public override string Message => Code + ": " + MessageText;
+
+        /// <summary>
+        /// Returns the statement which triggered this exception.
+        /// </summary>
+        public NpgsqlStatement Statement { get; internal set; }
 
         /// <summary>
         /// Gets a collection of key/value pairs that provide additional PostgreSQL fields about the exception.
