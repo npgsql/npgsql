@@ -175,11 +175,21 @@ namespace Npgsql
             using (var c = new NpgsqlCommand(query, command.Connection))
             {
                 c.Parameters.Add(new NpgsqlParameter("proname", NpgsqlDbType.Text));
-                c.Parameters[0].Value = procedureName.Replace("\"", "").Trim();
+                var m = NpgsqlCommand.IdentifierRegex.Match(procedureName);
+                var g1 = m.Groups[1];
+                if (g1.Success)
+                    c.Parameters[0].Value = g1.Value.Replace("\"\"", "\"");
+                else
+                    c.Parameters[0].Value = procedureName;
                 if (fullName.Length > 1 && !string.IsNullOrEmpty(schemaName))
                 {
                     var prm = c.Parameters.Add(new NpgsqlParameter("nspname", NpgsqlDbType.Text));
-                    prm.Value = schemaName.Replace("\"", "").Trim();
+                    m = NpgsqlCommand.IdentifierRegex.Match(schemaName);
+                    g1 = m.Groups[1];
+                    if (g1.Success)
+                        prm.Value = g1.Value.Replace("\"\"", "\"");
+                    else
+                        prm.Value = schemaName;
                 }
 
                 string[] names = null;
@@ -281,7 +291,7 @@ namespace Npgsql
         /// </returns>
         public new NpgsqlCommand GetInsertCommand(bool useColumnsForParameterNames)
         {
-            NpgsqlCommand cmd = (NpgsqlCommand) base.GetInsertCommand(useColumnsForParameterNames);
+            NpgsqlCommand cmd = (NpgsqlCommand)base.GetInsertCommand(useColumnsForParameterNames);
             cmd.UpdatedRowSource = UpdateRowSource.None;
             return cmd;
         }
@@ -341,7 +351,7 @@ namespace Npgsql
         /// </returns>
         public new NpgsqlCommand GetDeleteCommand(bool useColumnsForParameterNames)
         {
-            NpgsqlCommand cmd = (NpgsqlCommand) base.GetDeleteCommand(useColumnsForParameterNames);
+            NpgsqlCommand cmd = (NpgsqlCommand)base.GetDeleteCommand(useColumnsForParameterNames);
             cmd.UpdatedRowSource = UpdateRowSource.None;
             return cmd;
         }

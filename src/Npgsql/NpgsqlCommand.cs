@@ -70,7 +70,7 @@ namespace Npgsql
         /// </summary>
         public const int MaxStatements = 5000;
 
-        internal const string IdentifierPattern = @"[_a-z]\w*|""([^""]|(?:""""))+""";
+        internal const string IdentifierPattern = @"[_a-z]\w*|""((?:[^""]|"""")+)""";
 
         #endregion
 
