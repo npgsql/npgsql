@@ -133,6 +133,9 @@ namespace Npgsql
             }
         }
 
+        static string UnescapePGIdentifier(string identifier)
+            => identifier.Replace("\"\"", "\"");
+
         private static void DoDeriveParameters(NpgsqlCommand command)
         {
             // See http://www.postgresql.org/docs/current/static/catalog-pg-proc.html
@@ -143,15 +146,18 @@ namespace Npgsql
             string query;
             string procedureName;
             string schemaName = null;
-            var fullName = command.CommandText.Split('.');
-            if (fullName.Length > 1 && fullName[0].Length > 0)
+            var cmdText = command.CommandText;
+            var m = NpgsqlCommand.PGSchemeNameRegex.Match(cmdText);
+            var g1 = m.Groups[1];
+            if (m.Success)
             {
                 // proargsmodes is supported for Postgresql 8.1 and above
                 query = serverVersion >= new Version(8, 1, 0)
                     ? "select proargnames, proargtypes, proallargtypes, proargmodes from pg_proc p left join pg_namespace n on p.pronamespace = n.oid where proname=:proname and n.nspname=:nspname"
                     : "select proargnames, proargtypes from pg_proc p left join pg_namespace n on p.pronamespace = n.oid where proname=:proname and n.nspname=:nspname";
-                schemaName = (fullName[0].IndexOf("\"") != -1) ? fullName[0] : fullName[0].ToLower();
-                procedureName = (fullName[1].IndexOf("\"") != -1) ? fullName[1] : fullName[1].ToLower();
+                var g2 = m.Groups[2];
+                schemaName = g2.Success ? UnescapePGIdentifier(g2.Value) : g1.Value;
+                procedureName = cmdText.Substring(m.Value.Length);
 
                 // The pg_temp pseudo-schema is special - it's an alias to a real schema name (e.g. pg_temp_2).
                 // We get the real name with pg_my_temp_schema().
@@ -169,17 +175,21 @@ namespace Npgsql
                 query = serverVersion >= new Version(8, 1, 0)
                     ? "select proargnames, proargtypes, proallargtypes, proargmodes from pg_proc where proname = :proname"
                     : "select proargnames, proargtypes from pg_proc where proname = :proname";
-                procedureName = (fullName[0].IndexOf("\"") != -1) ? fullName[0] : fullName[0].ToLower();
+                procedureName = cmdText;
             }
 
             using (var c = new NpgsqlCommand(query, command.Connection))
             {
                 c.Parameters.Add(new NpgsqlParameter("proname", NpgsqlDbType.Text));
-                c.Parameters[0].Value = procedureName.Replace("\"", "").Trim();
-                if (fullName.Length > 1 && !string.IsNullOrEmpty(schemaName))
+                m = NpgsqlCommand.PGIdentifierRegex.Match(procedureName);
+                g1 = m.Groups[1];
+                c.Parameters[0].Value = g1.Success ? UnescapePGIdentifier(g1.Value) : procedureName;
+                if (schemaName != null)
                 {
                     var prm = c.Parameters.Add(new NpgsqlParameter("nspname", NpgsqlDbType.Text));
-                    prm.Value = schemaName.Replace("\"", "").Trim();
+                    m = NpgsqlCommand.PGIdentifierRegex.Match(schemaName);
+                    g1 = m.Groups[1];
+                    prm.Value = g1.Success ? UnescapePGIdentifier(g1.Value) : schemaName;
                 }
 
                 string[] names = null;
@@ -207,7 +217,7 @@ namespace Npgsql
                         }
                     }
                     else
-                        throw new InvalidOperationException($"{command.CommandText} does not exist in pg_proc");
+                        throw new InvalidOperationException($"{cmdText} does not exist in pg_proc");
                 }
 
                 command.Parameters.Clear();
@@ -281,7 +291,7 @@ namespace Npgsql
         /// </returns>
         public new NpgsqlCommand GetInsertCommand(bool useColumnsForParameterNames)
         {
-            NpgsqlCommand cmd = (NpgsqlCommand) base.GetInsertCommand(useColumnsForParameterNames);
+            NpgsqlCommand cmd = (NpgsqlCommand)base.GetInsertCommand(useColumnsForParameterNames);
             cmd.UpdatedRowSource = UpdateRowSource.None;
             return cmd;
         }
@@ -341,7 +351,7 @@ namespace Npgsql
         /// </returns>
         public new NpgsqlCommand GetDeleteCommand(bool useColumnsForParameterNames)
         {
-            NpgsqlCommand cmd = (NpgsqlCommand) base.GetDeleteCommand(useColumnsForParameterNames);
+            NpgsqlCommand cmd = (NpgsqlCommand)base.GetDeleteCommand(useColumnsForParameterNames);
             cmd.UpdatedRowSource = UpdateRowSource.None;
             return cmd;
         }

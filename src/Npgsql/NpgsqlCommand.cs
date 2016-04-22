@@ -39,6 +39,7 @@ using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
 using Npgsql.Logging;
+using System.Text.RegularExpressions;
 
 namespace Npgsql
 {
@@ -57,7 +58,28 @@ namespace Npgsql
     public sealed partial class NpgsqlCommand : DbCommand, ICloneable
 #endif
     {
+        #region Constants
+
+        internal const int DefaultTimeout = 30;
+
+        /// <summary>
+        /// Specifies the maximum number of statements we allow in a multiquery, separated by semicolons.
+        /// We limit this because of deadlocks: as we send Parse and Bind messages to the backend, the backend
+        /// replies with ParseComplete and BindComplete messages which we do not read until we finished sending
+        /// all messages. Once our buffer gets full the backend will get stuck writing, and then so will we.
+        /// </summary>
+        public const int MaxStatements = 5000;
+
+        internal const string PGQuotedIdentifierPattern = "\"((?:[^\"]|\"\")+)\"";
+        internal const string PGIdentifierPattern = @"[_a-z]\w*|" + PGQuotedIdentifierPattern;
+
+        #endregion
+
         #region Fields
+
+        internal static readonly Regex PGIdentifierRegex = new Regex($"^(?:{PGIdentifierPattern})$", RegexOptions.ECMAScript);
+        internal static readonly Regex PGSchemeNameRegex = new Regex($"^({PGQuotedIdentifierPattern}|[^.]+)\\.", RegexOptions.ECMAScript);
+        internal static readonly Regex PGObjectNameRegex = new Regex($"^({PGIdentifierPattern})(\\.{PGIdentifierPattern})?$", RegexOptions.ECMAScript);
 
         NpgsqlConnection _connection;
         /// <summary>
@@ -104,20 +126,6 @@ namespace Npgsql
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         #endregion Fields
-
-        #region Constants
-
-        internal const int DefaultTimeout = 30;
-
-        /// <summary>
-        /// Specifies the maximum number of statements we allow in a multiquery, separated by semicolons.
-        /// We limit this because of deadlocks: as we send Parse and Bind messages to the backend, the backend
-        /// replies with ParseComplete and BindComplete messages which we do not read until we finished sending
-        /// all messages. Once our buffer gets full the backend will get stuck writing, and then so will we.
-        /// </summary>
-        public const int MaxStatements = 5000;
-
-        #endregion
 
         #region Constructors
 
@@ -511,6 +519,31 @@ namespace Npgsql
 
         #region Query analysis
 
+        private static string EnquotePGIdentifier(string identifier)
+            => "\"" + identifier.Replace("\"", "\"\"") + "\"";
+
+        internal static string ToSafePGIdentifier(string identifier)
+        {
+            if (PGIdentifierRegex.IsMatch(identifier))
+                return identifier;
+            return EnquotePGIdentifier(identifier);
+        }
+
+        internal static string ToSafePGObjectName(string objectName)
+        {
+            if (PGObjectNameRegex.IsMatch(objectName))
+                return objectName;
+
+            var m = PGSchemeNameRegex.Match(objectName);
+            if (m.Success)
+            {
+                var schemeName = m.Value;
+                return schemeName + ToSafePGIdentifier(objectName.Substring(schemeName.Length));
+            }
+
+            return EnquotePGIdentifier(objectName);
+        }
+
         void ProcessRawQuery()
         {
             _statements.Clear();
@@ -522,14 +555,14 @@ namespace Npgsql
                 }
                 break;
             case CommandType.TableDirect:
-                _statements.Add(new NpgsqlStatement("SELECT * FROM " + CommandText, new List<NpgsqlParameter>()));
+                _statements.Add(new NpgsqlStatement("SELECT * FROM " + ToSafePGObjectName(CommandText), new List<NpgsqlParameter>()));
                 break;
             case CommandType.StoredProcedure:
                 var inputList = _parameters.Where(p => p.IsInputDirection).ToList();
                 var numInput = inputList.Count;
                 var sb = new StringBuilder();
                 sb.Append("SELECT * FROM ");
-                sb.Append(CommandText);
+                sb.Append(ToSafePGObjectName(CommandText));
                 sb.Append('(');
                 bool hasWrittenFirst = false;
                 for (var i = 1; i <= numInput; i++) {
@@ -554,9 +587,8 @@ namespace Npgsql
                         {
                             sb.Append(',');
                         }
-                        sb.Append('"');
-                        sb.Append(param.CleanName.Replace("\"", "\"\""));
-                        sb.Append("\" := ");
+                        sb.Append(ToSafePGIdentifier(param.CleanName));
+                        sb.Append(" := ");
                         sb.Append('$');
                         sb.Append(i);
                         hasWrittenFirst = true;
