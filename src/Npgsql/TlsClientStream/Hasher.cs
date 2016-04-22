@@ -71,7 +71,8 @@ namespace TlsClientStream
 
             public override byte[] Final()
             {
-                return _hashAlgorithm.TransformFinalBlock(EmptyByteArray, 0, 0);
+                _hashAlgorithm.TransformFinalBlock(EmptyByteArray, 0, 0);
+                return _hashAlgorithm.Hash;
             }
 
             public override void Initialize()

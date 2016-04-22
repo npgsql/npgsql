@@ -378,7 +378,8 @@ namespace TlsClientStream
 
         public static byte[] GetHashAndReset(this HashAlgorithm hash)
         {
-            byte[] data = hash.TransformFinalBlock(Hasher.EmptyByteArray, 0, 0);
+            hash.TransformFinalBlock(Hasher.EmptyByteArray, 0, 0);
+            byte[] data = hash.Hash;
             hash.Initialize();
             return data;
         }
