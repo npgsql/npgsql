@@ -70,14 +70,16 @@ namespace Npgsql
         /// </summary>
         public const int MaxStatements = 5000;
 
-        internal const string IdentifierPattern = @"[_a-z]\w*|""((?:[^""]|"""")+)""";
+        internal const string PGQuotedIdentifierPattern = "\"((?:[^\"]|\"\")+)\"";
+        internal const string PGIdentifierPattern = @"[_a-z]\w*|" + PGQuotedIdentifierPattern;
 
         #endregion
 
         #region Fields
 
-        internal static readonly Regex IdentifierRegex = new Regex($"^(?:{IdentifierPattern})$", RegexOptions.ECMAScript);
-        internal static readonly Regex ObjectNameRegex = new Regex($"^({IdentifierPattern})(\\.{IdentifierPattern})?$", RegexOptions.ECMAScript);
+        internal static readonly Regex PGIdentifierRegex = new Regex($"^(?:{PGIdentifierPattern})$", RegexOptions.ECMAScript);
+        internal static readonly Regex PGSchemeNameRegex = new Regex($"^({PGQuotedIdentifierPattern}|[^.]+)\\.", RegexOptions.ECMAScript);
+        internal static readonly Regex PGObjectNameRegex = new Regex($"^({PGIdentifierPattern})(\\.{PGIdentifierPattern})?$", RegexOptions.ECMAScript);
 
         NpgsqlConnection _connection;
         /// <summary>
@@ -517,18 +519,29 @@ namespace Npgsql
 
         #region Query analysis
 
-        internal static string ToSafeObjectName(string name)
+        private static string EnquotePGIdentifier(string identifier)
+            => "\"" + identifier.Replace("\"", "\"\"") + "\"";
+
+        internal static string ToSafePGIdentifier(string identifier)
         {
-            if (ObjectNameRegex.IsMatch(name))
-                return name;
-            return "\"" + name.Replace("\"", "\"\"") + "\"";
+            if (PGIdentifierRegex.IsMatch(identifier))
+                return identifier;
+            return EnquotePGIdentifier(identifier);
         }
 
-        internal static string ToSafeIdentifier(string name)
+        internal static string ToSafePGObjectName(string objectName)
         {
-            if (IdentifierRegex.IsMatch(name))
-                return name;
-            return "\"" + name.Replace("\"", "\"\"") + "\"";
+            if (PGObjectNameRegex.IsMatch(objectName))
+                return objectName;
+
+            var m = PGSchemeNameRegex.Match(objectName);
+            if (m.Success)
+            {
+                var schemeName = m.Value;
+                return schemeName + ToSafePGIdentifier(objectName.Substring(schemeName.Length));
+            }
+
+            return EnquotePGIdentifier(objectName);
         }
 
         void ProcessRawQuery()
@@ -542,14 +555,14 @@ namespace Npgsql
                 }
                 break;
             case CommandType.TableDirect:
-                _statements.Add(new NpgsqlStatement("SELECT * FROM " + ToSafeObjectName(CommandText), new List<NpgsqlParameter>()));
+                _statements.Add(new NpgsqlStatement("SELECT * FROM " + ToSafePGObjectName(CommandText), new List<NpgsqlParameter>()));
                 break;
             case CommandType.StoredProcedure:
                 var inputList = _parameters.Where(p => p.IsInputDirection).ToList();
                 var numInput = inputList.Count;
                 var sb = new StringBuilder();
                 sb.Append("SELECT * FROM ");
-                sb.Append(ToSafeObjectName(CommandText));
+                sb.Append(ToSafePGObjectName(CommandText));
                 sb.Append('(');
                 bool hasWrittenFirst = false;
                 for (var i = 1; i <= numInput; i++) {
@@ -574,7 +587,7 @@ namespace Npgsql
                         {
                             sb.Append(',');
                         }
-                        sb.Append(ToSafeIdentifier(param.CleanName));
+                        sb.Append(ToSafePGIdentifier(param.CleanName));
                         sb.Append(" := ");
                         sb.Append('$');
                         sb.Append(i);

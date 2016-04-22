@@ -175,13 +175,13 @@ namespace Npgsql
             using (var c = new NpgsqlCommand(query, command.Connection))
             {
                 c.Parameters.Add(new NpgsqlParameter("proname", NpgsqlDbType.Text));
-                var m = NpgsqlCommand.IdentifierRegex.Match(procedureName);
+                var m = NpgsqlCommand.PGIdentifierRegex.Match(procedureName);
                 var g1 = m.Groups[1];
                 c.Parameters[0].Value = g1.Success ? g1.Value.Replace("\"\"", "\"") : procedureName;
                 if (fullName.Length > 1 && !string.IsNullOrEmpty(schemaName))
                 {
                     var prm = c.Parameters.Add(new NpgsqlParameter("nspname", NpgsqlDbType.Text));
-                    m = NpgsqlCommand.IdentifierRegex.Match(schemaName);
+                    m = NpgsqlCommand.PGIdentifierRegex.Match(schemaName);
                     g1 = m.Groups[1];
                     prm.Value = g1.Success ? g1.Value.Replace("\"\"", "\"") : schemaName;
                 }
