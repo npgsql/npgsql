@@ -39,6 +39,7 @@ using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
 using Npgsql.Logging;
+using System.Text.RegularExpressions;
 
 namespace Npgsql
 {
@@ -57,7 +58,26 @@ namespace Npgsql
     public sealed partial class NpgsqlCommand : DbCommand, ICloneable
 #endif
     {
+        #region Constants
+
+        internal const int DefaultTimeout = 30;
+
+        /// <summary>
+        /// Specifies the maximum number of statements we allow in a multiquery, separated by semicolons.
+        /// We limit this because of deadlocks: as we send Parse and Bind messages to the backend, the backend
+        /// replies with ParseComplete and BindComplete messages which we do not read until we finished sending
+        /// all messages. Once our buffer gets full the backend will get stuck writing, and then so will we.
+        /// </summary>
+        public const int MaxStatements = 5000;
+
+        internal const string IdentifierPattern = @"[_a-z]\w*|""([^""]|(?:""""))+""";
+
+        #endregion
+
         #region Fields
+
+        internal static readonly Regex IdentifierRegex = new Regex($"^(?:{IdentifierPattern})$", RegexOptions.ECMAScript);
+        internal static readonly Regex ObjectNameRegex = new Regex($"^({IdentifierPattern})(\\.{IdentifierPattern})?$", RegexOptions.ECMAScript);
 
         NpgsqlConnection _connection;
         /// <summary>
@@ -91,20 +111,6 @@ namespace Npgsql
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         #endregion Fields
-
-        #region Constants
-
-        internal const int DefaultTimeout = 30;
-
-        /// <summary>
-        /// Specifies the maximum number of statements we allow in a multiquery, separated by semicolons.
-        /// We limit this because of deadlocks: as we send Parse and Bind messages to the backend, the backend
-        /// replies with ParseComplete and BindComplete messages which we do not read until we finished sending
-        /// all messages. Once our buffer gets full the backend will get stuck writing, and then so will we.
-        /// </summary>
-        public const int MaxStatements = 5000;
-
-        #endregion
 
         #region Constructors
 
@@ -515,6 +521,20 @@ namespace Npgsql
 
         #region Query analysis
 
+        internal static string ToSafeObjectName(string name)
+        {
+            if (ObjectNameRegex.IsMatch(name))
+                return name;
+            return "\"" + name.Replace("\"", "\"\"") + "\"";
+        }
+
+        internal static string ToSafeIdentifier(string name)
+        {
+            if (IdentifierRegex.IsMatch(name))
+                return name;
+            return "\"" + name.Replace("\"", "\"\"") + "\"";
+        }
+
         void ProcessRawQuery()
         {
             _queries.Clear();
@@ -526,14 +546,14 @@ namespace Npgsql
                 }
                 break;
             case CommandType.TableDirect:
-                _queries.Add(new NpgsqlStatement("SELECT * FROM " + CommandText, new List<NpgsqlParameter>()));
+                _queries.Add(new NpgsqlStatement("SELECT * FROM " + ToSafeObjectName(CommandText), new List<NpgsqlParameter>()));
                 break;
             case CommandType.StoredProcedure:
                 var inputList = _parameters.Where(p => p.IsInputDirection).ToList();
                 var numInput = inputList.Count;
                 var sb = new StringBuilder();
                 sb.Append("SELECT * FROM ");
-                sb.Append(CommandText);
+                sb.Append(ToSafeObjectName(CommandText));
                 sb.Append('(');
                 bool hasWrittenFirst = false;
                 for (var i = 1; i <= numInput; i++) {
@@ -558,9 +578,8 @@ namespace Npgsql
                         {
                             sb.Append(',');
                         }
-                        sb.Append('"');
-                        sb.Append(param.CleanName.Replace("\"", "\"\""));
-                        sb.Append("\" := ");
+                        sb.Append(ToSafeIdentifier(param.CleanName));
+                        sb.Append(" := ");
                         sb.Append('$');
                         sb.Append(i);
                         hasWrittenFirst = true;
