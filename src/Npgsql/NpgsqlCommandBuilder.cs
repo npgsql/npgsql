@@ -40,14 +40,9 @@ namespace Npgsql
     [System.ComponentModel.DesignerCategory("")]
     public sealed class NpgsqlCommandBuilder : DbCommandBuilder
     {
-        internal const string PGQuotedIdentifierPattern = "\"((?:[^\"]|\"\")+)\"";
-        internal const string PGIdentifierPattern = @"[_a-z]\w*|" + PGQuotedIdentifierPattern;
+        const string PGIdentifierPattern = @"[_a-z]\w*|""((?:[^""]|"""")+)""";
 
-        //internal static readonly Regex PGIdentifierRegex = new Regex($"^(?:{PGIdentifierPattern})$", RegexOptions.ECMAScript);
-        //internal static readonly Regex PGSchemeNameRegex = new Regex($"^({PGQuotedIdentifierPattern}|[^.]+)\\.", RegexOptions.ECMAScript);
-        //internal static readonly Regex PGObjectNameRegex = new Regex($"^({PGIdentifierPattern})(?:\\.({PGIdentifierPattern}))?$", RegexOptions.ECMAScript);
-        //internal static readonly Regex PGIdentifierRegexIgnoreCase = new Regex($"^(?:{PGIdentifierPattern})$", RegexOptions.ECMAScript | RegexOptions.IgnoreCase);
-        internal static readonly Regex PGObjectNameRegexIgnoreCase = new Regex($"^({PGIdentifierPattern})(?:\\.({PGIdentifierPattern}))?$", RegexOptions.ECMAScript | RegexOptions.IgnoreCase);
+        static readonly Regex PGObjectNameRegexIgnoreCase = new Regex($"^({PGIdentifierPattern})(?:\\.({PGIdentifierPattern}))?$", RegexOptions.ECMAScript | RegexOptions.IgnoreCase);
 
         static string UnescapePGIdentifier(string identifier)
             => identifier.Replace("\"\"", "\"");
