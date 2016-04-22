@@ -177,19 +177,13 @@ namespace Npgsql
                 c.Parameters.Add(new NpgsqlParameter("proname", NpgsqlDbType.Text));
                 var m = NpgsqlCommand.IdentifierRegex.Match(procedureName);
                 var g1 = m.Groups[1];
-                if (g1.Success)
-                    c.Parameters[0].Value = g1.Value.Replace("\"\"", "\"");
-                else
-                    c.Parameters[0].Value = procedureName;
+                c.Parameters[0].Value = g1.Success ? g1.Value.Replace("\"\"", "\"") : procedureName;
                 if (fullName.Length > 1 && !string.IsNullOrEmpty(schemaName))
                 {
                     var prm = c.Parameters.Add(new NpgsqlParameter("nspname", NpgsqlDbType.Text));
                     m = NpgsqlCommand.IdentifierRegex.Match(schemaName);
                     g1 = m.Groups[1];
-                    if (g1.Success)
-                        prm.Value = g1.Value.Replace("\"\"", "\"");
-                    else
-                        prm.Value = schemaName;
+                    prm.Value = g1.Success ? g1.Value.Replace("\"\"", "\"") : schemaName;
                 }
 
                 string[] names = null;
