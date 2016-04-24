@@ -43,7 +43,7 @@ namespace Npgsql.TypeHandlers
         /// </summary>
         Type CompositeType { get; }
 #pragma warning disable 1591
-        List<Tuple<string, uint>> RawFields { get; set; }
+        List<RawCompositeField> RawFields { get; set; }
         ICompositeHandler Clone(TypeHandlerRegistry registry);
 #pragma warning restore 1591
     }
@@ -64,7 +64,7 @@ namespace Npgsql.TypeHandlers
     internal class CompositeHandler<T> : ChunkingTypeHandler<T>, ICompositeHandler where T : new()
     {
         readonly TypeHandlerRegistry _registry;
-        public List<Tuple<string, uint>> RawFields { get; set; }
+        public List<RawCompositeField> RawFields { get; set; }
         List<FieldDescriptor> _fields;
 
         ReadBuffer _readBuf;
@@ -259,41 +259,42 @@ namespace Npgsql.TypeHandlers
 
         void ResolveFieldsIfNeeded()
         {
-            if (_fields != null) { return; }
+            if (_fields != null)
+                return;
 
             _fields = new List<FieldDescriptor>(RawFields.Count);
             foreach (var rawField in RawFields)
             {
                 TypeHandler fieldHandler;
-                if (!_registry.TryGetByOID(rawField.Item2, out fieldHandler))
-                    throw new Exception($"PostgreSQL composite type {PgName}, mapped to CLR type {typeof (T).Name}, has field {rawField.Item1} with a type that hasn't been registered (OID={rawField.Item2})");
+                if (!_registry.TryGetByOID(rawField.TypeOID, out fieldHandler))
+                    throw new Exception($"PostgreSQL composite type {PgName}, mapped to CLR type {typeof (T).Name}, has field {rawField.PgName} with a type that hasn't been registered (TypeOID={rawField.TypeOID})");
 
                 var member = (
                     from m in typeof (T).GetMembers()
                     let attr = m.GetCustomAttribute<PgNameAttribute>()
-                    where (attr != null && attr.PgName == rawField.Item1) ||
-                          (attr == null && m.Name == rawField.Item1)
+                    where (attr != null && attr.PgName == rawField.PgName) ||
+                          (attr == null && m.Name == rawField.PgName)
                     select m
                 ).SingleOrDefault();
 
                 if (member == null)
-                    throw new Exception($"PostgreSQL composite type {PgName} contains field {rawField.Item1} which could not match any on CLR type {typeof (T).Name}");
+                    throw new Exception($"PostgreSQL composite type {PgName} contains field {rawField.PgName} which could not match any on CLR type {typeof (T).Name}");
 
                 var property = member as PropertyInfo;
                 if (property != null)
                 {
-                    _fields.Add(new FieldDescriptor(rawField.Item1, fieldHandler, property));
+                    _fields.Add(new FieldDescriptor(rawField.PgName, fieldHandler, property));
                     continue;
                 }
 
                 var field = member as FieldInfo;
                 if (field != null)
                 {
-                    _fields.Add(new FieldDescriptor(rawField.Item1, fieldHandler, field));
+                    _fields.Add(new FieldDescriptor(rawField.PgName, fieldHandler, field));
                     continue;
                 }
 
-                throw new Exception($"PostgreSQL composite type {PgName} contains field {rawField.Item1} which cannot map to CLR type {typeof (T).Name}'s field {member.Name} of type {member.GetType().Name}");
+                throw new Exception($"PostgreSQL composite type {PgName} contains field {rawField.PgName} which cannot map to CLR type {typeof (T).Name}'s field {member.Name} of type {member.GetType().Name}");
             }
 
             RawFields = null;
@@ -306,22 +307,24 @@ namespace Npgsql.TypeHandlers
 
         struct FieldDescriptor
         {
-            internal readonly string Name;
+            // ReSharper disable once NotAccessedField.Local
+            // ReSharper disable once MemberCanBePrivate.Local
+            internal readonly string PgName;
             internal readonly TypeHandler Handler;
             readonly PropertyInfo _property;
             readonly FieldInfo _field;
 
-            internal FieldDescriptor(string name, TypeHandler handler, PropertyInfo property)
+            internal FieldDescriptor(string pgName, TypeHandler handler, PropertyInfo property)
             {
-                Name = name;
+                PgName = pgName;
                 Handler = handler;
                 _property = property;
                 _field = null;
             }
 
-            internal FieldDescriptor(string name, TypeHandler handler, FieldInfo field)
+            internal FieldDescriptor(string pgName, TypeHandler handler, FieldInfo field)
             {
-                Name = name;
+                PgName = pgName;
                 Handler = handler;
                 _property = null;
                 _field = field;
@@ -330,30 +333,28 @@ namespace Npgsql.TypeHandlers
             internal void SetValue(object container, object fieldValue)
             {
                 if (_property != null)
-                {
                     _property.SetValue(container, fieldValue);
-                }
                 else if (_field != null)
-                {
                     _field.SetValue(container, fieldValue);
-                }
                 else throw PGUtil.ThrowIfReached();
             }
 
             internal object GetValue(object container)
             {
                 if (_property != null)
-                {
                     return _property.GetValue(container);
-                }
                 if (_field != null)
-                {
                     return _field.GetValue(container);
-                }
                 throw PGUtil.ThrowIfReached();
             }
         }
 
         #endregion
+    }
+
+    internal struct RawCompositeField
+    {
+        internal string PgName;
+        internal uint TypeOID;
     }
 }

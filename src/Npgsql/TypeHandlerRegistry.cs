@@ -862,7 +862,7 @@ namespace Npgsql
             /// Populated on the first activation of the composite.
             /// </summary>
             [CanBeNull]
-            List<Tuple<string, uint>> _rawFields;
+            List<RawCompositeField> _rawFields;
 
             internal BackendCompositeType(string name, uint oid, uint relationId) : base(name, oid)
             {
@@ -891,15 +891,11 @@ namespace Npgsql
                 var fields = _rawFields;
                 if (fields == null)
                 {
-                    fields = new List<Tuple<string, uint>>();
+                    fields = new List<RawCompositeField>();
                     using (var cmd = new NpgsqlCommand($"SELECT attname,atttypid FROM pg_attribute WHERE attrelid={_relationId}", registry.Connector.Connection))
                     using (var reader = cmd.ExecuteReader())
-                    {
                         while (reader.Read())
-                        {
-                            fields.Add(new Tuple<string, uint>(reader.GetString(0), reader.GetFieldValue<uint>(1)));
-                        }
-                    }
+                            fields.Add(new RawCompositeField { PgName = reader.GetString(0), TypeOID = reader.GetFieldValue<uint>(1) });
                     _rawFields = fields;
                 }
 
