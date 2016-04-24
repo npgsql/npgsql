@@ -862,7 +862,7 @@ namespace Npgsql
         {
             if (copyFromCommand == null)
                 throw new ArgumentNullException(nameof(copyFromCommand));
-            if (!copyFromCommand.TrimStart().ToUpper().StartsWith("COPY"))
+            if (!copyFromCommand.TrimStart().ToUpperForASCII().StartsWith("COPY"))
                 throw new ArgumentException("Must contain a COPY FROM STDIN command!", nameof(copyFromCommand));
             Contract.EndContractBlock();
 
@@ -893,7 +893,7 @@ namespace Npgsql
         {
             if (copyToCommand == null)
                 throw new ArgumentNullException(nameof(copyToCommand));
-            if (!copyToCommand.TrimStart().ToUpper().StartsWith("COPY"))
+            if (!copyToCommand.TrimStart().ToUpperForASCII().StartsWith("COPY"))
                 throw new ArgumentException("Must contain a COPY TO STDIN command!", nameof(copyToCommand));
             Contract.EndContractBlock();
 
@@ -928,7 +928,7 @@ namespace Npgsql
         {
             if (copyFromCommand == null)
                 throw new ArgumentNullException(nameof(copyFromCommand));
-            if (!copyFromCommand.TrimStart().ToUpper().StartsWith("COPY"))
+            if (!copyFromCommand.TrimStart().ToUpperForASCII().StartsWith("COPY"))
                 throw new ArgumentException("Must contain a COPY IN command!", nameof(copyFromCommand));
             Contract.EndContractBlock();
 
@@ -954,7 +954,7 @@ namespace Npgsql
         {
             if (copyToCommand == null)
                 throw new ArgumentNullException(nameof(copyToCommand));
-            if (!copyToCommand.TrimStart().ToUpper().StartsWith("COPY"))
+            if (!copyToCommand.TrimStart().ToUpperForASCII().StartsWith("COPY"))
                 throw new ArgumentException("Must contain a COPY OUT command!", nameof(copyToCommand));
             Contract.EndContractBlock();
 
@@ -980,7 +980,7 @@ namespace Npgsql
         {
             if (copyCommand == null)
                 throw new ArgumentNullException(nameof(copyCommand));
-            if (!copyCommand.TrimStart().ToUpper().StartsWith("COPY"))
+            if (!copyCommand.TrimStart().ToUpperForASCII().StartsWith("COPY"))
                 throw new ArgumentException("Must contain a COPY IN command!", nameof(copyCommand));
             Contract.EndContractBlock();
 
@@ -1039,7 +1039,7 @@ namespace Npgsql
                 throw new InvalidOperationException("Connection must be open and idle to perform registration");
             Contract.EndContractBlock();
 
-            Connector.TypeHandlerRegistry.MapEnum<TEnum>(pgName ?? typeof(TEnum).Name.ToLower());
+            Connector.TypeHandlerRegistry.MapEnum<TEnum>(pgName ?? typeof(TEnum).Name.ToLowerForASCII());
         }
 
         /// <summary>
@@ -1067,7 +1067,7 @@ namespace Npgsql
                 throw new ArgumentException("pgName can't be empty", nameof(pgName));
             Contract.EndContractBlock();
 
-            TypeHandlerRegistry.MapEnumGlobally<TEnum>(pgName ?? typeof(TEnum).Name.ToLower());
+            TypeHandlerRegistry.MapEnumGlobally<TEnum>(pgName ?? typeof(TEnum).Name.ToLowerForASCII());
         }
 
         internal static void UnmapEnumGlobally(string pgName)
@@ -1153,7 +1153,7 @@ namespace Npgsql
                 throw new InvalidOperationException("Connection must be open and idle to perform registration");
             Contract.EndContractBlock();
 
-            Connector.TypeHandlerRegistry.MapComposite<T>(pgName ?? typeof(T).Name.ToLower());
+            Connector.TypeHandlerRegistry.MapComposite<T>(pgName ?? typeof(T).Name.ToLowerForASCII());
         }
 
         /// <summary>
@@ -1178,7 +1178,7 @@ namespace Npgsql
                 throw new ArgumentException("pgName can't be empty", nameof(pgName));
             Contract.EndContractBlock();
 
-            TypeHandlerRegistry.MapCompositeGlobally<T>(pgName ?? typeof(T).Name.ToLower());
+            TypeHandlerRegistry.MapCompositeGlobally<T>(pgName ?? typeof(T).Name.ToLowerForASCII());
         }
 
         // ReSharper disable once UnusedMember.Global

@@ -167,9 +167,9 @@ namespace Npgsql
                 query = serverVersion >= new Version(8, 1, 0)
                     ? "select proargnames, proargtypes, proallargtypes, proargmodes from pg_proc p left join pg_namespace n on p.pronamespace = n.oid where proname=:proname and n.nspname=:nspname"
                     : "select proargnames, proargtypes from pg_proc p left join pg_namespace n on p.pronamespace = n.oid where proname=:proname and n.nspname=:nspname";
-                schemaName = g2.Success ? UnescapePGIdentifier(g2.Value) : g1.Value.ToLower();
+                schemaName = g2.Success ? UnescapePGIdentifier(g2.Value) : g1.Value.ToLowerForASCII();
                 var g4 = grps[4];
-                procedureName = g4.Success ? UnescapePGIdentifier(g4.Value) : g3.Value.ToLower();
+                procedureName = g4.Success ? UnescapePGIdentifier(g4.Value) : g3.Value.ToLowerForASCII();
 
                 // The pg_temp pseudo-schema is special - it's an alias to a real schema name (e.g. pg_temp_2).
                 // We get the real name with pg_my_temp_schema().
@@ -187,7 +187,7 @@ namespace Npgsql
                 query = serverVersion >= new Version(8, 1, 0)
                     ? "select proargnames, proargtypes, proallargtypes, proargmodes from pg_proc where proname = :proname"
                     : "select proargnames, proargtypes from pg_proc where proname = :proname";
-                procedureName = g2.Success ? UnescapePGIdentifier(g2.Value) : g1.Value.ToLower();
+                procedureName = g2.Success ? UnescapePGIdentifier(g2.Value) : g1.Value.ToLowerForASCII();
             }
 
             using (var c = new NpgsqlCommand(query, command.Connection))

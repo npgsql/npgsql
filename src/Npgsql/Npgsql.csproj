@@ -193,6 +193,7 @@
     <Compile Include="NpgsqlTypes\PostgisTypes.cs" />
     <Compile Include="ReadBuffer.cs" />
     <Compile Include="SqlQueryParser.cs" />
+    <Compile Include="StringEx.cs" />
     <Compile Include="TaskExtensions.cs" />
     <Compile Include="TlsClientStream\CipherSuiteInfo.cs" />
     <Compile Include="TlsClientStream\ClientAlertException.cs" />

@@ -284,8 +284,8 @@ namespace TlsClientStream
 
         public static bool MatchHostname(string altname, string hostname)
         {
-            altname = altname.ToLower();
-            hostname = hostname.ToLower();
+            altname = altname.ToLowerForASCII();
+            hostname = hostname.ToLowerForASCII();
             if (altname == hostname)
                 return true;
 
