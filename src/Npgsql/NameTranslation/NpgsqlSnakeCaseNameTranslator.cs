@@ -35,9 +35,11 @@ namespace Npgsql
 
             var sb = new StringBuilder();
             sb.Append(clrName[0].ToLowerForAscii());
+
             for(var i = 1; i < clrName.Length; i++)
             {
                 var c = clrName[i];
+
                 if (c.IsNotAsciiUpper())
                 {
                     sb.Append(c);
@@ -47,6 +49,7 @@ namespace Npgsql
                 sb.Append('_');
                 sb.Append(c.ToAsciiLowerNoCheck());
             }
+
             return sb.ToString();
         }
     }
