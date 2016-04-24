@@ -283,18 +283,18 @@ namespace Npgsql.Tests.Types
         [Test]
         public void Array()
         {
-            using (var Conn = OpenConnection())
+            using (var conn = OpenConnection())
             {
-                Conn.ExecuteNonQuery("CREATE TYPE pg_temp.composite5 AS (x int, some_text text)");
-                Conn.ReloadTypes();
-                Conn.MapComposite<SomeComposite>("composite5");
+                conn.ExecuteNonQuery("CREATE TYPE pg_temp.composite5 AS (x int, some_text text)");
+                conn.ReloadTypes();
+                conn.MapComposite<SomeComposite>("composite5");
 
                 var expected = new[] {
                     new SomeComposite {x = 8, SomeText = "foo"},
                     new SomeComposite {x = 9, SomeText = "bar"}
                 };
 
-                using (var cmd = new NpgsqlCommand("SELECT @p1::composite5[], @p2::composite5[]", Conn))
+                using (var cmd = new NpgsqlCommand("SELECT @p1::composite5[], @p2::composite5[]", conn))
                 {
                     cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.Array | NpgsqlDbType.Composite) {
                         Value = expected,
