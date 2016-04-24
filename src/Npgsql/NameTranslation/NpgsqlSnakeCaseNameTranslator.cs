@@ -34,7 +34,7 @@ namespace Npgsql
                 return clrName;
 
             var sb = new StringBuilder();
-            sb.Append(clrName[0]);
+            sb.Append(clrName[0].ToLowerForAscii());
             for(var i = 1; i < clrName.Length; i++)
             {
                 var c = clrName[i];
