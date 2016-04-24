@@ -164,6 +164,7 @@
     <Compile Include="Logging\INpgsqlLoggingProvider.cs" />
     <Compile Include="Logging\NpgsqlLogManager.cs" />
     <Compile Include="Logging\NpgsqlLogLevel.cs" />
+    <Compile Include="NameTranslation\NpgsqlNullNameTranslator.cs" />
     <Compile Include="NpgsqlLargeObjectManager.cs" />
     <Compile Include="NpgsqlLargeObjectStream.cs" />
     <Compile Include="NpgsqlBinaryExporter.cs" />
