@@ -36,22 +36,18 @@ namespace Npgsql
                 return clrName;
 
             var sb = new StringBuilder();
-            using(var enumerator = clrName.GetEnumerator())
+            sb.Append(clrName[0]);
+            for(var i = 1; i < clrName.Length; i++)
             {
-                enumerator.MoveNext();
-                sb.Append(enumerator.Current);
-                while (enumerator.MoveNext())
+                var c = clrName[i];
+                if (c < 'A' || c > 'Z')
                 {
-                    var c = enumerator.Current;
-                    if(c < 'A' || c > 'Z')
-                    {
-                        sb.Append(c);
-                        continue;
-                    }
-
-                    sb.Append('_');
-                    sb.Append((char)(c + LetterCasesGap));
+                    sb.Append(c);
+                    continue;
                 }
+
+                sb.Append('_');
+                sb.Append((char)(c + LetterCasesGap));
             }
             return sb.ToString();
         }
