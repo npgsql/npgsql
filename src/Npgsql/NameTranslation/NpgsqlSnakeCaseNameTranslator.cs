@@ -12,8 +12,6 @@ namespace Npgsql
     /// </summary>
     public class NpgsqlSnakeCaseNameTranslator : INpgsqlNameTranslator
     {
-        const int LetterCasesGap = 'a' - 'A'; // 0x61 - 0x41 = 0x20
-
         /// <summary>
         /// Given a CLR type name (e.g class, struct, enum), translates its name to a database type name.
         /// </summary>
@@ -40,14 +38,14 @@ namespace Npgsql
             for(var i = 1; i < clrName.Length; i++)
             {
                 var c = clrName[i];
-                if (c < 'A' || c > 'Z')
+                if (c.IsNotAsciiUpper())
                 {
                     sb.Append(c);
                     continue;
                 }
 
                 sb.Append('_');
-                sb.Append((char)(c + LetterCasesGap));
+                sb.Append(c.ToAsciiLowerNoCheck());
             }
             return sb.ToString();
         }

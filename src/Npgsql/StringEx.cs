@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.IO;
-using System.Linq;
-using System.Text;
+﻿using System.Text;
 
 #if EXPOSE_EVERYTHING || EXPOSE_STRINGEX
 public
@@ -39,10 +34,10 @@ static partial class StringEx
         var sb = new StringBuilder(value.Length);
         foreach (var c in value)
         {
-            if (c < 'A' || c > 'Z')
+            if (c.IsNotAsciiUpper())
                 sb.Append(c);
             else
-                sb.Append((char)(c + 0x20));
+                sb.Append(c.ToAsciiLowerNoCheck());
         }
         return sb.ToString();
     }
@@ -55,10 +50,10 @@ static partial class StringEx
         var sb = new StringBuilder(value.Length);
         foreach (var c in value)
         {
-            if (c < 'a' || c > 'z')
+            if (c.IsNotAsciiLower())
                 sb.Append(c);
             else
-                sb.Append((char)(c - 0x20));
+                sb.Append(c.ToAsciiUpperNoCheck());
         }
         return sb.ToString();
     }
