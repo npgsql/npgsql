@@ -146,6 +146,16 @@ namespace Npgsql
         /// </summary>
         readonly List<FrontendMessage> _messagesToSend;
 
+        /// <summary>
+        /// Contains sent statement deallocation queries
+        /// </summary>
+        readonly HashSet<string> _pendingStmtDeallocateQueries;
+
+        /// <summary>
+        /// Handles management of prepared statements owned by this connector
+        /// </summary>
+        internal PreparedStatementsCollection PreparedStatements { get; private set; }
+
         internal NpgsqlDataReader CurrentReader;
 
         /// <summary>
@@ -272,7 +282,8 @@ namespace Npgsql
             _password = password;
             BackendParams = new Dictionary<string, string>();
             _messagesToSend = new List<FrontendMessage>();
-            _preparedStatementIndex = 0;
+            _pendingStmtDeallocateQueries = new HashSet<string>();
+            PreparedStatements = new PreparedStatementsCollection();
 
             _userLock = new SemaphoreSlim(1, 1);
             _asyncLock = new SemaphoreSlim(1, 1);
@@ -1589,8 +1600,8 @@ namespace Npgsql
 
         /// <summary>
         /// Called when a pooled connection is closed, and its connector is returned to the pool.
-        /// Resets the connector back to its initial state, releasing server-side sources
-        /// (e.g. prepared statements), resetting parameters to their defaults, and resetting client-side
+        /// Resets the connector back to its initial state, releasing server-side sources,
+        /// resetting parameters to their defaults, and resetting client-side
         /// state
         /// </summary>
         internal void Reset()
@@ -1629,39 +1640,61 @@ namespace Npgsql
                 ClearTransaction();
             }
 
-            // If a DISCARD ALL is already pending (#736), don't reenqueue rollback/discard
             var lastEnqueued = _messagesToSend.LastOrDefault();
-            if (lastEnqueued == PregeneratedMessage.DiscardAll || lastEnqueued == PregeneratedMessage.UnlistenAll)
+            var lastQueryMsg = lastEnqueued as QueryMessage;
+
+            // If a DISCARD is already pending (#736), don't reenqueue rollback/discard
+            if (lastEnqueued == PregeneratedMessage.DiscardSessionState 
+                || lastEnqueued == PregeneratedMessage.UnlistenAll
+                || lastEnqueued == PregeneratedMessage.DiscardSequences)
             {
                 return;
             }
+            else if (lastQueryMsg != null)
+            {
+                if (_pendingStmtDeallocateQueries.Contains(lastQueryMsg.Query))
+                {
+                    return;
+                }
+            }
 
-            // Must rollback transaction before sending DISCARD ALL
+            // Must rollback transaction before discarding
             if (InTransaction)
             {
                 Rollback();
             }
 
-            if (SupportsDiscard)
+            _pendingStmtDeallocateQueries.Clear();
+
+            // Deallocate non persisted prepared statements
+            if (SupportsDeallocate)
             {
-                PrependInternalMessage(PregeneratedMessage.DiscardAll);
+                var stmtNames = PreparedStatements.ClearNonPersistedPreparedStatements();
+
+                for (int i = 0; i < stmtNames.Count; i++)
+                {
+                    var msg = new QueryMessage(String.Format("DEALLOCATE \"{0}\";", stmtNames[i]));
+                    PrependInternalMessage(msg);
+
+                    _pendingStmtDeallocateQueries.Add(msg.Query);
+                }
+            }
+
+            if (SupportsDiscardAll)
+            {
+                PrependInternalMessage(PregeneratedMessage.DiscardSessionState);
             }
             else if (SupportsUnlisten)
             {
                 PrependInternalMessage(PregeneratedMessage.UnlistenAll);
-                /*
-                 TODO: Problem: we can't just deallocate for all the below since some may have already been deallocated
-                 Not sure if we should keep supporting this for < 8.3. If so fix along with #483
-                if (_preparedStatementIndex > 0) {
-                    for (var i = 1; i <= _preparedStatementIndex; i++) {
-                        PrependMessage(new QueryMessage(String.Format("DEALLOCATE \"{0}{1}\";", PreparedStatementNamePrefix, i)));
-                    }
-                }*/
-
-                _preparedStatementIndex = 0;
             }
 
-            // DISCARD ALL has reset statement_timeout to the default specified on the connection string.
+            if (SupportsDiscardSequences)
+            {
+                PrependInternalMessage(PregeneratedMessage.DiscardSequences);
+            }
+
+            // RESET ALL has reset statement_timeout to the default specified on the connection string.
             if (_settings.BackendTimeouts)
             {
                 _backendTimeout = _settings.CommandTimeout;
@@ -1866,9 +1899,11 @@ namespace Npgsql
 
         #region Supported features
 
-        bool SupportsDiscard => ServerVersion >= new Version(8, 3, 0);
-        internal bool SupportsRangeTypes => ServerVersion >= new Version(9, 2, 0);
+        bool SupportsDiscardAll => ServerVersion >= new Version(8, 3, 0);
+        bool SupportsDiscardSequences => ServerVersion >= new Version(9, 4, 0);
         bool SupportsUnlisten => ServerVersion >= new Version(6, 4, 0) && !IsRedshift;
+        bool SupportsDeallocate => ServerVersion >= new Version(7, 3, 0);
+        internal bool SupportsRangeTypes => ServerVersion >= new Version(9, 2, 0);
         internal bool UseConformantStrings      { get; private set; }
 
 /*
@@ -1962,17 +1997,6 @@ namespace Npgsql
                 return;
             }
         }
-
-        /// <summary>
-        /// Returns next plan index.
-        /// </summary>
-        internal string NextPreparedStatementName()
-        {
-            return PreparedStatementNamePrefix + (++_preparedStatementIndex);
-        }
-
-        int _preparedStatementIndex;
-        const string PreparedStatementNamePrefix = "s";
 
         #endregion Misc
 

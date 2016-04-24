@@ -76,7 +76,8 @@ namespace Npgsql.FrontendMessages
             BeginTransReadUncommitted = BuildQuery("BEGIN; SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;");
             CommitTransaction         = BuildQuery("COMMIT");
             RollbackTransaction       = BuildQuery("ROLLBACK");
-            DiscardAll                = BuildQuery("DISCARD ALL");
+            DiscardSessionState       = BuildQuery("SET SESSION AUTHORIZATION DEFAULT; RESET ALL; CLOSE ALL; UNLISTEN *; SELECT pg_advisory_unlock_all(); DISCARD TEMP;");
+            DiscardSequences          = BuildQuery("DISCARD SEQUENCES");
             UnlistenAll               = BuildQuery("UNLISTEN *");
             KeepAlive                 = BuildQuery("SELECT NULL");
             SetStmtTimeout10Sec       = BuildQuery("SET statement_timeout = 10000");
@@ -113,7 +114,8 @@ namespace Npgsql.FrontendMessages
         internal static readonly PregeneratedMessage BeginTransReadUncommitted;
         internal static readonly PregeneratedMessage CommitTransaction;
         internal static readonly PregeneratedMessage RollbackTransaction;
-        internal static readonly PregeneratedMessage DiscardAll;
+        internal static readonly PregeneratedMessage DiscardSessionState;
+        internal static readonly PregeneratedMessage DiscardSequences;
         internal static readonly PregeneratedMessage UnlistenAll;
         internal static readonly PregeneratedMessage KeepAlive;
         internal static readonly PregeneratedMessage SetStmtTimeout10Sec;

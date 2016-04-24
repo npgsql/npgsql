@@ -192,6 +192,10 @@
     <Compile Include="NpgsqlTypes\NpgsqlTsVector.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlUserTypes.cs" />
     <Compile Include="NpgsqlTypes\PostgisTypes.cs" />
+    <Compile Include="PersistentPreparedCommand.cs" />
+    <Compile Include="PersistentPreparedStatement.cs" />
+    <Compile Include="PersistentStatementParameter.cs" />
+    <Compile Include="PreparedStatements.cs" />
     <Compile Include="SqlQueryParser.cs" />
     <Compile Include="TaskExtensions.cs" />
     <Compile Include="TlsClientStream\CipherSuiteInfo.cs" />

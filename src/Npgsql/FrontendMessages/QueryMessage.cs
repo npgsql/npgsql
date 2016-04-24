@@ -34,7 +34,7 @@ namespace Npgsql.FrontendMessages
     /// </summary>
     class QueryMessage : FrontendMessage
     {
-        string Query { get; set; }
+        public string Query { get; private set; }
 
         char[] _queryChars;
         int _charPos;
