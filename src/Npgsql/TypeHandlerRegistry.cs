@@ -164,7 +164,7 @@ namespace Npgsql
             // For arrays and ranges, join in the element OID and type (to filter out arrays of unhandled
             // types).
             return
-"SELECT a.typname, a.oid, a.typrelid, " +
+"SELECT a.typname, a.oid, a.typrelid, a.typbasetype, " +
 "CASE WHEN pg_proc.proname='array_recv' THEN 'a' ELSE a.typtype END AS type, " +
 "CASE " +
   "WHEN pg_proc.proname='array_recv' THEN a.typelem " +
@@ -172,9 +172,10 @@ namespace Npgsql
   "ELSE 0 " +
 "END AS elemoid, " +
 "CASE " +
-  "WHEN pg_proc.proname IN ('array_recv','oidvectorrecv') THEN 3 " +  // Arrays last
-  "WHEN a.typtype='r' THEN 2 " +                                      // Ranges before
-  "WHEN a.typtype='c' THEN 1 " +                                      // Composite types before
+  "WHEN pg_proc.proname IN ('array_recv','oidvectorrecv') THEN 4 " +  // Arrays last
+  "WHEN a.typtype='r' THEN 3 " +                                      // Ranges before
+  "WHEN a.typtype='c' THEN 2 " +                                      // Composite types before
+  "WHEN a.typtype='d' THEN 1 " +                                      // Domains before
   "ELSE 0 " +                                                         // Base types first
 "END AS ord " +
 "FROM pg_type AS a " +
@@ -183,8 +184,8 @@ namespace Npgsql
 (withRange ? "LEFT OUTER JOIN pg_range ON (pg_range.rngtypid = a.oid) " : "") +
 "WHERE " +
 "  (" +
-"    a.typtype IN ('b', 'r', 'e', 'c') AND " +
-"    (b.typtype IS NULL OR b.typtype IN ('b', 'r', 'e', 'c'))" +  // Either non-array or array of supported element type
+"    a.typtype IN ('b', 'r', 'e', 'c', 'd') AND " +
+"    (b.typtype IS NULL OR b.typtype IN ('b', 'r', 'e', 'c', 'd'))" +  // Either non-array or array of supported element type
 "  ) OR " +
 "  a.typname = 'record' " +
 "ORDER BY ord";
@@ -219,7 +220,7 @@ namespace Npgsql
             Contract.Assume(oid != 0);
 
             uint elementOID;
-            var typeChar = reader.GetString(3)[0];
+            var typeChar = reader.GetString(4)[0];
             switch (typeChar)
             {
             case 'b':  // Normal base type
@@ -231,7 +232,7 @@ namespace Npgsql
                 ).AddTo(types);
                 return;
             case 'a':   // Array
-                elementOID = Convert.ToUInt32(reader[4]);
+                elementOID = Convert.ToUInt32(reader[5]);
                 Contract.Assume(elementOID > 0);
                 BackendType elementBackendType;
                 if (!types.ByOID.TryGetValue(elementOID, out elementBackendType))
@@ -242,7 +243,7 @@ namespace Npgsql
                 new BackendArrayType(name, oid, elementBackendType).AddTo(types);
                 return;
             case 'r':   // Range
-                elementOID = Convert.ToUInt32(reader[4]);
+                elementOID = Convert.ToUInt32(reader[5]);
                 Contract.Assume(elementOID > 0);
                 if (!types.ByOID.TryGetValue(elementOID, out elementBackendType))
                 {
@@ -257,6 +258,17 @@ namespace Npgsql
             case 'c':   // Composite
                 var relationId = Convert.ToUInt32(reader[2]);
                 new BackendCompositeType(name, oid, relationId).AddTo(types);
+                return;
+            case 'd':   // Domain
+                var baseTypeOID = Convert.ToUInt32(reader[3]);
+                Contract.Assume(baseTypeOID > 0);
+                BackendType baseBackendType;
+                if (!types.ByOID.TryGetValue(baseTypeOID, out baseBackendType))
+                {
+                    Log.Trace($"Domain type '{name}' refers to unknown base type with OID {baseTypeOID}, skipping", connector.Id);
+                    return;
+                }
+                new BackendDomainType(name, oid, baseBackendType).AddTo(types);
                 return;
             case 'p':   // psuedo-type (record only)
                 Contract.Assume(name == "record");
@@ -942,6 +954,41 @@ namespace Npgsql
             }
         }
 
+        /// <summary>
+        /// Represents a PostgreSQL domain type.
+        /// </summary>
+        /// <remarks>
+        /// When PostgreSQL returns a RowDescription for a domain type, the type OID is the base type's
+        /// (so fetching a domain type over text returns a RowDescription for text).
+        /// However, when a composite type is returned, the type OID there is that of the domain,
+        /// so we provide "clean" support for domain types.
+        /// </remarks>
+        class BackendDomainType : BackendType
+        {
+            readonly BackendType _baseBackendType;
+
+            public BackendDomainType(string name, uint oid, BackendType baseBackendType) : base(name, oid)
+            {
+                _baseBackendType = baseBackendType;
+            }
+
+            internal override TypeHandler Activate(TypeHandlerRegistry registry)
+            {
+                TypeHandler baseTypeHandler;
+                if (!registry.TryGetByOID(_baseBackendType.OID, out baseTypeHandler))
+                {
+                    // Base type hasn't been set up yet, do it now
+                    baseTypeHandler = _baseBackendType.Activate(registry);
+                }
+
+                // Make the domain type OID point to the base type's type handler, the wire encoding
+                // is the same
+                registry.ByOID[OID] = baseTypeHandler;
+
+                return baseTypeHandler;
+            }
+        }
+
         class BackendPseudoType : BackendType
         {
             internal BackendPseudoType(string name, uint oid) : base(name, oid) { }
@@ -952,7 +999,7 @@ namespace Npgsql
             }
         }
 
-#endregion
+        #endregion
 
         #region Type Handler Discovery
 

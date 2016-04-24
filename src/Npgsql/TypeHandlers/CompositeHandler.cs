@@ -125,7 +125,6 @@ namespace Npgsql.TypeHandlers
                 {
                     if (_readBuf.ReadBytesLeft < 8) { return false; }
                     var typeOID = _readBuf.ReadInt32();
-                    Contract.Assume(typeOID == fieldDescriptor.Handler.OID);
                     _len = _readBuf.ReadInt32();
                     if (_len == -1)
                     {
@@ -266,8 +265,8 @@ namespace Npgsql.TypeHandlers
             _members = new List<MemberDescriptor>(RawFields.Count);
             foreach (var rawField in RawFields)
             {
-                TypeHandler fieldHandler;
-                if (!_registry.TryGetByOID(rawField.TypeOID, out fieldHandler))
+                TypeHandler handler;
+                if (!_registry.TryGetByOID(rawField.TypeOID, out handler))
                     throw new Exception($"PostgreSQL composite type {PgName}, mapped to CLR type {typeof (T).Name}, has field {rawField.PgName} with an unknown type (TypeOID={rawField.TypeOID})");
 
                 var member = (
@@ -284,14 +283,14 @@ namespace Npgsql.TypeHandlers
                 var property = member as PropertyInfo;
                 if (property != null)
                 {
-                    _members.Add(new MemberDescriptor(rawField.PgName, fieldHandler, property));
+                    _members.Add(new MemberDescriptor(rawField.PgName, handler, property));
                     continue;
                 }
 
                 var field = member as FieldInfo;
                 if (field != null)
                 {
-                    _members.Add(new MemberDescriptor(rawField.PgName, fieldHandler, field));
+                    _members.Add(new MemberDescriptor(rawField.PgName, handler, field));
                     continue;
                 }
 
@@ -357,5 +356,7 @@ namespace Npgsql.TypeHandlers
     {
         internal string PgName;
         internal uint TypeOID;
+
+        public override string ToString() => $"{PgName} => {TypeOID}";
     }
 }

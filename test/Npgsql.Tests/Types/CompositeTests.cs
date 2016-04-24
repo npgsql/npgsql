@@ -345,5 +345,45 @@ namespace Npgsql.Tests.Types
             [PgName("some_database_name")]
             public int SomeClrName { get; set; }
         }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/856")]
+        public void CompositeWithDomain()
+        {
+            var setupSql = @"SET search_path=pg_temp;
+
+CREATE DOMAIN us_postal_code AS TEXT
+CHECK
+(
+    VALUE ~ '^\d{5}$'
+    OR VALUE ~ '^\d{5}-\d{4}$'
+);
+
+CREATE TYPE address AS
+(
+    street TEXT,
+    postal_code us_postal_code
+)";
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery(setupSql);
+                conn.ReloadTypes();
+                conn.MapComposite<Address>();
+
+                using (var cmd = new NpgsqlCommand(@"SELECT ROW('x', '12345')::address", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    var address = reader.GetFieldValue<Address>(0);
+                    Assert.That(address.Street, Is.EqualTo("x"));
+                    Assert.That(address.PostalCode, Is.EqualTo("12345"));
+                }
+            }
+        }
+
+        public class Address
+        {
+            public string Street { get; set; }
+            public string PostalCode { get; set; }
+        }
     }
 }
