@@ -369,6 +369,51 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1024")]
+        [Timeout(10000)]
+        public void Wait()
+        {
+            using (var conn = OpenConnection())
+            using (var notifyingConn = OpenConnection())
+            {
+                var receivedNotification = false;
+                conn.ExecuteNonQuery("LISTEN notifytest");
+                notifyingConn.ExecuteNonQuery("NOTIFY notifytest");
+                conn.Notification += (o, e) => receivedNotification = true;
+                conn.Wait();
+                Assert.IsTrue(receivedNotification);
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1024")]
+        [Timeout(10000)]
+        public void WaitWithTimeout()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.Wait(100);
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1024")]
+        [Timeout(10000)]
+        public async Task WaitAsync()
+        {
+            using (var conn = OpenConnection())
+            using (var notifyingConn = OpenConnection())
+            {
+                var receivedNotification = false;
+                conn.ExecuteNonQuery("LISTEN notifytest");
+                notifyingConn.ExecuteNonQuery("NOTIFY notifytest");
+                conn.Notification += (o, e) => receivedNotification = true;
+                await conn.WaitAsync();
+                Assert.IsTrue(receivedNotification);
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+            }
+        }
+
         #endregion
 
         #region Keepalive

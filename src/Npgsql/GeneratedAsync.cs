@@ -26,6 +26,7 @@ using System.Data.Common;
 using System.Diagnostics.Contracts;
 using System.IO;
 using System.Net.Security;
+using System.Net.Sockets;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -594,7 +595,7 @@ namespace Npgsql
             }
         }
 
-        async Task<IBackendMessage> ReadSingleMessageWithPrependedAsync(CancellationToken cancellationToken, DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential, bool returnNullForAsyncMessage = false)
+        async Task<IBackendMessage> ReadSingleMessageWithPrependedAsync(CancellationToken cancellationToken, DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential)
         {
             // First read the responses of any prepended messages.
             // Exceptions shouldn't happen here, we break the connector if they do
@@ -623,7 +624,7 @@ namespace Npgsql
             try
             {
                 ReceiveTimeout = UserTimeout;
-                return await DoReadSingleMessageAsync(cancellationToken, dataRowLoadingMode, returnNullForAsyncMessage);
+                return await DoReadSingleMessageAsync(cancellationToken, dataRowLoadingMode);
             }
             catch (NpgsqlException)
             {

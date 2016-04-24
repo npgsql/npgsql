@@ -28,6 +28,7 @@ using System.Data.Common;
 using System.Diagnostics.Contracts;
 using System.IO;
 using System.Net.Security;
+using System.Net.Sockets;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -434,12 +435,12 @@ namespace Npgsql
                         return ConnectionState.Open;
                     case ConnectorState.Executing:
                         return ConnectionState.Open | ConnectionState.Executing;
+                    case ConnectorState.Copy:
                     case ConnectorState.Fetching:
+                    case ConnectorState.Waiting:
                         return ConnectionState.Open | ConnectionState.Fetching;
                     case ConnectorState.Broken:
                         return ConnectionState.Broken;
-                    case ConnectorState.Copy:
-                        return ConnectionState.Open | ConnectionState.Fetching;
                     default:
                         throw PGUtil.ThrowIfReached("Unknown connector state: " + Connector.State);
                 }
@@ -1188,6 +1189,56 @@ namespace Npgsql
         public static void UnmapCompositeGlobally<T>(string pgName, INpgsqlNameTranslator nameTranslator = null) where T : new()
         {
             TypeHandlerRegistry.UnmapCompositeGlobally<T>(pgName, nameTranslator);
+        }
+
+        #endregion
+
+        #region Wait
+
+        /// <summary>
+        /// Waits until an asynchronous PostgreSQL messages (e.g. a notification) arrives, and
+        /// exits immediately. The asynchronous message is delivered via the normal events
+        /// (<see cref="Notification"/>, <see cref="Notice"/>).
+        /// </summary>
+        /// <param name="timeout">
+        /// The time-out value, in milliseconds, passed to <see cref="Socket.ReceiveTimeout"/>.
+        /// The default value is 0, which indicates an infinite time-out period.
+        /// Specifying -1 also indicates an infinite time-out period.
+        /// </param>
+        public void Wait(int timeout=0)
+        {
+            if (timeout != -1 && timeout < 0)
+                throw new ArgumentException("Argument must be -1, 0 or positive", nameof(timeout));
+            Contract.EndContractBlock();
+
+            CheckConnectionOpen();
+            Log.Debug($"Starting to wait (timeout={timeout})", Connector.Id);
+
+            using (Connector.StartUserAction(ConnectorState.Waiting))
+            {
+                try {
+                    Connector.ReadAsyncMessage(timeout);
+                } catch (IOException e) {
+                    var socketException = e.InnerException as SocketException;
+                    if (socketException?.SocketErrorCode == SocketError.TimedOut)
+                        return;
+                    throw;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Waits asynchronously until an asynchronous PostgreSQL messages (e.g. a notification)
+        /// arrives, and exist immediately. The asynchronous message is delivered via the normal events
+        /// (<see cref="Notification"/>, <see cref="Notice"/>).
+        /// </summary>
+        public async Task WaitAsync()
+        {
+            CheckConnectionOpen();
+            Log.Debug("Starting to wait async", Connector.Id);
+
+            using (Connector.StartUserAction(ConnectorState.Waiting))
+                await Connector.ReadAsyncMessageAsync();
         }
 
         #endregion

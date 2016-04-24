@@ -326,6 +326,7 @@ namespace Npgsql
                     case ConnectorState.Ready:
                     case ConnectorState.Executing:
                     case ConnectorState.Fetching:
+                    case ConnectorState.Waiting:
                     case ConnectorState.Copy:
                         return true;
                     case ConnectorState.Closed:
@@ -839,20 +840,27 @@ namespace Npgsql
         }
 
         internal Task<IBackendMessage> ReadSingleMessageAsync(DataRowLoadingMode dataRowLoadingMode, CancellationToken cancellationToken)
+            => ReadSingleMessageWithPrependedAsync(cancellationToken, dataRowLoadingMode);
+
+        internal void ReadAsyncMessage(int timeout)
         {
-            return ReadSingleMessageWithPrependedAsync(cancellationToken, dataRowLoadingMode);
+            ReceiveTimeout = timeout;
+            var msg = DoReadSingleMessage(DataRowLoadingMode.NonSequential, true);
+            if (msg != null)
+                throw new Exception($"While waiting for an asynchronous message, received an unexpected message of type {msg.Code}");
         }
 
-        [CanBeNull]
-        IBackendMessage ReadSingleMessageWithNulls(DataRowLoadingMode dataRowLoadingMode)
+        internal async Task ReadAsyncMessageAsync()
         {
-            return ReadSingleMessageWithPrepended(dataRowLoadingMode, true);
+            var msg = await DoReadSingleMessageAsync(CancellationToken.None, DataRowLoadingMode.NonSequential, true);
+            if (msg != null)
+                throw new Exception($"While waiting for an asynchronous message, received an unexpected message of type {msg.Code}");
         }
 
         [RewriteAsync]
         [CanBeNull]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        IBackendMessage ReadSingleMessageWithPrepended(DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential, bool returnNullForAsyncMessage = false)
+        IBackendMessage ReadSingleMessageWithPrepended(DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential)
         {
             // First read the responses of any prepended messages.
             // Exceptions shouldn't happen here, we break the connector if they do
@@ -881,7 +889,7 @@ namespace Npgsql
             try
             {
                 ReceiveTimeout = UserTimeout;
-                return DoReadSingleMessage(dataRowLoadingMode, returnNullForAsyncMessage);
+                return DoReadSingleMessage(dataRowLoadingMode);
             }
             catch (NpgsqlException)
             {
@@ -1458,6 +1466,7 @@ namespace Npgsql
             case ConnectorState.Executing:
             case ConnectorState.Fetching:
             case ConnectorState.Copy:
+            case ConnectorState.Waiting:
                 throw new InvalidOperationException("Reset() called on connector with state " + State);
             default:
                 throw PGUtil.ThrowIfReached();
@@ -1516,6 +1525,7 @@ namespace Npgsql
                 // Can happen in a race condition as the connector is transitioning to Ready
                 case ConnectorState.Executing:
                 case ConnectorState.Fetching:
+                case ConnectorState.Waiting:
                     throw new InvalidOperationException("An operation is already in progress.");
                 case ConnectorState.Copy:
                     throw new InvalidOperationException("A COPY operation is in progress and must complete first.");
@@ -1778,6 +1788,10 @@ namespace Npgsql
         /// The connector is currently fetching and processing query results.
         /// </summary>
         Fetching,
+        /// <summary>
+        /// The connector is currently waiting for asynchronous notifications to arrive.
+        /// </summary>
+        Waiting,
         /// <summary>
         /// The connection was broken because an unexpected error occurred which left it in an unknown state.
         /// This state isn't implemented yet.
