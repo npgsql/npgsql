@@ -113,7 +113,7 @@ namespace Npgsql.Tests.Types
                 }
                 finally
                 {
-                    NpgsqlConnection.UnmapCompositeGlobally("composite1");
+                    NpgsqlConnection.UnmapCompositeGlobally<SomeComposite>("composite1");
                 }
             }
         }
@@ -283,18 +283,18 @@ namespace Npgsql.Tests.Types
         [Test]
         public void Array()
         {
-            using (var Conn = OpenConnection())
+            using (var conn = OpenConnection())
             {
-                Conn.ExecuteNonQuery("CREATE TYPE pg_temp.composite5 AS (x int, some_text text)");
-                Conn.ReloadTypes();
-                Conn.MapComposite<SomeComposite>("composite5");
+                conn.ExecuteNonQuery("CREATE TYPE pg_temp.composite5 AS (x int, some_text text)");
+                conn.ReloadTypes();
+                conn.MapComposite<SomeComposite>("composite5");
 
                 var expected = new[] {
                     new SomeComposite {x = 8, SomeText = "foo"},
                     new SomeComposite {x = 9, SomeText = "bar"}
                 };
 
-                using (var cmd = new NpgsqlCommand("SELECT @p1::composite5[], @p2::composite5[]", Conn))
+                using (var cmd = new NpgsqlCommand("SELECT @p1::composite5[], @p2::composite5[]", conn))
                 {
                     cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.Array | NpgsqlDbType.Composite) {
                         Value = expected,
@@ -315,6 +315,35 @@ namespace Npgsql.Tests.Types
                     }
                 }
             }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/859")]
+        public void NameTranslation()
+        {
+            var expected = new NameTranslationComposite { Simple = 2, TwoWords = 3, SomeClrName = 4 };
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TYPE pg_temp.name_translation_composite AS (simple int, two_words int, some_database_name int)");
+                conn.ReloadTypes();
+                conn.MapComposite<NameTranslationComposite>();
+
+                using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+                {
+                    cmd.Parameters.AddWithValue("p", expected);
+                    var actual = (NameTranslationComposite)cmd.ExecuteScalar();
+                    Assert.That(actual.Simple, Is.EqualTo(expected.Simple));
+                    Assert.That(actual.TwoWords, Is.EqualTo(expected.TwoWords));
+                    Assert.That(actual.SomeClrName, Is.EqualTo(expected.SomeClrName));
+                }
+            }
+        }
+
+        class NameTranslationComposite
+        {
+            public int Simple { get; set; }
+            public int TwoWords { get; set; }
+            [PgName("some_database_name")]
+            public int SomeClrName { get; set; }
         }
     }
 }

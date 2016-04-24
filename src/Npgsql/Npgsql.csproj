@@ -157,6 +157,7 @@
     <Compile Include="FrontendMessages\CopyFailMessage.cs" />
     <Compile Include="FrontendMessages\SSLRequestMessage.cs" />
     <Compile Include="ICancelable.cs" />
+    <Compile Include="NameTranslation\INpgsqlNameTranslator.cs" />
     <Compile Include="Logging\ConsoleLoggingProvider.cs" />
     <Compile Include="Logging\NoOpLoggingProvider.cs" />
     <Compile Include="Logging\NpgsqlLogger.cs" />
@@ -192,6 +193,7 @@
     <Compile Include="NpgsqlTypes\NpgsqlUserTypes.cs" />
     <Compile Include="NpgsqlTypes\PostgisTypes.cs" />
     <Compile Include="ReadBuffer.cs" />
+    <Compile Include="NameTranslation\NpgsqlSnakeCaseNameTranslator.cs" />
     <Compile Include="SqlQueryParser.cs" />
     <Compile Include="StringEx.cs" />
     <Compile Include="TaskExtensions.cs" />

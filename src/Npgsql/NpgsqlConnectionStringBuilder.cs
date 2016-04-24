@@ -732,26 +732,6 @@ namespace Npgsql
         }
         int _internalCommandTimeout;
 
-        /// <summary>
-        /// Whether to have the backend enforce <see cref="CommandTimeout"/> and <see cref="InternalCommandTimeout"/>
-        /// via the statement_timeout variable. Defaults to true.
-        /// </summary>
-        [Category("Timeouts")]
-        [Description("Whether to have the backend enforce CommandTimeout and InternalCommandTimeout via the statement_timeout variable.")]
-        [DisplayName("Backend Timeouts")]
-        [NpgsqlConnectionStringProperty]
-        [DefaultValue(true)]
-        public bool BackendTimeouts
-        {
-            get { return _backendTimeouts; }
-            set
-            {
-                _backendTimeouts = value;
-                SetValue(nameof(BackendTimeouts), value);
-            }
-        }
-        bool _backendTimeouts;
-
         #endregion
 
         #region Properties - Entity Framework
@@ -900,6 +880,20 @@ namespace Npgsql
         {
             get { return false; }
             set { throw new NotSupportedException("The ContinuousProcessing parameter is no longer supported. Please see http://www.npgsql.org/doc/3.1/migration.html"); }
+        }
+
+        /// <summary>
+        /// Obsolete, see http://www.npgsql.org/doc/3.1/migration.html
+        /// </summary>
+        [Category("Obsolete")]
+        [Description("Obsolete, see http://www.npgsql.org/doc/3.1/migration.html")]
+        [DisplayName("Backend Timeouts")]
+        [NpgsqlConnectionStringProperty]
+        [Obsolete]
+        public bool BackendTimeouts
+        {
+            get { return false; }
+            set { throw new NotSupportedException("The BackendTimeouts parameter is no longer supported. Please see http://www.npgsql.org/doc/3.1/migration.html"); }
         }
 
         /// <summary>

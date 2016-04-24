@@ -170,13 +170,35 @@ namespace Npgsql.Tests
 
         #region Timeout
 
+        [Test, Description("Checks that CommandTimeout gets enforced as a socket timeout")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/327")]
+        [Timeout(10000)]
+        public void Timeout()
+        {
+            using (var conn = OpenConnection(ConnectionString + ";CommandTimeout=1"))
+            using (var cmd = CreateSleepCommand(conn, 10))
+            {
+                try
+                {
+                    cmd.ExecuteNonQuery();
+                    Assert.Fail("No timeout occurred");
+                }
+                catch (IOException e)
+                {
+                    var socketException = e.InnerException as SocketException;
+                    Assert.That(socketException.SocketErrorCode, Is.EqualTo(SocketError.TimedOut));
+                }
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+            }
+        }
+
         [Test]
         public void TimeoutFromConnectionString()
         {
             Assert.That(NpgsqlConnector.MinimumInternalCommandTimeout, Is.Not.EqualTo(NpgsqlCommand.DefaultTimeout));
             var timeout = NpgsqlConnector.MinimumInternalCommandTimeout;
-            int connId;
-            using (var conn = new NpgsqlConnection(ConnectionString + ";CommandTimeout=" + timeout))
+            var csbWithTimout = new NpgsqlConnectionStringBuilder(ConnectionString) { CommandTimeout = timeout };
+            using (var conn = new NpgsqlConnection(csbWithTimout))
             {
                 var command = new NpgsqlCommand("SELECT 1", conn);
                 conn.Open();
@@ -184,102 +206,6 @@ namespace Npgsql.Tests
                 command.CommandTimeout = 10;
                 command.ExecuteScalar();
                 Assert.That(command.CommandTimeout, Is.EqualTo(10));
-                connId = conn.ProcessID;
-            }
-            using (var conn = new NpgsqlConnection(ConnectionString + ";CommandTimeout=" + timeout))
-            {
-                conn.Open();
-                var command = CreateSleepCommand(conn, timeout + 2);
-                Assert.That(conn.ProcessID, Is.EqualTo(connId), "Got a different connection...");
-                Assert.That(command.CommandTimeout, Is.EqualTo(timeout));
-                Assert.That(() => command.ExecuteNonQuery(),
-                    Throws.TypeOf<NpgsqlException>()
-                    .With.Property("Code").EqualTo("57014")
-                );
-                Assert.That(conn.ExecuteScalar("SHOW statement_timeout"), Is.EqualTo(timeout + "s"));
-                conn.Close();
-                NpgsqlConnection.ClearPool(conn);
-            }
-        }
-
-        [Test]
-        public void TimeoutFirstParameters()
-        {
-            var conn = new NpgsqlConnection(ConnectionString);
-            conn.Open();
-            try//the next command will fail on earlier postgres versions, but that is not a bug in itself.
-            {
-                new NpgsqlCommand("set standard_conforming_strings=off", conn).ExecuteNonQuery();
-            } catch { }
-
-            using (conn = new NpgsqlConnection(ConnectionString)) {
-                conn.Open();
-                try //the next command will fail on earlier postgres versions, but that is not a bug in itself.
-                {
-                    new NpgsqlCommand("set standard_conforming_strings=off", conn).ExecuteNonQuery();
-                } catch {
-                }
-
-                using (var command = CreateSleepCommand(conn, 3)) {
-                    command.CommandTimeout = 1;
-                    try {
-                        command.ExecuteNonQuery();
-                        Assert.Fail("3s command survived a 1s timeout");
-                    } catch (NpgsqlException) {
-                        // We cannot currently identify that the exception was a timeout
-                        // in a locale-independent fashion, so just assume so.
-                    }
-                }
-
-                using (var command = CreateSleepCommand(conn, 3)) {
-                    command.CommandTimeout = 4;
-                    try {
-                        command.ExecuteNonQuery();
-                    } catch (NpgsqlException) {
-                        // We cannot currently identify that the exception was a timeout
-                        // in a locale-independent fashion, so just assume so.
-                        throw new Exception("3s command did NOT survive a 4s timeout");
-                    }
-                }
-            }
-        }
-
-        [Test]
-        public void TimeoutFirstFunctionCall()
-        {
-            // Function calls entail internal queries; verify that they do not
-            // sabotage the requested timeout.
-
-            using (var conn = OpenConnection())
-            {
-                var command = CreateSleepCommand(conn, 3);
-                command.CommandTimeout = 1;
-                try
-                {
-                    command.ExecuteNonQuery();
-                    Assert.Fail("3s function call survived a 1s timeout");
-                }
-                catch (NpgsqlException)
-                {
-                    // We cannot currently identify that the exception was a timeout
-                    // in a locale-independent fashion, so just assume so.
-                }
-            }
-
-            using (var conn = OpenConnection())
-            {
-                var command = CreateSleepCommand(conn, 3);
-                command.CommandTimeout = 4;
-                try
-                {
-                    command.ExecuteNonQuery();
-                }
-                catch (NpgsqlException)
-                {
-                    // We cannot currently identify that the exception was a timeout
-                    // in a locale-independent fashion, so just assume so.
-                    throw new Exception("3s command did NOT survive a 4s timeout");
-                }
             }
         }
 
@@ -309,64 +235,6 @@ namespace Npgsql.Tests
                         Assert.That(cmd.CommandTimeout, Is.EqualTo(102));
                     }
                 }
-            }
-        }
-
-        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/466")]
-        public void TimeoutResetOnRollback()
-        {
-            using (var conn = OpenConnection(ConnectionString + ";CommandTimeout=10"))
-            {
-                var tx = conn.BeginTransaction();
-                conn.ExecuteScalar("SELECT 1"); // Set timeout to 10
-                tx.Rollback(); // Rollback, Npgsql should reset its timeout to unknown
-                using (var cmd = new NpgsqlCommand("SHOW statement_timeout", conn))
-                {
-                    cmd.CommandTimeout = 20;
-                    Assert.That(cmd.ExecuteScalar(), Is.EqualTo("20s"));
-                }
-            }
-        }
-
-        [Test, Description("Test disabling backend timeouts altogether")]
-        [IssueLink("https://github.com/npgsql/npgsql/issues/351")]
-        [IssueLink("https://github.com/npgsql/npgsql/issues/350")]
-        public void TimeoutDisable()
-        {
-            using (var conn = OpenConnection(ConnectionString + ";BackendTimeouts=false"))
-            {
-                Assert.That(conn.ExecuteScalar("SHOW statement_timeout"), Is.EqualTo("0"));
-                using (var tx = conn.BeginTransaction())
-                {
-                    // If backend timeouts has been properly disabled, statement_timeout should
-                    // still be the PostgreSQL default, which is 0
-                    Assert.That(conn.ExecuteScalar("SHOW statement_timeout", tx), Is.EqualTo("0"));
-                }
-            }
-        }
-
-        [Test, Description("Checks that the client socket timeout works as a last resort even when there's no backend timeout")]
-        [IssueLink("https://github.com/npgsql/npgsql/issues/327")]
-        [Timeout(10000)]
-        public void TimeoutFrontend()
-        {
-            using (var conn = OpenConnection(ConnectionString + ";CommandTimeout=1;BackendTimeouts=false"))
-            {
-                using (var cmd = CreateSleepCommand(conn, 10))
-                {
-                    Assert.That(() => cmd.ExecuteNonQuery(), Throws.Exception.TypeOf<IOException>());
-                    Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
-                }
-            }
-        }
-
-        [Test, Description("Makes sure the frontend socket timeout is set to 0 (infinite) for async notification reads")]
-        public void TimeoutFrontendWithAsyncNotification()
-        {
-            using (var conn = OpenConnection(ConnectionString + ";CommandTimeout=1;BackendTimeouts=false"))
-            {
-                conn.ExecuteNonQuery("SELECT 1");
-                // Socket timeout is now 1 second
             }
         }
 

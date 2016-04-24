@@ -81,6 +81,7 @@ namespace Npgsql
         internal static IDictionary<string, IEnumHandler> GlobalEnumMappings => _globalEnumMappings;
         internal static IDictionary<string, ICompositeHandler> GlobalCompositeMappings => _globalCompositeMappings;
 
+        static readonly INpgsqlNameTranslator DefaultNameTranslator = new NpgsqlSnakeCaseNameTranslator();
         static readonly BackendTypes EmptyBackendTypes = new BackendTypes();
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
@@ -270,25 +271,41 @@ namespace Npgsql
 
         #region Enum
 
-        internal void MapEnum<TEnum>(string pgName) where TEnum : struct
+        internal void MapEnum<TEnum>(string pgName, INpgsqlNameTranslator nameTranslator) where TEnum : struct
         {
+            if (nameTranslator == null)
+                nameTranslator = DefaultNameTranslator;
+            if (pgName == null)
+                pgName = GetPgName<TEnum>(nameTranslator);
+
             BackendType backendType;
             if (!_backendTypes.ByName.TryGetValue(pgName, out backendType))
                 throw new Exception($"An enum with the name {pgName} was not found in the database");
+
             var asEnumType = backendType as BackendEnumType;
             if (asEnumType == null)
                 throw new Exception($"A PostgreSQL type with the name {pgName} was found in the database but it isn't an enum");
 
-            asEnumType.Activate(this, new EnumHandler<TEnum>(pgName));
+            asEnumType.Activate(this, new EnumHandler<TEnum>(pgName, nameTranslator));
         }
 
-        internal static void MapEnumGlobally<TEnum>(string pgName) where TEnum : struct
+        internal static void MapEnumGlobally<TEnum>(string pgName, INpgsqlNameTranslator nameTranslator) where TEnum : struct
         {
-            _globalEnumMappings[pgName] = new EnumHandler<TEnum>(pgName);
+            if (nameTranslator == null)
+                nameTranslator = DefaultNameTranslator;
+            if (pgName == null)
+                pgName = GetPgName<TEnum>(nameTranslator);
+
+            _globalEnumMappings[pgName] = new EnumHandler<TEnum>(pgName, nameTranslator);
         }
 
-        internal static void UnmapEnumGlobally(string pgName)
+        internal static void UnmapEnumGlobally<TEnum>(string pgName, INpgsqlNameTranslator nameTranslator) where TEnum : struct
         {
+            if (nameTranslator == null)
+                nameTranslator = DefaultNameTranslator;
+            if (pgName == null)
+                pgName = GetPgName<TEnum>(nameTranslator);
+
             IEnumHandler _;
             _globalEnumMappings.TryRemove(pgName, out _);
         }
@@ -297,25 +314,41 @@ namespace Npgsql
 
         #region Composite
 
-        internal void MapComposite<T>(string pgName) where T : new()
+        internal void MapComposite<T>(string pgName, INpgsqlNameTranslator nameTranslator) where T : new()
         {
+            if (nameTranslator == null)
+                nameTranslator = DefaultNameTranslator;
+            if (pgName == null)
+                pgName = GetPgName<T>(nameTranslator);
+
             BackendType backendType;
             if (!_backendTypes.ByName.TryGetValue(pgName, out backendType))
                 throw new Exception($"A composite with the name {pgName} was not found in the database");
+
             var asComposite = backendType as BackendCompositeType;
             if (asComposite == null)
                 throw new Exception($"Type {pgName} was found in the database but is not a composite");
 
-            asComposite.Activate(this, new CompositeHandler<T>(pgName, this));
+            asComposite.Activate(this, new CompositeHandler<T>(pgName, nameTranslator, this));
         }
 
-        internal static void MapCompositeGlobally<T>(string pgName) where T : new()
+        internal static void MapCompositeGlobally<T>(string pgName, INpgsqlNameTranslator nameTranslator) where T : new()
         {
-            _globalCompositeMappings[pgName] = new CompositeHandler<T>(pgName);
+            if (nameTranslator == null)
+                nameTranslator = DefaultNameTranslator;
+            if (pgName == null)
+                pgName = GetPgName<T>(nameTranslator);
+
+            _globalCompositeMappings[pgName] = new CompositeHandler<T>(pgName, nameTranslator);
         }
 
-        internal static void UnmapCompositeGlobally(string pgName)
+        internal static void UnmapCompositeGlobally<T>(string pgName, INpgsqlNameTranslator nameTranslator) where T : new()
         {
+            if (nameTranslator == null)
+                nameTranslator = DefaultNameTranslator;
+            if (pgName == null)
+                pgName = GetPgName<T>(nameTranslator);
+
             ICompositeHandler _;
             _globalCompositeMappings.TryRemove(pgName, out _);
         }
@@ -862,7 +895,7 @@ namespace Npgsql
             /// Populated on the first activation of the composite.
             /// </summary>
             [CanBeNull]
-            List<Tuple<string, uint>> _rawFields;
+            List<RawCompositeField> _rawFields;
 
             internal BackendCompositeType(string name, uint oid, uint relationId) : base(name, oid)
             {
@@ -891,15 +924,11 @@ namespace Npgsql
                 var fields = _rawFields;
                 if (fields == null)
                 {
-                    fields = new List<Tuple<string, uint>>();
+                    fields = new List<RawCompositeField>();
                     using (var cmd = new NpgsqlCommand($"SELECT attname,atttypid FROM pg_attribute WHERE attrelid={_relationId}", registry.Connector.Connection))
                     using (var reader = cmd.ExecuteReader())
-                    {
                         while (reader.Read())
-                        {
-                            fields.Add(new Tuple<string, uint>(reader.GetString(0), reader.GetFieldValue<uint>(1)));
-                        }
-                    }
+                            fields.Add(new RawCompositeField { PgName = reader.GetString(0), TypeOID = reader.GetFieldValue<uint>(1) });
                     _rawFields = fields;
                 }
 
@@ -1006,6 +1035,14 @@ namespace Npgsql
         {
             BackendTypes types;
             BackendTypeCache.TryRemove(connectionString, out types);
+        }
+
+        static string GetPgName<T>(INpgsqlNameTranslator nameTranslator)
+        {
+            var attr = typeof(T).GetTypeInfo().GetCustomAttribute<PgNameAttribute>();
+            return attr == null
+                ? nameTranslator.TranslateTypeName(typeof(T).Name)
+                : attr.PgName;
         }
 
         #endregion

@@ -5,8 +5,8 @@
     "emitEntryPoint": true
   },
   "dependencies": {
-    "NUnit": "3.2.0",
-    "NUnitLite": "3.2.0",
+    "NUnit": "3.2.1",
+    "NUnitLite": "3.2.1",
     "NLog": "3.2.0.0",
     "EntityFramework6.Npgsql": "3.1.0-*",
     "Npgsql.Tests": "0.0.0"

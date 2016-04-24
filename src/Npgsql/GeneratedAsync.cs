@@ -212,10 +212,7 @@ namespace Npgsql
                 // from the Prepare phase (no need to send anything).
                 if (!IsPrepared || (behavior & CommandBehavior.SchemaOnly) == 0)
                 {
-                    // Set the frontend timeout
-                    _connector.UserCommandFrontendTimeout = CommandTimeout;
-                    // If needed, prepend a "SET statement_timeout" message to set the backend timeout
-                    _connector.PrependBackendTimeoutMessage(CommandTimeout);
+                    _connector.UserTimeout = CommandTimeout * 1000;
                     _sendState = SendState.Start;
                     _writeStatementIndex = 0;
                     if (IsPrepared)
@@ -605,7 +602,7 @@ namespace Npgsql
             {
                 try
                 {
-                    SetFrontendTimeout(ActualInternalCommandTimeout);
+                    ReceiveTimeout = InternalCommandTimeout;
                     while (_pendingRfqPrependedMessages > 0)
                     {
                         var msg = await (DoReadSingleMessageAsync(cancellationToken, DataRowLoadingMode.Skip, isPrependedMessage: true));
@@ -625,7 +622,7 @@ namespace Npgsql
             // Now read a non-prepended message
             try
             {
-                SetFrontendTimeout(UserCommandFrontendTimeout);
+                ReceiveTimeout = UserTimeout;
                 return await DoReadSingleMessageAsync(cancellationToken, dataRowLoadingMode, returnNullForAsyncMessage);
             }
             catch (NpgsqlException)
@@ -758,26 +755,14 @@ namespace Npgsql
         internal async Task RollbackAsync(CancellationToken cancellationToken)
         {
             Log.Debug("Rollback transaction", Id);
-            try
-            {
-                // If we're in a failed transaction we can't set the timeout
-                var withTimeout = TransactionStatus != TransactionStatus.InFailedTransactionBlock;
-                await ExecuteInternalCommandAsync(PregeneratedMessage.RollbackTransaction, cancellationToken, withTimeout);
-            }
-            finally
-            {
-                // The rollback may change the value of statement_value, set to unknown
-                SetBackendTimeoutToUnknown();
-            }
+            await ExecuteInternalCommandAsync(PregeneratedMessage.RollbackTransaction, cancellationToken);
         }
 
-        internal async Task ExecuteInternalCommandAsync(FrontendMessage message, CancellationToken cancellationToken, bool withTimeout = true)
+        internal async Task ExecuteInternalCommandAsync(FrontendMessage message, CancellationToken cancellationToken)
         {
             Contract.Requires(message is QueryMessage || message is PregeneratedMessage);
             using (StartUserAction())
             {
-                if (withTimeout)
-                    PrependBackendTimeoutMessage(ActualInternalCommandTimeout);
                 await SendSingleMessageAsync(message, cancellationToken);
                 await ReadExpectingAsync<CommandCompleteMessage>(cancellationToken);
                 await ReadExpectingAsync<ReadyForQueryMessage>(cancellationToken);
