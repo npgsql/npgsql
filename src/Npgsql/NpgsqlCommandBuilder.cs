@@ -40,9 +40,21 @@ namespace Npgsql
     [System.ComponentModel.DesignerCategory("")]
     public sealed class NpgsqlCommandBuilder : DbCommandBuilder
     {
-        const string PGIdentifierPattern = @"[_a-z]\w*|""((?:[^""]|"""")+)""";
+        const string SupplementaryPlaneChar = "[\uD800-\uDBFF][\uDC00-\uDFFF]";
+        //const string PGIdentifierBeginChar = "[_a-z\u0080-\uD7FF\uE000-\uFFFF]|" + SupplementaryPlaneChar;
+        const string PGIdentifierBeginCharIgnoreCase = "[_a-z\u0080-\uD7FF\uE000-\uFFFF]|" + SupplementaryPlaneChar;
+        //const string PGIdentifierAfterChar = "[$0-9_a-z\u0080-\uD7FF\uE000-\uFFFF]|" + SupplementaryPlaneChar;
+        const string PGIdentifierAfterCharIgnoreCase = "[$0-9_a-z\u0080-\uD7FF\uE000-\uFFFF]|" + SupplementaryPlaneChar;
 
-        static readonly Regex PGObjectNameRegexIgnoreCase = new Regex($"^({PGIdentifierPattern})(?:\\.({PGIdentifierPattern}))?$", RegexOptions.ECMAScript | RegexOptions.IgnoreCase);
+        //const string PGIdentifierPattern =
+        //    "(?:" + PGIdentifierBeginChar + ")(?:" + PGIdentifierAfterChar +
+        //    ")*|\"((?:[^\"\uD800-\uDFFF]|\"\"|[\uD800-\uDBFF][\uDC00-\uDFFF])+)\"";
+        const string PGIdentifierPatternIgnoreCase = "(?:" +
+            PGIdentifierBeginCharIgnoreCase + ")(?:" + PGIdentifierAfterCharIgnoreCase +
+            ")*|\"((?:[^\"\uD800-\uDFFF]|\"\"|[\uD800-\uDBFF][\uDC00-\uDFFF])+)\"";
+
+        //static readonly Regex PGObjectNameRegex = new Regex($"^({PGIdentifierPattern})(?:\\.({PGIdentifierPattern}))?$");
+        static readonly Regex PGObjectNameRegexIgnoreCase = new Regex($"^({PGIdentifierPatternIgnoreCase})(?:\\.({PGIdentifierPatternIgnoreCase}))?$");
 
         static string UnescapePGIdentifier(string identifier)
             => identifier.Replace("\"\"", "\"");
