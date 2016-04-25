@@ -671,6 +671,28 @@ namespace Npgsql.Tests
             NpgsqlConnectorPool.ConnectorPoolMgr.ClearAllPools();
         }
 
+        [Test, Description("Makes sure that persistent commands are deallocated after connection is removed from pool")]
+        public void PersistentPrepareAfterPoolCleared()
+        {
+            using (var conn = OpenConnection())
+            {
+                using (var cmd = new NpgsqlCommand("SELECT 1", conn))
+                {
+                    cmd.IsPersistent = true;
+                    cmd.Prepare();
+                    Assert.That(cmd.ExecuteScalar(), Is.EqualTo(1));
+                }
+                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1), "Unexpected count of prepared statements");
+            }
+
+            NpgsqlConnectorPool.ConnectorPoolMgr.ClearAllPools();
+
+            using (var conn = OpenConnection())
+            {
+                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(0), "Prepared stament not deallocated");
+            }
+        }
+
         #endregion
 
         [Test, Description("Makes sure writing an unset parameter isn't allowed")]
