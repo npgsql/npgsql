@@ -68,7 +68,7 @@ namespace Npgsql
         String _commandText;
         int? _timeout;
         readonly NpgsqlParameterCollection _parameters = new NpgsqlParameterCollection();
-        bool _isPersistend;
+        bool _isPersistent;
 
         List<NpgsqlStatement> _queries;
 
@@ -313,10 +313,10 @@ namespace Npgsql
         /// </summary>
         public bool IsPersistent
         {
-            get { return _isPersistend; }
+            get { return _isPersistent; }
             set
             {
-                _isPersistend = value;
+                _isPersistent = value;
                 if (!value)
                 {
                     DeallocatePrepared();
