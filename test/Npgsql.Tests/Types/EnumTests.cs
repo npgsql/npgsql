@@ -24,6 +24,7 @@
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Text;
 using Npgsql;
@@ -225,7 +226,7 @@ namespace Npgsql.Tests.Types
                 }
                 finally
                 {
-                    NpgsqlConnection.UnmapEnumGlobally<Mood>("mood");
+                    NpgsqlConnection.UnmapEnumGlobally<Mood>("mood5");
                 }
             }
         }
@@ -403,6 +404,55 @@ namespace Npgsql.Tests.Types
             [PgName("some_database_name")]
             SomeClrName
         }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/632")]
+        public void Schemas()
+        {
+            try
+            {
+                using (var conn = OpenConnection())
+                {
+                    conn.ExecuteNonQuery("DROP SCHEMA IF EXISTS a CASCADE; DROP SCHEMA IF EXISTS b CASCADE");
+                    conn.ExecuteNonQuery("CREATE SCHEMA a; CREATE SCHEMA b");
+                    conn.ExecuteNonQuery("CREATE TYPE a.my_enum AS ENUM ('one')");
+                    conn.ExecuteNonQuery("CREATE TYPE b.my_enum AS ENUM ('alpha')");
+                    conn.ReloadTypes();
+                    // Per-connection mapping
+                    conn.MapEnum<Enum1>("a.my_enum");
+                    conn.MapEnum<Enum2>("b.my_enum");
+                    using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+                    {
+                        cmd.Parameters.AddWithValue("p", Enum1.One);
+                        Assert.That(cmd.ExecuteScalar(), Is.EqualTo(Enum1.One));
+                        cmd.Parameters[0].Value = Enum2.Alpha;
+                        Assert.That(cmd.ExecuteScalar(), Is.EqualTo(Enum2.Alpha));
+                    }
+                }
+                NpgsqlConnection.MapEnumGlobally<Enum1>("a.my_enum");
+                NpgsqlConnection.MapEnumGlobally<Enum2>("b.my_enum");
+                var csbWithoutPooling = new NpgsqlConnectionStringBuilder(ConnectionString) { Pooling = false };
+                using (var conn = OpenConnection(csbWithoutPooling))
+                {
+                    using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+                    {
+                        cmd.Parameters.AddWithValue("p", Enum1.One);
+                        Assert.That(cmd.ExecuteScalar(), Is.EqualTo(Enum1.One));
+                        cmd.Parameters[0].Value = Enum2.Alpha;
+                        Assert.That(cmd.ExecuteScalar(), Is.EqualTo(Enum2.Alpha));
+                    }
+                }
+            }
+            finally
+            {
+                NpgsqlConnection.UnmapEnumGlobally<Enum1>("a.my_enum");
+                NpgsqlConnection.UnmapEnumGlobally<Enum2>("b.my_enum");
+                using (var conn = OpenConnection())
+                    conn.ExecuteNonQuery("DROP SCHEMA IF EXISTS a CASCADE; DROP SCHEMA IF EXISTS b CASCADE");
+            }
+        }
+
+        enum Enum1 { One }
+        enum Enum2 { Alpha }
 
         [Test]
         public void TestEnumType()

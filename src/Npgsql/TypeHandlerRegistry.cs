@@ -120,12 +120,7 @@ namespace Npgsql
         {
             foreach (var kv in _globalEnumMappings)
             {
-                BackendType backendType;
-                if (!_backendTypes.ByName.TryGetValue(kv.Key, out backendType))
-                {
-                    Log.Warn($"While attempting to activate global enum mappings, PostgreSQL type {kv.Key} wasn't found in the database. Skipping it.", Connector.Id);
-                    continue;
-                }
+                var backendType = GetBackendTypeByName(kv.Key);
                 var backendEnumType = backendType as BackendEnumType;
                 if (backendEnumType == null)
                 {
@@ -137,12 +132,7 @@ namespace Npgsql
 
             foreach (var kv in _globalCompositeMappings)
             {
-                BackendType backendType;
-                if (!_backendTypes.ByName.TryGetValue(kv.Key, out backendType))
-                {
-                    Log.Warn($"While attempting to activate global composite mappings, PostgreSQL type {kv.Key} wasn't found in the database. Skipping it.", Connector.Id);
-                    continue;
-                }
+                var backendType = GetBackendTypeByName(kv.Key);
                 var backendCompositeType = backendType as BackendCompositeType;
                 if (backendCompositeType == null)
                 {
@@ -164,7 +154,7 @@ namespace Npgsql
             // For arrays and ranges, join in the element OID and type (to filter out arrays of unhandled
             // types).
             return
-"SELECT a.typname, a.oid, a.typrelid, a.typbasetype, " +
+"SELECT ns.nspname, a.typname, a.oid, a.typrelid, a.typbasetype, " +
 "CASE WHEN pg_proc.proname='array_recv' THEN 'a' ELSE a.typtype END AS type, " +
 "CASE " +
   "WHEN pg_proc.proname='array_recv' THEN a.typelem " +
@@ -179,6 +169,7 @@ namespace Npgsql
   "ELSE 0 " +                                                         // Base types first
 "END AS ord " +
 "FROM pg_type AS a " +
+"JOIN pg_namespace AS ns ON (ns.oid = a.typnamespace) " +
 "JOIN pg_proc ON pg_proc.oid = a.typreceive " +
 "LEFT OUTER JOIN pg_type AS b ON (b.oid = a.typelem) " +
 (withRange ? "LEFT OUTER JOIN pg_range ON (pg_range.rngtypid = a.oid) " : "") +
@@ -213,26 +204,27 @@ namespace Npgsql
 
         static void LoadBackendType(NpgsqlDataReader reader, BackendTypes types, NpgsqlConnector connector)
         {
-            var name = reader.GetString(0);
-            var oid = Convert.ToUInt32(reader[1]);
+            var ns = reader.GetString(0);
+            var name = reader.GetString(1);
+            var oid = Convert.ToUInt32(reader[2]);
 
             Contract.Assume(name != null);
             Contract.Assume(oid != 0);
 
             uint elementOID;
-            var typeChar = reader.GetString(4)[0];
+            var typeChar = reader.GetString(5)[0];
             switch (typeChar)
             {
             case 'b':  // Normal base type
                 TypeAndMapping typeAndMapping;
                 (
                     HandlerTypes.TryGetValue(name, out typeAndMapping)
-                        ? new BackendBaseType(name, oid, typeAndMapping.HandlerType, typeAndMapping.Mapping)
-                        : new BackendBaseType(name, oid)  // Unsupported by Npgsql
+                        ? new BackendBaseType(ns, name, oid, typeAndMapping.HandlerType, typeAndMapping.Mapping)
+                        : new BackendBaseType(ns, name, oid)  // Unsupported by Npgsql
                 ).AddTo(types);
                 return;
             case 'a':   // Array
-                elementOID = Convert.ToUInt32(reader[5]);
+                elementOID = Convert.ToUInt32(reader[6]);
                 Contract.Assume(elementOID > 0);
                 BackendType elementBackendType;
                 if (!types.ByOID.TryGetValue(elementOID, out elementBackendType))
@@ -240,27 +232,27 @@ namespace Npgsql
                     Log.Trace($"Array type '{name}' refers to unknown element with OID {elementOID}, skipping", connector.Id);
                     return;
                 }
-                new BackendArrayType(name, oid, elementBackendType).AddTo(types);
+                new BackendArrayType(ns, name, oid, elementBackendType).AddTo(types);
                 return;
             case 'r':   // Range
-                elementOID = Convert.ToUInt32(reader[5]);
+                elementOID = Convert.ToUInt32(reader[6]);
                 Contract.Assume(elementOID > 0);
                 if (!types.ByOID.TryGetValue(elementOID, out elementBackendType))
                 {
                     Log.Trace($"Range type '{name}' refers to unknown subtype with OID {elementOID}, skipping", connector.Id);
                     return;
                 }
-                new BackendRangeType(name, oid, elementBackendType).AddTo(types);
+                new BackendRangeType(ns, name, oid, elementBackendType).AddTo(types);
                 return;
             case 'e':   // Enum
-                new BackendEnumType(name, oid).AddTo(types);
+                new BackendEnumType(ns, name, oid).AddTo(types);
                 return;
             case 'c':   // Composite
-                var relationId = Convert.ToUInt32(reader[2]);
-                new BackendCompositeType(name, oid, relationId).AddTo(types);
+                var relationId = Convert.ToUInt32(reader[3]);
+                new BackendCompositeType(ns, name, oid, relationId).AddTo(types);
                 return;
             case 'd':   // Domain
-                var baseTypeOID = Convert.ToUInt32(reader[3]);
+                var baseTypeOID = Convert.ToUInt32(reader[4]);
                 Contract.Assume(baseTypeOID > 0);
                 BackendType baseBackendType;
                 if (!types.ByOID.TryGetValue(baseTypeOID, out baseBackendType))
@@ -268,7 +260,7 @@ namespace Npgsql
                     Log.Trace($"Domain type '{name}' refers to unknown base type with OID {baseTypeOID}, skipping", connector.Id);
                     return;
                 }
-                new BackendDomainType(name, oid, baseBackendType).AddTo(types);
+                new BackendDomainType(ns, name, oid, baseBackendType).AddTo(types);
                 return;
             case 'p':   // psuedo-type (record only)
                 Contract.Assume(name == "record");
@@ -283,16 +275,13 @@ namespace Npgsql
 
         #region Enum
 
-        internal void MapEnum<TEnum>(string pgName, INpgsqlNameTranslator nameTranslator) where TEnum : struct
+        internal void MapEnum<TEnum>([CanBeNull] string pgName, INpgsqlNameTranslator nameTranslator) where TEnum : struct
         {
             if (nameTranslator == null)
                 nameTranslator = DefaultNameTranslator;
             if (pgName == null)
                 pgName = GetPgName<TEnum>(nameTranslator);
-
-            BackendType backendType;
-            if (!_backendTypes.ByName.TryGetValue(pgName, out backendType))
-                throw new Exception($"An enum with the name {pgName} was not found in the database");
+            var backendType = GetBackendTypeByName(pgName);
 
             var asEnumType = backendType as BackendEnumType;
             if (asEnumType == null)
@@ -301,7 +290,7 @@ namespace Npgsql
             asEnumType.Activate(this, new EnumHandler<TEnum>(pgName, nameTranslator));
         }
 
-        internal static void MapEnumGlobally<TEnum>(string pgName, INpgsqlNameTranslator nameTranslator) where TEnum : struct
+        internal static void MapEnumGlobally<TEnum>([CanBeNull] string pgName, INpgsqlNameTranslator nameTranslator) where TEnum : struct
         {
             if (nameTranslator == null)
                 nameTranslator = DefaultNameTranslator;
@@ -311,7 +300,7 @@ namespace Npgsql
             _globalEnumMappings[pgName] = new EnumHandler<TEnum>(pgName, nameTranslator);
         }
 
-        internal static void UnmapEnumGlobally<TEnum>(string pgName, INpgsqlNameTranslator nameTranslator) where TEnum : struct
+        internal static void UnmapEnumGlobally<TEnum>([CanBeNull] string pgName, INpgsqlNameTranslator nameTranslator) where TEnum : struct
         {
             if (nameTranslator == null)
                 nameTranslator = DefaultNameTranslator;
@@ -326,16 +315,13 @@ namespace Npgsql
 
         #region Composite
 
-        internal void MapComposite<T>(string pgName, INpgsqlNameTranslator nameTranslator) where T : new()
+        internal void MapComposite<T>([CanBeNull] string pgName, INpgsqlNameTranslator nameTranslator) where T : new()
         {
             if (nameTranslator == null)
                 nameTranslator = DefaultNameTranslator;
             if (pgName == null)
                 pgName = GetPgName<T>(nameTranslator);
-
-            BackendType backendType;
-            if (!_backendTypes.ByName.TryGetValue(pgName, out backendType))
-                throw new Exception($"A composite with the name {pgName} was not found in the database");
+            var backendType = GetBackendTypeByName(pgName);
 
             var asComposite = backendType as BackendCompositeType;
             if (asComposite == null)
@@ -344,7 +330,7 @@ namespace Npgsql
             asComposite.Activate(this, new CompositeHandler<T>(pgName, nameTranslator, this));
         }
 
-        internal static void MapCompositeGlobally<T>(string pgName, INpgsqlNameTranslator nameTranslator) where T : new()
+        internal static void MapCompositeGlobally<T>([CanBeNull] string pgName, INpgsqlNameTranslator nameTranslator) where T : new()
         {
             if (nameTranslator == null)
                 nameTranslator = DefaultNameTranslator;
@@ -354,7 +340,7 @@ namespace Npgsql
             _globalCompositeMappings[pgName] = new CompositeHandler<T>(pgName, nameTranslator);
         }
 
-        internal static void UnmapCompositeGlobally<T>(string pgName, INpgsqlNameTranslator nameTranslator) where T : new()
+        internal static void UnmapCompositeGlobally<T>([CanBeNull] string pgName, INpgsqlNameTranslator nameTranslator) where T : new()
         {
             if (nameTranslator == null)
                 nameTranslator = DefaultNameTranslator;
@@ -654,6 +640,17 @@ namespace Npgsql
         class BackendTypes
         {
             internal Dictionary<uint, BackendType> ByOID { get; } = new Dictionary<uint, BackendType>();
+            /// <summary>
+            /// Indexes backend types by their PostgreSQL name, including namespace (e.g. pg_catalog.int4).
+            /// Only used for enums and composites.
+            /// </summary>
+            internal Dictionary<string, BackendType> ByFullName { get; } = new Dictionary<string, BackendType>();
+            /// <summary>
+            /// Indexes backend types by their PostgreSQL name, not including namespace.
+            /// If more than one type exists with the same name (i.e. in different namespaces) this
+            /// table will contain an entry with a null value.
+            /// Only used for enums and composites.
+            /// </summary>
             internal Dictionary<string, BackendType> ByName { get; } = new Dictionary<string, BackendType>();
             internal Dictionary<NpgsqlDbType, BackendType> ByNpgsqlDbType { get; } = new Dictionary<NpgsqlDbType, BackendType>();
             internal Dictionary<DbType, BackendType> ByDbType { get; } = new Dictionary<DbType, BackendType>();
@@ -667,12 +664,14 @@ namespace Npgsql
         /// </summary>
         abstract class BackendType
         {
-            protected BackendType(string name, uint oid)
+            protected BackendType(string ns, string name, uint oid)
             {
+                Namespace = ns;
                 Name = name;
                 OID = oid;
             }
 
+            internal readonly string Namespace;
             internal readonly string Name;
             internal readonly uint OID;
             internal BackendArrayType Array;
@@ -687,10 +686,11 @@ namespace Npgsql
 
             internal NpgsqlDbType? NpgsqlDbType;
 
+            internal string FullName => Namespace + '.' + Name;
+
             internal virtual void AddTo(BackendTypes types)
             {
                 types.ByOID[OID] = this;
-                types.ByName[Name] = this;
                 if (NpgsqlDbType != null)
                     types.ByNpgsqlDbType[NpgsqlDbType.Value] = this;
             }
@@ -711,13 +711,14 @@ namespace Npgsql
             /// <summary>
             /// Constructs an unsupported base type (no handler exists in Npgsql for this type)
             /// </summary>
-            internal BackendBaseType(string name, uint oid) : base(name, oid)
+            internal BackendBaseType(string ns, string name, uint oid) : base(ns, name, oid)
             {
                 _dbTypes = new DbType[0];
                 _clrTypes = new Type[0];
             }
 
-            internal BackendBaseType(string name, uint oid, Type handlerType, TypeMappingAttribute mapping) : base(name, oid)
+            internal BackendBaseType(string ns, string name, uint oid, Type handlerType, TypeMappingAttribute mapping)
+                : base(ns, name, oid)
             {
                 HandlerType = handlerType;
                 NpgsqlDbType = mapping.NpgsqlDbType;
@@ -792,7 +793,8 @@ namespace Npgsql
         {
             readonly BackendType _element;
 
-            internal BackendArrayType(string name, uint oid, BackendType elementBackendType) : base(name, oid)
+            internal BackendArrayType(string ns, string name, uint oid, BackendType elementBackendType)
+                : base(ns, name, oid)
             {
                 _element = elementBackendType;
                 if (elementBackendType.NpgsqlDbType.HasValue)
@@ -844,7 +846,8 @@ namespace Npgsql
         {
             readonly BackendType _subtype;
 
-            internal BackendRangeType(string name, uint oid, BackendType subtypeBackendType) : base(name, oid)
+            internal BackendRangeType(string ns, string name, uint oid, BackendType subtypeBackendType)
+                : base(ns, name, oid)
             {
                 _subtype = subtypeBackendType;
                 if (subtypeBackendType.NpgsqlDbType.HasValue)
@@ -871,13 +874,22 @@ namespace Npgsql
 
         class BackendEnumType : BackendType
         {
-            internal BackendEnumType(string name, uint oid) : base(name, oid) { }
+            internal BackendEnumType(string ns, string name, uint oid) : base(ns, name, oid) {}
+
+            internal override void AddTo(BackendTypes types)
+            {
+                base.AddTo(types);
+                types.ByFullName[FullName] = this;
+                types.ByName[Name] = types.ByName.ContainsKey(Name)
+                    ? null
+                    : this;
+            }
 
             internal override TypeHandler Activate(TypeHandlerRegistry registry)
             {
                 // Enums need to be mapped by the user with an explicit mapping call (MapComposite or MapCompositeGlobally).
                 // If we're here the enum hasn't been mapped to a CLR type and we should activate it as text.
-                return new BackendBaseType(Name, OID, typeof(TextHandler), new TypeMappingAttribute(Name))
+                return new BackendBaseType(Namespace, Name, OID, typeof(TextHandler), new TypeMappingAttribute(Name))
                     .Activate(registry);
             }
 
@@ -909,9 +921,19 @@ namespace Npgsql
             [CanBeNull]
             List<RawCompositeField> _rawFields;
 
-            internal BackendCompositeType(string name, uint oid, uint relationId) : base(name, oid)
+            internal BackendCompositeType(string ns, string name, uint oid, uint relationId)
+                : base(ns, name, oid)
             {
                 _relationId = relationId;
+            }
+
+            internal override void AddTo(BackendTypes types)
+            {
+                base.AddTo(types);
+                types.ByFullName[FullName] = this;
+                types.ByName[Name] = types.ByName.ContainsKey(Name)
+                    ? null
+                    : this;
             }
 
             internal override TypeHandler Activate(TypeHandlerRegistry registry)
@@ -967,7 +989,8 @@ namespace Npgsql
         {
             readonly BackendType _baseBackendType;
 
-            public BackendDomainType(string name, uint oid, BackendType baseBackendType) : base(name, oid)
+            public BackendDomainType(string ns, string name, uint oid, BackendType baseBackendType)
+                : base(ns, name, oid)
             {
                 _baseBackendType = baseBackendType;
             }
@@ -991,7 +1014,7 @@ namespace Npgsql
 
         class BackendPseudoType : BackendType
         {
-            internal BackendPseudoType(string name, uint oid) : base(name, oid) { }
+            internal BackendPseudoType(string ns, string name, uint oid) : base(ns, name, oid) { }
 
             internal override TypeHandler Activate(TypeHandlerRegistry registry)
             {
@@ -1090,6 +1113,26 @@ namespace Npgsql
             return attr == null
                 ? nameTranslator.TranslateTypeName(typeof(T).Name)
                 : attr.PgName;
+        }
+
+        BackendType GetBackendTypeByName([CanBeNull] string pgName)
+        {
+            BackendType backendType;
+            var i = pgName.IndexOf('.');
+            if (i == -1)
+            {
+                // No dot, this is a partial type name
+                if (!_backendTypes.ByName.TryGetValue(pgName, out backendType))
+                    throw new Exception($"An PostgreSQL type with the name {pgName} was not found in the database");
+                if (backendType == null)
+                    throw new Exception($"More than one PostgreSQL type was found with the name {pgName}, please specify a full name including schema");
+                return backendType;
+            }
+
+            // Full type name with namespace
+            if (!_backendTypes.ByFullName.TryGetValue(pgName, out backendType))
+                throw new Exception($"An PostgreSQL type with the name {pgName} was not found in the database");
+            return backendType;
         }
 
         #endregion
