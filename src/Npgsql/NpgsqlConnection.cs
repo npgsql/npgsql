@@ -1228,6 +1228,16 @@ namespace Npgsql
         }
 
         /// <summary>
+        /// Waits until an asynchronous PostgreSQL messages (e.g. a notification) arrives, and
+        /// exits immediately. The asynchronous message is delivered via the normal events
+        /// (<see cref="Notification"/>, <see cref="Notice"/>).
+        /// </summary>
+        /// <param name="timeout">
+        /// The time-out value is passed to <see cref="Socket.ReceiveTimeout"/>.
+        /// </param>
+        public void Wait(TimeSpan timeout) => Wait((int)timeout.TotalMilliseconds);
+
+        /// <summary>
         /// Waits asynchronously until an asynchronous PostgreSQL messages (e.g. a notification)
         /// arrives, and exist immediately. The asynchronous message is delivered via the normal events
         /// (<see cref="Notification"/>, <see cref="Notice"/>).
