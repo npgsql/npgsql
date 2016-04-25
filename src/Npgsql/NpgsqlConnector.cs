@@ -154,7 +154,7 @@ namespace Npgsql
         /// <summary>
         /// Handles management of prepared statements owned by this connector
         /// </summary>
-        internal PreparedStatementsCollection PreparedStatements { get; private set; }
+        internal PreparedStatementCollection PreparedStatements { get; private set; }
 
         internal NpgsqlDataReader CurrentReader;
 
@@ -283,7 +283,7 @@ namespace Npgsql
             BackendParams = new Dictionary<string, string>();
             _messagesToSend = new List<FrontendMessage>();
             _pendingStmtDeallocateQueries = new HashSet<string>();
-            PreparedStatements = new PreparedStatementsCollection();
+            PreparedStatements = new PreparedStatementCollection();
 
             _userLock = new SemaphoreSlim(1, 1);
             _asyncLock = new SemaphoreSlim(1, 1);
@@ -1591,6 +1591,8 @@ namespace Npgsql
             Buffer = null;
             Connection = null;
             BackendParams.Clear();
+            PreparedStatements.ClearAllPreparedStatements();
+            _pendingStmtDeallocateQueries.Clear();
             ServerVersion = null;
             _userLock.Dispose();
             _userLock = null;

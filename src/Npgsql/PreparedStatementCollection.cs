@@ -8,7 +8,7 @@ using Npgsql.FrontendMessages;
 
 namespace Npgsql
 {
-    internal class PreparedStatementsCollection
+    internal class PreparedStatementCollection
     {
         /// <summary>
         /// Contains allocated non persisted prepared statement names
@@ -18,12 +18,12 @@ namespace Npgsql
         /// <summary>
         /// Maps command SQLs to corresponding persisted prepared statements
         /// </summary>
-        readonly Dictionary<string, PersistentPreparedCommand> _persistedPreparedCommands;
+        readonly Dictionary<string, PersistentPreparedCommand> _persistedPreparedCommandsBySql;
 
-        public PreparedStatementsCollection()
+        internal PreparedStatementCollection()
         {
             _nonPersistedPreparedStmtNames = new HashSet<string>();
-            _persistedPreparedCommands = new Dictionary<string, PersistentPreparedCommand>();
+            _persistedPreparedCommandsBySql = new Dictionary<string, PersistentPreparedCommand>();
         }
 
         /// <summary>
@@ -34,7 +34,7 @@ namespace Npgsql
         internal PersistentPreparedCommand GetPersistentPreparedCommand(string commandSQL)
         {
             PersistentPreparedCommand persistent;
-            if (_persistedPreparedCommands.TryGetValue(commandSQL, out persistent))
+            if (_persistedPreparedCommandsBySql.TryGetValue(commandSQL, out persistent))
                 return persistent;
 
             return null;
@@ -51,7 +51,27 @@ namespace Npgsql
                 _nonPersistedPreparedStmtNames.Remove(persistCommand.Statements[i].PreparedStatementName);
             }
 
-            _persistedPreparedCommands[persistCommand.CommandSQL] = persistCommand;
+            _persistedPreparedCommandsBySql[persistCommand.CommandSQL] = persistCommand;
+        }
+
+        /// <summary>
+        /// Removes persisted prepared command from collection
+        /// </summary>
+        /// <param name="commandSQL">Command SQL</param>
+        /// <returns>True if persisted command existed otherwise false</returns>
+        internal bool RemovePersistedPreparedCommand(string commandSQL)
+        {
+            return _persistedPreparedCommandsBySql.Remove(commandSQL);
+        }
+
+        /// <summary>
+        /// Removes non persisted prepared statement from collection
+        /// </summary>
+        /// <param name="statementName">Statement name</param>
+        /// <returns>True if statement existed otherwise false</returns>
+        internal bool RemoveNonPersistedPreparedStatement(string statementName)
+        {
+            return _nonPersistedPreparedStmtNames.Remove(statementName);
         }
 
         /// <summary>
@@ -85,7 +105,7 @@ namespace Npgsql
 
             _nonPersistedPreparedStmtNames.Clear();
 
-            foreach (var kvp in _persistedPreparedCommands)
+            foreach (var kvp in _persistedPreparedCommandsBySql)
             {
                 PersistentPreparedCommand persistentCommand = kvp.Value;
                 for (int i = 0; i < persistentCommand.Statements.Count; i++)
@@ -95,7 +115,7 @@ namespace Npgsql
                 }
             }
 
-            _persistedPreparedCommands.Clear();
+            _persistedPreparedCommandsBySql.Clear();
 
             return names;
         }

@@ -16,7 +16,7 @@ namespace Npgsql
         /// <param name="statementSQL">Statement SQL</param>
         /// <param name="parameters">Parameters of the statement</param>
         /// <param name="rowDescription">Statement row description constructed from server messages</param>
-        public PersistentPreparedStatement(
+        internal PersistentPreparedStatement(
             string name, 
             string statementSQL, 
             IReadOnlyList<PersistentStatementParameter> parameters, 
@@ -31,9 +31,6 @@ namespace Npgsql
             if (parameters == null)
                 throw new ArgumentNullException("parameters");
 
-            if (rowDescription == null)
-                throw new ArgumentNullException("rowDescription");
-
             PreparedStatementName = name;
             StatementSQL = statementSQL;
             Parameters = parameters;
@@ -43,21 +40,21 @@ namespace Npgsql
         /// <summary>
         /// Name of the prepared statement
         /// </summary>
-        public string PreparedStatementName { get; private set; }
+        internal string PreparedStatementName { get; private set; }
 
         /// <summary>
         /// Statement SQL
         /// </summary>
-        public string StatementSQL { get; private set; }
+        internal string StatementSQL { get; private set; }
 
         /// <summary>
         /// Parameters of the statement
         /// </summary>
-        public IReadOnlyList<PersistentStatementParameter> Parameters { get; private set; }
+        internal IReadOnlyList<PersistentStatementParameter> Parameters { get; private set; }
 
         /// <summary>
         /// Row description of the prepared statement
         /// </summary>
-        public RowDescriptionMessage RowDescription { get; private set; }
+        internal RowDescriptionMessage RowDescription { get; private set; }
     }
 }

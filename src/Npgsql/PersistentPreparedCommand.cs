@@ -13,7 +13,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="commandSQL">Command SQL</param>
         /// <param name="statements">Prepared statements of the command</param>
-        public PersistentPreparedCommand(string commandSQL, IReadOnlyList<PersistentPreparedStatement> statements)
+        internal PersistentPreparedCommand(string commandSQL, IReadOnlyList<PersistentPreparedStatement> statements)
         {
             if (commandSQL == null)
                 throw new ArgumentNullException("commandSQL");
@@ -28,11 +28,11 @@ namespace Npgsql
         /// <summary>
         /// Command SQL
         /// </summary>
-        public string CommandSQL { get; private set; }
-        
+        internal string CommandSQL { get; private set; }
+
         /// <summary>
         /// Prepared statements of the command
         /// </summary>
-        public IReadOnlyList<PersistentPreparedStatement> Statements { get; private set; }
+        internal IReadOnlyList<PersistentPreparedStatement> Statements { get; private set; }
     }
 }

@@ -68,6 +68,7 @@ namespace Npgsql
         String _commandText;
         int? _timeout;
         readonly NpgsqlParameterCollection _parameters = new NpgsqlParameterCollection();
+        bool _isPersistend;
 
         List<NpgsqlStatement> _queries;
 
@@ -310,7 +311,18 @@ namespace Npgsql
         /// Gets or sets whether this query will be persisted when it is prepared. This will keep
         /// the compiled statement available after the owner connection is returned to the pool.
         /// </summary>
-        public bool IsPersistent { get;set; }
+        public bool IsPersistent
+        {
+            get { return _isPersistend; }
+            set
+            {
+                _isPersistend = value;
+                if (!value)
+                {
+                    DeallocatePrepared();
+                }
+            }
+        }
 
         #endregion Public properties
 
@@ -458,6 +470,8 @@ namespace Npgsql
 
                 if (persistentCommand != null)
                 {
+                    IsPrepared = false;
+
                     // Use the already prepared command
                     _queries.Clear();
 
@@ -495,6 +509,8 @@ namespace Npgsql
                         
                         _queries.Add(statement);
                     }
+
+                    IsPrepared = true;
                 }
                 else
                 {
@@ -608,10 +624,18 @@ namespace Npgsql
         {
             if (!IsPrepared) { return; }
 
-            foreach (var query in _queries) {
-                _connector.PrependInternalMessage(new CloseMessage(StatementOrPortal.Statement, query.PreparedStatementName));
+            if (!IsPersistent)
+            {
+                _connector.PreparedStatements.RemovePersistedPreparedCommand(CommandText);
+
+                foreach (var query in _queries)
+                {
+                    _connector.PreparedStatements.RemoveNonPersistedPreparedStatement(query.PreparedStatementName);
+                    _connector.PrependInternalMessage(new CloseMessage(StatementOrPortal.Statement, query.PreparedStatementName));
+                }
+                _connector.PrependInternalMessage(SyncMessage.Instance);
             }
-            _connector.PrependInternalMessage(SyncMessage.Instance);
+
             IsPrepared = false;
         }
 
