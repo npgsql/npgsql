@@ -57,8 +57,8 @@ namespace EntityFramework6.Npgsql.Tests
                 }
                 var someParameter = "Some";
                 Assert.IsTrue(context.Posts.Any(p => p.Title.StartsWith(someParameter)));
-                Assert.IsTrue(context.Posts.Select(p => p.VarbitColumn == varbitVal).First());
-                Assert.IsTrue(context.Posts.Select(p => p.VarbitColumn == "10011").First());
+                Assert.IsTrue(context.Posts.Select(p => p.VarbitColumn == NpgsqlTypeFunctions.Cast(varbitVal, "varbit")).First());
+                Assert.IsTrue(context.Posts.Select(p => p.VarbitColumn == NpgsqlTypeFunctions.Cast("10011", "varbit")).First());
                 Assert.AreEqual(1, context.NoColumnsEntities.Count());
             }
         }

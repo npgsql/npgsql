@@ -50,6 +50,8 @@ namespace Npgsql.SqlGenerators
         protected uint _aliasCounter = 0;
         protected uint _parameterCount = 0;
 
+        protected virtual bool TreatStringAsUnknown { get { return true; } }
+
         private static Dictionary<string, string> AggregateFunctionNames = new Dictionary<string, string>()
         {
             {"Avg","avg"},
@@ -782,7 +784,9 @@ namespace Npgsql.SqlGenerators
             {
                 NpgsqlParameter parameter = new NpgsqlParameter();
                 parameter.ParameterName = "p_" + _parameterCount++;
-                parameter.NpgsqlDbType = NpgsqlProviderManifest.GetNpgsqlDbType(((PrimitiveType)expression.ResultType.EdmType).PrimitiveTypeKind);
+                parameter.NpgsqlDbType = NpgsqlProviderManifest.GetNpgsqlDbType(
+                    ((PrimitiveType)expression.ResultType.EdmType).PrimitiveTypeKind,
+                    TreatStringAsUnknown);
                 parameter.Value = expression.Value;
                 _command.Parameters.Add(parameter);
                 return new LiteralExpression("@" + parameter.ParameterName);
@@ -1208,6 +1212,17 @@ namespace Npgsql.SqlGenerators
                         throw new ArgumentException("Invalid number of arguments. Expected 1.", "args");
 
                     return new CastExpression(args[0].Accept(this), "tsquery");
+                }
+                else if (functionName == "cast")
+                {
+                    if (args.Count != 2)
+                        throw new ArgumentException("Invalid number of arguments. Expected 2.", "args");
+
+                    var typeNameExpression = args[1] as DbConstantExpression;
+                    if (typeNameExpression == null)
+                        throw new NotSupportedException("cast type name argument must be a constant expression.");
+
+                    return new CastExpression(args[0].Accept(this), typeNameExpression.Value.ToString());
                 }
             }
 

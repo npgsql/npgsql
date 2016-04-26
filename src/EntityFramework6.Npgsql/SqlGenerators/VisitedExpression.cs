@@ -242,7 +242,7 @@ namespace Npgsql.SqlGenerators
                     sqlText.Append("::uuid");
                     break;
                 case PrimitiveTypeKind.String:
-                    sqlText.Append("E'").Append(((string)_value).Replace(@"\", @"\\").Replace("'", @"\'")).Append("'");
+                    sqlText.Append("E'").Append(((string)_value).Replace(@"\", @"\\").Replace("'", @"\'")).Append("'::varchar");
                     break;
                 case PrimitiveTypeKind.Time:
                     sqlText.AppendFormat(ni, "INTERVAL '{0}'", (NpgsqlTimeSpan)(TimeSpan)_value);

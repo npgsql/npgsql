@@ -86,7 +86,7 @@ namespace Npgsql
         private const string PrecisionFacet = "Precision";
         private const string FixedLengthFacet = "FixedLength";
 
-        internal static NpgsqlDbType GetNpgsqlDbType(PrimitiveTypeKind _primitiveType)
+        internal static NpgsqlDbType GetNpgsqlDbType(PrimitiveTypeKind _primitiveType, bool treatStringAsUnknown)
         {
             switch (_primitiveType)
             {
@@ -117,8 +117,7 @@ namespace Npgsql
                 case PrimitiveTypeKind.Guid:
                     return NpgsqlDbType.Uuid;
                 case PrimitiveTypeKind.String:
-                    // Send strings as unknowns to be compatible with other datatypes than text
-                    return NpgsqlDbType.Unknown;
+                    return treatStringAsUnknown ? NpgsqlDbType.Unknown : NpgsqlDbType.Varchar;
                 default:
                     return NpgsqlDbType.Unknown;
             }
@@ -375,16 +374,17 @@ namespace Npgsql
             var functions = new List<EdmFunction>();
 
             functions.AddRange(
-                typeof(NpgsqlTextFunctions).GetTypeInfo()
-                    .GetMethods(BindingFlags.Public | BindingFlags.Static)
-                    .Select(x => new { Method = x, DbFunction = x.GetCustomAttribute<DbFunctionAttribute>() })
-                    .Where(x => x.DbFunction != null)
-                    .Select(x => CreateFullTextEdmFunction(x.Method, x.DbFunction)));
+                new[] { typeof(NpgsqlTextFunctions), typeof(NpgsqlTypeFunctions) }.SelectMany(
+                    t => t.GetTypeInfo()
+                        .GetMethods(BindingFlags.Public | BindingFlags.Static)
+                        .Select(x => new { Method = x, DbFunction = x.GetCustomAttribute<DbFunctionAttribute>() })
+                        .Where(x => x.DbFunction != null)
+                        .Select(x => CreateComposableEdmFunction(x.Method, x.DbFunction))));
 
             return functions.AsReadOnly();
         }
 
-        private static EdmFunction CreateFullTextEdmFunction(MethodInfo method, DbFunctionAttribute dbFunctionInfo)
+        private static EdmFunction CreateComposableEdmFunction(MethodInfo method, DbFunctionAttribute dbFunctionInfo)
         {
             if (method == null) throw new ArgumentNullException("method");
             if (dbFunctionInfo == null) throw new ArgumentNullException("dbFunctionInfo");

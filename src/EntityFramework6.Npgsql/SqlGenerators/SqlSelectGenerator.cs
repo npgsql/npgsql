@@ -39,6 +39,8 @@ namespace Npgsql.SqlGenerators
     {
         private DbQueryCommandTree _commandTree;
 
+        protected override bool TreatStringAsUnknown { get { return false; } }
+
         public SqlSelectGenerator(DbQueryCommandTree commandTree)
         {
             _commandTree = commandTree;

@@ -79,7 +79,9 @@ namespace Npgsql
             {
                 NpgsqlParameter dbParameter = new NpgsqlParameter();
                 dbParameter.ParameterName = parameter.Key;
-                dbParameter.NpgsqlDbType = NpgsqlProviderManifest.GetNpgsqlDbType(((PrimitiveType)parameter.Value.EdmType).PrimitiveTypeKind);
+                dbParameter.NpgsqlDbType = NpgsqlProviderManifest.GetNpgsqlDbType(
+                    ((PrimitiveType)parameter.Value.EdmType).PrimitiveTypeKind,
+                    !(commandTree is DbQueryCommandTree));
                 command.Parameters.Add(dbParameter);
             }
 
