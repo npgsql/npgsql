@@ -203,24 +203,32 @@ namespace Npgsql.Tests.Types
         [Test]
         public void GlobalMapping()
         {
-            using (var conn = OpenConnection())
+            NpgsqlConnection.MapCompositeGlobally<SomeComposite>("composite4");
+            try
             {
-                NpgsqlConnection.MapCompositeGlobally<SomeComposite>("composite4");
-                conn.ExecuteNonQuery("CREATE TYPE pg_temp.composite4 AS (x int, some_text text)");
-                conn.ReloadTypes();
-                var myTempSchema = conn.ExecuteScalar("SELECT nspname FROM pg_namespace WHERE oid = pg_my_temp_schema()");
-                var expected = new SomeComposite {x = 8, SomeText = "foo"};
-                using (var cmd = new NpgsqlCommand($"SELECT @p::{myTempSchema}.composite4", conn))
+                using (var conn = OpenConnection())
                 {
-                    cmd.Parameters.AddWithValue("p", expected);
-                    using (var reader = cmd.ExecuteReader())
+                    conn.ExecuteNonQuery("CREATE TYPE pg_temp.composite4 AS (x int, some_text text)");
+                    conn.ReloadTypes();
+                    var myTempSchema =
+                        conn.ExecuteScalar("SELECT nspname FROM pg_namespace WHERE oid = pg_my_temp_schema()");
+                    var expected = new SomeComposite {x = 8, SomeText = "foo"};
+                    using (var cmd = new NpgsqlCommand($"SELECT @p::{myTempSchema}.composite4", conn))
                     {
-                        reader.Read();
-                        var actual = reader.GetFieldValue<SomeComposite>(0);
-                        Assert.That(actual.x, Is.EqualTo(8));
-                        Assert.That(actual.SomeText, Is.EqualTo("foo"));
+                        cmd.Parameters.AddWithValue("p", expected);
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            reader.Read();
+                            var actual = reader.GetFieldValue<SomeComposite>(0);
+                            Assert.That(actual.x, Is.EqualTo(8));
+                            Assert.That(actual.SomeText, Is.EqualTo("foo"));
+                        }
                     }
                 }
+            }
+            finally
+            {
+                NpgsqlConnection.UnmapCompositeGlobally<SomeComposite>("composite4");
             }
         }
 

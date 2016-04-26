@@ -42,10 +42,12 @@ namespace Npgsql.TypeHandlers
         /// The CLR type mapped to the PostgreSQL composite type.
         /// </summary>
         Type CompositeType { get; }
-#pragma warning disable 1591
         List<RawCompositeField> RawFields { get; set; }
-        ICompositeHandler Clone(TypeHandlerRegistry registry);
-#pragma warning restore 1591
+    }
+
+    interface ICompositeHandlerFactory
+    {
+        ICompositeHandler Create(TypeHandlerRegistry registry);
     }
 
     /// <summary>
@@ -86,9 +88,6 @@ namespace Npgsql.TypeHandlers
             _registry = registry;
             NpgsqlDbType = NpgsqlDbType.Composite;
         }
-
-        internal CompositeHandler(string pgName, INpgsqlNameTranslator nameTranslator)
-            : this(pgName, nameTranslator, null) {}
 
         #region Read
 
@@ -300,11 +299,6 @@ namespace Npgsql.TypeHandlers
             RawFields = null;
         }
 
-        public ICompositeHandler Clone(TypeHandlerRegistry registry)
-        {
-            return new CompositeHandler<T>(PgName, _nameTranslator, registry);
-        }
-
         struct MemberDescriptor
         {
             // ReSharper disable once NotAccessedField.Local
@@ -350,6 +344,21 @@ namespace Npgsql.TypeHandlers
         }
 
         #endregion
+
+        internal class Factory : ICompositeHandlerFactory
+        {
+            readonly string _pgName;
+            readonly INpgsqlNameTranslator _nameTranslator;
+
+            internal Factory(string pgName, INpgsqlNameTranslator nameTranslator)
+            {
+                _pgName = pgName;
+                _nameTranslator = nameTranslator;
+            }
+
+            public ICompositeHandler Create(TypeHandlerRegistry registry)
+                => new CompositeHandler<T>(_pgName, _nameTranslator, registry);
+        }
     }
 
     internal struct RawCompositeField

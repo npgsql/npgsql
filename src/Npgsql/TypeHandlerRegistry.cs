@@ -75,11 +75,11 @@ namespace Npgsql
         /// </summary>
         static readonly ConcurrentDictionary<string, BackendTypes> BackendTypeCache = new ConcurrentDictionary<string, BackendTypes>();
 
-        static readonly ConcurrentDictionary<string, IEnumHandler> _globalEnumMappings;
-        static readonly ConcurrentDictionary<string, ICompositeHandler> _globalCompositeMappings;
+        static readonly ConcurrentDictionary<string, IEnumHandlerFactory> _globalEnumMappings;
+        static readonly ConcurrentDictionary<string, ICompositeHandlerFactory> _globalCompositeMappings;
 
-        internal static IDictionary<string, IEnumHandler> GlobalEnumMappings => _globalEnumMappings;
-        internal static IDictionary<string, ICompositeHandler> GlobalCompositeMappings => _globalCompositeMappings;
+        internal static IDictionary<string, IEnumHandlerFactory> GlobalEnumMappings => _globalEnumMappings;
+        internal static IDictionary<string, ICompositeHandlerFactory> GlobalCompositeMappings => _globalCompositeMappings;
 
         static readonly INpgsqlNameTranslator DefaultNameTranslator = new NpgsqlSnakeCaseNameTranslator();
         static readonly BackendTypes EmptyBackendTypes = new BackendTypes();
@@ -297,7 +297,7 @@ namespace Npgsql
             if (pgName == null)
                 pgName = GetPgName<TEnum>(nameTranslator);
 
-            _globalEnumMappings[pgName] = new EnumHandler<TEnum>(pgName, nameTranslator);
+            _globalEnumMappings[pgName] = new EnumHandler<TEnum>.Factory(pgName, nameTranslator);
         }
 
         internal static void UnmapEnumGlobally<TEnum>([CanBeNull] string pgName, INpgsqlNameTranslator nameTranslator) where TEnum : struct
@@ -307,7 +307,7 @@ namespace Npgsql
             if (pgName == null)
                 pgName = GetPgName<TEnum>(nameTranslator);
 
-            IEnumHandler _;
+            IEnumHandlerFactory _;
             _globalEnumMappings.TryRemove(pgName, out _);
         }
 
@@ -337,7 +337,7 @@ namespace Npgsql
             if (pgName == null)
                 pgName = GetPgName<T>(nameTranslator);
 
-            _globalCompositeMappings[pgName] = new CompositeHandler<T>(pgName, nameTranslator);
+            _globalCompositeMappings[pgName] = new CompositeHandler<T>.Factory(pgName, nameTranslator);
         }
 
         internal static void UnmapCompositeGlobally<T>([CanBeNull] string pgName, INpgsqlNameTranslator nameTranslator) where T : new()
@@ -347,7 +347,7 @@ namespace Npgsql
             if (pgName == null)
                 pgName = GetPgName<T>(nameTranslator);
 
-            ICompositeHandler _;
+            ICompositeHandlerFactory _;
             _globalCompositeMappings.TryRemove(pgName, out _);
         }
 
@@ -893,15 +893,15 @@ namespace Npgsql
                     .Activate(registry);
             }
 
-            internal void Activate(TypeHandlerRegistry registry, IEnumHandler templateHandler)
+            internal void Activate(TypeHandlerRegistry registry, IEnumHandlerFactory handlerFactory)
+                => Activate(registry, handlerFactory.Create());
+
+            internal void Activate(TypeHandlerRegistry registry, IEnumHandler enumHandler)
             {
-                // The handler we've received is a global one, effectively serving as a "template".
-                // Clone it here to get an instance for our connector
-                var enumHandler = templateHandler.Clone();
                 var handler = (TypeHandler)enumHandler;
                 handler.OID = OID;
                 registry.ByOID[OID] = handler;
-                registry._byType[templateHandler.EnumType] = handler;
+                registry._byType[enumHandler.EnumType] = handler;
 
                 Array?.Activate(registry);
             }
@@ -943,11 +943,11 @@ namespace Npgsql
                 throw new Exception($"Composite PostgreSQL type {Name} must be mapped before use");
             }
 
-            internal void Activate(TypeHandlerRegistry registry, ICompositeHandler templateHandler)
+            internal void Activate(TypeHandlerRegistry registry, ICompositeHandlerFactory factory)
+                => Activate(registry, factory.Create(registry));
+
+            internal void Activate(TypeHandlerRegistry registry, ICompositeHandler compositeHandler)
             {
-                // The handler we've received is a global one, effectively serving as a "template".
-                // Clone it here to get an instance for our connector
-                var compositeHandler = templateHandler.Clone(registry);
                 var handler = (TypeHandler)compositeHandler;
 
                 handler.OID = OID;
@@ -1028,8 +1028,8 @@ namespace Npgsql
 
         static TypeHandlerRegistry()
         {
-            _globalEnumMappings = new ConcurrentDictionary<string, IEnumHandler>();
-            _globalCompositeMappings = new ConcurrentDictionary<string, ICompositeHandler>();
+            _globalEnumMappings = new ConcurrentDictionary<string, IEnumHandlerFactory>();
+            _globalCompositeMappings = new ConcurrentDictionary<string, ICompositeHandlerFactory>();
 
             HandlerTypes = new Dictionary<string, TypeAndMapping>();
             HandlerTypesByNpsgqlDbType = new Dictionary<NpgsqlDbType, TypeAndMapping>();
