@@ -203,17 +203,19 @@ namespace Npgsql.Tests.Types
         [Test]
         public void GlobalMapping()
         {
-            NpgsqlConnection.MapCompositeGlobally<SomeComposite>("composite4");
             try
             {
                 using (var conn = OpenConnection())
                 {
-                    conn.ExecuteNonQuery("CREATE TYPE pg_temp.composite4 AS (x int, some_text text)");
+                    conn.ExecuteNonQuery("DROP TYPE IF EXISTS composite4");
+                    conn.ExecuteNonQuery("CREATE TYPE composite4 AS (x int, some_text text)");
                     conn.ReloadTypes();
-                    var myTempSchema =
-                        conn.ExecuteScalar("SELECT nspname FROM pg_namespace WHERE oid = pg_my_temp_schema()");
-                    var expected = new SomeComposite {x = 8, SomeText = "foo"};
-                    using (var cmd = new NpgsqlCommand($"SELECT @p::{myTempSchema}.composite4", conn))
+                }
+                NpgsqlConnection.MapCompositeGlobally<SomeComposite>("composite4");
+                using (var conn = OpenConnection())
+                {
+                    var expected = new SomeComposite { x = 8, SomeText = "foo" };
+                    using (var cmd = new NpgsqlCommand($"SELECT @p::composite4", conn))
                     {
                         cmd.Parameters.AddWithValue("p", expected);
                         using (var reader = cmd.ExecuteReader())
@@ -229,6 +231,8 @@ namespace Npgsql.Tests.Types
             finally
             {
                 NpgsqlConnection.UnmapCompositeGlobally<SomeComposite>("composite4");
+                using (var conn = OpenConnection())
+                    conn.ExecuteNonQuery("DROP TYPE IF EXISTS composite4");
             }
         }
 

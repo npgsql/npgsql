@@ -430,8 +430,7 @@ namespace Npgsql.Tests.Types
                 }
                 NpgsqlConnection.MapEnumGlobally<Enum1>("a.my_enum");
                 NpgsqlConnection.MapEnumGlobally<Enum2>("b.my_enum");
-                var csbWithoutPooling = new NpgsqlConnectionStringBuilder(ConnectionString) { Pooling = false };
-                using (var conn = OpenConnection(csbWithoutPooling))
+                using (var conn = OpenConnection())
                 {
                     using (var cmd = new NpgsqlCommand("SELECT @p", conn))
                     {
@@ -453,6 +452,41 @@ namespace Npgsql.Tests.Types
 
         enum Enum1 { One }
         enum Enum2 { Alpha }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1017")]
+        public void GlobalMappingsAndPooling()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString) {
+                ApplicationName = nameof(GlobalMappingsAndPooling)
+            };
+
+            int serverId;
+            using (var conn = OpenConnection(csb))
+            {
+                serverId = conn.ProcessID;
+                conn.ExecuteNonQuery("DROP TYPE IF EXISTS mood9");
+                conn.ExecuteNonQuery("CREATE TYPE mood9 AS ENUM ('sad', 'ok', 'happy')");
+                conn.ReloadTypes();
+            }
+            // At this point the backend type for the enum is loaded, but no global mapping
+            // has been made. Reopening the same pooled connector should learn about the new
+            // global mapping
+            NpgsqlConnection.MapEnumGlobally<Mood>("mood9");
+            try
+            {
+                using (var conn = OpenConnection(csb))
+                {
+                    Assert.That(conn.ProcessID, Is.EqualTo(serverId));
+                    Assert.That(conn.ExecuteScalar("SELECT 'sad'::mood9"), Is.EqualTo(Mood.Sad));
+                }
+            }
+            finally
+            {
+                using (var conn = OpenConnection(csb))
+                    conn.ExecuteNonQuery("DROP TYPE IF EXISTS mood9");
+                NpgsqlConnection.UnmapEnumGlobally<Mood>("mood9");
+            }
+        }
 
         [Test]
         public void TestEnumType()

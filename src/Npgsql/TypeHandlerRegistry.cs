@@ -60,6 +60,21 @@ namespace Npgsql
 
         BackendTypes _backendTypes;
 
+        /// <summary>
+        /// A counter that is updated when this registry activates its global mappings.
+        /// Tracks <see cref="_globalMappingChangeCounter"/>, allows us to know when a pooled
+        /// connection's mappings are no longer up to date because a global mapping change has
+        /// occurred.
+        /// </summary>
+        int _globalMappingActivationCounter = -1;
+
+        /// <summary>
+        /// A counter that is incremented whenever a global mapping change occurs (e.g.
+        /// <see cref="MapEnumGlobally{T}"/>, <see cref="UnmapCompositeGlobally{T}"/>.
+        /// <seealso cref="_globalMappingActivationCounter"/>
+        /// </summary>
+        static int _globalMappingChangeCounter;
+
         internal static readonly Dictionary<string, TypeAndMapping> HandlerTypes;
         static readonly Dictionary<NpgsqlDbType, TypeAndMapping> HandlerTypesByNpsgqlDbType;
         static readonly Dictionary<NpgsqlDbType, DbType> NpgsqlDbTypeToDbType;
@@ -116,8 +131,11 @@ namespace Npgsql
             _byNpgsqlDbType[NpgsqlDbType.Unknown] = UnrecognizedTypeHandler;
         }
 
-        void ActivateGlobalMappings()
+        internal void ActivateGlobalMappings()
         {
+            if (_globalMappingActivationCounter == _globalMappingChangeCounter)
+                return;
+
             foreach (var kv in _globalEnumMappings)
             {
                 var backendType = GetBackendTypeByName(kv.Key);
@@ -141,6 +159,8 @@ namespace Npgsql
                 }
                 backendCompositeType.Activate(this, kv.Value);
             }
+
+            _globalMappingActivationCounter = _globalMappingChangeCounter;
         }
 
         static readonly string TypesQueryWithRange = GenerateTypesQuery(true);
@@ -297,6 +317,7 @@ namespace Npgsql
             if (pgName == null)
                 pgName = GetPgName<TEnum>(nameTranslator);
 
+            _globalMappingChangeCounter++;
             _globalEnumMappings[pgName] = new EnumHandler<TEnum>.Factory(pgName, nameTranslator);
         }
 
@@ -307,6 +328,7 @@ namespace Npgsql
             if (pgName == null)
                 pgName = GetPgName<TEnum>(nameTranslator);
 
+            _globalMappingChangeCounter++;
             IEnumHandlerFactory _;
             _globalEnumMappings.TryRemove(pgName, out _);
         }
@@ -337,6 +359,7 @@ namespace Npgsql
             if (pgName == null)
                 pgName = GetPgName<T>(nameTranslator);
 
+            _globalMappingChangeCounter++;
             _globalCompositeMappings[pgName] = new CompositeHandler<T>.Factory(pgName, nameTranslator);
         }
 
@@ -347,6 +370,7 @@ namespace Npgsql
             if (pgName == null)
                 pgName = GetPgName<T>(nameTranslator);
 
+            _globalMappingChangeCounter++;
             ICompositeHandlerFactory _;
             _globalCompositeMappings.TryRemove(pgName, out _);
         }
