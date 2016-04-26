@@ -27,6 +27,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Npgsql;
+using Npgsql.NameTranslation;
 using NpgsqlTypes;
 using NUnit.Framework.Internal;
 
@@ -317,8 +318,9 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/859")]
-        public void NameTranslation()
+        public void NameTranslationDefaultSnakeCase()
         {
+            // Per-connection mapping
             using (var conn = OpenConnection())
             {
                 conn.ExecuteNonQuery("CREATE TYPE pg_temp.name_translation_enum AS ENUM ('simple', 'two_words', 'some_database_name')");
@@ -335,6 +337,60 @@ namespace Npgsql.Tests.Types
                         Assert.That(reader.GetFieldValue<NameTranslationEnum>(0), Is.EqualTo(NameTranslationEnum.Simple));
                         Assert.That(reader.GetFieldValue<NameTranslationEnum>(1), Is.EqualTo(NameTranslationEnum.TwoWords));
                         Assert.That(reader.GetFieldValue<NameTranslationEnum>(2), Is.EqualTo(NameTranslationEnum.SomeClrName));
+                    }
+                }
+            }
+            // Global mapping
+            NpgsqlConnection.MapEnumGlobally<NameTranslationEnum>();
+            try
+            {
+                using (var conn = OpenConnection())
+                {
+                    conn.ExecuteNonQuery("CREATE TYPE pg_temp.name_translation_enum AS ENUM ('simple', 'two_words', 'some_database_name')");
+                    conn.ReloadTypes();
+                    using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", conn))
+                    {
+                        cmd.Parameters.AddWithValue("p1", NameTranslationEnum.Simple);
+                        cmd.Parameters.AddWithValue("p2", NameTranslationEnum.TwoWords);
+                        cmd.Parameters.AddWithValue("p3", NameTranslationEnum.SomeClrName);
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            reader.Read();
+                            Assert.That(reader.GetFieldValue<NameTranslationEnum>(0), Is.EqualTo(NameTranslationEnum.Simple));
+                            Assert.That(reader.GetFieldValue<NameTranslationEnum>(1), Is.EqualTo(NameTranslationEnum.TwoWords));
+                            Assert.That(reader.GetFieldValue<NameTranslationEnum>(2), Is.EqualTo(NameTranslationEnum.SomeClrName));
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                NpgsqlConnection.UnmapEnumGlobally<NameTranslationEnum>();
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/859")]
+        public void NameTranslationNull()
+        {
+            // Per-connection mapping
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery(@"CREATE TYPE pg_temp.""NameTranslationEnum"" AS ENUM ('Simple', 'TwoWords', 'some_database_name')");
+                conn.ReloadTypes();
+                conn.MapEnum<NameTranslationEnum>(nameTranslator: new NpgsqlNullNameTranslator());
+                using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", conn))
+                {
+                    cmd.Parameters.AddWithValue("p1", NameTranslationEnum.Simple);
+                    cmd.Parameters.AddWithValue("p2", NameTranslationEnum.TwoWords);
+                    cmd.Parameters.AddWithValue("p3", NameTranslationEnum.SomeClrName);
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        reader.Read();
+                        Assert.That(reader.GetFieldValue<NameTranslationEnum>(0), Is.EqualTo(NameTranslationEnum.Simple));
+                        Assert.That(reader.GetFieldValue<NameTranslationEnum>(1),
+                            Is.EqualTo(NameTranslationEnum.TwoWords));
+                        Assert.That(reader.GetFieldValue<NameTranslationEnum>(2),
+                            Is.EqualTo(NameTranslationEnum.SomeClrName));
                     }
                 }
             }
