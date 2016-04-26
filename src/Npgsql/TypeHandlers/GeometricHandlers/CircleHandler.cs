@@ -42,6 +42,8 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     [TypeMapping("circle", NpgsqlDbType.Circle, typeof(NpgsqlCircle))]
     internal class CircleHandler : SimpleTypeHandler<NpgsqlCircle>, ISimpleTypeHandler<string>
     {
+        internal CircleHandler(IBackendType backendType) : base(backendType) { }
+
         public override NpgsqlCircle Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return new NpgsqlCircle(buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble());

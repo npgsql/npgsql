@@ -247,6 +247,6 @@ namespace Npgsql.BackendMessages
         public bool IsBinaryFormat => FormatCode == FormatCode.Binary;
         public bool IsTextFormat => FormatCode == FormatCode.Text;
 
-        public override string ToString() => Name + (Handler == null ? "" : $"({Handler.PgName})");
+        public override string ToString() => Name + (Handler == null ? "" : $"({Handler.PgDisplayName})");
     }
 }

@@ -39,6 +39,8 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
     [TypeMapping("macaddr", NpgsqlDbType.MacAddr, typeof(PhysicalAddress))]
     internal class MacaddrHandler : SimpleTypeHandler<PhysicalAddress>, ISimpleTypeHandler<string>
     {
+        internal MacaddrHandler(IBackendType backendType) : base(backendType) { }
+
         public override PhysicalAddress Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             Contract.Assume(len == 6);

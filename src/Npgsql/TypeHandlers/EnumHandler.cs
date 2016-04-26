@@ -45,7 +45,7 @@ namespace Npgsql.TypeHandlers
 
     interface IEnumHandlerFactory
     {
-        IEnumHandler Create();
+        IEnumHandler Create(IBackendType backendType);
     }
 
     internal class EnumHandler<TEnum> : SimpleTypeHandler<TEnum>, IEnumHandler where TEnum : struct
@@ -57,25 +57,22 @@ namespace Npgsql.TypeHandlers
 
         #region Construction
 
-        internal EnumHandler(string pgName, INpgsqlNameTranslator nameTranslator)
+        internal EnumHandler(IBackendType backendType, INpgsqlNameTranslator nameTranslator)
+            : base(backendType)
         {
-            NpgsqlDbType = NpgsqlDbType.Enum;
-            PgName = pgName;
+            Contract.Requires(typeof(TEnum).GetTypeInfo().IsEnum, "EnumHandler instantiated for non-enum type");
             _enumToLabel = new Dictionary<TEnum, string>();
             _labelToEnum = new Dictionary<string, TEnum>();
             GenerateMappings(nameTranslator, _enumToLabel, _labelToEnum);
         }
 
-        internal EnumHandler(string pgName, Dictionary<TEnum, string> enumToLabel, Dictionary<string, TEnum> labelToEnum)
+        internal EnumHandler(IBackendType backendType, Dictionary<TEnum, string> enumToLabel, Dictionary<string, TEnum> labelToEnum)
+            : base(backendType)
         {
             Contract.Requires(typeof(TEnum).GetTypeInfo().IsEnum, "EnumHandler instantiated for non-enum type");
-
-            NpgsqlDbType = NpgsqlDbType.Enum;
-            PgName = pgName;
             _enumToLabel = enumToLabel;
             _labelToEnum = labelToEnum;
         }
-
 
         static void GenerateMappings(INpgsqlNameTranslator nameTranslator, Dictionary<TEnum, string> enumToLabel, Dictionary<string, TEnum> labelToEnum)
         {
@@ -138,21 +135,18 @@ namespace Npgsql.TypeHandlers
 
         internal class Factory : IEnumHandlerFactory
         {
-            readonly string _pgName;
             readonly Dictionary<TEnum, string> _enumToLabel;
             readonly Dictionary<string, TEnum> _labelToEnum;
 
-            internal Factory(string pgName, INpgsqlNameTranslator nameTranslator)
+            internal Factory(INpgsqlNameTranslator nameTranslator)
             {
-                _pgName = pgName;
-
                 _enumToLabel = new Dictionary<TEnum, string>();
                 _labelToEnum = new Dictionary<string, TEnum>();
                 GenerateMappings(nameTranslator, _enumToLabel, _labelToEnum);
             }
 
-            public IEnumHandler Create()
-                => new EnumHandler<TEnum>(_pgName, _enumToLabel, _labelToEnum);
+            public IEnumHandler Create(IBackendType backendType)
+                => new EnumHandler<TEnum>(backendType, _enumToLabel, _labelToEnum);
         }
     }
 }

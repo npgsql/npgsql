@@ -42,6 +42,8 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
         const byte IPv4 = 2;
         const byte IPv6 = 3;
 
+        internal InetHandler(IBackendType backendType) : base(backendType) { }
+
         public override IPAddress Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return ((ISimpleTypeHandler<NpgsqlInet>)this).Read(buf, len, fieldDescription).Address;

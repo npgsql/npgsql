@@ -41,7 +41,8 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         /// </summary>
         readonly bool _integerFormat;
 
-        public TimeHandler(TypeHandlerRegistry registry)
+        public TimeHandler(IBackendType backendType, TypeHandlerRegistry registry)
+            : base(backendType)
         {
             // Check for the legacy floating point timestamps feature, defaulting to integer timestamps
             string s;

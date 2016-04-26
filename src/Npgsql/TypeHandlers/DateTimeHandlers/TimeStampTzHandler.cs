@@ -34,7 +34,8 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     [TypeMapping("timestamptz", NpgsqlDbType.TimestampTZ, DbType.DateTimeOffset, typeof(DateTimeOffset))]
     internal class TimeStampTzHandler : TimeStampHandler, ISimpleTypeHandler<DateTimeOffset>
     {
-        public TimeStampTzHandler(TypeHandlerRegistry registry) : base(registry) {}
+        public TimeStampTzHandler(IBackendType backendType, TypeHandlerRegistry registry)
+            : base(backendType, registry) {}
 
         public override DateTime Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {

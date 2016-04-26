@@ -38,6 +38,8 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     [TypeMapping("float8", NpgsqlDbType.Double, DbType.Double, typeof(double))]
     internal class DoubleHandler : SimpleTypeHandler<double>
     {
+        internal DoubleHandler(IBackendType backendType) : base(backendType) { }
+
         public override double Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return buf.ReadDouble();

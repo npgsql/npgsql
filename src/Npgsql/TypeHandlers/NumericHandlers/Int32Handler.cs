@@ -42,6 +42,8 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         ISimpleTypeHandler<float>, ISimpleTypeHandler<double>, ISimpleTypeHandler<decimal>,
         ISimpleTypeHandler<string>
     {
+        internal Int32Handler(IBackendType backendType) : base(backendType) { }
+
         public override int Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return buf.ReadInt32();

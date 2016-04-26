@@ -59,6 +59,8 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             10000000000000000000000000000M
         };
 
+        internal NumericHandler(IBackendType backendType) : base(backendType) { }
+
         public override decimal Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             var numGroups = (ushort)buf.ReadInt16();

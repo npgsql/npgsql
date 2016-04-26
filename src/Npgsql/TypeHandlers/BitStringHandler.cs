@@ -55,6 +55,8 @@ namespace Npgsql.TypeHandlers
         int _pos;
         bool _isSingleBit;
 
+        internal BitStringHandler(IBackendType backendType) : base(backendType) {}
+
         internal override Type GetFieldType(FieldDescription fieldDescription)
         {
             return fieldDescription != null && fieldDescription.TypeModifier == 1 ? typeof (bool) : typeof(BitArray);
@@ -65,10 +67,10 @@ namespace Npgsql.TypeHandlers
             return GetFieldType(fieldDescription);
         }
 
-        internal override ArrayHandler CreateArrayHandler(string pgName, uint oid)
+        internal override ArrayHandler CreateArrayHandler(IBackendType backendType)
         {
             // BitString requires a special array handler which returns bool or BitArray
-            return new BitStringArrayHandler(this, pgName, oid);
+            return new BitStringArrayHandler(backendType, this);
         }
 
         internal override object ReadValueAsObjectFully(DataRowMessage row, FieldDescription fieldDescription)
@@ -317,8 +319,8 @@ namespace Npgsql.TypeHandlers
             return GetElementFieldType(fieldDescription);
         }
 
-        public BitStringArrayHandler(BitStringHandler elementHandler, string pgName, uint oid)
-            : base(elementHandler, pgName, oid) {}
+        public BitStringArrayHandler(IBackendType backendType, BitStringHandler elementHandler)
+            : base(backendType, elementHandler) {}
 
         public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {

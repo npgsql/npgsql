@@ -34,6 +34,8 @@ namespace Npgsql.TypeHandlers
     [TypeMapping("bool", NpgsqlDbType.Boolean, DbType.Boolean, typeof(bool))]
     internal class BoolHandler : SimpleTypeHandler<bool>
     {
+        internal BoolHandler(IBackendType backendType) : base(backendType) {}
+
         public override bool Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return buf.ReadByte() != 0;

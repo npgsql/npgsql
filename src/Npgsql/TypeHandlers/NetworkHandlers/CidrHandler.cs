@@ -39,6 +39,8 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
     [TypeMapping("cidr", NpgsqlDbType.Cidr)]
     internal class CidrHandler : SimpleTypeHandler<NpgsqlInet>, ISimpleTypeHandler<string>
     {
+        internal CidrHandler(IBackendType backendType) : base(backendType) { }
+
         public override NpgsqlInet Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return InetHandler.DoRead(buf, fieldDescription, len, true);

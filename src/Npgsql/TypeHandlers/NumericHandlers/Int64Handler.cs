@@ -41,6 +41,8 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         ISimpleTypeHandler<float>, ISimpleTypeHandler<double>, ISimpleTypeHandler<decimal>,
         ISimpleTypeHandler<string>
     {
+        internal Int64Handler(IBackendType backendType) : base(backendType) { }
+
         public override long Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return buf.ReadInt64();

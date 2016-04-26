@@ -49,7 +49,8 @@ namespace Npgsql.TypeHandlers
         TypeHandler _fieldHandler;
         object[] _value;
 
-        public RecordHandler(TypeHandlerRegistry registry)
+        public RecordHandler(IBackendType backendType, TypeHandlerRegistry registry)
+            : base(backendType)
         {
             _registry = registry;
         }

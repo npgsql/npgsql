@@ -42,6 +42,8 @@ namespace Npgsql.TypeHandlers
     [TypeMapping("uuid", NpgsqlDbType.Uuid, DbType.Guid, typeof(Guid))]
     internal class UuidHandler : SimpleTypeHandler<Guid>, ISimpleTypeHandler<string>
     {
+        internal UuidHandler(IBackendType backendType) : base(backendType) { }
+
         public override Guid Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             buf.Ensure(16);

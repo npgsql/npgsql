@@ -43,6 +43,8 @@ namespace Npgsql.TypeHandlers
         readonly Stack<Counter> _icol = new Stack<Counter>();
         PostgisGeometry _toWrite;
 
+        internal PostgisGeometryHandler(IBackendType backendType) : base(backendType) { }
+
         public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             _readBuf = buf;

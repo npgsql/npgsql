@@ -37,6 +37,7 @@ namespace Npgsql.TypeHandlers
 {
     internal abstract class ArrayHandler : ChunkingTypeHandler<Array>
     {
+        internal ArrayHandler(IBackendType backendType) : base(backendType) {}
         internal abstract Type GetElementFieldType(FieldDescription fieldDescription);
         internal abstract Type GetElementPsvType(FieldDescription fieldDescription);
     }
@@ -106,21 +107,16 @@ namespace Npgsql.TypeHandlers
         /// <summary>
         /// The type handler for the element that this array type holds
         /// </summary>
-        internal TypeHandler ElementHandler { get; private set; }
+        protected internal TypeHandler ElementHandler { get; protected set; }
 
-        public ArrayHandler(TypeHandler elementHandler)
+        public ArrayHandler(IBackendType backendType, TypeHandler elementHandler, int lowerBound) : base(backendType)
         {
-            LowerBound = 1;
+            LowerBound = lowerBound;
             ElementHandler = elementHandler;
-            NpgsqlDbType = NpgsqlDbType.Array | elementHandler.NpgsqlDbType;
         }
 
-        public ArrayHandler(TypeHandler elementHandler, string pgName, uint oid)
-            : this(elementHandler)
-        {
-            PgName = pgName;
-            OID = oid;
-        }
+        public ArrayHandler(IBackendType backendType, TypeHandler elementHandler)
+            : this(backendType, elementHandler, 1) {}
 
         #region Read
 
@@ -155,7 +151,7 @@ namespace Npgsql.TypeHandlers
                     _dimensions = _readBuf.ReadInt32();
                     _readBuf.ReadInt32();        // Has nulls. Not populated by PG?
                     var elementOID = _readBuf.ReadUInt32();
-                    Contract.Assume(elementOID == ElementHandler.OID);
+                    Contract.Assume(elementOID == ElementHandler.BackendType.OID);
                     _dimLengths = new int[_dimensions];
                     if (_dimensions > 1) {
                         _indices = new int[_dimensions];
@@ -366,7 +362,7 @@ namespace Npgsql.TypeHandlers
                     }
                     _writeBuf.WriteInt32(_dimensions);
                     _writeBuf.WriteInt32(1);  // HasNulls=1. Not actually used by the backend.
-                    _writeBuf.WriteUInt32(ElementHandler.OID);
+                    _writeBuf.WriteUInt32(ElementHandler.BackendType.OID);
                     var asArray = _writeValue as Array;
                     if (asArray != null)
                     {
@@ -570,7 +566,7 @@ namespace Npgsql.TypeHandlers
             return result;
         }
 
-        public ArrayHandlerWithPsv(TypeHandler elementHandler, string pgName, uint oid)
-            : base(elementHandler, pgName, oid) {}
+        public ArrayHandlerWithPsv(IBackendType backendType, TypeHandler elementHandler)
+            : base(backendType, elementHandler) {}
     }
 }

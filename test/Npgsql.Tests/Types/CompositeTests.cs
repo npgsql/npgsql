@@ -85,7 +85,7 @@ namespace Npgsql.Tests.Types
                         using (var reader = cmd.ExecuteReader())
                         {
                             reader.Read();
-                            Assert.That(reader.GetDataTypeName(0), Is.EqualTo("composite1"));
+                            Assert.That(reader.GetDataTypeName(0), Does.StartWith("pg_temp").And.EndWith(".composite1"));
                             Assert.That(reader.IsDBNull(0), Is.True);
                         }
                     }
@@ -98,7 +98,7 @@ namespace Npgsql.Tests.Types
                         using (var reader = cmd.ExecuteReader())
                         {
                             reader.Read();
-                            Assert.That(reader.GetDataTypeName(0), Is.EqualTo("composite1"));
+                            Assert.That(reader.GetDataTypeName(0), Does.StartWith("pg_temp").And.EndWith(".composite1"));
                         }
                     }
 
@@ -108,7 +108,7 @@ namespace Npgsql.Tests.Types
                     using (var reader = cmd.ExecuteReader())
                     {
                         reader.Read();
-                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("composite1"));
+                        Assert.That(reader.GetDataTypeName(0), Does.StartWith("pg_temp").And.EndWith(".composite1"));
                     }
                 }
                 finally
@@ -139,7 +139,7 @@ namespace Npgsql.Tests.Types
                     using (var reader = cmd.ExecuteReader())
                     {
                         reader.Read();
-                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("composite2"));
+                        Assert.That(reader.GetDataTypeName(0), Does.StartWith("pg_temp").And.EndWith(".composite2"));
                         Assert.That(reader.IsDBNull(0), Is.True);
                     }
                 }
@@ -153,7 +153,7 @@ namespace Npgsql.Tests.Types
                     using (var reader = cmd.ExecuteReader())
                     {
                         reader.Read();
-                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("composite2"));
+                        Assert.That(reader.GetDataTypeName(0), Does.StartWith("pg_temp").And.EndWith(".composite2"));
                     }
                 }
 
@@ -164,7 +164,7 @@ namespace Npgsql.Tests.Types
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();
-                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo("composite2"));
+                    Assert.That(reader.GetDataTypeName(0), Does.StartWith("pg_temp").And.EndWith(".composite2"));
                 }
             }
         }

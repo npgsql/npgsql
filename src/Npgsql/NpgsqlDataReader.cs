@@ -1122,7 +1122,7 @@ namespace Npgsql
             var fieldDescription = _rowDescription[ordinal];
             var handler = fieldDescription.Handler as ByteaHandler;
             if (handler == null) {
-                throw new InvalidCastException("GetStream() not supported for type " + fieldDescription.Handler.PgName);
+                throw new InvalidCastException("GetStream() not supported for type " + fieldDescription.Handler.PgDisplayName);
             }
 
             var row = Row;
@@ -1188,7 +1188,7 @@ namespace Npgsql
             var handler = fieldDescription.Handler as ITextReaderHandler;
             if (handler == null)
             {
-                throw new InvalidCastException("GetTextReader() not supported for type " + fieldDescription.Handler.PgName);
+                throw new InvalidCastException("GetTextReader() not supported for type " + fieldDescription.Handler.PgDisplayName);
             }
 
             var row = Row;
@@ -1275,7 +1275,7 @@ namespace Npgsql
             CheckOrdinal(ordinal);
             Contract.EndContractBlock();
 
-            return _rowDescription[ordinal].RealHandler.PgName;
+            return _rowDescription[ordinal].RealHandler.PgDisplayName;
         }
 
         /// <summary>
@@ -1447,7 +1447,7 @@ namespace Npgsql
             var elementType = t.GetElementType();
             var arrayHandler = handler as ArrayHandler;
             if (arrayHandler == null) {
-                throw new InvalidCastException($"Can't cast database type {fieldDescription.Handler.PgName} to {typeof (T).Name}");
+                throw new InvalidCastException($"Can't cast database type {fieldDescription.Handler.PgDisplayName} to {typeof (T).Name}");
             }
 
             if (arrayHandler.GetElementFieldType(fieldDescription) == elementType)
@@ -1458,7 +1458,7 @@ namespace Npgsql
             {
                 return (T)GetProviderSpecificValue(ordinal);
             }
-            throw new InvalidCastException($"Can't cast database type {handler.PgName} to {typeof (T).Name}");
+            throw new InvalidCastException($"Can't cast database type {handler.PgDisplayName} to {typeof (T).Name}");
         }
 
         /// <summary>

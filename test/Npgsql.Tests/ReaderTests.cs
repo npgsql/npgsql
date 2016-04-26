@@ -254,26 +254,34 @@ namespace Npgsql.Tests
         {
             using (var conn = OpenConnection())
             {
-                using (var command = new NpgsqlCommand(@"SELECT 1::INT4 AS some_column", conn))
-                using (var reader = command.ExecuteReader())
+                using (var cmd = new NpgsqlCommand(@"SELECT 1::INT4 AS some_column", conn))
+                using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();
                     Assert.That(reader.GetDataTypeName(0), Is.EqualTo("int4"));
                 }
-                using (var command = new NpgsqlCommand(@"SELECT '{1}'::INT4[] AS some_column", conn))
-                using (var reader = command.ExecuteReader())
+                using (var cmd = new NpgsqlCommand(@"SELECT '{1}'::INT4[] AS some_column", conn))
+                using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();
                     Assert.That(reader.GetDataTypeName(0), Is.EqualTo("_int4"));
                 }
-                using (var command = new NpgsqlCommand(@"SELECT 1::INT4 AS some_column", conn))
+                using (var cmd = new NpgsqlCommand(@"SELECT 1::INT4 AS some_column", conn))
                 {
-                    command.AllResultTypesAreUnknown = true;
-                    using (var reader = command.ExecuteReader())
+                    cmd.AllResultTypesAreUnknown = true;
+                    using (var reader = cmd.ExecuteReader())
                     {
                         reader.Read();
                         Assert.That(reader.GetDataTypeName(0), Is.EqualTo("int4"));
                     }
+                }
+                conn.ExecuteNonQuery("CREATE TYPE pg_temp.my_enum AS ENUM ('one')");
+                conn.ReloadTypes();
+                using (var cmd = new NpgsqlCommand("SELECT 'one'::my_enum", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetDataTypeName(0), Does.StartWith("pg_temp").And.EndWith(".my_enum"));
                 }
             }
         }
@@ -1035,7 +1043,7 @@ namespace Npgsql.Tests
                 // Temporarily reroute integer to go to a type handler which generates SafeReadExceptions
                 var registry = conn.Connector.TypeHandlerRegistry;
                 var intHandler = registry[typeof (int)];
-                registry.ByOID[intHandler.OID] = new SafeExceptionGeneratingHandler();
+                registry.ByOID[intHandler.BackendType.OID] = new SafeExceptionGeneratingHandler(intHandler.BackendType);
                 try
                 {
                     using (var cmd = new NpgsqlCommand(@"SELECT 1, 'hello'", conn))
@@ -1049,7 +1057,7 @@ namespace Npgsql.Tests
                 }
                 finally
                 {
-                    registry.ByOID[intHandler.OID] = intHandler;
+                    registry.ByOID[intHandler.BackendType.OID] = intHandler;
                 }
             }
         }
@@ -1063,7 +1071,7 @@ namespace Npgsql.Tests
                 // Temporarily reroute integer to go to a type handler which generates some exception
                 var registry = conn.Connector.TypeHandlerRegistry;
                 var intHandler = registry[typeof (int)];
-                registry.ByOID[intHandler.OID] = new NonSafeExceptionGeneratingHandler();
+                registry.ByOID[intHandler.BackendType.OID] = new NonSafeExceptionGeneratingHandler(intHandler.BackendType);
                 try
                 {
                     using (var cmd = new NpgsqlCommand(@"SELECT 1, 'hello'", conn))
@@ -1078,7 +1086,7 @@ namespace Npgsql.Tests
                 }
                 finally
                 {
-                    registry.ByOID[intHandler.OID] = intHandler;
+                    registry.ByOID[intHandler.BackendType.OID] = intHandler;
                 }
             }
         }
@@ -1089,6 +1097,9 @@ namespace Npgsql.Tests
 #if DEBUG
     internal class SafeExceptionGeneratingHandler : SimpleTypeHandler<int>
     {
+        internal SafeExceptionGeneratingHandler(IBackendType backendType)
+            : base (backendType) {}
+
         public override int Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             buf.ReadInt32();
@@ -1101,6 +1112,9 @@ namespace Npgsql.Tests
 
     internal class NonSafeExceptionGeneratingHandler : SimpleTypeHandler<int>
     {
+        internal NonSafeExceptionGeneratingHandler(IBackendType backendType)
+            : base (backendType) { }
+
         public override int Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             throw new Exception("Non-safe read exception as requested");

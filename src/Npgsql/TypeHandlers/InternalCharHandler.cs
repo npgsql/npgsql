@@ -41,6 +41,8 @@ namespace Npgsql.TypeHandlers
     internal class InternalCharHandler : SimpleTypeHandler<char>,
         ISimpleTypeHandler<byte>, ISimpleTypeHandler<short>, ISimpleTypeHandler<int>, ISimpleTypeHandler<long>
     {
+        internal InternalCharHandler(IBackendType backendType) : base(backendType) { }
+
         #region Read
 
         public override char Read(ReadBuffer buf, int len, FieldDescription fieldDescription)

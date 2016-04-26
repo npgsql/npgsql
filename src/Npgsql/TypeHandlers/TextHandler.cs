@@ -66,6 +66,8 @@ namespace Npgsql.TypeHandlers
 
         #endregion
 
+        internal TextHandler(IBackendType backendType) : base(backendType) { }
+
         #region Read
 
         internal virtual void PrepareRead(ReadBuffer buf, FieldDescription fieldDescription, int len)

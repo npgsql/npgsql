@@ -49,6 +49,8 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
         int _bytesLeft;
         NpgsqlTsVector _value;
 
+        internal TsVectorHandler(IBackendType backendType) : base(backendType) { }
+
         public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             _readBuf = buf;

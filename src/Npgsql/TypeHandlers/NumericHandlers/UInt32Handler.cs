@@ -40,6 +40,8 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     [TypeMapping("regtype", NpgsqlDbType.Regtype)]
     internal class UInt32Handler : SimpleTypeHandler<uint>
     {
+        internal UInt32Handler(IBackendType backendType) : base(backendType) { }
+
         public override uint Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return (uint)buf.ReadInt32();

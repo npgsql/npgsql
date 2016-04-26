@@ -42,6 +42,8 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     [TypeMapping("point", NpgsqlDbType.Point, typeof(NpgsqlPoint))]
     internal class PointHandler : SimpleTypeHandler<NpgsqlPoint>, ISimpleTypeHandler<string>
     {
+        internal PointHandler(IBackendType backendType) : base(backendType) { }
+
         public override NpgsqlPoint Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return new NpgsqlPoint(buf.ReadDouble(), buf.ReadDouble());

@@ -216,10 +216,10 @@ namespace Npgsql
                     var param = new NpgsqlParameter();
 
                     // TODO: Fix enums, composite types
-                    var npgsqlDbType = c.Connection.Connector.TypeHandlerRegistry[types[i]].NpgsqlDbType;
-                    if (npgsqlDbType == NpgsqlDbType.Unknown)
+                    var npgsqlDbType = c.Connection.Connector.TypeHandlerRegistry[types[i]].BackendType.NpgsqlDbType;
+                    if (!npgsqlDbType.HasValue)
                         throw new InvalidOperationException($"Invalid parameter type: {types[i]}");
-                    param.NpgsqlDbType = npgsqlDbType;
+                    param.NpgsqlDbType = npgsqlDbType.Value;
 
                     if (names != null && i < names.Length)
                         param.ParameterName = ":" + names[i];

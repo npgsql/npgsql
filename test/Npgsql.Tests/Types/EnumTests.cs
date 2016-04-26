@@ -66,7 +66,7 @@ namespace Npgsql.Tests.Types
                         using (var reader = cmd.ExecuteReader())
                         {
                             reader.Read();
-                            Assert.That(reader.GetDataTypeName(0), Is.EqualTo("mood1"));
+                            Assert.That(reader.GetDataTypeName(0), Does.StartWith("pg_temp").And.EndWith(".mood1"));
                             Assert.That(reader.IsDBNull(0), Is.True);
                         }
                     }
@@ -79,7 +79,7 @@ namespace Npgsql.Tests.Types
                         using (var reader = cmd.ExecuteReader())
                         {
                             reader.Read();
-                            Assert.That(reader.GetDataTypeName(0), Is.EqualTo("mood1"));
+                            Assert.That(reader.GetDataTypeName(0), Does.StartWith("pg_temp").And.EndWith(".mood1"));
                         }
                     }
 
@@ -89,7 +89,7 @@ namespace Npgsql.Tests.Types
                     using (var reader = cmd.ExecuteReader())
                     {
                         reader.Read();
-                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("mood1"));
+                        Assert.That(reader.GetDataTypeName(0), Does.StartWith("pg_temp").And.EndWith(".mood1"));
                     }
                 }
                 finally
@@ -121,7 +121,7 @@ namespace Npgsql.Tests.Types
                     using (var reader = cmd.ExecuteReader())
                     {
                         reader.Read();
-                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("mood2"));
+                        Assert.That(reader.GetDataTypeName(0), Does.StartWith("pg_temp").And.EndWith(".mood2"));
                         Assert.That(reader.IsDBNull(0), Is.True);
                     }
                 }
@@ -135,7 +135,7 @@ namespace Npgsql.Tests.Types
                     using (var reader = cmd.ExecuteReader())
                     {
                         reader.Read();
-                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("mood2"));
+                        Assert.That(reader.GetDataTypeName(0), Does.StartWith("pg_temp").And.EndWith(".mood2"));
                     }
                 }
 
@@ -146,7 +146,7 @@ namespace Npgsql.Tests.Types
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();
-                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo("mood2"));
+                    Assert.That(reader.GetDataTypeName(0), Does.StartWith("pg_temp").And.EndWith(".mood2"));
                 }
             }
         }
@@ -277,6 +277,7 @@ namespace Npgsql.Tests.Types
                 {
                     reader.Read();
                     Assert.That(reader[0], Is.EqualTo("Sad"));
+                    Assert.That(reader.GetDataTypeName(0), Does.StartWith("pg_temp").And.EndsWith("mood7"));
                     Assert.That(reader[1], Is.EqualTo(new[] { "Ok", "Happy" }));
                 }
             }
@@ -420,24 +421,38 @@ namespace Npgsql.Tests.Types
                     // Per-connection mapping
                     conn.MapEnum<Enum1>("a.my_enum");
                     conn.MapEnum<Enum2>("b.my_enum");
-                    using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+                    using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn))
                     {
-                        cmd.Parameters.AddWithValue("p", Enum1.One);
-                        Assert.That(cmd.ExecuteScalar(), Is.EqualTo(Enum1.One));
-                        cmd.Parameters[0].Value = Enum2.Alpha;
-                        Assert.That(cmd.ExecuteScalar(), Is.EqualTo(Enum2.Alpha));
+                        cmd.Parameters.AddWithValue("p1", Enum1.One);
+                        cmd.Parameters.AddWithValue("p2", Enum2.Alpha);
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            reader.Read();
+                            Assert.That(reader[0], Is.EqualTo(Enum1.One));
+                            Assert.That(reader.GetDataTypeName(0), Is.EqualTo("a.my_enum"));
+                            Assert.That(reader[1], Is.EqualTo(Enum2.Alpha));
+                            Assert.That(reader.GetDataTypeName(1), Is.EqualTo("b.my_enum"));
+                        }
                     }
                 }
+
+                // Global mapping
                 NpgsqlConnection.MapEnumGlobally<Enum1>("a.my_enum");
                 NpgsqlConnection.MapEnumGlobally<Enum2>("b.my_enum");
                 using (var conn = OpenConnection())
                 {
-                    using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+                    using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn))
                     {
-                        cmd.Parameters.AddWithValue("p", Enum1.One);
-                        Assert.That(cmd.ExecuteScalar(), Is.EqualTo(Enum1.One));
-                        cmd.Parameters[0].Value = Enum2.Alpha;
-                        Assert.That(cmd.ExecuteScalar(), Is.EqualTo(Enum2.Alpha));
+                        cmd.Parameters.AddWithValue("p1", Enum1.One);
+                        cmd.Parameters.AddWithValue("p2", Enum2.Alpha);
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            reader.Read();
+                            Assert.That(reader[0], Is.EqualTo(Enum1.One));
+                            Assert.That(reader.GetDataTypeName(0), Is.EqualTo("a.my_enum"));
+                            Assert.That(reader[1], Is.EqualTo(Enum2.Alpha));
+                            Assert.That(reader.GetDataTypeName(1), Is.EqualTo("b.my_enum"));
+                        }
                     }
                 }
             }

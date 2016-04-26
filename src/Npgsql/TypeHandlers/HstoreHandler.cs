@@ -51,9 +51,9 @@ namespace Npgsql.TypeHandlers
         /// </summary>
         readonly TextHandler _textHandler;
 
-        public HstoreHandler()
+        public HstoreHandler(IBackendType backendType) : base(backendType)
         {
-            _textHandler = new TextHandler();
+            _textHandler = new TextHandler(backendType);
         }
 
         #region Write

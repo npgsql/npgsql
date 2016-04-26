@@ -42,6 +42,8 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     [TypeMapping("lseg", NpgsqlDbType.LSeg, typeof(NpgsqlLSeg))]
     internal class LineSegmentHandler : SimpleTypeHandler<NpgsqlLSeg>, ISimpleTypeHandler<string>
     {
+        internal LineSegmentHandler(IBackendType backendType) : base(backendType) { }
+
         public override NpgsqlLSeg Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return new NpgsqlLSeg(buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble());

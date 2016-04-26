@@ -358,6 +358,9 @@ namespace Npgsql
                 if (Settings.Pooling)
                 {
                     Connector = NpgsqlConnectorPool.ConnectorPoolMgr.RequestConnector(this);
+                    // Since this pooled connector was opened, global enum/composite mappings may have
+                    // changed. Bring this up to date if needed.
+                    Connector.TypeHandlerRegistry.ActivateGlobalMappings();
                 }
                 else
                 {
@@ -1098,7 +1101,7 @@ namespace Npgsql
             var arrayHandler = handler as ArrayHandler;
             if (arrayHandler == null)
             {
-                throw new InvalidCastException($"Can't cast database type {fieldDescription.Handler.PgName} to {typeof (T).Name}");
+                throw new InvalidCastException($"Can't cast database type {fieldDescription.Handler.PgDisplayName} to {typeof (T).Name}");
             }
 
             if (arrayHandler.GetElementFieldType(fieldDescription) == elementType)
@@ -1111,7 +1114,7 @@ namespace Npgsql
                 return (T)GetProviderSpecificValue(ordinal);
             }
 
-            throw new InvalidCastException($"Can't cast database type {handler.PgName} to {typeof (T).Name}");
+            throw new InvalidCastException($"Can't cast database type {handler.PgDisplayName} to {typeof (T).Name}");
         }
 
         async Task<T> ReadColumnWithoutCacheAsync<T>(int ordinal, CancellationToken cancellationToken)
@@ -1497,12 +1500,7 @@ namespace Npgsql
             await buf.EnsureAsync(len, cancellationToken);
             var asTypedHandler = this as ISimpleTypeHandler<T2>;
             if (asTypedHandler == null)
-            {
-                if (fieldDescription == null)
-                    throw new InvalidCastException("Can't cast database type to " + typeof (T2).Name);
-                throw new InvalidCastException($"Can't cast database type {fieldDescription.Handler.PgName} to {typeof (T2).Name}");
-            }
-
+                throw new InvalidCastException(fieldDescription == null ? "Can't cast database type to " + typeof (T2).Name : $"Can't cast database type {fieldDescription.Handler.PgDisplayName} to {typeof (T2).Name}");
             return asTypedHandler.Read(buf, len, fieldDescription);
         }
     }
@@ -1513,12 +1511,7 @@ namespace Npgsql
         {
             var asTypedHandler = this as IChunkingTypeHandler<T2>;
             if (asTypedHandler == null)
-            {
-                if (fieldDescription == null)
-                    throw new InvalidCastException("Can't cast database type to " + typeof (T2).Name);
-                throw new InvalidCastException($"Can't cast database type {fieldDescription.Handler.PgName} to {typeof (T2).Name}");
-            }
-
+                throw new InvalidCastException(fieldDescription == null ? "Can't cast database type to " + typeof (T2).Name : $"Can't cast database type {fieldDescription.Handler.PgDisplayName} to {typeof (T2).Name}");
             asTypedHandler.PrepareRead(buf, len, fieldDescription);
             T2 result;
             while (!asTypedHandler.Read(out result))

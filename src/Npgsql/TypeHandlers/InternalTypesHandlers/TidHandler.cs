@@ -9,6 +9,8 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
     [TypeMapping("tid", NpgsqlDbType.Tid, typeof(NpgsqlTid))]
     internal class TidHandler : SimpleTypeHandler<NpgsqlTid>, ISimpleTypeHandler<string>
     {
+        internal TidHandler(IBackendType backendType) : base(backendType) { }
+
         public override NpgsqlTid Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             Contract.Assume(len == 6);

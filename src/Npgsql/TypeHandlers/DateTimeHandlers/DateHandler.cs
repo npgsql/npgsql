@@ -43,7 +43,8 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         /// </summary>
         readonly bool _convertInfinityDateTime;
 
-        public DateHandler(TypeHandlerRegistry registry)
+        public DateHandler(IBackendType backendType, TypeHandlerRegistry registry)
+            : base(backendType)
         {
             _convertInfinityDateTime = registry.Connector.ConvertInfinityDateTime;
         }

@@ -68,7 +68,7 @@ namespace Npgsql.FrontendMessages
             Statement = statement.PreparedStatementName ?? "";
             foreach (var inputParam in statement.InputParameters) {
                 inputParam.ResolveHandler(typeHandlerRegistry);
-                ParameterTypeOIDs.Add(inputParam.Handler.OID);
+                ParameterTypeOIDs.Add(inputParam.Handler.BackendType.OID);
             }
             return this;
         }

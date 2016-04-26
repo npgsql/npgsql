@@ -47,7 +47,7 @@ namespace Npgsql.TypeHandlers
 
     interface ICompositeHandlerFactory
     {
-        ICompositeHandler Create(TypeHandlerRegistry registry);
+        ICompositeHandler Create(IBackendType backendType, TypeHandlerRegistry registry);
     }
 
     /// <summary>
@@ -81,12 +81,11 @@ namespace Npgsql.TypeHandlers
 
         public Type CompositeType => typeof (T);
 
-        internal CompositeHandler(string pgName, INpgsqlNameTranslator nameTranslator, TypeHandlerRegistry registry)
+        internal CompositeHandler(IBackendType backendType, INpgsqlNameTranslator nameTranslator, TypeHandlerRegistry registry)
+            : base (backendType)
         {
-            PgName = pgName;
             _nameTranslator = nameTranslator;
             _registry = registry;
-            NpgsqlDbType = NpgsqlDbType.Composite;
         }
 
         #region Read
@@ -110,7 +109,7 @@ namespace Npgsql.TypeHandlers
                 var fieldCount = _readBuf.ReadInt32();
                 if (fieldCount != _members.Count) {
                     // PostgreSQL sanity check
-                    throw new Exception($"pg_attributes contains {_members.Count} rows for type {PgName}, but {fieldCount} fields were received!");
+                    throw new Exception($"pg_attributes contains {_members.Count} rows for type {PgDisplayName}, but {fieldCount} fields were received!");
                 }
                 _fieldIndex = 0;
             }
@@ -221,7 +220,7 @@ namespace Npgsql.TypeHandlers
                 {
                     var elementLen = asSimpleWriter.ValidateAndGetLength(fieldValue, null);
                     if (_writeBuf.WriteSpaceLeft < 8 + elementLen) { return false; }
-                    _writeBuf.WriteUInt32(fieldDescriptor.Handler.OID);
+                    _writeBuf.WriteUInt32(fieldHandler.BackendType.OID);
                     _writeBuf.WriteInt32(elementLen);
                     asSimpleWriter.Write(fieldValue, _writeBuf, null);
                     continue;
@@ -233,7 +232,7 @@ namespace Npgsql.TypeHandlers
                     if (!_wroteFieldHeader)
                     {
                         if (_writeBuf.WriteSpaceLeft < 8) { return false; }
-                        _writeBuf.WriteUInt32(fieldDescriptor.Handler.OID);
+                        _writeBuf.WriteUInt32(fieldHandler.BackendType.OID);
                         _writeBuf.WriteInt32(asChunkedWriter.ValidateAndGetLength(fieldValue, ref _lengthCache, null));
                         asChunkedWriter.PrepareWrite(fieldValue, _writeBuf, _lengthCache, null);
                         _wroteFieldHeader = true;
@@ -266,7 +265,7 @@ namespace Npgsql.TypeHandlers
             {
                 TypeHandler handler;
                 if (!_registry.TryGetByOID(rawField.TypeOID, out handler))
-                    throw new Exception($"PostgreSQL composite type {PgName}, mapped to CLR type {typeof (T).Name}, has field {rawField.PgName} with an unknown type (TypeOID={rawField.TypeOID})");
+                    throw new Exception($"PostgreSQL composite type {PgDisplayName}, mapped to CLR type {typeof (T).Name}, has field {rawField.PgName} with an unknown type (TypeOID={rawField.TypeOID})");
 
                 var member = (
                     from m in typeof (T).GetMembers()
@@ -277,7 +276,7 @@ namespace Npgsql.TypeHandlers
                 ).SingleOrDefault();
 
                 if (member == null)
-                    throw new Exception($"PostgreSQL composite type {PgName} contains field {rawField.PgName} which could not match any on CLR type {typeof (T).Name}");
+                    throw new Exception($"PostgreSQL composite type {PgDisplayName} contains field {rawField.PgName} which could not match any on CLR type {typeof (T).Name}");
 
                 var property = member as PropertyInfo;
                 if (property != null)
@@ -293,7 +292,7 @@ namespace Npgsql.TypeHandlers
                     continue;
                 }
 
-                throw new Exception($"PostgreSQL composite type {PgName} contains field {rawField.PgName} which cannot map to CLR type {typeof (T).Name}'s field {member.Name} of type {member.GetType().Name}");
+                throw new Exception($"PostgreSQL composite type {PgDisplayName} contains field {rawField.PgName} which cannot map to CLR type {typeof (T).Name}'s field {member.Name} of type {member.GetType().Name}");
             }
 
             RawFields = null;
@@ -347,17 +346,15 @@ namespace Npgsql.TypeHandlers
 
         internal class Factory : ICompositeHandlerFactory
         {
-            readonly string _pgName;
             readonly INpgsqlNameTranslator _nameTranslator;
 
-            internal Factory(string pgName, INpgsqlNameTranslator nameTranslator)
+            internal Factory(INpgsqlNameTranslator nameTranslator)
             {
-                _pgName = pgName;
                 _nameTranslator = nameTranslator;
             }
 
-            public ICompositeHandler Create(TypeHandlerRegistry registry)
-                => new CompositeHandler<T>(_pgName, _nameTranslator, registry);
+            public ICompositeHandler Create(IBackendType backendType, TypeHandlerRegistry registry)
+                => new CompositeHandler<T>(backendType, _nameTranslator, registry);
         }
     }
 

@@ -42,6 +42,8 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     [TypeMapping("line", NpgsqlDbType.Line, typeof(NpgsqlLine))]
     internal class LineHandler : SimpleTypeHandler<NpgsqlLine>, ISimpleTypeHandler<string>
     {
+        internal LineHandler(IBackendType backendType) : base(backendType) { }
+
         public override NpgsqlLine Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return new NpgsqlLine(buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble());

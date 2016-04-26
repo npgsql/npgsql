@@ -51,6 +51,8 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
 
         #endregion
 
+        internal PolygonHandler(IBackendType backendType) : base(backendType) { }
+
         #region Read
 
         public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription)

@@ -48,15 +48,13 @@ namespace Npgsql.TypeHandlers
         /// </summary>
         public TypeHandler ElementHandler { get; private set; }
 
-        public RangeHandler(TypeHandler<TElement> elementHandler, string pgName, uint oid)
+        public RangeHandler(IBackendType backendType, TypeHandler<TElement> elementHandler)
+            : base(backendType)
         {
             ElementHandler = elementHandler;
-            PgName = pgName;
-            OID = oid;
-            NpgsqlDbType = NpgsqlDbType.Range | elementHandler.NpgsqlDbType;
         }
 
-        internal override TypeHandler CreateRangeHandler(string pgName, uint oid)
+        internal override TypeHandler CreateRangeHandler(IBackendType backendType)
         {
             throw new Exception("Can't create range handler of range types, this is an Npgsql bug, please report.");
         }

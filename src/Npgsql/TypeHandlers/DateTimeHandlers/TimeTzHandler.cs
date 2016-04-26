@@ -35,6 +35,8 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     {
         // Binary Format: int64 expressing microseconds, int32 expressing timezone in seconds, negative
 
+        internal TimeTzHandler(IBackendType backendType) : base(backendType) { }
+
         public override DateTimeOffset Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             // Adjust from 1 microsecond to 100ns. Time zone (in seconds) is inverted.

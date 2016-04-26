@@ -41,11 +41,9 @@ namespace Npgsql.TypeHandlers
     /// </summary>
     internal class UnrecognizedTypeHandler : TextHandler
     {
-        internal UnrecognizedTypeHandler()
-        {
-            OID = 0;
-            PgName = "<unknown>";
-        }
+        static readonly IBackendType UnrecognizedBackendType = new UnrecognizedBackendType();
+
+        internal UnrecognizedTypeHandler() : base(UnrecognizedBackendType) {}
 
         internal override void PrepareRead(ReadBuffer buf, FieldDescription fieldDescription, int len)
         {
@@ -55,5 +53,15 @@ namespace Npgsql.TypeHandlers
             }
             base.PrepareRead(buf, fieldDescription, len);
         }
+    }
+
+    class UnrecognizedBackendType : IBackendType
+    {
+        public string Namespace => "";
+        public string Name => "<unknown>";
+        public uint OID => 0;
+        public NpgsqlDbType? NpgsqlDbType => null;
+        public string FullName => "<unknown>";
+        public string DisplayName => "<unknown>";
     }
 }

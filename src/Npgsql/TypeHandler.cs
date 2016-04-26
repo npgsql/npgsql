@@ -38,9 +38,13 @@ namespace Npgsql
 
     internal abstract partial class TypeHandler
     {
-        internal string PgName { get; set; }
-        internal uint OID { get; set; }
-        internal NpgsqlDbType NpgsqlDbType { get; set; }
+        internal IBackendType BackendType { get; }
+
+        internal TypeHandler(IBackendType backendType)
+        {
+            BackendType = backendType;
+        }
+
         internal abstract Type GetFieldType(FieldDescription fieldDescription = null);
         internal abstract Type GetProviderSpecificFieldType(FieldDescription fieldDescription = null);
 
@@ -78,12 +82,12 @@ namespace Npgsql
         /// <summary>
         /// Creates a type handler for arrays of this handler's type.
         /// </summary>
-        internal abstract ArrayHandler CreateArrayHandler(string pgName, uint oid);
+        internal abstract ArrayHandler CreateArrayHandler(IBackendType arrayBackendType);
 
         /// <summary>
         /// Creates a type handler for ranges of this handler's type.
         /// </summary>
-        internal abstract TypeHandler CreateRangeHandler(string pgName, uint oid);
+        internal abstract TypeHandler CreateRangeHandler(IBackendType rangeBackendType);
 
         /// <summary>
         ///
@@ -92,7 +96,7 @@ namespace Npgsql
         /// <returns></returns>
         protected Exception CreateConversionException(Type clrType)
         {
-            return new InvalidCastException($"Can't convert .NET type {clrType} to PostgreSQL {PgName}");
+            return new InvalidCastException($"Can't convert .NET type {clrType} to PostgreSQL {PgDisplayName}");
         }
 
         /// <summary>
@@ -102,8 +106,10 @@ namespace Npgsql
         /// <returns></returns>
         protected Exception CreateConversionButNoParamException(Type clrType)
         {
-            return new InvalidCastException($"Can't convert .NET type '{clrType}' to PostgreSQL '{PgName}' within an array");
+            return new InvalidCastException($"Can't convert .NET type '{clrType}' to PostgreSQL '{PgDisplayName}' within an array");
         }
+
+        internal string PgDisplayName => BackendType.DisplayName;
 
         [ContractInvariantMethod]
         void ObjectInvariants()
@@ -114,6 +120,8 @@ namespace Npgsql
 
     internal abstract class TypeHandler<T> : TypeHandler
     {
+        internal TypeHandler(IBackendType backendType) : base(backendType) {}
+
         internal override Type GetFieldType(FieldDescription fieldDescription = null)
         {
             return typeof(T);
@@ -129,9 +137,11 @@ namespace Npgsql
             return ReadFully<T>(row, row.ColumnLen, fieldDescription);
         }
 
-        internal override ArrayHandler CreateArrayHandler(string pgName, uint oid) => new ArrayHandler<T>(this, pgName, oid);
+        internal override ArrayHandler CreateArrayHandler(IBackendType arrayBackendType)
+            => new ArrayHandler<T>(arrayBackendType, this);
 
-        internal override TypeHandler CreateRangeHandler(string pgName, uint oid) => new RangeHandler<T>(this, pgName, oid);
+        internal override TypeHandler CreateRangeHandler(IBackendType rangeBackendType)
+            => new RangeHandler<T>(rangeBackendType, this);
 
         [ContractInvariantMethod]
         void ObjectInvariants()
@@ -149,6 +159,7 @@ namespace Npgsql
 
     internal abstract partial class SimpleTypeHandler<T> : TypeHandler<T>, ISimpleTypeHandler<T>
     {
+        internal SimpleTypeHandler(IBackendType backendType) : base(backendType) { }
         public abstract T Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null);
         public abstract int ValidateAndGetLength(object value, NpgsqlParameter parameter);
         public abstract void Write(object value, WriteBuffer buf, NpgsqlParameter parameter);
@@ -162,12 +173,11 @@ namespace Npgsql
         {
             buf.Ensure(len);
             var asTypedHandler = this as ISimpleTypeHandler<T2>;
-            if (asTypedHandler == null) {
-                if (fieldDescription == null)
-                    throw new InvalidCastException("Can't cast database type to " + typeof(T2).Name);
-                throw new InvalidCastException(
-                    $"Can't cast database type {fieldDescription.Handler.PgName} to {typeof (T2).Name}");
-            }
+            if (asTypedHandler == null)
+                throw new InvalidCastException(fieldDescription == null
+                    ? "Can't cast database type to " + typeof(T2).Name
+                    : $"Can't cast database type {fieldDescription.Handler.PgDisplayName} to {typeof(T2).Name}"
+                );
 
             return asTypedHandler.Read(buf, len, fieldDescription);
         }
@@ -195,6 +205,8 @@ namespace Npgsql
     /// <typeparam name="TPsv">the type of the provider-specific value returned by this type handler</typeparam>
     internal abstract class SimpleTypeHandlerWithPsv<T, TPsv> : SimpleTypeHandler<T>, ISimpleTypeHandler<TPsv>, ITypeHandlerWithPsv
     {
+        internal SimpleTypeHandlerWithPsv(IBackendType backendType) : base(backendType) { }
+
         internal override Type GetProviderSpecificFieldType(FieldDescription fieldDescription = null)
         {
             return typeof(TPsv);
@@ -212,9 +224,9 @@ namespace Npgsql
             return ReadPsv(buf, len, fieldDescription);
         }
 
-        internal override ArrayHandler CreateArrayHandler(string pgName, uint oid)
+        internal override ArrayHandler CreateArrayHandler(IBackendType arrayBackendType)
         {
-            return new ArrayHandlerWithPsv<T, TPsv>(this, pgName, oid);
+            return new ArrayHandlerWithPsv<T, TPsv>(arrayBackendType, this);
         }
     }
 
@@ -236,6 +248,8 @@ namespace Npgsql
     [ContractClass(typeof(ChunkingTypeHandlerContracts<>))]
     internal abstract partial class ChunkingTypeHandler<T> : TypeHandler<T>, IChunkingTypeHandler<T>
     {
+        internal ChunkingTypeHandler(IBackendType backendType) : base(backendType) { }
+
         public abstract void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null);
         public abstract bool Read(out T result);
 
@@ -268,12 +282,10 @@ namespace Npgsql
         {
             var asTypedHandler = this as IChunkingTypeHandler<T2>;
             if (asTypedHandler == null)
-            {
-                if (fieldDescription == null)
-                    throw new InvalidCastException("Can't cast database type to " + typeof(T2).Name);
-                throw new InvalidCastException(
-                    $"Can't cast database type {fieldDescription.Handler.PgName} to {typeof (T2).Name}");
-            }
+                throw new InvalidCastException(fieldDescription == null
+                    ? "Can't cast database type to " + typeof(T2).Name
+                    : $"Can't cast database type {fieldDescription.Handler.PgDisplayName} to {typeof(T2).Name}"
+                );
 
             asTypedHandler.PrepareRead(buf, len, fieldDescription);
             T2 result;
@@ -306,6 +318,8 @@ namespace Npgsql
     // ReSharper disable once InconsistentNaming
     class ChunkingTypeHandlerContracts<T> : ChunkingTypeHandler<T>
     {
+        internal ChunkingTypeHandlerContracts(IBackendType backendType) : base(backendType) { }
+
         public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             Contract.Requires(buf != null);

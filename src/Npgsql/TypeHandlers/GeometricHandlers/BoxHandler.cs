@@ -42,6 +42,8 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     [TypeMapping("box", NpgsqlDbType.Box, typeof(NpgsqlBox))]
     internal class BoxHandler : SimpleTypeHandler<NpgsqlBox>, ISimpleTypeHandler<string>
     {
+        internal BoxHandler(IBackendType backendType) : base(backendType) { }
+
         public override NpgsqlBox Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return new NpgsqlBox(

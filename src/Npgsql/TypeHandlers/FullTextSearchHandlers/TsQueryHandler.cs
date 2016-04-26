@@ -54,6 +54,8 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
 
         Stack<NpgsqlTsQuery> _stack;
 
+        internal TsQueryHandler(IBackendType backendType) : base(backendType) { }
+
         public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             _readBuf = buf;
