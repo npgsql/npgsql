@@ -736,6 +736,9 @@ namespace Npgsql
             readonly DbType[] _dbTypes;
             readonly Type[] _clrTypes;
 
+            [CanBeNull] ConstructorInfo _ctorWithRegistry;
+            [CanBeNull] ConstructorInfo _ctorWithoutRegistry;
+
             /// <summary>
             /// Constructs an unsupported base type (no handler exists in Npgsql for this type)
             /// </summary>
@@ -763,33 +766,15 @@ namespace Npgsql
                     types.ByClrType[type] = this;
             }
 
-            static readonly Type[] CtorParamsWithRegistry = { typeof(IBackendType), typeof(TypeHandlerRegistry) };
-            static readonly Type[] CtorParamsWithoutRegistry = { typeof(IBackendType) };
-            const BindingFlags CtorBindingFlags = BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance;
-
             internal override TypeHandler Activate(TypeHandlerRegistry registry)
             {
-                var handlerType = HandlerType;
-                if (handlerType == null)
+                if (HandlerType == null)
                 {
                     registry.ByOID[OID] = registry.UnrecognizedTypeHandler;
                     return registry.UnrecognizedTypeHandler;
                 }
 
-                // Instantiate the type handler. If it has a constructor that accepts a TypeHandlerRegistry, use that to allow
-                // the handler to make connector-specific adjustments. Otherwise (the normal case), use the default constructor.
-                TypeHandler handler;
-                var ctorWithRegistry = handlerType.GetConstructor(CtorBindingFlags, null, CtorParamsWithRegistry, null);
-                if (ctorWithRegistry != null)
-                    handler = (TypeHandler)ctorWithRegistry.Invoke(new object[] {this, registry});
-                else
-                {
-                    var ctorWithoutRegistry = handlerType.GetConstructor(CtorBindingFlags, null, CtorParamsWithoutRegistry, null);
-                    if (ctorWithoutRegistry != null)
-                        handler = (TypeHandler)ctorWithoutRegistry.Invoke(new object[] { this });
-                    else
-                        throw new Exception($"Handler type {handlerType.Name} does not have a suitable constructor");
-                }
+                var handler = InstantiateHandler(registry);
 
                 registry.ByOID[OID] = handler;
 
@@ -797,7 +782,7 @@ namespace Npgsql
                 {
                     var value = NpgsqlDbType.Value;
                     if (registry._byNpgsqlDbType.ContainsKey(value))
-                        throw new Exception($"Two type handlers registered on same NpgsqlDbType {NpgsqlDbType}: {registry._byNpgsqlDbType[value].GetType().Name} and {handlerType.Name}");
+                        throw new Exception($"Two type handlers registered on same NpgsqlDbType {NpgsqlDbType}: {registry._byNpgsqlDbType[value].GetType().Name} and {HandlerType.Name}");
                     registry._byNpgsqlDbType[NpgsqlDbType.Value] = handler;
                 }
 
@@ -806,7 +791,7 @@ namespace Npgsql
                     foreach (var dbType in _dbTypes)
                     {
                         if (registry._byDbType.ContainsKey(dbType))
-                            throw new Exception($"Two type handlers registered on same DbType {dbType}: {registry._byDbType[dbType].GetType().Name} and {handlerType.Name}");
+                            throw new Exception($"Two type handlers registered on same DbType {dbType}: {registry._byDbType[dbType].GetType().Name} and {HandlerType.Name}");
                         registry._byDbType[dbType] = handler;
                     }
                 }
@@ -816,12 +801,51 @@ namespace Npgsql
                     foreach (var type in _clrTypes)
                     {
                         if (registry._byType.ContainsKey(type))
-                            throw new Exception($"Two type handlers registered on same .NET type {type}: {registry._byType[type].GetType().Name} and {handlerType.Name}");
+                            throw new Exception($"Two type handlers registered on same .NET type {type}: {registry._byType[type].GetType().Name} and {HandlerType.Name}");
                         registry._byType[type] = handler;
                     }
                 }
 
                 return handler;
+            }
+
+            /// <summary>
+            /// Instantiate the type handler. If it has a constructor that accepts a TypeHandlerRegistry, use that to allow
+            /// the handler to make connector-specific adjustments. Otherwise (the normal case), use the default constructor.
+            /// </summary>
+            /// <param name="registry"></param>
+            /// <returns></returns>
+            TypeHandler InstantiateHandler(TypeHandlerRegistry registry)
+            {
+                Contract.Assert(HandlerType != null);
+
+                if (_ctorWithRegistry == null && _ctorWithoutRegistry == null)
+                {
+                    var ctors = HandlerType.GetConstructors(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
+                    _ctorWithRegistry = (
+                        from c in ctors
+                        let p = c.GetParameters()
+                        where p.Length == 2 && p[0].ParameterType == typeof(IBackendType) && p[1].ParameterType == typeof(TypeHandlerRegistry)
+                        select c
+                    ).FirstOrDefault();
+
+                    if (_ctorWithRegistry == null)
+                    {
+                        _ctorWithoutRegistry = (
+                            from c in ctors
+                            let p = c.GetParameters()
+                            where p.Length == 1 && p[0].ParameterType == typeof(IBackendType)
+                            select c
+                        ).FirstOrDefault();
+                        if (_ctorWithoutRegistry == null)
+                            throw new Exception($"Type handler type {HandlerType.Name} does not have an appropriate constructor");
+                    }
+                }
+
+                if (_ctorWithRegistry != null)
+                    return (TypeHandler)_ctorWithRegistry.Invoke(new object[] { this, registry });
+                Contract.Assert(_ctorWithoutRegistry != null);
+                return (TypeHandler)_ctorWithoutRegistry.Invoke(new object[] { this });
             }
         }
 
