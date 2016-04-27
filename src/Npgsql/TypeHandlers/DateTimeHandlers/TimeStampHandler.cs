@@ -98,7 +98,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                 date += 730119; // 730119 = days since era (0001-01-01) for 2000-01-01
                 time *= 10; // To 100ns
 
-                return new NpgsqlDateTime(new NpgsqlDate(date), new TimeSpan(time));
+                return new NpgsqlDateTime(new NpgsqlDate(date), new TimeSpan(time), DateTimeKind.UTC);
             } else {
                 value = -value;
                 int date = (int)(value / 86400000000L);
