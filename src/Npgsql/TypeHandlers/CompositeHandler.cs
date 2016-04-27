@@ -73,6 +73,7 @@ namespace Npgsql.TypeHandlers
         ReadBuffer _readBuf;
         WriteBuffer _writeBuf;
         LengthCache _lengthCache;
+        bool _preparedRead;
 
         int _fieldIndex;
         int _len;
@@ -96,6 +97,7 @@ namespace Npgsql.TypeHandlers
             _readBuf = buf;
             _fieldIndex = -1;
             _len = -1;
+            _preparedRead = false;
             _value = new T();
         }
 
@@ -138,16 +140,22 @@ namespace Npgsql.TypeHandlers
                 if (handler is ISimpleTypeHandler)
                 {
                     var asSimpleReader = (ISimpleTypeHandler)handler;
-                    if (_readBuf.ReadBytesLeft < _len) { return false; }
+                    if (_readBuf.ReadBytesLeft < _len)
+                        return false;
                     fieldValue = asSimpleReader.ReadAsObject(_readBuf, _len);
                 }
                 else if (handler is IChunkingTypeHandler)
                 {
                     var asChunkingReader = (IChunkingTypeHandler)handler;
-                    asChunkingReader.PrepareRead(_readBuf, _len);
-                    if (!asChunkingReader.ReadAsObject(out fieldValue)) {
-                        return false;
+                    if (!_preparedRead)
+                    {
+                        asChunkingReader.PrepareRead(_readBuf, _len);
+                        _preparedRead = true;
                     }
+
+                    if (!asChunkingReader.ReadAsObject(out fieldValue))
+                        return false;
+                    _preparedRead = false;
                 }
                 else throw PGUtil.ThrowIfReached();
 
