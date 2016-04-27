@@ -481,12 +481,17 @@ namespace Npgsql.Tests
                 Thread.Sleep(2000);
 
                 conn.Open();
-                Assert.That(conn.ProcessID, Is.EqualTo(connectorId));
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
                 if (keepAlive)
+                {
+                    Assert.That(conn.ProcessID, Is.Not.EqualTo(connectorId));
                     Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+                }
                 else
+                {
+                    Assert.That(conn.ProcessID, Is.EqualTo(connectorId));
                     Assert.That(() => conn.ExecuteScalar("SELECT 1"), Throws.Exception.TypeOf<IOException>());
+                }
             }
         }
 
