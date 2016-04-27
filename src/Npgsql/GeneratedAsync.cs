@@ -411,7 +411,7 @@ namespace Npgsql
             }
             catch
             {
-                BreakFromOpen();
+                Break();
                 throw;
             }
         }
