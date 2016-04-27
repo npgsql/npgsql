@@ -246,14 +246,23 @@ namespace Npgsql
             // Now we can simply lock on the pool itself.
             lock (Queue)
             {
-                if (Queue.Available.Count > 0)
+                // Found a queue with connectors.  Grab the first one that isn't broken.
+                // A connector in the queue can be broken if a keepalive failed while it
+                // was in the pool.
+                while (Queue.Available.Count > 0 && Connector == null)
                 {
-                    // Found a queue with connectors.  Grab the top one.
-
-                    // Check if the connector is still valid.
-
-                    Connector = Queue.Available.Dequeue();
-                    Queue.Busy.Add(Connector, null);
+                    var connector = Queue.Available.Dequeue();
+                    switch (connector.State)
+                    {
+                    case ConnectorState.Ready:
+                        Queue.Busy.Add(connector, null);
+                        Connector = connector;
+                        break;
+                    case ConnectorState.Broken:
+                        continue;
+                    default:
+                        throw new Exception(string.Format("Invalid connector state {0} in pool", connector.State));
+                    }
                 }
             }
 
