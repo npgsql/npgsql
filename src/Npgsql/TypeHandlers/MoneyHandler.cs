@@ -40,7 +40,9 @@ namespace Npgsql.TypeHandlers
     [TypeMapping("money", NpgsqlDbType.Money, dbType: DbType.Currency)]
     internal class MoneyHandler : SimpleTypeHandler<decimal>
     {
-        public override decimal Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        internal MoneyHandler(IBackendType backendType) : base(backendType) { }
+
+        public override decimal Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return buf.ReadInt64() / 100m;
         }
@@ -70,7 +72,7 @@ namespace Npgsql.TypeHandlers
             return 8;
         }
 
-        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
         {
             var v = (decimal)(parameter?.ConvertedValue ?? value);
             buf.WriteInt64((long)(Math.Round(v, 2, MidpointRounding.AwayFromZero) * 100m));

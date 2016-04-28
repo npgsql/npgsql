@@ -37,7 +37,7 @@ namespace Npgsql.BackendMessages
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
-        internal CommandCompleteMessage Load(NpgsqlBuffer buf, int len)
+        internal CommandCompleteMessage Load(ReadBuffer buf, int len)
         {
             Rows = 0;
             OID = 0;

@@ -41,7 +41,11 @@ namespace Npgsql.TypeHandlers
         /// The CLR enum type mapped to the PostgreSQL enum
         /// </summary>
         Type EnumType { get; }
-        IEnumHandler Clone();
+    }
+
+    interface IEnumHandlerFactory
+    {
+        IEnumHandler Create(IBackendType backendType);
     }
 
     internal class EnumHandler<TEnum> : SimpleTypeHandler<TEnum>, IEnumHandler where TEnum : struct
@@ -51,37 +55,48 @@ namespace Npgsql.TypeHandlers
 
         public Type EnumType => typeof(TEnum);
 
-        public EnumHandler(string pgName)
+        #region Construction
+
+        internal EnumHandler(IBackendType backendType, INpgsqlNameTranslator nameTranslator)
+            : base(backendType)
         {
             Contract.Requires(typeof(TEnum).GetTypeInfo().IsEnum, "EnumHandler instantiated for non-enum type");
-
-            NpgsqlDbType = NpgsqlDbType.Enum;
-            PgName = pgName;
-
-            // Reflect on our enum type to find any explicit mappings
-            if (!typeof(TEnum).GetFields(BindingFlags.Static | BindingFlags.Public).Any(t => t.GetCustomAttributes(typeof(EnumLabelAttribute), false).Any())) {
-                return;
-            }
-
             _enumToLabel = new Dictionary<TEnum, string>();
             _labelToEnum = new Dictionary<string, TEnum>();
+            GenerateMappings(nameTranslator, _enumToLabel, _labelToEnum);
+        }
+
+        internal EnumHandler(IBackendType backendType, Dictionary<TEnum, string> enumToLabel, Dictionary<string, TEnum> labelToEnum)
+            : base(backendType)
+        {
+            Contract.Requires(typeof(TEnum).GetTypeInfo().IsEnum, "EnumHandler instantiated for non-enum type");
+            _enumToLabel = enumToLabel;
+            _labelToEnum = labelToEnum;
+        }
+
+        static void GenerateMappings(INpgsqlNameTranslator nameTranslator, Dictionary<TEnum, string> enumToLabel, Dictionary<string, TEnum> labelToEnum)
+        {
             foreach (var field in typeof(TEnum).GetFields(BindingFlags.Static | BindingFlags.Public))
             {
-                var attribute = (EnumLabelAttribute)field.GetCustomAttributes(typeof(EnumLabelAttribute), false).FirstOrDefault();
-                var enumName = attribute == null ? field.Name : attribute.Label;
+                var attribute = (PgNameAttribute)field.GetCustomAttributes(typeof(PgNameAttribute), false).FirstOrDefault();
+                var enumName = attribute == null
+                    ? nameTranslator.TranslateMemberName(field.Name)
+                    : attribute.PgName;
                 var enumValue = (Enum)field.GetValue(null);
-                _enumToLabel[(TEnum)(object)enumValue] = enumName;
-                _labelToEnum[enumName] = (TEnum)(object)enumValue;
+                enumToLabel[(TEnum)(object)enumValue] = enumName;
+                labelToEnum[enumName] = (TEnum)(object)enumValue;
             }
         }
 
-        public override TEnum Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        #endregion
+
+        #region Read
+
+        public override TEnum Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             var str = buf.ReadString(len);
             TEnum value;
-            var success = _labelToEnum == null
-                ? Enum.TryParse(str, out value)
-                : _labelToEnum.TryGetValue(str, out value);
+            var success = _labelToEnum.TryGetValue(str, out value);
 
             if (!success)
                 throw new SafeReadException(new InvalidCastException($"Received enum value '{str}' from database which wasn't found on enum {typeof (TEnum)}"));
@@ -89,45 +104,49 @@ namespace Npgsql.TypeHandlers
             return value;
         }
 
+        #endregion
+
+        #region Write
+
         public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
             if (!(value is TEnum))
                 throw CreateConversionException(value.GetType());
 
             string str;
-            if (_enumToLabel == null)
-            {
-                str = value.ToString();
-            }
-            else
-            {
-                var asEnum = (TEnum)value;
-                if (!_enumToLabel.TryGetValue(asEnum, out str)) {
-                    throw new InvalidCastException($"Can't write value {asEnum} as enum {typeof (TEnum)}");
-                }
-            }
+            var asEnum = (TEnum)value;
+            if (!_enumToLabel.TryGetValue(asEnum, out str))
+                throw new InvalidCastException($"Can't write value {asEnum} as enum {typeof (TEnum)}");
 
             return Encoding.UTF8.GetByteCount(str);
         }
 
-        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
         {
             string str;
-            if (_enumToLabel == null) {
-                str = value.ToString();
-            } else {
-                var asEnum = (TEnum)value;
-                if (!_enumToLabel.TryGetValue(asEnum, out str)) {
-                    throw new InvalidCastException($"Can't write value {asEnum} as enum {typeof (TEnum)}");
-                }
-            }
+            var asEnum = (TEnum)value;
+            if (!_enumToLabel.TryGetValue(asEnum, out str))
+                throw new InvalidCastException($"Can't write value {asEnum} as enum {typeof (TEnum)}");
 
             buf.WriteString(str);
         }
 
-        public IEnumHandler Clone()
+        #endregion
+
+        internal class Factory : IEnumHandlerFactory
         {
-            return new EnumHandler<TEnum>(PgName);
+            readonly Dictionary<TEnum, string> _enumToLabel;
+            readonly Dictionary<string, TEnum> _labelToEnum;
+
+            internal Factory(INpgsqlNameTranslator nameTranslator)
+            {
+                _enumToLabel = new Dictionary<TEnum, string>();
+                _labelToEnum = new Dictionary<string, TEnum>();
+                GenerateMappings(nameTranslator, _enumToLabel, _labelToEnum);
+            }
+
+            public IEnumHandler Create(IBackendType backendType)
+                => new EnumHandler<TEnum>(backendType, _enumToLabel, _labelToEnum);
         }
     }
 }

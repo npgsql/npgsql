@@ -28,7 +28,7 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests.Types
 {
-    class PostgisTest : TestBase
+    class PostgisTests : TestBase
     {
         public class TestAtt
         {
@@ -36,7 +36,7 @@ namespace Npgsql.Tests.Types
             public string SQL;
         }
 
-        readonly static TestAtt[] Tests =
+        static readonly TestAtt[] Tests =
         {
             new TestAtt { Geom = new PostgisPoint(1D, 2500D), SQL = "st_makepoint(1,2500)" },
             new TestAtt {
@@ -109,7 +109,7 @@ namespace Npgsql.Tests.Types
             }
         };
 
-        [Test,TestCaseSource("Tests")]
+        [Test,TestCaseSource(nameof(Tests))]
         public void PostgisTestRead(TestAtt att)
         {
             using (var conn = OpenConnection())
@@ -122,7 +122,7 @@ namespace Npgsql.Tests.Types
             }
         }
 
-        [Test, TestCaseSource("Tests")]
+        [Test, TestCaseSource(nameof(Tests))]
         public void PostgisTestWrite(TestAtt a)
         {
             using (var conn = OpenConnection())
@@ -143,7 +143,7 @@ namespace Npgsql.Tests.Types
             }
         }
 
-        [Test, TestCaseSource("Tests")]
+        [Test, TestCaseSource(nameof(Tests))]
         public void PostgisTestWriteSrid(TestAtt a)
         {
             using (var conn = OpenConnection())
@@ -157,7 +157,7 @@ namespace Npgsql.Tests.Types
             }
         }
 
-        [Test, TestCaseSource("Tests")]
+        [Test, TestCaseSource(nameof(Tests))]
         public void PostgisTestReadSrid(TestAtt a)
         {
             using (var conn = OpenConnection())
@@ -179,7 +179,7 @@ namespace Npgsql.Tests.Types
                 cmd.CommandText = "Select ARRAY(select st_makepoint(1,1))";
                 var p = cmd.ExecuteScalar() as PostgisGeometry[];
                 var p2 = new PostgisPoint(1d, 1d);
-                Assert.IsTrue(p != null && p[0] is PostgisPoint && p2 == (PostgisPoint)p[0]);
+                Assert.IsTrue(p?[0] is PostgisPoint && p2 == (PostgisPoint)p[0]);
             }
         }
 
@@ -249,7 +249,7 @@ namespace Npgsql.Tests.Types
             }
         }
 
-        public PostgisTest(string backendVersion)
+        public PostgisTests(string backendVersion)
             : base(backendVersion){ }
     }
 }

@@ -17,7 +17,7 @@
     <NuGetPackageImportStamp>
     </NuGetPackageImportStamp>
     <TargetFrameworkProfile />
-    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5.1</TargetFrameworkVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -157,12 +157,14 @@
     <Compile Include="FrontendMessages\CopyFailMessage.cs" />
     <Compile Include="FrontendMessages\SSLRequestMessage.cs" />
     <Compile Include="ICancelable.cs" />
+    <Compile Include="NameTranslation\INpgsqlNameTranslator.cs" />
     <Compile Include="Logging\ConsoleLoggingProvider.cs" />
     <Compile Include="Logging\NoOpLoggingProvider.cs" />
     <Compile Include="Logging\NpgsqlLogger.cs" />
     <Compile Include="Logging\INpgsqlLoggingProvider.cs" />
     <Compile Include="Logging\NpgsqlLogManager.cs" />
     <Compile Include="Logging\NpgsqlLogLevel.cs" />
+    <Compile Include="NameTranslation\NpgsqlNullNameTranslator.cs" />
     <Compile Include="NpgsqlLargeObjectManager.cs" />
     <Compile Include="NpgsqlLargeObjectStream.cs" />
     <Compile Include="NpgsqlBinaryExporter.cs" />
@@ -183,7 +185,6 @@
     <Compile Include="FrontendMessages\StartupMessage.cs" />
     <Compile Include="FrontendMessages\ParseMessage.cs" />
     <Compile Include="LengthCache.cs" />
-    <Compile Include="NpgsqlBuffer.cs" />
     <Compile Include="NpgsqlStatement.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlTimeSpan.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlRange.cs" />
@@ -196,6 +197,8 @@
     <Compile Include="PersistentPreparedStatement.cs" />
     <Compile Include="PersistentStatementParameter.cs" />
     <Compile Include="PreparedStatementCollection.cs" />
+    <Compile Include="ReadBuffer.cs" />
+    <Compile Include="NameTranslation\NpgsqlSnakeCaseNameTranslator.cs" />
     <Compile Include="SqlQueryParser.cs" />
     <Compile Include="TaskExtensions.cs" />
     <Compile Include="TlsClientStream\CipherSuiteInfo.cs" />
@@ -206,6 +209,7 @@
     <Compile Include="TlsClientStream\GaloisCounterMode.cs" />
     <Compile Include="TlsClientStream\HandshakeData.cs" />
     <Compile Include="TlsClientStream\HandshakeMessagesBuffer.cs" />
+    <Compile Include="TlsClientStream\Hasher.cs" />
     <Compile Include="TlsClientStream\MD5SHA1.cs" />
     <Compile Include="TlsClientStream\RsaPKCS1.cs" />
     <Compile Include="TlsClientStream\ServerAlertException.cs" />
@@ -290,6 +294,7 @@
     <Compile Include="TypeHandlers\UnrecognizedTypeHandler.cs" />
     <Compile Include="GeneratedAsync.cs" />
     <Compile Include="TypeMappingAttribute.cs" />
+    <Compile Include="WriteBuffer.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="NpgsqlMetaData.xml" />

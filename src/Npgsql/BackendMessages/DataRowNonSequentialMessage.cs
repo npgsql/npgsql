@@ -40,7 +40,7 @@ namespace Npgsql.BackendMessages
         /// </summary>
         List<IDisposable> _streams;
 
-        internal override DataRowMessage Load(NpgsqlBuffer buf)
+        internal override DataRowMessage Load(ReadBuffer buf)
         {
             NumColumns = buf.ReadInt16();
             Buffer = buf;

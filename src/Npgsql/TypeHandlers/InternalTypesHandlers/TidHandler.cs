@@ -9,7 +9,9 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
     [TypeMapping("tid", NpgsqlDbType.Tid, typeof(NpgsqlTid))]
     internal class TidHandler : SimpleTypeHandler<NpgsqlTid>, ISimpleTypeHandler<string>
     {
-        public override NpgsqlTid Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        internal TidHandler(IBackendType backendType) : base(backendType) { }
+
+        public override NpgsqlTid Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             Contract.Assume(len == 6);
 
@@ -19,7 +21,7 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
             return new NpgsqlTid(blockNumber, offsetNumber);
         }
 
-        string ISimpleTypeHandler<string>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return Read(buf, len, fieldDescription).ToString();
         }
@@ -31,7 +33,7 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
             return 6;
         }
 
-        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
         {
             var tid = (NpgsqlTid)value;
             buf.WriteUInt32(tid.BlockNumber);

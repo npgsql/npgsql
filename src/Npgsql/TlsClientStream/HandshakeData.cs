@@ -1,4 +1,3 @@
-﻿#if NET45 || NET451 || DNX451
 #region License
 // The PostgreSQL License
 //
@@ -38,15 +37,15 @@ namespace TlsClientStream
         public X509Chain CertChain;
 
         // For Finished verify-data
-        public HashAlgorithm HandshakeHash1;
-        public HashAlgorithm HandshakeHash2;
-        public HashAlgorithm HandshakeHash1_384;
-        public HashAlgorithm HandshakeHash2_384;
-        public HashAlgorithm HandshakeHash1_MD5SHA1;
-        public HashAlgorithm HandshakeHash2_MD5SHA1;
+        public Hasher HandshakeHash1;
+        public Hasher HandshakeHash2;
+        public Hasher HandshakeHash1_384;
+        public Hasher HandshakeHash2_384;
+        public Hasher HandshakeHash1_MD5SHA1;
+        public Hasher HandshakeHash2_MD5SHA1;
 
-        public HashAlgorithm CertificateVerifyHash_SHA1;
-        public HashAlgorithm CertificateVerifyHash_MD5;
+        public Hasher CertificateVerifyHash_SHA1;
+        public Hasher CertificateVerifyHash_MD5;
 
         // Diffie hellman ephemeral
         public byte[] P, G, Ys;
@@ -65,4 +64,3 @@ namespace TlsClientStream
         public X509Chain SelectedClientCertificate;
     }
 }
-#endif

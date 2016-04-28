@@ -56,7 +56,7 @@ namespace Npgsql.BackendMessages
         internal string Routine { get; private set; }
 
         // ReSharper disable once FunctionComplexityOverflow
-        internal ErrorOrNoticeMessage(NpgsqlBuffer buf)
+        internal ErrorOrNoticeMessage(ReadBuffer buf)
         {
             while (true)
             {

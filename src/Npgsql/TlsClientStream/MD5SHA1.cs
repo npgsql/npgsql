@@ -1,4 +1,4 @@
-﻿#if NET45 || NET451 || DNX451
+﻿#if NET45 || NET451 || NET452 || DNX451
 #region License
 // The PostgreSQL License
 //
@@ -33,13 +33,13 @@ namespace TlsClientStream
 {
     internal class MD5SHA1 : HashAlgorithm
     {
-        private MD5CryptoServiceProvider _md5;
-        private SHA1CryptoServiceProvider _sha1;
+        private MD5 _md5;
+        private SHA1 _sha1;
 
         public MD5SHA1()
         {
-            _md5 = new MD5CryptoServiceProvider();
-            _sha1 = new SHA1CryptoServiceProvider();
+            _md5 = MD5.Create();
+            _sha1 = SHA1.Create();
         }
 
         //

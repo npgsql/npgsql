@@ -35,7 +35,7 @@ namespace Npgsql.BackendMessages
         internal int BackendProcessId { get; private set; }
         internal int BackendSecretKey { get; private set; }
 
-        internal BackendKeyDataMessage(NpgsqlBuffer buf)
+        internal BackendKeyDataMessage(ReadBuffer buf)
         {
             BackendProcessId = buf.ReadInt32();
             BackendSecretKey = buf.ReadInt32();

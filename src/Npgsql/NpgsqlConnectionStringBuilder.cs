@@ -732,26 +732,6 @@ namespace Npgsql
         }
         int _internalCommandTimeout;
 
-        /// <summary>
-        /// Whether to have the backend enforce <see cref="CommandTimeout"/> and <see cref="InternalCommandTimeout"/>
-        /// via the statement_timeout variable. Defaults to true.
-        /// </summary>
-        [Category("Timeouts")]
-        [Description("Whether to have the backend enforce CommandTimeout and InternalCommandTimeout via the statement_timeout variable.")]
-        [DisplayName("Backend Timeouts")]
-        [NpgsqlConnectionStringProperty]
-        [DefaultValue(true)]
-        public bool BackendTimeouts
-        {
-            get { return _backendTimeouts; }
-            set
-            {
-                _backendTimeouts = value;
-                SetValue(nameof(BackendTimeouts), value);
-            }
-        }
-        bool _backendTimeouts;
-
         #endregion
 
         #region Properties - Entity Framework
@@ -803,24 +783,6 @@ namespace Npgsql
         #region Properties - Advanced
 
         /// <summary>
-        /// Whether to process messages that arrive between command activity.
-        /// </summary>
-        [Category("Advanced")]
-        [Description("Whether to process messages that arrive between command activity.")]
-        [DisplayName("Continuous Processing")]
-        [NpgsqlConnectionStringProperty("SyncNotification")]
-        public bool ContinuousProcessing
-        {
-            get { return _continuousProcessing; }
-            set
-            {
-                _continuousProcessing = value;
-                SetValue(nameof(ContinuousProcessing), value);
-            }
-        }
-        bool _continuousProcessing;
-
-        /// <summary>
         /// The number of seconds of connection inactivity before Npgsql sends a keepalive query.
         /// Set to 0 (the default) to disable.
         /// </summary>
@@ -850,7 +812,7 @@ namespace Npgsql
         [Description("Determines the size of the internal buffer Npgsql uses when reading or writing. Increasing may improve performance if transferring large values from the database.")]
         [DisplayName("Buffer Size")]
         [NpgsqlConnectionStringProperty]
-        [DefaultValue(NpgsqlBuffer.DefaultBufferSize)]
+        [DefaultValue(ReadBuffer.DefaultBufferSize)]
         public int BufferSize
         {
             get { return _bufferSize; }
@@ -907,31 +869,59 @@ namespace Npgsql
         #region Properties - Obsolete
 
         /// <summary>
-        /// Obsolete, see https://github.com/npgsql/Npgsql/wiki/PreloadReader-Removal
+        /// Obsolete, see http://www.npgsql.org/doc/3.1/migration.html
         /// </summary>
         [Category("Obsolete")]
-        [Description("Obsolete, see https://github.com/npgsql/Npgsql/wiki/PreloadReader-Removal")]
+        [Description("Obsolete, see http://www.npgsql.org/doc/3.1/migration.html")]
+        [DisplayName("Continuous Processing")]
+        [NpgsqlConnectionStringProperty]
+        [Obsolete]
+        public bool ContinuousProcessing
+        {
+            get { return false; }
+            set { throw new NotSupportedException("The ContinuousProcessing parameter is no longer supported. Please see http://www.npgsql.org/doc/3.1/migration.html"); }
+        }
+
+        /// <summary>
+        /// Obsolete, see http://www.npgsql.org/doc/3.1/migration.html
+        /// </summary>
+        [Category("Obsolete")]
+        [Description("Obsolete, see http://www.npgsql.org/doc/3.1/migration.html")]
+        [DisplayName("Backend Timeouts")]
+        [NpgsqlConnectionStringProperty]
+        [Obsolete]
+        public bool BackendTimeouts
+        {
+            get { return false; }
+            set { throw new NotSupportedException("The BackendTimeouts parameter is no longer supported. Please see http://www.npgsql.org/doc/3.1/migration.html"); }
+        }
+
+        /// <summary>
+        /// Obsolete, see http://www.npgsql.org/doc/3.0/migration.html
+        /// </summary>
+        [Category("Obsolete")]
+        [Description("Obsolete, see http://www.npgsql.org/doc/3.0/migration.html")]
         [DisplayName("Preload Reader")]
         [NpgsqlConnectionStringProperty]
         [Obsolete]
         public bool PreloadReader
         {
             get { return false; }
-            set { throw new NotSupportedException("The PreloadReader parameter is no longer supported. Please see https://github.com/npgsql/Npgsql/wiki/PreloadReader-Removal"); }
+            set { throw new NotSupportedException("The PreloadReader parameter is no longer supported. Please see http://www.npgsql.org/doc/3.0/migration.html"); }
         }
 
         /// <summary>
-        /// Obsolete, see https://github.com/npgsql/Npgsql/wiki/UseExtendedTypes-Removal
+        /// Obsolete, see http://www.npgsql.org/doc/3.0/migration.html
         /// </summary>
         [Category("Obsolete")]
-        [Description("Obsolete, see https://github.com/npgsql/Npgsql/wiki/UseExtendedTypes-Removal")]
+        [Description("Obsolete, see http://www.npgsql.org/doc/3.0/migration.html")]
         [DisplayName("Use Extended Types")]
         [NpgsqlConnectionStringProperty]
         [Obsolete]
         public bool UseExtendedTypes
         {
             get { return false; }
-            set { throw new NotSupportedException("The UseExtendedTypes parameter is no longer supported. Please see https://github.com/npgsql/Npgsql/wiki/UseExtendedTypes-Removal"); }
+            set { throw new NotSupportedException("The UseExtendedTypes parameter is no longer supported. Please see http://www.npgsql.org/doc/3.0/migration.html"); }
         }
 
         #endregion

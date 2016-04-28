@@ -160,7 +160,7 @@ namespace Npgsql
 
         #endregion
 
-        internal NpgsqlNotice(NpgsqlBuffer buf)
+        internal NpgsqlNotice(ReadBuffer buf)
         {
             _msg = new ErrorOrNoticeMessage(buf);
         }

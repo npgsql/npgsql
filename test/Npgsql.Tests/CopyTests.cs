@@ -304,7 +304,7 @@ namespace Npgsql.Tests
                     writer.StartRow();
                     writer.Write(data, NpgsqlDbType.Text);
                 }
-                Assert.That(conn.Connector.Buffer.UsableSize, Is.EqualTo(conn.Connector.Buffer.Size));
+                Assert.That(conn.Connector.WriteBuffer.UsableSize, Is.EqualTo(conn.Connector.WriteBuffer.Size));
                 Assert.That(conn.ExecuteScalar("SELECT field FROM data"), Is.EqualTo(data));
             }
         }
@@ -404,7 +404,7 @@ namespace Npgsql.Tests
                 conn.ExecuteNonQuery("TRUNCATE data");
 
                 // Long (multi-buffer) write
-                var iterations = NpgsqlBuffer.MinimumBufferSize/line.Length + 100;
+                var iterations = WriteBuffer.MinimumBufferSize/line.Length + 100;
                 writer = conn.BeginTextImport("COPY data (field_text, field_int4) FROM STDIN");
                 for (var i = 0; i < iterations; i++)
                     writer.Write(line);

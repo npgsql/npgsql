@@ -1,4 +1,3 @@
-﻿#if NET45 || NET451 || DNX451
 #region License
 // The PostgreSQL License
 //
@@ -34,11 +33,16 @@ namespace TlsClientStream
     {
         public TlsVersion TlsVersion { get; set; }
         public CipherSuiteInfo CipherSuite { get; set; }
-        public AesCryptoServiceProvider ReadAes { get; set; }
-        public AesCryptoServiceProvider WriteAes { get; set; }
+        public Aes ReadAes { get; set; }
+        public Aes WriteAes { get; set; }
         public int BlockLen => 16;
+#if NET45 || NET451 || NET452 || DNX451
         public HMAC ReadMac { get; set; }
         public HMAC WriteMac { get; set; }
+#else
+        public IncrementalHash ReadMac { get; set; }
+        public IncrementalHash WriteMac { get; set; }
+#endif
         public ICryptoTransform ReadAesECB { get; set; }
         public ICryptoTransform WriteAesECB { get; set; }
         public ulong[] ReadGCMTable { get; set; }
@@ -83,13 +87,13 @@ namespace TlsClientStream
             if (WriteAesECB != null)
                 WriteAesECB.Dispose();
             if (ReadAes != null)
-                ReadAes.Clear();
+                ReadAes.Dispose();
             if (WriteAes != null)
-                WriteAes.Clear();
+                WriteAes.Dispose();
             if (ReadMac != null)
-                ReadMac.Clear();
+                ReadMac.Dispose();
             if (WriteMac != null)
-                WriteMac.Clear();
+                WriteMac.Dispose();
             if (ReadIv != null)
                 Utils.ClearArray(ReadIv);
             if (WriteIv != null)
@@ -111,4 +115,3 @@ namespace TlsClientStream
         }
     }
 }
-#endif

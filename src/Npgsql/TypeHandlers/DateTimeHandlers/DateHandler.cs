@@ -43,12 +43,13 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         /// </summary>
         readonly bool _convertInfinityDateTime;
 
-        public DateHandler(TypeHandlerRegistry registry)
+        public DateHandler(IBackendType backendType, TypeHandlerRegistry registry)
+            : base(backendType)
         {
             _convertInfinityDateTime = registry.Connector.ConvertInfinityDateTime;
         }
 
-        public override DateTime Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override DateTime Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             // TODO: Convert directly to DateTime without passing through NpgsqlDate?
             var npgsqlDate = ((ISimpleTypeHandler<NpgsqlDate>) this).Read(buf, len, fieldDescription);
@@ -68,7 +69,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         /// <remarks>
         /// Copied wholesale from Postgresql backend/utils/adt/datetime.c:j2date
         /// </remarks>
-        internal override NpgsqlDate ReadPsv(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        internal override NpgsqlDate ReadPsv(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             var binDate = buf.ReadInt32();
 
@@ -97,7 +98,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             return 4;
         }
 
-        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
         {
             if (parameter != null && parameter.ConvertedValue != null) {
                 value = parameter.ConvertedValue;

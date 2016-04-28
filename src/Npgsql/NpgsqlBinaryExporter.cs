@@ -40,7 +40,7 @@ namespace Npgsql
         #region Fields and Properties
 
         NpgsqlConnector _connector;
-        NpgsqlBuffer _buf;
+        ReadBuffer _buf;
         TypeHandlerRegistry _registry;
         bool _isConsumed, _isDisposed;
         int _leftToReadInDataMsg, _columnLen;
@@ -59,14 +59,14 @@ namespace Npgsql
         internal NpgsqlBinaryExporter(NpgsqlConnector connector, string copyToCommand)
         {
             _connector = connector;
-            _buf = connector.Buffer;
+            _buf = connector.ReadBuffer;
             _registry = connector.TypeHandlerRegistry;
             _columnLen = int.MinValue;   // Mark that the (first) column length hasn't been read yet
             _column = -1;
 
             try
             {
-                _connector.SendSingleMessage(new QueryMessage(copyToCommand));
+                _connector.SendSingleQuery(copyToCommand);
 
                 // TODO: Failure will break the connection (e.g. if we get CopyOutResponse), handle more gracefully
                 var copyOutResponse = _connector.ReadExpecting<CopyOutResponseMessage>();

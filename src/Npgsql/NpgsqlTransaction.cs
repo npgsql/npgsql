@@ -224,7 +224,7 @@ namespace Npgsql
 
             CheckReady();
             Log.Debug("Create savepoint", Connection.Connector.Id);
-            Connector.ExecuteInternalCommand(new QueryMessage($"SAVEPOINT {name}"));
+            Connector.ExecuteInternalCommand($"SAVEPOINT {name}");
         }
 
         /// <summary>
@@ -241,17 +241,8 @@ namespace Npgsql
             Contract.EndContractBlock();
 
             CheckReady();
-
             Log.Debug("Rollback savepoint", Connection.Connector.Id);
-
-            try {
-                // If we're in a failed transaction we can't set the timeout
-                var withTimeout = Connector.TransactionStatus != TransactionStatus.InFailedTransactionBlock;
-                Connector.ExecuteInternalCommand(new QueryMessage($"ROLLBACK TO SAVEPOINT {name}"), withTimeout);
-            } finally {
-                // The rollback may change the value of statement_value, set to unknown
-                Connection.Connector.SetBackendTimeoutToUnknown();
-            }
+            Connector.ExecuteInternalCommand($"ROLLBACK TO SAVEPOINT {name}");
         }
 
         /// <summary>
@@ -268,10 +259,8 @@ namespace Npgsql
             Contract.EndContractBlock();
 
             CheckReady();
-
             Log.Debug("Release savepoint", Connection.Connector.Id);
-
-            Connector.ExecuteInternalCommand(new QueryMessage($"RELEASE SAVEPOINT {name}"));
+            Connector.ExecuteInternalCommand($"RELEASE SAVEPOINT {name}");
         }
 
         #endregion

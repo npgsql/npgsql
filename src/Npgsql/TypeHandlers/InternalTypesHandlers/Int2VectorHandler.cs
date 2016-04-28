@@ -36,18 +36,19 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
     {
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
-        public Int2VectorHandler(TypeHandlerRegistry registry) : base(new Int16Handler { PgName = "int2" })
+        public Int2VectorHandler(IBackendType backendType, TypeHandlerRegistry registry)
+            : base(backendType, null, 0)
         {
+
             // The pg_type SQL query makes sure that the int2 type comes before int2vector, so we can
             // depend on it already being in the registry
-            var oidHandler = registry[NpgsqlDbType.Smallint];
-            if (oidHandler == registry.UnrecognizedTypeHandler)
+            var shortHandler = registry[NpgsqlDbType.Smallint];
+            if (shortHandler == registry.UnrecognizedTypeHandler)
             {
                 Log.Warn("smallint type not present when setting up int2vector type. int2vector will not work.");
                 return;
             }
-            LowerBound = 0;
-            ElementHandler.OID = oidHandler.OID;
+            ElementHandler = shortHandler;
         }
     }
 }

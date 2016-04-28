@@ -47,7 +47,7 @@ namespace Npgsql
         #region Fields and Properties
 
         NpgsqlConnector _connector;
-        NpgsqlBuffer _buf;
+        WriteBuffer _buf;
         TypeHandlerRegistry _registry;
         LengthCache _lengthCache;
         bool _isDisposed;
@@ -76,7 +76,7 @@ namespace Npgsql
         internal NpgsqlBinaryImporter(NpgsqlConnector connector, string copyFromCommand)
         {
             _connector = connector;
-            _buf = connector.Buffer;
+            _buf = connector.WriteBuffer;
             _registry = connector.TypeHandlerRegistry;
             _lengthCache = new LengthCache();
             _column = -1;
@@ -84,7 +84,7 @@ namespace Npgsql
 
             try
             {
-                _connector.SendSingleMessage(new QueryMessage(copyFromCommand));
+                _connector.SendSingleQuery(copyFromCommand);
 
                 // TODO: Failure will break the connection (e.g. if we get CopyOutResponse), handle more gracefully
                 var copyInResponse = _connector.ReadExpecting<CopyInResponseMessage>();

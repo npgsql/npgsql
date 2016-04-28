@@ -40,15 +40,15 @@ namespace Npgsql.Tests
                 Underlying.WriteByte(i);
             Underlying.Seek(0, SeekOrigin.Begin);
 
-            Buffer.Ensure(10);
-            Buffer.Skip(7);
-            Assert.That(Buffer.ReadByte(), Is.EqualTo(7));
-            Buffer.Skip(10);
-            Buffer.Ensure(1);
-            Assert.That(Buffer.ReadByte(), Is.EqualTo(18));
-            Buffer.Skip(20);
-            Buffer.Ensure(1);
-            Assert.That(Buffer.ReadByte(), Is.EqualTo(39));
+            ReadBuffer.Ensure(10);
+            ReadBuffer.Skip(7);
+            Assert.That(ReadBuffer.ReadByte(), Is.EqualTo(7));
+            ReadBuffer.Skip(10);
+            ReadBuffer.Ensure(1);
+            Assert.That(ReadBuffer.ReadByte(), Is.EqualTo(18));
+            ReadBuffer.Skip(20);
+            ReadBuffer.Ensure(1);
+            Assert.That(ReadBuffer.ReadByte(), Is.EqualTo(39));
         }
 
         [Test]
@@ -61,9 +61,9 @@ namespace Npgsql.Tests
             Underlying.WriteByte(8);
             Underlying.Seek(0, SeekOrigin.Begin);
 
-            Buffer.Ensure(5);
-            Assert.That(Buffer.ReadSingle(), Is.EqualTo(expected));
-            Assert.That(Buffer.ReadByte(), Is.EqualTo(8));
+            ReadBuffer.Ensure(5);
+            Assert.That(ReadBuffer.ReadSingle(), Is.EqualTo(expected));
+            Assert.That(ReadBuffer.ReadByte(), Is.EqualTo(8));
         }
 
         [Test]
@@ -76,9 +76,9 @@ namespace Npgsql.Tests
             Underlying.WriteByte(8);
             Underlying.Seek(0, SeekOrigin.Begin);
 
-            Buffer.Ensure(9);
-            Assert.That(Buffer.ReadDouble(), Is.EqualTo(expected));
-            Assert.That(Buffer.ReadByte(), Is.EqualTo(8));
+            ReadBuffer.Ensure(9);
+            Assert.That(ReadBuffer.ReadDouble(), Is.EqualTo(expected));
+            Assert.That(ReadBuffer.ReadByte(), Is.EqualTo(8));
         }
 
         [Test]
@@ -91,7 +91,7 @@ namespace Npgsql.Tests
 
             var chars = new char[expected.Length + 5];
             int bytesRead, charsRead;
-            Buffer.ReadAllChars(chars, 5, expected.Length, bytes.Length, out bytesRead, out charsRead);
+            ReadBuffer.ReadAllChars(chars, 5, expected.Length, bytes.Length, out bytesRead, out charsRead);
             Assert.That(charsRead, Is.EqualTo(expected.Length));
             Assert.That(bytesRead, Is.EqualTo(bytes.Length));
             var actual = new string(chars, 5, expected.Length);
@@ -108,7 +108,7 @@ namespace Npgsql.Tests
 
             var chars = new char[expected.Length + 5];
             int bytesRead, charsRead;
-            Buffer.ReadAllChars(chars, 0, expected.Length + 5, bytes.Length, out bytesRead, out charsRead);
+            ReadBuffer.ReadAllChars(chars, 0, expected.Length + 5, bytes.Length, out bytesRead, out charsRead);
             Assert.That(charsRead, Is.EqualTo(expected.Length));
             Assert.That(bytesRead, Is.EqualTo(bytes.Length));
             var actual = new string(chars, 0, expected.Length);
@@ -119,10 +119,10 @@ namespace Npgsql.Tests
         public void SetUp()
         {
             Underlying = new MemoryStream();
-            Buffer = new NpgsqlBuffer(Underlying, NpgsqlBuffer.DefaultBufferSize, PGUtil.UTF8Encoding);
+            ReadBuffer = new ReadBuffer(Underlying, ReadBuffer.DefaultBufferSize, PGUtil.UTF8Encoding);
         }
 
-        NpgsqlBuffer Buffer;
+        ReadBuffer ReadBuffer;
         MemoryStream Underlying;
     }
 }

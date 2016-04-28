@@ -28,6 +28,7 @@ using System.Data.Common;
 using System.Diagnostics.Contracts;
 using System.IO;
 using System.Net.Security;
+using System.Net.Sockets;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -226,8 +227,6 @@ namespace Npgsql
                 throw new ArgumentException("Host can't be null");
             if (string.IsNullOrWhiteSpace(UserName) && !IntegratedSecurity)
                 throw new ArgumentException("Either Username must be specified or IntegratedSecurity must be on");
-            if (ContinuousProcessing && UseSslStream)
-                throw new ArgumentException("ContinuousProcessing can't be turned on with UseSslStream");
             Contract.EndContractBlock();
 
             // If we're postponing a close (see doc on this variable), the connection is already
@@ -260,6 +259,10 @@ namespace Npgsql
                 if (Settings.Pooling)
                 {
                     Connector = NpgsqlConnectorPool.ConnectorPoolMgr.RequestConnector(this);
+
+                    // Since this pooled connector was opened, global enum/composite mappings may have
+                    // changed. Bring this up to date if needed.
+                    Connector.TypeHandlerRegistry.ActivateGlobalMappings();
                 }
                 else
                 {
@@ -390,13 +393,6 @@ namespace Npgsql
         public override string DataSource => $"tcp://{Host}:{Port}";
 
         /// <summary>
-        /// Gets flag indicating if we are using Synchronous notification or not.
-        /// The default value is false.
-        /// </summary>
-        [PublicAPI]
-        public bool ContinuousProcessing => Settings.ContinuousProcessing;
-
-        /// <summary>
         /// Whether to use Windows integrated security to log in.
         /// </summary>
         [PublicAPI]
@@ -443,12 +439,12 @@ namespace Npgsql
                         return ConnectionState.Open;
                     case ConnectorState.Executing:
                         return ConnectionState.Open | ConnectionState.Executing;
+                    case ConnectorState.Copy:
                     case ConnectorState.Fetching:
+                    case ConnectorState.Waiting:
                         return ConnectionState.Open | ConnectionState.Fetching;
                     case ConnectorState.Broken:
                         return ConnectionState.Broken;
-                    case ConnectorState.Copy:
-                        return ConnectionState.Open | ConnectionState.Fetching;
                     default:
                         throw PGUtil.ThrowIfReached("Unknown connector state: " + Connector.State);
                 }
@@ -1023,22 +1019,28 @@ namespace Npgsql
         /// Maps a CLR enum to a PostgreSQL enum type for use with this connection.
         /// </summary>
         /// <remarks>
-        /// Enum labels are mapped by string. The .NET enum labels must correspond exactly to the PostgreSQL labels;
-        /// if another label is used in the database, this can be specified for each label with a <see cref="PgNameAttribute"/>.
+        /// CLR enum labels are mapped by name to PostgreSQL enum labels.
+        /// The translation strategy can be controlled by the <paramref name="nameTranslator"/> parameter,
+        /// which defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>.
+        /// You can also use the <see cref="PgNameAttribute"/> on your enum fields to manually specify a PostgreSQL enum label.
         /// If there is a discrepancy between the .NET and database labels while an enum is read or written,
         /// an exception will be raised.
         ///
         /// Can only be invoked on an open connection; if the connection is closed the mapping is lost.
         ///
-        /// To avoid registering the type for each connection, use the <see cref="MapEnumGlobally{T}"/> method.
+        /// To avoid mapping the type for each connection, use the <see cref="MapEnumGlobally{T}"/> method.
         /// </remarks>
         /// <param name="pgName">
         /// A PostgreSQL type name for the corresponding enum type in the database.
-        /// If null, the .NET type's name in lowercase will be used
+        /// If null, the name translator given in <paramref name="nameTranslator"/>will be used.
+        /// </param>
+        /// <param name="nameTranslator">
+        /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
+        /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
         /// <typeparam name="TEnum">The .NET enum type to be mapped</typeparam>
         [PublicAPI]
-        public void MapEnum<TEnum>(string pgName = null) where TEnum : struct
+        public void MapEnum<TEnum>(string pgName = null, INpgsqlNameTranslator nameTranslator = null) where TEnum : struct
         {
             if (!typeof(TEnum).GetTypeInfo().IsEnum)
                 throw new ArgumentException("An enum type must be provided");
@@ -1048,27 +1050,33 @@ namespace Npgsql
                 throw new InvalidOperationException("Connection must be open and idle to perform registration");
             Contract.EndContractBlock();
 
-            Connector.TypeHandlerRegistry.MapEnum<TEnum>(pgName ?? typeof(TEnum).Name.ToLower());
+            Connector.TypeHandlerRegistry.MapEnum<TEnum>(pgName, nameTranslator);
         }
 
         /// <summary>
         /// Maps a CLR enum to a PostgreSQL enum type for use with all connections created from now on. Existing connections aren't affected.
         /// </summary>
         /// <remarks>
-        /// Enum labels are mapped by string. The .NET enum labels must correspond exactly to the PostgreSQL labels;
-        /// if another label is used in the database, this can be specified for each label with a <see cref="PgNameAttribute"/>.
+        /// CLR enum labels are mapped by name to PostgreSQL enum labels.
+        /// The translation strategy can be controlled by the <paramref name="nameTranslator"/> parameter,
+        /// which defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>.
+        /// You can also use the <see cref="PgNameAttribute"/> on your enum fields to manually specify a PostgreSQL enum label.
         /// If there is a discrepancy between the .NET and database labels while an enum is read or written,
         /// an exception will be raised.
         ///
-        /// To register the type for a specific connection, use the <see cref="MapEnum{T}"/> method.
+        /// To map the type for a specific connection, use the <see cref="MapEnum{T}"/> method.
         /// </remarks>
         /// <param name="pgName">
         /// A PostgreSQL type name for the corresponding enum type in the database.
-        /// If null, the .NET type's name in lowercase will be used
+        /// If null, the name translator given in <paramref name="nameTranslator"/>will be used.
+        /// </param>
+        /// <param name="nameTranslator">
+        /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
+        /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
         /// <typeparam name="TEnum">The .NET enum type to be mapped</typeparam>
         [PublicAPI]
-        public static void MapEnumGlobally<TEnum>(string pgName = null) where TEnum : struct
+        public static void MapEnumGlobally<TEnum>(string pgName = null, INpgsqlNameTranslator nameTranslator = null) where TEnum : struct
         {
             if (!typeof(TEnum).GetTypeInfo().IsEnum)
                 throw new ArgumentException("An enum type must be provided");
@@ -1076,60 +1084,29 @@ namespace Npgsql
                 throw new ArgumentException("pgName can't be empty", nameof(pgName));
             Contract.EndContractBlock();
 
-            TypeHandlerRegistry.MapEnumGlobally<TEnum>(pgName ?? typeof(TEnum).Name.ToLower());
-        }
-
-        internal static void UnmapEnumGlobally(string pgName)
-        {
-            TypeHandlerRegistry.UnmapEnumGlobally(pgName);
+            TypeHandlerRegistry.MapEnumGlobally<TEnum>(pgName, nameTranslator);
         }
 
         /// <summary>
-        /// Maps a CLR enum to a PostgreSQL enum type for use with this connection.
+        /// Removes a previous global enum mapping.
         /// </summary>
-        /// <remarks>
-        /// Enum labels are mapped by string. The .NET enum labels must correspond exactly to the PostgreSQL labels;
-        /// if another label is used in the database, this can be specified for each label with a <see cref="PgNameAttribute"/>.
-        /// If there is a discrepancy between the .NET and database labels while an enum is read or written,
-        /// an exception will be raised.
-        ///
-        /// Can only be invoked on an open connection; if the connection is closed the mapping is lost.
-        ///
-        /// To avoid registering the type for each connection, use the <see cref="MapEnumGlobally{T}"/> method.
-        /// </remarks>
         /// <param name="pgName">
         /// A PostgreSQL type name for the corresponding enum type in the database.
-        /// If null, the .NET type's name in lowercase will be used
+        /// If null, the name translator given in <paramref name="nameTranslator"/>will be used.
         /// </param>
-        /// <typeparam name="TEnum">The .NET enum type to be mapped</typeparam>
-        [Obsolete("Use MapEnum instead")]
-        [PublicAPI]
-        public void RegisterEnum<TEnum>(string pgName = null) where TEnum : struct
+        /// <param name="nameTranslator">
+        /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
+        /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
+        /// </param>
+        public static void UnmapEnumGlobally<TEnum>(string pgName = null, INpgsqlNameTranslator nameTranslator = null) where TEnum : struct
         {
-            MapEnum<TEnum>(pgName);
-        }
+            if (!typeof(TEnum).GetTypeInfo().IsEnum)
+                throw new ArgumentException("An enum type must be provided");
+            if (pgName != null && pgName.Trim() == "")
+                throw new ArgumentException("pgName can't be empty", nameof(pgName));
+            Contract.EndContractBlock();
 
-        /// <summary>
-        /// Maps a CLR enum to a PostgreSQL enum type for use with all connections created from now on. Existing connections aren't affected.
-        /// </summary>
-        /// <remarks>
-        /// Enum labels are mapped by string. The .NET enum labels must correspond exactly to the PostgreSQL labels;
-        /// if another label is used in the database, this can be specified for each label with a <see cref="PgNameAttribute"/>.
-        /// If there is a discrepancy between the .NET and database labels while an enum is read or written,
-        /// an exception will be raised.
-        ///
-        /// To register the type for a specific connection, use the <see cref="MapEnum{T}"/> method.
-        /// </remarks>
-        /// <param name="pgName">
-        /// A PostgreSQL type name for the corresponding enum type in the database.
-        /// If null, the .NET type's name in lowercase will be used
-        /// </param>
-        /// <typeparam name="TEnum">The .NET enum type to be mapped</typeparam>
-        [Obsolete]
-        [PublicAPI]
-        public static void RegisterEnumGlobally<TEnum>(string pgName = null) where TEnum : struct
-        {
-            MapEnumGlobally<TEnum>(pgName);
+            TypeHandlerRegistry.UnmapEnumGlobally<TEnum>(pgName, nameTranslator);
         }
 
         #endregion
@@ -1140,21 +1117,27 @@ namespace Npgsql
         /// Maps a CLR type to a PostgreSQL composite type for use with this connection.
         /// </summary>
         /// <remarks>
-        /// CLR fields and properties are mapped by name to the composite type's attributes, but
-        /// you can use the <see cref="PgNameAttribute"/> attribute to manually control the mapping.
-        /// If there is a discrepancy between the .NET and database labels while an enum is read or written,
+        /// CLR fields and properties by string to PostgreSQL enum labels.
+        /// The translation strategy can be controlled by the <paramref name="nameTranslator"/> parameter,
+        /// which defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>.
+        /// You can also use the <see cref="PgNameAttribute"/> on your members to manually specify a PostgreSQL enum label.
+        /// If there is a discrepancy between the .NET and database labels while a composite is read or written,
         /// an exception will be raised.
         ///
         /// Can only be invoked on an open connection; if the connection is closed the mapping is lost.
         ///
-        /// To avoid registering the type for each connection, use the <see cref="MapCompositeGlobally{T}"/> method.
+        /// To avoid mapping the type for each connection, use the <see cref="MapCompositeGlobally{T}"/> method.
         /// </remarks>
         /// <param name="pgName">
-        /// A PostgreSQL type name for the corresponding composite type in the database.
-        /// If null, the .NET type's name in lowercase will be used
+        /// A PostgreSQL type name for the corresponding enum type in the database.
+        /// If null, the name translator given in <paramref name="nameTranslator"/>will be used.
+        /// </param>
+        /// <param name="nameTranslator">
+        /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
+        /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
         /// <typeparam name="T">The .NET type to be mapped</typeparam>
-        public void MapComposite<T>(string pgName = null) where T : new()
+        public void MapComposite<T>(string pgName = null, INpgsqlNameTranslator nameTranslator = null) where T : new()
         {
             if (pgName != null && pgName.Trim() == "")
                 throw new ArgumentException("pgName can't be empty", nameof(pgName));
@@ -1162,38 +1145,114 @@ namespace Npgsql
                 throw new InvalidOperationException("Connection must be open and idle to perform registration");
             Contract.EndContractBlock();
 
-            Connector.TypeHandlerRegistry.MapComposite<T>(pgName ?? typeof(T).Name.ToLower());
+            Connector.TypeHandlerRegistry.MapComposite<T>(pgName, nameTranslator);
         }
 
         /// <summary>
         /// Maps a CLR type to a PostgreSQL composite type for use with all connections created from now on. Existing connections aren't affected.
         /// </summary>
         /// <remarks>
-        /// CLR fields and properties are mapped by name to the composite type's attributes, but
-        /// you can use the <see cref="PgNameAttribute"/> attribute to manually control the mapping.
-        /// If there is a discrepancy between the .NET and database labels while an enum is read or written,
+        /// CLR fields and properties by string to PostgreSQL enum labels.
+        /// The translation strategy can be controlled by the <paramref name="nameTranslator"/> parameter,
+        /// which defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>.
+        /// You can also use the <see cref="PgNameAttribute"/> on your members to manually specify a PostgreSQL enum label.
+        /// If there is a discrepancy between the .NET and database labels while a composite is read or written,
         /// an exception will be raised.
         ///
-        /// To register the type for a specific connection, use the <see cref="MapEnum{T}"/> method.
+        /// To map the type for a specific connection, use the <see cref="MapEnum{T}"/> method.
         /// </remarks>
         /// <param name="pgName">
-        /// A PostgreSQL type name for the corresponding composite type in the database.
-        /// If null, the .NET type's name in lowercase will be used
+        /// A PostgreSQL type name for the corresponding enum type in the database.
+        /// If null, the name translator given in <paramref name="nameTranslator"/>will be used.
+        /// </param>
+        /// <param name="nameTranslator">
+        /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
+        /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
         /// <typeparam name="T">The .NET type to be mapped</typeparam>
-        public static void MapCompositeGlobally<T>(string pgName = null) where T : new()
+        public static void MapCompositeGlobally<T>(string pgName = null, INpgsqlNameTranslator nameTranslator = null) where T : new()
         {
             if (pgName != null && pgName.Trim() == "")
                 throw new ArgumentException("pgName can't be empty", nameof(pgName));
             Contract.EndContractBlock();
 
-            TypeHandlerRegistry.MapCompositeGlobally<T>(pgName ?? typeof(T).Name.ToLower());
+            TypeHandlerRegistry.MapCompositeGlobally<T>(pgName, nameTranslator);
         }
 
-        // ReSharper disable once UnusedMember.Global
-        internal static void UnmapCompositeGlobally(string pgName)
+        /// <summary>
+        /// Removes a previous global enum mapping.
+        /// </summary>
+        /// <param name="pgName">
+        /// A PostgreSQL type name for the corresponding enum type in the database.
+        /// If null, the name translator given in <paramref name="nameTranslator"/>will be used.
+        /// </param>
+        /// <param name="nameTranslator">
+        /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
+        /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
+        /// </param>
+        public static void UnmapCompositeGlobally<T>(string pgName, INpgsqlNameTranslator nameTranslator = null) where T : new()
         {
-            TypeHandlerRegistry.UnmapCompositeGlobally(pgName);
+            TypeHandlerRegistry.UnmapCompositeGlobally<T>(pgName, nameTranslator);
+        }
+
+        #endregion
+
+        #region Wait
+
+        /// <summary>
+        /// Waits until an asynchronous PostgreSQL messages (e.g. a notification) arrives, and
+        /// exits immediately. The asynchronous message is delivered via the normal events
+        /// (<see cref="Notification"/>, <see cref="Notice"/>).
+        /// </summary>
+        /// <param name="timeout">
+        /// The time-out value, in milliseconds, passed to <see cref="Socket.ReceiveTimeout"/>.
+        /// The default value is 0, which indicates an infinite time-out period.
+        /// Specifying -1 also indicates an infinite time-out period.
+        /// </param>
+        public void Wait(int timeout=0)
+        {
+            if (timeout != -1 && timeout < 0)
+                throw new ArgumentException("Argument must be -1, 0 or positive", nameof(timeout));
+            Contract.EndContractBlock();
+
+            CheckConnectionOpen();
+            Log.Debug($"Starting to wait (timeout={timeout})", Connector.Id);
+
+            using (Connector.StartUserAction(ConnectorState.Waiting))
+            {
+                try {
+                    Connector.ReadAsyncMessage(timeout);
+                } catch (IOException e) {
+                    var socketException = e.InnerException as SocketException;
+                    if (socketException?.SocketErrorCode == SocketError.TimedOut)
+                        return;
+                    throw;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Waits until an asynchronous PostgreSQL messages (e.g. a notification) arrives, and
+        /// exits immediately. The asynchronous message is delivered via the normal events
+        /// (<see cref="Notification"/>, <see cref="Notice"/>).
+        /// </summary>
+        /// <param name="timeout">
+        /// The time-out value is passed to <see cref="Socket.ReceiveTimeout"/>.
+        /// </param>
+        public void Wait(TimeSpan timeout) => Wait((int)timeout.TotalMilliseconds);
+
+        /// <summary>
+        /// Waits asynchronously until an asynchronous PostgreSQL messages (e.g. a notification)
+        /// arrives, and exist immediately. The asynchronous message is delivered via the normal events
+        /// (<see cref="Notification"/>, <see cref="Notice"/>).
+        /// </summary>
+        public async Task WaitAsync()
+        {
+            CheckConnectionOpen();
+            Log.Debug("Starting to wait async", Connector.Id);
+
+            using (Connector.StartUserAction(ConnectorState.Waiting))
+                await Connector.ReadAsyncMessageAsync();
         }
 
         #endregion
