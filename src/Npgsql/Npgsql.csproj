@@ -150,6 +150,7 @@
     <Compile Include="BackendMessages\BindCompleteMessage.cs" />
     <Compile Include="BackendMessages\AuthenticationMessages.cs" />
     <Compile Include="BackendMessages\BackendKeyDataMessage.cs" />
+    <Compile Include="BackendMessages\PortalSuspendedMessage.cs" />
     <Compile Include="BackendMessages\ReadyForQueryMessage.cs" />
     <Compile Include="BackendMessages\ParseCompleteMessage.cs" />
     <Compile Include="BackendMessages\RowDescriptionMessage.cs" />

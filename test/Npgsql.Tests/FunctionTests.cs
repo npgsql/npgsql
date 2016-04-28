@@ -174,25 +174,6 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test]
-        public void SingleRow()
-        {
-            using (var conn = OpenConnection())
-            {
-                conn.ExecuteNonQuery(@"CREATE FUNCTION pg_temp.func() RETURNS TABLE (a INT, b INT) AS 'VALUES (1,2), (3,4);' LANGUAGE 'sql'");
-                using (var cmd = new NpgsqlCommand("pg_temp.func", conn))
-                {
-                    cmd.CommandType = CommandType.StoredProcedure;
-
-                    using (var reader = cmd.ExecuteReader(CommandBehavior.SingleRow))
-                    {
-                        Assert.That(reader.Read(), Is.True);
-                        Assert.That(reader.Read(), Is.False);
-                    }
-                }
-            }
-        }
-
         #region Parameter Derivation
 
         [Test, Description("Tests function parameter derivation with IN, OUT and INOUT parameters")]
