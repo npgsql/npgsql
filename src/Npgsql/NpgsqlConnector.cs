@@ -388,32 +388,28 @@ namespace Npgsql
 
         void WriteStartupMessage()
         {
-            var startupMessage = new StartupMessage {
-                ["client_encoding"] = "UTF8",
-                ["user"] = Username
-            };
+            var startupMessage = new StartupMessage { ["client_encoding"] = "UTF8" };
+
+            if (!string.IsNullOrEmpty(Username))
+                startupMessage["user"] = Username;
+#if NET45 || NET451 || DNX451
+            else if (IntegratedSecurity)
+                startupMessage["user"] = UsernameProvider.GetIntegratedUserName(_settings.IncludeRealm);
+#endif
 
             if (!string.IsNullOrEmpty(Database))
-            {
                 startupMessage["database"] = Database;
-            }
             if (!string.IsNullOrEmpty(_settings.ApplicationName))
-            {
                 startupMessage["application_name"] = _settings.ApplicationName;
-            }
             if (!string.IsNullOrEmpty(_settings.SearchPath))
-            {
                 startupMessage["search_path"] = _settings.SearchPath;
-            }
             if (IsSecure && !IsRedshift)
-            {
                 startupMessage["ssl_renegotiation_limit"] = "0";
-            }
 
+            // Should really never happen, just in case
             if (startupMessage.Length > WriteBuffer.Size)
-            {  // Should really never happen, just in case
                 throw new Exception("Startup message bigger than buffer");
-            }
+
             startupMessage.WriteFully(WriteBuffer);
         }
 

@@ -263,6 +263,7 @@
       <Link>Properties\CommonAssemblyInfo.cs</Link>
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="UsernameProvider.cs" />
     <Compile Include="Util\CodeAnnotations.cs" />
     <Compile Include="TypeHandlers\ArrayHandler.cs" />
     <Compile Include="TypeHandlers\NumericHandlers\UInt32Handler.cs" />
