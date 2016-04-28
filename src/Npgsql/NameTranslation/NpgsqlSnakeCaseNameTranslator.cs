@@ -30,20 +30,26 @@ namespace Npgsql
 
         static string ClrToDatabaseName(string clrName)
         {
+            if (clrName.IsNullOrWhiteSpace())
+                return clrName;
+
             var sb = new StringBuilder();
-            for (var i = 0; i < clrName.Length; i++)
+            sb.Append(clrName[0].ToLowerForAscii());
+
+            for(var i = 1; i < clrName.Length; i++)
             {
                 var c = clrName[i];
-                if (char.IsUpper(c))
+
+                if (c.IsNotAsciiUpper())
                 {
-                    if (i > 0)
-                        sb.Append('_');
-                    sb.Append(char.ToLower(c));
+                    sb.Append(c);
                     continue;
                 }
 
-                sb.Append(c);
+                sb.Append('_');
+                sb.Append(c.ToAsciiLowerNoCheck());
             }
+
             return sb.ToString();
         }
     }

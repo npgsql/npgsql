@@ -266,7 +266,7 @@ namespace NpgsqlTypes
             if (str == null) {
                 throw new NullReferenceException();
             }
-            switch (str = str.Trim().ToLowerInvariant()) {
+            switch (str = str.Trim().ToLowerForASCII()) {
             case "infinity":
                 return Infinity;
             case "-infinity":

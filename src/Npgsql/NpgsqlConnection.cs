@@ -867,7 +867,7 @@ namespace Npgsql
         {
             if (copyFromCommand == null)
                 throw new ArgumentNullException(nameof(copyFromCommand));
-            if (!copyFromCommand.TrimStart().ToUpper().StartsWith("COPY"))
+            if (!copyFromCommand.TrimStart().ToUpperForASCII().StartsWith("COPY"))
                 throw new ArgumentException("Must contain a COPY FROM STDIN command!", nameof(copyFromCommand));
             Contract.EndContractBlock();
 
@@ -898,7 +898,7 @@ namespace Npgsql
         {
             if (copyToCommand == null)
                 throw new ArgumentNullException(nameof(copyToCommand));
-            if (!copyToCommand.TrimStart().ToUpper().StartsWith("COPY"))
+            if (!copyToCommand.TrimStart().ToUpperForASCII().StartsWith("COPY"))
                 throw new ArgumentException("Must contain a COPY TO STDIN command!", nameof(copyToCommand));
             Contract.EndContractBlock();
 
@@ -933,7 +933,7 @@ namespace Npgsql
         {
             if (copyFromCommand == null)
                 throw new ArgumentNullException(nameof(copyFromCommand));
-            if (!copyFromCommand.TrimStart().ToUpper().StartsWith("COPY"))
+            if (!copyFromCommand.TrimStart().ToUpperForASCII().StartsWith("COPY"))
                 throw new ArgumentException("Must contain a COPY IN command!", nameof(copyFromCommand));
             Contract.EndContractBlock();
 
@@ -959,7 +959,7 @@ namespace Npgsql
         {
             if (copyToCommand == null)
                 throw new ArgumentNullException(nameof(copyToCommand));
-            if (!copyToCommand.TrimStart().ToUpper().StartsWith("COPY"))
+            if (!copyToCommand.TrimStart().ToUpperForASCII().StartsWith("COPY"))
                 throw new ArgumentException("Must contain a COPY OUT command!", nameof(copyToCommand));
             Contract.EndContractBlock();
 
@@ -985,7 +985,7 @@ namespace Npgsql
         {
             if (copyCommand == null)
                 throw new ArgumentNullException(nameof(copyCommand));
-            if (!copyCommand.TrimStart().ToUpper().StartsWith("COPY"))
+            if (!copyCommand.TrimStart().ToUpperForASCII().StartsWith("COPY"))
                 throw new ArgumentException("Must contain a COPY IN command!", nameof(copyCommand));
             Contract.EndContractBlock();
 

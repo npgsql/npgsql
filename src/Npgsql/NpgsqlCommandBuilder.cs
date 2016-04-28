@@ -29,6 +29,7 @@ using System.Data.Common;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using NpgsqlTypes;
 
 namespace Npgsql
@@ -39,6 +40,25 @@ namespace Npgsql
     [System.ComponentModel.DesignerCategory("")]
     public sealed class NpgsqlCommandBuilder : DbCommandBuilder
     {
+        const string SupplementaryPlaneChar = "[\uD800-\uDBFF][\uDC00-\uDFFF]";
+        //const string PGIdentifierBeginChar = "[_a-z\u0080-\uD7FF\uE000-\uFFFF]|" + SupplementaryPlaneChar;
+        const string PGIdentifierBeginCharIgnoreCase = "[_a-z\u0080-\uD7FF\uE000-\uFFFF]|" + SupplementaryPlaneChar;
+        //const string PGIdentifierAfterChar = "[$0-9_a-z\u0080-\uD7FF\uE000-\uFFFF]|" + SupplementaryPlaneChar;
+        const string PGIdentifierAfterCharIgnoreCase = "[$0-9_a-z\u0080-\uD7FF\uE000-\uFFFF]|" + SupplementaryPlaneChar;
+
+        //const string PGIdentifierPattern =
+        //    "(?:" + PGIdentifierBeginChar + ")(?:" + PGIdentifierAfterChar +
+        //    ")*|\"((?:[^\"\uD800-\uDFFF]|\"\"|[\uD800-\uDBFF][\uDC00-\uDFFF])+)\"";
+        const string PGIdentifierPatternIgnoreCase = "(?:" +
+            PGIdentifierBeginCharIgnoreCase + ")(?:" + PGIdentifierAfterCharIgnoreCase +
+            ")*|\"((?:[^\"\uD800-\uDFFF]|\"\"|[\uD800-\uDBFF][\uDC00-\uDFFF])+)\"";
+
+        //static readonly Regex PGObjectNameRegex = new Regex($"^({PGIdentifierPattern})(?:\\.({PGIdentifierPattern}))?$");
+        static readonly Regex PGObjectNameRegexIgnoreCase = new Regex($"^({PGIdentifierPatternIgnoreCase})(?:\\.({PGIdentifierPatternIgnoreCase}))?$");
+
+        static string UnescapePGIdentifier(string identifier)
+            => identifier.Replace("\"\"", "\"");
+
         // Commented out because SetRowUpdatingHandler() is commented, and causes an "is never used" warning
         // private NpgsqlRowUpdatingEventHandler rowUpdatingHandler;
 
@@ -143,15 +163,25 @@ namespace Npgsql
             string query;
             string procedureName;
             string schemaName = null;
-            var fullName = command.CommandText.Split('.');
-            if (fullName.Length > 1 && fullName[0].Length > 0)
+            var cmdText = command.CommandText;
+
+            var m = PGObjectNameRegexIgnoreCase.Match(cmdText);
+            if (!m.Success)
+                throw new InvalidOperationException($"Invalid object name: {cmdText}");
+
+            var grps = m.Groups;
+            var g1 = grps[1];
+            var g2 = grps[2];
+            var g3 = grps[3];
+            if (g3.Success) // has scheme name
             {
                 // proargsmodes is supported for Postgresql 8.1 and above
                 query = serverVersion >= new Version(8, 1, 0)
                     ? "select proargnames, proargtypes, proallargtypes, proargmodes from pg_proc p left join pg_namespace n on p.pronamespace = n.oid where proname=:proname and n.nspname=:nspname"
                     : "select proargnames, proargtypes from pg_proc p left join pg_namespace n on p.pronamespace = n.oid where proname=:proname and n.nspname=:nspname";
-                schemaName = (fullName[0].IndexOf("\"") != -1) ? fullName[0] : fullName[0].ToLower();
-                procedureName = (fullName[1].IndexOf("\"") != -1) ? fullName[1] : fullName[1].ToLower();
+                schemaName = g2.Success ? UnescapePGIdentifier(g2.Value) : g1.Value.ToLowerForASCII();
+                var g4 = grps[4];
+                procedureName = g4.Success ? UnescapePGIdentifier(g4.Value) : g3.Value.ToLowerForASCII();
 
                 // The pg_temp pseudo-schema is special - it's an alias to a real schema name (e.g. pg_temp_2).
                 // We get the real name with pg_my_temp_schema().
@@ -169,17 +199,17 @@ namespace Npgsql
                 query = serverVersion >= new Version(8, 1, 0)
                     ? "select proargnames, proargtypes, proallargtypes, proargmodes from pg_proc where proname = :proname"
                     : "select proargnames, proargtypes from pg_proc where proname = :proname";
-                procedureName = (fullName[0].IndexOf("\"") != -1) ? fullName[0] : fullName[0].ToLower();
+                procedureName = g2.Success ? UnescapePGIdentifier(g2.Value) : g1.Value.ToLowerForASCII();
             }
 
             using (var c = new NpgsqlCommand(query, command.Connection))
             {
                 c.Parameters.Add(new NpgsqlParameter("proname", NpgsqlDbType.Text));
-                c.Parameters[0].Value = procedureName.Replace("\"", "").Trim();
-                if (fullName.Length > 1 && !string.IsNullOrEmpty(schemaName))
+                c.Parameters[0].Value = procedureName;
+                if (schemaName != null)
                 {
                     var prm = c.Parameters.Add(new NpgsqlParameter("nspname", NpgsqlDbType.Text));
-                    prm.Value = schemaName.Replace("\"", "").Trim();
+                    prm.Value = schemaName;
                 }
 
                 string[] names = null;
@@ -207,7 +237,7 @@ namespace Npgsql
                         }
                     }
                     else
-                        throw new InvalidOperationException($"{command.CommandText} does not exist in pg_proc");
+                        throw new InvalidOperationException($"{cmdText} does not exist in pg_proc");
                 }
 
                 command.Parameters.Clear();
@@ -281,7 +311,7 @@ namespace Npgsql
         /// </returns>
         public new NpgsqlCommand GetInsertCommand(bool useColumnsForParameterNames)
         {
-            NpgsqlCommand cmd = (NpgsqlCommand) base.GetInsertCommand(useColumnsForParameterNames);
+            NpgsqlCommand cmd = (NpgsqlCommand)base.GetInsertCommand(useColumnsForParameterNames);
             cmd.UpdatedRowSource = UpdateRowSource.None;
             return cmd;
         }
@@ -341,7 +371,7 @@ namespace Npgsql
         /// </returns>
         public new NpgsqlCommand GetDeleteCommand(bool useColumnsForParameterNames)
         {
-            NpgsqlCommand cmd = (NpgsqlCommand) base.GetDeleteCommand(useColumnsForParameterNames);
+            NpgsqlCommand cmd = (NpgsqlCommand)base.GetDeleteCommand(useColumnsForParameterNames);
             cmd.UpdatedRowSource = UpdateRowSource.None;
             return cmd;
         }
