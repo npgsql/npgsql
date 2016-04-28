@@ -68,7 +68,7 @@ namespace Npgsql
         String _commandText;
         int? _timeout;
         readonly NpgsqlParameterCollection _parameters = new NpgsqlParameterCollection();
-        bool _isPersistent;
+        bool? _isPersistent;
 
         List<NpgsqlStatement> _statements;
 
@@ -109,6 +109,8 @@ namespace Npgsql
         #region Constants
 
         internal const int DefaultTimeout = 30;
+
+        internal const bool DefaultIsPersistent = false;
 
         /// <summary>
         /// Specifies the maximum number of statements we allow in a multiquery, separated by semicolons.
@@ -183,7 +185,7 @@ namespace Npgsql
                 Contract.EndContractBlock();
 
                 _commandText = value;
-                DeallocatePrepared();
+                DeallocatePrepared(true);
             }
         }
 
@@ -321,18 +323,19 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Gets or sets whether this query will be persisted when it is prepared. This will keep
-        /// the compiled statement available after the owner connection is returned to the pool.
+        /// Gets or sets whether this query will be persisted when it is prepared. This will keep the
+        /// compiled statement available after the command is disposed or the connection is returned to the pool.
         /// </summary>
+        [DefaultValue(DefaultIsPersistent)]
         public bool IsPersistent
         {
-            get { return _isPersistent; }
+            get { return _isPersistent ?? (_connection?.PersistPrepared ?? DefaultIsPersistent); }
             set
             {
                 _isPersistent = value;
                 if (!value)
                 {
-                    DeallocatePrepared();
+                    DeallocatePrepared(true);
                 }
             }
         }
@@ -484,7 +487,7 @@ namespace Npgsql
 
                 if (persistentCommand != null)
                 {
-                    DeallocatePrepared();
+                    DeallocatePrepared(false);
 
                     // Use the already prepared command
                     _statements.Clear();
@@ -528,7 +531,7 @@ namespace Npgsql
                 }
                 else
                 {
-                    DeallocatePrepared();
+                    DeallocatePrepared(true);
                     ProcessRawQuery();
 
                     _sendState = SendState.Start;
@@ -612,11 +615,11 @@ namespace Npgsql
             _connector.PreparedStatements.PersistPreparedCommand(persistentCommand);
         }
 
-        void DeallocatePrepared()
+        void DeallocatePrepared(bool deallocatePersisted)
         {
             if (!IsPrepared) { return; }
 
-            if (!IsPersistent)
+            if (!IsPersistent || (IsPersistent && deallocatePersisted))
             {
                 using (_connector.StartUserAction())
                 {
@@ -1339,7 +1342,7 @@ namespace Npgsql
                 // operations from the finalizer (connection may be in use by someone else). Prepared statements
                 // which aren't explicitly disposed are leaked until the connection is closed.
                 if (IsPrepared)
-                    DeallocatePrepared();
+                    DeallocatePrepared(false);
             }
             Transaction = null;
             Connection = null;

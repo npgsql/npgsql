@@ -518,7 +518,7 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test, Description("Makes sure that calling Prepare() twice on a persistent command allocates new prepared staments when command changes")]
+        [Test, Description("Makes sure that calling Prepare() twice on a persistent command deallocates old prepared staments when command has changed")]
         public void PersistentDoublePrepareCommandChanged()
         {
             try
@@ -544,9 +544,9 @@ namespace Npgsql.Tests
                         cmd.Prepare();
                         cmd.ExecuteNonQuery();
 
-                        Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(2), "Unexpected count of prepared statements");
+                        Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1), "Unexpected count of prepared statements");
                     }
-                    Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(2), "Persistent prepared statement deallocated");
+                    Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1), "Persistent prepared statement deallocated");
                 }
             }
             finally
@@ -623,9 +623,39 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, Description("Makes sure that 'Persist Prepared' configuration parameter is working correctly")]
+        public void PersistentPrepareConfigurationParameter()
+        {
+            try
+            {
+                var connStr = ConnectionString + ";Persist Prepared=true";
+                var conn = OpenConnection(connStr);
+
+                using (var cmd = new NpgsqlCommand("SELECT 1", conn))
+                {
+                    cmd.Prepare();
+                    Assert.That(cmd.ExecuteScalar(), Is.EqualTo(1));
+                }
+                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1), "Unexpected count of prepared statements");
+
+                conn.Close();
+                conn.Open();
+
+                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1), "Unexpected count of prepared statements");
+
+                conn.Dispose();
+            }
+            finally
+            {
+                // Clear the pools so that we dont mess up other tests that depend
+                // on the clean state of pg_prepared_statements
+                NpgsqlConnectorPool.ConnectorPoolMgr.ClearAllPools();
+            }
+        }
+
         #endregion
 
-	    [Test]
+        [Test]
         public void SingleRow([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
         {
             using (var conn = OpenConnection())

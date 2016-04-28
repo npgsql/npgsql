@@ -279,6 +279,7 @@ namespace Npgsql
         int BufferSize => _settings.BufferSize;
         int ConnectionTimeout => _settings.Timeout;
         int KeepAlive => _settings.KeepAlive;
+        bool PersistPrepared => _settings.PersistPrepared;
         bool IsKeepAliveEnabled => KeepAlive > 0;
         bool IntegratedSecurity => _settings.IntegratedSecurity;
         internal bool ConvertInfinityDateTime => _settings.ConvertInfinityDateTime;

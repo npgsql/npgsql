@@ -408,6 +408,7 @@ namespace Npgsql
         internal int MaxPoolSize => Settings.MaxPoolSize;
         internal int Timeout => Settings.Timeout;
         internal int BufferSize => Settings.BufferSize;
+        internal bool PersistPrepared => Settings.PersistPrepared;
         internal string EntityTemplateDatabase => Settings.EntityTemplateDatabase;
         internal string EntityAdminDatabase => Settings.EntityAdminDatabase;
 
