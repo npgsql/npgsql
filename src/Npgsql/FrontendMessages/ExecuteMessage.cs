@@ -51,7 +51,7 @@ namespace Npgsql.FrontendMessages
         {
             Contract.Requires(Portal != null && Portal.All(c => c < 128));
 
-            var portalNameBytes = Encoding.ASCII.GetBytes(Portal);
+            var portalNameBytes = Portal == "" ? PGUtil.EmptyBuffer : Encoding.ASCII.GetBytes(Portal);
             buf.WriteByte(Code);
             buf.WriteInt32(Length - 1);
             buf.WriteBytesNullTerminated(portalNameBytes);

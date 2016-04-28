@@ -283,7 +283,7 @@ namespace Npgsql
                         //stream.Flush();
                     }
                 }
-                return new byte[0];
+                return PGUtil.EmptyBuffer;
             }
             finally
             {
