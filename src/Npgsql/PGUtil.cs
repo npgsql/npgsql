@@ -39,6 +39,8 @@ namespace Npgsql
     // ReSharper disable once InconsistentNaming
     internal static class PGUtil
     {
+        internal static readonly byte[] EmptyBuffer = new byte[0];
+
         internal static readonly UTF8Encoding UTF8Encoding = new UTF8Encoding(false, true);
         internal static readonly UTF8Encoding RelaxedUTF8Encoding = new UTF8Encoding(false, false);
 

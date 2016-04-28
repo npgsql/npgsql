@@ -554,22 +554,6 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test]
-        public void SingleRowCommandBehaviorSupport()
-        {
-            using (var conn = OpenConnection())
-            {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
-                conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('X')");
-                conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('Y')");
-                using (var command = new NpgsqlCommand(@"SELECT * FROM data", conn))
-                using (var reader = command.ExecuteReader(CommandBehavior.SingleRow)) {
-                    Assert.That(reader.Read(), Is.True);
-                    Assert.That(reader.Read(), Is.False);
-                }
-            }
-        }
-
         [Test, Description("In sequential access, performing a null check on a non-first field would check the first field")]
         public void SequentialNullCheckOnNonFirstField()
         {
@@ -799,22 +783,6 @@ namespace Npgsql.Tests
         }
 
         #endregion
-
-        [Test]
-        public void SchemaOnlySingleRowCommandBehaviorSupport()
-        {
-            using (var conn = OpenConnection())
-            {
-                var command = new NpgsqlCommand("SELECT 1", conn);
-                using (var dr = command.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.SingleRow))
-                {
-                    var i = 0;
-                    while (dr.Read())
-                        i++;
-                    Assert.AreEqual(0, i);
-                }
-            }
-        }
 
         [Test]
         public void SchemaOnlyCommandBehaviorSupport()

@@ -5,8 +5,8 @@
     "keyFile": "../../Npgsql.snk"
   },
   "dependencies": {
-      "NUnit": "3.2.0",
-      "NUnitLite": "3.2.0",
+      "NUnit": "3.2.1",
+      "NUnitLite": "3.2.1",
       "NLog": "3.2.0.0",
       "Npgsql": "3.1.0-*"
   },

@@ -625,6 +625,25 @@ namespace Npgsql.Tests
 
         #endregion
 
+	    [Test]
+        public void SingleRow([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
+        {
+            using (var conn = OpenConnection())
+            {
+                using (var cmd = new NpgsqlCommand("SELECT 1, 2 UNION SELECT 3, 4", conn))
+                {
+                    if (prepare == PrepareOrNot.Prepared)
+                        cmd.Prepare();
+
+                    using (var reader = cmd.ExecuteReader(CommandBehavior.SingleRow))
+                    {
+                        Assert.That(reader.Read(), Is.True);
+                        Assert.That(reader.Read(), Is.False);
+                    }
+                }
+            }
+        }
+
         [Test, Description("Makes sure writing an unset parameter isn't allowed")]
         public void ParameterUnset()
         {

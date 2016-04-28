@@ -150,6 +150,7 @@
     <Compile Include="BackendMessages\BindCompleteMessage.cs" />
     <Compile Include="BackendMessages\AuthenticationMessages.cs" />
     <Compile Include="BackendMessages\BackendKeyDataMessage.cs" />
+    <Compile Include="BackendMessages\PortalSuspendedMessage.cs" />
     <Compile Include="BackendMessages\ReadyForQueryMessage.cs" />
     <Compile Include="BackendMessages\ParseCompleteMessage.cs" />
     <Compile Include="BackendMessages\RowDescriptionMessage.cs" />
@@ -266,6 +267,7 @@
       <Link>Properties\CommonAssemblyInfo.cs</Link>
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="UsernameProvider.cs" />
     <Compile Include="Util\CodeAnnotations.cs" />
     <Compile Include="TypeHandlers\ArrayHandler.cs" />
     <Compile Include="TypeHandlers\NumericHandlers\UInt32Handler.cs" />

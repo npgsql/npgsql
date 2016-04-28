@@ -40,11 +40,6 @@ namespace Npgsql.FrontendMessages
 
         internal const byte Code = (byte)'Q';
 
-        internal string Query
-        {
-            get { return _query; }
-        }
-
         internal QueryMessage Populate(string query)
         {
             Contract.Requires(query != null);
