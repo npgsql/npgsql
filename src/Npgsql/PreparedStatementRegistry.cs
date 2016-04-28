@@ -8,7 +8,7 @@ using Npgsql.FrontendMessages;
 
 namespace Npgsql
 {
-    internal class PreparedStatementCollection
+    internal class PreparedStatementRegistry
     {
         /// <summary>
         /// Contains allocated non persisted prepared statement names
@@ -20,7 +20,7 @@ namespace Npgsql
         /// </summary>
         readonly Dictionary<string, PersistentPreparedCommand> _persistedPreparedCommandsBySql;
 
-        internal PreparedStatementCollection()
+        internal PreparedStatementRegistry()
         {
             _nonPersistedPreparedStmtNames = new HashSet<string>();
             _persistedPreparedCommandsBySql = new Dictionary<string, PersistentPreparedCommand>();

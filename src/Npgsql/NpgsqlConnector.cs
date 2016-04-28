@@ -143,7 +143,7 @@ namespace Npgsql
         /// <summary>
         /// Handles management of prepared statements owned by this connector
         /// </summary>
-        internal PreparedStatementCollection PreparedStatements { get; private set; }
+        internal PreparedStatementRegistry PreparedStatements { get; private set; }
 	
         internal NpgsqlDataReader CurrentReader;
 
@@ -252,7 +252,7 @@ namespace Npgsql
             _settings = connectionString;
             _password = password;
             BackendParams = new Dictionary<string, string>();
-            PreparedStatements = new PreparedStatementCollection();
+            PreparedStatements = new PreparedStatementRegistry();
 
             _userLock = new SemaphoreSlim(1, 1);
             _userAction = new UserAction(this);

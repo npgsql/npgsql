@@ -197,7 +197,7 @@
     <Compile Include="PersistentPreparedCommand.cs" />
     <Compile Include="PersistentPreparedStatement.cs" />
     <Compile Include="PersistentStatementParameter.cs" />
-    <Compile Include="PreparedStatementCollection.cs" />
+    <Compile Include="PreparedStatementRegistry.cs" />
     <Compile Include="ReadBuffer.cs" />
     <Compile Include="NameTranslation\NpgsqlSnakeCaseNameTranslator.cs" />
     <Compile Include="SqlQueryParser.cs" />
