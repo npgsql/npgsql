@@ -59,16 +59,10 @@ namespace Npgsql
         /// <typeparam name="TResult">The type of the result returned by the task.</typeparam>
         /// <param name="result">The result to store into the completed task.</param>
         /// <returns>The successfully completed task.</returns>
-#if !NET40
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-#endif
         internal static Task<TResult> TaskFromResult<TResult>(TResult result)
         {
-#if !NET40
             return Task.FromResult(result);
-#else
-            return TaskEx.FromResult(result);
-#endif
         }
 
         internal static readonly Task CompletedTask = TaskFromResult(0);
@@ -93,17 +87,6 @@ namespace Npgsql
             Contract.Requires(false);
             return message == null ? new Exception("An internal Npgsql occured, please open an issue in http://github.com/npgsql/npgsql with this exception's stack trace") : new Exception(message);
         }
-    }
-
-    /// <summary>
-    /// Represent the frontend/backend protocol version.
-    /// </summary>
-    public enum ProtocolVersion
-    {
-        /// <summary>
-        /// Protocol version 3 (the current version).
-        /// </summary>
-        Version3 = 3
     }
 
     internal enum FormatCode : short
