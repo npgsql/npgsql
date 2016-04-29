@@ -4,6 +4,9 @@
     "keyFile": "../../Npgsql.snk",
     "emitEntryPoint": true
   },
+  "runtimes": {
+    "win": {}
+  },
   "dependencies": {
     "NUnit": "3.2.1",
     "NUnitLite": "3.2.1",

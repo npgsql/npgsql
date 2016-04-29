@@ -14,7 +14,7 @@
     <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\</SolutionDir>
     <RestorePackages>true</RestorePackages>
     <TargetFrameworkProfile />
-    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5.1</TargetFrameworkVersion>
     <LangVersion>5</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -51,7 +51,6 @@
     <EmbeddedResource Include="..\EntityFramework6.Npgsql\NpgsqlSchema.ssdl" />
     <EmbeddedResource Include="..\EntityFramework6.Npgsql\NpgsqlSchemaV3.ssdl" />
     <EmbeddedResource Include="..\EntityFramework6.Npgsql\NpgsqlProviderManifest.Manifest.xml" />
-    <None Include="..\EntityFramework6.Npgsql\packages.config" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="..\EntityFramework6.Npgsql\NpgsqlServices.cs" />

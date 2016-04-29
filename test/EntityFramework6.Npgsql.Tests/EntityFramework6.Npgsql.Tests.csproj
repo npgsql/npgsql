@@ -23,7 +23,7 @@
     </RootNamespace>
     <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
     <WarningLevel>4</WarningLevel>
-    <DefineConstants>NET45</DefineConstants>
+    <DefineConstants>TRACE;DEBUG;NET46</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <OutputPath>bin\Release\</OutputPath>
@@ -32,13 +32,9 @@
     <Optimize>true</Optimize>
     <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
     <WarningLevel>4</WarningLevel>
-    <DefineConstants>NET45</DefineConstants>
+    <DefineConstants>TRACE;NET46</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="nunit.framework, Version=3.0.5813.39031, Culture=neutral, PublicKeyToken=2638cd05610744eb, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\NUnit.3.0.1\lib\net45\nunit.framework.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
     <Reference Include="System.ComponentModel.DataAnnotations" />
     <Reference Include="System.Core">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
@@ -52,9 +48,6 @@
     <Reference Include="System.Web" />
     <Reference Include="System.Configuration" />
     <Reference Include="System.Xml" />
-    <Reference Include="EntityFramework">
-      <HintPath>..\..\packages\EntityFramework.6.1.3\lib\net45\EntityFramework.dll</HintPath>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="EntityFrameworkBasicTests.cs" />
@@ -66,7 +59,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
-    <None Include="packages.config" />
     <None Include="xmlModel\XmlTest.csdl">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
