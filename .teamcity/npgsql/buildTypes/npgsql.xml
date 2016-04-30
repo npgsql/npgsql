@@ -28,7 +28,7 @@
         <parameters>
           <param name="script.content"><![CDATA[for /f "tokens=1,2 delims=-" %%%%a in ("%GitVersion.NuGetVersion%") do set base=%%%%a&set NUGET_PRERELEASE_TAG=%%%%b
 set KOREBUILD_DOTNET_PACK_OPTIONS=--version-suffix %%NUGET_PRERELEASE_TAG%%
-set Configuration=Release
+set Configuration=Debug
 build compile]]></param>
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
