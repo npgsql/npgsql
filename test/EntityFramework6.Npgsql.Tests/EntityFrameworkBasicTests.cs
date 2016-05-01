@@ -11,142 +11,14 @@ using System.Data.Entity.Core.Metadata.Edm;
 using System.Data.Entity.Core.Objects;
 using System.Data.Entity.Infrastructure;
 using Npgsql.Tests;
+using NpgsqlTypes;
 
 namespace EntityFramework6.Npgsql.Tests
 {
     [TestFixture]
-    public class EntityFrameworkBasicTests : TestBase
+    public class EntityFrameworkBasicTests : EntityFrameworkTestBase
     {
-        public EntityFrameworkBasicTests(string backendVersion)
-            : base(backendVersion)
-        {
-        }
-
-        [TestFixtureSetUp]
-        public override void TestFixtureSetup()
-        {
-            base.TestFixtureSetup();
-            using (var context = new BloggingContext(ConnectionStringEF))
-            {
-                if (context.Database.Exists())
-                    context.Database.Delete();//We delete to be 100% schema is synced
-                context.Database.Create();
-            }
-
-            // Create sequence for the IntComputedValue property.
-            using (var createSequenceConn = new NpgsqlConnection(ConnectionStringEF))
-            {
-                createSequenceConn.Open();
-                ExecuteNonQuery("create sequence blog_int_computed_value_seq", createSequenceConn);
-                ExecuteNonQuery("alter table \"dbo\".\"Blogs\" alter column \"IntComputedValue\" set default nextval('blog_int_computed_value_seq');", createSequenceConn);
-                ExecuteNonQuery("alter table \"dbo\".\"Posts\" alter column \"VarbitColumn\" type varbit using null", createSequenceConn);
-                ExecuteNonQuery("CREATE OR REPLACE FUNCTION \"dbo\".\"StoredAddFunction\"(integer, integer) RETURNS integer AS $$ SELECT $1 + $2; $$ LANGUAGE SQL;", createSequenceConn);
-            }
-
-
-        }
-
-        /// <summary>
-        /// Clean any previous entites before our test
-        /// </summary>
-        [SetUp]
-        protected override void SetUp()
-        {
-            base.SetUp();
-            using (var context = new BloggingContext(ConnectionStringEF))
-            {
-                context.Blogs.RemoveRange(context.Blogs);
-                context.Posts.RemoveRange(context.Posts);
-                context.SaveChanges();
-            }
-        }
-
-        public class Blog
-        {
-            public int BlogId { get; set; }
-            public string Name { get; set; }
-
-            public virtual List<Post> Posts { get; set; }
-
-            [DatabaseGenerated(DatabaseGeneratedOption.Computed)]
-            public int IntComputedValue { get; set; }
-        }
-
-        public class Post
-        {
-            public int PostId { get; set; }
-            public string Title { get; set; }
-            public string Content { get; set; }
-            public byte Rating { get; set; }
-            public DateTime CreationDate { get; set; }
-            public string VarbitColumn { get; set; }
-            public int BlogId { get; set; }
-            public virtual Blog Blog { get; set; }
-        }
-
-        public class NoColumnsEntity
-        {
-            public int Id { get; set; }
-        }
-
-        public class BloggingContext : DbContext
-        {
-            public BloggingContext(string connection)
-                : base(new NpgsqlConnection(connection), CreateModel(new NpgsqlConnection(connection)), true)
-            {
-            }
-
-            public DbSet<Blog> Blogs { get; set; }
-            public DbSet<Post> Posts { get; set; }
-            public DbSet<NoColumnsEntity> NoColumnsEntities { get; set; }
-
-            [DbFunction("BloggingContext", "ClrStoredAddFunction")]
-            public static int StoredAddFunction(int val1, int val2)
-            {
-                throw new NotSupportedException();
-            }
-
-            private static DbCompiledModel CreateModel(NpgsqlConnection connection)
-            {
-                var dbModelBuilder = new DbModelBuilder(DbModelBuilderVersion.Latest);
-
-                // Import Sets
-                dbModelBuilder.Entity<Blog>();
-                dbModelBuilder.Entity<Post>();
-                dbModelBuilder.Entity<NoColumnsEntity>();
-
-                // Import function
-                var dbModel = dbModelBuilder.Build(connection);
-                var edmType = PrimitiveType.GetEdmPrimitiveType(PrimitiveTypeKind.Int32);
-
-                var payload = new EdmFunctionPayload
-                {
-                    ParameterTypeSemantics = ParameterTypeSemantics.AllowImplicitConversion,
-                    Schema = "dbo",
-                    IsComposable = true,
-                    IsNiladic = false,
-                    IsBuiltIn = false,
-                    IsAggregate = false,
-                    IsFromProviderManifest = true,
-                    StoreFunctionName = "StoredAddFunction",
-                    ReturnParameters = new[]
-                    {
-                        FunctionParameter.Create("ReturnType", edmType, ParameterMode.ReturnValue)
-                    },
-                    Parameters = new[]
-                    {
-                        FunctionParameter.Create("Value1", edmType, ParameterMode.In),
-                        FunctionParameter.Create("Value2", edmType, ParameterMode.In)
-                    }
-                };
-
-                var myFunc = EdmFunction.Create("ClrStoredAddFunction", "BloggingContext", DataSpace.SSpace, payload, null);
-                dbModel.StoreModel.AddItem(myFunc);
-                var compiledModel = dbModel.Compile();
-
-                return compiledModel;
-            }
-        }
+        public EntityFrameworkBasicTests(string backendVersion) : base(backendVersion) { }
 
         [Test]
         public void InsertAndSelect()
@@ -728,6 +600,599 @@ namespace EntityFramework6.Npgsql.Tests
                 Assert.AreEqual(directCallResult, 11);
                 Assert.IsTrue(directSQL.Contains("\"dbo\".\"StoredAddFunction\""));
                 CollectionAssert.AreEqual(localChangedIds, remoteChangedIds);
+            }
+        }
+
+        [Test]
+        public void TestScalarValuedStoredFunctions_with_null_StoreFunctionName()
+        {
+            using (var context = new BloggingContext(ConnectionStringEF))
+            {
+                context.Database.Log = Console.Out.WriteLine;
+
+                context.Blogs.Add(new Blog { Name = "_" });
+                context.SaveChanges();
+
+                // Direct ESQL
+                var directCallQuery = ((IObjectContextAdapter)context).ObjectContext.CreateQuery<int>(
+                    "SELECT VALUE BloggingContext.StoredEchoFunction(@p1) FROM {1}",
+                    new ObjectParameter("p1", 1337));
+                var directSQL = directCallQuery.ToTraceString();
+                var directCallResult = directCallQuery.First();
+
+                // LINQ
+                var echo = context.Blogs
+                    .Select(x => BloggingContext.StoredEchoFunction(1337))
+                    .First();
+
+                // Comapre results
+                Assert.AreEqual(directCallResult, 1337);
+                Assert.IsTrue(directSQL.Contains("\"dbo\".\"StoredEchoFunction\""));
+                Assert.That(echo, Is.EqualTo(1337));
+            }
+        }
+
+        [Test]
+        public void TestFullTextSearch_ConversionToTsVector()
+        {
+            using (var context = new BloggingContext(ConnectionStringEF))
+            {
+                context.Database.Log = Console.Out.WriteLine;
+
+                context.Blogs.Add(new Blog { Name = "_" });
+                context.SaveChanges();
+
+                const string expected = "'a':5 'b':10";
+                var casted = context.Blogs.Select(x => NpgsqlTextFunctions.AsTsVector(expected)).First();
+                Assert.That(
+                    NpgsqlTsVector.Parse(casted).ToString(),
+                    Is.EqualTo(NpgsqlTsVector.Parse(expected).ToString()));
+
+                var converted = context.Blogs.Select(x => NpgsqlTextFunctions.ToTsVector("banana car")).First();
+                Assert.That(
+                    NpgsqlTsVector.Parse(converted).ToString(),
+                    Is.EqualTo(NpgsqlTsVector.Parse("'banana':1 'car':2").ToString()));
+
+                converted = context.Blogs.Select(x => NpgsqlTextFunctions.ToTsVector("english", "banana car")).First();
+                Assert.That(
+                    NpgsqlTsVector.Parse(converted).ToString(),
+                    Is.EqualTo(NpgsqlTsVector.Parse("'banana':1 'car':2").ToString()));
+            }
+        }
+
+        [Test]
+        public void TestFullTextSearch_ConversionToTsQuery()
+        {
+            using (var context = new BloggingContext(ConnectionStringEF))
+            {
+                context.Database.Log = Console.Out.WriteLine;
+
+                context.Blogs.Add(new Blog { Name = "_" });
+                context.SaveChanges();
+
+                const string expected = "'b' & 'c'";
+                var casted = context.Blogs.Select(x => NpgsqlTextFunctions.AsTsQuery(expected)).First();
+                Assert.That(
+                    NpgsqlTsQuery.Parse(casted).ToString(),
+                    Is.EqualTo(NpgsqlTsQuery.Parse(expected).ToString()));
+
+                var converted = context.Blogs.Select(x => NpgsqlTextFunctions.ToTsQuery("b & c")).First();
+                Assert.That(
+                    NpgsqlTsQuery.Parse(converted).ToString(),
+                    Is.EqualTo(NpgsqlTsQuery.Parse(expected).ToString()));
+
+                converted = context.Blogs.Select(x => NpgsqlTextFunctions.ToTsQuery("english", "b & c")).First();
+                Assert.That(
+                    NpgsqlTsQuery.Parse(converted).ToString(),
+                    Is.EqualTo(NpgsqlTsQuery.Parse(expected).ToString()));
+
+                converted = context.Blogs.Select(x => NpgsqlTextFunctions.PlainToTsQuery("b & c")).First();
+                Assert.That(
+                    NpgsqlTsQuery.Parse(converted).ToString(),
+                    Is.EqualTo(NpgsqlTsQuery.Parse(expected).ToString()));
+
+                converted = context.Blogs.Select(x => NpgsqlTextFunctions.PlainToTsQuery("english", "b & c")).First();
+                Assert.That(
+                    NpgsqlTsQuery.Parse(converted).ToString(),
+                    Is.EqualTo(NpgsqlTsQuery.Parse(expected).ToString()));
+            }
+        }
+
+        [Test]
+        public void TestFullTextSearch_TsVectorConcat()
+        {
+            using (var context = new BloggingContext(ConnectionStringEF))
+            {
+                context.Database.Log = Console.Out.WriteLine;
+
+                context.Blogs.Add(new Blog { Name = "_" });
+                context.SaveChanges();
+
+                var result = context.Blogs.Select(
+                    x => NpgsqlTextFunctions.AsTsVector("a:1 b:2")
+                         + NpgsqlTextFunctions.AsTsVector("c:1 d:2 b:3")).First();
+
+                Assert.That(
+                    NpgsqlTsVector.Parse(result).ToString(),
+                    Is.EqualTo(NpgsqlTsVector.Parse("'a':1 'b':2,5 'c':3 'd':4").ToString()));
+            }
+        }
+
+        [Test]
+        public void TestFullTextSearch_TsQueryAnd()
+        {
+            using (var context = new BloggingContext(ConnectionStringEF))
+            {
+                context.Database.Log = Console.Out.WriteLine;
+
+                context.Blogs.Add(new Blog { Name = "_" });
+                context.SaveChanges();
+
+                var result = context.Blogs.Select(
+                    x => NpgsqlTextFunctions.QueryAnd(
+                        NpgsqlTextFunctions.AsTsQuery("fat | rat"),
+                        NpgsqlTextFunctions.AsTsQuery("cat"))).First();
+
+                Assert.That(
+                    NpgsqlTsQuery.Parse(result).ToString(),
+                    Is.EqualTo(NpgsqlTsQuery.Parse("( 'fat' | 'rat' ) & 'cat'").ToString()));
+            }
+        }
+
+        [Test]
+        public void TestFullTextSearch_TsQueryOr()
+        {
+            using (var context = new BloggingContext(ConnectionStringEF))
+            {
+                context.Database.Log = Console.Out.WriteLine;
+
+                context.Blogs.Add(new Blog { Name = "_" });
+                context.SaveChanges();
+
+                var result = context.Blogs.Select(
+                    x => NpgsqlTextFunctions.QueryOr(
+                        NpgsqlTextFunctions.AsTsQuery("fat | rat"),
+                        NpgsqlTextFunctions.AsTsQuery("cat"))).First();
+
+                Assert.That(
+                    NpgsqlTsQuery.Parse(result).ToString(),
+                    Is.EqualTo(NpgsqlTsQuery.Parse("( 'fat' | 'rat' ) | 'cat'").ToString()));
+
+                result = context.Blogs.Select(
+                    x => NpgsqlTextFunctions.AsTsQuery("fat | rat")
+                         + NpgsqlTextFunctions.AsTsQuery("cat")).First();
+
+                Assert.That(
+                    NpgsqlTsQuery.Parse(result).ToString(),
+                    Is.EqualTo(NpgsqlTsQuery.Parse("( 'fat' | 'rat' ) | 'cat'").ToString()));
+            }
+        }
+
+        [Test]
+        public void TestFullTextSearch_TsQueryNot()
+        {
+            using (var context = new BloggingContext(ConnectionStringEF))
+            {
+                context.Database.Log = Console.Out.WriteLine;
+
+                context.Blogs.Add(new Blog { Name = "_" });
+                context.SaveChanges();
+
+                var result = context.Blogs.Select(
+                    x => NpgsqlTextFunctions.QueryNot(NpgsqlTextFunctions.AsTsQuery("cat"))).First();
+
+                Assert.That(
+                    NpgsqlTsQuery.Parse(result).ToString(),
+                    Is.EqualTo(NpgsqlTsQuery.Parse("! 'cat'").ToString()));
+            }
+        }
+
+        [Test]
+        public void TestFullTextSearch_TsContains()
+        {
+            using (var context = new BloggingContext(ConnectionStringEF))
+            {
+                context.Database.Log = Console.Out.WriteLine;
+
+                context.Blogs.Add(new Blog { Name = "_" });
+                context.SaveChanges();
+
+                var result = context.Blogs.Select(
+                    x =>
+                        NpgsqlTextFunctions.QueryContains(
+                            NpgsqlTextFunctions.AsTsQuery("cat"),
+                            NpgsqlTextFunctions.AsTsQuery("cat & rat"))).First();
+
+                Assert.That(result, Is.False);
+            }
+        }
+
+        [Test]
+        public void TestFullTextSearch_TsIsContained()
+        {
+            using (var context = new BloggingContext(ConnectionStringEF))
+            {
+                context.Database.Log = Console.Out.WriteLine;
+
+                context.Blogs.Add(new Blog { Name = "_" });
+                context.SaveChanges();
+
+                var result = context.Blogs.Select(
+                    x =>
+                        NpgsqlTextFunctions.QueryIsContained(
+                            NpgsqlTextFunctions.AsTsQuery("cat"),
+                            NpgsqlTextFunctions.AsTsQuery("cat & rat"))).First();
+
+                Assert.That(result, Is.True);
+            }
+        }
+
+        [Test]
+        public void TestFullTextSearch_Match()
+        {
+            using (var context = new BloggingContext(ConnectionStringEF))
+            {
+                context.Database.Log = Console.Out.WriteLine;
+
+                var blog1 = new Blog
+                {
+                    Name = "The quick brown fox jumps over the lazy dog."
+                };
+                var blog2 = new Blog
+                {
+                    Name = "Jackdaws loves my big sphinx of quartz."
+                };
+                context.Blogs.Add(blog1);
+                context.Blogs.Add(blog2);
+                context.SaveChanges();
+
+                var foundBlog = context
+                    .Blogs
+                    .FirstOrDefault(
+                        x =>
+                            NpgsqlTextFunctions.Match(
+                                NpgsqlTextFunctions.ToTsVector(x.Name),
+                                NpgsqlTextFunctions.ToTsQuery("jump & dog")));
+
+                Assert.That(foundBlog != null);
+                Assert.That(foundBlog.Name, Is.EqualTo(blog1.Name));
+            }
+        }
+
+        [Test]
+        public void TestFullTextSearch_SetWeight()
+        {
+            using (var context = new BloggingContext(ConnectionStringEF))
+            {
+                context.Database.Log = Console.Out.WriteLine;
+
+                var blog1 = new Blog
+                {
+                    Name = "The quick brown fox jumps over the lazy dog."
+                };
+                context.Blogs.Add(blog1);
+
+                var post1 = new Post
+                {
+                    Blog = blog1,
+                    Title = "Lorem ipsum",
+                    Content = "Dolor sit amet",
+                    Rating = 5
+                };
+                context.Posts.Add(post1);
+
+                var post2 = new Post
+                {
+                    Blog = blog1,
+                    Title = "consectetur adipiscing elit",
+                    Content = "Sed sed rhoncus",
+                    Rating = 4
+                };
+                context.Posts.Add(post2);
+                context.SaveChanges();
+
+                var foundPost = context.Posts.FirstOrDefault(
+                    x => NpgsqlTextFunctions.Match(
+                        NpgsqlTextFunctions.SetWeight(
+                            NpgsqlTextFunctions.ToTsVector(x.Title ?? string.Empty),
+                            NpgsqlWeightLabel.D)
+                        + NpgsqlTextFunctions.SetWeight(
+                            NpgsqlTextFunctions.ToTsVector(x.Content ?? string.Empty),
+                            NpgsqlWeightLabel.C),
+                        NpgsqlTextFunctions.PlainToTsQuery("dolor")));
+
+                Assert.That(foundPost != null);
+                Assert.That(foundPost.Title, Is.EqualTo(post1.Title));
+            }
+        }
+
+        [Test]
+        public void TestFullTextSearch_Length()
+        {
+            using (var context = new BloggingContext(ConnectionStringEF))
+            {
+                context.Database.Log = Console.Out.WriteLine;
+
+                var blog = new Blog
+                {
+                    Name = "cooky cookie cookies piano pianos"
+                };
+                context.Blogs.Add(blog);
+                context.SaveChanges();
+
+                var lexemeCount = context
+                    .Blogs
+                    .Select(x => NpgsqlTextFunctions.Length(NpgsqlTextFunctions.ToTsVector(x.Name)))
+                    .FirstOrDefault();
+
+                Assert.That(lexemeCount, Is.EqualTo(2));
+            }
+        }
+
+        [Test]
+        public void TestFullTextSearch_NumNode()
+        {
+            using (var context = new BloggingContext(ConnectionStringEF))
+            {
+                context.Database.Log = Console.Out.WriteLine;
+
+                var blog = new Blog
+                {
+                    Name = "_"
+                };
+                context.Blogs.Add(blog);
+                context.SaveChanges();
+
+                var nodeCount = context
+                    .Blogs
+                    .Select(x => NpgsqlTextFunctions.NumNode(NpgsqlTextFunctions.ToTsQuery("(fat & rat) | cat")))
+                    .FirstOrDefault();
+
+                Assert.That(nodeCount, Is.EqualTo(5));
+            }
+        }
+
+        [Test]
+        public void TestFullTextSearch_Strip()
+        {
+            using (var context = new BloggingContext(ConnectionStringEF))
+            {
+                context.Database.Log = Console.Out.WriteLine;
+
+                var blog = new Blog
+                {
+                    Name = "cooky cookie cookies piano pianos"
+                };
+                context.Blogs.Add(blog);
+                context.SaveChanges();
+
+                var strippedTsVector = context
+                    .Blogs
+                    .Select(x => NpgsqlTextFunctions.Strip(NpgsqlTextFunctions.ToTsVector(x.Name)))
+                    .FirstOrDefault();
+
+                Assert.That(
+                    NpgsqlTsVector.Parse(strippedTsVector).ToString(),
+                    Is.EqualTo(NpgsqlTsVector.Parse("'cooki' 'piano'").ToString()));
+            }
+        }
+
+        [Test]
+        public void TestFullTextSearch_QueryTree()
+        {
+            using (var context = new BloggingContext(ConnectionStringEF))
+            {
+                context.Database.Log = Console.Out.WriteLine;
+
+                var blog = new Blog
+                {
+                    Name = "_"
+                };
+                context.Blogs.Add(blog);
+                context.SaveChanges();
+
+                var queryTree = context
+                    .Blogs
+                    .Select(x => NpgsqlTextFunctions.QueryTree(NpgsqlTextFunctions.ToTsQuery("foo & ! bar")))
+                    .FirstOrDefault();
+
+                Assert.That(
+                    NpgsqlTsQuery.Parse(queryTree).ToString(),
+                    Is.EqualTo(NpgsqlTsQuery.Parse("'foo'").ToString()));
+            }
+        }
+
+        [Test]
+        public void TestFullTextSearch_TsHeadline()
+        {
+            using (var context = new BloggingContext(ConnectionStringEF))
+            {
+                context.Database.Log = Console.Out.WriteLine;
+
+                var blog1 = new Blog
+                {
+                    Name = "cooky cookie piano pianos"
+                };
+                context.Blogs.Add(blog1);
+
+                var blog2 = new Blog
+                {
+                    Name = "blue crab denominates elephant"
+                };
+                context.Blogs.Add(blog2);
+                context.SaveChanges();
+
+                var headlines = context
+                    .Blogs
+                    .Select(
+                        x => NpgsqlTextFunctions.TsHeadline(
+                            x.Name,
+                            NpgsqlTextFunctions.ToTsQuery("cookie"),
+                            "StartSel=<i> StopSel=</i>"))
+                    .ToList();
+
+                Assert.That(headlines.Count, Is.EqualTo(2));
+                Assert.That(headlines[0], Is.EqualTo("<i>cooky</i> <i>cookie</i> piano pianos"));
+                Assert.That(headlines[1], Is.EqualTo(blog2.Name));
+
+                headlines = context
+                    .Blogs
+                    .Select(
+                        x => NpgsqlTextFunctions.TsHeadline(
+                            "english",
+                            x.Name,
+                            NpgsqlTextFunctions.ToTsQuery("piano"),
+                            "StartSel=<i> StopSel=</i>"))
+                    .ToList();
+
+                Assert.That(headlines.Count, Is.EqualTo(2));
+                Assert.That(headlines[0], Is.EqualTo("cooky cookie <i>piano</i> <i>pianos</i>"));
+                Assert.That(headlines[1], Is.EqualTo(blog2.Name));
+            }
+        }
+
+        [Test]
+        public void TestFullTextSearch_TsRank()
+        {
+            using (var context = new BloggingContext(ConnectionStringEF))
+            {
+                context.Database.Log = Console.Out.WriteLine;
+
+                var blog1 = new Blog
+                {
+                    Name = "cooky cookie piano pianos"
+                };
+                context.Blogs.Add(blog1);
+                context.SaveChanges();
+
+                var rank = context
+                    .Blogs
+                    .Select(
+                        x => NpgsqlTextFunctions.TsRank(
+                            NpgsqlTextFunctions.ToTsVector(x.Name),
+                            NpgsqlTextFunctions.PlainToTsQuery("cookie")))
+                    .FirstOrDefault();
+                Assert.That(rank, Is.GreaterThan(0));
+
+                rank = context
+                    .Blogs
+                    .Select(
+                        x => NpgsqlTextFunctions.TsRank(
+                            NpgsqlTextFunctions.ToTsVector(x.Name),
+                            NpgsqlTextFunctions.PlainToTsQuery("cookie"),
+                            NpgsqlRankingNormalization.DivideByLength
+                            | NpgsqlRankingNormalization.DivideByUniqueWordCount))
+                    .FirstOrDefault();
+                Assert.That(rank, Is.GreaterThan(0));
+
+                rank = context
+                    .Blogs
+                    .Select(
+                        x => NpgsqlTextFunctions.TsRank(
+                            0.1f, 0.2f, 0.4f, 1.0f,
+                            NpgsqlTextFunctions.ToTsVector(x.Name),
+                            NpgsqlTextFunctions.PlainToTsQuery("cookie")))
+                    .FirstOrDefault();
+                Assert.That(rank, Is.GreaterThan(0));
+
+                rank = context
+                    .Blogs
+                    .Select(
+                        x => NpgsqlTextFunctions.TsRank(
+                            0.1f, 0.2f, 0.4f, 1.0f,
+                            NpgsqlTextFunctions.ToTsVector(x.Name),
+                            NpgsqlTextFunctions.PlainToTsQuery("cookie"),
+                            NpgsqlRankingNormalization.DivideByLength
+                            | NpgsqlRankingNormalization.DivideByUniqueWordCount))
+                    .FirstOrDefault();
+                Assert.That(rank, Is.GreaterThan(0));
+            }
+        }
+
+        [Test]
+        public void TestFullTextSearch_TsRankCd()
+        {
+            using (var context = new BloggingContext(ConnectionStringEF))
+            {
+                context.Database.Log = Console.Out.WriteLine;
+
+                var blog1 = new Blog
+                {
+                    Name = "cooky cookie piano pianos"
+                };
+                context.Blogs.Add(blog1);
+                context.SaveChanges();
+
+                var rank = context
+                    .Blogs
+                    .Select(
+                        x => NpgsqlTextFunctions.TsRankCd(
+                            NpgsqlTextFunctions.ToTsVector(x.Name),
+                            NpgsqlTextFunctions.PlainToTsQuery("cookie")))
+                    .FirstOrDefault();
+                Assert.That(rank, Is.GreaterThan(0));
+
+                rank = context
+                    .Blogs
+                    .Select(
+                        x => NpgsqlTextFunctions.TsRankCd(
+                            NpgsqlTextFunctions.ToTsVector(x.Name),
+                            NpgsqlTextFunctions.PlainToTsQuery("cookie"),
+                            NpgsqlRankingNormalization.DivideByLength
+                            | NpgsqlRankingNormalization.DivideByUniqueWordCount))
+                    .FirstOrDefault();
+                Assert.That(rank, Is.GreaterThan(0));
+
+                rank = context
+                    .Blogs
+                    .Select(
+                        x => NpgsqlTextFunctions.TsRankCd(
+                            0.1f, 0.2f, 0.4f, 1.0f,
+                            NpgsqlTextFunctions.ToTsVector(x.Name),
+                            NpgsqlTextFunctions.PlainToTsQuery("cookie")))
+                    .FirstOrDefault();
+                Assert.That(rank, Is.GreaterThan(0));
+
+                rank = context
+                    .Blogs
+                    .Select(
+                        x => NpgsqlTextFunctions.TsRankCd(
+                            0.1f, 0.2f, 0.4f, 1.0f,
+                            NpgsqlTextFunctions.ToTsVector(x.Name),
+                            NpgsqlTextFunctions.PlainToTsQuery("cookie"),
+                            NpgsqlRankingNormalization.DivideByLength
+                            | NpgsqlRankingNormalization.DivideByUniqueWordCount))
+                    .FirstOrDefault();
+                Assert.That(rank, Is.GreaterThan(0));
+            }
+        }
+
+        [Test]
+        public void TestFullTextSearch_TsRewrite()
+        {
+            using (var context = new BloggingContext(ConnectionStringEF))
+            {
+                context.Database.Log = Console.Out.WriteLine;
+
+                var blog1 = new Blog
+                {
+                    Name = "_"
+                };
+                context.Blogs.Add(blog1);
+                context.SaveChanges();
+
+                var newQuery = context
+                    .Blogs.Select(
+                        x =>
+                            NpgsqlTextFunctions.TsRewrite(
+                                "a & b",
+                                "a",
+                                "foo|bar"))
+                    .FirstOrDefault();
+
+                Assert.That(
+                    NpgsqlTsQuery.Parse(newQuery).ToString(),
+                    Is.EqualTo(NpgsqlTsQuery.Parse("'b' & ( 'foo' | 'bar' )").ToString()));
             }
         }
     }

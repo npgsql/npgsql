@@ -228,5 +228,33 @@ namespace Npgsql.Tests.Types
                 Assert.That(() => cmd.ExecuteScalar(), Throws.Exception.TypeOf<NotSupportedException>().With.Message.Contains("use .ToList()/.ToArray() instead"));
             }
         }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/960")]
+        public void MixedElementTypes()
+        {
+            var mixedList = new ArrayList { 1, "yo" };
+            using (var cmd = new NpgsqlCommand("SELECT @p1", Conn))
+            {
+                cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Array | NpgsqlDbType.Integer, mixedList);
+                Assert.That(() => cmd.ExecuteNonQuery(), Throws.Exception
+                    .TypeOf<Exception>()
+                    .With.Message.Contains("mix"));
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/960")]
+        public void JaggedArraysNotSupported()
+        {
+            var jagged = new int[2][];
+            jagged[0] = new[] { 8 };
+            jagged[1] = new[] { 8, 10 };
+            using (var cmd = new NpgsqlCommand("SELECT @p1", Conn))
+            {
+                cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Array | NpgsqlDbType.Integer, jagged);
+                Assert.That(() => cmd.ExecuteNonQuery(), Throws.Exception
+                    .TypeOf<Exception>()
+                    .With.Message.Contains("jagged"));
+            }
+        }
     }
 }

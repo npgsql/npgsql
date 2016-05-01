@@ -61,8 +61,11 @@
   <ItemGroup>
     <Compile Include="NpgsqlConnectionFactory.cs" />
     <Compile Include="NpgsqlMigrationSqlGenerator.cs" />
+    <Compile Include="NpgsqlRankingNormalization.cs" />
     <Compile Include="NpgsqlServices.cs" />
     <Compile Include="NpgsqlProviderManifest.cs" />
+    <Compile Include="NpgsqlTextFunctions.cs" />
+    <Compile Include="NpgsqlWeightLabel.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SqlGenerators\PendingProjectsNode.cs" />
     <Compile Include="SqlGenerators\SqlBaseGenerator.cs" />

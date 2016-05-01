@@ -508,6 +508,18 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1034")]
+        public void SequentialSkipOverFirstRow()
+        {
+            using (var cmd = new NpgsqlCommand("SELECT 1; SELECT 2", Conn))
+            using (var reader = cmd.ExecuteReader(CommandBehavior.SequentialAccess))
+            {
+                Assert.That(reader.NextResult(), Is.True);
+                Assert.That(reader.Read(), Is.True);
+                Assert.That(reader.GetInt32(0), Is.EqualTo(2));
+            }
+        }
+
         #region GetSchemaTable
 
         [Test]
@@ -600,6 +612,19 @@ namespace Npgsql.Tests
                             break;
                     }
                 }
+            }
+        }
+
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/1027")]
+        public void GetSchemaTableWithoutResult()
+        {
+            using (var cmd = new NpgsqlCommand("SELECT 1", Conn))
+            using (var reader = cmd.ExecuteReader())
+            {
+                reader.NextResult();
+                // We're no longer on a result
+                Assert.That(reader.GetSchemaTable(), Is.Null);
             }
         }
 

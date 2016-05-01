@@ -54,13 +54,14 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        [TestCase(@"SELECT 1<:param", TestName = "LessThan")]
-        [TestCase(@"SELECT 1>:param", TestName = "GreaterThan")]
-        [TestCase(@"SELECT 1<>:param", TestName = "NotEqual")]
-        [TestCase("SELECT--comment\r:param", TestName="LineComment")]
-        public void ParamGetsBound(string sql)
+        [TestCase(@"SELECT 1<:param", ":param", TestName = "LessThan")]
+        [TestCase(@"SELECT 1>:param", ":param", TestName = "GreaterThan")]
+        [TestCase(@"SELECT 1<>:param", ":param", TestName = "NotEqual")]
+        [TestCase("SELECT--comment\r:param", ":param", TestName="LineComment")]
+        [TestCase("SELECT @_param", "@_param", TestName = "Underscore")]
+        public void ParamGetsBound(string sql, string paramName)
         {
-            _params.AddWithValue(":param", "foo");
+            _params.AddWithValue(paramName, "foo");
             SqlQueryParser.ParseRawQuery(sql, true, _params, _queries);
             Assert.That(_queries.Single().InputParameters.Single(), Is.SameAs(_params.Single()));
         }
@@ -111,6 +112,14 @@ namespace Npgsql.Tests
             var p = new NpgsqlParameter("p", DbType.String) { Direction = ParameterDirection.Output };
             _params.Add(p);
             Assert.That(() => SqlQueryParser.ParseRawQuery("SELECT @p", true, _params, _queries), Throws.Exception);
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/946")]
+        public void ParameterNamesStartingWithDigitsAreIgnored()
+        {
+            SqlQueryParser.ParseRawQuery("SELECT ('{5,6,7}'::INTEGER[])[2:3]", true, _params, _queries);
+            Assert.That(_queries[0].InputParameters, Is.Empty);
+            Assert.That(_queries[0].SQL, Is.EqualTo("SELECT ('{5,6,7}'::INTEGER[])[2:3]"));
         }
 
 #if TODO

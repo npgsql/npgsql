@@ -477,6 +477,13 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/994")]
+        public void NonAsciiColumnName()
+        {
+            ExecuteNonQuery("CREATE TEMP TABLE data (non_ascii_éè TEXT)", Conn);
+            using (Conn.BeginBinaryImport("COPY data (non_ascii_éè) FROM STDIN BINARY")) { }
+        }
+
         #endregion
 
         #region Utils

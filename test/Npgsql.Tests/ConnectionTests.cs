@@ -366,7 +366,7 @@ namespace Npgsql.Tests
 
         [Test, Description("Breaks a connector while it's in the pool, with a keepalive and without")]
         [TestCase(false, TestName = "WithoutKeepAlive")]
-        [TestCase(false, TestName = "WithKeepAlive")]
+        [TestCase(true, TestName = "WithKeepAlive")]
         public void BreakConnectorInPool(bool keepAlive)
         {
             using (var conn = new NpgsqlConnection(ConnectionString + ";MaxPoolSize=1" + (keepAlive ? ";KeepAlive=1" : "")))
@@ -378,13 +378,21 @@ namespace Npgsql.Tests
                 // Use another connection to kill the connector currently in the pool
                 ExecuteNonQuery(string.Format("SELECT pg_terminate_backend({0})", connectorId));
 
+                // Allow some time for the terminate to occur
+                Thread.Sleep(2000);
+
                 conn.Open();
-                Assert.That(conn.ProcessID, Is.EqualTo(connectorId));
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
                 if (keepAlive)
+                {
+                    Assert.That(conn.ProcessID, Is.Not.EqualTo(connectorId));
                     Assert.That(ExecuteScalar("SELECT 1", conn), Is.EqualTo(1));
+                }
                 else
-                    Assert.That(() => ExecuteScalar("SELECT 1", conn), Throws.Exception);
+                {
+                    Assert.That(conn.ProcessID, Is.EqualTo(connectorId));
+                    Assert.That(() => ExecuteScalar("SELECT 1", conn), Throws.Exception.TypeOf<IOException>());
+                }
             }
         }
 

@@ -41,11 +41,11 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests
 {
+    [TestFixture("9.5")]
     [TestFixture("9.4")]
     [TestFixture("9.3")]
     [TestFixture("9.2")]
     [TestFixture("9.1")]
-    [TestFixture("9.0")]
     public abstract class TestBase
     {
         protected Version BackendVersion { get; private set; }

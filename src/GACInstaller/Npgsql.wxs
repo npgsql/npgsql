@@ -107,6 +107,8 @@
 
                   <?define MachineConfigPath = "[WindowsFolder]Microsoft.NET\Framework\v4.0.30319\CONFIG\machine.config" ?>
 
+                  <util:XmlConfig Id="DeletePreviousAddElement32" File="$(var.MachineConfigPath)" Action="delete" On="install" ElementPath="//configuration/system.data/DbProviderFactories" VerifyPath="//configuration/system.data/DbProviderFactories/add[\[]@invariant='Npgsql'[\]]" Node="element" Sequence="1"/>
+
                   <util:XmlConfig Id="CreateAddElement32" File="$(var.MachineConfigPath)" Action="create" On="install" ElementPath="//configuration/system.data/DbProviderFactories" Name="add" Node="element" VerifyPath="//configuration/system.data/DbProviderFactories/add[\[]@invariant='Npgsql'[\]]" Sequence="1">
                     <util:XmlConfig Id="NameAttribute32" ElementId="CreateAddElement32" Name="name" Value="Npgsql Data Provider" File="$(var.MachineConfigPath)" />
                     <util:XmlConfig Id="InvariantAttribute32" ElementId="CreateAddElement32" Name="invariant" Value="Npgsql" File="$(var.MachineConfigPath)" />
@@ -129,6 +131,8 @@
                   <CreateFolder/>
 
                   <?define MachineConfigPath = "[WindowsFolder]Microsoft.NET\Framework64\v4.0.30319\CONFIG\machine.config" ?>
+
+                  <util:XmlConfig Id="DeletePreviousAddElement64" File="$(var.MachineConfigPath)" Action="delete" On="install" ElementPath="//configuration/system.data/DbProviderFactories" VerifyPath="//configuration/system.data/DbProviderFactories/add[\[]@invariant='Npgsql'[\]]" Node="element" Sequence="1"/>
 
                   <util:XmlConfig Id="CreateAddElement64" File="$(var.MachineConfigPath)" Action="create" On="install" ElementPath="//configuration/system.data/DbProviderFactories" Name="add" Node="element" VerifyPath="//configuration/system.data/DbProviderFactories/add[\[]@invariant='Npgsql'[\]]" Sequence="1">
                     <util:XmlConfig Id="NameAttribute64" ElementId="CreateAddElement64" Name="name" Value="Npgsql Data Provider" File="$(var.MachineConfigPath)" />

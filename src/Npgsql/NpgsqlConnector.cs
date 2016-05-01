@@ -456,7 +456,7 @@ namespace Npgsql
             }
             catch
             {
-                BreakFromOpen();
+                Break();
                 throw;
             }
         }
@@ -641,10 +641,15 @@ namespace Npgsql
                     return;
 
                 case AuthenticationRequestType.AuthenticationCleartextPassword:
+                    if (Password == null)
+                        throw new Exception("No password has been provided but the backend requires one (in cleartext)");
+
                     passwordMessage = PasswordMessage.CreateClearText(Password);
                     break;
 
                 case AuthenticationRequestType.AuthenticationMD5Password:
+                    if (Password == null)
+                        throw new Exception("No password has been provided but the backend requires one (in MD5)");
                     passwordMessage = PasswordMessage.CreateMD5(Password, UserName, ((AuthenticationMD5PasswordMessage)msg).Salt);
                     break;
 
@@ -1415,7 +1420,6 @@ namespace Npgsql
         internal void Break()
         {
             Contract.Requires(!IsClosed);
-            Contract.Requires(State != ConnectorState.Connecting);
 
             if (State == ConnectorState.Broken)
                 return;
@@ -1429,24 +1433,15 @@ namespace Npgsql
             // We have no connection if we're broken by a keepalive occuring while the connector is in the pool
             if (conn != null)
             {
-                // The connection's full state is usually calculated from the connector's, but in states closed/broken the
-                // connector is null. We therefore need a way to distinguish between Closed and Broken on the connection.
+                // When we break, we normally need to call into NpgsqlConnection to reset its state.
+                // The exception to this is when we're connecting, in which case the try/catch in NpgsqlConnection.Open
+                // will handle things.
+                // Note also that the connection's full state is usually calculated from the connector's, but in
+                // states closed/broken the connector is null. We therefore need a way to distinguish between
+                // Closed and Broken on the connection.
                 if (prevState != ConnectorState.Connecting)
-                conn.ReallyClose(true);
+                    conn.ReallyClose(true);
             }
-        }
-
-        /// <summary>
-        /// Called when an open attempt fails (e.g. I/O error, timeout).
-        /// </summary>
-        internal void BreakFromOpen()
-        {
-            Contract.Requires(State == ConnectorState.Connecting);
-            Contract.Requires(Connection != null);
-
-            Log.Trace("Break connector during Open", Id);
-            State = ConnectorState.Broken;
-            Cleanup();
         }
 
         /// <summary>
@@ -1830,7 +1825,7 @@ namespace Npgsql
             ExecuteInternalCommand(new QueryMessage(query), withTimeout);
         }
 
-        internal void ExecuteInternalCommand(SimpleFrontendMessage message, bool withTimeout=true)
+        internal void ExecuteInternalCommand(FrontendMessage message, bool withTimeout=true)
         {
             using (StartUserAction())
             {
