@@ -184,8 +184,11 @@ namespace Npgsql
                     throw new ArgumentNullException(nameof(value));
                 Contract.EndContractBlock();
 
-                _commandText = value;
+                // First deallocate before changing the field value since we also
+                // remove the old persisted command from memory
                 DeallocatePrepared(true);
+
+                _commandText = value;
             }
         }
 
