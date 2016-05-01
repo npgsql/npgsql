@@ -338,7 +338,7 @@ namespace Npgsql
                 _connector.Break();
                 throw new Exception("Expected ErrorResponse when cancelling COPY but got: " + msg.Code);
             } catch (NpgsqlException e) {
-                if (e.Code == "57014") { return; }
+                if (e.SqlState == "57014") { return; }
                 throw;
             }
         }

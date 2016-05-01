@@ -945,7 +945,7 @@ namespace Npgsql
                 }
                 catch (NpgsqlException e)
                 {
-                    if (e.Code == "57014")
+                    if (e.SqlState == "57014")
                         throw new TaskCanceledException(e.Message);
                     throw;
                 }
@@ -1004,7 +1004,7 @@ namespace Npgsql
                 }
                 catch (NpgsqlException e)
                 {
-                    if (e.Code == "57014")
+                    if (e.SqlState == "57014")
                         throw new TaskCanceledException(e.Message);
                     throw;
                 }
@@ -1076,7 +1076,7 @@ namespace Npgsql
                 }
                 catch (NpgsqlException e)
                 {
-                    if (e.Code == "57014")
+                    if (e.SqlState == "57014")
                         throw new TaskCanceledException(e.Message);
                     throw;
                 }

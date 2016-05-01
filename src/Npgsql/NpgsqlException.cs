@@ -70,6 +70,16 @@ namespace Npgsql
         /// See http://www.postgresql.org/docs/current/static/errcodes-appendix.html
         /// </remarks>
         [PublicAPI]
+        public string SqlState => _msg.Code;
+
+        /// <summary>
+        /// The SQLSTATE code for the error.
+        /// </summary>
+        /// <remarks>
+        /// Always present.
+        /// See http://www.postgresql.org/docs/current/static/errcodes-appendix.html
+        /// </remarks>
+        [PublicAPI, Obsolete("Use SqlState instead")]
         public string Code => _msg.Code;
 
         /// <summary>
@@ -203,7 +213,7 @@ namespace Npgsql
         /// <summary>
         /// Gets a the PostgreSQL error message and code.
         /// </summary>
-        public override string Message => Code + ": " + MessageText;
+        public override string Message => SqlState + ": " + MessageText;
 
         /// <summary>
         /// Returns the statement which triggered this exception.

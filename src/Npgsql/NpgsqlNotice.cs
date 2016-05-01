@@ -57,6 +57,16 @@ namespace Npgsql
         /// Always present.
         /// See http://www.postgresql.org/docs/current/static/errcodes-appendix.html
         /// </remarks>
+        public string SqlState => _msg.Code;
+
+        /// <summary>
+        /// The SQLSTATE code for the error.
+        /// </summary>
+        /// <remarks>
+        /// Always present.
+        /// See http://www.postgresql.org/docs/current/static/errcodes-appendix.html
+        /// </remarks>
+        [Obsolete("Use SqlState instead")]
         public string Code => _msg.Code;
 
         /// <summary>

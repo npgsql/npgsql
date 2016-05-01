@@ -139,7 +139,7 @@ namespace Npgsql.Tests
                 {
                     conn.Open();
                 }
-                catch (NpgsqlException e) when (e.Code == "3D000")
+                catch (NpgsqlException e) when (e.SqlState == "3D000")
                 {
                     var csb = new NpgsqlConnectionStringBuilder(_connectionString);
                     var requiredDatabase = csb.Database;
@@ -211,9 +211,9 @@ namespace Npgsql.Tests
             }
             catch (NpgsqlException e)
             {
-                if (e.Code == "3D000")
+                if (e.SqlState == "3D000")
                     TestUtil.IgnoreExceptOnBuildServer("Please create a database npgsql_tests, owned by user npgsql_tests");
-                else if (e.Code == "28P01")
+                else if (e.SqlState == "28P01")
                     TestUtil.IgnoreExceptOnBuildServer("Please create a user npgsql_tests as follows: create user npgsql_tests with password 'npgsql_tests'");
                 else
                     throw;

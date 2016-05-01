@@ -237,7 +237,7 @@ namespace Npgsql
                 }
                 catch (NpgsqlException e)
                 {
-                    if (e.Code == "57014") { return; }
+                    if (e.SqlState == "57014") { return; }
                     throw;
                 }
             }

@@ -62,7 +62,7 @@ namespace Npgsql.Tests
 
                 Assert.That(ex.MessageText, Is.EqualTo("testexception"));
                 Assert.That(ex.Severity, Is.EqualTo("ERROR"));
-                Assert.That(ex.Code, Is.EqualTo("12345"));
+                Assert.That(ex.SqlState, Is.EqualTo("12345"));
                 Assert.That(ex.Position, Is.EqualTo(0));
 
                 var data = ex.Data;
