@@ -136,6 +136,16 @@ namespace Npgsql.Tests
             Assert.That(() => SqlQueryParser.ParseRawQuery("SELECT @p", true, _params, _queries), Throws.Exception);
         }
 
+        [Test]
+        public void MissingParamIsIgnored()
+        {
+            SqlQueryParser.ParseRawQuery("SELECT @p; SELECT 1", true, _params, _queries);
+            Assert.That(_queries[0].SQL, Is.EqualTo("SELECT @p"));
+            Assert.That(_queries[1].SQL, Is.EqualTo("SELECT 1"));
+            Assert.That(_queries[0].InputParameters, Is.Empty);
+            Assert.That(_queries[1].InputParameters, Is.Empty);
+        }
+
 #if TODO
         [Test]
         public void TrimWhitespace()
