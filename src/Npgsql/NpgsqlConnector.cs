@@ -1513,7 +1513,7 @@ namespace Npgsql
             }
 
             // If a begin transaction is pending (i.e. not yet sent to the server), remove it
-            if (PregeneratedMessage.BeginTransactionMessages.Contains(_messagesToSend.LastOrDefault()))
+            while (PregeneratedMessage.BeginTransactionMessages.Contains(_messagesToSend.LastOrDefault()))
             {
                 _messagesToSend.RemoveAt(_messagesToSend.Count - 1);
                 checked { _pendingRfqPrependedMessages--; }

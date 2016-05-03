@@ -100,19 +100,23 @@ namespace Npgsql
 
             switch (isolationLevel) {
                 case IsolationLevel.RepeatableRead:
-                    Connector.PrependInternalMessage(PregeneratedMessage.BeginTransRepeatableRead);
+                    Connector.PrependInternalMessage(PregeneratedMessage.BeginTrans);
+                    Connector.PrependInternalMessage(PregeneratedMessage.SetTransRepeatableRead);
                     break;
                 case IsolationLevel.Serializable:
                 case IsolationLevel.Snapshot:
-                    Connector.PrependInternalMessage(PregeneratedMessage.BeginTransSerializable);
+                    Connector.PrependInternalMessage(PregeneratedMessage.BeginTrans);
+                    Connector.PrependInternalMessage(PregeneratedMessage.SetTransSerializable);
                     break;
                 case IsolationLevel.ReadUncommitted:
                     // PG doesn't really support ReadUncommitted, it's the same as ReadCommitted. But we still
                     // send as if.
-                    Connector.PrependInternalMessage(PregeneratedMessage.BeginTransReadUncommitted);
+                    Connector.PrependInternalMessage(PregeneratedMessage.BeginTrans);
+                    Connector.PrependInternalMessage(PregeneratedMessage.SetTransReadUncommitted);
                     break;
                 case IsolationLevel.ReadCommitted:
-                    Connector.PrependInternalMessage(PregeneratedMessage.BeginTransReadCommitted);
+                    Connector.PrependInternalMessage(PregeneratedMessage.BeginTrans);
+                    Connector.PrependInternalMessage(PregeneratedMessage.SetTransReadCommitted);
                     break;
                 case IsolationLevel.Unspecified:
                     isolationLevel = DefaultIsolationLevel;
