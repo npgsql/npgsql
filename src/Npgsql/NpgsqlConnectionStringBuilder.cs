@@ -859,6 +859,7 @@ namespace Npgsql
         [Description("Obsolete, see http://www.npgsql.org/doc/3.1/migration.html")]
         [DisplayName("Connection Lifetime")]
         [NpgsqlConnectionStringProperty]
+        [Obsolete]
         public int ConnectionLifeTime
         {
             get { throw new NotSupportedException("The ContinuousProcessing parameter is no longer supported. Please see http://www.npgsql.org/doc/3.1/migration.html"); }
