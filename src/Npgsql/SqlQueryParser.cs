@@ -33,12 +33,10 @@ namespace Npgsql
     static class SqlQueryParser
     {
         static readonly bool[] ParamNameCharTable;
-        static readonly bool[] ParamNameStartCharTable;
 
         static SqlQueryParser()
         {
             ParamNameCharTable = BuildParameterNameCharacterTable();
-            ParamNameStartCharTable = BuildParameterNameStartCharacterTable();
         }
 
         /// <summary>
@@ -126,7 +124,7 @@ namespace Npgsql
             if (currCharOfs < end) {
                 lastChar = ch;
                 ch = sql[currCharOfs];
-                if (IsParamNameStartChar(ch)) {
+                if (IsParamNameChar(ch)) {
                     if (currCharOfs - 1 > currTokenBeg) {
                         currentSql.Write(sql.Substring(currTokenBeg, currCharOfs - 1 - currTokenBeg));
                     }
@@ -141,7 +139,7 @@ namespace Npgsql
 
         Param:
             // We have already at least one character of the param name
-            for (; ; ) {
+            for (;;) {
                 lastChar = ch;
                 if (currCharOfs >= end || !IsParamNameChar(ch = sql[currCharOfs])) {
                     var paramName = sql.Substring(currTokenBeg, currCharOfs - currTokenBeg);
@@ -150,13 +148,19 @@ namespace Npgsql
                     if (!paramIndexMap.TryGetValue(paramName, out index)) {
                         // Parameter hasn't been seen before in this query
                         NpgsqlParameter parameter;
-                        if (!parameters.TryGetValue(paramName, out parameter)) {
-                            throw new Exception(String.Format("Parameter '{0}' referenced in SQL but not found in parameter list", paramName));
+                        if (!parameters.TryGetValue(paramName, out parameter))
+                        {
+                            currentSql.Write(paramName);
+                            currTokenBeg = currCharOfs;
+                            if (currCharOfs >= end)
+                                goto Finish;
+
+                            currCharOfs++;
+                            goto NoneContinue;
                         }
 
-                        if (!parameter.IsInputDirection) {
-                            throw new Exception(String.Format("Parameter '{0}' referenced in SQL but is an out-only parameter", paramName));
-                        }
+                        if (!parameter.IsInputDirection)
+                            throw new Exception(string.Format("Parameter '{0}' referenced in SQL but is an out-only parameter", paramName));
 
                         currentParameters.Add(parameter);
                         index = paramIndexMap[paramName] = currentParameters.Count;
@@ -429,29 +433,13 @@ namespace Npgsql
             return ch <= 'z' && ParamNameCharTable[ch];
         }
 
-        static bool IsParamNameStartChar(char ch)
-        {
-            return ch <= 'z' && ParamNameStartCharTable[ch];
-        }
-
         static bool[] BuildParameterNameCharacterTable()
         {
             var table = new bool['z' + 1];
-            table['.'] = true;  // why??
+            table['.'] = true; // why??
             table['_'] = true;
             for (int i = '0'; i <= '9'; i++)
                 table[i] = true;
-            for (int i = 'A'; i <= 'Z'; i++)
-                table[i] = true;
-            for (int i = 'a'; i <= 'z'; i++)
-                table[i] = true;
-            return table;
-        }
-
-        static bool[] BuildParameterNameStartCharacterTable()
-        {
-            var table = new bool['z' + 1];
-            table['_'] = true;
             for (int i = 'A'; i <= 'Z'; i++)
                 table[i] = true;
             for (int i = 'a'; i <= 'z'; i++)
