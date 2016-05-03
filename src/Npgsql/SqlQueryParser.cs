@@ -32,13 +32,11 @@ namespace Npgsql
 {
     static class SqlQueryParser
     {
-        static readonly bool[] ParamNameCharTable;
-        static readonly bool[] ParamNameStartCharTable;
+        static readonly Array ParamNameCharTable;
 
         static SqlQueryParser()
         {
             ParamNameCharTable = BuildParameterNameCharacterTable();
-            ParamNameStartCharTable = BuildParameterNameStartCharacterTable();
         }
 
         /// <summary>
@@ -126,7 +124,7 @@ namespace Npgsql
             if (currCharOfs < end) {
                 lastChar = ch;
                 ch = sql[currCharOfs];
-                if (IsParamNameStartChar(ch)) {
+                if (IsParamNameChar(ch)) {
                     if (currCharOfs - 1 > currTokenBeg) {
                         currentSql.Write(sql.Substring(currTokenBeg, currCharOfs - 1 - currTokenBeg));
                     }
@@ -426,37 +424,34 @@ namespace Npgsql
 
         static bool IsParamNameChar(char ch)
         {
-            return ch <= 'z' && ParamNameCharTable[ch];
+            if (ch < '.' || ch > 'z') {
+                return false;
+            }
+            return ((byte)ParamNameCharTable.GetValue(ch) != 0);
         }
 
-        static bool IsParamNameStartChar(char ch)
+        static Array BuildParameterNameCharacterTable()
         {
-            return ch <= 'z' && ParamNameStartCharTable[ch];
-        }
+            // Table has lower bound of (int)'.';
+            var paramNameCharTable = Array.CreateInstance(typeof(byte), new[] { 'z' - '.' + 1 }, new int[] { '.' });
 
-        static bool[] BuildParameterNameCharacterTable()
-        {
-            var table = new bool['z' + 1];
-            table['.'] = true;  // why??
-            table['_'] = true;
-            for (int i = '0'; i <= '9'; i++)
-                table[i] = true;
-            for (int i = 'A'; i <= 'Z'; i++)
-                table[i] = true;
-            for (int i = 'a'; i <= 'z'; i++)
-                table[i] = true;
-            return table;
-        }
+            paramNameCharTable.SetValue((byte)'.', (int)'.');
 
-        static bool[] BuildParameterNameStartCharacterTable()
-        {
-            var table = new bool['z' + 1];
-            table['_'] = true;
-            for (int i = 'A'; i <= 'Z'; i++)
-                table[i] = true;
-            for (int i = 'a'; i <= 'z'; i++)
-                table[i] = true;
-            return table;
+            for (int i = '0'; i <= '9'; i++) {
+                paramNameCharTable.SetValue((byte)i, i);
+            }
+
+            for (int i = 'A'; i <= 'Z'; i++) {
+                paramNameCharTable.SetValue((byte)i, i);
+            }
+
+            paramNameCharTable.SetValue((byte)'_', (int)'_');
+
+            for (int i = 'a'; i <= 'z'; i++) {
+                paramNameCharTable.SetValue((byte)i, i);
+            }
+
+            return paramNameCharTable;
         }
     }
 }
