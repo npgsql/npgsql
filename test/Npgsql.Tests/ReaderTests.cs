@@ -371,13 +371,6 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void NonExistentParameterName()
-        {
-            var cmd = new NpgsqlCommand("SELECT @x::TEXT", Conn);
-            Assert.That(() => cmd.ExecuteReader(), Throws.Exception);
-        }
-
-        [Test]
         public void UseDataAdapter()
         {
             var command = new NpgsqlCommand("SELECT 1", Conn);
