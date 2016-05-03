@@ -3,9 +3,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
-using System.Net.Security;
-using System.Runtime.InteropServices;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AsyncRewriter;
@@ -18,16 +15,12 @@ namespace Npgsql
         /// <summary>
         /// Holds connector pools indexed by their connection strings.
         /// </summary>
-        internal static ConcurrentDictionary<NpgsqlConnectionStringBuilder, ConnectorPool> Pools { get; private set; }
-
-        static Timer _pruningTimer;
+        internal static ConcurrentDictionary<NpgsqlConnectionStringBuilder, ConnectorPool> Pools { get; }
 
         /// <summary>
         /// Maximum number of possible connections in the pool.
         /// </summary>
         internal const int PoolSizeLimit = 1024;
-
-        const int PruningInterval = 1000;
 
         static PoolManager()
         {
@@ -38,9 +31,6 @@ namespace Npgsql
         {
             Contract.Requires(connString != null);
             Contract.Ensures(Contract.Result<ConnectorPool>() != null);
-
-            if (_pruningTimer == null)
-                _pruningTimer = new Timer(PruneIdleConnectors, null, PruningInterval, PruningInterval);
 
             return Pools.GetOrAdd(connString, cs =>
             {
@@ -58,18 +48,10 @@ namespace Npgsql
             return Pools[connString];
         }
 
-        static void PruneIdleConnectors(object state)
-        {
-            foreach (var pool in Pools.Values)
-                pool.PruneIdleConnectors();
-        }
-
         internal static void ClearAll()
         {
             foreach (var pool in Pools.Values)
                 pool.Clear();
-            _pruningTimer.Dispose();
-            _pruningTimer = null;
         }
     }
 
@@ -95,6 +77,9 @@ namespace Npgsql
         /// </summary>
         int _clearCounter;
 
+        static Timer _pruningTimer;
+        TimeSpan _pruningInterval;
+
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         internal ConnectorPool(NpgsqlConnectionStringBuilder csb)
@@ -103,6 +88,7 @@ namespace Npgsql
             Min = csb.MinPoolSize;
 
             ConnectionString = csb;
+            _pruningInterval = TimeSpan.FromSeconds(ConnectionString.ConnectionPruningInterval);
             Idle = new IdleConnectorList();
             Waiting = new Queue<TaskCompletionSource<NpgsqlConnector>>();
         }
@@ -121,6 +107,7 @@ namespace Npgsql
                     continue;
                 connector.Connection = conn;
                 Busy++;
+                EnsurePruningTimerState();
                 Monitor.Exit(this);
                 return connector;
             }
@@ -219,6 +206,7 @@ namespace Npgsql
 
                 Idle.Push(connector);
                 Busy--;
+                EnsurePruningTimerState();
                 Contract.Assert(Idle.Count <= _max);
             }
         }
@@ -250,6 +238,7 @@ namespace Npgsql
                     lock (this)
                     {
                         Idle.Push(connector);
+                        EnsurePruningTimerState();
                         Busy--;
                     }
                 }
@@ -263,7 +252,23 @@ namespace Npgsql
             }
         }
 
-        internal void PruneIdleConnectors()
+        void EnsurePruningTimerState()
+        {
+            Contract.Requires(Monitor.IsEntered(this));
+
+            if (Idle.Count <= Min)
+            {
+                if (_pruningTimer != null)
+                {
+                    _pruningTimer.Dispose();
+                    _pruningTimer = null;
+                }
+            }
+            else if (_pruningTimer == null)
+                _pruningTimer = new Timer(PruneIdleConnectors, null, _pruningInterval, _pruningInterval);
+        }
+
+        internal void PruneIdleConnectors(object state)
         {
             if (Idle.Count <= Min)
                 return;
@@ -284,6 +289,7 @@ namespace Npgsql
                         Log.Warn("Exception while closing connector", e, connector.Id);
                     }
                 }
+                EnsurePruningTimerState();
             }
         }
 
@@ -294,6 +300,7 @@ namespace Npgsql
             {
                 idleConnectors = Idle.ToArray();
                 Idle.Clear();
+                EnsurePruningTimerState();
             }
 
             foreach (var connector in idleConnectors)

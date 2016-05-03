@@ -640,6 +640,27 @@ namespace Npgsql
         }
         int _connectionIdleLifetime;
 
+        /// <summary>
+        /// How many seconds the pool waits before attempting to prune idle connections that are beyond
+        /// idle lifetime (<see cref="ConnectionIdleLifetime"/>.
+        /// </summary>
+        /// <value>The interval (in seconds). The default value is 10.</value>
+        [Category("Pooling")]
+        [Description("How many seconds the pool waits before attempting to prune idle connections that are beyond idle lifetime.")]
+        [DisplayName("Connection Pruning Interval")]
+        [NpgsqlConnectionStringProperty]
+        [DefaultValue(10)]
+        public int ConnectionPruningInterval
+        {
+            get { return _connectionPruningInterval; }
+            set
+            {
+                _connectionPruningInterval = value;
+                SetValue(nameof(ConnectionPruningInterval), value);
+            }
+        }
+        int _connectionPruningInterval;
+
         #endregion
 
         #region Properties - Timeouts

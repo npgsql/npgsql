@@ -244,12 +244,15 @@ namespace Npgsql.Tests
         [Test]
         public void PruneIdleConnectors()
         {
-            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) { ConnectionIdleLifetime = 1 };
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ApplicationName = nameof(PruneIdleConnectors),
+                ConnectionIdleLifetime = 1,
+                ConnectionPruningInterval = 1
+            };
             using (var conn1 = OpenConnection(connString))
             using (var conn2 = OpenConnection(connString))
-            {
                 connString = conn1.Settings; // Shouldn't be necessary
-            }
 
             // We now have 2 connections in the pool, MinPoolSize is 1
             Thread.Sleep(500);
