@@ -78,7 +78,7 @@ namespace Npgsql
         int _clearCounter;
 
         static Timer _pruningTimer;
-        TimeSpan _pruningInterval;
+        readonly TimeSpan _pruningInterval;
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
@@ -231,8 +231,10 @@ namespace Npgsql
 
                 try
                 {
-                    var connector = new NpgsqlConnector((NpgsqlConnection)((ICloneable)conn).Clone());
-                    connector.ClearCounter = _clearCounter;
+                    var connector = new NpgsqlConnector((NpgsqlConnection) ((ICloneable) conn).Clone())
+                    {
+                        ClearCounter = _clearCounter
+                    };
                     connector.Open();
                     connector.Reset();
                     lock (this)
@@ -279,7 +281,8 @@ namespace Npgsql
                 while (Idle.Count > Min &&
                         (DateTime.UtcNow - Idle.Last.Value.ReleaseTimestamp).TotalSeconds >= idleLifetime)
                 {
-                    var connector = Idle.Pop();
+                    var connector = Idle.Last.Value;
+                    Idle.RemoveLast();
                     try
                     {
                         connector.Close();

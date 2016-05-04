@@ -137,9 +137,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
-using System.Net.Security;
-using System.Runtime.InteropServices;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Logging;
@@ -1380,10 +1377,15 @@ namespace Npgsql
         {
             NpgsqlConnector connector;
             Monitor.Enter(this);
-            if (Idle.Count > 0)
+            while (Idle.Count > 0)
             {
                 connector = Idle.Pop();
+                // An idle connector could be broken because of a keepalive
+                if (connector.IsBroken)
+                    continue;
+                connector.Connection = conn;
                 Busy++;
+                EnsurePruningTimerState();
                 Monitor.Exit(this);
                 return connector;
             }
@@ -1412,7 +1414,9 @@ namespace Npgsql
                     }
                 }
 
-                return tcs.Task.Result;
+                connector = tcs.Task.Result;
+                connector.Connection = conn;
+                return connector;
             }
 
             // No idle connectors are available, and we're under the pool's maximum capacity.
