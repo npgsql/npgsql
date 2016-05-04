@@ -395,7 +395,13 @@ namespace Npgsql
 
         void WriteStartupMessage()
         {
-            var startupMessage = new StartupMessage { ["client_encoding"] = "UTF8" };
+            var startupMessage = new StartupMessage
+            {
+                ["client_encoding"] =
+                    _settings.ClientEncoding ??
+                    Environment.GetEnvironmentVariable("PGCLIENTENCODING") ??
+                    "UTF8"
+            };
 
             if (!string.IsNullOrEmpty(Username))
                 startupMessage["user"] = Username;

@@ -443,6 +443,49 @@ namespace Npgsql.Tests
 
         #endregion
 
+        #region Client Encoding
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1065")]
+        [Parallelizable(ParallelScope.None)]
+        public void ClientEncodingEnvVar()
+        {
+            using (var conn = OpenConnection())
+                Assert.That(conn.ExecuteScalar("SHOW client_encoding"), Is.Not.EqualTo("SQL_ASCII"));
+            var prevEnvVar = Environment.GetEnvironmentVariable("PGCLIENTENCODING");
+            Environment.SetEnvironmentVariable("PGCLIENTENCODING", "SQL_ASCII");
+            // Note that the pool is unaware of the environment variable, so if a connection is
+            // returned from the pool it may contain the wrong client_encoding
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ApplicationName = nameof(ClientEncodingEnvVar),
+                Pooling = false
+            };
+            try
+            {
+                using (var conn = OpenConnection(connString))
+                    Assert.That(conn.ExecuteScalar("SHOW client_encoding"), Is.EqualTo("SQL_ASCII"));
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("PGCLIENTENCODING", prevEnvVar);
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1065")]
+        public void ClientEncodingConnectionParam()
+        {
+            using (var conn = OpenConnection())
+                Assert.That(conn.ExecuteScalar("SHOW client_encoding"), Is.Not.EqualTo("SQL_ASCII"));
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) {
+                ClientEncoding = "SQL_ASCII",
+                Pooling = false
+            };
+            using (var conn = OpenConnection(connString))
+                Assert.That(conn.ExecuteScalar("SHOW client_encoding"), Is.EqualTo("SQL_ASCII"));
+        }
+
+        #endregion
+
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/903")]
         public void DataSource()
         {

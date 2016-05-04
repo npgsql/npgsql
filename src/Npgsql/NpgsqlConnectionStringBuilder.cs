@@ -416,6 +416,24 @@ namespace Npgsql
         }
         string _searchpath;
 
+        /// <summary>
+        /// Gets or sets the schema search path.
+        /// </summary>
+        [Category("Connection")]
+        [Description("Gets or sets the client_encoding parameter.")]
+        [DisplayName("Client Encoding")]
+        [NpgsqlConnectionStringProperty]
+        public string ClientEncoding
+        {
+            get { return _clientEncoding; }
+            set
+            {
+                _clientEncoding = value;
+                SetValue(nameof(ClientEncoding), value);
+            }
+        }
+        string _clientEncoding;
+
         #endregion
 
         #region Properties - Security
