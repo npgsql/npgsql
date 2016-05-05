@@ -414,7 +414,7 @@ namespace Npgsql
                 {
                     _connector.ReadExpecting<ParseCompleteMessage>();
                     _connector.ReadExpecting<BindCompleteMessage>();
-                    var msg = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential);
+                    var msg = _connector.ReadMessage(DataRowLoadingMode.NonSequential);
                     switch (msg.Code)
                     {
                     case BackendMessageCode.NoData:
@@ -433,7 +433,7 @@ namespace Npgsql
                 {
                     // Statement did not generate a resultset (e.g. INSERT)
                     // Read and process its completion message and move on to the next
-                    var msg = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential);
+                    var msg = _connector.ReadMessage(DataRowLoadingMode.NonSequential);
                     if (msg.Code != BackendMessageCode.CompletedResponse && msg.Code != BackendMessageCode.EmptyQueryResponse)
                         throw _connector.UnexpectedMessageReceived(msg.Code);
                     ProcessMessage(msg);
@@ -449,11 +449,11 @@ namespace Npgsql
                     // If output parameters are present and this is the first row of the first resultset,
                     // we must read it in non-sequential mode because it will be traversed twice (once
                     // here for the parameters, then as a regular row).
-                    _pendingMessage = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential);
+                    _pendingMessage = _connector.ReadMessage(DataRowLoadingMode.NonSequential);
                     PopulateOutputParameters();
                 }
                 else
-                    _pendingMessage = _connector.ReadSingleMessage(IsSequential ? DataRowLoadingMode.Sequential : DataRowLoadingMode.NonSequential);
+                    _pendingMessage = _connector.ReadMessage(IsSequential ? DataRowLoadingMode.Sequential : DataRowLoadingMode.NonSequential);
 
                 _state = ReaderState.InResult;
                 return true;
@@ -486,7 +486,7 @@ namespace Npgsql
                 {
                     _connector.ReadExpecting<ParseCompleteMessage>();
                     _connector.ReadExpecting<ParameterDescriptionMessage>();
-                    var msg = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential);
+                    var msg = _connector.ReadMessage(DataRowLoadingMode.NonSequential);
                     switch (msg.Code)
                     {
                     case BackendMessageCode.NoData:
@@ -527,7 +527,7 @@ namespace Npgsql
                 _pendingMessage = null;
                 return msg;
             }
-            return _connector.ReadSingleMessage(IsSequential ? DataRowLoadingMode.Sequential : DataRowLoadingMode.NonSequential);
+            return _connector.ReadMessage(IsSequential ? DataRowLoadingMode.Sequential : DataRowLoadingMode.NonSequential);
         }
 
         [RewriteAsync]

@@ -557,7 +557,7 @@ namespace Npgsql
             Log.Trace("Authenticating...", Id);
             while (true)
             {
-                var msg = await (ReadSingleMessageAsync(DataRowLoadingMode.NonSequential, cancellationToken));
+                var msg = await (ReadMessageAsync(DataRowLoadingMode.NonSequential, cancellationToken));
                 timeout.Check();
                 switch (msg.Code)
                 {
@@ -585,7 +585,7 @@ namespace Npgsql
             }
         }
 
-        internal async Task SendSingleMessageAsync(FrontendMessage msg, CancellationToken cancellationToken)
+        internal async Task SendMessageAsync(FrontendMessage msg, CancellationToken cancellationToken)
         {
             Log.Trace($"Sending: {msg}", Id);
             while (true)
@@ -610,7 +610,7 @@ namespace Npgsql
             }
         }
 
-        async Task<IBackendMessage> ReadSingleMessageWithPrependedAsync(CancellationToken cancellationToken, DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential)
+        async Task<IBackendMessage> ReadMessageWithPrependedAsync(CancellationToken cancellationToken, DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential)
         {
             // First read the responses of any prepended messages.
             // Exceptions shouldn't happen here, we break the connector if they do
@@ -621,7 +621,7 @@ namespace Npgsql
                     ReceiveTimeout = InternalCommandTimeout;
                     while (_pendingRfqPrependedMessages > 0)
                     {
-                        var msg = await (DoReadSingleMessageAsync(cancellationToken, DataRowLoadingMode.Skip, isPrependedMessage: true));
+                        var msg = await (DoReadMessageAsync(cancellationToken, DataRowLoadingMode.Skip, isPrependedMessage: true));
                         if (msg is ReadyForQueryMessage)
                         {
                             _pendingRfqPrependedMessages--;
@@ -639,7 +639,7 @@ namespace Npgsql
             try
             {
                 ReceiveTimeout = UserTimeout;
-                return await DoReadSingleMessageAsync(cancellationToken, dataRowLoadingMode);
+                return await DoReadMessageAsync(cancellationToken, dataRowLoadingMode);
             }
             catch (NpgsqlException)
             {
@@ -662,7 +662,7 @@ namespace Npgsql
             }
         }
 
-        async Task<IBackendMessage> DoReadSingleMessageAsync(CancellationToken cancellationToken, DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential, bool returnNullForAsyncMessage = false, bool isPrependedMessage = false)
+        async Task<IBackendMessage> DoReadMessageAsync(CancellationToken cancellationToken, DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential, bool returnNullForAsyncMessage = false, bool isPrependedMessage = false)
         {
             NpgsqlException error = null;
             while (true)
@@ -731,7 +731,7 @@ namespace Npgsql
             Contract.Requires(stopAt != BackendMessageCode.DataRow, "Shouldn't be used for rows, doesn't know about sequential");
             while (true)
             {
-                var msg = await (ReadSingleMessageAsync(DataRowLoadingMode.Skip, cancellationToken));
+                var msg = await (ReadMessageAsync(DataRowLoadingMode.Skip, cancellationToken));
                 Contract.Assert(!(msg is DataRowMessage));
                 if (msg.Code == stopAt)
                 {
@@ -746,7 +746,7 @@ namespace Npgsql
             Contract.Requires(stopAt2 != BackendMessageCode.DataRow, "Shouldn't be used for rows, doesn't know about sequential");
             while (true)
             {
-                var msg = await (ReadSingleMessageAsync(DataRowLoadingMode.Skip, cancellationToken));
+                var msg = await (ReadMessageAsync(DataRowLoadingMode.Skip, cancellationToken));
                 Contract.Assert(!(msg is DataRowMessage));
                 if (msg.Code == stopAt1 || msg.Code == stopAt2)
                 {
@@ -757,7 +757,7 @@ namespace Npgsql
 
         internal async Task<T> ReadExpectingAsync<T>(CancellationToken cancellationToken)where T : class, IBackendMessage
         {
-            var msg = await (ReadSingleMessageAsync(DataRowLoadingMode.NonSequential, cancellationToken));
+            var msg = await (ReadMessageAsync(DataRowLoadingMode.NonSequential, cancellationToken));
             var asExpected = msg as T;
             if (asExpected == null)
             {
@@ -779,7 +779,7 @@ namespace Npgsql
             Contract.Requires(message is QueryMessage || message is PregeneratedMessage);
             using (StartUserAction())
             {
-                await SendSingleMessageAsync(message, cancellationToken);
+                await SendMessageAsync(message, cancellationToken);
                 await ReadExpectingAsync<CommandCompleteMessage>(cancellationToken);
                 await ReadExpectingAsync<ReadyForQueryMessage>(cancellationToken);
             }
@@ -897,7 +897,7 @@ namespace Npgsql
                 {
                     await _connector.ReadExpectingAsync<ParseCompleteMessage>(cancellationToken);
                     await _connector.ReadExpectingAsync<BindCompleteMessage>(cancellationToken);
-                    var msg = await (_connector.ReadSingleMessageAsync(DataRowLoadingMode.NonSequential, cancellationToken));
+                    var msg = await (_connector.ReadMessageAsync(DataRowLoadingMode.NonSequential, cancellationToken));
                     switch (msg.Code)
                     {
                         case BackendMessageCode.NoData:
@@ -916,7 +916,7 @@ namespace Npgsql
                 {
                     // Statement did not generate a resultset (e.g. INSERT)
                     // Read and process its completion message and move on to the next
-                    var msg = await (_connector.ReadSingleMessageAsync(DataRowLoadingMode.NonSequential, cancellationToken));
+                    var msg = await (_connector.ReadMessageAsync(DataRowLoadingMode.NonSequential, cancellationToken));
                     if (msg.Code != BackendMessageCode.CompletedResponse && msg.Code != BackendMessageCode.EmptyQueryResponse)
                         throw _connector.UnexpectedMessageReceived(msg.Code);
                     ProcessMessage(msg);
@@ -931,11 +931,11 @@ namespace Npgsql
                     // If output parameters are present and this is the first row of the first resultset,
                     // we must read it in non-sequential mode because it will be traversed twice (once
                     // here for the parameters, then as a regular row).
-                    _pendingMessage = await (_connector.ReadSingleMessageAsync(DataRowLoadingMode.NonSequential, cancellationToken));
+                    _pendingMessage = await (_connector.ReadMessageAsync(DataRowLoadingMode.NonSequential, cancellationToken));
                     PopulateOutputParameters();
                 }
                 else
-                    _pendingMessage = await (_connector.ReadSingleMessageAsync(IsSequential ? DataRowLoadingMode.Sequential : DataRowLoadingMode.NonSequential, cancellationToken));
+                    _pendingMessage = await (_connector.ReadMessageAsync(IsSequential ? DataRowLoadingMode.Sequential : DataRowLoadingMode.NonSequential, cancellationToken));
                 _state = ReaderState.InResult;
                 return true;
             }
@@ -961,7 +961,7 @@ namespace Npgsql
                 {
                     await _connector.ReadExpectingAsync<ParseCompleteMessage>(cancellationToken);
                     await _connector.ReadExpectingAsync<ParameterDescriptionMessage>(cancellationToken);
-                    var msg = await (_connector.ReadSingleMessageAsync(DataRowLoadingMode.NonSequential, cancellationToken));
+                    var msg = await (_connector.ReadMessageAsync(DataRowLoadingMode.NonSequential, cancellationToken));
                     switch (msg.Code)
                     {
                         case BackendMessageCode.NoData:
@@ -1002,7 +1002,7 @@ namespace Npgsql
                 return msg;
             }
 
-            return await _connector.ReadSingleMessageAsync(IsSequential ? DataRowLoadingMode.Sequential : DataRowLoadingMode.NonSequential, cancellationToken);
+            return await _connector.ReadMessageAsync(IsSequential ? DataRowLoadingMode.Sequential : DataRowLoadingMode.NonSequential, cancellationToken);
         }
 
         async Task<IBackendMessage> SkipUntilAsync(BackendMessageCode stopAt, CancellationToken cancellationToken)

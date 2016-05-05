@@ -467,7 +467,7 @@ namespace Npgsql
 
                 while (true)
                 {
-                    var msg = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential);
+                    var msg = _connector.ReadMessage(DataRowLoadingMode.NonSequential);
                     switch (msg.Code)
                     {
                     case BackendMessageCode.CompletedResponse: // prepended messages, e.g. begin transaction

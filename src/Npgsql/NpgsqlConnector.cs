@@ -690,7 +690,7 @@ namespace Npgsql
             Log.Trace("Authenticating...", Id);
             while (true)
             {
-                var msg = ReadSingleMessage(DataRowLoadingMode.NonSequential);
+                var msg = ReadMessage(DataRowLoadingMode.NonSequential);
                 timeout.Check();
                 switch (msg.Code)
                 {
@@ -809,7 +809,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="msg"></param>
         [RewriteAsync]
-        internal void SendSingleMessage(FrontendMessage msg)
+        internal void SendMessage(FrontendMessage msg)
         {
             Log.Trace($"Sending: {msg}", Id);
             while (true)
@@ -821,7 +821,7 @@ namespace Npgsql
             }
         }
 
-        internal void SendSingleQuery(string query) => SendSingleMessage(QueryMessage.Populate(query));
+        internal void SendQuery(string query) => SendMessage(QueryMessage.Populate(query));
 
         [RewriteAsync]
         internal void SendBuffer()
@@ -841,27 +841,27 @@ namespace Npgsql
 
         #region Backend message processing
 
-        internal IBackendMessage ReadSingleMessage(DataRowLoadingMode dataRowLoadingMode)
+        internal IBackendMessage ReadMessage(DataRowLoadingMode dataRowLoadingMode)
         {
-            var msg = ReadSingleMessageWithPrepended(dataRowLoadingMode);
+            var msg = ReadMessageWithPrepended(dataRowLoadingMode);
             Contract.Assert(msg != null);
             return msg;
         }
 
-        internal Task<IBackendMessage> ReadSingleMessageAsync(DataRowLoadingMode dataRowLoadingMode, CancellationToken cancellationToken)
-            => ReadSingleMessageWithPrependedAsync(cancellationToken, dataRowLoadingMode);
+        internal Task<IBackendMessage> ReadMessageAsync(DataRowLoadingMode dataRowLoadingMode, CancellationToken cancellationToken)
+            => ReadMessageWithPrependedAsync(cancellationToken, dataRowLoadingMode);
 
         internal void ReadAsyncMessage(int timeout)
         {
             ReceiveTimeout = timeout;
-            var msg = DoReadSingleMessage(DataRowLoadingMode.NonSequential, true);
+            var msg = DoReadMessage(DataRowLoadingMode.NonSequential, true);
             if (msg != null)
                 throw new Exception($"While waiting for an asynchronous message, received an unexpected message of type {msg.Code}");
         }
 
         internal async Task ReadAsyncMessageAsync()
         {
-            var msg = await DoReadSingleMessageAsync(CancellationToken.None, DataRowLoadingMode.NonSequential, true);
+            var msg = await DoReadMessageAsync(CancellationToken.None, DataRowLoadingMode.NonSequential, true);
             if (msg != null)
                 throw new Exception($"While waiting for an asynchronous message, received an unexpected message of type {msg.Code}");
         }
@@ -869,7 +869,7 @@ namespace Npgsql
         [RewriteAsync]
         [CanBeNull]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        IBackendMessage ReadSingleMessageWithPrepended(DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential)
+        IBackendMessage ReadMessageWithPrepended(DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential)
         {
             // First read the responses of any prepended messages.
             // Exceptions shouldn't happen here, we break the connector if they do
@@ -880,7 +880,7 @@ namespace Npgsql
                     ReceiveTimeout = InternalCommandTimeout;
                     while (_pendingRfqPrependedMessages > 0)
                     {
-                        var msg = DoReadSingleMessage(DataRowLoadingMode.Skip, isPrependedMessage: true);
+                        var msg = DoReadMessage(DataRowLoadingMode.Skip, isPrependedMessage: true);
                         if (msg is ReadyForQueryMessage)
                         {
                             _pendingRfqPrependedMessages--;
@@ -898,7 +898,7 @@ namespace Npgsql
             try
             {
                 ReceiveTimeout = UserTimeout;
-                return DoReadSingleMessage(dataRowLoadingMode);
+                return DoReadMessage(dataRowLoadingMode);
             }
             catch (NpgsqlException)
             {
@@ -922,9 +922,9 @@ namespace Npgsql
 
         [RewriteAsync]
         [CanBeNull]
-        IBackendMessage DoReadSingleMessage(DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential,
-                                            bool returnNullForAsyncMessage = false,
-                                            bool isPrependedMessage = false)
+        IBackendMessage DoReadMessage(DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential,
+                                      bool returnNullForAsyncMessage = false,
+                                      bool isPrependedMessage = false)
         {
             NpgsqlException error = null;
 
@@ -1117,7 +1117,7 @@ namespace Npgsql
 
             while (true)
             {
-                var msg = ReadSingleMessage(DataRowLoadingMode.Skip);
+                var msg = ReadMessage(DataRowLoadingMode.Skip);
                 Contract.Assert(!(msg is DataRowMessage));
                 if (msg.Code == stopAt) {
                     return msg;
@@ -1136,7 +1136,7 @@ namespace Npgsql
             Contract.Requires(stopAt2 != BackendMessageCode.DataRow, "Shouldn't be used for rows, doesn't know about sequential");
 
             while (true) {
-                var msg = ReadSingleMessage(DataRowLoadingMode.Skip);
+                var msg = ReadMessage(DataRowLoadingMode.Skip);
                 Contract.Assert(!(msg is DataRowMessage));
                 if (msg.Code == stopAt1 || msg.Code == stopAt2) {
                     return msg;
@@ -1153,7 +1153,7 @@ namespace Npgsql
         [RewriteAsync]
         internal T ReadExpecting<T>() where T : class, IBackendMessage
         {
-            var msg = ReadSingleMessage(DataRowLoadingMode.NonSequential);
+            var msg = ReadMessage(DataRowLoadingMode.NonSequential);
             var asExpected = msg as T;
             if (asExpected == null)
             {
@@ -1309,7 +1309,7 @@ namespace Npgsql
             try
             {
                 RawOpen(new NpgsqlTimeout(TimeSpan.FromSeconds(connectionTimeout)));
-                SendSingleMessage(new CancelRequestMessage(backendProcessId, backendSecretKey));
+                SendMessage(new CancelRequestMessage(backendProcessId, backendSecretKey));
 
                 Contract.Assert(ReadBuffer.ReadPosition == 0);
 
@@ -1340,7 +1340,7 @@ namespace Npgsql
 
             if (IsReady)
             {
-                try { SendSingleMessage(TerminateMessage.Instance); }
+                try { SendMessage(TerminateMessage.Instance); }
                 catch (Exception e)
                 {
                     Log.Error("Exception while closing connector", e, Id);
@@ -1633,7 +1633,7 @@ namespace Npgsql
 
             try
             {
-                SendSingleMessage(PregeneratedMessage.KeepAlive);
+                SendMessage(PregeneratedMessage.KeepAlive);
                 SkipUntil(BackendMessageCode.ReadyForQuery);
                 _keepAliveLock.Release();
             }
@@ -1709,7 +1709,7 @@ namespace Npgsql
             Contract.Requires(message is QueryMessage || message is PregeneratedMessage);
             using (StartUserAction())
             {
-                SendSingleMessage(message);
+                SendMessage(message);
                 ReadExpecting<CommandCompleteMessage>();
                 ReadExpecting<ReadyForQueryMessage>();
             }

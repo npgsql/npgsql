@@ -66,7 +66,7 @@ namespace Npgsql
 
             try
             {
-                _connector.SendSingleQuery(copyToCommand);
+                _connector.SendQuery(copyToCommand);
 
                 // TODO: Failure will break the connection (e.g. if we get CopyOutResponse), handle more gracefully
                 var copyOutResponse = _connector.ReadExpecting<CopyOutResponseMessage>();

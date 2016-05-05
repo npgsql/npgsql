@@ -84,7 +84,7 @@ namespace Npgsql
 
             try
             {
-                _connector.SendSingleQuery(copyFromCommand);
+                _connector.SendQuery(copyFromCommand);
 
                 // TODO: Failure will break the connection (e.g. if we get CopyOutResponse), handle more gracefully
                 var copyInResponse = _connector.ReadExpecting<CopyInResponseMessage>();
@@ -331,9 +331,9 @@ namespace Npgsql
         {
             _isDisposed = true;
             _buf.Clear();
-            _connector.SendSingleMessage(new CopyFailMessage());
+            _connector.SendMessage(new CopyFailMessage());
             try {
-                var msg = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential);
+                var msg = _connector.ReadMessage(DataRowLoadingMode.NonSequential);
                 // The CopyFail should immediately trigger an exception from the read above.
                 _connector.Break();
                 throw new Exception("Expected ErrorResponse when cancelling COPY but got: " + msg.Code);
@@ -361,7 +361,7 @@ namespace Npgsql
             }
             WriteTrailer();
 
-            _connector.SendSingleMessage(CopyDoneMessage.Instance);
+            _connector.SendMessage(CopyDoneMessage.Instance);
             _connector.ReadExpecting<CommandCompleteMessage>();
             _connector.ReadExpecting<ReadyForQueryMessage>();
             _connector.CurrentCopyOperation = null;

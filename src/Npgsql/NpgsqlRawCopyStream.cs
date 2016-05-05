@@ -78,8 +78,8 @@ namespace Npgsql
             _connector = connector;
             _readBuf = connector.ReadBuffer;
             _writeBuf = connector.WriteBuffer;
-            _connector.SendSingleQuery(copyCommand);
-            var msg = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential);
+            _connector.SendQuery(copyCommand);
+            var msg = _connector.ReadMessage(DataRowLoadingMode.NonSequential);
             switch (msg.Code)
             {
             case BackendMessageCode.CopyInResponse:
@@ -177,7 +177,7 @@ namespace Npgsql
             {
                 // We've consumed the current DataMessage (or haven't yet received the first),
                 // read the next message
-                var msg = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential);
+                var msg = _connector.ReadMessage(DataRowLoadingMode.NonSequential);
                 switch (msg.Code) {
                 case BackendMessageCode.CopyData:
                     _leftToReadInDataMsg = ((CopyDataMessage)msg).Length;
@@ -227,10 +227,10 @@ namespace Npgsql
             {
                 _isDisposed = true;
                 _writeBuf.Clear();
-                _connector.SendSingleMessage(new CopyFailMessage());
+                _connector.SendMessage(new CopyFailMessage());
                 try
                 {
-                    var msg = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential);
+                    var msg = _connector.ReadMessage(DataRowLoadingMode.NonSequential);
                     // The CopyFail should immediately trigger an exception from the read above.
                     _connector.Break();
                     throw new Exception("Expected ErrorResponse when cancelling COPY but got: " + msg.Code);
@@ -258,7 +258,7 @@ namespace Npgsql
             if (CanWrite)
             {
                 Flush();
-                _connector.SendSingleMessage(CopyDoneMessage.Instance);
+                _connector.SendMessage(CopyDoneMessage.Instance);
                 _connector.ReadExpecting<CommandCompleteMessage>();
                 _connector.ReadExpecting<ReadyForQueryMessage>();
             }
