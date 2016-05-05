@@ -16,6 +16,9 @@
     <TargetFrameworkProfile />
     <TargetFrameworkVersion>v4.5.1</TargetFrameworkVersion>
     <LangVersion>5</LangVersion>
+    <!-- The following stops VS from complaining about runtimes in project.json, see
+             https://github.com/Microsoft/msbuild/issues/394 -->
+    <CopyNuGetImplementations>false</CopyNuGetImplementations>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>

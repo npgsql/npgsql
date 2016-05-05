@@ -37,9 +37,6 @@
   "tools": {
     "dotnet-rewrite-async": "0.8.2"
   },
-  "runtimes": {
-    "win": {}
-  },
   "frameworks": {
     "net45": {
       "frameworkAssemblies": {

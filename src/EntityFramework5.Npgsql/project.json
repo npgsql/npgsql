@@ -30,9 +30,6 @@
   "compilationOptions": {
     "keyFile": "../../Npgsql.snk"
   },
-  "runtimes": {
-    "win": {}
-  },
   "dependencies" : {
     "Npgsql": "3.1.0-*"
   },
