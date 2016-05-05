@@ -147,7 +147,7 @@ namespace Npgsql.Tests
             using (var conn = new NpgsqlConnection(csb)) {
                 Assert.That(() => conn.Open(), Throws.Exception
                     .TypeOf<SocketException>()
-                    .With.Property("SocketErrorCode").EqualTo(SocketError.ConnectionRefused)
+                    .With.Property(nameof(SocketException.SocketErrorCode)).EqualTo(SocketError.ConnectionRefused)
                 );
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
             }
@@ -163,7 +163,7 @@ namespace Npgsql.Tests
             {
                 Assert.That(async () => await conn.OpenAsync(), Throws.Exception
                     .TypeOf<SocketException>()
-                    .With.Property("SocketErrorCode").EqualTo(SocketError.ConnectionRefused)
+                    .With.Property(nameof(SocketException.SocketErrorCode)).EqualTo(SocketError.ConnectionRefused)
                 );
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
             }
@@ -178,7 +178,7 @@ namespace Npgsql.Tests
             {
                 Assert.That(conn.Open, Throws.Exception
                     .TypeOf<PostgresException>()
-                    .With.Property("Code").EqualTo("28P01")
+                    .With.Property(nameof(PostgresException.SqlState)).EqualTo("28P01")
                 );
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
             }
@@ -192,7 +192,7 @@ namespace Npgsql.Tests
             {
                 Assert.That(() => conn.Open(), Throws.Exception
                     .TypeOf<PostgresException>()
-                    .With.Property("Code").EqualTo("28P01")
+                    .With.Property(nameof(PostgresException.SqlState)).EqualTo("28P01")
                 );
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
             }
@@ -224,7 +224,7 @@ namespace Npgsql.Tests
                     {
                         Assert.That(() => conn2.Open(),
                             Throws.Exception.TypeOf<PostgresException>()
-                            .With.Property("Code").EqualTo("3D000") // database doesn't exist
+                            .With.Property(nameof(PostgresException.SqlState)).EqualTo("3D000") // database doesn't exist
                         );
                         Assert.That(conn2.FullState, Is.EqualTo(ConnectionState.Closed));
 

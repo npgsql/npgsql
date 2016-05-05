@@ -87,7 +87,7 @@ namespace Npgsql
         {
             SourceColumn = String.Empty;
             Direction = ParameterDirection.Input;
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
             SourceVersion = DataRowVersion.Current;
 #endif
         }
@@ -187,7 +187,7 @@ namespace Npgsql
             SourceColumn = sourceColumn;
         }
 
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
         /// <summary>
         /// Initializes a new instance of the <see cref="NpgsqlParameter">NpgsqlParameter</see>.
         /// </summary>
@@ -266,7 +266,7 @@ namespace Npgsql
         /// </summary>
         /// <value>An <see cref="System.Object">Object</see> that is the value of the parameter.
         /// The default value is null.</value>
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
         [TypeConverter(typeof(StringConverter)), Category("Data")]
 #endif
         public override object Value
@@ -504,7 +504,7 @@ namespace Npgsql
         [Category("Data")]
         public override String SourceColumn { get; set; }
 
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
         /// <summary>
         /// Gets or sets the <see cref="System.Data.DataRowVersion">DataRowVersion</see>
         /// to use when loading <see cref="NpgsqlParameter.Value">Value</see>.
@@ -701,7 +701,7 @@ namespace Npgsql
                 IsNullable = IsNullable,
                 _name = _name,
                 SourceColumn = SourceColumn,
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
                 SourceVersion = SourceVersion,
 #endif
                 _value = _value,
@@ -712,7 +712,7 @@ namespace Npgsql
             return clone;
         }
 
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
         object ICloneable.Clone()
         {
             return Clone();

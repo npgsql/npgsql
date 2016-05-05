@@ -261,7 +261,7 @@ namespace Npgsql
         /// <summary>
         /// Releases resources at the backend allocated for this stream.
         /// </summary>
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
         public override void Close()
 #else
         void Close()

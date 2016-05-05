@@ -77,7 +77,7 @@ namespace Npgsql.Logging
         // Copied from NLog
         static string GetClassFullName()
         {
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
             string className;
             Type declaringType;
             int framesToSkip = 2;

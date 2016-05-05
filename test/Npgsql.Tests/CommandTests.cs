@@ -251,7 +251,10 @@ namespace Npgsql.Tests
                         Thread.Sleep(300);
                         cmd.Cancel();
                     });
-                    Assert.That(() => cmd.ExecuteNonQuery(), Throws.TypeOf<PostgresException>().With.Property("Code").EqualTo("57014"));
+                    Assert.That(() => cmd.ExecuteNonQuery(), Throws
+                        .TypeOf<PostgresException>()
+                        .With.Property(nameof(PostgresException.SqlState)).EqualTo("57014")
+                    );
                 }
             }
         }

@@ -23,7 +23,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Data.Common;
 using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
@@ -153,7 +152,7 @@ namespace Npgsql
         /// </summary>
         internal readonly Dictionary<string, string> BackendParams;
 
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
         SSPIHandler _sspi;
 #endif
 
@@ -165,7 +164,6 @@ namespace Npgsql
 
         int ReceiveTimeout
         {
-            get { return _currentTimeout; }
             set
             {
                 // TODO: Socket.ReceiveTimeout doesn't work for async.
@@ -416,7 +414,7 @@ namespace Npgsql
 
             if (!string.IsNullOrEmpty(Username))
                 startupMessage["user"] = Username;
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
             else if (IntegratedSecurity)
                 startupMessage["user"] = UsernameProvider.GetIntegratedUserName(_settings.IncludeRealm);
 #endif
@@ -476,17 +474,11 @@ namespace Npgsql
 
                         RemoteCertificateValidationCallback certificateValidationCallback;
                         if (_settings.TrustServerCertificate)
-                        {
                             certificateValidationCallback = (sender, certificate, chain, errors) => true;
-                        }
                         else if (Connection.UserCertificateValidationCallback != null)
-                        {
                             certificateValidationCallback = Connection.UserCertificateValidationCallback;
-                        }
                         else
-                        {
                             certificateValidationCallback = DefaultUserCertificateValidationCallback;
-                        }
 
                         if (!UseSslStream)
                         {
@@ -519,34 +511,29 @@ namespace Npgsql
             }
             catch
             {
-                if (_stream != null)
-                {
-                    try { _stream.Dispose(); } catch {
-                        // ignored
-                    }
-                    _stream = null;
+                try { _stream?.Dispose(); } catch {
+                    // ignored
                 }
-                if (_baseStream != null)
+                _stream = null;
+                try { _baseStream?.Dispose(); }
+                catch
                 {
-                    try { _baseStream.Dispose(); } catch {
-                        // ignored
-                    }
-                    _baseStream = null;
+                    // ignored
                 }
-                if (_socket != null)
+                _baseStream = null;
+                try { _socket?.Dispose(); }
+                catch
                 {
-                    try { _socket.Dispose(); } catch {
-                        // ignored
-                    }
-                    _socket = null;
+                    // ignored
                 }
+                _socket = null;
                 throw;
             }
         }
 
         void Connect(NpgsqlTimeout timeout)
         {
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
             // Note that there aren't any timeoutable DNS methods, and we want to use sync-only
             // methods (not to rely on any TP threads etc.)
             var ips = Dns.GetHostAddresses(Host);
@@ -758,7 +745,7 @@ namespace Npgsql
                     if (!IntegratedSecurity) {
                         throw new NpgsqlException("GSS authentication but IntegratedSecurity not enabled");
                     }
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
                     // For GSSAPI we have to use the supplied hostname
                     _sspi = new SSPIHandler(Host, KerberosServiceName, true);
                     return new PasswordMessage(_sspi.Continue(null));
@@ -770,7 +757,7 @@ namespace Npgsql
                     if (!IntegratedSecurity) {
                         throw new NpgsqlException("SSPI authentication but IntegratedSecurity not enabled");
                     }
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
                     _sspi = new SSPIHandler(Host, KerberosServiceName, false);
                     return new PasswordMessage(_sspi.Continue(null));
 #else
@@ -778,7 +765,7 @@ namespace Npgsql
 #endif
 
                 case AuthenticationRequestType.AuthenticationGSSContinue:
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
                     var passwdRead = _sspi.Continue(((AuthenticationGSSContinueMessage)msg).AuthenticationData);
                     if (passwdRead.Length != 0)
                     {
@@ -1294,9 +1281,7 @@ namespace Npgsql
         internal bool IsSecure { get; private set; }
 
         static bool DefaultUserCertificateValidationCallback(object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
-        {
-            return sslPolicyErrors == SslPolicyErrors.None;
-        }
+            => sslPolicyErrors == SslPolicyErrors.None;
 
         #endregion SSL
 

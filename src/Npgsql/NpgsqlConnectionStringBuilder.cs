@@ -29,7 +29,7 @@ using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Reflection;
 using JetBrains.Annotations;
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
 using System.DirectoryServices;
 using System.Security.Principal;
 #endif
@@ -71,7 +71,7 @@ namespace Npgsql
         /// </summary>
         public NpgsqlConnectionStringBuilder() { Init(); }
 
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
         /// <summary>
         /// Initializes a new instance of the NpgsqlConnectionStringBuilder class, optionally using ODBC rules for quoting values.
         /// </summary>

@@ -1195,7 +1195,7 @@ namespace TlsClientStream
             }
             else
             {
-#if NET45 || NET451 || NET452 || DNX451
+#if NET45 || NET451
                 var pubKey = _handshakeData.CertList[0].PublicKey.Key;
                 var rsa = pubKey as RSACryptoServiceProvider;
                 var dsa = pubKey as DSACryptoServiceProvider;
@@ -1380,7 +1380,7 @@ namespace TlsClientStream
                     var cert2 = cert as X509Certificate2;
                     if (cert2 == null)
                         cert2 = new X509Certificate2(cert
-#if !(NET45 || NET451 || NET452 || DNX451)
+#if !(NET45 || NET451)
                             .Export(X509ContentType.Cert)
 #endif
                             );
@@ -1426,7 +1426,7 @@ namespace TlsClientStream
 
         HandshakeType SendCertificateVerify(ref int offset)
         {
-#if NET45 || NET451 || NET452 || DNX451
+#if NET45 || NET451
             var key = new X509Certificate2(_clientCertificates[0]).PrivateKey;
 
             var keyDsa = key as DSACryptoServiceProvider;
@@ -1437,7 +1437,7 @@ namespace TlsClientStream
 
             byte[] signature = null, hash = null;
 
-#if NET45 || NET451 || NET452 || DNX451
+#if NET45 || NET451
             if (keyDsa != null)
             {
                 if (_pendingConnState.TlsVersion == TlsVersion.TLSv1_2 && !_handshakeData.SupportedSignatureAlgorithms.Contains(Tuple.Create(TLSHashAlgorithm.SHA1, SignatureAlgorithm.DSA)))
@@ -1511,7 +1511,7 @@ namespace TlsClientStream
                 }
                 else
                 {
-#if NET45 || NET451 || NET452 || DNX451
+#if NET45 || NET451
                     signature = keyRsa.SignHash(hash, Utils.HashNameToOID["SHA1"]);
 #else
                     signature = keyRsa.SignHash(hash, HashAlgorithmName.SHA1, RSASignaturePadding.Pkcs1);
@@ -1536,7 +1536,7 @@ namespace TlsClientStream
                 _handshakeData.CertificateVerifyHash_MD5 = null;
             }
 
-#if NET45 || NET451 || NET452 || DNX451
+#if NET45 || NET451
             key.Dispose();
 #endif
 

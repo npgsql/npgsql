@@ -295,7 +295,7 @@ namespace Npgsql
 
         #region Enum
 
-        internal void MapEnum<TEnum>([CanBeNull] string pgName, INpgsqlNameTranslator nameTranslator) where TEnum : struct
+        internal void MapEnum<TEnum>([CanBeNull] string pgName, [CanBeNull] INpgsqlNameTranslator nameTranslator) where TEnum : struct
         {
             if (nameTranslator == null)
                 nameTranslator = DefaultNameTranslator;
@@ -310,7 +310,7 @@ namespace Npgsql
             asEnumType.Activate(this, new EnumHandler<TEnum>(backendType, nameTranslator));
         }
 
-        internal static void MapEnumGlobally<TEnum>([CanBeNull] string pgName, INpgsqlNameTranslator nameTranslator) where TEnum : struct
+        internal static void MapEnumGlobally<TEnum>([CanBeNull] string pgName, [CanBeNull] INpgsqlNameTranslator nameTranslator) where TEnum : struct
         {
             if (nameTranslator == null)
                 nameTranslator = DefaultNameTranslator;
@@ -321,7 +321,7 @@ namespace Npgsql
             _globalEnumMappings[pgName] = new EnumHandler<TEnum>.Factory(nameTranslator);
         }
 
-        internal static void UnmapEnumGlobally<TEnum>([CanBeNull] string pgName, INpgsqlNameTranslator nameTranslator) where TEnum : struct
+        internal static void UnmapEnumGlobally<TEnum>([CanBeNull] string pgName, [CanBeNull] INpgsqlNameTranslator nameTranslator) where TEnum : struct
         {
             if (nameTranslator == null)
                 nameTranslator = DefaultNameTranslator;
@@ -337,7 +337,7 @@ namespace Npgsql
 
         #region Composite
 
-        internal void MapComposite<T>([CanBeNull] string pgName, INpgsqlNameTranslator nameTranslator) where T : new()
+        internal void MapComposite<T>([CanBeNull] string pgName, [CanBeNull] INpgsqlNameTranslator nameTranslator) where T : new()
         {
             if (nameTranslator == null)
                 nameTranslator = DefaultNameTranslator;
@@ -352,7 +352,7 @@ namespace Npgsql
             asComposite.Activate(this, new CompositeHandler<T>(asComposite, nameTranslator, this));
         }
 
-        internal static void MapCompositeGlobally<T>([CanBeNull] string pgName, INpgsqlNameTranslator nameTranslator) where T : new()
+        internal static void MapCompositeGlobally<T>([CanBeNull] string pgName, [CanBeNull] INpgsqlNameTranslator nameTranslator) where T : new()
         {
             if (nameTranslator == null)
                 nameTranslator = DefaultNameTranslator;
@@ -363,7 +363,7 @@ namespace Npgsql
             _globalCompositeMappings[pgName] = new CompositeHandler<T>.Factory(nameTranslator);
         }
 
-        internal static void UnmapCompositeGlobally<T>([CanBeNull] string pgName, INpgsqlNameTranslator nameTranslator) where T : new()
+        internal static void UnmapCompositeGlobally<T>([CanBeNull] string pgName, [CanBeNull] INpgsqlNameTranslator nameTranslator) where T : new()
         {
             if (nameTranslator == null)
                 nameTranslator = DefaultNameTranslator;
@@ -1076,16 +1076,6 @@ namespace Npgsql
             }
         }
 
-        class BackendPseudoType : BackendType
-        {
-            internal BackendPseudoType(string ns, string name, uint oid) : base(ns, name, oid) { }
-
-            internal override TypeHandler Activate(TypeHandlerRegistry registry)
-            {
-                throw new NotImplementedException();
-            }
-        }
-
         #endregion
 
         #region Type Handler Discovery
@@ -1179,7 +1169,7 @@ namespace Npgsql
                 : attr.PgName;
         }
 
-        BackendType GetBackendTypeByName([CanBeNull] string pgName)
+        BackendType GetBackendTypeByName(string pgName)
         {
             BackendType backendType;
             var i = pgName.IndexOf('.');

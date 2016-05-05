@@ -30,7 +30,7 @@ using System.Linq;
 using System.Reflection;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
 using System.Runtime.Serialization;
 #endif
 
@@ -244,7 +244,7 @@ namespace Npgsql
         }
 
         #region Serialization
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
         PostgresException(SerializationInfo info, StreamingContext context) : base(info, context)
         {
             _msg = (ErrorOrNoticeMessage)info.GetValue("msg", typeof(ErrorOrNoticeMessage));

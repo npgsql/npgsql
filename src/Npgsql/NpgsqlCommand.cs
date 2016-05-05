@@ -924,10 +924,7 @@ namespace Npgsql
         /// Executes a SQL statement against the connection and returns the number of rows affected.
         /// </summary>
         /// <returns>The number of rows affected if known; -1 otherwise.</returns>
-        public override int ExecuteNonQuery()
-        {
-            return ExecuteNonQueryInternal();
-        }
+        public override int ExecuteNonQuery() => ExecuteNonQueryInternal();
 
         /// <summary>
         /// Asynchronous version of <see cref="ExecuteNonQuery"/>
@@ -982,10 +979,7 @@ namespace Npgsql
         /// <returns>The first column of the first row in the result set,
         /// or a null reference if the result set is empty.</returns>
         [CanBeNull]
-        public override object ExecuteScalar()
-        {
-            return ExecuteScalarInternal();
-        }
+        public override object ExecuteScalar() => ExecuteScalarInternal();
 
         /// <summary>
         /// Asynchronous version of <see cref="ExecuteScalar"/>
@@ -1022,9 +1016,7 @@ namespace Npgsql
             {
                 var behavior = CommandBehavior.SequentialAccess | CommandBehavior.SingleRow;
                 using (var reader = Execute(behavior))
-                {
                     return reader.Read() && reader.FieldCount != 0 ? reader.GetValue(0) : null;
-                }
             }
         }
 
@@ -1040,10 +1032,7 @@ namespace Npgsql
         /// DataReader.
         /// </remarks>
         /// <returns>A DbDataReader object.</returns>
-        public new NpgsqlDataReader ExecuteReader()
-        {
-            return (NpgsqlDataReader) base.ExecuteReader();
-        }
+        public new NpgsqlDataReader ExecuteReader() => (NpgsqlDataReader) base.ExecuteReader();
 
         /// <summary>
         /// Executes the CommandText against the Connection, and returns an DbDataReader using one
@@ -1054,10 +1043,7 @@ namespace Npgsql
         /// DataReader.
         /// </remarks>
         /// <returns>A DbDataReader object.</returns>
-        public new NpgsqlDataReader ExecuteReader(CommandBehavior behavior)
-        {
-            return (NpgsqlDataReader) base.ExecuteReader(behavior);
-        }
+        public new NpgsqlDataReader ExecuteReader(CommandBehavior behavior) => (NpgsqlDataReader) base.ExecuteReader(behavior);
 
         /// <summary>
         /// Executes the command text against the connection.
@@ -1065,7 +1051,7 @@ namespace Npgsql
         /// <param name="behavior">An instance of <see cref="CommandBehavior"/>.</param>
         /// <param name="cancellationToken">A task representing the operation.</param>
         /// <returns></returns>
-        protected async override Task<DbDataReader> ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
+        protected override async Task<DbDataReader> ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
             using (cancellationToken.Register(Cancel))
@@ -1086,10 +1072,8 @@ namespace Npgsql
         /// <summary>
         /// Executes the command text against the connection.
         /// </summary>
-        protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior)
-        {
-            return ExecuteDbDataReaderInternal(behavior);
-        }
+        [NotNull]
+        protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior) => ExecuteDbDataReaderInternal(behavior);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [RewriteAsync]
@@ -1252,7 +1236,7 @@ namespace Npgsql
             Log.Debug(sb.ToString(), Connection.Connector.Id);
         }
 
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
         /// <summary>
         /// Create a new command based on this one.
         /// </summary>

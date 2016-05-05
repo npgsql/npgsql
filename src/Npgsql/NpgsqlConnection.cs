@@ -36,7 +36,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AsyncRewriter;
 using JetBrains.Annotations;
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
 using System.Transactions;
 #endif
 using Npgsql.Logging;
@@ -100,7 +100,7 @@ namespace Npgsql
 
         bool _wasBroken;
 
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
         NpgsqlPromotableSinglePhaseNotification Promotable => _promotable ?? (_promotable = new NpgsqlPromotableSinglePhaseNotification(this));
         NpgsqlPromotableSinglePhaseNotification _promotable;
 #endif
@@ -153,7 +153,7 @@ namespace Npgsql
             _noticeDelegate = OnNotice;
             _notificationDelegate = OnNotification;
 
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
             // Fix authentication problems. See https://bugzilla.novell.com/show_bug.cgi?id=MONO77559 and
             // http://pgfoundry.org/forum/message.php?msg_id=1002377 for more info.
             RSACryptoServiceProvider.UseMachineKeyStore = true;
@@ -166,8 +166,7 @@ namespace Npgsql
         /// Opens a database connection with the property settings specified by the
         /// <see cref="NpgsqlConnection.ConnectionString">ConnectionString</see>.
         /// </summary>
-        public override void Open()
-            => OpenInternal();
+        public override void Open() => OpenInternal();
 
         /// <summary>
         /// This is the asynchronous version of <see cref="Open"/>.
@@ -177,8 +176,7 @@ namespace Npgsql
         /// </remarks>
         /// <param name="cancellationToken">The cancellation instruction.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
-        public override Task OpenAsync(CancellationToken cancellationToken)
-            => OpenInternalAsync(cancellationToken);
+        public override Task OpenAsync(CancellationToken cancellationToken) => OpenInternalAsync(cancellationToken);
 
         [RewriteAsync]
         void OpenInternal()
@@ -235,7 +233,7 @@ namespace Npgsql
                 Connector.Notice += _noticeDelegate;
                 Connector.Notification += _notificationDelegate;
 
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
                 if (Settings.Enlist)
                 {
                     Promotable.Enlist(Transaction.Current);
@@ -521,7 +519,7 @@ namespace Npgsql
                 ReallyClose();
         }
 
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
         /// <summary>
         /// Enlist transation.
         /// </summary>
@@ -552,7 +550,7 @@ namespace Npgsql
 
             Log.Trace("Closing connection", Connector.Id);
 
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
             if (_promotable != null && _promotable.InLocalTransaction)
             {
                 _postponingClose = true;
@@ -570,7 +568,7 @@ namespace Npgsql
             _postponingClose = false;
             _wasBroken = wasBroken;
 
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
             // clear the way for another promotable transaction
             _promotable = null;
 #endif
@@ -1287,7 +1285,7 @@ namespace Npgsql
         #endregion State checks
 
         #region Schema operations
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
         /// <summary>
         /// Returns the supported collections
         /// </summary>
@@ -1363,7 +1361,7 @@ namespace Npgsql
 
         #region Misc
 
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
         object ICloneable.Clone()
         {
             CheckNotDisposed();
@@ -1420,7 +1418,7 @@ namespace Npgsql
             Open();
         }
 
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
         /// <summary>
         /// DB provider factory.
         /// </summary>

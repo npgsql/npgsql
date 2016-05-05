@@ -67,7 +67,7 @@ namespace Npgsql
 
         internal static readonly Task CompletedTask = TaskFromResult(0);
 
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
         internal static StringComparer InvariantCaseIgnoringStringComparer => StringComparer.InvariantCultureIgnoreCase;
 #else
         internal static StringComparer InvariantCaseIgnoringStringComparer => CultureInfo.InvariantCulture.CompareInfo.GetStringComparer(CompareOptions.IgnoreCase);

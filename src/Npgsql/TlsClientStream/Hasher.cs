@@ -15,7 +15,7 @@ namespace TlsClientStream
         public abstract byte[] Final();
         public abstract void Dispose();
 
-#if !(NET45 || NET451 || NET452 || DNX451)
+#if !(NET45 || NET451)
         public static HashAlgorithmName GetHashAlgorithmName(TLSHashAlgorithm hashAlgorithm)
         {
             switch (hashAlgorithm)

@@ -33,7 +33,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
 using System.Transactions;
 #endif
 using Npgsql.Logging;
@@ -385,7 +385,7 @@ namespace Npgsql
 
                 Connector.Notice += _noticeDelegate;
                 Connector.Notification += _notificationDelegate;
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
                 if (Settings.Enlist)
                 {
                     Promotable.Enlist(Transaction.Current);
@@ -891,7 +891,7 @@ namespace Npgsql
 
             Contract.Assert(_state == ReaderState.BetweenResults);
             _hasRows = null;
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
             _cachedSchemaTable = null;
 #endif
             if ((_behavior & CommandBehavior.SingleResult) != 0 && _statementIndex == 0)

@@ -48,7 +48,7 @@ namespace TlsClientStream
         public int MACLen => Utils.GetHashLen(HashAlgorithm);
 
         public
-#if NET45 || NET451 || NET452 || DNX451
+#if NET45 || NET451
             HMAC
 #else
             IncrementalHash
@@ -57,7 +57,7 @@ namespace TlsClientStream
         {
             switch (HashAlgorithm)
             {
-#if NET45 || NET451 || NET452 || DNX451
+#if NET45 || NET451
                 case TLSHashAlgorithm.SHA1:
                     return new HMACSHA1(key);
                 case TLSHashAlgorithm.SHA256:
