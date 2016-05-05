@@ -1205,14 +1205,21 @@ namespace Npgsql
         /// arrives, and exist immediately. The asynchronous message is delivered via the normal events
         /// (<see cref="Notification"/>, <see cref="Notice"/>).
         /// </summary>
-        public async Task WaitAsync()
+        public async Task WaitAsync(CancellationToken cancellationToken)
         {
             CheckConnectionOpen();
             Log.Debug("Starting to wait async", Connector.Id);
 
             using (Connector.StartUserAction(ConnectorState.Waiting))
-                await Connector.ReadAsyncMessageAsync();
+                await Connector.ReadAsyncMessageAsync(cancellationToken);
         }
+
+        /// <summary>
+        /// Waits asynchronously until an asynchronous PostgreSQL messages (e.g. a notification)
+        /// arrives, and exist immediately. The asynchronous message is delivered via the normal events
+        /// (<see cref="Notification"/>, <see cref="Notice"/>).
+        /// </summary>
+        public Task WaitAsync() => WaitAsync(CancellationToken.None);
 
         #endregion
 

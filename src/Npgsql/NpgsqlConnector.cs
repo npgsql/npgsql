@@ -851,6 +851,10 @@ namespace Npgsql
         internal Task<IBackendMessage> ReadMessageAsync(DataRowLoadingMode dataRowLoadingMode, CancellationToken cancellationToken)
             => ReadMessageWithPrependedAsync(cancellationToken, dataRowLoadingMode);
 
+        /// <summary>
+        /// Reads a PostgreSQL asynchronous message (e.g. notification).
+        /// This has nothing to do with .NET async processing of messages or queries.
+        /// </summary>
         internal void ReadAsyncMessage(int timeout)
         {
             ReceiveTimeout = timeout;
@@ -859,9 +863,9 @@ namespace Npgsql
                 throw new Exception($"While waiting for an asynchronous message, received an unexpected message of type {msg.Code}");
         }
 
-        internal async Task ReadAsyncMessageAsync()
+        internal async Task ReadAsyncMessageAsync(CancellationToken cancellationToken)
         {
-            var msg = await DoReadMessageAsync(CancellationToken.None, DataRowLoadingMode.NonSequential, true);
+            var msg = await DoReadMessageAsync(cancellationToken, DataRowLoadingMode.NonSequential, true);
             if (msg != null)
                 throw new Exception($"While waiting for an asynchronous message, received an unexpected message of type {msg.Code}");
         }
