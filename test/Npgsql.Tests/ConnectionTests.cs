@@ -380,7 +380,7 @@ namespace Npgsql.Tests
                 conn.ExecuteNonQuery("LISTEN notifytest");
                 notifyingConn.ExecuteNonQuery("NOTIFY notifytest");
                 conn.Notification += (o, e) => receivedNotification = true;
-                conn.Wait();
+                Assert.That(conn.Wait(0), Is.EqualTo(true));
                 Assert.IsTrue(receivedNotification);
                 Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
             }
@@ -392,7 +392,7 @@ namespace Npgsql.Tests
         {
             using (var conn = OpenConnection())
             {
-                conn.Wait(100);
+                Assert.That(conn.Wait(100), Is.EqualTo(false));
                 Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
             }
         }

@@ -1158,7 +1158,8 @@ namespace Npgsql
         /// The default value is 0, which indicates an infinite time-out period.
         /// Specifying -1 also indicates an infinite time-out period.
         /// </param>
-        public void Wait(int timeout=0)
+        /// <returns>true if an asynchronous message was received, false if timed out.</returns>
+        public bool Wait(int timeout)
         {
             if (timeout != -1 && timeout < 0)
                 throw new ArgumentException("Argument must be -1, 0 or positive", nameof(timeout));
@@ -1174,10 +1175,11 @@ namespace Npgsql
                 } catch (IOException e) {
                     var socketException = e.InnerException as SocketException;
                     if (socketException?.SocketErrorCode == SocketError.TimedOut)
-                        return;
+                        return false;
                     throw;
                 }
             }
+            return true;
         }
 
         /// <summary>
@@ -1188,7 +1190,15 @@ namespace Npgsql
         /// <param name="timeout">
         /// The time-out value is passed to <see cref="Socket.ReceiveTimeout"/>.
         /// </param>
-        public void Wait(TimeSpan timeout) => Wait((int)timeout.TotalMilliseconds);
+        /// <returns>true if an asynchronous message was received, false if timed out.</returns>
+        public bool Wait(TimeSpan timeout) => Wait((int)timeout.TotalMilliseconds);
+
+        /// <summary>
+        /// Waits until an asynchronous PostgreSQL messages (e.g. a notification) arrives, and
+        /// exits immediately. The asynchronous message is delivered via the normal events
+        /// (<see cref="Notification"/>, <see cref="Notice"/>).
+        /// </summary>
+        public void Wait() => Wait(0);
 
         /// <summary>
         /// Waits asynchronously until an asynchronous PostgreSQL messages (e.g. a notification)
