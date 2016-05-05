@@ -121,7 +121,7 @@ namespace Npgsql.Tests
                 var inStream = conn.BeginRawBinaryCopy("COPY data (field_text, field_int4) FROM STDIN BINARY");
                 inStream.Write(NpgsqlRawCopyStream.BinarySignature, 0, NpgsqlRawCopyStream.BinarySignature.Length);
                 Assert.That(() => inStream.Dispose(), Throws.Exception
-                    .TypeOf<NpgsqlException>()
+                    .TypeOf<PostgresException>()
                     .With.Property("Code").EqualTo("22P04")
                 );
                 Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
@@ -494,7 +494,7 @@ namespace Npgsql.Tests
         {
             using (var conn = OpenConnection())
                 Assert.That(() => conn.BeginBinaryImport("COPY undefined_table (field_text, field_int2) FROM STDIN BINARY"),
-                    Throws.Exception.TypeOf<NpgsqlException>().With.Property("Code").EqualTo("42P01"));
+                    Throws.Exception.TypeOf<PostgresException>().With.Property("Code").EqualTo("42P01"));
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/621")]

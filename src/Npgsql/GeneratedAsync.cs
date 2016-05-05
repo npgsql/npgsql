@@ -641,7 +641,7 @@ namespace Npgsql
                 ReceiveTimeout = UserTimeout;
                 return await DoReadMessageAsync(cancellationToken, dataRowLoadingMode);
             }
-            catch (NpgsqlException)
+            catch (PostgresException)
             {
                 if (CurrentReader != null)
                 {
@@ -664,7 +664,7 @@ namespace Npgsql
 
         async Task<IBackendMessage> DoReadMessageAsync(CancellationToken cancellationToken, DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential, bool isPrependedMessage = false)
         {
-            NpgsqlException error = null;
+            PostgresException error = null;
             while (true)
             {
                 var buf = ReadBuffer;
@@ -692,7 +692,7 @@ namespace Npgsql
                         Contract.Assert(msg == null);
                         // An ErrorResponse is (almost) always followed by a ReadyForQuery. Save the error
                         // and throw it as an exception when the ReadyForQuery is received (next).
-                        error = new NpgsqlException(buf);
+                        error = new PostgresException(buf);
                         if (State == ConnectorState.Connecting)
                         {
                             // During the startup/authentication phase, an ErrorResponse isn't followed by
@@ -857,7 +857,7 @@ namespace Npgsql
                     }
                 }
             }
-            catch (NpgsqlException)
+            catch (PostgresException)
             {
                 _state = ReaderState.Consumed;
                 throw;

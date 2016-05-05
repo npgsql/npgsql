@@ -341,7 +341,7 @@ namespace Npgsql.Tests
                         {
                             command.ExecuteScalar();
                         }
-                        catch (NpgsqlException e)
+                        catch (PostgresException e)
                         {
                             if (e.Message.Length > 500)
                             {
@@ -392,7 +392,7 @@ namespace Npgsql.Tests
                         {
                             command.ExecuteScalar();
                         }
-                        catch (NpgsqlException e)
+                        catch (PostgresException e)
                         {
                             if (e.Message.Length > 500)
                             {

@@ -139,7 +139,7 @@ namespace Npgsql.Tests
                 {
                     conn.Open();
                 }
-                catch (NpgsqlException e) when (e.SqlState == "3D000")
+                catch (PostgresException e) when (e.SqlState == "3D000")
                 {
                     var csb = new NpgsqlConnectionStringBuilder(_connectionString);
                     var requiredDatabase = csb.Database;
@@ -209,7 +209,7 @@ namespace Npgsql.Tests
             {
                 conn.Open();
             }
-            catch (NpgsqlException e)
+            catch (PostgresException e)
             {
                 if (e.SqlState == "3D000")
                     TestUtil.IgnoreExceptOnBuildServer("Please create a database npgsql_tests, owned by user npgsql_tests");

@@ -337,7 +337,7 @@ namespace Npgsql
                 // The CopyFail should immediately trigger an exception from the read above.
                 _connector.Break();
                 throw new Exception("Expected ErrorResponse when cancelling COPY but got: " + msg.Code);
-            } catch (NpgsqlException e) {
+            } catch (PostgresException e) {
                 if (e.SqlState == "57014") { return; }
                 throw;
             }

@@ -255,7 +255,7 @@ namespace Npgsql.Tests
                         Thread.Sleep(300);
                         cmd.Cancel();
                     });
-                    Assert.That(() => cmd.ExecuteNonQuery(), Throws.TypeOf<NpgsqlException>().With.Property("Code").EqualTo("57014"));
+                    Assert.That(() => cmd.ExecuteNonQuery(), Throws.TypeOf<PostgresException>().With.Property("Code").EqualTo("57014"));
                 }
             }
         }
@@ -342,7 +342,7 @@ namespace Npgsql.Tests
             using (var conn = OpenConnection())
             {
                 using (var cmd = new NpgsqlCommand("SE", conn))
-                    Assert.That(() => cmd.ExecuteReader(CommandBehavior.CloseConnection), Throws.Exception.TypeOf<NpgsqlException>());
+                    Assert.That(() => cmd.ExecuteReader(CommandBehavior.CloseConnection), Throws.Exception.TypeOf<PostgresException>());
                 Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
             }
         }
@@ -745,7 +745,7 @@ namespace Npgsql.Tests
             {
                 // This is caused by having an error with the prepared statement and later, Npgsql is trying to release the plan as it was successful created.
                 var cmd = new NpgsqlCommand("sele", conn);
-                Assert.That(() => cmd.Prepare(), Throws.Exception.TypeOf<NpgsqlException>());
+                Assert.That(() => cmd.Prepare(), Throws.Exception.TypeOf<PostgresException>());
             }
         }
 

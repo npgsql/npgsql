@@ -943,7 +943,7 @@ namespace Npgsql
                 {
                     return await ExecuteNonQueryInternalAsync(cancellationToken).ConfigureAwait(false);
                 }
-                catch (NpgsqlException e)
+                catch (PostgresException e)
                 {
                     if (e.SqlState == "57014")
                         throw new TaskCanceledException(e.Message);
@@ -1002,7 +1002,7 @@ namespace Npgsql
                 {
                     return await ExecuteScalarInternalAsync(cancellationToken).ConfigureAwait(false);
                 }
-                catch (NpgsqlException e)
+                catch (PostgresException e)
                 {
                     if (e.SqlState == "57014")
                         throw new TaskCanceledException(e.Message);
@@ -1074,7 +1074,7 @@ namespace Npgsql
                 {
                     return await ExecuteDbDataReaderInternalAsync(behavior, cancellationToken).ConfigureAwait(false);
                 }
-                catch (NpgsqlException e)
+                catch (PostgresException e)
                 {
                     if (e.SqlState == "57014")
                         throw new TaskCanceledException(e.Message);

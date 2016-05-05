@@ -896,7 +896,7 @@ namespace Npgsql
                 ReceiveTimeout = UserTimeout;
                 return DoReadMessage(dataRowLoadingMode);
             }
-            catch (NpgsqlException)
+            catch (PostgresException)
             {
                 if (CurrentReader != null)
                 {
@@ -921,7 +921,7 @@ namespace Npgsql
         IBackendMessage DoReadMessage(DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential,
                                       bool isPrependedMessage = false)
         {
-            NpgsqlException error = null;
+            PostgresException error = null;
 
             while (true)
             {
@@ -954,7 +954,7 @@ namespace Npgsql
 
                     // An ErrorResponse is (almost) always followed by a ReadyForQuery. Save the error
                     // and throw it as an exception when the ReadyForQuery is received (next).
-                    error = new NpgsqlException(buf);
+                    error = new PostgresException(buf);
 
                     if (State == ConnectorState.Connecting) {
                         // During the startup/authentication phase, an ErrorResponse isn't followed by
@@ -1024,7 +1024,7 @@ namespace Npgsql
                     HandleParameterStatus(buf.ReadNullTerminatedString(), buf.ReadNullTerminatedString());
                     return null;
                 case BackendMessageCode.NoticeResponse:
-                    FireNotice(new NpgsqlNotice(buf));
+                    FireNotice(new PostgresNotice(buf));
                     return null;
                 case BackendMessageCode.NotificationResponse:
                     FireNotification(new NpgsqlNotificationEventArgs(buf));
@@ -1257,7 +1257,7 @@ namespace Npgsql
         /// </summary>
         internal event NotificationEventHandler Notification;
 
-        void FireNotice(NpgsqlNotice e)
+        void FireNotice(PostgresNotice e)
         {
             var notice = Notice;
             if (notice != null)
@@ -1578,7 +1578,7 @@ namespace Npgsql
         {
             Contract.Requires(CurrentReader == null);
             Contract.Ensures(!IsInUserAction);
-            Contract.EnsuresOnThrow<NpgsqlException>(!IsInUserAction);
+            Contract.EnsuresOnThrow<PostgresException>(!IsInUserAction);
             Contract.EnsuresOnThrow<IOException>(!IsInUserAction);
 
             if (!IsInUserAction)

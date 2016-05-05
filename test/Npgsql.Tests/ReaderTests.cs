@@ -584,7 +584,7 @@ namespace Npgsql.Tests
                 {
                     if (prepare == PrepareOrNot.Prepared)
                         cmd.Prepare();
-                    Assert.That(() => cmd.ExecuteReader(), Throws.Exception.TypeOf<NpgsqlException>());
+                    Assert.That(() => cmd.ExecuteReader(), Throws.Exception.TypeOf<PostgresException>());
                 }
             }
         }
@@ -605,7 +605,7 @@ namespace Npgsql.Tests
                     if (prepare == PrepareOrNot.Prepared)
                         cmd.Prepare();
                     using (var reader = cmd.ExecuteReader())
-                        Assert.That(() => reader.NextResult(), Throws.Exception.TypeOf<NpgsqlException>());
+                        Assert.That(() => reader.NextResult(), Throws.Exception.TypeOf<PostgresException>());
                 }
             }
         }
@@ -629,7 +629,7 @@ namespace Npgsql.Tests
                         cmd.ExecuteReader();
                         Assert.Fail();
                     }
-                    catch (NpgsqlException e)
+                    catch (PostgresException e)
                     {
                         Assert.That(e.Statement, Is.SameAs(cmd.Statements[0]));
                     }
@@ -644,7 +644,7 @@ namespace Npgsql.Tests
                         reader.NextResult();
                         Assert.Fail();
                     }
-                    catch (NpgsqlException e)
+                    catch (PostgresException e)
                     {
                         Assert.That(e.Statement, Is.SameAs(cmd.Statements[1]));
                     }

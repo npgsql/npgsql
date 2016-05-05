@@ -174,7 +174,7 @@ namespace Npgsql.Tests
             using (var conn = new NpgsqlConnection(csb))
             {
                 Assert.That(conn.Open, Throws.Exception
-                    .TypeOf<NpgsqlException>()
+                    .TypeOf<PostgresException>()
                     .With.Property("Code").EqualTo("28P01")
                 );
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
@@ -188,7 +188,7 @@ namespace Npgsql.Tests
             using (var conn = new NpgsqlConnection(csb))
             {
                 Assert.That(() => conn.Open(), Throws.Exception
-                    .TypeOf<NpgsqlException>()
+                    .TypeOf<PostgresException>()
                     .With.Property("Code").EqualTo("28P01")
                 );
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
@@ -220,7 +220,7 @@ namespace Npgsql.Tests
                     using (var conn2 = new NpgsqlConnection(csb))
                     {
                         Assert.That(() => conn2.Open(),
-                            Throws.Exception.TypeOf<NpgsqlException>()
+                            Throws.Exception.TypeOf<PostgresException>()
                             .With.Property("Code").EqualTo("3D000") // database doesn't exist
                         );
                         Assert.That(conn2.FullState, Is.EqualTo(ConnectionState.Closed));
@@ -847,7 +847,7 @@ namespace Npgsql.Tests
                         LANGUAGE 'plpgsql';
                 ");
 
-                NpgsqlNotice notice = null;
+                PostgresNotice notice = null;
                 NoticeEventHandler action = (sender, args) => notice = args.Notice;
                 conn.Notice += action;
                 try
