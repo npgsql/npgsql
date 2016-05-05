@@ -446,6 +446,13 @@ namespace Npgsql.Tests
         #region Client Encoding
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1065")]
+        public void ClientEncodingIsUTF8ByDefault()
+        {
+            using (var conn = OpenConnection())
+                Assert.That(conn.ExecuteScalar("SHOW client_encoding"), Is.EqualTo("UTF8"));
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1065")]
         [Parallelizable(ParallelScope.None)]
         public void ClientEncodingEnvVar()
         {
