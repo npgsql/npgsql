@@ -49,13 +49,13 @@ namespace Npgsql.Tests
                      LANGUAGE 'plpgsql';
                 ");
 
-                NpgsqlException ex = null;
+                PostgresException ex = null;
                 try
                 {
                     conn.ExecuteNonQuery("SELECT pg_temp.emit_exception()");
                     Assert.Fail("No exception was thrown");
                 }
-                catch (NpgsqlException e)
+                catch (PostgresException e)
                 {
                     ex = e;
                 }
@@ -86,7 +86,7 @@ namespace Npgsql.Tests
                 {
                     conn.ExecuteNonQuery("INSERT INTO uniqueviolation (id) VALUES(1)");
                 }
-                catch (NpgsqlException ex)
+                catch (PostgresException ex)
                 {
                     Assert.That(ex.ColumnName, Is.Null, "ColumnName should not be populated for unique violations");
                     Assert.That(ex.TableName, Is.EqualTo("uniqueviolation"));
@@ -108,7 +108,7 @@ namespace Npgsql.Tests
                 {
                     conn.ExecuteNonQuery("INSERT INTO notnullviolation (id) VALUES(NULL)");
                 }
-                catch (NpgsqlException ex)
+                catch (PostgresException ex)
                 {
                     Assert.That(ex.SchemaName, Does.StartWith("pg_temp"));
                     Assert.That(ex.TableName, Is.EqualTo("notnullviolation"));
@@ -145,7 +145,7 @@ namespace Npgsql.Tests
                     command.ExecuteNonQuery();
 
                 }
-                catch (NpgsqlException ex)
+                catch (PostgresException ex)
                 {
                     Assert.AreEqual("public", ex.SchemaName);
                     Assert.AreEqual("intnotnull", ex.DataTypeName);
@@ -159,8 +159,8 @@ namespace Npgsql.Tests
             using (var conn = OpenConnection())
             {
                 Assert.That(async () => await conn.ExecuteNonQueryAsync("MALFORMED"),
-                    Throws.Exception.TypeOf<NpgsqlException>());
-                // Just in case, anything but an NpgsqlException would trigger the connection breaking, check that
+                    Throws.Exception.TypeOf<PostgresException>());
+                // Just in case, anything but a PostgresException would trigger the connection breaking, check that
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
             }
         }

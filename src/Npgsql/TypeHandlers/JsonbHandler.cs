@@ -135,9 +135,7 @@ namespace Npgsql.TypeHandlers
         {
             var version = stream.ReadByte();
             if (version != JsonbProtocolVersion)
-            {
-                throw new NotSupportedException($"Don't know how to decode JSONB with wire format {version}, your connection is now broken");
-            }
+                throw new NpgsqlException($"Don't know how to decode jsonb with wire format {version}, your connection is now broken");
 
             return new StreamReader(stream);
         }

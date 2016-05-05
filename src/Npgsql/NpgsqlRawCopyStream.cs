@@ -125,7 +125,7 @@ namespace Npgsql
                 _writeBuf.WriteByte((byte)BackendMessageCode.CopyData);
                 _writeBuf.WriteInt32(count + 4);
                 _writeBuf.Flush();
-                _writeBuf.Underlying.Write(buffer, offset, count);
+                _writeBuf.DirectWrite(buffer, offset, count);
                 EnsureDataMessage();
             } catch {
                 _connector.Break();
@@ -233,9 +233,9 @@ namespace Npgsql
                     var msg = _connector.ReadMessage(DataRowLoadingMode.NonSequential);
                     // The CopyFail should immediately trigger an exception from the read above.
                     _connector.Break();
-                    throw new Exception("Expected ErrorResponse when cancelling COPY but got: " + msg.Code);
+                    throw new NpgsqlException("Expected ErrorResponse when cancelling COPY but got: " + msg.Code);
                 }
-                catch (NpgsqlException e)
+                catch (PostgresException e)
                 {
                     if (e.SqlState == "57014") { return; }
                     throw;

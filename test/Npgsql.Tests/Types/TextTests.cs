@@ -295,7 +295,7 @@ namespace Npgsql.Tests.Types
             {
                 cmd.Parameters.Add(new NpgsqlParameter("p1", "string with \0\0\0 null \0bytes"));
                 Assert.That(() => cmd.ExecuteReader(),
-                    Throws.Exception.TypeOf<NpgsqlException>()
+                    Throws.Exception.TypeOf<PostgresException>()
                         .With.Property("Code").EqualTo("22021")
                     );
             }

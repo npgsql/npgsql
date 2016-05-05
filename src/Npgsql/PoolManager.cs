@@ -320,7 +320,7 @@ namespace Npgsql
         void WaitForTask(Task task, TimeSpan timeout)
         {
             if (!task.Wait(timeout))
-                throw new TimeoutException($"The connection pool has been exhausted, either raise MaxPoolSize (currently {_max}) or Timeout (currently {ConnectionString.Timeout} seconds)");
+                throw new NpgsqlException($"The connection pool has been exhausted, either raise MaxPoolSize (currently {_max}) or Timeout (currently {ConnectionString.Timeout} seconds)");
         }
 
         async Task WaitForTaskAsync(Task task, TimeSpan timeout, CancellationToken cancellationToken)
@@ -329,7 +329,7 @@ namespace Npgsql
             if (task != await Task.WhenAny(task, timeoutTask))
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                throw new TimeoutException($"The connection pool has been exhausted, either raise MaxPoolSize (currently {_max}) or Timeout (currently {ConnectionString.Timeout} seconds)");
+                throw new NpgsqlException($"The connection pool has been exhausted, either raise MaxPoolSize (currently {_max}) or Timeout (currently {ConnectionString.Timeout} seconds)");
             }
         }
 

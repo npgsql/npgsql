@@ -123,8 +123,8 @@ namespace Npgsql.TypeHandlers
         public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             Contract.Assert(_readState == ReadState.NeedPrepare);
-            if (_readState != ReadState.NeedPrepare)  // Checks against recursion and bugs
-                throw new InvalidOperationException("Started reading a value before completing a previous value");
+            if (_readState != ReadState.NeedPrepare) // Checks against recursion and bugs
+                throw PGUtil.ThrowIfReached("Started reading a value before completing a previous value");
 
             _readBuf = buf;
             _fieldDescription = fieldDescription;

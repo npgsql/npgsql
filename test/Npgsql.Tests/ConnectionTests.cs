@@ -125,7 +125,10 @@ namespace Npgsql.Tests
 
                 // Allow some time for the pg_terminate to kill our connection
                 using (var cmd = CreateSleepCommand(conn, 10))
-                    Assert.That(() => cmd.ExecuteNonQuery(), Throws.Exception.TypeOf<IOException>());
+                    Assert.That(() => cmd.ExecuteNonQuery(), Throws.Exception
+                        .TypeOf<NpgsqlException>()
+                        .With.InnerException.TypeOf<IOException>()
+                    );
 
                 Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
@@ -174,7 +177,7 @@ namespace Npgsql.Tests
             using (var conn = new NpgsqlConnection(csb))
             {
                 Assert.That(conn.Open, Throws.Exception
-                    .TypeOf<NpgsqlException>()
+                    .TypeOf<PostgresException>()
                     .With.Property("Code").EqualTo("28P01")
                 );
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
@@ -188,7 +191,7 @@ namespace Npgsql.Tests
             using (var conn = new NpgsqlConnection(csb))
             {
                 Assert.That(() => conn.Open(), Throws.Exception
-                    .TypeOf<NpgsqlException>()
+                    .TypeOf<PostgresException>()
                     .With.Property("Code").EqualTo("28P01")
                 );
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
@@ -220,7 +223,7 @@ namespace Npgsql.Tests
                     using (var conn2 = new NpgsqlConnection(csb))
                     {
                         Assert.That(() => conn2.Open(),
-                            Throws.Exception.TypeOf<NpgsqlException>()
+                            Throws.Exception.TypeOf<PostgresException>()
                             .With.Property("Code").EqualTo("3D000") // database doesn't exist
                         );
                         Assert.That(conn2.FullState, Is.EqualTo(ConnectionState.Closed));
@@ -387,7 +390,7 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1024")]
-        [Timeout(10000)]
+        //[Timeout(10000)]
         public void WaitWithTimeout()
         {
             using (var conn = OpenConnection())
@@ -426,8 +429,8 @@ namespace Npgsql.Tests
                 }, null, 500, Timeout.Infinite);
 
                 Assert.That(() => conn.Wait(), Throws.Exception
-                    .TypeOf<NpgsqlException>()
-                    .With.Property(nameof(NpgsqlException.SqlState)).EqualTo("57P01")
+                    .TypeOf<PostgresException>()
+                    .With.Property(nameof(PostgresException.SqlState)).EqualTo("57P01")
                 );
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
             }
@@ -559,7 +562,7 @@ namespace Npgsql.Tests
                 else
                 {
                     Assert.That(conn.ProcessID, Is.EqualTo(connectorId));
-                    Assert.That(() => conn.ExecuteScalar("SELECT 1"), Throws.Exception.TypeOf<IOException>());
+                    Assert.That(() => conn.ExecuteScalar("SELECT 1"), Throws.Exception.TypeOf<NpgsqlException>());
                 }
             }
         }
@@ -847,7 +850,7 @@ namespace Npgsql.Tests
                         LANGUAGE 'plpgsql';
                 ");
 
-                NpgsqlNotice notice = null;
+                PostgresNotice notice = null;
                 NoticeEventHandler action = (sender, args) => notice = args.Notice;
                 conn.Notice += action;
                 try

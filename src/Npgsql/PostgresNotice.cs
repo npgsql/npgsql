@@ -38,7 +38,7 @@ namespace Npgsql
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/protocol-flow.html#PROTOCOL-ASYNC
     /// </remarks>
-    public class NpgsqlNotice
+    public class PostgresNotice
     {
         readonly ErrorOrNoticeMessage _msg;
 
@@ -170,7 +170,7 @@ namespace Npgsql
 
         #endregion
 
-        internal NpgsqlNotice(ReadBuffer buf)
+        internal PostgresNotice(ReadBuffer buf)
         {
             _msg = new ErrorOrNoticeMessage(buf);
         }
@@ -184,9 +184,9 @@ namespace Npgsql
         /// <summary>
         /// The Notice that was sent from the database.
         /// </summary>
-        public NpgsqlNotice Notice { get; private set; }
+        public PostgresNotice Notice { get; private set; }
 
-        internal NpgsqlNoticeEventArgs(NpgsqlNotice notice)
+        internal NpgsqlNoticeEventArgs(PostgresNotice notice)
         {
             Notice = notice;
         }

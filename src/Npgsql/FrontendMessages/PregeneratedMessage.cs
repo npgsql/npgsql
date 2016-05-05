@@ -69,7 +69,7 @@ namespace Npgsql.FrontendMessages
 
         static PregeneratedMessage()
         {
-            _tempBuf = new WriteBuffer(new MemoryStream(), WriteBuffer.MinimumBufferSize, Encoding.ASCII);
+            _tempBuf = new WriteBuffer(null, new MemoryStream(), WriteBuffer.MinimumBufferSize, Encoding.ASCII);
             _tempQuery = new QueryMessage();
 
             BeginTransRepeatableRead  = BuildQuery("BEGIN; SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;");

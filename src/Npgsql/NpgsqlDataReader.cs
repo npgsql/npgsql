@@ -249,7 +249,7 @@ namespace Npgsql
                     }
                 }
             }
-            catch (NpgsqlException)
+            catch (PostgresException)
             {
                 _state = ReaderState.Consumed;
                 throw;
@@ -324,7 +324,7 @@ namespace Npgsql
             {
                 return IsSchemaOnly ? NextResultSchemaOnly() : NextResultInternal();
             }
-            catch (NpgsqlException e)
+            catch (PostgresException e)
             {
                 _state = ReaderState.Consumed;
                 e.Statement = _statements[_statementIndex];
@@ -346,7 +346,7 @@ namespace Npgsql
                     ? await NextResultSchemaOnlyAsync(cancellationToken).ConfigureAwait(false)
                     : await NextResultInternalAsync(cancellationToken).ConfigureAwait(false);
             }
-            catch (NpgsqlException e)
+            catch (PostgresException e)
             {
                 _state = ReaderState.Consumed;
                 e.Statement = _statements[_statementIndex];
@@ -694,7 +694,7 @@ namespace Npgsql
                         ProcessMessage(msg);
                         return;
                     default:
-                        throw new Exception("Unexpected message of type " + msg.Code);
+                        throw new NpgsqlException("Unexpected message of type " + msg.Code);
                 }
             }
         }
