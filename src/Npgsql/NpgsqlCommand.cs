@@ -935,18 +935,7 @@ namespace Npgsql
         {
             cancellationToken.ThrowIfCancellationRequested();
             using (cancellationToken.Register(Cancel))
-            {
-                try
-                {
-                    return await ExecuteNonQueryInternalAsync(cancellationToken).ConfigureAwait(false);
-                }
-                catch (PostgresException e)
-                {
-                    if (e.SqlState == "57014")
-                        throw new TaskCanceledException(e.Message);
-                    throw;
-                }
-            }
+                return await ExecuteNonQueryInternalAsync(cancellationToken).ConfigureAwait(false);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -992,16 +981,7 @@ namespace Npgsql
             cancellationToken.ThrowIfCancellationRequested();
             using (cancellationToken.Register(Cancel))
             {
-                try
-                {
-                    return await ExecuteScalarInternalAsync(cancellationToken).ConfigureAwait(false);
-                }
-                catch (PostgresException e)
-                {
-                    if (e.SqlState == "57014")
-                        throw new TaskCanceledException(e.Message);
-                    throw;
-                }
+                return await ExecuteScalarInternalAsync(cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -1055,18 +1035,7 @@ namespace Npgsql
         {
             cancellationToken.ThrowIfCancellationRequested();
             using (cancellationToken.Register(Cancel))
-            {
-                try
-                {
-                    return await ExecuteDbDataReaderInternalAsync(behavior, cancellationToken).ConfigureAwait(false);
-                }
-                catch (PostgresException e)
-                {
-                    if (e.SqlState == "57014")
-                        throw new TaskCanceledException(e.Message);
-                    throw;
-                }
-            }
+                return await ExecuteDbDataReaderInternalAsync(behavior, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
