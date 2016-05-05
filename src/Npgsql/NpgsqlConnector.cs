@@ -858,16 +858,29 @@ namespace Npgsql
         internal void ReadAsyncMessage(int timeout)
         {
             ReceiveTimeout = timeout;
-            var msg = DoReadMessage(DataRowLoadingMode.NonSequential, true);
-            if (msg != null)
-                throw new Exception($"While waiting for an asynchronous message, received an unexpected message of type {msg.Code}");
+            try
+            {
+                var msg = DoReadMessage(DataRowLoadingMode.NonSequential, true);
+                if (msg != null)
+                    throw new Exception($"While waiting for an asynchronous message, received an unexpected message of type {msg.Code}");
+            } catch {
+                Break();
+                throw;
+            }
         }
 
         internal async Task ReadAsyncMessageAsync(CancellationToken cancellationToken)
         {
-            var msg = await DoReadMessageAsync(cancellationToken, DataRowLoadingMode.NonSequential, true);
-            if (msg != null)
-                throw new Exception($"While waiting for an asynchronous message, received an unexpected message of type {msg.Code}");
+            try
+            {
+                var msg = await DoReadMessageAsync(cancellationToken, DataRowLoadingMode.NonSequential, true);
+                // ReSharper disable once ConditionIsAlwaysTrueOrFalse
+                if (msg != null)
+                    throw new Exception($"While waiting for an asynchronous message, received an unexpected message of type {msg.Code}");
+            } catch {
+                Break();
+                throw;
+            }
         }
 
         [RewriteAsync]

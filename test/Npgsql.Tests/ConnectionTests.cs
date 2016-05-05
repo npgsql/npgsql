@@ -414,6 +414,22 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test]
+        public void WaitBreaksConnection()
+        {
+            using (var conn = OpenConnection())
+            {
+                new Timer(o =>
+                {
+                    using (var conn2 = OpenConnection())
+                        conn2.ExecuteNonQuery($"SELECT pg_terminate_backend({conn.ProcessID})");
+                }, null, 500, Timeout.Infinite);
+
+                Assert.That(() => conn.Wait(), Throws.Exception.TypeOf<IOException>());
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+            }
+        }
+
         #endregion
 
         #region Keepalive
