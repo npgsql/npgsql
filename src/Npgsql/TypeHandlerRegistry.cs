@@ -305,7 +305,7 @@ namespace Npgsql
 
             var asEnumType = backendType as BackendEnumType;
             if (asEnumType == null)
-                throw new Exception($"A PostgreSQL type with the name {pgName} was found in the database but it isn't an enum");
+                throw new NpgsqlException($"A PostgreSQL type with the name {pgName} was found in the database but it isn't an enum");
 
             asEnumType.Activate(this, new EnumHandler<TEnum>(backendType, nameTranslator));
         }
@@ -347,7 +347,7 @@ namespace Npgsql
 
             var asComposite = backendType as BackendCompositeType;
             if (asComposite == null)
-                throw new Exception($"Type {pgName} was found in the database but is not a composite");
+                throw new NpgsqlException($"Type {pgName} was found in the database but is not a composite");
 
             asComposite.Activate(this, new CompositeHandler<T>(asComposite, nameTranslator, this));
         }
@@ -450,8 +450,8 @@ namespace Npgsql
                 TypeAndMapping typeAndMapping;
                 if (!HandlerTypesByNpsgqlDbType.TryGetValue(npgsqlDbType, out typeAndMapping))
                     throw new NotSupportedException("This NpgsqlDbType isn't supported in Npgsql yet: " + npgsqlDbType);
-                throw new NotSupportedException($"The PostgreSQL type '{typeAndMapping.Mapping.PgName}', mapped to NpgsqlDbType '{npgsqlDbType}' isn't present in your database. " +
-                                                    "You may need to install an extension or upgrade to a newer version.");
+                throw new NpgsqlException($"The PostgreSQL type '{typeAndMapping.Mapping.PgName}', mapped to NpgsqlDbType '{npgsqlDbType}' isn't present in your database. " +
+                                           "You may need to install an extension or upgrade to a newer version.");
             }
         }
 
@@ -538,7 +538,7 @@ namespace Npgsql
                     {
                         BackendType byteaBackendType;
                         if (!_backendTypes.ByClrType.TryGetValue(typeof(byte[]), out byteaBackendType))
-                            throw new NotSupportedException("The PostgreSQL 'bytea' type is missing");
+                            throw new NpgsqlException("The PostgreSQL 'bytea' type is missing");
                         return byteaBackendType.Activate(this);
                     }
 
@@ -571,7 +571,7 @@ namespace Npgsql
                     if (!_backendTypes.ByClrType.TryGetValue(type.GetGenericArguments()[0], out subtypeBackendType) ||
                         subtypeBackendType.Range == null)
                     {
-                        throw new NotSupportedException($"The .NET range type {type.Name} isn't supported in your PostgreSQL, use CREATE TYPE AS RANGE");
+                        throw new NpgsqlException($"The .NET range type {type.Name} isn't supported in your PostgreSQL, use CREATE TYPE AS RANGE");
                     }
 
                     return subtypeBackendType.Range.Activate(this);
@@ -1187,9 +1187,9 @@ namespace Npgsql
             {
                 // No dot, this is a partial type name
                 if (!_backendTypes.ByName.TryGetValue(pgName, out backendType))
-                    throw new Exception($"An PostgreSQL type with the name {pgName} was not found in the database");
+                    throw new NpgsqlException($"An PostgreSQL type with the name {pgName} was not found in the database");
                 if (backendType == null)
-                    throw new Exception($"More than one PostgreSQL type was found with the name {pgName}, please specify a full name including schema");
+                    throw new NpgsqlException($"More than one PostgreSQL type was found with the name {pgName}, please specify a full name including schema");
                 return backendType;
             }
 

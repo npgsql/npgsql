@@ -64,7 +64,7 @@ namespace Npgsql
         /// <summary>
         /// The physical connection stream to the backend, layered with an SSL/TLS stream if in secure mode.
         /// </summary>
-        internal Stream Stream { get; private set; }
+        Stream _stream;
 
         readonly NpgsqlConnectionStringBuilder _settings;
 
@@ -446,9 +446,9 @@ namespace Npgsql
 
                 Contract.Assert(_socket != null);
                 _baseStream = new NetworkStream(_socket, true);
-                Stream = _baseStream;
-                ReadBuffer = new ReadBuffer(Stream, BufferSize, PGUtil.UTF8Encoding);
-                WriteBuffer = new WriteBuffer(Stream, BufferSize, PGUtil.UTF8Encoding);
+                _stream = _baseStream;
+                ReadBuffer = new ReadBuffer(this, _stream, BufferSize, PGUtil.UTF8Encoding);
+                WriteBuffer = new WriteBuffer(this, _stream, BufferSize, PGUtil.UTF8Encoding);
 
                 if (SslMode == SslMode.Require || SslMode == SslMode.Prefer)
                 {
@@ -463,11 +463,11 @@ namespace Npgsql
                     switch (response)
                     {
                     default:
-                        throw new Exception($"Received unknown response {response} for SSLRequest (expecting S or N)");
+                        throw new NpgsqlException($"Received unknown response {response} for SSLRequest (expecting S or N)");
                     case 'N':
                         if (SslMode == SslMode.Require)
                         {
-                            throw new InvalidOperationException("SSL connection requested. No SSL enabled connection from this host is configured.");
+                            throw new NpgsqlException("SSL connection requested. No SSL enabled connection from this host is configured.");
                         }
                         break;
                     case 'S':
@@ -490,13 +490,13 @@ namespace Npgsql
 
                         if (!UseSslStream)
                         {
-                            var sslStream = new TlsClientStream.TlsClientStream(Stream);
+                            var sslStream = new TlsClientStream.TlsClientStream(_stream);
                             sslStream.PerformInitialHandshake(Host, clientCertificates, certificateValidationCallback, false);
-                            Stream = sslStream;
+                            _stream = sslStream;
                         }
                         else
                         {
-                            var sslStream = new SslStream(Stream, false, certificateValidationCallback);
+                            var sslStream = new SslStream(_stream, false, certificateValidationCallback);
 #if NETSTANDARD1_3
                             // CoreCLR removed sync methods from SslStream, see https://github.com/dotnet/corefx/pull/4868.
                             // Consider exactly what to do here.
@@ -504,11 +504,11 @@ namespace Npgsql
 #else
                             sslStream.AuthenticateAsClient(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, false);
 #endif
-                            Stream = sslStream;
+                            _stream = sslStream;
                         }
                         timeout.Check();
-                        ReadBuffer.Underlying = Stream;
-                        WriteBuffer.Underlying = Stream;
+                        ReadBuffer.Underlying = _stream;
+                        WriteBuffer.Underlying = _stream;
                         IsSecure = true;
                         Log.Trace("SSL negotiation successful");
                         break;
@@ -519,12 +519,12 @@ namespace Npgsql
             }
             catch
             {
-                if (Stream != null)
+                if (_stream != null)
                 {
-                    try { Stream.Dispose(); } catch {
+                    try { _stream.Dispose(); } catch {
                         // ignored
                     }
-                    Stream = null;
+                    _stream = null;
                 }
                 if (_baseStream != null)
                 {
@@ -724,7 +724,7 @@ namespace Npgsql
                     State = ConnectorState.Ready;
                     return;
                 default:
-                    throw new Exception("Unexpected message received while authenticating: " + msg.Code);
+                    throw new NpgsqlException("Unexpected message received while authenticating: " + msg.Code);
                 }
             }
         }
@@ -744,19 +744,19 @@ namespace Npgsql
 
                 case AuthenticationRequestType.AuthenticationCleartextPassword:
                     if (_password == null) {
-                        throw new Exception("No password has been provided but the backend requires one (in cleartext)");
+                        throw new NpgsqlException("No password has been provided but the backend requires one (in cleartext)");
                     }
                     return PasswordMessage.CreateClearText(_password);
 
                 case AuthenticationRequestType.AuthenticationMD5Password:
                     if (_password == null) {
-                        throw new Exception("No password has been provided but the backend requires one (in MD5)");
+                        throw new NpgsqlException("No password has been provided but the backend requires one (in MD5)");
                     }
                     return PasswordMessage.CreateMD5(_password, Username, ((AuthenticationMD5PasswordMessage)msg).Salt);
 
                 case AuthenticationRequestType.AuthenticationGSS:
                     if (!IntegratedSecurity) {
-                        throw new Exception("GSS authentication but IntegratedSecurity not enabled");
+                        throw new NpgsqlException("GSS authentication but IntegratedSecurity not enabled");
                     }
 #if NET45 || NET451 || DNX451
                     // For GSSAPI we have to use the supplied hostname
@@ -768,7 +768,7 @@ namespace Npgsql
 
                 case AuthenticationRequestType.AuthenticationSSPI:
                     if (!IntegratedSecurity) {
-                        throw new Exception("SSPI authentication but IntegratedSecurity not enabled");
+                        throw new NpgsqlException("SSPI authentication but IntegratedSecurity not enabled");
                     }
 #if NET45 || NET451 || DNX451
                     _sspi = new SSPIHandler(Host, KerberosServiceName, false);
@@ -810,7 +810,7 @@ namespace Npgsql
             _pendingRfqPrependedMessages++;
 
             if (!msg.Write(WriteBuffer))
-                throw new Exception($"Could not fully write message of type {msg.GetType().Name} into the buffer");
+                throw new NpgsqlException($"Could not fully write message of type {msg.GetType().Name} into the buffer");
         }
 
         /// <summary>
@@ -883,7 +883,7 @@ namespace Npgsql
                         }
                     }
                 }
-                catch
+                catch (PostgresException)
                 {
                     Break();
                     throw;
@@ -907,11 +907,6 @@ namespace Npgsql
                 {
                     EndUserAction();
                 }
-                throw;
-            }
-            catch
-            {
-                Break();
                 throw;
             }
         }
@@ -1077,12 +1072,12 @@ namespace Npgsql
                     return CopyDoneMessage.Instance;
 
                 case BackendMessageCode.PortalSuspended:
-                    throw new NotImplementedException("Unimplemented message: " + code);
+                    throw new NpgsqlException("Unimplemented message: " + code);
                 case BackendMessageCode.ErrorResponse:
                     return null;
                 case BackendMessageCode.FunctionCallResponse:
                     // We don't use the obsolete function call protocol
-                    throw new Exception("Unexpected backend message: " + code);
+                    throw new NpgsqlException("Unexpected backend message: " + code);
                 default:
                     throw PGUtil.ThrowIfReached("Unknown backend message code: " + code);
             }
@@ -1140,7 +1135,7 @@ namespace Npgsql
             if (asExpected == null)
             {
                 Break();
-                throw new Exception($"Received backend message {msg.Code} while expecting {typeof (T).Name}. Please file a bug.");
+                throw new NpgsqlException($"Received backend message {msg.Code} while expecting {typeof (T).Name}. Please file a bug.");
             }
             return asExpected;
         }
@@ -1157,7 +1152,7 @@ namespace Npgsql
         internal void ReadAsyncMessage()
         {
             ReceiveTimeout = UserTimeout;
-            ReadBuffer.Ensure(5);
+            ReadBuffer.Ensure(5, true);
             var messageCode = (BackendMessageCode)ReadBuffer.ReadByte();
             Contract.Assume(Enum.IsDefined(typeof(BackendMessageCode), messageCode), "Unknown message code: " + messageCode);
             var len = ReadBuffer.ReadInt32() - 4;  // Transmitted length includes itself
@@ -1174,10 +1169,10 @@ namespace Npgsql
                 // We can get certain asynchronous errors if the remote process is terminated, etc.
                 // We assume this is fatal.
                 Break();
-                throw new NpgsqlException(buf);
+                throw new PostgresException(buf);
             default:
                 Break();
-                throw new Exception($"Received unexpected message of type {msg} while waiting for an asynchronous message");
+                throw new NpgsqlException($"Received unexpected message {msg} while waiting for an asynchronous message");
             }
         }
 
@@ -1332,8 +1327,8 @@ namespace Npgsql
                 Contract.Assert(ReadBuffer.ReadPosition == 0);
 
                 // Now wait for the server to close the connection, better chance of the cancellation
-                // actually being delivered.
-                var count = Stream.Read(ReadBuffer._buf, 0, 1);
+                // actually being delivered before we continue with the user's logic.
+                var count = _stream.Read(ReadBuffer._buf, 0, 1);
                 if (count != -1)
                 {
                     Log.Error("Received response after sending cancel request, shouldn't happen! First byte: " + ReadBuffer._buf[0]);
@@ -1427,7 +1422,7 @@ namespace Npgsql
             Log.Trace("Cleanup connector", Id);
             try
             {
-                Stream?.Dispose();
+                _stream?.Dispose();
             }
             catch {
                 // ignored
@@ -1442,7 +1437,7 @@ namespace Npgsql
             }
 
             ClearTransaction();
-            Stream = null;
+            _stream = null;
             _baseStream = null;
             ReadBuffer = null;
             WriteBuffer = null;

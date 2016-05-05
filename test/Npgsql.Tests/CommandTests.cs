@@ -178,16 +178,12 @@ namespace Npgsql.Tests
             using (var conn = OpenConnection(ConnectionString + ";CommandTimeout=1"))
             using (var cmd = CreateSleepCommand(conn, 10))
             {
-                try
-                {
-                    cmd.ExecuteNonQuery();
-                    Assert.Fail("No timeout occurred");
-                }
-                catch (IOException e)
-                {
-                    var socketException = e.InnerException as SocketException;
-                    Assert.That(socketException.SocketErrorCode, Is.EqualTo(SocketError.TimedOut));
-                }
+                Assert.That(() => cmd.ExecuteNonQuery(), Throws.Exception
+                    .TypeOf<NpgsqlException>()
+                    .With.InnerException.TypeOf<IOException>()
+                    .With.InnerException.InnerException.TypeOf<SocketException>()
+                    .With.InnerException.InnerException.Property(nameof(SocketException.SocketErrorCode)).EqualTo(SocketError.TimedOut)
+                    );
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
             }
         }

@@ -89,7 +89,7 @@ namespace Npgsql
             var headerLen = NpgsqlRawCopyStream.BinarySignature.Length + 4 + 4;
             _buf.Ensure(headerLen);
             if (NpgsqlRawCopyStream.BinarySignature.Any(t => _buf.ReadByte() != t)) {
-                throw new Exception("Invalid COPY binary signature at beginning!");
+                throw new NpgsqlException("Invalid COPY binary signature at beginning!");
             }
             var flags = _buf.ReadInt32();
             if (flags != 0) {

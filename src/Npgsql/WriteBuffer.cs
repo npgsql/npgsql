@@ -28,6 +28,7 @@ using System.Net;
 using System.Runtime.InteropServices;
 using System.Text;
 using AsyncRewriter;
+using JetBrains.Annotations;
 
 namespace Npgsql
 {
@@ -35,7 +36,9 @@ namespace Npgsql
     {
         #region Fields and Properties
 
-        internal Stream Underlying { get; set; }
+        internal readonly NpgsqlConnector Connector;
+
+        internal Stream Underlying { private get; set; }
 
         /// <summary>
         /// The total byte length of the buffer.
@@ -82,14 +85,15 @@ namespace Npgsql
 
         #region Constructors
 
-        internal WriteBuffer(Stream underlying, int size, Encoding textEncoding)
+        internal WriteBuffer([CanBeNull] NpgsqlConnector connector, Stream stream, int size, Encoding textEncoding)
         {
             if (size < MinimumBufferSize) {
                 throw new ArgumentOutOfRangeException(nameof(size), size, "Buffer size must be at least " + MinimumBufferSize);
             }
             Contract.EndContractBlock();
 
-            Underlying = underlying;
+            Connector = connector;
+            Underlying = stream;
             Size = size;
             UsableSize = Size;
             _buf = new byte[Size];
@@ -102,14 +106,48 @@ namespace Npgsql
         #region I/O
 
         [RewriteAsync]
-        public void Flush()
+        internal void Flush()
         {
             if (_writePosition != 0)
             {
-                Underlying.Write(_buf, 0, _writePosition);
-                Underlying.Flush();
+                try
+                {
+                    Underlying.Write(_buf, 0, _writePosition);
+                }
+                catch (Exception e)
+                {
+                    Connector.Break();
+                    throw new NpgsqlException("Exception while writing to stream", e);
+                }
+
+                try
+                {
+                    Underlying.Flush();
+                }
+                catch (Exception e)
+                {
+                    Connector.Break();
+                    throw new NpgsqlException("Exception while flushing stream", e);
+                }
+
                 TotalBytesFlushed += _writePosition;
                 _writePosition = 0;
+            }
+        }
+
+        [RewriteAsync]
+        internal void DirectWrite(byte[] buffer, int offset, int count)
+        {
+            Contract.Requires(WritePosition == 0);
+
+            try
+            {
+                Underlying.Write(buffer, offset, count);
+            }
+            catch (Exception e)
+            {
+                Connector.Break();
+                throw new NpgsqlException("Exception while writing to stream", e);
             }
         }
 

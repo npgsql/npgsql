@@ -25,9 +25,11 @@ using System;
 using System.Diagnostics.Contracts;
 using System.IO;
 using System.Net;
+using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Text;
 using AsyncRewriter;
+using JetBrains.Annotations;
 
 namespace Npgsql
 {
@@ -35,7 +37,9 @@ namespace Npgsql
     {
         #region Fields and Properties
 
-        internal Stream Underlying { get; set; }
+        internal readonly NpgsqlConnector Connector;
+
+        internal Stream Underlying { private get; set; }
 
         /// <summary>
         /// The total byte length of the buffer.
@@ -68,14 +72,15 @@ namespace Npgsql
 
         #region Constructors
 
-        internal ReadBuffer(Stream underlying, int size, Encoding textEncoding)
+        internal ReadBuffer([CanBeNull] NpgsqlConnector connector, Stream stream, int size, Encoding textEncoding)
         {
             if (size < MinimumBufferSize) {
                 throw new ArgumentOutOfRangeException(nameof(size), size, "Buffer size must be at least " + MinimumBufferSize);
             }
             Contract.EndContractBlock();
 
-            Underlying = underlying;
+            Connector = connector;
+            Underlying = stream;
             Size = size;
             _buf = new byte[Size];
             TextEncoding = textEncoding;
@@ -89,7 +94,7 @@ namespace Npgsql
         #region I/O
 
         [RewriteAsync]
-        internal void Ensure(int count)
+        internal void Ensure(int count, bool dontBreakOnTimeouts=false)
         {
             Contract.Requires(count <= Size);
             count -= ReadBytesLeft;
@@ -103,13 +108,30 @@ namespace Npgsql
                 ReadPosition = 0;
             }
 
-            while (count > 0)
+            try
             {
-                var toRead = Size - _filledBytes;
-                var read = Underlying.Read(_buf, _filledBytes, toRead);
-                if (read == 0) { throw new EndOfStreamException(); }
-                count -= read;
-                _filledBytes += read;
+                while (count > 0)
+                {
+                    var toRead = Size - _filledBytes;
+                    var read = Underlying.Read(_buf, _filledBytes, toRead);
+                    if (read == 0)
+                        throw new EndOfStreamException();
+                    count -= read;
+                    _filledBytes += read;
+                }
+            }
+            // We have a special case when reading async notifications - a timeout may be normal
+            // shouldn't be fatal
+            catch (IOException e) when (
+                dontBreakOnTimeouts && (e.InnerException as SocketException)?.SocketErrorCode == SocketError.TimedOut
+            )
+            {
+                throw new TimeoutException("Timeout while reading from stream");
+            }
+            catch (Exception e)
+            {
+                Connector.Break();
+                throw new NpgsqlException("Exception while reading from stream", e);
             }
         }
 
@@ -136,7 +158,7 @@ namespace Npgsql
             // Worst case: our buffer isn't big enough. For now, allocate a new buffer
             // and copy into it
             // TODO: Optimize with a pool later?
-            var tempBuf = new ReadBuffer(Underlying, count, TextEncoding);
+            var tempBuf = new ReadBuffer(Connector, Underlying, count, TextEncoding);
             CopyTo(tempBuf);
             Clear();
             tempBuf.Ensure(count);
@@ -297,13 +319,23 @@ namespace Npgsql
             var offset = outputOffset + ReadBytesLeft;
             var totalRead = ReadBytesLeft;
             Clear();
-            while (totalRead < len)
+            try
             {
-                var read = Underlying.Read(output, offset, len - totalRead);
-                if (read == 0) { throw new EndOfStreamException(); }
-                totalRead += read;
-                if (readOnce) { return totalRead; }
-                offset += read;
+                while (totalRead < len)
+                {
+                    var read = Underlying.Read(output, offset, len - totalRead);
+                    if (read == 0)
+                        throw new EndOfStreamException();
+                    totalRead += read;
+                    if (readOnce)
+                        return totalRead;
+                    offset += read;
+                }
+            }
+            catch (Exception e)
+            {
+                Connector.Break();
+                throw new NpgsqlException("Exception while reading from stream", e);
             }
             return len;
         }

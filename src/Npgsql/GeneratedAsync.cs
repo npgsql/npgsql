@@ -147,8 +147,10 @@ using System;
 using System.Diagnostics.Contracts;
 using System.IO;
 using System.Net;
+using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Text;
+using JetBrains.Annotations;
 using System.Threading;
 using System.Threading.Tasks;
 #pragma warning disable
@@ -185,6 +187,7 @@ using System.IO;
 using System.Net;
 using System.Runtime.InteropServices;
 using System.Text;
+using JetBrains.Annotations;
 using System.Threading;
 using System.Threading.Tasks;
 #pragma warning disable
@@ -260,7 +263,7 @@ namespace Npgsql
                 // through our buffer
                 if (directBuf.Buffer != null)
                 {
-                    await _connector.Stream.WriteAsync(directBuf.Buffer, directBuf.Offset, directBuf.Size == 0 ? directBuf.Buffer.Length : directBuf.Size, cancellationToken);
+                    await _connector.WriteBuffer.DirectWriteAsync(directBuf.Buffer, directBuf.Offset, directBuf.Size == 0 ? directBuf.Buffer.Length : directBuf.Size, cancellationToken);
                     directBuf.Buffer = null;
                     directBuf.Size = 0;
                 }
@@ -435,9 +438,9 @@ namespace Npgsql
                 await ConnectAsync(timeout, cancellationToken);
                 Contract.Assert(_socket != null);
                 _baseStream = new NetworkStream(_socket, true);
-                Stream = _baseStream;
-                ReadBuffer = new ReadBuffer(Stream, BufferSize, PGUtil.UTF8Encoding);
-                WriteBuffer = new WriteBuffer(Stream, BufferSize, PGUtil.UTF8Encoding);
+                _stream = _baseStream;
+                ReadBuffer = new ReadBuffer(this, _stream, BufferSize, PGUtil.UTF8Encoding);
+                WriteBuffer = new WriteBuffer(this, _stream, BufferSize, PGUtil.UTF8Encoding);
                 if (SslMode == SslMode.Require || SslMode == SslMode.Prefer)
                 {
                     Log.Trace("Attempting SSL negotiation");
@@ -476,13 +479,13 @@ namespace Npgsql
 
                             if (!UseSslStream)
                             {
-                                var sslStream = new TlsClientStream.TlsClientStream(Stream);
+                                var sslStream = new TlsClientStream.TlsClientStream(_stream);
                                 sslStream.PerformInitialHandshake(Host, clientCertificates, certificateValidationCallback, false);
-                                Stream = sslStream;
+                                _stream = sslStream;
                             }
                             else
                             {
-                                var sslStream = new SslStream(Stream, false, certificateValidationCallback);
+                                var sslStream = new SslStream(_stream, false, certificateValidationCallback);
 #if NETSTANDARD1_3
                             // CoreCLR removed sync methods from SslStream, see https://github.com/dotnet/corefx/pull/4868.
                             // Consider exactly what to do here.
@@ -490,12 +493,12 @@ namespace Npgsql
 #else
                                 sslStream.AuthenticateAsClient(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, false);
 #endif
-                                Stream = sslStream;
+                                _stream = sslStream;
                             }
 
                             timeout.Check();
-                            ReadBuffer.Underlying = Stream;
-                            WriteBuffer.Underlying = Stream;
+                            ReadBuffer.Underlying = _stream;
+                            WriteBuffer.Underlying = _stream;
                             IsSecure = true;
                             Log.Trace("SSL negotiation successful");
                             break;
@@ -506,18 +509,18 @@ namespace Npgsql
             }
             catch
             {
-                if (Stream != null)
+                if (_stream != null)
                 {
                     try
                     {
-                        Stream.Dispose();
+                        _stream.Dispose();
                     }
                     catch
                     {
                     // ignored
                     }
 
-                    Stream = null;
+                    _stream = null;
                 }
 
                 if (_baseStream != null)
@@ -628,7 +631,7 @@ namespace Npgsql
                         }
                     }
                 }
-                catch
+                catch (PostgresException)
                 {
                     Break();
                     throw;
@@ -653,11 +656,6 @@ namespace Npgsql
                     EndUserAction();
                 }
 
-                throw;
-            }
-            catch
-            {
-                Break();
                 throw;
             }
         }
@@ -767,7 +765,7 @@ namespace Npgsql
         internal async Task ReadAsyncMessageAsync(CancellationToken cancellationToken)
         {
             ReceiveTimeout = UserTimeout;
-            await ReadBuffer.EnsureAsync(5, cancellationToken);
+            await ReadBuffer.EnsureAsync(5, cancellationToken, true);
             var messageCode = (BackendMessageCode)ReadBuffer.ReadByte();
             Contract.Assume(Enum.IsDefined(typeof (BackendMessageCode), messageCode), "Unknown message code: " + messageCode);
             var len = ReadBuffer.ReadInt32() - 4; // Transmitted length includes itself
@@ -783,10 +781,10 @@ namespace Npgsql
                     // We can get certain asynchronous errors if the remote process is terminated, etc.
                     // We assume this is fatal.
                     Break();
-                    throw new NpgsqlException(buf);
+                    throw new PostgresException(buf);
                 default:
                     Break();
-                    throw new Exception($"Received unexpected message of type {msg} while waiting for an asynchronous message");
+                    throw new NpgsqlException($"Received unexpected message {msg} while waiting for an asynchronous message");
             }
         }
 
@@ -1463,7 +1461,7 @@ namespace Npgsql
 
     internal partial class ReadBuffer
     {
-        internal async Task EnsureAsync(int count, CancellationToken cancellationToken)
+        internal async Task EnsureAsync(int count, CancellationToken cancellationToken, bool dontBreakOnTimeouts = false)
         {
             Contract.Requires(count <= Size);
             count -= ReadBytesLeft;
@@ -1483,17 +1481,28 @@ namespace Npgsql
                 ReadPosition = 0;
             }
 
-            while (count > 0)
+            try
             {
-                var toRead = Size - _filledBytes;
-                var read = await (Underlying.ReadAsync(_buf, _filledBytes, toRead, cancellationToken));
-                if (read == 0)
+                while (count > 0)
                 {
-                    throw new EndOfStreamException();
+                    var toRead = Size - _filledBytes;
+                    var read = await (Underlying.ReadAsync(_buf, _filledBytes, toRead, cancellationToken));
+                    if (read == 0)
+                        throw new EndOfStreamException();
+                    count -= read;
+                    _filledBytes += read;
                 }
-
-                count -= read;
-                _filledBytes += read;
+            }
+            // We have a special case when reading async notifications - a timeout may be normal
+            // shouldn't be fatal
+            catch (IOException e)when (dontBreakOnTimeouts && (e.InnerException as SocketException)?.SocketErrorCode == SocketError.TimedOut)
+            {
+                throw new TimeoutException("Timeout while reading from stream");
+            }
+            catch (Exception e)
+            {
+                Connector.Break();
+                throw new NpgsqlException("Exception while reading from stream", e);
             }
         }
 
@@ -1513,7 +1522,7 @@ namespace Npgsql
             // Worst case: our buffer isn't big enough. For now, allocate a new buffer
             // and copy into it
             // TODO: Optimize with a pool later?
-            var tempBuf = new ReadBuffer(Underlying, count, TextEncoding);
+            var tempBuf = new ReadBuffer(Connector, Underlying, count, TextEncoding);
             CopyTo(tempBuf);
             Clear();
             await tempBuf.EnsureAsync(count, cancellationToken);
@@ -1553,21 +1562,23 @@ namespace Npgsql
             var offset = outputOffset + ReadBytesLeft;
             var totalRead = ReadBytesLeft;
             Clear();
-            while (totalRead < len)
+            try
             {
-                var read = await (Underlying.ReadAsync(output, offset, len - totalRead, cancellationToken));
-                if (read == 0)
+                while (totalRead < len)
                 {
-                    throw new EndOfStreamException();
+                    var read = await (Underlying.ReadAsync(output, offset, len - totalRead, cancellationToken));
+                    if (read == 0)
+                        throw new EndOfStreamException();
+                    totalRead += read;
+                    if (readOnce)
+                        return totalRead;
+                    offset += read;
                 }
-
-                totalRead += read;
-                if (readOnce)
-                {
-                    return totalRead;
-                }
-
-                offset += read;
+            }
+            catch (Exception e)
+            {
+                Connector.Break();
+                throw new NpgsqlException("Exception while reading from stream", e);
             }
 
             return len;
@@ -1662,14 +1673,46 @@ namespace Npgsql
 
     internal partial class WriteBuffer
     {
-        public async Task FlushAsync(CancellationToken cancellationToken)
+        internal async Task FlushAsync(CancellationToken cancellationToken)
         {
             if (_writePosition != 0)
             {
-                await Underlying.WriteAsync(_buf, 0, _writePosition, cancellationToken);
-                await Underlying.FlushAsync(cancellationToken);
+                try
+                {
+                    await Underlying.WriteAsync(_buf, 0, _writePosition, cancellationToken);
+                }
+                catch (Exception e)
+                {
+                    Connector.Break();
+                    throw new NpgsqlException("Exception while writing to stream", e);
+                }
+
+                try
+                {
+                    await Underlying.FlushAsync(cancellationToken);
+                }
+                catch (Exception e)
+                {
+                    Connector.Break();
+                    throw new NpgsqlException("Exception while flushing stream", e);
+                }
+
                 TotalBytesFlushed += _writePosition;
                 _writePosition = 0;
+            }
+        }
+
+        internal async Task DirectWriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            Contract.Requires(WritePosition == 0);
+            try
+            {
+                await Underlying.WriteAsync(buffer, offset, count, cancellationToken);
+            }
+            catch (Exception e)
+            {
+                Connector.Break();
+                throw new NpgsqlException("Exception while writing to stream", e);
             }
         }
     }

@@ -23,7 +23,9 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -158,15 +160,11 @@ namespace Npgsql.Tests
                 conn1.Open();
                 // Pool is exhausted
                 using (var conn2 = new NpgsqlConnection(connString))
-                {
-                    Assert.That(() => conn2.Open(), Throws.Exception.TypeOf<TimeoutException>());
-                }
+                    Assert.That(() => conn2.Open(), Throws.Exception.TypeOf<NpgsqlException>());
             }
             // conn1 should now be back in the pool as idle
             using (var conn3 = new NpgsqlConnection(connString))
-            {
                 conn3.Open();
-            }
         }
 
         [Test]
@@ -184,15 +182,11 @@ namespace Npgsql.Tests
 
                 // Pool is exhausted
                 using (var conn2 = new NpgsqlConnection(connString))
-                {
-                    Assert.That(async () => await conn2.OpenAsync(), Throws.Exception.TypeOf<TimeoutException>());
-                }
+                    Assert.That(async () => await conn2.OpenAsync(), Throws.Exception.TypeOf<NpgsqlException>());
             }
             // conn1 should now be back in the pool as idle
             using (var conn3 = new NpgsqlConnection(connString))
-            {
                 conn3.Open();
-            }
         }
 
         [Test, Timeout(10000)]

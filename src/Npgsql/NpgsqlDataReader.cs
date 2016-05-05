@@ -694,7 +694,7 @@ namespace Npgsql
                         ProcessMessage(msg);
                         return;
                     default:
-                        throw new Exception("Unexpected message of type " + msg.Code);
+                        throw new NpgsqlException("Unexpected message of type " + msg.Code);
                 }
             }
         }

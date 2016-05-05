@@ -37,15 +37,19 @@ using System.Runtime.Serialization;
 namespace Npgsql
 {
     /// <summary>
-    /// The exception that is thrown when the PostgreSQL backend reports errors.
-    /// Note that other errors (network issues, Npgsql client-side problems) are reported as regular
-    /// .NET exceptions.
+    /// The exception that is thrown when the PostgreSQL backend reports errors (e.g. query
+    /// SQL issues, constraint violations).
     /// </summary>
     /// <remarks>
+    /// This exception only corresponds to a PostgreSQL-delivered error.
+    /// Other errors (e.g. network issues) will be raised via <see cref="NpgsqlException"/>,
+    /// and purely Npgsql-related issues which aren't related to the server will be raised
+    /// via the standard CLR exceptions (e.g. ArgumentException).
+    /// 
     /// See http://www.postgresql.org/docs/current/static/errcodes-appendix.html,
     /// http://www.postgresql.org/docs/current/static/protocol-error-fields.html
     /// </remarks>
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
     [Serializable]
 #endif
     public sealed class PostgresException : DbException

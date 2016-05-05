@@ -653,7 +653,7 @@ namespace Npgsql
                 // through our buffer
                 if (directBuf.Buffer != null)
                 {
-                    _connector.Stream.Write(directBuf.Buffer, directBuf.Offset, directBuf.Size == 0 ? directBuf.Buffer.Length : directBuf.Size);
+                    _connector.WriteBuffer.DirectWrite(directBuf.Buffer, directBuf.Offset, directBuf.Size == 0 ? directBuf.Buffer.Length : directBuf.Size);
                     directBuf.Buffer = null;
                     directBuf.Size = 0;
                 }
@@ -694,7 +694,7 @@ namespace Npgsql
                     // through our buffer
                     if (directBuf.Buffer != null)
                     {
-                        await _connector.Stream.WriteAsync(directBuf.Buffer, directBuf.Offset,
+                        await _connector.WriteBuffer.DirectWriteAsync(directBuf.Buffer, directBuf.Offset,
                                 directBuf.Size == 0 ? directBuf.Buffer.Length : directBuf.Size, cancellationToken);
                         directBuf.Buffer = null;
                         directBuf.Size = 0;
