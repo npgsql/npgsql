@@ -1361,8 +1361,14 @@ namespace Npgsql
 
         #region Misc
 
+        /// <summary>
+        /// Creates a closed connection with the connection string and authentication details of this message.
+        /// </summary>
 #if NET45 || NET451
         object ICloneable.Clone()
+#else
+        public NpgsqlConnection Clone()
+#endif
         {
             CheckNotDisposed();
             return new NpgsqlConnection(ConnectionString) {
@@ -1371,7 +1377,6 @@ namespace Npgsql
                 UserCertificateValidationCallback = UserCertificateValidationCallback
             };
         }
-#endif
 
         /// <summary>
         /// Clones this connection, replacing its connection string with the given one.

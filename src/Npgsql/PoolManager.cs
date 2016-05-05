@@ -112,7 +112,8 @@ namespace Npgsql
                 return connector;
             }
 
-            if (Busy >= _max)
+            Contract.Assert(Busy <= _max);
+            if (Busy == _max)
             {
                 // TODO: Async cancellation
                 var tcs = new TaskCompletionSource<NpgsqlConnector>();
@@ -231,7 +232,11 @@ namespace Npgsql
 
                 try
                 {
+#if NET451 || NET45
                     var connector = new NpgsqlConnector((NpgsqlConnection) ((ICloneable) conn).Clone())
+#else
+                    var connector = new NpgsqlConnector(conn.Clone())
+#endif
                     {
                         ClearCounter = _clearCounter
                     };
