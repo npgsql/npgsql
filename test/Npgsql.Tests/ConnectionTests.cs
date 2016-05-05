@@ -425,7 +425,10 @@ namespace Npgsql.Tests
                         conn2.ExecuteNonQuery($"SELECT pg_terminate_backend({conn.ProcessID})");
                 }, null, 500, Timeout.Infinite);
 
-                Assert.That(() => conn.Wait(), Throws.Exception.TypeOf<IOException>());
+                Assert.That(() => conn.Wait(), Throws.Exception
+                    .TypeOf<NpgsqlException>()
+                    .With.Property(nameof(NpgsqlException.SqlState)).EqualTo("57P01")
+                );
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
             }
         }

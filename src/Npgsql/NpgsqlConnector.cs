@@ -862,38 +862,6 @@ namespace Npgsql
         internal Task<IBackendMessage> ReadMessageAsync(DataRowLoadingMode dataRowLoadingMode, CancellationToken cancellationToken)
             => ReadMessageWithPrependedAsync(cancellationToken, dataRowLoadingMode);
 
-        /// <summary>
-        /// Reads a PostgreSQL asynchronous message (e.g. notification).
-        /// This has nothing to do with .NET async processing of messages or queries.
-        /// </summary>
-        internal void ReadAsyncMessage(int timeout)
-        {
-            ReceiveTimeout = timeout;
-            try
-            {
-                var msg = DoReadMessage(DataRowLoadingMode.NonSequential, true);
-                if (msg != null)
-                    throw new Exception($"While waiting for an asynchronous message, received an unexpected message of type {msg.Code}");
-            } catch {
-                Break();
-                throw;
-            }
-        }
-
-        internal async Task ReadAsyncMessageAsync(CancellationToken cancellationToken)
-        {
-            try
-            {
-                var msg = await DoReadMessageAsync(cancellationToken, DataRowLoadingMode.NonSequential, true);
-                // ReSharper disable once ConditionIsAlwaysTrueOrFalse
-                if (msg != null)
-                    throw new Exception($"While waiting for an asynchronous message, received an unexpected message of type {msg.Code}");
-            } catch {
-                Break();
-                throw;
-            }
-        }
-
         [RewriteAsync]
         [CanBeNull]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -908,7 +876,7 @@ namespace Npgsql
                     ReceiveTimeout = InternalCommandTimeout;
                     while (_pendingRfqPrependedMessages > 0)
                     {
-                        var msg = DoReadMessage(DataRowLoadingMode.Skip, isPrependedMessage: true);
+                        var msg = DoReadMessage(DataRowLoadingMode.Skip, true);
                         if (msg is ReadyForQueryMessage)
                         {
                             _pendingRfqPrependedMessages--;
@@ -951,7 +919,6 @@ namespace Npgsql
         [RewriteAsync]
         [CanBeNull]
         IBackendMessage DoReadMessage(DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential,
-                                      bool returnNullForAsyncMessage = false,
                                       bool isPrependedMessage = false)
         {
             NpgsqlException error = null;
@@ -1003,15 +970,13 @@ namespace Npgsql
                     }
                     break;
 
-                // Asynchronous messages
+                // Asynchronous messages which can come anytime, they have already been handled
+                // in ParseServerMessage. Read the next message.
                 case BackendMessageCode.NoticeResponse:
                 case BackendMessageCode.NotificationResponse:
                 case BackendMessageCode.ParameterStatus:
                     Contract.Assert(msg == null);
-                    if (!returnNullForAsyncMessage) {
-                        continue;
-                    }
-                    return null;
+                    continue;
                 }
 
                 Contract.Assert(msg != null, "Message is null for code: " + messageCode);
@@ -1181,6 +1146,42 @@ namespace Npgsql
         }
 
         #endregion Backend message processing
+
+        #region Backend asynchronous message processing
+
+        /// <summary>
+        /// Reads a PostgreSQL asynchronous message (e.g. notification).
+        /// This has nothing to do with .NET async processing of messages or queries.
+        /// </summary>
+        [RewriteAsync]
+        internal void ReadAsyncMessage()
+        {
+            ReceiveTimeout = UserTimeout;
+            ReadBuffer.Ensure(5);
+            var messageCode = (BackendMessageCode)ReadBuffer.ReadByte();
+            Contract.Assume(Enum.IsDefined(typeof(BackendMessageCode), messageCode), "Unknown message code: " + messageCode);
+            var len = ReadBuffer.ReadInt32() - 4;  // Transmitted length includes itself
+            var buf = ReadBuffer.EnsureOrAllocateTemp(len);
+            var msg = ParseServerMessage(buf, messageCode, len, DataRowLoadingMode.NonSequential, false);
+
+            switch (messageCode)
+            {
+            case BackendMessageCode.NoticeResponse:
+            case BackendMessageCode.NotificationResponse:
+            case BackendMessageCode.ParameterStatus:
+                break;
+            case BackendMessageCode.ErrorResponse:
+                // We can get certain asynchronous errors if the remote process is terminated, etc.
+                // We assume this is fatal.
+                Break();
+                throw new NpgsqlException(buf);
+            default:
+                Break();
+                throw new Exception($"Received unexpected message of type {msg} while waiting for an asynchronous message");
+            }
+        }
+
+        #endregion Backend asynchronous message processing
 
         #region Transactions
 

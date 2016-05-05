@@ -1170,8 +1170,9 @@ namespace Npgsql
 
             using (Connector.StartUserAction(ConnectorState.Waiting))
             {
+                Connector.UserTimeout = timeout;
                 try {
-                    Connector.ReadAsyncMessage(timeout);
+                    Connector.ReadAsyncMessage();
                 } catch (IOException e) {
                     var socketException = e.InnerException as SocketException;
                     if (socketException?.SocketErrorCode == SocketError.TimedOut)

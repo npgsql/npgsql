@@ -621,7 +621,7 @@ namespace Npgsql
                     ReceiveTimeout = InternalCommandTimeout;
                     while (_pendingRfqPrependedMessages > 0)
                     {
-                        var msg = await (DoReadMessageAsync(cancellationToken, DataRowLoadingMode.Skip, isPrependedMessage: true));
+                        var msg = await (DoReadMessageAsync(cancellationToken, DataRowLoadingMode.Skip, true));
                         if (msg is ReadyForQueryMessage)
                         {
                             _pendingRfqPrependedMessages--;
@@ -662,7 +662,7 @@ namespace Npgsql
             }
         }
 
-        async Task<IBackendMessage> DoReadMessageAsync(CancellationToken cancellationToken, DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential, bool returnNullForAsyncMessage = false, bool isPrependedMessage = false)
+        async Task<IBackendMessage> DoReadMessageAsync(CancellationToken cancellationToken, DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential, bool isPrependedMessage = false)
         {
             NpgsqlException error = null;
             while (true)
@@ -708,17 +708,13 @@ namespace Npgsql
                         }
 
                         break;
-                    // Asynchronous messages
+                    // Asynchronous messages which can come anytime, they have already been handled
+                    // in ParseServerMessage. Read the next message.
                     case BackendMessageCode.NoticeResponse:
                     case BackendMessageCode.NotificationResponse:
                     case BackendMessageCode.ParameterStatus:
                         Contract.Assert(msg == null);
-                        if (!returnNullForAsyncMessage)
-                        {
-                            continue;
-                        }
-
-                        return null;
+                        continue;
                 }
 
                 Contract.Assert(msg != null, "Message is null for code: " + messageCode);
@@ -766,6 +762,32 @@ namespace Npgsql
             }
 
             return asExpected;
+        }
+
+        internal async Task ReadAsyncMessageAsync(CancellationToken cancellationToken)
+        {
+            ReceiveTimeout = UserTimeout;
+            await ReadBuffer.EnsureAsync(5, cancellationToken);
+            var messageCode = (BackendMessageCode)ReadBuffer.ReadByte();
+            Contract.Assume(Enum.IsDefined(typeof (BackendMessageCode), messageCode), "Unknown message code: " + messageCode);
+            var len = ReadBuffer.ReadInt32() - 4; // Transmitted length includes itself
+            var buf = await (ReadBuffer.EnsureOrAllocateTempAsync(len, cancellationToken));
+            var msg = ParseServerMessage(buf, messageCode, len, DataRowLoadingMode.NonSequential, false);
+            switch (messageCode)
+            {
+                case BackendMessageCode.NoticeResponse:
+                case BackendMessageCode.NotificationResponse:
+                case BackendMessageCode.ParameterStatus:
+                    break;
+                case BackendMessageCode.ErrorResponse:
+                    // We can get certain asynchronous errors if the remote process is terminated, etc.
+                    // We assume this is fatal.
+                    Break();
+                    throw new NpgsqlException(buf);
+                default:
+                    Break();
+                    throw new Exception($"Received unexpected message of type {msg} while waiting for an asynchronous message");
+            }
         }
 
         internal async Task RollbackAsync(CancellationToken cancellationToken)
