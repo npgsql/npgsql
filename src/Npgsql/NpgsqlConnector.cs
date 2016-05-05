@@ -163,6 +163,17 @@ namespace Npgsql
         /// </summary>
         internal int UserTimeout { private get; set; }
 
+        int ReceiveTimeout
+        {
+            get { return _currentTimeout; }
+            set
+            {
+                // TODO: Socket.ReceiveTimeout doesn't work for async.
+                if (value != _currentTimeout)
+                    _socket.ReceiveTimeout = _currentTimeout = value;
+            }
+        }
+
         /// <summary>
         /// Contains the current value of the socket's ReceiveTimeout, used to determine whether
         /// we need to change it when commands are received.
@@ -1109,17 +1120,6 @@ namespace Npgsql
                     throw new Exception("Unexpected backend message: " + code);
                 default:
                     throw PGUtil.ThrowIfReached("Unknown backend message code: " + code);
-            }
-        }
-
-        int ReceiveTimeout
-        {
-            get { return _currentTimeout; }
-            set
-            {
-                // TODO: Socket.ReceiveTimeout doesn't work for async.
-                if (value != _currentTimeout)
-                    _socket.ReceiveTimeout = _currentTimeout = value;
             }
         }
 
