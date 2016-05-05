@@ -1,33 +1,36 @@
 ﻿{
   "version": "3.1.0-*",
-  "owners": [
-    "Shay Rojansky",
-    "Emil Lenngren",
-    "Francisco Figueiredo Jr.",
-    "Kenji Uno"
-  ],
-  "authors": [
-    "Shay Rojansky",
-    "Emil Lenngren",
-    "Francisco Figueiredo Jr.",
-    "Kenji Uno",
-    "Jon Asher",
-    "Josh Cooley",
-    "Federico Di Gregorio",
-    "Jon Hanna",
-    "Chris Morgan",
-    "Dave Page",
-    "Glen Parker",
-    "Brar Piening",
-    "Hiroshi Saito"
-  ],
-  "description" : "PostgreSQL provider for Entity Framework 5",
-  "iconUrl": "http://www.npgsql.org/img/postgresql.gif",
-  "repository": {
-    "type": "git",
-    "url": "git://github.com/npgsql/npgsql"
+  "packOptions": {
+    "owners": [
+      "Shay Rojansky",
+      "Emil Lenngren",
+      "Francisco Figueiredo Jr.",
+      "Kenji Uno"
+    ],
+    "authors": [
+      "Shay Rojansky",
+      "Emil Lenngren",
+      "Francisco Figueiredo Jr.",
+      "Kenji Uno",
+      "Jon Asher",
+      "Josh Cooley",
+      "Federico Di Gregorio",
+      "Jon Hanna",
+      "Chris Morgan",
+      "Dave Page",
+      "Glen Parker",
+      "Brar Piening",
+      "Hiroshi Saito"
+    ],
+    "description" : "PostgreSQL provider for Entity Framework 5",
+    "iconUrl": "http://www.npgsql.org/img/postgresql.gif",
+    "licenseUrl": "https://raw.githubusercontent.com/npgsql/npgsql/develop/LICENSE.txt",
+    "repository": {
+      "type": "git",
+      "url": "git://github.com/npgsql/npgsql"
+    }
   },
-  "compilationOptions": {
+  "buildOptions": {
     "keyFile": "../../Npgsql.snk"
   },
   "dependencies" : {

@@ -1,6 +1,6 @@
 {
   "version": "0.0.0",
-  "compilationOptions": {
+  "buildOptions": {
     "keyFile": "../../Npgsql.snk",
     "emitEntryPoint": true
   },
