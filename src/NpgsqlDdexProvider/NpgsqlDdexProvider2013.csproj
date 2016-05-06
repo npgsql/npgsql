@@ -63,7 +63,10 @@
       <Private>False</Private>
       <HintPath>..\..\packages\VSSDK.DTE.7.0.4\lib\net20\envdte.dll</HintPath>
     </Reference>
-    <Reference Include="Microsoft.VisualStudio.ComponentModelHost, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL" />
+    <Reference Include="Microsoft.VisualStudio.ComponentModelHost, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\VSSDK.ComponentModelHost.10.10.0.0\lib\net40\Microsoft.VisualStudio.ComponentModelHost.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="Microsoft.VisualStudio.Data.Core, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <Private>False</Private>
       <HintPath>..\..\packages\VSSDK.Data.12.0.4\lib\net45\Microsoft.VisualStudio.Data.Core.dll</HintPath>
@@ -231,7 +234,7 @@
       </Code>
     </Task>
   </UsingTask>
-  <Target Name="SetVsSDKEnvironmentVariables" BeforeTargets="GeneratePkgDef">
+  <Target Name="SetVsSDKEnvironmentVariables" BeforeTargets="VSCTCompile">
     <SetVsSDKEnvironmentVariables ProjectDirectory="$(MSBuildProjectDirectory)" />
   </Target>
 </Project>
