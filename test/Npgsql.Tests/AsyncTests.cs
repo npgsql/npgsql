@@ -35,8 +35,6 @@ namespace Npgsql.Tests
 {
     public class AsyncTests : TestBase
     {
-        public AsyncTests(string backendVersion) : base(backendVersion) {}
-
         [Test]
         public async Task NonQuery()
         {

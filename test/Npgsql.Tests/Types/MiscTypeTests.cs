@@ -244,12 +244,12 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        [MinPgVersion(9, 2, 0, "JSON data type not yet introduced")]
         public void Json()
         {
             using (var conn = OpenConnection())
             using (var cmd = new NpgsqlCommand("SELECT @p", conn))
             {
+                TestUtil.MinimumPgVersion(conn, "9.2.0", "JSON data type not yet introduced");
                 const string expected = @"{ ""Key"" : ""Value"" }";
                 cmd.Parameters.AddWithValue("p", NpgsqlDbType.Json, expected);
                 using (var reader = cmd.ExecuteReader())
@@ -265,12 +265,12 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        [MinPgVersion(9, 4, 0, "JSONB data type not yet introduced")]
         public void Jsonb()
         {
             using (var conn = OpenConnection())
             using (var cmd = new NpgsqlCommand("SELECT @p", conn))
             {
+                TestUtil.MinimumPgVersion(conn, "9.4.0", "JSONB data type not yet introduced");
                 var sb = new StringBuilder();
                 sb.Append(@"{""Key"": """);
                 sb.Append('x', conn.BufferSize);
@@ -290,11 +290,11 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        [MinPgVersion(9, 1, 0, "HSTORE data type not yet introduced")]
         public void Hstore()
         {
             using (var conn = OpenConnection())
             {
+                TestUtil.MinimumPgVersion(conn, "9.1.0", "HSTORE data type not yet introduced");
                 conn.ExecuteNonQuery(@"CREATE EXTENSION IF NOT EXISTS hstore");
                 conn.ReloadTypes();
 
@@ -481,13 +481,14 @@ namespace Npgsql.Tests.Types
 
         #endregion
 
-        [Test, MinPgVersion(9, 1, 0)]
+        [Test]
         public void Int2Vector()
         {
             var expected = new short[] { 4, 5, 6 };
             using (var conn = OpenConnection())
             using (var cmd = conn.CreateCommand())
             {
+                TestUtil.MinimumPgVersion(conn, "9.1.0");
                 cmd.CommandText = "SELECT @p::int2vector";
                 cmd.Parameters.AddWithValue("p", NpgsqlDbType.Int2Vector, expected);
                 using (var reader = cmd.ExecuteReader())
@@ -733,7 +734,5 @@ namespace Npgsql.Tests.Types
                 Assert.AreEqual(query.ToString(), output.ToString());
             }
         }
-
-        public MiscTypeTests(string backendVersion) : base(backendVersion) {}
     }
 }

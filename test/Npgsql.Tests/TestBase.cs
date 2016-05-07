@@ -22,55 +22,30 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
 using System.Data;
-using System.Diagnostics.Contracts;
+using System.IO;
 using System.Linq;
-using System.Diagnostics;
-using System.Reflection;
-using System.Threading.Tasks;
 using NLog.Config;
 using NLog.Targets;
-using System.Text;
 using NLog;
-using Npgsql;
 using Npgsql.Logging;
-using Npgsql.Tests;
-using NpgsqlTypes;
 
 using NUnit.Framework;
 
 namespace Npgsql.Tests
 {
-    [TestFixture("9.5")]
-    [TestFixture("9.4")]
-    [TestFixture("9.3")]
-    [TestFixture("9.2")]
-    [TestFixture("9.1")]
     public abstract class TestBase
     {
-        public Version BackendVersion { get; }
-
         static readonly Logger _log = LogManager.GetCurrentClassLogger();
-
-        /// <summary>
-        /// Constructs the parameterized test fixture
-        /// </summary>
-        /// <param name="backendVersion">
-        ///   The version of the Postgres backend to be used, major and minor veresions (e.g. 9.3).
-        ///   Used to select the conn string environment variable to be used.
-        /// </param>
-        protected TestBase(string backendVersion)
-        {
-            BackendVersion = new Version(backendVersion);
-        }
 
         /// <summary>
         /// The connection string that will be used when opening the connection to the tests database.
         /// May be overridden in fixtures, e.g. to set special connection parameters
         /// </summary>
-        protected virtual string ConnectionString { get { return _connectionString; } }
-        private string _connectionString;
+        protected virtual string ConnectionString =>
+            _connectionString ?? (_connectionString = Environment.GetEnvironmentVariable("NPGSQL_TEST_DB") ?? DefaultConnectionString);
+
+        string _connectionString;
 
         static bool _loggingSetUp;
 
@@ -92,13 +67,13 @@ namespace Npgsql.Tests
                 return connectionStringEF;
             }
         }
-        private string connectionStringEF;
+        string connectionStringEF;
 
         /// <summary>
         /// Unless the NPGSQL_TEST_DB environment variable is defined, this is used as the connection string for the
         /// test database.
         /// </summary>
-        private const string DEFAULT_CONNECTION_STRING = "Server=localhost;User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests";
+        const string DefaultConnectionString = "Server=localhost;User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests";
 
         #region Setup / Teardown
 
@@ -106,76 +81,7 @@ namespace Npgsql.Tests
         public virtual void TestFixtureSetup()
         {
             SetupLogging();
-
-            var connStringEnvVar = "NPGSQL_TEST_DB_" + BackendVersion.ToString().Replace(".", "_");
-            _connectionString = Environment.GetEnvironmentVariable(connStringEnvVar);
-            if (_connectionString != null)
-            {
-                _log.Debug("Using connection string provided in env var {0}: {1}", connStringEnvVar, _connectionString);
-                return;
-            }
-
-            if (BackendVersion == LatestBackendVersion)
-            {
-                _connectionString = DEFAULT_CONNECTION_STRING;
-                _log.Debug("Using internal default connection string: " + _connectionString);
-            }
-            else
-            {
-                Assert.Ignore("Skipping tests for backend version {0}, environment variable {1} isn't defined", BackendVersion, connStringEnvVar);
-            }
-
-            CreateDatabaseIfDoesntExist();
-        }
-
-        /// <summary>
-        /// Connect to the database, create it if it doesn't yet exist.
-        /// </summary>
-        void CreateDatabaseIfDoesntExist()
-        {
-            using (var conn = new NpgsqlConnection(_connectionString))
-            {
-                try
-                {
-                    conn.Open();
-                }
-                catch (PostgresException e) when (e.SqlState == "3D000")
-                {
-                    var csb = new NpgsqlConnectionStringBuilder(_connectionString);
-                    var requiredDatabase = csb.Database;
-                    var username = csb.Username;
-                    csb.Database = "template1";
-                    csb.Pooling = false;
-                    conn.ConnectionString = csb.ToString();
-
-                    _log.Info($"Creating test database {requiredDatabase} for owner {username}");
-                    try
-                    {
-                        conn.Open();
-                        conn.ExecuteNonQuery($"CREATE DATABASE {requiredDatabase} OWNER {username}");
-                    }
-                    catch (Exception e2)
-                    {
-                        throw new Exception("Exception while trying to create test database", e2);
-                    }
-                }
-            }
-        }
-
-        /// <summary>
-        /// Uses reflection to read the [TextFixture] attributes on this class and extract the latest
-        /// Postgres backend version specified within them.
-        /// </summary>
-        private Version LatestBackendVersion
-        {
-            get
-            {
-                return typeof(TestBase)
-                    .GetCustomAttributes(typeof(TestFixtureAttribute), false)
-                    .Cast<TestFixtureAttribute>()
-                    .Select(a => new Version((string) a.Arguments[0]))
-                    .Max();
-            }
+            _log.Debug("Connection string is: " + ConnectionString);
         }
 
         protected virtual void SetupLogging()

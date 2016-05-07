@@ -7,12 +7,8 @@ namespace Npgsql.Tests.Spatial
 {
     public class PostgisServiceTests : TestBase
     {
-        public PostgisServiceTests(string backendversion)
-            : base(backendversion)
-        {}
-
-        private NpgsqlConnection _conn;
-        private NpgsqlConnection Conn
+        NpgsqlConnection _conn;
+        NpgsqlConnection Conn
         {
             get
             {

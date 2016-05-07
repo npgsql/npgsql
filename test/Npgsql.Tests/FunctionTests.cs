@@ -105,11 +105,11 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        [MinPgVersion(9, 1, 0, "no binary output function available for type void before 9.1.0")]
         public void Void()
         {
             using (var conn = OpenConnection())
             {
+                TestUtil.MinimumPgVersion(conn, "9.1.0", "no binary output function available for type void before 9.1.0");
                 var command = new NpgsqlCommand("pg_sleep", conn);
                 command.Parameters.AddWithValue(0);
                 command.CommandType = CommandType.StoredProcedure;
@@ -118,11 +118,11 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        [MinPgVersion(9, 4, 0, "make_timestamp was introduced in 9.4")]
         public void NamedParameters()
         {
             using (var conn = OpenConnection())
             {
+                TestUtil.MinimumPgVersion(conn, "9.4.0", "make_timestamp was introduced in 9.4");
                 using (var command = new NpgsqlCommand("make_timestamp", conn))
                 {
                     command.CommandType = CommandType.StoredProcedure;
@@ -304,7 +304,5 @@ namespace Npgsql.Tests
         }
 
         #endregion
-
-        public FunctionTests(string backendVersion) : base(backendVersion) { }
     }
 }

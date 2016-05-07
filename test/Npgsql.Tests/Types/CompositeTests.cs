@@ -34,8 +34,6 @@ namespace Npgsql.Tests.Types
     [Parallelizable(ParallelScope.None)]
     class CompositeTests : TestBase
     {
-        public CompositeTests(string backendVersion) : base(backendVersion) {}
-
         #region Test Types
 
         class SomeComposite

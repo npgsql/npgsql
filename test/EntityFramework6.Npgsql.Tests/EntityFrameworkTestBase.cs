@@ -40,8 +40,6 @@ namespace EntityFramework6.Npgsql.Tests
 {
     public abstract class EntityFrameworkTestBase : TestBase
     {
-        protected EntityFrameworkTestBase(string backendVersion) : base(backendVersion) {}
-
         [OneTimeSetUp]
         public override void TestFixtureSetup()
         {

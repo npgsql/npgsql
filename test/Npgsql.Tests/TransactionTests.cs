@@ -463,7 +463,5 @@ namespace Npgsql.Tests
                 }
             }
         }
-
-        public TransactionTests(string backendVersion) : base(backendVersion) {}
     }
 }

@@ -70,7 +70,7 @@ Npgsql.EntityFramework/Npgsql.EntityFrameworkLegacy.nuspec]]></param>
         <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
         <artifact sourcePath="**" />
       </dependency>
-      <dependency sourceBuildTypeId="npgsql_Net45_2_2" cleanDestination="false">
+      <dependency sourceBuildTypeId="npgsql_net45_2_2" cleanDestination="false">
         <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
         <artifact sourcePath="**" />
       </dependency>
@@ -100,7 +100,7 @@ Npgsql.EntityFramework/Npgsql.EntityFrameworkLegacy.nuspec]]></param>
           <option name="take-successful-builds-only" value="true" />
         </options>
       </depend-on>
-      <depend-on sourceBuildTypeId="npgsql_Net45_2_2">
+      <depend-on sourceBuildTypeId="npgsql_net45_2_2">
         <options>
           <option name="take-started-build-with-same-revisions" value="true" />
           <option name="take-successful-builds-only" value="true" />

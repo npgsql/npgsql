@@ -248,8 +248,5 @@ namespace Npgsql.Tests.Types
                 }
             }
         }
-
-        public PostgisTests(string backendVersion)
-            : base(backendVersion){ }
     }
 }

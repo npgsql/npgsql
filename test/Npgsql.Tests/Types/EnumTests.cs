@@ -38,8 +38,6 @@ namespace Npgsql.Tests.Types
     [Parallelizable(ParallelScope.None)]
     class EnumTests : TestBase
     {
-        public EnumTests(string backendVersion) : base(backendVersion) {}
-
         enum Mood { Sad, Ok, Happy };
 
         [Test, Description("Resolves an enum type handler via the different pathways, with global mapping")]

@@ -40,8 +40,6 @@ namespace EntityFramework6.Npgsql.Tests
 {
     public class EntityFrameworkBasicTests : EntityFrameworkTestBase
     {
-        public EntityFrameworkBasicTests(string backendVersion) : base(backendVersion) { }
-
         [Test]
         public void InsertAndSelect()
         {
@@ -554,27 +552,27 @@ namespace EntityFramework6.Npgsql.Tests
         [Test]
         public void TestComplicatedQueriesWithApply()
         {
-            if ((BackendVersion.Major > 9) || (BackendVersion.Major == 9 && BackendVersion.Minor >= 3))
+            using (var conn = OpenConnection(ConnectionStringEF))
+                TestUtil.MinimumPgVersion(conn, "9.3.0");
+            using (var context = new BloggingContext(ConnectionStringEF))
             {
-                using (var context = new BloggingContext(ConnectionStringEF))
+                context.Database.Log = Console.Out.WriteLine;
+
+                // Test Apply
+                (from t1 in context.Blogs
+                    from t2 in context.Posts.Where(p => p.BlogId == t1.BlogId).Take(1)
+                    select new { t1, t2 }).ToArray();
+
+                Action<string> elinq = (string query) =>
                 {
-                    context.Database.Log = Console.Out.WriteLine;
+                    new System.Data.Entity.Core.Objects.ObjectQuery<System.Data.Common.DbDataRecord>(query, ((System.Data.Entity.Infrastructure.IObjectContextAdapter)context).ObjectContext).ToArray();
+                };
 
-                    // Test Apply
-                    (from t1 in context.Blogs
-                     from t2 in context.Posts.Where(p => p.BlogId == t1.BlogId).Take(1)
-                     select new { t1, t2 }).ToArray();
+                // Joins, apply
+                elinq("Select value Blogs.BlogId From Blogs outer apply (Select p1.BlogId as bid, p1.PostId as bid2 from Posts as p1 left outer join (Select value p.PostId from Posts as p where p.PostId < Blogs.BlogId)) as b outer apply (Select p.PostId from Posts as p where p.PostId < b.bid)");
 
-                    Action<string> elinq = (string query) => {
-                        new System.Data.Entity.Core.Objects.ObjectQuery<System.Data.Common.DbDataRecord>(query, ((System.Data.Entity.Infrastructure.IObjectContextAdapter)context).ObjectContext).ToArray();
-                    };
-
-                    // Joins, apply
-                    elinq("Select value Blogs.BlogId From Blogs outer apply (Select p1.BlogId as bid, p1.PostId as bid2 from Posts as p1 left outer join (Select value p.PostId from Posts as p where p.PostId < Blogs.BlogId)) as b outer apply (Select p.PostId from Posts as p where p.PostId < b.bid)");
-
-                    // Just some really crazy query that results in an apply as well
-                    context.Blogs.Select(b => new { b, b.BlogId, n = b.Posts.Select(p => new { t = p.Title + b.Name, n = p.Blog.Posts.Count(p2 => p2.BlogId < 4) }).Take(2) }).ToArray();
-                }
+                // Just some really crazy query that results in an apply as well
+                context.Blogs.Select(b => new { b, b.BlogId, n = b.Posts.Select(p => new { t = p.Title + b.Name, n = p.Blog.Posts.Count(p2 => p2.BlogId < 4) }).Take(2) }).ToArray();
             }
         }
 

@@ -34,8 +34,6 @@ namespace Npgsql.Tests
 {
     public class ReaderTests : TestBase
     {
-        public ReaderTests(string backendVersion) : base(backendVersion) { }
-
         [Test]
         public void EmptyResultSet()
         {

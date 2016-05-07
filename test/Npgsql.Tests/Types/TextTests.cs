@@ -415,7 +415,5 @@ namespace Npgsql.Tests.Types
                 }
             }
         }
-
-        public TextTests(string backendVersion) : base(backendVersion) { }
     }
 }

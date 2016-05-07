@@ -33,8 +33,6 @@ namespace Npgsql.Tests
 {
     public class DataAdapterTests : TestBase
     {
-        public DataAdapterTests(string backendVersion) : base(backendVersion) { }
-
         [Test]
         [MonoIgnore("Bug in mono, submitted pull request: https://github.com/mono/mono/pull/1172")]
         public void InsertWithDataSet()

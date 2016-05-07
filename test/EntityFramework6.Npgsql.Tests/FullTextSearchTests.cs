@@ -40,8 +40,6 @@ namespace EntityFramework6.Npgsql.Tests
 {
     class FullTextSearchTests : EntityFrameworkTestBase
     {
-        public FullTextSearchTests(string backendVersion) : base(backendVersion) { }
-
         [Test]
         public void ConversionToTsVector()
         {

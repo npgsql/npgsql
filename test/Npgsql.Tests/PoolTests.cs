@@ -329,7 +329,5 @@ namespace Npgsql.Tests
             using (var conn = new NpgsqlConnection(connString))
                 NpgsqlConnection.ClearPool(conn);
         }
-
-        public PoolTests(string backendVersion) : base(backendVersion) {}
     }
 }

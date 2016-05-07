@@ -43,8 +43,6 @@ namespace EntityFramework6.Npgsql.Tests
 {
     public class EntityFrameworkMigrationTests : TestBase
     {
-        public EntityFrameworkMigrationTests(string backendVersion) : base(backendVersion) { }
-
         #region Helper method
 
         /// <summary>
@@ -255,7 +253,7 @@ namespace EntityFramework6.Npgsql.Tests
             {
                 Name = "columnName"
             }));
-            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, BackendVersion.ToString());
+            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, _backendVersion.ToString());
             Assert.AreEqual(1, statments.Count());
             Assert.AreEqual("ALTER TABLE \"tableName\" ADD \"columnName\" float8", statments.ElementAt(0).Sql);
         }
@@ -269,7 +267,7 @@ namespace EntityFramework6.Npgsql.Tests
                 Name = "columnName",
                 DefaultValue = 4.4f
             }));
-            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, BackendVersion.ToString());
+            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, _backendVersion.ToString());
             Assert.AreEqual(1, statments.Count());
             Assert.AreEqual("ALTER TABLE \"tableName\" ADD \"columnName\" float4 DEFAULT 4.4", statments.ElementAt(0).Sql);
         }
@@ -283,7 +281,7 @@ namespace EntityFramework6.Npgsql.Tests
                 Name = "columnName",
                 DefaultValueSql = "4.6"
             }));
-            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, BackendVersion.ToString());
+            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, _backendVersion.ToString());
             Assert.AreEqual(1, statments.Count());
             Assert.AreEqual("ALTER TABLE \"tableName\" ADD \"columnName\" float4 DEFAULT 4.6", statments.ElementAt(0).Sql);
         }
@@ -296,7 +294,7 @@ namespace EntityFramework6.Npgsql.Tests
             {
                 Name = "columnName"
             }, false));
-            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, BackendVersion.ToString());
+            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, _backendVersion.ToString());
             Assert.AreEqual(3, statments.Count());
             Assert.AreEqual("ALTER TABLE \"tableName\" ALTER COLUMN \"columnName\" TYPE float8", statments.ElementAt(0).Sql);
             Assert.AreEqual("ALTER TABLE \"tableName\" ALTER COLUMN \"columnName\" DROP NOT NULL", statments.ElementAt(1).Sql);
@@ -313,7 +311,7 @@ namespace EntityFramework6.Npgsql.Tests
                 DefaultValue = 2.3,
                 IsNullable = false
             }, false));
-            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, BackendVersion.ToString());
+            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, _backendVersion.ToString());
             Assert.AreEqual(3, statments.Count());
             Assert.AreEqual("ALTER TABLE \"tableName\" ALTER COLUMN \"columnName\" TYPE float8", statments.ElementAt(0).Sql);
             Assert.AreEqual("ALTER TABLE \"tableName\" ALTER COLUMN \"columnName\" SET NOT NULL", statments.ElementAt(1).Sql);
@@ -361,9 +359,9 @@ namespace EntityFramework6.Npgsql.Tests
                 });
 
             operations.Add(operation);
-            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, BackendVersion.ToString());
+            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, _backendVersion.ToString());
             Assert.AreEqual(2, statments.Count());
-            if (BackendVersion.Major > 9 || (BackendVersion.Major == 9 && BackendVersion.Minor > 2))
+            if (_backendVersion.Major > 9 || (_backendVersion.Major == 9 && _backendVersion.Minor > 2))
                 Assert.AreEqual("CREATE SCHEMA IF NOT EXISTS someSchema", statments.ElementAt(0).Sql);
             else
                 Assert.AreEqual("CREATE SCHEMA someSchema", statments.ElementAt(0).Sql);
@@ -373,7 +371,7 @@ namespace EntityFramework6.Npgsql.Tests
         [Test]
         public void CreateTableWithoutSchema()
         {
-            var statements = new NpgsqlMigrationSqlGenerator().Generate(new List<MigrationOperation> { new CreateTableOperation("some_table") }, BackendVersion.ToString()).ToList();
+            var statements = new NpgsqlMigrationSqlGenerator().Generate(new List<MigrationOperation> { new CreateTableOperation("some_table") }, _backendVersion.ToString()).ToList();
             Assert.That(statements.Count, Is.EqualTo(1));
             Assert.That(statements[0].Sql, Is.EqualTo("CREATE TABLE \"some_table\"()"));
         }
@@ -381,7 +379,7 @@ namespace EntityFramework6.Npgsql.Tests
         [Test]
         public void CreateTableInPublicSchema()
         {
-            var statements = new NpgsqlMigrationSqlGenerator().Generate(new List<MigrationOperation> { new CreateTableOperation("public.some_table") }, BackendVersion.ToString()).ToList();
+            var statements = new NpgsqlMigrationSqlGenerator().Generate(new List<MigrationOperation> { new CreateTableOperation("public.some_table") }, _backendVersion.ToString()).ToList();
             Assert.That(statements.Count, Is.EqualTo(1));
             Assert.That(statements[0].Sql, Is.EqualTo("CREATE TABLE \"public\".\"some_table\"()"));
         }
@@ -391,7 +389,7 @@ namespace EntityFramework6.Npgsql.Tests
         {
             var operations = new List<MigrationOperation>();
             operations.Add(new DropColumnOperation("someTable", "someColumn"));
-            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, BackendVersion.ToString());
+            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, _backendVersion.ToString());
             Assert.AreEqual(1, statments.Count());
             Assert.AreEqual("ALTER TABLE \"someTable\" DROP COLUMN \"someColumn\"", statments.ElementAt(0).Sql);
         }
@@ -401,7 +399,7 @@ namespace EntityFramework6.Npgsql.Tests
         {
             var operations = new List<MigrationOperation>();
             operations.Add(new DropTableOperation("someTable"));
-            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, BackendVersion.ToString());
+            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, _backendVersion.ToString());
             Assert.AreEqual(1, statments.Count());
             Assert.AreEqual("DROP TABLE \"someTable\"", statments.ElementAt(0).Sql);
         }
@@ -411,7 +409,7 @@ namespace EntityFramework6.Npgsql.Tests
         {
             var operations = new List<MigrationOperation>();
             operations.Add(new RenameTableOperation("schema.someOldTableName", "someNewTablename"));
-            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, BackendVersion.ToString());
+            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, _backendVersion.ToString());
             Assert.AreEqual(1, statments.Count());
             Assert.AreEqual("ALTER TABLE \"schema\".\"someOldTableName\" RENAME TO \"someNewTablename\"", statments.ElementAt(0).Sql);
         }
@@ -421,7 +419,7 @@ namespace EntityFramework6.Npgsql.Tests
         {
             var operations = new List<MigrationOperation>();
             //TODO: fill operations
-            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, BackendVersion.ToString());
+            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, _backendVersion.ToString());
             //TODO: check statments
         }
 
@@ -434,7 +432,7 @@ namespace EntityFramework6.Npgsql.Tests
                 Name = "someIndex",
                 Table = "someTable"
             });
-            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, BackendVersion.ToString());
+            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, _backendVersion.ToString());
             Assert.AreEqual(1, statments.Count());
             Assert.AreEqual("DROP INDEX IF EXISTS dto.\"someTable_someIndex\"", statments.ElementAt(0).Sql);
         }
@@ -448,7 +446,7 @@ namespace EntityFramework6.Npgsql.Tests
                 Name = "someIndex",
                 Table = "someSchema.someTable"
             });
-            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, BackendVersion.ToString());
+            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, _backendVersion.ToString());
             Assert.AreEqual(1, statments.Count());
             Assert.AreEqual("DROP INDEX IF EXISTS someSchema.\"someTable_someIndex\"", statments.ElementAt(0).Sql);
         }
@@ -465,7 +463,7 @@ namespace EntityFramework6.Npgsql.Tests
             operation.Columns.Add("column3");
             operation.IsUnique = false;
             operations.Add(operation);
-            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, BackendVersion.ToString());
+            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, _backendVersion.ToString());
             Assert.AreEqual(1, statments.Count());
             Assert.AreEqual("CREATE INDEX \"someTable_someIndex\" ON \"someTable\" (\"column1\",\"column2\",\"column3\")", statments.ElementAt(0).Sql);
         }
@@ -482,7 +480,7 @@ namespace EntityFramework6.Npgsql.Tests
             operation.Columns.Add("column3");
             operation.IsUnique = true;
             operations.Add(operation);
-            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, BackendVersion.ToString());
+            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, _backendVersion.ToString());
             Assert.AreEqual(1, statments.Count());
             Assert.AreEqual("CREATE UNIQUE INDEX \"someTable_someIndex\" ON \"someTable\" (\"column1\",\"column2\",\"column3\")", statments.ElementAt(0).Sql);
         }
@@ -492,9 +490,9 @@ namespace EntityFramework6.Npgsql.Tests
         {
             var operations = new List<MigrationOperation>();
             operations.Add(new RenameIndexOperation("someSchema.someTable", "someOldIndexName", "someNewIndexName"));
-            var statements = new NpgsqlMigrationSqlGenerator().Generate(operations, BackendVersion.ToString());
+            var statements = new NpgsqlMigrationSqlGenerator().Generate(operations, _backendVersion.ToString());
             Assert.AreEqual(1, statements.Count());
-            if (BackendVersion.Major > 9 || (BackendVersion.Major == 9 && BackendVersion.Minor >= 2))
+            if (_backendVersion.Major > 9 || (_backendVersion.Major == 9 && _backendVersion.Minor >= 2))
             {
                 Assert.AreEqual("ALTER INDEX IF EXISTS someSchema.\"someOldIndexName\" RENAME TO \"someNewIndexName\"", statements.ElementAt(0).Sql);
             }
@@ -509,9 +507,9 @@ namespace EntityFramework6.Npgsql.Tests
         {
             var operations = new List<MigrationOperation>();
             operations.Add(new MoveTableOperation("someOldSchema.someTable", "someNewSchema"));
-            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, BackendVersion.ToString());
+            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, _backendVersion.ToString());
             Assert.AreEqual(2, statments.Count());
-            if (BackendVersion.Major > 9 || (BackendVersion.Major == 9 && BackendVersion.Minor > 2))
+            if (_backendVersion.Major > 9 || (_backendVersion.Major == 9 && _backendVersion.Minor > 2))
                 Assert.AreEqual("CREATE SCHEMA IF NOT EXISTS someNewSchema", statments.ElementAt(0).Sql);
             else
                 Assert.AreEqual("CREATE SCHEMA someNewSchema", statments.ElementAt(0).Sql);
@@ -523,9 +521,9 @@ namespace EntityFramework6.Npgsql.Tests
         {
             var operations = new List<MigrationOperation>();
             operations.Add(new MoveTableOperation("someOldSchema.someTable", null));
-            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, BackendVersion.ToString());
+            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, _backendVersion.ToString());
             Assert.AreEqual(2, statments.Count());
-            if (BackendVersion.Major > 9 || (BackendVersion.Major == 9 && BackendVersion.Minor > 2))
+            if (_backendVersion.Major > 9 || (_backendVersion.Major == 9 && _backendVersion.Minor > 2))
                 Assert.AreEqual("CREATE SCHEMA IF NOT EXISTS dbo", statments.ElementAt(0).Sql);
             else
                 Assert.AreEqual("CREATE SCHEMA dbo", statments.ElementAt(0).Sql);
@@ -544,7 +542,7 @@ namespace EntityFramework6.Npgsql.Tests
             operation.Columns.Add("column3");
             operation.IsClustered = false;
             operations.Add(operation);
-            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, BackendVersion.ToString());
+            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, _backendVersion.ToString());
             Assert.AreEqual(1, statments.Count());
             Assert.AreEqual("ALTER TABLE \"someTable\" ADD CONSTRAINT \"somePKName\" PRIMARY KEY (\"column1\",\"column2\",\"column3\")", statments.ElementAt(0).Sql);
         }
@@ -562,7 +560,7 @@ namespace EntityFramework6.Npgsql.Tests
             operation.IsClustered = true;
             //TODO: PostgreSQL support something like IsClustered?
             operations.Add(operation);
-            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, BackendVersion.ToString());
+            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, _backendVersion.ToString());
             Assert.AreEqual(1, statments.Count());
             Assert.AreEqual("ALTER TABLE \"someTable\" ADD CONSTRAINT \"somePKName\" PRIMARY KEY (\"column1\",\"column2\",\"column3\")", statments.ElementAt(0).Sql);
         }
@@ -575,7 +573,7 @@ namespace EntityFramework6.Npgsql.Tests
             operation.Table = "someTable";
             operation.Name = "somePKName";
             operations.Add(operation);
-            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, BackendVersion.ToString());
+            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, _backendVersion.ToString());
             Assert.AreEqual(1, statments.Count());
             Assert.AreEqual("ALTER TABLE \"someTable\" DROP CONSTRAINT \"somePKName\"", statments.ElementAt(0).Sql);
         }
@@ -585,7 +583,7 @@ namespace EntityFramework6.Npgsql.Tests
         {
             var operations = new List<MigrationOperation>();
             operations.Add(new RenameColumnOperation("someTable", "someOldColumnName", "someNewColumnName"));
-            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, BackendVersion.ToString());
+            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, _backendVersion.ToString());
             Assert.AreEqual(1, statments.Count());
             Assert.AreEqual("ALTER TABLE \"someTable\" RENAME COLUMN \"someOldColumnName\" TO \"someNewColumnName\"", statments.ElementAt(0).Sql);
         }
@@ -595,7 +593,7 @@ namespace EntityFramework6.Npgsql.Tests
         {
             var operations = new List<MigrationOperation>();
             operations.Add(new SqlOperation("SELECT someColumn FROM someTable"));
-            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, BackendVersion.ToString());
+            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, _backendVersion.ToString());
             Assert.AreEqual(1, statments.Count());
             Assert.AreEqual("SELECT someColumn FROM someTable", statments.ElementAt(0).Sql);
         }
@@ -605,7 +603,7 @@ namespace EntityFramework6.Npgsql.Tests
         {
             var operations = new List<MigrationOperation>();
             //TODO: fill operations
-            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, BackendVersion.ToString());
+            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, _backendVersion.ToString());
             //TODO: check statments
         }
 
@@ -622,7 +620,7 @@ namespace EntityFramework6.Npgsql.Tests
             operation.DependentColumns.Add("column3");
             operation.CascadeDelete = false;
             operations.Add(operation);
-            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, BackendVersion.ToString());
+            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, _backendVersion.ToString());
             Assert.AreEqual(1, statments.Count());
             Assert.AreEqual("ALTER TABLE \"someDependentTable\" ADD CONSTRAINT \"someFK\" FOREIGN KEY (\"column1\",\"column2\",\"column3\") REFERENCES \"somePrincipalTable\" )", statments.ElementAt(0).Sql);
         }
@@ -640,7 +638,7 @@ namespace EntityFramework6.Npgsql.Tests
             operation.DependentColumns.Add("column3");
             operation.CascadeDelete = true;
             operations.Add(operation);
-            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, BackendVersion.ToString());
+            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, _backendVersion.ToString());
             Assert.AreEqual(1, statments.Count());
             Assert.AreEqual("ALTER TABLE \"someDependentTable\" ADD CONSTRAINT \"someFK\" FOREIGN KEY (\"column1\",\"column2\",\"column3\") REFERENCES \"somePrincipalTable\" ) ON DELETE CASCADE", statments.ElementAt(0).Sql);
         }
@@ -654,9 +652,9 @@ namespace EntityFramework6.Npgsql.Tests
             operation.Name = "someFK";
             operation.DependentTable = "someTable";
             operations.Add(operation);
-            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, BackendVersion.ToString());
+            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, _backendVersion.ToString());
             Assert.AreEqual(1, statments.Count());
-            if (BackendVersion.Major > 8)
+            if (_backendVersion.Major > 8)
                 Assert.AreEqual("ALTER TABLE \"someTable\" DROP CONSTRAINT IF EXISTS \"someFK\"", statments.ElementAt(0).Sql);
             else
                 Assert.AreEqual("ALTER TABLE \"someTable\" DROP CONSTRAINT \"someFK\"", statments.ElementAt(0).Sql);
@@ -778,7 +776,7 @@ namespace EntityFramework6.Npgsql.Tests
                     DefaultValue = new TimeSpan(937840050067)//1 day, 2 hours, 3 minutes, 4 seconds, 5 miliseconds, 6 microseconds, 700 nanoseconds
                 }, false)
                 );
-            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, BackendVersion.ToString());
+            var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, _backendVersion.ToString());
             Assert.AreEqual(16, statments.Count());
             Assert.AreEqual("ALTER TABLE \"someTable\" ADD \"someByteaColumn\" bytea DEFAULT E'\\\\01027F80FEFF'", statments.ElementAt(0).Sql);
             Assert.AreEqual("ALTER TABLE \"someTable\" ADD \"someFalseBooleanColumn\" boolean DEFAULT FALSE", statments.ElementAt(1).Sql);
@@ -796,7 +794,15 @@ namespace EntityFramework6.Npgsql.Tests
             Assert.AreEqual("ALTER TABLE \"someTable\" ADD \"someSingleColumn\" float4 DEFAULT 12.4", statments.ElementAt(13).Sql);
             Assert.AreEqual("ALTER TABLE \"someTable\" ADD \"someStringColumn\" text DEFAULT 'Hello EF'", statments.ElementAt(14).Sql);
             Assert.AreEqual("ALTER TABLE \"someTable\" ADD \"someColumn\" interval DEFAULT '1 day 02:03:04.005007'", statments.ElementAt(15).Sql);
-
         }
+
+        [OneTimeSetUp]
+        public void OneTimeSetUp()
+        {
+            using (var conn = OpenConnection(ConnectionStringEF))
+                _backendVersion = conn.PostgreSqlVersion;
+        }
+
+        Version _backendVersion;
     }
 }

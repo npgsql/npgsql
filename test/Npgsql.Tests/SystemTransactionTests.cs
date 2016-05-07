@@ -34,8 +34,6 @@ namespace Npgsql.Tests
     [Parallelizable(ParallelScope.None)]
     public class SystemTransactionTests : TestBase
     {
-        public SystemTransactionTests(string backendVersion) : base(backendVersion) { }
-
         [Test, Description("Single connection enlisting explicitly, committing")]
         public void ExplicitEnlist()
         {

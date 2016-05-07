@@ -42,8 +42,6 @@ namespace Npgsql.Tests.Types
     /// </remarks>
     class ArrayTests : TestBase
     {
-        public ArrayTests(string backendVersion) : base(backendVersion) {}
-
         [Test, Description("Resolves an array type handler via the different pathways")]
         public void ArrayTypeResolution()
         {

@@ -34,8 +34,6 @@ namespace Npgsql.Tests
 {
     public class ExceptionTests : TestBase
     {
-        public ExceptionTests(string backendVersion) : base(backendVersion) { }
-
         [Test, Description("Generates a basic server-side exception, checks that it's properly raised and populated")]
         public void Basic()
         {
@@ -75,11 +73,11 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        [MinPgVersion(9, 3, 0, "5 error fields haven't been added yet")]
         public void ExceptionFieldsArePopulated()
         {
             using (var conn = OpenConnection())
             {
+                TestUtil.MinimumPgVersion(conn, "9.3.0", "5 error fields haven't been added yet");
                 conn.ExecuteNonQuery("CREATE TEMP TABLE uniqueviolation (id INT NOT NULL, CONSTRAINT uniqueviolation_pkey PRIMARY KEY (id))");
                 conn.ExecuteNonQuery("INSERT INTO uniqueviolation (id) VALUES(1)");
                 try
@@ -98,11 +96,11 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        [MinPgVersion(9, 3, 0, "5 error fields haven't been added yet")]
         public void ColumnNameExceptionFieldIsPopulated()
         {
             using (var conn = OpenConnection())
             {
+                TestUtil.MinimumPgVersion(conn, "9.3.0", "5 error fields haven't been added yet");
                 conn.ExecuteNonQuery("CREATE TEMP TABLE notnullviolation (id INT NOT NULL)");
                 try
                 {
@@ -118,7 +116,6 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        [MinPgVersion(9, 3, 0, "5 error fields haven't been added yet")]
         [Parallelizable(ParallelScope.None)]
         public void DataTypeNameExceptionFieldIsPopulated()
         {
@@ -132,6 +129,7 @@ namespace Npgsql.Tests
 
             using (var conn = OpenConnection())
             {
+                TestUtil.MinimumPgVersion(conn, "9.3.0", "5 error fields haven't been added yet");
                 try
                 {
                     var command = new NpgsqlCommand(dropDomain, conn);

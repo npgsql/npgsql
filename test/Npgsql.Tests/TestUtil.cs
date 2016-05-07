@@ -35,11 +35,7 @@ namespace Npgsql.Tests
 {
     public static class TestUtil
     {
-        public static bool IsOnBuildServer {
-            get {
-                return Environment.GetEnvironmentVariable("TEAMCITY_VERSION") != null;
-            }
-        }
+        public static bool IsOnBuildServer => Environment.GetEnvironmentVariable("TEAMCITY_VERSION") != null;
 
         /// <summary>
         /// Calls Assert.Ignore() unless we're on the build server, in which case calls
@@ -54,15 +50,23 @@ namespace Npgsql.Tests
                 Assert.Ignore(message);
         }
 
-        public static void IgnoreExceptOnBuildServer(string message, params object[] args)
+        public  static void IgnoreExceptOnBuildServer(string message, params object[] args)
+            => IgnoreExceptOnBuildServer(string.Format(message, args));
+
+        public static void MinimumPgVersion(NpgsqlConnection conn, string minVersion, string ignoreText=null)
         {
-            IgnoreExceptOnBuildServer(String.Format(message, args));
+            var min = new Version(minVersion);
+            if (conn.PostgreSqlVersion < min)
+            {
+                var msg = $"Postgresql backend version {conn.PostgreSqlVersion} is less than the required {min}";
+                if (ignoreText != null)
+                    msg += ": " + ignoreText;
+                Assert.Ignore(msg);
+            }
         }
 
         public static string GetUniqueIdentifier(string prefix)
-        {
-            return prefix + Interlocked.Increment(ref _counter);
-        }
+            => prefix + Interlocked.Increment(ref _counter);
 
         static int _counter;
     }
@@ -129,40 +133,6 @@ namespace Npgsql.Tests
             if (Type.GetType("Mono.Runtime") != null)
             {
                 var msg = "Ignored on mono";
-                if (_ignoreText != null)
-                    msg += ": " + _ignoreText;
-                Assert.Ignore(msg);
-            }
-        }
-
-        public void AfterTest([NotNull] ITest test) { }
-        public ActionTargets Targets => ActionTargets.Test;
-    }
-
-    /// <summary>
-    /// Causes the test to be ignored if the Postgresql backend version is less than the given one.
-    /// </summary>
-    [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class | AttributeTargets.Assembly, AllowMultiple = false)]
-    public class MinPgVersion : Attribute, ITestAction
-    {
-        readonly Version _minVersion;
-        readonly string _ignoreText;
-
-        public MinPgVersion(int major, int minor, int build, string ignoreText = null)
-        {
-            _minVersion = new Version(major, minor, build);
-            _ignoreText = ignoreText;
-        }
-
-        public void BeforeTest([NotNull] ITest test)
-        {
-            var asTestBase = test.Fixture as TestBase;
-            if (asTestBase == null)
-                throw new Exception("[MinPgsqlVersion] can only be used in fixtures inheriting from TestBase");
-
-            if (asTestBase.BackendVersion < _minVersion)
-            {
-                var msg = $"Postgresql backend version {asTestBase.BackendVersion} is less than the required {_minVersion}";
                 if (_ignoreText != null)
                     msg += ": " + _ignoreText;
                 Assert.Ignore(msg);
