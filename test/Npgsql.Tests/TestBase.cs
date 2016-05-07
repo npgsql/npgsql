@@ -21,9 +21,8 @@
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 using System;
-using System.Collections.Generic;
 using System.Data;
-using System.Diagnostics.Contracts;
+using System.IO;
 using System.Linq;
 using System.Configuration;
 using System.Diagnostics;
@@ -32,47 +31,31 @@ using System.Threading.Tasks;
 using NLog.Config;
 using NLog.Targets;
 using System.Text;
+using NLog;
 using Npgsql;
 using Npgsql.Logging;
-using Npgsql.Tests;
-using NpgsqlTypes;
 
 using NUnit.Framework;
 
 namespace Npgsql.Tests
 {
-    [TestFixture("9.5")]
-    [TestFixture("9.4")]
-    [TestFixture("9.3")]
-    [TestFixture("9.2")]
-    [TestFixture("9.1")]
     public abstract class TestBase
     {
-        protected Version BackendVersion { get; private set; }
-
-        /// <summary>
-        /// Constructs the parameterized test fixture
-        /// </summary>
-        /// <param name="backendVersion">
-        ///   The version of the Postgres backend to be used, major and minor veresions (e.g. 9.3).
-        ///   Used to select the conn string environment variable to be used.
-        /// </param>
-        protected TestBase(string backendVersion)
-        {
-            BackendVersion = new Version(backendVersion);
-        }
-
         /// <summary>
         /// A connection to the test database, set up prior to running each test.
         /// </summary>
         internal NpgsqlConnection Conn { get; set; }
 
+        static readonly Logger _log = LogManager.GetCurrentClassLogger();
+
         /// <summary>
         /// The connection string that will be used when opening the connection to the tests database.
         /// May be overridden in fixtures, e.g. to set special connection parameters
         /// </summary>
-        protected virtual string ConnectionString { get { return _connectionString; } }
-        private string _connectionString;
+        protected virtual string ConnectionString =>
+            _connectionString ?? (_connectionString = Environment.GetEnvironmentVariable("NPGSQL_TEST_DB") ?? DefaultConnectionString);
+
+        string _connectionString;
 
         static bool _loggingSetUp;
 
@@ -94,13 +77,13 @@ namespace Npgsql.Tests
                 return connectionStringEF;
             }
         }
-        private string connectionStringEF;
+        string connectionStringEF;
 
         /// <summary>
         /// Unless the NPGSQL_TEST_DB environment variable is defined, this is used as the connection string for the
         /// test database.
         /// </summary>
-        private const string DEFAULT_CONNECTION_STRING = "Server=localhost;User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests";
+        const string DefaultConnectionString = "Server=localhost;User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests";
 
         #region Setup / Teardown
 
@@ -108,24 +91,7 @@ namespace Npgsql.Tests
         public virtual void TestFixtureSetup()
         {
             SetupLogging();
-
-            var connStringEnvVar = "NPGSQL_TEST_DB_" + BackendVersion.ToString().Replace(".", "_");
-            _connectionString = Environment.GetEnvironmentVariable(connStringEnvVar);
-            if (_connectionString != null)
-            {
-                Console.WriteLine("Using connection string provided in env var {0}: {1}", connStringEnvVar, _connectionString);
-                return;
-            }
-
-            if (BackendVersion == LatestBackendVersion)
-            {
-                _connectionString = DEFAULT_CONNECTION_STRING;
-                Console.WriteLine("Using internal default connection string: " + _connectionString);
-            }
-            else
-            {
-                Assert.Ignore("Skipping tests for backend version {0}, environment variable {1} isn't defined", BackendVersion, connStringEnvVar);
-            }
+            _log.Debug("Connection string is: " + ConnectionString);
         }
 
         [SetUp]
@@ -165,22 +131,6 @@ namespace Npgsql.Tests
                     if (e.Code != "42P06")
                         throw;
                 }
-            }
-        }
-
-        /// <summary>
-        /// Uses reflection to read the [TextFixture] attributes on this class and extract the latest
-        /// Postgres backend version specified within them.
-        /// </summary>
-        private Version LatestBackendVersion
-        {
-            get
-            {
-                return typeof(TestBase)
-                    .GetCustomAttributes(typeof (TestFixtureAttribute), false)
-                    .Cast<TestFixtureAttribute>()
-                    .Select(a => new Version((string) a.Arguments[0]))
-                    .Max();
             }
         }
 

@@ -14,11 +14,8 @@ namespace Npgsql.Tests.Types
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/rangetypes.html
     /// </remarks>
-    [MinPgVersion(9, 2, 0, "Ranges supported only starting PostgreSQL 9.2")]
     class RangeTests : TestBase
     {
-        public RangeTests(string backendVersion) : base(backendVersion) { }
-
         [Test]
         public void Range()
         {
@@ -84,6 +81,16 @@ namespace Npgsql.Tests.Types
                 cmd.Prepare();
                 obj = cmd.ExecuteScalar();
                 Assert.AreEqual(new NpgsqlRange<int>(3, true, false, 9, false, false), ((NpgsqlRange<int>[])obj)[1]);
+            }
+        }
+
+        [TestFixtureSetUp]
+        public void OneTimeSetUp()
+        {
+            using (var conn = new NpgsqlConnection(ConnectionString))
+            {
+                conn.Open();
+                TestUtil.MinimumPgVersion(conn, "9.2.0");
             }
         }
     }

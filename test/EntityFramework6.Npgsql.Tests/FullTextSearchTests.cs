@@ -33,15 +33,12 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Data.Entity.Core.Metadata.Edm;
 using System.Data.Entity.Core.Objects;
 using System.Data.Entity.Infrastructure;
-using Npgsql.Tests;
 using NpgsqlTypes;
 
 namespace EntityFramework6.Npgsql.Tests
 {
     class FullTextSearchTests : EntityFrameworkTestBase
     {
-        public FullTextSearchTests(string backendVersion) : base(backendVersion) { }
-
         [Test]
         public void ConversionToTsVector()
         {

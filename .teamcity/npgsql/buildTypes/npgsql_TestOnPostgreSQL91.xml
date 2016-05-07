@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<build-type xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="0683dc8b-9c13-4486-83b1-1a360b959fca" xsi:noNamespaceSchemaLocation="http://www.jetbrains.com/teamcity/schemas/9.0/project-config.xsd">
+  <name>Test on PostgreSQL 9.1</name>
+  <description />
+  <settings ref="RunNpgsqlTests">
+    <parameters>
+      <param name="env.NPGSQL_TEST_DB" value="Server=localhost;port=5491;User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests" />
+    </parameters>
+    <build-runners order="RUNNER_31, RUNNER_1" />
+    <vcs-settings />
+    <requirements />
+    <build-triggers />
+    <cleanup />
+  </settings>
+</build-type>
+

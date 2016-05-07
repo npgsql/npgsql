@@ -36,8 +36,6 @@ namespace Npgsql.Tests
     [TestFixture]
     public class ExceptionTests : TestBase
     {
-        public ExceptionTests(string backendVersion) : base(backendVersion) { }
-
         [Test, Description("Generates a basic server-side exception, checks that it's properly raised and populated")]
         public void Basic()
         {
@@ -74,9 +72,10 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        [MinPgVersion(9, 3, 0, "5 error fields haven't been added yet")]
         public void ExceptionFieldsArePopulated()
         {
+            TestUtil.MinimumPgVersion(Conn, "9.3.0", "5 error fields haven't been added yet");
+
             const string dropTable = @"DROP TABLE IF EXISTS public.uniqueviolation";
             const string createTable = @"CREATE TABLE public.uniqueviolation (id INT NOT NULL, CONSTRAINT uniqueviolation_pkey PRIMARY KEY (id))";
             const string insertStatement = @"INSERT INTO public.uniqueviolation (id) VALUES(1)";
@@ -109,9 +108,9 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        [MinPgVersion(9, 3, 0, "5 error fields haven't been added yet")]
         public void ColumnNameExceptionFieldIsPopulated()
         {
+            TestUtil.MinimumPgVersion(Conn, "9.3.0", "5 error fields haven't been added yet");
             const string dropTable = @"DROP TABLE IF EXISTS public.notnullviolation";
             const string createTable = @"CREATE TABLE public.notnullviolation (id INT NOT NULL)";
             const string insertStatement = @"INSERT INTO public.notnullviolation (id) VALUES(NULL)";
@@ -138,9 +137,10 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        [MinPgVersion(9, 3, 0, "5 error fields haven't been added yet")]
         public void DataTypeNameExceptionFieldIsPopulated()
         {
+            TestUtil.MinimumPgVersion(Conn, "9.3.0", "5 error fields haven't been added yet");
+
             // On reading the source code for PostgreSQL9.3beta1, the only time that the
             // datatypename field is populated is when using domain types. So here we'll
             // create a domain that simply does not allow NULLs then try and cast NULL

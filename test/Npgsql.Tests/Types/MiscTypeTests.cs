@@ -155,9 +155,9 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        [MinPgVersion(9, 2, 0, "JSON data type not yet introduced")]
         public void Json()
         {
+            TestUtil.MinimumPgVersion(Conn, "9.2.0", "JSON data type not yet introduced");
             const string expected = @"{ ""Key"" : ""Value"" }";
             using (var cmd = new NpgsqlCommand("SELECT @p", Conn))
             {
@@ -175,9 +175,9 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        [MinPgVersion(9, 4, 0, "JSONB data type not yet introduced")]
         public void Jsonb()
         {
+            TestUtil.MinimumPgVersion(Conn, "9.4.0", "JSONB data type not yet introduced");
             var sb = new StringBuilder();
             sb.Append(@"{""Key"": """);
             sb.Append('x', Conn.BufferSize);
@@ -199,9 +199,9 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        [MinPgVersion(9, 1, 0, "HSTORE data type not yet introduced")]
         public void Hstore()
         {
+            TestUtil.MinimumPgVersion(Conn, "9.1.0", "HSTORE data type not yet introduced");
             ExecuteNonQuery(@"CREATE EXTENSION IF NOT EXISTS hstore");
 
             var expected = new Dictionary<string, string> {
@@ -541,7 +541,5 @@ namespace Npgsql.Tests.Types
                 Assert.AreEqual(query.ToString(), output.ToString());
             }
         }
-
-        public MiscTypeTests(string backendVersion) : base(backendVersion) {}
     }
 }

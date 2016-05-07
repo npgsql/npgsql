@@ -29,10 +29,6 @@ using Npgsql.Tests;
 namespace EntityFramework5.Npgsql.Tests {
     [TestFixture]
     public class EntityFrameworkBasicTests : TestBase {
-        public EntityFrameworkBasicTests(string backendVersion)
-            : base(backendVersion) {
-        }
-
         [Test]
         public void GetServiceTest() {
             Assert.IsInstanceOf(

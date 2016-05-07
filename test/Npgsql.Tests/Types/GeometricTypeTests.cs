@@ -158,7 +158,5 @@ namespace Npgsql.Tests.Types
             }
         }
 #endif
-
-        public GeometricTypeTests(string backendVersion) : base(backendVersion) {}
     }
 }

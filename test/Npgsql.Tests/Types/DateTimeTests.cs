@@ -395,7 +395,5 @@ namespace Npgsql.Tests.Types
         }
 
         #endregion
-
-        public DateTimeTests(string backendVersion) : base(backendVersion) { }
     }
 }

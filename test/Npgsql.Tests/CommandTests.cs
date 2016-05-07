@@ -1003,7 +1003,5 @@ namespace Npgsql.Tests
                 );
             }
         }
-
-        public CommandTests(string backendVersion) : base(backendVersion) { }
     }
 }

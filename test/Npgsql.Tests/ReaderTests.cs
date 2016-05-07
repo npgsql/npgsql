@@ -38,8 +38,6 @@ namespace Npgsql.Tests
     [TestFixture]
     public class ReaderTests : TestBase
     {
-        public ReaderTests(string backendVersion) : base(backendVersion) { }
-
         [Test]
         public void EmptyResultSet()
         {

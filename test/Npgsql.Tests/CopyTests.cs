@@ -500,7 +500,5 @@ namespace Npgsql.Tests
         }
 
         #endregion
-
-        public CopyTests(string backendVersion) : base(backendVersion) { }
     }
 }

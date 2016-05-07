@@ -314,7 +314,5 @@ namespace Npgsql.Tests.Types
                 }
             }
         }
-
-        public NumericTypeTests(string backendVersion) : base(backendVersion) { }
     }
 }

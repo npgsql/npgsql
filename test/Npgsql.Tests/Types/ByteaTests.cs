@@ -20,8 +20,6 @@ namespace Npgsql.Tests.Types
     /// </summary>
     class ByteaTests : TestBase
     {
-        public ByteaTests(string backendVersion) : base(backendVersion) {}
-
         [Test, Description("Roundtrips a bytea")]
         public void Roundtrip()
         {
