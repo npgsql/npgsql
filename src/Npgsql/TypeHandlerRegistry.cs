@@ -1022,8 +1022,10 @@ namespace Npgsql
                 var fields = _rawFields;
                 if (fields == null)
                 {
+                    // Load the attributes for the composite type
+                    // We filter out system attributes (such as oid, tableoid) with attnum
                     fields = new List<RawCompositeField>();
-                    using (var cmd = new NpgsqlCommand($"SELECT attname,atttypid FROM pg_attribute WHERE attrelid={_relationId}", registry.Connector.Connection))
+                    using (var cmd = new NpgsqlCommand($"SELECT attname,atttypid FROM pg_attribute WHERE attrelid={_relationId} AND attnum > 0", registry.Connector.Connection))
                     using (var reader = cmd.ExecuteReader())
                         while (reader.Read())
                             fields.Add(new RawCompositeField { PgName = reader.GetString(0), TypeOID = reader.GetFieldValue<uint>(1) });

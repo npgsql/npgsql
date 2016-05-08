@@ -395,5 +395,23 @@ CREATE TYPE address AS
             public string Street { get; set; }
             public string PostalCode { get; set; }
         }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/990")]
+        public void TableAsComposite()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE table_as_composite (foo int); INSERT INTO table_as_composite (foo) VALUES (8)");
+                conn.ReloadTypes();
+                conn.MapComposite<TableAsCompositeType>("table_as_composite");
+                var value = (TableAsCompositeType)conn.ExecuteScalar(@"SELECT t.*::table_as_composite FROM table_as_composite AS t");
+                Assert.That(value.Foo, Is.EqualTo(8));
+            }
+        }
+
+        class TableAsCompositeType
+        {
+            public int Foo { get; set; }
+        }
     }
 }
