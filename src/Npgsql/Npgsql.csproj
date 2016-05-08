@@ -248,7 +248,6 @@
     <Compile Include="NpgsqlConnection.cs" />
     <Compile Include="NpgsqlConnectionStringBuilder.cs" />
     <Compile Include="NpgsqlConnector.cs" />
-    <Compile Include="NpgsqlConnectorPool.cs" />
     <Compile Include="NpgsqlDataAdapter.cs" />
     <Compile Include="NpgsqlDataReader.cs" />
     <Compile Include="PostgresException.cs" />
