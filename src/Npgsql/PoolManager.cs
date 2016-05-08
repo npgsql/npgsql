@@ -25,6 +25,13 @@ namespace Npgsql
         static PoolManager()
         {
             Pools = new ConcurrentDictionary<NpgsqlConnectionStringBuilder, ConnectorPool>();
+
+#if NET45 || NET451
+            // When the appdomain gets unloaded (e.g. web app redeployment) attempt to nicely
+            // close idle connectors to prevent errors in PostgreSQL logs (#491).
+            AppDomain.CurrentDomain.DomainUnload += (sender, args) => ClearAll();
+            AppDomain.CurrentDomain.ProcessExit += (sender, args) => ClearAll();
+#endif
         }
 
         internal static ConnectorPool GetOrAdd(NpgsqlConnectionStringBuilder connString)
