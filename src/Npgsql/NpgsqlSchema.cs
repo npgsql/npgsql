@@ -446,6 +446,7 @@ select 'UNIQUE KEY' as ""CONSTRAINT_TYPE"", 'u' as ""contype""
                 using (NpgsqlDataAdapter adapter = new NpgsqlDataAdapter(command))
                 {
                     DataTable table = new DataTable(constraint_type);
+                    table.Locale = CultureInfo.InvariantCulture;
                     adapter.Fill(table);
                     return table;
                 }
@@ -484,6 +485,7 @@ and n.nspname not in ('pg_catalog', 'pg_toast')");
                 using (NpgsqlDataAdapter adapter = new NpgsqlDataAdapter(command))
                 {
                     DataTable table = new DataTable("ConstraintColumns");
+                    table.Locale = CultureInfo.InvariantCulture;
                     adapter.Fill(table);
                     return table;
                 }
@@ -493,6 +495,7 @@ and n.nspname not in ('pg_catalog', 'pg_toast')");
         internal static DataTable GetDataSourceInformation()
         {
             DataSet ds = new DataSet();
+            ds.Locale = CultureInfo.InvariantCulture;
             using (Stream xmlStream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Npgsql.NpgsqlMetaData.xml"))
             {
                 ds.ReadXml(xmlStream);
