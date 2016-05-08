@@ -210,13 +210,17 @@ namespace Npgsql.Tests.Types
               {"cd", "hello"}
             };
 
-            using (var cmd = new NpgsqlCommand("SELECT @p", Conn)) {
-                cmd.Parameters.AddWithValue("p", NpgsqlDbType.Hstore, expected);
+            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", Conn)) {
+                cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Hstore, expected);
+                cmd.Parameters.AddWithValue("p2", expected);
                 var reader = cmd.ExecuteReader();
                 reader.Read();
-                Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(IDictionary<string, string>)));
-                Assert.That(reader.GetValue(0), Is.EqualTo(expected));
-                Assert.That(reader.GetString(0), Is.EqualTo(@"""a""=>""3"",""b""=>NULL,""cd""=>""hello"""));
+                for (var i = 0; i < cmd.Parameters.Count; i++)
+                {
+                    Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(IDictionary<string, string>)));
+                    Assert.That(reader.GetValue(i), Is.EqualTo(expected));
+                    Assert.That(reader.GetString(i), Is.EqualTo(@"""a""=>""3"",""b""=>NULL,""cd""=>""hello"""));
+                }
                 reader.Close();
             }
         }
