@@ -379,7 +379,7 @@ select 'UNIQUE KEY' as ""CONSTRAINT_TYPE"", 'u' as ""contype""
             using (var command = BuildCommand(conn, getConstraints, restrictions, false, "current_database()", "pgtn.nspname", "pgt.relname", "pgc.conname"))
             using (var adapter = new NpgsqlDataAdapter(command))
             {
-                var table = new DataTable(constraintType);
+                var table = new DataTable(constraintType) { Locale = CultureInfo.InvariantCulture };
                 adapter.Fill(table);
                 return table;
             }
@@ -413,7 +413,7 @@ and n.nspname not in ('pg_catalog', 'pg_toast')");
             using (var command = BuildCommand(conn, getConstraintColumns, restrictions, false, "current_database()", "n.nspname", "t.relname", "c.conname", "a.attname"))
             using (var adapter = new NpgsqlDataAdapter(command))
             {
-                var table = new DataTable("ConstraintColumns");
+                var table = new DataTable("ConstraintColumns") { Locale = CultureInfo.InvariantCulture };
                 adapter.Fill(table);
                 return table;
             }
@@ -421,7 +421,7 @@ and n.nspname not in ('pg_catalog', 'pg_toast')");
 
         internal static DataTable GetDataSourceInformation()
         {
-            var ds = new DataSet();
+            var ds = new DataSet { Locale = CultureInfo.InvariantCulture };
             LoadMetaDataXmlResource(ds);
             return ds.Tables["DataSourceInformation"].Copy();
         }
