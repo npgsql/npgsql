@@ -32,7 +32,7 @@ using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers
 {
-    [TypeMapping("hstore", NpgsqlDbType.Hstore)]
+    [TypeMapping("hstore", NpgsqlDbType.Hstore, typeof(Dictionary<string, string>))]
     class HstoreHandler : ChunkingTypeHandler<IDictionary<string, string>>, IChunkingTypeHandler<string>
     {
         ReadBuffer _readBuf;
