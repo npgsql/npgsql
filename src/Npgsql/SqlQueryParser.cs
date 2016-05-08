@@ -392,10 +392,6 @@ namespace Npgsql
 
                 currTokenBeg = currCharOfs;
                 paramIndexMap.Clear();
-                if (queries.Count > NpgsqlCommand.MaxStatements) {
-                    throw new NotSupportedException(
-                        $"A single command cannot contain more than {NpgsqlCommand.MaxStatements} queries");
-                }
                 currentSql = new StringWriter();
                 currentParameters = new List<NpgsqlParameter>();
                 goto None;
