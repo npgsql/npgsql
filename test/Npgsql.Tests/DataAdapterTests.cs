@@ -21,6 +21,8 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
+#if NET451
+
 using System;
 using System.Data;
 using Npgsql;
@@ -33,6 +35,64 @@ namespace Npgsql.Tests
 {
     public class DataAdapterTests : TestBase
     {
+        [Test]
+        public void UseDataAdapter()
+        {
+            using (var conn = OpenConnection())
+            using (var command = new NpgsqlCommand("SELECT 1", conn))
+            {
+                var da = new NpgsqlDataAdapter();
+                da.SelectCommand = command;
+                var ds = new DataSet();
+                da.Fill(ds);
+                //ds.WriteXml("TestUseDataAdapter.xml");
+            }
+        }
+
+        [Test]
+        public void UseDataAdapterNpgsqlConnectionConstructor()
+        {
+            using (var conn = OpenConnection())
+            using (var command = new NpgsqlCommand("SELECT 1", conn))
+            {
+                command.Connection = conn;
+                var da = new NpgsqlDataAdapter(command);
+                var ds = new DataSet();
+                da.Fill(ds);
+                //ds.WriteXml("TestUseDataAdapterNpgsqlConnectionConstructor.xml");
+            }
+        }
+
+        [Test]
+        public void UseDataAdapterStringNpgsqlConnectionConstructor()
+        {
+            using (var conn = OpenConnection())
+            {
+                var da = new NpgsqlDataAdapter("SELECT 1", conn);
+                var ds = new DataSet();
+                da.Fill(ds);
+                //ds.WriteXml("TestUseDataAdapterStringNpgsqlConnectionConstructor.xml");
+            }
+        }
+
+        [Test]
+        public void UseDataAdapterStringStringConstructor()
+        {
+            var da = new NpgsqlDataAdapter("SELECT 1", ConnectionString);
+            var ds = new DataSet();
+            da.Fill(ds);
+            //ds.WriteXml("TestUseDataAdapterStringStringConstructor.xml");
+        }
+
+        [Test]
+        public void UseDataAdapterStringStringConstructor2()
+        {
+            var da = new NpgsqlDataAdapter("SELECT 1", ConnectionString);
+            var ds = new DataSet();
+            da.Fill(ds);
+            //ds.WriteXml("TestUseDataAdapterStringStringConstructor2.xml");
+        }
+
         [Test]
         [MonoIgnore("Bug in mono, submitted pull request: https://github.com/mono/mono/pull/1172")]
         public void InsertWithDataSet()
@@ -544,6 +604,25 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test]
+        public void LoadDataTable()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (char5 CHAR(5), varchar5 VARCHAR(5))");
+                using (var command = new NpgsqlCommand("SELECT char5, varchar5 FROM data", conn))
+                using (var dr = command.ExecuteReader())
+                {
+                    var dt = new DataTable();
+                    dt.Load(dr);
+                    dr.Close();
+
+                    Assert.AreEqual(5, dt.Columns[0].MaxLength);
+                    Assert.AreEqual(5, dt.Columns[1].MaxLength);
+                }
+            }
+        }
+
         public void Setup(NpgsqlConnection conn)
         {
             conn.ExecuteNonQuery("CREATE TEMP TABLE data (" +
@@ -557,3 +636,5 @@ namespace Npgsql.Tests
         }
     }
 }
+
+#endif

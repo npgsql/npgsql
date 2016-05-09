@@ -168,12 +168,6 @@ namespace Npgsql
     }
 
     [AttributeUsage(AttributeTargets.Property)]
-    class DescriptionAttribute : Attribute
-    {
-        internal DescriptionAttribute(string description) {}
-    }
-
-    [AttributeUsage(AttributeTargets.Property)]
     sealed class BrowsableAttribute : Attribute
     {
         public BrowsableAttribute(bool browsable) {}

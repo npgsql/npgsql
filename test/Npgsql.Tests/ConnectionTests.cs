@@ -779,45 +779,6 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void GetSchemaForeignKeys()
-        {
-            using (var conn = OpenConnection())
-            {
-                var dt = conn.GetSchema("ForeignKeys");
-                Assert.IsNotNull(dt);
-            }
-        }
-
-        [Test]
-        public void GetSchemaParameterMarkerFormats()
-        {
-            using (var conn = OpenConnection())
-            {
-                conn.ExecuteNonQuery("DROP TABLE IF EXISTS data; CREATE TABLE data (int INTEGER);");
-                conn.ExecuteNonQuery("INSERT INTO data (int) VALUES (4)");
-                var dt = conn.GetSchema("DataSourceInformation");
-                var parameterMarkerFormat = (string) dt.Rows[0]["ParameterMarkerFormat"];
-
-                using (var conn2 = new NpgsqlConnection(ConnectionString))
-                {
-                    conn2.Open();
-                    using (var command = conn2.CreateCommand())
-                    {
-                        const String parameterName = "@p_int";
-                        command.CommandText = "SELECT * FROM data WHERE int=" +
-                                              String.Format(parameterMarkerFormat, parameterName);
-                        command.Parameters.Add(new NpgsqlParameter(parameterName, 4));
-                        using (var reader = command.ExecuteReader())
-                        {
-                            Assert.IsTrue(reader.Read());
-                            // This is OK, when no exceptions are occurred.
-                        }
-                    }
-                }
-            }
-        }
-
-        [Test]
         public void GetConnectionState()
         {
             // Test created to PR #164
@@ -916,7 +877,11 @@ namespace Npgsql.Tests
                 conn.UserCertificateValidationCallback = callback2;
 
                 conn.Open();
-                using (var conn2 = (NpgsqlConnection) ((ICloneable) conn).Clone())
+#if NET451
+                using (var conn2 = (NpgsqlConnection)((ICloneable)conn).Clone())
+#else
+                using (var conn2 = conn.Clone())
+#endif
                 {
                     Assert.That(conn2.ConnectionString, Is.EqualTo(conn.ConnectionString));
                     Assert.That(conn2.ProvideClientCertificatesCallback, Is.SameAs(callback1));
@@ -1017,59 +982,5 @@ namespace Npgsql.Tests
                 conn.Close();
             }
         }
-
-        #region GetSchema
-
-        [Test]
-        public void GetSchema()
-        {
-            using (var conn = OpenConnection())
-            {
-                DataTable metaDataCollections = conn.GetSchema();
-                Assert.IsTrue(metaDataCollections.Rows.Count > 0, "There should be one or more metadatacollections returned. No connectionstring is required.");
-            }
-        }
-
-        [Test]
-        public void GetSchemaWithDbMetaDataCollectionNames()
-        {
-            using (var conn = OpenConnection())
-            {
-                DataTable metaDataCollections = conn.GetSchema(System.Data.Common.DbMetaDataCollectionNames.MetaDataCollections);
-                Assert.IsTrue(metaDataCollections.Rows.Count > 0, "There should be one or more metadatacollections returned.");
-                foreach (DataRow row in metaDataCollections.Rows)
-                {
-                    var collectionName = (string)row["CollectionName"];
-                    //checking this collection
-                    if (collectionName != System.Data.Common.DbMetaDataCollectionNames.MetaDataCollections)
-                    {
-                        var collection = conn.GetSchema(collectionName);
-                        Assert.IsNotNull(collection, "Each of the advertised metadata collections should work");
-                    }
-                }
-            }
-        }
-
-        [Test]
-        public void GetSchemaWithRestrictions()
-        {
-            using (var conn = OpenConnection())
-            {
-                DataTable metaDataCollections = conn.GetSchema(System.Data.Common.DbMetaDataCollectionNames.Restrictions);
-                Assert.IsTrue(metaDataCollections.Rows.Count > 0, "There should be one or more Restrictions returned.");
-            }
-        }
-
-        [Test]
-        public void GetSchemaWithReservedWords()
-        {
-            using (var conn = OpenConnection())
-            {
-                DataTable metaDataCollections = conn.GetSchema(System.Data.Common.DbMetaDataCollectionNames.ReservedWords);
-                Assert.IsTrue(metaDataCollections.Rows.Count > 0, "There should be one or more ReservedWords returned.");
-            }
-        }
-
-        #endregion
     }
 }

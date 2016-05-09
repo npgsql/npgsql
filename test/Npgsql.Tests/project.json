@@ -7,11 +7,11 @@
   "dependencies": {
       "NUnit": "3.2.1",
       "NUnitLite": "3.2.1",
-      "NLog": "3.2.0.0",
+      "NLog": "4.4.0-beta5",
       "Npgsql": "3.1.0-*"
   },
   "frameworks": {
-    "net46": {
+    "net451": {
       "frameworkAssemblies": {
         "System.Diagnostics.Contracts": { "version": "4.0.0.0", "type": "build" },
         "System.Transactions": { "version": "4.0.0.0", "type": "build" },
@@ -19,6 +19,17 @@
         "System.Data": { "version": "4.0.0.0", "type": "build" },
         "System.Xml": { "version": "4.0.0.0", "type": "build" },
         "System.Web": { "version": "4.0.0.0", "type": "build" }
+      }
+    },
+    "netcoreapp1.0": {
+      "imports": [
+        "dotnet54"
+      ],
+      "dependencies": {
+        "Microsoft.NETCore.App": {
+          "version": "1.0.0-*",
+          "type": "platform"
+        }
       }
     }
   }

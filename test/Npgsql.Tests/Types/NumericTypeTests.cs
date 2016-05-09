@@ -335,13 +335,11 @@ namespace Npgsql.Tests.Types
         {
             using (var conn = OpenConnection())
             using (var cmd = new NpgsqlCommand("select :p1", conn))
+            using (new CultureSetter(new CultureInfo("es-ES")))
             {
-                Thread.CurrentThread.CurrentCulture = new CultureInfo("es-ES");
-                var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Double);
-                parameter.Value = 5.5;
+                var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Double) { Value = 5.5 };
                 cmd.Parameters.Add(parameter);
                 var result = cmd.ExecuteScalar();
-                Thread.CurrentThread.CurrentCulture = new CultureInfo("");
                 Assert.AreEqual(5.5, result);
             }
         }

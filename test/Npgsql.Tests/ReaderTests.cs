@@ -426,63 +426,6 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void UseDataAdapter()
-        {
-            using (var conn = OpenConnection())
-            using (var command = new NpgsqlCommand("SELECT 1", conn)) {
-                var da = new NpgsqlDataAdapter();
-                da.SelectCommand = command;
-                var ds = new DataSet();
-                da.Fill(ds);
-                //ds.WriteXml("TestUseDataAdapter.xml");
-            }
-        }
-
-        [Test]
-        public void UseDataAdapterNpgsqlConnectionConstructor()
-        {
-            using (var conn = OpenConnection())
-            using (var command = new NpgsqlCommand("SELECT 1", conn))
-            {
-                command.Connection = conn;
-                var da = new NpgsqlDataAdapter(command);
-                var ds = new DataSet();
-                da.Fill(ds);
-                //ds.WriteXml("TestUseDataAdapterNpgsqlConnectionConstructor.xml");
-            }
-        }
-
-        [Test]
-        public void UseDataAdapterStringNpgsqlConnectionConstructor()
-        {
-            using (var conn = OpenConnection())
-            {
-                var da = new NpgsqlDataAdapter("SELECT 1", conn);
-                var ds = new DataSet();
-                da.Fill(ds);
-                //ds.WriteXml("TestUseDataAdapterStringNpgsqlConnectionConstructor.xml");
-            }
-        }
-
-        [Test]
-        public void UseDataAdapterStringStringConstructor()
-        {
-            var da = new NpgsqlDataAdapter("SELECT 1", ConnectionString);
-            var ds = new DataSet();
-            da.Fill(ds);
-            //ds.WriteXml("TestUseDataAdapterStringStringConstructor.xml");
-        }
-
-        [Test]
-        public void UseDataAdapterStringStringConstructor2()
-        {
-            var da = new NpgsqlDataAdapter("SELECT 1", ConnectionString);
-            var ds = new DataSet();
-            da.Fill(ds);
-            //ds.WriteXml("TestUseDataAdapterStringStringConstructor2.xml");
-        }
-
-        [Test]
         public void ReadPastDataReaderEnd()
         {
             using (var conn = OpenConnection())
@@ -492,39 +435,6 @@ namespace Npgsql.Tests
                 {
                     while (dr.Read()) {}
                     Assert.That(() => dr[0], Throws.Exception.TypeOf<InvalidOperationException>());
-                }
-            }
-        }
-
-        [Test]
-        public void SchemaOnly([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
-        {
-            using (var conn = OpenConnection())
-            {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
-                using (var cmd = new NpgsqlCommand(
-                    "SELECT 1 AS some_column;" +
-                    "UPDATE data SET name='yo' WHERE 1=0;" +
-                    "SELECT 1 AS some_other_column",
-                    conn))
-                {
-                    if (prepare == PrepareOrNot.Prepared)
-                        cmd.Prepare();
-                    using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
-                    {
-                        Assert.That(reader.Read(), Is.False);
-                        var t = reader.GetSchemaTable();
-                        Assert.That(t.Rows[0]["ColumnName"], Is.EqualTo("some_column"));
-                        Assert.That(reader.NextResult(), Is.True);
-                        Assert.That(reader.Read(), Is.False);
-                        t = reader.GetSchemaTable();
-                        Assert.That(t.Rows[0]["ColumnName"], Is.EqualTo("some_other_column"));
-                        Assert.That(reader.NextResult(), Is.False);
-                    }
-
-                    // Close reader in the middle
-                    using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
-                        reader.Read();
                 }
             }
         }
@@ -650,128 +560,6 @@ namespace Npgsql.Tests
             }
         }
 
-        #region GetSchemaTable
-
-        [Test]
-        public void PrimaryKeyFieldsMetadataSupport()
-        {
-            using (var conn = OpenConnection())
-            {
-                conn.ExecuteNonQuery("DROP TABLE IF EXISTS DATA2 CASCADE");
-                conn.ExecuteNonQuery(@"CREATE TEMP TABLE DATA2 (
-                                field_pk1                      INT2 NOT NULL,
-                                field_pk2                      INT2 NOT NULL,
-                                field_serial                   SERIAL,
-                                CONSTRAINT data2_pkey PRIMARY KEY (field_pk1, field_pk2)
-                                ) WITH OIDS");
-
-                using (var command = new NpgsqlCommand("SELECT * FROM DATA2", conn))
-                using (var dr = command.ExecuteReader(CommandBehavior.KeyInfo))
-                {
-                    dr.Read();
-                    var keyColumns =
-                        dr.GetSchemaTable().Rows.Cast<DataRow>().Where(r => (bool) r["IsKey"]).ToArray();
-                    Assert.That(keyColumns, Has.Length.EqualTo(2));
-                    Assert.That(keyColumns.Count(c => (string) c["ColumnName"] == "field_pk1"), Is.EqualTo(1));
-                    Assert.That(keyColumns.Count(c => (string) c["ColumnName"] == "field_pk2"), Is.EqualTo(1));
-                }
-            }
-        }
-
-        [Test]
-        public void PrimaryKeyFieldMetadataSupport()
-        {
-            using (var conn = OpenConnection())
-            {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (id SERIAL PRIMARY KEY, serial SERIAL)");
-                using (var command = new NpgsqlCommand("SELECT * FROM data", conn))
-                {
-                    using (var dr = command.ExecuteReader(CommandBehavior.KeyInfo))
-                    {
-                        dr.Read();
-                        var metadata = dr.GetSchemaTable();
-                        var key = metadata.Rows.Cast<DataRow>().Single(r => (bool) r["IsKey"]);
-                        Assert.That(key["ColumnName"], Is.EqualTo("id"));
-                    }
-                }
-            }
-        }
-
-        [Test]
-        public void IsAutoIncrementMetadataSupport()
-        {
-            using (var conn = OpenConnection())
-            {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (id SERIAL PRIMARY KEY)");
-                var command = new NpgsqlCommand("SELECT * FROM data", conn);
-
-                using (var dr = command.ExecuteReader(CommandBehavior.KeyInfo))
-                {
-                    var metadata = dr.GetSchemaTable();
-                    Assert.That(metadata.Rows.Cast<DataRow>()
-                        .Where(r => ((string) r["ColumnName"]).Contains("serial"))
-                        .All(r => (bool) r["IsAutoIncrement"]));
-                }
-            }
-        }
-
-        [Test]
-        public void IsReadOnlyMetadataSupport()
-        {
-            using (var conn = OpenConnection())
-            {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (id SERIAL PRIMARY KEY, int2 SMALLINT)");
-                conn.ExecuteNonQuery("CREATE OR REPLACE TEMPORARY VIEW DataView (id, int2) AS SELECT id, int2 + int2 AS int2 FROM data");
-
-                var command = new NpgsqlCommand("SELECT * FROM DataView", conn);
-
-                using (var dr = command.ExecuteReader(CommandBehavior.KeyInfo))
-                {
-                    var metadata = dr.GetSchemaTable();
-
-                    foreach (DataRow r in metadata.Rows)
-                    {
-                        switch ((string) r["ColumnName"])
-                        {
-                            case "field_pk":
-                                if (conn.PostgreSqlVersion < new Version("9.4"))
-                                {
-                                    // 9.3 and earlier: IsUpdatable = False
-                                    Assert.IsTrue((bool) r["IsReadonly"], "field_pk");
-                                }
-                                else
-                                {
-                                    // 9.4: IsUpdatable = True
-                                    Assert.IsFalse((bool) r["IsReadonly"], "field_pk");
-                                }
-                                break;
-                            case "field_int2":
-                                Assert.IsTrue((bool) r["IsReadonly"]);
-                                break;
-                            default:
-                                break;
-                        }
-                    }
-                }
-            }
-        }
-
-        [Test]
-        [IssueLink("https://github.com/npgsql/npgsql/issues/1027")]
-        public void GetSchemaTableWithoutResult()
-        {
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT 1", conn))
-            using (var reader = cmd.ExecuteReader())
-            {
-                reader.NextResult();
-                // We're no longer on a result
-                Assert.That(reader.GetSchemaTable(), Is.Null);
-            }
-        }
-
-        #endregion
-
         [Test]
         public void SchemaOnlyCommandBehaviorSupport()
         {
@@ -855,25 +643,6 @@ namespace Npgsql.Tests
                 {
                     Assert.That(() => cmd2.ExecuteReader(), Throws.Exception.TypeOf<InvalidOperationException>());
                     Assert.That(() => cmd2.Prepare(), Throws.Exception.TypeOf<InvalidOperationException>());
-                }
-            }
-        }
-
-        [Test]
-        public void LoadDataTable()
-        {
-            using (var conn = OpenConnection())
-            {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (char5 CHAR(5), varchar5 VARCHAR(5))");
-                using (var command = new NpgsqlCommand("SELECT char5, varchar5 FROM data", conn))
-                using (var dr = command.ExecuteReader())
-                {
-                    var dt = new DataTable();
-                    dt.Load(dr);
-                    dr.Close();
-
-                    Assert.AreEqual(5, dt.Columns[0].MaxLength);
-                    Assert.AreEqual(5, dt.Columns[1].MaxLength);
                 }
             }
         }

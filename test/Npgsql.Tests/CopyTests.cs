@@ -398,7 +398,7 @@ namespace Npgsql.Tests
                 var writer = conn.BeginTextImport("COPY data (field_text, field_int4) FROM STDIN");
                 StateAssertions(conn);
                 writer.Write(line);
-                writer.Close();
+                writer.Dispose();
                 Assert.That(conn.ExecuteScalar(@"SELECT COUNT(*) FROM data WHERE field_int4=1"), Is.EqualTo(1));
                 Assert.That(() => writer.Write(line), Throws.Exception.TypeOf<ObjectDisposedException>());
                 conn.ExecuteNonQuery("TRUNCATE data");
@@ -408,7 +408,7 @@ namespace Npgsql.Tests
                 writer = conn.BeginTextImport("COPY data (field_text, field_int4) FROM STDIN");
                 for (var i = 0; i < iterations; i++)
                     writer.Write(line);
-                writer.Close();
+                writer.Dispose();
                 Assert.That(conn.ExecuteScalar(@"SELECT COUNT(*) FROM data WHERE field_int4=1"), Is.EqualTo(iterations));
             }
         }
@@ -433,8 +433,9 @@ namespace Npgsql.Tests
             using (var conn = OpenConnection())
             {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER)");
-                var writer = conn.BeginTextImport("COPY data (field_text, field_int4) FROM STDIN");
-                writer.Close();
+                using (conn.BeginTextImport("COPY data (field_text, field_int4) FROM STDIN"))
+                {
+                }
                 Assert.That(conn.ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(0));
             }
         }
@@ -455,7 +456,7 @@ namespace Npgsql.Tests
                 Assert.That(new String(chars, 0, 8), Is.EqualTo("HELLO\t1\n"));
                 Assert.That(reader.Read(chars, 0, chars.Length), Is.EqualTo(0));
                 Assert.That(reader.Read(chars, 0, chars.Length), Is.EqualTo(0));
-                reader.Close();
+                reader.Dispose();
                 Assert.That(() => reader.Read(chars, 0, chars.Length), Throws.Exception.TypeOf<ObjectDisposedException>());
                 conn.ExecuteNonQuery("TRUNCATE data");
             }

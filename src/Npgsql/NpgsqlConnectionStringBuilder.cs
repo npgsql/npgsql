@@ -1009,6 +1009,14 @@ namespace Npgsql
             }
         }
 
+#if NETSTANDARD1_3
+        [AttributeUsage(AttributeTargets.Property)]
+        class DescriptionAttribute : Attribute
+        {
+            internal DescriptionAttribute(string description) { }
+        }
+#endif
+
         #endregion
     }
 

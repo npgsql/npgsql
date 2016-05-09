@@ -21,6 +21,8 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
+#if NET451
+
 using System;
 using System.Data;
 using System.Reflection;
@@ -290,3 +292,4 @@ namespace Npgsql.Tests
         #endregion
     }
 }
+#endif

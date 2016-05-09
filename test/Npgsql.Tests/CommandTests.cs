@@ -748,6 +748,7 @@ namespace Npgsql.Tests
             }
         }
 
+#if NET451
         [Test]
         public void Bug1010788UpdateRowSource()
         {
@@ -767,6 +768,7 @@ namespace Npgsql.Tests
                 Assert.AreEqual(UpdateRowSource.None, updateCommand.UpdatedRowSource);
             }
         }
+#endif
 
         [Test]
         public void TableDirect()

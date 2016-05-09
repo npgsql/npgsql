@@ -514,10 +514,10 @@ namespace Npgsql.Tests.Types
                     cmd.CommandText = "Select :p1, :p2, :p3, :p4, :p5";
 
                     cmd.Parameters.AddWithValue("p1", TestEnum.label1);
-                    cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p2", NpgsqlDbType = NpgsqlDbType.Enum, EnumType = typeof(TestEnum), Value = TestEnum.label2 });
+                    cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p2", NpgsqlDbType = NpgsqlDbType.Enum, SpecificType = typeof(TestEnum), Value = TestEnum.label2 });
                     cmd.Parameters.AddWithValue("p3", new[] { TestEnum.label1, TestEnum.Label3 });
-                    cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p4", NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Enum, EnumType = typeof(TestEnum), Value = new[] { TestEnum.label1, TestEnum.Label3 } });
-                    cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p5", NpgsqlDbType = NpgsqlDbType.Enum, EnumType = typeof(TestEnum), Value = DBNull.Value });
+                    cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p4", NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Enum, SpecificType = typeof(TestEnum), Value = new[] { TestEnum.label1, TestEnum.Label3 } });
+                    cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p5", NpgsqlDbType = NpgsqlDbType.Enum, SpecificType = typeof(TestEnum), Value = DBNull.Value });
 
                     Assert.AreEqual(NpgsqlDbType.Enum, cmd.Parameters[0].NpgsqlDbType);
                     Assert.AreEqual(typeof(TestEnum), cmd.Parameters[0].SpecificType);

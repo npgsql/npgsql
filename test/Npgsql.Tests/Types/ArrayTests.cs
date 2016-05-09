@@ -280,6 +280,7 @@ namespace Npgsql.Tests.Types
             }
         }
 
+#if NET451
         [Test, Description("Roundtrips a non-generic IList as an array")]
         // ReSharper disable once InconsistentNaming
         public void IListNonGeneric()
@@ -293,6 +294,7 @@ namespace Npgsql.Tests.Types
                 Assert.That(cmd.ExecuteScalar(), Is.EqualTo(expected.ToArray()));
             }
         }
+#endif
 
         [Test, Description("Roundtrips a generic IList as an array")]
         // ReSharper disable once InconsistentNaming
@@ -326,6 +328,7 @@ namespace Npgsql.Tests.Types
             }
         }
 
+#if NET451
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/960")]
         public void MixedElementTypes()
         {
@@ -339,6 +342,7 @@ namespace Npgsql.Tests.Types
                     .With.Message.Contains("mix"));
             }
         }
+#endif
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/960")]
         public void JaggedArraysNotSupported()

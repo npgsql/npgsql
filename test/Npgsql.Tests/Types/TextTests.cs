@@ -198,7 +198,7 @@ namespace Npgsql.Tests.Types
                     }
                     textReader.Read(actual, 2, 1);
                     Assert.That(actual[2], Is.EqualTo(expected[2]));
-                    textReader.Close();
+                    textReader.Dispose();
 
                     if (IsSequential(behavior))
                         Assert.That(() => reader.GetChars(0, 0, actual, 4, 1), Throws.Exception.TypeOf<InvalidOperationException>(), "Seek back sequential");

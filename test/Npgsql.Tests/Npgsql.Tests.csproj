@@ -12,7 +12,7 @@
     <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\..\</SolutionDir>
     <RestorePackages>true</RestorePackages>
     <TargetFrameworkProfile />
-    <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5.1</TargetFrameworkVersion>
     <!-- The following stops VS from complaining about runtimes in project.json, see
              https://github.com/Microsoft/msbuild/issues/394 -->
     <CopyNuGetImplementations>false</CopyNuGetImplementations>
@@ -26,7 +26,7 @@
     </RootNamespace>
     <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
     <WarningLevel>4</WarningLevel>
-    <DefineConstants>TRACE;DEBUG</DefineConstants>
+    <DefineConstants>TRACE;DEBUG;NET451</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <OutputPath>bin\Release\</OutputPath>
@@ -35,7 +35,7 @@
     <Optimize>true</Optimize>
     <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
     <WarningLevel>4</WarningLevel>
-    <DefineConstants>TRACE</DefineConstants>
+    <DefineConstants>TRACE;NET451</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System.Core">
@@ -52,10 +52,14 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CommandBuilderTests.cs" />
+    <Compile Include="ReaderSchemaTableTests.cs" />
+    <Compile Include="SchemaTests.cs" />
     <Compile Include="PoolTests.cs" />
     <Compile Include="ConnectionStringBuilderTests.cs" />
     <Compile Include="LargeObjectTests.cs" />
     <Compile Include="NLogLoggingProvider.cs" />
+    <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SqlQueryParserTests.cs" />
     <Compile Include="TransactionTests.cs" />

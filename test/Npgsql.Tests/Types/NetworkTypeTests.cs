@@ -178,6 +178,9 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
+#if NETCOREAPP1_0
+        [Ignore("See https://github.com/dotnet/corefx/pull/8413")]
+#endif
         public void Macaddr()
         {
             using (var conn = OpenConnection())
@@ -204,6 +207,9 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/835")]
+#if NETCOREAPP1_0
+        [Ignore("See https://github.com/dotnet/corefx/pull/8413")]
+#endif
         public void MacaddrMultiple()
         {
             using (var conn = OpenConnection())

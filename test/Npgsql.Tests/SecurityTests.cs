@@ -22,13 +22,6 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security;
-using System.Security.Permissions;
-using System.Text;
-using System.Web.UI.WebControls;
-using Npgsql;
 using NUnit.Framework;
 
 namespace Npgsql.Tests
