@@ -72,10 +72,11 @@ namespace Npgsql.FrontendMessages
             _tempBuf = new WriteBuffer(null, new MemoryStream(), WriteBuffer.MinimumBufferSize, Encoding.ASCII);
             _tempQuery = new QueryMessage();
 
-            BeginTransRepeatableRead  = BuildQuery("BEGIN; SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;");
-            BeginTransSerializable    = BuildQuery("BEGIN; SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;");
-            BeginTransReadCommitted   = BuildQuery("BEGIN; SET TRANSACTION ISOLATION LEVEL READ COMMITTED;");
-            BeginTransReadUncommitted = BuildQuery("BEGIN; SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;");
+            BeginTrans                = BuildQuery("BEGIN;");
+            SetTransRepeatableRead    = BuildQuery("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;");
+            SetTransSerializable      = BuildQuery("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;");
+            SetTransReadCommitted     = BuildQuery("SET TRANSACTION ISOLATION LEVEL READ COMMITTED;");
+            SetTransReadUncommitted   = BuildQuery("SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;");
             CommitTransaction         = BuildQuery("COMMIT");
             RollbackTransaction       = BuildQuery("ROLLBACK");
             DiscardAll                = BuildQuery("DISCARD ALL");
@@ -99,10 +100,11 @@ namespace Npgsql.FrontendMessages
             return new PregeneratedMessage(ms.ToArray(), _tempQuery.ToString());
         }
 
-        internal static readonly PregeneratedMessage BeginTransRepeatableRead;
-        internal static readonly PregeneratedMessage BeginTransSerializable;
-        internal static readonly PregeneratedMessage BeginTransReadCommitted;
-        internal static readonly PregeneratedMessage BeginTransReadUncommitted;
+        internal static readonly PregeneratedMessage BeginTrans;
+        internal static readonly PregeneratedMessage SetTransRepeatableRead;
+        internal static readonly PregeneratedMessage SetTransSerializable;
+        internal static readonly PregeneratedMessage SetTransReadCommitted;
+        internal static readonly PregeneratedMessage SetTransReadUncommitted;
         internal static readonly PregeneratedMessage CommitTransaction;
         internal static readonly PregeneratedMessage RollbackTransaction;
         internal static readonly PregeneratedMessage DiscardAll;
