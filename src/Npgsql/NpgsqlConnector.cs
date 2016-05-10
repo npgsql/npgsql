@@ -181,13 +181,13 @@ namespace Npgsql
         /// <summary>
         /// A lock that's taken while a user action is in progress, e.g. a command being executed.
         /// </summary>
-        SemaphoreSlim _userLock;
+        readonly SemaphoreSlim _userLock;
 
         /// <summary>
         /// A lock that's taken while a connection keepalive is in progress. Used to make sure
         /// keepalives and user actions don't interfere with one another.
         /// </summary>
-        SemaphoreSlim _keepAliveLock;
+        readonly SemaphoreSlim _keepAliveLock;
 
         /// <summary>
         /// A lock that's taken while a cancellation is being delivered; new queries are blocked until the
@@ -1329,9 +1329,6 @@ namespace Npgsql
 
         #region Close / Reset
 
-        /// <summary>
-        /// Closes the physical connection to the server.
-        /// </summary>
         internal void Close()
         {
             Log.Trace("Closing connector", Id);
@@ -1429,13 +1426,18 @@ namespace Npgsql
             Connection = null;
             BackendParams.Clear();
             ServerVersion = null;
+
+            // Disposing SemaphoreSlim leaves CurrentCount at 0, so increment back to 1 if needed
+            if (_userLock.CurrentCount == 0)
+                _userLock.Release();
             _userLock.Dispose();
-            _userLock = null;
+
             if (IsKeepAliveEnabled)
             {
                 _keepAliveTimer.Change(Timeout.Infinite, Timeout.Infinite);
+                if (_keepAliveLock.CurrentCount == 0)
+                    _keepAliveLock.Release();
                 _keepAliveLock.Dispose();
-                _keepAliveLock = null;
             }
         }
 
@@ -1504,52 +1506,47 @@ namespace Npgsql
 
         internal IDisposable StartUserAction(ConnectorState newState=ConnectorState.Executing)
         {
-            Contract.Requires(newState != ConnectorState.Ready);
-            Contract.Requires(newState != ConnectorState.Closed);
-            Contract.Requires(newState != ConnectorState.Broken);
-            Contract.Requires(newState != ConnectorState.Connecting);
             Contract.Ensures(State == newState);
             Contract.Ensures(IsInUserAction);
 
             if (!_userLock.Wait(0))
-            {
-                switch (State) {
-                case ConnectorState.Closed:
-                case ConnectorState.Broken:
-                case ConnectorState.Connecting:
-                    throw new InvalidOperationException("The connection is still connecting.");
-                case ConnectorState.Ready:
-                // Can happen in a race condition as the connector is transitioning to Ready
-                case ConnectorState.Executing:
-                case ConnectorState.Fetching:
-                case ConnectorState.Waiting:
-                    throw new InvalidOperationException("An operation is already in progress.");
-                case ConnectorState.Copy:
-                    throw new InvalidOperationException("A COPY operation is in progress and must complete first.");
-                default:
-                    throw PGUtil.ThrowIfReached("Unknown connector state: " + State);
-                }
-            }
+                throw new InvalidOperationException("An operation is already in progress.");
+
+            // We now have the user lock, no user operation may be in progress but a keepalive might be
 
             if (IsKeepAliveEnabled)
             {
                 // If keepalive happens to be in progress wait until it's done
                 _keepAliveLock.Wait();
 
-                // The keepalive which just finished may have led to the connection being broken
-                if (!IsConnected)
-                {
-                    _keepAliveLock.Release();
-                    _userLock.Release();
-                    throw new InvalidOperationException("The connection broke during a keepalive");
-                }
-
                 // Disable keepalive, it will be restarted at the end of the user action
                 if (KeepAlive > 0)
                     _keepAliveTimer.Change(Timeout.Infinite, Timeout.Infinite);
             }
-            Contract.Assume(IsReady);
 
+            // We now have both locks and are sure nothing else is running.
+            // Check that the connector is ready.
+            switch (State)
+            {
+            case ConnectorState.Ready:
+                break;
+            case ConnectorState.Closed:
+            case ConnectorState.Broken:
+                // The keepalive or the last user operation caused the connector to close/break
+                _keepAliveLock?.Release();
+                _userLock.Release();
+                throw new InvalidOperationException("Connection is not open");
+            case ConnectorState.Executing:
+            case ConnectorState.Fetching:
+            case ConnectorState.Waiting:
+            case ConnectorState.Connecting:
+            case ConnectorState.Copy:
+                throw PGUtil.ThrowIfReached("Internal Npgsql error, please report: acquired both locks and connector is in state " + State);
+            default:
+                throw new ArgumentOutOfRangeException(nameof(State), State, "Invalid connector state: " + State);
+            }
+
+            Contract.Assert(IsReady);
             State = newState;
             return _userAction;
         }
@@ -1561,41 +1558,31 @@ namespace Npgsql
             Contract.EnsuresOnThrow<PostgresException>(!IsInUserAction);
             Contract.EnsuresOnThrow<IOException>(!IsInUserAction);
 
+            // Allows us to call EndUserAction twice. This makes it easier to write code that
+            // always ends the user action with using(), whether an exception was thrown or not.
             if (!IsInUserAction)
-            {
-                // Allows us to call EndUserAction twice. This makes it easier to write code that
-                // always ends the user action with using(), whether an exception was thrown or not.
                 return;
-            }
 
+            // A breaking exception was thrown or the connector was closed
             if (!IsConnected)
-            {
-                // A breaking exception was thrown or the connector was closed
                 return;
+
+            if (KeepAlive > 0)
+            {
+                var keepAlive = KeepAlive*1000;
+                _keepAliveTimer.Change(keepAlive, keepAlive);
             }
 
-            try
-            {
-                if (KeepAlive > 0)
-                {
-                    var keepAlive = KeepAlive*1000;
-                    _keepAliveTimer.Change(keepAlive, keepAlive);
-                }
-
-                State = ConnectorState.Ready;
-            }
-            finally
-            {
-                _keepAliveLock?.Release();
-                _userLock?.Release();
-            }
+            State = ConnectorState.Ready;
+            _keepAliveLock?.Release();
+            _userLock.Release();
         }
 
-        bool IsInUserAction => _userLock != null && _userLock.CurrentCount == 0;
+        bool IsInUserAction => _userLock.CurrentCount == 0;
 
         /// <summary>
-        /// An IDisposable wrapper around <see cref="NpgsqlConnector.StartUserAction"/> and
-        /// <see cref="NpgsqlConnector.EndUserAction"/>.
+        /// An IDisposable wrapper around <see cref="StartUserAction"/> and
+        /// <see cref="EndUserAction"/>.
         /// </summary>
         class UserAction : IDisposable
         {
@@ -1606,10 +1593,7 @@ namespace Npgsql
                 _connector = connector;
             }
 
-            public void Dispose()
-            {
-                _connector.EndUserAction();
-            }
+            public void Dispose() => _connector.EndUserAction();
         }
 
         #endregion
@@ -1620,14 +1604,16 @@ namespace Npgsql
         {
             Contract.Requires(IsKeepAliveEnabled);
 
-            if (!_keepAliveLock.Wait(0)) {
+            if (!_keepAliveLock.Wait(0))
+            {
                 // The async semaphore has already been acquired, either by a user action,
                 // or, improbably, by a previous keepalive.
                 // Whatever the case, exit immediately, no need to perform a keepalive.
                 return;
             }
 
-            if (!IsConnected) { return; }
+            if (!IsConnected)
+                return;
 
             try
             {
@@ -1649,7 +1635,7 @@ namespace Npgsql
         bool SupportsDiscard => ServerVersion >= new Version(8, 3, 0);
         internal bool SupportsRangeTypes => ServerVersion >= new Version(9, 2, 0);
         bool SupportsUnlisten => ServerVersion >= new Version(6, 4, 0) && !IsRedshift;
-        internal bool UseConformantStrings      { get; private set; }
+        internal bool UseConformantStrings { get; private set; }
 
 /*
         internal bool SupportsApplicationName   { get { return ServerVersion >= new Version(9, 0, 0); } }
@@ -1705,12 +1691,9 @@ namespace Npgsql
         internal void ExecuteInternalCommand(FrontendMessage message)
         {
             Contract.Requires(message is QueryMessage || message is PregeneratedMessage);
-            using (StartUserAction())
-            {
-                SendMessage(message);
-                ReadExpecting<CommandCompleteMessage>();
-                ReadExpecting<ReadyForQueryMessage>();
-            }
+            SendMessage(message);
+            ReadExpecting<CommandCompleteMessage>();
+            ReadExpecting<ReadyForQueryMessage>();
         }
 
         #endregion
@@ -1769,31 +1752,38 @@ namespace Npgsql
         /// The connector has either not yet been opened or has been closed.
         /// </summary>
         Closed,
+
         /// <summary>
         /// The connector is currently connecting to a Postgresql server.
         /// </summary>
         Connecting,
+
         /// <summary>
         /// The connector is connected and may be used to send a new query.
         /// </summary>
         Ready,
+
         /// <summary>
         /// The connector is waiting for a response to a query which has been sent to the server.
         /// </summary>
         Executing,
+
         /// <summary>
         /// The connector is currently fetching and processing query results.
         /// </summary>
         Fetching,
+
         /// <summary>
         /// The connector is currently waiting for asynchronous notifications to arrive.
         /// </summary>
         Waiting,
+
         /// <summary>
         /// The connection was broken because an unexpected error occurred which left it in an unknown state.
         /// This state isn't implemented yet.
         /// </summary>
         Broken,
+
         /// <summary>
         /// The connector is engaged in a COPY operation.
         /// </summary>
@@ -1834,10 +1824,12 @@ namespace Npgsql
         /// Load DataRows in non-sequential mode
         /// </summary>
         NonSequential,
+
         /// <summary>
         /// Load DataRows in sequential mode
         /// </summary>
         Sequential,
+
         /// <summary>
         /// Skip DataRow messages altogether
         /// </summary>

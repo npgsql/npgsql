@@ -44,7 +44,6 @@ using System.Threading.Tasks;
 #pragma warning disable
 using System;
 using System.Collections.Generic;
-using System.Data.Common;
 using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
@@ -283,10 +282,10 @@ namespace Npgsql
 
         async Task<int> ExecuteNonQueryInternalAsync(CancellationToken cancellationToken)
         {
-            Prechecks();
-            Log.Trace("ExecuteNonQuery", Connection.Connector.Id);
-            using (Connection.Connector.StartUserAction())
+            var connector = CheckReadyAndGetConnector();
+            using (connector.StartUserAction())
             {
+                Log.Trace("ExecuteNonQuery", connector.Id);
                 NpgsqlDataReader reader;
                 using (reader = await (ExecuteAsync(cancellationToken)))
                 {
@@ -301,25 +300,22 @@ namespace Npgsql
 
         async Task<object> ExecuteScalarInternalAsync(CancellationToken cancellationToken)
         {
-            Prechecks();
-            Log.Trace("ExecuteNonScalar", Connection.Connector.Id);
-            using (Connection.Connector.StartUserAction())
+            var connector = CheckReadyAndGetConnector();
+            using (connector.StartUserAction())
             {
-                var behavior = CommandBehavior.SequentialAccess | CommandBehavior.SingleRow;
-                using (var reader = Execute(behavior))
-                {
+                Log.Trace("ExecuteNonScalar", connector.Id);
+                using (var reader = Execute(CommandBehavior.SequentialAccess | CommandBehavior.SingleRow))
                     return await (reader.ReadAsync(cancellationToken)) && reader.FieldCount != 0 ? reader.GetValue(0) : null;
-                }
             }
         }
 
         async Task<NpgsqlDataReader> ExecuteDbDataReaderInternalAsync(CommandBehavior behavior, CancellationToken cancellationToken)
         {
-            Prechecks();
-            Log.Trace("ExecuteReader", Connection.Connector.Id);
-            Connection.Connector.StartUserAction();
+            var connector = CheckReadyAndGetConnector();
+            connector.StartUserAction();
             try
             {
+                Log.Trace("ExecuteReader", connector.Id);
                 return await ExecuteAsync(cancellationToken, behavior);
             }
             catch
@@ -327,10 +323,7 @@ namespace Npgsql
                 Connection.Connector?.EndUserAction();
                 // Close connection if requested even when there is an error.
                 if ((behavior & CommandBehavior.CloseConnection) == CommandBehavior.CloseConnection)
-                {
                     _connection.Close();
-                }
-
                 throw;
             }
         }
@@ -452,11 +445,11 @@ namespace Npgsql
                     switch (response)
                     {
                         default:
-                            throw new Exception($"Received unknown response {response} for SSLRequest (expecting S or N)");
+                            throw new NpgsqlException($"Received unknown response {response} for SSLRequest (expecting S or N)");
                         case 'N':
                             if (SslMode == SslMode.Require)
                             {
-                                throw new InvalidOperationException("SSL connection requested. No SSL enabled connection from this host is configured.");
+                                throw new NpgsqlException("SSL connection requested. No SSL enabled connection from this host is configured.");
                             }
 
                             break;
@@ -465,18 +458,11 @@ namespace Npgsql
                             Connection.ProvideClientCertificatesCallback?.Invoke(clientCertificates);
                             RemoteCertificateValidationCallback certificateValidationCallback;
                             if (_settings.TrustServerCertificate)
-                            {
                                 certificateValidationCallback = (sender, certificate, chain, errors) => true;
-                            }
                             else if (Connection.UserCertificateValidationCallback != null)
-                            {
                                 certificateValidationCallback = Connection.UserCertificateValidationCallback;
-                            }
                             else
-                            {
                                 certificateValidationCallback = DefaultUserCertificateValidationCallback;
-                            }
-
                             if (!UseSslStream)
                             {
                                 var sslStream = new TlsClientStream.TlsClientStream(_stream);
@@ -509,48 +495,36 @@ namespace Npgsql
             }
             catch
             {
-                if (_stream != null)
+                try
                 {
-                    try
-                    {
-                        _stream.Dispose();
-                    }
-                    catch
-                    {
-                    // ignored
-                    }
-
-                    _stream = null;
+                    _stream?.Dispose();
+                }
+                catch
+                {
+                // ignored
                 }
 
-                if (_baseStream != null)
+                _stream = null;
+                try
                 {
-                    try
-                    {
-                        _baseStream.Dispose();
-                    }
-                    catch
-                    {
-                    // ignored
-                    }
-
-                    _baseStream = null;
+                    _baseStream?.Dispose();
+                }
+                catch
+                {
+                // ignored
                 }
 
-                if (_socket != null)
+                _baseStream = null;
+                try
                 {
-                    try
-                    {
-                        _socket.Dispose();
-                    }
-                    catch
-                    {
-                    // ignored
-                    }
-
-                    _socket = null;
+                    _socket?.Dispose();
+                }
+                catch
+                {
+                // ignored
                 }
 
+                _socket = null;
                 throw;
             }
         }
@@ -583,7 +557,7 @@ namespace Npgsql
                         State = ConnectorState.Ready;
                         return;
                     default:
-                        throw new Exception("Unexpected message received while authenticating: " + msg.Code);
+                        throw new NpgsqlException("Unexpected message received while authenticating: " + msg.Code);
                 }
             }
         }
@@ -756,7 +730,7 @@ namespace Npgsql
             if (asExpected == null)
             {
                 Break();
-                throw new Exception($"Received backend message {msg.Code} while expecting {typeof (T).Name}. Please file a bug.");
+                throw new NpgsqlException($"Received backend message {msg.Code} while expecting {typeof (T).Name}. Please file a bug.");
             }
 
             return asExpected;
@@ -797,12 +771,9 @@ namespace Npgsql
         internal async Task ExecuteInternalCommandAsync(FrontendMessage message, CancellationToken cancellationToken)
         {
             Contract.Requires(message is QueryMessage || message is PregeneratedMessage);
-            using (StartUserAction())
-            {
-                await SendMessageAsync(message, cancellationToken);
-                await ReadExpectingAsync<CommandCompleteMessage>(cancellationToken);
-                await ReadExpectingAsync<ReadyForQueryMessage>(cancellationToken);
-            }
+            await SendMessageAsync(message, cancellationToken);
+            await ReadExpectingAsync<CommandCompleteMessage>(cancellationToken);
+            await ReadExpectingAsync<ReadyForQueryMessage>(cancellationToken);
         }
     }
 
@@ -1088,7 +1059,7 @@ namespace Npgsql
                         ProcessMessage(msg);
                         return;
                     default:
-                        throw new Exception("Unexpected message of type " + msg.Code);
+                        throw new NpgsqlException("Unexpected message of type " + msg.Code);
                 }
             }
         }
@@ -1377,17 +1348,23 @@ namespace Npgsql
     {
         async Task CommitInternalAsync(CancellationToken cancellationToken)
         {
-            CheckReady();
-            Log.Debug("Commit transaction", Connection.Connector.Id);
-            await Connector.ExecuteInternalCommandAsync(PregeneratedMessage.CommitTransaction, cancellationToken);
-            Connection = null;
+            var connector = CheckReady();
+            using (connector.StartUserAction())
+            {
+                Log.Debug("Commit transaction", connector.Id);
+                await connector.ExecuteInternalCommandAsync(PregeneratedMessage.CommitTransaction, cancellationToken);
+                Connection = null;
+            }
         }
 
         async Task RollbackInternalAsync(CancellationToken cancellationToken)
         {
-            CheckReady();
-            await Connector.RollbackAsync(cancellationToken);
-            Connection = null;
+            var connector = CheckReady();
+            using (connector.StartUserAction())
+            {
+                await connector.RollbackAsync(cancellationToken);
+                Connection = null;
+            }
         }
     }
 
@@ -1410,7 +1387,8 @@ namespace Npgsql
                 return connector;
             }
 
-            if (Busy >= _max)
+            Contract.Assert(Busy <= _max);
+            if (Busy == _max)
             {
                 // TODO: Async cancellation
                 var tcs = new TaskCompletionSource<NpgsqlConnector>();

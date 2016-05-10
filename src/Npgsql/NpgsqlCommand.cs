@@ -439,11 +439,10 @@ namespace Npgsql
         /// </summary>
         public override void Prepare()
         {
-            Prechecks();
+            _connector = CheckReadyAndGetConnector();
             if (Parameters.Any(p => !p.IsTypeExplicitlySet))
                 throw new InvalidOperationException("The Prepare method requires all parameters to have an explicitly set type.");
 
-            _connector = Connection.Connector;
             Log.Debug("Preparing: " + CommandText, _connector.Id);
 
             using (_connector.StartUserAction())
@@ -487,7 +486,9 @@ namespace Npgsql
 
         void DeallocatePrepared()
         {
-            if (!IsPrepared) { return; }
+            if (!IsPrepared)
+                return;
+            _connector = CheckReadyAndGetConnector();
             using (_connector.StartUserAction())
             {
                 _writeStatementIndex = 0;
@@ -934,10 +935,10 @@ namespace Npgsql
         [RewriteAsync]
         int ExecuteNonQueryInternal()
         {
-            Prechecks();
-            Log.Trace("ExecuteNonQuery", Connection.Connector.Id);
-            using (Connection.Connector.StartUserAction())
+            var connector = CheckReadyAndGetConnector();
+            using (connector.StartUserAction())
             {
+                Log.Trace("ExecuteNonQuery", connector.Id);
                 NpgsqlDataReader reader;
                 using (reader = Execute())
                 {
@@ -982,12 +983,11 @@ namespace Npgsql
         [CanBeNull]
         object ExecuteScalarInternal()
         {
-            Prechecks();
-            Log.Trace("ExecuteNonScalar", Connection.Connector.Id);
-            using (Connection.Connector.StartUserAction())
+            var connector = CheckReadyAndGetConnector();
+            using (connector.StartUserAction())
             {
-                var behavior = CommandBehavior.SequentialAccess | CommandBehavior.SingleRow;
-                using (var reader = Execute(behavior))
+                Log.Trace("ExecuteNonScalar", connector.Id);
+                using (var reader = Execute(CommandBehavior.SequentialAccess | CommandBehavior.SingleRow))
                     return reader.Read() && reader.FieldCount != 0 ? reader.GetValue(0) : null;
             }
         }
@@ -1040,13 +1040,11 @@ namespace Npgsql
         [RewriteAsync]
         NpgsqlDataReader ExecuteDbDataReaderInternal(CommandBehavior behavior)
         {
-            Prechecks();
-
-            Log.Trace("ExecuteReader", Connection.Connector.Id);
-
-            Connection.Connector.StartUserAction();
+            var connector = CheckReadyAndGetConnector();
+            connector.StartUserAction();
             try
             {
+                Log.Trace("ExecuteReader", connector.Id);
                 return Execute(behavior);
             }
             catch
@@ -1055,10 +1053,7 @@ namespace Npgsql
 
                 // Close connection if requested even when there is an error.
                 if ((behavior & CommandBehavior.CloseConnection) == CommandBehavior.CloseConnection)
-                {
                     _connection.Close();
-                }
-
                 throw;
             }
         }
@@ -1223,13 +1218,13 @@ namespace Npgsql
             return clone;
         }
 
-        void Prechecks()
+        NpgsqlConnector CheckReadyAndGetConnector()
         {
             if (State == CommandState.Disposed)
                 throw new ObjectDisposedException(GetType().FullName);
             if (Connection == null)
                 throw new InvalidOperationException("Connection property has not been initialized.");
-            Connection.CheckReady();
+            return Connection.CheckReadyAndGetConnector();
         }
 
         enum SendState

@@ -139,37 +139,31 @@ namespace Npgsql
         /// <summary>
         /// Commits the database transaction.
         /// </summary>
-        public override void Commit()
-        {
-            CommitInternal();
-        }
+        public override void Commit() => CommitInternal();
 
         [RewriteAsync]
         void CommitInternal()
         {
-            CheckReady();
-            Log.Debug("Commit transaction", Connection.Connector.Id);
-            Connector.ExecuteInternalCommand(PregeneratedMessage.CommitTransaction);
-            Connection = null;
+            var connector = CheckReady();
+            using (connector.StartUserAction())
+            {
+                Log.Debug("Commit transaction", connector.Id);
+                connector.ExecuteInternalCommand(PregeneratedMessage.CommitTransaction);
+                Connection = null;
+            }
         }
 
         /// <summary>
         /// Commits the database transaction.
         /// </summary>
         [PublicAPI]
-        public Task CommitAsync(CancellationToken cancellationToken)
-        {
-            return CommitInternalAsync(cancellationToken);
-        }
+        public Task CommitAsync(CancellationToken cancellationToken) => CommitInternalAsync(cancellationToken);
 
         /// <summary>
         /// Commits the database transaction.
         /// </summary>
         [PublicAPI]
-        public Task CommitAsync()
-        {
-            return CommitAsync(CancellationToken.None);
-        }
+        public Task CommitAsync() => CommitAsync(CancellationToken.None);
 
         #endregion
 
@@ -178,36 +172,30 @@ namespace Npgsql
         /// <summary>
         /// Rolls back a transaction from a pending state.
         /// </summary>
-        public override void Rollback()
-        {
-            RollbackInternal();
-        }
+        public override void Rollback() => RollbackInternal();
 
         [RewriteAsync]
         void RollbackInternal()
         {
-            CheckReady();
-            Connector.Rollback();
-            Connection = null;
+            var connector = CheckReady();
+            using (connector.StartUserAction())
+            {
+                connector.Rollback();
+                Connection = null;
+            }
         }
 
         /// <summary>
         /// Rolls back a transaction from a pending state.
         /// </summary>
         [PublicAPI]
-        public Task RollbackAsync(CancellationToken cancellationToken)
-        {
-            return RollbackInternalAsync(cancellationToken);
-        }
+        public Task RollbackAsync(CancellationToken cancellationToken) => RollbackInternalAsync(cancellationToken);
 
         /// <summary>
         /// Rolls back a transaction from a pending state.
         /// </summary>
         [PublicAPI]
-        public Task RollbackAsync()
-        {
-            return RollbackInternalAsync(CancellationToken.None);
-        }
+        public Task RollbackAsync() => RollbackInternalAsync(CancellationToken.None);
 
         #endregion
 
@@ -226,9 +214,12 @@ namespace Npgsql
                 throw new ArgumentException("name can't contain a semicolon");
             Contract.EndContractBlock();
 
-            CheckReady();
-            Log.Debug("Create savepoint", Connection.Connector.Id);
-            Connector.ExecuteInternalCommand($"SAVEPOINT {name}");
+            var connector = CheckReady();
+            using (connector.StartUserAction())
+            {
+                Log.Debug("Create savepoint", connector.Id);
+                connector.ExecuteInternalCommand($"SAVEPOINT {name}");
+            }
         }
 
         /// <summary>
@@ -244,9 +235,12 @@ namespace Npgsql
                 throw new ArgumentException("name can't contain a semicolon");
             Contract.EndContractBlock();
 
-            CheckReady();
-            Log.Debug("Rollback savepoint", Connection.Connector.Id);
-            Connector.ExecuteInternalCommand($"ROLLBACK TO SAVEPOINT {name}");
+            var connector = CheckReady();
+            using (connector.StartUserAction())
+            {
+                Log.Debug("Rollback savepoint", connector.Id);
+                connector.ExecuteInternalCommand($"ROLLBACK TO SAVEPOINT {name}");
+            }
         }
 
         /// <summary>
@@ -262,9 +256,12 @@ namespace Npgsql
                 throw new ArgumentException("name can't contain a semicolon");
             Contract.EndContractBlock();
 
-            CheckReady();
-            Log.Debug("Release savepoint", Connection.Connector.Id);
-            Connector.ExecuteInternalCommand($"RELEASE SAVEPOINT {name}");
+            var connector = CheckReady();
+            using (connector.StartUserAction())
+            {
+                Log.Debug("Release savepoint", connector.Id);
+                connector.ExecuteInternalCommand($"RELEASE SAVEPOINT {name}");
+            }
         }
 
         #endregion
@@ -291,11 +288,11 @@ namespace Npgsql
 
         #region Checks
 
-        void CheckReady()
+        NpgsqlConnector CheckReady()
         {
             CheckDisposed();
             CheckCompleted();
-            Connection.CheckReady();
+            return Connection.CheckReadyAndGetConnector();
         }
 
         [ContractArgumentValidator]
