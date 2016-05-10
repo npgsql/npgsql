@@ -91,6 +91,9 @@ namespace Npgsql.Tests
         }
 
         [Test]
+#if NETCOREAPP1_0
+        [Ignore("Not implemented on CoreCLR yet")]
+#endif
         public void IntegratedSecurity()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString) {
