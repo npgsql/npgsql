@@ -440,12 +440,10 @@ namespace Npgsql
         /// </summary>
         public override void Prepare()
         {
-            Prechecks();
-            if (Parameters.Any(p => !p.IsTypeExplicitlySet)) {
-                throw new InvalidOperationException("NpgsqlCommand.Prepare method requires all parameters to have an explicitly set type.");
-            }
+            _connector = CheckReadyAndGetConnector();
+            if (Parameters.Any(p => !p.IsTypeExplicitlySet))
+                throw new InvalidOperationException("The Prepare method requires all parameters to have an explicitly set type.");
 
-            _connector = Connection.Connector;
             Log.Debug("Preparing: " + CommandText, _connector.Id);
 
             using (_connector.StartUserAction())
@@ -829,9 +827,8 @@ namespace Npgsql
         [RewriteAsync]
         int ExecuteNonQueryInternal()
         {
-            Prechecks();
-            Log.Trace("ExecuteNonQuery", Connection.Connector.Id);
-            using (Connection.Connector.StartUserAction())
+            var connector = CheckReadyAndGetConnector();
+            using (connector.StartUserAction())
             {
                 ValidateAndCreateMessages();
                 NpgsqlDataReader reader;
@@ -886,9 +883,8 @@ namespace Npgsql
         [RewriteAsync]
         object ExecuteScalarInternal()
         {
-            Prechecks();
-            Log.Trace("ExecuteNonScalar", Connection.Connector.Id);
-            using (Connection.Connector.StartUserAction())
+            var connector = CheckReadyAndGetConnector();
+            using (connector.StartUserAction())
             {
                 var behavior = CommandBehavior.SequentialAccess | CommandBehavior.SingleRow;
                 ValidateAndCreateMessages(behavior);
@@ -966,11 +962,8 @@ namespace Npgsql
         [RewriteAsync]
         NpgsqlDataReader ExecuteDbDataReaderInternal(CommandBehavior behavior)
         {
-            Prechecks();
-
-            Log.Trace("ExecuteReader", Connection.Connector.Id);
-
-            Connection.Connector.StartUserAction();
+            var connector = CheckReadyAndGetConnector();
+            connector.StartUserAction();
             try
             {
                 ValidateAndCreateMessages(behavior);
@@ -984,10 +977,7 @@ namespace Npgsql
 
                 // Close connection if requested even when there is an error.
                 if ((behavior & CommandBehavior.CloseConnection) == CommandBehavior.CloseConnection)
-                {
                     _connection.Close();
-                }
-
                 throw;
             }
         }
@@ -1198,13 +1188,13 @@ namespace Npgsql
             return clone;
         }
 
-        void Prechecks()
+        NpgsqlConnector CheckReadyAndGetConnector()
         {
             if (State == CommandState.Disposed)
                 throw new ObjectDisposedException(GetType().FullName);
             if (Connection == null)
                 throw new InvalidOperationException("Connection property has not been initialized.");
-            Connection.CheckReady();
+            return Connection.CheckReadyAndGetConnector();
         }
 
         #endregion
