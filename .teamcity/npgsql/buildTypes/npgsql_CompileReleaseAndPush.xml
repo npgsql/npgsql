@@ -110,14 +110,6 @@ src\EntityFramework5.Npgsql\EntityFramework5.Npgsql.nuspec]]></param>
       </dependency>
     </artifact-dependencies>
     <dependencies>
-      <depend-on sourceBuildTypeId="npgsql_TestPostgreSQL95">
-        <options>
-          <option name="run-build-if-dependency-failed" value="CANCEL" />
-          <option name="run-build-if-dependency-failed-to-start" value="CANCEL" />
-          <option name="take-started-build-with-same-revisions" value="true" />
-          <option name="take-successful-builds-only" value="true" />
-        </options>
-      </depend-on>
       <depend-on sourceBuildTypeId="npgsql_RunTestsOnPostgreSQL91">
         <options>
           <option name="run-build-if-dependency-failed" value="CANCEL" />
@@ -143,6 +135,14 @@ src\EntityFramework5.Npgsql\EntityFramework5.Npgsql.nuspec]]></param>
         </options>
       </depend-on>
       <depend-on sourceBuildTypeId="npgsql_RunTestsOnPostgreSQL94">
+        <options>
+          <option name="run-build-if-dependency-failed" value="CANCEL" />
+          <option name="run-build-if-dependency-failed-to-start" value="CANCEL" />
+          <option name="take-started-build-with-same-revisions" value="true" />
+          <option name="take-successful-builds-only" value="true" />
+        </options>
+      </depend-on>
+      <depend-on sourceBuildTypeId="npgsql_RunTestsOnPostgreSQL95">
         <options>
           <option name="run-build-if-dependency-failed" value="CANCEL" />
           <option name="run-build-if-dependency-failed-to-start" value="CANCEL" />
