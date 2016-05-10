@@ -152,9 +152,7 @@ namespace Npgsql
         /// </summary>
         internal readonly Dictionary<string, string> BackendParams;
 
-#if NET45 || NET451
         SSPIHandler _sspi;
-#endif
 
         /// <summary>
         /// The timeout for reading messages that are part of the user's command
@@ -726,58 +724,54 @@ namespace Npgsql
         {
             switch (msg.AuthRequestType)
             {
-                case AuthenticationRequestType.AuthenticationOk:
-                    return null;
+            case AuthenticationRequestType.AuthenticationOk:
+                return null;
 
-                case AuthenticationRequestType.AuthenticationCleartextPassword:
-                    if (_password == null) {
-                        throw new NpgsqlException("No password has been provided but the backend requires one (in cleartext)");
-                    }
-                    return PasswordMessage.CreateClearText(_password);
+            case AuthenticationRequestType.AuthenticationCleartextPassword:
+                if (_password == null)
+                    throw new NpgsqlException("No password has been provided but the backend requires one (in cleartext)");
+                return PasswordMessage.CreateClearText(_password);
 
-                case AuthenticationRequestType.AuthenticationMD5Password:
-                    if (_password == null) {
-                        throw new NpgsqlException("No password has been provided but the backend requires one (in MD5)");
-                    }
-                    return PasswordMessage.CreateMD5(_password, Username, ((AuthenticationMD5PasswordMessage)msg).Salt);
+            case AuthenticationRequestType.AuthenticationMD5Password:
+                if (_password == null)
+                    throw new NpgsqlException("No password has been provided but the backend requires one (in MD5)");
+                return PasswordMessage.CreateMD5(_password, Username, ((AuthenticationMD5PasswordMessage)msg).Salt);
 
-                case AuthenticationRequestType.AuthenticationGSS:
-                    if (!IntegratedSecurity) {
-                        throw new NpgsqlException("GSS authentication but IntegratedSecurity not enabled");
-                    }
+            case AuthenticationRequestType.AuthenticationGSS:
+                if (!IntegratedSecurity)
+                    throw new NpgsqlException("GSS authentication but IntegratedSecurity not enabled");
+
 #if NET45 || NET451
-                    // For GSSAPI we have to use the supplied hostname
-                    _sspi = new SSPIHandler(Host, KerberosServiceName, true);
-                    return new PasswordMessage(_sspi.Continue(null));
-#else
-                    throw new NotSupportedException("SSPI not yet supported in .NET Core");
+                // Currently there's no clean way to check OS in CoreFX (https://github.com/dotnet/corefx/issues/4741)
+                if (Environment.OSVersion.Platform != PlatformID.Win32NT)
+                    throw new NotSupportedException("GSS authentication is only supported on Windows for now");
 #endif
 
-                case AuthenticationRequestType.AuthenticationSSPI:
-                    if (!IntegratedSecurity) {
-                        throw new NpgsqlException("SSPI authentication but IntegratedSecurity not enabled");
-                    }
+                // For GSSAPI we have to use the supplied hostname
+                _sspi = new SSPIHandler(Host, KerberosServiceName, true);
+                return new PasswordMessage(_sspi.Continue(null));
+
+            case AuthenticationRequestType.AuthenticationSSPI:
+                if (!IntegratedSecurity)
+                    throw new NpgsqlException("SSPI authentication but IntegratedSecurity not enabled");
+
 #if NET45 || NET451
-                    _sspi = new SSPIHandler(Host, KerberosServiceName, false);
-                    return new PasswordMessage(_sspi.Continue(null));
-#else
-                    throw new NotSupportedException("SSPI not yet supported in .NET Core");
+                // Currently there's no clean way to check OS in CoreFX (https://github.com/dotnet/corefx/issues/4741)
+                if (Environment.OSVersion.Platform != PlatformID.Win32NT)
+                    throw new NotSupportedException("SSPI authentication is only supported on Windows");
 #endif
 
-                case AuthenticationRequestType.AuthenticationGSSContinue:
-#if NET45 || NET451
-                    var passwdRead = _sspi.Continue(((AuthenticationGSSContinueMessage)msg).AuthenticationData);
-                    if (passwdRead.Length != 0)
-                    {
-                        return new PasswordMessage(passwdRead);
-                    }
-                    return null;
-#else
-                    throw new NotSupportedException("SSPI not yet supported in .NET Core");
-#endif
+                _sspi = new SSPIHandler(Host, KerberosServiceName, false);
+                return new PasswordMessage(_sspi.Continue(null));
 
-                default:
-                    throw new NotSupportedException($"Authentication method not supported (Received: {msg.AuthRequestType})");
+            case AuthenticationRequestType.AuthenticationGSSContinue:
+                var passwdRead = _sspi.Continue(((AuthenticationGSSContinueMessage)msg).AuthenticationData);
+                if (passwdRead.Length != 0)
+                    return new PasswordMessage(passwdRead);
+                return null;
+
+            default:
+                throw new NotSupportedException($"Authentication method not supported (Received: {msg.AuthRequestType})");
             }
         }
 

@@ -28,7 +28,7 @@
     "repository": {
       "type": "git",
       "url": "git://github.com/npgsql/npgsql"
-    },
+    }
   },
   "buildOptions": {
     "warningsAsErrors": true,
@@ -99,7 +99,8 @@
         "System.Text.RegularExpressions": "4.0.12-*",
         "System.Threading": "4.0.11-*",
         "System.Threading.Thread": "4.0.0-*",
-        "System.Threading.Timer": "4.0.1-*"
+        "System.Threading.Timer": "4.0.1-*",
+        "Microsoft.Win32.Primitives": "4.0.1-*"
       }
     }
   }

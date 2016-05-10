@@ -21,12 +21,10 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-#if NET45 || NET451
-
 using System;
 using System.Runtime.InteropServices;
 using System.ComponentModel;
-using System.Diagnostics;
+using System.Diagnostics.Contracts;
 using JetBrains.Annotations;
 
 namespace Npgsql
@@ -91,7 +89,7 @@ namespace Npgsql
             out SecHandle ptsExpiry
         );
 
-        [DllImport("secur32", CharSet=CharSet.Auto, SetLastError=true)]
+        [DllImport("secur32", SetLastError=true)]
         static extern int InitializeSecurityContext(
             ref SecHandle phCredential,
             ref SecHandle phContext,
@@ -106,7 +104,7 @@ namespace Npgsql
             out int pfContextAttr,
             out SecHandle ptsExpiry);
 
-        [DllImport("secur32", CharSet=CharSet.Auto, SetLastError=true)]
+        [DllImport("secur32", SetLastError=true)]
         static extern int InitializeSecurityContext(
             ref SecHandle phCredential,
             IntPtr phContext,
@@ -203,7 +201,7 @@ namespace Npgsql
 
                 if (_isSSPICtxSet)
                 {
-                    Trace.Assert(authData != null);
+                    Contract.Assert(authData != null);
                     var inbuf = new SecBufferDesc { pBuffer = IntPtr.Zero };
                     var inBuffer = new SecBuffer { pvBuffer = Marshal.AllocHGlobal(authData.Length) };
                     try
@@ -275,7 +273,11 @@ namespace Npgsql
                     // attention: OutBuffer is still our initially created struct but outbuf.pBuffer doesn't point to
                     // it but to the copy of it we created on the unmanaged heap and passed to InitializeSecurityContext()
                     // we have to marshal it back to see the content change
+#if NET45
                     outBuffer = (SecBuffer)Marshal.PtrToStructure(outbuf.pBuffer, typeof(SecBuffer));
+#else
+                    outBuffer = Marshal.PtrToStructure<SecBuffer>(outbuf.pBuffer);
+#endif
                     if (outBuffer.cbBuffer > 0)
                     {
                         // we need the buffer with a terminating 0 so we
@@ -336,4 +338,3 @@ namespace Npgsql
         #endregion
     }
 }
-#endif

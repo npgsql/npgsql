@@ -91,12 +91,39 @@ namespace Npgsql.Tests
         }
 
         [Test]
-#if NETCOREAPP1_0
-        [Ignore("Not implemented on CoreCLR yet")]
-#endif
-        public void IntegratedSecurity()
+        public void IntegratedSecurityWithUsername()
         {
+            var username = Environment.GetEnvironmentVariable("USERNAME") ??
+                           Environment.GetEnvironmentVariable("USER");
+            if (username == null)
+                throw new Exception("Could find username");
+
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString) {
+                IntegratedSecurity = true,
+                Username = username,
+                Password = null,
+            };
+            using (var conn = new NpgsqlConnection(csb))
+            {
+                try
+                {
+                    conn.Open();
+                }
+                catch (Exception e)
+                {
+                    if (TestUtil.IsOnBuildServer)
+                        throw;
+                    Console.WriteLine(e);
+                    Assert.Ignore("Integrated security (GSS/SSPI) doesn't seem to be set up");
+                }
+            }
+        }
+
+        [Test]
+        public void IntegratedSecurityWithoutUsername()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
                 IntegratedSecurity = true,
                 Username = null,
                 Password = null,
@@ -116,51 +143,6 @@ namespace Npgsql.Tests
                 }
             }
         }
-
-        #region Partial Trust
-
-#if NET46
-        [Test, Description("Makes sure Npgsql works when running under pseudo-medium trust")]
-        [Ignore("Doesn't work via DNX testing")]
-        public void RestrictedTrust()
-        {
-            var domainSetup = new AppDomainSetup { ApplicationBase = AppDomain.CurrentDomain.BaseDirectory };
-            var permissions = new PermissionSet(null);
-            permissions.AddPermission(new SecurityPermission(SecurityPermissionFlag.Execution));
-
-            var domain = AppDomain.CreateDomain("Partial Trust AppDomain", null, domainSetup, permissions);
-
-            try
-            {
-                var test = (TrustTestClass) domain.CreateInstanceAndUnwrap(
-                    typeof (TrustTestClass).Assembly.FullName,
-                    typeof (TrustTestClass).FullName
-                    );
-                test.Go(ConnectionString);
-            }
-            finally
-            {
-                AppDomain.Unload(domain);
-            }
-        }
-
-        [Serializable]
-        public class TrustTestClass
-        {
-            public void Go(string connString)
-            {
-                using (var conn = new NpgsqlConnection(connString))
-                {
-                    conn.Open();
-                    using (var cmd = new NpgsqlCommand("SELECT 1", conn))
-                    {
-                        Assert.That(cmd.ExecuteScalar(), Is.EqualTo(1));
-                    }
-                }
-            }
-        }
-#endif
-        #endregion
 
         #region Setup / Teardown / Utils
 
