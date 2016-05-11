@@ -665,17 +665,23 @@ namespace Npgsql
         class BackendTypes
         {
             internal Dictionary<uint, BackendType> ByOID { get; } = new Dictionary<uint, BackendType>();
+
+#if !__MonoCS__
             /// <summary>
             /// Indexes backend types by their PostgreSQL name, including namespace (e.g. pg_catalog.int4).
             /// Only used for enums and composites.
             /// </summary>
+#endif
             internal Dictionary<string, BackendType> ByFullName { get; } = new Dictionary<string, BackendType>();
+
+#if !__MonoCS__
             /// <summary>
             /// Indexes backend types by their PostgreSQL name, not including namespace.
             /// If more than one type exists with the same name (i.e. in different namespaces) this
             /// table will contain an entry with a null value.
             /// Only used for enums and composites.
             /// </summary>
+#endif
             internal Dictionary<string, BackendType> ByName { get; } = new Dictionary<string, BackendType>();
             internal Dictionary<NpgsqlDbType, BackendType> ByNpgsqlDbType { get; } = new Dictionary<NpgsqlDbType, BackendType>();
             internal Dictionary<DbType, BackendType> ByDbType { get; } = new Dictionary<DbType, BackendType>();

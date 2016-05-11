@@ -124,7 +124,7 @@ namespace Npgsql.TypeHandlers
                 if (_len == -1)
                 {
                     if (_readBuf.ReadBytesLeft < 8) { return false; }
-                    var typeOID = _readBuf.ReadInt32();
+                    _readBuf.ReadInt32();  // read typeOID, not used
                     _len = _readBuf.ReadInt32();
                     if (_len == -1)
                     {
