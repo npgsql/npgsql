@@ -232,12 +232,14 @@ namespace Npgsql
             get
             {
                 return _data ?? (_data = (
-                    from p in typeof (ErrorOrNoticeMessage).GetProperties(BindingFlags.DeclaredOnly | BindingFlags.NonPublic | BindingFlags.Instance)
+                    from p in typeof(PostgresException).GetProperties()
                     let k = p.Name
-                    let v = p.GetValue(_msg)
-                    where p.GetValue(_msg) != null
-                    where (k != "Position" && k != "InternalPosition") || ((int)v) != 0
-                    select new {Key = k, Value = v}
+                    where p.Name != nameof(Data)
+                    where p.GetCustomAttribute<PublicAPIAttribute>() != null
+                    let v = p.GetValue(this)
+                    where v != null
+                    where k != nameof(Position) && k != nameof(InternalPosition) || (int)v != 0
+                    select new { Key = k, Value = v }
                     ).ToDictionary(kv => kv.Key, kv => kv.Value)
                 );
             }

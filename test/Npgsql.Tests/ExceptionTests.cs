@@ -64,9 +64,9 @@ namespace Npgsql.Tests
                 Assert.That(ex.Position, Is.EqualTo(0));
 
                 var data = ex.Data;
-                Assert.That(data["Severity"], Is.EqualTo("ERROR"));
-                Assert.That(data["Code"], Is.EqualTo("12345"));
-                Assert.That(data.Contains("Position"), Is.False);
+                Assert.That(data[nameof(PostgresException.Severity)], Is.EqualTo("ERROR"));
+                Assert.That(data[nameof(PostgresException.SqlState)], Is.EqualTo("12345"));
+                Assert.That(data.Contains(nameof(PostgresException.Position)), Is.False);
 
                 Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1), "Connection in bad state after an exception");
             }
