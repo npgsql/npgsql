@@ -1228,7 +1228,7 @@ namespace TlsClientStream
                 bool ok = false;
                 if (signatureAlgorithm == SignatureAlgorithm.RSA)
                 {
-                    using (var rsa = _handshakeData.CertList[0].GetRSAPrivateKey())
+                    using (var rsa = _handshakeData.CertList[0].GetRSAPublicKey())
                     {
                         if (rsa != null)
                         {
