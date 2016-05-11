@@ -29,9 +29,7 @@ namespace Npgsql.Tests
     public class SecurityTests : TestBase
     {
         [Test, Description("Establishes an SSL connection, assuming a self-signed server certificate")]
-#if !NETCOREAPP1_0
         [TestCase(false, TestName = "TlsClientStream")]
-#endif
         [TestCase(true,  TestName = "SslStream")]
         public void BasicSsl(bool useSslStream)
         {
@@ -47,9 +45,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Makes sure a certificate whose root CA isn't known isn't accepted")]
-#if NETCOREAPP1_0
         [TestCase(false, TestName = "TlsClientStream")]
-#endif
         [TestCase(true,  TestName = "SslStream")]
         public void RejectSelfSignedCertificate(bool useSslStream)
         {
@@ -70,7 +66,6 @@ namespace Npgsql.Tests
             }
         }
 
-#if !NETCOREAPP1_0
         [Test, Description("Makes sure that ssl_renegotiation_limit is always 0, renegotiation is buggy")]
         public void NoSslRenegotiation()
         {
@@ -87,7 +82,6 @@ namespace Npgsql.Tests
                 Assert.That(conn.ExecuteScalar("SHOW ssl_renegotiation_limit"), Is.EqualTo("0"));
             }
         }
-#endif
 
         [Test, Description("Makes sure that when SSL is disabled IsSecure returns false")]
         public void NonSecure()
