@@ -281,7 +281,6 @@ namespace Npgsql
         string Host => _settings.Host;
         int Port => _settings.Port;
         string Database => _settings.Database;
-        string Username => _settings.Username;
         string KerberosServiceName => _settings.KerberosServiceName;
         SslMode SslMode => _settings.SslMode;
         bool UseSslStream => _settings.UseSslStream;
@@ -384,12 +383,12 @@ namespace Npgsql
 
             try {
                 RawOpen(timeout);
-
-                WriteStartupMessage();
+                var username = GetUsername();
+                WriteStartupMessage(username);
                 WriteBuffer.Flush();
                 timeout.Check();
 
-                HandleAuthentication(timeout);
+                HandleAuthentication(username, timeout);
                 TypeHandlerRegistry.Setup(this, timeout);
                 Log.Debug($"Opened connection to {Host}:{Port}", Id);
             }
@@ -400,22 +399,16 @@ namespace Npgsql
             }
         }
 
-        void WriteStartupMessage()
+        void WriteStartupMessage(string username)
         {
             var startupMessage = new StartupMessage
             {
+                ["user"] = username,
                 ["client_encoding"] =
                     _settings.ClientEncoding ??
                     Environment.GetEnvironmentVariable("PGCLIENTENCODING") ??
                     "UTF8"
             };
-
-            if (!string.IsNullOrEmpty(Username))
-                startupMessage["user"] = Username;
-#if NET45 || NET451
-            else if (IntegratedSecurity)
-                startupMessage["user"] = UsernameProvider.GetIntegratedUserName(_settings.IncludeRealm);
-#endif
 
             if (!string.IsNullOrEmpty(Database))
                 startupMessage["database"] = Database;
@@ -431,6 +424,23 @@ namespace Npgsql
                 throw new Exception("Startup message bigger than buffer");
 
             startupMessage.WriteFully(WriteBuffer);
+        }
+
+        string GetUsername()
+        {
+            var username = _settings.Username;
+#if NET45 || NET451
+            if (string.IsNullOrEmpty(username) && PGUtil.IsWindows && Type.GetType("Mono.Runtime") == null)
+                username = WindowsUsernameProvider.GetUserName(_settings.IncludeRealm);
+            if (string.IsNullOrEmpty(username))
+                username = Environment.UserName;
+#endif
+            if (string.IsNullOrEmpty(username))
+                username = Environment.GetEnvironmentVariable("USERNAME") ??
+                       Environment.GetEnvironmentVariable("USER");
+            if (username == null)
+                throw new Exception("No username could be found, please specify one explicitly");
+            return username;
         }
 
         [RewriteAsync]
@@ -681,7 +691,7 @@ namespace Npgsql
         }
 
         [RewriteAsync]
-        void HandleAuthentication(NpgsqlTimeout timeout)
+        void HandleAuthentication(string username, NpgsqlTimeout timeout)
         {
             Log.Trace("Authenticating...", Id);
             while (true)
@@ -691,7 +701,7 @@ namespace Npgsql
                 switch (msg.Code)
                 {
                 case BackendMessageCode.AuthenticationRequest:
-                    var passwordMessage = ProcessAuthenticationMessage((AuthenticationRequestMessage)msg);
+                    var passwordMessage = ProcessAuthenticationMessage(username, (AuthenticationRequestMessage)msg);
                     if (passwordMessage != null)
                     {
                         passwordMessage.WriteFully(WriteBuffer);
@@ -717,10 +727,11 @@ namespace Npgsql
         /// <summary>
         /// Performs a step in the PostgreSQL authentication protocol
         /// </summary>
+        /// <param name="username">The username being used to connect.</param>
         /// <param name="msg">A message read from the server, instructing us on the required response</param>
         /// <returns>a PasswordMessage to be sent, or null if authentication has completed successfully</returns>
         [CanBeNull]
-        PasswordMessage ProcessAuthenticationMessage(AuthenticationRequestMessage msg)
+        PasswordMessage ProcessAuthenticationMessage(string username, AuthenticationRequestMessage msg)
         {
             switch (msg.AuthRequestType)
             {
@@ -733,19 +744,17 @@ namespace Npgsql
                 return PasswordMessage.CreateClearText(_password);
 
             case AuthenticationRequestType.AuthenticationMD5Password:
+                Console.WriteLine("Password: " + _password);
                 if (_password == null)
                     throw new NpgsqlException("No password has been provided but the backend requires one (in MD5)");
-                return PasswordMessage.CreateMD5(_password, Username, ((AuthenticationMD5PasswordMessage)msg).Salt);
+                return PasswordMessage.CreateMD5(_password, username, ((AuthenticationMD5PasswordMessage)msg).Salt);
 
             case AuthenticationRequestType.AuthenticationGSS:
                 if (!IntegratedSecurity)
                     throw new NpgsqlException("GSS authentication but IntegratedSecurity not enabled");
 
-#if NET45 || NET451
-                // Currently there's no clean way to check OS in CoreFX (https://github.com/dotnet/corefx/issues/4741)
-                if (Environment.OSVersion.Platform != PlatformID.Win32NT)
+                if (!PGUtil.IsWindows)
                     throw new NotSupportedException("GSS authentication is only supported on Windows for now");
-#endif
 
                 // For GSSAPI we have to use the supplied hostname
                 _sspi = new SSPIHandler(Host, KerberosServiceName, true);
@@ -755,11 +764,8 @@ namespace Npgsql
                 if (!IntegratedSecurity)
                     throw new NpgsqlException("SSPI authentication but IntegratedSecurity not enabled");
 
-#if NET45 || NET451
-                // Currently there's no clean way to check OS in CoreFX (https://github.com/dotnet/corefx/issues/4741)
-                if (Environment.OSVersion.Platform != PlatformID.Win32NT)
+                if (!PGUtil.IsWindows)
                     throw new NotSupportedException("SSPI authentication is only supported on Windows");
-#endif
 
                 _sspi = new SSPIHandler(Host, KerberosServiceName, false);
                 return new PasswordMessage(_sspi.Continue(null));

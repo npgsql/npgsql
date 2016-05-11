@@ -240,14 +240,6 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void NoUsername()
-        {
-            var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Username = null };
-            using (var conn = new NpgsqlConnection(csb))
-                Assert.That(() => conn.Open(), Throws.Exception.TypeOf<ArgumentException>());
-        }
-
-        [Test]
         [Timeout(10000)]
         public void ConnectTimeout()
         {

@@ -335,8 +335,6 @@ namespace Npgsql
         {
             if (string.IsNullOrWhiteSpace(Host))
                 throw new ArgumentException("Host can't be null");
-            if (string.IsNullOrWhiteSpace(UserName) && !IntegratedSecurity)
-                throw new ArgumentException("Either Username must be specified or IntegratedSecurity must be on");
             Contract.EndContractBlock();
             var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
             // If we're postponing a close (see doc on this variable), the connection is already
@@ -410,10 +408,11 @@ namespace Npgsql
             try
             {
                 await RawOpenAsync(timeout, cancellationToken);
-                WriteStartupMessage();
+                var username = GetUsername();
+                WriteStartupMessage(username);
                 await WriteBuffer.FlushAsync(cancellationToken);
                 timeout.Check();
-                await HandleAuthenticationAsync(timeout, cancellationToken);
+                await HandleAuthenticationAsync(username, timeout, cancellationToken);
                 await TypeHandlerRegistry.SetupAsync(this, timeout, cancellationToken);
                 Log.Debug($"Opened connection to {Host}:{Port}", Id);
             }
@@ -529,7 +528,7 @@ namespace Npgsql
             }
         }
 
-        async Task HandleAuthenticationAsync(NpgsqlTimeout timeout, CancellationToken cancellationToken)
+        async Task HandleAuthenticationAsync(string username, NpgsqlTimeout timeout, CancellationToken cancellationToken)
         {
             Log.Trace("Authenticating...", Id);
             while (true)
@@ -539,7 +538,7 @@ namespace Npgsql
                 switch (msg.Code)
                 {
                     case BackendMessageCode.AuthenticationRequest:
-                        var passwordMessage = ProcessAuthenticationMessage((AuthenticationRequestMessage)msg);
+                        var passwordMessage = ProcessAuthenticationMessage(username, (AuthenticationRequestMessage)msg);
                         if (passwordMessage != null)
                         {
                             passwordMessage.WriteFully(WriteBuffer);

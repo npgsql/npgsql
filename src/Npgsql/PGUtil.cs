@@ -87,6 +87,13 @@ namespace Npgsql
             Contract.Requires(false);
             return message == null ? new Exception("An internal Npgsql occured, please open an issue in http://github.com/npgsql/npgsql with this exception's stack trace") : new Exception(message);
         }
+
+        internal static bool IsWindows =>
+#if NET45 || NET451
+            Environment.OSVersion.Platform == PlatformID.Win32NT;
+#else
+            System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows);
+#endif
     }
 
     internal enum FormatCode : short

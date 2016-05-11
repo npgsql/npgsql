@@ -10,7 +10,7 @@ using JetBrains.Annotations;
 
 namespace Npgsql
 {
-    internal static class UsernameProvider
+    internal static class WindowsUsernameProvider
     {
         class CachedUpn
         {
@@ -21,7 +21,7 @@ namespace Npgsql
         static readonly Dictionary<SecurityIdentifier, CachedUpn> CachedUpns = new Dictionary<SecurityIdentifier, CachedUpn>();
 
         [CanBeNull]
-        internal static string GetIntegratedUserName(bool includeRealm)
+        internal static string GetUserName(bool includeRealm)
         {
             // Side note: This maintains the hack fix mentioned before for https://github.com/npgsql/Npgsql/issues/133.
             // In a nutshell, starting with .NET 4.5 WindowsIdentity inherits from ClaimsIdentity

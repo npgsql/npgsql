@@ -183,8 +183,6 @@ namespace Npgsql
         {
             if (string.IsNullOrWhiteSpace(Host))
                 throw new ArgumentException("Host can't be null");
-            if (string.IsNullOrWhiteSpace(UserName) && !IntegratedSecurity)
-                throw new ArgumentException("Either Username must be specified or IntegratedSecurity must be on");
             Contract.EndContractBlock();
 
             var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
