@@ -58,8 +58,9 @@ namespace Npgsql.Tests.Types
 
                     for (var i = 0; i < cmd.Parameters.Count; i++)
                     {
-                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof (NpgsqlPoint)));
-                        Assert.That(reader[i], Is.EqualTo(expected));
+                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(NpgsqlPoint)));
+                        var actual = reader.GetFieldValue<NpgsqlPoint>(i);
+                        AssertPointsEqual(actual, expected);
                     }
                 }
             }
@@ -83,8 +84,10 @@ namespace Npgsql.Tests.Types
 
                     for (var i = 0; i < cmd.Parameters.Count; i++)
                     {
-                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof (NpgsqlLSeg)));
-                        Assert.That(reader[i], Is.EqualTo(expected));
+                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(NpgsqlLSeg)));
+                        var actual = reader.GetFieldValue<NpgsqlLSeg>(i);
+                        AssertPointsEqual(actual.Start, expected.Start);
+                        AssertPointsEqual(actual.End, expected.End);
                     }
                 }
             }
@@ -109,7 +112,8 @@ namespace Npgsql.Tests.Types
                     for (var i = 0; i < cmd.Parameters.Count; i++)
                     {
                         Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof (NpgsqlBox)));
-                        Assert.That(reader[i], Is.EqualTo(expected));
+                        var actual = reader.GetFieldValue<NpgsqlBox>(i);
+                        AssertPointsEqual(actual.UpperRight, expected.UpperRight);
                     }
                 }
             }
@@ -137,8 +141,12 @@ namespace Npgsql.Tests.Types
                     for (var i = 0; i < cmd.Parameters.Count; i++)
                     {
                         var expected = i == 0 ? expectedOpen : expectedClosed;
-                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof (NpgsqlPath)));
-                        Assert.That(reader[i], Is.EqualTo(expected));
+                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(NpgsqlPath)));
+                        var actual = reader.GetFieldValue<NpgsqlPath>(i);
+                        Assert.That(actual.Open, Is.EqualTo(expected.Open));
+                        Assert.That(actual, Has.Count.EqualTo(expected.Count));
+                        for (var j = 0; j < actual.Count; j++)
+                            AssertPointsEqual(actual[j], expected[j]);
                     }
                 }
             }
@@ -162,8 +170,11 @@ namespace Npgsql.Tests.Types
 
                     for (var i = 0; i < cmd.Parameters.Count; i++)
                     {
-                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof (NpgsqlPolygon)));
-                        Assert.That(reader[i], Is.EqualTo(expected));
+                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(NpgsqlPolygon)));
+                        var actual = reader.GetFieldValue<NpgsqlPolygon>(i);
+                        Assert.That(actual, Has.Count.EqualTo(expected.Count));
+                        for (var j = 0; j < actual.Count; j++)
+                            AssertPointsEqual(actual[j], expected[j]);
                     }
                 }
             }
@@ -187,32 +198,20 @@ namespace Npgsql.Tests.Types
 
                     for (var i = 0; i < cmd.Parameters.Count; i++)
                     {
-                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof (NpgsqlCircle)));
-                        Assert.That(reader[i], Is.EqualTo(expected));
+                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(NpgsqlCircle)));
+                        var actual = reader.GetFieldValue<NpgsqlCircle>(i);
+                        Assert.That(actual.X, Is.EqualTo(expected.X).Within(1).Ulps);
+                        Assert.That(actual.Y, Is.EqualTo(expected.Y).Within(1).Ulps);
+                        Assert.That(actual.Radius, Is.EqualTo(expected.Radius).Within(1).Ulps);
                     }
                 }
             }
         }
 
-#if NOT_IMPLEMENTED_BY_POSTGRESQL
-        [Test]
-        public void Line()
+        void AssertPointsEqual(NpgsqlPoint actual, NpgsqlPoint expected)
         {
-            var expected = new NpgsqlLine(1, 2, 3);
-            var cmd = new NpgsqlCommand("SELECT @p1, @p2", Conn);
-            var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Line) { Value = expected };
-            var p2 = new NpgsqlParameter { ParameterName = "p2", Value = expected };
-            Assert.That(p2.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Line));
-            cmd.Parameters.Add(p1);
-            cmd.Parameters.Add(p2);
-            var reader = cmd.ExecuteReader();
-            reader.Read();
-
-            for (var i = 0; i < cmd.Parameters.Count; i++) {
-                Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(NpgsqlLine)));
-                Assert.That(reader[i], Is.EqualTo(expected));
-            }
+            Assert.That(actual.X, Is.EqualTo(expected.X).Within(1).Ulps);
+            Assert.That(actual.Y, Is.EqualTo(expected.Y).Within(1).Ulps);
         }
-#endif
     }
 }

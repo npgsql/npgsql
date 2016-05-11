@@ -572,30 +572,24 @@ namespace Npgsql
                     catch (SocketException e)
                     {
                         if (e.SocketErrorCode != SocketError.WouldBlock)
-                        {
                             throw;
-                        }
                     }
                     var write = new List<Socket> { socket };
                     var error = new List<Socket> { socket };
                     Socket.Select(null, write, error, perIpTimeout);
                     var errorCode = (int) socket.GetSocketOption(SocketOptionLevel.Socket, SocketOptionName.Error);
-                    if (errorCode != 0) {
-                        throw new SocketException((int)socket.GetSocketOption(SocketOptionLevel.Socket, SocketOptionName.Error));
-                    }
+                    if (errorCode != 0)
+                        throw new SocketException(errorCode);
                     if (!write.Any())
                     {
-                        Log.Warn(
-                            $"Timeout after {new TimeSpan(perIpTimeout*10).TotalSeconds} seconds when connecting to {ips[i]}");
+                        Log.Warn($"Timeout after {new TimeSpan(perIpTimeout*10).TotalSeconds} seconds when connecting to {ips[i]}");
                         try { socket.Dispose(); }
                         catch
                         {
                             // ignored
                         }
                         if (i == ips.Length - 1)
-                        {
                             throw new TimeoutException();
-                        }
                         continue;
                     }
                     socket.Blocking = true;
@@ -614,9 +608,7 @@ namespace Npgsql
                     Log.Warn("Failed to connect to " + ips[i]);
 
                     if (i == ips.Length - 1)
-                    {
                         throw;
-                    }
                 }
             }
         }

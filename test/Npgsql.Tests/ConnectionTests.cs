@@ -125,7 +125,7 @@ namespace Npgsql.Tests
                 using (var cmd = CreateSleepCommand(conn, 10))
                     Assert.That(() => cmd.ExecuteNonQuery(), Throws.Exception
                         .TypeOf<NpgsqlException>()
-                        .With.InnerException.TypeOf<IOException>()
+                        .With.InnerException.InstanceOf<IOException>()
                     );
 
                 Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
@@ -145,7 +145,12 @@ namespace Npgsql.Tests
             using (var conn = new NpgsqlConnection(csb)) {
                 Assert.That(() => conn.Open(), Throws.Exception
                     .TypeOf<SocketException>()
+#if !NETCOREAPP1_0
+// CoreCLR currently has an issue which causes the wrong SocketErrorCode to be set on Linux:
+// https://github.com/dotnet/corefx/issues/8464
+
                     .With.Property(nameof(SocketException.SocketErrorCode)).EqualTo(SocketError.ConnectionRefused)
+#endif
                 );
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
             }
@@ -794,7 +799,7 @@ namespace Npgsql.Tests
             using (var conn = OpenConnection())
             {
                 // Make sure messages are in English
-                conn.ExecuteNonQuery(@"SET lc_messages='English_United States.1252'");
+                conn.ExecuteNonQuery(@"SET lc_messages='en_US.UTF8'");
                 conn.ExecuteNonQuery(@"
                         CREATE OR REPLACE FUNCTION pg_temp.emit_notice() RETURNS VOID AS
                         'BEGIN RAISE NOTICE ''testnotice''; END;'
