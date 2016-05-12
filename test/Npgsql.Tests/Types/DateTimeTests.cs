@@ -87,9 +87,9 @@ namespace Npgsql.Tests.Types
         }
 
         static readonly TestCaseData[] DateSpecialCases = {
-            new TestCaseData(NpgsqlDate.Infinity).SetName("Infinity"),
-            new TestCaseData(NpgsqlDate.NegativeInfinity).SetName("NegativeInfinity"),
-            new TestCaseData(new NpgsqlDate(-5, 3, 3)).SetName("BC"),
+            new TestCaseData(NpgsqlDate.Infinity).SetName(nameof(DateSpecial) + "Infinity"),
+            new TestCaseData(NpgsqlDate.NegativeInfinity).SetName(nameof(DateSpecial) + "NegativeInfinity"),
+            new TestCaseData(new NpgsqlDate(-5, 3, 3)).SetName(nameof(DateSpecial) +"BC"),
         };
 
         [Test, TestCaseSource(nameof(DateSpecialCases))]
@@ -214,9 +214,9 @@ namespace Npgsql.Tests.Types
         #region Timestamp
 
         static readonly TestCaseData[] TimeStampCases = {
-            new TestCaseData(new DateTime(1998, 4, 12, 13, 26, 38)).SetName("Pre2000"),
-            new TestCaseData(new DateTime(2015, 1, 27, 8, 45, 12, 345)).SetName("Post2000"),
-            new TestCaseData(new DateTime(2013, 7, 25)).SetName("DateOnly"),
+            new TestCaseData(new DateTime(1998, 4, 12, 13, 26, 38)).SetName(nameof(Timestamp) + "Pre2000"),
+            new TestCaseData(new DateTime(2015, 1, 27, 8, 45, 12, 345)).SetName(nameof(Timestamp) + "Post2000"),
+            new TestCaseData(new DateTime(2013, 7, 25)).SetName(nameof(Timestamp) + "DateOnly"),
         };
 
         [Test, TestCaseSource(nameof(TimeStampCases))]
@@ -277,9 +277,9 @@ namespace Npgsql.Tests.Types
         }
 
         static readonly TestCaseData[] TimeStampSpecialCases = {
-            new TestCaseData(NpgsqlDateTime.Infinity).SetName("Infinity"),
-            new TestCaseData(NpgsqlDateTime.NegativeInfinity).SetName("NegativeInfinity"),
-            new TestCaseData(new NpgsqlDateTime(-5, 3, 3, 1, 0, 0)).SetName("BC"),
+            new TestCaseData(NpgsqlDateTime.Infinity).SetName(nameof(TimeStampSpecial) + "Infinity"),
+            new TestCaseData(NpgsqlDateTime.NegativeInfinity).SetName(nameof(TimeStampSpecial) + "NegativeInfinity"),
+            new TestCaseData(new NpgsqlDateTime(-5, 3, 3, 1, 0, 0)).SetName(nameof(TimeStampSpecial) + "BC"),
         };
 
         [Test, TestCaseSource(nameof(TimeStampSpecialCases))]

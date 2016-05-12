@@ -29,8 +29,8 @@ namespace Npgsql.Tests
     public class SecurityTests : TestBase
     {
         [Test, Description("Establishes an SSL connection, assuming a self-signed server certificate")]
-        [TestCase(false, TestName = "TlsClientStream")]
-        [TestCase(true,  TestName = "SslStream")]
+        [TestCase(false, TestName = "BasicSslWithTlsClientStream")]
+        [TestCase(true,  TestName = "BasicSslWithSslStream")]
         public void BasicSsl(bool useSslStream)
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
@@ -45,8 +45,8 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Makes sure a certificate whose root CA isn't known isn't accepted")]
-        [TestCase(false, TestName = "TlsClientStream")]
-        [TestCase(true,  TestName = "SslStream")]
+        [TestCase(false, TestName = "RejectSelfSignedCertificateWithTlsClientStream")]
+        [TestCase(true,  TestName = "RejectSelfSignedCertificateWithSslStream")]
         public void RejectSelfSignedCertificate(bool useSslStream)
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)

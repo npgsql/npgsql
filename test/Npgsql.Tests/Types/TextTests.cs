@@ -302,8 +302,8 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, Description("Tests some types which are aliased to strings")]
-        [TestCase("varchar")]
-        [TestCase("name")]
+        [TestCase("Varchar")]
+        [TestCase("Name")]
         public void AliasedPgTypes(string typename)
         {
             const string expected = "some_text";

@@ -124,9 +124,9 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, Description("Tests some types which are aliased to UInt32")]
-        [TestCase(NpgsqlDbType.Oid, TestName="oid")]
-        [TestCase(NpgsqlDbType.Xid, TestName="xid")]
-        [TestCase(NpgsqlDbType.Cid, TestName="cid")]
+        [TestCase(NpgsqlDbType.Oid, TestName="OID")]
+        [TestCase(NpgsqlDbType.Xid, TestName="XID")]
+        [TestCase(NpgsqlDbType.Cid, TestName="CID")]
         public void UInt32(NpgsqlDbType npgsqlDbType)
         {
             var expected = 8u;

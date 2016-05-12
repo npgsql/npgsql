@@ -526,8 +526,8 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Breaks a connector while it's in the pool, with a keepalive and without")]
-        [TestCase(false, TestName = "WithoutKeepAlive")]
-        [TestCase(true, TestName = "WithKeepAlive")]
+        [TestCase(false, TestName = "BreakConnectorInPoolWithoutKeepAlive")]
+        [TestCase(true, TestName = "BreakConnectorInPoolWithKeepAlive")]
         public void BreakConnectorInPool(bool keepAlive)
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { MaxPoolSize = 1 };
