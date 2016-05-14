@@ -32,8 +32,9 @@ using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers
 {
-    [TypeMapping("hstore", NpgsqlDbType.Hstore, typeof(Dictionary<string, string>))]
-    class HstoreHandler : ChunkingTypeHandler<IDictionary<string, string>>, IChunkingTypeHandler<string>
+    [TypeMapping("hstore", NpgsqlDbType.Hstore, new[] { typeof(Dictionary<string, string>), typeof(IDictionary<string, string>) })]
+    class HstoreHandler : ChunkingTypeHandler<Dictionary<string, string>>,
+        IChunkingTypeHandler<IDictionary<string, string>>, IChunkingTypeHandler<string>
     {
         ReadBuffer _readBuf;
         WriteBuffer _writeBuf;
@@ -181,69 +182,77 @@ namespace Npgsql.TypeHandlers
             _state = State.Count;
         }
 
-        public override bool Read([CanBeNull] out IDictionary<string, string> result)
+        public override bool Read(out Dictionary<string, string> result)
         {
             result = null;
             switch (_state)
             {
-                case State.Count:
-                    if (_readBuf.ReadBytesLeft < 4) { return false; }
-                    _numElements = _readBuf.ReadInt32();
-                    _value = new Dictionary<string, string>(_numElements);
-                    if (_numElements == 0)
-                    {
-                        CleanupState();
-                        return true;
-                    }
-                    goto case State.KeyLen;
+            case State.Count:
+                if (_readBuf.ReadBytesLeft < 4) { return false; }
+                _numElements = _readBuf.ReadInt32();
+                _value = new Dictionary<string, string>(_numElements);
+                if (_numElements == 0)
+                {
+                    CleanupState();
+                    return true;
+                }
+                goto case State.KeyLen;
 
-                case State.KeyLen:
-                    _state = State.KeyLen;
-                    if (_readBuf.ReadBytesLeft < 4) { return false; }
-                    var keyLen = _readBuf.ReadInt32();
-                    Contract.Assume(keyLen != -1);
-                    _textHandler.PrepareRead(_readBuf, _fieldDescription, keyLen);
-                    goto case State.KeyData;
+            case State.KeyLen:
+                _state = State.KeyLen;
+                if (_readBuf.ReadBytesLeft < 4) { return false; }
+                var keyLen = _readBuf.ReadInt32();
+                Contract.Assume(keyLen != -1);
+                _textHandler.PrepareRead(_readBuf, _fieldDescription, keyLen);
+                goto case State.KeyData;
 
-                case State.KeyData:
-                    _state = State.KeyData;
-                    if (!_textHandler.Read(out _key)) { return false; }
-                    goto case State.ValueLen;
+            case State.KeyData:
+                _state = State.KeyData;
+                if (!_textHandler.Read(out _key)) { return false; }
+                goto case State.ValueLen;
 
-                case State.ValueLen:
-                    _state = State.ValueLen;
-                    if (_readBuf.ReadBytesLeft < 4) { return false; }
-                    var valueLen = _readBuf.ReadInt32();
-                    if (valueLen == -1)
-                    {
-                        _value[_key] = null;
-                        if (--_numElements == 0)
-                        {
-                            result = _value;
-                            CleanupState();
-                            return true;
-                        }
-                        goto case State.KeyLen;
-                    }
-                    _textHandler.PrepareRead(_readBuf, _fieldDescription, valueLen);
-                    goto case State.ValueData;
-
-                case State.ValueData:
-                    _state = State.ValueData;
-                    string value;
-                    if (!_textHandler.Read(out value)) { return false; }
-                    _value[_key] = value;
+            case State.ValueLen:
+                _state = State.ValueLen;
+                if (_readBuf.ReadBytesLeft < 4) { return false; }
+                var valueLen = _readBuf.ReadInt32();
+                if (valueLen == -1)
+                {
+                    _value[_key] = null;
                     if (--_numElements == 0)
                     {
-                        result = _value;
+                        result = (Dictionary<string, string>)_value;
                         CleanupState();
                         return true;
                     }
                     goto case State.KeyLen;
+                }
+                _textHandler.PrepareRead(_readBuf, _fieldDescription, valueLen);
+                goto case State.ValueData;
 
-                default:
-                    throw PGUtil.ThrowIfReached();
+            case State.ValueData:
+                _state = State.ValueData;
+                string value;
+                if (!_textHandler.Read(out value)) { return false; }
+                _value[_key] = value;
+                if (--_numElements == 0)
+                {
+                    result = (Dictionary<string, string>)_value;
+                    CleanupState();
+                    return true;
+                }
+                goto case State.KeyLen;
+
+            default:
+                throw PGUtil.ThrowIfReached();
             }
+        }
+
+        public bool Read([CanBeNull] out IDictionary<string, string> result)
+        {
+            Dictionary<string, string> result2;
+            var completed = Read(out result2);
+            result = result2;
+            return completed;
         }
 
         public bool Read([CanBeNull] out string result)
@@ -286,6 +295,7 @@ namespace Npgsql.TypeHandlers
         {
             _readBuf = null;
             _writeBuf = null;
+            _value = null;
             _value = null;
             _parameter = null;
             _fieldDescription = null;
