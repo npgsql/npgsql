@@ -1281,6 +1281,7 @@ namespace Npgsql
         {
             if (_disposed)
                 throw new ObjectDisposedException(typeof(NpgsqlConnection).Name);
+
             // This method gets called outside any lock, and might be in a race condition
             // with an ongoing keepalive, which may break the connector (setting the connection's
             // Connector to null). We capture the connector to the stack and return it here.
@@ -1459,8 +1460,9 @@ namespace Npgsql
         /// </summary>
         public void ReloadTypes()
         {
+            var conn = CheckReadyAndGetConnector();
             TypeHandlerRegistry.ClearBackendTypeCache(ConnectionString);
-            TypeHandlerRegistry.Setup(Connector, new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout)));
+            TypeHandlerRegistry.Setup(conn, new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout)));
         }
 
         #endregion Misc
