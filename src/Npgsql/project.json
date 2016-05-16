@@ -32,7 +32,6 @@
   },
   "buildOptions": {
     "warningsAsErrors": true,
-    "define": [ "__MonoCS__" ],
     "keyFile": "../../Npgsql.snk",
     "compile": {
       "include": "../Shared/*.cs"

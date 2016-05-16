@@ -1111,7 +1111,9 @@ namespace TlsClientStream
 
         public static bool? VerifySignatureCng(byte[] pkParameters, byte[] pkKey, byte[] hash, byte[] signature)
         {
-#if !__MonoCS__
+#if __MonoCS__ || NETSTANDARD1_3
+            throw new NotSupportedException();
+#else
             EllipticCurve curve = null;
             var ecsngHeader = new byte[8] { (byte)'E', (byte)'C', (byte)'S', 0, 0, 0, 0, 0 };
 
@@ -1139,8 +1141,6 @@ namespace TlsClientStream
             bool ok = ecdsa.VerifyHash(hash, decodedSignature);
 
             return ok;
-#else
-            throw new NotSupportedException();
 #endif
         }
     }

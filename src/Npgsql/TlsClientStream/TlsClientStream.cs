@@ -1180,10 +1180,16 @@ namespace TlsClientStream
                 var pkParameters = _handshakeData.CertList[0].GetKeyAlgorithmParameters();
                 var pkKey = _handshakeData.CertList[0].GetPublicKey();
                 bool? res;
+
+#if NETSTANDARD1_3
+                res = EllipticCurve.VerifySignature(pkParameters, pkKey, hash, signature);
+#else
                 if (Type.GetType("Mono.Runtime") != null)
                     res = EllipticCurve.VerifySignature(pkParameters, pkKey, hash, signature);
                 else
                     res = EllipticCurve.VerifySignatureCng(pkParameters, pkKey, hash, signature);
+#endif
+
                 if (!res.HasValue)
                 {
                     SendAlertFatal(AlertDescription.IllegalParameter);
