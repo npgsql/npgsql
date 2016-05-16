@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -51,7 +51,7 @@ namespace Npgsql.BackendMessages
             _caseInsensitiveNameIndex = new Dictionary<string, int>(KanaWidthCaseInsensitiveComparer.Instance);
         }
 
-        internal RowDescriptionMessage Load(NpgsqlBuffer buf, TypeHandlerRegistry typeHandlerRegistry)
+        internal RowDescriptionMessage Load(ReadBuffer buf, TypeHandlerRegistry typeHandlerRegistry)
         {
             Fields.Clear();
             _nameIndex.Clear();
@@ -61,41 +61,32 @@ namespace Npgsql.BackendMessages
             for (var i = 0; i != numFields; ++i)
             {
                 // TODO: Recycle
-                var field = new FieldDescription {
-                    Name = buf.ReadNullTerminatedString(),
-                    TableOID = buf.ReadUInt32(),
-                    ColumnAttributeNumber = buf.ReadInt16(),
-                    OID = buf.ReadUInt32(),
-                    TypeSize = buf.ReadInt16(),
-                    TypeModifier = buf.ReadInt32(),
-                    FormatCode = (FormatCode) buf.ReadInt16()
-                };
-
-                // If we get the exact unknown type in return, it was a literal string written in the query string
-                field.Handler = typeHandlerRegistry[field.OID];
+                var field = new FieldDescription();
+                field.Populate(
+                    typeHandlerRegistry,
+                    buf.ReadNullTerminatedString(),  // Name
+                    buf.ReadUInt32(),                // TableOID
+                    buf.ReadInt16(),                 // ColumnAttributeNumber
+                    buf.ReadUInt32(),                // OID
+                    buf.ReadInt16(),                 // TypeSize
+                    buf.ReadInt32(),                 // TypeModifier
+                    (FormatCode)buf.ReadInt16()      // FormatCode
+                );
 
                 Fields.Add(field);
                 if (!_nameIndex.ContainsKey(field.Name))
                 {
                     _nameIndex.Add(field.Name, i);
                     if (!_caseInsensitiveNameIndex.ContainsKey(field.Name))
-                    {
                         _caseInsensitiveNameIndex.Add(field.Name, i);
-                    }
                 }
             }
             return this;
         }
 
-        internal FieldDescription this[int index]
-        {
-            get { return Fields[index]; }
-        }
+        internal FieldDescription this[int index] => Fields[index];
 
-        internal int NumFields
-        {
-            get { return Fields.Count; }
-        }
+        internal int NumFields => Fields.Count;
 
         /// <summary>
         /// Given a string name, returns the field's ordinal index in the row.
@@ -117,7 +108,7 @@ namespace Npgsql.BackendMessages
                    _caseInsensitiveNameIndex.TryGetValue(name, out fieldIndex);
         }
 
-        public BackendMessageCode Code { get { return BackendMessageCode.RowDescription; } }
+        public BackendMessageCode Code => BackendMessageCode.RowDescription;
 
         #region Kana comparers
 
@@ -133,7 +124,11 @@ namespace Npgsql.BackendMessages
             }
             public int GetHashCode(string obj)
             {
+#if NET45 || NET451
                 return CompareInfo.GetSortKey(obj, CompareOptions.IgnoreWidth).GetHashCode();
+#else
+                return CompareInfo.GetHashCode(obj, CompareOptions.IgnoreWidth);
+#endif
             }
         }
 
@@ -147,7 +142,11 @@ namespace Npgsql.BackendMessages
             }
             public int GetHashCode(string obj)
             {
+#if NET45 || NET451
                 return CompareInfo.GetSortKey(obj, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase).GetHashCode();
+#else
+                return CompareInfo.GetHashCode(obj, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase);
+#endif
             }
         }
 
@@ -155,11 +154,29 @@ namespace Npgsql.BackendMessages
     }
 
     /// <summary>
-    /// A descriptive record on a single field received from Postgresql.
+    /// A descriptive record on a single field received from PostgreSQL.
     /// See RowDescription in http://www.postgresql.org/docs/current/static/protocol-message-formats.html
     /// </summary>
     internal sealed class FieldDescription
     {
+        internal void Populate(
+            TypeHandlerRegistry typeHandlerRegistry, string name, uint tableOID, short columnAttributeNumber,
+            uint oid, short typeSize, int typeModifier, FormatCode formatCode
+        )
+        {
+            _typeHandlerRegistry = typeHandlerRegistry;
+            Name = name;
+            TableOID = tableOID;
+            ColumnAttributeNumber = columnAttributeNumber;
+            OID = oid;
+            TypeSize = typeSize;
+            TypeModifier = typeModifier;
+            FormatCode = formatCode;
+
+            RealHandler = typeHandlerRegistry[OID];
+            ResolveHandler();
+        }
+
         /// <summary>
         /// The field name.
         /// </summary>
@@ -195,14 +212,41 @@ namespace Npgsql.BackendMessages
         /// Currently will be zero (text) or one (binary).
         /// In a RowDescription returned from the statement variant of Describe, the format code is not yet known and will always be zero.
         /// </summary>
-        internal FormatCode FormatCode { get; set; }
+        internal FormatCode FormatCode
+        {
+            get { return _formatCode; }
+            set
+            {
+                _formatCode = value;
+                ResolveHandler();
+            }
+        }
+
+        FormatCode _formatCode;
 
         /// <summary>
         /// The Npgsql type handler assigned to handle this field.
+        /// Returns <see cref="UnrecognizedTypeHandler"/> for fields with format text.
         /// </summary>
-        internal TypeHandler Handler { get; set; }
+        internal TypeHandler Handler { get; private set; }
 
-        public bool IsBinaryFormat { get { return FormatCode == FormatCode.Binary; } }
-        public bool IsTextFormat   { get { return FormatCode == FormatCode.Text;   } }
+        /// <summary>
+        /// The type handler resolved for this field, regardless of whether it's binary or text.
+        /// </summary>
+        internal TypeHandler RealHandler { get; private set; }
+
+        void ResolveHandler()
+        {
+            Handler = IsBinaryFormat
+                ? _typeHandlerRegistry[OID]
+                : _typeHandlerRegistry.UnrecognizedTypeHandler;
+        }
+
+        TypeHandlerRegistry _typeHandlerRegistry;
+
+        public bool IsBinaryFormat => FormatCode == FormatCode.Binary;
+        public bool IsTextFormat => FormatCode == FormatCode.Text;
+
+        public override string ToString() => Name + (Handler == null ? "" : $"({Handler.PgDisplayName})");
     }
 }

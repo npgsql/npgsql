@@ -1,8 +1,8 @@
-#if !DNXCORE50
+#if NET45 || NET451
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -37,7 +37,7 @@ namespace Npgsql
         private NpgsqlTransactionCallbacks _callbacks;
         private INpgsqlResourceManager _rm;
         private bool _inTransaction;
-        internal bool InLocalTransaction { get { return _npgsqlTx != null;  } }
+        internal bool InLocalTransaction => _npgsqlTx != null;
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
@@ -96,7 +96,7 @@ namespace Npgsql
             }
         }
 
-        #region IPromotableSinglePhaseNotification Members
+#region IPromotableSinglePhaseNotification Members
 
         public void Initialize()
         {
@@ -164,9 +164,9 @@ namespace Npgsql
             _inTransaction = false;
         }
 
-        #endregion
+#endregion
 
-        #region ITransactionPromoter Members
+#region ITransactionPromoter Members
 
         public byte[] Promote()
         {
@@ -191,7 +191,7 @@ namespace Npgsql
             return token;
         }
 
-        #endregion
+#endregion
 
         private static INpgsqlResourceManager _resourceManager;
         private static System.Runtime.Remoting.Lifetime.ClientSponsor _sponser;

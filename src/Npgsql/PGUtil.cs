@@ -1,7 +1,7 @@
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -25,74 +25,24 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
+using System.Globalization;
 using System.IO;
 using System.Net;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using AsyncRewriter;
 
 namespace Npgsql
 {
     // ReSharper disable once InconsistentNaming
-    internal static partial class PGUtil
+    internal static class PGUtil
     {
+        internal static readonly byte[] EmptyBuffer = new byte[0];
+
         internal static readonly UTF8Encoding UTF8Encoding = new UTF8Encoding(false, true);
         internal static readonly UTF8Encoding RelaxedUTF8Encoding = new UTF8Encoding(false, false);
-
-        /// <summary>
-        /// This method takes a version string as returned by SELECT VERSION() and returns
-        /// a valid version string ("7.2.2" for example).
-        /// This is only needed when running protocol version 2.
-        /// This does not do any validity checks.
-        /// </summary>
-        public static string ExtractServerVersion(string VersionString)
-        {
-            Int32 Start = 0, End = 0;
-
-            // find the first digit and assume this is the start of the version number
-            for (; Start < VersionString.Length && !Char.IsDigit(VersionString[Start]); Start++)
-            {
-                ;
-            }
-
-            End = Start;
-
-            // read until hitting whitespace, which should terminate the version number
-            for (; End < VersionString.Length && !Char.IsWhiteSpace(VersionString[End]); End++)
-            {
-                ;
-            }
-
-            // Deal with this here so that if there are
-            // changes in a future backend version, we can handle it here in the
-            // protocol handler and leave everybody else put of it.
-
-            VersionString = VersionString.Substring(Start, End - Start + 1);
-
-            for (int idx = 0; idx != VersionString.Length; ++idx)
-            {
-                char c = VersionString[idx];
-                if (!Char.IsDigit(c) && c != '.')
-                {
-                    VersionString = VersionString.Substring(0, idx);
-                    break;
-                }
-            }
-
-            return VersionString;
-        }
-
-        /// <summary>
-        /// Write a 32-bit integer to the given stream in the correct byte order.
-        /// </summary>
-        [RewriteAsync]
-        public static Stream WriteInt32(this Stream stream, Int32 value)
-        {
-            stream.Write(BitConverter.GetBytes(IPAddress.HostToNetworkOrder(value)), 0, 4);
-
-            return stream;
-        }
 
         public static int RotateShift(int val, int shift)
         {
@@ -109,19 +59,19 @@ namespace Npgsql
         /// <typeparam name="TResult">The type of the result returned by the task.</typeparam>
         /// <param name="result">The result to store into the completed task.</param>
         /// <returns>The successfully completed task.</returns>
-#if !NET40
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-#endif
         internal static Task<TResult> TaskFromResult<TResult>(TResult result)
         {
-#if !NET40
             return Task.FromResult(result);
-#else
-            return TaskEx.FromResult(result);
-#endif
         }
 
-        internal static Task CompletedTask = TaskFromResult(0);
+        internal static readonly Task CompletedTask = TaskFromResult(0);
+
+#if NET45 || NET451
+        internal static StringComparer InvariantCaseIgnoringStringComparer => StringComparer.InvariantCultureIgnoreCase;
+#else
+        internal static StringComparer InvariantCaseIgnoringStringComparer => CultureInfo.InvariantCulture.CompareInfo.GetStringComparer(CompareOptions.IgnoreCase);
+#endif
 
         /// <summary>
         /// Throws an exception with the given string and also invokes a contract failure, allowing the static checker
@@ -137,17 +87,13 @@ namespace Npgsql
             Contract.Requires(false);
             return message == null ? new Exception("An internal Npgsql occured, please open an issue in http://github.com/npgsql/npgsql with this exception's stack trace") : new Exception(message);
         }
-    }
 
-    /// <summary>
-    /// Represent the frontend/backend protocol version.
-    /// </summary>
-    public enum ProtocolVersion
-    {
-        /// <summary>
-        /// Protocol version 3 (the current version).
-        /// </summary>
-        Version3 = 3
+        internal static bool IsWindows =>
+#if NET45 || NET451
+            Environment.OSVersion.Platform == PlatformID.Win32NT;
+#else
+            System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows);
+#endif
     }
 
     internal enum FormatCode : short
@@ -161,6 +107,62 @@ namespace Npgsql
         internal static string Join(this IEnumerable<string> values, string separator)
         {
             return string.Join(separator, values);
+        }
+    }
+
+    /// <summary>
+    /// Represents a timeout that will expire at some point.
+    /// </summary>
+    internal struct NpgsqlTimeout
+    {
+        readonly DateTime _expiration;
+        internal DateTime Expiration => _expiration;
+
+        internal static NpgsqlTimeout Infinite = new NpgsqlTimeout(TimeSpan.Zero);
+
+        internal NpgsqlTimeout(TimeSpan expiration)
+        {
+            _expiration = expiration == TimeSpan.Zero
+                ? DateTime.MaxValue
+                : DateTime.Now + expiration;
+        }
+
+        internal void Check()
+        {
+            if (HasExpired)
+                throw new TimeoutException();
+        }
+
+        internal bool IsSet => _expiration != DateTime.MaxValue;
+
+        internal bool HasExpired => DateTime.Now >= Expiration;
+
+        internal Task AsTask => Task.Delay(TimeLeft);
+
+        internal TimeSpan TimeLeft => IsSet ? Expiration - DateTime.Now : Timeout.InfiniteTimeSpan;
+    }
+
+    class CultureSetter : IDisposable
+    {
+        readonly CultureInfo _oldCulture;
+
+        internal CultureSetter(CultureInfo newCulture)
+        {
+            _oldCulture = CultureInfo.CurrentCulture;
+#if NET45 || NET451
+            Thread.CurrentThread.CurrentCulture = newCulture;
+#else
+            CultureInfo.CurrentCulture = newCulture;
+#endif
+        }
+
+        public void Dispose()
+        {
+#if NET45 || NET451
+            Thread.CurrentThread.CurrentCulture = _oldCulture;
+#else
+            CultureInfo.CurrentCulture = _oldCulture;
+#endif
         }
     }
 }

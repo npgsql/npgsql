@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
@@ -16,19 +16,22 @@
     <CodeContractsAssemblyMode>0</CodeContractsAssemblyMode>
     <NuGetPackageImportStamp>
     </NuGetPackageImportStamp>
+    <TargetFrameworkProfile />
+    <TargetFrameworkVersion>v4.5.1</TargetFrameworkVersion>
+    <!-- The following stops VS from complaining about runtimes in project.json, see
+         https://github.com/Microsoft/msbuild/issues/394 -->
+    <CopyNuGetImplementations>false</CopyNuGetImplementations>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>TRACE;DEBUG;NET45</DefineConstants>
+    <DefineConstants>TRACE;DEBUG;NET451</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <DocumentationFile>bin\Debug\Npgsql.xml</DocumentationFile>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <LangVersion>5</LangVersion>
     <CodeContractsEnableRuntimeChecking>True</CodeContractsEnableRuntimeChecking>
     <CodeContractsRuntimeOnlyPublicSurface>False</CodeContractsRuntimeOnlyPublicSurface>
     <CodeContractsRuntimeThrowOnFailure>True</CodeContractsRuntimeThrowOnFailure>
@@ -77,13 +80,11 @@
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE;NET45</DefineConstants>
+    <DefineConstants>TRACE;NET451</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <DocumentationFile>bin\Release\Npgsql.xml</DocumentationFile>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <LangVersion>5</LangVersion>
     <CodeContractsEnableRuntimeChecking>False</CodeContractsEnableRuntimeChecking>
     <CodeContractsRuntimeOnlyPublicSurface>False</CodeContractsRuntimeOnlyPublicSurface>
     <CodeContractsRuntimeThrowOnFailure>True</CodeContractsRuntimeThrowOnFailure>
@@ -152,23 +153,28 @@
     <Compile Include="BackendMessages\BindCompleteMessage.cs" />
     <Compile Include="BackendMessages\AuthenticationMessages.cs" />
     <Compile Include="BackendMessages\BackendKeyDataMessage.cs" />
+    <Compile Include="BackendMessages\PortalSuspendedMessage.cs" />
     <Compile Include="BackendMessages\ReadyForQueryMessage.cs" />
     <Compile Include="BackendMessages\ParseCompleteMessage.cs" />
     <Compile Include="BackendMessages\RowDescriptionMessage.cs" />
     <Compile Include="BackendMessages\DataRowSequentialMessage.cs" />
     <Compile Include="FrontendMessages\CopyFailMessage.cs" />
+    <Compile Include="FrontendMessages\SSLRequestMessage.cs" />
     <Compile Include="ICancelable.cs" />
+    <Compile Include="NameTranslation\INpgsqlNameTranslator.cs" />
     <Compile Include="Logging\ConsoleLoggingProvider.cs" />
     <Compile Include="Logging\NoOpLoggingProvider.cs" />
     <Compile Include="Logging\NpgsqlLogger.cs" />
     <Compile Include="Logging\INpgsqlLoggingProvider.cs" />
     <Compile Include="Logging\NpgsqlLogManager.cs" />
     <Compile Include="Logging\NpgsqlLogLevel.cs" />
+    <Compile Include="NameTranslation\NpgsqlNullNameTranslator.cs" />
+    <Compile Include="NpgsqlException.cs" />
     <Compile Include="NpgsqlLargeObjectManager.cs" />
     <Compile Include="NpgsqlLargeObjectStream.cs" />
     <Compile Include="NpgsqlBinaryExporter.cs" />
     <Compile Include="NpgsqlBinaryImporter.cs" />
-    <Compile Include="NpgsqlNotice.cs" />
+    <Compile Include="PostgresNotice.cs" />
     <Compile Include="NpgsqlRawCopyStream.cs" />
     <Compile Include="FrontendMessages\CancelRequestMessage.cs" />
     <Compile Include="FrontendMessages\ExecuteMessage.cs" />
@@ -184,7 +190,6 @@
     <Compile Include="FrontendMessages\StartupMessage.cs" />
     <Compile Include="FrontendMessages\ParseMessage.cs" />
     <Compile Include="LengthCache.cs" />
-    <Compile Include="NpgsqlBuffer.cs" />
     <Compile Include="NpgsqlStatement.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlTimeSpan.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlRange.cs" />
@@ -192,7 +197,12 @@
     <Compile Include="NpgsqlTypes\NpgsqlTsQuery.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlTsVector.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlUserTypes.cs" />
+    <Compile Include="NpgsqlTypes\PostgisTypes.cs" />
+    <Compile Include="ReadBuffer.cs" />
+    <Compile Include="NameTranslation\NpgsqlSnakeCaseNameTranslator.cs" />
+    <Compile Include="PoolManager.cs" />
     <Compile Include="SqlQueryParser.cs" />
+    <Compile Include="TaskExtensions.cs" />
     <Compile Include="TlsClientStream\CipherSuiteInfo.cs" />
     <Compile Include="TlsClientStream\ClientAlertException.cs" />
     <Compile Include="TlsClientStream\ConnectionState.cs" />
@@ -201,12 +211,14 @@
     <Compile Include="TlsClientStream\GaloisCounterMode.cs" />
     <Compile Include="TlsClientStream\HandshakeData.cs" />
     <Compile Include="TlsClientStream\HandshakeMessagesBuffer.cs" />
+    <Compile Include="TlsClientStream\Hasher.cs" />
     <Compile Include="TlsClientStream\MD5SHA1.cs" />
     <Compile Include="TlsClientStream\RsaPKCS1.cs" />
     <Compile Include="TlsClientStream\ServerAlertException.cs" />
     <Compile Include="TlsClientStream\TlsClientStream.cs" />
     <Compile Include="TlsClientStream\Utils.cs" />
     <Compile Include="TypeHandlers\BitStringHandler.cs" />
+    <Compile Include="TypeHandlers\CompositeHandler.cs" />
     <Compile Include="TypeHandlers\EnumHandler.cs" />
     <Compile Include="TypeHandlers\FullTextSearchHandlers\TsQueryHandler.cs" />
     <Compile Include="TypeHandlers\FullTextSearchHandlers\TsVectorHandler.cs" />
@@ -218,7 +230,9 @@
     <Compile Include="TypeHandlers\GeometricHandlers\LineSegmentHandler.cs" />
     <Compile Include="TypeHandlers\GeometricHandlers\PointHandler.cs" />
     <Compile Include="TypeHandlers\HstoreHandler.cs" />
+    <Compile Include="TypeHandlers\InternalTypesHandlers\Int2VectorHandler.cs" />
     <Compile Include="TypeHandlers\InternalTypesHandlers\OIDVectorHandler.cs" />
+    <Compile Include="TypeHandlers\InternalTypesHandlers\TidHandler.cs" />
     <Compile Include="TypeHandlers\JsonbHandler.cs" />
     <Compile Include="TypeHandlers\NetworkHandlers\CidrHandler.cs" />
     <Compile Include="TypeHandlers\NetworkHandlers\MacaddrHandler.cs" />
@@ -234,10 +248,9 @@
     <Compile Include="NpgsqlConnection.cs" />
     <Compile Include="NpgsqlConnectionStringBuilder.cs" />
     <Compile Include="NpgsqlConnector.cs" />
-    <Compile Include="NpgsqlConnectorPool.cs" />
     <Compile Include="NpgsqlDataAdapter.cs" />
     <Compile Include="NpgsqlDataReader.cs" />
-    <Compile Include="NpgsqlException.cs" />
+    <Compile Include="PostgresException.cs" />
     <Compile Include="NpgsqlFactory.cs" />
     <Compile Include="Common.cs" />
     <Compile Include="NpgsqlNotificationEventArgs.cs" />
@@ -254,9 +267,12 @@
       <Link>Properties\CommonAssemblyInfo.cs</Link>
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Util\CodeAnnotations.cs" />
     <Compile Include="TypeHandlers\ArrayHandler.cs" />
     <Compile Include="TypeHandlers\NumericHandlers\UInt32Handler.cs" />
+    <Compile Include="TypeHandlers\PostgisGeometryHandler.cs" />
     <Compile Include="TypeHandlers\RangeHandler.cs" />
+    <Compile Include="TypeHandlers\RecordHandler.cs" />
     <Compile Include="TypeHandlers\UuidHandler.cs" />
     <Compile Include="TypeHandlers\MoneyHandler.cs" />
     <Compile Include="TypeHandlers\DateTimeHandlers\TimeStampTzHandler.cs" />
@@ -278,19 +294,12 @@
     <Compile Include="TypeHandlerRegistry.cs" />
     <Compile Include="TypeHandlers\UnrecognizedTypeHandler.cs" />
     <Compile Include="GeneratedAsync.cs" />
+    <Compile Include="TypeMappingAttribute.cs" />
+    <Compile Include="WriteBuffer.cs" />
+    <Compile Include="WindowsUsernameProvider.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="NpgsqlMetaData.xml" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="packages.config" />
-  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <Import Project="..\..\packages\AsyncRewriter.0.6.0\build\AsyncRewriter.targets" Condition="Exists('..\..\packages\AsyncRewriter.0.6.0\build\AsyncRewriter.targets')" />
-  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
-    <PropertyGroup>
-      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
-    </PropertyGroup>
-    <Error Condition="!Exists('..\..\packages\AsyncRewriter.0.6.0\build\AsyncRewriter.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\AsyncRewriter.0.6.0\build\AsyncRewriter.targets'))" />
-  </Target>
 </Project>

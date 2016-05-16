@@ -1,0 +1,107 @@
+{
+  "version": "3.1.0-*",
+  "packOptions": {
+    "owners": [
+      "Shay Rojansky",
+      "Emil Lenngren",
+      "Francisco Figueiredo Jr.",
+      "Kenji Uno"
+    ],
+    "authors": [
+      "Shay Rojansky",
+      "Emil Lenngren",
+      "Francisco Figueiredo Jr.",
+      "Kenji Uno",
+      "Jon Asher",
+      "Josh Cooley",
+      "Federico Di Gregorio",
+      "Jon Hanna",
+      "Chris Morgan",
+      "Dave Page",
+      "Glen Parker",
+      "Brar Piening",
+      "Hiroshi Saito"
+    ],
+    "description": "Npgsql is a .NET data provider for PostgreSQL, 100% implemented in C# code. PostgreSQL 9.x and above is officially supported, other versions may work.",
+    "iconUrl": "http://www.npgsql.org/img/postgresql.gif",
+    "licenseUrl": "https://raw.githubusercontent.com/npgsql/npgsql/develop/LICENSE.txt",
+    "repository": {
+      "type": "git",
+      "url": "git://github.com/npgsql/npgsql"
+    }
+  },
+  "buildOptions": {
+    "warningsAsErrors": true,
+    "keyFile": "../../Npgsql.snk",
+    "compile": {
+      "include": "../Shared/*.cs"
+    },
+    "embed": {
+      "includeFiles": "NpgsqlMetaData.xml"
+    }
+  },
+  "tools": {
+    "dotnet-rewrite-async": "0.8.2"
+  },
+  "frameworks": {
+    "net45": {
+      "frameworkAssemblies": {
+        "System.Collections": { "version": "4.0.0.0", "type": "build" },
+        "System.Diagnostics.Contracts": { "version": "4.0.0.0", "type": "build" },
+        "System.Transactions": { "version": "4.0.0.0", "type": "build" },
+        "System.DirectoryServices": { "version": "4.0.0.0", "type": "build" },
+        "System.Data": { "version": "4.0.0.0", "type": "build" },
+        "System.Numerics": { "version": "4.0.0.0", "type": "build" },
+        "System.Xml": { "version": "4.0.0.0", "type": "build" }
+      }
+    },
+    "net451": {
+      "frameworkAssemblies": {
+        "System.Collections": { "version": "4.0.0.0", "type": "build" },
+        "System.Diagnostics.Contracts": { "version": "4.0.0.0", "type": "build" },
+        "System.Transactions": { "version": "4.0.0.0", "type": "build" },
+        "System.DirectoryServices": { "version": "4.0.0.0", "type": "build" },
+        "System.Data": { "version": "4.0.0.0", "type": "build" },
+        "System.Numerics": { "version": "4.0.0.0", "type": "build" },
+        "System.Xml": { "version": "4.0.0.0", "type": "build" }
+      }
+    },
+    "netstandard1.3": {
+      "dependencies": {
+        "System.Collections.Concurrent": "4.0.12-*",
+        "System.Console": "4.0.0-*",
+        "System.ComponentModel": "4.0.1-*",
+        "System.ComponentModel.TypeConverter": "4.0.1-*",
+        "System.Data.Common": "4.0.1-*",
+        "System.Diagnostics.Contracts": "4.0.1-*",
+        "System.Diagnostics.Tools": "4.0.1-*",
+        "System.Globalization": "4.0.11-*",
+        "System.Globalization.Extensions": "4.0.1-*",
+        "System.Linq": "4.1.0-*",
+        "System.Net.NameResolution": "4.0.0-*",
+        "System.Net.Primitives": "4.0.11-*",
+        "System.Net.Sockets": "4.1.0-*",
+        "System.Net.Security": "4.0.0-*",
+        "System.Net.NetworkInformation": "4.1.0-*",
+        "System.Runtime": "4.1.0-*",
+        "System.Runtime.Extensions": "4.1.0-*",
+        "System.Runtime.InteropServices": "4.1.0-*",
+	"System.Runtime.InteropServices.RuntimeInformation": "4.0.0-*",
+        "System.Runtime.Numerics": "4.0.1-*",
+        "System.Reflection": "4.1.0-*",
+        "System.Reflection.Extensions": "4.0.01-*",
+        "System.Reflection.TypeExtensions": "4.1.0-*",
+        "System.Security.Cryptography.Primitives": "4.0.0-*",
+        "System.Security.Cryptography.Algorithms": "4.1.0-*",
+        "System.Security.Cryptography.X509Certificates": "4.1.0-*",
+        "System.Security.Principal": "4.0.1-*",
+        "System.Text.Encoding.Extensions": "4.0.11-*",
+        "System.Text.RegularExpressions": "4.0.12-*",
+        "System.Threading": "4.0.11-*",
+        "System.Threading.Thread": "4.0.0-*",
+        "System.Threading.Timer": "4.0.1-*",
+        "Microsoft.Win32.Primitives": "4.0.1-*"
+      }
+    }
+  }
+}

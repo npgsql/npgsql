@@ -1,8 +1,7 @@
-﻿#if !DNXCORE50
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -46,18 +45,19 @@ namespace TlsClientStream
             AesMode = AesMode.CBC;
         }
 
-        public int MACLen
-        {
-            get
-            {
-                return Utils.GetHashLen(HashAlgorithm);
-            }
-        }
+        public int MACLen => Utils.GetHashLen(HashAlgorithm);
 
-        public HMAC CreateHMAC(byte[] key)
+        public
+#if NET45 || NET451
+            HMAC
+#else
+            IncrementalHash
+#endif
+            CreateHMAC(byte[] key)
         {
             switch (HashAlgorithm)
             {
+#if NET45 || NET451
                 case TLSHashAlgorithm.SHA1:
                     return new HMACSHA1(key);
                 case TLSHashAlgorithm.SHA256:
@@ -66,6 +66,16 @@ namespace TlsClientStream
                     return new HMACSHA384(key);
                 case TLSHashAlgorithm.SHA512:
                     return new HMACSHA512(key);
+#else
+                case TLSHashAlgorithm.SHA1:
+                    return IncrementalHash.CreateHMAC(HashAlgorithmName.SHA1, key);
+                case TLSHashAlgorithm.SHA256:
+                    return IncrementalHash.CreateHMAC(HashAlgorithmName.SHA256, key);
+                case TLSHashAlgorithm.SHA384:
+                    return IncrementalHash.CreateHMAC(HashAlgorithmName.SHA384, key);
+                case TLSHashAlgorithm.SHA512:
+                    return IncrementalHash.CreateHMAC(HashAlgorithmName.SHA512, key);
+#endif
                 default:
                     throw new NotSupportedException();
             }
@@ -103,7 +113,7 @@ namespace TlsClientStream
             }
         }
 
-        public bool IsAllowedBefore1_2 { get { return AesMode == AesMode.CBC && (ushort)Id < 0xC023; } }
+        public bool IsAllowedBefore1_2 => AesMode == AesMode.CBC && (ushort)Id < 0xC023;
 
         public static readonly CipherSuiteInfo[] Supported = new CipherSuiteInfo[] {
             new CipherSuiteInfo() { Id = CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384, KeyExchange = KeyExchange.ECDHE_RSA, AesKeyLen = 256, HashAlgorithm = TLSHashAlgorithm.SHA384, PRFAlgorithm = PRFAlgorithm.TLSPrfSHA384 },
@@ -149,4 +159,3 @@ namespace TlsClientStream
         };
     }
 }
-#endif

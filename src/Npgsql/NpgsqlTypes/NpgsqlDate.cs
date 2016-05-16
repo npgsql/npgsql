@@ -1,7 +1,7 @@
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -26,6 +26,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Text;
+using JetBrains.Annotations;
 using Npgsql;
 
 #pragma warning disable 1591
@@ -33,7 +34,7 @@ using Npgsql;
 // ReSharper disable once CheckNamespace
 namespace NpgsqlTypes
 {
-#if !DNXCORE50
+#if NET45 || NET451
     [Serializable]
 #endif
     public struct NpgsqlDate : IEquatable<NpgsqlDate>, IComparable<NpgsqlDate>, IComparable, IComparer<NpgsqlDate>,
@@ -60,9 +61,13 @@ namespace NpgsqlTypes
         /// </summary>
         public static readonly NpgsqlDate Era = new NpgsqlDate(0);
 
+        [PublicAPI]
         public const int MaxYear = 5874897;
+        [PublicAPI]
         public const int MinYear = -4714;
+        [PublicAPI]
         public static readonly NpgsqlDate MaxCalculableValue = new NpgsqlDate(MaxYear, 12, 31);
+        [PublicAPI]
         public static readonly NpgsqlDate MinCalculableValue = new NpgsqlDate(MinYear, 11, 24);
 
         public static readonly NpgsqlDate Infinity = new NpgsqlDate(InternalType.Infinity);
@@ -129,7 +134,7 @@ namespace NpgsqlTypes
         {
 
             if (str == null) {
-                throw new ArgumentNullException("str");
+                throw new ArgumentNullException(nameof(str));
             }
 
             if (str == "infinity")
@@ -166,6 +171,7 @@ namespace NpgsqlTypes
             }
         }
 
+        [PublicAPI]
         public static bool TryParse(string str, out NpgsqlDate date)
         {
             try {
@@ -181,28 +187,25 @@ namespace NpgsqlTypes
 
         #region Public Properties
 
-        public static NpgsqlDate Now { get { return new NpgsqlDate(DateTime.Now); } }
-        public static NpgsqlDate Today { get { return Now; } }
-        public static NpgsqlDate Yesterday { get { return Now.AddDays(-1); } }
-        public static NpgsqlDate Tomorrow { get { return Now.AddDays(1); } }
+        [PublicAPI] public static NpgsqlDate Now => new NpgsqlDate(DateTime.Now);
+        [PublicAPI] public static NpgsqlDate Today => Now;
+        [PublicAPI] public static NpgsqlDate Yesterday => Now.AddDays(-1);
+        [PublicAPI] public static NpgsqlDate Tomorrow => Now.AddDays(1);
 
-        public int DayOfYear { get { return _daysSinceEra - DaysForYears(Year) + 1; } }
+        [PublicAPI] public int DayOfYear => _daysSinceEra - DaysForYears(Year) + 1;
 
-        public int Year
+        [PublicAPI] public int Year
         {
             get
             {
-                int guess = (int) Math.Round(_daysSinceEra/365.2425);
-                int test = guess - 1;
-                while (DaysForYears(++test) <= _daysSinceEra)
-                {
-                    ;
-                }
+                var guess = (int)Math.Round(_daysSinceEra/365.2425);
+                var test = guess - 1;
+                while (DaysForYears(++test) <= _daysSinceEra) {}
                 return test - 1;
             }
         }
 
-        public int Month
+        [PublicAPI] public int Month
         {
             get
             {
@@ -217,21 +220,18 @@ namespace NpgsqlTypes
             }
         }
 
-        public int Day
-        {
-            get { return DayOfYear - (IsLeapYear ? LeapYearDays : CommonYearDays)[Month - 1]; }
-        }
+        [PublicAPI] public int Day => DayOfYear - (IsLeapYear ? LeapYearDays : CommonYearDays)[Month - 1];
 
-        public DayOfWeek DayOfWeek { get { return (DayOfWeek) ((_daysSinceEra + 1)%7); } }
+        [PublicAPI] public DayOfWeek DayOfWeek => (DayOfWeek) ((_daysSinceEra + 1)%7);
 
-        internal int DaysSinceEra { get { return _daysSinceEra; } }
+        internal int DaysSinceEra => _daysSinceEra;
 
-        public bool IsLeapYear { get { return IsLeap(Year); } }
+        [PublicAPI] public bool IsLeapYear => IsLeap(Year);
 
-        public bool IsInfinity { get { return _type == InternalType.Infinity; } }
-        public bool IsNegativeInfinity { get { return _type == InternalType.NegativeInfinity; } }
+        [PublicAPI] public bool IsInfinity => _type == InternalType.Infinity;
+        [PublicAPI] public bool IsNegativeInfinity => _type == InternalType.NegativeInfinity;
 
-        public bool IsFinite
+        [PublicAPI] public bool IsFinite
         {
             get
             {
@@ -279,7 +279,7 @@ namespace NpgsqlTypes
 
         #region Arithmetic
 
-        [Pure]
+        [PublicAPI, Pure]
         public NpgsqlDate AddDays(int days)
         {
             switch (_type)
@@ -295,7 +295,7 @@ namespace NpgsqlTypes
             }
         }
 
-        [Pure]
+        [PublicAPI, Pure]
         public NpgsqlDate AddYears(int years)
         {
             switch (_type) {
@@ -321,7 +321,7 @@ namespace NpgsqlTypes
             return new NpgsqlDate(newYear, Month, Day);
         }
 
-        [Pure]
+        [PublicAPI, Pure]
         public NpgsqlDate AddMonths(int months)
         {
             switch (_type) {
@@ -342,19 +342,20 @@ namespace NpgsqlTypes
             {
                 newMonth -= 12;
                 newYear += 1;
-            };
+            }
             while (newMonth < 1)
             {
                 newMonth += 12;
                 newYear -= 1;
-            };
-            int maxDay = (IsLeap(newYear) ? LeapYearMaxes : CommonYearMaxes)[newMonth - 1];
-            int newDay = Day > maxDay ? maxDay : Day;
+            }
+            var maxDay = (IsLeap(newYear) ? LeapYearMaxes : CommonYearMaxes)[newMonth - 1];
+            var newDay = Day > maxDay ? maxDay : Day;
             return new NpgsqlDate(newYear, newMonth, newDay);
 
         }
 
         [Pure]
+        [PublicAPI]
         public NpgsqlDate Add(NpgsqlTimeSpan interval)
         {
             switch (_type) {
@@ -372,6 +373,7 @@ namespace NpgsqlTypes
         }
 
         [Pure]
+        [PublicAPI]
         internal NpgsqlDate Add(NpgsqlTimeSpan interval, int carriedOverflow)
         {
             switch (_type) {
@@ -397,7 +399,7 @@ namespace NpgsqlTypes
             return x.CompareTo(y);
         }
 
-        public int Compare(object x, object y)
+        public int Compare([CanBeNull] object x, [CanBeNull] object y)
         {
             if (x == null)
             {
@@ -428,7 +430,7 @@ namespace NpgsqlTypes
             }
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals([CanBeNull] object obj)
         {
             return obj is NpgsqlDate && Equals((NpgsqlDate) obj);
         }
@@ -452,7 +454,7 @@ namespace NpgsqlTypes
             }
         }
 
-        public int CompareTo(object obj)
+        public int CompareTo([CanBeNull] object obj)
         {
             if (obj == null)
             {

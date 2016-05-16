@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -23,12 +23,16 @@
 
 using System;
 using System.Diagnostics.Contracts;
-using System.Runtime.Serialization;
 using Npgsql.Logging;
+#if NET45 || NET451
+using System.Runtime.Serialization;
+#endif
 
 namespace Npgsql.BackendMessages
 {
+#if NET45 || NET451
     [Serializable]
+#endif
     class ErrorOrNoticeMessage
     {
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
@@ -52,7 +56,7 @@ namespace Npgsql.BackendMessages
         internal string Routine { get; private set; }
 
         // ReSharper disable once FunctionComplexityOverflow
-        internal ErrorOrNoticeMessage(NpgsqlBuffer buf)
+        internal ErrorOrNoticeMessage(ReadBuffer buf)
         {
             while (true)
             {

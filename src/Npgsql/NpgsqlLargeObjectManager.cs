@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -100,13 +100,12 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Create an empty large object in the database. If an oid is specified but is already in use, an NpgsqlException will be thrown.
+        /// Create an empty large object in the database. If an oid is specified but is already in use, an PostgresException will be thrown.
         /// </summary>
         /// <param name="preferredOid">A preferred oid, or specify 0 if one should be automatically assigned</param>
         /// <returns>The oid for the large object created</returns>
-        /// <exception cref="NpgsqlException">If an oid is already in use</exception>
+        /// <exception cref="PostgresException">If an oid is already in use</exception>
         [RewriteAsync]
-        [CLSCompliant(false)]
         public uint Create(uint preferredOid = 0)
         {
 
@@ -177,7 +176,7 @@ namespace Npgsql
         /// Since PostgreSQL 9.3, large objects larger than 2GB can be handled, up to 4TB.
         /// This property returns true whether the PostgreSQL version is >= 9.3.
         /// </summary>
-        public bool Has64BitSupport { get { return _connection.PostgreSqlVersion >= new Version(9, 3); } }
+        public bool Has64BitSupport => _connection.PostgreSqlVersion >= new Version(9, 3);
 
         /*
         internal enum Function : uint

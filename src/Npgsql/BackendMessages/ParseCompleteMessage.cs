@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -30,7 +30,7 @@ namespace Npgsql.BackendMessages
 {
     internal class ParseCompleteMessage : IBackendMessage
     {
-        public BackendMessageCode Code { get { return BackendMessageCode.ParseComplete; } }
+        public BackendMessageCode Code => BackendMessageCode.ParseComplete;
         internal static readonly ParseCompleteMessage Instance = new ParseCompleteMessage();
         ParseCompleteMessage() { }
     }

@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -32,8 +32,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-datetime.html
     /// </remarks>
     [TypeMapping("timestamp", NpgsqlDbType.Timestamp, new[] { DbType.DateTime, DbType.DateTime2 }, new [] { typeof(NpgsqlDateTime), typeof(DateTime) }, DbType.DateTime)]
-    internal class TimeStampHandler : TypeHandlerWithPsv<DateTime, NpgsqlDateTime>,
-        ISimpleTypeReader<DateTime>, ISimpleTypeReader<NpgsqlDateTime>, ISimpleTypeWriter
+    internal class TimeStampHandler : SimpleTypeHandlerWithPsv<DateTime, NpgsqlDateTime>
     {
         /// <summary>
         /// A deprecated compile-time option of PostgreSQL switches to a floating-point representation of some date/time
@@ -47,13 +46,16 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         /// </summary>
         protected readonly bool _convertInfinityDateTime;
 
-        public TimeStampHandler(TypeHandlerRegistry registry)
+        internal TimeStampHandler(IBackendType backendType, TypeHandlerRegistry registry)
+            : base(backendType)
         {
-            _integerFormat = registry.Connector.BackendParams["integer_datetimes"] == "on";
+            // Check for the legacy floating point timestamps feature, defaulting to integer timestamps
+            string s;
+            _integerFormat = !registry.Connector.BackendParams.TryGetValue("integer_datetimes", out s) || s == "on";
             _convertInfinityDateTime = registry.Connector.ConvertInfinityDateTime;
         }
 
-        public virtual DateTime Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override DateTime Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             // TODO: Convert directly to DateTime without passing through NpgsqlTimeStamp?
             var ts = ReadTimeStamp(buf, len, fieldDescription);
@@ -73,12 +75,12 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             }
         }
 
-        NpgsqlDateTime ISimpleTypeReader<NpgsqlDateTime>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        internal override NpgsqlDateTime ReadPsv(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return ReadTimeStamp(buf, len, fieldDescription);
         }
 
-        protected NpgsqlDateTime ReadTimeStamp(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        protected NpgsqlDateTime ReadTimeStamp(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             if (!_integerFormat) {
                 throw new NotSupportedException("Old floating point representation for timestamps not supported");
@@ -112,7 +114,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             }
         }
 
-        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
             if (!(value is DateTime) && !(value is NpgsqlDateTime) && !(value is DateTimeOffset))
             {
@@ -126,7 +128,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             return 8;
         }
 
-        public virtual void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
         {
             if (parameter != null && parameter.ConvertedValue != null) {
                 value = parameter.ConvertedValue;

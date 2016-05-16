@@ -1,7 +1,7 @@
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -38,8 +38,17 @@ namespace Npgsql
 
     /// <summary>
     /// Base class for all classes which represent a message sent to the PostgreSQL backend.
+    /// Concrete classes which directly inherit this represent arbitrary-length messages which can chunked.
     /// </summary>
-    internal abstract class FrontendMessage {}
+    internal abstract class FrontendMessage
+    {
+        /// <param name="buf">the buffer into which to write the message.</param>
+        /// <returns>
+        /// Whether there was enough space in the buffer to contain the entire message.
+        /// If false, the buffer should be flushed and write should be called again.
+        /// </returns>
+        internal abstract bool Write(WriteBuffer buf);
+    }
 
     /// <summary>
     /// Represents a simple frontend message which is typically small and fits well within
@@ -56,25 +65,16 @@ namespace Npgsql
         /// <summary>
         /// Writes the message contents into the buffer.
         /// </summary>
-        internal abstract void Write(NpgsqlBuffer buf);
-    }
+        internal abstract void WriteFully(WriteBuffer buf);
 
-    /// <summary>
-    /// Represents an arbitrary-length message capable of flushing the buffer internally as it's
-    /// writing itself out.
-    /// </summary>
-    internal abstract class ChunkingFrontendMessage : FrontendMessage
-    {
-        /// <param name="buf">the buffer into which to write the message.</param>
-        /// <param name="directBuf">
-        /// an option buffer that, if returned, will be written to the server directly, bypassing our
-        /// NpgsqlBuffer. This is an optimization hack for bytea.
-        /// </param>
-        /// <returns>
-        /// Whether there was enough space in the buffer to contain the entire message.
-        /// If false, the buffer should be flushed and write should be called again.
-        /// </returns>
-        internal abstract bool Write(NpgsqlBuffer buf, ref DirectBuffer directBuf);
+        internal sealed override bool Write(WriteBuffer buf)
+        {
+            Contract.Assume(Length < buf.UsableSize, $"Message of type {GetType().Name} has length {Length} which is bigger than the buffer ({buf.UsableSize})");
+            if (buf.WriteSpaceLeft < Length)
+                return false;
+            WriteFully(buf);
+            return true;
+        }
     }
 
     internal enum BackendMessageCode : byte
@@ -129,4 +129,66 @@ namespace Npgsql
         Other
 #pragma warning restore 1591
     }
+
+    /// <summary>
+    /// The way how to order bytes.
+    /// </summary>
+    enum ByteOrder
+    {
+        // ReSharper disable once InconsistentNaming
+        /// <summary>
+        /// Most significant byte first (XDR)
+        /// </summary>
+        MSB = 0,
+        // ReSharper disable once InconsistentNaming
+        /// <summary>
+        /// Less significant byte first (NDR)
+        /// </summary>
+        LSB = 1
+    }
+
+    #region Component model attributes missing from CoreCLR
+
+#if NETSTANDARD1_3
+    [AttributeUsage(AttributeTargets.Property)]
+    class DisplayNameAttribute : Attribute
+    {
+        internal string DisplayName { get; private set; }
+
+        internal DisplayNameAttribute(string displayName)
+        {
+            DisplayName = displayName;
+        }
+    }
+
+    [AttributeUsage(AttributeTargets.Property)]
+    class CategoryAttribute : Attribute
+    {
+        internal CategoryAttribute(string category) {}
+    }
+
+    [AttributeUsage(AttributeTargets.Property)]
+    sealed class BrowsableAttribute : Attribute
+    {
+        public BrowsableAttribute(bool browsable) {}
+    }
+
+    [AttributeUsage(AttributeTargets.Property)]
+    sealed class PasswordPropertyTextAttribute : Attribute
+    {
+        public PasswordPropertyTextAttribute(bool password) {}
+    }
+
+    enum RefreshProperties {
+        All
+    }
+
+    [AttributeUsage(AttributeTargets.Property)]
+    sealed class RefreshPropertiesAttribute : Attribute
+    {
+        public RefreshPropertiesAttribute(RefreshProperties refreshProperties) {}
+    }
+#endif
+
+    #endregion
 }

@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -24,14 +24,12 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
-using System.IO;
 using System.Linq;
 using System.Text;
-using System.Threading;
 
 namespace Npgsql.FrontendMessages
 {
-    class BindMessage : ChunkingFrontendMessage
+    class BindMessage : FrontendMessage
     {
         /// <summary>
         /// The name of the destination portal (an empty string selects the unnamed portal).
@@ -54,10 +52,8 @@ namespace Npgsql.FrontendMessages
 
         const byte Code = (byte)'B';
 
-        internal BindMessage Populate(TypeHandlerRegistry typeHandlerRegistry, List<NpgsqlParameter> inputParameters,
-                             string portal="", string statement="")
+        internal BindMessage Populate(List<NpgsqlParameter> inputParameters, string portal = "", string statement = "")
         {
-            Contract.Requires(typeHandlerRegistry != null);
             Contract.Requires(inputParameters != null && inputParameters.All(p => p.IsInputDirection));
             Contract.Requires(portal != null);
             Contract.Requires(statement != null);
@@ -73,7 +69,19 @@ namespace Npgsql.FrontendMessages
             return this;
         }
 
-        internal override bool Write(NpgsqlBuffer buf, ref DirectBuffer directBuf)
+        /// <summary>
+        /// Bind is a special message in that it supports the "direct buffer" optimization, which allows us to write
+        /// user byte[] data directly to the stream rather than copying it into our buffer. It therefore has its own
+        /// special overload of Write below.
+        /// </summary>
+        /// <param name="buf"></param>
+        /// <returns></returns>
+        internal override bool Write(WriteBuffer buf)
+        {
+            throw new NotSupportedException($"Internal error, call the overload of {nameof(Write)} which accepts a {nameof(DirectBuffer)}");
+        }
+
+        internal bool Write(WriteBuffer buf, ref DirectBuffer directBuf)
         {
             Contract.Requires(Statement != null && Statement.All(c => c < 128));
             Contract.Requires(Portal != null && Portal.All(c => c < 128));
@@ -104,7 +112,7 @@ namespace Npgsql.FrontendMessages
                         4 * InputParameters.Count +                                     // Parameter lengths
                         InputParameters.Select(p => p.ValidateAndGetLength()).Sum() +   // Parameter values
                         2 +                                                             // Number of result format codes
-                        2 * (UnknownResultTypeList == null ? 1 : UnknownResultTypeList.Length);  // Result format codes
+                        2 * (UnknownResultTypeList?.Length ?? 1);                       // Result format codes
 
                     buf.WriteByte(Code);
                     buf.WriteInt32(messageLength-1);
@@ -157,7 +165,7 @@ namespace Npgsql.FrontendMessages
             }
         }
 
-        bool WriteParameters(NpgsqlBuffer buf, ref DirectBuffer directBuf)
+        bool WriteParameters(WriteBuffer buf, ref DirectBuffer directBuf)
         {
             for (; _paramIndex < InputParameters.Count; _paramIndex++)
             {
@@ -172,14 +180,12 @@ namespace Npgsql.FrontendMessages
                         continue;
                     }
 
-                    if (param.LengthCache != null) {
-                        param.LengthCache.Rewind();
-                    }
+                    param.LengthCache?.Rewind();
                 }
 
                 var handler = param.Handler;
 
-                var asChunkingWriter = handler as IChunkingTypeWriter;
+                var asChunkingWriter = handler as IChunkingTypeHandler;
                 if (asChunkingWriter != null)
                 {
                     if (!_wroteParamLen)
@@ -197,7 +203,7 @@ namespace Npgsql.FrontendMessages
                 }
 
                 var len = param.ValidateAndGetLength();
-                var asSimpleWriter = (ISimpleTypeWriter)handler;
+                var asSimpleWriter = (ISimpleTypeHandler)handler;
                 if (buf.WriteSpaceLeft < len + 4)
                 {
                     Contract.Assume(buf.Size >= len + 4);
@@ -211,7 +217,7 @@ namespace Npgsql.FrontendMessages
 
         public override string ToString()
         {
-            return String.Format("[Bind(Portal={0},Statement={1},NumParams={2}]", Portal, Statement, InputParameters.Count);
+            return $"[Bind(Portal={Portal},Statement={Statement},NumParams={InputParameters.Count}]";
         }
 
         private enum State

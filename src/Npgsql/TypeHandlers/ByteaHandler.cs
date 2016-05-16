@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -34,6 +34,7 @@ using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
+using JetBrains.Annotations;
 
 namespace Npgsql.TypeHandlers
 {
@@ -41,38 +42,40 @@ namespace Npgsql.TypeHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-binary.html
     /// </remarks>
     [TypeMapping("bytea", NpgsqlDbType.Bytea, DbType.Binary, new Type[] { typeof(byte[]), typeof(ArraySegment<byte>) })]
-    internal class ByteaHandler : TypeHandler<byte[]>,
-        IChunkingTypeReader<byte[]>, IChunkingTypeWriter
+    internal class ByteaHandler : ChunkingTypeHandler<byte[]>
     {
         bool _returnedBuffer;
         byte[] _bytes;
         int _pos;
-        NpgsqlBuffer _buf;
+        ReadBuffer _readBuf;
+        WriteBuffer _writeBuf;
 
-        public void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        internal ByteaHandler(IBackendType backendType) : base(backendType) {}
+
+        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             _bytes = new byte[len];
             _pos = 0;
-            _buf = buf;
+            _readBuf = buf;
         }
 
-        public bool Read(out byte[] result)
+        public override bool Read([CanBeNull] out byte[] result)
         {
-            var toRead = Math.Min(_bytes.Length - _pos, _buf.ReadBytesLeft);
-            _buf.ReadBytes(_bytes, _pos, toRead);
+            var toRead = Math.Min(_bytes.Length - _pos, _readBuf.ReadBytesLeft);
+            _readBuf.ReadBytes(_bytes, _pos, toRead);
             _pos += toRead;
             if (_pos == _bytes.Length)
             {
                 result = _bytes;
                 _bytes = null;
-                _buf = null;
+                _readBuf = null;
                 return true;
             }
             result = null;
             return false;
         }
 
-        public long GetBytes(DataRowMessage row, int offset, byte[] output, int outputOffset, int len, FieldDescription field)
+        public long GetBytes(DataRowMessage row, int offset, [CanBeNull] byte[] output, int outputOffset, int len, FieldDescription field)
         {
             if (output == null) {
                 return row.ColumnLen;
@@ -94,7 +97,7 @@ namespace Npgsql.TypeHandlers
 
         ArraySegment<byte> _value;
 
-        public int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
+        public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             if (value is ArraySegment<byte>)
             {
@@ -119,9 +122,9 @@ namespace Npgsql.TypeHandlers
             throw CreateConversionException(value.GetType());
         }
 
-        public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
+        public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
-            _buf = buf;
+            _writeBuf = buf;
 
             if (value is ArraySegment<byte>)
             {
@@ -142,7 +145,7 @@ namespace Npgsql.TypeHandlers
         }
 
         // ReSharper disable once RedundantAssignment
-        public bool Write(ref DirectBuffer directBuf)
+        public override bool Write(ref DirectBuffer directBuf)
         {
             // If we're back here after having returned a direct buffer, we're done.
             if (_returnedBuffer)
@@ -153,9 +156,9 @@ namespace Npgsql.TypeHandlers
 
             // If the entire array fits in our buffer, copy it as usual.
             // Otherwise, switch to direct write from the user-provided buffer
-            if (_value.Count <= _buf.WriteSpaceLeft)
+            if (_value.Count <= _writeBuf.WriteSpaceLeft)
             {
-                _buf.WriteBytes(_value.Array, _value.Offset, _value.Count);
+                _writeBuf.WriteBytes(_value.Array, _value.Offset, _value.Count);
                 return true;
             }
 
@@ -194,7 +197,7 @@ namespace Npgsql.TypeHandlers
         {
             CheckDisposed();
             count = Math.Min(count, _row.ColumnLen - _row.PosInColumn);
-            var read = await _row.Buffer.ReadAllBytesAsync(buffer, offset, count, true);
+            var read = await _row.Buffer.ReadAllBytesAsync(buffer, offset, count, true, token);
             _row.PosInColumn += read;
             return read;
         }
@@ -223,9 +226,9 @@ namespace Npgsql.TypeHandlers
             _disposed = true;
         }
 
-        public override bool CanRead { get { return true; } }
-        public override bool CanSeek { get { return false; } }
-        public override bool CanWrite { get { return false; } }
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
 
         void CheckDisposed()
         {

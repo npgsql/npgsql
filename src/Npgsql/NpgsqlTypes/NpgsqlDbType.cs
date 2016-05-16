@@ -1,7 +1,7 @@
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -411,6 +411,11 @@ namespace NpgsqlTypes
         Oidvector = 29,
 
         /// <summary>
+        /// Corresponds to the PostgreSQL internal "int2vector" type.
+        /// </summary>
+        Int2Vector = 52,
+
+        /// <summary>
         /// Corresponds to the PostgreSQL "oid" type.
         /// </summary>
         /// <remarks>See http://www.postgresql.org/docs/current/static/datatype-oid.html</remarks>
@@ -433,6 +438,11 @@ namespace NpgsqlTypes
         /// </summary>
         Regtype = 49,
 
+        /// <summary>
+        /// Corresponds to the PostgreSQL "tid" type, a tuple id identifying the physical location of a row within its table.
+        /// </summary>
+        Tid = 53,
+
         #endregion
 
         #region Special
@@ -447,6 +457,15 @@ namespace NpgsqlTypes
         /// unsupported by Npgsql.
         /// </remarks>
         Unknown = 40,
+
+        #endregion
+
+        #region Postgis
+
+        /// <summary>
+        /// The geometry type for postgresql spatial extension postgis.
+        /// </summary>
+        Geometry = 50
 
         #endregion
     }

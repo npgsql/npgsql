@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -34,11 +34,11 @@ namespace Npgsql.FrontendMessages
         /// <summary>
         /// The name of the prepared statement or portal to close (an empty string selects the unnamed prepared statement or portal).
         /// </summary>
-        internal string Name { get; set; }
+        internal string Name { get; }
         /// <summary>
         /// Whether to close a statement or a portal
         /// </summary>
-        internal StatementOrPortal StatementOrPortal { get; set; }
+        internal StatementOrPortal StatementOrPortal { get; }
 
         const byte Code = (byte)'C';
 
@@ -48,9 +48,9 @@ namespace Npgsql.FrontendMessages
             Name = name;
         }
 
-        internal override int Length { get { return 1 + 4 + 1 + (Name.Length + 1); } }
+        internal override int Length => 1 + 4 + 1 + (Name.Length + 1);
 
-        internal override void Write(NpgsqlBuffer buf)
+        internal override void WriteFully(WriteBuffer buf)
         {
             Contract.Requires(Name != null && Name.All(c => c < 128));
 
@@ -62,7 +62,7 @@ namespace Npgsql.FrontendMessages
 
         public override string ToString()
         {
-            return String.Format("[Close {0}={1}]", StatementOrPortal, Name);
+            return $"[Close {StatementOrPortal}={Name}]";
         }
     }
 }

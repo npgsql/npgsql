@@ -1,8 +1,8 @@
-#if !DNXCORE50
+#if NET45 || NET451
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -77,7 +77,7 @@ namespace Npgsql
             }
         }
 
-        #region INpgsqlTransactionCallbacks Members
+#region INpgsqlTransactionCallbacks Members
 
         public string GetName()
         {
@@ -91,7 +91,7 @@ namespace Npgsql
 
             if (_prepared)
             {
-                connection.Connector.ExecuteInternalCommand(string.Format("COMMIT PREPARED '{0}'", _txName));
+                connection.Connector.ExecuteInternalCommand($"COMMIT PREPARED '{_txName}'");
             }
             else
             {
@@ -105,7 +105,7 @@ namespace Npgsql
             {
                 Log.Debug("Prepare transaction");
                 NpgsqlConnection connection = GetConnection();
-                connection.Connector.ExecuteInternalCommand(string.Format("PREPARE TRANSACTION '{0}'", _txName));
+                connection.Connector.ExecuteInternalCommand($"PREPARE TRANSACTION '{_txName}'");
                 _prepared = true;
             }
         }
@@ -115,27 +115,15 @@ namespace Npgsql
             Log.Debug("Rollback transaction");
             NpgsqlConnection connection = GetConnection();
 
-            try
-            {
-                if (_prepared)
-                {
-                    connection.Connector.ExecuteInternalCommand(string.Format("ROLLBACK PREPARED '{0}'", _txName));
-                }
-                else
-                {
-                    connection.Connector.ExecuteInternalCommand(PregeneratedMessage.RollbackTransaction);
-                }
-            }
-            finally
-            {
-                // The rollback may change the value of statement_value, set to unknown
-                connection.Connector.SetBackendTimeoutToUnknown();
-            }
+            if (_prepared)
+                connection.Connector.ExecuteInternalCommand($"ROLLBACK PREPARED '{_txName}'");
+            else
+                connection.Connector.ExecuteInternalCommand(PregeneratedMessage.RollbackTransaction);
         }
 
-        #endregion
+#endregion
 
-        #region IDisposable Members
+#region IDisposable Members
 
         public void Dispose()
         {
@@ -146,7 +134,7 @@ namespace Npgsql
             _closeConnectionRequired = false;
         }
 
-        #endregion
+#endregion
     }
 }
 #endif

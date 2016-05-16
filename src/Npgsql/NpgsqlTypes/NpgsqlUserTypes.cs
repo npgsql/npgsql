@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -31,23 +31,23 @@ using System.Text;
 namespace NpgsqlTypes
 {
     /// <summary>
-    /// Indicates that the PostgreSQL enum value differs from the .NET value.
+    /// Indicates that this property or field correspond to a PostgreSQL field with the specified name
     /// </summary>
-    [AttributeUsage(AttributeTargets.Field)]
-    public class EnumLabelAttribute : Attribute
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
+    public class PgNameAttribute : Attribute
     {
         /// <summary>
-        /// The database label that corresponds to the .NET enum value on which this attribute is placed.
+        /// The name of PostgreSQL field that corresponds to this CLR property or field
         /// </summary>
-        public string Label { get; private set; }
+        public string PgName { get; private set; }
 
         /// <summary>
-        /// Indicates that the PostgreSQL enum value differs from the .NET value.
+        /// Indicates that this property or field correspond to a PostgreSQL field with the specified name
         /// </summary>
-        /// <param name="label">What label to use instead.</param>
-        public EnumLabelAttribute(string label)
+        /// <param name="pgName">The name of PostgreSQL field that corresponds to this CLR property or field</param>
+        public PgNameAttribute(string pgName)
         {
-            Label = label;
+            PgName = pgName;
         }
     }
 }

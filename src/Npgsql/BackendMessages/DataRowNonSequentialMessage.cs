@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -25,8 +25,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.IO;
-using System.Linq;
-using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Npgsql.BackendMessages
@@ -41,7 +40,7 @@ namespace Npgsql.BackendMessages
         /// </summary>
         List<IDisposable> _streams;
 
-        internal override DataRowMessage Load(NpgsqlBuffer buf)
+        internal override DataRowMessage Load(ReadBuffer buf)
         {
             NumColumns = buf.ReadInt16();
             Buffer = buf;
@@ -76,7 +75,7 @@ namespace Npgsql.BackendMessages
             }
         }
 
-        internal override Task SeekToColumnAsync(int column)
+        internal override Task SeekToColumnAsync(int column, CancellationToken cancellationToken)
         {
             SeekToColumn(column);
             return PGUtil.CompletedTask;
@@ -115,7 +114,7 @@ namespace Npgsql.BackendMessages
             }
         }
 
-        internal override Task ConsumeAsync()
+        internal override Task ConsumeAsync(CancellationToken cancellationToken)
         {
             Consume();
             return PGUtil.CompletedTask;

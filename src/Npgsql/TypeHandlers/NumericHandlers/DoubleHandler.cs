@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -36,15 +36,16 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-numeric.html
     /// </remarks>
     [TypeMapping("float8", NpgsqlDbType.Double, DbType.Double, typeof(double))]
-    internal class DoubleHandler : TypeHandler<double>,
-        ISimpleTypeReader<double>, ISimpleTypeWriter
+    internal class DoubleHandler : SimpleTypeHandler<double>
     {
-        public double Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        internal DoubleHandler(IBackendType backendType) : base(backendType) { }
+
+        public override double Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return buf.ReadDouble();
         }
 
-        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
             if (!(value is double))
             {
@@ -58,9 +59,9 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             return 8;
         }
 
-        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
         {
-            if (parameter != null && parameter.ConvertedValue != null) {
+            if (parameter?.ConvertedValue != null) {
                 value = parameter.ConvertedValue;
             }
             buf.WriteDouble((double)value);

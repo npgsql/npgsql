@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -41,7 +41,8 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
     {
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
-        public OIDVectorHandler(TypeHandlerRegistry registry) : base(new UInt32Handler())
+        public OIDVectorHandler(IBackendType backendType, TypeHandlerRegistry registry)
+            : base(backendType, null, 0)
         {
             // The pg_type SQL query makes sure that the oid type comes before oidvector, so we can
             // depend on it already being in the registry
@@ -51,8 +52,7 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
                 Log.Warn("oid type not present when setting up oidvector type. oidvector will not work.");
                 return;
             }
-            LowerBound = 0;
-            ElementHandler.OID = oidHandler.OID;
+            ElementHandler = oidHandler;
         }
     }
 }

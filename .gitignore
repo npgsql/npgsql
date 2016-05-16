@@ -5,11 +5,17 @@
 *.sln.docstates
 *.userprefs
 /*.nupkg
+.nuget/
 [Bb]in/
 [Bb]uild/
 [Oo]bj/
 [Oo]bj/
 packages/*/
+packages.stable
 artifacts/
 # Roslyn cache directories
 *.ide/
+.vs/
+*.lock.json
+.build
+TestResult.xml

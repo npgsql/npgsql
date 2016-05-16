@@ -29,7 +29,7 @@ namespace Npgsql
         /// <summary>
         /// The SQL text of the statement.
         /// </summary>
-        public string SQL { get; private set; }
+        public string SQL { get; }
 
         /// <summary>
         /// Specifies the type of query, e.g. SELECT.

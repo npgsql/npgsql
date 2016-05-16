@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -55,7 +55,7 @@ namespace NpgsqlTypes
     /// <seealso cref="JustifyDays"/>
     /// <seealso cref="JustifyMonths"/>
     /// <seealso cref="Canonicalize()"/>
-#if !DNXCORE50
+#if NET45 || NET451
     [Serializable]
 #endif
     public struct NpgsqlTimeSpan : IComparable, IComparer, IEquatable<NpgsqlTimeSpan>, IComparable<NpgsqlTimeSpan>,
@@ -277,86 +277,59 @@ namespace NpgsqlTypes
         /// </remarks>
         /// <returns>The number of ticks in the instance.</returns>
         /// </summary>
-        public long Ticks
-        {
-            get { return _ticks; }
-        }
+        public long Ticks => _ticks;
 
         /// <summary>
         /// Gets the number of whole microseconds held in the instance.
         /// <returns>An  in the range [-999999, 999999].</returns>
         /// </summary>
-        public int Microseconds
-        {
-            get { return (int)((_ticks / 10) % 1000000); }
-        }
+        public int Microseconds => (int)((_ticks / 10) % 1000000);
 
         /// <summary>
         /// Gets the number of whole milliseconds held in the instance.
         /// <returns>An  in the range [-999, 999].</returns>
         /// </summary>
-        public int Milliseconds
-        {
-            get { return (int)((_ticks / TicksPerMillsecond) % 1000); }
-        }
+        public int Milliseconds => (int)((_ticks / TicksPerMillsecond) % 1000);
 
         /// <summary>
         /// Gets the number of whole seconds held in the instance.
         /// <returns>An  in the range [-59, 59].</returns>
         /// </summary>
-        public int Seconds
-        {
-            get { return (int)((_ticks / TicksPerSecond) % 60); }
-        }
+        public int Seconds => (int)((_ticks / TicksPerSecond) % 60);
 
         /// <summary>
         /// Gets the number of whole minutes held in the instance.
         /// <returns>An  in the range [-59, 59].</returns>
         /// </summary>
-        public int Minutes
-        {
-            get { return (int)((_ticks / TicksPerMinute) % 60); }
-        }
+        public int Minutes => (int)((_ticks / TicksPerMinute) % 60);
 
         /// <summary>
         /// Gets the number of whole hours held in the instance.
         /// <remarks>Note that this can be less than -23 or greater than 23 unless <see cref="JustifyDays()"/>
         /// has been used to produce this instance.</remarks>
         /// </summary>
-        public int Hours
-        {
-            get { return (int)(_ticks / TicksPerHour); }
-        }
+        public int Hours => (int)(_ticks / TicksPerHour);
 
         /// <summary>
         /// Gets the number of days held in the instance.
         /// <remarks>Note that this does not pay attention to a time component with -24 or less hours or
         /// 24 or more hours, unless <see cref="JustifyDays()"/> has been called to produce this instance.</remarks>
         /// </summary>
-        public int Days
-        {
-            get { return _days; }
-        }
+        public int Days => _days;
 
         /// <summary>
         /// Gets the number of months held in the instance.
         /// <remarks>Note that this does not pay attention to a day component with -30 or less days or
         /// 30 or more days, unless <see cref="JustifyMonths()"/> has been called to produce this instance.</remarks>
         /// </summary>
-        public int Months
-        {
-            get { return _months; }
-        }
+        public int Months => _months;
 
         /// <summary>
         /// Returns a <see cref="TimeSpan"/> representing the time component of the instance.
         /// <remarks>Note that this may have a value beyond the range &#xb1;23:59:59.9999999 unless
         /// <see cref="JustifyDays()"/> has been called to produce this instance.</remarks>
         /// </summary>
-        public TimeSpan Time
-        {
-            get { return new TimeSpan(_ticks); }
-        }
+        public TimeSpan Time => new TimeSpan(_ticks);
 
         #endregion
 
@@ -366,73 +339,49 @@ namespace NpgsqlTypes
         /// The total number of ticks (100ns units) in the instance, assuming 24 hours in each day and
         /// 30 days in a month.
         /// </summary>
-        public long TotalTicks
-        {
-            get { return Ticks + Days * TicksPerDay + Months * TicksPerMonth; }
-        }
+        public long TotalTicks => Ticks + Days * TicksPerDay + Months * TicksPerMonth;
 
         /// <summary>
         /// The total number of microseconds in the instance, assuming 24 hours in each day and
         /// 30 days in a month.
         /// </summary>
-        public double TotalMicroseconds
-        {
-            get { return TotalTicks / 10d; }
-        }
+        public double TotalMicroseconds => TotalTicks / 10d;
 
         /// <summary>
         /// The total number of milliseconds in the instance, assuming 24 hours in each day and
         /// 30 days in a month.
         /// </summary>
-        public double TotalMilliseconds
-        {
-            get { return TotalTicks / (double)TicksPerMillsecond; }
-        }
+        public double TotalMilliseconds => TotalTicks / (double)TicksPerMillsecond;
 
         /// <summary>
         /// The total number of seconds in the instance, assuming 24 hours in each day and
         /// 30 days in a month.
         /// </summary>
-        public double TotalSeconds
-        {
-            get { return TotalTicks / (double)TicksPerSecond; }
-        }
+        public double TotalSeconds => TotalTicks / (double)TicksPerSecond;
 
         /// <summary>
         /// The total number of minutes in the instance, assuming 24 hours in each day and
         /// 30 days in a month.
         /// </summary>
-        public double TotalMinutes
-        {
-            get { return TotalTicks / (double)TicksPerMinute; }
-        }
+        public double TotalMinutes => TotalTicks / (double)TicksPerMinute;
 
         /// <summary>
         /// The total number of hours in the instance, assuming 24 hours in each day and
         /// 30 days in a month.
         /// </summary>
-        public double TotalHours
-        {
-            get { return TotalTicks / (double)TicksPerHour; }
-        }
+        public double TotalHours => TotalTicks / (double)TicksPerHour;
 
         /// <summary>
         /// The total number of days in the instance, assuming 24 hours in each day and
         /// 30 days in a month.
         /// </summary>
-        public double TotalDays
-        {
-            get { return TotalTicks / (double)TicksPerDay; }
-        }
+        public double TotalDays => TotalTicks / (double)TicksPerDay;
 
         /// <summary>
         /// The total number of months in the instance, assuming 24 hours in each day and
         /// 30 days in a month.
         /// </summary>
-        public double TotalMonths
-        {
-            get { return TotalTicks / (double)TicksPerMonth; }
-        }
+        public double TotalMonths => TotalTicks / (double)TicksPerMonth;
 
         #endregion
 
@@ -794,7 +743,7 @@ namespace NpgsqlTypes
         public static NpgsqlTimeSpan Parse(string str)
         {
             if (str == null) {
-                throw new ArgumentNullException("str");
+                throw new ArgumentNullException(nameof(str));
             }
             str = str.Replace('s', ' '); //Quick and easy way to catch plurals.
             try {

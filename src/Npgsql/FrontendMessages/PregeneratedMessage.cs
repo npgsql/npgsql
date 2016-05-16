@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -46,15 +46,15 @@ namespace Npgsql.FrontendMessages
         /// <param name="description">Optional string form/description for debugging</param>
         internal PregeneratedMessage(byte[] data, string description=null)
         {
-            Contract.Requires(data.Length < NpgsqlBuffer.MinimumBufferSize);
+            Contract.Requires(data.Length < WriteBuffer.MinimumBufferSize);
 
             _data = data;
             _description = description;
         }
 
-        internal override int Length { get { return _data.Length; } }
+        internal override int Length => _data.Length;
 
-        internal override void Write(NpgsqlBuffer buf)
+        internal override void WriteFully(WriteBuffer buf)
         {
             buf.WriteBytes(_data, 0, _data.Length);
         }
@@ -64,33 +64,27 @@ namespace Npgsql.FrontendMessages
             return _description ?? "[?]";
         }
 
-        static NpgsqlBuffer _tempBuf;
+        static readonly WriteBuffer _tempBuf;
+        static readonly QueryMessage _tempQuery;
 
         static PregeneratedMessage()
         {
-            _tempBuf = new NpgsqlBuffer(new MemoryStream(), NpgsqlBuffer.MinimumBufferSize, Encoding.ASCII);
+            _tempBuf = new WriteBuffer(null, new MemoryStream(), WriteBuffer.MinimumBufferSize, Encoding.ASCII);
+            _tempQuery = new QueryMessage();
 
-            BeginTransRepeatableRead  = BuildQuery("BEGIN; SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;");
-            BeginTransSerializable    = BuildQuery("BEGIN; SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;");
-            BeginTransReadCommitted   = BuildQuery("BEGIN; SET TRANSACTION ISOLATION LEVEL READ COMMITTED;");
-            BeginTransReadUncommitted = BuildQuery("BEGIN; SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;");
+            BeginTrans                = BuildQuery("BEGIN;");
+            SetTransRepeatableRead    = BuildQuery("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;");
+            SetTransSerializable      = BuildQuery("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;");
+            SetTransReadCommitted     = BuildQuery("SET TRANSACTION ISOLATION LEVEL READ COMMITTED;");
+            SetTransReadUncommitted   = BuildQuery("SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;");
             CommitTransaction         = BuildQuery("COMMIT");
             RollbackTransaction       = BuildQuery("ROLLBACK");
             DiscardAll                = BuildQuery("DISCARD ALL");
             UnlistenAll               = BuildQuery("UNLISTEN *");
             KeepAlive                 = BuildQuery("SELECT NULL");
-            SetStmtTimeout10Sec       = BuildQuery("SET statement_timeout = 10000");
-            SetStmtTimeout20Sec       = BuildQuery("SET statement_timeout = 20000");
-            SetStmtTimeout30Sec       = BuildQuery("SET statement_timeout = 30000");
-            SetStmtTimeout60Sec       = BuildQuery("SET statement_timeout = 60000");
-            SetStmtTimeout90Sec       = BuildQuery("SET statement_timeout = 90000");
-            SetStmtTimeout120Sec      = BuildQuery("SET statement_timeout = 120000");
 
             _tempBuf = null;
-
-            BeginTransactionMessages = new[] {
-                BeginTransRepeatableRead, BeginTransSerializable, BeginTransReadCommitted, BeginTransReadUncommitted
-            };
+            _tempQuery = null;
         }
 
         static PregeneratedMessage BuildQuery(string query)
@@ -100,29 +94,21 @@ namespace Npgsql.FrontendMessages
             var totalLen = 5 + query.Length;
             var ms = new MemoryStream(totalLen);
             _tempBuf.Underlying = ms;
-            var directBuf = new DirectBuffer();
-            var simpleQuery = new QueryMessage(query);
-            simpleQuery.Write(_tempBuf, ref directBuf);
+            _tempQuery.Populate(query);
+            _tempQuery.Write(_tempBuf);
             _tempBuf.Flush();
-            return new PregeneratedMessage(ms.ToArray(), simpleQuery.ToString());
+            return new PregeneratedMessage(ms.ToArray(), _tempQuery.ToString());
         }
 
-        internal static readonly PregeneratedMessage BeginTransRepeatableRead;
-        internal static readonly PregeneratedMessage BeginTransSerializable;
-        internal static readonly PregeneratedMessage BeginTransReadCommitted;
-        internal static readonly PregeneratedMessage BeginTransReadUncommitted;
+        internal static readonly PregeneratedMessage BeginTrans;
+        internal static readonly PregeneratedMessage SetTransRepeatableRead;
+        internal static readonly PregeneratedMessage SetTransSerializable;
+        internal static readonly PregeneratedMessage SetTransReadCommitted;
+        internal static readonly PregeneratedMessage SetTransReadUncommitted;
         internal static readonly PregeneratedMessage CommitTransaction;
         internal static readonly PregeneratedMessage RollbackTransaction;
         internal static readonly PregeneratedMessage DiscardAll;
         internal static readonly PregeneratedMessage UnlistenAll;
         internal static readonly PregeneratedMessage KeepAlive;
-        internal static readonly PregeneratedMessage SetStmtTimeout10Sec;
-        internal static readonly PregeneratedMessage SetStmtTimeout20Sec;
-        internal static readonly PregeneratedMessage SetStmtTimeout30Sec;
-        internal static readonly PregeneratedMessage SetStmtTimeout60Sec;
-        internal static readonly PregeneratedMessage SetStmtTimeout90Sec;
-        internal static readonly PregeneratedMessage SetStmtTimeout120Sec;
-
-        internal static readonly PregeneratedMessage[] BeginTransactionMessages;
     }
 }

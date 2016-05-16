@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -28,6 +28,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
+using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
 using NpgsqlTypes;
@@ -46,7 +47,7 @@ namespace Npgsql
         #region Fields and Properties
 
         NpgsqlConnector _connector;
-        NpgsqlBuffer _buf;
+        WriteBuffer _buf;
         TypeHandlerRegistry _registry;
         LengthCache _lengthCache;
         bool _isDisposed;
@@ -60,13 +61,13 @@ namespace Npgsql
         /// <summary>
         /// The number of columns, as returned from the backend in the CopyInResponse.
         /// </summary>
-        internal int NumColumns { get; private set; }
+        internal int NumColumns { get; }
 
         /// <summary>
         /// NpgsqlParameter instance needed in order to pass the <see cref="NpgsqlParameter.ConvertedValue"/> from
         /// the validation phase to the writing phase.
         /// </summary>
-        NpgsqlParameter _dummyParam;
+        readonly NpgsqlParameter _dummyParam;
 
         #endregion
 
@@ -75,7 +76,7 @@ namespace Npgsql
         internal NpgsqlBinaryImporter(NpgsqlConnector connector, string copyFromCommand)
         {
             _connector = connector;
-            _buf = connector.Buffer;
+            _buf = connector.WriteBuffer;
             _registry = connector.TypeHandlerRegistry;
             _lengthCache = new LengthCache();
             _column = -1;
@@ -83,13 +84,13 @@ namespace Npgsql
 
             try
             {
-                _connector.SendSingleMessage(new QueryMessage(copyFromCommand));
+                _connector.SendQuery(copyFromCommand);
 
                 // TODO: Failure will break the connection (e.g. if we get CopyOutResponse), handle more gracefully
                 var copyInResponse = _connector.ReadExpecting<CopyInResponseMessage>();
                 if (!copyInResponse.IsBinary)
                 {
-                    throw new ArgumentException("copyFromCommand triggered a text transfer, only binary is allowed", "copyFromCommand");
+                    throw new ArgumentException("copyFromCommand triggered a text transfer, only binary is allowed", nameof(copyFromCommand));
                 }
                 NumColumns = copyInResponse.NumColumns;
                 WriteHeader();
@@ -175,7 +176,7 @@ namespace Npgsql
             DoWrite(handler, value);
         }
 
-        void DoWrite<T>(TypeHandler handler, T value)
+        void DoWrite<T>(TypeHandler handler, [CanBeNull] T value)
         {
             try
             {
@@ -194,7 +195,7 @@ namespace Npgsql
 
                 _dummyParam.ConvertedValue = null;
 
-                var asSimple = handler as ISimpleTypeWriter;
+                var asSimple = handler as ISimpleTypeHandler;
                 if (asSimple != null)
                 {
                     var len = asSimple.ValidateAndGetLength(asObject, _dummyParam);
@@ -209,7 +210,7 @@ namespace Npgsql
                     return;
                 }
 
-                var asChunking = handler as IChunkingTypeWriter;
+                var asChunking = handler as IChunkingTypeHandler;
                 if (asChunking != null)
                 {
                     _lengthCache.Clear();
@@ -239,7 +240,7 @@ namespace Npgsql
                             _buf.WriteInt32(len + 4);
                             _buf.Flush();
                             _writingDataMsg = false;
-                            _buf.Underlying.Write(directBuf.Buffer, directBuf.Offset, len);
+                            _buf.DirectWrite(directBuf.Buffer, directBuf.Offset, len);
                             directBuf.Buffer = null;
                             directBuf.Size = 0;
                         }
@@ -330,14 +331,14 @@ namespace Npgsql
         {
             _isDisposed = true;
             _buf.Clear();
-            _connector.SendSingleMessage(new CopyFailMessage());
+            _connector.SendMessage(new CopyFailMessage());
             try {
-                var msg = _connector.ReadSingleMessage();
+                var msg = _connector.ReadMessage(DataRowLoadingMode.NonSequential);
                 // The CopyFail should immediately trigger an exception from the read above.
                 _connector.Break();
-                throw new Exception("Expected ErrorResponse when cancelling COPY but got: " + msg.Code);
-            } catch (NpgsqlException e) {
-                if (e.Code == "57014") { return; }
+                throw new NpgsqlException("Expected ErrorResponse when cancelling COPY but got: " + msg.Code);
+            } catch (PostgresException e) {
+                if (e.SqlState == "57014") { return; }
                 throw;
             }
         }
@@ -350,6 +351,7 @@ namespace Npgsql
         /// <summary>
         /// Completes the import process and signals to the database to write everything.
         /// </summary>
+        [PublicAPI]
         public void Close()
         {
             if (_isDisposed) { return; }
@@ -359,7 +361,7 @@ namespace Npgsql
             }
             WriteTrailer();
 
-            _connector.SendSingleMessage(CopyDoneMessage.Instance);
+            _connector.SendMessage(CopyDoneMessage.Instance);
             _connector.ReadExpecting<CommandCompleteMessage>();
             _connector.ReadExpecting<ReadyForQueryMessage>();
             _connector.CurrentCopyOperation = null;

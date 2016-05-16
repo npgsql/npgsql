@@ -1,8 +1,7 @@
-﻿#if !DNXCORE50
-#region License
+﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -130,7 +129,7 @@ namespace TlsClientStream
         public readonly BigInt yg;
         Func<BigInt, BigInt> modp;
         public readonly int curveLen;
-        public int curveByteLen { get { return (curveLen + 7) >> 3;  } }
+        public int curveByteLen => (curveLen + 7) >> 3;
         public readonly byte[] asnName;
 
         EllipticCurve(BigInt p, BigInteger b, BigInteger q, BigInt xg, BigInt yg, Func<BigInt, BigInt> modp, int curveLen, byte[] asnName)
@@ -152,7 +151,7 @@ namespace TlsClientStream
         {
             public uint[] _bits;
 
-            internal int Length { get { return _bits.Length; } }
+            internal int Length => _bits.Length;
 
             public BigInt(uint[] bits)
             {
@@ -414,7 +413,7 @@ namespace TlsClientStream
             }
             public BigInt Mul3()
             {
-                var tmp = this.Add(this);
+                var tmp = Add(this);
                 tmp._bits[tmp.Length - 1] += BigInt.AddRaw(_bits, tmp._bits, tmp._bits);
                 return tmp;
             }
@@ -587,7 +586,7 @@ namespace TlsClientStream
             }
             public BigInt ModInv(BigInt p, BigInt negP)
             {
-                var u = this.Clone();
+                var u = Clone();
                 var v = p.Clone();
                 var x1 = new BigInt(1, p.Length);
                 var x2 = new BigInt(0, p.Length);
@@ -1112,7 +1111,9 @@ namespace TlsClientStream
 
         public static bool? VerifySignatureCng(byte[] pkParameters, byte[] pkKey, byte[] hash, byte[] signature)
         {
-#if !__MonoCS__
+#if __MonoCS__ || NETSTANDARD1_3
+            throw new NotSupportedException();
+#else
             EllipticCurve curve = null;
             var ecsngHeader = new byte[8] { (byte)'E', (byte)'C', (byte)'S', 0, 0, 0, 0, 0 };
 
@@ -1140,10 +1141,7 @@ namespace TlsClientStream
             bool ok = ecdsa.VerifyHash(hash, decodedSignature);
 
             return ok;
-#else
-            throw new NotSupportedException();
 #endif
         }
     }
 }
-#endif

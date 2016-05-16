@@ -1,8 +1,7 @@
-﻿#if !DNXCORE50
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -38,15 +37,15 @@ namespace TlsClientStream
         public X509Chain CertChain;
 
         // For Finished verify-data
-        public HashAlgorithm HandshakeHash1;
-        public HashAlgorithm HandshakeHash2;
-        public HashAlgorithm HandshakeHash1_384;
-        public HashAlgorithm HandshakeHash2_384;
-        public HashAlgorithm HandshakeHash1_MD5SHA1;
-        public HashAlgorithm HandshakeHash2_MD5SHA1;
+        public Hasher HandshakeHash1;
+        public Hasher HandshakeHash2;
+        public Hasher HandshakeHash1_384;
+        public Hasher HandshakeHash2_384;
+        public Hasher HandshakeHash1_MD5SHA1;
+        public Hasher HandshakeHash2_MD5SHA1;
 
-        public HashAlgorithm CertificateVerifyHash_SHA1;
-        public HashAlgorithm CertificateVerifyHash_MD5;
+        public Hasher CertificateVerifyHash_SHA1;
+        public Hasher CertificateVerifyHash_MD5;
 
         // Diffie hellman ephemeral
         public byte[] P, G, Ys;
@@ -65,4 +64,3 @@ namespace TlsClientStream
         public X509Chain SelectedClientCertificate;
     }
 }
-#endif

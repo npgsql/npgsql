@@ -1,3 +1,28 @@
+#region License
+// The PostgreSQL License
+//
+// Copyright (C) 2016 The Npgsql Development Team
+//
+// Permission to use, copy, modify, and distribute this software and its
+// documentation for any purpose, without fee, and without a written
+// agreement is hereby granted, provided that the above copyright notice
+// and this paragraph and the following two paragraphs appear in all copies.
+//
+// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
+// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
+// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
+// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
+// THE POSSIBILITY OF SUCH DAMAGE.
+//
+// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
+// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
+// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+#endregion
+
+#if NET451
+
 using System;
 using System.Data;
 using System.Reflection;
@@ -8,26 +33,23 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests
 {
-    [TestFixture]
+    [Parallelizable(ParallelScope.None)]
     public class SystemTransactionTests : TestBase
     {
-        public SystemTransactionTests(string backendVersion) : base(backendVersion) { }
-
         [Test, Description("Single connection enlisting explicitly, committing")]
         public void ExplicitEnlist()
         {
-            using (var connection = new NpgsqlConnection(ConnectionString))
+            using (var conn = new NpgsqlConnection(ConnectionString))
+            using (var scope = new TransactionScope())
             {
-                using (var scope = new TransactionScope())
-                {
-                    connection.Open();
-                    connection.EnlistTransaction(Transaction.Current);
-                    Assert.That(ExecuteNonQuery(@"INSERT INTO data (name) VALUES('test')", connection), Is.EqualTo(1));
-                    scope.Complete();
-                }
+                conn.Open();
+                conn.EnlistTransaction(Transaction.Current);
+                Assert.That(conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES('test')"), Is.EqualTo(1));
+                scope.Complete();
             }
             AssertNoPreparedTransactions();
-            Assert.That(ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(1));
+            using (var conn = OpenConnection())
+                Assert.That(conn.ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(1));
         }
 
         [Test, Description("Single connection enlisting implicitly, committing")]
@@ -36,15 +58,16 @@ namespace Npgsql.Tests
             var connectionString = ConnectionString + ";enlist=true";
             using (var scope = new TransactionScope())
             {
-                using (var connection = new NpgsqlConnection(connectionString))
+                using (var conn = new NpgsqlConnection(connectionString))
                 {
-                    connection.Open();
-                    Assert.That(ExecuteNonQuery(@"INSERT INTO data (name) VALUES('test')", connection), Is.EqualTo(1));
+                    conn.Open();
+                    Assert.That(conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES('test')"), Is.EqualTo(1));
                 }
                 scope.Complete();
             }
             AssertNoPreparedTransactions();
-            Assert.That(ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(1));
+            using (var conn = OpenConnection())
+                Assert.That(conn.ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(1));
         }
 
         [Test, Description("Single connection rollback")]
@@ -52,16 +75,15 @@ namespace Npgsql.Tests
         {
             var connectionString = ConnectionString + ";enlist=true";
             using (var scope = new TransactionScope())
+            using (var conn = new NpgsqlConnection(connectionString))
             {
-                using (var connection = new NpgsqlConnection(connectionString))
-                {
-                    connection.Open();
-                    Assert.That(ExecuteNonQuery(@"INSERT INTO data (name) VALUES('test')", connection), Is.EqualTo(1));
-                    // No commit
-                }
+                conn.Open();
+                Assert.That(conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES('test')"), Is.EqualTo(1));
+                // No commit
             }
             AssertNoPreparedTransactions();
-            Assert.That(ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(0));
+            using (var conn = OpenConnection())
+                Assert.That(conn.ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(0));
         }
 
         [Test]
@@ -153,13 +175,15 @@ namespace Npgsql.Tests
                     scope.Complete();
                 }
             }, Throws.Exception.AssignableTo<TransactionException>());
-            Assert.That(ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
+            using (var conn = OpenConnection())
+                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
         }
 
         [Test, Description("Not sure what this test is supposed to check...")]
         [Ignore("There's a real failure here")]
         public void FunctionTestTimestamptzParameterSupport()
         {
+            /*
             ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('X')");
             ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION testtimestamptzparameter(timestamptz) returns refcursor as
                               $BODY$
@@ -194,20 +218,23 @@ namespace Npgsql.Tests
                     Assert.AreEqual(1, dt.Rows.Count);
                 }
             }
+            */
         }
 
         private void AssertNoPreparedTransactions()
         {
-            using (var cmd = new NpgsqlCommand("select count(*) from pg_prepared_xacts where database = :database", Conn))
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("select count(*) from pg_prepared_xacts where database = :database", conn))
             {
-                cmd.Parameters.Add(new NpgsqlParameter("database", Conn.Database));
+                cmd.Parameters.Add(new NpgsqlParameter("database", conn.Database));
                 Assert.That(cmd.ExecuteScalar(), Is.EqualTo(0));
             }
         }
 
         private void AssertRowNotExist(string columnName, int field_serial)
         {
-            using (var cmd = new NpgsqlCommand("select " + columnName + " from data where field_serial = :p0", Conn))
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("select " + columnName + " from data where field_serial = :p0", conn))
             {
                 cmd.Parameters.Add(new NpgsqlParameter("p0", field_serial));
                 Assert.That(cmd.ExecuteScalar(), Is.Null);
@@ -220,12 +247,12 @@ namespace Npgsql.Tests
             var connectionString = ConnectionString + ";enlist=true";
             using (var scope = new TransactionScope())
             {
-                using (var connection = new NpgsqlConnection(connectionString))
+                using (var conn = new NpgsqlConnection(connectionString))
                 {
-                    connection.Open();
-                    connection.Close();
-                    connection.Open();
-                    connection.Close();
+                    conn.Open();
+                    conn.Close();
+                    conn.Open();
+                    conn.Close();
                 }
             }
         }
@@ -247,8 +274,11 @@ namespace Npgsql.Tests
                 }
             }
 
-            ExecuteNonQuery("DROP TABLE IF EXISTS data");
-            ExecuteNonQuery("CREATE TABLE data (name TEXT)");
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("DROP TABLE IF EXISTS data");
+                conn.ExecuteNonQuery("CREATE TABLE data (name TEXT)");
+            }
         }
 
         class FakePromotableSinglePhaseNotification : IPromotableSinglePhaseNotification
@@ -262,3 +292,4 @@ namespace Npgsql.Tests
         #endregion
     }
 }
+#endif

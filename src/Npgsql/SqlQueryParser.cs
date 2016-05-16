@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -26,7 +26,6 @@ using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
-using System.Text;
 
 namespace Npgsql
 {
@@ -57,9 +56,8 @@ namespace Npgsql
             var currCharOfs = 0;
             var end = sql.Length;
             var ch = '\0';
-            var lastChar = '\0';
-            var dollarTagStart = 0;
-            var dollarTagEnd = 0;
+            int dollarTagStart;
+            int dollarTagEnd;
             var currTokenBeg = 0;
             var blockCommentLevel = 0;
 
@@ -73,7 +71,7 @@ namespace Npgsql
             if (currCharOfs >= end) {
                 goto Finish;
             }
-            lastChar = ch;
+            var lastChar = ch;
             ch = sql[currCharOfs++];
         NoneContinue:
             for (; ; lastChar = ch, ch = sql[currCharOfs++]) {
@@ -160,7 +158,7 @@ namespace Npgsql
                         }
 
                         if (!parameter.IsInputDirection)
-                            throw new Exception(string.Format("Parameter '{0}' referenced in SQL but is an out-only parameter", paramName));
+                            throw new Exception($"Parameter '{paramName}' referenced in SQL but is an out-only parameter");
 
                         currentParameters.Add(parameter);
                         index = paramIndexMap[paramName] = currentParameters.Count;
@@ -386,7 +384,7 @@ namespace Npgsql
             queries.Add(new NpgsqlStatement(currentSql.ToString(), currentParameters));
             while (currCharOfs < end) {
                 ch = sql[currCharOfs];
-                if (Char.IsWhiteSpace(ch)) {
+                if (char.IsWhiteSpace(ch)) {
                     currCharOfs++;
                     continue;
                 }
@@ -394,9 +392,6 @@ namespace Npgsql
 
                 currTokenBeg = currCharOfs;
                 paramIndexMap.Clear();
-                if (queries.Count > NpgsqlCommand.MaxQueriesInMultiquery) {
-                    throw new NotSupportedException(String.Format("A single command cannot contain more than {0} queries", NpgsqlCommand.MaxQueriesInMultiquery));
-                }
                 currentSql = new StringWriter();
                 currentParameters = new List<NpgsqlParameter>();
                 goto None;
@@ -428,10 +423,7 @@ namespace Npgsql
             return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || '0' <= ch && ch <= '9' || ch == '_' || ch == '$' || 128 <= ch && ch <= 255;
         }
 
-        static bool IsParamNameChar(char ch)
-        {
-            return ch <= 'z' && ParamNameCharTable[ch];
-        }
+        static bool IsParamNameChar(char ch) => ch <= 'z' && ParamNameCharTable[ch];
 
         static bool[] BuildParameterNameCharacterTable()
         {

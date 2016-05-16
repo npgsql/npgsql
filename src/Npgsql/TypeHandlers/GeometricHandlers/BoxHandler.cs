@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -40,11 +40,11 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-geometric.html
     /// </remarks>
     [TypeMapping("box", NpgsqlDbType.Box, typeof(NpgsqlBox))]
-    internal class BoxHandler : TypeHandler<NpgsqlBox>,
-        ISimpleTypeReader<NpgsqlBox>, ISimpleTypeWriter,
-        ISimpleTypeReader<string>
+    internal class BoxHandler : SimpleTypeHandler<NpgsqlBox>, ISimpleTypeHandler<string>
     {
-        public NpgsqlBox Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        internal BoxHandler(IBackendType backendType) : base(backendType) { }
+
+        public override NpgsqlBox Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return new NpgsqlBox(
                 new NpgsqlPoint(buf.ReadDouble(), buf.ReadDouble()),
@@ -52,19 +52,19 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
             );
         }
 
-        string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return Read(buf, len, fieldDescription).ToString();
         }
 
-        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
             if (!(value is NpgsqlBox))
                 throw CreateConversionException(value.GetType());
             return 32;
         }
 
-        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
         {
             var v = (NpgsqlBox)value;
             buf.WriteDouble(v.Right);

@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -32,24 +32,24 @@ namespace Npgsql.FrontendMessages
     /// <summary>
     /// A simple query message.
     /// </summary>
-    class QueryMessage : ChunkingFrontendMessage
+    class QueryMessage : FrontendMessage
     {
-        string Query { get; set; }
-
+        string _query;
         char[] _queryChars;
         int _charPos;
 
         internal const byte Code = (byte)'Q';
 
-        internal QueryMessage(string query)
+        internal QueryMessage Populate(string query)
         {
             Contract.Requires(query != null);
 
-            Query = query;
+            _query = query;
             _charPos = -1;
+            return this;
         }
 
-        internal override bool Write(NpgsqlBuffer buf, ref DirectBuffer directBuf)
+        internal override bool Write(WriteBuffer buf)
         {
             if (_charPos == -1)
             {
@@ -57,8 +57,8 @@ namespace Npgsql.FrontendMessages
                 if (buf.WriteSpaceLeft < 1 + 4)
                     return false;
                 _charPos = 0;
-                var queryByteLen = PGUtil.UTF8Encoding.GetByteCount(Query);
-                _queryChars = Query.ToCharArray();
+                var queryByteLen = PGUtil.UTF8Encoding.GetByteCount(_query);
+                _queryChars = _query.ToCharArray();
                 buf.WriteByte(Code);
                 buf.WriteInt32(4 +            // Message length (including self excluding code)
                                queryByteLen + // Query byte length
@@ -86,7 +86,7 @@ namespace Npgsql.FrontendMessages
 
         public override string ToString()
         {
-            return String.Format("[Query={0}]", Query);
+            return $"[Query={_query}]";
         }
     }
 }

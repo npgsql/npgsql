@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -41,7 +41,7 @@ namespace Npgsql.BackendMessages
         /// </summary>
         IDisposable _stream;
 
-        internal override DataRowMessage Load(NpgsqlBuffer buf)
+        internal override DataRowMessage Load(ReadBuffer buf)
         {
             buf.Ensure(sizeof(short));
             NumColumns = buf.ReadInt16();
@@ -63,7 +63,8 @@ namespace Npgsql.BackendMessages
 
             if (column < Column)
             {
-                throw new InvalidOperationException(string.Format("Invalid attempt to read from column ordinal '{0}'. With CommandBehavior.SequentialAccess, you may only read from column ordinal '{1}' or greater.", column, Column));
+                throw new InvalidOperationException(
+                    $"Invalid attempt to read from column ordinal '{column}'. With CommandBehavior.SequentialAccess, you may only read from column ordinal '{Column}' or greater.");
             }
 
             if (column == Column)

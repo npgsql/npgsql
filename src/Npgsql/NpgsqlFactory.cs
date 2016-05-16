@@ -1,7 +1,7 @@
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -33,7 +33,7 @@ namespace Npgsql
     /// <summary>
     /// A factory to create instances of various Npgsql objects.
     /// </summary>
-#if !DNXCORE50
+#if NET45 || NET451
     [Serializable]
 #endif
     public sealed class NpgsqlFactory : DbProviderFactory, IServiceProvider
@@ -68,7 +68,7 @@ namespace Npgsql
             return new NpgsqlConnectionStringBuilder();
         }
 
-#if !DNXCORE50
+#if NET45 || NET451
         public override DbCommandBuilder CreateCommandBuilder()
         {
             return new NpgsqlCommandBuilder();
@@ -98,7 +98,7 @@ namespace Npgsql
                 assemblyName.Name = "EntityFramework5.Npgsql";
                 Assembly npgsqlEfAssembly;
                 try {
-                    npgsqlEfAssembly = Assembly.Load(assemblyName.FullName);
+                    npgsqlEfAssembly = Assembly.Load(new AssemblyName(assemblyName.FullName));
                 } catch (Exception e) {
                     throw new Exception("Could not load EntityFramework5.Npgsql assembly, is it installed?", e);
                 }
@@ -108,7 +108,7 @@ namespace Npgsql
                     npgsqlServicesType.GetProperty("Instance") == null)
                     throw new Exception("EntityFramework5.Npgsql assembly does not seem to contain the correct type!");
 
-                return _legacyEntityFrameworkServices = npgsqlServicesType.InvokeMember("Instance", BindingFlags.Public | BindingFlags.Static | BindingFlags.GetProperty, null, null, new object[0]);
+                return _legacyEntityFrameworkServices = npgsqlServicesType.GetProperty("Instance", BindingFlags.Public | BindingFlags.Static).GetMethod.Invoke(null, new object[0]);
             }
 
             return null;

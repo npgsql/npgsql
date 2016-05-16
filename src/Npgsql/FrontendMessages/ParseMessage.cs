@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -29,7 +29,7 @@ using System.Text;
 
 namespace Npgsql.FrontendMessages
 {
-    class ParseMessage : ChunkingFrontendMessage
+    class ParseMessage : FrontendMessage
     {
         /// <summary>
         /// The query string to be parsed.
@@ -42,7 +42,7 @@ namespace Npgsql.FrontendMessages
         string Statement { get; set; }
 
         // ReSharper disable once InconsistentNaming
-        internal List<uint> ParameterTypeOIDs { get; private set; }
+        internal List<uint> ParameterTypeOIDs { get; }
 
         byte[] _statementNameBytes;
         int _queryLen;
@@ -68,19 +68,19 @@ namespace Npgsql.FrontendMessages
             Statement = statement.PreparedStatementName ?? "";
             foreach (var inputParam in statement.InputParameters) {
                 inputParam.ResolveHandler(typeHandlerRegistry);
-                ParameterTypeOIDs.Add(inputParam.Handler.OID);
+                ParameterTypeOIDs.Add(inputParam.Handler.BackendType.OID);
             }
             return this;
         }
 
-        internal override bool Write(NpgsqlBuffer buf, ref DirectBuffer directBuf)
+        internal override bool Write(WriteBuffer buf)
         {
             Contract.Requires(Statement != null);
 
             switch (_state)
             {
                 case State.WroteNothing:
-                    _statementNameBytes = PGUtil.UTF8Encoding.GetBytes(Statement);
+                    _statementNameBytes = Statement.Length == 0 ? PGUtil.EmptyBuffer : PGUtil.UTF8Encoding.GetBytes(Statement);
                     _queryLen = PGUtil.UTF8Encoding.GetByteCount(Query);
                     if (buf.WriteSpaceLeft < 1 + 4 + _statementNameBytes.Length + 1) {
                         return false;
@@ -162,7 +162,7 @@ namespace Npgsql.FrontendMessages
 
         public override string ToString()
         {
-            return String.Format("[Parse(Statement={0},NumParams={1}]", Statement, ParameterTypeOIDs.Count);
+            return $"[Parse(Statement={Statement},NumParams={ParameterTypeOIDs.Count}]";
         }
 
         private enum State

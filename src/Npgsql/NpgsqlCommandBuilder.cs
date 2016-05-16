@@ -1,9 +1,7 @@
-﻿#if !DNXCORE50
-
-#region License
+﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -22,6 +20,8 @@
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
+
+#if NET45 || NET451
 
 using System;
 using System.Data;
@@ -55,11 +55,10 @@ namespace Npgsql
         /// </summary>
         /// <param name="adapter">The adapter.</param>
         public NpgsqlCommandBuilder(NpgsqlDataAdapter adapter)
-            : base()
         {
             DataAdapter = adapter;
-            this.QuotePrefix = "\"";
-            this.QuoteSuffix = "\"";
+            QuotePrefix = "\"";
+            QuoteSuffix = "\"";
         }
 
         /// <summary>
@@ -208,7 +207,7 @@ namespace Npgsql
                         }
                     }
                     else
-                        throw new InvalidOperationException(string.Format("{0} does not exist in pg_proc", command.CommandText));
+                        throw new InvalidOperationException($"{command.CommandText} does not exist in pg_proc");
                 }
 
                 command.Parameters.Clear();
@@ -217,10 +216,10 @@ namespace Npgsql
                     var param = new NpgsqlParameter();
 
                     // TODO: Fix enums, composite types
-                    var npgsqlDbType = c.Connection.Connector.TypeHandlerRegistry[types[i]].NpgsqlDbType;
-                    if (npgsqlDbType == NpgsqlDbType.Unknown)
-                        throw new InvalidOperationException(string.Format("Invalid parameter type: {0}", types[i]));
-                    param.NpgsqlDbType = npgsqlDbType;
+                    var npgsqlDbType = c.Connection.Connector.TypeHandlerRegistry[types[i]].BackendType.NpgsqlDbType;
+                    if (!npgsqlDbType.HasValue)
+                        throw new InvalidOperationException($"Invalid parameter type: {types[i]}");
+                    param.NpgsqlDbType = npgsqlDbType.Value;
 
                     if (names != null && i < names.Length)
                         param.ParameterName = ":" + names[i];
@@ -426,7 +425,7 @@ namespace Npgsql
         {
             var npgsqlAdapter = adapter as NpgsqlDataAdapter;
             if (npgsqlAdapter == null)
-                throw new ArgumentException("adapter needs to be a NpgsqlDataAdapter", "adapter");
+                throw new ArgumentException("adapter needs to be a NpgsqlDataAdapter", nameof(adapter));
 
             // Being called twice for the same adapter means unregister
             if (adapter == DataAdapter)
@@ -462,10 +461,10 @@ namespace Npgsql
             if (unquotedIdentifier == null)
 
             {
-                throw new ArgumentNullException("unquotedIdentifier", "Unquoted identifier parameter cannot be null");
+                throw new ArgumentNullException(nameof(unquotedIdentifier), "Unquoted identifier parameter cannot be null");
             }
 
-            return String.Format("{0}{1}{2}", QuotePrefix, unquotedIdentifier.Replace(QuotePrefix, QuotePrefix + QuotePrefix), QuoteSuffix);
+            return $"{QuotePrefix}{unquotedIdentifier.Replace(QuotePrefix, QuotePrefix + QuotePrefix)}{QuoteSuffix}";
         }
 
         /// <summary>
@@ -485,18 +484,18 @@ namespace Npgsql
             if (quotedIdentifier == null)
 
             {
-                throw new ArgumentNullException("quotedIdentifier", "Quoted identifier parameter cannot be null");
+                throw new ArgumentNullException(nameof(quotedIdentifier), "Quoted identifier parameter cannot be null");
             }
 
             var unquotedIdentifier = quotedIdentifier.Trim().Replace(QuotePrefix + QuotePrefix, QuotePrefix);
 
-            if (unquotedIdentifier.StartsWith(this.QuotePrefix))
+            if (unquotedIdentifier.StartsWith(QuotePrefix))
 
             {
                 unquotedIdentifier = unquotedIdentifier.Remove(0, 1);
             }
 
-            if (unquotedIdentifier.EndsWith(this.QuoteSuffix))
+            if (unquotedIdentifier.EndsWith(QuoteSuffix))
 
             {
                 unquotedIdentifier = unquotedIdentifier.Remove(unquotedIdentifier.Length - 1, 1);

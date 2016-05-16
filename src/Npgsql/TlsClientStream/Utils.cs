@@ -1,8 +1,7 @@
-﻿#if !DNXCORE50
-#region License
+﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -366,10 +365,36 @@ namespace TlsClientStream
             return bigEndian;
         }
 
+#if NET45 || NET451
         public static void TransformBlock(this HashAlgorithm hashAlg, byte[] buf, int offset, int len)
         {
             hashAlg.TransformBlock(buf, offset, len, null, 0);
         }
+
+        public static void AppendData(this HashAlgorithm hash, byte[] data, int offset, int len)
+        {
+            hash.TransformBlock(data, offset, len);
+        }
+
+        public static byte[] GetHashAndReset(this HashAlgorithm hash)
+        {
+            hash.TransformFinalBlock(Hasher.EmptyByteArray, 0, 0);
+            byte[] data = hash.Hash;
+            hash.Initialize();
+            return data;
+        }
+#endif
+
+        public static byte[] EncryptPkcsPadding(X509Certificate2 cert, byte[] rgb)
+        {
+#if NET45 || NET451
+            return ((RSACryptoServiceProvider)cert.PublicKey.Key).Encrypt(rgb, false);
+#else
+            using (var rsa = cert.GetRSAPublicKey())
+            {
+                return rsa.Encrypt(rgb, RSAEncryptionPadding.Pkcs1);
+            }
+#endif
+        }
     }
 }
-#endif

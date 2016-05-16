@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -30,11 +30,11 @@ namespace Npgsql.BackendMessages
 {
     internal class ReadyForQueryMessage : IBackendMessage
     {
-        public BackendMessageCode Code { get { return BackendMessageCode.ReadyForQuery; } }
+        public BackendMessageCode Code => BackendMessageCode.ReadyForQuery;
 
         internal TransactionStatus TransactionStatusIndicator { get; private set; }
 
-        internal ReadyForQueryMessage Load(NpgsqlBuffer buf) {
+        internal ReadyForQueryMessage Load(ReadBuffer buf) {
             TransactionStatusIndicator = (TransactionStatus)buf.ReadByte();
             return this;
         }

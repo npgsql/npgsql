@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -27,6 +27,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.TypeHandlers;
 
@@ -34,9 +35,9 @@ namespace Npgsql.BackendMessages
 {
     abstract class DataRowMessage : IBackendMessage
     {
-        public BackendMessageCode Code { get { return BackendMessageCode.DataRow; } }
+        public BackendMessageCode Code => BackendMessageCode.DataRow;
 
-        protected internal NpgsqlBuffer Buffer { get; protected set; }
+        protected internal ReadBuffer Buffer { get; protected set; }
 
         /// <summary>
         /// The number of columns in the current row
@@ -61,16 +62,16 @@ namespace Npgsql.BackendMessages
         /// </summary>
         internal int ColumnLen;
 
-        internal bool IsColumnNull { get { return ColumnLen == -1; } }
+        internal bool IsColumnNull => ColumnLen == -1;
 
-        internal abstract DataRowMessage Load(NpgsqlBuffer buf);
+        internal abstract DataRowMessage Load(ReadBuffer buf);
 
         /// <summary>
         /// Places our position at the beginning of the given column, after the 4-byte length.
         /// The length is available in ColumnLen.
         /// </summary>
         internal abstract void SeekToColumn(int column);
-        internal abstract Task SeekToColumnAsync(int column);
+        internal abstract Task SeekToColumnAsync(int column, CancellationToken cancellationToken);
         internal abstract void SeekInColumn(int posInColumn);
 
         /// <summary>
@@ -86,7 +87,7 @@ namespace Npgsql.BackendMessages
         /// <summary>
         /// Consumes the current row asynchronously, allowing the reader to read in the next one.
         /// </summary>
-        internal abstract Task ConsumeAsync();
+        internal abstract Task ConsumeAsync(CancellationToken token);
 
         internal void SeekToColumnStart(int column)
         {
@@ -98,6 +99,7 @@ namespace Npgsql.BackendMessages
 
         #region Checks
 
+        // ReSharper disable once UnusedParameter.Global
         protected void CheckColumnIndex(int column)
         {
             if (column < 0 || column >= NumColumns)

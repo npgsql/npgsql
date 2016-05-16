@@ -1,33 +1,26 @@
+#region License
+// The PostgreSQL License
 //
-// NpgsqlParameterTest.cs - NUnit Test Cases for testing the
-//                          NpgsqlParameter class
-// Author:
-//    Senganal T (tsenganal@novell.com)
-//    Amit Biswas (amit@amitbiswas.com)
-//    Gert Driesen (drieseng@users.sourceforge.net)
+// Copyright (C) 2016 The Npgsql Development Team
 //
-// Copyright (c) 2004 Novell Inc., and the individuals listed
-// on the ChangeLog entries.
+// Permission to use, copy, modify, and distribute this software and its
+// documentation for any purpose, without fee, and without a written
+// agreement is hereby granted, provided that the above copyright notice
+// and this paragraph and the following two paragraphs appear in all copies.
 //
-// Permission is hereby granted, free of charge, to any person obtaining
-// a copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to
-// permit persons to whom the Software is furnished to do so, subject to
-// the following conditions:
+// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
+// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
+// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
+// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
+// THE POSSIBILITY OF SUCH DAMAGE.
 //
-// The above copyright notice and this permission notice shall be
-// included in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-// LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-//
+// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
+// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
+// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+#endregion
+
 
 #define NET_2_0
 
@@ -116,7 +109,9 @@ namespace Npgsql.Tests
 #if NET_2_0
             Assert.IsFalse(p.SourceColumnNullMapping, "SourceColumnNullMapping");
 #endif
+#if NET451
             Assert.AreEqual(DataRowVersion.Current, p.SourceVersion, "SourceVersion");
+#endif
             Assert.AreEqual(NpgsqlDbType.Unknown, p.NpgsqlDbType, "NpgsqlDbType");
 #if NET_2_0
             Assert.IsNull(p.NpgsqlValue, "NpgsqlValue");
@@ -149,7 +144,9 @@ namespace Npgsql.Tests
 #if NET_2_0
             Assert.IsFalse(p.SourceColumnNullMapping, "B:SourceColumnNullMapping");
 #endif
+#if NET451
             Assert.AreEqual(DataRowVersion.Current, p.SourceVersion, "B:SourceVersion");
+#endif
             Assert.AreEqual(NpgsqlDbType.Timestamp, p.NpgsqlDbType, "B:NpgsqlDbType");
 #if NET_2_0
             // FIXME
@@ -181,7 +178,9 @@ namespace Npgsql.Tests
 #if NET_2_0
             Assert.IsFalse(p.SourceColumnNullMapping, "B:SourceColumnNullMapping");
 #endif
+#if NET451
             Assert.AreEqual(DataRowVersion.Current, p.SourceVersion, "B:SourceVersion");
+#endif
             Assert.AreEqual(NpgsqlDbType.Unknown, p.NpgsqlDbType, "B:NpgsqlDbType");
 #if NET_2_0
             // FIXME
@@ -213,7 +212,9 @@ namespace Npgsql.Tests
 #if NET_2_0
             Assert.IsFalse(p.SourceColumnNullMapping, "A:SourceColumnNullMapping");
 #endif
+#if NET451
             Assert.AreEqual(DataRowVersion.Current, p.SourceVersion, "A:SourceVersion");
+#endif
             Assert.AreEqual(NpgsqlDbType.Unknown, p.NpgsqlDbType, "A:NpgsqlDbType");
 #if NET_2_0
             Assert.IsNull(p.NpgsqlValue, "A:NpgsqlValue");
@@ -227,6 +228,7 @@ namespace Npgsql.Tests
         }
 
 #if NET_2_0
+#if NET451
         [Test]
         //.ctor (String, NpgsqlDbType, Int32, String, ParameterDirection, bool, byte, byte, DataRowVersion, object)
         public void Constructor7()
@@ -252,6 +254,7 @@ namespace Npgsql.Tests
             //Assert.AreEqual ("name", p1.XmlSchemaCollectionName, "XmlSchemaCollectionName");
             //Assert.AreEqual ("schema", p1.XmlSchemaCollectionOwningSchema, "XmlSchemaCollectionOwningSchema");
         }
+#endif
 #endif
 
         #endregion
@@ -395,10 +398,7 @@ namespace Npgsql.Tests
 #endif
 
         [Test]
-        [Ignore]
-#if NET_2_0
-        [Category("NotWorking")]
-#endif
+        [Ignore("")]
         public void InferType_Invalid()
         {
             var notsupported = new object[]
@@ -414,36 +414,6 @@ namespace Npgsql.Tests
 
             for (var i = 0; i < notsupported.Length; i++)
             {
-#if NET_2_0
-                param.Value = notsupported[i];
-                try
-                {
-                    var type = param.NpgsqlDbType;
-                    Assert.Fail("#A1:" + i + " (" + type + ")");
-                }
-                catch (ArgumentException ex)
-                {
-                    // The parameter data type of ... is invalid
-                    Assert.AreEqual(typeof (ArgumentException), ex.GetType(), "#A2");
-                    Assert.IsNull(ex.InnerException, "#A3");
-                    Assert.IsNotNull(ex.Message, "#A4");
-                    Assert.IsNull(ex.ParamName, "#A5");
-                }
-
-                try
-                {
-                    var type = param.DbType;
-                    Assert.Fail("#B1:" + i + " (" + type + ")");
-                }
-                catch (ArgumentException ex)
-                {
-                    // The parameter data type of ... is invalid
-                    Assert.AreEqual(typeof (ArgumentException), ex.GetType(), "#B2");
-                    Assert.IsNull(ex.InnerException, "#B3");
-                    Assert.IsNotNull(ex.Message, "#B4");
-                    Assert.IsNull(ex.ParamName, "#B5");
-                }
-#else
                 try
                 {
                     param.Value = notsupported[i];
@@ -462,7 +432,6 @@ namespace Npgsql.Tests
                     Assert.IsNotNull(ex.Message, "#A4");
                     Assert.IsNull(ex.ParamName, "#A5");
                 }
-#endif
             }
         }
 
@@ -507,7 +476,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        [Ignore]
+        [Ignore("")]
         public void ParameterType()
         {
             NpgsqlParameter p;
@@ -581,7 +550,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        [Ignore]
+        [Ignore("")]
         public void ParameterName()
         {
             var p = new NpgsqlParameter();
@@ -670,51 +639,10 @@ namespace Npgsql.Tests
             Assert.IsNull(p.Value, "#G:Value");
         }
 
-#if NeedsPorting
-        [Test]
-        public void ResetSqlDbType ()
-        {
-            //Parameter with an assigned value but no NpgsqlDbType specified
-            NpgsqlParameter p1 = new NpgsqlParameter ("foo", 42);
-            Assert.AreEqual (42, p1.Value, "#1");
-            Assert.AreEqual (DbType.Int32, p1.DbType, "#2");
-            Assert.AreEqual (NpgsqlDbType.Integer, p1.NpgsqlDbType, "#3");
-
-            p1.ResetSqlDbType ();
-            Assert.AreEqual (DbType.Int32, p1.DbType, "#4 The parameter with value 42 must have DbType as Int32");
-            Assert.AreEqual (NpgsqlDbType.Integer, p1.NpgsqlDbType, "#5 The parameter with value 42 must have NpgsqlDbType as Int");
-
-            p1.NpgsqlDbType = NpgsqlDbType.Timestamp; //assigning a NpgsqlDbType
-            Assert.AreEqual (DbType.DateTime, p1.DbType, "#6");
-            Assert.AreEqual (NpgsqlDbType.Timestamp, p1.NpgsqlDbType, "#7");
-            p1.ResetSqlDbType (); //Resetting NpgsqlDbType
-            Assert.AreEqual (DbType.Int32, p1.DbType, "#8 Resetting NpgsqlDbType must infer the type from the value");
-            Assert.AreEqual (NpgsqlDbType.Integer, p1.NpgsqlDbType, "#9 Resetting NpgsqlDbType must infer the type from the value");
-
-            //Parameter with an assigned NpgsqlDbType but no specified value
-            NpgsqlParameter p2 = new NpgsqlParameter ("foo", NpgsqlDbType.Integer);
-            Assert.AreEqual (null, p2.Value, "#10");
-            Assert.AreEqual (DbType.Int32, p2.DbType, "#11");
-            Assert.AreEqual (NpgsqlDbType.Integer, p2.NpgsqlDbType, "#12");
-
-            //Although a NpgsqlDbType is specified, calling ResetSqlDbType resets
-            //the NpgsqlDbType and DbType properties to default values
-            p2.ResetSqlDbType ();
-            Assert.AreEqual (DbType.String, p2.DbType, "#13 Resetting NpgsqlDbType must infer the type from the value");
-            Assert.AreEqual (NpgsqlDbType.Text, p2.NpgsqlDbType, "#14 Resetting NpgsqlDbType must infer the type from the value");
-
-            p2.NpgsqlDbType = NpgsqlDbType.Timestamp; //assigning a NpgsqlDbType
-            Assert.AreEqual (DbType.DateTime, p2.DbType, "#15");
-            Assert.AreEqual (NpgsqlDbType.Timestamp, p2.NpgsqlDbType, "#16");
-            p2.ResetSqlDbType (); //Resetting NpgsqlDbType
-            Assert.AreEqual (DbType.String, p2.DbType, "#17 Resetting NpgsqlDbType must infer the type from the value");
-            Assert.AreEqual (NpgsqlDbType.Text, p2.NpgsqlDbType, "#18 Resetting NpgsqlDbType must infer the type from the value");
-        }
-#endif
 #endif
 
         [Test]
-        [Ignore]
+        [Ignore("")]
         public void SourceColumn()
         {
             var p = new NpgsqlParameter();
@@ -739,19 +667,6 @@ namespace Npgsql.Tests
             Assert.AreEqual(string.Empty, p.SourceColumn, "#E:SourceColumn");
         }
 
-#if NET_2_0
-        [Test]
-        public void SourceColumnNullMapping()
-        {
-            var p = new NpgsqlParameter();
-            Assert.IsFalse(p.SourceColumnNullMapping, "#1");
-            p.SourceColumnNullMapping = true;
-            Assert.IsTrue(p.SourceColumnNullMapping, "#2");
-            p.SourceColumnNullMapping = false;
-            Assert.IsFalse(p.SourceColumnNullMapping, "#3");
-        }
-#endif
-
         [Test]
         public void Bug1011100NpgsqlDbTypeTest()
         {
@@ -775,76 +690,6 @@ namespace Npgsql.Tests
             //Assert.AreEqual(NpgsqlDbType.Varchar, p.NpgsqlDbType, "#B:NpgsqlDbType");
             //Assert.AreEqual(3510, p.Value, "#B:Value");
         }
-
-
-#if NET_2_0
-#if NeedsPorting
-        [Test]
-        public void XmlSchemaTest ()
-        {
-            NpgsqlParameter p1 = new NpgsqlParameter ();
-
-            //Testing default values
-            Assert.AreEqual (String.Empty, p1.XmlSchemaCollectionDatabase,
-                     "#1 Default value for XmlSchemaCollectionDatabase is an empty string");
-            Assert.AreEqual (String.Empty, p1.XmlSchemaCollectionName,
-                     "#2 Default value for XmlSchemaCollectionName is an empty string");
-            Assert.AreEqual (String.Empty, p1.XmlSchemaCollectionOwningSchema,
-                     "#3 Default value for XmlSchemaCollectionOwningSchema is an empty string");
-
-            //Changing one property should not affect the remaining two properties
-            p1.XmlSchemaCollectionDatabase = "database";
-            Assert.AreEqual ("database", p1.XmlSchemaCollectionDatabase,
-                     "#4 Default value for XmlSchemaCollectionDatabase is an empty string");
-            Assert.AreEqual (String.Empty, p1.XmlSchemaCollectionName,
-                     "#5 Default value for XmlSchemaCollectionName is an empty string");
-            Assert.AreEqual (String.Empty, p1.XmlSchemaCollectionOwningSchema,
-                     "#6 Default value for XmlSchemaCollectionOwningSchema is an empty string");
-
-            p1.XmlSchemaCollectionName = "name";
-            Assert.AreEqual ("database", p1.XmlSchemaCollectionDatabase,
-                     "#7 Default value for XmlSchemaCollectionDatabase is an empty string");
-            Assert.AreEqual ("name", p1.XmlSchemaCollectionName,
-                     "#8 Default value for XmlSchemaCollectionName is an empty string");
-            Assert.AreEqual (String.Empty, p1.XmlSchemaCollectionOwningSchema,
-                     "#9 Default value for XmlSchemaCollectionOwningSchema is an empty string");
-
-            p1.XmlSchemaCollectionOwningSchema = "schema";
-            Assert.AreEqual ("database", p1.XmlSchemaCollectionDatabase,
-                     "#10 Default value for XmlSchemaCollectionDatabase is an empty string");
-            Assert.AreEqual ("name", p1.XmlSchemaCollectionName,
-                     "#11 Default value for XmlSchemaCollectionName is an empty string");
-            Assert.AreEqual ("schema", p1.XmlSchemaCollectionOwningSchema,
-                     "#12 Default value for XmlSchemaCollectionOwningSchema is an empty string");
-
-            //assigning null value stores default empty string
-            p1.XmlSchemaCollectionDatabase = null;
-            Assert.AreEqual (String.Empty, p1.XmlSchemaCollectionDatabase,
-                     "#13 Default value for XmlSchemaCollectionDatabase is an empty string");
-            Assert.AreEqual ("name", p1.XmlSchemaCollectionName,
-                     "#14 Default value for XmlSchemaCollectionName is an empty string");
-            Assert.AreEqual ("schema", p1.XmlSchemaCollectionOwningSchema,
-                     "#15 Default value for XmlSchemaCollectionOwningSchema is an empty string");
-
-            p1.XmlSchemaCollectionName = "";
-            Assert.AreEqual (String.Empty, p1.XmlSchemaCollectionDatabase,
-                     "#16 Default value for XmlSchemaCollectionDatabase is an empty string");
-            Assert.AreEqual ("", p1.XmlSchemaCollectionName,
-                     "#17 Default value for XmlSchemaCollectionName is an empty string");
-            Assert.AreEqual ("schema", p1.XmlSchemaCollectionOwningSchema,
-                     "#18 Default value for XmlSchemaCollectionOwningSchema is an empty string");
-
-            //values are not trimmed
-            p1.XmlSchemaCollectionOwningSchema = "  a  ";
-            Assert.AreEqual (String.Empty, p1.XmlSchemaCollectionDatabase,
-                     "#19 Default value for XmlSchemaCollectionDatabase is an empty string");
-            Assert.AreEqual ("", p1.XmlSchemaCollectionName,
-                     "#20 Default value for XmlSchemaCollectionName is an empty string");
-            Assert.AreEqual ("  a  ", p1.XmlSchemaCollectionOwningSchema,
-                     "#21 Default value for XmlSchemaCollectionOwningSchema is an empty string");
-        }
-#endif
-#endif
 
         [Test]
         public void ParameterCollectionHashLookupParameterRenameBug()
@@ -892,7 +737,9 @@ namespace Npgsql.Tests
             param.IsNullable = true;
             param.ParameterName = "parameterName";
             param.SourceColumn = "source_column";
+#if NET451
             param.SourceVersion = DataRowVersion.Current;
+#endif
             param.NpgsqlValue = 5;
             param.SourceColumnNullMapping = false;
 
@@ -906,11 +753,27 @@ namespace Npgsql.Tests
             Assert.AreEqual(param.IsNullable, newParam.IsNullable);
             Assert.AreEqual(param.ParameterName, newParam.ParameterName);
             Assert.AreEqual(param.SourceColumn, newParam.SourceColumn);
+#if NET451
             Assert.AreEqual(param.SourceVersion, newParam.SourceVersion);
+#endif
             Assert.AreEqual(param.NpgsqlValue, newParam.NpgsqlValue);
             Assert.AreEqual(param.SourceColumnNullMapping, newParam.SourceColumnNullMapping);
             Assert.AreEqual(param.NpgsqlValue, newParam.NpgsqlValue);
 
+        }
+
+        [Test]
+        public void CleanName()
+        {
+            var param = new NpgsqlParameter();
+            var command = new NpgsqlCommand();
+            command.Parameters.Add(param);
+
+            param.ParameterName = "";
+
+            // These should not throw exceptions
+            Assert.AreEqual(0, command.Parameters.IndexOf(""));
+            Assert.AreEqual("", param.CleanName);
         }
     }
 }

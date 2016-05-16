@@ -1,8 +1,8 @@
-﻿#if !DNXCORE50
+﻿#if NET45 || NET451
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -33,13 +33,13 @@ namespace TlsClientStream
 {
     internal class MD5SHA1 : HashAlgorithm
     {
-        private MD5CryptoServiceProvider _md5;
-        private SHA1CryptoServiceProvider _sha1;
+        private MD5 _md5;
+        private SHA1 _sha1;
 
         public MD5SHA1()
         {
-            _md5 = new MD5CryptoServiceProvider();
-            _sha1 = new SHA1CryptoServiceProvider();
+            _md5 = MD5.Create();
+            _sha1 = SHA1.Create();
         }
 
         //

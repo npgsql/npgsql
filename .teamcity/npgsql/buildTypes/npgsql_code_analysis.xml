@@ -1,11 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<build-type xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="6a165b73-7419-4350-9072-3c7566612c97" xsi:noNamespaceSchemaLocation="http://www.jetbrains.com/teamcity/schemas/9.0/project-config.xsd">
+<build-type xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="6a165b73-7419-4350-9072-3c7566612c97" paused="true" xsi:noNamespaceSchemaLocation="http://www.jetbrains.com/teamcity/schemas/9.0/project-config.xsd">
   <name>Code Analysis</name>
   <description>Performs code inspections and submits to Coverity</description>
   <settings>
     <options>
       <option name="checkoutMode" value="ON_AGENT" />
     </options>
+    <disabled-settings>
+      <setting-ref ref="RUNNER_3" />
+    </disabled-settings>
     <parameters>
       <param name="system.Configuration" value="Release-net45" />
     </parameters>
@@ -17,6 +20,13 @@
           <param name="teamcity.step.mode" value="default" />
         </parameters>
       </runner>
+      <runner id="RUNNER_10" name="NuGet Restore (1)" type="simpleRunner">
+        <parameters>
+          <param name="command.executable" value="c:\dev\nuget\nuget.exe" />
+          <param name="command.parameters" value="restore Npgsql.sln" />
+          <param name="teamcity.step.mode" value="default" />
+        </parameters>
+      </runner>
       <runner id="RUNNER_3" name="NuGet Restore" type="jb.nuget.installer">
         <parameters>
           <param name="nuget.path" value="?NuGet.CommandLine.DEFAULT.nupkg" />
@@ -24,7 +34,7 @@
           <param name="nuget.use.restore" value="restore" />
           <param name="nugetCustomPath" value="?NuGet.CommandLine.DEFAULT.nupkg" />
           <param name="nugetPathSelector" value="?NuGet.CommandLine.DEFAULT.nupkg" />
-          <param name="sln.path" value="Npgsql2013.sln" />
+          <param name="sln.path" value="Npgsql.sln" />
           <param name="teamcity.step.mode" value="default" />
         </parameters>
       </runner>
@@ -59,7 +69,7 @@ https://scan.coverity.com/builds?project=npgsql%2Fnpgsql]]></param>
       </runner>
       <runner id="RUNNER_16" name="Resharper Code Inspections" type="dotnet-tools-inspectcode">
         <parameters>
-          <param name="dotnet-tools-inspectcode.solution" value="Npgsql2013.sln" />
+          <param name="dotnet-tools-inspectcode.solution" value="Npgsql.sln" />
           <param name="teamcity.step.mode" value="default" />
         </parameters>
       </runner>

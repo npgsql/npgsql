@@ -1,10 +1,34 @@
-﻿using System;
+﻿#region License
+// The PostgreSQL License
+//
+// Copyright (C) 2016 The Npgsql Development Team
+//
+// Permission to use, copy, modify, and distribute this software and its
+// documentation for any purpose, without fee, and without a written
+// agreement is hereby granted, provided that the above copyright notice
+// and this paragraph and the following two paragraphs appear in all copies.
+//
+// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
+// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
+// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
+// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
+// THE POSSIBILITY OF SUCH DAMAGE.
+//
+// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
+// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
+// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+#endregion
+
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.IO;
+using System.Threading.Tasks;
 using NUnit.Framework;
 
 using Npgsql;
@@ -16,111 +40,111 @@ namespace Npgsql.Tests
     [Explicit]
     public class SpeedTests : TestBase
     {
-        public SpeedTests(string backendVersion) : base(backendVersion) { }
-
-        private static readonly TimeSpan TestRunTime = new TimeSpan(0, 0, 10); // 10 seconds
+        static readonly TimeSpan TestRunTime = new TimeSpan(0, 0, 10); // 10 seconds
 
         [Test, Description("A minimal, simple, non-query scenario")]
         public void ExecuteUpdateNonQuery()
         {
+            using (var conn = OpenConnection())
             using (var metrics = TestMetrics.Start(TestRunTime, true))
             {
                 while (!metrics.TimesUp)
                 {
-                    ExecuteNonQuery("set lock_timeout = 1000");
+                    conn.ExecuteNonQuery("set lock_timeout = 1000");
                     metrics.IncrementIterations();
                 }
             }
         }
 
-#if !NET40
         [Test, Description("A minimal, simple, non-query scenario in async")]
         public async void ExecuteUpdateNonQueryAsync()
         {
+            using (var conn = OpenConnection())
             using (var metrics = TestMetrics.Start(TestRunTime, true))
             {
                 while (!metrics.TimesUp)
                 {
-                    await ExecuteNonQueryAsync("set lock_timeout = 1000");
+                    await conn.ExecuteNonQueryAsync("set lock_timeout = 1000");
                     metrics.IncrementIterations();
                 }
             }
         }
-#endif
 
         [Test, Description("A minimal, simple, scalar scenario")]
         public void ExecuteScalar()
         {
+            using (var conn = OpenConnection())
             using (var metrics = TestMetrics.Start(TestRunTime, true))
             {
                 while (!metrics.TimesUp)
                 {
-                    ExecuteScalar("SELECT 1 + 1");
+                    conn.ExecuteScalar("SELECT 1 + 1");
                     metrics.IncrementIterations();
                 }
             }
         }
 
-#if !NET40
         [Test, Description("A minimal, simple, scalar scenario in async")]
         public async void ExecuteScalarAsync()
         {
+            using (var conn = OpenConnection())
             using (var metrics = TestMetrics.Start(TestRunTime, true))
             {
                 while (!metrics.TimesUp)
                 {
-                    await ExecuteScalarAsync("SELECT 1 + 1");
+                    await conn.ExecuteScalarAsync("SELECT 1 + 1");
                     metrics.IncrementIterations();
                 }
             }
         }
-#endif
 
         [Test, Description("A minimal, simple reader scenario")]
         [TestCase(100)]
         public void ExecuteReader(int rows)
         {
-            for (var i = 0; i < rows; i++)
-                ExecuteNonQuery("INSERT INTO DATA (field_int4) VALUES (10)");
-            using (var metrics = TestMetrics.Start(TestRunTime, true))
+            using (var conn = OpenConnection())
             {
-                while (!metrics.TimesUp)
+                for (var i = 0; i < rows; i++)
+                    conn.ExecuteNonQuery("INSERT INTO DATA (field_int4) VALUES (10)");
+                using (var metrics = TestMetrics.Start(TestRunTime, true))
                 {
-                    using (var cmd = new NpgsqlCommand("SELECT field_int4 FROM data", Conn))
-                    using (var reader = cmd.ExecuteReader()) {
-                        while (reader.Read()) {}
+                    while (!metrics.TimesUp)
+                    {
+                        using (var cmd = new NpgsqlCommand("SELECT field_int4 FROM data", conn))
+                        using (var reader = cmd.ExecuteReader())
+                            while (reader.Read()) {}
+                        metrics.IncrementIterations();
                     }
-                    metrics.IncrementIterations();
                 }
             }
         }
 
-#if !NET40
         [Test, Description("A minimal, simple reader scenario in async")]
         [TestCase(100)]
         public async void ExecuteReaderAsync(int rows)
         {
-            for (var i = 0; i < rows; i++)
-                ExecuteNonQuery("INSERT INTO DATA (field_int4) VALUES (10)");
-            using (var metrics = TestMetrics.Start(TestRunTime, true))
+            using (var conn = OpenConnection())
             {
-                while (!metrics.TimesUp)
+                for (var i = 0; i < rows; i++)
+                    conn.ExecuteNonQuery("INSERT INTO DATA (field_int4) VALUES (10)");
+                using (var metrics = TestMetrics.Start(TestRunTime, true))
                 {
-                    using (var cmd = new NpgsqlCommand("SELECT field_int4 FROM data", Conn))
-                    using (var reader = await cmd.ExecuteReaderAsync())
+                    while (!metrics.TimesUp)
                     {
-                        while (await reader.ReadAsync()) { }
+                        using (var cmd = new NpgsqlCommand("SELECT field_int4 FROM data", conn))
+                        using (var reader = await cmd.ExecuteReaderAsync())
+                            while (await reader.ReadAsync()) { }
+                        metrics.IncrementIterations();
                     }
-                    metrics.IncrementIterations();
                 }
             }
         }
-#endif
 
         [Test, Description("A normal insert command with one parameter")]
         public void ParameterizedInsert()
         {
-            using (var command = Conn.CreateCommand())
+            using (var conn = OpenConnection())
+            using (var command = conn.CreateCommand())
             {
                 command.CommandType = CommandType.Text;
                 command.CommandText = "INSERT INTO data (field_text) values (:data)";
@@ -150,7 +174,8 @@ namespace Npgsql.Tests
         [Test, Description("A single decimal roundtrip test")]
         public void ParameterizedSelectDecimalRoundTrip()
         {
-            using (var command = Conn.CreateCommand())
+            using (var conn = OpenConnection())
+            using (var command = conn.CreateCommand())
             {
                 command.CommandType = CommandType.Text;
                 command.CommandText = "SELECT :data";
@@ -178,7 +203,8 @@ namespace Npgsql.Tests
         [Test, Description("A large bytea roundtrip test")]
         public void ParameterizedSelectByteaRoundTrip()
         {
-            using (var command = Conn.CreateCommand())
+            using (var conn = OpenConnection())
+            using (var command = conn.CreateCommand())
             {
                 command.CommandType = CommandType.Text;
                 command.CommandText = "SELECT :data";
@@ -211,7 +237,8 @@ namespace Npgsql.Tests
         [Test, Description("A bigint roundtrip test")]
         public void ParameterizedSelectBigIntRoundTrip()
         {
-            using (var command = Conn.CreateCommand())
+            using (var conn = OpenConnection())
+            using (var command = conn.CreateCommand())
             {
                 command.CommandType = CommandType.Text;
                 command.CommandText = "SELECT :data1, :data2, :data3, :data4, :data5, :data6, :data7, :data8, :data9, :data10";
@@ -246,7 +273,8 @@ namespace Npgsql.Tests
         [Test, Description("A bigint array roundtrip test")]
         public void ParameterizedSelectBigIntArrayRoundTrip()
         {
-            using (var command = Conn.CreateCommand())
+            using (var conn = OpenConnection())
+            using (var command = conn.CreateCommand())
             {
                 command.CommandType = CommandType.Text;
                 command.CommandText = "SELECT :data";
@@ -281,7 +309,8 @@ namespace Npgsql.Tests
         [Test, Description("A text array roundtrip test")]
         public void ParameterizedSelectArrayRoundTrip()
         {
-            using (var command = Conn.CreateCommand())
+            using (var conn = OpenConnection())
+            using (var command = conn.CreateCommand())
             {
                 command.CommandType = CommandType.Text;
                 command.CommandText = "SELECT :data";
@@ -290,7 +319,7 @@ namespace Npgsql.Tests
 
                 for (int i = 0 ; i < 1000 ; i++)
                 {
-                    data[i] = string.Format("A string with the number {0}, a ', a \", and a \\.", i);
+                    data[i] = $"A string with the number {i}, a ', a \", and a \\.";
                 }
 
                 NpgsqlParameter dataParameter = command.CreateParameter();
@@ -310,7 +339,7 @@ namespace Npgsql.Tests
                         {
                             command.ExecuteScalar();
                         }
-                        catch (NpgsqlException e)
+                        catch (PostgresException e)
                         {
                             if (e.Message.Length > 500)
                             {
@@ -331,7 +360,8 @@ namespace Npgsql.Tests
         [Test, Description("A bytea array roundtrip test")]
         public void ParameterizedSelectByteaArrayRoundTrip()
         {
-            using (var command = Conn.CreateCommand())
+            using (var conn = OpenConnection())
+            using (var command = conn.CreateCommand())
             {
                 command.CommandType = CommandType.Text;
                 command.CommandText = "SELECT :data";
@@ -360,7 +390,7 @@ namespace Npgsql.Tests
                         {
                             command.ExecuteScalar();
                         }
-                        catch (NpgsqlException e)
+                        catch (PostgresException e)
                         {
                             if (e.Message.Length > 500)
                             {
@@ -381,7 +411,8 @@ namespace Npgsql.Tests
         [Test, Description("A decimal array roundtrip test")]
         public void ParameterizedSelectDecimalArrayRoundTrip()
         {
-            using (var command = Conn.CreateCommand())
+            using (var conn = OpenConnection())
+            using (var command = conn.CreateCommand())
             {
                 command.CommandType = CommandType.Text;
                 command.CommandText = "SELECT :data";
@@ -416,7 +447,8 @@ namespace Npgsql.Tests
         [Test, Description("A money array roundtrip test")]
         public void ParameterizedSelectMoneyArrayRoundTrip()
         {
-            using (var command = Conn.CreateCommand())
+            using (var conn = OpenConnection())
+            using (var command = conn.CreateCommand())
             {
                 command.CommandType = CommandType.Text;
                 command.CommandText = "SELECT :data";
@@ -454,7 +486,7 @@ namespace Npgsql.Tests
         [TestCase(true), TestCase(false)]
         public void ConnectWithPool(bool withPool)
         {
-            NpgsqlConnectionStringBuilder csb = new NpgsqlConnectionStringBuilder(Conn.ConnectionString);
+            NpgsqlConnectionStringBuilder csb = new NpgsqlConnectionStringBuilder(ConnectionString);
             csb.Pooling = withPool;
             String conStr = csb.ConnectionString;
             using (var metrics = TestMetrics.Start(TestRunTime, true))
@@ -472,7 +504,8 @@ namespace Npgsql.Tests
         [Test, Description("Many parameter substitution test")]
         public void ParameterizedPrepareManyFields()
         {
-            using (var command = Conn.CreateCommand())
+            using (var conn = OpenConnection())
+            using (var command = conn.CreateCommand())
             {
                 StringWriter sql = new StringWriter();
 
@@ -532,6 +565,49 @@ namespace Npgsql.Tests
                     }
                 }
             }
+        }
+
+        [Test]
+        public void PoolTest()
+        {
+            var maxNumThreads = 8;
+            var numIterations = 100000;
+            var maxPoolSize = 4;
+
+            Console.WriteLine($"Testing {numIterations} across up to {maxNumThreads} threads with max pool size {maxPoolSize}");
+            for (var i = 1; i <= maxNumThreads; i++)
+            {
+                var iterations = numIterations / i;
+                Console.WriteLine($"{i} threads ({iterations} iterations): {PoolTestCase(i, iterations, maxPoolSize)}");
+            }
+        }
+
+        TimeSpan PoolTestCase(int numThreads, int numIterations, int maxPoolSize)
+        {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) {
+                 MaxPoolSize = maxPoolSize,
+                 Host = "mammoth",
+                 Port=5432
+            };
+
+            //connString = new NpgsqlConnectionStringBuilder("Host=mammoth;Port=5432;Database=npgsql_tests;Username=npgsql_tests;Port=npgsql_tests;MaxPoolSize=" + maxPoolSize);
+            Func<TimeSpan> testMethod = () =>
+            {
+                var openWatch = new Stopwatch();
+                for (var i = 0; i < numIterations; i++)
+                {
+                    openWatch.Start();
+                    var conn = new NpgsqlConnection("Host=mammoth;Port=5432;Database=npgsql_tests;Username=npgsql_tests;Password=npgsql_tests;MaxPoolSize=" + maxPoolSize);
+                    openWatch.Stop();
+                    conn.Close();
+                }
+                return openWatch.Elapsed;
+            };
+
+            var tasks = Enumerable.Range(0, numThreads).Select(i => Task.Run(testMethod)).ToArray();
+            Task.WaitAll(tasks);
+
+            return new TimeSpan(tasks.Sum(t => t.Result.Ticks));
         }
 
         #region Setup / Teardown / Utils

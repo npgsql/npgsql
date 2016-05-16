@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -40,7 +40,7 @@ namespace Npgsql
         #region Fields and Properties
 
         NpgsqlConnector _connector;
-        NpgsqlBuffer _buf;
+        ReadBuffer _buf;
         TypeHandlerRegistry _registry;
         bool _isConsumed, _isDisposed;
         int _leftToReadInDataMsg, _columnLen;
@@ -50,7 +50,7 @@ namespace Npgsql
         /// <summary>
         /// The number of columns, as returned from the backend in the CopyInResponse.
         /// </summary>
-        internal int NumColumns { get; private set; }
+        internal int NumColumns { get; }
 
         #endregion
 
@@ -59,19 +59,19 @@ namespace Npgsql
         internal NpgsqlBinaryExporter(NpgsqlConnector connector, string copyToCommand)
         {
             _connector = connector;
-            _buf = connector.Buffer;
+            _buf = connector.ReadBuffer;
             _registry = connector.TypeHandlerRegistry;
             _columnLen = int.MinValue;   // Mark that the (first) column length hasn't been read yet
             _column = -1;
 
             try
             {
-                _connector.SendSingleMessage(new QueryMessage(copyToCommand));
+                _connector.SendQuery(copyToCommand);
 
                 // TODO: Failure will break the connection (e.g. if we get CopyOutResponse), handle more gracefully
                 var copyOutResponse = _connector.ReadExpecting<CopyOutResponseMessage>();
                 if (!copyOutResponse.IsBinary) {
-                    throw new ArgumentException("copyToCommand triggered a text transfer, only binary is allowed", "copyToCommand");
+                    throw new ArgumentException("copyToCommand triggered a text transfer, only binary is allowed", nameof(copyToCommand));
                 }
                 NumColumns = copyOutResponse.NumColumns;
                 ReadHeader();
@@ -89,7 +89,7 @@ namespace Npgsql
             var headerLen = NpgsqlRawCopyStream.BinarySignature.Length + 4 + 4;
             _buf.Ensure(headerLen);
             if (NpgsqlRawCopyStream.BinarySignature.Any(t => _buf.ReadByte() != t)) {
-                throw new Exception("Invalid COPY binary signature at beginning!");
+                throw new NpgsqlException("Invalid COPY binary signature at beginning!");
             }
             var flags = _buf.ReadInt32();
             if (flags != 0) {
@@ -199,7 +199,7 @@ namespace Npgsql
                     throw new InvalidCastException("Column is null");
                 }
 
-                var result = handler.Read<T>(_buf, _columnLen);
+                var result = handler.ReadFully<T>(_buf, _columnLen);
                 _leftToReadInDataMsg -= _columnLen;
                 _columnLen = int.MinValue;   // Mark that the (next) column length hasn't been read yet
                 _column++;

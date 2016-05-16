@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -22,142 +22,43 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
 using System.Diagnostics.Contracts;
-using System.Linq;
-using System.Text;
+using System.IO;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
-using System.Data;
-using System.Diagnostics.CodeAnalysis;
-using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using AsyncRewriter;
+using JetBrains.Annotations;
+using Npgsql.TypeHandlers;
 
 namespace Npgsql
 {
-    interface ITypeReader<T> {}
-
-    #region Simple type handler
-
-    interface ISimpleTypeWriter
-    {
-        int ValidateAndGetLength(object value, NpgsqlParameter parameter);
-        void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter);
-    }
-
-    /// <summary>
-    /// A handler which can read small, usually fixed-length values.
-    /// </summary>
-    /// <typeparam name="T">the type of the value returned by this type handler</typeparam>
-    //[ContractClass(typeof(ITypeHandlerContract<>))]
-    // ReSharper disable once TypeParameterCanBeVariant
-    interface ISimpleTypeReader<T> : ITypeReader<T>
-    {
-        /// <summary>
-        /// The entire data required to read the value is expected to be in the buffer.
-        /// </summary>
-        /// <param name="buf"></param>
-        /// <param name="len"></param>
-        /// <param name="fieldDescription"></param>
-        /// <returns></returns>
-        T Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription=null);
-    }
-
-    #endregion
-
-    [ContractClass(typeof(IChunkingTypeWriterContracts))]
-    interface IChunkingTypeWriter
-    {
-        /// <param name="value">the value to be examined</param>
-        /// <param name="lengthCache">a cache in which to store length(s) of values to be written</param>
-        /// <param name="parameter">
-        /// the <see cref="NpgsqlParameter"/> containing <paramref name="value"/>. Consulted for settings
-        /// which impact how to send the parameter, e.g. <see cref="NpgsqlParameter.Size"/>. Can be null.
-        /// </param>
-        int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter);
-
-        /// <param name="value">the value to be written</param>
-        /// <param name="buf"></param>
-        /// <param name="lengthCache">a cache in which to store length(s) of values to be written</param>
-        /// <param name="parameter">
-        /// the <see cref="NpgsqlParameter"/> containing <paramref name="value"/>. Consulted for settings
-        /// which impact how to send the parameter, e.g. <see cref="NpgsqlParameter.Size"/>. Can be null.
-        /// <see cref="NpgsqlParameter.Size"/>.
-        /// </param>
-        void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter);
-        bool Write(ref DirectBuffer directBuf);
-    }
-
-    [ContractClassFor(typeof(IChunkingTypeWriter))]
-    // ReSharper disable once InconsistentNaming
-    class IChunkingTypeWriterContracts : IChunkingTypeWriter
-    {
-        public int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
-        {
-            Contract.Requires(value != null);
-            return default(int);
-        }
-
-        public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
-        {
-            Contract.Requires(buf != null);
-            Contract.Requires(value != null);
-        }
-
-        public bool Write(ref DirectBuffer directBuf)
-        {
-            Contract.Ensures(Contract.Result<bool>() == false || directBuf.Buffer == null);
-            return default(bool);
-        }
-    }
-
-    /// <summary>
-    /// A type handler which handles values of totally arbitrary length, and therefore supports chunking them.
-    /// </summary>
-    [ContractClass(typeof(IChunkingTypeReaderContracts<>))]
-    // ReSharper disable once TypeParameterCanBeVariant
-    interface IChunkingTypeReader<T> : ITypeReader<T>
-    {
-        void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription=null);
-        bool Read(out T result);
-    }
-
-    [ContractClassFor(typeof(IChunkingTypeReader<>))]
-    // ReSharper disable once InconsistentNaming
-    class IChunkingTypeReaderContracts<T> : IChunkingTypeReader<T>
-    {
-        public void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            Contract.Requires(buf != null);
-        }
-
-        public bool Read(out T result)
-        {
-            //Contract.Ensures(!completed || Contract.ValueAtReturn(out result) == default(T));
-            result = default(T);
-            return default(bool);
-        }
-    }
+    interface ITypeHandler<T> {}
 
     internal abstract partial class TypeHandler
     {
-        internal string PgName { get; set; }
-        internal uint OID { get; set; }
-        internal NpgsqlDbType NpgsqlDbType { get; set; }
-        internal abstract Type GetFieldType(FieldDescription fieldDescription=null);
-        internal abstract Type GetProviderSpecificFieldType(FieldDescription fieldDescription=null);
+        internal IBackendType BackendType { get; }
 
-        internal abstract object ReadValueAsObject(DataRowMessage row, FieldDescription fieldDescription);
-
-        internal virtual object ReadPsvAsObject(DataRowMessage row, FieldDescription fieldDescription)
+        internal TypeHandler(IBackendType backendType)
         {
-            return ReadValueAsObject(row, fieldDescription);
+            BackendType = backendType;
         }
 
-        public virtual bool PreferTextWrite { get { return false; } }
+        internal abstract Type GetFieldType(FieldDescription fieldDescription = null);
+        internal abstract Type GetProviderSpecificFieldType(FieldDescription fieldDescription = null);
+
+        internal abstract object ReadValueAsObjectFully(DataRowMessage row, FieldDescription fieldDescription);
+
+        internal virtual object ReadPsvAsObjectFully(DataRowMessage row, FieldDescription fieldDescription)
+        {
+            return ReadValueAsObjectFully(row, fieldDescription);
+        }
+
+        internal virtual bool PreferTextWrite => false;
 
         [RewriteAsync]
-        internal T Read<T>(DataRowMessage row, int len, FieldDescription fieldDescription = null)
+        internal T ReadFully<T>(DataRowMessage row, int len, FieldDescription fieldDescription = null)
         {
             Contract.Requires(row.PosInColumn == 0);
             Contract.Ensures(row.PosInColumn == row.ColumnLen);
@@ -165,7 +66,7 @@ namespace Npgsql
             T result;
             try
             {
-                result = Read<T>(row.Buffer, len, fieldDescription);
+                result = ReadFully<T>(row.Buffer, len, fieldDescription);
             }
             finally
             {
@@ -175,78 +76,157 @@ namespace Npgsql
             return result;
         }
 
-        [RewriteAsync]
-        internal T Read<T>(NpgsqlBuffer buf, int len, FieldDescription fieldDescription=null)
-        {
-            T result;
+        internal abstract T ReadFully<T>(ReadBuffer buf, int len, FieldDescription fieldDescription = null);
+        internal abstract Task<T> ReadFullyAsync<T>(ReadBuffer buf, int len, CancellationToken cancellationToken, FieldDescription fieldDescription = null);
 
-            var asSimpleReader = this as ISimpleTypeReader<T>;
-            if (asSimpleReader != null)
-            {
-                buf.Ensure(len);
-                result = asSimpleReader.Read(buf, len, fieldDescription);
-            }
-            else
-            {
-                var asChunkingReader = this as IChunkingTypeReader<T>;
-                if (asChunkingReader == null) {
-                    if (fieldDescription == null)
-                        throw new InvalidCastException("Can't cast database type to " + typeof(T).Name);
-                    throw new InvalidCastException(String.Format("Can't cast database type {0} to {1}", fieldDescription.Handler.PgName, typeof(T).Name));
-                }
+        /// <summary>
+        /// Creates a type handler for arrays of this handler's type.
+        /// </summary>
+        internal abstract ArrayHandler CreateArrayHandler(IBackendType arrayBackendType);
 
-                asChunkingReader.PrepareRead(buf, len, fieldDescription);
-                while (!asChunkingReader.Read(out result)) {
-                    buf.ReadMore();
-                }
-            }
+        /// <summary>
+        /// Creates a type handler for ranges of this handler's type.
+        /// </summary>
+        internal abstract TypeHandler CreateRangeHandler(IBackendType rangeBackendType);
 
-            return result;
-        }
-
+        /// <summary>
+        ///
+        /// </summary>
+        /// <param name="clrType"></param>
+        /// <returns></returns>
         protected Exception CreateConversionException(Type clrType)
         {
-            return new InvalidCastException(string.Format("Can't convert .NET type {0} to PostgreSQL {1}", clrType, PgName));
+            return new InvalidCastException($"Can't convert .NET type {clrType} to PostgreSQL {PgDisplayName}");
         }
 
+        /// <summary>
+        ///
+        /// </summary>
+        /// <param name="clrType"></param>
+        /// <returns></returns>
         protected Exception CreateConversionButNoParamException(Type clrType)
         {
-            return new InvalidCastException(string.Format("Can't convert .NET type {0} to PostgreSQL {1} within an array", clrType, PgName));
+            return new InvalidCastException($"Can't convert .NET type '{clrType}' to PostgreSQL '{PgDisplayName}' within an array");
         }
+
+        internal string PgDisplayName => BackendType.DisplayName;
 
         [ContractInvariantMethod]
         void ObjectInvariants()
         {
-            Contract.Invariant(!(this is IChunkingTypeWriter && this is ISimpleTypeWriter));
+            Contract.Invariant(this is ISimpleTypeHandler ^ this is IChunkingTypeHandler);
         }
     }
 
     internal abstract class TypeHandler<T> : TypeHandler
     {
-        internal override Type GetFieldType(FieldDescription fieldDescription)
+        internal TypeHandler(IBackendType backendType) : base(backendType) {}
+
+        internal override Type GetFieldType(FieldDescription fieldDescription = null)
         {
             return typeof(T);
         }
 
-        internal override Type GetProviderSpecificFieldType(FieldDescription fieldDescription)
+        internal override Type GetProviderSpecificFieldType(FieldDescription fieldDescription = null)
         {
             return typeof(T);
         }
 
-        internal override object ReadValueAsObject(DataRowMessage row, FieldDescription fieldDescription)
+        internal override object ReadValueAsObjectFully(DataRowMessage row, FieldDescription fieldDescription)
         {
-            return Read<T>(row, row.ColumnLen, fieldDescription);
+            return ReadFully<T>(row, row.ColumnLen, fieldDescription);
         }
 
-        internal override object ReadPsvAsObject(DataRowMessage row, FieldDescription fieldDescription)
-        {
-            return Read<T>(row, row.ColumnLen, fieldDescription);
-        }
+        internal override ArrayHandler CreateArrayHandler(IBackendType arrayBackendType)
+            => new ArrayHandler<T>(arrayBackendType, this);
+
+        internal override TypeHandler CreateRangeHandler(IBackendType rangeBackendType)
+            => new RangeHandler<T>(rangeBackendType, this);
 
         [ContractInvariantMethod]
         void ObjectInvariants()
         {
-            Contract.Invariant(this is ISimpleTypeReader<T> || this is IChunkingTypeReader<T>);
+            Contract.Invariant(this is ISimpleTypeHandler ^ this is IChunkingTypeHandler);
+        }
+    }
+
+    internal interface ISimpleTypeHandler
+    {
+        int ValidateAndGetLength(object value, [CanBeNull] NpgsqlParameter parameter);
+        void Write(object value, WriteBuffer buf, [CanBeNull] NpgsqlParameter parameter);
+        object ReadAsObject(ReadBuffer buf, int len, FieldDescription fieldDescription = null);
+    }
+
+    internal abstract partial class SimpleTypeHandler<T> : TypeHandler<T>, ISimpleTypeHandler<T>
+    {
+        internal SimpleTypeHandler(IBackendType backendType) : base(backendType) { }
+        public abstract T Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null);
+        public abstract int ValidateAndGetLength(object value, NpgsqlParameter parameter);
+        public abstract void Write(object value, WriteBuffer buf, NpgsqlParameter parameter);
+
+        /// <remarks>
+        /// A type handler may implement ISimpleTypeHandler for types other than its primary one.
+        /// This is why this method has type parameter T2 and not T.
+        /// </remarks>
+        [RewriteAsync(true)]
+        internal override T2 ReadFully<T2>(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        {
+            buf.Ensure(len);
+            var asTypedHandler = this as ISimpleTypeHandler<T2>;
+            if (asTypedHandler == null)
+                throw new InvalidCastException(fieldDescription == null
+                    ? "Can't cast database type to " + typeof(T2).Name
+                    : $"Can't cast database type {fieldDescription.Handler.PgDisplayName} to {typeof(T2).Name}"
+                );
+
+            return asTypedHandler.Read(buf, len, fieldDescription);
+        }
+
+        public object ReadAsObject(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        {
+            return Read(buf, len, fieldDescription);
+        }
+    }
+
+    /// <summary>
+    /// Type handlers that wish to support reading other types in additional to the main one can
+    /// implement this interface for all those types.
+    /// </summary>
+    interface ISimpleTypeHandler<T> : ISimpleTypeHandler, ITypeHandler<T>
+    {
+        T Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null);
+    }
+
+    /// <summary>
+    /// A type handler that supports a provider-specific value which is different from the regular value (e.g.
+    /// NpgsqlDate and DateTime)
+    /// </summary>
+    /// <typeparam name="T">the regular value type returned by this type handler</typeparam>
+    /// <typeparam name="TPsv">the type of the provider-specific value returned by this type handler</typeparam>
+    internal abstract class SimpleTypeHandlerWithPsv<T, TPsv> : SimpleTypeHandler<T>, ISimpleTypeHandler<TPsv>, ITypeHandlerWithPsv
+    {
+        internal SimpleTypeHandlerWithPsv(IBackendType backendType) : base(backendType) { }
+
+        internal override Type GetProviderSpecificFieldType(FieldDescription fieldDescription = null)
+        {
+            return typeof(TPsv);
+        }
+
+        internal override object ReadPsvAsObjectFully(DataRowMessage row, FieldDescription fieldDescription)
+        {
+            return ReadFully<TPsv>(row, row.ColumnLen, fieldDescription);
+        }
+
+        internal abstract TPsv ReadPsv(ReadBuffer buf, int len, FieldDescription fieldDescription);
+
+        TPsv ISimpleTypeHandler<TPsv>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
+        {
+            return ReadPsv(buf, len, fieldDescription);
+        }
+
+        internal override ArrayHandler CreateArrayHandler(IBackendType arrayBackendType)
+        {
+            return new ArrayHandlerWithPsv<T, TPsv>(arrayBackendType, this);
         }
     }
 
@@ -256,22 +236,118 @@ namespace Npgsql
     /// </summary>
     internal interface ITypeHandlerWithPsv {}
 
-    /// <summary>
-    /// A type handler that supports a provider-specific value which is different from the regular value (e.g.
-    /// NpgsqlDate and DateTime)
-    /// </summary>
-    /// <typeparam name="T">the regular value type returned by this type handler</typeparam>
-    /// <typeparam name="TPsv">the type of the provider-specific value returned by this type handler</typeparam>
-    internal abstract class TypeHandlerWithPsv<T, TPsv> : TypeHandler<T>, ITypeHandlerWithPsv
+    internal interface IChunkingTypeHandler
     {
-        internal override Type GetProviderSpecificFieldType(FieldDescription fieldDescription)
+        void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null);
+        int ValidateAndGetLength(object value, ref LengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter);
+        void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter);
+        bool Write(ref DirectBuffer directBuf);
+        bool ReadAsObject(out object result);
+    }
+
+    [ContractClass(typeof(ChunkingTypeHandlerContracts<>))]
+    internal abstract partial class ChunkingTypeHandler<T> : TypeHandler<T>, IChunkingTypeHandler<T>
+    {
+        internal ChunkingTypeHandler(IBackendType backendType) : base(backendType) { }
+
+        public abstract void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null);
+        public abstract bool Read(out T result);
+
+        /// <param name="value">the value to be examined</param>
+        /// <param name="lengthCache">a cache in which to store length(s) of values to be written</param>
+        /// <param name="parameter">
+        /// the <see cref="NpgsqlParameter"/> containing <paramref name="value"/>. Consulted for settings
+        /// which impact how to send the parameter, e.g. <see cref="NpgsqlParameter.Size"/>. Can be null.
+        /// </param>
+        public abstract int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter);
+
+        /// <param name="value">the value to be written</param>
+        /// <param name="buf"></param>
+        /// <param name="lengthCache">a cache in which to store length(s) of values to be written</param>
+        /// <param name="parameter">
+        /// the <see cref="NpgsqlParameter"/> containing <paramref name="value"/>. Consulted for settings
+        /// which impact how to send the parameter, e.g. <see cref="NpgsqlParameter.Size"/>. Can be null.
+        /// <see cref="NpgsqlParameter.Size"/>.
+        /// </param>
+        public abstract void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter);
+
+        public abstract bool Write(ref DirectBuffer directBuf);
+
+        /// <remarks>
+        /// A type handler may implement IChunkingTypeHandler for types other than its primary one.
+        /// This is why this method has type parameter T2 and not T.
+        /// </remarks>
+        [RewriteAsync(true)]
+        internal override T2 ReadFully<T2>(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
-            return typeof (TPsv);
+            var asTypedHandler = this as IChunkingTypeHandler<T2>;
+            if (asTypedHandler == null)
+                throw new InvalidCastException(fieldDescription == null
+                    ? "Can't cast database type to " + typeof(T2).Name
+                    : $"Can't cast database type {fieldDescription.Handler.PgDisplayName} to {typeof(T2).Name}"
+                );
+
+            asTypedHandler.PrepareRead(buf, len, fieldDescription);
+            T2 result;
+            while (!asTypedHandler.Read(out result))
+            {
+                buf.ReadMore();
+            }
+            return result;
         }
 
-        internal override object ReadPsvAsObject(DataRowMessage row, FieldDescription fieldDescription)
+        public bool ReadAsObject(out object result)
         {
-            return Read<TPsv>(row, row.ColumnLen, fieldDescription);
+            T result2;
+            var completed = Read(out result2);
+            result = result2;
+            return completed;
+        }
+    }
+
+    /// <summary>
+    /// Type handlers that wish to support reading other types in additional to the main one can
+    /// implement this interface for all those types.
+    /// </summary>
+    interface IChunkingTypeHandler<T> : IChunkingTypeHandler, ITypeHandler<T>
+    {
+        bool Read(out T result);
+    }
+
+    [ContractClassFor(typeof(ChunkingTypeHandler<>))]
+    // ReSharper disable once InconsistentNaming
+    class ChunkingTypeHandlerContracts<T> : ChunkingTypeHandler<T>
+    {
+        internal ChunkingTypeHandlerContracts(IBackendType backendType) : base(backendType) { }
+
+        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        {
+            Contract.Requires(buf != null);
+        }
+
+        public override bool Read(out T result)
+        {
+            //Contract.Ensures(!completed || Contract.ValueAtReturn(out result) == default(T));
+            result = default(T);
+            return default(bool);
+        }
+
+        public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter = null)
+        {
+            Contract.Requires(value != null);
+            return default(int);
+        }
+
+        public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter = null)
+        {
+            Contract.Requires(buf != null);
+            Contract.Requires(value != null);
+        }
+
+        public override bool Write(ref DirectBuffer directBuf)
+        {
+            Contract.Ensures(Contract.Result<bool>() == false || directBuf.Buffer == null);
+            return default(bool);
         }
     }
 
@@ -302,120 +378,6 @@ namespace Npgsql
         public SafeReadException(Exception innerException) : base("", innerException)
         {
             Contract.Requires(innerException != null);
-        }
-    }
-
-    [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
-    class TypeMappingAttribute : Attribute
-    {
-        /// <summary>
-        /// Maps an Npgsql type handler to a PostgreSQL type.
-        /// </summary>
-        /// <param name="pgName">A PostgreSQL type name as it appears in the pg_type table.</param>
-        /// <param name="npgsqlDbType">
-        /// A member of <see cref="NpgsqlDbType"/> which represents this PostgreSQL type.
-        /// An <see cref="NpgsqlParameter"/> with <see cref="NpgsqlParameter.NpgsqlDbType"/> set to
-        /// this value will be sent with the type handler mapped by this attribute.
-        /// </param>
-        /// <param name="dbTypes">
-        /// All members of <see cref="DbType"/> which represent this PostgreSQL type.
-        /// An <see cref="NpgsqlParameter"/> with <see cref="NpgsqlParameter.DbType"/> set to
-        /// one of these values will be sent with the type handler mapped by this attribute.
-        /// </param>
-        /// <param name="types">
-        /// Any .NET type which corresponds to this PostgreSQL type.
-        /// An <see cref="NpgsqlParameter"/> with <see cref="NpgsqlParameter.Value"/> set to
-        /// one of these values will be sent with the type handler mapped by this attribute.
-        /// </param>
-        /// <param name="inferredDbType">
-        /// The "primary" <see cref="DbType"/> which best corresponds to this PostgreSQL type.
-        /// When <see cref="NpgsqlParameter.NpgsqlDbType"/> or <see cref="NpgsqlParameter.Value"/>
-        /// set, <see cref="NpgsqlParameter.DbType"/> will be set to this value.
-        /// </param>
-        internal TypeMappingAttribute(string pgName, NpgsqlDbType? npgsqlDbType, DbType[] dbTypes, Type[] types, DbType? inferredDbType)
-        {
-            if (String.IsNullOrWhiteSpace(pgName))
-                throw new ArgumentException("pgName can't be empty", "pgName");
-            Contract.EndContractBlock();
-
-            PgName = pgName;
-            NpgsqlDbType = npgsqlDbType;
-            DbTypes = dbTypes ?? new DbType[0];
-            Types = types ?? new Type[0];
-            InferredDbType = inferredDbType;
-        }
-
-        internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, DbType[] dbTypes, Type[] types, DbType inferredDbType)
-            : this(pgName, (NpgsqlDbType?)npgsqlDbType, dbTypes, types, inferredDbType) {}
-
-        //internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, DbType[] dbTypes=null, Type type=null)
-        //    : this(pgName, npgsqlDbType, dbTypes, type == null ? null : new[] { type }) {}
-
-        internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType)
-            : this(pgName, npgsqlDbType, new DbType[0], new Type[0], null) { }
-
-        internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, DbType inferredDbType)
-            : this(pgName, npgsqlDbType, new DbType[0], new Type[0], inferredDbType) { }
-
-        internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, DbType[] dbTypes, Type type, DbType inferredDbType)
-            : this(pgName, npgsqlDbType, dbTypes, new[] { type }, inferredDbType) { }
-
-        internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, DbType[] dbTypes)
-            : this(pgName, npgsqlDbType, dbTypes, new Type[0], null)
-        { }
-
-        internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, DbType dbType, Type[] types)
-            : this(pgName, npgsqlDbType, new[] { dbType }, types, dbType) {}
-
-        internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, DbType dbType, Type type=null)
-            : this(pgName, npgsqlDbType, new[] { dbType }, type == null ? null : new[] { type }, dbType) {}
-
-        internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, Type[] types, DbType inferredDbType)
-            : this(pgName, npgsqlDbType, new DbType[0], types, inferredDbType) { }
-
-        internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, Type[] types)
-            : this(pgName, npgsqlDbType, new DbType[0], types, null) { }
-
-        internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, Type type, DbType inferredDbType)
-            : this(pgName, npgsqlDbType, new DbType[0], new[] { type }, inferredDbType) { }
-
-        internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, Type type)
-            : this(pgName, npgsqlDbType, new DbType[0], new[] { type }, null) {}
-
-        /// <summary>
-        /// Read-only parameter
-        /// </summary>
-        internal TypeMappingAttribute(string pgName)
-            : this(pgName, null, null, null, null) {}
-
-        internal string PgName { get; private set; }
-        internal NpgsqlDbType? NpgsqlDbType { get; private set; }
-        internal DbType[] DbTypes { get; private set; }
-        internal Type[] Types { get; private set; }
-        internal DbType? InferredDbType { get; private set; }
-
-        public override string ToString()
-        {
-            var sb = new StringBuilder();
-            sb.AppendFormat("[{0} NpgsqlDbType={1}", PgName, NpgsqlDbType);
-            if (DbTypes.Length > 0) {
-                sb.Append(" DbTypes=");
-                sb.Append(String.Join(",", DbTypes.Select(t => t.ToString())));
-            }
-            if (Types.Length > 0) {
-                sb.Append(" Types=");
-                sb.Append(String.Join(",", Types.Select(t => t.Name)));
-            }
-            sb.AppendFormat("]");
-            return sb.ToString();
-        }
-
-        [ContractInvariantMethod]
-        void ObjectInvariants()
-        {
-            Contract.Invariant(!String.IsNullOrWhiteSpace(PgName));
-            Contract.Invariant(Types != null);
-            Contract.Invariant(DbTypes != null);
         }
     }
 }

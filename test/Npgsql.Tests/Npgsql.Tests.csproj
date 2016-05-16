@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="12.0">
   <PropertyGroup>
     <ProjectGuid>{E9C258D7-0D8E-4E6A-9857-5C6438591755}</ProjectGuid>
     <RootNamespace>Npgsql.Tests</RootNamespace>
@@ -11,6 +11,11 @@
     <AssemblyName>Npgsql.Tests</AssemblyName>
     <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\..\</SolutionDir>
     <RestorePackages>true</RestorePackages>
+    <TargetFrameworkProfile />
+    <TargetFrameworkVersion>v4.5.1</TargetFrameworkVersion>
+    <!-- The following stops VS from complaining about runtimes in project.json, see
+             https://github.com/Microsoft/msbuild/issues/394 -->
+    <CopyNuGetImplementations>false</CopyNuGetImplementations>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <OutputPath>bin\Debug\</OutputPath>
@@ -21,8 +26,7 @@
     </RootNamespace>
     <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
     <WarningLevel>4</WarningLevel>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
-    <DefineConstants>TRACE;DEBUG;NET45</DefineConstants>
+    <DefineConstants>TRACE;DEBUG;NET451</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <OutputPath>bin\Release\</OutputPath>
@@ -31,17 +35,9 @@
     <Optimize>true</Optimize>
     <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
     <WarningLevel>4</WarningLevel>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
-    <DefineConstants>TRACE;NET45</DefineConstants>
+    <DefineConstants>TRACE;NET451</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="NLog">
-      <HintPath>..\..\packages\NLog.3.2.0.0\lib\net40\NLog.dll</HintPath>
-    </Reference>
-    <Reference Include="nunit.framework, Version=2.6.4.14350, Culture=neutral, PublicKeyToken=96d09a1eb7f44a77, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\packages\NUnit.2.6.4\lib\nunit.framework.dll</HintPath>
-    </Reference>
     <Reference Include="System.Core">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
     </Reference>
@@ -56,10 +52,14 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ConnectionPoolTests.cs" />
+    <Compile Include="CommandBuilderTests.cs" />
+    <Compile Include="ReaderSchemaTableTests.cs" />
+    <Compile Include="SchemaTests.cs" />
+    <Compile Include="PoolTests.cs" />
     <Compile Include="ConnectionStringBuilderTests.cs" />
     <Compile Include="LargeObjectTests.cs" />
     <Compile Include="NLogLoggingProvider.cs" />
+    <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SqlQueryParserTests.cs" />
     <Compile Include="TransactionTests.cs" />
@@ -68,6 +68,7 @@
     <Compile Include="Types\BitStringTests.cs" />
     <Compile Include="Types\ByteaTests.cs" />
     <Compile Include="CopyTests.cs" />
+    <Compile Include="Types\CompositeTests.cs" />
     <Compile Include="Types\DateTimeTests.cs" />
     <Compile Include="FunctionTests.cs">
       <SubType>Code</SubType>
@@ -92,12 +93,10 @@
     <Compile Include="SystemTransactionTests.cs" />
     <Compile Include="TestUtil.cs" />
     <Compile Include="Types\MiscTypeTests.cs" />
+    <Compile Include="Types\PostgisTests.cs" />
     <Compile Include="Types\RangeTests.cs" />
     <Compile Include="Types\TextTests.cs" />
     <Compile Include="TypesTests.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Npgsql\Npgsql.csproj">

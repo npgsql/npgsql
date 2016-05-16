@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -41,19 +41,27 @@ namespace Npgsql.TypeHandlers
     /// </summary>
     internal class UnrecognizedTypeHandler : TextHandler
     {
-        internal UnrecognizedTypeHandler()
-        {
-            OID = 0;
-            PgName = "<unknown>";
-        }
+        static readonly IBackendType UnrecognizedBackendType = new UnrecognizedBackendType();
 
-        internal override void PrepareRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        internal UnrecognizedTypeHandler() : base(UnrecognizedBackendType) {}
+
+        internal override void PrepareRead(ReadBuffer buf, FieldDescription fieldDescription, int len)
         {
             if (fieldDescription.IsBinaryFormat) {
                 buf.Skip(len);
-                throw new SafeReadException(new NotSupportedException(String.Format("The field '{0}' has a type currently unknown to Npgsql (OID {1}). You can retrieve it as a string by marking it as unknown, please see the FAQ.", fieldDescription.Name, fieldDescription.OID)));
+                throw new SafeReadException(new NotSupportedException($"The field '{fieldDescription.Name}' has a type currently unknown to Npgsql (OID {fieldDescription.OID}). You can retrieve it as a string by marking it as unknown, please see the FAQ."));
             }
             base.PrepareRead(buf, fieldDescription, len);
         }
+    }
+
+    class UnrecognizedBackendType : IBackendType
+    {
+        public string Namespace => "";
+        public string Name => "<unknown>";
+        public uint OID => 0;
+        public NpgsqlDbType? NpgsqlDbType => null;
+        public string FullName => "<unknown>";
+        public string DisplayName => "<unknown>";
     }
 }

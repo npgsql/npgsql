@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -36,21 +36,21 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-numeric.html
     /// </remarks>
     [TypeMapping("float4", NpgsqlDbType.Real, DbType.Single, typeof(float))]
-    internal class SingleHandler : TypeHandler<float>,
-        ISimpleTypeReader<float>, ISimpleTypeWriter,
-        ISimpleTypeReader<double>
+    internal class SingleHandler : SimpleTypeHandler<float>, ISimpleTypeHandler<double>
     {
-        public float Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        internal SingleHandler(IBackendType backendType) : base(backendType) { }
+
+        public override float Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return buf.ReadSingle();
         }
 
-        double ISimpleTypeReader<double>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        double ISimpleTypeHandler<double>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             return Read(buf, len, fieldDescription);
         }
 
-        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
             if (!(value is float))
             {
@@ -64,9 +64,9 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             return 4;
         }
 
-        public void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
         {
-            if (parameter != null && parameter.ConvertedValue != null) {
+            if (parameter?.ConvertedValue != null) {
                 value = parameter.ConvertedValue;
             }
             buf.WriteSingle((float)value);

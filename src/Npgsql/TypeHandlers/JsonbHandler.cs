@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2015 The Npgsql Development Team
+// Copyright (C) 2016 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -26,6 +26,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 
@@ -35,7 +36,7 @@ namespace Npgsql.TypeHandlers
     /// JSONB binary encoding is a simple UTF8 string, but prepended with a version number.
     /// </summary>
     [TypeMapping("jsonb", NpgsqlDbType.Jsonb)]
-    class JsonbHandler : TypeHandler<string>, IChunkingTypeWriter, IChunkingTypeReader<string>, ITextReaderHandler
+    class JsonbHandler : ChunkingTypeHandler<string>, ITextReaderHandler
     {
         /// <summary>
         /// Prepended to the string in the wire encoding
@@ -47,21 +48,22 @@ namespace Npgsql.TypeHandlers
         /// </summary>
         bool _handledVersion;
 
-        NpgsqlBuffer _buf;
+        ReadBuffer _readBuf;
+        WriteBuffer _writeBuf;
 
         /// <summary>
         /// The text handler which does most of the encoding/decoding work.
         /// </summary>
         readonly TextHandler _textHandler;
 
-        public JsonbHandler()
+        internal JsonbHandler(IBackendType backendType) : base(backendType)
         {
-            _textHandler = new TextHandler();
+            _textHandler = new TextHandler(backendType);
         }
 
         #region Write
 
-        public int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
+        public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             if (lengthCache == null) {
                 lengthCache = new LengthCache(1);
@@ -74,23 +76,23 @@ namespace Npgsql.TypeHandlers
             return _textHandler.ValidateAndGetLength(value, ref lengthCache, parameter) + 1;
         }
 
-        public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter)
+        public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter)
         {
             _textHandler.PrepareWrite(value, buf, lengthCache, parameter);
-            _buf = buf;
+            _writeBuf = buf;
             _handledVersion = false;
         }
 
-        public bool Write(ref DirectBuffer directBuf)
+        public override bool Write(ref DirectBuffer directBuf)
         {
             if (!_handledVersion)
             {
-                if (_buf.WriteSpaceLeft < 1) { return false; }
-                _buf.WriteByte(JsonbProtocolVersion);
+                if (_writeBuf.WriteSpaceLeft < 1) { return false; }
+                _writeBuf.WriteByte(JsonbProtocolVersion);
                 _handledVersion = true;
             }
             if (!_textHandler.Write(ref directBuf)) { return false; }
-            _buf = null;
+            _writeBuf = null;
             return true;
         }
 
@@ -98,32 +100,32 @@ namespace Npgsql.TypeHandlers
 
         #region Read
 
-        public void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             // Subtract one byte for the version number
             _textHandler.PrepareRead(buf, fieldDescription, len-1);
-            _buf = buf;
+            _readBuf = buf;
             _handledVersion = false;
         }
 
-        public bool Read(out string result)
+        public override bool Read([CanBeNull] out string result)
         {
             if (!_handledVersion)
             {
-                if (_buf.ReadBytesLeft < 1)
+                if (_readBuf.ReadBytesLeft < 1)
                 {
                     result = null;
                     return false;
                 }
-                var version = _buf.ReadByte();
+                var version = _readBuf.ReadByte();
                 if (version != JsonbProtocolVersion) {
-                    throw new NotSupportedException(String.Format("Don't know how to decode JSONB with wire format {0}, your connection is now broken", version));
+                    throw new NotSupportedException($"Don't know how to decode JSONB with wire format {version}, your connection is now broken");
                 }
                 _handledVersion = true;
             }
 
             if (!_textHandler.Read(out result)) { return false; }
-            _buf = null;
+            _readBuf = null;
             return true;
         }
 
@@ -133,9 +135,7 @@ namespace Npgsql.TypeHandlers
         {
             var version = stream.ReadByte();
             if (version != JsonbProtocolVersion)
-            {
-                throw new NotSupportedException(String.Format("Don't know how to decode JSONB with wire format {0}, your connection is now broken", version));
-            }
+                throw new NpgsqlException($"Don't know how to decode jsonb with wire format {version}, your connection is now broken");
 
             return new StreamReader(stream);
         }
