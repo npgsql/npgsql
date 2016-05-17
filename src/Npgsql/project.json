@@ -38,7 +38,8 @@
     },
     "embed": {
       "includeFiles": "NpgsqlMetaData.xml"
-    }
+    },
+    "xmlDoc": true
   },
   "configurations": {
     "DebugOptimizedCryptography": {
