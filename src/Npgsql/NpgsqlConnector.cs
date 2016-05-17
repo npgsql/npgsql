@@ -736,7 +736,6 @@ namespace Npgsql
                 return PasswordMessage.CreateClearText(_password);
 
             case AuthenticationRequestType.AuthenticationMD5Password:
-                Console.WriteLine("Password: " + _password);
                 if (_password == null)
                     throw new NpgsqlException("No password has been provided but the backend requires one (in MD5)");
                 return PasswordMessage.CreateMD5(_password, username, ((AuthenticationMD5PasswordMessage)msg).Salt);
