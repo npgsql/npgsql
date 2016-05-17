@@ -495,6 +495,7 @@ namespace Npgsql
                     case BackendMessageCode.RowDescription:
                         // We have a resultset
                         _rowDescription = _statements[_statementIndex].Description = (RowDescriptionMessage)msg;
+                        Command.FixupRowDescription(_rowDescription, _statementIndex == 0);
                         break;
                     default:
                         throw _connector.UnexpectedMessageReceived(msg.Code);
