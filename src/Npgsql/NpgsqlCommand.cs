@@ -1166,7 +1166,7 @@ namespace Npgsql
         /// Note that UnknownResultTypeList only applies to the first query, while AllResultTypesAreUnknown applies
         /// to all of them.
         /// </remarks>
-        void FixupRowDescription(RowDescriptionMessage rowDescription, bool isFirst)
+        internal void FixupRowDescription(RowDescriptionMessage rowDescription, bool isFirst)
         {
             for (var i = 0; i < rowDescription.NumFields; i++)
                 rowDescription[i].FormatCode = (UnknownResultTypeList == null || !isFirst ? AllResultTypesAreUnknown : UnknownResultTypeList[i]) ? FormatCode.Text : FormatCode.Binary;
