@@ -4,7 +4,7 @@
   <description>Runs GitVersion and compiles the project in debug</description>
   <settings>
     <options>
-      <option name="artifactRules" value="src/Npgsql/project.lock.json =&gt; src/Npgsql/&#xA;src/Npgsql/bin/Debug/** =&gt; src/Npgsql/bin/Debug/&#xA;test/Npgsql.Tests/project.lock.json =&gt; test/Npgsql.Tests/&#xA;test/Npgsql.Tests/bin/Debug/** =&gt; test/Npgsql.Tests/bin/Debug/" />
+      <option name="artifactRules" value="src/Npgsql/project.lock.json =&gt; src/Npgsql/&#xA;src/Npgsql/bin/DebugOptimizedCryptography/** =&gt; src/Npgsql/bin/DebugOptimizedCryptography/&#xA;test/Npgsql.Tests/project.lock.json =&gt; test/Npgsql.Tests/&#xA;test/Npgsql.Tests/bin/DebugOptimizedCryptography/** =&gt; test/Npgsql.Tests/bin/DebugOptimizedCryptography/" />
       <option name="checkoutMode" value="ON_AGENT" />
     </options>
     <parameters />
@@ -27,7 +27,7 @@
         <parameters>
           <param name="script.content"><![CDATA[for /f "tokens=1,2 delims=-" %%%%a in ("%GitVersion.NuGetVersion%") do set base=%%%%a&set NUGET_PRERELEASE_TAG=%%%%b
 set KOREBUILD_DOTNET_PACK_OPTIONS=--version-suffix "%%NUGET_PRERELEASE_TAG%%"
-set Configuration=Debug
+set Configuration=DebugOptimizedCryptography
 build compile]]></param>
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
