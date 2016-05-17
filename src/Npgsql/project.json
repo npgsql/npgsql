@@ -40,6 +40,19 @@
       "includeFiles": "NpgsqlMetaData.xml"
     }
   },
+  "configurations": {
+    "DebugOptimizedCryptography": {
+      "buildOptions": {
+        "define": ["DEBUG", "TRACE", "OPTIMIZED_CRYPTOGRAPHY"]
+      }
+    },
+    "ReleaseOptimizedCryptography": {
+      "buildOptions": {
+        "define": ["RELEASE", "TRACE", "OPTIMIZED_CRYPTOGRAPHY"],
+        "optimize": true
+      }
+    }
+  },
   "tools": {
     "dotnet-rewrite-async": "0.8.2"
   },
