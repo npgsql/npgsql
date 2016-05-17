@@ -24,6 +24,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Data;
 using System.Linq;
 using System.Text;
@@ -42,7 +43,7 @@ namespace Npgsql.Tests.Types
     public class BitStringTests : TestBase
     {
         [Test]
-        public void Roundtrip(
+        public void RoundtripBitArray(
             [Values(
                 "1011011000101111010110101101011011",  // 34 bits
                 "10110110",
@@ -86,11 +87,43 @@ namespace Npgsql.Tests.Types
         {
             using (var conn = OpenConnection())
             {
-                var bitLen = (conn.BufferSize + 10)*8;
+                var bitLen = (conn.BufferSize + 10) * 8;
                 var chars = new char[bitLen];
                 for (var i = 0; i < bitLen; i++)
-                    chars[i] = i%2 == 0 ? '0' : '1';
-                Roundtrip(new string(chars));
+                    chars[i] = i % 2 == 0 ? '0' : '1';
+                RoundtripBitArray(new string(chars));
+            }
+        }
+
+        [Test]
+        public void RoundtripBitVector32([Values(15, 0)] int bits)
+        {
+            var expected = new BitVector32(bits);
+
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+            {
+                cmd.Parameters.AddWithValue("p", expected);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetFieldValue<BitVector32>(0), Is.EqualTo(expected));
+                }
+            }
+        }
+
+        [Test]
+        public void BitVector32TooLong()
+        {
+            using (var conn = OpenConnection())
+            {
+                using (var cmd = new NpgsqlCommand($"SELECT B'{new string('0', 34)}'", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(() => reader.GetFieldValue<BitVector32>(0), Throws.Exception.TypeOf<NpgsqlException>());
+                }
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
             }
         }
 

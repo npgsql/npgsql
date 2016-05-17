@@ -24,6 +24,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
@@ -43,9 +44,10 @@ namespace Npgsql.TypeHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-bit.html
     /// </remarks>
-    [TypeMapping("varbit", NpgsqlDbType.Varbit, typeof(BitArray))]
+    [TypeMapping("varbit", NpgsqlDbType.Varbit, new[] { typeof(BitArray), typeof(BitVector32) })]
     [TypeMapping("bit", NpgsqlDbType.Bit)]
-    internal class BitStringHandler : ChunkingTypeHandler<BitArray>, IChunkingTypeHandler<bool>
+    internal class BitStringHandler : ChunkingTypeHandler<BitArray>,
+        IChunkingTypeHandler<BitVector32>, IChunkingTypeHandler<bool>
     {
         ReadBuffer _readBuf;
         WriteBuffer _writeBuf;
@@ -162,6 +164,38 @@ namespace Npgsql.TypeHandlers
             return true;
         }
 
+        public bool Read(out BitVector32 result)
+        {
+            if (_len > 4)
+            {
+                // Note: _len doesn't include the leading int32 containing the number of bits
+                _readBuf.Skip(4 + _len);
+                throw new SafeReadException("Can't read PostgreSQL bitstring with more than 32 bits into BitVector32");
+            }
+
+            if (_readBuf.ReadBytesLeft < 4)
+            {
+                result = default(BitVector32);
+                return false;
+            }
+
+            var numBits = _readBuf.ReadInt32();
+            if (numBits == 0)
+            {
+                result = new BitVector32(0);
+                return true;
+            }
+
+            if (_readBuf.ReadBytesLeft < 4)
+            {
+                result = default(BitVector32);
+                return false;
+            }
+
+            result = new BitVector32(_readBuf.ReadInt32());
+            return true;
+        }
+
         #endregion
 
         #region Write
@@ -171,6 +205,9 @@ namespace Npgsql.TypeHandlers
             var asBitArray = value as BitArray;
             if (asBitArray != null)
                 return 4 + (asBitArray.Length + 7) / 8;
+
+            if (value is BitVector32)
+                return ((BitVector32)value).Data == 0 ? 4 : 8;
 
             if (value is bool)
                 return 5;
@@ -197,18 +234,18 @@ namespace Npgsql.TypeHandlers
         public override bool Write(ref DirectBuffer directBuf)
         {
             var bitArray = _value as BitArray;
-            if (bitArray != null) {
+            if (bitArray != null)
                 return WriteBitArray(bitArray);
-            }
 
-            if (_value is bool) {
+            if (_value is BitVector32)
+                return WriteBitVector32((BitVector32)_value);
+
+            if (_value is bool)
                 return WriteBool((bool)_value);
-            }
 
             var str = _value as string;
-            if (str != null) {
+            if (str != null)
                 return WriteString(str);
-            }
 
             throw PGUtil.ThrowIfReached($"Bad type {_value.GetType()} some made its way into BitStringHandler.Write()");
         }
@@ -236,6 +273,24 @@ namespace Npgsql.TypeHandlers
 
             _writeBuf = null;
             _value = null;
+            return true;
+        }
+
+        bool WriteBitVector32(BitVector32 bitVector)
+        {
+            if (bitVector.Data == 0)
+            {
+                if (_writeBuf.WriteSpaceLeft < 4)
+                    return false;
+                _writeBuf.WriteInt32(0);
+            }
+            else
+            {
+                if (_writeBuf.WriteSpaceLeft < 8)
+                    return false;
+                _writeBuf.WriteInt32(32);
+                _writeBuf.WriteInt32(bitVector.Data);
+            }
             return true;
         }
 

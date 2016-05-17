@@ -379,5 +379,7 @@ namespace Npgsql
         {
             Contract.Requires(innerException != null);
         }
+
+        public SafeReadException(string message) : this(new NpgsqlException(message)) {}
     }
 }

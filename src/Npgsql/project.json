@@ -82,6 +82,7 @@
     "netstandard1.3": {
       "dependencies": {
         "System.Collections.Concurrent": "4.0.12-*",
+        "System.Collections.Specialized": "4.0.1-*",
         "System.Console": "4.0.0-*",
         "System.ComponentModel": "4.0.1-*",
         "System.ComponentModel.TypeConverter": "4.0.1-*",
