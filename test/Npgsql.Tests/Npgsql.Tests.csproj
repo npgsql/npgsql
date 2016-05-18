@@ -53,7 +53,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CommandBuilderTests.cs" />
-    <Compile Include="ReaderSchemaTableTests.cs" />
+    <Compile Include="ReaderNewSchemaTests.cs" />
+    <Compile Include="ReaderOldSchemaTests.cs" />
     <Compile Include="SchemaTests.cs" />
     <Compile Include="PoolTests.cs" />
     <Compile Include="ConnectionStringBuilderTests.cs" />

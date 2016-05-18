@@ -24,6 +24,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
@@ -38,6 +39,7 @@ using AsyncRewriter;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
+using Npgsql.Schema;
 using Npgsql.TypeHandlers;
 using Npgsql.TypeHandlers.NumericHandlers;
 using NpgsqlTypes;
@@ -48,6 +50,9 @@ namespace Npgsql
     /// Reads a forward-only stream of rows from a data source.
     /// </summary>
     public partial class NpgsqlDataReader : DbDataReader
+#if NETSTANDARD1_3
+        , IDbColumnSchemaGenerator
+#endif
     {
         internal NpgsqlCommand Command { get; }
         readonly NpgsqlConnector _connector;
@@ -1276,7 +1281,7 @@ namespace Npgsql
             CheckOrdinal(ordinal);
             Contract.EndContractBlock();
 
-            return _rowDescription[ordinal].RealHandler.PgDisplayName;
+            return _rowDescription[ordinal].DataTypeName;
         }
 
         /// <summary>
@@ -1294,7 +1299,7 @@ namespace Npgsql
             CheckOrdinal(ordinal);
             Contract.EndContractBlock();
 
-            return _rowDescription[ordinal].OID;
+            return _rowDescription[ordinal].TypeOID;
         }
 
         /// <summary>
@@ -1310,12 +1315,9 @@ namespace Npgsql
 
             var type = Command.ObjectResultTypes?[ordinal];
             if (type != null)
-            {
                 return type;
-            }
 
-            var field = _rowDescription[ordinal];
-            return field.Handler.GetFieldType(field);
+            return _rowDescription[ordinal].FieldType;
         }
 
         /// <summary>
@@ -1589,6 +1591,22 @@ namespace Npgsql
             }
             return result;
         }
+
+        #region New (CoreCLR) schema API
+
+        /// <summary>
+        /// Returns schema information for the columns in the current resultset.
+        /// </summary>
+        /// <returns></returns>
+        public ReadOnlyCollection<NpgsqlDbColumn> GetColumnSchema()
+            => new DbColumnSchemaGenerator(_connection, _rowDescription).GetColumnSchema();
+
+#if NETSTANDARD1_3
+        ReadOnlyCollection<DbColumn> IDbColumnSchemaGenerator.GetColumnSchema()
+            => new ReadOnlyCollection<DbColumn>(GetColumnSchema().Cast<DbColumn>().ToList());
+#endif
+
+        #endregion
 
         #region Schema metadata table
 #if NET45 || NET451

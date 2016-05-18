@@ -67,7 +67,7 @@ namespace Npgsql.BackendMessages
                     buf.ReadNullTerminatedString(),  // Name
                     buf.ReadUInt32(),                // TableOID
                     buf.ReadInt16(),                 // ColumnAttributeNumber
-                    buf.ReadUInt32(),                // OID
+                    buf.ReadUInt32(),                // TypeOID
                     buf.ReadInt16(),                 // TypeSize
                     buf.ReadInt32(),                 // TypeModifier
                     (FormatCode)buf.ReadInt16()      // FormatCode
@@ -168,12 +168,12 @@ namespace Npgsql.BackendMessages
             Name = name;
             TableOID = tableOID;
             ColumnAttributeNumber = columnAttributeNumber;
-            OID = oid;
+            TypeOID = oid;
             TypeSize = typeSize;
             TypeModifier = typeModifier;
             FormatCode = formatCode;
 
-            RealHandler = typeHandlerRegistry[OID];
+            RealHandler = typeHandlerRegistry[TypeOID];
             ResolveHandler();
         }
 
@@ -185,7 +185,7 @@ namespace Npgsql.BackendMessages
         /// <summary>
         /// The object ID of the field's data type.
         /// </summary>
-        internal uint OID { get; set; }
+        internal uint TypeOID { get; set; }
 
         /// <summary>
         /// The data type size (see pg_type.typlen). Note that negative values denote variable-width types.
@@ -235,10 +235,13 @@ namespace Npgsql.BackendMessages
         /// </summary>
         internal TypeHandler RealHandler { get; private set; }
 
+        public string DataTypeName => RealHandler.PgDisplayName;
+        public Type FieldType => Handler.GetFieldType(this);
+
         void ResolveHandler()
         {
             Handler = IsBinaryFormat
-                ? _typeHandlerRegistry[OID]
+                ? _typeHandlerRegistry[TypeOID]
                 : _typeHandlerRegistry.UnrecognizedTypeHandler;
         }
 
