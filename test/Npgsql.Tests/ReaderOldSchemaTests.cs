@@ -172,8 +172,7 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test]
-        [IssueLink("https://github.com/npgsql/npgsql/issues/1027")]
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1027")]
         public void GetSchemaTableWithoutResult()
         {
             using (var conn = OpenConnection())
@@ -183,6 +182,19 @@ namespace Npgsql.Tests
                 reader.NextResult();
                 // We're no longer on a result
                 Assert.That(reader.GetSchemaTable(), Is.Null);
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1093")]
+        public void WithoutPersistSecurityInfo()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Pooling = false };
+            using (var conn = OpenConnection(csb))
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (id INT)");
+                using (var cmd = new NpgsqlCommand("SELECT id FROM data", conn))
+                using (var reader = cmd.ExecuteReader(CommandBehavior.KeyInfo))
+                    reader.GetSchemaTable();
             }
         }
     }
