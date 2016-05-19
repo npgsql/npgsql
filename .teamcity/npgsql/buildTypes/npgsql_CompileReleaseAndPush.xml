@@ -57,7 +57,7 @@ build compile]]></param>
         <parameters>
           <param name="nuget.path" value="?NuGet.CommandLine.DEFAULT" />
           <param name="nuget.publish.files" value="src/Npgsql/bin/ReleaseOptimizedCryptography/*.nupkg" />
-          <param name="nuget.publish.source" value="https://www.myget.org/F/npgsql-unstable" />
+          <param name="nuget.publish.source" value="https://www.myget.org/F/npgsql" />
           <param name="nugetCustomPath" value="?NuGet.CommandLine.DEFAULT" />
           <param name="nugetPathSelector" value="?NuGet.CommandLine.DEFAULT" />
           <param name="secure:nuget.api.key" value="zxxca89988ce5b6f9ad529c572cd56e162ccda4fdff046b0cdb8bff3560c8e35dcbda3e64637e4ca2f1" />
