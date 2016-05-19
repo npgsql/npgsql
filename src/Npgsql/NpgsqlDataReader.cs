@@ -1824,7 +1824,7 @@ namespace Npgsql
 
             var lookup = new KeyLookup();
 
-            using (var metadataConn = new NpgsqlConnection(_connection.ConnectionString))
+            using (var metadataConn = (NpgsqlConnection)((ICloneable)_connection).Clone())
             {
                 metadataConn.Open();
 
@@ -1988,7 +1988,7 @@ WHERE a.attnum > 0
     AND ({
                     columnsFilter})";
 
-            using (var connection = new NpgsqlConnection(_connection.ConnectionString))
+            using (var connection = (NpgsqlConnection)((ICloneable)_connection).Clone())
             {
                 connection.Open();
                 using (var command = new NpgsqlCommand(query, connection))
