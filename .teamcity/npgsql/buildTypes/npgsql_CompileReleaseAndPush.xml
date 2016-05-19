@@ -4,7 +4,7 @@
   <description>Compiles the project in release and pushes to myget</description>
   <settings>
     <options>
-      <option name="artifactRules" value="src/Npgsql/bin/Release/*.nupkg" />
+      <option name="artifactRules" value="src/Npgsql/bin/ReleaseOptimizedCryptography/*.nupkg" />
       <option name="checkoutMode" value="ON_AGENT" />
     </options>
     <disabled-settings>
@@ -14,16 +14,15 @@
     <build-runners>
       <runner id="RUNNER_32" name="Set build number" type="simpleRunner">
         <parameters>
-          <param name="script.content" value="echo ##teamcity[buildNumber '%dep.npgsql_CompileDebug.GitVersion.NuGetVersion%']" />
+          <param name="script.content" value="echo ##teamcity[buildNumber '%dep.npgsql_CompileDebug.build.number%']" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
         </parameters>
       </runner>
       <runner id="RUNNER_21" name="Compile" type="simpleRunner">
         <parameters>
-          <param name="script.content"><![CDATA[for /f "tokens=1,2 delims=-" %%%%a in ("%dep.npgsql_CompileDebug.GitVersion.NuGetVersion%") do set base=%%%%a&set NUGET_PRERELEASE_TAG=%%%%b
-set KOREBUILD_DOTNET_PACK_OPTIONS=--version-suffix "%%NUGET_PRERELEASE_TAG%%"
-set Configuration=Release
+          <param name="script.content"><![CDATA[set KOREBUILD_DOTNET_PACK_OPTIONS=--version-suffix "%dep.npgsql_CompileDebug.build.counter%"
+set Configuration=ReleaseOptimizedCryptography
 build compile]]></param>
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
@@ -57,8 +56,8 @@ build compile]]></param>
       <runner id="RUNNER_30" name="Publish nugets to myget" type="jb.nuget.publish">
         <parameters>
           <param name="nuget.path" value="?NuGet.CommandLine.DEFAULT" />
-          <param name="nuget.publish.files" value="src/Npgsql/bin/Release/*.nupkg" />
-          <param name="nuget.publish.source" value="https://www.myget.org/F/npgsql-unstable" />
+          <param name="nuget.publish.files" value="src/Npgsql/bin/ReleaseOptimizedCryptography/*.nupkg" />
+          <param name="nuget.publish.source" value="https://www.myget.org/F/npgsql" />
           <param name="nugetCustomPath" value="?NuGet.CommandLine.DEFAULT" />
           <param name="nugetPathSelector" value="?NuGet.CommandLine.DEFAULT" />
           <param name="secure:nuget.api.key" value="zxxca89988ce5b6f9ad529c572cd56e162ccda4fdff046b0cdb8bff3560c8e35dcbda3e64637e4ca2f1" />

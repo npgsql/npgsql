@@ -1,5 +1,5 @@
 {
-  "version": "3.1.0",
+  "version": "3.1.1-ci-*",
   "packOptions": {
     "owners": [
       "Shay Rojansky",
@@ -38,6 +38,20 @@
     },
     "embed": {
       "includeFiles": "NpgsqlMetaData.xml"
+    },
+    "xmlDoc": true
+  },
+  "configurations": {
+    "DebugOptimizedCryptography": {
+      "buildOptions": {
+        "define": ["DEBUG", "TRACE", "OPTIMIZED_CRYPTOGRAPHY"]
+      }
+    },
+    "ReleaseOptimizedCryptography": {
+      "buildOptions": {
+        "define": ["RELEASE", "TRACE", "OPTIMIZED_CRYPTOGRAPHY"],
+        "optimize": true
+      }
     }
   },
   "tools": {

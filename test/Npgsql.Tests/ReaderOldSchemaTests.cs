@@ -33,7 +33,11 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests
 {
-    public class ReaderSchemaTableTests : TestBase
+    /// <summary>
+    /// This tests the .NET Framework DbDataReader schema/metadata API, which returns DataTable.
+    /// For the new CoreCLR API, see <see cref="ReaderNewSchemaTests"/>.
+    /// </summary>
+    public class ReaderOldSchemaTests : TestBase
     {
         [Test]
         public void PrimaryKeyFieldsMetadataSupport()
@@ -108,7 +112,7 @@ namespace Npgsql.Tests
 
                 var command = new NpgsqlCommand("SELECT * FROM DataView", conn);
 
-                using (var dr = command.ExecuteReader(CommandBehavior.KeyInfo))
+                using (var dr = command.ExecuteReader())
                 {
                     var metadata = dr.GetSchemaTable();
 
@@ -139,8 +143,36 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test]
-        [IssueLink("https://github.com/npgsql/npgsql/issues/1027")]
+        // ReSharper disable once InconsistentNaming
+        [Test, Ignore("https://github.com/npgsql/npgsql/issues/1092")]
+        public void AllowDBNull()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (nullable INTEGER, non_nullable INTEGER NOT NULL)");
+
+                using (var cmd = new NpgsqlCommand("SELECT * FROM data", conn))
+                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                using (var metadata = reader.GetSchemaTable())
+                {
+                    foreach (DataRow row in metadata.Rows)
+                    {
+                        var isNullable = (bool)row["AllowDBNull"];
+                        switch ((string)row["ColumnName"])
+                        {
+                        case "nullable":
+                            Assert.IsTrue(isNullable);
+                            continue;
+                        case "non_nullable":
+                            Assert.IsFalse(isNullable);
+                            continue;
+                        }
+                    }
+                }
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1027")]
         public void GetSchemaTableWithoutResult()
         {
             using (var conn = OpenConnection())
@@ -150,6 +182,19 @@ namespace Npgsql.Tests
                 reader.NextResult();
                 // We're no longer on a result
                 Assert.That(reader.GetSchemaTable(), Is.Null);
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1093")]
+        public void WithoutPersistSecurityInfo()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Pooling = false };
+            using (var conn = OpenConnection(csb))
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (id INT)");
+                using (var cmd = new NpgsqlCommand("SELECT id FROM data", conn))
+                using (var reader = cmd.ExecuteReader(CommandBehavior.KeyInfo))
+                    reader.GetSchemaTable();
             }
         }
     }

@@ -493,13 +493,13 @@ namespace Npgsql
             }
         }
 
-                /// <summary>
+        /// <summary>
         /// Gets or sets The name of the source column that is mapped to the
-        /// <see cref="System.Data.DataSet">DataSet</see> and used for loading or
-        /// returning the <see cref="NpgsqlParameter.Value">Value</see>.
+        /// DataSet and used for loading or
+        /// returning the <see cref="Value">Value</see>.
         /// </summary>
-        /// <value>The name of the source column that is mapped to the
-        /// <see cref="System.Data.DataSet">DataSet</see>. The default is an empty string.</value>
+        /// <value>The name of the source column that is mapped to the DataSet.
+        /// The default is an empty string.</value>
         [DefaultValue("")]
         [Category("Data")]
         public override String SourceColumn { get; set; }

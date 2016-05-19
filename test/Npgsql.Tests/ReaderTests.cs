@@ -245,6 +245,20 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1096")]
+        public void GetFieldTypeSchemaOnly()
+        {
+            using (var conn = OpenConnection())
+            {
+                using (var cmd = new NpgsqlCommand(@"SELECT 1::INT4 AS some_column", conn))
+                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                {
+                    reader.Read();
+                    Assert.That(reader.GetFieldType(0), Is.SameAs(typeof(int)));
+                }
+            }
+        }
+
         [Test]
         [IssueLink("https://github.com/npgsql/npgsql/issues/787")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/794")]

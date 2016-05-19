@@ -9,7 +9,7 @@
     <build-runners>
       <runner id="RUNNER_31" name="Set build number" type="simpleRunner">
         <parameters>
-          <param name="script.content" value="echo ##teamcity[buildNumber '%dep.npgsql_CompileDebug.GitVersion.NuGetVersion%']" />
+          <param name="script.content" value="echo ##teamcity[buildNumber '%dep.npgsql_CompileDebug.build.number%']" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
         </parameters>
@@ -17,7 +17,7 @@
       <runner id="RUNNER_18" name="Test" type="simpleRunner">
         <parameters>
           <param name="command.executable" value="%env.LOCALAPPDATA%\Microsoft\dotnet\dotnet" />
-          <param name="command.parameters" value="run -f net451 -- --teamcity" />
+          <param name="command.parameters" value="run -f net451 -c DebugOptimizedCryptography -- --teamcity" />
           <param name="teamcity.build.workingDir" value="test/Npgsql.Tests" />
           <param name="teamcity.step.mode" value="default" />
         </parameters>

@@ -33,7 +33,7 @@ namespace Npgsql
 {
     /// <summary>
     /// Represents a collection of parameters relevant to a <see cref="NpgsqlCommand">NpgsqlCommand</see>
-    /// as well as their respective mappings to columns in a <see cref="System.Data.DataSet">DataSet</see>.
+    /// as well as their respective mappings to columns in a DataSet.
     /// This class cannot be inherited.
     /// </summary>
 

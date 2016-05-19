@@ -1181,13 +1181,18 @@ namespace TlsClientStream
                 var pkKey = _handshakeData.CertList[0].GetPublicKey();
                 bool? res;
 
-#if NETSTANDARD1_3
-                res = EllipticCurve.VerifySignature(pkParameters, pkKey, hash, signature);
-#else
+                // .NET Framework has an optimized native implementation here, but it doesn't
+                // exist in CoreCLR (netstandard13) or on mono.
+                // We include two checks - one compile-time and one runtime - to allow everyone
+                // to be happy. The OPTIMIZED_CRYPTOGRAPHY define is only enabled explicitly
+                // at the build server
+#if OPTIMIZED_CRYPTOGRAPHY && !NETSTANDARD1_3
                 if (Type.GetType("Mono.Runtime") != null)
                     res = EllipticCurve.VerifySignature(pkParameters, pkKey, hash, signature);
                 else
                     res = EllipticCurve.VerifySignatureCng(pkParameters, pkKey, hash, signature);
+#else
+                res = EllipticCurve.VerifySignature(pkParameters, pkKey, hash, signature);
 #endif
 
                 if (!res.HasValue)

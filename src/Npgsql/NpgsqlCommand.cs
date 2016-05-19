@@ -258,9 +258,8 @@ namespace Npgsql
         public override bool DesignTimeVisible { get; set; }
 
         /// <summary>
-        /// Gets or sets how command results are applied to the <see cref="System.Data.DataRow">DataRow</see>
-        /// when used by the <see cref="System.Data.Common.DbDataAdapter.Update(DataSet)">Update</see>
-        /// method of the <see cref="System.Data.Common.DbDataAdapter">DbDataAdapter</see>.
+        /// Gets or sets how command results are applied to the DataRow when used by the
+        /// DbDataAdapter.Update(DataSet) method.
         /// </summary>
         /// <value>One of the <see cref="System.Data.UpdateRowSource">UpdateRowSource</see> values.</value>
         [Category("Behavior"), DefaultValue(UpdateRowSource.Both)]
@@ -1166,7 +1165,7 @@ namespace Npgsql
         /// Note that UnknownResultTypeList only applies to the first query, while AllResultTypesAreUnknown applies
         /// to all of them.
         /// </remarks>
-        void FixupRowDescription(RowDescriptionMessage rowDescription, bool isFirst)
+        internal void FixupRowDescription(RowDescriptionMessage rowDescription, bool isFirst)
         {
             for (var i = 0; i < rowDescription.NumFields; i++)
                 rowDescription[i].FormatCode = (UnknownResultTypeList == null || !isFirst ? AllResultTypesAreUnknown : UnknownResultTypeList[i]) ? FormatCode.Text : FormatCode.Binary;
