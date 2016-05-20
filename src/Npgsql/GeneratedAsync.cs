@@ -65,6 +65,7 @@ using System.Threading.Tasks;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
@@ -78,6 +79,7 @@ using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
+using Npgsql.Schema;
 using Npgsql.TypeHandlers;
 using Npgsql.TypeHandlers.NumericHandlers;
 using NpgsqlTypes;
@@ -861,9 +863,6 @@ namespace Npgsql
 
             Contract.Assert(_state == ReaderState.BetweenResults);
             _hasRows = null;
-#if NET45 || NET451
-            _cachedSchemaTable = null;
-#endif
             if ((_behavior & CommandBehavior.SingleResult) != 0 && _statementIndex == 0)
             {
                 if (_state == ReaderState.BetweenResults)
@@ -960,6 +959,7 @@ namespace Npgsql
                         case BackendMessageCode.RowDescription:
                             // We have a resultset
                             _rowDescription = _statements[_statementIndex].Description = (RowDescriptionMessage)msg;
+                            Command.FixupRowDescription(_rowDescription, _statementIndex == 0);
                             break;
                         default:
                             throw _connector.UnexpectedMessageReceived(msg.Code);

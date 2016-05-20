@@ -144,7 +144,7 @@ namespace Npgsql.Tests
         }
 
         // ReSharper disable once InconsistentNaming
-        [Test, Ignore("https://github.com/npgsql/npgsql/issues/1092")]
+        [Test]
         public void AllowDBNull()
         {
             using (var conn = OpenConnection())

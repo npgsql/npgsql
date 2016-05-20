@@ -95,13 +95,6 @@ namespace Npgsql
         /// </summary>
         IBackendMessage _pendingMessage;
 
-#if NET45 || NET451
-        /// <summary>
-        /// If <see cref="GetSchemaTable"/> has been called, its results are cached here.
-        /// </summary>
-        DataTable _cachedSchemaTable;
-#endif
-
         /// <summary>
         /// Is raised whenever Close() is called.
         /// </summary>
@@ -392,9 +385,6 @@ namespace Npgsql
 
             Contract.Assert(_state == ReaderState.BetweenResults);
             _hasRows = null;
-#if NET45 || NET451
-            _cachedSchemaTable = null;
-#endif
 
             if ((_behavior & CommandBehavior.SingleResult) != 0 && _statementIndex == 0)
             {
@@ -1614,397 +1604,67 @@ namespace Npgsql
         /// <summary>
         /// Returns a System.Data.DataTable that describes the column metadata of the DataReader.
         /// </summary>
+        [CanBeNull]
         public override DataTable GetSchemaTable()
         {
             if (FieldCount == 0) // No resultset
                 return null;
 
-            if (_cachedSchemaTable != null) {
-                return _cachedSchemaTable;
-            }
+            var table = new DataTable("SchemaTable");
 
-            var result = new DataTable("SchemaTable");
+            table.Columns.Add("AllowDBNull", typeof(bool));
+            table.Columns.Add("BaseCatalogName", typeof(string));
+            table.Columns.Add("BaseColumnName", typeof(string));
+            table.Columns.Add("BaseSchemaName", typeof(string));
+            table.Columns.Add("BaseTableName", typeof(string));
+            table.Columns.Add("ColumnName", typeof(string));
+            table.Columns.Add("ColumnOrdinal", typeof(int));
+            table.Columns.Add("ColumnSize", typeof(int));
+            table.Columns.Add("DataType", typeof(Type));
+            table.Columns.Add("IsUnique", typeof(bool));
+            table.Columns.Add("IsKey", typeof(bool));
+            table.Columns.Add("IsAliased", typeof(bool));
+            table.Columns.Add("IsExpression", typeof(bool));
+            table.Columns.Add("IsIdentity", typeof(bool));
+            table.Columns.Add("IsAutoIncrement", typeof(bool));
+            table.Columns.Add("IsRowVersion", typeof(bool));
+            table.Columns.Add("IsHidden", typeof(bool));
+            table.Columns.Add("IsLong", typeof(bool));
+            table.Columns.Add("IsReadOnly", typeof(bool));
+            table.Columns.Add("NumericPrecision", typeof(int));
+            table.Columns.Add("NumericScale", typeof(int));
+            table.Columns.Add("ProviderSpecificDataType", typeof(Type));
+            table.Columns.Add("ProviderType", typeof(Type));
 
-            result.Columns.Add("AllowDBNull", typeof(bool));
-            result.Columns.Add("BaseCatalogName", typeof(string));
-            result.Columns.Add("BaseColumnName", typeof(string));
-            result.Columns.Add("BaseSchemaName", typeof(string));
-            result.Columns.Add("BaseTableName", typeof(string));
-            result.Columns.Add("ColumnName", typeof(string));
-            result.Columns.Add("ColumnOrdinal", typeof(int));
-            result.Columns.Add("ColumnSize", typeof(int));
-            result.Columns.Add("DataType", typeof(Type));
-            result.Columns.Add("IsUnique", typeof(bool));
-            result.Columns.Add("IsKey", typeof(bool));
-            result.Columns.Add("IsAliased", typeof(bool));
-            result.Columns.Add("IsExpression", typeof(bool));
-            result.Columns.Add("IsIdentity", typeof(bool));
-            result.Columns.Add("IsAutoIncrement", typeof(bool));
-            result.Columns.Add("IsRowVersion", typeof(bool));
-            result.Columns.Add("IsHidden", typeof(bool));
-            result.Columns.Add("IsLong", typeof(bool));
-            result.Columns.Add("IsReadOnly", typeof(bool));
-            result.Columns.Add("NumericPrecision", typeof(int));
-            result.Columns.Add("NumericScale", typeof(int));
-            result.Columns.Add("ProviderSpecificDataType", typeof(Type));
-            result.Columns.Add("ProviderType", typeof(Type));
-
-            FillSchemaTable(result);
-
-            return result;
-        }
-
-        private void FillSchemaTable(DataTable schema)
-        {
-            var oidTableLookup = new Dictionary<uint, Table>();
-            var keyLookup = new KeyLookup();
-            // needs to be null because there is a difference
-            // between an empty dictionary and not setting it
-            // the default values will be different
-            Dictionary<string, Column> columnLookup = null;
-
-            // TODO: This is probably not what KeyInfo is supposed to do...
-            if ((_behavior & CommandBehavior.KeyInfo) == CommandBehavior.KeyInfo)
+            foreach (var column in GetColumnSchema())
             {
-                var tableOids = new List<uint>();
-                for (var i = 0; i != _rowDescription.NumFields; ++i)
-                {
-                    if (_rowDescription[i].TableOID != 0 && !tableOids.Contains(_rowDescription[i].TableOID))
-                    {
-                        tableOids.Add(_rowDescription[i].TableOID);
-                    }
-                }
-                oidTableLookup = GetTablesFromOids(tableOids);
+                var row = table.NewRow();
 
-                if (oidTableLookup.Count == 1)
-                {
-                    // only 1, but we can't index into the Dictionary
-                    foreach (var key in oidTableLookup.Keys)
-                    {
-                        keyLookup = GetKeys((int)key);
-                    }
-                }
-
-                columnLookup = GetColumns();
-            }
-
-            for (var i = 0; i < _rowDescription.NumFields; i++)
-            {
-                var field = _rowDescription[i];
-                var row = schema.NewRow();
-
-                var baseColumnName = GetBaseColumnName(columnLookup, i);
-
-                row["AllowDBNull"] = IsNullable(columnLookup, i);
-                row["BaseColumnName"] = baseColumnName;
-                if (field.TableOID != 0 && oidTableLookup.ContainsKey(field.TableOID))
-                {
-                    row["BaseCatalogName"] = oidTableLookup[_rowDescription[i].TableOID].Catalog;
-                    row["BaseSchemaName"] = oidTableLookup[_rowDescription[i].TableOID].Schema;
-                    row["BaseTableName"] = oidTableLookup[_rowDescription[i].TableOID].Name;
-                }
-                else
-                {
-                    row["BaseCatalogName"] = row["BaseSchemaName"] = row["BaseTableName"] = "";
-                }
-                row["ColumnName"] = GetName(i);
-                row["ColumnOrdinal"] = i + 1;
-
-                if (field.TypeModifier != -1 && field.Handler is TextHandler)
-                {
-                    row["ColumnSize"] = field.TypeModifier - 4;
-                }
-                else if (field.TypeModifier != -1 && field.Handler is BitStringHandler)
-                {
-                    row["ColumnSize"] = field.TypeModifier;
-                }
-                else
-                {
-                    row["ColumnSize"] = (int)field.TypeSize;
-                }
-                row["DataType"] = GetFieldType(i); // non-standard
-                row["IsUnique"] = IsUnique(keyLookup, baseColumnName);
-                row["IsKey"] = IsKey(keyLookup, baseColumnName);
-                row["IsAliased"] = string.CompareOrdinal((string)row["ColumnName"], baseColumnName) != 0;
-                row["IsExpression"] = false;
-                row["IsAutoIncrement"] = IsAutoIncrement(columnLookup, i);
-                row["IsIdentity"] = false; // TODO - PostgreSQL doesn't define an identity type.  The following could be used to set this to act like SQL Server: (((bool)row["IsAutoIncrement"]) && (field.Handler.NpgsqlDbType == NpgsqlDbType.Integer || field.Handler.NpgsqlDbType == NpgsqlDbType.Bigint || field.Handler.NpgsqlDbType == NpgsqlDbType.Smallint));
+                row["AllowDBNull"] = column.AllowDBNull == true;
+                row["BaseColumnName"] = column.BaseColumnName;
+                row["BaseCatalogName"] = column.BaseCatalogName;
+                row["BaseSchemaName"] = column.BaseSchemaName;
+                row["BaseTableName"] = column.BaseTableName;
+                row["ColumnName"] = column.ColumnName;
+                row["ColumnOrdinal"] = column.ColumnOrdinal ?? -1;
+                row["ColumnSize"] = column.ColumnSize ?? -1;
+                row["DataType"] = row["ProviderType"] = column.DataType; // Non-standard
+                row["IsUnique"] = column.IsUnique == true;
+                row["IsKey"] = column.IsKey == true;
+                row["IsAliased"] = column.IsAliased == true;
+                row["IsExpression"] = column.IsExpression == true;
+                row["IsAutoIncrement"] = column.IsAutoIncrement == true;
+                row["IsIdentity"] = column.IsIdentity == true;
                 row["IsRowVersion"] = false;
-                row["IsHidden"] = false;
-                row["IsLong"] = false;   // TODO - Large object aren't stored as columns so this should always be false.
-                row["IsReadOnly"] = IsReadOnly(columnLookup, i);
-                if (field.TypeModifier != -1 && field.Handler is NumericHandler)
-                {
-                    row["NumericPrecision"] = ((field.TypeModifier - 4) >> 16) & ushort.MaxValue;
-                    row["NumericScale"] = (field.TypeModifier - 4) & ushort.MaxValue;
-                }
-                else
-                {
-                    row["NumericPrecision"] = 0;
-                    row["NumericScale"] = 0;
-                }
-                row["ProviderType"] = GetFieldType(i);
-                if (_rowDescription[i].Handler is ITypeHandlerWithPsv) {
-                    row["ProviderSpecificDataType"] = GetProviderSpecificFieldType(i);
-                }
+                row["IsHidden"] = column.IsHidden == true;
+                row["IsLong"] = column.IsLong == true;
+                row["NumericPrecision"] = column.NumericPrecision ?? 255;
+                row["NumericScale"] = column.NumericScale ?? 255;
 
-                schema.Rows.Add(row);
-            }
-        }
-
-        private static bool IsKey(KeyLookup keyLookup, string fieldName)
-        {
-            return keyLookup.PrimaryKey.Contains(fieldName);
-        }
-
-        private static bool IsUnique(KeyLookup keyLookup, string fieldName)
-        {
-            return keyLookup.UniqueColumns.Contains(fieldName);
-        }
-
-        private bool IsNullable(Dictionary<string, Column> columnLookup, int fieldIndex)
-        {
-            if (columnLookup == null || _rowDescription[fieldIndex].TableOID == 0)
-            {
-                return true;
+                table.Rows.Add(row);
             }
 
-            var lookupKey =
-                $"{_rowDescription[fieldIndex].TableOID},{_rowDescription[fieldIndex].ColumnAttributeNumber}";
-            Column col;
-            return !columnLookup.TryGetValue(lookupKey, out col) || !col.NotNull;
-        }
-
-        private bool IsAutoIncrement(Dictionary<string, Column> columnLookup, int fieldIndex)
-        {
-            if (columnLookup == null || _rowDescription[fieldIndex].TableOID == 0)
-            {
-                return false;
-            }
-
-            var lookupKey =
-                $"{_rowDescription[fieldIndex].TableOID},{_rowDescription[fieldIndex].ColumnAttributeNumber}";
-            Column col;
-            return
-                !columnLookup.TryGetValue(lookupKey, out col) || col.ColumnDefault is string && col.ColumnDefault.ToString().StartsWith("nextval(");
-        }
-
-        private bool IsReadOnly(Dictionary<string, Column> columnLookup, int fieldIndex)
-        {
-            if (columnLookup == null || _rowDescription[fieldIndex].TableOID == 0)
-            {
-                return false;
-            }
-
-            var lookupKey =
-                $"{_rowDescription[fieldIndex].TableOID},{_rowDescription[fieldIndex].ColumnAttributeNumber}";
-            Column col;
-            return
-                columnLookup.TryGetValue(lookupKey, out col)
-                    ? !col.IsUpdateable
-                    : false;
-        }
-
-        string GetBaseColumnName(Dictionary<string, Column> columnLookup, int fieldIndex)
-        {
-            if (columnLookup == null || _rowDescription[fieldIndex].TableOID == 0)
-            {
-                return GetName(fieldIndex);
-            }
-
-            var lookupKey =
-                $"{_rowDescription[fieldIndex].TableOID},{_rowDescription[fieldIndex].ColumnAttributeNumber}";
-            Column col;
-            return columnLookup.TryGetValue(lookupKey, out col) ? col.Name : GetName(fieldIndex);
-        }
-
-        KeyLookup GetKeys(Int32 tableOid)
-        {
-            const string getKeys = "select a.attname, ci.relname, i.indisprimary from pg_catalog.pg_class ct, pg_catalog.pg_class ci, pg_catalog.pg_attribute a, pg_catalog.pg_index i WHERE ct.oid=i.indrelid AND ci.oid=i.indexrelid AND a.attrelid=ci.oid AND i.indisunique AND ct.oid = :tableOid order by ci.relname";
-
-            var lookup = new KeyLookup();
-
-            using (var metadataConn = (NpgsqlConnection)((ICloneable)_connection).Clone())
-            {
-                metadataConn.Open();
-
-                using (var c = new NpgsqlCommand(getKeys, metadataConn))
-                {
-                    c.Parameters.Add(new NpgsqlParameter("tableOid", NpgsqlDbType.Integer)).Value = tableOid;
-
-                    using (var dr = c.ExecuteReader(CommandBehavior.SequentialAccess | CommandBehavior.SingleResult))
-                    {
-                        string previousKeyName = null;
-                        string possiblyUniqueColumn = null;
-                        // loop through adding any column that is primary to the primary key list
-                        // add any column that is the only column for that key to the unique list
-                        // unique here doesn't mean general unique constraint (with possibly multiple columns)
-                        // it means all values in this single column must be unique
-                        while (dr.Read())
-                        {
-                            var columnName = dr.GetString(0);
-                            var currentKeyName = dr.GetString(1);
-                            // if i.indisprimary
-                            if (dr.GetBoolean(2))
-                            {
-                                // add column name as part of the primary key
-                                lookup.PrimaryKey.Add(columnName);
-                            }
-                            if (currentKeyName != previousKeyName)
-                            {
-                                if (possiblyUniqueColumn != null)
-                                {
-                                    lookup.UniqueColumns.Add(possiblyUniqueColumn);
-                                }
-                                possiblyUniqueColumn = columnName;
-                            }
-                            else
-                            {
-                                possiblyUniqueColumn = null;
-                            }
-                            previousKeyName = currentKeyName;
-                        }
-                        // if finished reading and have a possiblyUniqueColumn name that is
-                        // not null, then it is the name of a unique column
-                        if (possiblyUniqueColumn != null)
-                        {
-                            lookup.UniqueColumns.Add(possiblyUniqueColumn);
-                        }
-                        return lookup;
-                    }
-                }
-            }
-        }
-
-        class KeyLookup
-        {
-            /// <summary>
-            /// Contains the column names as the keys
-            /// </summary>
-            public readonly List<string> PrimaryKey = new List<string>();
-
-            /// <summary>
-            /// Contains all unique columns
-            /// </summary>
-            public readonly List<string> UniqueColumns = new List<string>();
-        }
-
-        struct Table
-        {
-            public readonly string Catalog;
-            public readonly string Schema;
-            public readonly string Name;
-            public readonly uint Id;
-
-            public Table(NpgsqlDataReader rdr)
-            {
-                Catalog = rdr.GetString(0);
-                Schema = rdr.GetString(1);
-                Name = rdr.GetString(2);
-                Id = rdr.GetFieldValue<uint>(3);
-            }
-        }
-
-        Dictionary<uint, Table> GetTablesFromOids(List<uint> oids)
-        {
-            if (oids.Count == 0) {
-                return new Dictionary<uint, Table>(); //Empty collection is simpler than requiring tests for null;
-            }
-
-            // the column index is used to find data.
-            // any changes to the order of the columns needs to be reflected in struct Tables
-            string commandText = string.Concat("SELECT current_database(), nc.nspname, c.relname, c.oid FROM pg_namespace nc, pg_class c WHERE c.relnamespace = nc.oid AND (c.relkind = 'r' OR c.relkind = 'v') AND c.oid IN (",
-                string.Join(",", oids), ")");
-
-            using (var connection = (NpgsqlConnection)((ICloneable)_connection).Clone())
-            {
-                connection.Open();
-
-                using (var command = new NpgsqlCommand(commandText, connection))
-                {
-                    using (var reader = command.ExecuteReader(CommandBehavior.SequentialAccess | CommandBehavior.SingleResult))
-                    {
-                        var oidLookup = new Dictionary<uint, Table>(oids.Count);
-                        while (reader.Read())
-                        {
-                            var t = new Table(reader);
-                            oidLookup.Add(t.Id, t);
-                        }
-                        return oidLookup;
-                    }
-                }
-            }
-        }
-
-        class Column
-        {
-            internal readonly string Name;
-            internal readonly bool NotNull;
-            readonly uint TableId;
-            readonly short ColumnNum;
-            internal readonly object ColumnDefault;
-            internal readonly bool IsUpdateable;
-
-            internal string Key => $"{TableId},{ColumnNum}";
-
-            internal Column(NpgsqlDataReader rdr)
-            {
-                Name = rdr.GetString(0);
-                NotNull = rdr.GetBoolean(1);
-                TableId = rdr.GetFieldValue<uint>(2);
-                ColumnNum = rdr.GetInt16(3);
-                ColumnDefault = rdr.GetValue(4);
-                IsUpdateable = rdr.GetBoolean(5);
-            }
-        }
-
-        [CanBeNull]
-        Dictionary<string, Column> GetColumns()
-        {
-            var columnsFilter = _rowDescription.Fields
-                .Where(f => f.TableOID != 0)
-                .Select(f => $"(a.attrelid={f.TableOID} AND a.attnum={f.ColumnAttributeNumber})")
-                .Join(" OR ");
-
-            if (columnsFilter == "") {
-                return null;  // No (real) columns
-            }
-
-            // the column index is used to find data.
-            // any changes to the order of the columns needs to be reflected in struct Columns
-            var query =
-                $@"SELECT a.attname AS column_name, a.attnotnull AS column_notnull, a.attrelid AS table_id, a.attnum AS column_num, ad.adsrc as column_default
-, CAST(CASE WHEN i.is_updatable = 'YES'
-       THEN 1 ELSE 0 END AS bit) AS is_updatable
-FROM (pg_attribute a LEFT JOIN pg_attrdef ad ON attrelid = adrelid AND attnum = adnum)
-JOIN (pg_class c JOIN pg_namespace nc ON (c.relnamespace = nc.oid)) ON a.attrelid = c.oid
-JOIN information_schema.columns i ON i.table_schema = nc.nspname
-    AND i.table_name = c.relname AND i.column_name = a.attname
-WHERE a.attnum > 0
-    AND NOT a.attisdropped
-    AND c.relkind in ('r', 'v', 'f')
-    AND (pg_has_role(c.relowner, 'USAGE')
-        OR has_column_privilege(c.oid, a.attnum, 'SELECT, INSERT, UPDATE, REFERENCES'))
-    AND ({
-                    columnsFilter})";
-
-            using (var connection = (NpgsqlConnection)((ICloneable)_connection).Clone())
-            {
-                connection.Open();
-                using (var command = new NpgsqlCommand(query, connection))
-                {
-                    using (var reader = command.ExecuteReader(CommandBehavior.SequentialAccess | CommandBehavior.SingleResult))
-                    {
-                        var columnLookup = new Dictionary<string, Column>();
-                        while (reader.Read())
-                        {
-                            var column = new Column(reader);
-                            columnLookup.Add(column.Key, column);
-                        }
-                        return columnLookup;
-                    }
-                }
-            }
+            return table;
         }
 
 #endif
