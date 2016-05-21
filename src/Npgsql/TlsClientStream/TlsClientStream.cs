@@ -34,10 +34,13 @@ using System.Numerics;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using AsyncRewriter;
 
 namespace TlsClientStream
 {
-    internal class TlsClientStream : Stream
+    internal partial class TlsClientStream : Stream
     {
         const TlsVersion HighestTlsVersionSupported = TlsVersion.TLSv1_2;
 
@@ -123,6 +126,7 @@ namespace TlsClientStream
         /// Also sets _packetLen (does not include packet header of 5 bytes).
         /// </summary>
         /// <returns>True on success, false on End Of Stream.</returns>
+        [RewriteAsync]
         bool ReadRecord()
         {
             int packetLength = -1;
@@ -357,6 +361,7 @@ namespace TlsClientStream
                 _handshakeData.CertificateVerifyHash_SHA1.TransformBlock(buf, offset, len);
         }
 
+        [RewriteAsync]
         void GetInitialHandshakeMessages(bool allowApplicationData = false)
         {
             while (!_handshakeMessagesBuffer.HasServerHelloDone)
@@ -582,6 +587,7 @@ namespace TlsClientStream
             offset = Encrypt(start, offset - messageStart);
         }
 
+        [RewriteAsync]
         void WaitForHandshakeCompleted(bool initialHandshake)
         {
             for (; ; )
@@ -1561,6 +1567,7 @@ namespace TlsClientStream
             throw new ClientAlertException(description, message);
         }
 
+        [RewriteAsync]
         void WriteAlertFatal(AlertDescription description)
         {
             _buf[0] = (byte)ContentType.Alert;
@@ -1580,6 +1587,7 @@ namespace TlsClientStream
                 Utils.ClearArray(_temp512);
         }
 
+        [RewriteAsync]
         void SendClosureAlert()
         {
             _buf[0] = (byte)ContentType.Alert;
@@ -1591,6 +1599,7 @@ namespace TlsClientStream
             _baseStream.Flush();
         }
 
+        [RewriteAsync]
         void HandleAlertMessage()
         {
             if (_plaintextLen != 2)
@@ -1676,6 +1685,7 @@ namespace TlsClientStream
             SendAlertFatal(AlertDescription.UnexpectedMessage);
         }
 
+        [RewriteAsync]
         public void PerformInitialHandshake(string hostName, X509CertificateCollection clientCertificates, System.Net.Security.RemoteCertificateValidationCallback remoteCertificateValidationCallback, bool checkCertificateRevocation)
         {
             if (_connState.CipherSuite != null || _pendingConnState != null || _closed)
@@ -1711,8 +1721,14 @@ namespace TlsClientStream
 
         int WriteSpaceLeft { get { return _buf.Length - _writePos - (_connState.CipherSuite.AesMode == AesMode.CBC ? _connState.MacLen + 16 /*max padding*/ : 16); } }
 
-        #region Stream overrides
+#region Stream overrides
 
+        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            return WriteAsync(buffer, offset, count);
+        }
+
+        [RewriteAsync]
         public override void Write(byte[] buffer, int offset, int len)
         {
 #if CHECK_ARGUMENTS
@@ -1763,6 +1779,12 @@ namespace TlsClientStream
             }
         }
 
+        public override Task FlushAsync(CancellationToken cancellationToken)
+        {
+            return FlushAsync();
+        }
+
+        [RewriteAsync]
         public override void Flush()
         {
             CheckNotClosed();
@@ -1798,6 +1820,7 @@ namespace TlsClientStream
             }
         }
 
+        [RewriteAsync]
         public override int Read(byte[] buffer, int offset, int len)
         {
 #if CHECK_ARGUMENTS
@@ -1813,6 +1836,7 @@ namespace TlsClientStream
             return ReadInternal(buffer, offset, len, false, false);
         }
 
+        [RewriteAsync]
         int ReadInternal(byte[] buffer, int offset, int len, bool onlyProcessHandshake, bool readNewDataIfAvailable)
         {
             Flush();
@@ -2058,6 +2082,7 @@ namespace TlsClientStream
         /// </summary>
         /// <param name="checkNetworkStream">Whether we should also look in the underlying NetworkStream</param>
         /// <returns>Whether there is available application data</returns>
+        [RewriteAsync]
         public bool HasBufferedReadData(bool checkNetworkStream)
         {
             if (_closed)
