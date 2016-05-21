@@ -206,7 +206,6 @@ using System.Threading.Tasks;
 #pragma warning disable
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
 using System.Net.Sockets;
@@ -1937,8 +1936,7 @@ namespace TlsClientStream
             _eof = true;
             _closed = true;
             _connState.Dispose();
-            if (_pendingConnState != null)
-                _pendingConnState.Dispose();
+            _pendingConnState?.Dispose();
             if (_temp512 != null)
                 Utils.ClearArray(_temp512);
         }
@@ -2000,7 +1998,6 @@ namespace TlsClientStream
             _clientCertificates = clientCertificates;
             _remoteCertificationValidationCallback = remoteCertificateValidationCallback;
             _checkCertificateRevocation = checkCertificateRevocation;
-            ClientAlertException clientAlertException = null;
             try
             {
                 int offset = 0;
@@ -2016,14 +2013,8 @@ namespace TlsClientStream
             }
             catch (ClientAlertException e)
             {
-                // Can't await in catch clause in C# 5.0
-                clientAlertException = e;
-            }
-
-            if (clientAlertException != null)
-            {
-                await WriteAlertFatalAsync(clientAlertException.Description, cancellationToken);
-                throw new IOException(clientAlertException.ToString(), clientAlertException);
+                await WriteAlertFatalAsync(e.Description, cancellationToken);
+                throw new IOException(e.ToString(), e);
             }
         }
 
@@ -2044,7 +2035,6 @@ namespace TlsClientStream
                 throw new InvalidOperationException("Must perform initial handshake before writing application data");
             }
 
-            ClientAlertException clientAlertException = null;
             try
             {
                 if (_pendingConnState != null && !_waitingForChangeCipherSpec)
@@ -2071,14 +2061,8 @@ namespace TlsClientStream
             }
             catch (ClientAlertException e)
             {
-                // Can't await in catch clause in C# 5.0
-                clientAlertException = e;
-            }
-
-            if (clientAlertException != null)
-            {
-                await WriteAlertFatalAsync(clientAlertException.Description, cancellationToken);
-                throw new IOException(clientAlertException.ToString(), clientAlertException);
+                await WriteAlertFatalAsync(e.Description, cancellationToken);
+                throw new IOException(e.ToString(), e);
             }
         }
 
@@ -2087,7 +2071,6 @@ namespace TlsClientStream
             CheckNotClosed();
             if (_writePos > _connState.WriteStartPos)
             {
-                ClientAlertException clientAlertException = null;
                 try
                 {
                     _buf[0] = (byte)ContentType.ApplicationData;
@@ -2112,14 +2095,8 @@ namespace TlsClientStream
                 }
                 catch (ClientAlertException e)
                 {
-                    // Can't await in catch clause in C# 5.0
-                    clientAlertException = e;
-                }
-
-                if (clientAlertException != null)
-                {
-                    await WriteAlertFatalAsync(clientAlertException.Description, cancellationToken);
-                    throw new IOException(clientAlertException.ToString(), clientAlertException);
+                    await WriteAlertFatalAsync(e.Description, cancellationToken);
+                    throw new IOException(e.ToString(), e);
                 }
             }
         }
@@ -2141,7 +2118,6 @@ namespace TlsClientStream
         async Task<int> ReadInternalAsync(byte[] buffer, int offset, int len, bool onlyProcessHandshake, bool readNewDataIfAvailable, CancellationToken cancellationToken)
         {
             await FlushAsync(cancellationToken);
-            ClientAlertException clientAlertException = null;
             try
             {
                 for (;;)
@@ -2306,19 +2282,8 @@ namespace TlsClientStream
             }
             catch (ClientAlertException e)
             {
-                // Can't await in catch clause in C# 5.0
-                clientAlertException = e;
-            }
-
-            if (clientAlertException != null)
-            {
-                await WriteAlertFatalAsync(clientAlertException.Description, cancellationToken);
-                throw new IOException(clientAlertException.ToString(), clientAlertException);
-            }
-            else
-            {
-                // Will never happen but "all code paths must return a value"...
-                return 0;
+                await WriteAlertFatalAsync(e.Description, cancellationToken);
+                throw new IOException(e.ToString(), e);
             }
         }
 

@@ -25,7 +25,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
 using System.Net.Sockets;
@@ -35,6 +34,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using AsyncRewriter;
 
+// ReSharper disable once CheckNamespace
 namespace TlsClientStream
 {
     internal partial class TlsClientStream : Stream
@@ -49,7 +49,7 @@ namespace TlsClientStream
         int _readEnd;
         int _packetLen;
 
-        Stream _baseStream;
+        readonly Stream _baseStream;
 
         // Connection states
         // Read connection state is for the purpose when we have sent ChangeCipherSpec but the server hasn't yet
@@ -57,7 +57,7 @@ namespace TlsClientStream
         ConnectionState _readConnState;
         ConnectionState _pendingConnState;
 
-        RandomNumberGenerator _rng = RandomNumberGenerator.Create();
+        readonly RandomNumberGenerator _rng = RandomNumberGenerator.Create();
 
         // Info about the current message in the buffer
         ContentType _contentType;
@@ -65,17 +65,17 @@ namespace TlsClientStream
         int _plaintextStart;
 
         // Temp buffer to hold sequence number
-        byte[] _tempBuf8 = new byte[8];
+        readonly byte[] _tempBuf8 = new byte[8];
         // Temp buffer for GCM
         byte[] _temp512;
 
         // Holds buffered handshake messages that will be dequeued as soon as a proper final message has been received (ServerHelloDone or Finished)
-        HandshakeMessagesBuffer _handshakeMessagesBuffer = new HandshakeMessagesBuffer();
+        readonly HandshakeMessagesBuffer _handshakeMessagesBuffer = new HandshakeMessagesBuffer();
         HandshakeData _handshakeData;
 
         // User parameters
         bool _noRenegotiationExtensionSupportIsFatal = false;
-        string _hostName = null;
+        string _hostName;
         X509CertificateCollection _clientCertificates;
         System.Net.Security.RemoteCertificateValidationCallback _remoteCertificationValidationCallback;
         bool _checkCertificateRevocation;
@@ -116,7 +116,7 @@ namespace TlsClientStream
             _baseStream = baseStream;
         }
 
-#region Record layer
+        #region Record layer
 
         /// <summary>
         /// Makes sure there is at least one full record available at _readStart.
@@ -330,29 +330,21 @@ namespace TlsClientStream
             }
         }
 
-#endregion
+        #endregion
 
-#region Handshake infrastructure
+        #region Handshake infrastructure
 
         void UpdateHandshakeHash(byte[] buf, int offset, int len)
         {
             // .NET hash api does not allow us to clone hash states ...
-            if (_handshakeData.HandshakeHash1 != null)
-                _handshakeData.HandshakeHash1.Update(buf, offset, len);
-            if (_handshakeData.HandshakeHash1_384 != null)
-                _handshakeData.HandshakeHash1_384.Update(buf, offset, len);
-            if (_handshakeData.HandshakeHash2 != null)
-                _handshakeData.HandshakeHash2.Update(buf, offset, len);
-            if (_handshakeData.HandshakeHash2_384 != null)
-                _handshakeData.HandshakeHash2_384.Update(buf, offset, len);
-            if (_handshakeData.HandshakeHash1_MD5SHA1 != null)
-                _handshakeData.HandshakeHash1_MD5SHA1.Update(buf, offset, len);
-            if (_handshakeData.HandshakeHash2_MD5SHA1 != null)
-                _handshakeData.HandshakeHash2_MD5SHA1.Update(buf, offset, len);
-            if (_handshakeData.CertificateVerifyHash_MD5 != null)
-                _handshakeData.CertificateVerifyHash_MD5.Update(buf, offset, len);
-            if (_handshakeData.CertificateVerifyHash_SHA1 != null)
-                _handshakeData.CertificateVerifyHash_SHA1.Update(buf, offset, len);
+            _handshakeData.HandshakeHash1?.Update(buf, offset, len);
+            _handshakeData.HandshakeHash1_384?.Update(buf, offset, len);
+            _handshakeData.HandshakeHash2?.Update(buf, offset, len);
+            _handshakeData.HandshakeHash2_384?.Update(buf, offset, len);
+            _handshakeData.HandshakeHash1_MD5SHA1?.Update(buf, offset, len);
+            _handshakeData.HandshakeHash2_MD5SHA1?.Update(buf, offset, len);
+            _handshakeData.CertificateVerifyHash_MD5?.Update(buf, offset, len);
+            _handshakeData.CertificateVerifyHash_SHA1?.Update(buf, offset, len);
         }
 
         [RewriteAsync]
@@ -452,7 +444,7 @@ namespace TlsClientStream
         // Here we send all client messages in response to server hello
         int GenerateHandshakeResponse()
         {
-            int offset = 0;
+            var offset = 0;
             var ivLen = _connState.IvLen;
             if (_handshakeData.CertificateTypes != null) // Certificate request has been sent by the server
             {
@@ -642,22 +634,24 @@ namespace TlsClientStream
             }
         }
 
-#endregion
+        #endregion
 
-#region Handshake messages
+        #region Handshake messages
 
         HandshakeType SendClientHello(ref int offset)
         {
             _pendingConnState = new ConnectionState();
-            _handshakeData = new HandshakeData();
-            _handshakeData.HandshakeHash1 = Hasher.Create(TLSHashAlgorithm.SHA256);
-            _handshakeData.HandshakeHash2 = Hasher.Create(TLSHashAlgorithm.SHA256);
-            _handshakeData.HandshakeHash1_384 = Hasher.Create(TLSHashAlgorithm.SHA384);
-            _handshakeData.HandshakeHash2_384 = Hasher.Create(TLSHashAlgorithm.SHA384);
-            _handshakeData.HandshakeHash1_MD5SHA1 = Hasher.Create(TLSHashAlgorithm.MD5SHA1);
-            _handshakeData.HandshakeHash2_MD5SHA1 = Hasher.Create(TLSHashAlgorithm.MD5SHA1);
-            _handshakeData.CertificateVerifyHash_MD5 = Hasher.Create(TLSHashAlgorithm.MD5);
-            _handshakeData.CertificateVerifyHash_SHA1 = Hasher.Create(TLSHashAlgorithm.SHA1);
+            _handshakeData = new HandshakeData
+            {
+                HandshakeHash1 = Hasher.Create(TLSHashAlgorithm.SHA256),
+                HandshakeHash2 = Hasher.Create(TLSHashAlgorithm.SHA256),
+                HandshakeHash1_384 = Hasher.Create(TLSHashAlgorithm.SHA384),
+                HandshakeHash2_384 = Hasher.Create(TLSHashAlgorithm.SHA384),
+                HandshakeHash1_MD5SHA1 = Hasher.Create(TLSHashAlgorithm.MD5SHA1),
+                HandshakeHash2_MD5SHA1 = Hasher.Create(TLSHashAlgorithm.MD5SHA1),
+                CertificateVerifyHash_MD5 = Hasher.Create(TLSHashAlgorithm.MD5),
+                CertificateVerifyHash_SHA1 = Hasher.Create(TLSHashAlgorithm.SHA1)
+            };
 
             // Highest version supported
             offset += Utils.WriteUInt16(_buf, offset, (ushort)HighestTlsVersionSupported);
@@ -939,8 +933,13 @@ namespace TlsClientStream
         void ParseCertificateMessage(byte[] buf, ref int pos)
         {
             _handshakeData.CertList = new List<X509Certificate2>();
-            _handshakeData.CertChain = new X509Chain();
-            _handshakeData.CertChain.ChainPolicy.RevocationMode = _checkCertificateRevocation ? X509RevocationMode.Online : X509RevocationMode.NoCheck;
+            _handshakeData.CertChain = new X509Chain
+            {
+                ChainPolicy =
+                {
+                    RevocationMode = _checkCertificateRevocation ? X509RevocationMode.Online : X509RevocationMode.NoCheck
+                }
+            };
             var errors = System.Net.Security.SslPolicyErrors.None;
 
             var totalLen = Utils.ReadUInt24(buf, ref pos);
@@ -1122,7 +1121,7 @@ namespace TlsClientStream
                 SendAlertFatal(AlertDescription.UnexpectedMessage);
             }
 
-            int parametersEnd = pos;
+            var parametersEnd = pos;
 
             // Digitally signed client random + server random + parameters
             TLSHashAlgorithm hashAlgorithm;
@@ -1135,10 +1134,9 @@ namespace TlsClientStream
             else
             {
                 signatureAlgorithm = _pendingConnState.CipherSuite.GetSignatureAlgorithm();
-                if (signatureAlgorithm == SignatureAlgorithm.RSA)
-                    hashAlgorithm = TLSHashAlgorithm.MD5SHA1;
-                else
-                    hashAlgorithm = TLSHashAlgorithm.SHA1;
+                hashAlgorithm = signatureAlgorithm == SignatureAlgorithm.RSA
+                    ? TLSHashAlgorithm.MD5SHA1
+                    : TLSHashAlgorithm.SHA1;
             }
 
             var signatureLen = Utils.ReadUInt16(buf, ref pos);
@@ -1617,9 +1615,9 @@ namespace TlsClientStream
             _handshakeData = null;
         }
 
-#endregion
+        #endregion
 
-#region Alerts
+        #region Alerts
 
         void SendAlertFatal(AlertDescription description, string message = null)
         {
@@ -1640,8 +1638,7 @@ namespace TlsClientStream
             _eof = true;
             _closed = true;
             _connState.Dispose();
-            if (_pendingConnState != null)
-                _pendingConnState.Dispose();
+            _pendingConnState?.Dispose();
             if (_temp512 != null)
                 Utils.ClearArray(_temp512);
         }
@@ -1699,7 +1696,7 @@ namespace TlsClientStream
             }
         }
 
-#endregion
+        #endregion
 
         void ResetWritePos()
         {
@@ -1755,7 +1752,6 @@ namespace TlsClientStream
             _remoteCertificationValidationCallback = remoteCertificateValidationCallback;
             _checkCertificateRevocation = checkCertificateRevocation;
 
-            ClientAlertException clientAlertException = null;
             try
             {
                 int offset = 0;
@@ -1774,19 +1770,14 @@ namespace TlsClientStream
             }
             catch (ClientAlertException e)
             {
-                // Can't await in catch clause in C# 5.0
-                clientAlertException = e;
-            }
-            if (clientAlertException != null)
-            {
-                WriteAlertFatal(clientAlertException.Description);
-                throw new IOException(clientAlertException.ToString(), clientAlertException);
+                WriteAlertFatal(e.Description);
+                throw new IOException(e.ToString(), e);
             }
         }
 
         int WriteSpaceLeft => (1 << 14) + _connState.WriteStartPos - _writePos;
 
-#region Stream overrides
+        #region Stream overrides
 
         [RewriteAsync(true)]
         public override void Write(byte[] buffer, int offset, int len)
@@ -1807,7 +1798,6 @@ namespace TlsClientStream
                 throw new InvalidOperationException("Must perform initial handshake before writing application data");
             }
 
-            ClientAlertException clientAlertException = null;
             try
             {
                 if (_pendingConnState != null && !_waitingForChangeCipherSpec)
@@ -1836,13 +1826,8 @@ namespace TlsClientStream
             }
             catch (ClientAlertException e)
             {
-                // Can't await in catch clause in C# 5.0
-                clientAlertException = e;
-            }
-            if (clientAlertException != null)
-            {
-                WriteAlertFatal(clientAlertException.Description);
-                throw new IOException(clientAlertException.ToString(), clientAlertException);
+                WriteAlertFatal(e.Description);
+                throw new IOException(e.ToString(), e);
             }
         }
 
@@ -1852,7 +1837,6 @@ namespace TlsClientStream
             CheckNotClosed();
             if (_writePos > _connState.WriteStartPos)
             {
-                ClientAlertException clientAlertException = null;
                 try
                 {
                     _buf[0] = (byte)ContentType.ApplicationData;
@@ -1877,13 +1861,8 @@ namespace TlsClientStream
                 }
                 catch (ClientAlertException e)
                 {
-                    // Can't await in catch clause in C# 5.0
-                    clientAlertException = e;
-                }
-                if (clientAlertException != null)
-                {
-                    WriteAlertFatal(clientAlertException.Description);
-                    throw new IOException(clientAlertException.ToString(), clientAlertException);
+                    WriteAlertFatal(e.Description);
+                    throw new IOException(e.ToString(), e);
                 }
             }
         }
@@ -1908,7 +1887,6 @@ namespace TlsClientStream
         int ReadInternal(byte[] buffer, int offset, int len, bool onlyProcessHandshake, bool readNewDataIfAvailable)
         {
             Flush();
-            ClientAlertException clientAlertException = null;
             try
             {
                 for (; ; )
@@ -2068,18 +2046,8 @@ namespace TlsClientStream
             }
             catch (ClientAlertException e)
             {
-                // Can't await in catch clause in C# 5.0
-                clientAlertException = e;
-            }
-            if (clientAlertException != null)
-            {
-                WriteAlertFatal(clientAlertException.Description);
-                throw new IOException(clientAlertException.ToString(), clientAlertException);
-            }
-            else
-            {
-                // Will never happen but "all code paths must return a value"...
-                return 0;
+                WriteAlertFatal(e.Description);
+                throw new IOException(e.ToString(), e);
             }
         }
 
@@ -2143,7 +2111,7 @@ namespace TlsClientStream
         }
         public override bool CanSeek => false;
 
-#endregion
+        #endregion
 
         /// <summary>
         /// This method checks whether there are at least 1 byte that can be read in the buffer.
