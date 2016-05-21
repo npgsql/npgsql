@@ -203,6 +203,19 @@ using Npgsql;
 using Npgsql.TypeHandlers;
 using System.Threading;
 using System.Threading.Tasks;
+#pragma warning disable
+using System;
+using System.Collections.Generic;
+using System.Diagnostics.Contracts;
+using System.IO;
+using System.Linq;
+using System.Net.Sockets;
+using System.Numerics;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Npgsql
 {
@@ -1762,6 +1775,579 @@ namespace Npgsql.BackendMessages
                     await Buffer.SkipAsync(len, cancellationToken);
                 }
             }
+        }
+    }
+}
+
+namespace TlsClientStream
+{
+    internal partial class TlsClientStream
+    {
+        async Task<bool> ReadRecordAsync(CancellationToken cancellationToken)
+        {
+            int packetLength = -1;
+            while (true)
+            {
+                if (packetLength == -1 && _readEnd - _readStart >= 5)
+                {
+                    // We have at least a header in our buffer, so extract the length
+                    packetLength = (_buf[_readStart + 3] << 8) | _buf[_readStart + 4];
+                    if (packetLength > MaxEncryptedRecordLen)
+                    {
+                        SendAlertFatal(AlertDescription.RecordOverflow);
+                    }
+                }
+
+                if (packetLength != -1 && 5 + packetLength <= _readEnd - _readStart)
+                {
+                    // The whole record fits in the buffer. We are done.
+                    _packetLen = packetLength;
+                    return true;
+                }
+
+                if (_readEnd - _readStart > 0 && _readStart > 0)
+                {
+                    // We only have a partial record in the buffer,
+                    // move that to the beginning to be able to read as much as possible from the network.
+                    Buffer.BlockCopy(_buf, _readStart, _buf, 0, _readEnd - _readStart);
+                    _readEnd -= _readStart;
+                    _readStart = 0;
+                }
+
+                if (packetLength == -1 || _readEnd < 5 + packetLength)
+                {
+                    if (_readStart == _readEnd)
+                    {
+                        // The read buffer is empty, so start reading at the start of the buffer
+                        _readStart = 0;
+                        _readEnd = 0;
+                    }
+
+                    int read = await (_baseStream.ReadAsync(_buf, _readEnd, _buf.Length - _readEnd, cancellationToken));
+                    if (read == 0)
+                    {
+                        return false;
+                    }
+
+                    _readEnd += read;
+                }
+            }
+        }
+
+        async Task GetInitialHandshakeMessagesAsync(CancellationToken cancellationToken, bool allowApplicationData = false)
+        {
+            while (!_handshakeMessagesBuffer.HasServerHelloDone)
+            {
+                if (!await (ReadRecordAsync(cancellationToken)))
+                    throw new IOException("Connection EOF in initial handshake");
+                Decrypt();
+                switch (_contentType)
+                {
+                    case ContentType.Alert:
+                        await HandleAlertMessageAsync(cancellationToken);
+                        break;
+                    case ContentType.Handshake:
+                        _handshakeMessagesBuffer.AddBytes(_buf, _plaintextStart, _plaintextLen, HandshakeMessagesBuffer.IgnoreHelloRequestsSettings.IgnoreHelloRequests);
+                        if (_handshakeMessagesBuffer.Messages.Count > 5)
+                        {
+                            // There can never be more than 5 handshake messages in a handshake
+                            SendAlertFatal(AlertDescription.UnexpectedMessage);
+                        }
+
+                        break;
+                    case ContentType.ApplicationData:
+                        EnqueueReadData(allowApplicationData);
+                        break;
+                    default:
+                        SendAlertFatal(AlertDescription.UnexpectedMessage);
+                        break;
+                }
+            }
+
+            var responseLen = TraverseHandshakeMessages();
+            await _baseStream.WriteAsync(_buf, 0, responseLen, cancellationToken);
+            await _baseStream.FlushAsync(cancellationToken);
+            ResetWritePos();
+            _waitingForChangeCipherSpec = true;
+        }
+
+        async Task WaitForHandshakeCompletedAsync(bool initialHandshake, CancellationToken cancellationToken)
+        {
+            for (;;)
+            {
+                if (!await (ReadRecordAsync(cancellationToken)))
+                {
+                    _eof = true;
+                    throw new IOException("Unexpected connection EOF in handshake");
+                }
+
+                Decrypt();
+                if (_contentType != ContentType.ChangeCipherSpec)
+                {
+                    EnqueueReadData(!initialHandshake);
+                }
+                else
+                {
+                    ParseChangeCipherSpec();
+                    _waitingForChangeCipherSpec = false;
+                    break;
+                }
+            }
+
+            while (_handshakeMessagesBuffer.Messages.Count == 0)
+            {
+                if (!await (ReadRecordAsync(cancellationToken)))
+                {
+                    _eof = true;
+                    throw new IOException("Unexpected connection EOF in handshake");
+                }
+
+                Decrypt();
+                if (_contentType != ContentType.Handshake)
+                {
+                    EnqueueReadData(!initialHandshake);
+                }
+                else
+                {
+                    _handshakeMessagesBuffer.AddBytes(_buf, _plaintextStart, _plaintextLen, HandshakeMessagesBuffer.IgnoreHelloRequestsSettings.IgnoreHelloRequestsUntilFinished);
+                }
+            }
+
+            if ((HandshakeType)_handshakeMessagesBuffer.Messages[0][0] == HandshakeType.Finished)
+            {
+                ParseFinishedMessage(_handshakeMessagesBuffer.Messages[0]);
+                _handshakeMessagesBuffer.RemoveFirst(); // Leave possible hello requests after this position
+            }
+            else
+            {
+                SendAlertFatal(AlertDescription.UnexpectedMessage);
+            }
+        }
+
+        async Task WriteAlertFatalAsync(AlertDescription description, CancellationToken cancellationToken)
+        {
+            _buf[0] = (byte)ContentType.Alert;
+            Utils.WriteUInt16(_buf, 1, (ushort)_connState.TlsVersion);
+            _buf[5 + _connState.IvLen] = (byte)AlertLevel.Fatal;
+            _buf[5 + _connState.IvLen + 1] = (byte)description;
+            int endPos = Encrypt(0, 2);
+            await _baseStream.WriteAsync(_buf, 0, endPos, cancellationToken);
+            await _baseStream.FlushAsync(cancellationToken);
+            _baseStream.Dispose();
+            _eof = true;
+            _closed = true;
+            _connState.Dispose();
+            if (_pendingConnState != null)
+                _pendingConnState.Dispose();
+            if (_temp512 != null)
+                Utils.ClearArray(_temp512);
+        }
+
+        async Task SendClosureAlertAsync(CancellationToken cancellationToken)
+        {
+            _buf[0] = (byte)ContentType.Alert;
+            Utils.WriteUInt16(_buf, 1, (ushort)_connState.TlsVersion);
+            _buf[5 + _connState.IvLen] = (byte)AlertLevel.Warning;
+            _buf[5 + _connState.IvLen + 1] = (byte)AlertDescription.CloseNotify;
+            int endPos = Encrypt(0, 2);
+            await _baseStream.WriteAsync(_buf, 0, endPos, cancellationToken);
+            await _baseStream.FlushAsync(cancellationToken);
+        }
+
+        async Task HandleAlertMessageAsync(CancellationToken cancellationToken)
+        {
+            if (_plaintextLen != 2)
+                SendAlertFatal(AlertDescription.DecodeError);
+            var alertLevel = (AlertLevel)_buf[_plaintextStart];
+            var alertDescription = (AlertDescription)_buf[_plaintextStart + 1];
+            switch (alertDescription)
+            {
+                case AlertDescription.CloseNotify:
+                    _eof = true;
+                    try
+                    {
+                        await SendClosureAlertAsync(cancellationToken);
+                    }
+                    catch (IOException)
+                    {
+                    // Don't care about this fails (the other end has closed the connection so we couldn't write)
+                    }
+
+                    await // Now, did the stream end normally (end of stream) or was the connection reset?
+                    // We read 0 bytes to find out. If end of stream, it will just return 0, otherwise an exception will be thrown, as we want.
+                    // TODO: what to do with _closed? (_eof is true)
+                    _baseStream.ReadAsync(_buf, 0, 0, cancellationToken);
+                    _baseStream.Dispose();
+                    break;
+                default:
+                    if (alertLevel == AlertLevel.Fatal)
+                    {
+                        _eof = true;
+                        _baseStream.Dispose();
+                        Dispose();
+                        throw new IOException("TLS Fatal alert: " + alertDescription);
+                    }
+
+                    break;
+            }
+        }
+
+        public async Task PerformInitialHandshakeAsync(string hostName, X509CertificateCollection clientCertificates, System.Net.Security.RemoteCertificateValidationCallback remoteCertificateValidationCallback, bool checkCertificateRevocation, CancellationToken cancellationToken)
+        {
+            if (_connState.CipherSuite != null || _pendingConnState != null || _closed)
+                throw new InvalidOperationException("Already performed initial handshake");
+            _hostName = hostName;
+            _clientCertificates = clientCertificates;
+            _remoteCertificationValidationCallback = remoteCertificateValidationCallback;
+            _checkCertificateRevocation = checkCertificateRevocation;
+            ClientAlertException clientAlertException = null;
+            try
+            {
+                int offset = 0;
+                SendHandshakeMessage(SendClientHello, ref offset, 0);
+                await _baseStream.WriteAsync(_buf, 0, offset, cancellationToken);
+                await _baseStream.FlushAsync(cancellationToken);
+                await GetInitialHandshakeMessagesAsync(cancellationToken);
+                var keyExchange = _connState.CipherSuite.KeyExchange;
+                if (keyExchange == KeyExchange.RSA || keyExchange == KeyExchange.ECDH_ECDSA || keyExchange == KeyExchange.ECDH_RSA)
+                {
+                    await WaitForHandshakeCompletedAsync(true, cancellationToken);
+                }
+            }
+            catch (ClientAlertException e)
+            {
+                // Can't await in catch clause in C# 5.0
+                clientAlertException = e;
+            }
+
+            if (clientAlertException != null)
+            {
+                await WriteAlertFatalAsync(clientAlertException.Description, cancellationToken);
+                throw new IOException(clientAlertException.ToString(), clientAlertException);
+            }
+        }
+
+        public async override Task WriteAsync(byte[] buffer, int offset, int len, CancellationToken cancellationToken)
+        {
+#if CHECK_ARGUMENTS
+            if (buffer == null)
+                throw new ArgumentNullException("buffer");
+            if (offset < 0 || offset > buffer.Length)
+                throw new ArgumentOutOfRangeException("offset");
+            if (len < 0 || len > buffer.Length - offset)
+                throw new ArgumentOutOfRangeException("len");
+            Contract.EndContractBlock();
+#endif
+            CheckNotClosed();
+            if (_connState.CipherSuite == null)
+            {
+                throw new InvalidOperationException("Must perform initial handshake before writing application data");
+            }
+
+            ClientAlertException clientAlertException = null;
+            try
+            {
+                if (_pendingConnState != null && !_waitingForChangeCipherSpec)
+                {
+                    await GetInitialHandshakeMessagesAsync(cancellationToken, true);
+                    await WaitForHandshakeCompletedAsync(false, cancellationToken);
+                }
+
+                CheckCanWrite();
+                for (;;)
+                {
+                    int toWrite = Math.Min(WriteSpaceLeft, len);
+                    Buffer.BlockCopy(buffer, offset, _buf, _writePos, toWrite);
+                    _writePos += toWrite;
+                    offset += toWrite;
+                    len -= toWrite;
+                    if (len == 0)
+                    {
+                        return;
+                    }
+
+                    await FlushAsync(cancellationToken);
+                }
+            }
+            catch (ClientAlertException e)
+            {
+                // Can't await in catch clause in C# 5.0
+                clientAlertException = e;
+            }
+
+            if (clientAlertException != null)
+            {
+                await WriteAlertFatalAsync(clientAlertException.Description, cancellationToken);
+                throw new IOException(clientAlertException.ToString(), clientAlertException);
+            }
+        }
+
+        public async override Task FlushAsync(CancellationToken cancellationToken)
+        {
+            CheckNotClosed();
+            if (_writePos > _connState.WriteStartPos)
+            {
+                ClientAlertException clientAlertException = null;
+                try
+                {
+                    _buf[0] = (byte)ContentType.ApplicationData;
+                    Utils.WriteUInt16(_buf, 1, (ushort)_connState.TlsVersion);
+                    int offset;
+                    if (_connState.TlsVersion == TlsVersion.TLSv1_0)
+                    {
+                        // To avoid the BEAST attack, we add an empty application data record
+                        offset = Encrypt(0, 0);
+                        _buf[offset] = (byte)ContentType.ApplicationData;
+                        Utils.WriteUInt16(_buf, offset + 1, (ushort)_connState.TlsVersion);
+                    }
+                    else
+                    {
+                        offset = 0;
+                    }
+
+                    int endPos = Encrypt(offset, _writePos - offset - 5 - _connState.IvLen);
+                    await _baseStream.WriteAsync(_buf, 0, endPos, cancellationToken);
+                    await _baseStream.FlushAsync(cancellationToken);
+                    ResetWritePos();
+                }
+                catch (ClientAlertException e)
+                {
+                    // Can't await in catch clause in C# 5.0
+                    clientAlertException = e;
+                }
+
+                if (clientAlertException != null)
+                {
+                    await WriteAlertFatalAsync(clientAlertException.Description, cancellationToken);
+                    throw new IOException(clientAlertException.ToString(), clientAlertException);
+                }
+            }
+        }
+
+        public async override Task<int> ReadAsync(byte[] buffer, int offset, int len, CancellationToken cancellationToken)
+        {
+#if CHECK_ARGUMENTS
+            if (buffer == null)
+                throw new ArgumentNullException("buffer");
+            if (offset < 0 || offset > buffer.Length)
+                throw new ArgumentOutOfRangeException("offset");
+            if (len < 0 || len > buffer.Length - offset)
+                throw new ArgumentOutOfRangeException("len");
+            Contract.EndContractBlock();
+#endif
+            return await ReadInternalAsync(buffer, offset, len, false, false, cancellationToken);
+        }
+
+        async Task<int> ReadInternalAsync(byte[] buffer, int offset, int len, bool onlyProcessHandshake, bool readNewDataIfAvailable, CancellationToken cancellationToken)
+        {
+            await FlushAsync(cancellationToken);
+            ClientAlertException clientAlertException = null;
+            try
+            {
+                for (;;)
+                {
+                    // Handshake messages take priority over application data
+                    if (_handshakeMessagesBuffer.Messages.Count > 0)
+                    {
+                        if (_waitingForFinished)
+                        {
+                            if (_handshakeMessagesBuffer.Messages[0][0] != (byte)HandshakeType.Finished)
+                            {
+                                SendAlertFatal(AlertDescription.UnexpectedMessage);
+                            }
+
+                            ParseFinishedMessage(_handshakeMessagesBuffer.Messages[0]);
+                            _waitingForFinished = false;
+                            _handshakeMessagesBuffer.RemoveFirst(); // There may be Hello Requests after Finished
+                        }
+
+                        if (_handshakeMessagesBuffer.Messages.Count > 0)
+                        {
+                            if (_pendingConnState == null)
+                            {
+                                // Not currently renegotiating, should be a hello request
+                                if (_handshakeMessagesBuffer.Messages.Any(m => !HandshakeMessagesBuffer.IsHelloRequest(m)))
+                                {
+                                    SendAlertFatal(AlertDescription.UnexpectedMessage);
+                                }
+
+                                _renegotiationTempWriteBuf = new byte[_buf.Length];
+                                byte[] bufSaved = _buf;
+                                _buf = _renegotiationTempWriteBuf;
+                                int writeOffset = 0;
+                                SendHandshakeMessage(SendClientHello, ref writeOffset, _connState.IvLen);
+                                await _baseStream.WriteAsync(_buf, 0, writeOffset, cancellationToken);
+                                await _baseStream.FlushAsync(cancellationToken);
+                                _buf = bufSaved;
+                                _handshakeMessagesBuffer.ClearMessages();
+                            }
+                            else
+                            {
+                                // Ignore hello request messages when we are renegotiating,
+                                // by setting ignoreHelloRequests to false below in AddBytes, if _pendingConnState != null
+                                if (_waitingForChangeCipherSpec)
+                                {
+                                    SendAlertFatal(AlertDescription.UnexpectedMessage);
+                                }
+
+                                if (_handshakeMessagesBuffer.HasServerHelloDone)
+                                {
+                                    byte[] bufSaved = _buf;
+                                    _buf = _renegotiationTempWriteBuf;
+                                    var responseLen = TraverseHandshakeMessages();
+                                    await _baseStream.WriteAsync(_buf, 0, responseLen, cancellationToken);
+                                    await _baseStream.FlushAsync(cancellationToken);
+                                    ResetWritePos();
+                                    _waitingForChangeCipherSpec = true;
+                                    _buf = bufSaved;
+                                    _renegotiationTempWriteBuf = null;
+                                }
+                            }
+                        }
+                    }
+
+                    if (_eof)
+                    {
+                        return 0;
+                    }
+
+                    if (onlyProcessHandshake)
+                    {
+                        // No data is available in our buffer and we're not waiting for the handshake to complete
+                        if (_readStart == _readEnd && _decryptedReadPos == _decryptedReadEnd && !(_pendingConnState != null || _waitingForChangeCipherSpec || _waitingForFinished))
+                        {
+                            if (!readNewDataIfAvailable || !((NetworkStream)_baseStream).DataAvailable)
+                                return 0;
+                        // Else there is data available in the NetworkStream and we want to look at it. The record will be read and processed further down.
+                        }
+
+                        // There is application data available in our buffer
+                        if (_bufferedReadData != null || _decryptedReadPos < _decryptedReadEnd)
+                        {
+                            return 1;
+                        }
+                    }
+                    else
+                    {
+                        if (_bufferedReadData != null)
+                        {
+                            var buf = _bufferedReadData.Peek();
+                            var toRead = Math.Min(buf.Length - _posBufferedReadData, len);
+                            Buffer.BlockCopy(buf, _posBufferedReadData, buffer, offset, toRead);
+                            _posBufferedReadData += toRead;
+                            _lenBufferedReadData -= toRead;
+                            if (_posBufferedReadData == buf.Length)
+                            {
+                                _bufferedReadData.Dequeue();
+                                _posBufferedReadData = 0;
+                                if (_bufferedReadData.Count == 0)
+                                {
+                                    _bufferedReadData = null;
+                                }
+                            }
+
+                            return toRead;
+                        }
+
+                        if (_decryptedReadPos < _decryptedReadEnd)
+                        {
+                            var toRead = Math.Min(_decryptedReadEnd - _decryptedReadPos, len);
+                            Buffer.BlockCopy(_buf, _decryptedReadPos, buffer, offset, toRead);
+                            _decryptedReadPos += toRead;
+                            return toRead;
+                        }
+                    }
+
+                    if (!await (ReadRecordAsync(cancellationToken)))
+                    {
+                        _eof = true;
+                        return 0;
+                    }
+
+                    Decrypt();
+                    if (_contentType == ContentType.ApplicationData)
+                    {
+                        if (_readConnState.ReadAes == null || _waitingForFinished)
+                        {
+                            // Bad state, cannot read application data with null cipher, or until finished has been received
+                            SendAlertFatal(AlertDescription.UnexpectedMessage);
+                        }
+
+                        _decryptedReadPos = _plaintextStart;
+                        _decryptedReadEnd = _decryptedReadPos + _plaintextLen;
+                        continue;
+                    }
+                    else if (_contentType == ContentType.ChangeCipherSpec)
+                    {
+                        ParseChangeCipherSpec();
+                        _waitingForChangeCipherSpec = false;
+                        _waitingForFinished = true;
+                        continue;
+                    }
+                    else if (_contentType == ContentType.Handshake)
+                    {
+                        _handshakeMessagesBuffer.AddBytes(_buf, _plaintextStart, _plaintextLen, _pendingConnState != null ? HandshakeMessagesBuffer.IgnoreHelloRequestsSettings.IgnoreHelloRequestsUntilFinished : HandshakeMessagesBuffer.IgnoreHelloRequestsSettings.IncludeHelloRequests);
+                        if (_handshakeMessagesBuffer.Messages.Count > 5)
+                        {
+                            // There can never be more than 5 handshake messages in a handshake
+                            SendAlertFatal(AlertDescription.UnexpectedMessage);
+                        }
+                    // The handshake message(s) will be processed in the loop's next iteration
+                    }
+                    else if (_contentType == ContentType.Alert)
+                    {
+                        await HandleAlertMessageAsync(cancellationToken);
+                    }
+                    else
+                    {
+                        SendAlertFatal(AlertDescription.UnexpectedMessage);
+                    }
+                }
+            }
+            catch (ClientAlertException e)
+            {
+                // Can't await in catch clause in C# 5.0
+                clientAlertException = e;
+            }
+
+            if (clientAlertException != null)
+            {
+                await WriteAlertFatalAsync(clientAlertException.Description, cancellationToken);
+                throw new IOException(clientAlertException.ToString(), clientAlertException);
+            }
+            else
+            {
+                // Will never happen but "all code paths must return a value"...
+                return 0;
+            }
+        }
+
+        public async Task<bool> HasBufferedReadDataAsync(bool checkNetworkStream, CancellationToken cancellationToken)
+        {
+            if (_closed)
+                return false;
+            if (_lenBufferedReadData > 0)
+                return true;
+            if (_decryptedReadPos < _decryptedReadEnd)
+                return true;
+            if (_readStart == _readEnd && !checkNetworkStream)
+                return false;
+            // Otherwise there may be buffered unprocessed packets. We check if any of them is application data.
+            int pos = _readStart;
+            while (pos < _readEnd)
+            {
+                if ((ContentType)_buf[pos] == ContentType.ApplicationData)
+                    return true;
+                if (pos + 5 >= _readEnd)
+                    break;
+                pos += 3;
+                int recordLen = Utils.ReadUInt16(_buf, ref pos);
+                pos += recordLen;
+            }
+
+            // If none of them were application data, they should be handshake messages/change cipher suite.
+            // Process potential renegotiation, but stop when application data is received, or the buffer(s) becomes empty.
+            return await (ReadInternalAsync(null, 0, 0, true, checkNetworkStream, cancellationToken)) == 1;
         }
     }
 }
