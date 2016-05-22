@@ -299,7 +299,7 @@ namespace Npgsql
 
                 var internalTimeout = _settings.InternalCommandTimeout;
                 if (internalTimeout == -1)
-                    return Math.Max(_settings.CommandTimeout, MinimumInternalCommandTimeout);
+                    return Math.Max(_settings.CommandTimeout, MinimumInternalCommandTimeout) * 1000;
 
                 Contract.Assert(internalTimeout == 0 || internalTimeout >= MinimumInternalCommandTimeout);
                 return internalTimeout * 1000;
