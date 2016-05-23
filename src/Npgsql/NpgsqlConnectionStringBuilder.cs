@@ -847,6 +847,25 @@ namespace Npgsql
         }
         int _bufferSize;
 
+        /// <summary>
+        /// Gets or sets the buffer size.
+        /// </summary>
+        [Category("Advanced")]
+        [Description("Determines whether prepared statements are persisted after command is disposed or connection returned to the pool.")]
+        [DisplayName("Persist Prepared")]
+        [NpgsqlConnectionStringProperty]
+        [DefaultValue(NpgsqlCommand.DefaultIsPersistent)]
+        public bool PersistPrepared
+        {
+            get { return _persistPrepared; }
+            set
+            {
+                _persistPrepared = value;
+                SetValue(nameof(PersistPrepared), value);
+            }
+        }
+        bool _persistPrepared;
+
         #endregion
 
         #region Properties - Compatibility

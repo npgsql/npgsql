@@ -139,6 +139,11 @@ namespace Npgsql
         /// </summary>
         byte _pendingRfqPrependedMessages;
 
+        /// <summary>
+        /// Handles management of prepared statements owned by this connector
+        /// </summary>
+        internal PreparedStatementRegistry PreparedStatements { get; private set; }
+	
         internal NpgsqlDataReader CurrentReader;
 
         /// <summary>
@@ -261,7 +266,7 @@ namespace Npgsql
             _settings = connectionString;
             _password = password;
             BackendParams = new Dictionary<string, string>();
-            _preparedStatementIndex = 0;
+            PreparedStatements = new PreparedStatementRegistry();
 
             _userLock = new SemaphoreSlim(1, 1);
             _userAction = new UserAction(this);
@@ -287,6 +292,7 @@ namespace Npgsql
         int BufferSize => _settings.BufferSize;
         int ConnectionTimeout => _settings.Timeout;
         int KeepAlive => _settings.KeepAlive;
+        bool PersistPrepared => _settings.PersistPrepared;
         bool IsKeepAliveEnabled => KeepAlive > 0;
         bool IntegratedSecurity => _settings.IntegratedSecurity;
         internal bool ConvertInfinityDateTime => _settings.ConvertInfinityDateTime;
@@ -1416,6 +1422,7 @@ namespace Npgsql
             WriteBuffer = null;
             Connection = null;
             BackendParams.Clear();
+            PreparedStatements.ClearAllPreparedStatements();
             ServerVersion = null;
 
             // Disposing SemaphoreSlim leaves CurrentCount at 0, so increment back to 1 if needed
@@ -1435,7 +1442,7 @@ namespace Npgsql
         /// <summary>
         /// Called when a pooled connection is closed, and its connector is returned to the pool.
         /// Resets the connector back to its initial state, releasing server-side sources
-        /// (e.g. prepared statements), resetting parameters to their defaults, and resetting client-side
+        /// (e.g. non persisted prepared statements), resetting parameters to their defaults, and resetting client-side
         /// state
         /// </summary>
         internal void Reset()
@@ -1469,25 +1476,36 @@ namespace Npgsql
             WriteBuffer.Clear();
             _pendingRfqPrependedMessages = 0;
 
-            // Must rollback transaction before sending DISCARD ALL
+            // Must rollback transaction before sending DISCARD commands
             if (InTransaction)
                 Rollback();
 
-            if (SupportsDiscard)
-                PrependInternalMessage(PregeneratedMessage.DiscardAll);
+            // Deallocate non persisted prepared statements
+            if (SupportsDeallocate)
+            {
+                var stmtNames = PreparedStatements.ClearNonPersistedPreparedStatements();
+
+                for (int i = 0; i < stmtNames.Count; i++)
+                {
+                    var query = String.Format("DEALLOCATE \"{0}\";", stmtNames[i]);
+                    PrependInternalMessage(QueryMessage.Populate(query));
+                }
+            }
+
+            if (SupportsDiscardAll)
+            {
+                // Send DISCARD ALL sub commands as separate commands (otherwise all statements would be deallocated also)
+                PrependInternalMessage(PregeneratedMessage.DiscardSessionState);
+
+                if (SupportsDiscardSequences)
+                {
+                    // Send also DISCARD SEQUENCES if server supports it (part of DISCARD ALL)
+                    PrependInternalMessage(PregeneratedMessage.DiscardSequences);
+                }
+            }
             else if (SupportsUnlisten)
             {
                 PrependInternalMessage(PregeneratedMessage.UnlistenAll);
-                /*
-                 TODO: Problem: we can't just deallocate for all the below since some may have already been deallocated
-                 Not sure if we should keep supporting this for < 8.3. If so fix along with #483
-                if (_preparedStatementIndex > 0) {
-                    for (var i = 1; i <= _preparedStatementIndex; i++) {
-                        PrependMessage(new QueryMessage(String.Format("DEALLOCATE \"{0}{1}\";", PreparedStatementNamePrefix, i)));
-                    }
-                }*/
-
-                _preparedStatementIndex = 0;
             }
         }
 
@@ -1623,9 +1641,11 @@ namespace Npgsql
 
         #region Supported features
 
-        bool SupportsDiscard => ServerVersion >= new Version(8, 3, 0);
-        internal bool SupportsRangeTypes => ServerVersion >= new Version(9, 2, 0);
+        bool SupportsDiscardAll => ServerVersion >= new Version(8, 3, 0);
+        bool SupportsDiscardSequences => ServerVersion >= new Version(9, 4, 0);
         bool SupportsUnlisten => ServerVersion >= new Version(6, 4, 0) && !IsRedshift;
+        bool SupportsDeallocate => ServerVersion >= new Version(7, 3, 0);
+        internal bool SupportsRangeTypes => ServerVersion >= new Version(9, 2, 0);
         internal bool UseConformantStrings { get; private set; }
 
 /*
@@ -1706,17 +1726,6 @@ namespace Npgsql
                 return;
             }
         }
-
-        /// <summary>
-        /// Returns next plan index.
-        /// </summary>
-        internal string NextPreparedStatementName()
-        {
-            return PreparedStatementNamePrefix + (++_preparedStatementIndex);
-        }
-
-        int _preparedStatementIndex;
-        const string PreparedStatementNamePrefix = "s";
 
         #endregion Misc
 
