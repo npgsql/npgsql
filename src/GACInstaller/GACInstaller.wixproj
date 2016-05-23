@@ -22,6 +22,11 @@
     <IntermediateOutputPath>obj\$(Configuration)\</IntermediateOutputPath>
     <SuppressIces>ICE09;ICE32;ICE61</SuppressIces>
   </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'ReleaseOptimizedCryptography|x86' ">
+    <OutputPath>bin\$(Configuration)\</OutputPath>
+    <IntermediateOutputPath>obj\$(Configuration)\</IntermediateOutputPath>
+    <SuppressIces>ICE09;ICE32;ICE61</SuppressIces>
+  </PropertyGroup>
   <ItemGroup>
     <Compile Include="Npgsql.wxs" />
   </ItemGroup>
