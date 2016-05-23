@@ -21,6 +21,7 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
+#if !NETCORE && (NET45 || NET451)
 #undef CHECK_ARGUMENTS
 
 using System;
@@ -2152,3 +2153,4 @@ namespace TlsClientStream
         }
     }
 }
+#endif

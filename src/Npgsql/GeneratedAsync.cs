@@ -478,9 +478,11 @@ namespace Npgsql
                                 certificateValidationCallback = DefaultUserCertificateValidationCallback;
                             if (!UseSslStream)
                             {
+#if !NETCORE && (NET45 || NET451)
                                 var sslStream = new TlsClientStream.TlsClientStream(_stream);
                                 sslStream.PerformInitialHandshake(Host, clientCertificates, certificateValidationCallback, false);
                                 _stream = sslStream;
+#endif
                             }
                             else
                             {
@@ -1777,7 +1779,7 @@ namespace Npgsql.BackendMessages
         }
     }
 }
-
+#if !NETCORE && (NET45 || NET451)
 namespace TlsClientStream
 {
     internal partial class TlsClientStream
@@ -2316,3 +2318,4 @@ namespace TlsClientStream
         }
     }
 }
+#endif
