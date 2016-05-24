@@ -182,10 +182,11 @@ namespace Npgsql
         public override bool Remove(string keyword)
         {
             var p = GetProperty(keyword);
-            var removed = base.ContainsKey(p.Name);
+            string cannonicalName = PropertyNameToCanonicalKeyword[p.Name];
+            var removed = base.ContainsKey(cannonicalName);
             // Note that string property setters call SetValue, which itself calls base.Remove().
             p.SetValue(this, PropertyDefaults[p]);
-            base.Remove(p.Name);
+            base.Remove(cannonicalName);
             return removed;
         }
 
