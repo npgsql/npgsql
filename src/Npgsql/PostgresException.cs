@@ -52,7 +52,7 @@ namespace Npgsql
 #if NET45 || NET451
     [Serializable]
 #endif
-    public sealed class PostgresException : DbException
+    public sealed class PostgresException : NpgsqlException
     {
         readonly ErrorOrNoticeMessage _msg;
         Dictionary<string, object> _data;
