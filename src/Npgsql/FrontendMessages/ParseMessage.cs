@@ -23,7 +23,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 
@@ -75,7 +75,7 @@ namespace Npgsql.FrontendMessages
 
         internal override bool Write(WriteBuffer buf)
         {
-            Contract.Requires(Statement != null);
+            Debug.Assert(Statement != null);
 
             switch (_state)
             {

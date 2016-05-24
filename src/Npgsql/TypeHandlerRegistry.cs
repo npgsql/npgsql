@@ -26,9 +26,9 @@ using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
-using System.Diagnostics.Contracts;
 using AsyncRewriter;
 using JetBrains.Annotations;
 using Npgsql.Logging;
@@ -228,8 +228,8 @@ namespace Npgsql
             var name = reader.GetString(1);
             var oid = Convert.ToUInt32(reader[2]);
 
-            Contract.Assume(name != null);
-            Contract.Assume(oid != 0);
+            Debug.Assert(name != null);
+            Debug.Assert(oid != 0);
 
             uint elementOID;
             var typeChar = reader.GetString(5)[0];
@@ -245,7 +245,7 @@ namespace Npgsql
                 return;
             case 'a':   // Array
                 elementOID = Convert.ToUInt32(reader[6]);
-                Contract.Assume(elementOID > 0);
+                Debug.Assert(elementOID > 0);
                 BackendType elementBackendType;
                 if (!types.ByOID.TryGetValue(elementOID, out elementBackendType))
                 {
@@ -256,7 +256,7 @@ namespace Npgsql
                 return;
             case 'r':   // Range
                 elementOID = Convert.ToUInt32(reader[6]);
-                Contract.Assume(elementOID > 0);
+                Debug.Assert(elementOID > 0);
                 if (!types.ByOID.TryGetValue(elementOID, out elementBackendType))
                 {
                     Log.Trace($"Range type '{name}' refers to unknown subtype with OID {elementOID}, skipping", connector.Id);
@@ -273,7 +273,7 @@ namespace Npgsql
                 return;
             case 'd':   // Domain
                 var baseTypeOID = Convert.ToUInt32(reader[4]);
-                Contract.Assume(baseTypeOID > 0);
+                Debug.Assert(baseTypeOID > 0);
                 BackendType baseBackendType;
                 if (!types.ByOID.TryGetValue(baseTypeOID, out baseBackendType))
                 {
@@ -283,7 +283,7 @@ namespace Npgsql
                 new BackendDomainType(ns, name, oid, baseBackendType).AddTo(types);
                 return;
             case 'p':   // psuedo-type (record only)
-                Contract.Assume(name == "record");
+                Debug.Assert(name == "record");
                 // Hack this as a base type
                 goto case 'b';
             default:
@@ -412,7 +412,6 @@ namespace Npgsql
             {
                 if (specificType != null && (npgsqlDbType & NpgsqlDbType.Enum) == 0 && (npgsqlDbType & NpgsqlDbType.Composite) == 0)
                     throw new ArgumentException($"{nameof(specificType)} can only be used with {nameof(NpgsqlDbType.Enum)} or {nameof(NpgsqlDbType.Composite)}");
-                Contract.EndContractBlock();
 
                 TypeHandler handler;
                 if (_byNpgsqlDbType.TryGetValue(npgsqlDbType, out handler)) {
@@ -459,8 +458,6 @@ namespace Npgsql
         {
             get
             {
-                Contract.Ensures(Contract.Result<TypeHandler>() != null);
-
                 TypeHandler handler;
                 if (_byDbType.TryGetValue(dbType, out handler))
                     return handler;
@@ -475,8 +472,7 @@ namespace Npgsql
         {
             get
             {
-                Contract.Requires(value != null);
-                Contract.Ensures(Contract.Result<TypeHandler>() != null);
+                Debug.Assert(value != null);
 
                 if (value is DateTime)
                 {
@@ -499,8 +495,6 @@ namespace Npgsql
         {
             get
             {
-                Contract.Ensures(Contract.Result<TypeHandler>() != null);
-
                 TypeHandler handler;
                 if (_byType.TryGetValue(type, out handler))
                     return handler;
@@ -823,7 +817,7 @@ namespace Npgsql
             /// <returns></returns>
             TypeHandler InstantiateHandler(TypeHandlerRegistry registry)
             {
-                Contract.Assert(HandlerType != null);
+                Debug.Assert(HandlerType != null);
 
                 if (_ctorWithRegistry == null && _ctorWithoutRegistry == null)
                 {
@@ -850,7 +844,7 @@ namespace Npgsql
 
                 if (_ctorWithRegistry != null)
                     return (TypeHandler)_ctorWithRegistry.Invoke(new object[] { this, registry });
-                Contract.Assert(_ctorWithoutRegistry != null);
+                Debug.Assert(_ctorWithoutRegistry != null);
                 return (TypeHandler)_ctorWithoutRegistry.Invoke(new object[] { this });
             }
         }
@@ -1023,7 +1017,7 @@ namespace Npgsql
 
                 registry.ByOID[OID] = handler;
                 registry._byType[compositeHandler.CompositeType] = handler;
-                Contract.Assume(_relationId != 0);
+                Debug.Assert(_relationId != 0);
 
                 var fields = _rawFields;
                 if (fields == null)

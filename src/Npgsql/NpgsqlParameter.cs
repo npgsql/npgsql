@@ -25,7 +25,7 @@ using System;
 using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.Reflection;
 using JetBrains.Annotations;
 using NpgsqlTypes;
@@ -383,9 +383,7 @@ namespace Npgsql
             set
             {
                 if (value < -1)
-                    throw new ArgumentException(
-                        $"Invalid parameter Size value '{value}'. The value must be greater than or equal to 0.");
-                Contract.EndContractBlock();
+                    throw new ArgumentException($"Invalid parameter Size value '{value}'. The value must be greater than or equal to 0.");
 
                 _size = value;
                 ClearBind();
@@ -450,13 +448,10 @@ namespace Npgsql
             }
             set
             {
-                if (value == NpgsqlDbType.Array) {
+                if (value == NpgsqlDbType.Array)
                     throw new ArgumentOutOfRangeException(nameof(value), "Cannot set NpgsqlDbType to just Array, Binary-Or with the element type (e.g. Array of Box is NpgsqlDbType.Array | NpgsqlDbType.Box).");
-                }
-                if (value == NpgsqlDbType.Range) {
+                if (value == NpgsqlDbType.Range)
                     throw new ArgumentOutOfRangeException(nameof(value), "Cannot set NpgsqlDbType to just Range, Binary-Or with the element type (e.g. Range of integer is NpgsqlDbType.Range | NpgsqlDbType.Integer)");
-                }
-                Contract.EndContractBlock();
 
                 ClearBind();
                 _npgsqlDbType = value;
@@ -626,7 +621,7 @@ namespace Npgsql
         {
             ResolveHandler(registry);
 
-            Contract.Assert(Handler != null);
+            Debug.Assert(Handler != null);
             FormatCode = Handler.PreferTextWrite ? FormatCode.Text : FormatCode.Binary;
         }
 
@@ -647,7 +642,7 @@ namespace Npgsql
             }
 
             var asChunkingWriter = Handler as IChunkingTypeHandler;
-            Contract.Assert(asChunkingWriter != null,
+            Debug.Assert(asChunkingWriter != null,
                 $"Handler {Handler.GetType().Name} doesn't implement either ISimpleTypeWriter or IChunkingTypeWriter");
             var lengthCache = LengthCache;
             var len = asChunkingWriter.ValidateAndGetLength(Value, ref lengthCache, this);

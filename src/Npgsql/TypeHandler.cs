@@ -22,7 +22,7 @@
 #endregion
 
 using System;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.IO;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
@@ -60,8 +60,7 @@ namespace Npgsql
         [RewriteAsync]
         internal T ReadFully<T>(DataRowMessage row, int len, FieldDescription fieldDescription = null)
         {
-            Contract.Requires(row.PosInColumn == 0);
-            Contract.Ensures(row.PosInColumn == row.ColumnLen);
+            Debug.Assert(row.PosInColumn == 0);
 
             T result;
             try
@@ -110,12 +109,6 @@ namespace Npgsql
         }
 
         internal string PgDisplayName => BackendType.DisplayName;
-
-        [ContractInvariantMethod]
-        void ObjectInvariants()
-        {
-            Contract.Invariant(this is ISimpleTypeHandler ^ this is IChunkingTypeHandler);
-        }
     }
 
     internal abstract class TypeHandler<T> : TypeHandler
@@ -142,12 +135,6 @@ namespace Npgsql
 
         internal override TypeHandler CreateRangeHandler(IBackendType rangeBackendType)
             => new RangeHandler<T>(rangeBackendType, this);
-
-        [ContractInvariantMethod]
-        void ObjectInvariants()
-        {
-            Contract.Invariant(this is ISimpleTypeHandler ^ this is IChunkingTypeHandler);
-        }
     }
 
     internal interface ISimpleTypeHandler
@@ -245,7 +232,6 @@ namespace Npgsql
         bool ReadAsObject(out object result);
     }
 
-    [ContractClass(typeof(ChunkingTypeHandlerContracts<>))]
     internal abstract partial class ChunkingTypeHandler<T> : TypeHandler<T>, IChunkingTypeHandler<T>
     {
         internal ChunkingTypeHandler(IBackendType backendType) : base(backendType) { }
@@ -314,43 +300,6 @@ namespace Npgsql
         bool Read(out T result);
     }
 
-    [ContractClassFor(typeof(ChunkingTypeHandler<>))]
-    // ReSharper disable once InconsistentNaming
-    class ChunkingTypeHandlerContracts<T> : ChunkingTypeHandler<T>
-    {
-        internal ChunkingTypeHandlerContracts(IBackendType backendType) : base(backendType) { }
-
-        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
-        {
-            Contract.Requires(buf != null);
-        }
-
-        public override bool Read(out T result)
-        {
-            //Contract.Ensures(!completed || Contract.ValueAtReturn(out result) == default(T));
-            result = default(T);
-            return default(bool);
-        }
-
-        public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter = null)
-        {
-            Contract.Requires(value != null);
-            return default(int);
-        }
-
-        public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter = null)
-        {
-            Contract.Requires(buf != null);
-            Contract.Requires(value != null);
-        }
-
-        public override bool Write(ref DirectBuffer directBuf)
-        {
-            Contract.Ensures(Contract.Result<bool>() == false || directBuf.Buffer == null);
-            return default(bool);
-        }
-    }
-
     /// <summary>
     /// Implemented by handlers which support <see cref="NpgsqlDataReader.GetTextReader"/>, returns a standard
     /// TextReader given a binary Stream.
@@ -377,7 +326,7 @@ namespace Npgsql
     {
         public SafeReadException(Exception innerException) : base("", innerException)
         {
-            Contract.Requires(innerException != null);
+            Debug.Assert(innerException != null);
         }
 
         public SafeReadException(string message) : this(new NpgsqlException(message)) {}

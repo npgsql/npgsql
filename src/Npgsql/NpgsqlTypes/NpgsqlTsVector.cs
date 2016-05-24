@@ -24,7 +24,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Text;
 
@@ -110,7 +109,6 @@ namespace NpgsqlTypes
         {
             if (value == null)
                 throw new ArgumentNullException(nameof(value));
-            Contract.EndContractBlock();
 
             List<Lexeme> lexemes = new List<Lexeme>();
             int pos = 0;
@@ -452,7 +450,6 @@ namespace NpgsqlTypes
                         throw new ArgumentOutOfRangeException(nameof(pos), "Lexeme position is out of range. Min value is 1, max value is 2^14-1. Value was: " + pos);
                     if (weight < Weight.D || weight > Weight.A)
                         throw new ArgumentOutOfRangeException(nameof(weight));
-                    Contract.EndContractBlock();
 
                     // Per documentation: "Position values can range from 1 to 16383; larger numbers are silently set to 16383."
                     if ((pos >> 14) != 0)

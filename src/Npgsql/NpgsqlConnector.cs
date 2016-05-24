@@ -23,7 +23,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -295,13 +295,11 @@ namespace Npgsql
         {
             get
             {
-                Contract.Ensures(Contract.Result<int>() == 0 || Contract.Result<int>() >= MinimumInternalCommandTimeout);
-
                 var internalTimeout = _settings.InternalCommandTimeout;
                 if (internalTimeout == -1)
                     return Math.Max(_settings.CommandTimeout, MinimumInternalCommandTimeout) * 1000;
 
-                Contract.Assert(internalTimeout == 0 || internalTimeout >= MinimumInternalCommandTimeout);
+                Debug.Assert(internalTimeout == 0 || internalTimeout >= MinimumInternalCommandTimeout);
                 return internalTimeout * 1000;
             }
         }
@@ -376,8 +374,8 @@ namespace Npgsql
         [RewriteAsync]
         internal void Open(NpgsqlTimeout timeout)
         {
-            Contract.Requires(Connection != null && Connection.Connector == this);
-            Contract.Requires(State == ConnectorState.Closed);
+            Debug.Assert(Connection != null && Connection.Connector == this);
+            Debug.Assert(State == ConnectorState.Closed);
 
             State = ConnectorState.Connecting;
 
@@ -450,7 +448,7 @@ namespace Npgsql
             {
                 Connect(timeout);
 
-                Contract.Assert(_socket != null);
+                Debug.Assert(_socket != null);
                 _baseStream = new NetworkStream(_socket, true);
                 _stream = _baseStream;
                 ReadBuffer = new ReadBuffer(this, _stream, BufferSize, PGUtil.UTF8Encoding);
@@ -781,7 +779,7 @@ namespace Npgsql
         /// </summary>
         internal void PrependInternalMessage(FrontendMessage msg)
         {
-            Contract.Requires(msg is PregeneratedMessage);
+            Debug.Assert(msg is PregeneratedMessage);
 
             // Prepended messages are simple queries (pregenerated, which produce a ReadyForQuery response,
             // which we will be looking for as we're reading the results
@@ -833,7 +831,7 @@ namespace Npgsql
         internal IBackendMessage ReadMessage(DataRowLoadingMode dataRowLoadingMode)
         {
             var msg = ReadMessageWithPrepended(dataRowLoadingMode);
-            Contract.Assert(msg != null);
+            Debug.Assert(msg != null);
             return msg;
         }
 
@@ -902,7 +900,7 @@ namespace Npgsql
 
                 ReadBuffer.Ensure(5);
                 var messageCode = (BackendMessageCode)ReadBuffer.ReadByte();
-                Contract.Assume(Enum.IsDefined(typeof(BackendMessageCode), messageCode), "Unknown message code: " + messageCode);
+                Debug.Assert(Enum.IsDefined(typeof(BackendMessageCode), messageCode), "Unknown message code: " + messageCode);
                 var len = ReadBuffer.ReadInt32() - 4;  // Transmitted length includes itself
 
                 if ((messageCode == BackendMessageCode.DataRow && dataRowLoadingMode != DataRowLoadingMode.NonSequential) ||
@@ -923,7 +921,7 @@ namespace Npgsql
 
                 switch (messageCode) {
                 case BackendMessageCode.ErrorResponse:
-                    Contract.Assert(msg == null);
+                    Debug.Assert(msg == null);
 
                     // An ErrorResponse is (almost) always followed by a ReadyForQuery. Save the error
                     // and throw it as an exception when the ReadyForQuery is received (next).
@@ -948,11 +946,11 @@ namespace Npgsql
                 case BackendMessageCode.NoticeResponse:
                 case BackendMessageCode.NotificationResponse:
                 case BackendMessageCode.ParameterStatus:
-                    Contract.Assert(msg == null);
+                    Debug.Assert(msg == null);
                     continue;
                 }
 
-                Contract.Assert(msg != null, "Message is null for code: " + messageCode);
+                Debug.Assert(msg != null, "Message is null for code: " + messageCode);
                 return msg;
             }
         }
@@ -967,7 +965,7 @@ namespace Npgsql
                     var rowDescriptionMessage = new RowDescriptionMessage();
                     return rowDescriptionMessage.Load(buf, TypeHandlerRegistry);
                 case BackendMessageCode.DataRow:
-                    Contract.Assert(dataRowLoadingMode == DataRowLoadingMode.NonSequential || dataRowLoadingMode == DataRowLoadingMode.Sequential);
+                    Debug.Assert(dataRowLoadingMode == DataRowLoadingMode.NonSequential || dataRowLoadingMode == DataRowLoadingMode.Sequential);
                     return dataRowLoadingMode == DataRowLoadingMode.Sequential
                         ? _dataRowSequentialMessage.Load(buf)
                         : _dataRowNonSequentialMessage.Load(buf);
@@ -1068,12 +1066,12 @@ namespace Npgsql
         [RewriteAsync]
         internal IBackendMessage SkipUntil(BackendMessageCode stopAt)
         {
-            Contract.Requires(stopAt != BackendMessageCode.DataRow, "Shouldn't be used for rows, doesn't know about sequential");
+            Debug.Assert(stopAt != BackendMessageCode.DataRow, "Shouldn't be used for rows, doesn't know about sequential");
 
             while (true)
             {
                 var msg = ReadMessage(DataRowLoadingMode.Skip);
-                Contract.Assert(!(msg is DataRowMessage));
+                Debug.Assert(!(msg is DataRowMessage));
                 if (msg.Code == stopAt) {
                     return msg;
                 }
@@ -1087,12 +1085,12 @@ namespace Npgsql
         [RewriteAsync]
         internal IBackendMessage SkipUntil(BackendMessageCode stopAt1, BackendMessageCode stopAt2)
         {
-            Contract.Requires(stopAt1 != BackendMessageCode.DataRow, "Shouldn't be used for rows, doesn't know about sequential");
-            Contract.Requires(stopAt2 != BackendMessageCode.DataRow, "Shouldn't be used for rows, doesn't know about sequential");
+            Debug.Assert(stopAt1 != BackendMessageCode.DataRow, "Shouldn't be used for rows, doesn't know about sequential");
+            Debug.Assert(stopAt2 != BackendMessageCode.DataRow, "Shouldn't be used for rows, doesn't know about sequential");
 
             while (true) {
                 var msg = ReadMessage(DataRowLoadingMode.Skip);
-                Contract.Assert(!(msg is DataRowMessage));
+                Debug.Assert(!(msg is DataRowMessage));
                 if (msg.Code == stopAt1 || msg.Code == stopAt2) {
                     return msg;
                 }
@@ -1132,7 +1130,7 @@ namespace Npgsql
             ReceiveTimeout = UserTimeout;
             ReadBuffer.Ensure(5, true);
             var messageCode = (BackendMessageCode)ReadBuffer.ReadByte();
-            Contract.Assume(Enum.IsDefined(typeof(BackendMessageCode), messageCode), "Unknown message code: " + messageCode);
+            Debug.Assert(Enum.IsDefined(typeof(BackendMessageCode), messageCode), "Unknown message code: " + messageCode);
             var len = ReadBuffer.ReadInt32() - 4;  // Transmitted length includes itself
             var buf = ReadBuffer.EnsureOrAllocateTemp(len);
             var msg = ParseServerMessage(buf, messageCode, len, DataRowLoadingMode.NonSequential, false);
@@ -1292,7 +1290,7 @@ namespace Npgsql
 
         void DoCancelRequest(int backendProcessId, int backendSecretKey, int connectionTimeout)
         {
-            Contract.Requires(State == ConnectorState.Closed);
+            Debug.Assert(State == ConnectorState.Closed);
             Log.Debug("Performing cancel", Id);
 
             try
@@ -1300,7 +1298,7 @@ namespace Npgsql
                 RawOpen(new NpgsqlTimeout(TimeSpan.FromSeconds(connectionTimeout)));
                 SendMessage(new CancelRequestMessage(backendProcessId, backendSecretKey));
 
-                Contract.Assert(ReadBuffer.ReadPosition == 0);
+                Debug.Assert(ReadBuffer.ReadPosition == 0);
 
                 // Now wait for the server to close the connection, better chance of the cancellation
                 // actually being delivered before we continue with the user's logic.
@@ -1330,7 +1328,7 @@ namespace Npgsql
                 catch (Exception e)
                 {
                     Log.Error("Exception while closing connector", e, Id);
-                    Contract.Assert(IsBroken);
+                    Debug.Assert(IsBroken);
                 }
             }
 
@@ -1362,7 +1360,7 @@ namespace Npgsql
         /// </summary>
         internal void Break()
         {
-            Contract.Requires(!IsClosed);
+            Debug.Assert(!IsClosed);
 
             if (State == ConnectorState.Broken)
                 return;
@@ -1440,7 +1438,7 @@ namespace Npgsql
         /// </summary>
         internal void Reset()
         {
-            Contract.Requires(State == ConnectorState.Ready);
+            Debug.Assert(State == ConnectorState.Ready);
 
             Connection = null;
 
@@ -1497,9 +1495,6 @@ namespace Npgsql
 
         internal IDisposable StartUserAction(ConnectorState newState=ConnectorState.Executing)
         {
-            Contract.Ensures(State == newState);
-            Contract.Ensures(IsInUserAction);
-
             if (!_userLock.Wait(0))
                 throw new InvalidOperationException("An operation is already in progress.");
 
@@ -1537,17 +1532,14 @@ namespace Npgsql
                 throw new ArgumentOutOfRangeException(nameof(State), State, "Invalid connector state: " + State);
             }
 
-            Contract.Assert(IsReady);
+            Debug.Assert(IsReady);
             State = newState;
             return _userAction;
         }
 
         internal void EndUserAction()
         {
-            Contract.Requires(CurrentReader == null);
-            Contract.Ensures(!IsInUserAction);
-            Contract.EnsuresOnThrow<PostgresException>(!IsInUserAction);
-            Contract.EnsuresOnThrow<IOException>(!IsInUserAction);
+            Debug.Assert(CurrentReader == null);
 
             // Allows us to call EndUserAction twice. This makes it easier to write code that
             // always ends the user action with using(), whether an exception was thrown or not.
@@ -1593,7 +1585,7 @@ namespace Npgsql
 
         void PerformKeepAlive(object state)
         {
-            Contract.Requires(IsKeepAliveEnabled);
+            Debug.Assert(IsKeepAliveEnabled);
 
             if (!_keepAliveLock.Wait(0))
             {
@@ -1681,7 +1673,7 @@ namespace Npgsql
         [RewriteAsync]
         internal void ExecuteInternalCommand(FrontendMessage message)
         {
-            Contract.Requires(message is QueryMessage || message is PregeneratedMessage);
+            Debug.Assert(message is QueryMessage || message is PregeneratedMessage);
             SendMessage(message);
             ReadExpecting<CommandCompleteMessage>();
             ReadExpecting<ReadyForQueryMessage>();
@@ -1719,17 +1711,6 @@ namespace Npgsql
         const string PreparedStatementNamePrefix = "s";
 
         #endregion Misc
-
-        #region Invariants
-
-        [ContractInvariantMethod]
-        void ObjectInvariants()
-        {
-            Contract.Invariant(!IsReady || !IsInUserAction);
-            Contract.Invariant((KeepAlive == 0 && _keepAliveTimer == null) || (KeepAlive > 0 && _keepAliveTimer != null));
-        }
-
-        #endregion
     }
 
     #region Enums

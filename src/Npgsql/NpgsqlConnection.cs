@@ -25,7 +25,7 @@ using System;
 using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.IO;
 using System.Net.Security;
 using System.Net.Sockets;
@@ -42,6 +42,7 @@ using System.Transactions;
 using Npgsql.Logging;
 using NpgsqlTypes;
 using IsolationLevel = System.Data.IsolationLevel;
+using ThreadState = System.Threading.ThreadState;
 
 namespace Npgsql
 {
@@ -183,7 +184,6 @@ namespace Npgsql
         {
             if (string.IsNullOrWhiteSpace(Host))
                 throw new ArgumentException("Host can't be null");
-            Contract.EndContractBlock();
 
             var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
 
@@ -486,7 +486,6 @@ namespace Npgsql
         {
             if (level == IsolationLevel.Chaos)
                 throw new NotSupportedException("Unsupported IsolationLevel: " + level);
-            Contract.EndContractBlock();
             var connector = CheckReadyAndGetConnector();
 
             // Note that beginning a transaction doesn't actually send anything to the backend
@@ -525,7 +524,6 @@ namespace Npgsql
         {
             if (transaction == null)
                 throw new ArgumentNullException(nameof(transaction));
-            Contract.EndContractBlock();
 
             Promotable.Enlist(transaction);
         }
@@ -607,7 +605,7 @@ namespace Npgsql
             }
             else if (Connector.State == ConnectorState.Copy)
             {
-                Contract.Assert(Connector.CurrentCopyOperation != null);
+                Debug.Assert(Connector.CurrentCopyOperation != null);
 
                 // Note: we only want to cancel import operations, since in these cases cancel is safe.
                 // Export cancellations go through the PostgreSQL "asynchronous" cancel mechanism and are
@@ -812,7 +810,6 @@ namespace Npgsql
                 throw new ArgumentNullException(nameof(copyFromCommand));
             if (!copyFromCommand.TrimStart().ToUpper().StartsWith("COPY"))
                 throw new ArgumentException("Must contain a COPY FROM STDIN command!", nameof(copyFromCommand));
-            Contract.EndContractBlock();
 
             var connector = CheckReadyAndGetConnector();
             connector.StartUserAction(ConnectorState.Copy);
@@ -843,7 +840,6 @@ namespace Npgsql
                 throw new ArgumentNullException(nameof(copyToCommand));
             if (!copyToCommand.TrimStart().ToUpper().StartsWith("COPY"))
                 throw new ArgumentException("Must contain a COPY TO STDOUT command!", nameof(copyToCommand));
-            Contract.EndContractBlock();
 
             var connector = CheckReadyAndGetConnector();
             connector.StartUserAction(ConnectorState.Copy);
@@ -877,7 +873,6 @@ namespace Npgsql
                 throw new ArgumentNullException(nameof(copyFromCommand));
             if (!copyFromCommand.TrimStart().ToUpper().StartsWith("COPY"))
                 throw new ArgumentException("Must contain a COPY FROM STDIN command!", nameof(copyFromCommand));
-            Contract.EndContractBlock();
 
             var connector = CheckReadyAndGetConnector();
             connector.StartUserAction(ConnectorState.Copy);
@@ -911,7 +906,6 @@ namespace Npgsql
                 throw new ArgumentNullException(nameof(copyToCommand));
             if (!copyToCommand.TrimStart().ToUpper().StartsWith("COPY"))
                 throw new ArgumentException("Must contain a COPY TO STDOUT command!", nameof(copyToCommand));
-            Contract.EndContractBlock();
 
             var connector = CheckReadyAndGetConnector();
             connector.StartUserAction(ConnectorState.Copy);
@@ -945,7 +939,6 @@ namespace Npgsql
                 throw new ArgumentNullException(nameof(copyCommand));
             if (!copyCommand.TrimStart().ToUpper().StartsWith("COPY"))
                 throw new ArgumentException("Must contain a COPY TO STDOUT OR COPY FROM STDIN command!", nameof(copyCommand));
-            Contract.EndContractBlock();
 
             var connector = CheckReadyAndGetConnector();
             connector.StartUserAction(ConnectorState.Copy);
@@ -1005,7 +998,6 @@ namespace Npgsql
                 throw new ArgumentException("pgName can't be empty", nameof(pgName));
             if (State != ConnectionState.Open)
                 throw new InvalidOperationException("Connection must be open and idle to perform registration");
-            Contract.EndContractBlock();
 
             Connector.TypeHandlerRegistry.MapEnum<TEnum>(pgName, nameTranslator);
         }
@@ -1039,7 +1031,6 @@ namespace Npgsql
                 throw new ArgumentException("An enum type must be provided");
             if (pgName != null && pgName.Trim() == "")
                 throw new ArgumentException("pgName can't be empty", nameof(pgName));
-            Contract.EndContractBlock();
 
             TypeHandlerRegistry.MapEnumGlobally<TEnum>(pgName, nameTranslator);
         }
@@ -1061,7 +1052,6 @@ namespace Npgsql
                 throw new ArgumentException("An enum type must be provided");
             if (pgName != null && pgName.Trim() == "")
                 throw new ArgumentException("pgName can't be empty", nameof(pgName));
-            Contract.EndContractBlock();
 
             TypeHandlerRegistry.UnmapEnumGlobally<TEnum>(pgName, nameTranslator);
         }
@@ -1100,7 +1090,6 @@ namespace Npgsql
                 throw new ArgumentException("pgName can't be empty", nameof(pgName));
             if (State != ConnectionState.Open)
                 throw new InvalidOperationException("Connection must be open and idle to perform registration");
-            Contract.EndContractBlock();
 
             Connector.TypeHandlerRegistry.MapComposite<T>(pgName, nameTranslator);
         }
@@ -1131,7 +1120,6 @@ namespace Npgsql
         {
             if (pgName != null && pgName.Trim() == "")
                 throw new ArgumentException("pgName can't be empty", nameof(pgName));
-            Contract.EndContractBlock();
 
             TypeHandlerRegistry.MapCompositeGlobally<T>(pgName, nameTranslator);
         }
@@ -1171,7 +1159,6 @@ namespace Npgsql
         {
             if (timeout != -1 && timeout < 0)
                 throw new ArgumentException("Argument must be -1, 0 or positive", nameof(timeout));
-            Contract.EndContractBlock();
 
             CheckConnectionOpen();
             Log.Debug($"Starting to wait (timeout={timeout})", Connector.Id);
@@ -1418,7 +1405,6 @@ namespace Npgsql
                 throw new ArgumentNullException(nameof(dbName));
             if (string.IsNullOrEmpty(dbName))
                 throw new ArgumentOutOfRangeException(nameof(dbName), dbName, $"Invalid database name: {dbName}");
-            Contract.EndContractBlock();
 
             CheckNotDisposed();
             Log.Debug("Changing database to " + dbName, Connector.Id);

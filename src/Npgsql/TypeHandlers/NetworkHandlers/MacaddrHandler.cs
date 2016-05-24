@@ -23,7 +23,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
@@ -43,7 +43,7 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
 
         public override PhysicalAddress Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
-            Contract.Assume(len == 6);
+            Debug.Assert(len == 6);
 
             var bytes = new byte[6];
 

@@ -23,7 +23,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 
@@ -49,7 +49,7 @@ namespace Npgsql.FrontendMessages
 
         internal override void WriteFully(WriteBuffer buf)
         {
-            Contract.Requires(Portal != null && Portal.All(c => c < 128));
+            Debug.Assert(Portal != null && Portal.All(c => c < 128));
 
             var portalNameBytes = Portal == "" ? PGUtil.EmptyBuffer : Encoding.ASCII.GetBytes(Portal);
             buf.WriteByte(Code);

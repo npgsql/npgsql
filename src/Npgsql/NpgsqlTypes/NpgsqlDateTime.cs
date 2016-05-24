@@ -24,7 +24,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Text;
 using Npgsql;
@@ -74,7 +73,6 @@ namespace NpgsqlTypes
         {
             if (!date.IsFinite && type != InternalType.Infinity && type != InternalType.NegativeInfinity)
                 throw new ArgumentException("Can't construct an NpgsqlDateTime with a non-finite date, use Infinity and NegativeInfinity instead", nameof(date));
-            Contract.EndContractBlock();
 
             _type = type;
             _date = date;
@@ -171,7 +169,6 @@ namespace NpgsqlTypes
             {
                 if (!IsFinite)
                     throw new InvalidCastException("Can't convert infinite timestamp values to DateTime");
-                Contract.EndContractBlock();
 
                 if (_date.DaysSinceEra < 0 || _date.DaysSinceEra > MaxDateTimeDay)
                     throw new InvalidCastException("Out of the range of DateTime (year must be between 1 and 9999)");
@@ -384,7 +381,6 @@ namespace NpgsqlTypes
         /// </summary>
         /// <param name="value">A positive or negative time interval.</param>
         /// <returns>An object whose value is the sum of the date and time represented by this instance and the time interval represented by value.</returns>
-        [Pure]
         public NpgsqlDateTime Add(NpgsqlTimeSpan value) { return AddTicks(value.Ticks); }
 
         /// <summary>
@@ -392,7 +388,6 @@ namespace NpgsqlTypes
         /// </summary>
         /// <param name="value">A positive or negative time interval.</param>
         /// <returns>An object whose value is the sum of the date and time represented by this instance and the time interval represented by value.</returns>
-        [Pure]
         public NpgsqlDateTime Add(TimeSpan value) { return AddTicks(value.Ticks); }
 
         /// <summary>
@@ -400,7 +395,6 @@ namespace NpgsqlTypes
         /// </summary>
         /// <param name="value">A number of years. The value parameter can be negative or positive.</param>
         /// <returns>An object whose value is the sum of the date and time represented by this instance and the number of years represented by value.</returns>
-        [Pure]
         public NpgsqlDateTime AddYears(int value)
         {
             switch (_type) {
@@ -417,7 +411,6 @@ namespace NpgsqlTypes
         /// </summary>
         /// <param name="value">A number of months. The months parameter can be negative or positive.</param>
         /// <returns>An object whose value is the sum of the date and time represented by this instance and months.</returns>
-        [Pure]
         public NpgsqlDateTime AddMonths(int value)
         {
             switch (_type) {
@@ -434,7 +427,6 @@ namespace NpgsqlTypes
         /// </summary>
         /// <param name="value">A number of whole and fractional days. The value parameter can be negative or positive.</param>
         /// <returns>An object whose value is the sum of the date and time represented by this instance and the number of days represented by value.</returns>
-        [Pure]
         public NpgsqlDateTime AddDays(double value) { return Add(TimeSpan.FromDays(value)); }
 
         /// <summary>
@@ -442,7 +434,6 @@ namespace NpgsqlTypes
         /// </summary>
         /// <param name="value">A number of whole and fractional hours. The value parameter can be negative or positive.</param>
         /// <returns>An object whose value is the sum of the date and time represented by this instance and the number of hours represented by value.</returns>
-        [Pure]
         public NpgsqlDateTime AddHours(double value) { return Add(TimeSpan.FromHours(value)); }
 
         /// <summary>
@@ -450,7 +441,6 @@ namespace NpgsqlTypes
         /// </summary>
         /// <param name="value">A number of whole and fractional minutes. The value parameter can be negative or positive.</param>
         /// <returns>An object whose value is the sum of the date and time represented by this instance and the number of minutes represented by value.</returns>
-        [Pure]
         public NpgsqlDateTime AddMinutes(double value) { return Add(TimeSpan.FromMinutes(value)); }
 
         /// <summary>
@@ -458,7 +448,6 @@ namespace NpgsqlTypes
         /// </summary>
         /// <param name="value">A number of whole and fractional minutes. The value parameter can be negative or positive.</param>
         /// <returns>An object whose value is the sum of the date and time represented by this instance and the number of minutes represented by value.</returns>
-        [Pure]
         public NpgsqlDateTime AddSeconds(double value) { return Add(TimeSpan.FromSeconds(value)); }
 
         /// <summary>
@@ -466,7 +455,6 @@ namespace NpgsqlTypes
         /// </summary>
         /// <param name="value">A number of whole and fractional milliseconds. The value parameter can be negative or positive. Note that this value is rounded to the nearest integer.</param>
         /// <returns>An object whose value is the sum of the date and time represented by this instance and the number of milliseconds represented by value.</returns>
-        [Pure]
         public NpgsqlDateTime AddMilliseconds(double value) { return Add(TimeSpan.FromMilliseconds(value)); }
 
         /// <summary>
@@ -474,7 +462,6 @@ namespace NpgsqlTypes
         /// </summary>
         /// <param name="value">A number of 100-nanosecond ticks. The value parameter can be positive or negative.</param>
         /// <returns>An object whose value is the sum of the date and time represented by this instance and the time represented by value.</returns>
-        [Pure]
         public NpgsqlDateTime AddTicks(long value)
         {
             switch (_type) {
@@ -486,13 +473,11 @@ namespace NpgsqlTypes
             }
         }
 
-        [Pure]
         public NpgsqlDateTime Subtract(NpgsqlTimeSpan interval)
         {
             return Add(-interval);
         }
 
-        [Pure]
         public NpgsqlTimeSpan Subtract(NpgsqlDateTime timestamp)
         {
             switch (_type) {
@@ -588,7 +573,6 @@ namespace NpgsqlTypes
 
         #endregion
 
-        [Pure]
         public NpgsqlDateTime Normalize()
         {
             return Add(NpgsqlTimeSpan.Zero);

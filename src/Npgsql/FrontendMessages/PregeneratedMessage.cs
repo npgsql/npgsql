@@ -23,7 +23,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -46,7 +46,7 @@ namespace Npgsql.FrontendMessages
         /// <param name="description">Optional string form/description for debugging</param>
         internal PregeneratedMessage(byte[] data, string description=null)
         {
-            Contract.Requires(data.Length < WriteBuffer.MinimumBufferSize);
+            Debug.Assert(data.Length < WriteBuffer.MinimumBufferSize);
 
             _data = data;
             _description = description;
@@ -89,7 +89,7 @@ namespace Npgsql.FrontendMessages
 
         static PregeneratedMessage BuildQuery(string query)
         {
-            Contract.Requires(query != null && query.All(c => c < 128));
+            Debug.Assert(query != null && query.All(c => c < 128));
 
             var totalLen = 5 + query.Length;
             var ms = new MemoryStream(totalLen);

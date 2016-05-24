@@ -24,7 +24,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -122,7 +122,7 @@ namespace Npgsql.TypeHandlers
 
         public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
-            Contract.Assert(_readState == ReadState.NeedPrepare);
+            Debug.Assert(_readState == ReadState.NeedPrepare);
             if (_readState != ReadState.NeedPrepare) // Checks against recursion and bugs
                 throw PGUtil.ThrowIfReached("Started reading a value before completing a previous value");
 
@@ -151,7 +151,7 @@ namespace Npgsql.TypeHandlers
                     _dimensions = _readBuf.ReadInt32();
                     _readBuf.ReadInt32();        // Has nulls. Not populated by PG?
                     var elementOID = _readBuf.ReadUInt32();
-                    Contract.Assume(elementOID == ElementHandler.BackendType.OID);
+                    Debug.Assert(elementOID == ElementHandler.BackendType.OID);
                     _dimLengths = new int[_dimensions];
                     if (_dimensions > 1) {
                         _indices = new int[_dimensions];
@@ -326,7 +326,7 @@ namespace Npgsql.TypeHandlers
 
         public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
-            Contract.Assert(_readState == ReadState.NeedPrepare);
+            Debug.Assert(_readState == ReadState.NeedPrepare);
             if (_writeState != WriteState.NeedPrepare)  // Checks against recursion and bugs
                 throw new InvalidOperationException("Started reading a value before completing a previous value");
 
@@ -357,7 +357,7 @@ namespace Npgsql.TypeHandlers
                         _dimensions * 8;  // dim (4) + lBound (4)
 
                     if (_writeBuf.WriteSpaceLeft < len) {
-                        Contract.Assume(_writeBuf.UsableSize >= len, "Buffer too small for header");
+                        Debug.Assert(_writeBuf.UsableSize >= len, "Buffer too small for header");
                         return false;
                     }
                     _writeBuf.WriteInt32(_dimensions);

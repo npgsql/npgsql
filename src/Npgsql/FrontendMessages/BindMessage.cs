@@ -23,7 +23,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 
@@ -54,9 +54,9 @@ namespace Npgsql.FrontendMessages
 
         internal BindMessage Populate(List<NpgsqlParameter> inputParameters, string portal = "", string statement = "")
         {
-            Contract.Requires(inputParameters != null && inputParameters.All(p => p.IsInputDirection));
-            Contract.Requires(portal != null);
-            Contract.Requires(statement != null);
+            Debug.Assert(inputParameters != null && inputParameters.All(p => p.IsInputDirection));
+            Debug.Assert(portal != null);
+            Debug.Assert(statement != null);
 
             AllResultTypesAreUnknown = false;
             UnknownResultTypeList = null;
@@ -83,8 +83,8 @@ namespace Npgsql.FrontendMessages
 
         internal bool Write(WriteBuffer buf, ref DirectBuffer directBuf)
         {
-            Contract.Requires(Statement != null && Statement.All(c => c < 128));
-            Contract.Requires(Portal != null && Portal.All(c => c < 128));
+            Debug.Assert(Statement != null && Statement.All(c => c < 128));
+            Debug.Assert(Portal != null && Portal.All(c => c < 128));
 
             switch (_state)
             {
@@ -103,7 +103,7 @@ namespace Npgsql.FrontendMessages
 
                     if (buf.WriteSpaceLeft < headerLength)
                     {
-                        Contract.Assume(buf.Size >= headerLength, "Buffer too small for Bind header");
+                        Debug.Assert(buf.Size >= headerLength, "Buffer too small for Bind header");
                         return false;
                     }
 
@@ -206,7 +206,7 @@ namespace Npgsql.FrontendMessages
                 var asSimpleWriter = (ISimpleTypeHandler)handler;
                 if (buf.WriteSpaceLeft < len + 4)
                 {
-                    Contract.Assume(buf.Size >= len + 4);
+                    Debug.Assert(buf.Size >= len + 4);
                     return false;
                 }
                 buf.WriteInt32(len);

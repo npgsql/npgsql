@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.Net.NetworkInformation;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
@@ -13,7 +13,7 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
 
         public override NpgsqlTid Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
-            Contract.Assume(len == 6);
+            Debug.Assert(len == 6);
 
             uint blockNumber = buf.ReadUInt32();
             ushort offsetNumber = buf.ReadUInt16();

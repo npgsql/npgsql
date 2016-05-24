@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -36,8 +36,7 @@ namespace Npgsql
 
         internal static ConnectorPool GetOrAdd(NpgsqlConnectionStringBuilder connString)
         {
-            Contract.Requires(connString != null);
-            Contract.Ensures(Contract.Result<ConnectorPool>() != null);
+            Debug.Assert(connString != null);
 
             return Pools.GetOrAdd(connString, cs =>
             {
@@ -49,8 +48,7 @@ namespace Npgsql
 
         internal static ConnectorPool Get(NpgsqlConnectionStringBuilder connString)
         {
-            Contract.Requires(connString != null);
-            Contract.Ensures(Contract.Result<ConnectorPool>() != null);
+            Debug.Assert(connString != null);
 
             return Pools[connString];
         }
@@ -119,7 +117,7 @@ namespace Npgsql
                 return connector;
             }
 
-            Contract.Assert(Busy <= _max);
+            Debug.Assert(Busy <= _max);
             if (Busy == _max)
             {
                 // TODO: Async cancellation
@@ -215,7 +213,7 @@ namespace Npgsql
                 Idle.Push(connector);
                 Busy--;
                 EnsurePruningTimerState();
-                Contract.Assert(Idle.Count <= _max);
+                Debug.Assert(Idle.Count <= _max);
             }
         }
 
@@ -268,7 +266,7 @@ namespace Npgsql
 
         void EnsurePruningTimerState()
         {
-            Contract.Requires(Monitor.IsEntered(this));
+            Debug.Assert(Monitor.IsEntered(this));
 
             if (Idle.Count <= Min)
             {
@@ -346,12 +344,6 @@ namespace Npgsql
         }
 
         public override string ToString() => $"[{Busy} busy, {Idle.Count} idle, {Waiting.Count} waiting]";
-
-        [ContractInvariantMethod]
-        void ObjectInvariants()
-        {
-            Contract.Invariant(Busy <= _max);
-        }
     }
 
     class IdleConnectorList : LinkedList<NpgsqlConnector>

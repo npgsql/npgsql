@@ -24,7 +24,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -175,7 +174,7 @@ namespace Npgsql.TypeHandlers
                 // be SqlClient's behavior as well.
                 int bytesSkipped, charsSkipped;
                 row.Buffer.SkipChars(int.MaxValue, row.ColumnLen - row.PosInColumn, out bytesSkipped, out charsSkipped);
-                Contract.Assume(bytesSkipped == row.ColumnLen - row.PosInColumn);
+                Debug.Assert(bytesSkipped == row.ColumnLen - row.PosInColumn);
                 row.PosInColumn += bytesSkipped;
                 _charPos += charsSkipped;
                 return _charPos;
@@ -312,7 +311,7 @@ namespace Npgsql.TypeHandlers
                     }
                     else
                     {
-                        Contract.Assert(_chars != null);
+                        Debug.Assert(_chars != null);
                         _writeBuf.WriteChars(_chars, _charLen);
                         _str = null;
                     }
@@ -338,7 +337,7 @@ namespace Npgsql.TypeHandlers
                     _writeBuf.TextEncoding.GetBytes(_str, 0, _charLen, directBuf.Buffer, 0);
                     return false;
                 }
-                Contract.Assert(_chars != null);
+                Debug.Assert(_chars != null);
 
                 // For char arrays, fall through to chunked writing below
             }

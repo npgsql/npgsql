@@ -23,7 +23,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 
@@ -46,7 +46,7 @@ namespace Npgsql.FrontendMessages
 
         internal override void WriteFully(WriteBuffer buf)
         {
-            Contract.Requires(BackendProcessId != 0);
+            Debug.Assert(BackendProcessId != 0);
 
             buf.WriteInt32(Length);
             buf.WriteInt32(CancelRequestCode);

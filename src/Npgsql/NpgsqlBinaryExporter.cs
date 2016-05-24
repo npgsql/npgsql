@@ -22,7 +22,7 @@
 #endregion
 
 using System;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using Npgsql.BackendMessages;
@@ -131,7 +131,7 @@ namespace Npgsql
             var numColumns = _buf.ReadInt16();
             if (numColumns == -1)
             {
-                Contract.Assume(_leftToReadInDataMsg == 0);
+                Debug.Assert(_leftToReadInDataMsg == 0);
                 _connector.ReadExpecting<CopyDoneMessage>();
                 _connector.ReadExpecting<CommandCompleteMessage>();
                 _connector.ReadExpecting<ReadyForQueryMessage>();
@@ -139,7 +139,7 @@ namespace Npgsql
                 _isConsumed = true;
                 return -1;
             }
-            Contract.Assume(numColumns == NumColumns);
+            Debug.Assert(numColumns == NumColumns);
 
             _column = 0;
             return NumColumns;

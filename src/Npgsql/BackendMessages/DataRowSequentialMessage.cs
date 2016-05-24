@@ -23,7 +23,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -123,7 +123,7 @@ namespace Npgsql.BackendMessages
 
         internal override Stream GetStream()
         {
-            Contract.Requires(PosInColumn == 0);
+            Debug.Assert(PosInColumn == 0);
             if (_stream != null) {
                 throw new InvalidOperationException("Attempt to read a position in the column which has already been read");
             }

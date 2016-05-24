@@ -25,7 +25,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Text;
 
@@ -56,7 +55,7 @@ namespace Npgsql
 
         internal int Set(int len)
         {
-            Contract.Requires(!IsPopulated);
+            Debug.Assert(!IsPopulated);
             Lengths.Add(len);
             Position++;
             return len;
@@ -64,13 +63,13 @@ namespace Npgsql
 
         internal int Get()
         {
-            Contract.Requires(IsPopulated);
+            Debug.Assert(IsPopulated);
             return Lengths[Position++];
         }
 
         internal int GetLast()
         {
-            Contract.Requires(IsPopulated);
+            Debug.Assert(IsPopulated);
             return Lengths[Position-1];
         }
 

@@ -25,10 +25,10 @@ using Npgsql.BackendMessages;
 using System;
 using System.CodeDom;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using NpgsqlTypes;
-using System.Diagnostics.Contracts;
 using JetBrains.Annotations;
 
 namespace Npgsql.TypeHandlers
@@ -160,7 +160,7 @@ namespace Npgsql.TypeHandlers
                         return false;
                     }
                     _elementLen = _readBuf.ReadInt32();
-                    Contract.Assume(_elementLen != -1);
+                    Debug.Assert(_elementLen != -1);
                 }
 
                 var asSimpleReader = ElementHandler as ISimpleTypeHandler<TElement>;

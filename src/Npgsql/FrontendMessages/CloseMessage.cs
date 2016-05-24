@@ -23,7 +23,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 
@@ -52,7 +52,7 @@ namespace Npgsql.FrontendMessages
 
         internal override void WriteFully(WriteBuffer buf)
         {
-            Contract.Requires(Name != null && Name.All(c => c < 128));
+            Debug.Assert(Name != null && Name.All(c => c < 128));
 
             buf.WriteByte(Code);
             buf.WriteInt32(Length - 1);

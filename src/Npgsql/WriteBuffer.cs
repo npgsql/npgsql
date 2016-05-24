@@ -22,7 +22,7 @@
 #endregion
 
 using System;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Runtime.InteropServices;
@@ -55,7 +55,7 @@ namespace Npgsql
             get { return _usableSize; }
             set
             {
-                Contract.Requires(value <= Size);
+                Debug.Assert(value <= Size);
                 _usableSize = value;
             }
         }
@@ -87,10 +87,8 @@ namespace Npgsql
 
         internal WriteBuffer([CanBeNull] NpgsqlConnector connector, Stream stream, int size, Encoding textEncoding)
         {
-            if (size < MinimumBufferSize) {
+            if (size < MinimumBufferSize)
                 throw new ArgumentOutOfRangeException(nameof(size), size, "Buffer size must be at least " + MinimumBufferSize);
-            }
-            Contract.EndContractBlock();
 
             Connector = connector;
             Underlying = stream;
@@ -138,7 +136,7 @@ namespace Npgsql
         [RewriteAsync]
         internal void DirectWrite(byte[] buffer, int offset, int count)
         {
-            Contract.Requires(WritePosition == 0);
+            Debug.Assert(WritePosition == 0);
 
             try
             {
@@ -157,27 +155,27 @@ namespace Npgsql
 
         public void WriteByte(byte b)
         {
-            Contract.Requires(WriteSpaceLeft >= sizeof(byte));
+            Debug.Assert(WriteSpaceLeft >= sizeof(byte));
             _buf[_writePosition++] = b;
         }
 
         public void WriteInt16(int i)
         {
-            Contract.Requires(WriteSpaceLeft >= sizeof(short));
+            Debug.Assert(WriteSpaceLeft >= sizeof(short));
             _buf[_writePosition++] = (byte)(i >> 8);
             _buf[_writePosition++] = (byte)i;
         }
 
         public void WriteUInt16(int i)
         {
-            Contract.Requires(WriteSpaceLeft >= sizeof(ushort));
+            Debug.Assert(WriteSpaceLeft >= sizeof(ushort));
             _buf[_writePosition++] = (byte)(i >> 8);
             _buf[_writePosition++] = (byte)i;
         }
 
         public void WriteInt32(int i)
         {
-            Contract.Requires(WriteSpaceLeft >= sizeof(int));
+            Debug.Assert(WriteSpaceLeft >= sizeof(int));
             var pos = _writePosition;
             _buf[pos++] = (byte)(i >> 24);
             _buf[pos++] = (byte)(i >> 16);
@@ -188,7 +186,7 @@ namespace Npgsql
 
         internal void WriteUInt32(uint i)
         {
-            Contract.Requires(WriteSpaceLeft >= sizeof(uint));
+            Debug.Assert(WriteSpaceLeft >= sizeof(uint));
             var pos = _writePosition;
             _buf[pos++] = (byte)(i >> 24);
             _buf[pos++] = (byte)(i >> 16);
@@ -199,7 +197,7 @@ namespace Npgsql
 
         public void WriteInt64(long i)
         {
-            Contract.Requires(WriteSpaceLeft >= sizeof(long));
+            Debug.Assert(WriteSpaceLeft >= sizeof(long));
             var pos = _writePosition;
             _buf[pos++] = (byte)(i >> 56);
             _buf[pos++] = (byte)(i >> 48);
@@ -214,7 +212,7 @@ namespace Npgsql
 
         public void WriteSingle(float f)
         {
-            Contract.Requires(WriteSpaceLeft >= sizeof(float));
+            Debug.Assert(WriteSpaceLeft >= sizeof(float));
             _bitConverterUnion.float4 = f;
             var pos = _writePosition;
             if (BitConverter.IsLittleEndian)
@@ -236,7 +234,7 @@ namespace Npgsql
 
         public void WriteDouble(double d)
         {
-            Contract.Requires(WriteSpaceLeft >= sizeof(double));
+            Debug.Assert(WriteSpaceLeft >= sizeof(double));
             _bitConverterUnion.float8 = d;
             var pos = _writePosition;
             if (BitConverter.IsLittleEndian)
@@ -266,26 +264,26 @@ namespace Npgsql
 
         internal void WriteString(string s, int len = 0)
         {
-            Contract.Requires(TextEncoding.GetByteCount(s) <= WriteSpaceLeft);
+            Debug.Assert(TextEncoding.GetByteCount(s) <= WriteSpaceLeft);
             WritePosition += TextEncoding.GetBytes(s, 0, len == 0 ? s.Length : len, _buf, WritePosition);
         }
 
         internal void WriteChars(char[] chars, int len = 0)
         {
-            Contract.Requires(TextEncoding.GetByteCount(chars) <= WriteSpaceLeft);
+            Debug.Assert(TextEncoding.GetByteCount(chars) <= WriteSpaceLeft);
             WritePosition += TextEncoding.GetBytes(chars, 0, len == 0 ? chars.Length : len, _buf, WritePosition);
         }
 
         public void WriteBytes(byte[] buf, int offset, int count)
         {
-            Contract.Requires(count <= WriteSpaceLeft);
+            Debug.Assert(count <= WriteSpaceLeft);
             Buffer.BlockCopy(buf, offset, _buf, WritePosition, count);
             WritePosition += count;
         }
 
         public void WriteBytesNullTerminated(byte[] buf)
         {
-            Contract.Requires(WriteSpaceLeft >= buf.Length + 1);
+            Debug.Assert(WriteSpaceLeft >= buf.Length + 1);
             WriteBytes(buf, 0, buf.Length);
             WriteByte(0);
         }

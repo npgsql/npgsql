@@ -23,7 +23,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
@@ -202,7 +202,7 @@ namespace Npgsql
                     _buf.WriteInt32(len);
                     if (_buf.WriteSpaceLeft < len)
                     {
-                        Contract.Assume(_buf.Size >= len);
+                        Debug.Assert(_buf.Size >= len);
                         FlushAndStartDataMessage();
                     }
                     asSimple.Write(asObject, _buf, _dummyParam);
@@ -313,7 +313,7 @@ namespace Npgsql
         {
             if (_writingDataMsg) { return; }
 
-            Contract.Assert(_buf.WritePosition == 0);
+            Debug.Assert(_buf.WritePosition == 0);
             _buf.WriteByte((byte)BackendMessageCode.CopyData);
             // Leave space for the message length
             _buf.WriteInt32(0);
@@ -391,12 +391,6 @@ namespace Npgsql
             if (_isDisposed) {
                 throw new ObjectDisposedException(GetType().FullName, "The COPY operation has already ended.");
             }
-        }
-
-        [ContractInvariantMethod]
-        void ObjectInvariants()
-        {
-            Contract.Invariant(_isDisposed || _writingDataMsg);
         }
 
         #endregion

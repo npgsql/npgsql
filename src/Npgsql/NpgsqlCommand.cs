@@ -26,12 +26,12 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Diagnostics.Contracts;
 using System.Globalization;
 using System.Net.Sockets;
 using AsyncRewriter;
@@ -171,7 +171,6 @@ namespace Npgsql
             {
                 if (value == null)
                     throw new ArgumentNullException(nameof(value));
-                Contract.EndContractBlock();
 
                 _commandText = value;
                 DeallocatePrepared();
@@ -292,7 +291,7 @@ namespace Npgsql
             {
                 if (_isPrepared)
                 {
-                    Contract.Assert(Connection != null);
+                    Debug.Assert(Connection != null);
                     if (Connection.State != ConnectionState.Open || _prepareConnectionOpenId != Connection.OpenCounter) {
                         _isPrepared = false;
                     }
@@ -302,7 +301,7 @@ namespace Npgsql
 
             private set
             {
-                Contract.Requires(!value || Connection != null);
+                Debug.Assert(!value || Connection != null);
                 _isPrepared = value;
                 if (value) {
                     _prepareConnectionOpenId = Connection.OpenCounter;
@@ -473,7 +472,7 @@ namespace Npgsql
                         _statements[_readStatementIndex++].Description = null;
                         continue;
                     case BackendMessageCode.ReadyForQuery:
-                        Contract.Assume(_readStatementIndex == _statements.Count);
+                        Debug.Assert(_readStatementIndex == _statements.Count);
                         IsPrepared = true;
                         return;
                     default:
@@ -671,7 +670,7 @@ namespace Npgsql
         /// </summary>
         async Task SendRemaining(PopulateMethod populateMethod, CancellationToken cancellationToken)
         {
-            Contract.Requires(_writeStatementIndex > 0);
+            Debug.Assert(_writeStatementIndex > 0);
             try
             {
                 while (true)
@@ -712,7 +711,7 @@ namespace Npgsql
         /// </returns>
         bool PopulateExecuteNonPrepared(ref DirectBuffer directBuf)
         {
-            Contract.Requires(_connector != null);
+            Debug.Assert(_connector != null);
 
             var buf = _connector.WriteBuffer;
             for (; _writeStatementIndex < _statements.Count; _writeStatementIndex++)
@@ -782,7 +781,7 @@ namespace Npgsql
         /// </returns>
         bool PopulateExecutePrepared(ref DirectBuffer directBuf)
         {
-            Contract.Requires(_connector != null);
+            Debug.Assert(_connector != null);
 
             var buf = _connector.WriteBuffer;
             for (; _writeStatementIndex < _statements.Count; _writeStatementIndex++)
@@ -848,7 +847,7 @@ namespace Npgsql
 
         bool PopulateParseDescribe(bool isPreparing)
         {
-            Contract.Requires(_connector != null);
+            Debug.Assert(_connector != null);
 
             var buf = _connector.WriteBuffer;
             for (; _writeStatementIndex < _statements.Count; _writeStatementIndex++)
@@ -891,7 +890,7 @@ namespace Npgsql
 
         bool PopulateDeallocate(ref DirectBuffer directBuf)
         {
-            Contract.Requires(_connector != null);
+            Debug.Assert(_connector != null);
 
             var buf = _connector.WriteBuffer;
             for (; _writeStatementIndex < _statements.Count; _writeStatementIndex++)
@@ -1233,17 +1232,6 @@ namespace Npgsql
             Bind,
             Describe,
             Execute
-        }
-
-        #endregion
-
-        #region Invariants
-
-        [ContractInvariantMethod]
-        void ObjectInvariants()
-        {
-            Contract.Invariant(!(AllResultTypesAreUnknown && UnknownResultTypeList != null));
-            Contract.Invariant(Connection != null || !IsPrepared);
         }
 
         #endregion

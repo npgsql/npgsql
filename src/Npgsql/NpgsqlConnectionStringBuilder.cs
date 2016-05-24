@@ -25,7 +25,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data.Common;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using JetBrains.Annotations;
@@ -107,8 +107,8 @@ namespace Npgsql
                 .Where(p => p.GetCustomAttribute<NpgsqlConnectionStringPropertyAttribute>() != null)
                 .ToArray();
 
-            Contract.Assume(properties.All(p => p.CanRead && p.CanWrite));
-            Contract.Assume(properties.All(p => p.GetCustomAttribute<DisplayNameAttribute>() != null));
+            Debug.Assert(properties.All(p => p.CanRead && p.CanWrite));
+            Debug.Assert(properties.All(p => p.GetCustomAttribute<DisplayNameAttribute>() != null));
 
             PropertiesByKeyword = (
                 from p in properties
@@ -199,7 +199,7 @@ namespace Npgsql
         /// </summary>
         public override void Clear()
         {
-            Contract.Assert(Keys != null);
+            Debug.Assert(Keys != null);
             foreach (var k in Keys.Cast<string>().ToArray()) {
                 Remove(k);
             }
@@ -214,7 +214,6 @@ namespace Npgsql
         {
             if (keyword == null)
                 throw new ArgumentNullException(nameof(keyword));
-            Contract.EndContractBlock();
 
             return PropertiesByKeyword.ContainsKey(keyword.ToUpperInvariant());
         }
@@ -238,7 +237,6 @@ namespace Npgsql
         {
             if (keyword == null)
                 throw new ArgumentNullException(nameof(keyword));
-            Contract.EndContractBlock();
 
             PropertyInfo p;
             if (!PropertiesByKeyword.TryGetValue(keyword.ToUpperInvariant(), out p))
@@ -299,7 +297,6 @@ namespace Npgsql
             {
                 if (value <= 0)
                     throw new ArgumentOutOfRangeException(nameof(value), value, "Invalid port: " + value);
-                Contract.EndContractBlock();
 
                 _port = value;
                 SetValue(nameof(Port), value);
@@ -606,7 +603,6 @@ namespace Npgsql
             {
                 if (value < 0 || value > PoolManager.PoolSizeLimit)
                     throw new ArgumentOutOfRangeException(nameof(value), value, "MinPoolSize must be between 0 and " + PoolManager.PoolSizeLimit);
-                Contract.EndContractBlock();
 
                 _minPoolSize = value;
                 SetValue(nameof(MinPoolSize), value);
@@ -629,7 +625,6 @@ namespace Npgsql
             {
                 if (value < 0 || value > PoolManager.PoolSizeLimit)
                     throw new ArgumentOutOfRangeException(nameof(value), value, "MaxPoolSize must be between 0 and " + PoolManager.PoolSizeLimit);
-                Contract.EndContractBlock();
 
                 _maxPoolSize = value;
                 SetValue(nameof(MaxPoolSize), value);
@@ -699,7 +694,6 @@ namespace Npgsql
             {
                 if (value < 0 || value > NpgsqlConnection.TimeoutLimit)
                     throw new ArgumentOutOfRangeException(nameof(value), value, "Timeout must be between 0 and " + NpgsqlConnection.TimeoutLimit);
-                Contract.EndContractBlock();
 
                 _timeout = value;
                 SetValue(nameof(Timeout), value);
@@ -723,7 +717,6 @@ namespace Npgsql
             {
                 if (value < 0)
                     throw new ArgumentOutOfRangeException(nameof(value), value, "CommandTimeout can't be negative");
-                Contract.EndContractBlock();
 
                 _commandTimeout = value;
                 SetValue(nameof(CommandTimeout), value);
@@ -747,7 +740,6 @@ namespace Npgsql
                 if (value != 0 && value != -1 && value < NpgsqlConnector.MinimumInternalCommandTimeout)
                     throw new ArgumentOutOfRangeException(nameof(value), value,
                         $"InternalCommandTimeout must be >= {NpgsqlConnector.MinimumInternalCommandTimeout}, 0 (infinite) or -1 (use CommandTimeout)");
-                Contract.EndContractBlock();
 
                 _internalCommandTimeout = value;
                 SetValue(nameof(InternalCommandTimeout), value);
@@ -820,7 +812,6 @@ namespace Npgsql
             {
                 if (value < 0)
                     throw new ArgumentOutOfRangeException(nameof(value), value, "KeepAlive can't be negative");
-                Contract.EndContractBlock();
 
                 _keepAlive = value;
                 SetValue(nameof(KeepAlive), value);

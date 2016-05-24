@@ -23,7 +23,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Text;
 #pragma warning disable 1591
@@ -115,7 +114,6 @@ namespace NpgsqlTypes
                 throw new ArgumentException("Infinite bound can't be inclusive", nameof(lowerBoundIsInclusive));
             if (upperBoundInfinite && upperBoundIsInclusive)
                 throw new ArgumentException("Infinite bound can't be inclusive", nameof(upperBoundIsInclusive));
-            Contract.EndContractBlock();
 
             LowerBound = lowerBound;
             UpperBound = upperBound;

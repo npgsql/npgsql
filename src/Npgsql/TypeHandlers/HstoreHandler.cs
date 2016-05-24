@@ -23,7 +23,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using JetBrains.Annotations;
@@ -202,7 +202,7 @@ namespace Npgsql.TypeHandlers
                 _state = State.KeyLen;
                 if (_readBuf.ReadBytesLeft < 4) { return false; }
                 var keyLen = _readBuf.ReadInt32();
-                Contract.Assume(keyLen != -1);
+                Debug.Assert(keyLen != -1);
                 _textHandler.PrepareRead(_readBuf, _fieldDescription, keyLen);
                 goto case State.KeyData;
 

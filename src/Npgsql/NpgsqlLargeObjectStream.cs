@@ -24,7 +24,6 @@
 using Npgsql.FrontendMessages;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -85,7 +84,6 @@ namespace Npgsql
                 throw new ArgumentOutOfRangeException(nameof(count));
             if (buffer.Length - offset < count)
                 throw new ArgumentException("Invalid offset or count for this buffer");
-            Contract.EndContractBlock();
 
             CheckDisposed();
 
@@ -122,7 +120,6 @@ namespace Npgsql
                 throw new ArgumentOutOfRangeException(nameof(count));
             if (buffer.Length - offset < count)
                 throw new ArgumentException("Invalid offset or count for this buffer");
-            Contract.EndContractBlock();
 
             CheckDisposed();
 
@@ -215,7 +212,6 @@ namespace Npgsql
                 throw new ArgumentException("Invalid origin");
             if (!Has64BitSupport && offset != (long)(int)offset)
                 throw new ArgumentOutOfRangeException(nameof(offset), "offset must fit in 32 bits for PostgreSQL versions older than 9.3");
-            Contract.EndContractBlock();
 
             CheckDisposed();
 
@@ -245,7 +241,6 @@ namespace Npgsql
                 throw new ArgumentOutOfRangeException(nameof(value));
             if (!Has64BitSupport && value != (long)(int)value)
                 throw new ArgumentOutOfRangeException(nameof(value), "offset must fit in 32 bits for PostgreSQL versions older than 9.3");
-            Contract.EndContractBlock();
 
             CheckDisposed();
 

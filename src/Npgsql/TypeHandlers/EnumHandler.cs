@@ -25,7 +25,7 @@ using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -60,7 +60,7 @@ namespace Npgsql.TypeHandlers
         internal EnumHandler(IBackendType backendType, INpgsqlNameTranslator nameTranslator)
             : base(backendType)
         {
-            Contract.Requires(typeof(TEnum).GetTypeInfo().IsEnum, "EnumHandler instantiated for non-enum type");
+            Debug.Assert(typeof(TEnum).GetTypeInfo().IsEnum, "EnumHandler instantiated for non-enum type");
             _enumToLabel = new Dictionary<TEnum, string>();
             _labelToEnum = new Dictionary<string, TEnum>();
             GenerateMappings(nameTranslator, _enumToLabel, _labelToEnum);
@@ -69,7 +69,7 @@ namespace Npgsql.TypeHandlers
         internal EnumHandler(IBackendType backendType, Dictionary<TEnum, string> enumToLabel, Dictionary<string, TEnum> labelToEnum)
             : base(backendType)
         {
-            Contract.Requires(typeof(TEnum).GetTypeInfo().IsEnum, "EnumHandler instantiated for non-enum type");
+            Debug.Assert(typeof(TEnum).GetTypeInfo().IsEnum, "EnumHandler instantiated for non-enum type");
             _enumToLabel = enumToLabel;
             _labelToEnum = labelToEnum;
         }

@@ -25,7 +25,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data.Common;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using JetBrains.Annotations;
 using NpgsqlTypes;
 
@@ -311,7 +311,6 @@ namespace Npgsql
         {
             if (parameterName == null)
                 throw new ArgumentNullException(nameof(parameterName));
-            Contract.EndContractBlock();
 
             RemoveAt(IndexOf(parameterName));
         }
@@ -326,7 +325,6 @@ namespace Npgsql
         {
             if (parameterName == null)
                 throw new ArgumentNullException(nameof(parameterName));
-            Contract.EndContractBlock();
 
             return (IndexOf(parameterName) != -1);
         }
@@ -465,11 +463,10 @@ namespace Npgsql
         {
             if (oValue == null)
                 throw new ArgumentNullException(nameof(oValue));
-            Contract.EndContractBlock();
 
             CheckType(oValue);
             NpgsqlParameter value = oValue as NpgsqlParameter;
-            Contract.Assert(value != null);
+            Debug.Assert(value != null);
             if (value.Collection != null)
             {
                 throw new InvalidOperationException("The parameter already belongs to a collection");
@@ -503,11 +500,10 @@ namespace Npgsql
         {
             if (oValue == null)
                 throw new ArgumentNullException(nameof(oValue));
-            Contract.EndContractBlock();
 
             CheckType(oValue);
             var p = oValue as NpgsqlParameter;
-            Contract.Assert(p != null);
+            Debug.Assert(p != null);
             Remove(p);
         }
 
@@ -575,7 +571,6 @@ namespace Npgsql
         {
             if (value == null)
                 throw new ArgumentNullException(nameof(value));
-            Contract.EndContractBlock();
 
             CheckType(value);
             return _internalList.IndexOf((NpgsqlParameter) value);
@@ -632,7 +627,6 @@ namespace Npgsql
         {
             if (array == null)
                 throw new ArgumentNullException(nameof(array));
-            Contract.EndContractBlock();
 
             (_internalList as ICollection).CopyTo(array, index);
         }
@@ -683,7 +677,6 @@ namespace Npgsql
         protected override DbParameter GetParameter(string parameterName)
         {
             if (parameterName == null) throw new ArgumentNullException(nameof(parameterName));
-            Contract.EndContractBlock();
 
             return this[parameterName];
         }
@@ -707,7 +700,6 @@ namespace Npgsql
         protected override void SetParameter(string parameterName, DbParameter value)
         {
             if (parameterName == null) throw new ArgumentNullException(nameof(parameterName));
-            Contract.EndContractBlock();
 
             this[parameterName] = (NpgsqlParameter) value;
         }
@@ -796,7 +788,6 @@ namespace Npgsql
         public bool Remove(NpgsqlParameter item)
         {
             if (item == null) throw new ArgumentNullException(nameof(item));
-            Contract.EndContractBlock();
 
             if (item.Collection != this)
             {

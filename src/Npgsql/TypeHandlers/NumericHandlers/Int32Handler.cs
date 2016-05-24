@@ -29,7 +29,6 @@ using System.Text;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
-using System.Diagnostics.Contracts;
 
 namespace Npgsql.TypeHandlers.NumericHandlers
 {

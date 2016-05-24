@@ -23,7 +23,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -54,7 +54,7 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             buf.ReadByte();  // addressFamily
             var mask = buf.ReadByte();
             var isCidr = buf.ReadByte() == 1;
-            Contract.Assume(isCidrHandler == isCidr);
+            Debug.Assert(isCidrHandler == isCidr);
             var numBytes = buf.ReadByte();
             var bytes = new byte[numBytes];
             for (var i = 0; i < numBytes; i++) {

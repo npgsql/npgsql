@@ -23,7 +23,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
 using System.Security.Cryptography;
@@ -297,7 +297,7 @@ namespace TlsClientStream
             }
 
             public static bool operator >=(BigInt a, BigInt o) {
-                Contract.Assert(a.Length == o.Length + 1 || a.Length == o.Length);
+                Debug.Assert(a.Length == o.Length + 1 || a.Length == o.Length);
 
                 if (a.Length == o.Length + 1 && a._bits[a.Length - 1] != 0)
                     return true;
@@ -813,7 +813,7 @@ namespace TlsClientStream
 
         public Affine EcAffinify(Projective s)
         {
-            Contract.Assert(!s.z.IsZero());
+            Debug.Assert(!s.z.IsZero());
 
             var lambda = s.z.ModInv(p, negP);
             var lambda2 = modp(lambda * lambda);

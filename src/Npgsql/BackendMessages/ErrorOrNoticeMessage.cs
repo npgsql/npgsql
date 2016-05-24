@@ -22,7 +22,6 @@
 #endregion
 
 using System;
-using System.Diagnostics.Contracts;
 using Npgsql.Logging;
 #if NET45 || NET451
 using System.Runtime.Serialization;
@@ -134,13 +133,6 @@ namespace Npgsql.BackendMessages
                     break;
                 }
             }
-        }
-
-        [ContractInvariantMethod]
-        void ObjectInvariants()
-        {
-            Contract.Invariant(Code != null);
-            Contract.Invariant(Message != null);
         }
 
         /// <summary>

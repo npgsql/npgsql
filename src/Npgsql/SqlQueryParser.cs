@@ -23,7 +23,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 
@@ -50,8 +50,8 @@ namespace Npgsql
         /// <param name="queries">An empty list to be populated with the queries parsed by this method</param>
         static internal void ParseRawQuery(string sql, bool standardConformantStrings, NpgsqlParameterCollection parameters, List<NpgsqlStatement> queries)
         {
-            Contract.Requires(sql != null);
-            Contract.Requires(queries != null && !queries.Any());
+            Debug.Assert(sql != null);
+            Debug.Assert(queries != null && !queries.Any());
 
             var currCharOfs = 0;
             var end = sql.Length;

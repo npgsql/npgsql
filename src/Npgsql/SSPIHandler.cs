@@ -24,7 +24,7 @@
 using System;
 using System.Runtime.InteropServices;
 using System.ComponentModel;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using JetBrains.Annotations;
 
 namespace Npgsql
@@ -201,7 +201,7 @@ namespace Npgsql
 
                 if (_isSSPICtxSet)
                 {
-                    Contract.Assert(authData != null);
+                    Debug.Assert(authData != null);
                     var inbuf = new SecBufferDesc { pBuffer = IntPtr.Zero };
                     var inBuffer = new SecBuffer { pvBuffer = Marshal.AllocHGlobal(authData.Length) };
                     try

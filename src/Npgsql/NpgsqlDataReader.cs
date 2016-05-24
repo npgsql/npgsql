@@ -28,7 +28,6 @@ using System.Collections.ObjectModel;
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
-using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -134,16 +133,16 @@ namespace Npgsql
         /// </summary>
         void PopulateOutputParameters()
         {
-            Contract.Requires(Command.Parameters.Any(p => p.IsOutputDirection));
-            Contract.Requires(_statementIndex == 0);
-            Contract.Requires(_pendingMessage != null);
-            Contract.Requires(_rowDescription != null);
+            Debug.Assert(Command.Parameters.Any(p => p.IsOutputDirection));
+            Debug.Assert(_statementIndex == 0);
+            Debug.Assert(_pendingMessage != null);
+            Debug.Assert(_rowDescription != null);
 
             var asDataRow = _pendingMessage as DataRowMessage;
             if (asDataRow == null) // The first resultset was empty
                 return;
-            Contract.Assume(asDataRow is DataRowNonSequentialMessage);
-            Contract.Assume(asDataRow.NumColumns == _rowDescription.NumFields);
+            Debug.Assert(asDataRow is DataRowNonSequentialMessage);
+            Debug.Assert(asDataRow.NumColumns == _rowDescription.NumFields);
 
             // Temporarily set _row to the pending data row in order to retrieve the values
             _row = asDataRow;
@@ -256,15 +255,15 @@ namespace Npgsql
 
         ReadResult ProcessMessage(IBackendMessage msg)
         {
-            Contract.Requires(msg != null);
+            Debug.Assert(msg != null);
 
             switch (msg.Code)
             {
                 case BackendMessageCode.DataRow:
-                    Contract.Assert(_rowDescription != null);
+                    Debug.Assert(_rowDescription != null);
                     _connector.State = ConnectorState.Fetching;
                     _row = (DataRowMessage)msg;
-                    Contract.Assume(_rowDescription.NumFields == _row.NumColumns);
+                    Debug.Assert(_rowDescription.NumFields == _row.NumColumns);
                     if (IsCaching) { _rowCache.Clear(); }
                     _readOneRow = true;
                     _hasRows = true;
@@ -356,7 +355,7 @@ namespace Npgsql
         [RewriteAsync]
         bool NextResultInternal()
         {
-            Contract.Requires(!IsSchemaOnly);
+            Debug.Assert(!IsSchemaOnly);
             // Contract.Ensures(Command.CommandType != CommandType.StoredProcedure || Contract.Result<bool>() == false);
 
             // If we're in the middle of a resultset, consume it
@@ -383,7 +382,7 @@ namespace Npgsql
                     throw new ArgumentOutOfRangeException();
             }
 
-            Contract.Assert(_state == ReaderState.BetweenResults);
+            Debug.Assert(_state == ReaderState.BetweenResults);
             _hasRows = null;
 
             if ((_behavior & CommandBehavior.SingleResult) != 0 && _statementIndex == 0)
@@ -467,7 +466,7 @@ namespace Npgsql
         [RewriteAsync]
         bool NextResultSchemaOnly()
         {
-            Contract.Requires(IsSchemaOnly);
+            Debug.Assert(IsSchemaOnly);
 
             for (_statementIndex++; _statementIndex < _statements.Count; _statementIndex++)
             {
@@ -646,7 +645,6 @@ namespace Npgsql
         {
             CheckResultSet();
             CheckOrdinal(ordinal);
-            Contract.EndContractBlock();
 
             return _rowDescription[ordinal].Name;
         }
@@ -787,7 +785,6 @@ namespace Npgsql
         public override bool GetBoolean(int ordinal)
         {
             CheckRowAndOrdinal(ordinal);
-            Contract.EndContractBlock();
 
             return ReadColumnWithoutCache<bool>(ordinal);
         }
@@ -800,7 +797,6 @@ namespace Npgsql
         public override byte GetByte(int ordinal)
         {
             CheckRowAndOrdinal(ordinal);
-            Contract.EndContractBlock();
 
             return ReadColumnWithoutCache<byte>(ordinal);
         }
@@ -813,7 +809,6 @@ namespace Npgsql
         public override char GetChar(int ordinal)
         {
             CheckRowAndOrdinal(ordinal);
-            Contract.EndContractBlock();
 
             return ReadColumnWithoutCache<char>(ordinal);
         }
@@ -826,7 +821,6 @@ namespace Npgsql
         public override short GetInt16(int ordinal)
         {
             CheckRowAndOrdinal(ordinal);
-            Contract.EndContractBlock();
 
             return ReadColumn<short>(ordinal);
         }
@@ -839,7 +833,6 @@ namespace Npgsql
         public override int GetInt32(int ordinal)
         {
             CheckRowAndOrdinal(ordinal);
-            Contract.EndContractBlock();
 
             return ReadColumn<int>(ordinal);
         }
@@ -852,7 +845,6 @@ namespace Npgsql
         public override long GetInt64(int ordinal)
         {
             CheckRowAndOrdinal(ordinal);
-            Contract.EndContractBlock();
 
             return ReadColumn<long>(ordinal);
         }
@@ -865,7 +857,6 @@ namespace Npgsql
         public override DateTime GetDateTime(int ordinal)
         {
             CheckRowAndOrdinal(ordinal);
-            Contract.EndContractBlock();
 
             return ReadColumn<DateTime>(ordinal);
         }
@@ -878,7 +869,6 @@ namespace Npgsql
         public override string GetString(int ordinal)
         {
             CheckRowAndOrdinal(ordinal);
-            Contract.EndContractBlock();
 
             return ReadColumn<string>(ordinal);
         }
@@ -891,7 +881,6 @@ namespace Npgsql
         public override decimal GetDecimal(int ordinal)
         {
             CheckRowAndOrdinal(ordinal);
-            Contract.EndContractBlock();
 
             return ReadColumn<decimal>(ordinal);
         }
@@ -904,7 +893,6 @@ namespace Npgsql
         public override double GetDouble(int ordinal)
         {
             CheckRowAndOrdinal(ordinal);
-            Contract.EndContractBlock();
 
             return ReadColumn<double>(ordinal);
         }
@@ -917,7 +905,6 @@ namespace Npgsql
         public override float GetFloat(int ordinal)
         {
             CheckRowAndOrdinal(ordinal);
-            Contract.EndContractBlock();
 
             return ReadColumn<float>(ordinal);
         }
@@ -930,7 +917,6 @@ namespace Npgsql
         public override Guid GetGuid(int ordinal)
         {
             CheckRowAndOrdinal(ordinal);
-            Contract.EndContractBlock();
 
             return ReadColumn<Guid>(ordinal);
         }
@@ -942,12 +928,9 @@ namespace Npgsql
         /// <returns>The number of instances of <see cref="object"/> in the array.</returns>
         public override int GetValues(object[] values)
         {
-#region Contracts
             if (values == null)
                 throw new ArgumentNullException(nameof(values));
             CheckRow();
-            Contract.Ensures(Contract.Result<int>() >= 0 && Contract.Result<int>() <= values.Length);
-#endregion
 
             var count = Math.Min(FieldCount, values.Length);
             for (var i = 0; i < count; i++) {
@@ -966,7 +949,6 @@ namespace Npgsql
             get
             {
                 CheckRowAndOrdinal(ordinal);
-                Contract.EndContractBlock();
 
                 return GetValue(ordinal);
             }
@@ -992,7 +974,6 @@ namespace Npgsql
         public NpgsqlDate GetDate(int ordinal)
         {
             CheckRowAndOrdinal(ordinal);
-            Contract.EndContractBlock();
 
             return ReadColumn<NpgsqlDate>(ordinal);
         }
@@ -1011,7 +992,6 @@ namespace Npgsql
         public TimeSpan GetTimeSpan(int ordinal)
         {
             CheckRowAndOrdinal(ordinal);
-            Contract.EndContractBlock();
 
             return ReadColumn<TimeSpan>(ordinal);
         }
@@ -1034,7 +1014,6 @@ namespace Npgsql
         public NpgsqlTimeSpan GetInterval(int ordinal)
         {
             CheckRowAndOrdinal(ordinal);
-            Contract.EndContractBlock();
 
             return ReadColumn<NpgsqlTimeSpan>(ordinal);
         }
@@ -1057,7 +1036,6 @@ namespace Npgsql
         public NpgsqlDateTime GetTimeStamp(int ordinal)
         {
             CheckRowAndOrdinal(ordinal);
-            Contract.EndContractBlock();
 
             return ReadColumn<NpgsqlDateTime>(ordinal);
         }
@@ -1077,17 +1055,13 @@ namespace Npgsql
         /// <returns>The actual number of bytes read.</returns>
         public override long GetBytes(int ordinal, long dataOffset, byte[] buffer, int bufferOffset, int length)
         {
-#region Contracts
             CheckRowAndOrdinal(ordinal);
             if (dataOffset < 0 || dataOffset > int.MaxValue)
-                throw new ArgumentOutOfRangeException(nameof(dataOffset), dataOffset,
-                    $"dataOffset must be between {0} and {int.MaxValue}");
+                throw new ArgumentOutOfRangeException(nameof(dataOffset), dataOffset, $"dataOffset must be between {0} and {int.MaxValue}");
             if (buffer != null && (bufferOffset < 0 || bufferOffset >= buffer.Length))
                 throw new IndexOutOfRangeException($"bufferOffset must be between {0} and {(buffer.Length - 1)}");
             if (buffer != null && (length < 0 || length > buffer.Length - bufferOffset))
                 throw new IndexOutOfRangeException($"length must be between {0} and {buffer.Length - bufferOffset}");
-            Contract.Ensures(Contract.Result<long>() >= 0);
-#endregion
 
             var fieldDescription = _rowDescription[ordinal];
             var handler = fieldDescription.Handler as ByteaHandler;
@@ -1113,7 +1087,6 @@ namespace Npgsql
 #endif
         {
             CheckRowAndOrdinal(ordinal);
-            Contract.Ensures(Contract.Result<Stream>() != null);
 
             var fieldDescription = _rowDescription[ordinal];
             var handler = fieldDescription.Handler as ByteaHandler;
@@ -1142,7 +1115,6 @@ namespace Npgsql
         /// <returns>The actual number of characters read.</returns>
         public override long GetChars(int ordinal, long dataOffset, char[] buffer, int bufferOffset, int length)
         {
-#region Contracts
             CheckRowAndOrdinal(ordinal);
             if (dataOffset < 0 || dataOffset > int.MaxValue)
                 throw new ArgumentOutOfRangeException(nameof(dataOffset), dataOffset,
@@ -1151,8 +1123,6 @@ namespace Npgsql
                 throw new IndexOutOfRangeException($"bufferOffset must be between {0} and {(buffer.Length - 1)}");
             if (buffer != null && (length < 0 || length > buffer.Length - bufferOffset))
                 throw new IndexOutOfRangeException($"length must be between {0} and {buffer.Length - bufferOffset}");
-            Contract.Ensures(Contract.Result<long>() >= 0);
-#endregion
 
             var fieldDescription = _rowDescription[ordinal];
             var handler = fieldDescription.Handler as TextHandler;
@@ -1178,7 +1148,6 @@ namespace Npgsql
 #endif
         {
             CheckRowAndOrdinal(ordinal);
-            Contract.Ensures(Contract.Result<TextReader>() != null);
 
             var fieldDescription = _rowDescription[ordinal];
             var handler = fieldDescription.Handler as ITextReaderHandler;
@@ -1226,7 +1195,6 @@ namespace Npgsql
         bool IsDBNullInternal(int ordinal)
         {
             CheckRowAndOrdinal(ordinal);
-            Contract.EndContractBlock();
 
             Row.SeekToColumn(ordinal);
             return _row.IsColumnNull;
@@ -1248,12 +1216,9 @@ namespace Npgsql
         /// <returns>The zero-based column ordinal.</returns>
         public override int GetOrdinal(string name)
         {
-#region Contracts
             CheckResultSet();
             if (String.IsNullOrEmpty(name))
                 throw new ArgumentException("name cannot be empty", nameof(name));
-            Contract.EndContractBlock();
-#endregion
 
             return _rowDescription.GetFieldIndex(name);
         }
@@ -1269,7 +1234,6 @@ namespace Npgsql
         {
             CheckResultSet();
             CheckOrdinal(ordinal);
-            Contract.EndContractBlock();
 
             return _rowDescription[ordinal].DataTypeName;
         }
@@ -1287,7 +1251,6 @@ namespace Npgsql
         {
             CheckResultSet();
             CheckOrdinal(ordinal);
-            Contract.EndContractBlock();
 
             return _rowDescription[ordinal].TypeOID;
         }
@@ -1301,7 +1264,6 @@ namespace Npgsql
         {
             CheckResultSet();
             CheckOrdinal(ordinal);
-            Contract.EndContractBlock();
 
             var type = Command.ObjectResultTypes?[ordinal];
             if (type != null)
@@ -1319,7 +1281,6 @@ namespace Npgsql
         {
             CheckResultSet();
             CheckOrdinal(ordinal);
-            Contract.EndContractBlock();
 
             var fieldDescription = _rowDescription[ordinal];
             return fieldDescription.Handler.GetProviderSpecificFieldType(fieldDescription);
@@ -1377,7 +1338,7 @@ namespace Npgsql
 
             if (IsCaching)
             {
-                Contract.Assert(cache != null);
+                Debug.Assert(cache != null);
                 cache.Value = result;
                 cache.IsProviderSpecificValue = false;
             }
@@ -1413,7 +1374,6 @@ namespace Npgsql
         T GetFieldValueInternal<T>(int ordinal)
         {
             CheckRowAndOrdinal(ordinal);
-            Contract.EndContractBlock();
 
             var t = typeof(T);
             if (!t.IsArray) {
@@ -1462,7 +1422,6 @@ namespace Npgsql
         public override object GetProviderSpecificValue(int ordinal)
         {
             CheckRowAndOrdinal(ordinal);
-            Contract.Ensures(Contract.Result<object>() == DBNull.Value || GetProviderSpecificFieldType(ordinal).IsInstanceOfType(Contract.Result<object>()));
 
             CachedValue<object> cache = null;
             if (IsCaching)
@@ -1493,7 +1452,7 @@ namespace Npgsql
 
             if (IsCaching)
             {
-                Contract.Assert(cache != null);
+                Debug.Assert(cache != null);
                 cache.Value = result;
                 cache.IsProviderSpecificValue = true;
             }
@@ -1507,12 +1466,9 @@ namespace Npgsql
         /// <returns>The number of instances of <see cref="object"/> in the array.</returns>
         public override int GetProviderSpecificValues(object[] values)
         {
-#region Contracts
             if (values == null)
                 throw new ArgumentNullException(nameof(values));
             CheckRow();
-            Contract.Ensures(Contract.Result<int>() >= 0 && Contract.Result<int>() <= values.Length);
-#endregion
 
             var count = Math.Min(FieldCount, values.Length);
             for (var i = 0; i < count; i++)
@@ -1576,7 +1532,7 @@ namespace Npgsql
             var result = ReadColumnWithoutCache<T>(ordinal);
             if (IsCaching)
             {
-                Contract.Assert(cache != null);
+                Debug.Assert(cache != null);
                 cache.Value = result;
             }
             return result;
@@ -1672,32 +1628,25 @@ namespace Npgsql
 
         #region Checks
 
-        [ContractArgumentValidator]
         void CheckRowAndOrdinal(int ordinal)
         {
             CheckRow();
             CheckOrdinal(ordinal);
-            Contract.EndContractBlock();
         }
 
-        [ContractArgumentValidator]
         void CheckRow()
         {
             if (!IsOnRow)
                 throw new InvalidOperationException("No row is available");
-            Contract.EndContractBlock();
         }
 
-        [ContractArgumentValidator]
         // ReSharper disable once UnusedParameter.Local
         void CheckOrdinal(int ordinal)
         {
             if (ordinal < 0 || ordinal >= FieldCount)
                 throw new IndexOutOfRangeException($"Column must be between {0} and {(FieldCount - 1)}");
-            Contract.EndContractBlock();
         }
 
-        [ContractAbbreviator]
         void CheckResultSet()
         {
             if (FieldCount == 0)

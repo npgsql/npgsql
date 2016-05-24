@@ -22,7 +22,7 @@
 #endregion
 
 using System;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -69,7 +69,7 @@ namespace Npgsql
 
         internal sealed override bool Write(WriteBuffer buf)
         {
-            Contract.Assume(Length < buf.UsableSize, $"Message of type {GetType().Name} has length {Length} which is bigger than the buffer ({buf.UsableSize})");
+            Debug.Assert(Length < buf.UsableSize, $"Message of type {GetType().Name} has length {Length} which is bigger than the buffer ({buf.UsableSize})");
             if (buf.WriteSpaceLeft < Length)
                 return false;
             WriteFully(buf);

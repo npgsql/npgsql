@@ -23,7 +23,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Text;
 
@@ -88,7 +87,6 @@ namespace NpgsqlTypes
         {
             if (value == null)
                 throw new ArgumentNullException(nameof(value));
-            Contract.EndContractBlock();
 
             Stack<NpgsqlTsQuery> valStack = new Stack<NpgsqlTsQuery>();
             Stack<char> opStack = new Stack<char>();
@@ -296,7 +294,6 @@ namespace NpgsqlTypes
             {
                 if (string.IsNullOrEmpty(value))
                     throw new ArgumentException("Text is null or empty string", nameof(value));
-                Contract.EndContractBlock();
 
                 _text = value;
             }
@@ -317,7 +314,6 @@ namespace NpgsqlTypes
             {
                 if (((byte)value >> 4) != 0)
                     throw new ArgumentOutOfRangeException(nameof(value), "Illegal weights");
-                Contract.EndContractBlock();
 
                 _weights = value;
             }

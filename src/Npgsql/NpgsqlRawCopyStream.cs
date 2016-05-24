@@ -23,7 +23,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -152,7 +152,7 @@ namespace Npgsql
         {
             if (_writingDataMsg) { return; }
 
-            Contract.Assert(_writeBuf.WritePosition == 0);
+            Debug.Assert(_writeBuf.WritePosition == 0);
             _writeBuf.WriteByte((byte)BackendMessageCode.CopyData);
             // Leave space for the message length
             _writeBuf.WriteInt32(0);
@@ -192,7 +192,7 @@ namespace Npgsql
                 }
             }
 
-            Contract.Assume(_leftToReadInDataMsg > 0);
+            Debug.Assert(_leftToReadInDataMsg > 0);
 
             // If our buffer is empty, read in more. Otherwise return whatever is there, even if the
             // user asked for more (normal socket behavior)
@@ -200,7 +200,7 @@ namespace Npgsql
                 _readBuf.ReadMore();
             }
 
-            Contract.Assert(_readBuf.ReadBytesLeft > 0);
+            Debug.Assert(_readBuf.ReadBytesLeft > 0);
 
             var maxCount = Math.Min(_readBuf.ReadBytesLeft, _leftToReadInDataMsg);
             if (count > maxCount) {
@@ -294,19 +294,6 @@ namespace Npgsql
 
         #endregion
 
-        #region Invariants
-
-        [ContractInvariantMethod]
-        void ObjectInvariants()
-        {
-            Contract.Invariant(_isDisposed || (_connector != null && _readBuf != null && _writeBuf != null));
-            Contract.Invariant(CanRead || CanWrite);
-            Contract.Invariant(_readBuf == null || _readBuf == _connector.ReadBuffer);
-            Contract.Invariant(_writeBuf == null || _writeBuf == _connector.WriteBuffer);
-        }
-
-        #endregion
-
         #region Unsupported
 
         public override bool CanSeek => false;
@@ -347,7 +334,6 @@ namespace Npgsql
         {
             if (underlying.IsBinary)
                 throw new Exception("Can't use a binary copy stream for text writing");
-            Contract.EndContractBlock();
         }
 
         /// <summary>
@@ -371,7 +357,6 @@ namespace Npgsql
         {
             if (underlying.IsBinary)
                 throw new Exception("Can't use a binary copy stream for text reading");
-            Contract.EndContractBlock();
         }
 
         /// <summary>

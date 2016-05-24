@@ -24,7 +24,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
 using System.Text;
 using JetBrains.Annotations;
 using Npgsql;
@@ -279,7 +278,7 @@ namespace NpgsqlTypes
 
         #region Arithmetic
 
-        [PublicAPI, Pure]
+        [PublicAPI]
         public NpgsqlDate AddDays(int days)
         {
             switch (_type)
@@ -295,7 +294,7 @@ namespace NpgsqlTypes
             }
         }
 
-        [PublicAPI, Pure]
+        [PublicAPI]
         public NpgsqlDate AddYears(int years)
         {
             switch (_type) {
@@ -321,7 +320,7 @@ namespace NpgsqlTypes
             return new NpgsqlDate(newYear, Month, Day);
         }
 
-        [PublicAPI, Pure]
+        [PublicAPI]
         public NpgsqlDate AddMonths(int months)
         {
             switch (_type) {
@@ -354,7 +353,6 @@ namespace NpgsqlTypes
 
         }
 
-        [Pure]
         [PublicAPI]
         public NpgsqlDate Add(NpgsqlTimeSpan interval)
         {
@@ -372,7 +370,6 @@ namespace NpgsqlTypes
             return AddMonths(interval.Months).AddDays(interval.Days);
         }
 
-        [Pure]
         [PublicAPI]
         internal NpgsqlDate Add(NpgsqlTimeSpan interval, int carriedOverflow)
         {

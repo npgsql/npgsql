@@ -24,7 +24,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
 using System.Globalization;
 using System.IO;
 using System.Net;
@@ -73,18 +72,8 @@ namespace Npgsql
         internal static StringComparer InvariantCaseIgnoringStringComparer => CultureInfo.InvariantCulture.CompareInfo.GetStringComparer(CompareOptions.IgnoreCase);
 #endif
 
-        /// <summary>
-        /// Throws an exception with the given string and also invokes a contract failure, allowing the static checker
-        /// to detect scenarios leading up to this error.
-        ///
-        /// See http://blogs.msdn.com/b/francesco/archive/2014/09/12/how-to-use-cccheck-to-prove-no-case-is-forgotten.aspx
-        /// </summary>
-        /// <param name="message">the exception message</param>
-        /// <returns>an exception to be thrown</returns>
-        [ContractVerification(false)]
-        public static Exception ThrowIfReached(string message = null)
+        internal static Exception ThrowIfReached(string message = null)
         {
-            Contract.Requires(false);
             return message == null ? new Exception("An internal Npgsql occured, please open an issue in http://github.com/npgsql/npgsql with this exception's stack trace") : new Exception(message);
         }
 

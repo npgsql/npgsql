@@ -24,7 +24,7 @@
 using System;
 using System.Data;
 using System.Data.Common;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using AsyncRewriter;
@@ -90,13 +90,13 @@ namespace Npgsql
         internal NpgsqlTransaction(NpgsqlConnection conn)
             : this(conn, DefaultIsolationLevel)
         {
-            Contract.Requires(conn != null);
+            Debug.Assert(conn != null);
         }
 
         internal NpgsqlTransaction(NpgsqlConnection conn, IsolationLevel isolationLevel)
         {
-            Contract.Requires(conn != null);
-            Contract.Requires(isolationLevel != IsolationLevel.Chaos);
+            Debug.Assert(conn != null);
+            Debug.Assert(isolationLevel != IsolationLevel.Chaos);
 
             Connection = conn;
             Connector.Transaction = this;
@@ -212,7 +212,6 @@ namespace Npgsql
                 throw new ArgumentException("name can't be empty", nameof(name));
             if (name.Contains(";"))
                 throw new ArgumentException("name can't contain a semicolon");
-            Contract.EndContractBlock();
 
             var connector = CheckReady();
             using (connector.StartUserAction())
@@ -233,7 +232,6 @@ namespace Npgsql
                 throw new ArgumentException("name can't be empty", nameof(name));
             if (name.Contains(";"))
                 throw new ArgumentException("name can't contain a semicolon");
-            Contract.EndContractBlock();
 
             var connector = CheckReady();
             using (connector.StartUserAction())
@@ -254,7 +252,6 @@ namespace Npgsql
                 throw new ArgumentException("name can't be empty", nameof(name));
             if (name.Contains(";"))
                 throw new ArgumentException("name can't contain a semicolon");
-            Contract.EndContractBlock();
 
             var connector = CheckReady();
             using (connector.StartUserAction())
@@ -295,25 +292,16 @@ namespace Npgsql
             return Connection.CheckReadyAndGetConnector();
         }
 
-        [ContractArgumentValidator]
         void CheckCompleted()
         {
             if (IsCompleted)
                 throw new InvalidOperationException("This NpgsqlTransaction has completed; it is no longer usable.");
-            Contract.EndContractBlock();
         }
 
-        [ContractArgumentValidator]
         void CheckDisposed()
         {
             if (_isDisposed)
                 throw new ObjectDisposedException(typeof(NpgsqlTransaction).Name);
-            Contract.EndContractBlock();
-        }
-
-        [ContractInvariantMethod]
-        void ObjectInvariants()
-        {
         }
 
         #endregion

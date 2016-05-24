@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Data;
 using System.Data.Common;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.Linq;
 using Npgsql.BackendMessages;
 using Npgsql.TypeHandlers;
@@ -95,9 +95,9 @@ ORDER BY attnum";
                             var column = LoadColumnDefinition(reader);
 
                             var ordinal = fields.FindIndex(f => f.TableOID == column.TableOID && f.ColumnAttributeNumber - 1 == column.ColumnAttributeNumber);
-                            Contract.Assert(ordinal >= 0);
+                            Debug.Assert(ordinal >= 0);
                             var field = fields[ordinal];
-                            Contract.Assert(field.Name == column.ColumnName);
+                            Debug.Assert(field.Name == column.ColumnName);
 
                             // The column's ordinal is with respect to the resultset, not its table
                             column.ColumnOrdinal = ordinal;
@@ -111,7 +111,7 @@ ORDER BY attnum";
                     if (populatedColumns == fields.Count)
                     {
                         // All columns were regular table columns that got loaded, we're done
-                        Contract.Assert(result.All(c => c != null));
+                        Debug.Assert(result.All(c => c != null));
                         return result.AsReadOnly();
                     }
                 }

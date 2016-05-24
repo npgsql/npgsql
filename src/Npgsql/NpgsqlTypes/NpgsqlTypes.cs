@@ -24,7 +24,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.Globalization;
 using System.Net;
 using System.Net.NetworkInformation;
@@ -477,7 +477,7 @@ namespace NpgsqlTypes
                 default:
                     throw new Exception("Invalid path string: " + s);
             }
-            Contract.Assume(s[s.Length - 1] == (open ? ']' : ')'));
+            Debug.Assert(s[s.Length - 1] == (open ? ']' : ')'));
             var result = new NpgsqlPath(open);
             var i = 1;
             while (true)
@@ -745,7 +745,6 @@ namespace NpgsqlTypes
         {
             if (address.AddressFamily != AddressFamily.InterNetwork && address.AddressFamily != AddressFamily.InterNetworkV6)
                 throw new ArgumentException("Only IPAddress of InterNetwork or InterNetworkV6 address families are accepted", nameof(address));
-            Contract.EndContractBlock();
 
             Address = address;
             Netmask = netmask;
@@ -755,7 +754,6 @@ namespace NpgsqlTypes
         {
             if (address.AddressFamily != AddressFamily.InterNetwork && address.AddressFamily != AddressFamily.InterNetworkV6)
                 throw new ArgumentException("Only IPAddress of InterNetwork or InterNetworkV6 address families are accepted", nameof(address));
-            Contract.EndContractBlock();
 
             Address = address;
             Netmask = address.AddressFamily == AddressFamily.InterNetwork ? 32 : 128;

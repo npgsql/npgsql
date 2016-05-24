@@ -22,7 +22,7 @@
 #endregion
 
 using System;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
@@ -77,7 +77,6 @@ namespace Npgsql
             if (size < MinimumBufferSize) {
                 throw new ArgumentOutOfRangeException(nameof(size), size, "Buffer size must be at least " + MinimumBufferSize);
             }
-            Contract.EndContractBlock();
 
             Connector = connector;
             Underlying = stream;
@@ -96,7 +95,7 @@ namespace Npgsql
         [RewriteAsync]
         internal void Ensure(int count, bool dontBreakOnTimeouts=false)
         {
-            Contract.Requires(count <= Size);
+            Debug.Assert(count <= Size);
             count -= ReadBytesLeft;
             if (count <= 0) { return; }
 
@@ -168,7 +167,7 @@ namespace Npgsql
         [RewriteAsync]
         internal void Skip(long len)
         {
-            Contract.Requires(len >= 0);
+            Debug.Assert(len >= 0);
 
             if (len > ReadBytesLeft)
             {
@@ -192,13 +191,13 @@ namespace Npgsql
 
         internal byte ReadByte()
         {
-            Contract.Requires(ReadBytesLeft >= sizeof(byte));
+            Debug.Assert(ReadBytesLeft >= sizeof(byte));
             return _buf[ReadPosition++];
         }
 
         internal short ReadInt16()
         {
-            Contract.Requires(ReadBytesLeft >= sizeof(short));
+            Debug.Assert(ReadBytesLeft >= sizeof(short));
             var result = IPAddress.NetworkToHostOrder(BitConverter.ToInt16(_buf, ReadPosition));
             ReadPosition += 2;
             return result;
@@ -206,7 +205,7 @@ namespace Npgsql
 
         internal ushort ReadUInt16()
         {
-            Contract.Requires(ReadBytesLeft >= sizeof(short));
+            Debug.Assert(ReadBytesLeft >= sizeof(short));
             var result = (ushort)IPAddress.NetworkToHostOrder(BitConverter.ToInt16(_buf, ReadPosition));
             ReadPosition += 2;
             return result;
@@ -214,7 +213,7 @@ namespace Npgsql
 
         internal int ReadInt32()
         {
-            Contract.Requires(ReadBytesLeft >= sizeof(int));
+            Debug.Assert(ReadBytesLeft >= sizeof(int));
             var result = IPAddress.NetworkToHostOrder(BitConverter.ToInt32(_buf, ReadPosition));
             ReadPosition += 4;
             return result;
@@ -222,7 +221,7 @@ namespace Npgsql
 
         internal uint ReadUInt32()
         {
-            Contract.Requires(ReadBytesLeft >= sizeof(int));
+            Debug.Assert(ReadBytesLeft >= sizeof(int));
             var result = (uint)IPAddress.NetworkToHostOrder(BitConverter.ToInt32(_buf, ReadPosition));
             ReadPosition += 4;
             return result;
@@ -230,7 +229,7 @@ namespace Npgsql
 
         internal long ReadInt64()
         {
-            Contract.Requires(ReadBytesLeft >= sizeof(long));
+            Debug.Assert(ReadBytesLeft >= sizeof(long));
             var result = IPAddress.NetworkToHostOrder(BitConverter.ToInt64(_buf, ReadPosition));
             ReadPosition += 8;
             return result;
@@ -238,7 +237,7 @@ namespace Npgsql
 
         internal float ReadSingle()
         {
-            Contract.Requires(ReadBytesLeft >= sizeof(float));
+            Debug.Assert(ReadBytesLeft >= sizeof(float));
             if (BitConverter.IsLittleEndian)
             {
                 _workspace[3] = _buf[ReadPosition++];
@@ -257,7 +256,7 @@ namespace Npgsql
 
         internal double ReadDouble()
         {
-            Contract.Requires(ReadBytesLeft >= sizeof(double));
+            Debug.Assert(ReadBytesLeft >= sizeof(double));
             if (BitConverter.IsLittleEndian)
             {
                 _workspace[7] = _buf[ReadPosition++];
@@ -280,7 +279,7 @@ namespace Npgsql
 
         internal string ReadString(int byteLen)
         {
-            Contract.Requires(byteLen <= ReadBytesLeft);
+            Debug.Assert(byteLen <= ReadBytesLeft);
             var result = TextEncoding.GetString(_buf, ReadPosition, byteLen);
             ReadPosition += byteLen;
             return result;
@@ -288,7 +287,7 @@ namespace Npgsql
 
         internal char[] ReadChars(int byteLen)
         {
-            Contract.Requires(byteLen <= ReadBytesLeft);
+            Debug.Assert(byteLen <= ReadBytesLeft);
             var result = TextEncoding.GetChars(_buf, ReadPosition, byteLen);
             ReadPosition += byteLen;
             return result;
@@ -296,7 +295,7 @@ namespace Npgsql
 
         internal void ReadBytes(byte[] output, int outputOffset, int len)
         {
-            Contract.Requires(len <= ReadBytesLeft);
+            Debug.Assert(len <= ReadBytesLeft);
             Buffer.BlockCopy(_buf, ReadPosition, output, outputOffset, len);
             ReadPosition += len;
         }
@@ -359,9 +358,9 @@ namespace Npgsql
             int i;
             for (i = ReadPosition; _buf[i] != 0; i++)
             {
-                Contract.Assume(i <= ReadPosition + ReadBytesLeft);
+                Debug.Assert(i <= ReadPosition + ReadBytesLeft);
             }
-            Contract.Assert(i >= ReadPosition);
+            Debug.Assert(i >= ReadPosition);
             var result = encoding.GetString(_buf, ReadPosition, i - ReadPosition);
             ReadPosition = i + 1;
             return result;
@@ -381,7 +380,7 @@ namespace Npgsql
         /// <returns>the number of bytes read</returns>
         internal void ReadAllChars(char[] output, int outputOffset, int charCount, int byteCount, out int bytesRead, out int charsRead)
         {
-            Contract.Requires(charCount <= output.Length - outputOffset);
+            Debug.Assert(charCount <= output.Length - outputOffset);
 
             bytesRead = 0;
             charsRead = 0;
@@ -442,7 +441,7 @@ namespace Npgsql
 
         internal int ReadInt32(ByteOrder bo)
         {
-            Contract.Requires(ReadBytesLeft >= sizeof(int));
+            Debug.Assert(ReadBytesLeft >= sizeof(int));
             int result;
             if (BitConverter.IsLittleEndian == (bo == ByteOrder.LSB))
             {
@@ -462,7 +461,7 @@ namespace Npgsql
 
         internal uint ReadUInt32(ByteOrder bo)
         {
-            Contract.Requires(ReadBytesLeft >= sizeof(int));
+            Debug.Assert(ReadBytesLeft >= sizeof(int));
             uint result;
             if (BitConverter.IsLittleEndian == (bo == ByteOrder.LSB))
             {
@@ -482,7 +481,7 @@ namespace Npgsql
 
         internal double ReadDouble(ByteOrder bo)
         {
-            Contract.Requires(ReadBytesLeft >= sizeof(double));
+            Debug.Assert(ReadBytesLeft >= sizeof(double));
 
             if (BitConverter.IsLittleEndian == (ByteOrder.LSB == bo))
             {
@@ -529,7 +528,7 @@ namespace Npgsql
                 default:
                     throw new ArgumentOutOfRangeException(nameof(origin));
             }
-            Contract.Assert(absoluteOffset >= 0 && absoluteOffset <= _filledBytes);
+            Debug.Assert(absoluteOffset >= 0 && absoluteOffset <= _filledBytes);
 
             ReadPosition = absoluteOffset;
         }
@@ -542,7 +541,7 @@ namespace Npgsql
 
         internal void CopyTo(ReadBuffer other)
         {
-            Contract.Assert(other.Size - other._filledBytes >= ReadBytesLeft);
+            Debug.Assert(other.Size - other._filledBytes >= ReadBytesLeft);
             Array.Copy(_buf, ReadPosition, other._buf, other._filledBytes, ReadBytesLeft);
             other._filledBytes += ReadBytesLeft;
         }

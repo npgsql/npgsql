@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -42,7 +41,6 @@ namespace Npgsql
         {
             if (String.IsNullOrWhiteSpace(pgName))
                 throw new ArgumentException("pgName can't be empty", nameof(pgName));
-            Contract.EndContractBlock();
 
             PgName = pgName;
             NpgsqlDbType = npgsqlDbType;
@@ -131,14 +129,6 @@ namespace Npgsql
             }
             sb.AppendFormat("]");
             return sb.ToString();
-        }
-
-        [ContractInvariantMethod]
-        void ObjectInvariants()
-        {
-            Contract.Invariant(!String.IsNullOrWhiteSpace(PgName));
-            Contract.Invariant(ClrTypes != null);
-            Contract.Invariant(DbTypes != null);
         }
     }
 }

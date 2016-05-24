@@ -25,13 +25,13 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
-using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
 using System.Text;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
+using System.Diagnostics;
 using JetBrains.Annotations;
 
 namespace Npgsql.TypeHandlers
@@ -105,7 +105,7 @@ namespace Npgsql.TypeHandlers
             }
             if (_readBuf.ReadBytesLeft < 4) { return false; }
             var bitLen = _readBuf.ReadInt32();
-            Contract.Assume(bitLen == 1);
+            Debug.Assert(bitLen == 1);
             var b = _readBuf.ReadByte();
             result = (b & 128) != 0;
             return true;

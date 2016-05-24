@@ -4,12 +4,12 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Diagnostics.Contracts;
 using System.Globalization;
 using System.Net.Sockets;
 using JetBrains.Annotations;
@@ -23,7 +23,7 @@ using System;
 using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.IO;
 using System.Net.Security;
 using System.Net.Sockets;
@@ -39,12 +39,13 @@ using System.Transactions;
 using Npgsql.Logging;
 using NpgsqlTypes;
 using IsolationLevel = System.Data.IsolationLevel;
+using ThreadState = System.Threading.ThreadState;
 using System.Threading;
 using System.Threading.Tasks;
 #pragma warning disable
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -69,7 +70,6 @@ using System.Collections.ObjectModel;
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
-using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -98,7 +98,6 @@ using System.Threading.Tasks;
 using Npgsql.FrontendMessages;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -109,7 +108,7 @@ using System.Threading.Tasks;
 using System;
 using System.Data;
 using System.Data.Common;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
@@ -122,7 +121,6 @@ using System.Threading.Tasks;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
 using System.Globalization;
 using System.IO;
 using System.Net;
@@ -136,7 +134,7 @@ using System.Threading.Tasks;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -145,7 +143,7 @@ using System.Threading;
 using System.Threading.Tasks;
 #pragma warning disable
 using System;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
@@ -156,7 +154,7 @@ using System.Threading;
 using System.Threading.Tasks;
 #pragma warning disable
 using System;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.IO;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
@@ -172,9 +170,9 @@ using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
-using System.Diagnostics.Contracts;
 using JetBrains.Annotations;
 using Npgsql.Logging;
 using Npgsql.TypeHandlers;
@@ -183,7 +181,7 @@ using System.Threading;
 using System.Threading.Tasks;
 #pragma warning disable
 using System;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Runtime.InteropServices;
@@ -194,7 +192,7 @@ using System.Threading.Tasks;
 #pragma warning disable
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -349,7 +347,6 @@ namespace Npgsql
         {
             if (string.IsNullOrWhiteSpace(Host))
                 throw new ArgumentException("Host can't be null");
-            Contract.EndContractBlock();
             var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
             // If we're postponing a close (see doc on this variable), the connection is already
             // open and can be silently reused
@@ -416,8 +413,8 @@ namespace Npgsql
     {
         internal async Task OpenAsync(NpgsqlTimeout timeout, CancellationToken cancellationToken)
         {
-            Contract.Requires(Connection != null && Connection.Connector == this);
-            Contract.Requires(State == ConnectorState.Closed);
+            Debug.Assert(Connection != null && Connection.Connector == this);
+            Debug.Assert(State == ConnectorState.Closed);
             State = ConnectorState.Connecting;
             try
             {
@@ -442,7 +439,7 @@ namespace Npgsql
             try
             {
                 await ConnectAsync(timeout, cancellationToken);
-                Contract.Assert(_socket != null);
+                Debug.Assert(_socket != null);
                 _baseStream = new NetworkStream(_socket, true);
                 _stream = _baseStream;
                 ReadBuffer = new ReadBuffer(this, _stream, BufferSize, PGUtil.UTF8Encoding);
@@ -655,7 +652,7 @@ namespace Npgsql
                 var buf = ReadBuffer;
                 await ReadBuffer.EnsureAsync(5, cancellationToken);
                 var messageCode = (BackendMessageCode)ReadBuffer.ReadByte();
-                Contract.Assume(Enum.IsDefined(typeof (BackendMessageCode), messageCode), "Unknown message code: " + messageCode);
+                Debug.Assert(Enum.IsDefined(typeof (BackendMessageCode), messageCode), "Unknown message code: " + messageCode);
                 var len = ReadBuffer.ReadInt32() - 4; // Transmitted length includes itself
                 if ((messageCode == BackendMessageCode.DataRow && dataRowLoadingMode != DataRowLoadingMode.NonSequential) || messageCode == BackendMessageCode.CopyData)
                 {
@@ -674,7 +671,7 @@ namespace Npgsql
                 switch (messageCode)
                 {
                     case BackendMessageCode.ErrorResponse:
-                        Contract.Assert(msg == null);
+                        Debug.Assert(msg == null);
                         // An ErrorResponse is (almost) always followed by a ReadyForQuery. Save the error
                         // and throw it as an exception when the ReadyForQuery is received (next).
                         error = new PostgresException(buf);
@@ -698,22 +695,22 @@ namespace Npgsql
                     case BackendMessageCode.NoticeResponse:
                     case BackendMessageCode.NotificationResponse:
                     case BackendMessageCode.ParameterStatus:
-                        Contract.Assert(msg == null);
+                        Debug.Assert(msg == null);
                         continue;
                 }
 
-                Contract.Assert(msg != null, "Message is null for code: " + messageCode);
+                Debug.Assert(msg != null, "Message is null for code: " + messageCode);
                 return msg;
             }
         }
 
         internal async Task<IBackendMessage> SkipUntilAsync(BackendMessageCode stopAt, CancellationToken cancellationToken)
         {
-            Contract.Requires(stopAt != BackendMessageCode.DataRow, "Shouldn't be used for rows, doesn't know about sequential");
+            Debug.Assert(stopAt != BackendMessageCode.DataRow, "Shouldn't be used for rows, doesn't know about sequential");
             while (true)
             {
                 var msg = await (ReadMessageAsync(DataRowLoadingMode.Skip, cancellationToken));
-                Contract.Assert(!(msg is DataRowMessage));
+                Debug.Assert(!(msg is DataRowMessage));
                 if (msg.Code == stopAt)
                 {
                     return msg;
@@ -723,12 +720,12 @@ namespace Npgsql
 
         internal async Task<IBackendMessage> SkipUntilAsync(BackendMessageCode stopAt1, BackendMessageCode stopAt2, CancellationToken cancellationToken)
         {
-            Contract.Requires(stopAt1 != BackendMessageCode.DataRow, "Shouldn't be used for rows, doesn't know about sequential");
-            Contract.Requires(stopAt2 != BackendMessageCode.DataRow, "Shouldn't be used for rows, doesn't know about sequential");
+            Debug.Assert(stopAt1 != BackendMessageCode.DataRow, "Shouldn't be used for rows, doesn't know about sequential");
+            Debug.Assert(stopAt2 != BackendMessageCode.DataRow, "Shouldn't be used for rows, doesn't know about sequential");
             while (true)
             {
                 var msg = await (ReadMessageAsync(DataRowLoadingMode.Skip, cancellationToken));
-                Contract.Assert(!(msg is DataRowMessage));
+                Debug.Assert(!(msg is DataRowMessage));
                 if (msg.Code == stopAt1 || msg.Code == stopAt2)
                 {
                     return msg;
@@ -754,7 +751,7 @@ namespace Npgsql
             ReceiveTimeout = UserTimeout;
             await ReadBuffer.EnsureAsync(5, cancellationToken, true);
             var messageCode = (BackendMessageCode)ReadBuffer.ReadByte();
-            Contract.Assume(Enum.IsDefined(typeof (BackendMessageCode), messageCode), "Unknown message code: " + messageCode);
+            Debug.Assert(Enum.IsDefined(typeof (BackendMessageCode), messageCode), "Unknown message code: " + messageCode);
             var len = ReadBuffer.ReadInt32() - 4; // Transmitted length includes itself
             var buf = await (ReadBuffer.EnsureOrAllocateTempAsync(len, cancellationToken));
             var msg = ParseServerMessage(buf, messageCode, len, DataRowLoadingMode.NonSequential, false);
@@ -783,7 +780,7 @@ namespace Npgsql
 
         internal async Task ExecuteInternalCommandAsync(FrontendMessage message, CancellationToken cancellationToken)
         {
-            Contract.Requires(message is QueryMessage || message is PregeneratedMessage);
+            Debug.Assert(message is QueryMessage || message is PregeneratedMessage);
             await SendMessageAsync(message, cancellationToken);
             await ReadExpectingAsync<CommandCompleteMessage>(cancellationToken);
             await ReadExpectingAsync<ReadyForQueryMessage>(cancellationToken);
@@ -848,7 +845,7 @@ namespace Npgsql
 
         async Task<bool> NextResultInternalAsync(CancellationToken cancellationToken)
         {
-            Contract.Requires(!IsSchemaOnly);
+            Debug.Assert(!IsSchemaOnly);
             // Contract.Ensures(Command.CommandType != CommandType.StoredProcedure || Contract.Result<bool>() == false);
             // If we're in the middle of a resultset, consume it
             switch (_state)
@@ -873,7 +870,7 @@ namespace Npgsql
                     throw new ArgumentOutOfRangeException();
             }
 
-            Contract.Assert(_state == ReaderState.BetweenResults);
+            Debug.Assert(_state == ReaderState.BetweenResults);
             _hasRows = null;
             if ((_behavior & CommandBehavior.SingleResult) != 0 && _statementIndex == 0)
             {
@@ -949,7 +946,7 @@ namespace Npgsql
 
         async Task<bool> NextResultSchemaOnlyAsync(CancellationToken cancellationToken)
         {
-            Contract.Requires(IsSchemaOnly);
+            Debug.Assert(IsSchemaOnly);
             for (_statementIndex++; _statementIndex < _statements.Count; _statementIndex++)
             {
                 if (IsPrepared)
@@ -1078,7 +1075,6 @@ namespace Npgsql
         async Task<bool> IsDBNullInternalAsync(int ordinal, CancellationToken cancellationToken)
         {
             CheckRowAndOrdinal(ordinal);
-            Contract.EndContractBlock();
             await Row.SeekToColumnAsync(ordinal, cancellationToken);
             return _row.IsColumnNull;
         }
@@ -1086,7 +1082,6 @@ namespace Npgsql
         async Task<T> GetFieldValueInternalAsync<T>(int ordinal, CancellationToken cancellationToken)
         {
             CheckRowAndOrdinal(ordinal);
-            Contract.EndContractBlock();
             var t = typeof (T);
             if (!t.IsArray)
             {
@@ -1166,7 +1161,7 @@ namespace Npgsql
             var result = await (ReadColumnWithoutCacheAsync<T>(ordinal, cancellationToken));
             if (IsCaching)
             {
-                Contract.Assert(cache != null);
+                Debug.Assert(cache != null);
                 cache.Value = result;
             }
 
@@ -1263,7 +1258,6 @@ namespace Npgsql
                 throw new ArgumentOutOfRangeException(nameof(count));
             if (buffer.Length - offset < count)
                 throw new ArgumentException("Invalid offset or count for this buffer");
-            Contract.EndContractBlock();
             CheckDisposed();
             int chunkCount = Math.Min(count, _manager.MaxTransferBlockSize);
             int read = 0;
@@ -1291,7 +1285,6 @@ namespace Npgsql
                 throw new ArgumentOutOfRangeException(nameof(count));
             if (buffer.Length - offset < count)
                 throw new ArgumentException("Invalid offset or count for this buffer");
-            Contract.EndContractBlock();
             CheckDisposed();
             if (!_writeable)
                 throw new NotSupportedException("Write cannot be called on a stream opened with no write permissions");
@@ -1323,7 +1316,6 @@ namespace Npgsql
                 throw new ArgumentException("Invalid origin");
             if (!Has64BitSupport && offset != (long)(int)offset)
                 throw new ArgumentOutOfRangeException(nameof(offset), "offset must fit in 32 bits for PostgreSQL versions older than 9.3");
-            Contract.EndContractBlock();
             CheckDisposed();
             if (_manager.Has64BitSupport)
                 return _pos = await (_manager.ExecuteFunctionAsync<long>("lo_lseek64", cancellationToken, _fd, offset, (int)origin));
@@ -1341,7 +1333,6 @@ namespace Npgsql
                 throw new ArgumentOutOfRangeException(nameof(value));
             if (!Has64BitSupport && value != (long)(int)value)
                 throw new ArgumentOutOfRangeException(nameof(value), "offset must fit in 32 bits for PostgreSQL versions older than 9.3");
-            Contract.EndContractBlock();
             CheckDisposed();
             if (!_writeable)
                 throw new NotSupportedException("SetLength cannot be called on a stream opened with no write permissions");
@@ -1398,7 +1389,7 @@ namespace Npgsql
                 return connector;
             }
 
-            Contract.Assert(Busy <= _max);
+            Debug.Assert(Busy <= _max);
             if (Busy == _max)
             {
                 // TODO: Async cancellation
@@ -1452,7 +1443,7 @@ namespace Npgsql
     {
         internal async Task EnsureAsync(int count, CancellationToken cancellationToken, bool dontBreakOnTimeouts = false)
         {
-            Contract.Requires(count <= Size);
+            Debug.Assert(count <= Size);
             count -= ReadBytesLeft;
             if (count <= 0)
             {
@@ -1520,7 +1511,7 @@ namespace Npgsql
 
         internal async Task SkipAsync(long len, CancellationToken cancellationToken)
         {
-            Contract.Requires(len >= 0);
+            Debug.Assert(len >= 0);
             if (len > ReadBytesLeft)
             {
                 len -= ReadBytesLeft;
@@ -1578,8 +1569,7 @@ namespace Npgsql
     {
         internal async Task<T> ReadFullyAsync<T>(DataRowMessage row, int len, CancellationToken cancellationToken, FieldDescription fieldDescription = null)
         {
-            Contract.Requires(row.PosInColumn == 0);
-            Contract.Ensures(row.PosInColumn == row.ColumnLen);
+            Debug.Assert(row.PosInColumn == 0);
             T result;
             try
             {
@@ -1693,7 +1683,7 @@ namespace Npgsql
 
         internal async Task DirectWriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
-            Contract.Requires(WritePosition == 0);
+            Debug.Assert(WritePosition == 0);
             try
             {
                 await Underlying.WriteAsync(buffer, offset, count, cancellationToken);

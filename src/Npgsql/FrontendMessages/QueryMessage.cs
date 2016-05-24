@@ -23,7 +23,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 
@@ -42,7 +42,7 @@ namespace Npgsql.FrontendMessages
 
         internal QueryMessage Populate(string query)
         {
-            Contract.Requires(query != null);
+            Debug.Assert(query != null);
 
             _query = query;
             _charPos = -1;
