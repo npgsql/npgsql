@@ -545,6 +545,43 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, IssueLink("http://stackoverflow.com/questions/37431054/08p01-insufficient-data-left-in-message-for-nullable-datetime/37431464")]
+        public void WriteDbNullWithoutNpgsqlDbType()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo INT)");
+
+                using (var writer = conn.BeginBinaryImport("COPY data (foo) FROM STDIN BINARY"))
+                {
+                    writer.StartRow();
+                    Assert.That(() => writer.Write(DBNull.Value), Throws.ArgumentException);
+                    writer.Cancel();
+                }
+            }
+        }
+
+        [Test, IssueLink("http://stackoverflow.com/questions/37431054/08p01-insufficient-data-left-in-message-for-nullable-datetime/37431464")]
+        public void WriteDbNullWithNpgsqlDbType()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo INT)");
+
+                using (var writer = conn.BeginBinaryImport("COPY data (foo) FROM STDIN BINARY"))
+                {
+                    writer.StartRow();
+                    writer.Write(DBNull.Value, NpgsqlDbType.Integer);
+                }
+                using (var cmd = new NpgsqlCommand("SELECT foo FROM data", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    Assert.That(reader.Read(), Is.True);
+                    Assert.That(reader.IsDBNull(0), Is.True);
+                }
+            }
+        }
+
         #endregion
 
         #region Utils
