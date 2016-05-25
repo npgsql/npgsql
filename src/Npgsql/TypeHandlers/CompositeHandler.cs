@@ -27,6 +27,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 
@@ -191,6 +192,9 @@ namespace Npgsql.TypeHandlers
             {
                 totalLen += 4 + 4;  // type oid + field length
                 var fieldValue = f.GetValue(value);
+                if (fieldValue == null)
+                    continue;
+
                 var asChunkingWriter = f.Handler as IChunkingTypeHandler;
                 totalLen += asChunkingWriter?.ValidateAndGetLength(fieldValue, ref lengthCache, parameter) ??
                     ((ISimpleTypeHandler)f.Handler).ValidateAndGetLength(fieldValue, null);
@@ -221,6 +225,15 @@ namespace Npgsql.TypeHandlers
                 var fieldDescriptor = _members[_fieldIndex];
                 var fieldHandler = fieldDescriptor.Handler;
                 var fieldValue = fieldDescriptor.GetValue(_value);
+
+                if (fieldValue == null)
+                {
+                    if (_writeBuf.WriteSpaceLeft < 4)
+                        return false;
+                    _writeBuf.WriteUInt32(fieldHandler.BackendType.OID);
+                    _writeBuf.WriteInt32(-1);
+                    continue;
+                }
 
                 var asSimpleWriter = fieldHandler as ISimpleTypeHandler;
                 if (asSimpleWriter != null)
@@ -330,7 +343,7 @@ namespace Npgsql.TypeHandlers
                 _field = field;
             }
 
-            internal void SetValue(object container, object fieldValue)
+            internal void SetValue(object container, [CanBeNull] object fieldValue)
             {
                 if (_property != null)
                     _property.SetValue(container, fieldValue);
@@ -339,6 +352,7 @@ namespace Npgsql.TypeHandlers
                 else throw PGUtil.ThrowIfReached();
             }
 
+            [CanBeNull]
             internal object GetValue(object container)
             {
                 if (_property != null)
