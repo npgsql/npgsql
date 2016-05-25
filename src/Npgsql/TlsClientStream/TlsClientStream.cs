@@ -1696,6 +1696,7 @@ namespace TlsClientStream
             _remoteCertificationValidationCallback = remoteCertificateValidationCallback;
             _checkCertificateRevocation = checkCertificateRevocation;
 
+            ClientAlertException clientAlertException = null;
             try
             {
                 int offset = 0;
@@ -1714,8 +1715,13 @@ namespace TlsClientStream
             }
             catch (ClientAlertException e)
             {
-                WriteAlertFatal(e.Description);
-                throw new IOException(e.ToString(), e);
+                // Can't await in catch clause in C# 5.0
+                clientAlertException = e;
+            }
+            if (clientAlertException != null)
+            {
+                WriteAlertFatal(clientAlertException.Description);
+                throw new IOException(clientAlertException.ToString(), clientAlertException);
             }
         }
 
@@ -1746,6 +1752,7 @@ namespace TlsClientStream
             {
                 throw new InvalidOperationException("Must perform initial handshake before writing application data");
             }
+            ClientAlertException clientAlertException = null;
             try
             {
                 if (_pendingConnState != null && !_waitingForChangeCipherSpec)
@@ -1774,8 +1781,13 @@ namespace TlsClientStream
             }
             catch (ClientAlertException e)
             {
-                WriteAlertFatal(e.Description);
-                throw new IOException(e.ToString(), e);
+                // Can't await in catch clause in C# 5.0
+                clientAlertException = e;
+            }
+            if (clientAlertException != null)
+            {
+                WriteAlertFatal(clientAlertException.Description);
+                throw new IOException(clientAlertException.ToString(), clientAlertException);
             }
         }
 
@@ -1790,6 +1802,7 @@ namespace TlsClientStream
             CheckNotClosed();
             if (_writePos > _connState.WriteStartPos)
             {
+                ClientAlertException clientAlertException = null;
                 try
                 {
                     _buf[0] = (byte)ContentType.ApplicationData;
@@ -1814,8 +1827,13 @@ namespace TlsClientStream
                 }
                 catch (ClientAlertException e)
                 {
-                    WriteAlertFatal(e.Description);
-                    throw new IOException(e.ToString(), e);
+                    // Can't await in catch clause in C# 5.0
+                    clientAlertException = e;
+                }
+                if (clientAlertException != null)
+                {
+                    WriteAlertFatal(clientAlertException.Description);
+                    throw new IOException(clientAlertException.ToString(), clientAlertException);
                 }
             }
         }
@@ -1840,6 +1858,7 @@ namespace TlsClientStream
         int ReadInternal(byte[] buffer, int offset, int len, bool onlyProcessHandshake, bool readNewDataIfAvailable)
         {
             Flush();
+            ClientAlertException clientAlertException = null;
             try
             {
                 for (; ; )
@@ -1999,8 +2018,18 @@ namespace TlsClientStream
             }
             catch (ClientAlertException e)
             {
-                WriteAlertFatal(e.Description);
-                throw new IOException(e.ToString(), e);
+                // Can't await in catch clause in C# 5.0
+                clientAlertException = e;
+            }
+            if (clientAlertException != null)
+            {
+                WriteAlertFatal(clientAlertException.Description);
+                throw new IOException(clientAlertException.ToString(), clientAlertException);
+            }
+            else
+            {
+                // Will never happen but "all code paths must return a value"...
+                return 0;
             }
         }
 
