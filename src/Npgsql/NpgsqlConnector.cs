@@ -558,7 +558,7 @@ namespace Npgsql
                 var ep = new IPEndPoint(ips[i], Port);
                 var socket = new Socket(ep.AddressFamily, SocketType.Stream, ProtocolType.Tcp)
                 {
-                    Blocking = false
+                    Blocking = true
                 };
 
                 try
