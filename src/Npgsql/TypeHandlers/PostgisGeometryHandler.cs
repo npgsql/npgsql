@@ -9,7 +9,16 @@ namespace Npgsql.TypeHandlers
     /// <summary>
     /// Type Handler for the postgis geometry type.
     /// </summary>
-    [TypeMapping("geometry", NpgsqlDbType.Geometry, typeof(PostgisGeometry))]
+    [TypeMapping("geometry", NpgsqlDbType.Geometry, new[]
+    {
+        typeof(PostgisPoint),
+        typeof(PostgisMultiPoint),
+        typeof(PostgisLineString),
+        typeof(PostgisMultiLineString),
+        typeof(PostgisPolygon),
+        typeof(PostgisMultiPolygon),
+        typeof(PostgisGeometryCollection),
+    })]
     class PostgisGeometryHandler : ChunkingTypeHandler<PostgisGeometry>
     {
         class Counter
@@ -21,10 +30,7 @@ namespace Npgsql.TypeHandlers
                 _value++;
             }
 
-            public static implicit operator int(Counter c)
-            {
-                return c._value;
-            }
+            public static implicit operator int(Counter c) => c._value;
         }
 
         uint? _srid;
@@ -45,6 +51,8 @@ namespace Npgsql.TypeHandlers
 
         internal PostgisGeometryHandler(IBackendType backendType) : base(backendType) { }
 
+        #region Read
+
         public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             _readBuf = buf;
@@ -54,7 +62,7 @@ namespace Npgsql.TypeHandlers
             Reset();
         }
 
-        private void Reset()
+        void Reset()
         {
             _points = null;
             _rings = null;
@@ -88,7 +96,7 @@ namespace Npgsql.TypeHandlers
                 }
             }
 
-            switch ((WkbIdentifier)(_id & (uint)7))
+            switch ((WkbIdentifier)(_id & 7))
             {
                 case WkbIdentifier.Point:
                     if (_readBuf.ReadBytesLeft < 16)
@@ -276,6 +284,10 @@ namespace Npgsql.TypeHandlers
                     throw new InvalidOperationException("Unknown Postgis identifier.");
             }
         }
+
+        #endregion Read
+
+        #region Write
 
         public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter = null)
         {
@@ -477,7 +489,7 @@ namespace Npgsql.TypeHandlers
                         _icol.Push(new Counter());
                         _newGeom = true;
                     }
-                    for (Counter i = _icol.Peek(); i < coll.GeometryCount; i.Increment())
+                    for (var i = _icol.Peek(); i < coll.GeometryCount; i.Increment())
                     {
                         if (!Write(coll[i]))
                             return false;
@@ -491,9 +503,8 @@ namespace Npgsql.TypeHandlers
             }
         }
 
-        public override bool Write(ref DirectBuffer buf)
-        {
-            return Write(_toWrite);
-        }
+        public override bool Write(ref DirectBuffer buf) => Write(_toWrite);
+
+        #endregion Write
     }
 }

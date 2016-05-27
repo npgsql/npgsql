@@ -225,13 +225,13 @@ namespace Npgsql.Tests.Types
             using (var conn = OpenConnection())
             using (var command = conn.CreateCommand())
             {
-                command.Parameters.AddWithValue("p1", NpgsqlDbType.Geometry, geom2);
+                command.Parameters.AddWithValue("p1", geom2);
                 command.CommandText = "Select :p1";
                 command.ExecuteScalar();
             }
         }
 
-        [SetUp]
+        [OneTimeSetUp]
         public void SetUp()
         {
             using (var conn = OpenConnection())
