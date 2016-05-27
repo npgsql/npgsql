@@ -23,11 +23,7 @@
 
 using Npgsql.BackendMessages;
 using System;
-using System.CodeDom;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
 using NpgsqlTypes;
 using JetBrains.Annotations;
 
@@ -41,12 +37,12 @@ namespace Npgsql.TypeHandlers
     /// http://www.postgresql.org/docs/current/static/rangetypes.html
     /// </remarks>
     /// <typeparam name="TElement">the range subtype</typeparam>
-    internal class RangeHandler<TElement> : ChunkingTypeHandler<NpgsqlRange<TElement>>
+    class RangeHandler<TElement> : ChunkingTypeHandler<NpgsqlRange<TElement>>
     {
         /// <summary>
         /// The type handler for the element that this range type holds
         /// </summary>
-        public TypeHandler ElementHandler { get; private set; }
+        public TypeHandler ElementHandler { get; }
 
         public RangeHandler(IBackendType backendType, TypeHandler<TElement> elementHandler)
             : base(backendType)
@@ -84,7 +80,7 @@ namespace Npgsql.TypeHandlers
 
         #region Read
 
-        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription)
+        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             _readBuf = buf;
             _state = State.Flags;
@@ -151,7 +147,7 @@ namespace Npgsql.TypeHandlers
             }
         }
 
-        bool ReadSingleElement(out TElement element)
+        bool ReadSingleElement([CanBeNull] out TElement element)
         {
             try {
                 if (_elementLen == -1) {
@@ -201,7 +197,7 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter = null)
+        public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter)
         {
             if (!(value is NpgsqlRange<TElement>))
                 throw CreateConversionException(value.GetType());
@@ -209,20 +205,22 @@ namespace Npgsql.TypeHandlers
             var range = (NpgsqlRange<TElement>)value;
             var totalLen = 1;
 
-            var lengthCachePos = lengthCache != null ? lengthCache.Position : 0;
+            var lengthCachePos = lengthCache?.Position ?? 0;
             if (!range.IsEmpty)
             {
                 var asChunkingWriter = ElementHandler as IChunkingTypeHandler;
                 if (!range.LowerBoundInfinite) {
-                    totalLen += 4 + (asChunkingWriter != null
-                        ? asChunkingWriter.ValidateAndGetLength(range.LowerBound, ref lengthCache, null)
-                        : ((ISimpleTypeHandler)ElementHandler).ValidateAndGetLength(range.LowerBound, null));
+                    totalLen += 4 + (
+                        asChunkingWriter?.ValidateAndGetLength(range.LowerBound, ref lengthCache, null)
+                        ?? ((ISimpleTypeHandler)ElementHandler).ValidateAndGetLength(range.LowerBound, null)
+                    );
                 }
 
                 if (!range.UpperBoundInfinite) {
-                    totalLen += 4 + (asChunkingWriter != null
-                        ? asChunkingWriter.ValidateAndGetLength(range.UpperBound, ref lengthCache, null)
-                        : ((ISimpleTypeHandler)ElementHandler).ValidateAndGetLength(range.UpperBound, null));
+                    totalLen += 4 + (
+                        asChunkingWriter?.ValidateAndGetLength(range.UpperBound, ref lengthCache, null)
+                        ?? ((ISimpleTypeHandler)ElementHandler).ValidateAndGetLength(range.UpperBound, null)
+                    );
                 }
             }
 
@@ -235,7 +233,7 @@ namespace Npgsql.TypeHandlers
             return totalLen;
         }
 
-        public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter)
+        public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter)
         {
             _writeBuf = buf;
             _lengthCache = lengthCache;
