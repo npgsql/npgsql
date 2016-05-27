@@ -51,7 +51,7 @@ namespace Npgsql.TypeHandlers
 
         internal ByteaHandler(IBackendType backendType) : base(backendType) {}
 
-        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription)
+        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             _bytes = new byte[len];
             _pos = 0;
