@@ -251,7 +251,7 @@ namespace Npgsql
         internal ChunkingTypeHandler(IBackendType backendType) : base(backendType) { }
 
         public abstract void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null);
-        public abstract bool Read(out T result);
+        public abstract bool Read([CanBeNull] out T result);
 
         /// <param name="value">the value to be examined</param>
         /// <param name="lengthCache">a cache in which to store length(s) of values to be written</param>
@@ -311,7 +311,7 @@ namespace Npgsql
     /// </summary>
     interface IChunkingTypeHandler<T> : IChunkingTypeHandler, ITypeHandler<T>
     {
-        bool Read(out T result);
+        bool Read([CanBeNull] out T result);
     }
 
     [ContractClassFor(typeof(ChunkingTypeHandler<>))]
