@@ -22,10 +22,7 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
@@ -65,18 +62,16 @@ namespace Npgsql.TypeHandlers
 
         public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
-            if (lengthCache == null) {
+            if (lengthCache == null)
                 lengthCache = new LengthCache(1);
-            }
-            if (lengthCache.IsPopulated) {
+            if (lengthCache.IsPopulated)
                 return lengthCache.Get() + 1;
-            }
 
             // Add one byte for the prepended version number
             return _textHandler.ValidateAndGetLength(value, ref lengthCache, parameter) + 1;
         }
 
-        public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter)
+        public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter = null)
         {
             _textHandler.PrepareWrite(value, buf, lengthCache, parameter);
             _writeBuf = buf;
@@ -100,10 +95,10 @@ namespace Npgsql.TypeHandlers
 
         #region Read
 
-        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription)
+        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             // Subtract one byte for the version number
-            _textHandler.PrepareRead(buf, fieldDescription, len-1);
+            _textHandler.PrepareRead(buf, len - 1, fieldDescription);
             _readBuf = buf;
             _handledVersion = false;
         }
@@ -118,9 +113,8 @@ namespace Npgsql.TypeHandlers
                     return false;
                 }
                 var version = _readBuf.ReadByte();
-                if (version != JsonbProtocolVersion) {
+                if (version != JsonbProtocolVersion)
                     throw new NotSupportedException($"Don't know how to decode JSONB with wire format {version}, your connection is now broken");
-                }
                 _handledVersion = true;
             }
 

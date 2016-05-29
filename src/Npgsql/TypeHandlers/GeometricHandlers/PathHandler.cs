@@ -22,11 +22,6 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 
@@ -39,7 +34,7 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-geometric.html
     /// </remarks>
     [TypeMapping("path", NpgsqlDbType.Path, typeof(NpgsqlPath))]
-    internal class PathHandler : ChunkingTypeHandler<NpgsqlPath>
+    class PathHandler : ChunkingTypeHandler<NpgsqlPath>
     {
         #region State
 
@@ -54,7 +49,7 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
 
         #region Read
 
-        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription)
+        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             _readBuf = buf;
             _index = -1;

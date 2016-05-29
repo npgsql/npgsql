@@ -105,9 +105,8 @@ namespace Npgsql.TypeHandlers
                     return true;
                 }
 
-                if (_value.LowerBoundInfinite) {
+                if (_value.LowerBoundInfinite)
                     goto case State.UpperBound;
-                }
 
                 _state = State.LowerBound;
                 goto case State.LowerBound;
@@ -177,9 +176,8 @@ namespace Npgsql.TypeHandlers
                         asChunkingReader.PrepareRead(_readBuf, _elementLen, _fieldDescription);
                         _preparedRead = true;
                     }
-                    if (!asChunkingReader.Read(out element)) {
+                    if (!asChunkingReader.Read(out element))
                         return false;
-                    }
                     _elementLen = -1;
                     _preparedRead = false;
                     return true;
@@ -197,7 +195,7 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter = null)
         {
             if (!(value is NpgsqlRange<TElement>))
                 throw CreateConversionException(value.GetType());
@@ -226,14 +224,13 @@ namespace Npgsql.TypeHandlers
 
             // If we're traversing an already-populated length cache, rewind to first element slot so that
             // the elements' handlers can access their length cache values
-            if (lengthCache != null && lengthCache.IsPopulated) {
+            if (lengthCache != null && lengthCache.IsPopulated)
                 lengthCache.Position = lengthCachePos;
-            }
 
             return totalLen;
         }
 
-        public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter)
+        public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter = null)
         {
             _writeBuf = buf;
             _lengthCache = lengthCache;
@@ -246,7 +243,8 @@ namespace Npgsql.TypeHandlers
             switch (_state)
             {
             case State.Flags:
-                if (_writeBuf.WriteSpaceLeft < 1) { return false; }
+                if (_writeBuf.WriteSpaceLeft < 1)
+                    return false;
                 _writeBuf.WriteByte((byte)_value.Flags);
                 if (_value.IsEmpty)
                 {
@@ -257,11 +255,11 @@ namespace Npgsql.TypeHandlers
 
             case State.LowerBound:
                 _state = State.LowerBound;
-                if (_value.LowerBoundInfinite) {
+                if (_value.LowerBoundInfinite)
                     goto case State.UpperBound;
-                }
 
-                if (!WriteSingleElement(_value.LowerBound, ref directBuf)) { return false; }
+                if (!WriteSingleElement(_value.LowerBound, ref directBuf))
+                    return false;
                 goto case State.UpperBound;
 
             case State.UpperBound:
@@ -271,7 +269,8 @@ namespace Npgsql.TypeHandlers
                     CleanupState();
                     return true;
                 }
-                if (!WriteSingleElement(_value.UpperBound, ref directBuf)) { return false; }
+                if (!WriteSingleElement(_value.UpperBound, ref directBuf))
+                    return false;
                 CleanupState();
                 return true;
 
@@ -286,9 +285,7 @@ namespace Npgsql.TypeHandlers
             if (element == null || element is DBNull)
             {
                 if (_writeBuf.WriteSpaceLeft < 4)
-                {
                     return false;
-                }
                 _writeBuf.WriteInt32(-1);
                 return true;
             }
@@ -297,7 +294,8 @@ namespace Npgsql.TypeHandlers
             if (asSimpleWriter != null)
             {
                 var elementLen = asSimpleWriter.ValidateAndGetLength(element, null);
-                if (_writeBuf.WriteSpaceLeft < 4 + elementLen) { return false; }
+                if (_writeBuf.WriteSpaceLeft < 4 + elementLen)
+                    return false;
                 _writeBuf.WriteInt32(elementLen);
                 asSimpleWriter.Write(element, _writeBuf, null);
                 return true;
@@ -308,15 +306,14 @@ namespace Npgsql.TypeHandlers
             {
                 if (!_wroteElementLen)
                 {
-                    if (_writeBuf.WriteSpaceLeft < 4) { return false; }
+                    if (_writeBuf.WriteSpaceLeft < 4)
+                        return false;
                     _writeBuf.WriteInt32(asChunkedWriter.ValidateAndGetLength(element, ref _lengthCache, null));
                     asChunkedWriter.PrepareWrite(element, _writeBuf, _lengthCache, null);
                     _wroteElementLen = true;
                 }
                 if (!asChunkedWriter.Write(ref directBuf))
-                {
                     return false;
-                }
                 _wroteElementLen = false;
                 return true;
             }

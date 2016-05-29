@@ -61,12 +61,10 @@ namespace Npgsql.TypeHandlers
 
         public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter = null)
         {
-            if (lengthCache == null) {
+            if (lengthCache == null)
                 lengthCache = new LengthCache(1);
-            }
-            if (lengthCache.IsPopulated) {
+            if (lengthCache.IsPopulated)
                 return lengthCache.Get();
-            }
 
             var asDict = value as IDictionary<string, string>;
             if (asDict != null)
@@ -79,13 +77,11 @@ namespace Npgsql.TypeHandlers
                 foreach (var kv in asDict)
                 {
                     totalLen += 8;   // Key length + value length
-                    if (kv.Key == null) {
+                    if (kv.Key == null)
                         throw new FormatException("HSTORE doesn't support null keys");
-                    }
                     totalLen += lengthCache.Set(Encoding.UTF8.GetByteCount(kv.Key));
-                    if (kv.Value != null) {
+                    if (kv.Value != null)
                         totalLen += lengthCache.Set(Encoding.UTF8.GetByteCount(kv.Value));
-                    }
                 }
 
                 return lengthCache.Lengths[pos] = totalLen;
@@ -94,7 +90,7 @@ namespace Npgsql.TypeHandlers
             throw CreateConversionException(value.GetType());
         }
 
-        public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter)
+        public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter = null)
         {
             _writeBuf = buf;
             _lengthCache = lengthCache;
@@ -182,7 +178,7 @@ namespace Npgsql.TypeHandlers
             _state = State.Count;
         }
 
-        public override bool Read(out Dictionary<string, string> result)
+        public override bool Read([CanBeNull] out Dictionary<string, string> result)
         {
             result = null;
             switch (_state)
@@ -203,7 +199,7 @@ namespace Npgsql.TypeHandlers
                 if (_readBuf.ReadBytesLeft < 4) { return false; }
                 var keyLen = _readBuf.ReadInt32();
                 Debug.Assert(keyLen != -1);
-                _textHandler.PrepareRead(_readBuf, _fieldDescription, keyLen);
+                _textHandler.PrepareRead(_readBuf, keyLen, _fieldDescription);
                 goto case State.KeyData;
 
             case State.KeyData:
@@ -226,7 +222,7 @@ namespace Npgsql.TypeHandlers
                     }
                     goto case State.KeyLen;
                 }
-                _textHandler.PrepareRead(_readBuf, _fieldDescription, valueLen);
+                _textHandler.PrepareRead(_readBuf, valueLen, _fieldDescription);
                 goto case State.ValueData;
 
             case State.ValueData:
@@ -272,18 +268,15 @@ namespace Npgsql.TypeHandlers
                 sb.Append(kv.Key);
                 sb.Append(@"""=>");
                 if (kv.Value == null)
-                {
                     sb.Append("NULL");
-                }
                 else
                 {
                     sb.Append('"');
                     sb.Append(kv.Value);
                     sb.Append('"');
                 }
-                if (--i > 0) {
+                if (--i > 0)
                     sb.Append(',');
-                }
             }
             result = sb.ToString();
             return true;

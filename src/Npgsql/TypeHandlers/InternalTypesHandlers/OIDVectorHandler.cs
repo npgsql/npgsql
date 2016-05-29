@@ -22,13 +22,7 @@
 #endregion
 
 using NpgsqlTypes;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using Npgsql.Logging;
-using Npgsql.BackendMessages;
-using Npgsql.TypeHandlers.NumericHandlers;
 
 namespace Npgsql.TypeHandlers.InternalTypesHandlers
 {
@@ -37,7 +31,7 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
     /// be 0 (we send 1 for regular arrays).
     /// </summary>
     [TypeMapping("oidvector", NpgsqlDbType.Oidvector)]
-    internal class OIDVectorHandler : ArrayHandler<uint>
+    class OIDVectorHandler : ArrayHandler<uint>
     {
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 

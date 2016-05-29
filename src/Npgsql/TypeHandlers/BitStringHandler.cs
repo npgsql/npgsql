@@ -23,15 +23,10 @@
 
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Collections.Specialized;
-using System.IO;
 using System.Linq;
-using System.Text;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
-using System.Data;
-using System.Diagnostics;
 using JetBrains.Annotations;
 
 namespace Npgsql.TypeHandlers
@@ -46,7 +41,7 @@ namespace Npgsql.TypeHandlers
     /// </remarks>
     [TypeMapping("varbit", NpgsqlDbType.Varbit, new[] { typeof(BitArray), typeof(BitVector32) })]
     [TypeMapping("bit", NpgsqlDbType.Bit)]
-    internal class BitStringHandler : ChunkingTypeHandler<BitArray>,
+    class BitStringHandler : ChunkingTypeHandler<BitArray>,
         IChunkingTypeHandler<BitVector32>, IChunkingTypeHandler<bool>
     {
         ReadBuffer _readBuf;
@@ -58,21 +53,15 @@ namespace Npgsql.TypeHandlers
 
         internal BitStringHandler(IBackendType backendType) : base(backendType) {}
 
-        internal override Type GetFieldType(FieldDescription fieldDescription)
-        {
-            return fieldDescription != null && fieldDescription.TypeModifier == 1 ? typeof (bool) : typeof(BitArray);
-        }
+        internal override Type GetFieldType(FieldDescription fieldDescription = null)
+            => fieldDescription != null && fieldDescription.TypeModifier == 1 ? typeof (bool) : typeof(BitArray);
 
-        internal override Type GetProviderSpecificFieldType(FieldDescription fieldDescription)
-        {
-            return GetFieldType(fieldDescription);
-        }
+        internal override Type GetProviderSpecificFieldType(FieldDescription fieldDescription = null)
+            => GetFieldType(fieldDescription);
 
-        internal override ArrayHandler CreateArrayHandler(IBackendType backendType)
-        {
-            // BitString requires a special array handler which returns bool or BitArray
-            return new BitStringArrayHandler(backendType, this);
-        }
+        // BitString requires a special array handler which returns bool or BitArray
+        internal override ArrayHandler CreateArrayHandler(IBackendType backendType) =>
+            new BitStringArrayHandler(backendType, this);
 
         internal override object ReadValueAsObjectFully(DataRowMessage row, FieldDescription fieldDescription = null)
         {
@@ -90,7 +79,7 @@ namespace Npgsql.TypeHandlers
 
         #region Read
 
-        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription)
+        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             _readBuf = buf;
             _pos = -1;
@@ -226,7 +215,7 @@ namespace Npgsql.TypeHandlers
             throw CreateConversionException(value.GetType());
         }
 
-        public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
+        public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter = null)
         {
             _writeBuf = buf;
             _pos = -1;
@@ -362,32 +351,28 @@ namespace Npgsql.TypeHandlers
     /// Differs from the standard array handlers in that it returns arrays of bool for BIT(1) and arrays
     /// of BitArray otherwise (just like the scalar BitStringHandler does).
     /// </summary>
-    internal class BitStringArrayHandler : ArrayHandler<BitArray>
+    class BitStringArrayHandler : ArrayHandler<BitArray>
     {
         [CanBeNull]
         FieldDescription _fieldDescription;
         object _value;
 
         internal override Type GetElementFieldType(FieldDescription fieldDescription = null)
-        {
-            return fieldDescription?.TypeModifier == 1 ? typeof(bool) : typeof(BitArray);
-        }
+            => fieldDescription?.TypeModifier == 1 ? typeof(bool) : typeof(BitArray);
 
-        internal override Type GetElementPsvType(FieldDescription fieldDescription)
-        {
-            return GetElementFieldType(fieldDescription);
-        }
+        internal override Type GetElementPsvType(FieldDescription fieldDescription = null)
+            => GetElementFieldType(fieldDescription);
 
         public BitStringArrayHandler(IBackendType backendType, BitStringHandler elementHandler)
             : base(backendType, elementHandler) {}
 
-        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription)
+        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             base.PrepareRead(buf, len, fieldDescription);
             _fieldDescription = fieldDescription;
         }
 
-        public override bool Read(out Array result)
+        public override bool Read([CanBeNull] out Array result)
         {
             return _fieldDescription?.TypeModifier == 1
                 ? Read<bool>(out result)

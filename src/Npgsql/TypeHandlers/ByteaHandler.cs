@@ -22,12 +22,7 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
@@ -40,8 +35,8 @@ namespace Npgsql.TypeHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-binary.html
     /// </remarks>
-    [TypeMapping("bytea", NpgsqlDbType.Bytea, DbType.Binary, new Type[] { typeof(byte[]), typeof(ArraySegment<byte>) })]
-    internal class ByteaHandler : ChunkingTypeHandler<byte[]>
+    [TypeMapping("bytea", NpgsqlDbType.Bytea, DbType.Binary, new[] { typeof(byte[]), typeof(ArraySegment<byte>) })]
+    class ByteaHandler : ChunkingTypeHandler<byte[]>
     {
         bool _returnedBuffer;
         byte[] _bytes;
@@ -76,9 +71,8 @@ namespace Npgsql.TypeHandlers
 
         public long GetBytes(DataRowMessage row, int offset, [CanBeNull] byte[] output, int outputOffset, int len, FieldDescription field)
         {
-            if (output == null) {
+            if (output == null)
                 return row.ColumnLen;
-            }
 
             row.SeekInColumn(offset);
 
@@ -112,11 +106,9 @@ namespace Npgsql.TypeHandlers
 
             var asArray = value as byte[];
             if (asArray != null)
-            {
                 return parameter == null || parameter.Size <= 0 || parameter.Size >= asArray.Length
                     ? asArray.Length
                     : parameter.Size;
-            }
 
             throw CreateConversionException(value.GetType());
         }
@@ -129,9 +121,7 @@ namespace Npgsql.TypeHandlers
             {
                 _value = (ArraySegment<byte>)value;
                 if (!(parameter == null || parameter.Size <= 0 || parameter.Size >= _value.Count))
-                {
                      _value = new ArraySegment<byte>(_value.Array, _value.Offset, parameter.Size);
-                }
             }
             else
             {
@@ -192,7 +182,7 @@ namespace Npgsql.TypeHandlers
             return read;
         }
 
-        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken token)
+        public override async Task<int> ReadAsync([NotNull] byte[] buffer, int offset, int count, CancellationToken token)
         {
             CheckDisposed();
             count = Math.Min(count, _row.ColumnLen - _row.PosInColumn);
@@ -231,9 +221,8 @@ namespace Npgsql.TypeHandlers
 
         void CheckDisposed()
         {
-            if (_disposed) {
+            if (_disposed)
                 throw new ObjectDisposedException(null);
-            }
         }
 
         #region Not Supported

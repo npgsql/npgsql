@@ -25,17 +25,13 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
-using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers
 {
-    internal abstract class ArrayHandler : ChunkingTypeHandler<Array>
+    abstract class ArrayHandler : ChunkingTypeHandler<Array>
     {
         internal ArrayHandler(IBackendType backendType) : base(backendType) {}
         internal abstract Type GetElementFieldType(FieldDescription fieldDescription = null);
@@ -48,7 +44,7 @@ namespace Npgsql.TypeHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/arrays.html
     /// </remarks>
-    internal class ArrayHandler<TElement> : ArrayHandler
+    class ArrayHandler<TElement> : ArrayHandler
     {
         /// <summary>
         /// The lower bound value sent to the backend when writing arrays. Normally 1 (the PG default) but
@@ -76,46 +72,33 @@ namespace Npgsql.TypeHandlers
 
         #endregion
 
-        internal override Type GetFieldType(FieldDescription fieldDescription)
-        {
-            return typeof (Array);
-        }
-
-        internal override Type GetProviderSpecificFieldType(FieldDescription fieldDescription)
-        {
-            return typeof (Array);
-        }
+        internal override Type GetFieldType(FieldDescription fieldDescription = null) => typeof(Array);
+        internal override Type GetProviderSpecificFieldType(FieldDescription fieldDescription = null) => typeof(Array);
 
         /// <summary>
         /// The type of the elements contained within this array
         /// </summary>
         /// <param name="fieldDescription"></param>
-        internal override Type GetElementFieldType(FieldDescription fieldDescription = null)
-        {
-            return typeof(TElement);
-        }
+        internal override Type GetElementFieldType(FieldDescription fieldDescription = null) => typeof(TElement);
 
         /// <summary>
         /// The provider-specific type of the elements contained within this array,
         /// </summary>
         /// <param name="fieldDescription"></param>
-        internal override Type GetElementPsvType(FieldDescription fieldDescription)
-        {
-            return typeof(TElement);
-        }
+        internal override Type GetElementPsvType(FieldDescription fieldDescription = null) => typeof(TElement);
 
         /// <summary>
         /// The type handler for the element that this array type holds
         /// </summary>
         protected internal TypeHandler ElementHandler { get; protected set; }
 
-        public ArrayHandler(IBackendType backendType, TypeHandler elementHandler, int lowerBound) : base(backendType)
+        public ArrayHandler(IBackendType backendType, [CanBeNull] TypeHandler elementHandler, int lowerBound) : base(backendType)
         {
             LowerBound = lowerBound;
             ElementHandler = elementHandler;
         }
 
-        public ArrayHandler(IBackendType backendType, TypeHandler elementHandler)
+        public ArrayHandler(IBackendType backendType, [CanBeNull] TypeHandler elementHandler)
             : this(backendType, elementHandler, 1) {}
 
         #region Read
@@ -133,11 +116,9 @@ namespace Npgsql.TypeHandlers
             _preparedRead = false;
         }
 
-        public override bool Read(out Array result)
-        {
-            return Read<TElement>(out result);
-        }
+        public override bool Read([CanBeNull] out Array result) => Read<TElement>(out result);
 
+        [ContractAnnotation("=> true, result:notnull; => false, result:null")]
         protected bool Read<TElement2>([CanBeNull] out Array result)
         {
             switch (_readState)
@@ -256,7 +237,7 @@ namespace Npgsql.TypeHandlers
             return true;
         }
 
-        bool ReadSingleElement<TElement2>(out TElement2 element)
+        bool ReadSingleElement<TElement2>([CanBeNull] out TElement2 element)
         {
             try
             {
@@ -564,9 +545,8 @@ namespace Npgsql.TypeHandlers
         {
             PrepareRead(row.Buffer, row.ColumnLen, fieldDescription);
             Array result;
-            while (!Read<TPsv>(out result)) {
+            while (!Read<TPsv>(out result))
                 row.Buffer.ReadMore();
-            }
             return result;
         }
 

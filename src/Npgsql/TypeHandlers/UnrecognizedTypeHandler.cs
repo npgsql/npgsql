@@ -23,10 +23,6 @@
 
 using NpgsqlTypes;
 using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Linq;
-using System.Text;
 using Npgsql.BackendMessages;
 
 namespace Npgsql.TypeHandlers
@@ -39,19 +35,22 @@ namespace Npgsql.TypeHandlers
     /// (chicken and egg problem).
     /// Also used for sending parameters with unknown types (OID=0)
     /// </summary>
-    internal class UnrecognizedTypeHandler : TextHandler
+    class UnrecognizedTypeHandler : TextHandler
     {
         static readonly IBackendType UnrecognizedBackendType = new UnrecognizedBackendType();
 
         internal UnrecognizedTypeHandler() : base(UnrecognizedBackendType) {}
 
-        internal override void PrepareRead(ReadBuffer buf, FieldDescription fieldDescription, int len)
+        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
+            if (fieldDescription == null)
+                throw new Exception($"Received an unknown field but {nameof(fieldDescription)} is null (i.e. COPY mode)");
+
             if (fieldDescription.IsBinaryFormat) {
                 buf.Skip(len);
                 throw new SafeReadException(new NotSupportedException($"The field '{fieldDescription.Name}' has a type currently unknown to Npgsql (OID {fieldDescription.TypeOID}). You can retrieve it as a string by marking it as unknown, please see the FAQ."));
             }
-            base.PrepareRead(buf, fieldDescription, len);
+            base.PrepareRead(buf, len, fieldDescription);
         }
     }
 

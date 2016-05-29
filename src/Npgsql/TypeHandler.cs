@@ -25,7 +25,6 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using Npgsql.BackendMessages;
-using NpgsqlTypes;
 using System.Threading;
 using System.Threading.Tasks;
 using AsyncRewriter;
@@ -34,9 +33,10 @@ using Npgsql.TypeHandlers;
 
 namespace Npgsql
 {
-    interface ITypeHandler<T> {}
+    // ReSharper disable once UnusedTypeParameter
+    interface ITypeHandler<T> { }
 
-    internal abstract partial class TypeHandler
+    abstract partial class TypeHandler
     {
         internal IBackendType BackendType { get; }
 
@@ -48,12 +48,10 @@ namespace Npgsql
         internal abstract Type GetFieldType(FieldDescription fieldDescription = null);
         internal abstract Type GetProviderSpecificFieldType(FieldDescription fieldDescription = null);
 
-        internal abstract object ReadValueAsObjectFully(DataRowMessage row, FieldDescription fieldDescription);
+        internal abstract object ReadValueAsObjectFully(DataRowMessage row, FieldDescription fieldDescription = null);
 
         internal virtual object ReadPsvAsObjectFully(DataRowMessage row, FieldDescription fieldDescription)
-        {
-            return ReadValueAsObjectFully(row, fieldDescription);
-        }
+            => ReadValueAsObjectFully(row, fieldDescription);
 
         internal virtual bool PreferTextWrite => false;
 
@@ -81,9 +79,7 @@ namespace Npgsql
         internal abstract object ReadValueAsObjectFully(ReadBuffer buf, int len, FieldDescription fieldDescription = null);
 
         internal virtual object ReadPsvAsObjectFully(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
-        {
-            return ReadValueAsObjectFully(buf, len, fieldDescription);
-        }
+            => ReadValueAsObjectFully(buf, len, fieldDescription);
 
         /// <summary>
         /// Creates a type handler for arrays of this handler's type.
@@ -101,9 +97,7 @@ namespace Npgsql
         /// <param name="clrType"></param>
         /// <returns></returns>
         protected Exception CreateConversionException(Type clrType)
-        {
-            return new InvalidCastException($"Can't convert .NET type {clrType} to PostgreSQL {PgDisplayName}");
-        }
+            => new InvalidCastException($"Can't convert .NET type {clrType} to PostgreSQL {PgDisplayName}");
 
         /// <summary>
         ///
@@ -111,36 +105,23 @@ namespace Npgsql
         /// <param name="clrType"></param>
         /// <returns></returns>
         protected Exception CreateConversionButNoParamException(Type clrType)
-        {
-            return new InvalidCastException($"Can't convert .NET type '{clrType}' to PostgreSQL '{PgDisplayName}' within an array");
-        }
+            => new InvalidCastException($"Can't convert .NET type '{clrType}' to PostgreSQL '{PgDisplayName}' within an array");
 
         internal string PgDisplayName => BackendType.DisplayName;
     }
 
-    internal abstract class TypeHandler<T> : TypeHandler
+    abstract class TypeHandler<T> : TypeHandler
     {
         internal TypeHandler(IBackendType backendType) : base(backendType) {}
 
-        internal override Type GetFieldType(FieldDescription fieldDescription = null)
-        {
-            return typeof(T);
-        }
+        internal override Type GetFieldType(FieldDescription fieldDescription = null) => typeof(T);
+        internal override Type GetProviderSpecificFieldType(FieldDescription fieldDescription = null) => typeof(T);
 
-        internal override Type GetProviderSpecificFieldType(FieldDescription fieldDescription = null)
-        {
-            return typeof(T);
-        }
-
-        internal override object ReadValueAsObjectFully(DataRowMessage row, FieldDescription fieldDescription)
-        {
-            return ReadFully<T>(row, row.ColumnLen, fieldDescription);
-        }
+        internal override object ReadValueAsObjectFully(DataRowMessage row, FieldDescription fieldDescription = null)
+            => ReadFully<T>(row, row.ColumnLen, fieldDescription);
 
         internal override object ReadValueAsObjectFully(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
-        {
-            return ReadFully<T>(buf, len, fieldDescription);
-        }
+            => ReadFully<T>(buf, len, fieldDescription);
 
         internal override ArrayHandler CreateArrayHandler(IBackendType arrayBackendType)
             => new ArrayHandler<T>(arrayBackendType, this);
@@ -149,19 +130,19 @@ namespace Npgsql
             => new RangeHandler<T>(rangeBackendType, this);
     }
 
-    internal interface ISimpleTypeHandler
+    interface ISimpleTypeHandler
     {
         int ValidateAndGetLength(object value, [CanBeNull] NpgsqlParameter parameter);
         void Write(object value, WriteBuffer buf, [CanBeNull] NpgsqlParameter parameter);
         object ReadAsObject(ReadBuffer buf, int len, FieldDescription fieldDescription = null);
     }
 
-    internal abstract partial class SimpleTypeHandler<T> : TypeHandler<T>, ISimpleTypeHandler<T>
+    abstract partial class SimpleTypeHandler<T> : TypeHandler<T>, ISimpleTypeHandler<T>
     {
         internal SimpleTypeHandler(IBackendType backendType) : base(backendType) { }
         public abstract T Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null);
-        public abstract int ValidateAndGetLength(object value, NpgsqlParameter parameter);
-        public abstract void Write(object value, WriteBuffer buf, NpgsqlParameter parameter);
+        public abstract int ValidateAndGetLength(object value, NpgsqlParameter parameter = null);
+        public abstract void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null);
 
         /// <remarks>
         /// A type handler may implement ISimpleTypeHandler for types other than its primary one.
@@ -182,16 +163,14 @@ namespace Npgsql
         }
 
         public object ReadAsObject(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
-        {
-            return Read(buf, len, fieldDescription);
-        }
+            => Read(buf, len, fieldDescription);
     }
 
     /// <summary>
     /// Type handlers that wish to support reading other types in additional to the main one can
     /// implement this interface for all those types.
     /// </summary>
-    interface ISimpleTypeHandler<T> : ISimpleTypeHandler, ITypeHandler<T>
+    interface ISimpleTypeHandler<T> : ITypeHandler<T>, ISimpleTypeHandler
     {
         T Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null);
     }
@@ -202,45 +181,35 @@ namespace Npgsql
     /// </summary>
     /// <typeparam name="T">the regular value type returned by this type handler</typeparam>
     /// <typeparam name="TPsv">the type of the provider-specific value returned by this type handler</typeparam>
-    internal abstract class SimpleTypeHandlerWithPsv<T, TPsv> : SimpleTypeHandler<T>, ISimpleTypeHandler<TPsv>, ITypeHandlerWithPsv
+    abstract class SimpleTypeHandlerWithPsv<T, TPsv> : SimpleTypeHandler<T>, ISimpleTypeHandler<TPsv>, ITypeHandlerWithPsv
     {
         internal SimpleTypeHandlerWithPsv(IBackendType backendType) : base(backendType) { }
 
         internal override Type GetProviderSpecificFieldType(FieldDescription fieldDescription = null)
-        {
-            return typeof(TPsv);
-        }
+            => typeof(TPsv);
 
         internal override object ReadPsvAsObjectFully(DataRowMessage row, FieldDescription fieldDescription)
-        {
-            return ReadFully<TPsv>(row, row.ColumnLen, fieldDescription);
-        }
+            => ReadFully<TPsv>(row, row.ColumnLen, fieldDescription);
 
         internal override object ReadPsvAsObjectFully(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
-        {
-            return ReadFully<TPsv>(buf, len, fieldDescription);
-        }
+            => ReadFully<TPsv>(buf, len, fieldDescription);
 
-        internal abstract TPsv ReadPsv(ReadBuffer buf, int len, FieldDescription fieldDescription);
+        internal abstract TPsv ReadPsv(ReadBuffer buf, int len, FieldDescription fieldDescription = null);
 
-        TPsv ISimpleTypeHandler<TPsv>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return ReadPsv(buf, len, fieldDescription);
-        }
+        TPsv ISimpleTypeHandler<TPsv>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => ReadPsv(buf, len, fieldDescription);
 
         internal override ArrayHandler CreateArrayHandler(IBackendType arrayBackendType)
-        {
-            return new ArrayHandlerWithPsv<T, TPsv>(arrayBackendType, this);
-        }
+            => new ArrayHandlerWithPsv<T, TPsv>(arrayBackendType, this);
     }
 
     /// <summary>
     /// A marking interface to allow us to know whether a given type handler has a provider-specific type
     /// distinct from its regular type
     /// </summary>
-    internal interface ITypeHandlerWithPsv {}
+    interface ITypeHandlerWithPsv {}
 
-    internal interface IChunkingTypeHandler
+    interface IChunkingTypeHandler
     {
         void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null);
         int ValidateAndGetLength(object value, ref LengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter);
@@ -249,7 +218,7 @@ namespace Npgsql
         bool ReadAsObject(out object result);
     }
 
-    internal abstract partial class ChunkingTypeHandler<T> : TypeHandler<T>, IChunkingTypeHandler<T>
+    abstract partial class ChunkingTypeHandler<T> : TypeHandler<T>, IChunkingTypeHandler<T>
     {
         internal ChunkingTypeHandler(IBackendType backendType) : base(backendType) { }
 
@@ -262,7 +231,7 @@ namespace Npgsql
         /// the <see cref="NpgsqlParameter"/> containing <paramref name="value"/>. Consulted for settings
         /// which impact how to send the parameter, e.g. <see cref="NpgsqlParameter.Size"/>. Can be null.
         /// </param>
-        public abstract int ValidateAndGetLength(object value, ref LengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter);
+        public abstract int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter = null);
 
         /// <param name="value">the value to be written</param>
         /// <param name="buf"></param>
@@ -272,7 +241,7 @@ namespace Npgsql
         /// which impact how to send the parameter, e.g. <see cref="NpgsqlParameter.Size"/>. Can be null.
         /// <see cref="NpgsqlParameter.Size"/>.
         /// </param>
-        public abstract void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter);
+        public abstract void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter = null);
 
         public abstract bool Write(ref DirectBuffer directBuf);
 
@@ -293,9 +262,7 @@ namespace Npgsql
             asTypedHandler.PrepareRead(buf, len, fieldDescription);
             T2 result;
             while (!asTypedHandler.Read(out result))
-            {
                 buf.ReadMore();
-            }
             return result;
         }
 
@@ -312,8 +279,9 @@ namespace Npgsql
     /// Type handlers that wish to support reading other types in additional to the main one can
     /// implement this interface for all those types.
     /// </summary>
-    interface IChunkingTypeHandler<T> : IChunkingTypeHandler, ITypeHandler<T>
+    interface IChunkingTypeHandler<T> : ITypeHandler<T>, IChunkingTypeHandler
     {
+        [ContractAnnotation("=> true, result:notnull; => false, result:null")]
         bool Read([CanBeNull] out T result);
     }
 
@@ -339,7 +307,7 @@ namespace Npgsql
     /// and the connector is therefore set to Broken.
     /// Note that an inner exception is mandatory, and will get thrown to the user instead of the SafeReadException.
     /// </summary>
-    internal class SafeReadException : Exception
+    class SafeReadException : Exception
     {
         public SafeReadException(Exception innerException) : base("", innerException)
         {

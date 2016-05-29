@@ -21,12 +21,6 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 
@@ -39,7 +33,7 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-geometric.html
     /// </remarks>
     [TypeMapping("polygon", NpgsqlDbType.Polygon, typeof(NpgsqlPolygon))]
-    internal class PolygonHandler : ChunkingTypeHandler<NpgsqlPolygon>
+    class PolygonHandler : ChunkingTypeHandler<NpgsqlPolygon>
     {
         #region State
 
@@ -54,7 +48,7 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
 
         #region Read
 
-        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription)
+        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             _readBuf = buf;
             _index = -1;
@@ -86,14 +80,14 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
 
         #region Write
 
-        public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
+        public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter = null)
         {
             if (!(value is NpgsqlPolygon))
                 throw CreateConversionException(value.GetType());
             return 4 + ((NpgsqlPolygon)value).Count * 16;
         }
 
-        public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
+        public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter = null)
         {
             _writeBuf = buf;
             _value = (NpgsqlPolygon)value;

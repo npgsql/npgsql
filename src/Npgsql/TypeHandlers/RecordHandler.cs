@@ -40,7 +40,7 @@ namespace Npgsql.TypeHandlers
     /// * The column data encoded as binary
     /// </remarks>
     [TypeMapping("record")]
-    internal class RecordHandler : ChunkingTypeHandler<object[]>
+    class RecordHandler : ChunkingTypeHandler<object[]>
     {
         readonly TypeHandlerRegistry _registry;
         ReadBuffer _readBuf;
@@ -85,30 +85,25 @@ namespace Npgsql.TypeHandlers
                     if (_readBuf.ReadBytesLeft < 8) { return false; }
                     var typeOID = _readBuf.ReadInt32();
                     _fieldLen = _readBuf.ReadInt32();
-                    if (_fieldLen == -1)
-                    {
-                        // Null field, simply skip it and leave at default
+                    if (_fieldLen == -1)  // Null field, simply skip it and leave at default
                         continue;
-                    }
                     _fieldHandler = _registry[typeOID];
                 }
 
                 // Get the field's type handler and read the value
                 object fieldValue;
-                if (_fieldHandler is ISimpleTypeHandler)
+                var asSimpleHandler = _fieldHandler as ISimpleTypeHandler;
+                if (asSimpleHandler != null)
                 {
-                    var asSimpleReader = (ISimpleTypeHandler)_fieldHandler;
                     if (_readBuf.ReadBytesLeft < _fieldLen) { return false; }
-                    fieldValue = asSimpleReader.ReadAsObject(_readBuf, _fieldLen);
+                    fieldValue = asSimpleHandler.ReadAsObject(_readBuf, _fieldLen);
                 }
                 else if (_fieldHandler is IChunkingTypeHandler)
                 {
-                    var asChunkingReader = (IChunkingTypeHandler)_fieldHandler;
-                    asChunkingReader.PrepareRead(_readBuf, _fieldLen);
-                    if (!asChunkingReader.ReadAsObject(out fieldValue))
-                    {
+                    var asChunkingHandler = (IChunkingTypeHandler)_fieldHandler;
+                    asChunkingHandler.PrepareRead(_readBuf, _fieldLen);
+                    if (!asChunkingHandler.ReadAsObject(out fieldValue))
                         return false;
-                    }
                 }
                 else throw PGUtil.ThrowIfReached();
 

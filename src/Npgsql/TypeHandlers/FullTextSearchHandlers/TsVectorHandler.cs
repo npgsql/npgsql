@@ -35,7 +35,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-textsearch.html
     /// </summary>
     [TypeMapping("tsvector", NpgsqlDbType.TsVector, typeof(NpgsqlTsVector))]
-    internal class TsVectorHandler : ChunkingTypeHandler<NpgsqlTsVector>
+    class TsVectorHandler : ChunkingTypeHandler<NpgsqlTsVector>
     {
         // 2561 = 2046 (max length lexeme string) + (1) null terminator +
         // 2 (num_pos) + sizeof(int16) * 256 (max_num_pos (positions/wegihts))
@@ -51,7 +51,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
 
         internal TsVectorHandler(IBackendType backendType) : base(backendType) { }
 
-        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription)
+        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             _readBuf = buf;
             _lexemes = new List<NpgsqlTsVector.Lexeme>();
@@ -76,7 +76,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             {
                 if (_readBuf.ReadBytesLeft < Math.Min(_bytesLeft, MaxSingleLexemeBytes))
                     return false;
-                int posBefore = _readBuf.ReadPosition;
+                var posBefore = _readBuf.ReadPosition;
 
                 List<NpgsqlTsVector.Lexeme.WordEntryPos> positions = null;
 
@@ -84,10 +84,10 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
                 int numPositions = _readBuf.ReadInt16();
                 for (var i = 0; i < numPositions; i++)
                 {
-                    var _wordEntryPos = _readBuf.ReadInt16();
+                    var wordEntryPos = _readBuf.ReadInt16();
                     if (positions == null)
                         positions = new List<NpgsqlTsVector.Lexeme.WordEntryPos>();
-                    positions.Add(new NpgsqlTsVector.Lexeme.WordEntryPos(_wordEntryPos));
+                    positions.Add(new NpgsqlTsVector.Lexeme.WordEntryPos(wordEntryPos));
                 }
 
                 _lexemes.Add(new NpgsqlTsVector.Lexeme(lexemeString, positions, true));
@@ -138,9 +138,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
                 _writeBuf.WriteByte(0);
                 _writeBuf.WriteInt16(_value[_lexemePos].Count);
                 for (var i = 0; i < _value[_lexemePos].Count; i++)
-                {
                     _writeBuf.WriteInt16(_value[_lexemePos][i]._val);
-                }
             }
 
             return true;

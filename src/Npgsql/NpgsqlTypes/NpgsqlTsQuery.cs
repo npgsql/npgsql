@@ -23,9 +23,10 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
+using JetBrains.Annotations;
 
+// ReSharper disable once CheckNamespace
 namespace NpgsqlTypes
 {
     /// <summary>
@@ -73,7 +74,7 @@ namespace NpgsqlTypes
         /// <returns></returns>
         public override string ToString()
         {
-            StringBuilder sb = new StringBuilder();
+            var sb = new StringBuilder();
             Write(sb, true);
             return sb.ToString();
         }
@@ -88,26 +89,21 @@ namespace NpgsqlTypes
             if (value == null)
                 throw new ArgumentNullException(nameof(value));
 
-            Stack<NpgsqlTsQuery> valStack = new Stack<NpgsqlTsQuery>();
-            Stack<char> opStack = new Stack<char>();
+            var valStack = new Stack<NpgsqlTsQuery>();
+            var opStack = new Stack<char>();
 
-            StringBuilder sb = new StringBuilder();
-            int pos = 0;
-            char ch;
-            bool expectingBinOp = false;
+            var sb = new StringBuilder();
+            var pos = 0;
+            var expectingBinOp = false;
 
             NextToken:
             if (pos >= value.Length)
                 goto Finish;
-            ch = value[pos++];
+            var ch = value[pos++];
             if (ch == '\'')
-            {
                 goto WaitEndComplex;
-            }
             if ((ch == ')' || ch == '|' || ch == '&') && !expectingBinOp || (ch == '(' || ch == '!') && expectingBinOp)
-            {
                 throw new FormatException("Syntax error in tsquery. Unexpected token.");
-            }
             if (ch == '(' || ch == '!' || ch == '&')
             {
                 opStack.Push(ch);
@@ -126,9 +122,7 @@ namespace NpgsqlTypes
                     // Implicit pop and repush |
                 }
                 else
-                {
                     opStack.Push('|');
-                }
                 expectingBinOp = false;
                 goto NextToken;
             }
@@ -148,20 +142,16 @@ namespace NpgsqlTypes
                 goto PushedVal;
             }
             if (ch == ':')
-            {
                 throw new FormatException("Unexpected : while parsing tsquery");
-            }
-            if (Char.IsWhiteSpace(ch))
-            {
+            if (char.IsWhiteSpace(ch))
                 goto NextToken;
-            }
             pos--;
             if (expectingBinOp)
                 throw new FormatException("Unexpected lexeme while parsing tsquery");
-            goto WaitEnd;
+            // Proceed to WaitEnd
 
             WaitEnd:
-            if (pos >= value.Length || Char.IsWhiteSpace(ch = value[pos]) || ch == '!' || ch == '&' || ch == '|' || ch == '(' || ch == ')')
+            if (pos >= value.Length || char.IsWhiteSpace(ch = value[pos]) || ch == '!' || ch == '&' || ch == '|' || ch == '(' || ch == ')')
             {
                 valStack.Push(new NpgsqlTsQueryLexeme(sb.ToString()));
                 goto PushedVal;
@@ -201,10 +191,7 @@ namespace NpgsqlTypes
                         pos++;
                         goto InWeightInfo;
                     }
-                    else
-                    {
-                        goto PushedVal;
-                    }
+                    goto PushedVal;
                 }
             }
             if (ch == '\\')
@@ -411,7 +398,7 @@ namespace NpgsqlTypes
         /// Creates a not operator, with a given child node.
         /// </summary>
         /// <param name="child"></param>
-        public NpgsqlTsQueryNot(NpgsqlTsQuery child)
+        public NpgsqlTsQueryNot([CanBeNull] NpgsqlTsQuery child)
         {
             Kind = NodeKind.Not;
             Child = child;
@@ -461,7 +448,7 @@ namespace NpgsqlTypes
         /// </summary>
         /// <param name="left"></param>
         /// <param name="right"></param>
-        public NpgsqlTsQueryAnd(NpgsqlTsQuery left, NpgsqlTsQuery right)
+        public NpgsqlTsQueryAnd([CanBeNull] NpgsqlTsQuery left, [CanBeNull] NpgsqlTsQuery right)
         {
             Kind = NodeKind.And;
             Left = left;
@@ -486,7 +473,7 @@ namespace NpgsqlTypes
         /// </summary>
         /// <param name="left"></param>
         /// <param name="right"></param>
-        public NpgsqlTsQueryOr(NpgsqlTsQuery left, NpgsqlTsQuery right)
+        public NpgsqlTsQueryOr([CanBeNull] NpgsqlTsQuery left, [CanBeNull] NpgsqlTsQuery right)
         {
             Kind = NodeKind.Or;
             Left = left;

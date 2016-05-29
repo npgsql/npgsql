@@ -72,16 +72,14 @@ using System.Data.Common;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
-using Npgsql.FrontendMessages;
+using Npgsql.Logging;
 using Npgsql.Schema;
 using Npgsql.TypeHandlers;
-using Npgsql.TypeHandlers.NumericHandlers;
 using NpgsqlTypes;
 using System.Threading;
 using System.Threading.Tasks;
@@ -157,7 +155,6 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using Npgsql.BackendMessages;
-using NpgsqlTypes;
 using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
@@ -409,7 +406,7 @@ namespace Npgsql
     /// Represents a connection to a PostgreSQL backend. Unlike NpgsqlConnection objects, which are
     /// exposed to users, connectors are internal to Npgsql and are recycled by the connection pool.
     /// </summary>
-    internal partial class NpgsqlConnector
+    partial class NpgsqlConnector
     {
         internal async Task OpenAsync(NpgsqlTimeout timeout, CancellationToken cancellationToken)
         {
@@ -975,11 +972,9 @@ namespace Npgsql
                     }
                 }
 
+                // Found a resultset
                 if (_rowDescription != null)
-                {
-                    // Found a resultset
                     return true;
-                }
             }
 
             // There are no more queries, we're done. Read to the RFQ.
@@ -1002,24 +997,6 @@ namespace Npgsql
             }
 
             return await _connector.ReadMessageAsync(IsSequential ? DataRowLoadingMode.Sequential : DataRowLoadingMode.NonSequential, cancellationToken);
-        }
-
-        async Task<IBackendMessage> SkipUntilAsync(BackendMessageCode stopAt, CancellationToken cancellationToken)
-        {
-            if (_pendingMessage != null)
-            {
-                if (_pendingMessage.Code == stopAt)
-                {
-                    var msg = _pendingMessage;
-                    _pendingMessage = null;
-                    return msg;
-                }
-
-                await ((_pendingMessage as DataRowMessage)?.ConsumeAsync(cancellationToken));
-                _pendingMessage = null;
-            }
-
-            return await _connector.SkipUntilAsync(stopAt, cancellationToken);
         }
 
         async Task<IBackendMessage> SkipUntilAsync(BackendMessageCode stopAt1, BackendMessageCode stopAt2, CancellationToken cancellationToken)
@@ -1086,10 +1063,7 @@ namespace Npgsql
             if (!t.IsArray)
             {
                 if (t == typeof (object))
-                {
                     return (T)GetValue(ordinal);
-                }
-
                 return await ReadColumnAsync<T>(ordinal, cancellationToken);
             }
 
@@ -1100,34 +1074,23 @@ namespace Npgsql
             // of reading a string as char[], a bytea as a byte[]...
             var tHandler = handler as ITypeHandler<T>;
             if (tHandler != null)
-            {
                 return await ReadColumnAsync<T>(ordinal, cancellationToken);
-            }
-
             // We need to treat this as an actual array type, these need special treatment because of
             // typing/generics reasons
             var elementType = t.GetElementType();
             var arrayHandler = handler as ArrayHandler;
             if (arrayHandler == null)
-            {
                 throw new InvalidCastException($"Can't cast database type {fieldDescription.Handler.PgDisplayName} to {typeof (T).Name}");
-            }
-
             if (arrayHandler.GetElementFieldType(fieldDescription) == elementType)
-            {
                 return (T)GetValue(ordinal);
-            }
-
             if (arrayHandler.GetElementPsvType(fieldDescription) == elementType)
-            {
                 return (T)GetProviderSpecificValue(ordinal);
-            }
-
             throw new InvalidCastException($"Can't cast database type {handler.PgDisplayName} to {typeof (T).Name}");
         }
 
         async Task<T> ReadColumnWithoutCacheAsync<T>(int ordinal, CancellationToken cancellationToken)
         {
+            CheckRowAndOrdinal(ordinal);
             _row.SeekToColumnStart(ordinal);
             Row.CheckNotNull();
             var fieldDescription = _rowDescription[ordinal];
@@ -1148,14 +1111,13 @@ namespace Npgsql
 
         async Task<T> ReadColumnAsync<T>(int ordinal, CancellationToken cancellationToken)
         {
+            CheckRowAndOrdinal(ordinal);
             CachedValue<T> cache = null;
             if (IsCaching)
             {
                 cache = _rowCache.Get<T>(ordinal);
                 if (cache.IsSet)
-                {
                     return cache.Value;
-                }
             }
 
             var result = await (ReadColumnWithoutCacheAsync<T>(ordinal, cancellationToken));
@@ -1565,7 +1527,7 @@ namespace Npgsql
         }
     }
 
-    internal abstract partial class TypeHandler
+    abstract partial class TypeHandler
     {
         internal async Task<T> ReadFullyAsync<T>(DataRowMessage row, int len, CancellationToken cancellationToken, FieldDescription fieldDescription = null)
         {
@@ -1585,7 +1547,7 @@ namespace Npgsql
         }
     }
 
-    internal abstract partial class SimpleTypeHandler<T>
+    abstract partial class SimpleTypeHandler<T>
     {
         internal async override Task<T2> ReadFullyAsync<T2>(ReadBuffer buf, int len, CancellationToken cancellationToken, FieldDescription fieldDescription = null)
         {
@@ -1597,7 +1559,7 @@ namespace Npgsql
         }
     }
 
-    internal abstract partial class ChunkingTypeHandler<T>
+    abstract partial class ChunkingTypeHandler<T>
     {
         internal async override Task<T2> ReadFullyAsync<T2>(ReadBuffer buf, int len, CancellationToken cancellationToken, FieldDescription fieldDescription = null)
         {
@@ -1607,10 +1569,7 @@ namespace Npgsql
             asTypedHandler.PrepareRead(buf, len, fieldDescription);
             T2 result;
             while (!asTypedHandler.Read(out result))
-            {
                 await buf.ReadMoreAsync(cancellationToken);
-            }
-
             return result;
         }
     }

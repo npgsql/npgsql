@@ -23,7 +23,6 @@
 
 using NpgsqlTypes;
 using Npgsql.Logging;
-using Npgsql.TypeHandlers.NumericHandlers;
 
 namespace Npgsql.TypeHandlers.InternalTypesHandlers
 {
@@ -32,7 +31,7 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
     /// be 0 (we send 1 for regular arrays).
     /// </summary>
     [TypeMapping("int2vector", NpgsqlDbType.Int2Vector)]
-    internal class Int2VectorHandler : ArrayHandler<short>
+    class Int2VectorHandler : ArrayHandler<short>
     {
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 

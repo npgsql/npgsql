@@ -96,6 +96,7 @@ namespace Npgsql.TypeHandlers
             _bytes = null;
         }
 
+        [ContractAnnotation("=> true, result:notnull; => false, result:null")]
         public override bool Read([CanBeNull] out PostgisGeometry result)
         {
             Debug.Assert(_inByteaMode != true);
@@ -123,6 +124,8 @@ namespace Npgsql.TypeHandlers
                     _srid = 0;
                 }
             }
+
+            Debug.Assert(_srid.HasValue);
 
             switch ((WkbIdentifier)(_id & 7))
             {

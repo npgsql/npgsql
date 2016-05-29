@@ -36,31 +36,26 @@ namespace Npgsql.TypeHandlers
     {
         internal BoolHandler(IBackendType backendType) : base(backendType) {}
 
-        public override bool Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return buf.ReadByte() != 0;
-        }
+        public override bool Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+            => buf.ReadByte() != 0;
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
         {
             if (!(value is bool))
             {
                 var converted = Convert.ToBoolean(value);
                 if (parameter == null)
-                {
                     throw CreateConversionButNoParamException(value.GetType());
-                }
                 parameter.ConvertedValue = converted;
             }
             return 1;
         }
 
-        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
         {
-            if (parameter?.ConvertedValue != null) {
+            if (parameter?.ConvertedValue != null)
                 value = parameter.ConvertedValue;
-            }
-            buf.WriteByte(((bool)value) ? (byte)1 : (byte)0);
+            buf.WriteByte((bool)value ? (byte)1 : (byte)0);
         }
     }
 }

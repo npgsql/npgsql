@@ -30,18 +30,15 @@ using System.Data.Common;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using AsyncRewriter;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
-using Npgsql.FrontendMessages;
 using Npgsql.Logging;
 using Npgsql.Schema;
 using Npgsql.TypeHandlers;
-using Npgsql.TypeHandlers.NumericHandlers;
 using NpgsqlTypes;
 
 namespace Npgsql
@@ -150,7 +147,8 @@ namespace Npgsql
             // Temporarily set _row to the pending data row in order to retrieve the values
             _row = asDataRow;
 
-            if (IsCaching) { _rowCache.Clear(); }
+            if (IsCaching)
+                _rowCache.Clear();
 
             var pending = new Queue<NpgsqlParameter>();
             var taken = new List<int>();
@@ -164,17 +162,13 @@ namespace Npgsql
                     taken.Add(idx);
                 }
                 else
-                {
                     pending.Enqueue(p);
-                }
             }
             for (var i = 0; pending.Count != 0 && i != _row.NumColumns; ++i)
             {
+                // TODO: Need to get the provider-specific value based on the out param's type
                 if (!taken.Contains(i))
-                {
-                    // TODO: Need to get the provider-specific value based on the out param's type
                     pending.Dequeue().Value = GetValue(i);
-                }
             }
 
             _row = null;
@@ -189,10 +183,7 @@ namespace Npgsql
         /// <remarks>
         /// The default position of a data reader is before the first record. Therefore, you must call Read to begin accessing data.
         /// </remarks>
-        public override bool Read()
-        {
-            return ReadInternal();
-        }
+        public override bool Read() => ReadInternal();
 
         /// <summary>
         /// This is the asynchronous version of <see cref="Read"/> The cancellation token is currently ignored.
@@ -200,9 +191,7 @@ namespace Npgsql
         /// <param name="cancellationToken">Ignored for now.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
         public override async Task<bool> ReadAsync(CancellationToken cancellationToken)
-        {
-            return await ReadInternalAsync(cancellationToken).ConfigureAwait(false);
-        }
+            => await ReadInternalAsync(cancellationToken).ConfigureAwait(false);
 
         [RewriteAsync]
         bool ReadInternal()
@@ -214,14 +203,14 @@ namespace Npgsql
 
             switch (_state)
             {
-                case ReaderState.InResult:
-                    break;
-                case ReaderState.BetweenResults:
-                case ReaderState.Consumed:
-                case ReaderState.Closed:
-                    return false;
-                default:
-                    throw new ArgumentOutOfRangeException();
+            case ReaderState.InResult:
+                break;
+            case ReaderState.BetweenResults:
+            case ReaderState.Consumed:
+            case ReaderState.Closed:
+                return false;
+            default:
+                throw new ArgumentOutOfRangeException();
             }
 
             try
@@ -238,14 +227,14 @@ namespace Npgsql
                     var msg = ReadMessage();
                     switch (ProcessMessage(msg))
                     {
-                        case ReadResult.RowRead:
-                            return true;
-                        case ReadResult.RowNotRead:
-                            return false;
-                        case ReadResult.ReadAgain:
-                            continue;
-                        default:
-                            throw new ArgumentOutOfRangeException();
+                    case ReadResult.RowRead:
+                        return true;
+                    case ReadResult.RowNotRead:
+                        return false;
+                    case ReadResult.ReadAgain:
+                        continue;
+                    default:
+                        throw new ArgumentOutOfRangeException();
                     }
                 }
             }
@@ -262,51 +251,52 @@ namespace Npgsql
 
             switch (msg.Code)
             {
-                case BackendMessageCode.DataRow:
-                    Debug.Assert(_rowDescription != null);
-                    _connector.State = ConnectorState.Fetching;
-                    _row = (DataRowMessage)msg;
-                    Debug.Assert(_rowDescription.NumFields == _row.NumColumns);
-                    if (IsCaching) { _rowCache.Clear(); }
-                    _readOneRow = true;
-                    _hasRows = true;
-                    return ReadResult.RowRead;
+            case BackendMessageCode.DataRow:
+                Debug.Assert(_rowDescription != null);
+                _connector.State = ConnectorState.Fetching;
+                _row = (DataRowMessage)msg;
+                Debug.Assert(_rowDescription.NumFields == _row.NumColumns);
+                if (IsCaching)
+                    _rowCache.Clear();
+                _readOneRow = true;
+                _hasRows = true;
+                return ReadResult.RowRead;
 
-                case BackendMessageCode.CompletedResponse:
-                    var completed = (CommandCompleteMessage) msg;
-                    switch (completed.StatementType)
-                    {
-                        case StatementType.Update:
-                        case StatementType.Insert:
-                        case StatementType.Delete:
-                        case StatementType.Copy:
-                            if (!_recordsAffected.HasValue) {
-                                _recordsAffected = 0;
-                            }
-                            _recordsAffected += completed.Rows;
-                            break;
+            case BackendMessageCode.CompletedResponse:
+                var completed = (CommandCompleteMessage) msg;
+                switch (completed.StatementType)
+                {
+                case StatementType.Update:
+                case StatementType.Insert:
+                case StatementType.Delete:
+                case StatementType.Copy:
+                    if (!_recordsAffected.HasValue) {
+                        _recordsAffected = 0;
                     }
+                    _recordsAffected += completed.Rows;
+                    break;
+                }
 
-                    _statements[_statementIndex].StatementType = completed.StatementType;
-                    _statements[_statementIndex].Rows = completed.Rows;
-                    _statements[_statementIndex].OID = completed.OID;
+                _statements[_statementIndex].StatementType = completed.StatementType;
+                _statements[_statementIndex].Rows = completed.Rows;
+                _statements[_statementIndex].OID = completed.OID;
 
-                    goto case BackendMessageCode.EmptyQueryResponse;
+                goto case BackendMessageCode.EmptyQueryResponse;
 
-                case BackendMessageCode.EmptyQueryResponse:
-                    _state = ReaderState.BetweenResults;
-                    return ReadResult.RowNotRead;
+            case BackendMessageCode.EmptyQueryResponse:
+                _state = ReaderState.BetweenResults;
+                return ReadResult.RowNotRead;
 
-                case BackendMessageCode.ReadyForQuery:
-                    _state = ReaderState.Consumed;
-                    return ReadResult.RowNotRead;
+            case BackendMessageCode.ReadyForQuery:
+                _state = ReaderState.Consumed;
+                return ReadResult.RowNotRead;
 
-                case BackendMessageCode.BindComplete:
-                case BackendMessageCode.CloseComplete:
-                    return ReadResult.ReadAgain;
+            case BackendMessageCode.BindComplete:
+            case BackendMessageCode.CloseComplete:
+                return ReadResult.ReadAgain;
 
-                default:
-                    throw new Exception("Received unexpected backend message of type " + msg.Code);
+            default:
+                throw new Exception("Received unexpected backend message of type " + msg.Code);
             }
         }
 
@@ -364,25 +354,25 @@ namespace Npgsql
             // If we're in the middle of a resultset, consume it
             switch (_state)
             {
-                case ReaderState.InResult:
-                    if (_row != null) {
-                        _row.Consume();
-                        _row = null;
-                    }
+            case ReaderState.InResult:
+                if (_row != null) {
+                    _row.Consume();
+                    _row = null;
+                }
 
-                    // TODO: Duplication with SingleResult handling above
-                    var completedMsg = SkipUntil(BackendMessageCode.CompletedResponse, BackendMessageCode.EmptyQueryResponse);
-                    ProcessMessage(completedMsg);
-                    break;
+                // TODO: Duplication with SingleResult handling above
+                var completedMsg = SkipUntil(BackendMessageCode.CompletedResponse, BackendMessageCode.EmptyQueryResponse);
+                ProcessMessage(completedMsg);
+                break;
 
-                case ReaderState.BetweenResults:
-                    break;
+            case ReaderState.BetweenResults:
+                break;
 
-                case ReaderState.Consumed:
-                case ReaderState.Closed:
-                    return false;
-                default:
-                    throw new ArgumentOutOfRangeException();
+            case ReaderState.Consumed:
+            case ReaderState.Closed:
+                return false;
+            default:
+                throw new ArgumentOutOfRangeException();
             }
 
             Debug.Assert(_state == ReaderState.BetweenResults);
@@ -499,11 +489,9 @@ namespace Npgsql
                     }
                 }
 
+                // Found a resultset
                 if (_rowDescription != null)
-                {
-                    // Found a resultset
                     return true;
-                }
             }
 
             // There are no more queries, we're done. Read to the RFQ.
@@ -529,23 +517,6 @@ namespace Npgsql
         }
 
         [RewriteAsync]
-        IBackendMessage SkipUntil(BackendMessageCode stopAt)
-        {
-            if (_pendingMessage != null)
-            {
-                if (_pendingMessage.Code == stopAt)
-                {
-                    var msg = _pendingMessage;
-                    _pendingMessage = null;
-                    return msg;
-                }
-                (_pendingMessage as DataRowMessage)?.Consume();
-                _pendingMessage = null;
-            }
-            return _connector.SkipUntil(stopAt);
-        }
-
-        [RewriteAsync]
         IBackendMessage SkipUntil(BackendMessageCode stopAt1, BackendMessageCode stopAt2)
         {
             if (_pendingMessage != null) {
@@ -563,7 +534,7 @@ namespace Npgsql
         /// <summary>
         /// Gets a value indicating the depth of nesting for the current row.  Always returns zero.
         /// </summary>
-        public override Int32 Depth => 0;
+        public override int Depth => 0;
 
         /// <summary>
         /// Gets a value indicating whether the data reader is closed.
@@ -595,35 +566,33 @@ namespace Npgsql
         {
             get
             {
-                if (_hasRows.HasValue) {
+                if (_hasRows.HasValue)
                     return _hasRows.Value;
-                }
-                if (_statementIndex >= _statements.Count) {
+                if (_statementIndex >= _statements.Count)
                     return false;
-                }
                 while (true)
                 {
                     var msg = ReadMessage();
                     switch (msg.Code)
                     {
-                        case BackendMessageCode.BindComplete:
-                        case BackendMessageCode.RowDescription:
-                            ProcessMessage(msg);
-                            continue;
-                        case BackendMessageCode.DataRow:
-                            _pendingMessage = msg;
-                            _hasRows = true;
-                            return true;
-                        case BackendMessageCode.CompletedResponse:
-                        case BackendMessageCode.EmptyQueryResponse:
-                            _pendingMessage = msg;
-                            _hasRows = false;
-                            return false;
-                        case BackendMessageCode.CloseComplete:
-                            _hasRows = false;
-                            return false;
-                        default:
-                            throw new ArgumentOutOfRangeException("Got unexpected message type: " + msg.Code);
+                    case BackendMessageCode.BindComplete:
+                    case BackendMessageCode.RowDescription:
+                        ProcessMessage(msg);
+                        continue;
+                    case BackendMessageCode.DataRow:
+                        _pendingMessage = msg;
+                        _hasRows = true;
+                        return true;
+                    case BackendMessageCode.CompletedResponse:
+                    case BackendMessageCode.EmptyQueryResponse:
+                        _pendingMessage = msg;
+                        _hasRows = false;
+                        return false;
+                    case BackendMessageCode.CloseComplete:
+                        _hasRows = false;
+                        return false;
+                    default:
+                        throw new ArgumentOutOfRangeException("Got unexpected message type: " + msg.Code);
                     }
                 }
             }
@@ -684,14 +653,14 @@ namespace Npgsql
                 var msg = SkipUntil(BackendMessageCode.CompletedResponse, BackendMessageCode.ReadyForQuery);
                 switch (msg.Code)
                 {
-                    case BackendMessageCode.CompletedResponse:
-                        ProcessMessage(msg);
-                        continue;
-                    case BackendMessageCode.ReadyForQuery:
-                        ProcessMessage(msg);
-                        return;
-                    default:
-                        throw new NpgsqlException("Unexpected message of type " + msg.Code);
+                case BackendMessageCode.CompletedResponse:
+                    ProcessMessage(msg);
+                    continue;
+                case BackendMessageCode.ReadyForQuery:
+                    ProcessMessage(msg);
+                    return;
+                default:
+                    throw new NpgsqlException("Unexpected message of type " + msg.Code);
                 }
             }
         }
@@ -699,10 +668,7 @@ namespace Npgsql
         /// <summary>
         /// Releases the resources used by the <see cref="NpgsqlDataReader">NpgsqlDataReader</see>.
         /// </summary>
-        protected override void Dispose(bool disposing)
-        {
-            Close();
-        }
+        protected override void Dispose(bool disposing) => Close();
 
         /// <summary>
         /// Closes the <see cref="NpgsqlDataReader"/> object.
@@ -713,7 +679,8 @@ namespace Npgsql
         public void Close()
 #endif
         {
-            if (_state == ReaderState.Closed) { return; }
+            if (_state == ReaderState.Closed)
+                return;
 
             switch (_connector.State)
             {
@@ -728,9 +695,8 @@ namespace Npgsql
                 return;
             }
 
-            if (_state != ReaderState.Consumed) {
+            if (_state != ReaderState.Consumed)
                 Consume();
-            }
 
             // The following is a safety measure, to make absolutely sure that if an async send task
             // is running in the background, it terminates before the NpgsqlDataReader is closed.
@@ -752,9 +718,7 @@ namespace Npgsql
             _connector.EndUserAction();
 
             if ((_behavior & CommandBehavior.CloseConnection) != 0)
-            {
                 _connection.Close();
-            }
 
             if (ReaderClosed != null)
             {
@@ -768,7 +732,7 @@ namespace Npgsql
         /// <summary>
         /// Returns the current row, or throws an exception if a row isn't available
         /// </summary>
-        private DataRowMessage Row
+        DataRowMessage Row
         {
             get
             {
@@ -779,151 +743,91 @@ namespace Npgsql
             }
         }
 
-#region Simple value getters
+        #region Simple value getters
 
         /// <summary>
         /// Gets the value of the specified column as a Boolean.
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        public override bool GetBoolean(int ordinal)
-        {
-            CheckRowAndOrdinal(ordinal);
-
-            return ReadColumnWithoutCache<bool>(ordinal);
-        }
+        public override bool GetBoolean(int ordinal) => ReadColumnWithoutCache<bool>(ordinal);
 
         /// <summary>
         /// Gets the value of the specified column as a byte.
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        public override byte GetByte(int ordinal)
-        {
-            CheckRowAndOrdinal(ordinal);
-
-            return ReadColumnWithoutCache<byte>(ordinal);
-        }
+        public override byte GetByte(int ordinal) => ReadColumnWithoutCache<byte>(ordinal);
 
         /// <summary>
         /// Gets the value of the specified column as a single character.
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        public override char GetChar(int ordinal)
-        {
-            CheckRowAndOrdinal(ordinal);
-
-            return ReadColumnWithoutCache<char>(ordinal);
-        }
+        public override char GetChar(int ordinal) => ReadColumnWithoutCache<char>(ordinal);
 
         /// <summary>
         /// Gets the value of the specified column as a 16-bit signed integer.
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        public override short GetInt16(int ordinal)
-        {
-            CheckRowAndOrdinal(ordinal);
-
-            return ReadColumn<short>(ordinal);
-        }
+        public override short GetInt16(int ordinal) => ReadColumn<short>(ordinal);
 
         /// <summary>
         /// Gets the value of the specified column as a 32-bit signed integer.
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        public override int GetInt32(int ordinal)
-        {
-            CheckRowAndOrdinal(ordinal);
-
-            return ReadColumn<int>(ordinal);
-        }
+        public override int GetInt32(int ordinal) => ReadColumn<int>(ordinal);
 
         /// <summary>
         /// Gets the value of the specified column as a 64-bit signed integer.
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        public override long GetInt64(int ordinal)
-        {
-            CheckRowAndOrdinal(ordinal);
-
-            return ReadColumn<long>(ordinal);
-        }
+        public override long GetInt64(int ordinal) => ReadColumn<long>(ordinal);
 
         /// <summary>
         /// Gets the value of the specified column as a <see cref="DateTime"/> object.
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        public override DateTime GetDateTime(int ordinal)
-        {
-            CheckRowAndOrdinal(ordinal);
-
-            return ReadColumn<DateTime>(ordinal);
-        }
+        public override DateTime GetDateTime(int ordinal) => ReadColumn<DateTime>(ordinal);
 
         /// <summary>
         /// Gets the value of the specified column as an instance of <see cref="string"/>.
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        public override string GetString(int ordinal)
-        {
-            CheckRowAndOrdinal(ordinal);
-
-            return ReadColumn<string>(ordinal);
-        }
+        public override string GetString(int ordinal) => ReadColumn<string>(ordinal);
 
         /// <summary>
         /// Gets the value of the specified column as a <see cref="decimal"/> object.
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        public override decimal GetDecimal(int ordinal)
-        {
-            CheckRowAndOrdinal(ordinal);
-
-            return ReadColumn<decimal>(ordinal);
-        }
+        public override decimal GetDecimal(int ordinal) => ReadColumn<decimal>(ordinal);
 
         /// <summary>
         /// Gets the value of the specified column as a double-precision floating point number.
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        public override double GetDouble(int ordinal)
-        {
-            CheckRowAndOrdinal(ordinal);
-
-            return ReadColumn<double>(ordinal);
-        }
+        public override double GetDouble(int ordinal) => ReadColumn<double>(ordinal);
 
         /// <summary>
         /// Gets the value of the specified column as a single-precision floating point number.
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        public override float GetFloat(int ordinal)
-        {
-            CheckRowAndOrdinal(ordinal);
-
-            return ReadColumn<float>(ordinal);
-        }
+        public override float GetFloat(int ordinal) => ReadColumn<float>(ordinal);
 
         /// <summary>
         /// Gets the value of the specified column as a globally-unique identifier (GUID).
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        public override Guid GetGuid(int ordinal)
-        {
-            CheckRowAndOrdinal(ordinal);
-
-            return ReadColumn<Guid>(ordinal);
-        }
+        public override Guid GetGuid(int ordinal) => ReadColumn<Guid>(ordinal);
 
         /// <summary>
         /// Populates an array of objects with the column values of the current row.
@@ -937,9 +841,8 @@ namespace Npgsql
             CheckRow();
 
             var count = Math.Min(FieldCount, values.Length);
-            for (var i = 0; i < count; i++) {
+            for (var i = 0; i < count; i++)
                 values[i] = GetValue(i);
-            }
             return count;
         }
 
@@ -948,15 +851,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        public override object this[int ordinal]
-        {
-            get
-            {
-                CheckRowAndOrdinal(ordinal);
-
-                return GetValue(ordinal);
-            }
-        }
+        public override object this[int ordinal] => GetValue(ordinal);
 
         #endregion
 
@@ -975,12 +870,7 @@ namespace Npgsql
         /// </remarks>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        public NpgsqlDate GetDate(int ordinal)
-        {
-            CheckRowAndOrdinal(ordinal);
-
-            return ReadColumn<NpgsqlDate>(ordinal);
-        }
+        public NpgsqlDate GetDate(int ordinal) => ReadColumn<NpgsqlDate>(ordinal);
 
         /// <summary>
         /// Gets the value of the specified column as a TimeSpan,
@@ -993,12 +883,7 @@ namespace Npgsql
         /// </remarks>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        public TimeSpan GetTimeSpan(int ordinal)
-        {
-            CheckRowAndOrdinal(ordinal);
-
-            return ReadColumn<TimeSpan>(ordinal);
-        }
+        public TimeSpan GetTimeSpan(int ordinal) => ReadColumn<TimeSpan>(ordinal);
 
         /// <summary>
         /// Gets the value of the specified column as an <see cref="NpgsqlTimeSpan"/>,
@@ -1015,12 +900,7 @@ namespace Npgsql
         /// </remarks>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        public NpgsqlTimeSpan GetInterval(int ordinal)
-        {
-            CheckRowAndOrdinal(ordinal);
-
-            return ReadColumn<NpgsqlTimeSpan>(ordinal);
-        }
+        public NpgsqlTimeSpan GetInterval(int ordinal) => ReadColumn<NpgsqlTimeSpan>(ordinal);
 
         /// <summary>
         /// Gets the value of the specified column as an <see cref="NpgsqlDateTime"/>,
@@ -1037,16 +917,11 @@ namespace Npgsql
         /// </remarks>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        public NpgsqlDateTime GetTimeStamp(int ordinal)
-        {
-            CheckRowAndOrdinal(ordinal);
+        public NpgsqlDateTime GetTimeStamp(int ordinal) => ReadColumn<NpgsqlDateTime>(ordinal);
 
-            return ReadColumn<NpgsqlDateTime>(ordinal);
-        }
+        #endregion
 
-#endregion
-
-#region Special binary getters
+        #region Special binary getters
 
         /// <summary>
         /// Reads a stream of bytes from the specified column, starting at location indicated by dataOffset, into the buffer, starting at the location indicated by bufferOffset.
@@ -1057,7 +932,7 @@ namespace Npgsql
         /// <param name="bufferOffset">The index with the buffer to which the data will be copied.</param>
         /// <param name="length">The maximum number of characters to read.</param>
         /// <returns>The actual number of bytes read.</returns>
-        public override long GetBytes(int ordinal, long dataOffset, byte[] buffer, int bufferOffset, int length)
+        public override long GetBytes(int ordinal, long dataOffset, [CanBeNull] byte[] buffer, int bufferOffset, int length)
         {
             CheckRowAndOrdinal(ordinal);
             if (dataOffset < 0 || dataOffset > int.MaxValue)
@@ -1069,9 +944,8 @@ namespace Npgsql
 
             var fieldDescription = _rowDescription[ordinal];
             var handler = fieldDescription.Handler as ByteaHandler;
-            if (handler == null) {
+            if (handler == null)
                 throw new InvalidCastException("GetBytes() not supported for type " + fieldDescription.Name);
-            }
 
             var row = Row;
             row.SeekToColumn(ordinal);
@@ -1084,19 +958,14 @@ namespace Npgsql
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The returned object.</returns>
-#if NET40
-        public Stream GetStream(int ordinal)
-#else
         public override Stream GetStream(int ordinal)
-#endif
         {
             CheckRowAndOrdinal(ordinal);
 
             var fieldDescription = _rowDescription[ordinal];
             var handler = fieldDescription.Handler as ByteaHandler;
-            if (handler == null) {
+            if (handler == null)
                 throw new InvalidCastException("GetStream() not supported for type " + fieldDescription.Handler.PgDisplayName);
-            }
 
             var row = Row;
             row.SeekToColumnStart(ordinal);
@@ -1104,9 +973,9 @@ namespace Npgsql
             return row.GetStream();
         }
 
-#endregion
+        #endregion
 
-#region Special text getters
+        #region Special text getters
 
         /// <summary>
         /// Reads a stream of characters from the specified column, starting at location indicated by dataOffset, into the buffer, starting at the location indicated by bufferOffset.
@@ -1117,12 +986,11 @@ namespace Npgsql
         /// <param name="bufferOffset">The index with the buffer to which the data will be copied.</param>
         /// <param name="length">The maximum number of characters to read.</param>
         /// <returns>The actual number of characters read.</returns>
-        public override long GetChars(int ordinal, long dataOffset, char[] buffer, int bufferOffset, int length)
+        public override long GetChars(int ordinal, long dataOffset, [CanBeNull] char[] buffer, int bufferOffset, int length)
         {
             CheckRowAndOrdinal(ordinal);
             if (dataOffset < 0 || dataOffset > int.MaxValue)
-                throw new ArgumentOutOfRangeException(nameof(dataOffset), dataOffset,
-                    $"dataOffset must be between {0} and {int.MaxValue}");
+                throw new ArgumentOutOfRangeException(nameof(dataOffset), dataOffset, $"dataOffset must be between {0} and {int.MaxValue}");
             if (buffer != null && (bufferOffset < 0 || bufferOffset >= buffer.Length))
                 throw new IndexOutOfRangeException($"bufferOffset must be between {0} and {(buffer.Length - 1)}");
             if (buffer != null && (length < 0 || length > buffer.Length - bufferOffset))
@@ -1130,9 +998,8 @@ namespace Npgsql
 
             var fieldDescription = _rowDescription[ordinal];
             var handler = fieldDescription.Handler as TextHandler;
-            if (handler == null) {
+            if (handler == null)
                 throw new InvalidCastException("GetChars() not supported for type " + fieldDescription.Name);
-            }
 
             var row = Row;
             row.SeekToColumn(ordinal);
@@ -1145,20 +1012,14 @@ namespace Npgsql
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The returned object.</returns>
-#if NET40
-        public TextReader GetTextReader(int ordinal)
-#else
         public override TextReader GetTextReader(int ordinal)
-#endif
         {
             CheckRowAndOrdinal(ordinal);
 
             var fieldDescription = _rowDescription[ordinal];
             var handler = fieldDescription.Handler as ITextReaderHandler;
             if (handler == null)
-            {
                 throw new InvalidCastException("GetTextReader() not supported for type " + fieldDescription.Handler.PgDisplayName);
-            }
 
             var row = Row;
             row.SeekToColumnStart(ordinal);
@@ -1167,19 +1028,16 @@ namespace Npgsql
             return handler.GetTextReader(row.GetStream());
         }
 
-#endregion
+        #endregion
 
-#region IsDBNull
+        #region IsDBNull
 
         /// <summary>
         /// Gets a value that indicates whether the column contains nonexistent or missing values.
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns><b>true</b> if the specified column is equivalent to <see cref="DBNull"/>; otherwise <b>false</b>.</returns>
-        public override bool IsDBNull(int ordinal)
-        {
-            return IsDBNullInternal(ordinal);
-        }
+        public override bool IsDBNull(int ordinal) => IsDBNullInternal(ordinal);
 
         /// <summary>
         /// An asynchronous version of <see cref="IsDBNull"/>, which gets a value that indicates whether the column contains non-existent or missing values.
@@ -1189,9 +1047,7 @@ namespace Npgsql
         /// <param name="cancellationToken">Currently ignored.</param>
         /// <returns><b>true</b> if the specified column value is equivalent to <see cref="DBNull"/> otherwise <b>false</b>.</returns>
         public override async Task<bool> IsDBNullAsync(int ordinal, CancellationToken cancellationToken)
-        {
-            return await IsDBNullInternalAsync(ordinal, cancellationToken).ConfigureAwait(false);
-        }
+            => await IsDBNullInternalAsync(ordinal, cancellationToken).ConfigureAwait(false);
 
         [RewriteAsync]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1204,7 +1060,7 @@ namespace Npgsql
             return _row.IsColumnNull;
         }
 
-#endregion
+        #endregion
 
         /// <summary>
         /// Gets the value of the specified column as an instance of <see cref="object"/>.
@@ -1221,7 +1077,7 @@ namespace Npgsql
         public override int GetOrdinal(string name)
         {
             CheckResultSet();
-            if (String.IsNullOrEmpty(name))
+            if (string.IsNullOrEmpty(name))
                 throw new ArgumentException("name cannot be empty", nameof(name));
 
             return _rowDescription.GetFieldIndex(name);
@@ -1264,16 +1120,14 @@ namespace Npgsql
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The data type of the specified column.</returns>
+        [NotNull]
         public override Type GetFieldType(int ordinal)
         {
             CheckResultSet();
             CheckOrdinal(ordinal);
 
             var type = Command.ObjectResultTypes?[ordinal];
-            if (type != null)
-                return type;
-
-            return _rowDescription[ordinal].FieldType;
+            return type ?? _rowDescription[ordinal].FieldType;
         }
 
         /// <summary>
@@ -1303,9 +1157,8 @@ namespace Npgsql
             if (IsCaching)
             {
                 cache = _rowCache.Get<object>(ordinal);
-                if (cache.IsSet && !cache.IsProviderSpecificValue) {
+                if (cache.IsSet && !cache.IsProviderSpecificValue)
                     return cache.Value;
-                }
             }
 
             // TODO: Code duplication with ReadColumn<T>
@@ -1327,17 +1180,12 @@ namespace Npgsql
             }
 
             // Used for Entity Framework <= 6 compability
-            if (Command.ObjectResultTypes?[ordinal] != null && result != null)
+            if (Command.ObjectResultTypes?[ordinal] != null)
             {
                 var type = Command.ObjectResultTypes[ordinal];
-                if (type == typeof(DateTimeOffset))
-                {
-                    result = new DateTimeOffset((DateTime)result);
-                }
-                else
-                {
-                    result = Convert.ChangeType(result, type);
-                }
+                result = type == typeof(DateTimeOffset)
+                    ? new DateTimeOffset((DateTime)result)
+                    : Convert.ChangeType(result, type);
             }
 
             if (IsCaching)
@@ -1355,10 +1203,7 @@ namespace Npgsql
         /// <typeparam name="T">Synchronously gets the value of the specified column as a type.</typeparam>
         /// <param name="ordinal">The column to be retrieved.</param>
         /// <returns>The column to be retrieved.</returns>
-        public override T GetFieldValue<T>(int ordinal)
-        {
-            return GetFieldValueInternal<T>(ordinal);
-        }
+        public override T GetFieldValue<T>(int ordinal) => GetFieldValueInternal<T>(ordinal);
 
         /// <summary>
         /// Asynchronously gets the value of the specified column as a type.
@@ -1369,9 +1214,7 @@ namespace Npgsql
         /// <param name="cancellationToken">Currently ignored.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
         public override async Task<T> GetFieldValueAsync<T>(int ordinal, CancellationToken cancellationToken)
-        {
-            return await GetFieldValueInternalAsync<T>(ordinal, cancellationToken).ConfigureAwait(false);
-        }
+            => await GetFieldValueInternalAsync<T>(ordinal, cancellationToken).ConfigureAwait(false);
 
         [RewriteAsync]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1381,9 +1224,8 @@ namespace Npgsql
 
             var t = typeof(T);
             if (!t.IsArray) {
-                if (t == typeof(object)) {
+                if (t == typeof(object))
                     return (T)GetValue(ordinal);
-                }
                 return ReadColumn<T>(ordinal);
             }
 
@@ -1395,26 +1237,20 @@ namespace Npgsql
             // If the type handler can simply return the requested array, call it as usual. This is the case
             // of reading a string as char[], a bytea as a byte[]...
             var tHandler = handler as ITypeHandler<T>;
-            if (tHandler != null) {
+            if (tHandler != null)
                 return ReadColumn<T>(ordinal);
-            }
 
             // We need to treat this as an actual array type, these need special treatment because of
             // typing/generics reasons
             var elementType = t.GetElementType();
             var arrayHandler = handler as ArrayHandler;
-            if (arrayHandler == null) {
+            if (arrayHandler == null)
                 throw new InvalidCastException($"Can't cast database type {fieldDescription.Handler.PgDisplayName} to {typeof (T).Name}");
-            }
 
             if (arrayHandler.GetElementFieldType(fieldDescription) == elementType)
-            {
                 return (T)GetValue(ordinal);
-            }
             if (arrayHandler.GetElementPsvType(fieldDescription) == elementType)
-            {
                 return (T)GetProviderSpecificValue(ordinal);
-            }
             throw new InvalidCastException($"Can't cast database type {handler.PgDisplayName} to {typeof (T).Name}");
         }
 
@@ -1431,16 +1267,14 @@ namespace Npgsql
             if (IsCaching)
             {
                 cache = _rowCache.Get<object>(ordinal);
-                if (cache.IsSet && cache.IsProviderSpecificValue) {
+                if (cache.IsSet && cache.IsProviderSpecificValue)
                     return cache.Value;
-                }
             }
 
             // TODO: Code duplication with ReadColumn<T>
             _row.SeekToColumnStart(ordinal);
-            if (_row.IsColumnNull) {
+            if (_row.IsColumnNull)
                 return DBNull.Value;
-            }
             var fieldDescription = _rowDescription[ordinal];
             var handler = fieldDescription.Handler;
 
@@ -1476,9 +1310,7 @@ namespace Npgsql
 
             var count = Math.Min(FieldCount, values.Length);
             for (var i = 0; i < count; i++)
-            {
                 values[i] = GetProviderSpecificValue(i);
-            }
             return count;
         }
 
@@ -1495,12 +1327,12 @@ namespace Npgsql
 #endif
         }
 
-#if !NET40
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-#endif
         [RewriteAsync]
         T ReadColumnWithoutCache<T>(int ordinal)
         {
+            CheckRowAndOrdinal(ordinal);
+
             _row.SeekToColumnStart(ordinal);
             Row.CheckNotNull();
             var fieldDescription = _rowDescription[ordinal];
@@ -1519,19 +1351,18 @@ namespace Npgsql
             }
         }
 
-#if !NET40
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-#endif
         [RewriteAsync]
         T ReadColumn<T>(int ordinal)
         {
+            CheckRowAndOrdinal(ordinal);
+
             CachedValue<T> cache = null;
             if (IsCaching)
             {
                 cache = _rowCache.Get<T>(ordinal);
-                if (cache.IsSet) {
+                if (cache.IsSet)
                     return cache.Value;
-                }
             }
             var result = ReadColumnWithoutCache<T>(ordinal);
             if (IsCaching)

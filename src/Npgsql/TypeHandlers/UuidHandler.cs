@@ -22,16 +22,10 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Diagnostics;
-using System.Globalization;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
+using JetBrains.Annotations;
 
 namespace Npgsql.TypeHandlers
 {
@@ -39,11 +33,11 @@ namespace Npgsql.TypeHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-uuid.html
     /// </remarks>
     [TypeMapping("uuid", NpgsqlDbType.Uuid, DbType.Guid, typeof(Guid))]
-    internal class UuidHandler : SimpleTypeHandler<Guid>, ISimpleTypeHandler<string>
+    class UuidHandler : SimpleTypeHandler<Guid>, ISimpleTypeHandler<string>
     {
         internal UuidHandler(IBackendType backendType) : base(backendType) { }
 
-        public override Guid Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
+        public override Guid Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             buf.Ensure(16);
             var a = buf.ReadInt32();
@@ -54,37 +48,30 @@ namespace Npgsql.TypeHandlers
             return new Guid(a, b, c, d);
         }
 
-        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return Read(buf, len, fieldDescription).ToString();
-        }
+        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => Read(buf, len, fieldDescription).ToString();
 
         #region Write
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
         {
             var asString = value as string;
             if (value is string)
             {
                 var converted = Guid.Parse(asString);
                 if (parameter == null)
-                {
                     throw CreateConversionButNoParamException(value.GetType());
-                }
                 parameter.ConvertedValue = converted;
             }
             else if (!(value is Guid))
-            {
                 throw CreateConversionException(value.GetType());
-            }
             return 16;
         }
 
-        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
         {
-            if (parameter?.ConvertedValue != null) {
+            if (parameter?.ConvertedValue != null)
                 value = parameter.ConvertedValue;
-            }
 
             var bytes = ((Guid)value).ToByteArray();
 

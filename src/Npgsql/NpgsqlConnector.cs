@@ -46,7 +46,7 @@ namespace Npgsql
     /// Represents a connection to a PostgreSQL backend. Unlike NpgsqlConnection objects, which are
     /// exposed to users, connectors are internal to Npgsql and are recycled by the connection pool.
     /// </summary>
-    internal partial class NpgsqlConnector
+    partial class NpgsqlConnector
     {
         #region Fields and Properties
 
@@ -640,6 +640,7 @@ namespace Npgsql
                     {
 #pragma warning disable 4014
                         // ReSharper disable once MethodSupportsCancellation
+                        // ReSharper disable once AccessToDisposedClosure
                         connectTask.ContinueWith(t => socket.Dispose());
 #pragma warning restore 4014
 

@@ -25,8 +25,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
@@ -36,7 +34,7 @@ namespace Npgsql.TypeHandlers
     /// <summary>
     /// Interface implemented by all concrete handlers which handle enums
     /// </summary>
-    internal interface ICompositeHandler
+    interface ICompositeHandler
     {
         /// <summary>
         /// The CLR type mapped to the PostgreSQL composite type.
@@ -63,7 +61,7 @@ namespace Npgsql.TypeHandlers
     /// * The column data encoded as binary
     /// </remarks>
     /// <typeparam name="T">the CLR type to map to the PostgreSQL composite type </typeparam>
-    internal class CompositeHandler<T> : ChunkingTypeHandler<T>, ICompositeHandler where T : new()
+    class CompositeHandler<T> : ChunkingTypeHandler<T>, ICompositeHandler where T : new()
     {
         readonly TypeHandlerRegistry _registry;
         readonly INpgsqlNameTranslator _nameTranslator;

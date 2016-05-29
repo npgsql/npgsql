@@ -21,12 +21,7 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
+using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 
@@ -39,28 +34,24 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-geometric.html
     /// </remarks>
     [TypeMapping("point", NpgsqlDbType.Point, typeof(NpgsqlPoint))]
-    internal class PointHandler : SimpleTypeHandler<NpgsqlPoint>, ISimpleTypeHandler<string>
+    class PointHandler : SimpleTypeHandler<NpgsqlPoint>, ISimpleTypeHandler<string>
     {
         internal PointHandler(IBackendType backendType) : base(backendType) { }
 
-        public override NpgsqlPoint Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return new NpgsqlPoint(buf.ReadDouble(), buf.ReadDouble());
-        }
+        public override NpgsqlPoint Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+            => new NpgsqlPoint(buf.ReadDouble(), buf.ReadDouble());
 
-        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return Read(buf, len, fieldDescription).ToString();
-        }
+        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => Read(buf, len, fieldDescription).ToString();
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
         {
             if (!(value is NpgsqlPoint))
                 throw CreateConversionException(value.GetType());
             return 16;
         }
 
-        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
         {
             var v = (NpgsqlPoint)value;
             buf.WriteDouble(v.X);

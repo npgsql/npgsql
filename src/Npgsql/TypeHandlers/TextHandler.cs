@@ -22,11 +22,8 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Text;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
@@ -48,7 +45,7 @@ namespace Npgsql.TypeHandlers
     [TypeMapping("refcursor", NpgsqlDbType.Refcursor,          inferredDbType: DbType.String)]
     [TypeMapping("citext",    NpgsqlDbType.Citext,             inferredDbType: DbType.String)]
     [TypeMapping("unknown")]
-    internal class TextHandler : ChunkingTypeHandler<string>, IChunkingTypeHandler<char[]>, ITextReaderHandler
+    class TextHandler : ChunkingTypeHandler<string>, IChunkingTypeHandler<char[]>, ITextReaderHandler
     {
         internal override bool PreferTextWrite => true;
 
@@ -69,16 +66,11 @@ namespace Npgsql.TypeHandlers
 
         #region Read
 
-        internal virtual void PrepareRead(ReadBuffer buf, FieldDescription fieldDescription, int len)
+        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             _readBuf = buf;
             _byteLen = len;
             _bytePos = -1;
-        }
-
-        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            PrepareRead(buf, fieldDescription, len);
         }
 
         public override bool Read([CanBeNull] out string result)

@@ -48,7 +48,7 @@ namespace Npgsql.TypeHandlers
         IEnumHandler Create(IBackendType backendType);
     }
 
-    internal class EnumHandler<TEnum> : SimpleTypeHandler<TEnum>, IEnumHandler where TEnum : struct
+    class EnumHandler<TEnum> : SimpleTypeHandler<TEnum>, IEnumHandler where TEnum : struct
     {
         readonly Dictionary<TEnum, string> _enumToLabel;
         readonly Dictionary<string, TEnum> _labelToEnum;
@@ -92,7 +92,7 @@ namespace Npgsql.TypeHandlers
 
         #region Read
 
-        public override TEnum Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
+        public override TEnum Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             var str = buf.ReadString(len);
             TEnum value;
@@ -108,7 +108,7 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
         {
             if (!(value is TEnum))
                 throw CreateConversionException(value.GetType());
@@ -121,7 +121,7 @@ namespace Npgsql.TypeHandlers
             return Encoding.UTF8.GetByteCount(str);
         }
 
-        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
         {
             string str;
             var asEnum = (TEnum)value;

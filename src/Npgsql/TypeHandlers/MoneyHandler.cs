@@ -22,12 +22,6 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Globalization;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
@@ -42,37 +36,30 @@ namespace Npgsql.TypeHandlers
     {
         internal MoneyHandler(IBackendType backendType) : base(backendType) { }
 
-        public override decimal Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return buf.ReadInt64() / 100m;
-        }
+        public override decimal Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+            => buf.ReadInt64() / 100m;
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
         {
             decimal decimalValue;
             if (!(value is decimal))
             {
                 var converted = Convert.ToDecimal(value);
                 if (parameter == null)
-                {
                     throw CreateConversionButNoParamException(value.GetType());
-                }
                 decimalValue = converted;
                 parameter.ConvertedValue = converted;
             }
             else
-            {
                 decimalValue = (decimal)value;
-            }
+
             if (decimalValue < -92233720368547758.08M || decimalValue > 92233720368547758.07M)
-            {
                 throw new OverflowException("The supplied value (" + decimalValue + ") is outside the range for a PostgreSQL money value.");
-            }
 
             return 8;
         }
 
-        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
         {
             var v = (decimal)(parameter?.ConvertedValue ?? value);
             buf.WriteInt64((long)(Math.Round(v, 2, MidpointRounding.AwayFromZero) * 100m));

@@ -22,13 +22,10 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using System.Text;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
+using JetBrains.Annotations;
 
 namespace Npgsql.TypeHandlers.NumericHandlers
 {
@@ -43,65 +40,46 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     {
         internal Int64Handler(IBackendType backendType) : base(backendType) { }
 
-        public override long Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return buf.ReadInt64();
-        }
+        public override long Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+            => buf.ReadInt64();
 
-        byte ISimpleTypeHandler<byte>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return (byte)Read(buf, len, fieldDescription);
-        }
+        byte ISimpleTypeHandler<byte>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => (byte)Read(buf, len, fieldDescription);
 
-        short ISimpleTypeHandler<short>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return (short)Read(buf, len, fieldDescription);
-        }
+        short ISimpleTypeHandler<short>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => (short)Read(buf, len, fieldDescription);
 
-        int ISimpleTypeHandler<int>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return (int)Read(buf, len, fieldDescription);
-        }
+        int ISimpleTypeHandler<int>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => (int)Read(buf, len, fieldDescription);
 
-        float ISimpleTypeHandler<float>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return Read(buf, len, fieldDescription);
-        }
+        float ISimpleTypeHandler<float>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => Read(buf, len, fieldDescription);
 
-        double ISimpleTypeHandler<double>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return Read(buf, len, fieldDescription);
-        }
+        double ISimpleTypeHandler<double>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => Read(buf, len, fieldDescription);
 
-        decimal ISimpleTypeHandler<decimal>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return Read(buf, len, fieldDescription);
-        }
+        decimal ISimpleTypeHandler<decimal>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => Read(buf, len, fieldDescription);
 
-        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return Read(buf, len, fieldDescription).ToString();
-        }
+        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => Read(buf, len, fieldDescription).ToString();
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
         {
             if (!(value is long))
             {
                 var converted = Convert.ToInt64(value);
                 if (parameter == null)
-                {
                     throw CreateConversionButNoParamException(value.GetType());
-                }
                 parameter.ConvertedValue = converted;
             }
             return 8;
         }
 
-        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
         {
-            if (parameter?.ConvertedValue != null) {
+            if (parameter?.ConvertedValue != null)
                 value = parameter.ConvertedValue;
-            }
             buf.WriteInt64((long)value);
         }
     }

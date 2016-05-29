@@ -26,6 +26,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using JetBrains.Annotations;
 
 namespace NpgsqlTypes
 {
@@ -324,16 +325,15 @@ namespace NpgsqlTypes
             /// </summary>
             /// <param name="text"></param>
             /// <param name="wordEntryPositions"></param>
-            public Lexeme(string text, List<WordEntryPos> wordEntryPositions)
+            public Lexeme(string text, [CanBeNull]List<WordEntryPos> wordEntryPositions)
             {
                 _text = text;
-                if (wordEntryPositions != null)
-                    _wordEntryPositions = new List<WordEntryPos>(wordEntryPositions);
-                else
-                    _wordEntryPositions = null;
+                _wordEntryPositions = wordEntryPositions != null
+                    ? new List<WordEntryPos>(wordEntryPositions)
+                    : null;
             }
 
-            internal Lexeme(string text, List<WordEntryPos> wordEntryPositions, bool noCopy)
+            internal Lexeme(string text, [CanBeNull] List<WordEntryPos> wordEntryPositions, bool noCopy)
             {
                 _text = text;
                 if (wordEntryPositions != null)
@@ -342,7 +342,8 @@ namespace NpgsqlTypes
                     _wordEntryPositions = null;
             }
 
-            internal static List<WordEntryPos> UniquePos(List<WordEntryPos> list)
+            [CanBeNull]
+            internal static List<WordEntryPos> UniquePos([CanBeNull] List<WordEntryPos> list)
             {
                 if (list == null)
                     return null;
