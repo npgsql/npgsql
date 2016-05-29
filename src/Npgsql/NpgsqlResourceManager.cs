@@ -28,7 +28,7 @@ using System.Transactions;
 
 namespace Npgsql
 {
-    internal interface INpgsqlResourceManager
+    interface INpgsqlResourceManager
     {
         void Enlist(INpgsqlTransactionCallbacks transactionCallbacks, byte[] txToken);
         byte[] Promote(INpgsqlTransactionCallbacks transactionCallbacks);
@@ -36,7 +36,7 @@ namespace Npgsql
         void RollbackWork(string txName);
     }
 
-    internal class NpgsqlResourceManager : MarshalByRefObject, INpgsqlResourceManager
+    class NpgsqlResourceManager : MarshalByRefObject, INpgsqlResourceManager
     {
         private readonly Dictionary<string, CommittableTransaction> _transactions = new Dictionary<string, CommittableTransaction>();
 

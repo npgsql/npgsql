@@ -37,7 +37,7 @@ using NpgsqlTypes;
 
 namespace Npgsql
 {
-    internal partial class TypeHandlerRegistry
+    partial class TypeHandlerRegistry
     {
         #region Members
 
@@ -1194,7 +1194,7 @@ namespace Npgsql
         #endregion
     }
 
-    internal interface IBackendType
+    interface IBackendType
     {
         string Namespace { get; }
         string Name { get; }

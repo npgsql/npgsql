@@ -34,7 +34,7 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-geometric.html
     /// </remarks>
     [TypeMapping("line", NpgsqlDbType.Line, typeof(NpgsqlLine))]
-    internal class LineHandler : SimpleTypeHandler<NpgsqlLine>, ISimpleTypeHandler<string>
+    class LineHandler : SimpleTypeHandler<NpgsqlLine>, ISimpleTypeHandler<string>
     {
         internal LineHandler(IBackendType backendType) : base(backendType) { }
 

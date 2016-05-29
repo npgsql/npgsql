@@ -31,7 +31,7 @@ using System.Threading.Tasks;
 
 namespace TlsClientStream
 {
-    internal class MD5SHA1 : HashAlgorithm
+    class MD5SHA1 : HashAlgorithm
     {
         private MD5 _md5;
         private SHA1 _sha1;

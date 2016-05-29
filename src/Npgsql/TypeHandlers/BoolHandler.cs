@@ -32,7 +32,7 @@ namespace Npgsql.TypeHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-boolean.html
     /// </remarks>
     [TypeMapping("bool", NpgsqlDbType.Boolean, DbType.Boolean, typeof(bool))]
-    internal class BoolHandler : SimpleTypeHandler<bool>
+    class BoolHandler : SimpleTypeHandler<bool>
     {
         internal BoolHandler(IBackendType backendType) : base(backendType) {}
 

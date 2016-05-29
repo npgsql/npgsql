@@ -28,7 +28,7 @@ using System.Text;
 
 namespace Npgsql.BackendMessages
 {
-    internal class BackendKeyDataMessage : IBackendMessage
+    class BackendKeyDataMessage : IBackendMessage
     {
         public BackendMessageCode Code => BackendMessageCode.BackendKeyData;
 

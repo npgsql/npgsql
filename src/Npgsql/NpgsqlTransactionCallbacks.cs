@@ -30,7 +30,7 @@ using Npgsql.FrontendMessages;
 
 namespace Npgsql
 {
-    internal interface INpgsqlTransactionCallbacks : IDisposable
+    interface INpgsqlTransactionCallbacks : IDisposable
     {
         string GetName();
         void PrepareTransaction();
@@ -38,7 +38,7 @@ namespace Npgsql
         void RollbackTransaction();
     }
 
-    internal class NpgsqlTransactionCallbacks : MarshalByRefObject, INpgsqlTransactionCallbacks
+    class NpgsqlTransactionCallbacks : MarshalByRefObject, INpgsqlTransactionCallbacks
     {
         private NpgsqlConnection _connection;
         private readonly string _connectionString;

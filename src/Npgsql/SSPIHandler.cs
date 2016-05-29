@@ -32,7 +32,7 @@ namespace Npgsql
     /// <summary>
     /// A class to handle everything associated with SSPI authentication
     /// </summary>
-    internal class SSPIHandler : IDisposable
+    class SSPIHandler : IDisposable
     {
         #region Constants and Structs
 

@@ -28,7 +28,7 @@ using System.Text;
 
 namespace Npgsql.BackendMessages
 {
-    internal class ReadyForQueryMessage : IBackendMessage
+    class ReadyForQueryMessage : IBackendMessage
     {
         public BackendMessageCode Code => BackendMessageCode.ReadyForQuery;
 

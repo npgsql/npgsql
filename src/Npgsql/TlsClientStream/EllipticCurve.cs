@@ -37,7 +37,7 @@ using System.Threading.Tasks;
 
 namespace TlsClientStream
 {
-    internal class EllipticCurve
+    class EllipticCurve
     {
         public static readonly EllipticCurve P256 = new EllipticCurve(
             new BigInt() {

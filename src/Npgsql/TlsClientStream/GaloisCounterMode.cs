@@ -33,7 +33,7 @@ namespace TlsClientStream
     // http://csrc.nist.gov/publications/nistpubs/800-38D/SP-800-38D.pdf
     // http://csrc.nist.gov/groups/ST/toolkit/BCM/documents/proposedmodes/gcm/gcm-spec.pdf
     // This implementation uses "simple tables" with 8192 bytes per key
-    internal class GaloisCounterMode
+    class GaloisCounterMode
     {
         // Slow multiplication
         static void Mul(ulong h1, ulong h2, ulong y1, ulong y2, ulong x1, ulong x2, ref ulong ynext1, ref ulong ynext2)

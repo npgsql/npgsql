@@ -28,7 +28,7 @@ using System.Text;
 
 namespace Npgsql.BackendMessages
 {
-    internal class NoDataMessage : IBackendMessage
+    class NoDataMessage : IBackendMessage
     {
         public BackendMessageCode Code => BackendMessageCode.NoData;
         internal static readonly NoDataMessage Instance = new NoDataMessage();

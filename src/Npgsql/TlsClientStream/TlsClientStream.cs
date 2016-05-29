@@ -37,7 +37,7 @@ using AsyncRewriter;
 // ReSharper disable once CheckNamespace
 namespace TlsClientStream
 {
-    internal partial class TlsClientStream : Stream
+    partial class TlsClientStream : Stream
     {
         const TlsVersion HighestTlsVersionSupported = TlsVersion.TLSv1_2;
 

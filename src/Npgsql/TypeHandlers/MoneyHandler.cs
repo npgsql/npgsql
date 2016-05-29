@@ -32,7 +32,7 @@ namespace Npgsql.TypeHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-money.html
     /// </remarks>
     [TypeMapping("money", NpgsqlDbType.Money, dbType: DbType.Currency)]
-    internal class MoneyHandler : SimpleTypeHandler<decimal>
+    class MoneyHandler : SimpleTypeHandler<decimal>
     {
         internal MoneyHandler(IBackendType backendType) : base(backendType) { }
 

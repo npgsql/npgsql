@@ -28,7 +28,7 @@ using System.Text;
 
 namespace Npgsql.BackendMessages
 {
-    internal class ParseCompleteMessage : IBackendMessage
+    class ParseCompleteMessage : IBackendMessage
     {
         public BackendMessageCode Code => BackendMessageCode.ParseComplete;
         internal static readonly ParseCompleteMessage Instance = new ParseCompleteMessage();

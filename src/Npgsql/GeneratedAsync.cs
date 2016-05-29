@@ -1401,7 +1401,7 @@ namespace Npgsql
         }
     }
 
-    internal partial class ReadBuffer
+    partial class ReadBuffer
     {
         internal async Task EnsureAsync(int count, CancellationToken cancellationToken, bool dontBreakOnTimeouts = false)
         {
@@ -1574,7 +1574,7 @@ namespace Npgsql
         }
     }
 
-    internal partial class TypeHandlerRegistry
+    partial class TypeHandlerRegistry
     {
         internal static async Task SetupAsync(NpgsqlConnector connector, NpgsqlTimeout timeout, CancellationToken cancellationToken)
         {
@@ -1609,7 +1609,7 @@ namespace Npgsql
         }
     }
 
-    internal partial class WriteBuffer
+    partial class WriteBuffer
     {
         internal async Task FlushAsync(CancellationToken cancellationToken)
         {
@@ -1729,7 +1729,7 @@ namespace Npgsql.BackendMessages
 
 namespace TlsClientStream
 {
-    internal partial class TlsClientStream
+    partial class TlsClientStream
     {
         async Task<bool> ReadRecordAsync(CancellationToken cancellationToken)
         {

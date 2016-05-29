@@ -29,7 +29,7 @@ using System.Threading.Tasks;
 
 namespace TlsClientStream
 {
-    internal class HandshakeMessagesBuffer : IDisposable
+    class HandshakeMessagesBuffer : IDisposable
     {
         readonly List<byte[]> _messages = new List<byte[]>();
 

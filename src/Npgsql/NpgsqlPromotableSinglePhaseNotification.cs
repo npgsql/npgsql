@@ -29,7 +29,7 @@ using Npgsql.Logging;
 
 namespace Npgsql
 {
-    internal class NpgsqlPromotableSinglePhaseNotification : IPromotableSinglePhaseNotification
+    class NpgsqlPromotableSinglePhaseNotification : IPromotableSinglePhaseNotification
     {
         private readonly NpgsqlConnection _connection;
         private IsolationLevel _isolationLevel;

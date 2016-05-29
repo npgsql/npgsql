@@ -31,7 +31,7 @@ namespace Npgsql
     /// <summary>
     /// Base class for all classes which represent a message sent by the PostgreSQL backend.
     /// </summary>
-    internal interface IBackendMessage
+    interface IBackendMessage
     {
         BackendMessageCode Code { get; }
     }

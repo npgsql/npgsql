@@ -32,7 +32,7 @@ using JetBrains.Annotations;
 
 namespace Npgsql
 {
-    internal partial class WriteBuffer
+    partial class WriteBuffer
     {
         #region Fields and Properties
 

@@ -29,7 +29,7 @@ using System.Security.Cryptography;
 
 namespace TlsClientStream
 {
-    internal class ConnectionState : IDisposable
+    class ConnectionState : IDisposable
     {
         public TlsVersion TlsVersion { get; set; }
         public CipherSuiteInfo CipherSuite { get; set; }

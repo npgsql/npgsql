@@ -530,7 +530,7 @@ namespace Npgsql.TypeHandlers
     /// </remarks>
     /// <typeparam name="TNormal">The .NET type contained as an element within this array</typeparam>
     /// <typeparam name="TPsv">The .NET provider-specific type contained as an element within this array</typeparam>
-    internal class ArrayHandlerWithPsv<TNormal, TPsv> : ArrayHandler<TNormal>, ITypeHandlerWithPsv
+    class ArrayHandlerWithPsv<TNormal, TPsv> : ArrayHandler<TNormal>, ITypeHandlerWithPsv
     {
         /// <summary>
         /// The provider-specific type of the elements contained within this array,

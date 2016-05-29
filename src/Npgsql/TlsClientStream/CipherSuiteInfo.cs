@@ -30,7 +30,7 @@ using System.Threading.Tasks;
 
 namespace TlsClientStream
 {
-    internal class CipherSuiteInfo
+    class CipherSuiteInfo
     {
         public CipherSuite Id;
         public KeyExchange KeyExchange;

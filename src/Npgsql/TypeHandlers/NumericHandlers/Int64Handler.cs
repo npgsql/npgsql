@@ -33,7 +33,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-numeric.html
     /// </remarks>
     [TypeMapping("int8", NpgsqlDbType.Bigint, DbType.Int64, typeof(long))]
-    internal class Int64Handler : SimpleTypeHandler<long>,
+    class Int64Handler : SimpleTypeHandler<long>,
         ISimpleTypeHandler<byte>, ISimpleTypeHandler<short>, ISimpleTypeHandler<int>,
         ISimpleTypeHandler<float>, ISimpleTypeHandler<double>, ISimpleTypeHandler<decimal>,
         ISimpleTypeHandler<string>

@@ -28,7 +28,7 @@ using System.Text;
 
 namespace Npgsql.BackendMessages
 {
-    internal class ParameterDescriptionMessage : IBackendMessage
+    class ParameterDescriptionMessage : IBackendMessage
     {
         internal List<uint> TypeOIDs { get; private set; }
 

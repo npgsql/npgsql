@@ -29,7 +29,7 @@ using System.Threading.Tasks;
 
 namespace TlsClientStream
 {
-    internal class ServerAlertException : Exception
+    class ServerAlertException : Exception
     {
         AlertDescription Description { get; set; }
 

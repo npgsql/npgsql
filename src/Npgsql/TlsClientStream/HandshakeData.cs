@@ -31,7 +31,7 @@ using System.Threading.Tasks;
 
 namespace TlsClientStream
 {
-    internal class HandshakeData
+    class HandshakeData
     {
         public List<X509Certificate2> CertList;
         public X509Chain CertChain;

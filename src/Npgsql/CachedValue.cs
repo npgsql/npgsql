@@ -38,7 +38,7 @@ namespace Npgsql
         internal bool IsProviderSpecificValue { get; set; }
     }
 
-    internal class CachedValue<T> : CachedValue
+    class CachedValue<T> : CachedValue
     {
         T _value;
 
@@ -58,7 +58,7 @@ namespace Npgsql
     }
 
     // TODO: CachedValue instances need to be pooled
-    internal class RowCache
+    class RowCache
     {
         readonly List<CachedValue> _values = new List<CachedValue>(10);
 

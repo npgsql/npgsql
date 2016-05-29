@@ -29,7 +29,7 @@ using Npgsql.Logging;
 
 namespace Npgsql.BackendMessages
 {
-    internal class CommandCompleteMessage : IBackendMessage
+    class CommandCompleteMessage : IBackendMessage
     {
         internal StatementType StatementType { get; private set; }
         internal uint OID { get; private set; }

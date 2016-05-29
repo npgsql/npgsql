@@ -11,7 +11,7 @@ namespace Npgsql
 {
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
     [MeansImplicitUse]
-    internal class TypeMappingAttribute : Attribute
+    class TypeMappingAttribute : Attribute
     {
         /// <summary>
         /// Maps an Npgsql type handler to a PostgreSQL type.

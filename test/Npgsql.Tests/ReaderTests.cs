@@ -834,7 +834,7 @@ namespace Npgsql.Tests
 
     #region Mock Type Handlers
 #if DEBUG
-    internal class SafeExceptionGeneratingHandler : SimpleTypeHandler<int>
+    class SafeExceptionGeneratingHandler : SimpleTypeHandler<int>
     {
         internal SafeExceptionGeneratingHandler(IBackendType backendType)
             : base (backendType) {}
@@ -849,7 +849,7 @@ namespace Npgsql.Tests
         public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter) { throw new NotSupportedException(); }
     }
 
-    internal class NonSafeExceptionGeneratingHandler : SimpleTypeHandler<int>
+    class NonSafeExceptionGeneratingHandler : SimpleTypeHandler<int>
     {
         internal NonSafeExceptionGeneratingHandler(IBackendType backendType)
             : base (backendType) { }
