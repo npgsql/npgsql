@@ -677,7 +677,7 @@ namespace Npgsql
                 {
                     var directBuf = new DirectBuffer();
                     var completed = populateMethod(ref directBuf);
-                    await _connector.SendBufferAsync(cancellationToken);
+                    await _connector.SendBufferAsync(cancellationToken).ConfigureAwait(false);
                     if (completed)
                         return; // Sent all messages
 
@@ -686,7 +686,8 @@ namespace Npgsql
                     if (directBuf.Buffer != null)
                     {
                         await _connector.WriteBuffer.DirectWriteAsync(directBuf.Buffer, directBuf.Offset,
-                                directBuf.Size == 0 ? directBuf.Buffer.Length : directBuf.Size, cancellationToken);
+                                directBuf.Size == 0 ? directBuf.Buffer.Length : directBuf.Size, cancellationToken
+                        ).ConfigureAwait(false);
                         directBuf.Buffer = null;
                         directBuf.Size = 0;
                     }
