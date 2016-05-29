@@ -74,16 +74,18 @@ namespace Npgsql.TypeHandlers
             return new BitStringArrayHandler(backendType, this);
         }
 
-        internal override object ReadValueAsObjectFully(DataRowMessage row, FieldDescription fieldDescription)
+        internal override object ReadValueAsObjectFully(DataRowMessage row, FieldDescription fieldDescription = null)
         {
-            return fieldDescription.TypeModifier == 1
+            return fieldDescription?.TypeModifier == 1
                 ? (object)ReadFully<bool>(row, row.ColumnLen, fieldDescription)
                 : ReadFully<BitArray>(row, row.ColumnLen, fieldDescription);
         }
 
-        internal override object ReadPsvAsObjectFully(DataRowMessage row, FieldDescription fieldDescription)
+        internal override object ReadValueAsObjectFully(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
-            return ReadValueAsObjectFully(row, fieldDescription);
+            return fieldDescription?.TypeModifier == 1
+                ? (object)ReadFully<bool>(buf, len, fieldDescription)
+                : ReadFully<BitArray>(buf, len, fieldDescription);
         }
 
         #region Read
@@ -362,12 +364,13 @@ namespace Npgsql.TypeHandlers
     /// </summary>
     internal class BitStringArrayHandler : ArrayHandler<BitArray>
     {
+        [CanBeNull]
         FieldDescription _fieldDescription;
         object _value;
 
-        internal override Type GetElementFieldType(FieldDescription fieldDescription)
+        internal override Type GetElementFieldType(FieldDescription fieldDescription = null)
         {
-            return fieldDescription.TypeModifier == 1 ? typeof(bool) : typeof(BitArray);
+            return fieldDescription?.TypeModifier == 1 ? typeof(bool) : typeof(BitArray);
         }
 
         internal override Type GetElementPsvType(FieldDescription fieldDescription)
@@ -386,7 +389,7 @@ namespace Npgsql.TypeHandlers
 
         public override bool Read(out Array result)
         {
-            return _fieldDescription.TypeModifier == 1
+            return _fieldDescription?.TypeModifier == 1
                 ? Read<bool>(out result)
                 : Read<BitArray>(out result);
         }

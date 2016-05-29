@@ -27,6 +27,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
+using Npgsql.TypeHandlers;
 using NpgsqlTypes;
 
 namespace Npgsql
@@ -195,11 +196,40 @@ namespace Npgsql
         {
             try {
                 ReadColumnLenIfNeeded();
-                if (_columnLen == -1) {
+                if (_columnLen == -1)
                     throw new InvalidCastException("Column is null");
+
+                // TODO: Duplication with NpgsqlDataReader.GetFieldValueInternal
+
+                T result;
+
+                // The type handler supports the requested type directly
+                var tHandler = handler as ITypeHandler<T>;
+                if (tHandler != null)
+                    result = handler.ReadFully<T>(_buf, _columnLen);
+                else
+                {
+                    var t = typeof(T);
+                    if (!t.IsArray)
+                        throw new InvalidCastException($"Can't cast database type {handler.PgDisplayName} to {typeof(T).Name}");
+
+                    // Getting an array
+
+                    // We need to treat this as an actual array type, these need special treatment because of
+                    // typing/generics reasons (there is no way to express "array of X" with generics
+                    var elementType = t.GetElementType();
+                    var arrayHandler = handler as ArrayHandler;
+                    if (arrayHandler == null)
+                        throw new InvalidCastException($"Can't cast database type {handler.PgDisplayName} to {typeof(T).Name}");
+
+                    if (arrayHandler.GetElementFieldType() == elementType)
+                        result = (T)handler.ReadValueAsObjectFully(_buf, _columnLen);
+                    else if (arrayHandler.GetElementPsvType() == elementType)
+                        result = (T)handler.ReadPsvAsObjectFully(_buf, _columnLen);
+                    else
+                        throw new InvalidCastException($"Can't cast database type {handler.PgDisplayName} to {typeof(T).Name}");
                 }
 
-                var result = handler.ReadFully<T>(_buf, _columnLen);
                 _leftToReadInDataMsg -= _columnLen;
                 _columnLen = int.MinValue;   // Mark that the (next) column length hasn't been read yet
                 _column++;

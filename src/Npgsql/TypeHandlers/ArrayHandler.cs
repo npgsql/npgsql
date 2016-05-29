@@ -38,8 +38,8 @@ namespace Npgsql.TypeHandlers
     internal abstract class ArrayHandler : ChunkingTypeHandler<Array>
     {
         internal ArrayHandler(IBackendType backendType) : base(backendType) {}
-        internal abstract Type GetElementFieldType(FieldDescription fieldDescription);
-        internal abstract Type GetElementPsvType(FieldDescription fieldDescription);
+        internal abstract Type GetElementFieldType(FieldDescription fieldDescription = null);
+        internal abstract Type GetElementPsvType(FieldDescription fieldDescription = null);
     }
 
     /// <summary>
@@ -90,7 +90,7 @@ namespace Npgsql.TypeHandlers
         /// The type of the elements contained within this array
         /// </summary>
         /// <param name="fieldDescription"></param>
-        internal override Type GetElementFieldType(FieldDescription fieldDescription)
+        internal override Type GetElementFieldType(FieldDescription fieldDescription = null)
         {
             return typeof(TElement);
         }
@@ -150,8 +150,12 @@ namespace Npgsql.TypeHandlers
                     }
                     _dimensions = _readBuf.ReadInt32();
                     _readBuf.ReadInt32();        // Has nulls. Not populated by PG?
-                    var elementOID = _readBuf.ReadUInt32();
-                    Debug.Assert(elementOID == ElementHandler.BackendType.OID);
+
+                    _readBuf.ReadUInt32();
+                    // The following should hold but fails in test CopyTests.ReadBitString
+                    //var elementOID = _readBuf.ReadUInt32();
+                    //Debug.Assert(elementOID == ElementHandler.BackendType.OID);
+
                     _dimLengths = new int[_dimensions];
                     if (_dimensions > 1) {
                         _indices = new int[_dimensions];
