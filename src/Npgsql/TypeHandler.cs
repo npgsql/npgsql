@@ -79,6 +79,13 @@ namespace Npgsql
         internal abstract T ReadFully<T>(ReadBuffer buf, int len, FieldDescription fieldDescription = null);
         internal abstract Task<T> ReadFullyAsync<T>(ReadBuffer buf, int len, CancellationToken cancellationToken, FieldDescription fieldDescription = null);
 
+        internal abstract object ReadValueAsObjectFully(ReadBuffer buf, int len, FieldDescription fieldDescription = null);
+
+        internal virtual object ReadPsvAsObjectFully(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        {
+            return ReadValueAsObjectFully(buf, len, fieldDescription);
+        }
+
         /// <summary>
         /// Creates a type handler for arrays of this handler's type.
         /// </summary>
@@ -135,6 +142,11 @@ namespace Npgsql
         internal override object ReadValueAsObjectFully(DataRowMessage row, FieldDescription fieldDescription)
         {
             return ReadFully<T>(row, row.ColumnLen, fieldDescription);
+        }
+
+        internal override object ReadValueAsObjectFully(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        {
+            return ReadFully<T>(buf, len, fieldDescription);
         }
 
         internal override ArrayHandler CreateArrayHandler(IBackendType arrayBackendType)
@@ -215,6 +227,11 @@ namespace Npgsql
         internal override object ReadPsvAsObjectFully(DataRowMessage row, FieldDescription fieldDescription)
         {
             return ReadFully<TPsv>(row, row.ColumnLen, fieldDescription);
+        }
+
+        internal override object ReadPsvAsObjectFully(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        {
+            return ReadFully<TPsv>(buf, len, fieldDescription);
         }
 
         internal abstract TPsv ReadPsv(ReadBuffer buf, int len, FieldDescription fieldDescription);

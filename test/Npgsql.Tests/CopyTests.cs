@@ -388,13 +388,41 @@ namespace Npgsql.Tests
         {
             using (var conn = OpenConnection())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (bits BIT(3))");
-                conn.ExecuteNonQuery("INSERT INTO data (bits) VALUES (B'101')");
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (bits BIT(3), bitarray BIT(3)[])");
+                conn.ExecuteNonQuery("INSERT INTO data (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
 
-                using (var reader = conn.BeginBinaryExport("COPY data (bits) TO STDIN BINARY"))
+                using (var reader = conn.BeginBinaryExport("COPY data (bits, bitarray) TO STDIN BINARY"))
                 {
                     reader.StartRow();
                     Assert.That(reader.Read<BitArray>(), Is.EqualTo(new BitArray(new[] { true, false, true })));
+                    Assert.That(reader.Read<BitArray[]>(), Is.EqualTo(new[]
+                    {
+                        new BitArray(new[] { true, false, true }),
+                        new BitArray(new[] { true, true, true })
+                    }));
+                }
+            }
+        }
+
+        [Test]
+        public void Array()
+        {
+            var expected = new[] { 8 };
+
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (arr INTEGER[])");
+
+                using (var writer = conn.BeginBinaryImport("COPY data (arr) FROM STDIN BINARY"))
+                {
+                    writer.StartRow();
+                    writer.Write(expected);
+                }
+
+                using (var reader = conn.BeginBinaryExport("COPY data (arr) TO STDIN BINARY"))
+                {
+                    reader.StartRow();
+                    Assert.That(reader.Read<int[]>(), Is.EqualTo(expected));
                 }
             }
         }
