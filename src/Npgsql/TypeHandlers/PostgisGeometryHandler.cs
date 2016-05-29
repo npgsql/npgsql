@@ -99,7 +99,7 @@ namespace Npgsql.TypeHandlers
 
         public override bool Read([CanBeNull] out PostgisGeometry result)
         {
-            Contract.Requires(_inByteaMode != true);
+            Contract.Assert(_inByteaMode != true);
             if (!_inByteaMode.HasValue)
                 _inByteaMode = false;
 
@@ -316,7 +316,7 @@ namespace Npgsql.TypeHandlers
 
         public bool Read([CanBeNull] out byte[] result)
         {
-            Contract.Requires(_inByteaMode != false);
+            Contract.Assert(_inByteaMode != false);
             if (!_inByteaMode.HasValue)
             {
                 if (_byteaHandler == null)
@@ -571,13 +571,13 @@ namespace Npgsql.TypeHandlers
 
         bool WriteBytes(ref DirectBuffer buf)
         {
-            Contract.Requires(_byteaHandler != null);
+            Contract.Assert(_byteaHandler != null);
             return _byteaHandler.Write(ref buf);
         }
 
         public override bool Write(ref DirectBuffer buf)
         {
-            Contract.Requires(_inByteaMode.HasValue);
+            Contract.Assert(_inByteaMode.HasValue);
             return _inByteaMode.Value? WriteBytes(ref buf) : Write(_toWrite);
         }
 
