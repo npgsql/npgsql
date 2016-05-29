@@ -150,14 +150,14 @@ namespace Npgsql
 
             foreach (var kv in _globalCompositeMappings)
             {
-                var backendType = GetBackendTypeByName(kv.Key);
-                var backendCompositeType = backendType as BackendCompositeType;
-                if (backendCompositeType == null)
+                try
                 {
-                    Log.Warn($"While attempting to activate global composite mappings, PostgreSQL type {kv.Key} was found but is not a composite. Skipping it.", Connector.Id);
-                    continue;
+                    GetCompositeType(kv.Key).Activate(this, kv.Value);
                 }
-                backendCompositeType.Activate(this, kv.Value);
+                catch (Exception e)
+                {
+                    Log.Warn("Caught an exception while attempting to activate global composite mappings", e, Connector.Id);
+                }
             }
 
             _globalMappingActivationCounter = _globalMappingChangeCounter;
@@ -174,32 +174,31 @@ namespace Npgsql
             // For arrays and ranges, join in the element OID and type (to filter out arrays of unhandled
             // types).
             return
-"SELECT ns.nspname, a.typname, a.oid, a.typrelid, a.typbasetype, " +
-"CASE WHEN pg_proc.proname='array_recv' THEN 'a' ELSE a.typtype END AS type, " +
-"CASE " +
-  "WHEN pg_proc.proname='array_recv' THEN a.typelem " +
-  (withRange ? "WHEN a.typtype='r' THEN rngsubtype " : "") +
-  "ELSE 0 " +
-"END AS elemoid, " +
-"CASE " +
-  "WHEN pg_proc.proname IN ('array_recv','oidvectorrecv') THEN 4 " +  // Arrays last
-  "WHEN a.typtype='r' THEN 3 " +                                      // Ranges before
-  "WHEN a.typtype='c' THEN 2 " +                                      // Composite types before
-  "WHEN a.typtype='d' THEN 1 " +                                      // Domains before
-  "ELSE 0 " +                                                         // Base types first
-"END AS ord " +
-"FROM pg_type AS a " +
-"JOIN pg_namespace AS ns ON (ns.oid = a.typnamespace) " +
-"JOIN pg_proc ON pg_proc.oid = a.typreceive " +
-"LEFT OUTER JOIN pg_type AS b ON (b.oid = a.typelem) " +
-(withRange ? "LEFT OUTER JOIN pg_range ON (pg_range.rngtypid = a.oid) " : "") +
-"WHERE " +
-"  (" +
-"    a.typtype IN ('b', 'r', 'e', 'c', 'd') AND " +
-"    (b.typtype IS NULL OR b.typtype IN ('b', 'r', 'e', 'c', 'd'))" +  // Either non-array or array of supported element type
-"  ) OR " +
-"  a.typname = 'record' " +
-"ORDER BY ord";
+$@"SELECT ns.nspname, a.typname, a.oid, a.typrelid, a.typbasetype,
+CASE WHEN pg_proc.proname='array_recv' THEN 'a' ELSE a.typtype END AS type,
+CASE
+  WHEN pg_proc.proname='array_recv' THEN a.typelem
+  {(withRange ? "WHEN a.typtype='r' THEN rngsubtype" : "")}
+  ELSE 0
+END AS elemoid,
+CASE
+  WHEN pg_proc.proname IN ('array_recv','oidvectorrecv') THEN 3    /* Arrays last */
+  WHEN a.typtype='r' THEN 2                                        /* Ranges before */
+  WHEN a.typtype='d' THEN 1                                        /* Domains before */
+  ELSE 0                                                           /* Base types first */
+END AS ord
+FROM pg_type AS a
+JOIN pg_namespace AS ns ON (ns.oid = a.typnamespace)
+JOIN pg_proc ON pg_proc.oid = a.typreceive
+LEFT OUTER JOIN pg_type AS b ON (b.oid = a.typelem)
+{(withRange ? "LEFT OUTER JOIN pg_range ON (pg_range.rngtypid = a.oid) " : "")}
+WHERE
+  (
+    a.typtype IN ('b', 'r', 'e', 'd') AND
+    (b.typtype IS NULL OR b.typtype IN ('b', 'r', 'e', 'd'))  /* Either non-array or array of supported element type */
+  ) OR
+  a.typname = 'record'
+ORDER BY ord";
         }
 
         [RewriteAsync]
@@ -266,10 +265,6 @@ namespace Npgsql
                 return;
             case 'e':   // Enum
                 new BackendEnumType(ns, name, oid).AddTo(types);
-                return;
-            case 'c':   // Composite
-                var relationId = Convert.ToUInt32(reader[3]);
-                new BackendCompositeType(ns, name, oid, relationId).AddTo(types);
                 return;
             case 'd':   // Domain
                 var baseTypeOID = Convert.ToUInt32(reader[4]);
@@ -343,13 +338,11 @@ namespace Npgsql
                 nameTranslator = DefaultNameTranslator;
             if (pgName == null)
                 pgName = GetPgName<T>(nameTranslator);
-            var backendType = GetBackendTypeByName(pgName);
 
-            var asComposite = backendType as BackendCompositeType;
-            if (asComposite == null)
-                throw new NpgsqlException($"Type {pgName} was found in the database but is not a composite");
+            // TODO: Check if already mapped dude
 
-            asComposite.Activate(this, new CompositeHandler<T>(asComposite, nameTranslator, this));
+            var compositeType = GetCompositeType(pgName);
+            compositeType.Activate(this, new CompositeHandler<T>(compositeType, nameTranslator, this));
         }
 
         internal static void MapCompositeGlobally<T>([CanBeNull] string pgName, [CanBeNull] INpgsqlNameTranslator nameTranslator) where T : new()
@@ -373,6 +366,129 @@ namespace Npgsql
             _globalMappingChangeCounter++;
             ICompositeHandlerFactory _;
             _globalCompositeMappings.TryRemove(pgName, out _);
+        }
+
+#if WAT
+        const string LoadCompositeQuery =
+@"SELECT ns.nspname, a.typname, a.oid,
+CASE
+  WHEN a.typname = @name THEN 0   /* First we load the composite type */
+  ELSE 1                          /* Then we load its array */
+END AS ord
+FROM pg_type AS a
+JOIN pg_namespace AS ns ON (ns.oid = a.typnamespace)
+LEFT OUTER JOIN pg_type AS b ON (b.oid = a.typelem)
+WHERE
+  a.typname = @name OR   /* The composite type */
+  b.typname = @name      /* The composite's array type */
+ORDER BY ord";
+
+        const string LoadCompositeWithSchemaQuery =
+@"SELECT ns_a.nspname, a.typname, a.oid, a.typtype,
+CASE
+  WHEN a.typname = @name THEN 0   /* First we load the composite type */
+  ELSE 1                          /* Then we load its array */
+END AS ord
+FROM pg_type AS a
+JOIN pg_namespace AS ns_a ON (ns_a.oid = a.typnamespace)
+LEFT OUTER JOIN pg_type AS b ON (b.oid = a.typelem)
+LEFT OUTER JOIN pg_namespace AS ns_b ON (ns_b.oid = b.typnamespace)
+WHERE
+  (ns_a.nspname = @schema AND a.typname = @name) OR   /* The composite type */
+  (ns_b.nspname = @schema AND b.typname = @name)      /* The composite's array type */
+ORDER BY ord";
+#endif
+
+        static string GenerateLoadCompositeQuery(bool withSchema) =>
+$@"SELECT ns.nspname, typ.oid, typ.typtype
+FROM pg_type AS typ
+JOIN pg_namespace AS ns ON (ns.oid = typ.typnamespace)
+WHERE (typ.typname = @name{(withSchema ? " AND a.nspname = @schema" : "")});
+
+SELECT att.attname, att.atttypid
+FROM pg_type AS typ
+JOIN pg_namespace AS ns ON (ns.oid = typ.typnamespace)
+JOIN pg_attribute AS att ON (att.attrelid = typ.typrelid)
+WHERE
+  typ.typname = @name{(withSchema ? " AND a.nspname = @schema" : "")} AND
+  attnum > 0; /* Don't load system attributes */
+
+SELECT ns.nspname, a.typname, a.oid
+FROM pg_type AS a
+JOIN pg_type AS b ON (b.oid = a.typelem)
+JOIN pg_namespace AS ns ON (ns.oid = b.typnamespace)
+WHERE a.typtype = 'b' AND b.typname = @name{(withSchema ? " AND b.nspname = @schema" : "")}";
+
+        BackendCompositeType GetCompositeType(string pgName)
+        {
+            // First check if the composite type definition has already been loaded from the database
+            BackendType backendType;
+            if (pgName.IndexOf('.') == -1
+                ? _backendTypes.ByName.TryGetValue(pgName, out backendType)
+                : _backendTypes.ByFullName.TryGetValue(pgName, out backendType))
+            {
+                var asComposite = backendType as BackendCompositeType;
+                if (asComposite == null)
+                    throw new NpgsqlException($"Type {pgName} was found but is not a composite");
+                return asComposite;
+            }
+
+            // This is the first time the composite is mapped, the type definition needs to be loaded
+            string name, schema;
+            var i = pgName.IndexOf('.');
+            if (i == -1)
+            {
+                schema = null;
+                name = pgName;
+            }
+            else
+            {
+                schema = pgName.Substring(0, i);
+                name = pgName.Substring(i + 1);
+            }
+
+            using (var cmd = new NpgsqlCommand(GenerateLoadCompositeQuery(schema != null), Connector.Connection))
+            {
+                cmd.Parameters.AddWithValue("name", name);
+                if (schema != null)
+                    cmd.Parameters.AddWithValue("schema", schema);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    if (!reader.Read())
+                        throw new Exception($"An PostgreSQL type with the name {pgName} was not found in the database");
+
+                    // Load some info on the composite type itself, do some checks
+                    var ns = reader.GetString(0);
+                    Contract.Assert(schema == null || ns == schema);
+                    var oid = reader.GetFieldValue<uint>(1);
+                    var typeChar = reader.GetChar(2);
+                    if (typeChar != 'c')
+                        throw new NpgsqlException($"Type {pgName} was found in the database but is not a composite");
+
+                    reader.NextResult();  // Load the fields
+
+                    var fields = new List<RawCompositeField>();
+                    while (reader.Read())
+                        fields.Add(new RawCompositeField { PgName = reader.GetString(0), TypeOID = reader.GetFieldValue<uint>(1) });
+
+                    var compositeType = new BackendCompositeType(ns, name, oid, fields);
+                    compositeType.AddTo(_backendTypes);
+
+                    reader.NextResult();  // Load the array type
+
+                    if (reader.Read())
+                    {
+                        var arrayNs = reader.GetString(0);
+                        var arrayName = reader.GetString(1);
+                        var arrayOID = reader.GetFieldValue<uint>(2);
+
+                        new BackendArrayType(arrayNs, arrayName, arrayOID, compositeType).AddTo(_backendTypes);
+                    } else
+                        Log.Warn($"Could not find array type corresponding to composite {pgName}");
+
+                    return compositeType;
+                }
+            }
         }
 
         #endregion
@@ -980,22 +1096,16 @@ namespace Npgsql
         class BackendCompositeType : BackendType
         {
             /// <summary>
-            /// Contains the pg_class.oid for the type
-            /// </summary>
-            readonly uint _relationId;
-
-            /// <summary>
             /// Holds the name and OID for all fields.
             /// Populated on the first activation of the composite.
             /// </summary>
-            [CanBeNull]
             List<RawCompositeField> _rawFields;
 
-            internal BackendCompositeType(string ns, string name, uint oid, uint relationId)
+            internal BackendCompositeType(string ns, string name, uint oid, List<RawCompositeField> rawFields)
                 : base(ns, name, oid)
             {
                 NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Composite;
-                _relationId = relationId;
+                _rawFields = rawFields;
             }
 
             internal override void AddTo(BackendTypes types)
@@ -1023,26 +1133,12 @@ namespace Npgsql
 
                 registry.ByOID[OID] = handler;
                 registry._byType[compositeHandler.CompositeType] = handler;
-                Contract.Assume(_relationId != 0);
-
-                var fields = _rawFields;
-                if (fields == null)
-                {
-                    // Load the attributes for the composite type
-                    // We filter out system attributes (such as oid, tableoid) with attnum
-                    fields = new List<RawCompositeField>();
-                    using (var cmd = new NpgsqlCommand($"SELECT attname,atttypid FROM pg_attribute WHERE attrelid={_relationId} AND attnum > 0", registry.Connector.Connection))
-                    using (var reader = cmd.ExecuteReader())
-                        while (reader.Read())
-                            fields.Add(new RawCompositeField { PgName = reader.GetString(0), TypeOID = reader.GetFieldValue<uint>(1) });
-                    _rawFields = fields;
-                }
 
                 // Inject the raw field information into the composite handler.
                 // At this point the composite handler nows about the fields, but hasn't yet resolved the
                 // type OIDs to their type handlers. This is done only very late upon first usage of the handler,
                 // allowing composite types to be registered and activated in any order regardless of dependencies.
-                compositeHandler.RawFields = fields;
+                compositeHandler.RawFields = _rawFields;
 
                 Array?.Activate(registry);
             }
