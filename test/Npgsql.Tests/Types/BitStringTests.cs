@@ -112,11 +112,25 @@ namespace Npgsql.Tests.Types
                     Assert.That(reader.GetBoolean(0), Is.EqualTo(true));
                     Assert.That(reader.GetValue(0), Is.EqualTo(true));
                     Assert.That(reader.GetFieldValue<bool>(0), Is.EqualTo(true));
-                    Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof (bool)));
-
-                    // BIT(N) shouldn't be accessible as bool
-                    Assert.That(() => reader.GetBoolean(1), Throws.Exception.TypeOf<InvalidCastException>());
+                    Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(bool)));
                 }
+            }
+        }
+
+        [Test, Description("BIT(N) shouldn't be accessible as bool")]
+        public void BitstringAsSingleBit()
+        {
+            using (var conn = OpenConnection())
+            {
+                using (var cmd = new NpgsqlCommand("SELECT B'01'::BIT(2)", conn))
+                using (var reader = cmd.ExecuteReader(CommandBehavior.SequentialAccess))
+                {
+                    reader.Read();
+                    Assert.That(() => reader.GetBoolean(0), Throws.Exception.TypeOf<InvalidCastException>());
+
+                }
+                // Connection should still be OK
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
             }
         }
 
