@@ -494,7 +494,7 @@ namespace Npgsql.TypeHandlers
                 return len;
             }
 
-            throw new InvalidCastException($"Can't write type {value.GetType()} as an array of {typeof (TElement2)}");
+            throw new InvalidCastException($"Can't write type {value.GetType()} as an array of {typeof(TElement2)}");
         }
 
         int GetSingleElementLength([CanBeNull] object element, ref LengthCache lengthCache, NpgsqlParameter parameter=null)

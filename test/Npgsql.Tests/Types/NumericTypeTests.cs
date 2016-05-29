@@ -200,7 +200,7 @@ namespace Npgsql.Tests.Types
                     for (var i = 0; i < cmd.Parameters.Count; i++)
                     {
                         Assert.That(reader.GetDouble(i), Is.EqualTo(expected).Within(10E-07));
-                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof (double)));
+                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(double)));
                     }
                 }
             }
@@ -227,7 +227,7 @@ namespace Npgsql.Tests.Types
                     for (var i = 0; i < cmd.Parameters.Count; i++)
                     {
                         Assert.That(reader.GetFloat(i), Is.EqualTo(expected).Within(10E-07));
-                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof (float)));
+                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(float)));
                     }
                 }
             }

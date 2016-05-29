@@ -231,7 +231,7 @@ namespace Npgsql.Tests
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();
-                    Assert.That(reader.GetFieldType(0), Is.SameAs(typeof (int)));
+                    Assert.That(reader.GetFieldType(0), Is.SameAs(typeof(int)));
                 }
                 using (var cmd = new NpgsqlCommand(@"SELECT 1::INT4 AS some_column", conn))
                 {
@@ -239,7 +239,7 @@ namespace Npgsql.Tests
                     using (var reader = cmd.ExecuteReader())
                     {
                         reader.Read();
-                        Assert.That(reader.GetFieldType(0), Is.SameAs(typeof (string)));
+                        Assert.That(reader.GetFieldType(0), Is.SameAs(typeof(string)));
                     }
                 }
             }
@@ -781,7 +781,7 @@ namespace Npgsql.Tests
             {
                 // Temporarily reroute integer to go to a type handler which generates SafeReadExceptions
                 var registry = conn.Connector.TypeHandlerRegistry;
-                var intHandler = registry[typeof (int)];
+                var intHandler = registry[typeof(int)];
                 registry.ByOID[intHandler.BackendType.OID] = new SafeExceptionGeneratingHandler(intHandler.BackendType);
                 try
                 {
@@ -809,7 +809,7 @@ namespace Npgsql.Tests
             {
                 // Temporarily reroute integer to go to a type handler which generates some exception
                 var registry = conn.Connector.TypeHandlerRegistry;
-                var intHandler = registry[typeof (int)];
+                var intHandler = registry[typeof(int)];
                 registry.ByOID[intHandler.BackendType.OID] = new NonSafeExceptionGeneratingHandler(intHandler.BackendType);
                 try
                 {

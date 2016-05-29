@@ -111,7 +111,7 @@ namespace Npgsql.Tests.Types
 
                     for (var i = 0; i < cmd.Parameters.Count; i++)
                     {
-                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof (NpgsqlBox)));
+                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(NpgsqlBox)));
                         var actual = reader.GetFieldValue<NpgsqlBox>(i);
                         AssertPointsEqual(actual.UpperRight, expected.UpperRight);
                     }

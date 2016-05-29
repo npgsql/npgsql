@@ -731,7 +731,7 @@ namespace Npgsql
         private void CheckType(Array array)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "CheckType", array);
-            if (array.GetType() != typeof (NpgsqlParameter[]))
+            if (array.GetType() != typeof(NpgsqlParameter[]))
             {
                 throw new InvalidCastException(
                     String.Format(this.resman.GetString("Exception_WrongType"), array.GetType().ToString()));

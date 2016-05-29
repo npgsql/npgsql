@@ -256,28 +256,28 @@ namespace Npgsql.Tests
                 Assert.IsFalse(field_serial.AllowDBNull);
                 Assert.IsTrue(field_serial.AutoIncrement);
                 Assert.AreEqual("field_serial", field_serial.ColumnName);
-                Assert.AreEqual(typeof (int), field_serial.DataType);
+                Assert.AreEqual(typeof(int), field_serial.DataType);
                 Assert.AreEqual(0, field_serial.Ordinal);
                 Assert.IsTrue(field_serial.Unique);
 
                 Assert.IsTrue(field_int2.AllowDBNull);
                 Assert.IsFalse(field_int2.AutoIncrement);
                 Assert.AreEqual("field_int2", field_int2.ColumnName);
-                Assert.AreEqual(typeof (short), field_int2.DataType);
+                Assert.AreEqual(typeof(short), field_int2.DataType);
                 Assert.AreEqual(1, field_int2.Ordinal);
                 Assert.IsFalse(field_int2.Unique);
 
                 Assert.IsTrue(field_timestamp.AllowDBNull);
                 Assert.IsFalse(field_timestamp.AutoIncrement);
                 Assert.AreEqual("field_timestamp", field_timestamp.ColumnName);
-                Assert.AreEqual(typeof (DateTime), field_timestamp.DataType);
+                Assert.AreEqual(typeof(DateTime), field_timestamp.DataType);
                 Assert.AreEqual(2, field_timestamp.Ordinal);
                 Assert.IsFalse(field_timestamp.Unique);
 
                 Assert.IsTrue(field_numeric.AllowDBNull);
                 Assert.IsFalse(field_numeric.AutoIncrement);
                 Assert.AreEqual("field_numeric", field_numeric.ColumnName);
-                Assert.AreEqual(typeof (decimal), field_numeric.DataType);
+                Assert.AreEqual(typeof(decimal), field_numeric.DataType);
                 Assert.AreEqual(3, field_numeric.Ordinal);
                 Assert.IsFalse(field_numeric.Unique);
             }
@@ -301,19 +301,19 @@ namespace Npgsql.Tests
                 var field_numeric = ds.Tables[0].Columns[3];
 
                 Assert.AreEqual("field_serial", field_serial.ColumnName);
-                Assert.AreEqual(typeof (int), field_serial.DataType);
+                Assert.AreEqual(typeof(int), field_serial.DataType);
                 Assert.AreEqual(0, field_serial.Ordinal);
 
                 Assert.AreEqual("field_int2", field_int2.ColumnName);
-                Assert.AreEqual(typeof (short), field_int2.DataType);
+                Assert.AreEqual(typeof(short), field_int2.DataType);
                 Assert.AreEqual(1, field_int2.Ordinal);
 
                 Assert.AreEqual("field_timestamp", field_timestamp.ColumnName);
-                Assert.AreEqual(typeof (DateTime), field_timestamp.DataType);
+                Assert.AreEqual(typeof(DateTime), field_timestamp.DataType);
                 Assert.AreEqual(2, field_timestamp.Ordinal);
 
                 Assert.AreEqual("field_numeric", field_numeric.ColumnName);
-                Assert.AreEqual(typeof (decimal), field_numeric.DataType);
+                Assert.AreEqual(typeof(decimal), field_numeric.DataType);
                 Assert.AreEqual(3, field_numeric.Ordinal);
             }
         }

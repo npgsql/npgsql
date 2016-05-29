@@ -54,7 +54,7 @@ namespace Npgsql.TypeHandlers
         internal BitStringHandler(IBackendType backendType) : base(backendType) {}
 
         internal override Type GetFieldType(FieldDescription fieldDescription = null)
-            => fieldDescription != null && fieldDescription.TypeModifier == 1 ? typeof (bool) : typeof(BitArray);
+            => fieldDescription != null && fieldDescription.TypeModifier == 1 ? typeof(bool) : typeof(BitArray);
 
         internal override Type GetProviderSpecificFieldType(FieldDescription fieldDescription = null)
             => GetFieldType(fieldDescription);

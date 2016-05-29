@@ -78,7 +78,7 @@ namespace Npgsql.TypeHandlers
         object _value;
         bool _wroteFieldHeader;
 
-        public Type CompositeType => typeof (T);
+        public Type CompositeType => typeof(T);
 
         internal CompositeHandler(IBackendType backendType, INpgsqlNameTranslator nameTranslator, TypeHandlerRegistry registry)
             : base (backendType)
@@ -283,10 +283,10 @@ namespace Npgsql.TypeHandlers
             {
                 TypeHandler handler;
                 if (!_registry.TryGetByOID(rawField.TypeOID, out handler))
-                    throw new Exception($"PostgreSQL composite type {PgDisplayName}, mapped to CLR type {typeof (T).Name}, has field {rawField.PgName} with an unknown type (TypeOID={rawField.TypeOID})");
+                    throw new Exception($"PostgreSQL composite type {PgDisplayName}, mapped to CLR type {typeof(T).Name}, has field {rawField.PgName} with an unknown type (TypeOID={rawField.TypeOID})");
 
                 var member = (
-                    from m in typeof (T).GetMembers()
+                    from m in typeof(T).GetMembers()
                     let attr = m.GetCustomAttribute<PgNameAttribute>()
                     where (attr != null && attr.PgName == rawField.PgName) ||
                           (attr == null && _nameTranslator.TranslateMemberName(m.Name) == rawField.PgName)
@@ -294,7 +294,7 @@ namespace Npgsql.TypeHandlers
                 ).SingleOrDefault();
 
                 if (member == null)
-                    throw new Exception($"PostgreSQL composite type {PgDisplayName} contains field {rawField.PgName} which could not match any on CLR type {typeof (T).Name}");
+                    throw new Exception($"PostgreSQL composite type {PgDisplayName} contains field {rawField.PgName} which could not match any on CLR type {typeof(T).Name}");
 
                 var property = member as PropertyInfo;
                 if (property != null)
@@ -310,7 +310,7 @@ namespace Npgsql.TypeHandlers
                     continue;
                 }
 
-                throw new Exception($"PostgreSQL composite type {PgDisplayName} contains field {rawField.PgName} which cannot map to CLR type {typeof (T).Name}'s field {member.Name} of type {member.GetType().Name}");
+                throw new Exception($"PostgreSQL composite type {PgDisplayName} contains field {rawField.PgName} which cannot map to CLR type {typeof(T).Name}'s field {member.Name} of type {member.GetType().Name}");
             }
 
             RawFields = null;

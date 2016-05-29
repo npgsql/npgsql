@@ -66,7 +66,7 @@ namespace Npgsql.Tests.Types
 
                     for (var i = 0; i < cmd.Parameters.Count; i++)
                     {
-                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof (string)));
+                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(string)));
                         Assert.That(reader.GetString(i), Is.EqualTo(expected));
                         Assert.That(reader.GetFieldValue<string>(i), Is.EqualTo(expected));
                         Assert.That(reader.GetValue(i), Is.EqualTo(expected));

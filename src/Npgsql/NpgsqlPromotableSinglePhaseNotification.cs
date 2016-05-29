@@ -205,8 +205,8 @@ namespace Npgsql
                 AppDomain rmDomain = AppDomain.CreateDomain("NpgsqlResourceManager", AppDomain.CurrentDomain.Evidence, AppDomain.CurrentDomain.SetupInformation);
                 _resourceManager =
                     (INpgsqlResourceManager)
-                    rmDomain.CreateInstanceAndUnwrap(typeof (NpgsqlResourceManager).Assembly.FullName,
-                                                     typeof (NpgsqlResourceManager).FullName);
+                    rmDomain.CreateInstanceAndUnwrap(typeof(NpgsqlResourceManager).Assembly.FullName,
+                                                     typeof(NpgsqlResourceManager).FullName);
                 _sponser.Register((MarshalByRefObject)_resourceManager);
             }
             return _resourceManager;

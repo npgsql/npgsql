@@ -274,8 +274,8 @@ namespace Npgsql.Tests.Types
                     reader.Read();
                     Assert.That(reader.GetValue(0), Is.EqualTo(expected));
                     Assert.That(reader.GetFieldValue<byte[][]>(0), Is.EqualTo(expected));
-                    Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof (Array)));
-                    Assert.That(reader.GetProviderSpecificFieldType(0), Is.EqualTo(typeof (Array)));
+                    Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
+                    Assert.That(reader.GetProviderSpecificFieldType(0), Is.EqualTo(typeof(Array)));
                 }
             }
         }

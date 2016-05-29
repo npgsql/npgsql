@@ -1245,13 +1245,13 @@ namespace Npgsql
             var elementType = t.GetElementType();
             var arrayHandler = handler as ArrayHandler;
             if (arrayHandler == null)
-                throw new InvalidCastException($"Can't cast database type {fieldDescription.Handler.PgDisplayName} to {typeof (T).Name}");
+                throw new InvalidCastException($"Can't cast database type {fieldDescription.Handler.PgDisplayName} to {typeof(T).Name}");
 
             if (arrayHandler.GetElementFieldType(fieldDescription) == elementType)
                 return (T)GetValue(ordinal);
             if (arrayHandler.GetElementPsvType(fieldDescription) == elementType)
                 return (T)GetProviderSpecificValue(ordinal);
-            throw new InvalidCastException($"Can't cast database type {handler.PgDisplayName} to {typeof (T).Name}");
+            throw new InvalidCastException($"Can't cast database type {handler.PgDisplayName} to {typeof(T).Name}");
         }
 
         /// <summary>

@@ -99,7 +99,7 @@ namespace Npgsql.TypeHandlers
             var success = _labelToEnum.TryGetValue(str, out value);
 
             if (!success)
-                throw new SafeReadException(new InvalidCastException($"Received enum value '{str}' from database which wasn't found on enum {typeof (TEnum)}"));
+                throw new SafeReadException(new InvalidCastException($"Received enum value '{str}' from database which wasn't found on enum {typeof(TEnum)}"));
 
             return value;
         }
@@ -116,7 +116,7 @@ namespace Npgsql.TypeHandlers
             string str;
             var asEnum = (TEnum)value;
             if (!_enumToLabel.TryGetValue(asEnum, out str))
-                throw new InvalidCastException($"Can't write value {asEnum} as enum {typeof (TEnum)}");
+                throw new InvalidCastException($"Can't write value {asEnum} as enum {typeof(TEnum)}");
 
             return Encoding.UTF8.GetByteCount(str);
         }
@@ -126,7 +126,7 @@ namespace Npgsql.TypeHandlers
             string str;
             var asEnum = (TEnum)value;
             if (!_enumToLabel.TryGetValue(asEnum, out str))
-                throw new InvalidCastException($"Can't write value {asEnum} as enum {typeof (TEnum)}");
+                throw new InvalidCastException($"Can't write value {asEnum} as enum {typeof(TEnum)}");
 
             buf.WriteString(str);
         }

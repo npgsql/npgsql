@@ -1112,7 +1112,7 @@ namespace Npgsql
             if (asExpected == null)
             {
                 Break();
-                throw new NpgsqlException($"Received backend message {msg.Code} while expecting {typeof (T).Name}. Please file a bug.");
+                throw new NpgsqlException($"Received backend message {msg.Code} while expecting {typeof(T).Name}. Please file a bug.");
             }
             return asExpected;
         }

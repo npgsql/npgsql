@@ -183,7 +183,7 @@ namespace Npgsql.Tests.Types
 
                     Assert.That(reader.GetValue(0), Is.EqualTo(expected));
                     Assert.That(reader.GetFieldValue<BitArray[]>(0), Is.EqualTo(expected));
-                    Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof (Array)));
+                    Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
                 }
             }
         }
@@ -204,7 +204,7 @@ namespace Npgsql.Tests.Types
 
                     Assert.That(reader.GetValue(0), Is.EqualTo(expected));
                     Assert.That(reader.GetFieldValue<bool[]>(0), Is.EqualTo(expected));
-                    Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof (Array)));
+                    Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
                 }
             }
         }

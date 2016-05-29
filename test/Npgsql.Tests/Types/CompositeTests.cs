@@ -181,7 +181,7 @@ namespace Npgsql.Tests.Types
                 {
                     cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.Composite) {
                         Value = expected,
-                        SpecificType = typeof (SomeComposite)
+                        SpecificType = typeof(SomeComposite)
                     });
                     cmd.Parameters.AddWithValue("p2", expected);
                     using (var reader = cmd.ExecuteReader())
@@ -308,7 +308,7 @@ namespace Npgsql.Tests.Types
                 {
                     cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.Array | NpgsqlDbType.Composite) {
                         Value = expected,
-                        SpecificType = typeof (SomeComposite)
+                        SpecificType = typeof(SomeComposite)
                     });
                     cmd.Parameters.AddWithValue("p2", expected); // Infer
                     using (var reader = cmd.ExecuteReader())
