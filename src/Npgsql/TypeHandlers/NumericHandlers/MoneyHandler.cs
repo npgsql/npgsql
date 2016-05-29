@@ -26,7 +26,7 @@ using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
 
-namespace Npgsql.TypeHandlers
+namespace Npgsql.TypeHandlers.NumericHandlers
 {
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-money.html

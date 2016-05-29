@@ -188,7 +188,7 @@
     <Compile Include="TypeHandlers\RangeHandler.cs" />
     <Compile Include="TypeHandlers\RecordHandler.cs" />
     <Compile Include="TypeHandlers\UuidHandler.cs" />
-    <Compile Include="TypeHandlers\MoneyHandler.cs" />
+    <Compile Include="TypeHandlers\NumericHandlers\MoneyHandler.cs" />
     <Compile Include="TypeHandlers\DateTimeHandlers\TimeStampTzHandler.cs" />
     <Compile Include="TypeHandlers\DateTimeHandlers\TimeStampHandler.cs" />
     <Compile Include="TypeHandlers\DateTimeHandlers\TimeTzHandler.cs" />
