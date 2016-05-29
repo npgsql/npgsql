@@ -22,6 +22,7 @@
 #endregion
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.IO;
@@ -379,6 +380,22 @@ namespace Npgsql.Tests
                 }
 
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(iterations));
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1134")]
+        public void ReadBitString()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (bits BIT(3))");
+                conn.ExecuteNonQuery("INSERT INTO data (bits) VALUES (B'101')");
+
+                using (var reader = conn.BeginBinaryExport("COPY data (bits) TO STDIN BINARY"))
+                {
+                    reader.StartRow();
+                    Assert.That(reader.Read<BitArray>(), Is.EqualTo(new BitArray(new[] { true, false, true })));
+                }
             }
         }
 
