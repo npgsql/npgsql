@@ -413,5 +413,36 @@ CREATE TYPE address AS
         {
             public int Foo { get; set; }
         }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1125")]
+        public void NullableProperty()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TYPE pg_temp.nullable_property_type AS (foo INT)");
+                conn.ReloadTypes();
+                conn.MapComposite<NullablePropertyType>();
+
+                var expected1 = new NullablePropertyType { Foo = 8 };
+                var expected2 = new NullablePropertyType { Foo = null };
+                using (var cmd = new NpgsqlCommand(@"SELECT @p1, @p2", conn))
+                {
+                    cmd.Parameters.AddWithValue("p1", expected1);
+                    cmd.Parameters.AddWithValue("p2", expected2);
+
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        reader.Read();
+                        Assert.That(reader.GetFieldValue<NullablePropertyType>(0).Foo, Is.EqualTo(8));
+                        Assert.That(reader.GetFieldValue<NullablePropertyType>(1).Foo, Is.Null);
+                    }
+                }
+            }
+        }
+
+        class NullablePropertyType
+        {
+            public int? Foo { get; set; }
+        }
     }
 }

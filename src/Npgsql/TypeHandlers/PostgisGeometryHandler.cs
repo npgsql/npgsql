@@ -1,7 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Diagnostics.Contracts;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
+using Npgsql.Logging;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers
@@ -9,8 +12,18 @@ namespace Npgsql.TypeHandlers
     /// <summary>
     /// Type Handler for the postgis geometry type.
     /// </summary>
-    [TypeMapping("geometry", NpgsqlDbType.Geometry, typeof(PostgisGeometry))]
-    class PostgisGeometryHandler : ChunkingTypeHandler<PostgisGeometry>
+    [TypeMapping("geometry", NpgsqlDbType.Geometry, new[]
+    {
+        typeof(PostgisPoint),
+        typeof(PostgisMultiPoint),
+        typeof(PostgisLineString),
+        typeof(PostgisMultiLineString),
+        typeof(PostgisPolygon),
+        typeof(PostgisMultiPolygon),
+        typeof(PostgisGeometryCollection),
+    })]
+    class PostgisGeometryHandler : ChunkingTypeHandler<PostgisGeometry>,
+        IChunkingTypeHandler<byte[]>
     {
         class Counter
         {
@@ -21,10 +34,7 @@ namespace Npgsql.TypeHandlers
                 _value++;
             }
 
-            public static implicit operator int(Counter c)
-            {
-                return c._value;
-            }
+            public static implicit operator int(Counter c) => c._value;
         }
 
         uint? _srid;
@@ -43,18 +53,39 @@ namespace Npgsql.TypeHandlers
         readonly Stack<Counter> _icol = new Stack<Counter>();
         PostgisGeometry _toWrite;
 
-        internal PostgisGeometryHandler(IBackendType backendType) : base(backendType) { }
+        [CanBeNull]
+        readonly ByteaHandler _byteaHandler;
+        bool? _inByteaMode;
+        byte[] _bytes;
+        int _len;
+
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+
+        internal PostgisGeometryHandler(IBackendType backendType, TypeHandlerRegistry registry)
+            : base(backendType)
+        {
+            var byteaHandler = registry[NpgsqlDbType.Bytea];
+            if (_byteaHandler == registry.UnrecognizedTypeHandler)
+            {
+                Log.Warn("oid type not present when setting up oidvector type. oidvector will not work.");
+                return;
+            }
+            _byteaHandler = (ByteaHandler)byteaHandler;
+        }
+
+        #region Read
 
         public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
+            Reset();
             _readBuf = buf;
+            _len = len;
             _srid = default(uint?);
             _geoms.Clear();
             _icol.Clear();
-            Reset();
         }
 
-        private void Reset()
+        void Reset()
         {
             _points = null;
             _rings = null;
@@ -62,10 +93,16 @@ namespace Npgsql.TypeHandlers
             _ipts = _irng = _ipol = -1;
             _newGeom = true;
             _id = 0;
+            _inByteaMode = null;
+            _bytes = null;
         }
 
         public override bool Read([CanBeNull] out PostgisGeometry result)
         {
+            Contract.Assert(_inByteaMode != true);
+            if (!_inByteaMode.HasValue)
+                _inByteaMode = false;
+
             result = default(PostgisGeometry);
             if (_id == 0)
             {
@@ -88,7 +125,7 @@ namespace Npgsql.TypeHandlers
                 }
             }
 
-            switch ((WkbIdentifier)(_id & (uint)7))
+            switch ((WkbIdentifier)(_id & 7))
             {
                 case WkbIdentifier.Point:
                     if (_readBuf.ReadBytesLeft < 16)
@@ -277,22 +314,63 @@ namespace Npgsql.TypeHandlers
             }
         }
 
+        public bool Read([CanBeNull] out byte[] result)
+        {
+            Contract.Assert(_inByteaMode != false);
+            if (!_inByteaMode.HasValue)
+            {
+                if (_byteaHandler == null)
+                    throw new NpgsqlException("Bytea handler was not found during initialization of PostGIS handler");
+                _inByteaMode = true;
+
+                _byteaHandler.PrepareRead(_readBuf, _len);
+            }
+
+            Contract.Assert(_byteaHandler != null);
+            return _byteaHandler.Read(out result);
+        }
+
+        #endregion Read
+
+        #region Write
+
         public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter = null)
         {
-            var g = value as PostgisGeometry;
-            if (g == null)
-                throw new InvalidCastException("IGeometry type expected.");
-            return g.GetLen();
+            var asGeometry = value as PostgisGeometry;
+            if (asGeometry != null)
+                return asGeometry.GetLen();
+
+            var asBytes = value as byte[];
+            if (asBytes != null)
+                return asBytes.Length;
+
+            throw new InvalidCastException("IGeometry type expected.");
         }
 
         public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter = null)
         {
-            _toWrite = value as PostgisGeometry;
-            if (_toWrite == null)
-                throw new InvalidCastException("IGeometry type expected.");
+            Reset();
             _writeBuf = buf;
             _icol.Clear();
-            Reset();
+
+            _toWrite = value as PostgisGeometry;
+            if (_toWrite != null)
+            {
+                _inByteaMode = false;
+                return;
+            }
+
+            _bytes = value as byte[];
+            if (_bytes != null)
+            {
+                if (_byteaHandler == null)
+                    throw new NpgsqlException("Bytea handler was not found during initialization of PostGIS handler");
+                _inByteaMode = true;
+                _byteaHandler.PrepareWrite(_bytes, _writeBuf, lengthCache, parameter);
+                return;
+            }
+
+            throw new InvalidCastException("IGeometry type expected.");
         }
 
         bool Write(PostgisGeometry geom)
@@ -477,7 +555,7 @@ namespace Npgsql.TypeHandlers
                         _icol.Push(new Counter());
                         _newGeom = true;
                     }
-                    for (Counter i = _icol.Peek(); i < coll.GeometryCount; i.Increment())
+                    for (var i = _icol.Peek(); i < coll.GeometryCount; i.Increment())
                     {
                         if (!Write(coll[i]))
                             return false;
@@ -491,9 +569,18 @@ namespace Npgsql.TypeHandlers
             }
         }
 
+        bool WriteBytes(ref DirectBuffer buf)
+        {
+            Contract.Assert(_byteaHandler != null);
+            return _byteaHandler.Write(ref buf);
+        }
+
         public override bool Write(ref DirectBuffer buf)
         {
-            return Write(_toWrite);
+            Contract.Assert(_inByteaMode.HasValue);
+            return _inByteaMode.Value? WriteBytes(ref buf) : Write(_toWrite);
         }
+
+        #endregion Write
     }
 }

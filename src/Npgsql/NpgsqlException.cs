@@ -4,6 +4,10 @@ using System.Data.Common;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Npgsql.BackendMessages;
+#if NET45 || NET451
+using System.Runtime.Serialization;
+#endif
 
 namespace Npgsql
 {
@@ -28,5 +32,11 @@ namespace Npgsql
 
         internal NpgsqlException(string message)
             : base(message) { }
+
+        #region Serialization
+#if NET45 || NET451
+        internal NpgsqlException(SerializationInfo info, StreamingContext context) : base(info, context) {}
+#endif
+        #endregion
     }
 }

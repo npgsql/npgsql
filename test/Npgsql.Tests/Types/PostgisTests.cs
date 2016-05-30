@@ -139,7 +139,6 @@ namespace Npgsql.Tests.Types
                 {
                     Assert.Fail("Exception caught on " + a.Geom);
                 }
-
             }
         }
 
@@ -225,13 +224,48 @@ namespace Npgsql.Tests.Types
             using (var conn = OpenConnection())
             using (var command = conn.CreateCommand())
             {
-                command.Parameters.AddWithValue("p1", NpgsqlDbType.Geometry, geom2);
+                command.Parameters.AddWithValue("p1", geom2);
                 command.CommandText = "Select :p1";
                 command.ExecuteScalar();
             }
         }
 
-        [SetUp]
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1121")]
+        public void AsBinaryWkb()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo GEOMETRY)");
+                var point = new PostgisPoint(8, 8);
+
+                using (var cmd = new NpgsqlCommand("INSERT INTO data (foo) VALUES (@p)", conn))
+                {
+                    cmd.Parameters.AddWithValue("p", NpgsqlDbType.Geometry, point);
+                    cmd.ExecuteNonQuery();
+                }
+
+                byte[] bytes;
+                using (var cmd = new NpgsqlCommand("SELECT foo FROM data", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    bytes = reader.GetFieldValue<byte[]>(0);
+                }
+
+                conn.ExecuteNonQuery("TRUNCATE data");
+
+                using (var cmd = new NpgsqlCommand("INSERT INTO data (foo) VALUES (@p)", conn))
+                {
+                    cmd.Parameters.AddWithValue("p", NpgsqlDbType.Geometry, bytes);
+                    cmd.ExecuteNonQuery();
+                }
+
+                Assert.That(conn.ExecuteScalar("SELECT foo FROM data"), Is.EqualTo(point));
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+            }
+        }
+
+        [OneTimeSetUp]
         public void SetUp()
         {
             using (var conn = OpenConnection())
@@ -244,7 +278,7 @@ namespace Npgsql.Tests.Types
                 }
                 catch (PostgresException)
                 {
-                    TestUtil.IgnoreExceptOnBuildServer(("Skipping tests : postgis extension not found."));
+                    TestUtil.IgnoreExceptOnBuildServer("Skipping tests : postgis extension not found.");
                 }
             }
         }

@@ -18,9 +18,6 @@
     </NuGetPackageImportStamp>
     <TargetFrameworkProfile />
     <TargetFrameworkVersion>v4.5.1</TargetFrameworkVersion>
-    <!-- The following stops VS from complaining about runtimes in project.json, see
-         https://github.com/Microsoft/msbuild/issues/394 -->
-    <CopyNuGetImplementations>false</CopyNuGetImplementations>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -221,6 +218,7 @@
     <Compile Include="TlsClientStream\TlsClientStream.cs" />
     <Compile Include="TlsClientStream\Utils.cs" />
     <Compile Include="TypeHandlers\BitStringHandler.cs" />
+    <Compile Include="TypeHandlers\VoidHandler.cs" />
     <Compile Include="TypeHandlers\CompositeHandler.cs" />
     <Compile Include="TypeHandlers\EnumHandler.cs" />
     <Compile Include="TypeHandlers\FullTextSearchHandlers\TsQueryHandler.cs" />

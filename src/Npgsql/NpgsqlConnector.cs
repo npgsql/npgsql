@@ -1538,6 +1538,7 @@ namespace Npgsql
             }
 
             Contract.Assert(IsReady);
+            Log.Trace("Start user action", Id);
             State = newState;
             return _userAction;
         }
@@ -1564,6 +1565,7 @@ namespace Npgsql
                 _keepAliveTimer.Change(keepAlive, keepAlive);
             }
 
+            Log.Trace("End user action", Id);
             State = ConnectorState.Ready;
             _keepAliveLock?.Release();
             _userLock.Release();

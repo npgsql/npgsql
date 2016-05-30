@@ -22,7 +22,6 @@
 #endregion
 
 using System;
-using System.CodeDom;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;

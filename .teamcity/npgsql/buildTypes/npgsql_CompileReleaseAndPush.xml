@@ -4,12 +4,9 @@
   <description>Compiles the project in release and pushes to myget</description>
   <settings>
     <options>
-      <option name="artifactRules" value="src/Npgsql/bin/ReleaseOptimizedCryptography/*.nupkg" />
+      <option name="artifactRules" value="src/Npgsql/bin/ReleaseOptimizedCryptography/*.nupkg&#xA;src/GACInstaller/bin/ReleaseOptimizedCryptography/en-us/*.msi" />
       <option name="checkoutMode" value="ON_AGENT" />
     </options>
-    <disabled-settings>
-      <setting-ref ref="RUNNER_29" />
-    </disabled-settings>
     <parameters />
     <build-runners>
       <runner id="RUNNER_32" name="Set build number" type="simpleRunner">
@@ -47,7 +44,7 @@ build compile]]></param>
           <param name="dotNetCoverage.PartCover.platformVersion" value="v2.0" />
           <param name="msbuild_version" value="14.0" />
           <param name="run-platform" value="x86" />
-          <param name="runnerArgs" value="/p:Configuration=Release" />
+          <param name="runnerArgs" value="/p:Configuration=ReleaseOptimizedCryptography" />
           <param name="teamcity.build.workingDir" value="src\GACInstaller" />
           <param name="teamcity.step.mode" value="default" />
           <param name="toolsVersion" value="14.0" />
@@ -80,14 +77,6 @@ build compile]]></param>
       </build-trigger>
     </build-triggers>
     <dependencies>
-      <depend-on sourceBuildTypeId="npgsql_TestOnPostgreSQL95">
-        <options>
-          <option name="run-build-if-dependency-failed" value="CANCEL" />
-          <option name="run-build-if-dependency-failed-to-start" value="CANCEL" />
-          <option name="take-started-build-with-same-revisions" value="true" />
-          <option name="take-successful-builds-only" value="true" />
-        </options>
-      </depend-on>
       <depend-on sourceBuildTypeId="npgsql_TestOnPostgreSQL91">
         <options>
           <option name="run-build-if-dependency-failed" value="CANCEL" />
@@ -120,7 +109,7 @@ build compile]]></param>
           <option name="take-successful-builds-only" value="true" />
         </options>
       </depend-on>
-      <depend-on sourceBuildTypeId="npgsql_TestCoreCLROnPostgreSQL95">
+      <depend-on sourceBuildTypeId="npgsql_TestOnPostgreSQL95">
         <options>
           <option name="run-build-if-dependency-failed" value="CANCEL" />
           <option name="run-build-if-dependency-failed-to-start" value="CANCEL" />
@@ -129,6 +118,14 @@ build compile]]></param>
         </options>
       </depend-on>
       <depend-on sourceBuildTypeId="npgsql_TestOnPostgreSQL96">
+        <options>
+          <option name="run-build-if-dependency-failed" value="CANCEL" />
+          <option name="run-build-if-dependency-failed-to-start" value="CANCEL" />
+          <option name="take-started-build-with-same-revisions" value="true" />
+          <option name="take-successful-builds-only" value="true" />
+        </options>
+      </depend-on>
+      <depend-on sourceBuildTypeId="npgsql_TestCoreCLROnPostgreSQL95">
         <options>
           <option name="run-build-if-dependency-failed" value="CANCEL" />
           <option name="run-build-if-dependency-failed-to-start" value="CANCEL" />

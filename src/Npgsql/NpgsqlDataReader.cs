@@ -39,6 +39,7 @@ using AsyncRewriter;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
+using Npgsql.Logging;
 using Npgsql.Schema;
 using Npgsql.TypeHandlers;
 using Npgsql.TypeHandlers.NumericHandlers;
@@ -118,6 +119,8 @@ namespace Npgsql
         bool IsCaching => !IsSequential;
         bool IsSchemaOnly => (_behavior & CommandBehavior.SchemaOnly) != 0;
         bool IsPrepared { get; }
+
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         internal NpgsqlDataReader(NpgsqlCommand command, CommandBehavior behavior, List<NpgsqlStatement> statements)
         {
@@ -754,6 +757,7 @@ namespace Npgsql
 
         internal void Cleanup()
         {
+            Log.Trace("Cleaning up reader", _connector.Id);
             _state = ReaderState.Closed;
             Command.State = CommandState.Idle;
             _connector.CurrentReader = null;

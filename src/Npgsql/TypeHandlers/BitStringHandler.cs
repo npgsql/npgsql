@@ -53,7 +53,6 @@ namespace Npgsql.TypeHandlers
         BitArray _bitArray;
         object _value;
         int _pos;
-        bool _isSingleBit;
 
         internal BitStringHandler(IBackendType backendType) : base(backendType) {}
 
@@ -73,23 +72,24 @@ namespace Npgsql.TypeHandlers
             return new BitStringArrayHandler(backendType, this);
         }
 
-        internal override object ReadValueAsObjectFully(DataRowMessage row, FieldDescription fieldDescription)
+        internal override object ReadValueAsObjectFully(DataRowMessage row, FieldDescription fieldDescription = null)
         {
-            return fieldDescription.TypeModifier == 1
+            return fieldDescription?.TypeModifier == 1
                 ? (object)ReadFully<bool>(row, row.ColumnLen, fieldDescription)
                 : ReadFully<BitArray>(row, row.ColumnLen, fieldDescription);
         }
 
-        internal override object ReadPsvAsObjectFully(DataRowMessage row, FieldDescription fieldDescription)
+        internal override object ReadValueAsObjectFully(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
-            return ReadValueAsObjectFully(row, fieldDescription);
+            return fieldDescription?.TypeModifier == 1
+                ? (object)ReadFully<bool>(buf, len, fieldDescription)
+                : ReadFully<BitArray>(buf, len, fieldDescription);
         }
 
         #region Read
 
         public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
-            _isSingleBit = fieldDescription.TypeModifier == 1;
             _readBuf = buf;
             _pos = -1;
             _len = len - 4;   // Subtract leading bit length field
@@ -98,12 +98,15 @@ namespace Npgsql.TypeHandlers
         bool IChunkingTypeHandler<bool>.Read(out bool result)
         {
             result = false;
-            if (!_isSingleBit) {
-                throw new InvalidCastException("Can't convert a BIT(N) type to bool, only BIT(1)");
-            }
             if (_readBuf.ReadBytesLeft < 4) { return false; }
             var bitLen = _readBuf.ReadInt32();
-            Contract.Assume(bitLen == 1);
+            if (bitLen != 1)
+            {
+                // This isn't a single bit - error.
+                // Consume the rest of the value first so the connection is left in a good state.
+                _readBuf.Skip(_len);
+                throw new SafeReadException(new InvalidCastException("Can't convert a BIT(N) type to bool, only BIT(1)"));
+            }
             var b = _readBuf.ReadByte();
             result = (b & 128) != 0;
             return true;
@@ -306,12 +309,13 @@ namespace Npgsql.TypeHandlers
     /// </summary>
     internal class BitStringArrayHandler : ArrayHandler<BitArray>
     {
+        [CanBeNull]
         FieldDescription _fieldDescription;
         object _value;
 
-        internal override Type GetElementFieldType(FieldDescription fieldDescription)
+        internal override Type GetElementFieldType(FieldDescription fieldDescription = null)
         {
-            return fieldDescription.TypeModifier == 1 ? typeof(bool) : typeof(BitArray);
+            return fieldDescription?.TypeModifier == 1 ? typeof(bool) : typeof(BitArray);
         }
 
         internal override Type GetElementPsvType(FieldDescription fieldDescription)
@@ -330,7 +334,7 @@ namespace Npgsql.TypeHandlers
 
         public override bool Read(out Array result)
         {
-            return _fieldDescription.TypeModifier == 1
+            return _fieldDescription?.TypeModifier == 1
                 ? Read<bool>(out result)
                 : Read<BitArray>(out result);
         }
