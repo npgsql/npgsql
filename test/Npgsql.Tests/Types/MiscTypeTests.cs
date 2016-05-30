@@ -497,6 +497,13 @@ namespace Npgsql.Tests.Types
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1138")]
+        public void Void()
+        {
+            using (var conn = OpenConnection())
+                Assert.That(conn.ExecuteScalar("SELECT pg_sleep(0)"), Is.SameAs(DBNull.Value));
+        }
+
         // Older tests
 
         [Test]

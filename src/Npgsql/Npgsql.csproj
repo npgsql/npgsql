@@ -132,6 +132,7 @@
     <Compile Include="TlsClientStream\TlsClientStream.cs" />
     <Compile Include="TlsClientStream\Utils.cs" />
     <Compile Include="TypeHandlers\BitStringHandler.cs" />
+    <Compile Include="TypeHandlers\VoidHandler.cs" />
     <Compile Include="TypeHandlers\CompositeHandler.cs" />
     <Compile Include="TypeHandlers\EnumHandler.cs" />
     <Compile Include="TypeHandlers\FullTextSearchHandlers\TsQueryHandler.cs" />
