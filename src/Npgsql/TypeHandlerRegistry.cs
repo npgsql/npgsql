@@ -197,7 +197,7 @@ WHERE
     a.typtype IN ('b', 'r', 'e', 'd') AND
     (b.typtype IS NULL OR b.typtype IN ('b', 'r', 'e', 'd'))  /* Either non-array or array of supported element type */
   ) OR
-  a.typname = 'record'
+  a.typname IN ('record', 'void')
 ORDER BY ord";
         }
 
@@ -277,8 +277,7 @@ ORDER BY ord";
                 }
                 new BackendDomainType(ns, name, oid, baseBackendType).AddTo(types);
                 return;
-            case 'p':   // psuedo-type (record only)
-                Contract.Assume(name == "record");
+            case 'p':   // pseudo-type (record, void)
                 // Hack this as a base type
                 goto case 'b';
             default:
