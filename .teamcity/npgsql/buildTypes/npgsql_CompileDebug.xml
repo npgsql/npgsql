@@ -9,18 +9,11 @@
     </options>
     <parameters />
     <build-runners>
-      <runner id="RUNNER_9" name="GitVersion" type="simpleRunner">
+      <runner id="RUNNER_9" name="Set build number" type="simpleRunner">
         <parameters>
-          <param name="command.executable" value="GitVersion" />
-          <param name="command.parameters" value="/output buildserver /UpdateAssemblyInfo src\CommonAssemblyInfo.cs" />
+          <param name="command.executable" value="teamcity_set_version.cmd" />
+          <param name="command.parameters" value="%build.counter%" />
           <param name="teamcity.step.mode" value="default" />
-        </parameters>
-      </runner>
-      <runner id="RUNNER_33" name="Set build number" type="simpleRunner">
-        <parameters>
-          <param name="script.content" value="echo ##teamcity[buildNumber '%GitVersion.NuGetVersion%']" />
-          <param name="teamcity.step.mode" value="default" />
-          <param name="use.custom.script" value="true" />
         </parameters>
       </runner>
       <runner id="RUNNER_7" name="NuGet Restore" type="jb.nuget.installer">

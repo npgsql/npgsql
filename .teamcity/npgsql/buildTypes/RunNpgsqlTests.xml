@@ -9,7 +9,7 @@
     <build-runners>
       <runner id="RUNNER_31" name="Set build number" type="simpleRunner">
         <parameters>
-          <param name="script.content" value="echo ##teamcity[buildNumber '%dep.npgsql_CompileDebug.GitVersion.NuGetVersion%']" />
+          <param name="script.content" value="echo ##teamcity[buildNumber '%dep.npgsql_CompileDebug.build.number%']" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
         </parameters>
