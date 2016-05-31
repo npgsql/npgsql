@@ -4,12 +4,9 @@
   <description>Compiles the project in release and pushes to myget</description>
   <settings>
     <options>
-      <option name="artifactRules" value="src/Npgsql/bin/Release/*.nupkg" />
+      <option name="artifactRules" value="src/Npgsql/bin/Release/*.nupkg&#xA;src/GACInstaller/bin/Release/en-us/*.msi" />
       <option name="checkoutMode" value="ON_AGENT" />
     </options>
-    <disabled-settings>
-      <setting-ref ref="RUNNER_29" />
-    </disabled-settings>
     <parameters />
     <build-runners>
       <runner id="RUNNER_32" name="Set build number" type="simpleRunner">
