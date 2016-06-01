@@ -214,6 +214,8 @@ namespace Npgsql.Tests
                     writer.WriteNull();
                 }
 
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+
                 using (var reader = conn.BeginBinaryExport("COPY data (field_text, field_int2) TO STDIN BINARY"))
                 {
                     StateAssertions(conn);
@@ -234,6 +236,8 @@ namespace Npgsql.Tests
 
                     Assert.That(reader.StartRow(), Is.EqualTo(-1));
                 }
+
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
             }
         }
 
@@ -326,7 +330,6 @@ namespace Npgsql.Tests
                     writer.Write(data);
                     writer.StartRow();
                     writer.Write(data);
-                    writer.Dispose();
                 }
             }
         }
