@@ -525,7 +525,10 @@ namespace Npgsql
                     _pendingMessage = null;
                     return msg;
                 }
-                (_pendingMessage as DataRowMessage)?.Consume();
+                var asDataRow = _pendingMessage as DataRowMessage;
+                // ReSharper disable once UseNullPropagation
+                if (asDataRow != null)
+                    asDataRow.Consume();
                 _pendingMessage = null;
             }
             return _connector.SkipUntil(stopAt1, stopAt2);

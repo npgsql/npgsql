@@ -55,7 +55,7 @@
     }
   },
   "tools": {
-    "dotnet-rewrite-async": "0.8.2"
+    "dotnet-rewrite-async": "0.8.5"
   },
   "frameworks": {
     "net45": {
