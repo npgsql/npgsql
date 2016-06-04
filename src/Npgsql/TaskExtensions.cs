@@ -19,6 +19,8 @@ namespace Npgsql
         /// <returns>An awaitable task that represents the original task plus the timeout</returns>
         internal static async Task<T> WithTimeout<T>(this Task<T> task, NpgsqlTimeout timeout)
         {
+            if (!timeout.IsSet)
+                return await task;
             var timeLeft = timeout.TimeLeft;
             if (timeLeft < TimeSpan.Zero)
                 throw new TimeoutException();
@@ -37,6 +39,11 @@ namespace Npgsql
         /// <returns>An awaitable task that represents the original task plus the timeout</returns>
         internal static async Task WithTimeout(this Task task, NpgsqlTimeout timeout)
         {
+            if (!timeout.IsSet)
+            {
+                await task;
+                return;
+            }
             var timeLeft = timeout.TimeLeft;
             if (timeLeft < TimeSpan.Zero)
                 throw new TimeoutException();
