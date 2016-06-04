@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -18,7 +19,10 @@ namespace Npgsql
         /// <returns>An awaitable task that represents the original task plus the timeout</returns>
         internal static async Task<T> WithTimeout<T>(this Task<T> task, NpgsqlTimeout timeout)
         {
-            var timeoutTask = Task.Delay(timeout.TimeLeft);
+            var timeLeft = timeout.TimeLeft;
+            if (timeLeft < TimeSpan.Zero)
+                throw new TimeoutException();
+            var timeoutTask = Task.Delay(timeLeft);
             if (task != await Task.WhenAny(task, timeoutTask))
                 throw new TimeoutException();
             return await task;
@@ -33,7 +37,10 @@ namespace Npgsql
         /// <returns>An awaitable task that represents the original task plus the timeout</returns>
         internal static async Task WithTimeout(this Task task, NpgsqlTimeout timeout)
         {
-            var timeoutTask = Task.Delay(timeout.TimeLeft);
+            var timeLeft = timeout.TimeLeft;
+            if (timeLeft < TimeSpan.Zero)
+                throw new TimeoutException();
+            var timeoutTask = Task.Delay(timeLeft);
             if (task != await Task.WhenAny(task, timeoutTask))
                 throw new TimeoutException();
             await task;
