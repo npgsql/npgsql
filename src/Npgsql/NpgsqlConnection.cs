@@ -1220,7 +1220,7 @@ namespace Npgsql
             Log.Debug("Starting to wait async", Connector.Id);
 
             using (Connector.StartUserAction(ConnectorState.Waiting))
-                await Connector.ReadAsyncMessageAsync(cancellationToken);
+                await Connector.ReadAsyncMessageAsync(cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>

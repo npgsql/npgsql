@@ -616,7 +616,9 @@ namespace Npgsql
         async Task ConnectAsync(NpgsqlTimeout timeout, CancellationToken cancellationToken)
         {
             // Note that there aren't any timeoutable or cancellable DNS methods
-            var ips = await Dns.GetHostAddressesAsync(Host).WithCancellation(cancellationToken);
+            var ips = await Dns.GetHostAddressesAsync(Host)
+                .WithCancellation(cancellationToken)
+                .ConfigureAwait(false);
 
             // Give each IP an equal share of the remaining time
             var perIpTimespan = timeout.IsSet ? new TimeSpan(timeout.TimeLeft.Ticks / ips.Length) : TimeSpan.Zero;
@@ -636,7 +638,9 @@ namespace Npgsql
                 {
                     try
                     {
-                        await connectTask.WithCancellationAndTimeout(perIpTimeout, cancellationToken);
+                        await connectTask
+                            .WithCancellationAndTimeout(perIpTimeout, cancellationToken)
+                            .ConfigureAwait(false);
                     }
                     catch (OperationCanceledException)
                     {

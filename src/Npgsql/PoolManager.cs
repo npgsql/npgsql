@@ -338,7 +338,7 @@ namespace Npgsql
         async Task WaitForTaskAsync(Task task, TimeSpan timeout, CancellationToken cancellationToken)
         {
             var timeoutTask = Task.Delay(timeout, cancellationToken);
-            if (task != await Task.WhenAny(task, timeoutTask))
+            if (task != await Task.WhenAny(task, timeoutTask).ConfigureAwait(false))
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 throw new NpgsqlException($"The connection pool has been exhausted, either raise MaxPoolSize (currently {_max}) or Timeout (currently {ConnectionString.Timeout} seconds)");
