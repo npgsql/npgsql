@@ -4,5 +4,8 @@
   },
   "runtimes": {
     "win": {}
+  },
+  "dependencies": {
+    "ConfigureAwaitChecker.Analyzer": "1.0.0-beta4"
   }
 }
