@@ -1697,7 +1697,7 @@ namespace Npgsql
             {
                 while (true)
                 {
-                    await _baseStream.ReadAsync(EmptyBuffer, 0, 0);
+                    await _baseStream.ReadAsync(EmptyBuffer, 0, 0).ConfigureAwait(false);
 
                     if (_asyncLock == null) {
                         return;
@@ -1705,7 +1705,7 @@ namespace Npgsql
 
                     // If the semaphore is disposed while we're (async) waiting on it, the continuation
                     // never gets called and this method doesn't continue
-                    await _asyncLock.WaitAsync();
+                    await _asyncLock.WaitAsync().ConfigureAwait(false);
 
                     try
                     {

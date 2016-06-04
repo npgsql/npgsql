@@ -194,7 +194,7 @@ namespace Npgsql.TypeHandlers
         {
             CheckDisposed();
             count = Math.Min(count, _row.ColumnLen - _row.PosInColumn);
-            var read = await _row.Buffer.ReadAllBytesAsync(buffer, offset, count, true);
+            var read = await _row.Buffer.ReadAllBytesAsync(buffer, offset, count, true).ConfigureAwait(false);
             _row.PosInColumn += read;
             return read;
         }
