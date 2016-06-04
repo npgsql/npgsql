@@ -349,7 +349,6 @@ namespace Npgsql
         bool NextResultInternal()
         {
             Debug.Assert(!IsSchemaOnly);
-            // Contract.Ensures(Command.CommandType != CommandType.StoredProcedure || Contract.Result<bool>() == false);
 
             // If we're in the middle of a resultset, consume it
             switch (_state)

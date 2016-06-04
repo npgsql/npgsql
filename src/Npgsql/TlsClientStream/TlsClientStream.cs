@@ -1789,7 +1789,6 @@ namespace TlsClientStream
                 throw new ArgumentOutOfRangeException("offset");
             if (len < 0 || len > buffer.Length - offset)
                 throw new ArgumentOutOfRangeException("len");
-            Contract.EndContractBlock();
 #endif
 
             CheckNotClosed();
@@ -1877,7 +1876,6 @@ namespace TlsClientStream
                 throw new ArgumentOutOfRangeException("offset");
             if (len < 0 || len > buffer.Length - offset)
                 throw new ArgumentOutOfRangeException("len");
-            Contract.EndContractBlock();
 #endif
 
             return ReadInternal(buffer, offset, len, false, false);

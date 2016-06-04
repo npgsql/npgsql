@@ -843,7 +843,6 @@ namespace Npgsql
         async Task<bool> NextResultInternalAsync(CancellationToken cancellationToken)
         {
             Debug.Assert(!IsSchemaOnly);
-            // Contract.Ensures(Command.CommandType != CommandType.StoredProcedure || Contract.Result<bool>() == false);
             // If we're in the middle of a resultset, consume it
             switch (_state)
             {
@@ -1979,7 +1978,6 @@ namespace TlsClientStream
                 throw new ArgumentOutOfRangeException("offset");
             if (len < 0 || len > buffer.Length - offset)
                 throw new ArgumentOutOfRangeException("len");
-            Contract.EndContractBlock();
 #endif
             CheckNotClosed();
             if (_connState.CipherSuite == null)
@@ -2062,7 +2060,6 @@ namespace TlsClientStream
                 throw new ArgumentOutOfRangeException("offset");
             if (len < 0 || len > buffer.Length - offset)
                 throw new ArgumentOutOfRangeException("len");
-            Contract.EndContractBlock();
 #endif
             return await ReadInternalAsync(buffer, offset, len, false, false, cancellationToken).ConfigureAwait(false);
         }
