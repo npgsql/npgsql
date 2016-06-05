@@ -239,7 +239,7 @@ namespace Npgsql.TypeHandlers
             if (str != null)
                 return WriteString(str);
 
-            throw PGUtil.ThrowIfReached($"Bad type {_value.GetType()} some made its way into BitStringHandler.Write()");
+            throw new InvalidOperationException($"Bad type {_value.GetType()} some made its way into BitStringHandler.Write()");
         }
 
         bool WriteBitArray(BitArray bitArray)
@@ -396,7 +396,7 @@ namespace Npgsql.TypeHandlers
             if (_value is string[]) {
                 return base.Write<string>(ref directBuf);
             }
-            throw PGUtil.ThrowIfReached($"Can't write type {_value.GetType()} as an bitstring array");
+            throw new InvalidOperationException($"Can't write type {_value.GetType()} as an bitstring array");
         }
 
         public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)

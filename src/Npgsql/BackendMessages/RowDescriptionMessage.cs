@@ -23,12 +23,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Globalization;
-using System.Linq;
-using System.Text;
+using JetBrains.Annotations;
 using Npgsql.TypeHandlers;
-using NpgsqlTypes;
 
 namespace Npgsql.BackendMessages
 {
@@ -40,7 +37,7 @@ namespace Npgsql.BackendMessages
     /// </remarks>
     internal sealed class RowDescriptionMessage : IBackendMessage
     {
-        public List<FieldDescription> Fields { get; private set; }
+        public List<FieldDescription> Fields { get; }
         readonly Dictionary<string, int> _nameIndex;
         readonly Dictionary<string, int> _caseInsensitiveNameIndex;
 
@@ -114,38 +111,34 @@ namespace Npgsql.BackendMessages
 
         static readonly CompareInfo CompareInfo = CultureInfo.InvariantCulture.CompareInfo;
 
-        private sealed class KanaWidthInsensitiveComparer : IEqualityComparer<string>
+        sealed class KanaWidthInsensitiveComparer : IEqualityComparer<string>
         {
             public static readonly KanaWidthInsensitiveComparer Instance = new KanaWidthInsensitiveComparer();
-            private KanaWidthInsensitiveComparer() { }
-            public bool Equals(string x, string y)
-            {
-                return CompareInfo.Compare(x, y, CompareOptions.IgnoreWidth) == 0;
-            }
-            public int GetHashCode(string obj)
+            KanaWidthInsensitiveComparer() { }
+            public bool Equals([NotNull] string x, [NotNull] string y)
+                => CompareInfo.Compare(x, y, CompareOptions.IgnoreWidth) == 0;
+            public int GetHashCode([NotNull] string o)
             {
 #if NET45 || NET451
-                return CompareInfo.GetSortKey(obj, CompareOptions.IgnoreWidth).GetHashCode();
+                return CompareInfo.GetSortKey(o, CompareOptions.IgnoreWidth).GetHashCode();
 #else
-                return CompareInfo.GetHashCode(obj, CompareOptions.IgnoreWidth);
+                return CompareInfo.GetHashCode(o, CompareOptions.IgnoreWidth);
 #endif
             }
         }
 
-        private sealed class KanaWidthCaseInsensitiveComparer : IEqualityComparer<string>
+        sealed class KanaWidthCaseInsensitiveComparer : IEqualityComparer<string>
         {
             public static readonly KanaWidthCaseInsensitiveComparer Instance = new KanaWidthCaseInsensitiveComparer();
-            private KanaWidthCaseInsensitiveComparer() { }
-            public bool Equals(string x, string y)
-            {
-                return CompareInfo.Compare(x, y, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase) == 0;
-            }
-            public int GetHashCode(string obj)
+            KanaWidthCaseInsensitiveComparer() { }
+            public bool Equals([NotNull] string x, [NotNull] string y)
+                => CompareInfo.Compare(x, y, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase) == 0;
+            public int GetHashCode([NotNull] string o)
             {
 #if NET45 || NET451
-                return CompareInfo.GetSortKey(obj, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase).GetHashCode();
+                return CompareInfo.GetSortKey(o, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase).GetHashCode();
 #else
-                return CompareInfo.GetHashCode(obj, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase);
+                return CompareInfo.GetHashCode(o, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase);
 #endif
             }
         }

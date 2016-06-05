@@ -105,7 +105,7 @@ namespace Npgsql.TypeHandlers
                     if (!asChunkingHandler.ReadAsObject(out fieldValue))
                         return false;
                 }
-                else throw PGUtil.ThrowIfReached();
+                else throw new InvalidOperationException("Internal Npgsql bug, please report.");
 
                 _value[_fieldIndex] = fieldValue;
                 _fieldLen = -1;

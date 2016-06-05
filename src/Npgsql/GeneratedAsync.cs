@@ -406,7 +406,7 @@ namespace Npgsql
     /// Represents a connection to a PostgreSQL backend. Unlike NpgsqlConnection objects, which are
     /// exposed to users, connectors are internal to Npgsql and are recycled by the connection pool.
     /// </summary>
-    partial class NpgsqlConnector
+    sealed partial class NpgsqlConnector
     {
         internal async Task OpenAsync(NpgsqlTimeout timeout, CancellationToken cancellationToken)
         {
@@ -472,7 +472,7 @@ namespace Npgsql
                                 certificateValidationCallback = DefaultUserCertificateValidationCallback;
                             if (!UseSslStream)
                             {
-                                var sslStream = new TlsClientStream.TlsClientStream(_stream);
+                                var sslStream = new Tls.TlsClientStream(_stream);
                                 sslStream.PerformInitialHandshake(Host, clientCertificates, certificateValidationCallback, false);
                                 _stream = sslStream;
                             }
@@ -1259,7 +1259,7 @@ namespace Npgsql
                 var bytesWritten = await (_manager.ExecuteFunctionAsync<int>("lowrite", cancellationToken, _fd, new ArraySegment<byte>(buffer, offset + totalWritten, chunkSize)).ConfigureAwait(false));
                 totalWritten += bytesWritten;
                 if (bytesWritten != chunkSize)
-                    throw PGUtil.ThrowIfReached();
+                    throw new InvalidOperationException($"Internal Npgsql bug, please report");
                 _pos += bytesWritten;
             }
         }
@@ -1729,7 +1729,7 @@ namespace Npgsql.BackendMessages
     }
 }
 
-namespace TlsClientStream
+namespace Npgsql.Tls
 {
     partial class TlsClientStream
     {
@@ -1797,7 +1797,7 @@ namespace TlsClientStream
                         await HandleAlertMessageAsync(cancellationToken).ConfigureAwait(false);
                         break;
                     case ContentType.Handshake:
-                        _handshakeMessagesBuffer.AddBytes(_buf, _plaintextStart, _plaintextLen, HandshakeMessagesBuffer.IgnoreHelloRequestsSettings.IgnoreHelloRequests);
+                        _handshakeMessagesBuffer.AddBytes(_buf, _plaintextStart, _plaintextLen, HandshakeMessagesBuffer.IgnoreHelloRequestsSetting.IgnoreHelloRequests);
                         if (_handshakeMessagesBuffer.Messages.Count > 5)
                         {
                             // There can never be more than 5 handshake messages in a handshake
@@ -1859,7 +1859,7 @@ namespace TlsClientStream
                 }
                 else
                 {
-                    _handshakeMessagesBuffer.AddBytes(_buf, _plaintextStart, _plaintextLen, HandshakeMessagesBuffer.IgnoreHelloRequestsSettings.IgnoreHelloRequestsUntilFinished);
+                    _handshakeMessagesBuffer.AddBytes(_buf, _plaintextStart, _plaintextLen, HandshakeMessagesBuffer.IgnoreHelloRequestsSetting.IgnoreHelloRequestsUntilFinished);
                 }
             }
 
@@ -2211,7 +2211,7 @@ namespace TlsClientStream
                     }
                     else if (_contentType == ContentType.Handshake)
                     {
-                        _handshakeMessagesBuffer.AddBytes(_buf, _plaintextStart, _plaintextLen, _pendingConnState != null ? HandshakeMessagesBuffer.IgnoreHelloRequestsSettings.IgnoreHelloRequestsUntilFinished : HandshakeMessagesBuffer.IgnoreHelloRequestsSettings.IncludeHelloRequests);
+                        _handshakeMessagesBuffer.AddBytes(_buf, _plaintextStart, _plaintextLen, _pendingConnState != null ? HandshakeMessagesBuffer.IgnoreHelloRequestsSetting.IgnoreHelloRequestsUntilFinished : HandshakeMessagesBuffer.IgnoreHelloRequestsSetting.IncludeHelloRequests);
                         if (_handshakeMessagesBuffer.Messages.Count > 5)
                         {
                             // There can never be more than 5 handshake messages in a handshake

@@ -86,7 +86,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                     buf.WriteInt32(-(int)(TimeZoneInfo.Local.BaseUtcOffset.Ticks / TimeSpan.TicksPerSecond));
                     break;
                 default:
-                    throw PGUtil.ThrowIfReached();
+                    throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {dt.Kind} of enum {nameof(DateTimeKind)}. Please file a bug.");
                 }
 
                 return;
@@ -100,7 +100,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                 return;
             }
 
-            throw PGUtil.ThrowIfReached();
+            throw new InvalidOperationException("Internal Npgsql bug, please report.");
         }
     }
 }

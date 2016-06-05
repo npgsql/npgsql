@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 #if NETSTANDARD1_3
 using System.Data.Common;
 #endif
@@ -22,7 +19,7 @@ namespace Npgsql.Schema
     /// </remarks>
     public class NpgsqlDbColumn : DbColumn
     {
-        internal NpgsqlDbColumn()
+        public NpgsqlDbColumn()
         {
             // Not supported in PostgreSQL
             IsExpression = false;
@@ -37,115 +34,115 @@ namespace Npgsql.Schema
         public new bool? AllowDBNull
         {
             get { return base.AllowDBNull; }
-            internal set { base.AllowDBNull = value; }
+            protected internal set { base.AllowDBNull = value; }
         }
 
         public new string BaseCatalogName
         {
             get { return base.BaseCatalogName; }
-            internal set { base.BaseCatalogName = value; }
+            protected internal set { base.BaseCatalogName = value; }
         }
 
         public new string BaseColumnName
         {
             get { return base.BaseColumnName; }
-            internal set { base.BaseColumnName = value; }
+            protected internal set { base.BaseColumnName = value; }
         }
 
         public new string BaseSchemaName
         {
             get { return base.BaseSchemaName; }
-            internal set { base.BaseSchemaName = value; }
+            protected internal set { base.BaseSchemaName = value; }
         }
 
         public new string BaseServerName
         {
             get { return base.BaseServerName; }
-            internal set { base.BaseServerName = value; }
+            protected internal set { base.BaseServerName = value; }
         }
 
         public new string BaseTableName
         {
             get { return base.BaseTableName; }
-            internal set { base.BaseTableName = value; }
+            protected internal set { base.BaseTableName = value; }
         }
 
         public new string ColumnName
         {
             get { return base.ColumnName; }
-            internal set { base.ColumnName = value; }
+            protected internal set { base.ColumnName = value; }
         }
 
         public new int? ColumnOrdinal
         {
             get { return base.ColumnOrdinal; }
-            internal set { base.ColumnOrdinal = value; }
+            protected internal set { base.ColumnOrdinal = value; }
         }
 
         public new int? ColumnSize
         {
             get { return base.ColumnSize; }
-            internal set { base.ColumnSize = value; }
+            protected internal set { base.ColumnSize = value; }
         }
 
         public new bool? IsAutoIncrement
         {
             get { return base.IsAutoIncrement; }
-            internal set { base.IsAutoIncrement = value; }
+            protected internal set { base.IsAutoIncrement = value; }
         }
 
         public new bool? IsKey
         {
             get { return base.IsKey; }
-            internal set { base.IsKey = value; }
+            protected internal set { base.IsKey = value; }
         }
 
         public new bool? IsLong
         {
             get { return base.IsLong; }
-            internal set { base.IsLong = value; }
+            protected internal set { base.IsLong = value; }
         }
 
         public new bool? IsReadOnly
         {
             get { return base.IsReadOnly; }
-            internal set { base.IsReadOnly = value; }
+            protected internal set { base.IsReadOnly = value; }
         }
 
         public new bool? IsUnique
         {
             get { return base.IsUnique; }
-            internal set { base.IsUnique = value; }
+            protected internal set { base.IsUnique = value; }
         }
 
         public new int? NumericPrecision
         {
             get { return base.NumericPrecision; }
-            internal set { base.NumericPrecision = value; }
+            protected internal set { base.NumericPrecision = value; }
         }
 
         public new int? NumericScale
         {
             get { return base.NumericScale; }
-            internal set { base.NumericScale = value; }
+            protected internal set { base.NumericScale = value; }
         }
 
         public new string UdtAssemblyQualifiedName
         {
             get { return base.UdtAssemblyQualifiedName; }
-            internal set { base.UdtAssemblyQualifiedName = value; }
+            protected internal set { base.UdtAssemblyQualifiedName = value; }
         }
 
         public new Type DataType
         {
             get { return base.DataType; }
-            internal set { base.DataType = value; }
+            protected internal set { base.DataType = value; }
         }
 
         public new string DataTypeName
         {
             get { return base.DataTypeName; }
-            internal set { base.DataTypeName = value; }
+            protected internal set { base.DataTypeName = value; }
         }
 
         #endregion Standard fields
@@ -157,11 +154,11 @@ namespace Npgsql.Schema
         public short? ColumnAttributeNumber { get; internal set; }
         public string DefaultValue { get; internal set; }
 
-        public override object this[string property]
+        public override object this[string propertyName]
         {
             get
             {
-                switch (property)
+                switch (propertyName)
                 {
                 case nameof(TypeOID):
                     return TypeOID;
@@ -173,7 +170,7 @@ namespace Npgsql.Schema
                     return DefaultValue;
                 }
 
-                return base[property];
+                return base[propertyName];
             }
         }
 

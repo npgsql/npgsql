@@ -23,20 +23,22 @@
 #endregion
 
 using System;
-using System.Reflection;
 using System.Transactions;
+using JetBrains.Annotations;
 using Npgsql.Logging;
 
 namespace Npgsql
 {
+#pragma warning disable CA1001 // Types that own disposable fields should be disposable
     class NpgsqlPromotableSinglePhaseNotification : IPromotableSinglePhaseNotification
+#pragma warning restore CA1001 // Types that own disposable fields should be disposable
     {
-        private readonly NpgsqlConnection _connection;
-        private IsolationLevel _isolationLevel;
-        private NpgsqlTransaction _npgsqlTx;
-        private NpgsqlTransactionCallbacks _callbacks;
-        private INpgsqlResourceManager _rm;
-        private bool _inTransaction;
+        readonly NpgsqlConnection _connection;
+        IsolationLevel _isolationLevel;
+        NpgsqlTransaction _npgsqlTx;
+        NpgsqlTransactionCallbacks _callbacks;
+        INpgsqlResourceManager _rm;
+        bool _inTransaction;
         internal bool InLocalTransaction => _npgsqlTx != null;
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
@@ -46,28 +48,26 @@ namespace Npgsql
             _connection = connection;
         }
 
-        public void Enlist(Transaction tx)
+        public void Enlist([CanBeNull] Transaction tx)
         {
             Log.Debug("Enlist");
-            if (tx != null)
-            {
-                _isolationLevel = tx.IsolationLevel;
-                if (!tx.EnlistPromotableSinglePhase(this))
-                {
-                    // must already have a durable resource
-                    // start transaction
-                    _npgsqlTx = _connection.BeginTransaction(ConvertIsolationLevel(_isolationLevel));
-                    _inTransaction = true;
-                    _rm = CreateResourceManager();
-                    _callbacks = new NpgsqlTransactionCallbacks(_connection);
-                    _rm.Enlist(_callbacks, TransactionInterop.GetTransmitterPropagationToken(tx));
-                    // enlisted in distributed transaction
-                    // disconnect and cleanup local transaction
-                    _connection.Connector.ClearTransaction();
-                    _npgsqlTx.Dispose();
-                    _npgsqlTx = null;
-                }
-            }
+            if (tx == null)
+                return;
+            _isolationLevel = tx.IsolationLevel;
+            if (tx.EnlistPromotableSinglePhase(this))
+                return;
+            // must already have a durable resource
+            // start transaction
+            _npgsqlTx = _connection.BeginTransaction(ConvertIsolationLevel(_isolationLevel));
+            _inTransaction = true;
+            _rm = CreateResourceManager();
+            _callbacks = new NpgsqlTransactionCallbacks(_connection);
+            _rm.Enlist(_callbacks, TransactionInterop.GetTransmitterPropagationToken(tx));
+            // enlisted in distributed transaction
+            // disconnect and cleanup local transaction
+            _connection.Connector.ClearTransaction();
+            _npgsqlTx.Dispose();
+            _npgsqlTx = null;
         }
 
         /// <summary>
@@ -96,7 +96,7 @@ namespace Npgsql
             }
         }
 
-#region IPromotableSinglePhaseNotification Members
+        #region IPromotableSinglePhaseNotification Members
 
         public void Initialize()
         {
@@ -164,9 +164,9 @@ namespace Npgsql
             _inTransaction = false;
         }
 
-#endregion
+        #endregion
 
-#region ITransactionPromoter Members
+        #region ITransactionPromoter Members
 
         public byte[] Promote()
         {
@@ -191,12 +191,12 @@ namespace Npgsql
             return token;
         }
 
-#endregion
+        #endregion
 
-        private static INpgsqlResourceManager _resourceManager;
-        private static System.Runtime.Remoting.Lifetime.ClientSponsor _sponser;
+        static INpgsqlResourceManager _resourceManager;
+        static System.Runtime.Remoting.Lifetime.ClientSponsor _sponser;
 
-        private static INpgsqlResourceManager CreateResourceManager()
+        static INpgsqlResourceManager CreateResourceManager()
         {
             // TODO: create network proxy for resource manager
             if (_resourceManager == null)
@@ -213,7 +213,7 @@ namespace Npgsql
             //return new NpgsqlResourceManager();
         }
 
-        private static System.Data.IsolationLevel ConvertIsolationLevel(IsolationLevel _isolationLevel)
+        static System.Data.IsolationLevel ConvertIsolationLevel(IsolationLevel _isolationLevel)
         {
             switch (_isolationLevel)
             {

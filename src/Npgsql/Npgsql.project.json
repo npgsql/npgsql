@@ -6,6 +6,6 @@
     "win": {}
   },
   "dependencies": {
-    "ConfigureAwaitChecker.Analyzer": "1.0.0-beta4"
+    "Microsoft.ApiDesignGuidelines.Analyzers": "1.2.0-beta2"
   }
 }

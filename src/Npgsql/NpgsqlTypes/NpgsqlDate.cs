@@ -26,7 +26,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using JetBrains.Annotations;
-using Npgsql;
 
 #pragma warning disable 1591
 
@@ -241,7 +240,7 @@ namespace NpgsqlTypes
                 case InternalType.NegativeInfinity:
                     return false;
                 default:
-                    throw PGUtil.ThrowIfReached();
+                    throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {_type} of enum {nameof(NpgsqlDate)}.{nameof(InternalType)}. Please file a bug.");
                 }
             }
         }
@@ -290,7 +289,7 @@ namespace NpgsqlTypes
             case InternalType.Finite:
                 return new NpgsqlDate(_daysSinceEra + days);
             default:
-                throw PGUtil.ThrowIfReached();
+                throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {_type} of enum {nameof(NpgsqlDate)}.{nameof(InternalType)}. Please file a bug.");
             }
         }
 
@@ -305,7 +304,7 @@ namespace NpgsqlTypes
             case InternalType.Finite:
                 break;
             default:
-                throw PGUtil.ThrowIfReached();
+                throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {_type} of enum {nameof(NpgsqlDate)}.{nameof(InternalType)}. Please file a bug.");
             }
 
             int newYear = Year + years;
@@ -331,7 +330,7 @@ namespace NpgsqlTypes
             case InternalType.Finite:
                 break;
             default:
-                throw PGUtil.ThrowIfReached();
+                throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {_type} of enum {nameof(NpgsqlDate)}.{nameof(InternalType)}. Please file a bug.");
             }
 
             int newYear = Year;
@@ -364,7 +363,7 @@ namespace NpgsqlTypes
             case InternalType.Finite:
                 break;
             default:
-                throw PGUtil.ThrowIfReached();
+                throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {_type} of enum {nameof(NpgsqlDate)}.{nameof(InternalType)}. Please file a bug.");
             }
 
             return AddMonths(interval.Months).AddDays(interval.Days);
@@ -381,7 +380,7 @@ namespace NpgsqlTypes
             case InternalType.Finite:
                 break;
             default:
-                throw PGUtil.ThrowIfReached();
+                throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {_type} of enum {nameof(NpgsqlDate)}.{nameof(InternalType)}. Please file a bug.");
             }
 
             return AddMonths(interval.Months).AddDays(interval.Days + carriedOverflow);
@@ -423,7 +422,7 @@ namespace NpgsqlTypes
             case InternalType.Finite:
                 return other._type == InternalType.Finite && _daysSinceEra == other._daysSinceEra;
             default:
-                throw PGUtil.ThrowIfReached();
+                return false;
             }
         }
 
@@ -451,15 +450,15 @@ namespace NpgsqlTypes
             }
         }
 
-        public int CompareTo([CanBeNull] object obj)
+        public int CompareTo([CanBeNull] object o)
         {
-            if (obj == null)
+            if (o == null)
             {
                 return 1;
             }
-            if (obj is NpgsqlDate)
+            if (o is NpgsqlDate)
             {
-                return CompareTo((NpgsqlDate) obj);
+                return CompareTo((NpgsqlDate) o);
             }
             throw new ArgumentException();
         }
@@ -503,7 +502,7 @@ namespace NpgsqlTypes
             return x.CompareTo(y) >= 0;
         }
 
-        public static explicit operator DateTime(NpgsqlDate date)
+        public static DateTime ToDateTime(NpgsqlDate date)
         {
             switch (date._type)
             {
@@ -511,32 +510,30 @@ namespace NpgsqlTypes
             case InternalType.NegativeInfinity:
                 throw new InvalidCastException("Infinity values can't be cast to DateTime");
             case InternalType.Finite:
-                try { return new DateTime(date._daysSinceEra*NpgsqlTimeSpan.TicksPerDay); }
+                try { return new DateTime(date._daysSinceEra * NpgsqlTimeSpan.TicksPerDay); }
                 catch { throw new InvalidCastException(); }
             default:
-                throw PGUtil.ThrowIfReached();
+                throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {date._type} of enum {nameof(NpgsqlDate)}.{nameof(InternalType)}. Please file a bug.");
             }
         }
 
-        public static explicit operator NpgsqlDate(DateTime date)
-        {
-            return new NpgsqlDate((int) (date.Ticks/NpgsqlTimeSpan.TicksPerDay));
-        }
+        public static explicit operator DateTime(NpgsqlDate date) => ToDateTime(date);
+
+        public static NpgsqlDate ToNpgsqlDate(DateTime date)
+            => new NpgsqlDate((int)(date.Ticks / NpgsqlTimeSpan.TicksPerDay));
+
+        public static explicit operator NpgsqlDate(DateTime date) => ToNpgsqlDate(date);
 
         public static NpgsqlDate operator +(NpgsqlDate date, NpgsqlTimeSpan interval)
-        {
-            return date.Add(interval);
-        }
+            => date.Add(interval);
 
         public static NpgsqlDate operator +(NpgsqlTimeSpan interval, NpgsqlDate date)
-        {
-            return date.Add(interval);
-        }
+            => date.Add(interval);
 
         public static NpgsqlDate operator -(NpgsqlDate date, NpgsqlTimeSpan interval)
-        {
-            return date.Add(-interval);
-        }
+            => date.Subtract(interval);
+
+        public NpgsqlDate Subtract(NpgsqlTimeSpan interval) => Add(-interval);
 
         public static NpgsqlTimeSpan operator -(NpgsqlDate dateX, NpgsqlDate dateY)
         {

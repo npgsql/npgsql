@@ -26,6 +26,8 @@ using System.Collections.Generic;
 using System.Text;
 using JetBrains.Annotations;
 
+#pragma warning disable CA1034
+
 // ReSharper disable once CheckNamespace
 namespace NpgsqlTypes
 {
@@ -42,7 +44,7 @@ namespace NpgsqlTypes
         /// <summary>
         /// NodeKind
         /// </summary>
-        public enum NodeKind : byte
+        public enum NodeKind
         {
             /// <summary>
             /// Lexeme
@@ -273,10 +275,7 @@ namespace NpgsqlTypes
         /// </summary>
         public string Text
         {
-            get
-            {
-                return _text;
-            }
+            get { return _text; }
             set
             {
                 if (string.IsNullOrEmpty(value))
@@ -341,8 +340,10 @@ namespace NpgsqlTypes
         /// <summary>
         /// Weight enum, can be OR'ed together.
         /// </summary>
+#pragma warning disable CA1714
         [Flags]
         public enum Weight
+#pragma warning restore CA1714
         {
             /// <summary>
             /// None

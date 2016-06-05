@@ -161,7 +161,7 @@ namespace Npgsql.FrontendMessages
                     return true;
 
                 default:
-                    throw PGUtil.ThrowIfReached();
+                    throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {_state} of enum {nameof(BindMessage)}.{nameof(State)}. Please file a bug.");
             }
         }
 

@@ -17,6 +17,8 @@
     </NuGetPackageImportStamp>
     <TargetFrameworkProfile />
     <TargetFrameworkVersion>v4.5.1</TargetFrameworkVersion>
+    <!-- This is somehow important for Microsoft.ApiDesignGuidelines.Analyzers -->
+    <Features>IOperation</Features>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -70,6 +72,7 @@
     <Compile Include="BackendMessages\DataRowSequentialMessage.cs" />
     <Compile Include="FrontendMessages\CopyFailMessage.cs" />
     <Compile Include="FrontendMessages\SSLRequestMessage.cs" />
+    <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="ICancelable.cs" />
     <Compile Include="NameTranslation\INpgsqlNameTranslator.cs" />
     <Compile Include="Logging\ConsoleLoggingProvider.cs" />
@@ -116,20 +119,20 @@
     <Compile Include="Schema\NpgsqlDbColumn.cs" />
     <Compile Include="SqlQueryParser.cs" />
     <Compile Include="TaskExtensions.cs" />
-    <Compile Include="TlsClientStream\CipherSuiteInfo.cs" />
-    <Compile Include="TlsClientStream\ClientAlertException.cs" />
-    <Compile Include="TlsClientStream\ConnectionState.cs" />
-    <Compile Include="TlsClientStream\EllipticCurve.cs" />
-    <Compile Include="TlsClientStream\Enums.cs" />
-    <Compile Include="TlsClientStream\GaloisCounterMode.cs" />
-    <Compile Include="TlsClientStream\HandshakeData.cs" />
-    <Compile Include="TlsClientStream\HandshakeMessagesBuffer.cs" />
-    <Compile Include="TlsClientStream\Hasher.cs" />
-    <Compile Include="TlsClientStream\MD5SHA1.cs" />
-    <Compile Include="TlsClientStream\RsaPKCS1.cs" />
-    <Compile Include="TlsClientStream\ServerAlertException.cs" />
-    <Compile Include="TlsClientStream\TlsClientStream.cs" />
-    <Compile Include="TlsClientStream\Utils.cs" />
+    <Compile Include="Tls\CipherSuiteInfo.cs" />
+    <Compile Include="Tls\ClientAlertException.cs" />
+    <Compile Include="Tls\ConnectionState.cs" />
+    <Compile Include="Tls\EllipticCurve.cs" />
+    <Compile Include="Tls\Enums.cs" />
+    <Compile Include="Tls\GaloisCounterMode.cs" />
+    <Compile Include="Tls\HandshakeData.cs" />
+    <Compile Include="Tls\HandshakeMessagesBuffer.cs" />
+    <Compile Include="Tls\Hasher.cs" />
+    <Compile Include="Tls\MD5SHA1.cs" />
+    <Compile Include="Tls\RsaPKCS1.cs" />
+    <Compile Include="Tls\ServerAlertException.cs" />
+    <Compile Include="Tls\TlsClientStream.cs" />
+    <Compile Include="Tls\Utils.cs" />
     <Compile Include="TypeHandlers\BitStringHandler.cs" />
     <Compile Include="TypeHandlers\VoidHandler.cs" />
     <Compile Include="TypeHandlers\CompositeHandler.cs" />

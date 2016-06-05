@@ -34,7 +34,9 @@ using Npgsql.TypeHandlers;
 namespace Npgsql
 {
     // ReSharper disable once UnusedTypeParameter
+#pragma warning disable CA1040
     interface ITypeHandler<T> { }
+#pragma warning restore CA1040
 
     abstract partial class TypeHandler
     {
@@ -181,7 +183,7 @@ namespace Npgsql
     /// </summary>
     /// <typeparam name="T">the regular value type returned by this type handler</typeparam>
     /// <typeparam name="TPsv">the type of the provider-specific value returned by this type handler</typeparam>
-    abstract class SimpleTypeHandlerWithPsv<T, TPsv> : SimpleTypeHandler<T>, ISimpleTypeHandler<TPsv>, ITypeHandlerWithPsv
+    abstract class SimpleTypeHandlerWithPsv<T, TPsv> : SimpleTypeHandler<T>, ISimpleTypeHandler<TPsv>
     {
         internal SimpleTypeHandlerWithPsv(IBackendType backendType) : base(backendType) { }
 
@@ -202,12 +204,6 @@ namespace Npgsql
         internal override ArrayHandler CreateArrayHandler(IBackendType arrayBackendType)
             => new ArrayHandlerWithPsv<T, TPsv>(arrayBackendType, this);
     }
-
-    /// <summary>
-    /// A marking interface to allow us to know whether a given type handler has a provider-specific type
-    /// distinct from its regular type
-    /// </summary>
-    interface ITypeHandlerWithPsv {}
 
     interface IChunkingTypeHandler
     {
@@ -296,10 +292,12 @@ namespace Npgsql
 
     struct DirectBuffer
     {
-        public byte[] Buffer;
-        public int Offset;
-        public int Size;
+        internal byte[] Buffer;
+        internal int Offset;
+        internal int Size;
     }
+
+#pragma warning disable CA1032
 
     /// <summary>
     /// Can be thrown by readers to indicate that interpreting the value failed, but the value was read wholly

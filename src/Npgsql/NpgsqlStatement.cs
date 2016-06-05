@@ -17,7 +17,7 @@ namespace Npgsql
     /// Users can retrieve instances from <see cref="NpgsqlDataReader.Statements"/>
     /// and access information about statement execution (e.g. affected rows).
     /// </summary>
-    public class NpgsqlStatement
+    public sealed class NpgsqlStatement
     {
         internal NpgsqlStatement(string sql, List<NpgsqlParameter> inputParameters, string preparedStatementName = null)
         {

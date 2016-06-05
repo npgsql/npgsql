@@ -61,6 +61,8 @@ namespace Npgsql.TypeHandlers
         WriteBuffer _writeBuf;
         LengthCache _lengthCache;
         NpgsqlRange<TElement> _value;
+        TElement _lowerBound;
+        RangeFlags _flags;
         State _state;
         FieldDescription _fieldDescription;
         int _elementLen;
@@ -72,6 +74,7 @@ namespace Npgsql.TypeHandlers
             _readBuf = null;
             _writeBuf = null;
             _value = default(NpgsqlRange<TElement>);
+            _lowerBound = default(TElement);
             _fieldDescription = null;
             _state = State.Done;
         }
@@ -84,6 +87,7 @@ namespace Npgsql.TypeHandlers
         {
             _readBuf = buf;
             _state = State.Flags;
+            _lowerBound = default(TElement);
             _elementLen = -1;
         }
 
@@ -96,16 +100,15 @@ namespace Npgsql.TypeHandlers
                     result = default(NpgsqlRange<TElement>);
                     return false;
                 }
-                var flags = (RangeFlags)_readBuf.ReadByte();
+                _flags = (RangeFlags)_readBuf.ReadByte();
 
-                _value = new NpgsqlRange<TElement>(flags);
-                if (_value.IsEmpty) {
-                    result = _value;
+                if ((_flags & RangeFlags.Empty) != 0) {
+                    result = NpgsqlRange<TElement>.Empty;
                     CleanupState();
                     return true;
                 }
 
-                if (_value.LowerBoundInfinite)
+                if ((_flags & RangeFlags.LowerBoundInfinite) != 0)
                     goto case State.UpperBound;
 
                 _state = State.LowerBound;
@@ -113,19 +116,17 @@ namespace Npgsql.TypeHandlers
 
             case State.LowerBound:
                 _state = State.LowerBound;
-                TElement lowerBound;
-                if (!ReadSingleElement(out lowerBound))
+                if (!ReadSingleElement(out _lowerBound))
                 {
                     result = default(NpgsqlRange<TElement>);
                     return false;
                 }
-                _value.LowerBound = lowerBound;
                 goto case State.UpperBound;
 
             case State.UpperBound:
                 _state = State.UpperBound;
-                if (_value.UpperBoundInfinite) {
-                    result = _value;
+                if ((_flags & RangeFlags.UpperBoundInfinite) != 0) {
+                    result = new NpgsqlRange<TElement>(_lowerBound, default(TElement), _flags);
                     CleanupState();
                     return true;
                 }
@@ -136,8 +137,7 @@ namespace Npgsql.TypeHandlers
                     result = default(NpgsqlRange<TElement>);
                     return false;
                 }
-                _value.UpperBound = upperBound;
-                result = _value;
+                result = new NpgsqlRange<TElement>(_lowerBound, upperBound, _flags);
                 CleanupState();
                 return true;
 
@@ -183,7 +183,7 @@ namespace Npgsql.TypeHandlers
                     return true;
                 }
 
-                throw PGUtil.ThrowIfReached();
+                throw new InvalidOperationException("Internal Npgsql bug, please report.");
             } catch (SafeReadException e) {
                 // TODO: Implement safe reading. For now, translate the safe exception to an unsafe one
                 // to break the connector.
@@ -275,7 +275,7 @@ namespace Npgsql.TypeHandlers
                 return true;
 
             default:
-                throw PGUtil.ThrowIfReached();
+                throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {_state} of enum {nameof(RangeHandler<TElement>)}.{nameof(State)}. Please file a bug.");
             }
         }
 
@@ -318,7 +318,7 @@ namespace Npgsql.TypeHandlers
                 return true;
             }
 
-            throw PGUtil.ThrowIfReached();
+            throw new InvalidOperationException("Internal Npgsql bug, please report.");
         }
 
         #endregion

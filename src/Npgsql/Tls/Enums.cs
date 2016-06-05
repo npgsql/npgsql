@@ -21,27 +21,26 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+#pragma warning disable CA1707
 
-namespace TlsClientStream
+// ReSharper disable InconsistentNaming
+
+namespace Npgsql.Tls
 {
-    internal enum TlsVersion : ushort
+    enum TlsVersion : ushort
     {
         TLSv1_0 = 0x0301,
         TLSv1_1 = 0x0302,
         TLSv1_2 = 0x0303
     }
 
-    internal enum AlertLevel : byte
+    enum AlertLevel : byte
     {
         Warning = 1,
         Fatal = 2
     }
 
-    internal enum AlertDescription : byte
+    enum AlertDescription : byte
     {
         CloseNotify = 0,
         UnexpectedMessage = 10,
@@ -58,7 +57,7 @@ namespace TlsClientStream
         ProtocolVersion = 70
     }
 
-    internal enum ContentType : byte
+    enum ContentType : byte
     {
         ChangeCipherSpec = 20,
         Alert = 21,
@@ -66,7 +65,7 @@ namespace TlsClientStream
         ApplicationData = 23
     }
 
-    internal enum HandshakeType : byte
+    enum HandshakeType : byte
     {
         HelloRequest = 0,
         ClientHello = 1,
@@ -80,7 +79,7 @@ namespace TlsClientStream
         Finished = 20
     }
 
-    internal enum CipherSuite : ushort
+    enum CipherSuite : ushort
     {
         TLS_RSA_WITH_AES_128_CBC_SHA = 0x002F,
         TLS_DHE_DSS_WITH_AES_128_CBC_SHA = 0x0032,
@@ -132,7 +131,7 @@ namespace TlsClientStream
         TLS_ECDH_RSA_WITH_AES_256_GCM_SHA384 = 0xC032
     }
 
-    internal enum ExtensionType : ushort
+    enum ExtensionType : ushort
     {
         ServerName = 0x0000,
         SupportedEllipticCurves = 0x000a,
@@ -141,7 +140,7 @@ namespace TlsClientStream
         RenegotiationInfo = 0xff01
     }
 
-    internal enum TLSHashAlgorithm : byte
+    enum TlsHashAlgorithm : byte
     {
         MD5 = 1,
 
@@ -153,21 +152,21 @@ namespace TlsClientStream
         MD5SHA1 = 255 // Not defined by any spec
     }
 
-    internal enum SignatureAlgorithm : byte
+    enum SignatureAlgorithm : byte
     {
         RSA = 1,
         DSA = 2,
         ECDSA = 3
     }
 
-    internal enum NamedCurve : ushort
+    enum NamedCurve : ushort
     {
         secp256r1 = 23,
         secp384r1 = 24,
         secp521r1 = 25
     }
 
-    internal enum ClientCertificateType : byte
+    enum ClientCertificateType : byte
     {
         RSASign = 1,
         DSSSign = 2,
@@ -178,7 +177,7 @@ namespace TlsClientStream
         ECDSAFixedECDH = 66
     }
 
-    internal enum KeyExchange : byte
+    enum KeyExchange : byte
     {
         NULL,
         RSA,
@@ -190,14 +189,14 @@ namespace TlsClientStream
         ECDH_ECDSA
     }
 
-    internal enum PRFAlgorithm : byte
+    enum PRFAlgorithm : byte
     {
         TLSPrfSHA256,
         TLSPrfSHA384,
         TLSPrfMD5SHA1
     }
 
-    internal enum AesMode : byte
+    enum AesMode : byte
     {
         CBC,
         GCM

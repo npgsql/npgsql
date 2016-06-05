@@ -40,7 +40,7 @@ namespace Npgsql
     /// <remarks>
     /// See http://www.postgresql.org/docs/current/static/sql-copy.html.
     /// </remarks>
-    public class NpgsqlRawCopyStream : Stream, ICancelable
+    public sealed class NpgsqlRawCopyStream : Stream, ICancelable
     {
         #region Fields and Properties
 
@@ -328,7 +328,7 @@ namespace Npgsql
     /// <remarks>
     /// See http://www.postgresql.org/docs/current/static/sql-copy.html.
     /// </remarks>
-    public class NpgsqlCopyTextWriter : StreamWriter, ICancelable
+    public sealed class NpgsqlCopyTextWriter : StreamWriter, ICancelable
     {
         internal NpgsqlCopyTextWriter(NpgsqlRawCopyStream underlying) : base(underlying)
         {
@@ -351,7 +351,7 @@ namespace Npgsql
     /// <remarks>
     /// See http://www.postgresql.org/docs/current/static/sql-copy.html.
     /// </remarks>
-    public class NpgsqlCopyTextReader : StreamReader, ICancelable
+    public sealed class NpgsqlCopyTextReader : StreamReader, ICancelable
     {
         internal NpgsqlCopyTextReader(NpgsqlRawCopyStream underlying) : base(underlying)
         {

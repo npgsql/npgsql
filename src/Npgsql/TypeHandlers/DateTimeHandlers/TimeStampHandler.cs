@@ -62,7 +62,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             try
             {
                 if (ts.IsFinite)
-                    return ts.DateTime;
+                    return ts.ToDateTime();
                 if (!ConvertInfinityDateTime)
                     throw new InvalidCastException("Can't convert infinite timestamp values to DateTime");
                 if (ts.IsInfinity)
@@ -146,7 +146,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                         return;
                     }
 
-                    throw PGUtil.ThrowIfReached();
+                    throw new InvalidOperationException("Internal Npgsql bug, please report.");
                 }
             }
             else if (value is DateTime)
@@ -170,7 +170,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             else if (value is DateTimeOffset)
                 ts = new NpgsqlDateTime(((DateTimeOffset)value).DateTime);
             else
-                throw PGUtil.ThrowIfReached();
+                throw new InvalidOperationException("Internal Npgsql bug, please report.");
 
             var uSecsTime = ts.Time.Ticks / 10;
 

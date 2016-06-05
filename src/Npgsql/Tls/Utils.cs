@@ -30,9 +30,9 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace TlsClientStream
+namespace Npgsql.Tls
 {
-    internal static class Utils
+    static class Utils
     {
         public static readonly Dictionary<string, string> HashNameToOID = new Dictionary<string, string>() {
             {"SHA1", "1.3.14.3.2.26"},
@@ -41,17 +41,17 @@ namespace TlsClientStream
             {"SHA512", "2.16.840.1.101.3.4.2.3"}
         };
 
-        public static int GetHashLen(TLSHashAlgorithm hashAlgorithm)
+        public static int GetHashLen(TlsHashAlgorithm hashAlgorithm)
         {
             switch (hashAlgorithm)
             {
-                case TLSHashAlgorithm.SHA1:
+                case TlsHashAlgorithm.SHA1:
                     return 160;
-                case TLSHashAlgorithm.SHA256:
+                case TlsHashAlgorithm.SHA256:
                     return 256;
-                case TLSHashAlgorithm.SHA384:
+                case TlsHashAlgorithm.SHA384:
                     return 384;
-                case TLSHashAlgorithm.SHA512:
+                case TlsHashAlgorithm.SHA512:
                     return 512;
                 default:
                     throw new NotSupportedException();

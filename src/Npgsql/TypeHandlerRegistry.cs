@@ -341,7 +341,7 @@ ORDER BY ord";
             // TODO: Check if already mapped dude
 
             var compositeType = GetCompositeType(pgName);
-            compositeType.Activate(this, new CompositeHandler<T>(compositeType, nameTranslator, this));
+            compositeType.Activate(this, new CompositeHandler<T>(compositeType, nameTranslator, compositeType.RawFields, this));
         }
 
         internal static void MapCompositeGlobally<T>([CanBeNull] string pgName, [CanBeNull] INpgsqlNameTranslator nameTranslator) where T : new()
@@ -606,7 +606,9 @@ WHERE a.typtype = 'b' AND b.typname = @name{(withSchema ? " AND b.nspname = @sch
             }
         }
 
+#pragma warning disable CA1043
         internal TypeHandler this[Type type]
+#pragma warning restore CA1043
         {
             get
             {
@@ -1092,13 +1094,13 @@ WHERE a.typtype = 'b' AND b.typname = @name{(withSchema ? " AND b.nspname = @sch
             /// Holds the name and OID for all fields.
             /// Populated on the first activation of the composite.
             /// </summary>
-            List<RawCompositeField> _rawFields;
+            internal List<RawCompositeField> RawFields { get; }
 
             internal BackendCompositeType(string ns, string name, uint oid, List<RawCompositeField> rawFields)
                 : base(ns, name, oid)
             {
                 NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Composite;
-                _rawFields = rawFields;
+                RawFields = rawFields;
             }
 
             internal override void AddTo(BackendTypes types)
@@ -1118,7 +1120,7 @@ WHERE a.typtype = 'b' AND b.typname = @name{(withSchema ? " AND b.nspname = @sch
             }
 
             internal void Activate(TypeHandlerRegistry registry, ICompositeHandlerFactory factory)
-                => Activate(registry, factory.Create(this, registry));
+                => Activate(registry, factory.Create(this, RawFields, registry));
 
             internal void Activate(TypeHandlerRegistry registry, ICompositeHandler compositeHandler)
             {
@@ -1126,13 +1128,6 @@ WHERE a.typtype = 'b' AND b.typname = @name{(withSchema ? " AND b.nspname = @sch
 
                 registry.ByOID[OID] = handler;
                 registry._byType[compositeHandler.CompositeType] = handler;
-
-                // Inject the raw field information into the composite handler.
-                // At this point the composite handler nows about the fields, but hasn't yet resolved the
-                // type OIDs to their type handlers. This is done only very late upon first usage of the handler,
-                // allowing composite types to be registered and activated in any order regardless of dependencies.
-                compositeHandler.RawFields = _rawFields;
-
                 Array?.Activate(registry);
             }
         }
@@ -1197,39 +1192,31 @@ WHERE a.typtype = 'b' AND b.typname = @name{(withSchema ? " AND b.nspname = @sch
 
                 foreach (TypeMappingAttribute m in mappings)
                 {
-                    if (HandlerTypes.ContainsKey(m.PgName)) {
-                        throw new Exception("Two type handlers registered on same PostgreSQL type name: " + m.PgName);
-                    }
+                    Debug.Assert(!HandlerTypes.ContainsKey(m.PgName), "Two type handlers registered on same PostgreSQL type name: " + m.PgName);
                     var typeAndMapping = new TypeAndMapping { HandlerType = t, Mapping = m };
                     HandlerTypes[m.PgName] = typeAndMapping;
 
                     if (m.NpgsqlDbType.HasValue)
                     {
-                        if (HandlerTypesByNpsgqlDbType.ContainsKey(m.NpgsqlDbType.Value)) {
-                            throw new Exception("Two type handlers registered on same NpgsqlDbType: " + m.NpgsqlDbType);
-                        }
+                        Debug.Assert(!HandlerTypesByNpsgqlDbType.ContainsKey(m.NpgsqlDbType.Value), "Two type handlers registered on same NpgsqlDbType: " + m.NpgsqlDbType);
                         HandlerTypesByNpsgqlDbType[m.NpgsqlDbType.Value] = typeAndMapping;
                     }
 
-                    if (!m.NpgsqlDbType.HasValue) {
+                    if (!m.NpgsqlDbType.HasValue)
                         continue;
-                    }
-                    var npgsqlDbType = m.NpgsqlDbType.Value;
 
+                    var npgsqlDbType = m.NpgsqlDbType.Value;
                     var inferredDbType = m.InferredDbType;
 
-                    if (inferredDbType != null) {
+                    if (inferredDbType != null)
                         NpgsqlDbTypeToDbType[npgsqlDbType] = inferredDbType.Value;
-                    }
-                    foreach (var dbType in m.DbTypes) {
+                    foreach (var dbType in m.DbTypes)
                         DbTypeToNpgsqlDbType[dbType] = npgsqlDbType;
-                    }
                     foreach (var type in m.ClrTypes)
                     {
                         TypeToNpgsqlDbType[type] = npgsqlDbType;
-                        if (inferredDbType != null) {
+                        if (inferredDbType != null)
                             TypeToDbType[type] = inferredDbType.Value;
-                        }
                     }
                 }
             }

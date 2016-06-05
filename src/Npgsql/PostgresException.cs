@@ -33,6 +33,8 @@ using Npgsql.BackendMessages;
 using System.Runtime.Serialization;
 #endif
 
+#pragma warning disable CA1032
+
 namespace Npgsql
 {
     /// <summary>

@@ -113,8 +113,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
                             node = new NpgsqlTsQueryOr(null, null);
                             break;
                         default:
-                            PGUtil.ThrowIfReached();
-                            break;
+                            throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {operKind} of enum {nameof(NpgsqlTsQuery.NodeKind)}. Please file a bug.");
                         }
 
                         InsertInTree(node);
@@ -135,7 +134,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             }
 
             if (_nodes.Count != 0)
-                PGUtil.ThrowIfReached();
+                throw new InvalidOperationException("Internal Npgsql bug, please report.");
 
             result = _value;
             _readBuf = null;

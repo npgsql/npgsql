@@ -34,8 +34,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using AsyncRewriter;
 
-// ReSharper disable once CheckNamespace
-namespace TlsClientStream
+namespace Npgsql.Tls
 {
     partial class TlsClientStream : Stream
     {
@@ -362,7 +361,7 @@ namespace TlsClientStream
                         HandleAlertMessage();
                         break;
                     case ContentType.Handshake:
-                        _handshakeMessagesBuffer.AddBytes(_buf, _plaintextStart, _plaintextLen, HandshakeMessagesBuffer.IgnoreHelloRequestsSettings.IgnoreHelloRequests);
+                        _handshakeMessagesBuffer.AddBytes(_buf, _plaintextStart, _plaintextLen, HandshakeMessagesBuffer.IgnoreHelloRequestsSetting.IgnoreHelloRequests);
                         if (_handshakeMessagesBuffer.Messages.Count > 5)
                         {
                             // There can never be more than 5 handshake messages in a handshake
@@ -619,7 +618,7 @@ namespace TlsClientStream
                 }
                 else
                 {
-                    _handshakeMessagesBuffer.AddBytes(_buf, _plaintextStart, _plaintextLen, HandshakeMessagesBuffer.IgnoreHelloRequestsSettings.IgnoreHelloRequestsUntilFinished);
+                    _handshakeMessagesBuffer.AddBytes(_buf, _plaintextStart, _plaintextLen, HandshakeMessagesBuffer.IgnoreHelloRequestsSetting.IgnoreHelloRequestsUntilFinished);
                 }
             }
 
@@ -643,14 +642,14 @@ namespace TlsClientStream
             _pendingConnState = new ConnectionState();
             _handshakeData = new HandshakeData
             {
-                HandshakeHash1 = Hasher.Create(TLSHashAlgorithm.SHA256),
-                HandshakeHash2 = Hasher.Create(TLSHashAlgorithm.SHA256),
-                HandshakeHash1_384 = Hasher.Create(TLSHashAlgorithm.SHA384),
-                HandshakeHash2_384 = Hasher.Create(TLSHashAlgorithm.SHA384),
-                HandshakeHash1_MD5SHA1 = Hasher.Create(TLSHashAlgorithm.MD5SHA1),
-                HandshakeHash2_MD5SHA1 = Hasher.Create(TLSHashAlgorithm.MD5SHA1),
-                CertificateVerifyHash_MD5 = Hasher.Create(TLSHashAlgorithm.MD5),
-                CertificateVerifyHash_SHA1 = Hasher.Create(TLSHashAlgorithm.SHA1)
+                HandshakeHash1 = Hasher.Create(TlsHashAlgorithm.SHA256),
+                HandshakeHash2 = Hasher.Create(TlsHashAlgorithm.SHA256),
+                HandshakeHash1_384 = Hasher.Create(TlsHashAlgorithm.SHA384),
+                HandshakeHash2_384 = Hasher.Create(TlsHashAlgorithm.SHA384),
+                HandshakeHash1_MD5SHA1 = Hasher.Create(TlsHashAlgorithm.MD5SHA1),
+                HandshakeHash2_MD5SHA1 = Hasher.Create(TlsHashAlgorithm.MD5SHA1),
+                CertificateVerifyHash_MD5 = Hasher.Create(TlsHashAlgorithm.MD5),
+                CertificateVerifyHash_SHA1 = Hasher.Create(TlsHashAlgorithm.SHA1)
             };
 
             // Highest version supported
@@ -735,23 +734,23 @@ namespace TlsClientStream
                 offset += Utils.WriteUInt16(_buf, offset, (ushort)ExtensionType.SignatureAlgorithms);
                 offset += Utils.WriteUInt16(_buf, offset, 20);
                 offset += Utils.WriteUInt16(_buf, offset, 18);
-                _buf[offset++] = (byte)TLSHashAlgorithm.SHA1;
+                _buf[offset++] = (byte)TlsHashAlgorithm.SHA1;
                 _buf[offset++] = (byte)SignatureAlgorithm.ECDSA;
-                _buf[offset++] = (byte)TLSHashAlgorithm.SHA256;
+                _buf[offset++] = (byte)TlsHashAlgorithm.SHA256;
                 _buf[offset++] = (byte)SignatureAlgorithm.ECDSA;
-                _buf[offset++] = (byte)TLSHashAlgorithm.SHA384;
+                _buf[offset++] = (byte)TlsHashAlgorithm.SHA384;
                 _buf[offset++] = (byte)SignatureAlgorithm.ECDSA;
-                _buf[offset++] = (byte)TLSHashAlgorithm.SHA512;
+                _buf[offset++] = (byte)TlsHashAlgorithm.SHA512;
                 _buf[offset++] = (byte)SignatureAlgorithm.ECDSA;
-                _buf[offset++] = (byte)TLSHashAlgorithm.SHA1;
+                _buf[offset++] = (byte)TlsHashAlgorithm.SHA1;
                 _buf[offset++] = (byte)SignatureAlgorithm.RSA;
-                _buf[offset++] = (byte)TLSHashAlgorithm.SHA256;
+                _buf[offset++] = (byte)TlsHashAlgorithm.SHA256;
                 _buf[offset++] = (byte)SignatureAlgorithm.RSA;
-                _buf[offset++] = (byte)TLSHashAlgorithm.SHA384;
+                _buf[offset++] = (byte)TlsHashAlgorithm.SHA384;
                 _buf[offset++] = (byte)SignatureAlgorithm.RSA;
-                _buf[offset++] = (byte)TLSHashAlgorithm.SHA512;
+                _buf[offset++] = (byte)TlsHashAlgorithm.SHA512;
                 _buf[offset++] = (byte)SignatureAlgorithm.RSA;
-                _buf[offset++] = (byte)TLSHashAlgorithm.SHA1;
+                _buf[offset++] = (byte)TlsHashAlgorithm.SHA1;
                 _buf[offset++] = (byte)SignatureAlgorithm.DSA;
             }
 
@@ -1124,19 +1123,19 @@ namespace TlsClientStream
             var parametersEnd = pos;
 
             // Digitally signed client random + server random + parameters
-            TLSHashAlgorithm hashAlgorithm;
+            TlsHashAlgorithm hashAlgorithm;
             SignatureAlgorithm signatureAlgorithm;
             if (_pendingConnState.TlsVersion == TlsVersion.TLSv1_2)
             {
-                hashAlgorithm = (TLSHashAlgorithm)buf[pos++];
+                hashAlgorithm = (TlsHashAlgorithm)buf[pos++];
                 signatureAlgorithm = (SignatureAlgorithm)buf[pos++];
             }
             else
             {
                 signatureAlgorithm = _pendingConnState.CipherSuite.GetSignatureAlgorithm();
                 hashAlgorithm = signatureAlgorithm == SignatureAlgorithm.RSA
-                    ? TLSHashAlgorithm.MD5SHA1
-                    : TLSHashAlgorithm.SHA1;
+                    ? TlsHashAlgorithm.MD5SHA1
+                    : TlsHashAlgorithm.SHA1;
             }
 
             var signatureLen = Utils.ReadUInt16(buf, ref pos);
@@ -1147,12 +1146,12 @@ namespace TlsClientStream
             Hasher alg = null;
             switch (hashAlgorithm)
             {
-                case TLSHashAlgorithm.SHA1:
-                case TLSHashAlgorithm.SHA256:
-                case TLSHashAlgorithm.SHA384:
-                case TLSHashAlgorithm.SHA512:
+                case TlsHashAlgorithm.SHA1:
+                case TlsHashAlgorithm.SHA256:
+                case TlsHashAlgorithm.SHA384:
+                case TlsHashAlgorithm.SHA512:
                     alg = Hasher.Create(hashAlgorithm); break;
-                case TLSHashAlgorithm.MD5SHA1:
+                case TlsHashAlgorithm.MD5SHA1:
                     if (_pendingConnState.TlsVersion != TlsVersion.TLSv1_2)
                     {
                         alg = Hasher.Create(hashAlgorithm);
@@ -1343,7 +1342,7 @@ namespace TlsClientStream
                 certificateTypes.Add((ClientCertificateType)buf[pos++]);
             }
 
-            var supportedSignatureAlgorithms = new List<Tuple<TLSHashAlgorithm, SignatureAlgorithm>>();
+            var supportedSignatureAlgorithms = new List<Tuple<TlsHashAlgorithm, SignatureAlgorithm>>();
             if (_pendingConnState.TlsVersion == TlsVersion.TLSv1_2)
             {
                 var lenSignatureAlgorithms = Utils.ReadUInt16(buf, ref pos);
@@ -1353,7 +1352,7 @@ namespace TlsClientStream
                 }
                 for (var i = 0; i < lenSignatureAlgorithms; i += 2)
                 {
-                    var ha = (TLSHashAlgorithm)buf[pos++];
+                    var ha = (TlsHashAlgorithm)buf[pos++];
                     var sa = (SignatureAlgorithm)buf[pos++];
                     supportedSignatureAlgorithms.Add(Tuple.Create(ha, sa));
                 }
@@ -1447,7 +1446,7 @@ namespace TlsClientStream
 #if NET45 || NET451
             if (keyDsa != null)
             {
-                if (_pendingConnState.TlsVersion == TlsVersion.TLSv1_2 && !_handshakeData.SupportedSignatureAlgorithms.Contains(Tuple.Create(TLSHashAlgorithm.SHA1, SignatureAlgorithm.DSA)))
+                if (_pendingConnState.TlsVersion == TlsVersion.TLSv1_2 && !_handshakeData.SupportedSignatureAlgorithms.Contains(Tuple.Create(TlsHashAlgorithm.SHA1, SignatureAlgorithm.DSA)))
                 {
                     SendAlertFatal(AlertDescription.HandshakeFailure, "Server does not support client certificate sha1-dsa signatures");
                 }
@@ -1478,7 +1477,7 @@ namespace TlsClientStream
 
                 if (_pendingConnState.TlsVersion == TlsVersion.TLSv1_2)
                 {
-                    _buf[offset++] = (byte)TLSHashAlgorithm.SHA1;
+                    _buf[offset++] = (byte)TlsHashAlgorithm.SHA1;
                     _buf[offset++] = (byte)SignatureAlgorithm.DSA;
                 }
             }
@@ -1486,7 +1485,7 @@ namespace TlsClientStream
 #endif
             if (keyRsa != null)
             {
-                if (_pendingConnState.TlsVersion == TlsVersion.TLSv1_2 && !_handshakeData.SupportedSignatureAlgorithms.Contains(Tuple.Create(TLSHashAlgorithm.SHA1, SignatureAlgorithm.RSA)))
+                if (_pendingConnState.TlsVersion == TlsVersion.TLSv1_2 && !_handshakeData.SupportedSignatureAlgorithms.Contains(Tuple.Create(TlsHashAlgorithm.SHA1, SignatureAlgorithm.RSA)))
                 {
                     SendAlertFatal(AlertDescription.HandshakeFailure, "Server does not support client certificate sha1-rsa signatures");
                 }
@@ -1526,7 +1525,7 @@ namespace TlsClientStream
 
                     if (_pendingConnState.TlsVersion == TlsVersion.TLSv1_2)
                     {
-                        _buf[offset++] = (byte)TLSHashAlgorithm.SHA1;
+                        _buf[offset++] = (byte)TlsHashAlgorithm.SHA1;
                         _buf[offset++] = (byte)SignatureAlgorithm.RSA;
                     }
                 }
@@ -2023,8 +2022,8 @@ namespace TlsClientStream
                     else if (_contentType == ContentType.Handshake)
                     {
                         _handshakeMessagesBuffer.AddBytes(_buf, _plaintextStart, _plaintextLen, _pendingConnState != null ?
-                            HandshakeMessagesBuffer.IgnoreHelloRequestsSettings.IgnoreHelloRequestsUntilFinished :
-                            HandshakeMessagesBuffer.IgnoreHelloRequestsSettings.IncludeHelloRequests);
+                            HandshakeMessagesBuffer.IgnoreHelloRequestsSetting.IgnoreHelloRequestsUntilFinished :
+                            HandshakeMessagesBuffer.IgnoreHelloRequestsSetting.IncludeHelloRequests);
                         if (_handshakeMessagesBuffer.Messages.Count > 5)
                         {
                             // There can never be more than 5 handshake messages in a handshake

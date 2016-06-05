@@ -22,13 +22,9 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace TlsClientStream
+namespace Npgsql.Tls
 {
     // http://csrc.nist.gov/publications/nistpubs/800-38D/SP-800-38D.pdf
     // http://csrc.nist.gov/groups/ST/toolkit/BCM/documents/proposedmodes/gcm/gcm-spec.pdf

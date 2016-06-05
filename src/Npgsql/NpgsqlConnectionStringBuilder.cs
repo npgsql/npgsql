@@ -29,10 +29,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using JetBrains.Annotations;
-#if NET45 || NET451
-using System.DirectoryServices;
-using System.Security.Principal;
-#endif
 
 namespace Npgsql
 {
@@ -40,7 +36,7 @@ namespace Npgsql
     /// Provides a simple way to create and manage the contents of connection strings used by
     /// the <see cref="NpgsqlConnection"/> class.
     /// </summary>
-    public sealed class NpgsqlConnectionStringBuilder : DbConnectionStringBuilder
+    public sealed class NpgsqlConnectionStringBuilder : DbConnectionStringBuilder, IDictionary<string, object>
     {
         #region Fields
 
@@ -147,7 +143,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="keyword">The key of the item to get or set.</param>
         /// <returns>The value associated with the specified key.</returns>
-        public override object this[string keyword]
+        public override object this[[NotNull] string keyword]
         {
             get
             {
@@ -180,11 +176,18 @@ namespace Npgsql
         }
 
         /// <summary>
+        /// Adds an item to the <see cref="NpgsqlConnectionStringBuilder"/>.
+        /// </summary>
+        /// <param name="item">The key-value pair to be added.</param>
+        public void Add(KeyValuePair<string, object> item)
+            => this[item.Key] = item.Value;
+
+        /// <summary>
         /// Removes the entry with the specified key from the DbConnectionStringBuilder instance.
         /// </summary>
         /// <param name="keyword">The key of the key/value pair to be removed from the connection string in this DbConnectionStringBuilder.</param>
         /// <returns><b>true</b> if the key existed within the connection string and was removed; <b>false</b> if the key did not exist.</returns>
-        public override bool Remove(string keyword)
+        public override bool Remove([NotNull] string keyword)
         {
             var p = GetProperty(keyword);
             string cannonicalName = PropertyNameToCanonicalKeyword[p.Name];
@@ -196,12 +199,20 @@ namespace Npgsql
         }
 
         /// <summary>
+        /// Removes the entry from the DbConnectionStringBuilder instance.
+        /// </summary>
+        /// <param name="item">The key/value pair to be removed from the connection string in this DbConnectionStringBuilder.</param>
+        /// <returns><b>true</b> if the key existed within the connection string and was removed; <b>false</b> if the key did not exist.</returns>
+        public bool Remove(KeyValuePair<string, object> item)
+            => Remove(item.Key);
+
+        /// <summary>
         /// Clears the contents of the <see cref="NpgsqlConnectionStringBuilder"/> instance.
         /// </summary>
         public override void Clear()
         {
             Debug.Assert(Keys != null);
-            foreach (var k in Keys.Cast<string>().ToArray()) {
+            foreach (var k in Keys.ToArray()) {
                 Remove(k);
             }
         }
@@ -211,12 +222,24 @@ namespace Npgsql
         /// </summary>
         /// <param name="keyword">The key to locate in the <see cref="NpgsqlConnectionStringBuilder"/>.</param>
         /// <returns><b>true</b> if the <see cref="NpgsqlConnectionStringBuilder"/> contains an entry with the specified key; otherwise <b>false</b>.</returns>
-        public override bool ContainsKey(string keyword)
+        public override bool ContainsKey([CanBeNull] string keyword)
         {
             if (keyword == null)
                 throw new ArgumentNullException(nameof(keyword));
 
             return PropertiesByKeyword.ContainsKey(keyword.ToUpperInvariant());
+        }
+
+        /// <summary>
+        /// Determines whether the <see cref="NpgsqlConnectionStringBuilder"/> contains a specific key-value pair.
+        /// </summary>
+        /// <param name="item">The itemto locate in the <see cref="NpgsqlConnectionStringBuilder"/>.</param>
+        /// <returns><b>true</b> if the <see cref="NpgsqlConnectionStringBuilder"/> contains the entry; otherwise <b>false</b>.</returns>
+        public bool Contains(KeyValuePair<string, object> item)
+        {
+            object value;
+            return TryGetValue(item.Key, out value) &&
+                ((value == null && item.Value == null) || (value != null && value.Equals(item.Value)));
         }
 
         PropertyInfo GetProperty(string keyword)
@@ -234,7 +257,7 @@ namespace Npgsql
         /// <param name="keyword">The key of the item to retrieve.</param>
         /// <param name="value">The value corresponding to the key.</param>
         /// <returns><b>true</b> if keyword was found within the connection string, <b>false</b> otherwise.</returns>
-        public override bool TryGetValue(string keyword, [CanBeNull] out object value)
+        public override bool TryGetValue([NotNull] string keyword, [CanBeNull] out object value)
         {
             if (keyword == null)
                 throw new ArgumentNullException(nameof(keyword));
@@ -890,11 +913,11 @@ namespace Npgsql
         [Description("Obsolete, see http://www.npgsql.org/doc/3.1/migration.html")]
         [DisplayName("Connection Lifetime")]
         [NpgsqlConnectionStringProperty]
-        [Obsolete]
+        [Obsolete("The ConnectionLifeTime parameter is no longer supported")]
         public int ConnectionLifeTime
         {
-            get { throw new NotSupportedException("The ContinuousProcessing parameter is no longer supported. Please see http://www.npgsql.org/doc/3.1/migration.html"); }
-            set { throw new NotSupportedException("The ContinuousProcessing parameter is no longer supported. Please see http://www.npgsql.org/doc/3.1/migration.html"); }
+            get { throw new NotSupportedException("The ConnectionLifeTime parameter is no longer supported. Please see http://www.npgsql.org/doc/3.1/migration.html"); }
+            set { throw new NotSupportedException("The ConnectionLifeTime parameter is no longer supported. Please see http://www.npgsql.org/doc/3.1/migration.html"); }
         }
 
         /// <summary>
@@ -904,7 +927,7 @@ namespace Npgsql
         [Description("Obsolete, see http://www.npgsql.org/doc/3.1/migration.html")]
         [DisplayName("Continuous Processing")]
         [NpgsqlConnectionStringProperty]
-        [Obsolete]
+        [Obsolete("The ContinuousProcessing parameter is no longer supported.")]
         public bool ContinuousProcessing
         {
             get { return false; }
@@ -918,7 +941,7 @@ namespace Npgsql
         [Description("Obsolete, see http://www.npgsql.org/doc/3.1/migration.html")]
         [DisplayName("Backend Timeouts")]
         [NpgsqlConnectionStringProperty]
-        [Obsolete]
+        [Obsolete("The BackendTimeouts parameter is no longer supported")]
         public bool BackendTimeouts
         {
             get { return false; }
@@ -932,7 +955,7 @@ namespace Npgsql
         [Description("Obsolete, see http://www.npgsql.org/doc/3.0/migration.html")]
         [DisplayName("Preload Reader")]
         [NpgsqlConnectionStringProperty]
-        [Obsolete]
+        [Obsolete("The PreloadReader parameter is no longer supported")]
         public bool PreloadReader
         {
             get { return false; }
@@ -946,7 +969,7 @@ namespace Npgsql
         [Description("Obsolete, see http://www.npgsql.org/doc/3.0/migration.html")]
         [DisplayName("Use Extended Types")]
         [NpgsqlConnectionStringProperty]
-        [Obsolete]
+        [Obsolete("The UseExtendedTypes parameter is no longer supported")]
         public bool UseExtendedTypes
         {
             get { return false; }
@@ -965,7 +988,7 @@ namespace Npgsql
         /// <summary>
         /// Determines whether the specified object is equal to the current object.
         /// </summary>
-        public override bool Equals(object obj)
+        public override bool Equals([CanBeNull] object obj)
         {
             var o = obj as NpgsqlConnectionStringBuilder;
             return o != null && o.ConnectionString == ConnectionString;
@@ -981,6 +1004,52 @@ namespace Npgsql
         }
 
         #endregion
+
+        #region IDictionary<string, object>
+
+        /// <summary>
+        /// Gets an ICollection{string} containing the keys of the <see cref="NpgsqlConnectionStringBuilder"/>.
+        /// </summary>
+        public new ICollection<string> Keys => new List<string>(base.Keys.Cast<string>());
+
+        /// <summary>
+        /// Gets an ICollection{string} containing the values in the <see cref="NpgsqlConnectionStringBuilder"/>.
+        /// </summary>
+        public new ICollection<object> Values => base.Values.Cast<object>().ToList();
+
+        /// <summary>
+        /// Copies the elements of the <see cref="NpgsqlConnectionStringBuilder"/> to an Array, starting at a particular Array index.
+        /// </summary>
+        /// <param name="array">
+        /// The one-dimensional Array that is the destination of the elements copied from <see cref="NpgsqlConnectionStringBuilder"/>.
+        /// The Array must have zero-based indexing.
+        /// </param>
+        /// <param name="arrayIndex">
+        /// The zero-based index in array at which copying begins.
+        /// </param>
+        public void CopyTo([NotNull] KeyValuePair<string, object>[] array, int arrayIndex)
+        {
+            foreach (var kv in this)
+                array[arrayIndex++] = kv;
+        }
+
+        /// <summary>
+        /// Returns an enumerator that iterates through the <see cref="NpgsqlConnectionStringBuilder"/>.
+        /// </summary>
+        /// <returns></returns>
+        public IEnumerator<KeyValuePair<string, object>> GetEnumerator()
+        {
+            foreach (var k in Keys)
+                yield return new KeyValuePair<string, object>(k, this[k]);
+        }
+
+#if !(NET45 || NET451)
+        /// <summary>
+        /// Gets a value indicating whether the ICollection{T} is read-only.
+        /// </summary>
+        public bool IsReadOnly => false;
+#endif
+        #endregion IDictionary<string, object>
 
         #region Attributes
 

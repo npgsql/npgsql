@@ -45,7 +45,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             try
             {
                 if (ts.IsFinite)
-                    return ts.DateTime.ToLocalTime();
+                    return ts.ToDateTime().ToLocalTime();
                 if (!ConvertInfinityDateTime)
                     throw new InvalidCastException("Can't convert infinite timestamptz values to DateTime");
                 if (ts.IsInfinity)
@@ -66,7 +66,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         {
             try
             {
-                return new DateTimeOffset(ReadTimeStamp(buf, len, fieldDescription).DateTime, TimeSpan.Zero);
+                return new DateTimeOffset(ReadTimeStamp(buf, len, fieldDescription).ToDateTime(), TimeSpan.Zero);
             } catch (Exception e) {
                 throw new SafeReadException(e);
             }
@@ -89,7 +89,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                     ts = ts.ToUniversalTime();
                     break;
                 default:
-                    throw PGUtil.ThrowIfReached();
+                    throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {ts.Kind} of enum {nameof(DateTimeKind)}. Please file a bug.");
                 }
                 base.Write(ts, buf, parameter);
                 return;
@@ -107,7 +107,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                     dt = dt.ToUniversalTime();
                     break;
                 default:
-                    throw PGUtil.ThrowIfReached();
+                    throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {dt.Kind} of enum {nameof(DateTimeKind)}. Please file a bug.");
                 }
                 base.Write(dt, buf, parameter);
                 return;
@@ -119,7 +119,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                 return;
             }
 
-            throw PGUtil.ThrowIfReached();
+            throw new InvalidOperationException("Internal Npgsql bug, please report.");
         }
     }
 }

@@ -22,12 +22,10 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace TlsClientStream
+#pragma warning disable CA1032
+
+namespace Npgsql.Tls
 {
     class ServerAlertException : Exception
     {

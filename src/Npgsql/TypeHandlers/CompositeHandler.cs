@@ -40,12 +40,11 @@ namespace Npgsql.TypeHandlers
         /// The CLR type mapped to the PostgreSQL composite type.
         /// </summary>
         Type CompositeType { get; }
-        List<RawCompositeField> RawFields { get; set; }
     }
 
     interface ICompositeHandlerFactory
     {
-        ICompositeHandler Create(IBackendType backendType, TypeHandlerRegistry registry);
+        ICompositeHandler Create(IBackendType backendType, List<RawCompositeField> rawFields, TypeHandlerRegistry registry);
     }
 
     /// <summary>
@@ -65,7 +64,7 @@ namespace Npgsql.TypeHandlers
     {
         readonly TypeHandlerRegistry _registry;
         readonly INpgsqlNameTranslator _nameTranslator;
-        public List<RawCompositeField> RawFields { get; set; }
+        List<RawCompositeField> _rawFields { get; set; }
         List<MemberDescriptor> _members;
 
         ReadBuffer _readBuf;
@@ -80,10 +79,16 @@ namespace Npgsql.TypeHandlers
 
         public Type CompositeType => typeof(T);
 
-        internal CompositeHandler(IBackendType backendType, INpgsqlNameTranslator nameTranslator, TypeHandlerRegistry registry)
+        internal CompositeHandler(IBackendType backendType, INpgsqlNameTranslator nameTranslator, List<RawCompositeField> rawFields, TypeHandlerRegistry registry)
             : base (backendType)
         {
             _nameTranslator = nameTranslator;
+
+            // At this point the composite handler nows about the fields, but hasn't yet resolved the
+            // type OIDs to their type handlers. This is done only very late upon first usage of the handler,
+            // allowing composite types to be registered and activated in any order regardless of dependencies.
+            _rawFields = rawFields;
+
             _registry = registry;
         }
 
@@ -155,7 +160,7 @@ namespace Npgsql.TypeHandlers
                         return false;
                     _preparedRead = false;
                 }
-                else throw PGUtil.ThrowIfReached();
+                else throw new InvalidOperationException("Internal Npgsql bug, please report.");
 
                 fieldDescriptor.SetValue(_value, fieldValue);
                 _len = -1;
@@ -263,7 +268,7 @@ namespace Npgsql.TypeHandlers
                     continue;
                 }
 
-                throw PGUtil.ThrowIfReached();
+                throw new InvalidOperationException("Internal Npgsql bug, please report.");
             }
 
             return true;
@@ -278,8 +283,8 @@ namespace Npgsql.TypeHandlers
             if (_members != null)
                 return;
 
-            _members = new List<MemberDescriptor>(RawFields.Count);
-            foreach (var rawField in RawFields)
+            _members = new List<MemberDescriptor>(_rawFields.Count);
+            foreach (var rawField in _rawFields)
             {
                 TypeHandler handler;
                 if (!_registry.TryGetByOID(rawField.TypeOID, out handler))
@@ -313,7 +318,7 @@ namespace Npgsql.TypeHandlers
                 throw new Exception($"PostgreSQL composite type {PgDisplayName} contains field {rawField.PgName} which cannot map to CLR type {typeof(T).Name}'s field {member.Name} of type {member.GetType().Name}");
             }
 
-            RawFields = null;
+            _rawFields = null;
         }
 
         struct MemberDescriptor
@@ -347,7 +352,7 @@ namespace Npgsql.TypeHandlers
                     _property.SetValue(container, fieldValue);
                 else if (_field != null)
                     _field.SetValue(container, fieldValue);
-                else throw PGUtil.ThrowIfReached();
+                else throw new InvalidOperationException("Internal Npgsql bug, please report.");
             }
 
             [CanBeNull]
@@ -357,7 +362,7 @@ namespace Npgsql.TypeHandlers
                     return _property.GetValue(container);
                 if (_field != null)
                     return _field.GetValue(container);
-                throw PGUtil.ThrowIfReached();
+                throw new InvalidOperationException("Internal Npgsql bug, please report.");
             }
         }
 
@@ -372,12 +377,12 @@ namespace Npgsql.TypeHandlers
                 _nameTranslator = nameTranslator;
             }
 
-            public ICompositeHandler Create(IBackendType backendType, TypeHandlerRegistry registry)
-                => new CompositeHandler<T>(backendType, _nameTranslator, registry);
+            public ICompositeHandler Create(IBackendType backendType, List<RawCompositeField> rawFields, TypeHandlerRegistry registry)
+                => new CompositeHandler<T>(backendType, _nameTranslator, rawFields, registry);
         }
     }
 
-    internal struct RawCompositeField
+    struct RawCompositeField
     {
         internal string PgName;
         internal uint TypeOID;

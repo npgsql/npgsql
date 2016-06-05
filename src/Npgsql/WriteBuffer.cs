@@ -24,7 +24,6 @@
 using System;
 using System.Diagnostics;
 using System.IO;
-using System.Net;
 using System.Runtime.InteropServices;
 using System.Text;
 using AsyncRewriter;
@@ -68,7 +67,7 @@ namespace Npgsql
 
         internal long TotalBytesFlushed { get; private set; }
 
-        internal readonly byte[] _buf;
+        readonly byte[] _buf;
         readonly Encoder _textEncoder;
 
         int _writePosition;
@@ -315,6 +314,7 @@ namespace Npgsql
             TotalBytesFlushed = 0;
         }
 
+#pragma warning disable CA1051 // Do not declare visible instance fields
         [StructLayout(LayoutKind.Explicit, Size = 8)]
         struct BitConverterUnion
         {
@@ -330,6 +330,7 @@ namespace Npgsql
             [FieldOffset(0)] public float float4;
             [FieldOffset(0)] public double float8;
         }
+#pragma warning restore CA1051 // Do not declare visible instance fields
 
         #endregion
     }

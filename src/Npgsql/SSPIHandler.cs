@@ -26,6 +26,7 @@ using System.Runtime.InteropServices;
 using System.ComponentModel;
 using System.Diagnostics;
 using JetBrains.Annotations;
+using static Npgsql.SafeNativeMethods;
 
 namespace Npgsql
 {
@@ -34,110 +35,6 @@ namespace Npgsql
     /// </summary>
     class SSPIHandler : IDisposable
     {
-        #region Constants and Structs
-
-        const int SecbufferVersion = 0;
-        const int SecbufferToken = 2;
-        const int SecEOk = 0x00000000;
-        const int SecIContinueNeeded = 0x00090312;
-        const int IscReqAllocateMemory = 0x00000100;
-        const int SecurityNetworkDrep = 0x00000000;
-        const int SecpkgCredOutbound = 0x00000002;
-
-        [StructLayout(LayoutKind.Sequential)]
-        struct SecHandle
-        {
-            internal IntPtr dwLower;
-            internal IntPtr dwUpper;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        struct SecBuffer
-        {
-            internal int cbBuffer;
-            internal int BufferType;
-            internal IntPtr pvBuffer;
-        }
-
-        /// <summary>
-        /// Simplified SecBufferDesc struct with only one SecBuffer
-        /// </summary>
-        [StructLayout(LayoutKind.Sequential)]
-        struct SecBufferDesc
-        {
-            internal int ulVersion;
-            internal int cBuffers;
-            internal IntPtr pBuffer;
-        }
-
-        #endregion
-
-        #region P/Invoke methods
-
-        // ReSharper disable InconsistentNaming
-
-        [DllImport("Secur32.dll")]
-        static extern int AcquireCredentialsHandle(
-            string pszPrincipal,
-            string pszPackage,
-            int fCredentialUse,
-            IntPtr pvLogonID,
-            IntPtr pAuthData,
-            IntPtr pGetKeyFn,
-            IntPtr pvGetKeyArgument,
-            ref SecHandle phCredential,
-            out SecHandle ptsExpiry
-        );
-
-        [DllImport("secur32", SetLastError=true)]
-        static extern int InitializeSecurityContext(
-            ref SecHandle phCredential,
-            ref SecHandle phContext,
-            string pszTargetName,
-            int fContextReq,
-            int Reserved1,
-            int TargetDataRep,
-            ref SecBufferDesc pInput,
-            int Reserved2,
-            out SecHandle phNewContext,
-            out SecBufferDesc pOutput,
-            out int pfContextAttr,
-            out SecHandle ptsExpiry);
-
-        [DllImport("secur32", SetLastError=true)]
-        static extern int InitializeSecurityContext(
-            ref SecHandle phCredential,
-            IntPtr phContext,
-            string pszTargetName,
-            int fContextReq,
-            int Reserved1,
-            int TargetDataRep,
-            IntPtr pInput,
-            int Reserved2,
-            out SecHandle phNewContext,
-            out SecBufferDesc pOutput,
-            out int pfContextAttr,
-            out SecHandle ptsExpiry);
-
-        [DllImport("Secur32.dll")]
-        static extern int FreeContextBuffer(
-            IntPtr pvContextBuffer
-        );
-
-        [DllImport("Secur32.dll")]
-        static extern int FreeCredentialsHandle(
-            ref SecHandle phCredential
-        );
-
-        [DllImport("Secur32.dll")]
-        static extern int DeleteSecurityContext(
-            ref SecHandle phContext
-        );
-
-        // ReSharper restore InconsistentNaming
-
-        #endregion
-
         bool _disposed;
         readonly string _sspiTarget;
         SecHandle _sspiCred;
@@ -334,6 +231,113 @@ namespace Npgsql
                 FreeHandles();
             _disposed = true;
         }
+
+        #endregion
+    }
+
+    static class SafeNativeMethods
+    {
+        #region Constants and Structs
+
+        internal const int SecbufferVersion = 0;
+        internal const int SecbufferToken = 2;
+        internal const int SecEOk = 0x00000000;
+        internal const int SecIContinueNeeded = 0x00090312;
+        internal const int IscReqAllocateMemory = 0x00000100;
+        internal const int SecurityNetworkDrep = 0x00000000;
+        internal const int SecpkgCredOutbound = 0x00000002;
+
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct SecHandle
+        {
+            internal IntPtr dwLower;
+            internal IntPtr dwUpper;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct SecBuffer
+        {
+            internal int cbBuffer;
+            internal int BufferType;
+            internal IntPtr pvBuffer;
+        }
+
+        /// <summary>
+        /// Simplified SecBufferDesc struct with only one SecBuffer
+        /// </summary>
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct SecBufferDesc
+        {
+            internal int ulVersion;
+            internal int cBuffers;
+            internal IntPtr pBuffer;
+        }
+
+        #endregion
+
+        #region P/Invoke methods
+
+        // ReSharper disable InconsistentNaming
+
+        [DllImport("Secur32.dll")]
+        internal static extern int AcquireCredentialsHandle(
+            string pszPrincipal,
+            string pszPackage,
+            int fCredentialUse,
+            IntPtr pvLogonID,
+            IntPtr pAuthData,
+            IntPtr pGetKeyFn,
+            IntPtr pvGetKeyArgument,
+            ref SecHandle phCredential,
+            out SecHandle ptsExpiry
+        );
+
+        [DllImport("secur32", SetLastError = true)]
+        internal static extern int InitializeSecurityContext(
+            ref SecHandle phCredential,
+            ref SecHandle phContext,
+            string pszTargetName,
+            int fContextReq,
+            int Reserved1,
+            int TargetDataRep,
+            ref SecBufferDesc pInput,
+            int Reserved2,
+            out SecHandle phNewContext,
+            out SecBufferDesc pOutput,
+            out int pfContextAttr,
+            out SecHandle ptsExpiry);
+
+        [DllImport("secur32", SetLastError = true)]
+        internal static extern int InitializeSecurityContext(
+            ref SecHandle phCredential,
+            IntPtr phContext,
+            string pszTargetName,
+            int fContextReq,
+            int Reserved1,
+            int TargetDataRep,
+            IntPtr pInput,
+            int Reserved2,
+            out SecHandle phNewContext,
+            out SecBufferDesc pOutput,
+            out int pfContextAttr,
+            out SecHandle ptsExpiry);
+
+        [DllImport("Secur32.dll")]
+        internal static extern int FreeContextBuffer(
+            IntPtr pvContextBuffer
+        );
+
+        [DllImport("Secur32.dll")]
+        internal static extern int FreeCredentialsHandle(
+            ref SecHandle phCredential
+        );
+
+        [DllImport("Secur32.dll")]
+        internal static extern int DeleteSecurityContext(
+            ref SecHandle phContext
+        );
+
+        // ReSharper restore InconsistentNaming
 
         #endregion
     }

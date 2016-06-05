@@ -24,18 +24,6 @@ namespace Npgsql.TypeHandlers
     class PostgisGeometryHandler : ChunkingTypeHandler<PostgisGeometry>,
         IChunkingTypeHandler<byte[]>
     {
-        class Counter
-        {
-            int _value;
-
-            public void Increment()
-            {
-                _value++;
-            }
-
-            public static implicit operator int(Counter c) => c._value;
-        }
-
         uint? _srid;
         uint _id;
 
@@ -49,7 +37,7 @@ namespace Npgsql.TypeHandlers
         Coordinate2D[][] _rings;
         Coordinate2D[][][] _pols;
         readonly Stack<PostgisGeometry[]> _geoms = new Stack<PostgisGeometry[]>();
-        readonly Stack<Counter> _icol = new Stack<Counter>();
+        readonly Stack<int> _icol = new Stack<int>();
         PostgisGeometry _toWrite;
 
         [CanBeNull]
@@ -113,7 +101,7 @@ namespace Npgsql.TypeHandlers
             }
             if (!_srid.HasValue)
             {
-                if ((_id & (uint)EwkbModifier.HasSRID) != 0)
+                if ((_id & (uint)EwkbModifiers.HasSRID) != 0)
                 {
                     if (_readBuf.ReadBytesLeft < 4)
                         return false;
@@ -288,12 +276,12 @@ namespace Npgsql.TypeHandlers
                         if (_readBuf.ReadBytesLeft < 4)
                             return false;
                         _geoms.Push(new PostgisGeometry[_readBuf.ReadInt32(_bo)]);
-                        _icol.Push(new Counter());
+                        _icol.Push(0);
                     }
                     _id = 0;
                     var g = _geoms.Peek();
                     var i = _icol.Peek();
-                    for (; i < g.Length; i.Increment())
+                    for (; i < g.Length; i++)
                     {
                         PostgisGeometry geom;
                         if (!Read(out geom))
@@ -391,7 +379,7 @@ namespace Npgsql.TypeHandlers
                     if (_writeBuf.WriteSpaceLeft < 9)
                         return false;
                     _writeBuf.WriteByte(0);
-                    _writeBuf.WriteInt32((int) ((uint)geom.Identifier | (uint)EwkbModifier.HasSRID));
+                    _writeBuf.WriteInt32((int) ((uint)geom.Identifier | (uint)EwkbModifiers.HasSRID));
                     _writeBuf.WriteInt32((int) geom.SRID);
                 }
                 _newGeom = false;
@@ -554,10 +542,10 @@ namespace Npgsql.TypeHandlers
                         if (_writeBuf.WriteSpaceLeft < 4)
                             return false;
                         _writeBuf.WriteInt32(coll.GeometryCount);
-                        _icol.Push(new Counter());
+                        _icol.Push(0);
                         _newGeom = true;
                     }
-                    for (var i = _icol.Peek(); i < coll.GeometryCount; i.Increment())
+                    for (var i = _icol.Peek(); i < coll.GeometryCount; i++)
                     {
                         if (!Write(coll[i]))
                             return false;

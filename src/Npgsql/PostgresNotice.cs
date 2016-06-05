@@ -37,7 +37,7 @@ namespace Npgsql
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/protocol-flow.html#PROTOCOL-ASYNC
     /// </remarks>
-    public class PostgresNotice
+    public sealed class PostgresNotice
     {
         readonly ErrorOrNoticeMessage _msg;
 
@@ -178,12 +178,12 @@ namespace Npgsql
     /// <summary>
     /// Provides data for a notice event.
     /// </summary>
-    public class NpgsqlNoticeEventArgs : EventArgs
+    public sealed class NpgsqlNoticeEventArgs : EventArgs
     {
         /// <summary>
         /// The Notice that was sent from the database.
         /// </summary>
-        public PostgresNotice Notice { get; private set; }
+        public PostgresNotice Notice { get; }
 
         internal NpgsqlNoticeEventArgs(PostgresNotice notice)
         {

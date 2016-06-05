@@ -107,7 +107,7 @@ namespace Npgsql.TypeHandlers
         {
             Debug.Assert(_readState == ReadState.NeedPrepare);
             if (_readState != ReadState.NeedPrepare) // Checks against recursion and bugs
-                throw PGUtil.ThrowIfReached("Started reading a value before completing a previous value");
+                throw new InvalidOperationException("Started reading a value before completing a previous value");
 
             _readBuf = buf;
             _fieldDescription = fieldDescription;
@@ -287,7 +287,7 @@ namespace Npgsql.TypeHandlers
                     return true;
                 }
 
-                throw PGUtil.ThrowIfReached();
+                throw new InvalidOperationException("Internal Npgsql bug, please report.");
             }
             catch (SafeReadException e)
             {
@@ -398,7 +398,7 @@ namespace Npgsql.TypeHandlers
                     return true;
 
                 default:
-                    throw PGUtil.ThrowIfReached();
+                    throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {_writeState} of enum {nameof(ArrayHandler)}.{nameof(WriteState)}. Please file a bug.");
             }
         }
 
@@ -441,7 +441,7 @@ namespace Npgsql.TypeHandlers
                 return true;
             }
 
-            throw PGUtil.ThrowIfReached();
+            throw new InvalidOperationException("Internal Npgsql bug, please report.");
         }
 
         public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter = null)
@@ -530,7 +530,7 @@ namespace Npgsql.TypeHandlers
     /// </remarks>
     /// <typeparam name="TNormal">The .NET type contained as an element within this array</typeparam>
     /// <typeparam name="TPsv">The .NET provider-specific type contained as an element within this array</typeparam>
-    class ArrayHandlerWithPsv<TNormal, TPsv> : ArrayHandler<TNormal>, ITypeHandlerWithPsv
+    class ArrayHandlerWithPsv<TNormal, TPsv> : ArrayHandler<TNormal>
     {
         /// <summary>
         /// The provider-specific type of the elements contained within this array,

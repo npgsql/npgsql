@@ -121,7 +121,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                     date = new NpgsqlDate(dt);
             }
             else
-                throw PGUtil.ThrowIfReached();
+                throw new InvalidOperationException("Internal Npgsql bug, please report.");
 
             if (date == NpgsqlDate.NegativeInfinity)
                 buf.WriteInt32(int.MinValue);

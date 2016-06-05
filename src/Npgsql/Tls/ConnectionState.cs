@@ -22,14 +22,11 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Security.Cryptography;
 
-namespace TlsClientStream
+namespace Npgsql.Tls
 {
-    class ConnectionState : IDisposable
+    sealed class ConnectionState : IDisposable
     {
         public TlsVersion TlsVersion { get; set; }
         public CipherSuiteInfo CipherSuite { get; set; }

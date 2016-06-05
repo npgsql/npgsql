@@ -72,11 +72,6 @@ namespace Npgsql
         internal static StringComparer InvariantCaseIgnoringStringComparer => CultureInfo.InvariantCulture.CompareInfo.GetStringComparer(CompareOptions.IgnoreCase);
 #endif
 
-        internal static Exception ThrowIfReached(string message = null)
-        {
-            return message == null ? new Exception("An internal Npgsql occured, please open an issue in http://github.com/npgsql/npgsql with this exception's stack trace") : new Exception(message);
-        }
-
         internal static bool IsWindows =>
 #if NET45 || NET451
             Environment.OSVersion.Platform == PlatformID.Win32NT;
@@ -129,7 +124,7 @@ namespace Npgsql
         internal TimeSpan TimeLeft => IsSet ? Expiration - DateTime.Now : Timeout.InfiniteTimeSpan;
     }
 
-    class CultureSetter : IDisposable
+    sealed class CultureSetter : IDisposable
     {
         readonly CultureInfo _oldCulture;
 

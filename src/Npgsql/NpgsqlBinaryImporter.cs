@@ -42,7 +42,7 @@ namespace Npgsql
     /// <remarks>
     /// See http://www.postgresql.org/docs/current/static/sql-copy.html.
     /// </remarks>
-    public class NpgsqlBinaryImporter : IDisposable, ICancelable
+    public sealed class NpgsqlBinaryImporter : ICancelable
     {
         #region Fields and Properties
 
@@ -256,7 +256,7 @@ namespace Npgsql
                     return;
                 }
 
-                throw PGUtil.ThrowIfReached();
+                throw new InvalidOperationException($"Internal Npgsql bug, please report.");
             }
             catch
             {

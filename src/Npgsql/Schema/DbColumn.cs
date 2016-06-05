@@ -24,9 +24,6 @@
 #if NET45 || NET451
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 #pragma warning disable 1591
 
@@ -40,6 +37,7 @@ namespace Npgsql.Schema
     /// </remarks>
     public abstract class DbColumn
     {
+        // ReSharper disable once InconsistentNaming
         public bool? AllowDBNull { get; protected set; }
         public string BaseCatalogName { get; protected set; }
         public string BaseColumnName { get; protected set; }
@@ -64,11 +62,11 @@ namespace Npgsql.Schema
         public Type DataType { get; protected set; }
         public string DataTypeName { get; protected set; }
 
-        public virtual object this[string property]
+        public virtual object this[string propertyName]
         {
             get
             {
-                switch (property)
+                switch (propertyName)
                 {
                 case nameof(AllowDBNull):
                     return AllowDBNull;

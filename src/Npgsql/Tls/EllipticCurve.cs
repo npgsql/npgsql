@@ -21,36 +21,34 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
+#pragma warning disable CA2225 // Operator overloads have named alternates
+
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
 using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
-using System.Threading.Tasks;
 
 /*
  * Based almost completely on https://www.nsa.gov/ia/_files/nist-routines.pdf
  */
 
-namespace TlsClientStream
+namespace Npgsql.Tls
 {
     class EllipticCurve
     {
-        public static readonly EllipticCurve P256 = new EllipticCurve(
-            new BigInt() {
+        internal static readonly EllipticCurve P256 = new EllipticCurve(
+            new BigInt {
                 _bits = new uint[] { 0xffffffff, 0xffffffff, 0xffffffff, 0, 0, 0, 1, 0xffffffff }
             },
             new BigInteger(new byte[] {0x4b, 0x60, 0xd2, 0x27, 0x3e, 0x3c, 0xce, 0x3b, 0xf6, 0xb0, 0x53, 0xcc, 0xb0, 0x06, 0x1d, 0x65,
                0xbc, 0x86, 0x98, 0x76, 0x55, 0xbd, 0xeb, 0xb3, 0xe7, 0x93, 0x3a, 0xaa, 0xd8, 0x35, 0xc6, 0x5a }),
             new BigInteger(new byte[] {0x51, 0x25, 0x63, 0xfc, 0xc2, 0xca, 0xb9, 0xf3, 0x84, 0x9e, 0x17, 0xa7, 0xad, 0xfa, 0xe6, 0xbc,
                 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0 }),
-            new BigInt() {
+            new BigInt {
                 _bits = new uint[] { 0xd898c296, 0xf4a13945, 0x2deb33a0, 0x77037d81, 0x63a440f2, 0xf8bce6e5, 0xe12c4247, 0x6b17d1f2 }
             },
-            new BigInt() {
+            new BigInt {
                 _bits = new uint[] { 0x37bf51f5, 0xcbb64068, 0x6b315ece, 0x2bce3357, 0x7c0f9e16, 0x8ee7eb4a, 0xfe1a7f9b, 0x4fe342e2 }
             },
             v => { v.ModP256(); return v; },
@@ -58,8 +56,8 @@ namespace TlsClientStream
             new byte[] { 0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07 }
         );
 
-        public static readonly EllipticCurve P384 = new EllipticCurve(
-            new BigInt() {
+        internal static readonly EllipticCurve P384 = new EllipticCurve(
+            new BigInt {
                 _bits = new uint[] {
                     0xffffffff, 0, 0, 0xffffffff, 0xfffffffe, 0xffffffff,
                     0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff
@@ -71,13 +69,13 @@ namespace TlsClientStream
                 0x6b, 0x05, 0x8e, 0x98, 0xe4, 0xe7, 0x3e, 0xe2, 0xa7, 0x2f, 0x31, 0xb3}),
             new BigInteger(new byte[] { 0x73, 0x29, 0xc5, 0xcc, 0x6a, 0x19, 0xec, 0xec, 0x7a, 0xa7, 0xb0, 0x48, 0xb2, 0x0d, 0x1a, 0x58, 0xdf, 0x2d, 0x37, 0xf4, 0x81, 0x4d, 0x63, 0xc7,
                 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0 }),
-            new BigInt() {
+            new BigInt {
                 _bits = new uint[] {
                     0x72760ab7, 0x3a545e38, 0xbf55296c, 0x5502f25d, 0x82542a38, 0x59f741e0,
                     0x8ba79b98, 0x6e1d3b62, 0xf320ad74, 0x8eb1c71e, 0xbe8b0537, 0xaa87ca22
                 }
             },
-            new BigInt() {
+            new BigInt {
                 _bits = new uint[] {
                     0x90ea0e5f, 0x7a431d7c, 0x1d7e819d, 0x0a60b1ce, 0xb5f0b8c0, 0xe9da3113,
                     0x289a147c, 0xf8f41dbd, 0x9292dc29, 0x5d9e98bf, 0x96262c6f, 0x3617de4a
@@ -88,8 +86,8 @@ namespace TlsClientStream
             new byte[] { 0x06, 0x05, 0x2B, 0x81, 0x04, 0x00, 0x22 }
         );
 
-        public static readonly EllipticCurve P521 = new EllipticCurve(
-            new BigInt() {
+        internal static readonly EllipticCurve P521 = new EllipticCurve(
+            new BigInt {
                 _bits = new uint[] {
                     0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
                     0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x000001ff
@@ -104,13 +102,13 @@ namespace TlsClientStream
                 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
                 0xff, 0x01
             }),
-            new BigInt() {
+            new BigInt {
                 _bits = new uint[] {
                     0xc2e5bd66, 0xf97e7e31, 0x856a429b, 0x3348b3c1, 0xa2ffa8de, 0xfe1dc127, 0xefe75928, 0xa14b5e77,
                     0x6b4d3dba, 0xf828af60, 0x053fb521, 0x9c648139, 0x2395b442, 0x9e3ecb66, 0x0404e9cd, 0x858e06b7, 0x000000c6
                 }
             },
-            new BigInt() {
+            new BigInt {
                 _bits = new uint[] {
                     0x9fd16650, 0x88be9476, 0xa272c240, 0x353c7086, 0x3fad0761, 0xc550b901, 0x5ef42640, 0x97ee7299,
                     0x273e662c, 0x17afbd17, 0x579b4468, 0x98f54449, 0x2c7d1bd9, 0x5c8a5fb4, 0x9a3bc004, 0x39296a78, 0x00000118
@@ -121,16 +119,16 @@ namespace TlsClientStream
             new byte[] { 0x06, 0x05, 0x2B, 0x81, 0x04, 0x00, 0x23 }
         );
 
-        public readonly BigInt p;
+        internal readonly BigInt p;
         BigInteger b;
         BigInteger q;
         BigInt negP;
-        public readonly BigInt xg;
-        public readonly BigInt yg;
+        internal readonly BigInt xg;
+        internal readonly BigInt yg;
         Func<BigInt, BigInt> modp;
-        public readonly int curveLen;
-        public int curveByteLen => (curveLen + 7) >> 3;
-        public readonly byte[] asnName;
+        internal readonly int curveLen;
+        internal int curveByteLen => (curveLen + 7) >> 3;
+        internal readonly byte[] asnName;
 
         EllipticCurve(BigInt p, BigInteger b, BigInteger q, BigInt xg, BigInt yg, Func<BigInt, BigInt> modp, int curveLen, byte[] asnName)
         {
@@ -147,17 +145,17 @@ namespace TlsClientStream
             BigInt.TwosComplement(negP._bits, negP._bits);
         }
 
-        public class BigInt
+        internal class BigInt
         {
-            public uint[] _bits;
+            internal uint[] _bits;
 
             internal int Length => _bits.Length;
 
-            public BigInt(uint[] bits)
+            internal BigInt(uint[] bits)
             {
                 _bits = (uint[])bits.Clone();
             }
-            public BigInt(byte[] bigEndian, int offset, int byteLen)
+            internal BigInt(byte[] bigEndian, int offset, int byteLen)
             {
                 var chunks = (byteLen + 3) / 4;
                 _bits = new uint[chunks];
@@ -167,7 +165,7 @@ namespace TlsClientStream
                     shift = (shift + 8) & 31;
                 }
             }
-            public BigInt(BigInteger bi, int size)
+            internal BigInt(BigInteger bi, int size)
             {
                 var littleEndian = bi.ToByteArray();
                 _bits = new uint[size];
@@ -178,26 +176,26 @@ namespace TlsClientStream
                 }
 
             }
-            public BigInt(uint i, int size)
+            internal BigInt(uint i, int size)
             {
                 _bits = new uint[size];
                 _bits[0] = i;
             }
-            public BigInt() { }
+            internal BigInt() { }
 
-            public void Clear()
+            internal void Clear()
             {
                 for (int i = 0; i < _bits.Length; i++)
                     _bits[i] = 0;
             }
 
-            public static BigInt Create(int size)
+            internal static BigInt Create(int size)
             {
                 return new BigInt { _bits = new uint[size] };
             }
-            public BigInt Clone()
+            internal BigInt Clone()
             {
-                return new BigInt() { _bits = (uint[])_bits.Clone() };
+                return new BigInt { _bits = (uint[])_bits.Clone() };
             }
 
             void Truncate(int size)
@@ -209,13 +207,13 @@ namespace TlsClientStream
                 _bits = bits;
             }
 
-            public byte[] ExportToBigEndian(int byteLen)
+            internal byte[] ExportToBigEndian(int byteLen)
             {
                 byte[] output = new byte[byteLen];
                 ExportToBigEndian(output, 0, byteLen);
                 return output;
             }
-            public int ExportToBigEndian(byte[] buf, int offset, int byteLen)
+            internal int ExportToBigEndian(byte[] buf, int offset, int byteLen)
             {
                 for (int i = 0, shift = 0; i < byteLen; i++)
                 {
@@ -225,7 +223,7 @@ namespace TlsClientStream
                 }
                 return byteLen;
             }
-            public BigInteger ExportToBigInteger()
+            internal BigInteger ExportToBigInteger()
             {
                 var bytes = new byte[_bits.Length * 4 + 1];
                 for (int i = 0, j = 0; i < _bits.Length; i++, j += 4)
@@ -238,14 +236,14 @@ namespace TlsClientStream
                 return new BigInteger(bytes);
             }
 
-            public bool IsZero()
+            internal bool IsZero()
             {
                 for (int i = 0; i < Length; i++)
                     if (_bits[i] != 0)
                         return false;
                 return true;
             }
-            public bool IsOne()
+            internal bool IsOne()
             {
                 if (_bits[0] != 1)
                     return false;
@@ -255,12 +253,12 @@ namespace TlsClientStream
                 return true;
             }
 
-            public bool IsEven()
+            internal bool IsEven()
             {
                 return (_bits[0] & 1) == 0;
             }
 
-            public int BitCount()
+            internal int BitCount()
             {
                 for (var i = Length - 1; i >= 0; i--)
                 {
@@ -277,14 +275,14 @@ namespace TlsClientStream
                 }
                 return 0;
             }
-            public bool BitAt(int pos)
+            internal bool BitAt(int pos)
             {
                 if (pos >= Length << 5 || pos < 0)
                     return false;
                 return (_bits[pos >> 5] & (1 << (pos & 31))) != 0;
             }
 
-            public uint this[int i]
+            internal uint this[int i]
             {
                 get
                 {
@@ -296,7 +294,8 @@ namespace TlsClientStream
                 }
             }
 
-            public static bool operator >=(BigInt a, BigInt o) {
+            public static bool operator >=(BigInt a, BigInt o)
+            {
                 Debug.Assert(a.Length == o.Length + 1 || a.Length == o.Length);
 
                 if (a.Length == o.Length + 1 && a._bits[a.Length - 1] != 0)
@@ -311,14 +310,12 @@ namespace TlsClientStream
                 return true;
             }
 
-            public static bool operator <=(BigInt a, BigInt o) {
-                return o >= a;
-            }
+            public static bool operator <=(BigInt a, BigInt o) => o >= a;
 
             // r can be the same array as a or o
             // a.Length <= o.Length (if a.Length < o.Length, the rest is ignored)
             // r.Length >= a.Length
-            public static uint AddRaw(uint[] a, uint[] o, uint[] r)
+            internal static uint AddRaw(uint[] a, uint[] o, uint[] r)
             {
                 uint carry = 0;
                 for (var i = 0; i < a.Length; i++)
@@ -331,7 +328,7 @@ namespace TlsClientStream
             }
 
             // output can be input
-            public static void TwosComplement(uint[] input, uint[] output)
+            internal static void TwosComplement(uint[] input, uint[] output)
             {
                 bool carry = true;
                 for (int i = 0; i < input.Length; i++)
@@ -358,7 +355,7 @@ namespace TlsClientStream
                 return res;
             }
 
-            public BigInt Add(BigInt o)
+            internal BigInt Add(BigInt o)
             {
                 var r = Create(_bits.Length + 1);
                 var carry = AddRaw(_bits, o._bits, r._bits);
@@ -366,11 +363,10 @@ namespace TlsClientStream
 
                 return r;
             }
-            public static BigInt operator +(BigInt a, BigInt o) {
-                return a.Add(o);
-            }
 
-            public BigInt AddMod(BigInt o, BigInt m, BigInt negM)
+            public static BigInt operator +(BigInt a, BigInt o) => a.Add(o);
+
+            internal BigInt AddMod(BigInt o, BigInt m, BigInt negM)
             {
                 var r = this + o;
                 if (r >= m)
@@ -383,7 +379,7 @@ namespace TlsClientStream
                 return r;
             }
 
-            public BigInt SubMod(BigInt o, BigInt m, BigInt negM)
+            internal BigInt SubMod(BigInt o, BigInt m, BigInt negM)
             {
                 var negO = -o;
                 AddRaw(negO._bits, m._bits, negO._bits);
@@ -392,7 +388,7 @@ namespace TlsClientStream
                 return res;
             }
 
-            public BigInt Mul(BigInt o)
+            internal BigInt Mul(BigInt o)
             {
                 var ret = Create(Length * 2);
                 for (int i = 0; i < Length; i++)
@@ -408,51 +404,51 @@ namespace TlsClientStream
                 }
                 return ret;
             }
-            public static BigInt operator *(BigInt a, BigInt o) {
-                return a.Mul(o);
-            }
-            public BigInt Mul3()
+
+            public static BigInt operator *(BigInt a, BigInt o) => a.Mul(o);
+
+            internal BigInt Mul3()
             {
                 var tmp = Add(this);
                 tmp._bits[tmp.Length - 1] += BigInt.AddRaw(_bits, tmp._bits, tmp._bits);
                 return tmp;
             }
-            public BigInt Mul3Mod(BigInt m, BigInt negM)
+            internal BigInt Mul3Mod(BigInt m, BigInt negM)
             {
                 var tmp1 = AddMod(this, m, negM);
                 var tmp2 = AddMod(tmp1, m, negM);
                 tmp1.Clear();
                 return tmp2;
             }
-            public BigInt Mul4Mod(BigInt m, BigInt negM)
+            internal BigInt Mul4Mod(BigInt m, BigInt negM)
             {
                 var tmp1 = AddMod(this, m, negM);
                 var tmp2 = tmp1.AddMod(tmp1, m, negM);
                 tmp1.Clear();
                 return tmp2;
             }
-            public BigInt Mul8Mod(BigInt m, BigInt negM)
+            internal BigInt Mul8Mod(BigInt m, BigInt negM)
             {
                 var tmp1 = Mul4Mod(m, negM);
                 var tmp2 = tmp1.AddMod(tmp1, m, negM);
                 tmp1.Clear();
                 return tmp2;
             }
-            public void ModP256()
+            internal void ModP256()
             {
                 var p = EllipticCurve.P256.p;
                 var negP = EllipticCurve.P256.negP;
 
                 var a = _bits;
-                var t = new BigInt() { _bits = new uint[] { a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7] } };
-                var s1 = new BigInt() { _bits = new uint[] { 0, 0, 0, a[11], a[12], a[13], a[14], a[15] } };
-                var s2 = new BigInt() { _bits = new uint[] { 0, 0, 0, a[12], a[13], a[14], a[15], 0 } };
-                var s3 = new BigInt() { _bits = new uint[] { a[8], a[9], a[10], 0, 0, 0, a[14], a[15] } };
-                var s4 = new BigInt() { _bits = new uint[] { a[9], a[10], a[11], a[13], a[14], a[15], a[13], a[8] } };
-                var d1 = new BigInt() { _bits = new uint[] { a[11], a[12], a[13], 0, 0, 0, a[8], a[10] } };
-                var d2 = new BigInt() { _bits = new uint[] { a[12], a[13], a[14], a[15], 0, 0, a[9], a[11] } };
-                var d3 = new BigInt() { _bits = new uint[] { a[13], a[14], a[15], a[8], a[9], a[10], 0, a[12] } };
-                var d4 = new BigInt() { _bits = new uint[] { a[14], a[15], 0, a[9], a[10], a[11], 0, a[13] } };
+                var t = new BigInt { _bits = new uint[] { a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7] } };
+                var s1 = new BigInt { _bits = new uint[] { 0, 0, 0, a[11], a[12], a[13], a[14], a[15] } };
+                var s2 = new BigInt { _bits = new uint[] { 0, 0, 0, a[12], a[13], a[14], a[15], 0 } };
+                var s3 = new BigInt { _bits = new uint[] { a[8], a[9], a[10], 0, 0, 0, a[14], a[15] } };
+                var s4 = new BigInt { _bits = new uint[] { a[9], a[10], a[11], a[13], a[14], a[15], a[13], a[8] } };
+                var d1 = new BigInt { _bits = new uint[] { a[11], a[12], a[13], 0, 0, 0, a[8], a[10] } };
+                var d2 = new BigInt { _bits = new uint[] { a[12], a[13], a[14], a[15], 0, 0, a[9], a[11] } };
+                var d3 = new BigInt { _bits = new uint[] { a[13], a[14], a[15], a[8], a[9], a[10], 0, a[12] } };
+                var d4 = new BigInt { _bits = new uint[] { a[14], a[15], 0, a[9], a[10], a[11], 0, a[13] } };
 
                 bool extraAddD1 = d1 >= p;
                 BigInt.TwosComplement(d1._bits, d1._bits);
@@ -489,7 +485,7 @@ namespace TlsClientStream
                 _bits = res._bits;
             }
 
-            public void ModP521()
+            internal void ModP521()
             {
                 var a = _bits;
                 var t = BigInt.Create(17);
@@ -511,22 +507,22 @@ namespace TlsClientStream
                 _bits = res._bits;
             }
 
-            public void ModP384()
+            internal void ModP384()
             {
                 var p = EllipticCurve.P384.p;
                 var negP = EllipticCurve.P384.negP;
 
                 var a = _bits;
-                var t = new BigInt() { _bits = new uint[] { a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[9], a[10], a[11] } };
-                var s1 = new BigInt() { _bits = new uint[] { 0, 0, 0, 0, a[21], a[22], a[23], 0, 0, 0, 0, 0 } };
-                var s2 = new BigInt() { _bits = new uint[] { a[12], a[13], a[14], a[15], a[16], a[17], a[18], a[19], a[20], a[21], a[22], a[23] } };
-                var s3 = new BigInt() { _bits = new uint[] { a[21], a[22], a[23], a[12], a[13], a[14], a[15], a[16], a[17], a[18], a[19], a[20] } };
-                var s4 = new BigInt() { _bits = new uint[] { 0, a[23], 0, a[20], a[12], a[13], a[14], a[15], a[16], a[17], a[18], a[19] } };
-                var s5 = new BigInt() { _bits = new uint[] { 0, 0, 0, 0, a[20], a[21], a[22], a[23], 0, 0, 0, 0 } };
-                var s6 = new BigInt() { _bits = new uint[] { a[20], 0, 0, a[21], a[22], a[23], 0, 0, 0, 0, 0, 0 } };
-                var d1 = new BigInt() { _bits = new uint[] { a[23], a[12], a[13], a[14], a[15], a[16], a[17], a[18], a[19], a[20], a[21], a[22] } };
-                var d2 = new BigInt() { _bits = new uint[] { 0, a[20], a[21], a[22], a[23], 0, 0, 0, 0, 0, 0, 0 } };
-                var d3 = new BigInt() { _bits = new uint[] { 0, 0, 0, a[23], a[23], 0, 0, 0, 0, 0, 0, 0 } };
+                var t = new BigInt { _bits = new uint[] { a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[9], a[10], a[11] } };
+                var s1 = new BigInt { _bits = new uint[] { 0, 0, 0, 0, a[21], a[22], a[23], 0, 0, 0, 0, 0 } };
+                var s2 = new BigInt { _bits = new uint[] { a[12], a[13], a[14], a[15], a[16], a[17], a[18], a[19], a[20], a[21], a[22], a[23] } };
+                var s3 = new BigInt { _bits = new uint[] { a[21], a[22], a[23], a[12], a[13], a[14], a[15], a[16], a[17], a[18], a[19], a[20] } };
+                var s4 = new BigInt { _bits = new uint[] { 0, a[23], 0, a[20], a[12], a[13], a[14], a[15], a[16], a[17], a[18], a[19] } };
+                var s5 = new BigInt { _bits = new uint[] { 0, 0, 0, 0, a[20], a[21], a[22], a[23], 0, 0, 0, 0 } };
+                var s6 = new BigInt { _bits = new uint[] { a[20], 0, 0, a[21], a[22], a[23], 0, 0, 0, 0, 0, 0 } };
+                var d1 = new BigInt { _bits = new uint[] { a[23], a[12], a[13], a[14], a[15], a[16], a[17], a[18], a[19], a[20], a[21], a[22] } };
+                var d2 = new BigInt { _bits = new uint[] { 0, a[20], a[21], a[22], a[23], 0, 0, 0, 0, 0, 0, 0 } };
+                var d3 = new BigInt { _bits = new uint[] { 0, 0, 0, a[23], a[23], 0, 0, 0, 0, 0, 0, 0 } };
 
                 BigInt.TwosComplement(d1._bits, d1._bits);
                 BigInt.AddRaw(d1._bits, p._bits, d1._bits);
@@ -563,7 +559,7 @@ namespace TlsClientStream
                 _bits = res._bits;
             }
 
-            public void Div2Trunc()
+            internal void Div2Trunc()
             {
                 for (var i = 0; i < Length - 1; i++)
                 {
@@ -571,7 +567,7 @@ namespace TlsClientStream
                 }
                 _bits[Length - 1] >>= 1;
             }
-            public void Div2(BigInt p)
+            internal void Div2(BigInt p)
             {
                 if ((_bits[0] & 1) == 0)
                 {
@@ -584,7 +580,7 @@ namespace TlsClientStream
                     _bits[Length - 1] |= carry << 31;
                 }
             }
-            public BigInt ModInv(BigInt p, BigInt negP)
+            internal BigInt ModInv(BigInt p, BigInt negP)
             {
                 var u = Clone();
                 var v = p.Clone();
@@ -637,31 +633,32 @@ namespace TlsClientStream
             }
         }
 
-        public class Projective
+        internal class Projective
         {
-            public BigInt x, y, z;
-            public void Clear()
+            internal BigInt x, y, z;
+            internal void Clear()
             {
                 x.Clear();
                 y.Clear();
                 z.Clear();
             }
-            public Projective Clone()
+            internal Projective Clone()
             {
                 return new Projective() { x = x.Clone(), y = y.Clone(), z = z.Clone() };
             }
         }
-        public class Affine
+
+        internal class Affine
         {
-            public BigInt x, y;
-            public void Clear()
+            internal BigInt x, y;
+            internal void Clear()
             {
                 x.Clear();
                 y.Clear();
             }
         }
 
-        public Projective EcDouble(Projective s)
+        internal Projective EcDouble(Projective s)
         {
             var size = s.x.Length;
 
@@ -718,7 +715,7 @@ namespace TlsClientStream
             variable = Replace(variable, new_);
         }
 
-        public Projective EcAdd(Projective s, Projective t)
+        internal Projective EcAdd(Projective s, Projective t)
         {
             var size = s.x.Length;
 
@@ -785,7 +782,7 @@ namespace TlsClientStream
             return new Projective() { x = t1, y = t2, z = t3 };
         }
 
-        public Projective EcFullAdd(Projective s, Projective t)
+        internal Projective EcFullAdd(Projective s, Projective t)
         {
             if (s.z.IsZero())
             {
@@ -803,7 +800,7 @@ namespace TlsClientStream
             return r;
         }
 
-        public Projective EcFullSub(Projective s, Projective t)
+        internal Projective EcFullSub(Projective s, Projective t)
         {
             var u = new Projective() { x = t.x.Clone(), y = p.SubMod(t.y, p, negP), z = t.z.Clone() };
             var res = EcFullAdd(s, u);
@@ -811,7 +808,7 @@ namespace TlsClientStream
             return res;
         }
 
-        public Affine EcAffinify(Projective s)
+        internal Affine EcAffinify(Projective s)
         {
             Debug.Assert(!s.z.IsZero());
 
@@ -826,12 +823,12 @@ namespace TlsClientStream
             return res;
         }
 
-        public Projective EcProjectify(Affine s)
+        internal Projective EcProjectify(Affine s)
         {
             return new Projective() { x = s.x, y = s.y, z = new BigInt(1, s.x.Length) };
         }
 
-        public Projective EcMult(BigInt d, Projective s)
+        internal Projective EcMult(BigInt d, Projective s)
         {
             var size = s.x.Length;
 
@@ -880,7 +877,7 @@ namespace TlsClientStream
             return r;
         }
 
-        public Projective EcTwinMult(BigInt d0, Projective S, BigInt d1, Projective T)
+        internal Projective EcTwinMult(BigInt d0, Projective S, BigInt d1, Projective T)
         {
             var d = new BigInt[2] { d0, d1 };
 
@@ -966,7 +963,7 @@ namespace TlsClientStream
             return R;
         }
 
-        public BigInt GenPriv(RandomNumberGenerator rng)
+        internal BigInt GenPriv(RandomNumberGenerator rng)
         {
             EllipticCurve.BigInt priv = null;
             do
@@ -984,7 +981,7 @@ namespace TlsClientStream
             return priv;
         }
 
-        public static EllipticCurve GetCurveFromParameters(byte[] pkParameters)
+        internal static EllipticCurve GetCurveFromParameters(byte[] pkParameters)
         {
             if (pkParameters.SequenceEqual(EllipticCurve.P256.asnName))
             {
@@ -1004,7 +1001,7 @@ namespace TlsClientStream
             }
         }
 
-        public void Ecdh(BigInt publicX, BigInt publicY, RandomNumberGenerator rng, out byte[] preMasterSecret, out Affine publicPoint)
+        internal void Ecdh(BigInt publicX, BigInt publicY, RandomNumberGenerator rng, out byte[] preMasterSecret, out Affine publicPoint)
         {
             var limbLen = (curveByteLen + 3) >> 2;
 
@@ -1028,7 +1025,7 @@ namespace TlsClientStream
             publicPoint = pubAff;
         }
 
-        public static bool? VerifySignature(byte[] pkParameters, byte[] pkKey, byte[] hash, byte[] signature)
+        internal static bool? VerifySignature(byte[] pkParameters, byte[] pkKey, byte[] hash, byte[] signature)
         {
             EllipticCurve curve = GetCurveFromParameters(pkParameters);
             if (curve == null)
@@ -1110,7 +1107,7 @@ namespace TlsClientStream
         }
 
 #if OPTIMIZED_CRYPTOGRAPHY && !NETSTANDARD1_3
-        public static bool? VerifySignatureCng(byte[] pkParameters, byte[] pkKey, byte[] hash, byte[] signature)
+        internal static bool? VerifySignatureCng(byte[] pkParameters, byte[] pkKey, byte[] hash, byte[] signature)
         {
             EllipticCurve curve = null;
             var ecsngHeader = new byte[8] { (byte)'E', (byte)'C', (byte)'S', 0, 0, 0, 0, 0 };

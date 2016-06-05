@@ -23,18 +23,14 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace TlsClientStream
+namespace Npgsql.Tls
 {
     class MD5SHA1 : HashAlgorithm
     {
-        private MD5 _md5;
-        private SHA1 _sha1;
+        MD5 _md5;
+        SHA1 _sha1;
 
         public MD5SHA1()
         {

@@ -103,7 +103,7 @@ namespace Npgsql.TypeHandlers
                 return;
             }
 
-            throw PGUtil.ThrowIfReached();
+            throw new InvalidOperationException("Internal Npgsql bug, please report.");
         }
 
         public override bool Write(ref DirectBuffer directBuf)
@@ -163,7 +163,7 @@ namespace Npgsql.TypeHandlers
                     goto case State.KeyLen;
 
                 default:
-                    throw PGUtil.ThrowIfReached();
+                    throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {_state} of enum {nameof(HstoreHandler)}.{nameof(State)}. Please file a bug.");
             }
         }
 
@@ -239,7 +239,7 @@ namespace Npgsql.TypeHandlers
                 goto case State.KeyLen;
 
             default:
-                throw PGUtil.ThrowIfReached();
+                throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {_state} of enum {nameof(HstoreHandler)}.{nameof(State)}. Please file a bug.");
             }
         }
 

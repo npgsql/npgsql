@@ -46,7 +46,7 @@ namespace Npgsql
     /// Represents a connection to a PostgreSQL backend. Unlike NpgsqlConnection objects, which are
     /// exposed to users, connectors are internal to Npgsql and are recycled by the connection pool.
     /// </summary>
-    partial class NpgsqlConnector
+    sealed partial class NpgsqlConnector : IDisposable
     {
         #region Fields and Properties
 
@@ -488,7 +488,7 @@ namespace Npgsql
 
                         if (!UseSslStream)
                         {
-                            var sslStream = new TlsClientStream.TlsClientStream(_stream);
+                            var sslStream = new Tls.TlsClientStream(_stream);
                             sslStream.PerformInitialHandshake(Host, clientCertificates, certificateValidationCallback, false);
                             _stream = sslStream;
                         }
@@ -1000,10 +1000,10 @@ namespace Npgsql
                     HandleParameterStatus(buf.ReadNullTerminatedString(), buf.ReadNullTerminatedString());
                     return null;
                 case BackendMessageCode.NoticeResponse:
-                    FireNotice(new PostgresNotice(buf));
+                    OnNotice(new PostgresNotice(buf));
                     return null;
                 case BackendMessageCode.NotificationResponse:
-                    FireNotification(new NpgsqlNotificationEventArgs(buf));
+                    OnNotification(new NpgsqlNotificationEventArgs(buf));
                     return null;
 
                 case BackendMessageCode.AuthenticationRequest:
@@ -1060,7 +1060,7 @@ namespace Npgsql
                     // We don't use the obsolete function call protocol
                     throw new NpgsqlException("Unexpected backend message: " + code);
                 default:
-                    throw PGUtil.ThrowIfReached("Unknown backend message code: " + code);
+                    throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {code} of enum {nameof(BackendMessageCode)}. Please file a bug.");
             }
         }
 
@@ -1181,7 +1181,7 @@ namespace Npgsql
                 case TransactionStatus.InFailedTransactionBlock:
                     return true;
                 default:
-                    throw PGUtil.ThrowIfReached();
+                    throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {TransactionStatus} of enum {nameof(TransactionStatus)}. Please file a bug.");
                 }
             }
         }
@@ -1202,7 +1202,7 @@ namespace Npgsql
             case TransactionStatus.Pending:
                 throw new Exception("Invalid TransactionStatus (should be frontend-only)");
             default:
-                throw PGUtil.ThrowIfReached();
+                throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {newStatus} of enum {nameof(TransactionStatus)}. Please file a bug.");
             }
             TransactionStatus = newStatus;
         }
@@ -1233,7 +1233,7 @@ namespace Npgsql
         /// </summary>
         internal event NotificationEventHandler Notification;
 
-        void FireNotice(PostgresNotice e)
+        void OnNotice(PostgresNotice e)
         {
             var notice = Notice;
             if (notice != null)
@@ -1249,7 +1249,7 @@ namespace Npgsql
             }
         }
 
-        void FireNotification(NpgsqlNotificationEventArgs e)
+        void OnNotification(NpgsqlNotificationEventArgs e)
         {
             var notification = Notification;
             if (notification != null)
@@ -1347,6 +1347,8 @@ namespace Npgsql
             State = ConnectorState.Closed;
             Cleanup();
         }
+
+        public void Dispose() => Close();
 
         /// <summary>
         /// Called when an unexpected message has been received during an action. Breaks the
@@ -1462,7 +1464,7 @@ namespace Npgsql
             case ConnectorState.Waiting:
                 throw new InvalidOperationException("Reset() called on connector with state " + State);
             default:
-                throw PGUtil.ThrowIfReached();
+                throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {State} of enum {nameof(ConnectorState)}. Please file a bug.");
             }
 
             if (IsInUserAction)
@@ -1532,7 +1534,7 @@ namespace Npgsql
             case ConnectorState.Waiting:
             case ConnectorState.Connecting:
             case ConnectorState.Copy:
-                throw PGUtil.ThrowIfReached("Internal Npgsql error, please report: acquired both locks and connector is in state " + State);
+                throw new InvalidOperationException("Internal Npgsql error, please report: acquired both locks and connector is in state " + State);
             default:
                 throw new ArgumentOutOfRangeException(nameof(State), State, "Invalid connector state: " + State);
             }
@@ -1769,7 +1771,9 @@ namespace Npgsql
         Copy,
     }
 
-    internal enum TransactionStatus : byte
+#pragma warning disable CA1717
+    enum TransactionStatus : byte
+#pragma warning restore CA1717
     {
         /// <summary>
         /// Currently not in a transaction block

@@ -126,7 +126,7 @@ namespace Npgsql
                     isolationLevel = DefaultIsolationLevel;
                     goto case DefaultIsolationLevel;
                 default:
-                    throw PGUtil.ThrowIfReached("Isolation level not supported: " + isolationLevel);
+                    throw new NotSupportedException("Isolation level not supported: " + isolationLevel);
             }
 
             _isolationLevel = isolationLevel;

@@ -36,15 +36,13 @@ namespace Npgsql
     /// An interface to remotely control the seekable stream for an opened large object on a PostgreSQL server.
     /// Note that the OpenRead/OpenReadWrite method as well as all operations performed on this stream must be wrapped inside a database transaction.
     /// </summary>
-    public partial class NpgsqlLargeObjectStream : Stream
+    public sealed partial class NpgsqlLargeObjectStream : Stream
     {
-        NpgsqlLargeObjectManager _manager;
-        int _fd;
+        readonly NpgsqlLargeObjectManager _manager;
+        readonly int _fd;
         long _pos;
-        bool _writeable;
+        readonly bool _writeable;
         bool _disposed;
-
-        private NpgsqlLargeObjectStream() { }
 
         internal NpgsqlLargeObjectStream(NpgsqlLargeObjectManager manager, uint oid, int fd, bool writeable)
         {
@@ -135,7 +133,7 @@ namespace Npgsql
                 totalWritten += bytesWritten;
 
                 if (bytesWritten != chunkSize)
-                    throw PGUtil.ThrowIfReached();
+                    throw new InvalidOperationException($"Internal Npgsql bug, please report");
 
                 _pos += bytesWritten;
             }

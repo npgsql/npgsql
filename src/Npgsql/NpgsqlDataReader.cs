@@ -46,7 +46,9 @@ namespace Npgsql
     /// <summary>
     /// Reads a forward-only stream of rows from a data source.
     /// </summary>
-    public partial class NpgsqlDataReader : DbDataReader
+#pragma warning disable CA1010
+    public sealed partial class NpgsqlDataReader : DbDataReader
+#pragma warning restore CA1010
 #if NETSTANDARD1_3
         , IDbColumnSchemaGenerator
 #endif
@@ -594,7 +596,7 @@ namespace Npgsql
                         _hasRows = false;
                         return false;
                     default:
-                        throw new ArgumentOutOfRangeException("Got unexpected message type: " + msg.Code);
+                        throw new InvalidOperationException("Got unexpected message type: " + msg.Code);
                     }
                 }
             }

@@ -23,44 +23,40 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace TlsClientStream
+namespace Npgsql.Tls
 {
     class HandshakeData
     {
-        public List<X509Certificate2> CertList;
-        public X509Chain CertChain;
+        internal List<X509Certificate2> CertList;
+        internal X509Chain CertChain;
 
         // For Finished verify-data
-        public Hasher HandshakeHash1;
-        public Hasher HandshakeHash2;
-        public Hasher HandshakeHash1_384;
-        public Hasher HandshakeHash2_384;
-        public Hasher HandshakeHash1_MD5SHA1;
-        public Hasher HandshakeHash2_MD5SHA1;
+        internal Hasher HandshakeHash1;
+        internal Hasher HandshakeHash2;
+        internal Hasher HandshakeHash1_384;
+        internal Hasher HandshakeHash2_384;
+        internal Hasher HandshakeHash1_MD5SHA1;
+        internal Hasher HandshakeHash2_MD5SHA1;
 
-        public Hasher CertificateVerifyHash_SHA1;
-        public Hasher CertificateVerifyHash_MD5;
+        internal Hasher CertificateVerifyHash_SHA1;
+        internal Hasher CertificateVerifyHash_MD5;
 
         // Diffie hellman ephemeral
-        public byte[] P, G, Ys;
+        internal byte[] P, G, Ys;
 
         // ECDHE
-        public EllipticCurve EcCurve;
-        public EllipticCurve.BigInt EcX;
-        public EllipticCurve.BigInt EcY;
+        internal EllipticCurve EcCurve;
+        internal EllipticCurve.BigInt EcX;
+        internal EllipticCurve.BigInt EcY;
 
         // Certificate request
-        public List<ClientCertificateType> CertificateTypes;
-        public List<Tuple<TLSHashAlgorithm, SignatureAlgorithm>> SupportedSignatureAlgorithms;
-        public List<string> CertificateAuthorities;
+        internal List<ClientCertificateType> CertificateTypes;
+        internal List<Tuple<TlsHashAlgorithm, SignatureAlgorithm>> SupportedSignatureAlgorithms;
+        internal List<string> CertificateAuthorities;
 
         // Selected client certificate
-        public X509Chain SelectedClientCertificate;
+        internal X509Chain SelectedClientCertificate;
     }
 }

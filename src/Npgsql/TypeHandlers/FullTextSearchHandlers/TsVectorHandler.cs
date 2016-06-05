@@ -138,7 +138,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
                 _writeBuf.WriteByte(0);
                 _writeBuf.WriteInt16(_value[_lexemePos].Count);
                 for (var i = 0; i < _value[_lexemePos].Count; i++)
-                    _writeBuf.WriteInt16(_value[_lexemePos][i]._val);
+                    _writeBuf.WriteInt16(_value[_lexemePos][i].Value);
             }
 
             return true;

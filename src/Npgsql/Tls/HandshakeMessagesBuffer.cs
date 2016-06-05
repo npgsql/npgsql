@@ -23,13 +23,10 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace TlsClientStream
+namespace Npgsql.Tls
 {
-    class HandshakeMessagesBuffer : IDisposable
+    sealed class HandshakeMessagesBuffer : IDisposable
     {
         readonly List<byte[]> _messages = new List<byte[]>();
 
@@ -61,7 +58,7 @@ namespace TlsClientStream
             return message[0] == (byte)HandshakeType.HelloRequest && message[1] == 0 && message[2] == 0 && message[3] == 0;
         }
 
-        public int AddBytes(byte[] buffer, int offset, int length, IgnoreHelloRequestsSettings ignoreHelloRequests = IgnoreHelloRequestsSettings.IncludeHelloRequests)
+        public int AddBytes(byte[] buffer, int offset, int length, IgnoreHelloRequestsSetting ignoreHelloRequests = IgnoreHelloRequestsSetting.IncludeHelloRequests)
         {
             var numAdded = 0;
             var end = offset + length;
@@ -82,8 +79,8 @@ namespace TlsClientStream
                             // Whole message fits in buffer, this is the common case
                             var message = new byte[4 + messageLen];
                             Buffer.BlockCopy(buffer, start, message, 0, 4 + messageLen);
-                            if ((!_hasHelloRequest && (ignoreHelloRequests == IgnoreHelloRequestsSettings.IncludeHelloRequests ||
-                                (ignoreHelloRequests == IgnoreHelloRequestsSettings.IgnoreHelloRequestsUntilFinished && _hasFinished))) ||
+                            if ((!_hasHelloRequest && (ignoreHelloRequests == IgnoreHelloRequestsSetting.IncludeHelloRequests ||
+                                (ignoreHelloRequests == IgnoreHelloRequestsSetting.IgnoreHelloRequestsUntilFinished && _hasFinished))) ||
                                 !IsHelloRequest(message))
                             {
                                 _messages.Add(message);
@@ -144,8 +141,8 @@ namespace TlsClientStream
                     var message = new byte[4 + messageLen];
                     Buffer.BlockCopy(_headerBuffer, 0, message, 0, 4);
                     Buffer.BlockCopy(_buffer, 0, message, 4, messageLen);
-                    if ((!_hasHelloRequest && (ignoreHelloRequests == IgnoreHelloRequestsSettings.IncludeHelloRequests ||
-                        (ignoreHelloRequests == IgnoreHelloRequestsSettings.IgnoreHelloRequestsUntilFinished && _hasFinished))) ||
+                    if ((!_hasHelloRequest && (ignoreHelloRequests == IgnoreHelloRequestsSetting.IncludeHelloRequests ||
+                        (ignoreHelloRequests == IgnoreHelloRequestsSetting.IgnoreHelloRequestsUntilFinished && _hasFinished))) ||
                         !IsHelloRequest(message))
                     {
                         _messages.Add(message);
@@ -196,7 +193,7 @@ namespace TlsClientStream
             ClearMessages();
         }
 
-        public enum IgnoreHelloRequestsSettings
+        public enum IgnoreHelloRequestsSetting
         {
             IncludeHelloRequests,
             IgnoreHelloRequests,
