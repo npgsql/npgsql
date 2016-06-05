@@ -29,7 +29,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using JetBrains.Annotations;
-#if NET45 || NET451
+#if !NETCORE && (NET45 || NET451)
 using System.DirectoryServices;
 using System.Security.Principal;
 #endif

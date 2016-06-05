@@ -1,4 +1,5 @@
-﻿using System;
+﻿#if !NETCORE && (NET45 || NET451)
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
@@ -159,3 +160,4 @@ namespace TlsClientStream
 #endif
     }
 }
+#endif

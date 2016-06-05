@@ -365,7 +365,7 @@ namespace TlsClientStream
             return bigEndian;
         }
 
-#if NET45 || NET451
+#if !NETCORE && (NET45 || NET451)
         public static void TransformBlock(this HashAlgorithm hashAlg, byte[] buf, int offset, int len)
         {
             hashAlg.TransformBlock(buf, offset, len, null, 0);

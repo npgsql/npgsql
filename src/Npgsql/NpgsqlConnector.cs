@@ -427,7 +427,7 @@ namespace Npgsql
         string GetUsername()
         {
             var username = _settings.Username;
-#if NET45 || NET451
+#if !NETCORE && (NET45 || NET451)
             if (string.IsNullOrEmpty(username) && PGUtil.IsWindows && Type.GetType("Mono.Runtime") == null)
                 username = WindowsUsernameProvider.GetUserName(_settings.IncludeRealm);
             if (string.IsNullOrEmpty(username))
@@ -488,9 +488,11 @@ namespace Npgsql
 
                         if (!UseSslStream)
                         {
+#if !NETCORE && (NET45 || NET451)
                             var sslStream = new TlsClientStream.TlsClientStream(_stream);
                             sslStream.PerformInitialHandshake(Host, clientCertificates, certificateValidationCallback, false);
                             _stream = sslStream;
+#endif
                         }
                         else
                         {
