@@ -1439,7 +1439,7 @@ namespace Npgsql
             }
             // We have a special case when reading async notifications - a timeout may be normal
             // shouldn't be fatal
-            catch (IOException e)when (dontBreakOnTimeouts && (e.InnerException as SocketException)?.SocketErrorCode == SocketError.TimedOut)
+            catch (IOException e) when (dontBreakOnTimeouts && (e.InnerException as SocketException)?.SocketErrorCode == SocketError.TimedOut)
             {
                 throw new TimeoutException("Timeout while reading from stream");
             }

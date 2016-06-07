@@ -138,16 +138,10 @@ namespace Npgsql.Tests
             return (behavior & CommandBehavior.SequentialAccess) != 0;
         }
 
-        /// <summary>
-        /// In PG under 9.1 you can't do SELECT pg_sleep(2) in binary because that function returns void and PG doesn't know
-        /// how to transfer that. So cast to text server-side.
-        /// </summary>
-        /// <param name="seconds"></param>
-        /// <returns></returns>
-        protected static NpgsqlCommand CreateSleepCommand(NpgsqlConnection conn, int seconds)
-        {
-            return new NpgsqlCommand(string.Format("SELECT pg_sleep({0}){1}", seconds, conn.PostgreSqlVersion < new Version(9, 1, 0) ? "::TEXT" : ""), conn);
-        }
+        // In PG under 9.1 you can't do SELECT pg_sleep(2) in binary because that function returns void and PG doesn't know
+        // how to transfer that. So cast to text server-side.
+        protected static NpgsqlCommand CreateSleepCommand(NpgsqlConnection conn, int seconds = 1000)
+            => new NpgsqlCommand($"SELECT pg_sleep({seconds}){(conn.PostgreSqlVersion < new Version(9, 1, 0) ? "::TEXT" : "")}", conn);
 
         #endregion
     }

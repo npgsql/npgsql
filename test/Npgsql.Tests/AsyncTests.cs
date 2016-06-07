@@ -80,25 +80,5 @@ namespace Npgsql.Tests
                 Assert.That(await reader.GetFieldValueAsync<string>(2), Is.EqualTo("Some Text"));
             }
         }
-
-        [Test, Description("Cancels an async query with the cancellation token")]
-        [Timeout(5000)]
-        [Ignore("Not reliable...")]
-        public void Cancel()
-        {
-            var cancellationSource = new CancellationTokenSource();
-            using (var conn = OpenConnection())
-            using (var cmd = CreateSleepCommand(conn, 5))
-            {
-                Task.Factory.StartNew(() =>
-                                        {
-                                            Thread.Sleep(300);
-                                            cancellationSource.Cancel();
-                                        });
-                var t = cmd.ExecuteNonQueryAsync(cancellationSource.Token);
-                Task.WaitAny(t);
-                Assert.That(t.IsCanceled);
-            }
-        }
     }
 }

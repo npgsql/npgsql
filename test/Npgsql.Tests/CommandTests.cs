@@ -259,6 +259,30 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, Description("Cancels an async query with the cancellation token")]
+        public void CancelAsync()
+        {
+            var cancellationSource = new CancellationTokenSource();
+            using (var conn = OpenConnection())
+            using (var cmd = CreateSleepCommand(conn))
+            {
+                // ReSharper disable once MethodSupportsCancellation
+                Task.Factory.StartNew(() =>
+                {
+                    Thread.Sleep(300);
+                    cancellationSource.Cancel();
+                });
+                var t = cmd.ExecuteNonQueryAsync(cancellationSource.Token);
+                Assert.That(async () => await t.ConfigureAwait(false), Throws.Exception.TypeOf<NpgsqlException>());
+
+                // Since cancellation trigger an NpgsqlException and not a TaskCanceledException, the task's state
+                // is Faulted and not Canceled. This isn't amazing, but we have to choose between this and the
+                // principle of always raising server/network errors as NpgsqlException for easy catching.
+                Assert.That(t.IsFaulted);
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+            }
+        }
+
         [Test, Description("Check that cancel only affects the command on which its was invoked")]
         [Timeout(3000)]
         public void CancelCrossCommand()
