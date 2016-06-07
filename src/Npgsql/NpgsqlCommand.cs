@@ -110,8 +110,6 @@ namespace Npgsql
 
         internal const int DefaultTimeout = 30;
 
-        internal const bool DefaultIsPersistent = false;
-
         #endregion
 
         #region Constructors
@@ -321,18 +319,10 @@ namespace Npgsql
         /// Gets or sets whether this query will be persisted when it is prepared. This will keep the
         /// compiled statement available after the command is disposed or the connection is returned to the pool.
         /// </summary>
-        [DefaultValue(DefaultIsPersistent)]
         public bool IsPersistent
         {
-            get { return _isPersistent ?? (_connection?.PersistPrepared ?? DefaultIsPersistent); }
-            set
-            {
-                _isPersistent = value;
-                if (!value)
-                {
-                    DeallocatePrepared(true);
-                }
-            }
+            get { return _isPersistent ?? (_connection?.PersistPrepared ?? false); }
+            set { _isPersistent = value; }
         }
 
         #endregion Public properties

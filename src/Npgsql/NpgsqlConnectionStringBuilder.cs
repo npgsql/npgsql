@@ -854,7 +854,6 @@ namespace Npgsql
         [Description("Determines whether prepared statements are persisted after command is disposed or connection returned to the pool.")]
         [DisplayName("Persist Prepared")]
         [NpgsqlConnectionStringProperty]
-        [DefaultValue(NpgsqlCommand.DefaultIsPersistent)]
         public bool PersistPrepared
         {
             get { return _persistPrepared; }

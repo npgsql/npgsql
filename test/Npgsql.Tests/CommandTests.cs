@@ -353,9 +353,12 @@ namespace Npgsql.Tests
         [Test, Description("Basic persistent prepared system scenario. Checks that statement is not deallocated in the backend after command dispose.")]
         public void PersistentPrepareAfterCommandDispose()
         {
-            try
+            var connSettings = new NpgsqlConnectionStringBuilder(ConnectionString);
+            connSettings.ApplicationName = nameof(PersistentPrepareAfterCommandDispose);
+
+            using (var conn = OpenConnection(connSettings))
             {
-                using (var conn = OpenConnection())
+                try
                 {
                     conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
                     Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(0));
@@ -401,23 +404,27 @@ namespace Npgsql.Tests
 
                     Assert.That(conn.ExecuteScalar("SELECT name FROM pg_prepared_statements LIMIT 1") as string, Is.EqualTo(stmtName), "Persistent prepared statement name changed unexpectedly");
                 }
-            }
-            finally
-            {
-                // Clear the pools so that we dont mess up other tests that depend
-                // on the clean state of pg_prepared_statements
-                NpgsqlConnection.ClearAllPools();
+                finally
+                {
+                    // Clear the pools so that we dont mess up other tests that depend
+                    // on the clean state of pg_prepared_statements
+                    NpgsqlConnection.ClearPool(conn);
+                }
             }
         }
 
         [Test, Description("Basic persistent prepared system scenario. Checks that statement is not deallocated in the backend after connection close.")]
         public void PersistentPrepareAfterConnectionClose()
         {
+            var connSettings = new NpgsqlConnectionStringBuilder(ConnectionString);
+            connSettings.ApplicationName = nameof(PersistentPrepareAfterConnectionClose);
+
+            NpgsqlConnection conn = null;
             try
             {
-                string stmtName;
+                conn = OpenConnection(connSettings);
+                int processId = conn.ProcessID;
 
-                var conn = OpenConnection();
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(0));
 
@@ -439,10 +446,12 @@ namespace Npgsql.Tests
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data WHERE name = 'test1'"), Is.EqualTo(1));
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1), "Persistent prepared statement deallocated");
 
-                stmtName = conn.ExecuteScalar("SELECT name FROM pg_prepared_statements LIMIT 1") as string;
+                string stmtName = conn.ExecuteScalar("SELECT name FROM pg_prepared_statements LIMIT 1") as string;
                 conn.Close();
 
                 conn.Open();
+                Assert.That(conn.ProcessID, Is.EqualTo(processId), "Unexpected connection received from the pool");
+
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1), "Persistent prepared statement deallocated");
                 Assert.That(conn.ExecuteScalar("SELECT name FROM pg_prepared_statements LIMIT 1") as string, Is.EqualTo(stmtName), "Persistent prepared statement name changed unexpectedly");
@@ -473,16 +482,20 @@ namespace Npgsql.Tests
             {
                 // Clear the pools so that we dont mess up other tests that depend
                 // on the clean state of pg_prepared_statements
-                NpgsqlConnection.ClearAllPools();
+                if (conn != null)
+                    NpgsqlConnection.ClearPool(conn);
             }
         }
 
         [Test, Description("Makes sure that calling Prepare() twice on a persistent command does not deallocate or make a new one after the first prepared statement when command does not change")]
         public void PersistentDoublePrepareCommandUnchanged()
         {
-            try
+            var connSettings = new NpgsqlConnectionStringBuilder(ConnectionString);
+            connSettings.ApplicationName = nameof(PersistentDoublePrepareCommandUnchanged);
+
+            using (var conn = OpenConnection(connSettings))
             {
-                using (var conn = OpenConnection())
+                try
                 {
                     conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT, int INTEGER)");
                     using (var cmd = new NpgsqlCommand("INSERT INTO data (name) VALUES (:p0)", conn))
@@ -508,21 +521,24 @@ namespace Npgsql.Tests
                     }
                     Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1), "Persistent prepared statement deallocated");
                 }
-            }
-            finally
-            {
-                // Clear the pools so that we dont mess up other tests that depend
-                // on the clean state of pg_prepared_statements
-                NpgsqlConnection.ClearAllPools();
+                finally
+                {
+                    // Clear the pools so that we dont mess up other tests that depend
+                    // on the clean state of pg_prepared_statements
+                    NpgsqlConnection.ClearPool(conn);
+                }
             }
         }
 
         [Test, Description("Makes sure that calling Prepare() twice on a persistent command deallocates old prepared staments when command has changed")]
         public void PersistentDoublePrepareCommandChanged()
         {
-            try
+            var connSettings = new NpgsqlConnectionStringBuilder(ConnectionString);
+            connSettings.ApplicationName = nameof(PersistentDoublePrepareCommandChanged);
+
+            using (var conn = OpenConnection(connSettings))
             {
-                using (var conn = OpenConnection())
+                try
                 {
                     conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT, int INTEGER)");
                     using (var cmd = new NpgsqlCommand("INSERT INTO data (name) VALUES (:p0)", conn))
@@ -547,22 +563,27 @@ namespace Npgsql.Tests
                     }
                     Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1), "Persistent prepared statement deallocated");
                 }
-            }
-            finally
-            {
-                // Clear the pools so that we dont mess up other tests that depend
-                // on the clean state of pg_prepared_statements
-                NpgsqlConnection.ClearAllPools();
+                finally
+                {
+                    // Clear the pools so that we dont mess up other tests that depend
+                    // on the clean state of pg_prepared_statements
+                    NpgsqlConnection.ClearPool(conn);
+                }
             }
         }
 
         [Test, Description("Makes sure that persistent commands are not shared accross different pooled connections")]
         public void PersistentPrepareAfterConnectionChange()
         {
+            var connSettings = new NpgsqlConnectionStringBuilder(ConnectionString);
+            connSettings.ApplicationName = nameof(PersistentPrepareAfterConnectionChange);
+
+            NpgsqlConnection conn1 = null;
+            NpgsqlConnection conn2 = null;
             try
             {
-                using (var conn1 = OpenConnection())
-                using (var conn2 = OpenConnection())
+                using (conn1 = OpenConnection(connSettings))
+                using (conn2 = OpenConnection(connSettings))
                 {
                     using (var cmd1 = new NpgsqlCommand("SELECT 1", conn1))
                     using (var cmd2 = new NpgsqlCommand("SELECT 1", conn2))
@@ -580,8 +601,8 @@ namespace Npgsql.Tests
                     Assert.That(conn2.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1), "Unexpected count of prepared statements");
                 }
 
-                using (var conn1 = OpenConnection())
-                using (var conn2 = OpenConnection())
+                using (conn1 = OpenConnection(connSettings))
+                using (conn2 = OpenConnection(connSettings))
                 {
                     Assert.That(conn1.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1), "Unexpected count of prepared statements");
                     Assert.That(conn2.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1), "Unexpected count of prepared statements");
@@ -591,16 +612,22 @@ namespace Npgsql.Tests
             {
                 // Clear the pools so that we dont mess up other tests that depend
                 // on the clean state of pg_prepared_statements
-                NpgsqlConnection.ClearAllPools();
+                if (conn1 != null)
+                    NpgsqlConnection.ClearPool(conn1);
+                if (conn2 != null)
+                    NpgsqlConnection.ClearPool(conn2);
             }
         }
 
         [Test, Description("Makes sure that persistent commands are deallocated after connection is removed from pool")]
         public void PersistentPrepareAfterPoolCleared()
         {
-            try
+            var connSettings = new NpgsqlConnectionStringBuilder(ConnectionString);
+            connSettings.ApplicationName = nameof(PersistentPrepareAfterPoolCleared);
+
+            using (var conn = OpenConnection(connSettings))
             {
-                using (var conn = OpenConnection())
+                try
                 {
                     using (var cmd = new NpgsqlCommand("SELECT 1", conn))
                     {
@@ -610,13 +637,15 @@ namespace Npgsql.Tests
                     }
                     Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1), "Unexpected count of prepared statements");
                 }
-            }
-            finally
-            {
-                NpgsqlConnection.ClearAllPools();
+                finally
+                {
+                    // Clear the pools so that we dont mess up other tests that depend
+                    // on the clean state of pg_prepared_statements
+                    NpgsqlConnection.ClearPool(conn);
+                }
             }
 
-            using (var conn = OpenConnection())
+            using (var conn = OpenConnection(connSettings))
             {
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(0), "Prepared stament not deallocated");
             }
@@ -625,39 +654,44 @@ namespace Npgsql.Tests
         [Test, Description("Makes sure that 'Persist Prepared' configuration parameter is working correctly")]
         public void PersistentPrepareConfigurationParameter()
         {
-            try
-            {
-                var connStr = ConnectionString + ";Persist Prepared=true";
-                var conn = OpenConnection(connStr);
+            var connSettings = new NpgsqlConnectionStringBuilder(ConnectionString);
+            connSettings.PersistPrepared = true;
+            connSettings.ApplicationName = nameof(PersistentPrepareConfigurationParameter);
 
-                using (var cmd = new NpgsqlCommand("SELECT 1", conn))
+            using (var conn = OpenConnection(connSettings))
+            {
+                try
                 {
-                    cmd.Prepare();
-                    Assert.That(cmd.ExecuteScalar(), Is.EqualTo(1));
+                    using (var cmd = new NpgsqlCommand("SELECT 1", conn))
+                    {
+                        cmd.Prepare();
+                        Assert.That(cmd.ExecuteScalar(), Is.EqualTo(1));
+                    }
+                    Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1), "Unexpected count of prepared statements");
+
+                    conn.Close();
+                    conn.Open();
+
+                    Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1), "Unexpected count of prepared statements");
                 }
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1), "Unexpected count of prepared statements");
-
-                conn.Close();
-                conn.Open();
-
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1), "Unexpected count of prepared statements");
-
-                conn.Dispose();
-            }
-            finally
-            {
-                // Clear the pools so that we dont mess up other tests that depend
-                // on the clean state of pg_prepared_statements
-                NpgsqlConnection.ClearAllPools();
+                finally
+                {
+                    // Clear the pools so that we dont mess up other tests that depend
+                    // on the clean state of pg_prepared_statements
+                    NpgsqlConnection.ClearPool(conn);
+                }
             }
         }
 
         [Test, Description("Makes sure that auto named parameters are working correctly for persisted statements")]
         public void PersistentPrepareAutoNamedParameter()
         {
-            try
+            var connSettings = new NpgsqlConnectionStringBuilder(ConnectionString);
+            connSettings.ApplicationName = nameof(PersistentPrepareAutoNamedParameter);
+
+            using (var conn = OpenConnection(connSettings))
             {
-                using (var conn = OpenConnection())
+                try
                 {
                     conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT, int INTEGER)");
 
@@ -697,12 +731,12 @@ namespace Npgsql.Tests
 
                     Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data WHERE name = 'test2'"), Is.EqualTo(1));
                 }
-            }
-            finally
-            {
-                // Clear the pools so that we dont mess up other tests that depend
-                // on the clean state of pg_prepared_statements
-                NpgsqlConnection.ClearAllPools();
+                finally
+                {
+                    // Clear the pools so that we dont mess up other tests that depend
+                    // on the clean state of pg_prepared_statements
+                    NpgsqlConnection.ClearPool(conn);
+                }
             }
         }
 
