@@ -1601,11 +1601,21 @@ namespace Npgsql
         {
             Contract.Requires(IsKeepAliveEnabled);
 
-            if (!_keepAliveLock.Wait(0))
+            try
             {
-                // The async semaphore has already been acquired, either by a user action,
-                // or, improbably, by a previous keepalive.
-                // Whatever the case, exit immediately, no need to perform a keepalive.
+                if (!_keepAliveLock.Wait(0))
+                {
+                    // The async semaphore has already been acquired, either by a user action,
+                    // or, improbably, by a previous keepalive.
+                    // Whatever the case, exit immediately, no need to perform a keepalive.
+                    return;
+                }
+            }
+            catch (ObjectDisposedException)
+            {
+                // TODO: This is a temporary workaround to fix #1151. For 3.2, a much better solution
+                // is #1127 - properly making close operations a user action.
+                Log.Debug("Keepalive lock already disposed, aborting keepalive");
                 return;
             }
 
@@ -1616,12 +1626,28 @@ namespace Npgsql
             {
                 SendMessage(PregeneratedMessage.KeepAlive);
                 SkipUntil(BackendMessageCode.ReadyForQuery);
-                _keepAliveLock.Release();
+                try
+                {
+                    _keepAliveLock.Release();
+                }
+                catch (ObjectDisposedException)
+                {
+                    // TODO: This is a temporary workaround to fix #1151. For 3.2, a much better solution
+                    // is #1127 - properly making close operations a user action.
+                    Log.Debug("Keepalive lock already disposed after keepalive completed");
+                }
             }
             catch (Exception e)
             {
                 Log.Fatal("Keepalive failure", e, Id);
-                Break();
+                try
+                {
+                    Break();
+                }
+                catch (Exception e2)
+                {
+                    Log.Error("Exception while breaking during keepalive", e2, Id);
+                }
             }
         }
 
