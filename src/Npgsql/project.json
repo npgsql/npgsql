@@ -112,7 +112,8 @@
         "System.Threading": "4.0.11-*",
         "System.Threading.Thread": "4.0.0-*",
         "System.Threading.Timer": "4.0.1-*",
-        "Microsoft.Win32.Primitives": "4.0.1-*"
+        "Microsoft.Win32.Primitives": "4.0.1-*",
+		"System.IO.FileSystem": "4.0.1-*"
       }
     }
   }
