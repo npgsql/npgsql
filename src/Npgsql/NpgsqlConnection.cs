@@ -1198,7 +1198,7 @@ namespace Npgsql
 
         /// <summary>
         /// Waits asynchronously until an asynchronous PostgreSQL messages (e.g. a notification)
-        /// arrives, and exist immediately. The asynchronous message is delivered via the normal events
+        /// arrives, and exits immediately. The asynchronous message is delivered via the normal events
         /// (<see cref="Notification"/>, <see cref="Notice"/>).
         /// </summary>
         public async Task WaitAsync(CancellationToken cancellationToken)
@@ -1212,7 +1212,7 @@ namespace Npgsql
 
         /// <summary>
         /// Waits asynchronously until an asynchronous PostgreSQL messages (e.g. a notification)
-        /// arrives, and exist immediately. The asynchronous message is delivered via the normal events
+        /// arrives, and exits immediately. The asynchronous message is delivered via the normal events
         /// (<see cref="Notification"/>, <see cref="Notice"/>).
         /// </summary>
         public Task WaitAsync() => WaitAsync(CancellationToken.None);
