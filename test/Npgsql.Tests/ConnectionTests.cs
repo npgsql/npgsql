@@ -979,5 +979,56 @@ namespace Npgsql.Tests
                 conn.Close();
             }
         }
+
+        [Test]
+        public void UsePgPassFile()
+        {
+            var file = SetupTestData();
+
+            try
+            {
+                var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
+                {
+                    Pooling = false,
+                    IntegratedSecurity = false,
+                    Password = null
+                };
+
+                using (var conn = OpenConnection(builder))
+                {
+                    Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+                    conn.Close();
+                }
+            }
+            finally
+            {
+                RestorePriorConfiguration(file, _pgpassEnvVarValue);
+            }
+        }
+
+        string _pgpassEnvVarValue = null;
+
+        public string SetupTestData()
+        {
+            _pgpassEnvVarValue = Environment.GetEnvironmentVariable("PGPASSFILE");
+
+            // set up pgpass file with connection credentials
+            var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
+            var content = $"*:*:*:{builder.Username}:{builder.Password}";
+            var pgpassFile = Path.GetTempFileName();
+            File.WriteAllText(pgpassFile, content);
+            Environment.SetEnvironmentVariable("PGPASSFILE", pgpassFile);
+            return pgpassFile;
+        }
+
+        public void RestorePriorConfiguration(string fileName, string environmentVariableValue)
+        {
+            if (File.Exists(fileName))
+            {
+                File.Delete(fileName);
+            }
+            Environment.SetEnvironmentVariable("PGPASSFILE", _pgpassEnvVarValue);
+        }
+
     }
 }
