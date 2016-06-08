@@ -48,9 +48,7 @@
           <param name="nuget.pack.output.directory" value="nupkgs" />
           <param name="nuget.pack.project.dir" value="as_is" />
           <param name="nuget.pack.properties" value="Configuration=Release" />
-          <param name="nuget.pack.specFile"><![CDATA[src\Npgsql\Npgsql.nuspec
-src\EntityFramework6.Npgsql\EntityFramework6.Npgsql.nuspec
-src\EntityFramework5.Npgsql\EntityFramework5.Npgsql.nuspec]]></param>
+          <param name="nuget.pack.specFile"><![CDATA[src\Npgsql\Npgsql.nuspec]]></param>
           <param name="nuget.pack.version" value="%dep.npgsql_CompileDebug.build.number%" />
           <param name="nuget.path" value="?NuGet.CommandLine.DEFAULT.nupkg" />
           <param name="nugetCustomPath" value="?NuGet.CommandLine.DEFAULT.nupkg" />
