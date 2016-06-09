@@ -49,7 +49,7 @@ namespace Npgsql
         /// <param name="standardConformantStrings">Whether the PostgreSQL session is configured to use standard conformant strings.</param>
         /// <param name="parameters">The parameters configured on the <see cref="NpgsqlCommand"/> of this query.</param>
         /// <param name="queries">An empty list to be populated with the queries parsed by this method</param>
-        static internal void ParseRawQuery(string sql, bool standardConformantStrings, NpgsqlParameterCollection parameters, List<NpgsqlStatement> queries)
+        internal static void ParseRawQuery(string sql, bool standardConformantStrings, NpgsqlParameterCollection parameters, List<NpgsqlStatement> queries)
         {
             Contract.Requires(sql != null);
             Contract.Requires(queries != null && !queries.Any());
@@ -62,6 +62,7 @@ namespace Npgsql
             var dollarTagEnd = 0;
             var currTokenBeg = 0;
             var blockCommentLevel = 0;
+            var parenthesisLevel = 0;
 
             queries.Clear();
             // TODO: Recycle
@@ -105,8 +106,15 @@ namespace Npgsql
                     else
                         break;
                 case ';':
-                    goto SemiColon;
-
+                    if (parenthesisLevel == 0)
+                        goto SemiColon;
+                    break;
+                case '(':
+                    parenthesisLevel++;
+                    break;
+                case ')':
+                    parenthesisLevel--;
+                    break;
                 case 'e':
                 case 'E':
                     if (!IsLetter(lastChar))

@@ -123,6 +123,20 @@ namespace Npgsql.Tests
             Assert.That(_queries[1].InputParameters, Is.Empty);
         }
 
+        [Test]
+        public void SemicolonInParentheses()
+        {
+            SqlQueryParser.ParseRawQuery("CREATE OR REPLACE RULE test AS ON UPDATE TO test DO (SELECT 1; SELECT 1)", true, _params, _queries);
+            Assert.That(_queries, Has.Count.EqualTo(1));
+        }
+
+        [Test]
+        public void SemicolonAfterParentheses()
+        {
+            SqlQueryParser.ParseRawQuery("CREATE OR REPLACE RULE test AS ON UPDATE TO test DO (SELECT 1); SELECT 1", true, _params, _queries);
+            Assert.That(_queries, Has.Count.EqualTo(2));
+        }
+
 #if TODO
         [Test]
         public void TrimWhitespace()
