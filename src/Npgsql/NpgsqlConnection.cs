@@ -1200,6 +1200,8 @@ namespace Npgsql
         /// Waits asynchronously until an asynchronous PostgreSQL messages (e.g. a notification)
         /// arrives, and exits immediately. The asynchronous message is delivered via the normal events
         /// (<see cref="Notification"/>, <see cref="Notice"/>).
+        /// CancelationToken can not cancel wait operation if underlying NetworkStream does not support it
+        /// (see https://stackoverflow.com/questions/12421989/networkstream-readasync-with-a-cancellation-token-never-cancels ).
         /// </summary>
         public async Task WaitAsync(CancellationToken cancellationToken)
         {
