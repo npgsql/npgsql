@@ -50,26 +50,6 @@ namespace Npgsql.Tests
         static bool _loggingSetUp;
 
         /// <summary>
-        /// New ConectionString property crafted to change the database name from original TestBase.ConnectionString to append a "_ef" suffix.
-        /// i.e.: the TestBase.ConnectionString database is npgsql_tests. Entity Framework database will be npgsql_tests_ef.
-        /// </summary>
-        protected virtual string ConnectionStringEF
-        {
-            get
-            {
-                if (connectionStringEF == null)
-                {
-                    //Reuse all strings just add _ef at end of database name for
-                    var connectionSB = new NpgsqlConnectionStringBuilder(ConnectionString);
-                    connectionSB.Database += "_ef";
-                    connectionStringEF = connectionSB.ConnectionString;
-                }
-                return connectionStringEF;
-            }
-        }
-        string connectionStringEF;
-
-        /// <summary>
         /// Unless the NPGSQL_TEST_DB environment variable is defined, this is used as the connection string for the
         /// test database.
         /// </summary>
