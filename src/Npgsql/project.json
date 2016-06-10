@@ -55,7 +55,10 @@
     }
   },
   "dependencies": {
-    "ConfigureAwaitChecker.Analyzer": "1.0.0-beta4"
+    "ConfigureAwaitChecker.Analyzer": {
+      "version": "1.0.0-beta4",
+      "type": "build"
+    }
   },
   "tools": {
     "dotnet-rewrite-async": "0.8.5"
