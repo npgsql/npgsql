@@ -205,7 +205,5 @@ namespace Npgsql.Tests.Types
                 Assert.AreEqual(typeof(IPAddress), result.GetType());
             }
         }
-
-        public NetworkTypeTests(string backendVersion) : base(backendVersion) {}
     }
 }

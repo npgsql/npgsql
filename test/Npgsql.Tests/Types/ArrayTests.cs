@@ -19,8 +19,6 @@ namespace Npgsql.Tests.Types
     /// </remarks>
     class ArrayTests : TestBase
     {
-        public ArrayTests(string backendVersion) : base(backendVersion) {}
-
         [Test, Description("Roundtrips a simple, one-dimensional array of ints")]
         public void Ints()
         {

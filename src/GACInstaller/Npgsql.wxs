@@ -31,22 +31,6 @@
       <ComponentRef Id="Npgsql" />
       <ComponentRef Id="MachineConfig_x86" />
       <ComponentRef Id="MachineConfig_x64" />
-
-      <Feature Id="EntityFramework6.Npgsql"
-         Title="Entity Framework 6"
-         Level="10"
-         AllowAdvertise="no"
-         Description="Installs the the Npgsql Entity Framework 6 provider into the GAC.">
-        <ComponentRef Id="EntityFramework6.Npgsql" />
-      </Feature>
-
-      <Feature Id="EntityFramework5.Npgsql"
-         Title="Entity Framework 5"
-         Level="10"
-         AllowAdvertise="no"
-         Description="Installs the the Npgsql Entity Framework 5 provider into the GAC.">
-        <ComponentRef Id="EntityFramework5.Npgsql" />
-      </Feature>
       
     </Feature>
 
@@ -64,21 +48,7 @@
         <Component Id="Npgsql" Guid="f842fa5e-5623-41aa-80aa-6d2e5bf97435">
           <File Id="Npgsql"
                 Name="Npgsql.dll"
-                Source="$(var.Npgsql.ProjectDir)bin\$(var.Configuration)\Npgsql.dll"
-                KeyPath="yes"
-                Assembly=".net" />
-        </Component>
-        <Component Id="EntityFramework6.Npgsql" Guid="474ce704-44cb-4fe1-9c04-87ba458a77e0">
-          <File Id="EntityFramework6.Npgsql"
-                Name="EntityFramework6.Npgsql.dll"
-                Source="$(var.EntityFramework6.Npgsql.ProjectDir)bin\$(var.Configuration)\EntityFramework6.Npgsql.dll"
-                KeyPath="yes"
-                Assembly=".net" />
-        </Component>
-        <Component Id="EntityFramework5.Npgsql" Guid="96c679d6-4e7a-483e-981a-d62deefde58d">
-          <File Id="EntityFramework5.Npgsql"
-                Name="EntityFramework5.Npgsql.dll"
-                Source="$(var.EntityFramework5.Npgsql.ProjectDir)bin\$(var.Configuration)\EntityFramework5.Npgsql.dll"
+                Source="..\npgsql\bin\$(var.Configuration)\Npgsql.dll"
                 KeyPath="yes"
                 Assembly=".net" />
         </Component>

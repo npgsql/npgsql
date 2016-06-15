@@ -104,7 +104,5 @@ namespace Npgsql.Tests
                 NpgsqlConnection.ClearAllPools();
             }
         }
-
-        public ConnectionPoolTests(string backendVersion) : base(backendVersion) {}
     }
 }

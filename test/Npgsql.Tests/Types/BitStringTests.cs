@@ -189,6 +189,5 @@ namespace Npgsql.Tests.Types
             }
         }
 #endif
-        public BitStringTests(string backendVersion) : base(backendVersion) {}
     }
 }

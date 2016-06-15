@@ -31,9 +31,10 @@ using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers
 {
-    [TypeMapping("hstore", NpgsqlDbType.Hstore)]
-    class HstoreHandler : TypeHandler<IDictionary<string, string>>,
-        IChunkingTypeWriter, IChunkingTypeReader<IDictionary<string, string>>, IChunkingTypeReader<string>
+    [TypeMapping("hstore", NpgsqlDbType.Hstore, new[] { typeof(Dictionary<string, string>), typeof(IDictionary<string, string>) })]
+    class HstoreHandler : TypeHandler<Dictionary<string, string>>,
+        IChunkingTypeWriter, IChunkingTypeReader<Dictionary<string, string>>, IChunkingTypeReader<IDictionary<string, string>>,
+        IChunkingTypeReader<string>
     {
         NpgsqlBuffer _buf;
         NpgsqlParameter _parameter;
@@ -173,19 +174,24 @@ namespace Npgsql.TypeHandlers
 
         #region Read
 
-        void IChunkingTypeReader<IDictionary<string, string>>.PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        void IChunkingTypeReader<Dictionary<String, string>>.PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             _buf = buf;
             _fieldDescription = fieldDescription;
             _state = State.Count;
         }
 
-        void IChunkingTypeReader<string>.PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        void IChunkingTypeReader<IDictionary<string, string>>.PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
-            ((IChunkingTypeReader<IDictionary<string, string>>)this).PrepareRead(buf, len, fieldDescription);
+            ((IChunkingTypeReader<Dictionary<string, string>>)this).PrepareRead(buf, len, fieldDescription);
         }
 
-        public bool Read(out IDictionary<string, string> result)
+        void IChunkingTypeReader<string>.PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        {
+            ((IChunkingTypeReader<Dictionary<string, string>>)this).PrepareRead(buf, len, fieldDescription);
+        }
+
+        public bool Read(out Dictionary<string, string> result)
         {
             result = null;
             switch (_state)
@@ -223,7 +229,7 @@ namespace Npgsql.TypeHandlers
                         _value[_key] = null;
                         if (--_numElements == 0)
                         {
-                            result = _value;
+                            result = (Dictionary<string, string>)_value;
                             CleanupState();
                             return true;
                         }
@@ -239,7 +245,7 @@ namespace Npgsql.TypeHandlers
                     _value[_key] = value;
                     if (--_numElements == 0)
                     {
-                        result = _value;
+                        result = (Dictionary<string, string>)_value;
                         CleanupState();
                         return true;
                     }
@@ -248,6 +254,14 @@ namespace Npgsql.TypeHandlers
                 default:
                     throw PGUtil.ThrowIfReached();
             }
+        }
+
+        public bool Read(out IDictionary<string, string> result)
+        {
+            Dictionary<string, string> result2;
+            var completed = Read(out result2);
+            result = result2;
+            return completed;
         }
 
         public bool Read(out string result)

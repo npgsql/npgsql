@@ -16,9 +16,7 @@ namespace Npgsql.Tests
     [Explicit]
     public class SpeedTests : TestBase
     {
-        public SpeedTests(string backendVersion) : base(backendVersion) { }
-
-        private static readonly TimeSpan TestRunTime = new TimeSpan(0, 0, 10); // 10 seconds
+        static readonly TimeSpan TestRunTime = new TimeSpan(0, 0, 10); // 10 seconds
 
         [Test, Description("A minimal, simple, non-query scenario")]
         public void ExecuteUpdateNonQuery()

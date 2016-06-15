@@ -10,8 +10,6 @@ namespace Npgsql.Tests.Types
 {
     class EnumTests : TestBase
     {
-        public EnumTests(string backendVersion) : base(backendVersion) {}
-
         enum Mood { Sad, Ok, Happy };
 
         [Test]

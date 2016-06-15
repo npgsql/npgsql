@@ -40,8 +40,6 @@ namespace Npgsql.Tests
     [TestFixture]
     public class ConnectionTests : TestBase
     {
-        public ConnectionTests(string backendVersion) : base(backendVersion) { }
-
         [Test, Description("Makes sure the connection goes through the proper state lifecycle")]
         //[Timeout(5000)]
         public void BasicLifecycle()

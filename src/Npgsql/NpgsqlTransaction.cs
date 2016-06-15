@@ -100,19 +100,23 @@ namespace Npgsql
 
             switch (isolationLevel) {
                 case IsolationLevel.RepeatableRead:
-                    Connector.PrependInternalMessage(PregeneratedMessage.BeginTransRepeatableRead);
+                    Connector.PrependInternalMessage(PregeneratedMessage.BeginTrans);
+                    Connector.PrependInternalMessage(PregeneratedMessage.SetTransRepeatableRead);
                     break;
                 case IsolationLevel.Serializable:
                 case IsolationLevel.Snapshot:
-                    Connector.PrependInternalMessage(PregeneratedMessage.BeginTransSerializable);
+                    Connector.PrependInternalMessage(PregeneratedMessage.BeginTrans);
+                    Connector.PrependInternalMessage(PregeneratedMessage.SetTransSerializable);
                     break;
                 case IsolationLevel.ReadUncommitted:
                     // PG doesn't really support ReadUncommitted, it's the same as ReadCommitted. But we still
                     // send as if.
-                    Connector.PrependInternalMessage(PregeneratedMessage.BeginTransReadUncommitted);
+                    Connector.PrependInternalMessage(PregeneratedMessage.BeginTrans);
+                    Connector.PrependInternalMessage(PregeneratedMessage.SetTransReadUncommitted);
                     break;
                 case IsolationLevel.ReadCommitted:
-                    Connector.PrependInternalMessage(PregeneratedMessage.BeginTransReadCommitted);
+                    Connector.PrependInternalMessage(PregeneratedMessage.BeginTrans);
+                    Connector.PrependInternalMessage(PregeneratedMessage.SetTransReadCommitted);
                     break;
                 case IsolationLevel.Unspecified:
                     isolationLevel = DefaultIsolationLevel;
@@ -133,10 +137,13 @@ namespace Npgsql
         /// </summary>
         public override void Commit()
         {
-            CheckReady();
-            Log.Debug("Commit transaction", Connection.Connector.Id);
-            Connector.ExecuteInternalCommand(PregeneratedMessage.CommitTransaction);
-            Connection = null;
+            var connector = CheckReady();
+            using (connector.StartUserAction())
+            {
+                Log.Debug("Commit transaction", connector.Id);
+                connector.ExecuteInternalCommand(PregeneratedMessage.CommitTransaction);
+                Connection = null;
+            }
         }
 
         /// <summary>
@@ -144,9 +151,12 @@ namespace Npgsql
         /// </summary>
         public override void Rollback()
         {
-            CheckReady();
-            Connector.Rollback();
-            Connection = null;
+            var connector = CheckReady();
+            using (connector.StartUserAction())
+            {
+                connector.Rollback();
+                Connection = null;
+            }
         }
 
         #endregion
@@ -166,9 +176,12 @@ namespace Npgsql
                 throw new ArgumentException("name can't contain a semicolon");
             Contract.EndContractBlock();
 
-            CheckReady();
-            Log.Debug("Create savepoint", Connection.Connector.Id);
-            Connector.ExecuteInternalCommand(new QueryMessage(string.Format("SAVEPOINT {0}", name)));
+            var connector = CheckReady();
+            using (connector.StartUserAction())
+            {
+                Log.Debug("Create savepoint", connector.Id);
+                Connector.ExecuteInternalCommand(new QueryMessage(string.Format("SAVEPOINT {0}", name)));
+            }
         }
 
         /// <summary>
@@ -184,14 +197,15 @@ namespace Npgsql
                 throw new ArgumentException("name can't contain a semicolon");
             Contract.EndContractBlock();
 
-            CheckReady();
-
-            Log.Debug("Rollback savepoint", Connection.Connector.Id);
-
             try {
-                // If we're in a failed transaction we can't set the timeout
-                var withTimeout = Connector.TransactionStatus != TransactionStatus.InFailedTransactionBlock;
-                Connector.ExecuteInternalCommand(new QueryMessage(string.Format("ROLLBACK TO SAVEPOINT {0}", name)), withTimeout);
+                var connector = CheckReady();
+                using (connector.StartUserAction())
+                {
+                    Log.Debug("Rollback savepoint", connector.Id);
+                    // If we're in a failed transaction we can't set the timeout
+                    var withTimeout = Connector.TransactionStatus != TransactionStatus.InFailedTransactionBlock;
+                    Connector.ExecuteInternalCommand(new QueryMessage(string.Format("ROLLBACK TO SAVEPOINT {0}", name)), withTimeout);
+                }
             } finally {
                 // The rollback may change the value of statement_value, set to unknown
                 Connection.Connector.SetBackendTimeoutToUnknown();
@@ -269,11 +283,11 @@ namespace Npgsql
 
         #region Checks
 
-        void CheckReady()
+        NpgsqlConnector CheckReady()
         {
             CheckDisposed();
             CheckCompleted();
-            Connection.CheckReady();
+            return Connection.CheckReadyAndGetConnector();
         }
 
         [ContractArgumentValidator]

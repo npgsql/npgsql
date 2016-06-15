@@ -11,8 +11,6 @@ namespace Npgsql.Tests
     [TestFixture]
     public class SystemTransactionTests : TestBase
     {
-        public SystemTransactionTests(string backendVersion) : base(backendVersion) { }
-
         [Test, Description("Single connection enlisting explicitly, committing")]
         public void ExplicitEnlist()
         {

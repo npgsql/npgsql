@@ -488,17 +488,15 @@ namespace Npgsql
             if (level == IsolationLevel.Chaos)
                 throw new NotSupportedException("Unsupported IsolationLevel: " + level);
             Contract.EndContractBlock();
-            CheckReady();
+            var connector = CheckReadyAndGetConnector();
 
             // Note that beginning a transaction doesn't actually send anything to the backend
             // (only prepends), so strictly speaking we don't have to start a user action.
             // However, we do this for consistency as if we did (for the checks and exceptions)
-            using (Connector.StartUserAction())
+            using (connector.StartUserAction())
             {
-                if (Connector.InTransaction)
-                {
+                if (connector.InTransaction)
                     throw new NotSupportedException("Nested/Concurrent transactions aren't supported.");
-                }
 
                 Log.Debug("Beginning transaction with isolation level " + level, Connector.Id);
 
@@ -858,19 +856,17 @@ namespace Npgsql
                 throw new ArgumentException("Must contain a COPY FROM STDIN command!", "copyFromCommand");
             Contract.EndContractBlock();
 
-            CheckConnectionOpen();
-            Connector.StartUserAction(ConnectorState.Copy);
+            var connector = CheckReadyAndGetConnector();
+            connector.StartUserAction(ConnectorState.Copy);
             try
             {
-                var importer = new NpgsqlBinaryImporter(Connector, copyFromCommand);
-                Connector.CurrentCopyOperation = importer;
+                var importer = new NpgsqlBinaryImporter(connector, copyFromCommand);
+                connector.CurrentCopyOperation = importer;
                 return importer;
             }
             catch
             {
-                if (Connector != null) {  // Connector may have been broken
-                    Connector.EndUserAction();
-                }
+                connector.EndUserAction();
                 throw;
             }
         }
@@ -891,20 +887,17 @@ namespace Npgsql
                 throw new ArgumentException("Must contain a COPY TO STDOUT command!", "copyToCommand");
             Contract.EndContractBlock();
 
-            CheckConnectionOpen();
-            Connector.StartUserAction(ConnectorState.Copy);
+            var connector = CheckReadyAndGetConnector();
+            connector.StartUserAction(ConnectorState.Copy);
             try
             {
                 var exporter = new NpgsqlBinaryExporter(Connector, copyToCommand);
                 Connector.CurrentCopyOperation = exporter;
                 return exporter;
-
             }
             catch
             {
-                if (Connector != null) {  // Connector may have been broken
-                    Connector.EndUserAction();
-                }
+                connector.EndUserAction();
                 throw;
             }
         }
@@ -928,11 +921,19 @@ namespace Npgsql
                 throw new ArgumentException("Must contain a COPY FROM STDIN command!", "copyFromCommand");
             Contract.EndContractBlock();
 
-            CheckConnectionOpen();
-            Connector.StartUserAction(ConnectorState.Copy);
-            var writer = new NpgsqlCopyTextWriter(new NpgsqlRawCopyStream(Connector, copyFromCommand));
-            Connector.CurrentCopyOperation = writer;
-            return writer;
+            var connector = CheckReadyAndGetConnector();
+            connector.StartUserAction(ConnectorState.Copy);
+            try
+            {
+                var writer = new NpgsqlCopyTextWriter(new NpgsqlRawCopyStream(connector, copyFromCommand));
+                connector.CurrentCopyOperation = writer;
+                return writer;
+            }
+            catch
+            {
+                connector.EndUserAction();
+                throw;
+            }
         }
 
         /// <summary>
@@ -954,11 +955,19 @@ namespace Npgsql
                 throw new ArgumentException("Must contain a COPY TO STDOUT command!", "copyToCommand");
             Contract.EndContractBlock();
 
-            CheckConnectionOpen();
-            Connector.StartUserAction(ConnectorState.Copy);
-            var reader = new NpgsqlCopyTextReader(new NpgsqlRawCopyStream(Connector, copyToCommand));
-            Connector.CurrentCopyOperation = reader;
-            return reader;
+            var connector = CheckReadyAndGetConnector();
+            connector.StartUserAction(ConnectorState.Copy);
+            try
+            {
+                var reader = new NpgsqlCopyTextReader(new NpgsqlRawCopyStream(connector, copyToCommand));
+                connector.CurrentCopyOperation = reader;
+                return reader;
+            }
+            catch
+            {
+                connector.EndUserAction();
+                throw;
+            }
         }
 
         /// <summary>
@@ -980,25 +989,23 @@ namespace Npgsql
                 throw new ArgumentException("Must contain a COPY TO STDOUT or COPY FROM STDIN command!", "copyCommand");
             Contract.EndContractBlock();
 
-            CheckConnectionOpen();
-            Connector.StartUserAction(ConnectorState.Copy);
+            var connector = CheckReadyAndGetConnector();
+            connector.StartUserAction(ConnectorState.Copy);
             try
             {
-                var stream = new NpgsqlRawCopyStream(Connector, copyCommand);
+                var stream = new NpgsqlRawCopyStream(connector, copyCommand);
                 if (!stream.IsBinary)
                 {
                     // TODO: Stop the COPY operation gracefully, no breaking
                     Connector.Break();
                     throw new ArgumentException("copyToCommand triggered a text transfer, only binary is allowed", "copyCommand");
                 }
-                Connector.CurrentCopyOperation = stream;
+                connector.CurrentCopyOperation = stream;
                 return stream;
             }
             catch
             {
-                if (Connector != null) {  // Connector may have been broken
-                    Connector.EndUserAction();
-                }
+                connector.EndUserAction();
                 throw;
             }
         }
@@ -1105,31 +1112,29 @@ namespace Npgsql
 
         void CheckConnectionClosed()
         {
-            if (_disposed) {
+            if (_disposed)
                 throw new ObjectDisposedException(typeof(NpgsqlConnection).Name);
-            }
-
-            if (Connector != null) {
+            if (Connector != null)
                 throw new InvalidOperationException("Connection already open");
-            }
         }
 
         void CheckNotDisposed()
         {
-            if (_disposed) {
+            if (_disposed)
                 throw new ObjectDisposedException(typeof(NpgsqlConnection).Name);
-            }
         }
 
-        internal void CheckReady()
+        internal NpgsqlConnector CheckReadyAndGetConnector()
         {
-            if (_disposed) {
+            if (_disposed)
                 throw new ObjectDisposedException(typeof(NpgsqlConnection).Name);
-            }
-
-            if (Connector == null) {
+            // This method gets called outside any lock, and might be in a race condition
+            // with an ongoing keepalive, which may break the connector (setting the connection's
+            // Connector to null). We capture the connector to the stack and return it here.
+            var conn = Connector;
+            if (conn == null)
                 throw new InvalidOperationException("Connection is not open");
-            }
+            return conn;
         }
 
         #endregion State checks

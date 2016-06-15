@@ -44,6 +44,20 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        public void Remove()
+        {
+            Assert.That(Builder.ConnectionString, Is.EqualTo(""));
+            Builder.SslMode = SslMode.Prefer;
+            Assert.That(Builder["SSL Mode"], Is.EqualTo(SslMode.Prefer));
+            Builder.Remove("SSL Mode");
+            Assert.That(Builder.ConnectionString, Is.EqualTo(""));
+            Builder.CommandTimeout = 120;
+            Assert.That(Builder["Command Timeout"], Is.EqualTo(120));
+            Builder.Remove("Command Timeout");
+            Assert.That(Builder.ConnectionString, Is.EqualTo(""));
+        }
+
+        [Test]
         public void Clear()
         {
             Builder.Host = "myhost";

@@ -12,8 +12,6 @@ namespace Npgsql.Tests
 {
     public class SecurityTests : TestBase
     {
-        public SecurityTests(string backendVersion) : base(backendVersion) {}
-
         [Test, Description("Establishes an SSL connection, assuming a self-signed server certificate")]
         [TestCase(false, TestName = "TlsClientStream")]
         [TestCase(true,  TestName = "SslStream")]

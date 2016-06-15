@@ -69,9 +69,9 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        [MinPgVersion(9, 1, 0, "no binary output function available for type void before 9.1.0")]
         public void Void()
         {
+            TestUtil.MinimumPgVersion(Conn, "9.1.0", "no binary output function available for type void before 9.1.0");
             var command = new NpgsqlCommand("pg_sleep", Conn);
             command.Parameters.AddWithValue("sleep_time", 0);
             command.CommandType = CommandType.StoredProcedure;
@@ -226,7 +226,5 @@ namespace Npgsql.Tests
         }
 
         #endregion
-
-        public FunctionTests(string backendVersion) : base(backendVersion) { }
     }
 }

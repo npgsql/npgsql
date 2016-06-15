@@ -31,7 +31,7 @@
     <ProjectToBuild Include="../Npgsql/Npgsql.csproj">
     </ProjectToBuild>
     
-    <ProjectToBuild Include="../EntityFramework6.Npgsql/EntityFramework5.Npgsql.csproj">
+    <ProjectToBuild Include="../EntityFramework5.Npgsql/EntityFramework5.Npgsql.csproj">
     </ProjectToBuild>
     
     <ProjectToBuild Include="NpgsqlDdexProvider2012.csproj">

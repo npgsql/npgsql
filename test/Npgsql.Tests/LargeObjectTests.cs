@@ -11,8 +11,6 @@ namespace Npgsql.Tests
     [TestFixture]
     public class LargeObjectTests : TestBase
     {
-        public LargeObjectTests(string backendVersion) : base(backendVersion) { }
-
         [Test]
         public void Test()
         {

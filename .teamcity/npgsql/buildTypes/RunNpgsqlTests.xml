@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<template xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="de1b02bb-aee6-44d6-b38c-a9237fc3a10c" xsi:noNamespaceSchemaLocation="http://www.jetbrains.com/teamcity/schemas/9.0/project-config.xsd">
+  <name>Run Npgsql Tests</name>
+  <settings>
+    <options>
+      <option name="checkoutMode" value="ON_AGENT" />
+    </options>
+    <parameters />
+    <build-runners>
+      <runner id="RUNNER_31" name="Set build number" type="simpleRunner">
+        <parameters>
+          <param name="script.content" value="echo ##teamcity[buildNumber '%dep.npgsql_CompileDebug.build.number%']" />
+          <param name="teamcity.step.mode" value="default" />
+          <param name="use.custom.script" value="true" />
+        </parameters>
+      </runner>
+      <runner id="RUNNER_1" name="Test" type="NUnit">
+        <parameters>
+          <param name="dotNetCoverage.NCover.HTMLReport.File.Sort" value="0" />
+          <param name="dotNetCoverage.NCover.HTMLReport.File.Type" value="1" />
+          <param name="dotNetCoverage.NCover.Reg" value="selected" />
+          <param name="dotNetCoverage.NCover.platformBitness" value="x86" />
+          <param name="dotNetCoverage.NCover.platformVersion" value="v2.0" />
+          <param name="dotNetCoverage.NCover3.Reg" value="selected" />
+          <param name="dotNetCoverage.NCover3.args" value="//ias .*" />
+          <param name="dotNetCoverage.NCover3.platformBitness" value="x86" />
+          <param name="dotNetCoverage.NCover3.platformVersion" value="v2.0" />
+          <param name="dotNetCoverage.NCover3.reporter.executable.args" value="//or FullCoverageReport:Html:{teamcity.report.path}" />
+          <param name="dotNetCoverage.PartCover.Reg" value="selected" />
+          <param name="dotNetCoverage.PartCover.includes" value="[*]*" />
+          <param name="dotNetCoverage.PartCover.platformBitness" value="x86" />
+          <param name="dotNetCoverage.PartCover.platformVersion" value="v2.0" />
+          <param name="dotNetTestRunner.Type" value="NUnit" />
+          <param name="nunit_categery_exclude" value="TodoFor3.0" />
+          <param name="nunit_enabled" value="checked" />
+          <param name="nunit_environment" value="v4.0" />
+          <param name="nunit_include"><![CDATA[test/Npgsql.Tests/bin/Debug/Npgsql.Tests.dll
+test/EntityFramework6.Npgsql.Tests/bin/Debug/EntityFramework6.Npgsql.Tests.dll]]></param>
+          <param name="nunit_platform" value="MSIL" />
+          <param name="nunit_version" value="NUnit-2.6.4" />
+          <param name="teamcity.step.mode" value="default" />
+        </parameters>
+      </runner>
+    </build-runners>
+    <vcs-settings>
+      <vcs-entry-ref root-id="npgsql_github" />
+    </vcs-settings>
+    <requirements />
+    <build-triggers />
+    <artifact-dependencies>
+      <dependency sourceBuildTypeId="npgsql_CompileDebug" cleanDestination="false">
+        <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
+        <artifact sourcePath="**" />
+      </dependency>
+    </artifact-dependencies>
+    <dependencies>
+      <depend-on sourceBuildTypeId="npgsql_CompileDebug">
+        <options>
+          <option name="run-build-if-dependency-failed" value="CANCEL" />
+          <option name="run-build-if-dependency-failed-to-start" value="CANCEL" />
+          <option name="take-started-build-with-same-revisions" value="true" />
+          <option name="take-successful-builds-only" value="true" />
+        </options>
+      </depend-on>
+    </dependencies>
+    <cleanup />
+  </settings>
+</template>
+

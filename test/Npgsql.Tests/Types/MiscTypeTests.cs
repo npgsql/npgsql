@@ -155,9 +155,9 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        [MinPgVersion(9, 2, 0, "JSON data type not yet introduced")]
         public void Json()
         {
+            TestUtil.MinimumPgVersion(Conn, "9.2.0", "JSON data type not yet introduced");
             const string expected = @"{ ""Key"" : ""Value"" }";
             using (var cmd = new NpgsqlCommand("SELECT @p", Conn))
             {
@@ -175,9 +175,9 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        [MinPgVersion(9, 4, 0, "JSONB data type not yet introduced")]
         public void Jsonb()
         {
+            TestUtil.MinimumPgVersion(Conn, "9.4.0", "JSONB data type not yet introduced");
             var sb = new StringBuilder();
             sb.Append(@"{""Key"": """);
             sb.Append('x', Conn.BufferSize);
@@ -199,9 +199,9 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        [MinPgVersion(9, 1, 0, "HSTORE data type not yet introduced")]
         public void Hstore()
         {
+            TestUtil.MinimumPgVersion(Conn, "9.1.0", "HSTORE data type not yet introduced");
             ExecuteNonQuery(@"CREATE EXTENSION IF NOT EXISTS hstore");
 
             var expected = new Dictionary<string, string> {
@@ -210,14 +210,21 @@ namespace Npgsql.Tests.Types
               {"cd", "hello"}
             };
 
-            using (var cmd = new NpgsqlCommand("SELECT @p", Conn)) {
-                cmd.Parameters.AddWithValue("p", NpgsqlDbType.Hstore, expected);
-                var reader = cmd.ExecuteReader();
-                reader.Read();
-                Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(IDictionary<string, string>)));
-                Assert.That(reader.GetValue(0), Is.EqualTo(expected));
-                Assert.That(reader.GetString(0), Is.EqualTo(@"""a""=>""3"",""b""=>NULL,""cd""=>""hello"""));
-                reader.Close();
+            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", Conn))
+            {
+                cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Hstore, expected);
+                cmd.Parameters.AddWithValue("p2", expected);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    for (var i = 0; i < cmd.Parameters.Count; i++)
+                    {
+                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(Dictionary<string, string>)));
+                        Assert.That(reader.GetFieldValue<Dictionary<string, string>>(i), Is.EqualTo(expected));
+                        Assert.That(reader.GetFieldValue<IDictionary<string, string>>(i), Is.EqualTo(expected));
+                        Assert.That(reader.GetString(i), Is.EqualTo(@"""a""=>""3"",""b""=>NULL,""cd""=>""hello"""));
+                    }
+                }
             }
         }
 
@@ -541,7 +548,5 @@ namespace Npgsql.Tests.Types
                 Assert.AreEqual(query.ToString(), output.ToString());
             }
         }
-
-        public MiscTypeTests(string backendVersion) : base(backendVersion) {}
     }
 }
