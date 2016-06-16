@@ -136,6 +136,7 @@ namespace Npgsql.Tests
 
         #region Connection Errors
 
+#if IGNORE
         [Test]
         [TestCase(true)]
         [TestCase(false)]
@@ -171,6 +172,7 @@ namespace Npgsql.Tests
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
             }
         }
+#endif
 
         [Test]
         [Ignore("Fails in a non-determinstic manner and only on the build server... investigate...")]
