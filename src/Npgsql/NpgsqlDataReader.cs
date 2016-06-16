@@ -272,6 +272,7 @@ namespace Npgsql
                 case StatementType.Insert:
                 case StatementType.Delete:
                 case StatementType.Copy:
+                case StatementType.Move:
                     if (!_recordsAffected.HasValue) {
                         _recordsAffected = 0;
                     }
