@@ -367,37 +367,6 @@ ORDER BY ord";
             _globalCompositeMappings.TryRemove(pgName, out _);
         }
 
-#if WAT
-        const string LoadCompositeQuery =
-@"SELECT ns.nspname, a.typname, a.oid,
-CASE
-  WHEN a.typname = @name THEN 0   /* First we load the composite type */
-  ELSE 1                          /* Then we load its array */
-END AS ord
-FROM pg_type AS a
-JOIN pg_namespace AS ns ON (ns.oid = a.typnamespace)
-LEFT OUTER JOIN pg_type AS b ON (b.oid = a.typelem)
-WHERE
-  a.typname = @name OR   /* The composite type */
-  b.typname = @name      /* The composite's array type */
-ORDER BY ord";
-
-        const string LoadCompositeWithSchemaQuery =
-@"SELECT ns_a.nspname, a.typname, a.oid, a.typtype,
-CASE
-  WHEN a.typname = @name THEN 0   /* First we load the composite type */
-  ELSE 1                          /* Then we load its array */
-END AS ord
-FROM pg_type AS a
-JOIN pg_namespace AS ns_a ON (ns_a.oid = a.typnamespace)
-LEFT OUTER JOIN pg_type AS b ON (b.oid = a.typelem)
-LEFT OUTER JOIN pg_namespace AS ns_b ON (ns_b.oid = b.typnamespace)
-WHERE
-  (ns_a.nspname = @schema AND a.typname = @name) OR   /* The composite type */
-  (ns_b.nspname = @schema AND b.typname = @name)      /* The composite's array type */
-ORDER BY ord";
-#endif
-
         static string GenerateLoadCompositeQuery(bool withSchema) =>
 $@"SELECT ns.nspname, typ.oid, typ.typtype
 FROM pg_type AS typ
