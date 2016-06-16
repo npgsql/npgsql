@@ -616,7 +616,9 @@ namespace Npgsql
         async Task ConnectAsync(NpgsqlTimeout timeout, CancellationToken cancellationToken)
         {
             // Note that there aren't any timeoutable or cancellable DNS methods
-            var ips = await Dns.GetHostAddressesAsync(Host).WithCancellation(cancellationToken);
+            var ips = await Dns.GetHostAddressesAsync(Host)
+                .WithCancellation(cancellationToken)
+                .ConfigureAwait(false);
 
             // Give each IP an equal share of the remaining time
             var perIpTimespan = timeout.IsSet ? new TimeSpan(timeout.TimeLeft.Ticks / ips.Length) : TimeSpan.Zero;
@@ -636,7 +638,9 @@ namespace Npgsql
                 {
                     try
                     {
-                        await connectTask.WithCancellationAndTimeout(perIpTimeout, cancellationToken);
+                        await connectTask
+                            .WithCancellationAndTimeout(perIpTimeout, cancellationToken)
+                            .ConfigureAwait(false);
                     }
                     catch (OperationCanceledException)
                     {
@@ -1597,11 +1601,21 @@ namespace Npgsql
         {
             Contract.Requires(IsKeepAliveEnabled);
 
-            if (!_keepAliveLock.Wait(0))
+            try
             {
-                // The async semaphore has already been acquired, either by a user action,
-                // or, improbably, by a previous keepalive.
-                // Whatever the case, exit immediately, no need to perform a keepalive.
+                if (!_keepAliveLock.Wait(0))
+                {
+                    // The async semaphore has already been acquired, either by a user action,
+                    // or, improbably, by a previous keepalive.
+                    // Whatever the case, exit immediately, no need to perform a keepalive.
+                    return;
+                }
+            }
+            catch (ObjectDisposedException)
+            {
+                // TODO: This is a temporary workaround to fix #1151. For 3.2, a much better solution
+                // is #1127 - properly making close operations a user action.
+                Log.Debug("Keepalive lock already disposed, aborting keepalive");
                 return;
             }
 
@@ -1612,12 +1626,28 @@ namespace Npgsql
             {
                 SendMessage(PregeneratedMessage.KeepAlive);
                 SkipUntil(BackendMessageCode.ReadyForQuery);
-                _keepAliveLock.Release();
+                try
+                {
+                    _keepAliveLock.Release();
+                }
+                catch (ObjectDisposedException)
+                {
+                    // TODO: This is a temporary workaround to fix #1151. For 3.2, a much better solution
+                    // is #1127 - properly making close operations a user action.
+                    Log.Debug("Keepalive lock already disposed after keepalive completed");
+                }
             }
             catch (Exception e)
             {
                 Log.Fatal("Keepalive failure", e, Id);
-                Break();
+                try
+                {
+                    Break();
+                }
+                catch (Exception e2)
+                {
+                    Log.Error("Exception while breaking during keepalive", e2, Id);
+                }
             }
         }
 

@@ -137,8 +137,6 @@ namespace Npgsql
 
         internal bool HasExpired => DateTime.Now >= Expiration;
 
-        internal Task AsTask => Task.Delay(TimeLeft);
-
         internal TimeSpan TimeLeft => IsSet ? Expiration - DateTime.Now : Timeout.InfiniteTimeSpan;
     }
 
