@@ -319,6 +319,22 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test]
+        public void CursorMoveRecordsAffected()
+        {
+            using (var connection = OpenConnection())
+            {
+                using (var transaction = connection.BeginTransaction())
+                {
+                    var command = new NpgsqlCommand("DECLARE curs CURSOR FOR SELECT * FROM (VALUES (1), (2), (3)) as t", connection);
+                    command.ExecuteNonQuery();
+                    command.CommandText = "MOVE FORWARD ALL IN curs";
+                    int count = command.ExecuteNonQuery();
+                    Assert.AreEqual(3, count);
+                }
+            }
+        }
+
         #endregion
 
         #region CommandBehavior.CloseConnection
