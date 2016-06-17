@@ -12,9 +12,8 @@ namespace Npgsql.Tests
         public void ShouldParseAllEntries()
         {
             var file = new PgPassFile(_pgpassFile);
-
-            Assert.That(file.Entries, Is.Not.Null);
-            Assert.That(file.Entries.Count(), Is.EqualTo(3));
+            var entries = file.Entries.ToList();
+            Assert.That(entries.Count, Is.EqualTo(3));
         }
 
         [Test]
@@ -36,7 +35,8 @@ namespace Npgsql.Tests
 
             Assert.That(entry.Password, Is.EqualTo("defaultpass"));
         }
-        string _pgpassFile = null;
+
+        string _pgpassFile;
 
         [OneTimeSetUp]
         public void CreateTestFile()
@@ -54,9 +54,7 @@ testhost:*:*:*:testdefaultpass
         public void DeleteTestFile()
         {
             if (File.Exists(_pgpassFile))
-            {
                 File.Delete(_pgpassFile);
-            }
         }
     }
 }

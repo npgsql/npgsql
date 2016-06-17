@@ -202,16 +202,15 @@ namespace Npgsql
             if (Password == null)
             {
                 if (Settings.Password != null)
-                {
                     Password = Settings.Password;
-                }
                 else
                 {
-                    // no password was provided. attempt to pull the password from the pgpass file.
-                    var pgPassFile = new PgPassFile(PgPassFile.GetPgPassFilePath());
-                    var matchingEntry = pgPassFile.GetFirstMatchingEntry(Settings.Host, Settings.Port, Settings.Database, Settings.Username);
+                    // no password was provided. Attempt to pull the password from the pgpass file.
+                    var pgPassFile = PgPassFile.LoadDefaultFile();
+                    var matchingEntry = pgPassFile?.GetFirstMatchingEntry(Settings.Host, Settings.Port, Settings.Database, Settings.Username);
                     if (matchingEntry != null)
                     {
+                        Log.Trace("Taking password from pgpass file");
                         Password = matchingEntry.Password;
                     }
                 }

@@ -87,7 +87,6 @@
     <Compile Include="NpgsqlLargeObjectStream.cs" />
     <Compile Include="NpgsqlBinaryExporter.cs" />
     <Compile Include="NpgsqlBinaryImporter.cs" />
-    <Compile Include="PgPassEntry.cs" />
     <Compile Include="PgPassFile.cs" />
     <Compile Include="PostgresNotice.cs" />
     <Compile Include="NpgsqlRawCopyStream.cs" />

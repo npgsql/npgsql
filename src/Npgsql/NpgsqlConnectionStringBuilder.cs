@@ -353,6 +353,7 @@ namespace Npgsql
         [Description("The username to connect with. Not required if using IntegratedSecurity.")]
         [DisplayName("Username")]
         [NpgsqlConnectionStringProperty("User Name", "UserId", "User Id", "UID")]
+        [CanBeNull]
         public string Username
         {
             get { return _username; }

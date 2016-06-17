@@ -969,7 +969,12 @@ namespace Npgsql.Tests
         [IssueLink("https://github.com/npgsql/npgsql/issues/777")]
         public void ExceptionDuringClose()
         {
-            using (var conn = OpenConnection(new NpgsqlConnectionStringBuilder(ConnectionString) { Pooling = false }))
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Pooling = false,
+                Password = null
+            };
+            using (var conn = OpenConnection(csb))
             {
                 var connectorId = conn.ProcessID;
 
@@ -979,6 +984,8 @@ namespace Npgsql.Tests
                 conn.Close();
             }
         }
+
+        #region pgpass
 
         [Test]
         public void UsePgPassFile()
@@ -993,12 +1000,7 @@ namespace Npgsql.Tests
                     IntegratedSecurity = false,
                     Password = null
                 };
-
-                using (var conn = OpenConnection(builder))
-                {
-                    Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
-                    conn.Close();
-                }
+                using (OpenConnection(builder)) {}
             }
             finally
             {
@@ -1006,7 +1008,7 @@ namespace Npgsql.Tests
             }
         }
 
-        string _pgpassEnvVarValue = null;
+        string _pgpassEnvVarValue;
 
         public string SetupTestData()
         {
@@ -1024,11 +1026,10 @@ namespace Npgsql.Tests
         public void RestorePriorConfiguration(string fileName, string environmentVariableValue)
         {
             if (File.Exists(fileName))
-            {
                 File.Delete(fileName);
-            }
             Environment.SetEnvironmentVariable("PGPASSFILE", _pgpassEnvVarValue);
         }
 
+        #endregion
     }
 }
