@@ -201,7 +201,20 @@ namespace Npgsql
             // have Password populated and should not be overwritten.
             if (Password == null)
             {
-                Password = Settings.Password;
+                if (Settings.Password != null)
+                {
+                    Password = Settings.Password;
+                }
+                else
+                {
+                    // no password was provided. attempt to pull the password from the pgpass file.
+                    var pgPassFile = new PgPassFile(PgPassFile.GetPgPassFilePath());
+                    var matchingEntry = pgPassFile.GetFirstMatchingEntry(Settings.Host, Settings.Port, Settings.Database, Settings.Username);
+                    if (matchingEntry != null)
+                    {
+                        Password = matchingEntry.Password;
+                    }
+                }
             }
             if (!Settings.PersistSecurityInfo)
             {
