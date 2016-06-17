@@ -23,7 +23,9 @@
 
 using NUnit.Framework;
 using System;
+using System.CodeDom;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Text;
 using Npgsql;
@@ -133,7 +135,7 @@ namespace Npgsql.Tests.Types
                 conn.MapComposite<SomeComposite>("composite2");
                 using (var cmd = new NpgsqlCommand("SELECT @p", conn))
                 {
-                    cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType.Enum) { SpecificType = typeof(SomeComposite), Value = DBNull.Value });
+                    cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType.Composite) { SpecificType = typeof(SomeComposite), Value = DBNull.Value });
                     using (var reader = cmd.ExecuteReader())
                     {
                         reader.Read();
@@ -357,7 +359,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/856")]
-        public void CompositeWithDomain()
+        public void Domain()
         {
             var setupSql = @"SET search_path=pg_temp;
 
@@ -444,5 +446,93 @@ CREATE TYPE address AS
         {
             public int? Foo { get; set; }
         }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1168")]
+        public void WithSchema()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ApplicationName = nameof(WithSchema),  // Prevent backend type caching in TypeHandlerRegistry
+                Pooling = false
+            };
+
+            using (var conn = OpenConnection(csb))
+            {
+                conn.ExecuteNonQuery("DROP SCHEMA IF EXISTS composite_schema CASCADE; CREATE SCHEMA composite_schema");
+                try
+                {
+                    conn.ExecuteNonQuery("CREATE TYPE composite_schema.composite AS (foo int)");
+                    conn.ReloadTypes();
+                    conn.MapComposite<Composite1>("composite_schema.composite");
+                    using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+                    {
+                        cmd.Parameters.AddWithValue("p", new Composite1 { Foo = 8 });
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            reader.Read();
+                            Assert.That(reader.GetDataTypeName(0), Is.EqualTo("composite_schema.composite"));
+                            Assert.That(reader.GetFieldValue<Composite1>(0).Foo, Is.EqualTo(8));
+                        }
+                    }
+                }
+                finally
+                {
+                    if (conn.State == ConnectionState.Open)
+                        conn.ExecuteNonQuery("DROP SCHEMA IF EXISTS composite_schema CASCADE");
+                }
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1168")]
+        public void InDifferentSchemas()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ApplicationName = nameof(WithSchema),  // Prevent backend type caching in TypeHandlerRegistry
+                Pooling = false
+            };
+
+            using (var conn = OpenConnection(csb))
+            {
+                conn.ExecuteNonQuery("DROP SCHEMA IF EXISTS composite_schema1 CASCADE; CREATE SCHEMA composite_schema1");
+                conn.ExecuteNonQuery("DROP SCHEMA IF EXISTS composite_schema2 CASCADE; CREATE SCHEMA composite_schema2");
+                try
+                {
+                    conn.ExecuteNonQuery("CREATE TYPE composite_schema1.composite AS (foo int)");
+                    conn.ExecuteNonQuery("CREATE TYPE composite_schema2.composite AS (bar int)");
+                    conn.ReloadTypes();
+                    // Attempting to map without a fully-qualified name should fail
+                    Assert.That(() => conn.MapComposite<Composite1>("composite"),
+                        Throws.Exception.TypeOf<NpgsqlException>()
+                    );
+                    conn.MapComposite<Composite1>("composite_schema1.composite");
+                    conn.MapComposite<Composite2>("composite_schema2.composite");
+                    using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn))
+                    {
+                        cmd.Parameters.AddWithValue("p1", new Composite1 { Foo = 8 });
+                        cmd.Parameters.AddWithValue("p2", new Composite2 { Bar = 9 });
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            reader.Read();
+                            Assert.That(reader.GetDataTypeName(0), Is.EqualTo("composite_schema1.composite"));
+                            Assert.That(reader.GetFieldValue<Composite1>(0).Foo, Is.EqualTo(8));
+                            Assert.That(reader.GetDataTypeName(1), Is.EqualTo("composite_schema2.composite"));
+                            Assert.That(reader.GetFieldValue<Composite2>(1).Bar, Is.EqualTo(9));
+                        }
+                    }
+                }
+                finally
+                {
+                    if (conn.State == ConnectionState.Open)
+                    {
+                        conn.ExecuteNonQuery("DROP SCHEMA IF EXISTS composite_schema1 CASCADE");
+                        conn.ExecuteNonQuery("DROP SCHEMA IF EXISTS composite_schema2 CASCADE");
+                    }
+                }
+            }
+        }
+
+        class Composite1 { public int Foo { get; set; } }
+        class Composite2 { public int Bar { get; set; } }
     }
 }

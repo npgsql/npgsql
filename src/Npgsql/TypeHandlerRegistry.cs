@@ -371,21 +371,21 @@ ORDER BY ord";
 $@"SELECT ns.nspname, typ.oid, typ.typtype
 FROM pg_type AS typ
 JOIN pg_namespace AS ns ON (ns.oid = typ.typnamespace)
-WHERE (typ.typname = @name{(withSchema ? " AND a.nspname = @schema" : "")});
+WHERE (typ.typname = @name{(withSchema ? " AND ns.nspname = @schema" : "")});
 
 SELECT att.attname, att.atttypid
 FROM pg_type AS typ
 JOIN pg_namespace AS ns ON (ns.oid = typ.typnamespace)
 JOIN pg_attribute AS att ON (att.attrelid = typ.typrelid)
 WHERE
-  typ.typname = @name{(withSchema ? " AND a.nspname = @schema" : "")} AND
+  typ.typname = @name{(withSchema ? " AND ns.nspname = @schema" : "")} AND
   attnum > 0; /* Don't load system attributes */
 
 SELECT ns.nspname, a.typname, a.oid
 FROM pg_type AS a
 JOIN pg_type AS b ON (b.oid = a.typelem)
 JOIN pg_namespace AS ns ON (ns.oid = b.typnamespace)
-WHERE a.typtype = 'b' AND b.typname = @name{(withSchema ? " AND b.nspname = @schema" : "")}";
+WHERE a.typtype = 'b' AND b.typname = @name{(withSchema ? " AND ns.nspname = @schema" : "")}";
 
         BackendCompositeType GetCompositeType(string pgName)
         {
@@ -432,6 +432,14 @@ WHERE a.typtype = 'b' AND b.typname = @name{(withSchema ? " AND b.nspname = @sch
                     var typeChar = reader.GetChar(2);
                     if (typeChar != 'c')
                         throw new NpgsqlException($"Type {pgName} was found in the database but is not a composite");
+                    if (reader.Read())
+                    {
+                        // More than one composite type matched, the user didn't specify a schema and the same name
+                        // exists in more than one schema
+                        Debug.Assert(schema == null);
+                        var ns2 = reader.GetString(0);
+                        throw new NpgsqlException($"More than one composite types with name {name} where found (in schemas {ns} and {ns2}). Please qualify with a schema.");
+                    }
 
                     reader.NextResult();  // Load the fields
 
