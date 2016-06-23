@@ -88,6 +88,14 @@ namespace Npgsql.Tests
             Assert.That(_queries.Single().InputParameters.Single(), Is.SameAs(_params.Single()));
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1177")]
+        public void ParamGetsBoundNonAscii()
+        {
+            _params.AddWithValue("漢字", "foo");
+            SqlQueryParser.ParseRawQuery("SELECT @漢字", true, _params, _queries);
+            Assert.That(_queries.Single().InputParameters.Single(), Is.SameAs(_params.Single()));
+        }
+
         [Test]
         [TestCase(@"SELECT e'ab\'c:param'", TestName = "Estring")]
         [TestCase(@"SELECT/*/* -- nested comment :int /*/* *//*/ **/*/*/*/1")]

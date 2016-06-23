@@ -31,13 +31,6 @@ namespace Npgsql
 {
     static class SqlQueryParser
     {
-        static readonly bool[] ParamNameCharTable;
-
-        static SqlQueryParser()
-        {
-            ParamNameCharTable = BuildParameterNameCharacterTable();
-        }
-
         /// <summary>
         /// Receives a raw SQL query as passed in by the user, and performs some processing necessary
         /// before sending to the backend.
@@ -431,20 +424,7 @@ namespace Npgsql
             return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || '0' <= ch && ch <= '9' || ch == '_' || ch == '$' || 128 <= ch && ch <= 255;
         }
 
-        static bool IsParamNameChar(char ch) => ch <= 'z' && ParamNameCharTable[ch];
-
-        static bool[] BuildParameterNameCharacterTable()
-        {
-            var table = new bool['z' + 1];
-            table['.'] = true; // why??
-            table['_'] = true;
-            for (int i = '0'; i <= '9'; i++)
-                table[i] = true;
-            for (int i = 'A'; i <= 'Z'; i++)
-                table[i] = true;
-            for (int i = 'a'; i <= 'z'; i++)
-                table[i] = true;
-            return table;
-        }
+        static bool IsParamNameChar(char ch)
+            => char.IsLetterOrDigit(ch) || ch == '_' || ch == '.';  // why dot??
     }
 }
