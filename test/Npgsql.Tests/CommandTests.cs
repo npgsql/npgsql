@@ -437,16 +437,14 @@ namespace Npgsql.Tests
         public void SameParamMultipleTimes()
         {
             using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT @p1, @p1", conn))
             {
-                using (var cmd = new NpgsqlCommand("SELECT @p1, @p1", conn))
+                cmd.Parameters.AddWithValue("@p1", 8);
+                using (var reader = cmd.ExecuteReader())
                 {
-                    cmd.Parameters.AddWithValue("@p1", 8);
-                    using (var reader = cmd.ExecuteReader())
-                    {
-                        reader.Read();
-                        Assert.That(reader[0], Is.EqualTo(8));
-                        Assert.That(reader[1], Is.EqualTo(8));
-                    }
+                    reader.Read();
+                    Assert.That(reader[0], Is.EqualTo(8));
+                    Assert.That(reader[1], Is.EqualTo(8));
                 }
             }
         }
