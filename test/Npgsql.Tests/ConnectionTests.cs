@@ -971,11 +971,7 @@ namespace Npgsql.Tests
         [IssueLink("https://github.com/npgsql/npgsql/issues/777")]
         public void ExceptionDuringClose()
         {
-            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-            {
-                Pooling = false,
-                Password = null
-            };
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Pooling = false };
             using (var conn = OpenConnection(csb))
             {
                 var connectorId = conn.ProcessID;
