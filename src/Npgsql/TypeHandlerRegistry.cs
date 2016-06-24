@@ -467,7 +467,7 @@ WHERE a.typtype = 'b' AND b.typname = @name{(withSchema ? " AND ns.nspname = @sc
                     {
                         // More than one composite type matched, the user didn't specify a schema and the same name
                         // exists in more than one schema
-                        Debug.Assert(schema == null);
+                        Contract.Assert(schema == null);
                         var ns2 = reader.GetString(0);
                         throw new NpgsqlException($"More than one composite types with name {name} where found (in schemas {ns} and {ns2}). Please qualify with a schema.");
                     }
