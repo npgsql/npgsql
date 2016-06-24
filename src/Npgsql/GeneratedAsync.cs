@@ -180,7 +180,6 @@ using System.Threading.Tasks;
 using System;
 using System.Diagnostics;
 using System.IO;
-using System.Net;
 using System.Runtime.InteropServices;
 using System.Text;
 using JetBrains.Annotations;
@@ -356,7 +355,19 @@ namespace Npgsql
             // have Password populated and should not be overwritten.
             if (Password == null)
             {
-                Password = Settings.Password;
+                if (Settings.Password != null)
+                    Password = Settings.Password;
+                else
+                {
+                    // no password was provided. Attempt to pull the password from the pgpass file.
+                    var pgPassFile = PgPassFile.LoadDefaultFile();
+                    var matchingEntry = pgPassFile?.GetFirstMatchingEntry(Settings.Host, Settings.Port, Settings.Database, Settings.Username);
+                    if (matchingEntry != null)
+                    {
+                        Log.Trace("Taking password from pgpass file");
+                        Password = matchingEntry.Password;
+                    }
+                }
             }
 
             if (!Settings.PersistSecurityInfo)
@@ -787,7 +798,9 @@ namespace Npgsql
     /// <summary>
     /// Reads a forward-only stream of rows from a data source.
     /// </summary>
-    public partial class NpgsqlDataReader
+    
+#pragma warning disable CA1010
+    public sealed partial class NpgsqlDataReader
     {
         async Task<bool> ReadInternalAsync(CancellationToken cancellationToken)
         {
@@ -1210,7 +1223,7 @@ namespace Npgsql
     /// An interface to remotely control the seekable stream for an opened large object on a PostgreSQL server.
     /// Note that the OpenRead/OpenReadWrite method as well as all operations performed on this stream must be wrapped inside a database transaction.
     /// </summary>
-    public partial class NpgsqlLargeObjectStream
+    public sealed partial class NpgsqlLargeObjectStream
     {
         public async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
@@ -1439,7 +1452,7 @@ namespace Npgsql
             }
             // We have a special case when reading async notifications - a timeout may be normal
             // shouldn't be fatal
-            catch (IOException e) when (dontBreakOnTimeouts && (e.InnerException as SocketException)?.SocketErrorCode == SocketError.TimedOut)
+            catch (IOException e)when (dontBreakOnTimeouts && (e.InnerException as SocketException)?.SocketErrorCode == SocketError.TimedOut)
             {
                 throw new TimeoutException("Timeout while reading from stream");
             }
@@ -1529,6 +1542,7 @@ namespace Npgsql
         }
     }
 
+#pragma warning restore CA1040
     abstract partial class TypeHandler
     {
         internal async Task<T> ReadFullyAsync<T>(DataRowMessage row, int len, CancellationToken cancellationToken, FieldDescription fieldDescription = null)
