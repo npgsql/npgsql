@@ -178,6 +178,16 @@ namespace NpgsqlTypes
             {
                 return true;
             }
+
+            if (type.IsEnum)
+            {
+                var t = type.GetEnumUnderlyingType();
+                if (NativeTypeMapping.TryGetValue(t, out typeInfo))
+                {
+                    return true;
+                }
+            }
+
             // At this point there is no direct mapping, so we see if we have an array or IEnumerable<T>.
             // Note that we checked for a direct mapping first, so if there is a direct mapping of a class
             // which implements IEnumerable<T> we will use that (currently this is only string, which
