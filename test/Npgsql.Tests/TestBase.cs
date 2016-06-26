@@ -109,14 +109,10 @@ namespace Npgsql.Tests
         }
 
         protected NpgsqlConnection OpenConnection(NpgsqlConnectionStringBuilder csb)
-        {
-            return OpenConnection(csb.ToString());
-        }
+            => OpenConnection(csb.ToString());
 
         protected static bool IsSequential(CommandBehavior behavior)
-        {
-            return (behavior & CommandBehavior.SequentialAccess) != 0;
-        }
+            => (behavior & CommandBehavior.SequentialAccess) != 0;
 
         // In PG under 9.1 you can't do SELECT pg_sleep(2) in binary because that function returns void and PG doesn't know
         // how to transfer that. So cast to text server-side.

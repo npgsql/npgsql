@@ -350,32 +350,20 @@ namespace Npgsql
                 return;
             CheckConnectionClosed();
             Log.Trace("Opening connnection");
-            // Copy the password aside and remove it from the user-provided connection string
-            // (unless PersistSecurityInfo has been requested). Note that cloned connections already
-            // have Password populated and should not be overwritten.
-            if (Password == null)
+            if (Settings.Password == null)
             {
-                if (Settings.Password != null)
-                    Password = Settings.Password;
-                else
+                // no password was provided. Attempt to pull the password from the pgpass file.
+                var pgPassFile = PgPassFile.LoadDefaultFile();
+                var matchingEntry = pgPassFile?.GetFirstMatchingEntry(Settings.Host, Settings.Port, Settings.Database, Settings.Username);
+                if (matchingEntry != null)
                 {
-                    // no password was provided. Attempt to pull the password from the pgpass file.
-                    var pgPassFile = PgPassFile.LoadDefaultFile();
-                    var matchingEntry = pgPassFile?.GetFirstMatchingEntry(Settings.Host, Settings.Port, Settings.Database, Settings.Username);
-                    if (matchingEntry != null)
-                    {
-                        Log.Trace("Taking password from pgpass file");
-                        Password = matchingEntry.Password;
-                    }
+                    Log.Trace("Taking password from pgpass file");
+                    Settings.Password = matchingEntry.Password;
                 }
             }
 
             if (!Settings.PersistSecurityInfo)
-            {
-                Settings.Password = null;
-                _connectionString = Settings.ToString();
-            }
-
+                RemovePasswordFromConnectionString();
             _wasBroken = false;
             try
             {

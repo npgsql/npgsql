@@ -983,6 +983,29 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1180")]
+        public void PoolByPassword()
+        {
+            NpgsqlConnection goodConn = null;
+            try
+            {
+                var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+                {
+                    ApplicationName = nameof(PoolByPassword)
+                };
+                using (goodConn = new NpgsqlConnection(csb))
+                    goodConn.Open();
+                csb.Password = "badpasswd";
+                using (var conn = new NpgsqlConnection(csb))
+                    Assert.That(conn.Open, Throws.Exception.TypeOf<PostgresException>());
+            }
+            finally
+            {
+                if (goodConn != null)
+                    NpgsqlConnection.ClearPool(goodConn);
+            }
+        }
+
         #region pgpass
 
         [Test]
