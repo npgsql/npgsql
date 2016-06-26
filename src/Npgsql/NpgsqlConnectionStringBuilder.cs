@@ -984,10 +984,7 @@ namespace Npgsql
         /// Hash function.
         /// </summary>
         /// <returns></returns>
-        public override int GetHashCode()
-        {
-            return ConnectionString.GetHashCode();
-        }
+        public override int GetHashCode() => ConnectionString.GetHashCode();
 
         #endregion
 

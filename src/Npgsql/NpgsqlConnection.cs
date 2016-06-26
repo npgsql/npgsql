@@ -82,11 +82,6 @@ namespace Npgsql
         string _connectionString;
 
         /// <summary>
-        /// Contains the clear text password which was extracted from the user-provided connection string.
-        /// </summary>
-        internal string Password { get; private set; }
-
-        /// <summary>
         /// The connector object connected to the backend.
         /// </summary>
         internal NpgsqlConnector Connector { get; set; }
@@ -196,18 +191,8 @@ namespace Npgsql
 
             Log.Trace("Opening connnection");
 
-            // Copy the password aside and remove it from the user-provided connection string
-            // (unless PersistSecurityInfo has been requested). Note that cloned connections already
-            // have Password populated and should not be overwritten.
-            if (Password == null)
-            {
-                Password = Settings.Password;
-            }
             if (!Settings.PersistSecurityInfo)
-            {
-                Settings.Password = null;
-                _connectionString = Settings.ToString();
-            }
+                RemovePasswordFromConnectionString();
 
             _wasBroken = false;
 
@@ -349,6 +334,7 @@ namespace Npgsql
         [PublicAPI]
         public string UserName => Settings.Username;
 
+        internal string Password => Settings.Password;
         internal int MinPoolSize => Settings.MinPoolSize;
         internal int MaxPoolSize => Settings.MaxPoolSize;
         internal int Timeout => Settings.Timeout;
@@ -1371,6 +1357,20 @@ namespace Npgsql
         #region Misc
 
         /// <summary>
+        /// Remove password from externally-visible ConnectionString, but leave it in
+        /// the internally visible one - we need it for the connection pool key, Clone() etc.
+        /// </summary>
+        void RemovePasswordFromConnectionString()
+        {
+            var passwd = Settings.Password;
+            if (passwd == null)
+                return;
+            Settings.Password = null;
+            _connectionString = Settings.ToString();
+            Settings.Password = passwd;
+        }
+
+        /// <summary>
         /// Creates a closed connection with the connection string and authentication details of this message.
         /// </summary>
 #if NET45 || NET451
@@ -1380,11 +1380,12 @@ namespace Npgsql
 #endif
         {
             CheckNotDisposed();
-            return new NpgsqlConnection(ConnectionString) {
-                Password = Password,
+            var conn = new NpgsqlConnection(Settings) {
                 ProvideClientCertificatesCallback = ProvideClientCertificatesCallback,
                 UserCertificateValidationCallback = UserCertificateValidationCallback
             };
+            conn.RemovePasswordFromConnectionString();
+            return conn;
         }
 
         /// <summary>
@@ -1461,7 +1462,7 @@ namespace Npgsql
         public void ReloadTypes()
         {
             var conn = CheckReadyAndGetConnector();
-            TypeHandlerRegistry.ClearBackendTypeCache(ConnectionString);
+            TypeHandlerRegistry.ClearBackendTypeCache(Settings.ConnectionString);
             TypeHandlerRegistry.Setup(conn, new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout)));
         }
 
