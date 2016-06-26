@@ -203,6 +203,17 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test]
+        public void BadDatabase()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Database = "does_not_exist" };
+            using (var conn = new NpgsqlConnection(csb))
+                Assert.That(() => conn.Open(),
+                    Throws.Exception.TypeOf<PostgresException>()
+                    .With.Property(nameof(PostgresException.SqlState)).EqualTo("3D000")
+                );
+        }
+
         [Test, Description("Tests that mandatory connection string parameters are indeed mandatory")]
         public void MandatoryConnectionStringParams()
         {
