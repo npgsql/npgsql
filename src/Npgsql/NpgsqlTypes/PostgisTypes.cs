@@ -554,6 +554,8 @@ namespace NpgsqlTypes
 
         public bool Equals(PostgisMultiPolygon other)
         {
+            if (ReferenceEquals(other, null))
+                return false;
             if (_polygons.Length != other._polygons.Length) return false;
             for (var i = 0; i < _polygons.Length; i++)
             {

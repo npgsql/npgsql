@@ -358,20 +358,8 @@ namespace Npgsql
                 return;
             CheckConnectionClosed();
             Log.Trace("Opening connnection");
-            // Copy the password aside and remove it from the user-provided connection string
-            // (unless PersistSecurityInfo has been requested). Note that cloned connections already
-            // have Password populated and should not be overwritten.
-            if (Password == null)
-            {
-                Password = Settings.Password;
-            }
-
             if (!Settings.PersistSecurityInfo)
-            {
-                Settings.Password = null;
-                _connectionString = Settings.ToString();
-            }
-
+                RemovePasswordFromConnectionString();
             _wasBroken = false;
             try
             {

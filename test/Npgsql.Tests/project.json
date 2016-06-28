@@ -22,12 +22,10 @@
       }
     },
     "netcoreapp1.0": {
-      "imports": [
-        "dotnet54"
-      ],
+      "imports": [ "dotnet54" ],
       "dependencies": {
         "Microsoft.NETCore.App": {
-          "version": "1.0.0-*",
+          "version": "1.0.0",
           "type": "platform"
         }
       }
