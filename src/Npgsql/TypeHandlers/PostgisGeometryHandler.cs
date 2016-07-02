@@ -14,6 +14,7 @@ namespace Npgsql.TypeHandlers
     /// </summary>
     [TypeMapping("geometry", NpgsqlDbType.Geometry, new[]
     {
+        typeof(PostgisGeometry),
         typeof(PostgisPoint),
         typeof(PostgisMultiPoint),
         typeof(PostgisLineString),
