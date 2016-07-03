@@ -18,7 +18,7 @@
       </runner>
       <runner id="RUNNER_17" name="Compile Debug" type="simpleRunner">
         <parameters>
-          <param name="script.content"><![CDATA[set KOREBUILD_DOTNET_PACK_OPTIONS=--version-suffix "%build.counter%"
+          <param name="script.content"><![CDATA[set KOREBUILD_DOTNET_PACK_OPTIONS= --version-suffix "%build.counter%"
 set Configuration=DebugOptimizedCryptography
 build compile]]></param>
           <param name="teamcity.step.mode" value="default" />
