@@ -2,6 +2,7 @@
   "version": "0.0.0",
   "buildOptions": {
     "emitEntryPoint": true,
+    "debugType": "portable",
     "keyFile": "../../Npgsql.snk"
   },
   "dependencies": {

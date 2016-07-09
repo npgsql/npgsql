@@ -32,6 +32,7 @@
   },
   "buildOptions": {
     "warningsAsErrors": true,
+    "debugType": "portable",
     "keyFile": "../../Npgsql.snk",
     "compile": {
       "include": "../Shared/*.cs"
