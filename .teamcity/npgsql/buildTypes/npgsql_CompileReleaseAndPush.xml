@@ -18,7 +18,7 @@
       </runner>
       <runner id="RUNNER_21" name="Compile" type="simpleRunner">
         <parameters>
-          <param name="script.content"><![CDATA[set KOREBUILD_DOTNET_PACK_OPTIONS=--version-suffix "%dep.npgsql_CompileDebug.build.counter%"
+          <param name="script.content"><![CDATA[set KOREBUILD_DOTNET_PACK_OPTIONS= --version-suffix "%dep.npgsql_CompileDebug.build.counter%"
 set Configuration=ReleaseOptimizedCryptography
 build compile]]></param>
           <param name="teamcity.step.mode" value="default" />

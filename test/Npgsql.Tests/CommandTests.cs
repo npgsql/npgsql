@@ -349,6 +349,20 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1194")]
+        public void CloseConnectionWithOpenReaderWithCloseConnection()
+        {
+            using (var conn = OpenConnection())
+            {
+                var cmd = new NpgsqlCommand("SELECT 1", conn);
+                var reader = cmd.ExecuteReader(CommandBehavior.CloseConnection);
+                var wasClosed = false;
+                reader.ReaderClosed += (sender, args) => { wasClosed = true; };
+                conn.Close();
+                Assert.That(wasClosed, Is.True);
+            }
+        }
+
         [Test]
         public void CloseConnectionWithException()
         {
@@ -437,16 +451,14 @@ namespace Npgsql.Tests
         public void SameParamMultipleTimes()
         {
             using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT @p1, @p1", conn))
             {
-                using (var cmd = new NpgsqlCommand("SELECT @p1, @p1", conn))
+                cmd.Parameters.AddWithValue("@p1", 8);
+                using (var reader = cmd.ExecuteReader())
                 {
-                    cmd.Parameters.AddWithValue("@p1", 8);
-                    using (var reader = cmd.ExecuteReader())
-                    {
-                        reader.Read();
-                        Assert.That(reader[0], Is.EqualTo(8));
-                        Assert.That(reader[1], Is.EqualTo(8));
-                    }
+                    reader.Read();
+                    Assert.That(reader[0], Is.EqualTo(8));
+                    Assert.That(reader[1], Is.EqualTo(8));
                 }
             }
         }
