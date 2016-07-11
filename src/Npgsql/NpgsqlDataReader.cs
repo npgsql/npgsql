@@ -683,6 +683,9 @@ namespace Npgsql
 #else
         public void Close()
 #endif
+            => Close(false);
+
+        internal void Close(bool connectionClosing)
         {
             if (_state == ReaderState.Closed)
                 return;
@@ -711,10 +714,10 @@ namespace Npgsql
                 Command.RemainingSendTask = null;
             }
 
-            Cleanup();
+            Cleanup(connectionClosing);
         }
 
-        internal void Cleanup()
+        internal void Cleanup(bool connectionClosing=false)
         {
             Log.Trace("Cleaning up reader", _connector.Id);
             _state = ReaderState.Closed;
@@ -722,7 +725,9 @@ namespace Npgsql
             _connector.CurrentReader = null;
             _connector.EndUserAction();
 
-            if ((_behavior & CommandBehavior.CloseConnection) != 0)
+            // If the reader is being closed as part of the connection closing, we don't apply
+            // the reader's CommandBehavior.CloseConnection
+            if ((_behavior & CommandBehavior.CloseConnection) != 0 && !connectionClosing)
                 _connection.Close();
 
             if (ReaderClosed != null)
