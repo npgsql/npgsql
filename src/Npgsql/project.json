@@ -1,5 +1,5 @@
 {
-  "version": "3.1.6-ci-*",
+  "version": "3.1.6",
   "packOptions": {
     "owners": [
       "Shay Rojansky",
