@@ -588,9 +588,7 @@ namespace Npgsql
             }
 
             if (Connector.CurrentReader != null)
-            {
-                Connector.CurrentReader.Close();
-            }
+                Connector.CurrentReader.Close(true);
             else if (Connector.State == ConnectorState.Copy)
             {
                 Contract.Assert(Connector.CurrentCopyOperation != null);

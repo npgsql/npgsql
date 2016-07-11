@@ -349,6 +349,20 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1194")]
+        public void CloseConnectionWithOpenReaderWithCloseConnection()
+        {
+            using (var conn = OpenConnection())
+            {
+                var cmd = new NpgsqlCommand("SELECT 1", conn);
+                var reader = cmd.ExecuteReader(CommandBehavior.CloseConnection);
+                var wasClosed = false;
+                reader.ReaderClosed += (sender, args) => { wasClosed = true; };
+                conn.Close();
+                Assert.That(wasClosed, Is.True);
+            }
+        }
+
         [Test]
         public void CloseConnectionWithException()
         {
