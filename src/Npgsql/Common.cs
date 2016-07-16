@@ -40,7 +40,7 @@ namespace Npgsql
     /// Base class for all classes which represent a message sent to the PostgreSQL backend.
     /// Concrete classes which directly inherit this represent arbitrary-length messages which can chunked.
     /// </summary>
-    internal abstract class FrontendMessage
+    abstract class FrontendMessage
     {
         /// <param name="buf">the buffer into which to write the message.</param>
         /// <returns>
@@ -48,6 +48,12 @@ namespace Npgsql
         /// If false, the buffer should be flushed and write should be called again.
         /// </returns>
         internal abstract bool Write(WriteBuffer buf);
+
+        /// <summary>
+        /// Returns how many messages PostgreSQL is expected to send in response to this message.
+        /// Used for message prepending.
+        /// </summary>
+        internal virtual int ResponseMessageCount => 1;
     }
 
     /// <summary>
@@ -55,7 +61,7 @@ namespace Npgsql
     /// the write buffer. The message is first queries for the number of bytes it requires,
     /// and then writes itself out.
     /// </summary>
-    internal abstract class SimpleFrontendMessage : FrontendMessage
+    abstract class SimpleFrontendMessage : FrontendMessage
     {
         /// <summary>
         /// Returns the number of bytes needed to write this message.
@@ -77,7 +83,7 @@ namespace Npgsql
         }
     }
 
-    internal enum BackendMessageCode : byte
+    enum BackendMessageCode : byte
     {
         AuthenticationRequest = (byte)'R',
         BackendKeyData        = (byte)'K',

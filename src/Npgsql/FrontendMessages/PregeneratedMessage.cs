@@ -44,15 +44,19 @@ namespace Npgsql.FrontendMessages
         /// </summary>
         /// <param name="data">The data to be sent for this message, not including the 4-byte length.</param>
         /// <param name="description">Optional string form/description for debugging</param>
-        internal PregeneratedMessage(byte[] data, string description=null)
+        /// <param name="responseMessageCount">Returns how many messages PostgreSQL is expected to send in response to this message.</param>
+        internal PregeneratedMessage(byte[] data, string description, int responseMessageCount)
         {
             Debug.Assert(data.Length < WriteBuffer.MinimumBufferSize);
 
             _data = data;
             _description = description;
+            ResponseMessageCount = responseMessageCount;
         }
 
         internal override int Length => _data.Length;
+
+        internal override int ResponseMessageCount { get; }
 
         internal override void WriteFully(WriteBuffer buf)
         {
@@ -87,7 +91,7 @@ namespace Npgsql.FrontendMessages
             _tempQuery = null;
         }
 
-        static PregeneratedMessage BuildQuery(string query)
+        static PregeneratedMessage BuildQuery(string query, int responseMessageCount=2)
         {
             Debug.Assert(query != null && query.All(c => c < 128));
 
@@ -97,7 +101,7 @@ namespace Npgsql.FrontendMessages
             _tempQuery.Populate(query);
             _tempQuery.Write(_tempBuf);
             _tempBuf.Flush();
-            return new PregeneratedMessage(ms.ToArray(), _tempQuery.ToString());
+            return new PregeneratedMessage(ms.ToArray(), _tempQuery.ToString(), responseMessageCount);
         }
 
         internal static readonly PregeneratedMessage BeginTrans;

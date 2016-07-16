@@ -137,7 +137,7 @@ namespace Npgsql
         /// The number of messages that were prepended to the current message chain, but not yet sent.
         /// Note that this only tracks messages which produce a ReadyForQuery message
         /// </summary>
-        byte _pendingRfqPrependedMessages;
+        int _pendingPrependedResponses;
 
         internal NpgsqlDataReader CurrentReader;
 
@@ -784,11 +784,7 @@ namespace Npgsql
         /// </summary>
         internal void PrependInternalMessage(FrontendMessage msg)
         {
-            Debug.Assert(msg is PregeneratedMessage);
-
-            // Prepended messages are simple queries (pregenerated, which produce a ReadyForQuery response,
-            // which we will be looking for as we're reading the results
-            _pendingRfqPrependedMessages++;
+            _pendingPrependedResponses += msg.ResponseMessageCount;
 
             if (!msg.Write(WriteBuffer))
                 throw new NpgsqlException($"Could not fully write message of type {msg.GetType().Name} into the buffer");
@@ -850,19 +846,13 @@ namespace Npgsql
         {
             // First read the responses of any prepended messages.
             // Exceptions shouldn't happen here, we break the connector if they do
-            if (_pendingRfqPrependedMessages > 0)
+            if (_pendingPrependedResponses > 0)
             {
                 try
                 {
                     ReceiveTimeout = InternalCommandTimeout;
-                    while (_pendingRfqPrependedMessages > 0)
-                    {
-                        var msg = DoReadMessage(DataRowLoadingMode.Skip, true);
-                        if (msg is ReadyForQueryMessage)
-                        {
-                            _pendingRfqPrependedMessages--;
-                        }
-                    }
+                    for (; _pendingPrependedResponses > 0; _pendingPrependedResponses--)
+                        DoReadMessage(DataRowLoadingMode.Skip, true);
                 }
                 catch (PostgresException)
                 {
@@ -1474,7 +1464,7 @@ namespace Npgsql
 
             // Our buffer may contain unsent prepended messages (such as BeginTransaction), clear it out completely
             WriteBuffer.Clear();
-            _pendingRfqPrependedMessages = 0;
+            _pendingPrependedResponses = 0;
 
             // Must rollback transaction before sending DISCARD ALL
             switch (TransactionStatus)

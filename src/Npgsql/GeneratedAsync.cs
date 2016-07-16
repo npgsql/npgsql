@@ -599,19 +599,13 @@ namespace Npgsql
         {
             // First read the responses of any prepended messages.
             // Exceptions shouldn't happen here, we break the connector if they do
-            if (_pendingRfqPrependedMessages > 0)
+            if (_pendingPrependedResponses > 0)
             {
                 try
                 {
                     ReceiveTimeout = InternalCommandTimeout;
-                    while (_pendingRfqPrependedMessages > 0)
-                    {
-                        var msg = await (DoReadMessageAsync(cancellationToken, DataRowLoadingMode.Skip, true).ConfigureAwait(false));
-                        if (msg is ReadyForQueryMessage)
-                        {
-                            _pendingRfqPrependedMessages--;
-                        }
-                    }
+                    for (; _pendingPrependedResponses > 0; _pendingPrependedResponses--)
+                        await DoReadMessageAsync(cancellationToken, DataRowLoadingMode.Skip, true).ConfigureAwait(false);
                 }
                 catch (PostgresException)
                 {
