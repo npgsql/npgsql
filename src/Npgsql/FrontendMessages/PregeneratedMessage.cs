@@ -72,11 +72,11 @@ namespace Npgsql.FrontendMessages
             _tempBuf = new WriteBuffer(null, new MemoryStream(), WriteBuffer.MinimumBufferSize, Encoding.ASCII);
             _tempQuery = new QueryMessage();
 
-            BeginTrans                = BuildQuery("BEGIN;");
-            SetTransRepeatableRead    = BuildQuery("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;");
-            SetTransSerializable      = BuildQuery("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;");
-            SetTransReadCommitted     = BuildQuery("SET TRANSACTION ISOLATION LEVEL READ COMMITTED;");
-            SetTransReadUncommitted   = BuildQuery("SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;");
+            BeginTrans                = BuildQuery("BEGIN");
+            SetTransRepeatableRead    = BuildQuery("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ");
+            SetTransSerializable      = BuildQuery("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE");
+            SetTransReadCommitted     = BuildQuery("SET TRANSACTION ISOLATION LEVEL READ COMMITTED");
+            SetTransReadUncommitted   = BuildQuery("SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED");
             CommitTransaction         = BuildQuery("COMMIT");
             RollbackTransaction       = BuildQuery("ROLLBACK");
             DiscardAll                = BuildQuery("DISCARD ALL");
