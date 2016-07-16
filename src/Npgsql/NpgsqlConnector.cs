@@ -1475,8 +1475,22 @@ namespace Npgsql
             _pendingRfqPrependedMessages = 0;
 
             // Must rollback transaction before sending DISCARD ALL
-            if (InTransaction)
+            switch (TransactionStatus)
+            {
+            case TransactionStatus.Idle:
+                break;
+            case TransactionStatus.Pending:
+                // BeginTransaction() was called, but was left in the write buffer and not yet sent to server.
+                // Just clear the transaction state.
+                ClearTransaction();
+                break;
+            case TransactionStatus.InTransactionBlock:
+            case TransactionStatus.InFailedTransactionBlock:
                 Rollback();
+                break;
+            default:
+                throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {TransactionStatus} of enum {nameof(TransactionStatus)}. Please file a bug.");
+            }
 
             if (SupportsDiscard)
                 PrependInternalMessage(PregeneratedMessage.DiscardAll);
