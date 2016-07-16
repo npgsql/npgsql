@@ -979,8 +979,10 @@ namespace Npgsql
                 case BackendMessageCode.ReadyForQuery:
                     var rfq = _readyForQueryMessage.Load(buf);
                     if (!isPrependedMessage) {
-                        // Transaction status on prepended messages should never be processed - it could be a timeout
-                        // on a begin new transaction, or even a rollback enqueued from a previous connection (pooled).
+                        // Transaction status on prepended messages shouldn't be processed, because there may be prepended messages
+                        // before the begin transaction message. In this case, they will contain transaction status Idle, which will
+                        // clear our Pending transaction status. Only process transaction status on RFQ's from user-provided, non
+                        // prepended messages.
                         ProcessNewTransactionStatus(rfq.TransactionStatusIndicator);
                     }
                     return rfq;
