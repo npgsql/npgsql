@@ -895,7 +895,7 @@ namespace Npgsql
 
                 ReadBuffer.Ensure(5);
                 var messageCode = (BackendMessageCode)ReadBuffer.ReadByte();
-                Debug.Assert(Enum.IsDefined(typeof(BackendMessageCode), messageCode), "Unknown message code: " + messageCode);
+                PGUtil.ValidateBackendMessageCode(messageCode);
                 var len = ReadBuffer.ReadInt32() - 4;  // Transmitted length includes itself
 
                 if ((messageCode == BackendMessageCode.DataRow && dataRowLoadingMode != DataRowLoadingMode.NonSequential) ||
@@ -976,7 +976,7 @@ namespace Npgsql
                         ProcessNewTransactionStatus(rfq.TransactionStatusIndicator);
                     }
                     return rfq;
-            case BackendMessageCode.EmptyQueryResponse:
+                case BackendMessageCode.EmptyQueryResponse:
                     return EmptyQueryMessage.Instance;
                 case BackendMessageCode.ParseComplete:
                     return ParseCompleteMessage.Instance;

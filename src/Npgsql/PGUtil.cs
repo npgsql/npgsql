@@ -36,12 +36,47 @@ using AsyncRewriter;
 namespace Npgsql
 {
     // ReSharper disable once InconsistentNaming
-    internal static class PGUtil
+    static class PGUtil
     {
         internal static readonly byte[] EmptyBuffer = new byte[0];
 
         internal static readonly UTF8Encoding UTF8Encoding = new UTF8Encoding(false, true);
         internal static readonly UTF8Encoding RelaxedUTF8Encoding = new UTF8Encoding(false, false);
+
+        internal static void ValidateBackendMessageCode(BackendMessageCode code)
+        {
+            switch (code)
+            {
+            case BackendMessageCode.AuthenticationRequest:
+            case BackendMessageCode.BackendKeyData:
+            case BackendMessageCode.BindComplete:
+            case BackendMessageCode.CloseComplete:
+            case BackendMessageCode.CompletedResponse:
+            case BackendMessageCode.CopyData:
+            case BackendMessageCode.CopyDone:
+            case BackendMessageCode.CopyBothResponse:
+            case BackendMessageCode.CopyInResponse:
+            case BackendMessageCode.CopyOutResponse:
+            case BackendMessageCode.DataRow:
+            case BackendMessageCode.EmptyQueryResponse:
+            case BackendMessageCode.ErrorResponse:
+            case BackendMessageCode.FunctionCall:
+            case BackendMessageCode.FunctionCallResponse:
+            case BackendMessageCode.NoData:
+            case BackendMessageCode.NoticeResponse:
+            case BackendMessageCode.NotificationResponse:
+            case BackendMessageCode.ParameterDescription:
+            case BackendMessageCode.ParameterStatus:
+            case BackendMessageCode.ParseComplete:
+            case BackendMessageCode.PasswordPacket:
+            case BackendMessageCode.PortalSuspended:
+            case BackendMessageCode.ReadyForQuery:
+            case BackendMessageCode.RowDescription:
+                return;
+            default:
+                throw new NpgsqlException("Unknown message code: " + code);
+            }
+        }
 
         public static int RotateShift(int val, int shift)
         {
@@ -80,7 +115,7 @@ namespace Npgsql
 #endif
     }
 
-    internal enum FormatCode : short
+    enum FormatCode : short
     {
         Text = 0,
         Binary = 1
