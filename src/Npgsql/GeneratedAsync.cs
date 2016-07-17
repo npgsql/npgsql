@@ -244,7 +244,7 @@ namespace Npgsql
                     else if ((behavior & CommandBehavior.SchemaOnly) == 0)
                         await SendAsync(PopulateExecuteNonPrepared, cancellationToken).ConfigureAwait(false);
                     else
-                        await SendAsync(PopulateExecuteSchemaOnly, cancellationToken).ConfigureAwait(false);
+                        await SendAsync(PopulateParseDescribe, cancellationToken).ConfigureAwait(false);
                 }
 
                 var reader = new NpgsqlDataReader(this, behavior, _statements);
@@ -598,22 +598,7 @@ namespace Npgsql
         async Task<IBackendMessage> ReadMessageWithPrependedAsync(CancellationToken cancellationToken, DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential)
         {
             // First read the responses of any prepended messages.
-            // Exceptions shouldn't happen here, we break the connector if they do
-            if (_pendingPrependedResponses > 0)
-            {
-                try
-                {
-                    ReceiveTimeout = InternalCommandTimeout;
-                    for (; _pendingPrependedResponses > 0; _pendingPrependedResponses--)
-                        await DoReadMessageAsync(cancellationToken, DataRowLoadingMode.Skip, true).ConfigureAwait(false);
-                }
-                catch (PostgresException)
-                {
-                    Break();
-                    throw;
-                }
-            }
-
+            ReadPrependedMessages();
             // Now read a non-prepended message
             try
             {
@@ -1613,31 +1598,30 @@ namespace Npgsql
     {
         internal async Task FlushAsync(CancellationToken cancellationToken)
         {
-            if (_writePosition != 0)
+            if (_writePosition == 0)
+                return;
+            try
             {
-                try
-                {
-                    await Underlying.WriteAsync(_buf, 0, _writePosition, cancellationToken).ConfigureAwait(false);
-                }
-                catch (Exception e)
-                {
-                    Connector.Break();
-                    throw new NpgsqlException("Exception while writing to stream", e);
-                }
-
-                try
-                {
-                    await Underlying.FlushAsync(cancellationToken).ConfigureAwait(false);
-                }
-                catch (Exception e)
-                {
-                    Connector.Break();
-                    throw new NpgsqlException("Exception while flushing stream", e);
-                }
-
-                TotalBytesFlushed += _writePosition;
-                _writePosition = 0;
+                await Underlying.WriteAsync(_buf, 0, _writePosition, cancellationToken).ConfigureAwait(false);
             }
+            catch (Exception e)
+            {
+                Connector.Break();
+                throw new NpgsqlException("Exception while writing to stream", e);
+            }
+
+            try
+            {
+                await Underlying.FlushAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception e)
+            {
+                Connector.Break();
+                throw new NpgsqlException("Exception while flushing stream", e);
+            }
+
+            TotalBytesFlushed += _writePosition;
+            _writePosition = 0;
         }
 
         internal async Task DirectWriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)

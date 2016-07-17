@@ -64,6 +64,18 @@ namespace Npgsql
         internal string PreparedStatementName;
 
         /// <summary>
+        /// Whether this statement has already been prepared.
+        /// </summary>
+        internal bool IsPrepared;
+
+        internal void Unprepare()
+        {
+            Description = null;
+            PreparedStatementName = null;
+            IsPrepared = false;
+        }
+
+        /// <summary>
         /// Returns the SQL text of the statement.
         /// </summary>
         public override string ToString() { return SQL; }

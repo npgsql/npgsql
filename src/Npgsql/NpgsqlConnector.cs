@@ -197,6 +197,14 @@ namespace Npgsql
         readonly UserAction _userAction;
         readonly Timer _keepAliveTimer;
 
+        internal HashSet<string> PreparedStatements { get; } = new HashSet<string>();
+
+        /// <summary>
+        /// For all persistent prepared statements, maps their SQL to their prepared statement info.
+        /// </summary>
+        internal Dictionary<string, PreparedStatementInfo> PersistentPreparedStatements { get; }
+            = new Dictionary<string, PreparedStatementInfo>();
+
         /// <summary>
         /// If pooled, the timestamp when this connector was returned to the pool.
         /// </summary>
@@ -225,6 +233,7 @@ namespace Npgsql
         internal readonly DescribeMessage DescribeMessage = new DescribeMessage();
         internal readonly ExecuteMessage  ExecuteMessage  = new ExecuteMessage();
         internal readonly QueryMessage    QueryMessage    = new QueryMessage();
+        internal readonly CloseMessage    CloseMessage    = new CloseMessage();
 
         // Backend
         readonly CommandCompleteMessage      _commandCompleteMessage      = new CommandCompleteMessage();
@@ -845,21 +854,7 @@ namespace Npgsql
         IBackendMessage ReadMessageWithPrepended(DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential)
         {
             // First read the responses of any prepended messages.
-            // Exceptions shouldn't happen here, we break the connector if they do
-            if (_pendingPrependedResponses > 0)
-            {
-                try
-                {
-                    ReceiveTimeout = InternalCommandTimeout;
-                    for (; _pendingPrependedResponses > 0; _pendingPrependedResponses--)
-                        DoReadMessage(DataRowLoadingMode.Skip, true);
-                }
-                catch (PostgresException)
-                {
-                    Break();
-                    throw;
-                }
-            }
+            ReadPrependedMessages();
 
             // Now read a non-prepended message
             try
@@ -1053,6 +1048,23 @@ namespace Npgsql
                     throw new NpgsqlException("Unexpected backend message: " + code);
                 default:
                     throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {code} of enum {nameof(BackendMessageCode)}. Please file a bug.");
+            }
+        }
+
+        void ReadPrependedMessages()
+        {
+            if (_pendingPrependedResponses == 0)
+                return;
+            try
+            {
+                ReceiveTimeout = InternalCommandTimeout;
+                for (; _pendingPrependedResponses > 0; _pendingPrependedResponses--)
+                    DoReadMessage(DataRowLoadingMode.Skip, true);
+            }
+            catch (PostgresException)
+            {
+                Break();
+                throw;
             }
         }
 
@@ -1484,22 +1496,71 @@ namespace Npgsql
                 throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {TransactionStatus} of enum {nameof(TransactionStatus)}. Please file a bug.");
             }
 
-            if (SupportsDiscard)
-                PrependInternalMessage(PregeneratedMessage.DiscardAll);
-            else if (SupportsUnlisten)
-            {
+            // Prepend session reset commands.
+            // We don't use DISCARD ALL because we support persistent prepared statements.
+            // Note: the send buffer has been cleared above, and we assume all this will fit in it.
+            PrependInternalMessage(PregeneratedMessage.ResetSessionAuthorization);
+            PrependInternalMessage(PregeneratedMessage.ResetAll);
+            if (SupportsCloseAll)
+                PrependInternalMessage(PregeneratedMessage.CloseAll);
+            if (SupportsUnlisten)
                 PrependInternalMessage(PregeneratedMessage.UnlistenAll);
-                /*
-                 TODO: Problem: we can't just deallocate for all the below since some may have already been deallocated
-                 Not sure if we should keep supporting this for < 8.3. If so fix along with #483
-                if (_preparedStatementIndex > 0) {
-                    for (var i = 1; i <= _preparedStatementIndex; i++) {
-                        PrependMessage(new QueryMessage(String.Format("DEALLOCATE \"{0}{1}\";", PreparedStatementNamePrefix, i)));
-                    }
-                }*/
+            if (SupportsAdvisoryLocks)
+                PrependInternalMessage(PregeneratedMessage.AdvisoryUnlockAll);
+            if (SupportsDiscardSequences)
+                PrependInternalMessage(PregeneratedMessage.DiscardSequences);
+            if (SupportsDiscardTemp)
+                PrependInternalMessage(PregeneratedMessage.DiscardTemp);
 
-                _preparedStatementIndex = 0;
+            // This needs to come last, because it can produce an arbitrary number of messages, possibly sending
+            // them now if they are larger than the buffer.
+            ClosePreparedStatements();
+        }
+
+        /// <summary>
+        /// Closes (deallocates) all non-persisted prepared statements.
+        /// </summary>
+        /// <remarks>
+        /// If possible, this method will prepend Close messages in the buffer, without sending - this will
+        /// delay sending until the next command is sent and will save a roundtrip.
+        /// However, if there are many prepared statements and their Closes won't fit in a single buffer,
+        /// this function actually sends the messages and processes the responses.
+        /// </remarks>
+        void ClosePreparedStatements()
+        {
+            _preparedStatementIndex = 0;
+            if (PreparedStatements.Count == 0)
+                return;
+
+            var flushing = false;
+            foreach (var statement in PreparedStatements)
+            {
+                CloseMessage.Populate(StatementOrPortal.Statement, statement);
+                if (!CloseMessage.Write(WriteBuffer))
+                {
+                    WriteBuffer.Flush();
+                    flushing = true;
+                    var written = CloseMessage.Write(WriteBuffer);
+                    Debug.Assert(written);
+                }
+                _pendingPrependedResponses += CloseMessage.ResponseMessageCount;
             }
+            if (!SyncMessage.Instance.Write(WriteBuffer))
+            {
+                WriteBuffer.Flush();
+                flushing = true;
+                var written = SyncMessage.Instance.Write(WriteBuffer);
+                Debug.Assert(written);
+            }
+
+            if (flushing)
+            {
+                WriteBuffer.Flush();
+                ReadPrependedMessages();
+            }
+
+            _pendingPrependedResponses += SyncMessage.Instance.ResponseMessageCount;
+            PreparedStatements.Clear();
         }
 
         #endregion Close
@@ -1630,30 +1691,13 @@ namespace Npgsql
 
         #region Supported features
 
-        bool SupportsDiscard => ServerVersion >= new Version(8, 3, 0);
-        internal bool SupportsRangeTypes => ServerVersion >= new Version(9, 2, 0);
+        bool SupportsCloseAll => ServerVersion >= new Version(8, 3, 0);
+        bool SupportsAdvisoryLocks => ServerVersion >= new Version(8, 2, 0);
+        bool SupportsDiscardSequences => ServerVersion >= new Version(9, 4, 0);
         bool SupportsUnlisten => ServerVersion >= new Version(6, 4, 0) && !IsRedshift;
+        bool SupportsDiscardTemp => ServerVersion >= new Version(8, 3, 0);
+        internal bool SupportsRangeTypes => ServerVersion >= new Version(9, 2, 0);
         internal bool UseConformantStrings { get; private set; }
-
-/*
-        internal bool SupportsApplicationName   { get { return ServerVersion >= new Version(9, 0, 0); } }
-        internal bool SupportsExtraFloatDigits3 { get { return ServerVersion >= new Version(9, 0, 0); } }
-        internal bool SupportsExtraFloatDigits  { get { return ServerVersion >= new Version(7, 4, 0); } }
-        internal bool SupportsSavepoint         { get { return ServerVersion >= new Version(8, 0, 0); } }
-        internal bool SupportsSslRenegotiationLimit
-        {
-            get
-            {
-                return ServerVersion >= new Version(8, 4, 3) ||
-                       (ServerVersion >= new Version(8, 3, 10) && ServerVersion < new Version(8, 4, 0)) ||
-                       (ServerVersion >= new Version(8, 2, 16) && ServerVersion < new Version(8, 3, 0)) ||
-                       (ServerVersion >= new Version(8, 1, 20) && ServerVersion < new Version(8, 2, 0)) ||
-                       (ServerVersion >= new Version(8, 0, 24) && ServerVersion < new Version(8, 1, 0)) ||
-                       (ServerVersion >= new Version(7, 4, 28) && ServerVersion < new Version(8, 0, 0));
-            }
-        }
-*/
-
         internal bool SupportsEStringPrefix => ServerVersion >= new Version(8, 1, 0);
 
         void ProcessServerVersion(string value)
@@ -1714,16 +1758,11 @@ namespace Npgsql
             }
         }
 
-        /// <summary>
-        /// Returns next plan index.
-        /// </summary>
-        internal string NextPreparedStatementName()
-        {
-            return PreparedStatementNamePrefix + (++_preparedStatementIndex);
-        }
+        internal string NextPreparedStatementName() => "_p" + (++_preparedStatementIndex);
+        internal string NextPersistentPreparedStatementName() => "_pp" + (++_persistentPreparedStatementIndex);
 
-        int _preparedStatementIndex;
-        const string PreparedStatementNamePrefix = "s";
+        ulong _preparedStatementIndex;
+        ulong _persistentPreparedStatementIndex;
 
         #endregion Misc
     }
@@ -1823,6 +1862,12 @@ namespace Npgsql
         /// Skip DataRow messages altogether
         /// </summary>
         Skip
+    }
+
+    struct PreparedStatementInfo
+    {
+        internal string Name;
+        internal RowDescriptionMessage Description;
     }
 
     #endregion
