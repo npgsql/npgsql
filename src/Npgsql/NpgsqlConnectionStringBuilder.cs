@@ -863,6 +863,24 @@ namespace Npgsql
         }
         int _bufferSize;
 
+        /// <summary>
+        /// If set to true, prepared statements are persisted when a pooled connection is closed for later use.
+        /// </summary>
+        [Category("Advanced")]
+        [Description("If set to true, prepared statements are persisted when a pooled connection is closed for later use.")]
+        [DisplayName("Persist Prepared")]
+        [NpgsqlConnectionStringProperty]
+        public bool PersistPrepared
+        {
+            get { return _persistPrepared; }
+            set
+            {
+                _persistPrepared = value;
+                SetValue(nameof(PersistPrepared), value);
+            }
+        }
+        bool _persistPrepared;
+
         #endregion
 
         #region Properties - Compatibility

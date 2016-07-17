@@ -555,102 +555,6 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test, Description("Basic prepared system scenario. Checks proper backend deallocation of the statement.")]
-        public void Prepare()
-        {
-            using (var conn = OpenConnection())
-            {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(0));
-
-                using (var cmd = new NpgsqlCommand("INSERT INTO data (name) VALUES (:p0);", conn))
-                {
-                    cmd.Parameters.Add(new NpgsqlParameter("p0", NpgsqlDbType.Text));
-                    cmd.Prepare();
-                    Assert.That(cmd.IsPrepared, Is.True);
-                    cmd.Parameters["p0"].Value = "test";
-                    using (var dr = cmd.ExecuteReader())
-                    {
-                        dr.Close();
-                        Assert.That(dr.RecordsAffected, Is.EqualTo(1));
-                    }
-                    Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1));
-                }
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data WHERE name = 'test'"), Is.EqualTo(1));
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(0), "Prepared statements are being leaked");
-
-                // Another prepared statement, this time with a resultset
-                using (var cmd = new NpgsqlCommand("SELECT 8", conn))
-                {
-                    cmd.Prepare();
-                    using (var dr = cmd.ExecuteReader())
-                    {
-                        dr.Read();
-                        Assert.That(dr.GetInt32(0), Is.EqualTo(8));
-                    }
-                }
-            }
-        }
-
-        [Test]
-        public void PreparedStatementWithParameters()
-        {
-            using (var conn = OpenConnection())
-            {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (int INTEGER, long BIGINT)");
-                using (var command = new NpgsqlCommand("select * from data where int = :a and long = :b;", conn))
-                {
-                    command.Parameters.Add(new NpgsqlParameter("a", DbType.Int32));
-                    command.Parameters.Add(new NpgsqlParameter("b", DbType.Int64));
-                    Assert.AreEqual(2, command.Parameters.Count);
-                    Assert.AreEqual(DbType.Int32, command.Parameters[0].DbType);
-
-                    command.Prepare();
-                    command.Parameters[0].Value = 3;
-                    command.Parameters[1].Value = 5;
-                    using (var dr = command.ExecuteReader())
-                    {
-                        Assert.IsNotNull(dr);
-                    }
-                }
-            }
-        }
-
-        [Test, Description("Makes sure that calling Prepare() twice on a command deallocates the first prepared statement")]
-        public void DoublePrepare()
-        {
-            using (var conn = OpenConnection())
-            {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT, int INTEGER)");
-                using (var cmd = new NpgsqlCommand("INSERT INTO data (name) VALUES (:p0)", conn))
-                {
-                    cmd.Parameters.Add(new NpgsqlParameter("p0", NpgsqlDbType.Text));
-                    cmd.Parameters["p0"].Value = "test";
-                    cmd.Prepare();
-                    cmd.ExecuteNonQuery();
-
-                    cmd.CommandText = "INSERT INTO data (int) VALUES (:p0)";
-                    cmd.Parameters.Clear();
-                    cmd.Parameters.Add(new NpgsqlParameter("p0", NpgsqlDbType.Integer));
-                    cmd.Parameters["p0"].Value = 8;
-                    cmd.Prepare();
-                    cmd.ExecuteNonQuery();
-                }
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(0), "Prepared statements are being leaked");
-            }
-        }
-
-        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1207")]
-        public void DoublePrepare2()
-        {
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT 1", conn))
-            {
-                cmd.Prepare();
-                cmd.Prepare();
-            }
-        }
-
         [Test]
         public void StringEscapeSyntax()
         {
@@ -886,18 +790,6 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test, Description("Checks that prepares requires all params to have explicitly set types (NpgsqlDbType or DbType)")]
-        public void PrepareRequiresParamTypesSet()
-        {
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
-            {
-                var p = new NpgsqlParameter("p", 8);
-                cmd.Parameters.Add(p);
-                Assert.That(() => cmd.Prepare(), Throws.InvalidOperationException);
-            }
-        }
-
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/503")]
         public void InvalidUTF8()
         {
@@ -905,37 +797,6 @@ namespace Npgsql.Tests
             using (var conn = OpenConnection())
             {
                 Assert.That(() => conn.ExecuteScalar(badString), Throws.Exception.TypeOf<EncoderFallbackException>());
-            }
-        }
-
-        [Test]
-        [IssueLink("https://github.com/npgsql/npgsql/issues/393")]
-        [IssueLink("https://github.com/npgsql/npgsql/issues/299")]
-        public void DisposePreparedAfterCommandClose()
-        {
-            using (var conn = OpenConnection())
-            using (var cmd = conn.CreateCommand())
-            {
-                cmd.CommandText = "select 1";
-                cmd.Prepare();
-                conn.Close();
-            }
-        }
-
-        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/395")]
-        public void PreparedAcrossCloseOpen()
-        {
-            using (var conn1 = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT 1", conn1))
-            {
-                cmd.Prepare();
-                Assert.That(cmd.IsPrepared, Is.True);
-                conn1.Close();
-                conn1.Open();
-                Assert.That(cmd.IsPrepared, Is.False);
-                Assert.That(cmd.ExecuteScalar(), Is.EqualTo(1)); // Execute unprepared
-                cmd.Prepare();
-                Assert.That(cmd.ExecuteScalar(), Is.EqualTo(1));
             }
         }
 
@@ -977,26 +838,6 @@ namespace Npgsql.Tests
             {
                 cmd = new NpgsqlCommand("SELECT 1", conn);
                 Assert.That(() => cmd.ExecuteScalar(), Throws.Exception.TypeOf<InvalidOperationException>());
-            }
-        }
-
-        [Test, Description("This scenario used to be supported in 3.0, but isn't supported starting 3.1")]
-        [IssueLink("https://github.com/npgsql/npgsql/issues/416")]
-        public void PreparedDisposeWithOpenReader()
-        {
-            using (var conn = OpenConnection())
-            {
-                var cmd1 = new NpgsqlCommand("SELECT 1", conn);
-                var cmd2 = new NpgsqlCommand("SELECT 1", conn);
-                cmd1.Prepare();
-                cmd2.Prepare();
-                var reader = cmd2.ExecuteReader();
-                reader.Read();
-                Assert.That(() => cmd1.Dispose(), Throws.Exception.TypeOf<InvalidOperationException>());
-                reader.Close();
-                cmd1.Dispose();
-                cmd2.Dispose();
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(0));
             }
         }
 

@@ -80,9 +80,15 @@ namespace Npgsql.FrontendMessages
             SetTransReadUncommitted   = BuildQuery("SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED");
             CommitTransaction         = BuildQuery("COMMIT");
             RollbackTransaction       = BuildQuery("ROLLBACK");
-            DiscardAll                = BuildQuery("DISCARD ALL");
-            UnlistenAll               = BuildQuery("UNLISTEN *");
             KeepAlive                 = BuildQuery("SELECT NULL");
+
+            ResetSessionAuthorization = BuildQuery("SET SESSION AUTHORIZATION DEFAULT");
+            ResetAll                  = BuildQuery("RESET ALL");
+            CloseAll                  = BuildQuery("CLOSE ALL");
+            UnlistenAll               = BuildQuery("UNLISTEN *");
+            AdvisoryUnlockAll         = BuildQuery("SELECT pg_advisory_unlock_all()", 3);
+            DiscardTemp               = BuildQuery("DISCARD TEMP");
+            DiscardSequences          = BuildQuery("DISCARD SEQUENCES");
 
             _tempBuf = null;
             _tempQuery = null;
@@ -108,8 +114,14 @@ namespace Npgsql.FrontendMessages
         internal static readonly PregeneratedMessage SetTransReadUncommitted;
         internal static readonly PregeneratedMessage CommitTransaction;
         internal static readonly PregeneratedMessage RollbackTransaction;
-        internal static readonly PregeneratedMessage DiscardAll;
-        internal static readonly PregeneratedMessage UnlistenAll;
         internal static readonly PregeneratedMessage KeepAlive;
+
+        internal static readonly PregeneratedMessage ResetSessionAuthorization;
+        internal static readonly PregeneratedMessage ResetAll;
+        internal static readonly PregeneratedMessage CloseAll;
+        internal static readonly PregeneratedMessage UnlistenAll;
+        internal static readonly PregeneratedMessage AdvisoryUnlockAll;
+        internal static readonly PregeneratedMessage DiscardTemp;
+        internal static readonly PregeneratedMessage DiscardSequences;
     }
 }

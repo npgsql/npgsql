@@ -77,7 +77,6 @@ namespace Npgsql
         /// </summary>
         public IReadOnlyList<NpgsqlStatement> Statements => _statements.AsReadOnly();
 
-        int _readStatementIndex;
         int _writeStatementIndex;
 
         /// <summary>
@@ -173,7 +172,7 @@ namespace Npgsql
                     throw new ArgumentNullException(nameof(value));
 
                 _commandText = value;
-                DeallocatePrepared();
+                Unprepare();
             }
         }
 
@@ -309,6 +308,11 @@ namespace Npgsql
             }
         }
 
+        /// <summary>
+        /// Returns whether this is a prepared statement that will persist when its connection is returned to the pool.
+        /// </summary>
+        public bool IsPersistent { get; private set; }
+
         #endregion Public properties
 
         #region Known/unknown Result Types Management
@@ -438,63 +442,177 @@ namespace Npgsql
         public override void Prepare()
         {
             _connector = CheckReadyAndGetConnector();
+            Prepare(_connector.Connection.Settings.PersistPrepared);
+        }
+
+        /// <summary>
+        /// Creates a prepared version of the command on a PostgreSQL server.
+        /// </summary>
+        /// <param name="persist">
+        /// If set to true, prepared statements are persisted when a pooled connection is closed for later use.
+        /// </param>
+        public void Prepare(bool persist)
+        {
+            _connector = CheckReadyAndGetConnector();
             if (Parameters.Any(p => !p.IsTypeExplicitlySet))
                 throw new InvalidOperationException("The Prepare method requires all parameters to have an explicitly set type.");
 
-            DeallocatePrepared();
+            Unprepare();
             ProcessRawQuery();
 
-            Log.Debug("Preparing: " + CommandText, _connector.Id);
+            if (Log.IsEnabled(NpgsqlLogLevel.Debug))
+            {
+                var sb = new StringBuilder("Preparing");
+                if (persist)
+                    sb.Append(" (persistent)");
+                sb.Append(": ").Append(CommandText);
+                Log.Debug(sb.ToString(), _connector.Id);
+            }
 
             using (_connector.StartUserAction())
             {
                 _sendState = SendState.Start;
                 _writeStatementIndex = 0;
-                Send(PopulatePrepare);
 
-                _readStatementIndex = 0;
+                Debug.Assert(Statements.All(s => !s.IsPrepared));
 
-                while (true)
+                var needToPrepare = false;
+                if (persist)
                 {
-                    var msg = _connector.ReadMessage(DataRowLoadingMode.NonSequential);
-                    switch (msg.Code)
+                    foreach (var statement in Statements)
                     {
-                    case BackendMessageCode.CompletedResponse: // prepended messages, e.g. begin transaction
-                    case BackendMessageCode.ParseComplete:
-                    case BackendMessageCode.ParameterDescription:
-                        continue;
-                    case BackendMessageCode.RowDescription:
-                        var description = (RowDescriptionMessage) msg;
-                        FixupRowDescription(description, _readStatementIndex == 0);
-                        _statements[_readStatementIndex++].Description = description;
-                        continue;
-                    case BackendMessageCode.NoData:
-                        _statements[_readStatementIndex++].Description = null;
-                        continue;
-                    case BackendMessageCode.ReadyForQuery:
-                        Debug.Assert(_readStatementIndex == _statements.Count);
-                        IsPrepared = true;
-                        return;
-                    default:
-                        throw _connector.UnexpectedMessageReceived(msg.Code);
+                        PreparedStatementInfo statementInfo;
+                        if (_connector.PersistentPreparedStatements.TryGetValue(statement.SQL, out statementInfo))
+                        {
+                            // Statement has already been prepared, no need to do anything
+                            statement.IsPrepared = true;
+                            statement.PreparedStatementName = statementInfo.Name;
+                            statement.Description = statementInfo.Description;
+                        }
+                        else
+                        {
+                            // Statement hasn't been prepared yet
+                            statement.PreparedStatementName = _connector.NextPersistentPreparedStatementName();
+                            needToPrepare = true;
+                        }
                     }
                 }
+                else  // Non-persisting prepare
+                {
+                    foreach (var statement in Statements)
+                        statement.PreparedStatementName = _connector.NextPreparedStatementName();
+                    needToPrepare = true;
+                }
+
+                if (needToPrepare)
+                {
+                    Send(PopulateParseDescribe);
+
+                    // Loop over statements, skipping those that are already prepared (because they were persisted)
+                    var isFirst = true;
+                    foreach (var statement in Statements.Where(s => !s.IsPrepared))
+                    {
+                        _connector.ReadExpecting<ParseCompleteMessage>();
+                        _connector.ReadExpecting<ParameterDescriptionMessage>();
+                        var msg = _connector.ReadMessage(DataRowLoadingMode.NonSequential);
+                        switch (msg.Code)
+                        {
+                        case BackendMessageCode.RowDescription:
+                            var description = (RowDescriptionMessage)msg;
+                            FixupRowDescription(description, isFirst);
+                            statement.Description = description;
+                            break;
+                        case BackendMessageCode.NoData:
+                            statement.Description = null;
+                            break;
+                        default:
+                            throw _connector.UnexpectedMessageReceived(msg.Code);
+                        }
+                        statement.IsPrepared = true;
+                        if (persist)
+                        {
+                            _connector.PersistentPreparedStatements.Add(statement.SQL, new PreparedStatementInfo
+                            {
+                                Name = statement.PreparedStatementName,
+                                Description = statement.Description
+                            });
+                        }
+                        else
+                            _connector.PreparedStatements.Add(statement.PreparedStatementName);
+                        isFirst = false;
+                    }
+
+                    _connector.ReadExpecting<ReadyForQueryMessage>();
+                }
+
+                CompleteRemainingSend();
+
+                IsPrepared = true;
+                IsPersistent = persist;
+
+                Debug.Assert(Statements.All(s => s.IsPrepared));
+                Debug.Assert(Statements.All(s => s.PreparedStatementName != null));
             }
         }
 
-        void DeallocatePrepared()
+        void Unprepare()
         {
             if (!IsPrepared)
                 return;
+
+            // For persistent prepared commands, we don't actually Close the server-side statements,
+            // we just detach our statements from the server-side ones.
+            if (IsPersistent)
+            {
+                foreach (var statement in Statements)
+                    statement.Unprepare();
+                IsPrepared = false;
+                IsPersistent = false;
+            }
+            else
+            {
+                foreach (var statement in Statements)
+                    _connector.PreparedStatements.Remove(statement.PreparedStatementName);
+                ClosePreparedStatements();
+            }
+        }
+
+        /// <summary>
+        /// Unpersists a persistent prepared command.
+        /// </summary>
+        public void Unpersist()
+        {
+            // We want to allow users to unpersist without having to persist first
+            if (!IsPersistent)
+                Prepare(true);
+
+            _connector = CheckReadyAndGetConnector();
+            foreach (var statement in Statements)
+                _connector.PersistentPreparedStatements.Remove(statement.SQL);
+            ClosePreparedStatements();
+        }
+
+        void ClosePreparedStatements()
+        {
+            Debug.Assert(IsPrepared);
+            Debug.Assert(Statements.All(s => s.IsPrepared));
+
             _connector = CheckReadyAndGetConnector();
             using (_connector.StartUserAction())
             {
                 _writeStatementIndex = 0;
-                Send(PopulateDeallocate);
-                for (var i = 0; i < _statements.Count; i++)
+                Send(PopulateClose);
+                foreach (var statement in Statements)
+                {
                     _connector.ReadExpecting<CloseCompletedMessage>();
+                    statement.Unprepare();
+                }
                 _connector.ReadExpecting<ReadyForQueryMessage>();
+
+                CompleteRemainingSend();
+
                 IsPrepared = false;
+                IsPersistent = false;
             }
         }
 
@@ -608,7 +726,7 @@ namespace Npgsql
                     else if ((behavior & CommandBehavior.SchemaOnly) == 0)
                         Send(PopulateExecuteNonPrepared);
                     else
-                        Send(PopulateExecuteSchemaOnly);
+                        Send(PopulateParseDescribe);
                 }
 
                 var reader = new NpgsqlDataReader(this, behavior, _statements);
@@ -696,6 +814,18 @@ namespace Npgsql
             catch (Exception e)
             {
                 Log.Error("Exception while asynchronously sending remaining messages", e, _connector.Id);
+            }
+        }
+
+        /// <summary>
+        /// Waits until any background async send task completes.
+        /// </summary>
+        internal void CompleteRemainingSend()
+        {
+            if (RemainingSendTask != null)
+            {
+                RemainingSendTask.Wait();
+                RemainingSendTask = null;
             }
         }
 
@@ -826,27 +956,7 @@ namespace Npgsql
             return true;
         }
 
-        /// <summary>
-        /// Populates the send buffer with Parse/Describe protocol messages, used for preparing commands
-        /// and for execution in SchemaOnly mode.
-        /// </summary>
-        /// <returns>
-        /// true whether all messages could be populated in the buffer, false otherwise (method needs to be
-        /// called again)
-        /// </returns>
-        bool PopulatePrepare(ref DirectBuffer directBuf) => PopulateParseDescribe(true);
-
-        /// <summary>
-        /// Populates the send buffer with Parse/Describe protocol messages, used for preparing commands
-        /// and for execution in SchemaOnly mode.
-        /// </summary>
-        /// <returns>
-        /// true whether all messages could be populated in the buffer, false otherwise (method needs to be
-        /// called again)
-        /// </returns>
-        bool PopulateExecuteSchemaOnly(ref DirectBuffer directBuf) => PopulateParseDescribe(false);
-
-        bool PopulateParseDescribe(bool isPreparing)
+        bool PopulateParseDescribe(ref DirectBuffer directBuf)
         {
             Debug.Assert(_connector != null);
 
@@ -854,11 +964,14 @@ namespace Npgsql
             for (; _writeStatementIndex < _statements.Count; _writeStatementIndex++)
             {
                 var statement = _statements[_writeStatementIndex];
+
+                // Statement doesn't need preparation (persistent)
+                if (statement.IsPrepared)
+                    continue;
+
                 switch (_sendState)
                 {
                 case SendState.Start:
-                    if (isPreparing)
-                        statement.PreparedStatementName = _connector.NextPreparedStatementName();
                     _connector.ParseMessage.Populate(statement, _connector.TypeHandlerRegistry);
                     _sendState = SendState.Parse;
                     goto case SendState.Parse;
@@ -873,9 +986,8 @@ namespace Npgsql
 
                 case SendState.Describe:
                     describe = _connector.DescribeMessage;
-                    if (describe.Length > buf.WriteSpaceLeft)
+                    if (!describe.Write(buf))
                         return false;
-                    describe.WriteFully(buf);
                     _sendState = SendState.Start;
                     continue;
 
@@ -883,13 +995,12 @@ namespace Npgsql
                     throw new ArgumentOutOfRangeException($"Invalid state {_sendState} in {nameof(PopulateParseDescribe)}");
                 }
             }
-            if (SyncMessage.Instance.Length > buf.WriteSpaceLeft)
+            if (!SyncMessage.Instance.Write(buf))
                 return false;
-            SyncMessage.Instance.WriteFully(buf);
             return true;
         }
 
-        bool PopulateDeallocate(ref DirectBuffer directBuf)
+        bool PopulateClose(ref DirectBuffer directBuf)
         {
             Debug.Assert(_connector != null);
 
@@ -897,14 +1008,12 @@ namespace Npgsql
             for (; _writeStatementIndex < _statements.Count; _writeStatementIndex++)
             {
                 var statement = _statements[_writeStatementIndex];
-                var closeMsg = new CloseMessage(StatementOrPortal.Statement, statement.PreparedStatementName);
-                if (closeMsg.Length > buf.WriteSpaceLeft)
+                var closeMsg = _connector.CloseMessage.Populate(StatementOrPortal.Statement, statement.PreparedStatementName);
+                if (!closeMsg.Write(buf))
                     return false;
-                closeMsg.WriteFully(buf);
             }
-            if (SyncMessage.Instance.Length > buf.WriteSpaceLeft)
+            if (!SyncMessage.Instance.Write(buf))
                 return false;
-            SyncMessage.Instance.WriteFully(buf);
             return true;
         }
 
@@ -1144,7 +1253,7 @@ namespace Npgsql
                 // operations from the finalizer (connection may be in use by someone else). Prepared statements
                 // which aren't explicitly disposed are leaked until the connection is closed.
                 if (IsPrepared)
-                    DeallocatePrepared();
+                    Unprepare();
             }
             Transaction = null;
             Connection = null;

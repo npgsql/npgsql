@@ -34,18 +34,20 @@ namespace Npgsql.FrontendMessages
         /// <summary>
         /// The name of the prepared statement or portal to close (an empty string selects the unnamed prepared statement or portal).
         /// </summary>
-        internal string Name { get; }
+        internal string Name { get; private set; }
+
         /// <summary>
         /// Whether to close a statement or a portal
         /// </summary>
-        internal StatementOrPortal StatementOrPortal { get; }
+        internal StatementOrPortal StatementOrPortal { get; private set; }
 
         const byte Code = (byte)'C';
 
-        internal CloseMessage(StatementOrPortal type, string name="")
+        internal CloseMessage Populate(StatementOrPortal type, string name="")
         {
             StatementOrPortal = type;
             Name = name;
+            return this;
         }
 
         internal override int Length => 1 + 4 + 1 + (Name.Length + 1);

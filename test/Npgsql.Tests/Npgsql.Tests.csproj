@@ -51,6 +51,7 @@
   <ItemGroup>
     <Compile Include="BugTests.cs" />
     <Compile Include="CommandBuilderTests.cs" />
+    <Compile Include="PrepareTests.cs" />
     <Compile Include="PgPassEntryTests.cs" />
     <Compile Include="PgPassFileTests.cs" />
     <Compile Include="ReaderNewSchemaTests.cs" />

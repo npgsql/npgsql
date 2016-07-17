@@ -706,13 +706,7 @@ namespace Npgsql
             if (_state != ReaderState.Consumed)
                 Consume();
 
-            // The following is a safety measure, to make absolutely sure that if an async send task
-            // is running in the background, it terminates before the NpgsqlDataReader is closed.
-            if (Command.RemainingSendTask != null)
-            {
-                Command.RemainingSendTask.Wait();
-                Command.RemainingSendTask = null;
-            }
+            Command.CompleteRemainingSend();
 
             Cleanup(connectionClosing);
         }
