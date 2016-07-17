@@ -105,31 +105,31 @@ namespace Npgsql
         [RewriteAsync]
         internal void Flush()
         {
-            if (_writePosition != 0)
+            if (_writePosition == 0)
+                return;
+
+            try
             {
-                try
-                {
-                    Underlying.Write(_buf, 0, _writePosition);
-                }
-                catch (Exception e)
-                {
-                    Connector.Break();
-                    throw new NpgsqlException("Exception while writing to stream", e);
-                }
-
-                try
-                {
-                    Underlying.Flush();
-                }
-                catch (Exception e)
-                {
-                    Connector.Break();
-                    throw new NpgsqlException("Exception while flushing stream", e);
-                }
-
-                TotalBytesFlushed += _writePosition;
-                _writePosition = 0;
+                Underlying.Write(_buf, 0, _writePosition);
             }
+            catch (Exception e)
+            {
+                Connector.Break();
+                throw new NpgsqlException("Exception while writing to stream", e);
+            }
+
+            try
+            {
+                Underlying.Flush();
+            }
+            catch (Exception e)
+            {
+                Connector.Break();
+                throw new NpgsqlException("Exception while flushing stream", e);
+            }
+
+            TotalBytesFlushed += _writePosition;
+            _writePosition = 0;
         }
 
         [RewriteAsync]
