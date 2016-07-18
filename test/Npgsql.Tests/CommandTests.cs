@@ -640,6 +640,17 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1207")]
+        public void DoublePrepare2()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT 1", conn))
+            {
+                cmd.Prepare();
+                cmd.Prepare();
+            }
+        }
+
         [Test]
         public void StringEscapeSyntax()
         {

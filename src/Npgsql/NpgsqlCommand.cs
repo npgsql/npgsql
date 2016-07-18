@@ -441,13 +441,13 @@ namespace Npgsql
             if (Parameters.Any(p => !p.IsTypeExplicitlySet))
                 throw new InvalidOperationException("The Prepare method requires all parameters to have an explicitly set type.");
 
+            DeallocatePrepared();
+            ProcessRawQuery();
+
             Log.Debug("Preparing: " + CommandText, _connector.Id);
 
             using (_connector.StartUserAction())
             {
-                DeallocatePrepared();
-                ProcessRawQuery();
-
                 _sendState = SendState.Start;
                 _writeStatementIndex = 0;
                 Send(PopulatePrepare);
