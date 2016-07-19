@@ -197,7 +197,7 @@ WHERE
     a.typtype IN ('b', 'r', 'e', 'd') AND
     (b.typtype IS NULL OR b.typtype IN ('b', 'r', 'e', 'd'))  /* Either non-array or array of supported element type */
   ) OR
-  a.typname IN ('record', 'void')
+  (a.typname IN ('record', 'void') AND a.typtype = 'p')
 ORDER BY ord";
         }
 
