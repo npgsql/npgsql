@@ -1017,6 +1017,24 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1158")]
+        public void TableNamedRecord()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TABLE record ()");
+                try
+                {
+                    conn.ReloadTypes();
+                    Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM record"), Is.Zero);
+                }
+                finally
+                {
+                    conn.ExecuteNonQuery("DROP TABLE record");
+                }
+            }
+        }
+
         #region pgpass
 
         [Test]
