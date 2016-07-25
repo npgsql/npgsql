@@ -200,13 +200,6 @@ namespace Npgsql
         [PublicAPI]
         public string Routine => _msg.Routine;
 
-        /// <summary>
-        /// Same as <see cref="MessageText"/>, for backwards-compatibility with Npgsql 2.x
-        /// </summary>
-        [Obsolete("Use MessageText instead")]
-        [PublicAPI]
-        public string BaseMessage => _msg.Message;
-
         #endregion
 
         internal PostgresException(ReadBuffer buf)
