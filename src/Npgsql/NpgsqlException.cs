@@ -45,6 +45,15 @@ namespace Npgsql
         protected internal NpgsqlException(string message)
             : base(message) { }
 
+        /// <summary>
+        /// Same as <see cref="PostgresException.MessageText"/>, for backwards-compatibility with Npgsql 2.x and Hangfire.
+        /// </summary>
+        /// <remarks>
+        /// Until Hangfire fix themselves: https://github.com/frankhommers/Hangfire.PostgreSql/issues/33
+        /// </remarks>
+        [Obsolete("Use PostgresException.MessageText instead")]
+        public string BaseMessage => ((PostgresException)this).MessageText;
+
         #region Serialization
 #if NET45 || NET451
         /// <summary>
