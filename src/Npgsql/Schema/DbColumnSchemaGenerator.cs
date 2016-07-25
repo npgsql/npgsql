@@ -97,7 +97,6 @@ ORDER BY attnum";
                             var ordinal = fields.FindIndex(f => f.TableOID == column.TableOID && f.ColumnAttributeNumber - 1 == column.ColumnAttributeNumber);
                             Debug.Assert(ordinal >= 0);
                             var field = fields[ordinal];
-                            Debug.Assert(field.Name == column.ColumnName);
 
                             // The column's ordinal is with respect to the resultset, not its table
                             column.ColumnOrdinal = ordinal;
