@@ -150,7 +150,7 @@ namespace Npgsql.BackendMessages
     /// A descriptive record on a single field received from PostgreSQL.
     /// See RowDescription in http://www.postgresql.org/docs/current/static/protocol-message-formats.html
     /// </summary>
-    internal sealed class FieldDescription
+    sealed class FieldDescription
     {
         internal void Populate(
             TypeHandlerRegistry typeHandlerRegistry, string name, uint tableOID, short columnAttributeNumber,

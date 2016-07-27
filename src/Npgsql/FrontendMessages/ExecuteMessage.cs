@@ -58,9 +58,6 @@ namespace Npgsql.FrontendMessages
             buf.WriteInt32(MaxRows);
         }
 
-        public override string ToString()
-        {
-            return $"[Execute(Portal={Portal},MaxRows={MaxRows}]";
-        }
+        public override string ToString() => $"[Execute(Portal={Portal},MaxRows={MaxRows}]";
     }
 }

@@ -21,14 +21,9 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
 namespace Npgsql.BackendMessages
 {
-    internal abstract class AuthenticationRequestMessage : IBackendMessage
+    abstract class AuthenticationRequestMessage : IBackendMessage
     {
         public BackendMessageCode Code => BackendMessageCode.AuthenticationRequest;
         internal abstract AuthenticationRequestType AuthRequestType { get; }
@@ -121,7 +116,7 @@ namespace Npgsql.BackendMessages
         AuthenticationSSPIMessage() { }
     }
 
-    internal enum AuthenticationRequestType
+    enum AuthenticationRequestType
     {
         AuthenticationOk = 0,
         AuthenticationKerberosV4 = 1,

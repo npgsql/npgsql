@@ -84,9 +84,6 @@ namespace Npgsql.FrontendMessages
             return true;
         }
 
-        public override string ToString()
-        {
-            return $"[Query={_query}]";
-        }
+        public override string ToString() =>  $"[Query={_query}]";
     }
 }

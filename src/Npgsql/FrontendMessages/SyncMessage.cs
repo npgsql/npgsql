@@ -44,6 +44,6 @@ namespace Npgsql.FrontendMessages
             buf.WriteInt32(4);
         }
 
-        public override string ToString() { return "[Sync]"; }
+        public override string ToString() => "[Sync]";
     }
 }

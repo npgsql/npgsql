@@ -54,9 +54,6 @@ namespace Npgsql.FrontendMessages
             buf.WriteInt32(BackendSecretKey);
         }
 
-        public override string ToString()
-        {
-            return $"[CancelRequest(BackendProcessId={BackendProcessId})]";
-        }
+        public override string ToString() => $"[CancelRequest(BackendProcessId={BackendProcessId})]";
     }
 }

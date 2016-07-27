@@ -39,9 +39,8 @@ namespace Npgsql.FrontendMessages
 
         internal CopyFailMessage(string errorMessage="")
         {
-            if (errorMessage.Length > 1024) {
+            if (errorMessage.Length > 1024)
                 throw new ArgumentException("CopyFail message must be 1024 characters or less");
-            }
             _errorMessage = errorMessage;
             _errorMessageLen = PGUtil.UTF8Encoding.GetByteCount(_errorMessage);
         }
@@ -53,15 +52,11 @@ namespace Npgsql.FrontendMessages
             buf.WriteByte(Code);
             buf.WriteInt32(Length - 1);
             if (_errorMessageLen == 0)
-            {
                 buf.WriteByte(0);
-            }
             else
-            {
                 buf.WriteBytesNullTerminated(PGUtil.UTF8Encoding.GetBytes(_errorMessage));
-            }
         }
 
-        public override string ToString() { return "[CopyFail]"; }
+        public override string ToString() => "[CopyFail]";
     }
 }

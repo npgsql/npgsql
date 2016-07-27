@@ -30,7 +30,8 @@ namespace Npgsql.BackendMessages
 {
     class ParameterDescriptionMessage : IBackendMessage
     {
-        internal List<uint> TypeOIDs { get; private set; }
+        // ReSharper disable once InconsistentNaming
+        internal List<uint> TypeOIDs { get; }
 
         internal ParameterDescriptionMessage()
         {
@@ -41,9 +42,8 @@ namespace Npgsql.BackendMessages
         {
             var numParams = buf.ReadInt16();
             TypeOIDs.Clear();
-            for (var i = 0; i < numParams; i++) {
+            for (var i = 0; i < numParams; i++)
                 TypeOIDs.Add(buf.ReadUInt32());
-            }
             return this;
         }
 

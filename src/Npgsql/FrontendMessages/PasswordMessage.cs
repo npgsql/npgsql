@@ -62,9 +62,8 @@ namespace Npgsql.FrontendMessages
 
             var sb = new StringBuilder();
             var hashResult = md5.ComputeHash(cryptBuf);
-            foreach (var b in hashResult) {
+            foreach (var b in hashResult)
                 sb.Append(b.ToString("x2"));
-            }
 
             var prehash = sb.ToString();
 
@@ -78,9 +77,8 @@ namespace Npgsql.FrontendMessages
 
             sb = new StringBuilder("md5");
             hashResult = md5.ComputeHash(cryptBuf);
-            foreach (var b in hashResult) {
+            foreach (var b in hashResult)
                 sb.Append(b.ToString("x2"));
-            }
 
             var resultString = sb.ToString();
             var result = new byte[Encoding.UTF8.GetByteCount(resultString) + 1];
@@ -104,6 +102,6 @@ namespace Npgsql.FrontendMessages
             buf.WriteBytes(Password, 0, Password.Length);
         }
 
-        public override string ToString() { return "[Password]"; }
+        public override string ToString() =>  "[Password]";
     }
 }

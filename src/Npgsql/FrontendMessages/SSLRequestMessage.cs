@@ -42,6 +42,6 @@ namespace Npgsql.FrontendMessages
             buf.WriteInt32(80877103);
         }
 
-        public override string ToString() { return "[SSLRequest]"; }
+        public override string ToString() => "[SSLRequest]";
     }
 }

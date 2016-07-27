@@ -63,10 +63,7 @@ namespace Npgsql.FrontendMessages
             buf.WriteBytes(_data, 0, _data.Length);
         }
 
-        public override string ToString()
-        {
-            return _description ?? "[?]";
-        }
+        public override string ToString() =>  _description ?? "[?]";
 
         static readonly WriteBuffer _tempBuf;
         static readonly QueryMessage _tempQuery;

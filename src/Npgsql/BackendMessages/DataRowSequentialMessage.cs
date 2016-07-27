@@ -22,14 +22,9 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using AsyncRewriter;
-using Npgsql;
 using Npgsql.TypeHandlers;
 
 namespace Npgsql.BackendMessages
@@ -62,22 +57,15 @@ namespace Npgsql.BackendMessages
             CheckColumnIndex(column);
 
             if (column < Column)
-            {
-                throw new InvalidOperationException(
-                    $"Invalid attempt to read from column ordinal '{column}'. With CommandBehavior.SequentialAccess, you may only read from column ordinal '{Column}' or greater.");
-            }
+                throw new InvalidOperationException($"Invalid attempt to read from column ordinal '{column}'. With CommandBehavior.SequentialAccess, you may only read from column ordinal '{Column}' or greater.");
 
             if (column == Column)
-            {
                 return;
-            }
 
             // Skip to end of column if needed
             var remainingInColumn = (ColumnLen == -1 ? 0 : ColumnLen - PosInColumn);
             if (remainingInColumn > 0)
-            {
                 Buffer.Skip(remainingInColumn);
-            }
 
             // Shut down any streaming going on on the colun
             if (_stream != null)
@@ -92,9 +80,7 @@ namespace Npgsql.BackendMessages
                 Buffer.Ensure(4);
                 var len = Buffer.ReadInt32();
                 if (len != -1)
-                {
                     Buffer.Skip(len);
-                }
             }
 
             Buffer.Ensure(4);
@@ -106,13 +92,10 @@ namespace Npgsql.BackendMessages
         internal override void SeekInColumn(int posInColumn)
         {
             if (posInColumn < PosInColumn)
-            {
                 throw new InvalidOperationException("Attempt to read a position in the column which has already been read");
-            }
 
-            if (posInColumn > ColumnLen) {
+            if (posInColumn > ColumnLen)
                 posInColumn = ColumnLen;
-            }
 
             if (posInColumn > PosInColumn)
             {
@@ -124,9 +107,8 @@ namespace Npgsql.BackendMessages
         internal override Stream GetStream()
         {
             Debug.Assert(PosInColumn == 0);
-            if (_stream != null) {
+            if (_stream != null)
                 throw new InvalidOperationException("Attempt to read a position in the column which has already been read");
-            }
             var stream = new SequentialByteaStream(this);
             _stream = stream;
             return stream;
@@ -138,18 +120,15 @@ namespace Npgsql.BackendMessages
             // Skip to end of column if needed
             var remainingInColumn = (ColumnLen == -1 ? 0 : ColumnLen - PosInColumn);
             if (remainingInColumn > 0)
-            {
                 Buffer.Skip(remainingInColumn);
-            }
 
             // Skip over the remaining columns in the row
             for (; Column < NumColumns - 1; Column++)
             {
                 Buffer.Ensure(4);
                 var len = Buffer.ReadInt32();
-                if (len != -1) {
+                if (len != -1)
                     Buffer.Skip(len);
-                }
             }
         }
     }
