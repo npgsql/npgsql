@@ -47,6 +47,8 @@ namespace Npgsql.TypeHandlers
     [TypeMapping("unknown")]
     class TextHandler : ChunkingTypeHandler<string>, IChunkingTypeHandler<char[]>, ITextReaderHandler
     {
+        // Text types are handled a bit more efficiently when sent as text than as binary
+        // see https://github.com/npgsql/npgsql/issues/1210#issuecomment-235641670
         internal override bool PreferTextWrite => true;
 
         #region State
