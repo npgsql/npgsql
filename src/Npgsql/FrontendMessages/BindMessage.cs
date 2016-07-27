@@ -48,6 +48,7 @@ namespace Npgsql.FrontendMessages
 
         State _state;
         int _paramIndex;
+        int _formatCodeListLength;
         bool _wroteParamLen;
 
         const byte Code = (byte)'B';
@@ -63,7 +64,7 @@ namespace Npgsql.FrontendMessages
             Portal = portal;
             Statement = statement;
             InputParameters = inputParameters;
-            _state = State.WroteNothing;
+            _state = State.Header;
             _paramIndex = 0;
             _wroteParamLen = false;
             return this;
@@ -88,18 +89,15 @@ namespace Npgsql.FrontendMessages
 
             switch (_state)
             {
-                case State.WroteNothing:
+                case State.Header:
                     var formatCodesSum = InputParameters.Select(p => p.FormatCode).Sum(c => (int)c);
-                    var formatCodeListLength = formatCodesSum == 0 ? 0 : formatCodesSum == InputParameters.Count ? 1 : InputParameters.Count;
-
+                    _formatCodeListLength = formatCodesSum == 0 ? 0 : formatCodesSum == InputParameters.Count ? 1 : InputParameters.Count;
                     var headerLength =
                         1 +                        // Message code
                         4 +                        // Message length
                         Portal.Length + 1 +
                         Statement.Length + 1 +
-                        2 +                        // Number of parameter format codes that follow
-                        2 * formatCodeListLength + // List of format codes
-                        2;                         // Number of parameters
+                        2;                         // Number of parameter format codes that follow
 
                     if (buf.WriteSpaceLeft < headerLength)
                     {
@@ -107,8 +105,11 @@ namespace Npgsql.FrontendMessages
                         return false;
                     }
 
-                    foreach (var c in InputParameters.Select(p => p.LengthCache).Where(c => c != null)) { c.Rewind(); }
+                    foreach (var c in InputParameters.Select(p => p.LengthCache).Where(c => c != null))
+                        c.Rewind();
                     var messageLength = headerLength +
+                        2 * _formatCodeListLength + // List of format codes
+                        2 +                         // Number of parameters
                         4 * InputParameters.Count +                                     // Parameter lengths
                         InputParameters.Select(p => p.ValidateAndGetLength()).Sum() +   // Parameter values
                         2 +                                                             // Number of result format codes
@@ -118,41 +119,56 @@ namespace Npgsql.FrontendMessages
                     buf.WriteInt32(messageLength-1);
                     buf.WriteBytesNullTerminated(Encoding.ASCII.GetBytes(Portal));
                     buf.WriteBytesNullTerminated(Encoding.ASCII.GetBytes(Statement));
+                    buf.WriteInt16(_formatCodeListLength);
+                    _paramIndex = 0;
 
-                    // 0 implicitly means all-text, 1 means all binary, >1 means mix-and-match
-                    buf.WriteInt16(formatCodeListLength);
-                    if (formatCodeListLength == 1)
+                    _state = State.ParameterFormatCodes;
+                    goto case State.ParameterFormatCodes;
+
+                case State.ParameterFormatCodes:
+                    // 0 length implicitly means all-text, 1 means all-binary, >1 means mix-and-match
+                    if (_formatCodeListLength == 1)
                     {
+                        if (buf.WriteSpaceLeft < 2)
+                            return false;
                         buf.WriteInt16((short)FormatCode.Binary);
                     }
-                    else if (formatCodeListLength > 1)
-                    {
-                        foreach (var code in InputParameters.Select(p => p.FormatCode))
-                            buf.WriteInt16((short)code);
-                    }
+                    else if (_formatCodeListLength > 1)
+                        for (; _paramIndex < InputParameters.Count; _paramIndex++)
+                        {
+                            if (buf.WriteSpaceLeft < 2)
+                                return false;
+                            buf.WriteInt16((short)InputParameters[_paramIndex].FormatCode);
+                        }
+
+                    if (buf.WriteSpaceLeft < 2)
+                        return false;
 
                     buf.WriteInt16(InputParameters.Count);
+                    _paramIndex = 0;
 
-                    _state = State.WroteHeader;
-                    goto case State.WroteHeader;
+                    _state = State.ParameterValues;
+                    goto case State.ParameterValues;
 
-                case State.WroteHeader:
-                    if (!WriteParameters(buf, ref directBuf)) { return false; }
-                    _state = State.WroteParameters;
-                    goto case State.WroteParameters;
+                case State.ParameterValues:
+                    if (!WriteParameters(buf, ref directBuf))
+                        return false;
+                    _state = State.ResultFormatCodes;
+                    goto case State.ResultFormatCodes;
 
-                case State.WroteParameters:
+                case State.ResultFormatCodes:
                     if (UnknownResultTypeList != null)
                     {
-                        if (buf.WriteSpaceLeft < 2 + UnknownResultTypeList.Length * 2) { return false; }
+                        if (buf.WriteSpaceLeft < 2 + UnknownResultTypeList.Length * 2)
+                            return false;
                         buf.WriteInt16(UnknownResultTypeList.Length);
-                        foreach (var t in UnknownResultTypeList) {
+                        foreach (var t in UnknownResultTypeList)
                             buf.WriteInt16(t ? 0 : 1);
-                        }
                     }
                     else
                     {
-                        if (buf.WriteSpaceLeft < 4) { return false; }
+                        if (buf.WriteSpaceLeft < 4)
+                            return false;
                         buf.WriteInt16(1);
                         buf.WriteInt16(AllResultTypesAreUnknown ? 0 : 1);
                     }
@@ -222,9 +238,10 @@ namespace Npgsql.FrontendMessages
 
         private enum State
         {
-            WroteNothing,
-            WroteHeader,
-            WroteParameters,
+            Header,
+            ParameterFormatCodes,
+            ParameterValues,
+            ResultFormatCodes,
             Done
         }
     }
