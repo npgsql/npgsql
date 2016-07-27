@@ -75,7 +75,7 @@ namespace Npgsql
         /// <summary>
         /// The parsed connection string set by the user
         /// </summary>
-        internal NpgsqlConnectionStringBuilder Settings { get; private set; }
+        NpgsqlConnectionStringBuilder _settings;
 
         /// <summary>
         /// The actual string provided by the user for the connection string
@@ -121,7 +121,7 @@ namespace Npgsql
         /// Initializes a new instance of the
         /// <see cref="NpgsqlConnection">NpgsqlConnection</see> class.
         /// </summary>
-        public NpgsqlConnection() : this(String.Empty) {}
+        public NpgsqlConnection() : this(new NpgsqlConnectionStringBuilder()) {}
 
         /// <summary>
         /// Initializes a new instance of the
@@ -129,7 +129,12 @@ namespace Npgsql
         /// and sets the <see cref="NpgsqlConnection.ConnectionString">ConnectionString</see>.
         /// </summary>
         /// <param name="builder">The connection used to open the PostgreSQL database.</param>
-        public NpgsqlConnection(NpgsqlConnectionStringBuilder builder) : this(builder.ConnectionString) { }
+        public NpgsqlConnection(NpgsqlConnectionStringBuilder builder)
+        {
+            GC.SuppressFinalize(this);
+            Settings = builder;
+            Init();
+        }
 
         /// <summary>
         /// Initializes a new instance of the
@@ -268,10 +273,23 @@ namespace Npgsql
                 if (value == null) {
                     value = string.Empty;
                 }
-                Settings = new NpgsqlConnectionStringBuilder(value);
+                _settings = new NpgsqlConnectionStringBuilder(value);
                 // Note that settings.ConnectionString is canonical and may therefore be different from
                 // the provided value
-                _connectionString = Settings.ConnectionString;
+                _connectionString = _settings.ConnectionString;
+            }
+        }
+
+        /// <summary>
+        /// The parsed connection string set by the user
+        /// </summary>
+        internal NpgsqlConnectionStringBuilder Settings
+        {
+            get { return _settings; }
+            set
+            {
+                _connectionString = value.ConnectionString;
+                _settings = value;
             }
         }
 
