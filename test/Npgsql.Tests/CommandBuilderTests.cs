@@ -154,6 +154,32 @@ namespace Npgsql.Tests
                                     .With.Message.Contains("does not exist"));
             }
         }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1212")]
+        public void TableParameters()
+        {
+            using (var conn = OpenConnection())
+            {
+                TestUtil.MinimumPgVersion(conn, "9.2.0");
+
+                // This function returns record because of the two Out (InOut & Out) parameters
+                conn.ExecuteNonQuery(@"
+                    CREATE FUNCTION pg_temp.func(IN in1 INT) RETURNS TABLE(t1 INT, t2 INT) AS
+                      'SELECT in1,in1+1' LANGUAGE 'sql';
+                ");
+
+                var cmd = new NpgsqlCommand("pg_temp.func", conn) { CommandType = CommandType.StoredProcedure };
+                NpgsqlCommandBuilder.DeriveParameters(cmd);
+                Assert.That(cmd.Parameters, Has.Count.EqualTo(3));
+                Assert.That(cmd.Parameters[0].Direction, Is.EqualTo(ParameterDirection.Input));
+                Assert.That(cmd.Parameters[1].Direction, Is.EqualTo(ParameterDirection.Output));
+                Assert.That(cmd.Parameters[2].Direction, Is.EqualTo(ParameterDirection.Output));
+                cmd.Parameters[0].Value = 5;
+                cmd.ExecuteNonQuery();
+                Assert.That(cmd.Parameters[1].Value, Is.EqualTo(5));
+                Assert.That(cmd.Parameters[2].Value, Is.EqualTo(6));
+            }
+        }
     }
 }
 
