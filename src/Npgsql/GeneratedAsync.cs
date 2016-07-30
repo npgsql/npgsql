@@ -187,13 +187,8 @@ using System.Threading;
 using System.Threading.Tasks;
 #pragma warning disable
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Npgsql;
 using Npgsql.TypeHandlers;
 using System.Threading;
 using System.Threading.Tasks;
@@ -364,8 +359,6 @@ namespace Npgsql
                 }
             }
 
-            if (!Settings.PersistSecurityInfo)
-                RemovePasswordFromConnectionString();
             _wasBroken = false;
             try
             {
@@ -399,6 +392,7 @@ namespace Npgsql
             }
 
             OpenCounter++;
+            _alreadyOpened = true;
             OnStateChange(new StateChangeEventArgs(ConnectionState.Closed, ConnectionState.Open));
         }
     }
@@ -629,7 +623,7 @@ namespace Npgsql
                 var buf = ReadBuffer;
                 await ReadBuffer.EnsureAsync(5, cancellationToken).ConfigureAwait(false);
                 var messageCode = (BackendMessageCode)ReadBuffer.ReadByte();
-                Debug.Assert(Enum.IsDefined(typeof (BackendMessageCode), messageCode), "Unknown message code: " + messageCode);
+                PGUtil.ValidateBackendMessageCode(messageCode);
                 var len = ReadBuffer.ReadInt32() - 4; // Transmitted length includes itself
                 if ((messageCode == BackendMessageCode.DataRow && dataRowLoadingMode != DataRowLoadingMode.NonSequential) || messageCode == BackendMessageCode.CopyData)
                 {
@@ -1648,22 +1642,13 @@ namespace Npgsql.BackendMessages
         {
             CheckColumnIndex(column);
             if (column < Column)
-            {
                 throw new InvalidOperationException($"Invalid attempt to read from column ordinal '{column}'. With CommandBehavior.SequentialAccess, you may only read from column ordinal '{Column}' or greater.");
-            }
-
             if (column == Column)
-            {
                 return;
-            }
-
             // Skip to end of column if needed
             var remainingInColumn = (ColumnLen == -1 ? 0 : ColumnLen - PosInColumn);
             if (remainingInColumn > 0)
-            {
                 await Buffer.SkipAsync(remainingInColumn, cancellationToken).ConfigureAwait(false);
-            }
-
             // Shut down any streaming going on on the colun
             if (_stream != null)
             {
@@ -1677,9 +1662,7 @@ namespace Npgsql.BackendMessages
                 await Buffer.EnsureAsync(4, cancellationToken).ConfigureAwait(false);
                 var len = Buffer.ReadInt32();
                 if (len != -1)
-                {
                     await Buffer.SkipAsync(len, cancellationToken).ConfigureAwait(false);
-                }
             }
 
             await Buffer.EnsureAsync(4, cancellationToken).ConfigureAwait(false);
@@ -1693,19 +1676,14 @@ namespace Npgsql.BackendMessages
             // Skip to end of column if needed
             var remainingInColumn = (ColumnLen == -1 ? 0 : ColumnLen - PosInColumn);
             if (remainingInColumn > 0)
-            {
                 await Buffer.SkipAsync(remainingInColumn, cancellationToken).ConfigureAwait(false);
-            }
-
             // Skip over the remaining columns in the row
             for (; Column < NumColumns - 1; Column++)
             {
                 await Buffer.EnsureAsync(4, cancellationToken).ConfigureAwait(false);
                 var len = Buffer.ReadInt32();
                 if (len != -1)
-                {
                     await Buffer.SkipAsync(len, cancellationToken).ConfigureAwait(false);
-                }
             }
         }
     }
