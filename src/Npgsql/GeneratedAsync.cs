@@ -361,8 +361,6 @@ namespace Npgsql
                 return;
             CheckConnectionClosed();
             Log.Trace("Opening connnection");
-            if (!Settings.PersistSecurityInfo)
-                RemovePasswordFromConnectionString();
             _wasBroken = false;
             try
             {
@@ -396,6 +394,7 @@ namespace Npgsql
             }
 
             OpenCounter++;
+            _alreadyOpened = true;
             OnStateChange(new StateChangeEventArgs(ConnectionState.Closed, ConnectionState.Open));
         }
     }
@@ -650,7 +649,7 @@ namespace Npgsql
                 var buf = ReadBuffer;
                 await ReadBuffer.EnsureAsync(5, cancellationToken).ConfigureAwait(false);
                 var messageCode = (BackendMessageCode)ReadBuffer.ReadByte();
-                Contract.Assume(Enum.IsDefined(typeof (BackendMessageCode), messageCode), "Unknown message code: " + messageCode);
+                PGUtil.ValidateBackendMessageCode(messageCode);
                 var len = ReadBuffer.ReadInt32() - 4; // Transmitted length includes itself
                 if ((messageCode == BackendMessageCode.DataRow && dataRowLoadingMode != DataRowLoadingMode.NonSequential) || messageCode == BackendMessageCode.CopyData)
                 {
