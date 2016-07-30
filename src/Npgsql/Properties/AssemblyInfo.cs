@@ -6,6 +6,12 @@ using System.Reflection;
 [assembly: AssemblyTitle("Npgsql - .Net Data Provider for PostgreSQL")]
 [assembly: AssemblyDescription(".Net Data Provider for PostgreSQL")]
 
+#if DEBUG
+[assembly: AssemblyConfiguration("Debug")]
+#elif DEBUG
+[assembly: AssemblyConfiguration("Release")]
+#endif
+
 [assembly: InternalsVisibleTo("Npgsql.EntityFrameworkCore.PostgreSQL, PublicKey=" +
 "0024000004800000940000000602000000240000525341310004000001000100" +
 "2b3c590b2a4e3d347e6878dc0ff4d21eb056a50420250c6617044330701d35c9" +
