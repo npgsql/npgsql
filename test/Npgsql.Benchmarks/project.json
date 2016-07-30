@@ -1,0 +1,26 @@
+{
+  "version": "0.0.0",
+  "buildOptions": {
+    "emitEntryPoint": true,
+    "debugType": "portable",
+    "keyFile": "../../Npgsql.snk"
+  },
+  "dependencies": {
+    "Npgsql": "3.2.0-*",
+    "BenchmarkDotNet": "0.9.8"
+  },
+  "frameworks": {
+    "net46": {
+      "frameworkAssemblies": {
+      }
+    },
+    "netcoreapp1.0": {
+      "dependencies": {
+        "Microsoft.NETCore.App": {
+          "version": "1.0.0",
+          "type": "platform"
+        }
+      }
+    }
+  }
+}
