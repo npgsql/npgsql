@@ -88,7 +88,6 @@
     <Compile Include="DataAdapterTests.cs" />
     <Compile Include="ReaderTests.cs" />
     <Compile Include="ExceptionTests.cs" />
-    <Compile Include="SpeedTests.cs" />
     <Compile Include="NpgsqlParameterTests.cs">
       <SubType>Code</SubType>
     </Compile>

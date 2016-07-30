@@ -43,7 +43,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Connection.cs" />
+    <Compile Include="CommandExecuteBenchmarks.cs" />
+    <Compile Include="ConnectionCreationBenchmarks.cs" />
+    <Compile Include="ConnectionCloseOpenBenchmarks.cs" />
+    <Compile Include="Environment.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
