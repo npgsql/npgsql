@@ -93,6 +93,7 @@ namespace Npgsql
 
         static Timer _pruningTimer;
         readonly TimeSpan _pruningInterval;
+        readonly List<NpgsqlConnector> _prunedConnectors;
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
@@ -103,6 +104,7 @@ namespace Npgsql
 
             ConnectionString = csb;
             _pruningInterval = TimeSpan.FromSeconds(ConnectionString.ConnectionPruningInterval);
+            _prunedConnectors = new List<NpgsqlConnector>();
             Idle = new IdleConnectorList();
             Waiting = new Queue<TaskCompletionSource<NpgsqlConnector>>();
         }
@@ -294,26 +296,24 @@ namespace Npgsql
             if (Idle.Count <= Min)
                 return;
 
-            List<NpgsqlConnector> prunedConnectors = null;
+            if (!Monitor.TryEnter(_prunedConnectors))
+                return; // Pruning thread already running
 
-            var idleLifetime = ConnectionString.ConnectionIdleLifetime;
-            lock (this)
+            try
             {
-                while (Idle.Count > Min &&
-                        (DateTime.UtcNow - Idle.Last.Value.ReleaseTimestamp).TotalSeconds >= idleLifetime)
+                var idleLifetime = ConnectionString.ConnectionIdleLifetime;
+                lock (this)
                 {
-                    if (prunedConnectors == null)
-                        prunedConnectors = new List<NpgsqlConnector>();
-
-                    prunedConnectors.Add(Idle.Last.Value);
-                    Idle.RemoveLast();
+                    while (Idle.Count > Min &&
+                            (DateTime.UtcNow - Idle.Last.Value.ReleaseTimestamp).TotalSeconds >= idleLifetime)
+                    {
+                        _prunedConnectors.Add(Idle.Last.Value);
+                        Idle.RemoveLast();
+                    }
+                    EnsurePruningTimerState();
                 }
-                EnsurePruningTimerState();
-            }
 
-            if (prunedConnectors != null)
-            {
-                foreach (var connector in prunedConnectors)
+                foreach (var connector in _prunedConnectors)
                 {
                     try { connector.Close(); }
                     catch (Exception e)
@@ -321,6 +321,12 @@ namespace Npgsql
                         Log.Warn("Exception while closing pruned connector", e, connector.Id);
                     }
                 }
+
+                _prunedConnectors.Clear();
+            }
+            finally
+            {
+                Monitor.Exit(_prunedConnectors);
             }
         }
 
