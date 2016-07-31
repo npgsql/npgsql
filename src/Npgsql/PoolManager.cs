@@ -53,6 +53,15 @@ namespace Npgsql
             return Pools[connString];
         }
 
+        internal static void Clear(NpgsqlConnectionStringBuilder connString)
+        {
+            Debug.Assert(connString != null);
+
+            ConnectorPool pool;
+            if (Pools.TryGetValue(connString, out pool))
+                pool.Clear();
+        }
+
         internal static void ClearAll()
         {
             foreach (var kvp in Pools)
