@@ -91,7 +91,7 @@ namespace Npgsql
         /// </summary>
         int _clearCounter;
 
-        static Timer _pruningTimer;
+        Timer _pruningTimer;
         readonly TimeSpan _pruningInterval;
         readonly List<NpgsqlConnector> _prunedConnectors;
 
