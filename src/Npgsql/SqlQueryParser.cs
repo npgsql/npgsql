@@ -25,12 +25,19 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
+using System.Text;
 
 namespace Npgsql
 {
-    static class SqlQueryParser
+    class SqlQueryParser
     {
+        readonly Dictionary<string, int> _paramIndexMap = new Dictionary<string, int>();
+        readonly StringBuilder _rewrittenSql = new StringBuilder();
+
+        List<NpgsqlStatement> _statements;
+        NpgsqlStatement _statement;
+        int _statementIndex;
+
         /// <summary>
         /// Receives a raw SQL query as passed in by the user, and performs some processing necessary
         /// before sending to the backend.
@@ -40,11 +47,15 @@ namespace Npgsql
         /// <param name="sql">Raw user-provided query.</param>
         /// <param name="standardConformantStrings">Whether the PostgreSQL session is configured to use standard conformant strings.</param>
         /// <param name="parameters">The parameters configured on the <see cref="NpgsqlCommand"/> of this query.</param>
-        /// <param name="queries">An empty list to be populated with the queries parsed by this method</param>
-        internal static void ParseRawQuery(string sql, bool standardConformantStrings, NpgsqlParameterCollection parameters, List<NpgsqlStatement> queries)
+        /// <param name="statements">An empty list to be populated with the statements parsed by this method</param>
+        internal void ParseRawQuery(string sql, bool standardConformantStrings, NpgsqlParameterCollection parameters, List<NpgsqlStatement> statements)
         {
             Debug.Assert(sql != null);
-            Debug.Assert(queries != null && !queries.Any());
+            Debug.Assert(statements != null);
+
+            _statements = statements;
+            _statementIndex = -1;
+            MoveToNextStatement();
 
             var currCharOfs = 0;
             var end = sql.Length;
@@ -54,12 +65,6 @@ namespace Npgsql
             var currTokenBeg = 0;
             var blockCommentLevel = 0;
             var parenthesisLevel = 0;
-
-            queries.Clear();
-            // TODO: Recycle
-            var paramIndexMap = new Dictionary<string, int>();
-            var currentSql = new StringWriter();
-            var currentParameters = new List<NpgsqlParameter>();
 
         None:
             if (currCharOfs >= end) {
@@ -125,7 +130,7 @@ namespace Npgsql
                 ch = sql[currCharOfs];
                 if (IsParamNameChar(ch)) {
                     if (currCharOfs - 1 > currTokenBeg) {
-                        currentSql.Write(sql.Substring(currTokenBeg, currCharOfs - 1 - currTokenBeg));
+                        _rewrittenSql.Append(sql.Substring(currTokenBeg, currCharOfs - 1 - currTokenBeg));
                     }
                     currTokenBeg = currCharOfs++ - 1;
                     goto Param;
@@ -144,12 +149,12 @@ namespace Npgsql
                     var paramName = sql.Substring(currTokenBeg, currCharOfs - currTokenBeg);
 
                     int index;
-                    if (!paramIndexMap.TryGetValue(paramName, out index)) {
+                    if (!_paramIndexMap.TryGetValue(paramName, out index)) {
                         // Parameter hasn't been seen before in this query
                         NpgsqlParameter parameter;
                         if (!parameters.TryGetValue(paramName, out parameter))
                         {
-                            currentSql.Write(paramName);
+                            _rewrittenSql.Append(paramName);
                             currTokenBeg = currCharOfs;
                             if (currCharOfs >= end)
                                 goto Finish;
@@ -161,11 +166,11 @@ namespace Npgsql
                         if (!parameter.IsInputDirection)
                             throw new Exception($"Parameter '{paramName}' referenced in SQL but is an out-only parameter");
 
-                        currentParameters.Add(parameter);
-                        index = paramIndexMap[paramName] = currentParameters.Count;
+                        _statement.InputParameters.Add(parameter);
+                        index = _paramIndexMap[paramName] = _statement.InputParameters.Count;
                     }
-                    currentSql.Write('$');
-                    currentSql.Write(index);
+                    _rewrittenSql.Append('$');
+                    _rewrittenSql.Append(index);
                     currTokenBeg = currCharOfs;
 
                     if (currCharOfs >= end) {
@@ -381,8 +386,8 @@ namespace Npgsql
             goto Finish;
 
         SemiColon:
-            currentSql.Write(sql.Substring(currTokenBeg, currCharOfs - currTokenBeg - 1));
-            queries.Add(new NpgsqlStatement(currentSql.ToString(), currentParameters));
+            _rewrittenSql.Append(sql.Substring(currTokenBeg, currCharOfs - currTokenBeg - 1));
+            _statement.SQL = _rewrittenSql.ToString();
             while (currCharOfs < end) {
                 ch = sql[currCharOfs];
                 if (char.IsWhiteSpace(ch)) {
@@ -392,16 +397,34 @@ namespace Npgsql
                 // TODO: Handle end of line comment? Although psql doesn't seem to handle them...
 
                 currTokenBeg = currCharOfs;
-                paramIndexMap.Clear();
-                currentSql = new StringWriter();
-                currentParameters = new List<NpgsqlParameter>();
+                if (_rewrittenSql.Length > 0)
+                    MoveToNextStatement();
                 goto None;
             }
             return;
 
         Finish:
-            currentSql.Write(sql.Substring(currTokenBeg, end - currTokenBeg));
-            queries.Add(new NpgsqlStatement(currentSql.ToString(), currentParameters));
+            _rewrittenSql.Append(sql.Substring(currTokenBeg, end - currTokenBeg));
+            _statement.SQL = _rewrittenSql.ToString();
+            if (statements.Count > _statementIndex + 1)
+               statements.RemoveRange(_statementIndex + 1, statements.Count - (_statementIndex + 1));
+        }
+
+        void MoveToNextStatement()
+        {
+            _statementIndex++;
+            if (_statements.Count > _statementIndex)
+            {
+                _statement = _statements[_statementIndex];
+                _statement.Reset();
+            }
+            else
+            {
+                _statement = new NpgsqlStatement();
+                _statements.Add(_statement);
+            }
+            _paramIndexMap.Clear();
+            _rewrittenSql.Clear();
         }
 
         static bool IsLetter(char ch)

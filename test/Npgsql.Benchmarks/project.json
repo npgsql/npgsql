@@ -11,7 +11,8 @@
   },
   "frameworks": {
     "net46": {
-      "frameworkAssemblies": {
+      "dependencies": {
+        "BenchmarkDotNet.Diagnostics.Windows": "0.9.8"
       }
     },
     "netcoreapp1.0": {

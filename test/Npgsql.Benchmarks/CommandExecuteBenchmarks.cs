@@ -5,12 +5,15 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Columns;
+using BenchmarkDotNet.Configs;
+using BenchmarkDotNet.Diagnostics.Windows;
 using BenchmarkDotNet.Running;
 
 namespace Npgsql.Benchmarks
 {
     [SuppressMessage("ReSharper", "AssignNullToNotNullAttribute")]
-    [Config("columns=OperationPerSecond")]
+    [Config(typeof(CommandExecuteBenchmarks.Config))]
     public class CommandExecuteBenchmarks
     {
         readonly NpgsqlCommand _executeNonQueryCmd;
@@ -50,6 +53,15 @@ namespace Npgsql.Benchmarks
             {
                 reader.Read();
                 return reader.GetValue(0);
+            }
+        }
+
+        class Config : ManualConfig
+        {
+            public Config()
+            {
+                Add(new MemoryDiagnoser());
+                Add(StatisticColumn.OperationsPerSecond);
             }
         }
     }

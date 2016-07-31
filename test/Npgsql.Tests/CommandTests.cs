@@ -954,7 +954,6 @@ namespace Npgsql.Tests
                     cmd.ExecuteNonQuery();
 
                     Assert.That(cmd.Statements, Has.Count.EqualTo(2));
-                    Assert.That(cmd.Statements, Has.Count.EqualTo(2));
                     Assert.That(cmd.Statements[0].SQL, Is.EqualTo("INSERT INTO data (name) VALUES ('a')"));
                     Assert.That(cmd.Statements[0].StatementType, Is.EqualTo(StatementType.Insert));
                     Assert.That(cmd.Statements[0].Rows, Is.EqualTo(1));

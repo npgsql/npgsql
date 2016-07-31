@@ -65,7 +65,8 @@ namespace Npgsql
         /// </summary>
         NpgsqlConnector _connector;
         NpgsqlTransaction _transaction;
-        String _commandText;
+        readonly SqlQueryParser _sqlParser = new SqlQueryParser();
+        string _commandText;
         int? _timeout;
         readonly NpgsqlParameterCollection _parameters = new NpgsqlParameterCollection();
 
@@ -622,17 +623,27 @@ namespace Npgsql
 
         void ProcessRawQuery()
         {
-            _statements.Clear();
+            NpgsqlStatement statement;
             switch (CommandType) {
             case CommandType.Text:
-                SqlQueryParser.ParseRawQuery(CommandText, _connection == null || _connection.UseConformantStrings, _parameters, _statements);
-                if (_statements.Count > 1 && _parameters.Any(p => p.IsOutputDirection)) {
+                _sqlParser.ParseRawQuery(CommandText, _connection == null || _connection.UseConformantStrings, _parameters, _statements);
+                if (_statements.Count > 1 && _parameters.Any(p => p.IsOutputDirection))
                     throw new NotSupportedException("Commands with multiple queries cannot have out parameters");
-                }
                 break;
+
             case CommandType.TableDirect:
-                _statements.Add(new NpgsqlStatement("SELECT * FROM " + CommandText, new List<NpgsqlParameter>()));
+                if (_statements.Count == 0)
+                    statement = new NpgsqlStatement();
+                else
+                {
+                    statement = _statements[0];
+                    statement.Reset();
+                    _statements.Clear();
+                }
+                _statements.Add(statement);
+                statement.SQL = "SELECT * FROM " + CommandText;
                 break;
+
             case CommandType.StoredProcedure:
                 var inputList = _parameters.Where(p => p.IsInputDirection).ToList();
                 var numInput = inputList.Count;
@@ -672,7 +683,18 @@ namespace Npgsql
                     }
                 }
                 sb.Append(')');
-                _statements.Add(new NpgsqlStatement(sb.ToString(), inputList));
+
+                if (_statements.Count == 0)
+                    statement = new NpgsqlStatement();
+                else
+                {
+                    statement = _statements[0];
+                    statement.Reset();
+                    _statements.Clear();
+                }
+                statement.SQL = sb.ToString();
+                statement.InputParameters.AddRange(inputList);
+                _statements.Add(statement);
                 break;
             default:
                 throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {CommandType} of enum {nameof(CommandType)}. Please file a bug.");
@@ -1099,7 +1121,6 @@ namespace Npgsql
                         statementIndex++;
                         continue;
                     case BackendMessageCode.ReadyForQuery:
-                        Debug.Assert(statementIndex == Statements.Count);
                         return recordsAffected;
                     default:
                         continue;
