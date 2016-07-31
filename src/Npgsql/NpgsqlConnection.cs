@@ -1462,12 +1462,7 @@ namespace Npgsql
         /// <summary>
         /// Clear connection pool.
         /// </summary>
-        public static void ClearPool(NpgsqlConnection connection)
-        {
-            ConnectorPool pool;
-            if (PoolManager.Pools.TryGetValue(connection.Settings, out pool))
-                pool.Clear();
-        }
+        public static void ClearPool(NpgsqlConnection connection) => PoolManager.Clear(connection.Settings);
 
         /// <summary>
         /// Clear all connection pools.

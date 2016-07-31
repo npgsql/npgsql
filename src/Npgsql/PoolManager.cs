@@ -53,10 +53,19 @@ namespace Npgsql
             return Pools[connString];
         }
 
+        internal static void Clear(NpgsqlConnectionStringBuilder connString)
+        {
+            Debug.Assert(connString != null);
+
+            ConnectorPool pool;
+            if (Pools.TryGetValue(connString, out pool))
+                pool.Clear();
+        }
+
         internal static void ClearAll()
         {
-            foreach (var pool in Pools.Values)
-                pool.Clear();
+            foreach (var kvp in Pools)
+                kvp.Value.Clear();
         }
     }
 
@@ -82,8 +91,9 @@ namespace Npgsql
         /// </summary>
         int _clearCounter;
 
-        static Timer _pruningTimer;
+        Timer _pruningTimer;
         readonly TimeSpan _pruningInterval;
+        readonly List<NpgsqlConnector> _prunedConnectors;
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
@@ -94,6 +104,7 @@ namespace Npgsql
 
             ConnectionString = csb;
             _pruningInterval = TimeSpan.FromSeconds(ConnectionString.ConnectionPruningInterval);
+            _prunedConnectors = new List<NpgsqlConnector>();
             Idle = new IdleConnectorList();
             Waiting = new Queue<TaskCompletionSource<NpgsqlConnector>>();
         }
@@ -285,24 +296,37 @@ namespace Npgsql
             if (Idle.Count <= Min)
                 return;
 
-            var idleLifetime = ConnectionString.ConnectionIdleLifetime;
-            lock (this)
+            if (!Monitor.TryEnter(_prunedConnectors))
+                return; // Pruning thread already running
+
+            try
             {
-                while (Idle.Count > Min &&
-                        (DateTime.UtcNow - Idle.Last.Value.ReleaseTimestamp).TotalSeconds >= idleLifetime)
+                var idleLifetime = ConnectionString.ConnectionIdleLifetime;
+                lock (this)
                 {
-                    var connector = Idle.Last.Value;
-                    Idle.RemoveLast();
-                    try
+                    while (Idle.Count > Min &&
+                            (DateTime.UtcNow - Idle.Last.Value.ReleaseTimestamp).TotalSeconds >= idleLifetime)
                     {
-                        connector.Close();
+                        _prunedConnectors.Add(Idle.Last.Value);
+                        Idle.RemoveLast();
                     }
+                    EnsurePruningTimerState();
+                }
+
+                foreach (var connector in _prunedConnectors)
+                {
+                    try { connector.Close(); }
                     catch (Exception e)
                     {
-                        Log.Warn("Exception while closing connector", e, connector.Id);
+                        Log.Warn("Exception while closing pruned connector", e, connector.Id);
                     }
                 }
-                EnsurePruningTimerState();
+
+                _prunedConnectors.Clear();
+            }
+            finally
+            {
+                Monitor.Exit(_prunedConnectors);
             }
         }
 
