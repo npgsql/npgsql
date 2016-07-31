@@ -887,7 +887,7 @@ namespace Npgsql
         /// </summary>
         [Category("Advanced")]
         [Description("If set to true, a pool connection's state won't be reset when it is closed (improves performance). Do not specify this unless you know what you're doing.")]
-        [DisplayName("No Reset")]
+        [DisplayName("No Reset On Close")]
         [NpgsqlConnectionStringProperty]
         public bool NoResetOnClose
         {
