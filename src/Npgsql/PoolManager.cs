@@ -69,7 +69,7 @@ namespace Npgsql
         }
     }
 
-    partial class ConnectorPool
+    sealed partial class ConnectorPool : IDisposable
     {
         internal NpgsqlConnectionStringBuilder ConnectionString;
 
@@ -365,6 +365,11 @@ namespace Npgsql
                 cancellationToken.ThrowIfCancellationRequested();
                 throw new NpgsqlException($"The connection pool has been exhausted, either raise MaxPoolSize (currently {_max}) or Timeout (currently {ConnectionString.Timeout} seconds)");
             }
+        }
+
+        public void Dispose()
+        {
+            _pruningTimer?.Dispose();
         }
 
         public override string ToString() => $"[{Busy} busy, {Idle.Count} idle, {Waiting.Count} waiting]";
