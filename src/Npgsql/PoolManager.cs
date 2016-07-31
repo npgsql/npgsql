@@ -84,7 +84,7 @@ namespace Npgsql
         /// </summary>
         int _clearCounter;
 
-        static Timer _pruningTimer;
+        Timer _pruningTimer;
         readonly TimeSpan _pruningInterval;
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
