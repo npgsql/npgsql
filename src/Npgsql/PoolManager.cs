@@ -55,8 +55,8 @@ namespace Npgsql
 
         internal static void ClearAll()
         {
-            foreach (var pool in Pools.Values)
-                pool.Clear();
+            foreach (var kvp in Pools)
+                kvp.Value.Clear();
         }
     }
 
@@ -285,24 +285,33 @@ namespace Npgsql
             if (Idle.Count <= Min)
                 return;
 
+            List<NpgsqlConnector> prunedConnectors = null;
+
             var idleLifetime = ConnectionString.ConnectionIdleLifetime;
             lock (this)
             {
                 while (Idle.Count > Min &&
                         (DateTime.UtcNow - Idle.Last.Value.ReleaseTimestamp).TotalSeconds >= idleLifetime)
                 {
-                    var connector = Idle.Last.Value;
+                    if (prunedConnectors == null)
+                        prunedConnectors = new List<NpgsqlConnector>();
+
+                    prunedConnectors.Add(Idle.Last.Value);
                     Idle.RemoveLast();
-                    try
-                    {
-                        connector.Close();
-                    }
-                    catch (Exception e)
-                    {
-                        Log.Warn("Exception while closing connector", e, connector.Id);
-                    }
                 }
                 EnsurePruningTimerState();
+            }
+
+            if (prunedConnectors != null)
+            {
+                foreach (var connector in prunedConnectors)
+                {
+                    try { connector.Close(); }
+                    catch (Exception e)
+                    {
+                        Log.Warn("Exception while closing pruned connector", e, connector.Id);
+                    }
+                }
             }
         }
 
