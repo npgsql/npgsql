@@ -1496,25 +1496,37 @@ namespace Npgsql
                 throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {TransactionStatus} of enum {nameof(TransactionStatus)}. Please file a bug.");
             }
 
-            // Prepend session reset commands.
-            // We don't use DISCARD ALL because we support persistent prepared statements.
-            // Note: the send buffer has been cleared above, and we assume all this will fit in it.
-            PrependInternalMessage(PregeneratedMessage.ResetSessionAuthorization);
-            PrependInternalMessage(PregeneratedMessage.ResetAll);
-            if (SupportsCloseAll)
-                PrependInternalMessage(PregeneratedMessage.CloseAll);
-            if (SupportsUnlisten)
-                PrependInternalMessage(PregeneratedMessage.UnlistenAll);
-            if (SupportsAdvisoryLocks)
-                PrependInternalMessage(PregeneratedMessage.AdvisoryUnlockAll);
-            if (SupportsDiscardSequences)
-                PrependInternalMessage(PregeneratedMessage.DiscardSequences);
-            if (SupportsDiscardTemp)
-                PrependInternalMessage(PregeneratedMessage.DiscardTemp);
+            if (!_settings.NoResetOnClose)
+            {
+                if (PersistentPreparedStatements.Any())
+                {
+                    // We have persistent prepared statements, so we can't reset the connection state with DISCARD ALL
+                    // Note: the send buffer has been cleared above, and we assume all this will fit in it.
+                    PrependInternalMessage(PregeneratedMessage.ResetSessionAuthorization);
+                    PrependInternalMessage(PregeneratedMessage.ResetAll);
+                    if (SupportsCloseAll)
+                        PrependInternalMessage(PregeneratedMessage.CloseAll);
+                    if (SupportsUnlisten)
+                        PrependInternalMessage(PregeneratedMessage.UnlistenAll);
+                    if (SupportsAdvisoryLocks)
+                        PrependInternalMessage(PregeneratedMessage.AdvisoryUnlockAll);
+                    if (SupportsDiscardSequences)
+                        PrependInternalMessage(PregeneratedMessage.DiscardSequences);
+                    if (SupportsDiscardTemp)
+                        PrependInternalMessage(PregeneratedMessage.DiscardTemp);
 
-            // This needs to come last, because it can produce an arbitrary number of messages, possibly sending
-            // them now if they are larger than the buffer.
-            ClosePreparedStatements();
+                    // This needs to come last, because it can produce an arbitrary number of messages, possibly sending
+                    // them now if they are larger than the buffer.
+                    ClosePreparedStatements();
+                }
+                else
+                {
+                    // There are no persistent prepared statements.
+                    // We simply send DISCARD ALL which is more efficient than sending the above messages separately
+                    PrependInternalMessage(PregeneratedMessage.DiscardAll);
+                    PreparedStatements.Clear();
+                }
+            }
         }
 
         /// <summary>

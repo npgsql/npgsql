@@ -45,8 +45,9 @@
   <ItemGroup>
     <Compile Include="CommandExecuteBenchmarks.cs" />
     <Compile Include="ConnectionCreationBenchmarks.cs" />
-    <Compile Include="ConnectionCloseOpenBenchmarks.cs" />
-    <Compile Include="Environment.cs" />
+    <Compile Include="ConnectionOpenCloseBenchmarks.cs" />
+    <Compile Include="BenchmarkEnvironment.cs" />
+    <Compile Include="PreparedStatementAcrossOpenCloseBenchmarks.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

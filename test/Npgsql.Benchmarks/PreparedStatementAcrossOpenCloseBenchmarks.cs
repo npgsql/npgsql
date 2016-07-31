@@ -27,6 +27,7 @@ namespace Npgsql.Benchmarks
         /// impact statement preparation should have.
         /// </summary>
         [Params(0, 5, 10, 20)]
+        //[Params(0)]
         public int TablesToJoin { get; set; }
 
         public PreparedStatementAcrossOpenCloseBenchmarks()
@@ -95,13 +96,12 @@ INSERT INTO table{i} (id, data) VALUES (1, {i});
                 .GetCustomAttribute<ParamsAttribute>()
                 .Values
                 .Cast<int>()
-                .Where(i => i != 0)
                 .ToList();
 
             Queries = new string[paramValues.Max() + 1];
             Queries[0] = "SELECT 1";
 
-            foreach (var tablesToJoin in paramValues)
+            foreach (var tablesToJoin in paramValues.Where(i => i != 0))
                 Queries[tablesToJoin] = GenerateQuery(tablesToJoin);
         }
 

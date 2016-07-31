@@ -82,6 +82,8 @@ namespace Npgsql.FrontendMessages
             RollbackTransaction       = BuildQuery("ROLLBACK");
             KeepAlive                 = BuildQuery("SELECT NULL");
 
+            DiscardAll                = BuildQuery("DISCARD ALL");
+
             ResetSessionAuthorization = BuildQuery("SET SESSION AUTHORIZATION DEFAULT");
             ResetAll                  = BuildQuery("RESET ALL");
             CloseAll                  = BuildQuery("CLOSE ALL");
@@ -115,6 +117,8 @@ namespace Npgsql.FrontendMessages
         internal static readonly PregeneratedMessage CommitTransaction;
         internal static readonly PregeneratedMessage RollbackTransaction;
         internal static readonly PregeneratedMessage KeepAlive;
+
+        internal static readonly PregeneratedMessage DiscardAll;
 
         internal static readonly PregeneratedMessage ResetSessionAuthorization;
         internal static readonly PregeneratedMessage ResetAll;

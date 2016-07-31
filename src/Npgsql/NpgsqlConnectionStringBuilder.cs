@@ -881,6 +881,25 @@ namespace Npgsql
         }
         bool _persistPrepared;
 
+        /// <summary>
+        /// If set to true, a pool connection's state won't be reset when it is closed (improves performance).
+        /// Do not specify this unless you know what you're doing.
+        /// </summary>
+        [Category("Advanced")]
+        [Description("If set to true, a pool connection's state won't be reset when it is closed (improves performance). Do not specify this unless you know what you're doing.")]
+        [DisplayName("No Reset")]
+        [NpgsqlConnectionStringProperty]
+        public bool NoResetOnClose
+        {
+            get { return _noResetOnClose; }
+            set
+            {
+                _noResetOnClose = value;
+                SetValue(nameof(NoResetOnClose), value);
+            }
+        }
+        bool _noResetOnClose;
+
         #endregion
 
         #region Properties - Compatibility
