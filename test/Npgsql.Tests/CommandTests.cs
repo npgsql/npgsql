@@ -528,6 +528,28 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test]
+        public void ExecuteNonQuery()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
+                using (var cmd = new NpgsqlCommand { Connection = conn })
+                {
+                    cmd.CommandText = "INSERT INTO data (name) VALUES ('John')";
+                    Assert.That(cmd.ExecuteNonQuery(), Is.EqualTo(1));
+
+                    cmd.CommandText = "INSERT INTO data (name) VALUES ('John'); INSERT INTO data (name) VALUES ('John')";
+                    Assert.That(cmd.ExecuteNonQuery(), Is.EqualTo(2));
+
+                    // A non-prepared non-parameterized ExecuteNonQuery uses the PG simple protocol as an
+                    // optimization. If we add a parameter we force the extended protocol path.
+                    cmd.Parameters.AddWithValue("not_used", DBNull.Value);
+                    Assert.That(cmd.ExecuteNonQuery(), Is.EqualTo(2));
+                }
+            }
+        }
+
         [Test, Description("Makes sure a command is unusable after it is disposed")]
         public void Dispose()
         {
@@ -913,7 +935,7 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1037")]
-        public void Statements()
+        public void Statements([Values(true, false)] bool withParam)
         {
             // See also ReaderTests.Statements()
             using (var conn = OpenConnection())
@@ -925,6 +947,10 @@ namespace Npgsql.Tests
                     conn)
                 )
                 {
+                    // A non-prepared non-parameterized ExecuteNonQuery uses the PG simple protocol as an
+                    // optimization. If we add a parameter we force the extended protocol path.
+                    if (withParam)
+                        cmd.Parameters.AddWithValue("not_used", DBNull.Value);
                     cmd.ExecuteNonQuery();
 
                     Assert.That(cmd.Statements, Has.Count.EqualTo(2));

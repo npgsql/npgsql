@@ -75,6 +75,13 @@ namespace Npgsql
             IsPrepared = false;
         }
 
+        internal void ApplyCommandComplete(CommandCompleteMessage msg)
+        {
+            StatementType = msg.StatementType;
+            Rows = msg.Rows;
+            OID = msg.OID;
+        }
+
         /// <summary>
         /// Returns the SQL text of the statement.
         /// </summary>

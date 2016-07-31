@@ -1047,14 +1047,68 @@ namespace Npgsql
             using (connector.StartUserAction())
             {
                 Log.Trace("ExecuteNonQuery", connector.Id);
-                NpgsqlDataReader reader;
-                using (reader = Execute())
+
+                // Optimization: unprepared unparameterized non-queries can go through the PostgreSQL
+                // simple protocol which is more efficient
+                if (!IsPrepared && Parameters.Count == 0)
+                    return ExecuteSimple();
+
+                using (var reader = Execute())
                 {
-                    while (reader.NextResult())
+                    while (reader.NextResult()) {}
+                    reader.Close();
+                    return reader.RecordsAffected;
+                }
+            }
+        }
+
+        int ExecuteSimple()
+        {
+            ProcessRawQuery();
+            LogCommand();
+
+            var connector = Connection.Connector;
+
+            // If a cancellation is in progress, wait for it to "complete" before proceeding (#615)
+            lock (connector.CancelLock) { }
+
+            connector.UserTimeout = CommandTimeout * 1000;
+            State = CommandState.InProgress;
+
+            try
+            {
+                var queryMessage = connector.QueryMessage;
+                queryMessage.Populate(CommandText);
+                while (!queryMessage.Write(connector.WriteBuffer))
+                    connector.SendBuffer();
+                connector.SendBuffer();
+
+                var statementIndex = 0;
+                var recordsAffected = 0;
+                while (true)
+                {
+                    var msg = connector.ReadMessage(DataRowLoadingMode.Skip);
+                    switch (msg.Code)
                     {
+                    case BackendMessageCode.CompletedResponse:
+                        var completedMsg = (CommandCompleteMessage)msg;
+                        Statements[statementIndex++].ApplyCommandComplete(completedMsg);
+                        recordsAffected += (int)completedMsg.Rows;
+                        continue;
+                    case BackendMessageCode.EmptyQueryResponse:
+                        statementIndex++;
+                        continue;
+                    case BackendMessageCode.ReadyForQuery:
+                        Debug.Assert(statementIndex == Statements.Count);
+                        return recordsAffected;
+                    default:
+                        continue;
                     }
                 }
-                return reader.RecordsAffected;
+            }
+            finally
+            {
+                State = CommandState.Idle;
             }
         }
 

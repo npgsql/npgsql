@@ -280,9 +280,7 @@ namespace Npgsql
                     break;
                 }
 
-                _statements[_statementIndex].StatementType = completed.StatementType;
-                _statements[_statementIndex].Rows = completed.Rows;
-                _statements[_statementIndex].OID = completed.OID;
+                _statements[_statementIndex].ApplyCommandComplete(completed);
 
                 goto case BackendMessageCode.EmptyQueryResponse;
 
