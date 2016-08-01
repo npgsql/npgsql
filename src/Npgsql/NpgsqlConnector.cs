@@ -214,7 +214,6 @@ namespace Npgsql
         internal object PreparedStatementsLock { get; } = new object();
 
         readonly List<string> _closedStatements = new List<string>();
-        readonly List<string> _prunedStatements = new List<string>();
 
         /// <summary>
         /// If pooled, the timestamp when this connector was returned to the pool.
@@ -1624,32 +1623,16 @@ namespace Npgsql
 
         void PruneIdlePersistentStatements(object state)
         {
-            if (!Monitor.TryEnter(_prunedStatements))
-                return;
-
-            try
+            lock (PreparedStatementsLock)
             {
-                lock (PreparedStatementsLock)
+                while (PersistentPreparedStatements.Count > 0 &&
+                    (DateTime.UtcNow - PersistentPreparedStatements.Last.UsageTimestamp).TotalSeconds > PersistPreparedIdleLifetime)
                 {
-                    while (PersistentPreparedStatements.Count > 0 &&
-                        (DateTime.UtcNow - PersistentPreparedStatements.Last.UsageTimestamp).TotalSeconds > PersistPreparedIdleLifetime)
-                    {
-                        _prunedStatements.Add(PersistentPreparedStatements.Last.Name);
-                        PersistentPreparedStatements.RemoveLast();
-                    }
+                    // Pruned statement is deallocated on next Reset()
+                    PreparedStatements.Add(PersistentPreparedStatements.Last.Name);
 
-                    foreach (string statementName in _prunedStatements)
-                    {
-                        // Pruned statement is deallocated on next Reset()
-                        PreparedStatements.Add(statementName);
-                    }
-
-                    _prunedStatements.Clear();
+                    PersistentPreparedStatements.RemoveLast();
                 }
-            }
-            finally
-            {
-                Monitor.Exit(_prunedStatements);
             }
         }
 
