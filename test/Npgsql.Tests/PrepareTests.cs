@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
+using System.Threading;
 
 namespace Npgsql.Tests
 {
@@ -456,6 +457,93 @@ namespace Npgsql.Tests
                     Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(2));
                 }
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1));
+            }
+        }
+
+        [Test]
+        public void UnprepareIdlePersisted()
+        {
+            var connSettings = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                PersistPreparedIdleLifetime = 1,
+                PersistPreparedPruningInterval = 1
+            };
+
+            NpgsqlConnection conn = null;
+            try
+            {
+                using (conn = OpenConnection(connSettings))
+                {
+                    using (var cmd = new NpgsqlCommand("SELECT 1", conn))
+                    {
+                        cmd.Prepare(true);
+                        Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1));
+                    }
+
+                    Thread.Sleep(2000);
+                }
+
+                using (conn = OpenConnection(connSettings))
+                {
+                    Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(0));
+                }
+            }
+            finally
+            {
+                if (conn != null)
+                    NpgsqlConnection.ClearPool(conn);
+            }
+        }
+
+        [Test]
+        public void UnprepareIdleMixedWithNonIdlePersisted()
+        {
+            var connSettings = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                PersistPreparedIdleLifetime = 1,
+                PersistPreparedPruningInterval = 1
+            };
+
+            NpgsqlConnection conn = null;
+            try
+            {
+                using (conn = OpenConnection(connSettings))
+                {
+                    using (var cmd = new NpgsqlCommand("SELECT 1", conn))
+                    {
+                        cmd.Prepare(true);
+                        Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1));
+                    }
+
+                    DateTime now = DateTime.UtcNow;
+                    bool first = true;
+
+                    while ((DateTime.UtcNow - now).TotalSeconds < 2)
+                    {
+                        Thread.Sleep(100);
+
+                        using (var cmd = new NpgsqlCommand("SELECT 2", conn))
+                        {
+                            cmd.Prepare(true);
+
+                            if (first)
+                            {
+                                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(2));
+                                first = false;
+                            }
+                        }
+                    }
+                }
+
+                using (conn = OpenConnection(connSettings))
+                {
+                    Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1));
+                }
+            }
+            finally
+            {
+                if (conn != null)
+                    NpgsqlConnection.ClearPool(conn);
             }
         }
     }

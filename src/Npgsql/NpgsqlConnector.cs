@@ -197,13 +197,23 @@ namespace Npgsql
         readonly UserAction _userAction;
         readonly Timer _keepAliveTimer;
 
+        readonly TimeSpan _preparedStatementPruningInterval;
+        readonly Timer _preparedStatementPruningTimer;
+
         internal HashSet<string> PreparedStatements { get; } = new HashSet<string>();
 
         /// <summary>
         /// For all persistent prepared statements, maps their SQL to their prepared statement info.
         /// </summary>
-        internal Dictionary<string, PreparedStatementInfo> PersistentPreparedStatements { get; }
-            = new Dictionary<string, PreparedStatementInfo>();
+        internal PreparedStatementCollection PersistentPreparedStatements { get; } = new PreparedStatementCollection();
+
+        /// <summary>
+        /// A lock that's taken while <see cref="PreparedStatements"/> and <see cref="PersistentPreparedStatements"/> 
+        /// collections are accessed
+        /// </summary>
+        internal object PreparedStatementsLock { get; } = new object();
+
+        readonly List<string> _closedStatements = new List<string>();
 
         /// <summary>
         /// If pooled, the timestamp when this connector was returned to the pool.
@@ -280,6 +290,12 @@ namespace Npgsql
                 _keepAliveTimer = new Timer(PerformKeepAlive, null, Timeout.Infinite, Timeout.Infinite);
                 _keepAliveLock = new SemaphoreSlim(1, 1);
             }
+
+            if (IsPersistentStatementPruningEnabled)
+            {
+                _preparedStatementPruningInterval = TimeSpan.FromSeconds(PersistPreparedPruningInterval);
+                _preparedStatementPruningTimer = new Timer(PruneIdlePersistentStatements, null, _preparedStatementPruningInterval, _preparedStatementPruningInterval);
+            }
         }
 
         #endregion
@@ -297,6 +313,9 @@ namespace Npgsql
         int ConnectionTimeout => _settings.Timeout;
         int KeepAlive => _settings.KeepAlive;
         bool IsKeepAliveEnabled => KeepAlive > 0;
+        int PersistPreparedIdleLifetime => _settings.PersistPreparedIdleLifetime;
+        int PersistPreparedPruningInterval => _settings.PersistPreparedPruningInterval;
+        bool IsPersistentStatementPruningEnabled => PersistPreparedIdleLifetime > 0;
         bool IntegratedSecurity => _settings.IntegratedSecurity;
         internal bool ConvertInfinityDateTime => _settings.ConvertInfinityDateTime;
 
@@ -1439,6 +1458,11 @@ namespace Npgsql
                     _keepAliveLock.Release();
                 _keepAliveLock.Dispose();
             }
+
+            if (IsPersistentStatementPruningEnabled)
+            {
+                _preparedStatementPruningTimer.Change(Timeout.Infinite, Timeout.Infinite);
+            }
         }
 
         /// <summary>
@@ -1498,7 +1522,17 @@ namespace Npgsql
 
             if (!_settings.NoResetOnClose)
             {
-                if (PersistentPreparedStatements.Any())
+                bool hasPersistentStatements = false;
+
+                lock (PreparedStatementsLock)
+                {
+                    hasPersistentStatements = PersistentPreparedStatements.Count > 0;
+
+                    if (!hasPersistentStatements)
+                        PreparedStatements.Clear(); // Simple DISCARD ALL is used to free all the statements
+                }
+
+                if (hasPersistentStatements)
                 {
                     // We have persistent prepared statements, so we can't reset the connection state with DISCARD ALL
                     // Note: the send buffer has been cleared above, and we assume all this will fit in it.
@@ -1524,7 +1558,6 @@ namespace Npgsql
                     // There are no persistent prepared statements.
                     // We simply send DISCARD ALL which is more efficient than sending the above messages separately
                     PrependInternalMessage(PregeneratedMessage.DiscardAll);
-                    PreparedStatements.Clear();
                 }
             }
         }
@@ -1541,13 +1574,24 @@ namespace Npgsql
         void ClosePreparedStatements()
         {
             _preparedStatementIndex = 0;
-            if (PreparedStatements.Count == 0)
-                return;
 
-            var flushing = false;
-            foreach (var statement in PreparedStatements)
+            lock (PreparedStatementsLock)
             {
-                CloseMessage.Populate(StatementOrPortal.Statement, statement);
+                if (PreparedStatements.Count == 0)
+                    return;
+
+                foreach (string statementName in PreparedStatements)
+                {
+                    _closedStatements.Add(statementName);
+                }
+
+                PreparedStatements.Clear();
+            }
+
+            bool flushing = false;
+            foreach (string statementName in _closedStatements)
+            {
+                CloseMessage.Populate(StatementOrPortal.Statement, statementName);
                 if (!CloseMessage.Write(WriteBuffer))
                 {
                     WriteBuffer.Flush();
@@ -1557,6 +1601,9 @@ namespace Npgsql
                 }
                 _pendingPrependedResponses += CloseMessage.ResponseMessageCount;
             }
+
+            _closedStatements.Clear();
+
             if (!SyncMessage.Instance.Write(WriteBuffer))
             {
                 WriteBuffer.Flush();
@@ -1572,7 +1619,21 @@ namespace Npgsql
             }
 
             _pendingPrependedResponses += SyncMessage.Instance.ResponseMessageCount;
-            PreparedStatements.Clear();
+        }
+
+        void PruneIdlePersistentStatements(object state)
+        {
+            lock (PreparedStatementsLock)
+            {
+                while (PersistentPreparedStatements.Count > 0 &&
+                    (DateTime.UtcNow - PersistentPreparedStatements.Last.UsageTimestamp).TotalSeconds > PersistPreparedIdleLifetime)
+                {
+                    // Pruned statement is deallocated on next Reset()
+                    PreparedStatements.Add(PersistentPreparedStatements.Last.Name);
+
+                    PersistentPreparedStatements.RemoveLast();
+                }
+            }
         }
 
         #endregion Close
@@ -1876,11 +1937,86 @@ namespace Npgsql
         Skip
     }
 
-    struct PreparedStatementInfo
+    #endregion
+
+    class PreparedStatementInfo
     {
-        internal string Name;
-        internal RowDescriptionMessage Description;
+        internal readonly string Name;
+        internal readonly string SQL;
+        internal readonly RowDescriptionMessage Description;
+        internal DateTime UsageTimestamp = DateTime.UtcNow;
+
+        public PreparedStatementInfo(string statementName, string sql, RowDescriptionMessage rowDescription)
+        {
+            Name = statementName;
+            SQL = sql;
+            Description = rowDescription;
+        }
     }
 
-    #endregion
+    class PreparedStatementCollection
+    {
+        private readonly Dictionary<string, LinkedListNode<PreparedStatementInfo>> _statementDict
+            = new Dictionary<string, LinkedListNode<PreparedStatementInfo>>();
+
+        private readonly LinkedList<PreparedStatementInfo> _statements
+            = new LinkedList<PreparedStatementInfo>();
+
+        internal int Count
+        {
+            get { return _statements.Count; }
+        }
+
+        internal PreparedStatementInfo Last
+        {
+            get { return _statements.Last.Value; }
+        }
+
+        internal void Add(PreparedStatementInfo statementInfo)
+        {
+            var node = new LinkedListNode<PreparedStatementInfo>(statementInfo);
+
+            _statementDict.Add(statementInfo.SQL, node);
+            _statements.AddFirst(node);
+        }
+
+        internal bool TryGet(string statementSQL, out PreparedStatementInfo statementInfo)
+        {
+            LinkedListNode<PreparedStatementInfo> node;
+            if (_statementDict.TryGetValue(statementSQL, out node))
+            {
+                statementInfo = node.Value;
+                statementInfo.UsageTimestamp = DateTime.UtcNow;
+
+                // Move the latest accessed node to the head of the linked list
+                _statements.Remove(node);
+                _statements.AddFirst(node);
+
+                return true;
+            }
+
+            statementInfo = default(PreparedStatementInfo);
+            return false;
+        }
+
+        internal bool Remove(string statementSQL)
+        {
+            LinkedListNode<PreparedStatementInfo> node;
+            if (_statementDict.TryGetValue(statementSQL, out node))
+            {
+                _statements.Remove(node);
+                _statementDict.Remove(statementSQL);
+                return true;
+            }
+
+            return false;
+        }
+
+        internal void RemoveLast()
+        {
+            PreparedStatementInfo statementInfo = _statements.Last.Value;
+            _statements.RemoveLast();
+            _statementDict.Remove(statementInfo.SQL);
+        }
+    }
 }
