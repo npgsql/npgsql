@@ -882,6 +882,46 @@ namespace Npgsql
         bool _persistPrepared;
 
         /// <summary>
+        /// The time to wait before deallocating unused persistent prepared statement.
+        /// Set to 0 (the default) to disable.
+        /// </summary>
+        /// <value>The time (in seconds) to wait. The default value is 0 (disabled).</value>
+        [Category("Advanced")]
+        [Description("The time to wait before deallocating unused persistent prepared statement.")]
+        [DisplayName("Persist Prepared Idle Lifetime")]
+        [NpgsqlConnectionStringProperty]
+        public int PersistPreparedIdleLifetime
+        {
+            get { return _persistPreparedIdleLifetime; }
+            set
+            {
+                _persistPreparedIdleLifetime = value;
+                SetValue(nameof(PersistPreparedIdleLifetime), value);
+            }
+        }
+        int _persistPreparedIdleLifetime;
+
+        /// <summary>
+        /// How many seconds the connection waits before attempting to prune idle persistent prepared statements that are beyond idle lifetime.
+        /// </summary>
+        /// <value>The interval (in seconds). The default value is 10.</value>
+        [Category("Advanced")]
+        [Description("How many seconds the connection waits before attempting to prune idle persistent prepared statements that are beyond idle lifetime.")]
+        [DisplayName("Persist Prepared Pruning Interval")]
+        [NpgsqlConnectionStringProperty]
+        [DefaultValue(10)]
+        public int PersistPreparedPruningInterval
+        {
+            get { return _persistPreparedPruningInterval; }
+            set
+            {
+                _persistPreparedPruningInterval = value;
+                SetValue(nameof(PersistPreparedPruningInterval), value);
+            }
+        }
+        int _persistPreparedPruningInterval;
+
+        /// <summary>
         /// If set to true, a pool connection's state won't be reset when it is closed (improves performance).
         /// Do not specify this unless you know what you're doing.
         /// </summary>

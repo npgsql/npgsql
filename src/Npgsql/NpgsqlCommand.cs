@@ -480,21 +480,24 @@ namespace Npgsql
                 var needToPrepare = false;
                 if (persist)
                 {
-                    foreach (var statement in Statements)
+                    lock (_connector.PreparedStatementsLock)
                     {
-                        PreparedStatementInfo statementInfo;
-                        if (_connector.PersistentPreparedStatements.TryGetValue(statement.SQL, out statementInfo))
+                        foreach (var statement in Statements)
                         {
-                            // Statement has already been prepared, no need to do anything
-                            statement.IsPrepared = true;
-                            statement.PreparedStatementName = statementInfo.Name;
-                            statement.Description = statementInfo.Description;
-                        }
-                        else
-                        {
-                            // Statement hasn't been prepared yet
-                            statement.PreparedStatementName = _connector.NextPersistentPreparedStatementName();
-                            needToPrepare = true;
+                            PreparedStatementInfo statementInfo;
+                            if (_connector.PersistentPreparedStatements.TryGet(statement.SQL, out statementInfo))
+                            {
+                                // Statement has already been prepared, no need to do anything
+                                statement.IsPrepared = true;
+                                statement.PreparedStatementName = statementInfo.Name;
+                                statement.Description = statementInfo.Description;
+                            }
+                            else
+                            {
+                                // Statement hasn't been prepared yet
+                                statement.PreparedStatementName = _connector.NextPersistentPreparedStatementName();
+                                needToPrepare = true;
+                            }
                         }
                     }
                 }
@@ -530,16 +533,22 @@ namespace Npgsql
                             throw _connector.UnexpectedMessageReceived(msg.Code);
                         }
                         statement.IsPrepared = true;
-                        if (persist)
+
+                        lock (_connector.PreparedStatementsLock)
                         {
-                            _connector.PersistentPreparedStatements.Add(statement.SQL, new PreparedStatementInfo
+                            if (persist)
                             {
-                                Name = statement.PreparedStatementName,
-                                Description = statement.Description
-                            });
+                                _connector.PersistentPreparedStatements.Add(new PreparedStatementInfo
+                                (
+                                    statement.PreparedStatementName, 
+                                    statement.SQL, 
+                                    statement.Description
+                                ));
+                            }
+                            else
+                                _connector.PreparedStatements.Add(statement.PreparedStatementName);
                         }
-                        else
-                            _connector.PreparedStatements.Add(statement.PreparedStatementName);
+
                         isFirst = false;
                     }
 
@@ -572,8 +581,12 @@ namespace Npgsql
             }
             else
             {
-                foreach (var statement in Statements)
-                    _connector.PreparedStatements.Remove(statement.PreparedStatementName);
+                lock (_connector.PreparedStatementsLock)
+                {
+                    foreach (var statement in Statements)
+                        _connector.PreparedStatements.Remove(statement.PreparedStatementName);
+                }
+
                 ClosePreparedStatements();
             }
         }
@@ -588,8 +601,13 @@ namespace Npgsql
                 Prepare(true);
 
             _connector = CheckReadyAndGetConnector();
-            foreach (var statement in Statements)
-                _connector.PersistentPreparedStatements.Remove(statement.SQL);
+
+            lock (_connector.PreparedStatementsLock)
+            {
+                foreach (var statement in Statements)
+                    _connector.PersistentPreparedStatements.Remove(statement.SQL);
+            }
+
             ClosePreparedStatements();
         }
 
