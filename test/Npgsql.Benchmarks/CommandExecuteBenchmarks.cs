@@ -13,7 +13,7 @@ using BenchmarkDotNet.Running;
 namespace Npgsql.Benchmarks
 {
     [SuppressMessage("ReSharper", "AssignNullToNotNullAttribute")]
-    [Config(typeof(CommandExecuteBenchmarks.Config))]
+    [Config(typeof(Config))]
     public class CommandExecuteBenchmarks
     {
         readonly NpgsqlCommand _executeNonQueryCmd;

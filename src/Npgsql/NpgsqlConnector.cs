@@ -1498,7 +1498,7 @@ namespace Npgsql
 
             if (!_settings.NoResetOnClose)
             {
-                if (PersistentPreparedStatements.Any())
+                if (PersistentPreparedStatements.Count > 0)
                 {
                     // We have persistent prepared statements, so we can't reset the connection state with DISCARD ALL
                     // Note: the send buffer has been cleared above, and we assume all this will fit in it.

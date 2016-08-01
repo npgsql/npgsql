@@ -4,10 +4,13 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Columns;
+using BenchmarkDotNet.Configs;
+using BenchmarkDotNet.Diagnostics.Windows;
 
 namespace Npgsql.Benchmarks
 {
-    [Config("columns=OperationPerSecond")]
+    [Config(typeof(Config))]
     public class ConnectionOpenCloseBenchmarks
     {
         readonly NpgsqlCommand _noOpenCloseCmd;
@@ -110,6 +113,15 @@ namespace Npgsql.Benchmarks
             for (var i = 0; i < StatementsToSend; i++)
                 _nonPooledCmd.ExecuteNonQuery();
             _nonPooledConnection.Close();
+        }
+
+        class Config : ManualConfig
+        {
+            public Config()
+            {
+                Add(new MemoryDiagnoser());
+                Add(StatisticColumn.OperationsPerSecond);
+            }
         }
     }
 }
