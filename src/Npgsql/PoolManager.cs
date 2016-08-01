@@ -279,7 +279,7 @@ namespace Npgsql
         {
             Debug.Assert(Monitor.IsEntered(this));
 
-            if (Idle.Count <= Min)
+            if (Idle.Count + Busy <= Min)
             {
                 if (_pruningTimer != null)
                 {
@@ -293,7 +293,7 @@ namespace Npgsql
 
         internal void PruneIdleConnectors(object state)
         {
-            if (Idle.Count <= Min)
+            if (Idle.Count + Busy <= Min)
                 return;
 
             if (!Monitor.TryEnter(_prunedConnectors))
@@ -304,12 +304,20 @@ namespace Npgsql
                 var idleLifetime = ConnectionString.ConnectionIdleLifetime;
                 lock (this)
                 {
-                    while (Idle.Count > Min &&
-                            (DateTime.UtcNow - Idle.Last.Value.ReleaseTimestamp).TotalSeconds >= idleLifetime)
+                    var totalConnections = Idle.Count + Busy;
+                    int i;
+                    for (i = 0; i < Idle.Count; i++)
                     {
-                        _prunedConnectors.Add(Idle.Last.Value);
-                        Idle.RemoveLast();
+                        var connector = Idle[i];
+                        if (totalConnections - i <= Min || (DateTime.UtcNow - connector.ReleaseTimestamp).TotalSeconds < idleLifetime)
+                            break;
+                        _prunedConnectors.Add(connector);
                     }
+
+                    if (i == 0)   // nothing to prune
+                        return;
+
+                    Idle.RemoveRange(0, i);
                     EnsurePruningTimerState();
                 }
 
@@ -375,19 +383,19 @@ namespace Npgsql
         public override string ToString() => $"[{Busy} busy, {Idle.Count} idle, {Waiting.Count} waiting]";
     }
 
-    class IdleConnectorList : LinkedList<NpgsqlConnector>
+    class IdleConnectorList : List<NpgsqlConnector>
     {
         internal void Push(NpgsqlConnector connector)
         {
             connector.ReleaseTimestamp = DateTime.UtcNow;
-            AddFirst(connector);
+            Add(connector);
         }
 
         internal NpgsqlConnector Pop()
         {
-            var connector = First.Value;
+            var connector = this[Count - 1];
             connector.ReleaseTimestamp = DateTime.UtcNow;
-            RemoveFirst();
+            RemoveAt(Count - 1);
             return connector;
         }
     }

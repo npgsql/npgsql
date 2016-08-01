@@ -241,19 +241,31 @@ namespace Npgsql.Tests
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 ApplicationName = nameof(PruneIdleConnectors),
-                ConnectionIdleLifetime = 1,
+                MinPoolSize = 2,
+                ConnectionIdleLifetime = 2,
                 ConnectionPruningInterval = 1
             };
             using (var conn1 = OpenConnection(connString))
             using (var conn2 = OpenConnection(connString))
+            using (var conn3 = OpenConnection(connString))
+            {
                 connString = conn1.Settings; // Shouldn't be necessary
 
-            // We now have 2 connections in the pool, MinPoolSize is 1
-            Thread.Sleep(500);
-            Assert.That(PoolManager.Pools[connString].Idle, Has.Count.EqualTo(2));
+                conn1.Close();
+                conn2.Close();
+                Assert.That(PoolManager.Pools[connString].Idle, Has.Count.EqualTo(2));
+                Assert.That(PoolManager.Pools[connString].Busy, Is.EqualTo(1));
 
-            Thread.Sleep(1500);
-            Assert.That(PoolManager.Pools[connString].Idle, Has.Count.EqualTo(1));
+                Thread.Sleep(1500);
+                // Pruning attempted, but ConnectionIdleLifetime not yet reached
+                Assert.That(PoolManager.Pools[connString].Idle, Has.Count.EqualTo(2));
+                Assert.That(PoolManager.Pools[connString].Busy, Is.EqualTo(1));
+
+                Thread.Sleep(1500);
+                // ConnectionIdleLifetime reached, but only one idle connection should be pruned (MinPoolSize=2)
+                Assert.That(PoolManager.Pools[connString].Idle, Has.Count.EqualTo(1));
+                Assert.That(PoolManager.Pools[connString].Busy, Is.EqualTo(1));
+            }
         }
 
         [Test]
