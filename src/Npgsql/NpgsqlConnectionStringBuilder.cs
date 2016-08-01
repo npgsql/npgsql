@@ -620,7 +620,7 @@ namespace Npgsql
         [Description("The minimum connection pool size.")]
         [DisplayName("Minimum Pool Size")]
         [NpgsqlConnectionStringProperty]
-        [DefaultValue(1)]
+        [DefaultValue(0)]
         public int MinPoolSize
         {
             get { return _minPoolSize; }
