@@ -501,6 +501,28 @@ namespace Npgsql
                 ReallyClose();
         }
 
+        /// <summary>
+        /// When a connection is enlisted in a distributed transaction, we defer the actual closing until the scope ends.
+        /// </summary>
+        internal void DistributedTransactionPreparePhaseEnded()
+        {
+            if (_postponingDispose)
+                Dispose(true);
+            else if (_postponingClose)
+                ReallyClose();
+        }
+
+        /// <summary>
+        /// When a connection is enlisted in a distributed transaction, but the transaction isn't yet prepared but aborted we could close the connection.
+        /// </summary>
+        internal void DistributedTransactionAbortedBeforeBeeingPrepared()
+        {
+            if (_postponingDispose)
+                Dispose(true);
+            else if (_postponingClose)
+                ReallyClose();
+        }
+
 #if NET45 || NET451
         /// <summary>
         /// Enlist transation.

@@ -19,3 +19,6 @@ artifacts/
 *.lock.json
 .build
 TestResult.xml
+/src/Npgsql/NpgsqlResourceManager.cs.bak
+/src/Npgsql/NpgsqlPromotableSinglePhaseNotification.cs.bak
+/src/Npgsql/NpgsqlConnection.cs.bak

@@ -22,6 +22,7 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
+using Npgsql.Logging;
 using System;
 using System.Collections.Generic;
 using System.Transactions;
@@ -85,8 +86,13 @@ namespace Npgsql
 
         private class DurableResourceManager : ISinglePhaseNotification
         {
+            private CommittableTransaction _tx;
+            private NpgsqlResourceManager _rm;
+
             private readonly INpgsqlTransactionCallbacks _callbacks;
             private string _txName;
+
+            private static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
             public DurableResourceManager(NpgsqlResourceManager rm, INpgsqlTransactionCallbacks callbacks)
                 : this(rm, callbacks, null)
@@ -96,6 +102,8 @@ namespace Npgsql
             public DurableResourceManager(NpgsqlResourceManager rm, INpgsqlTransactionCallbacks callbacks,
                                           CommittableTransaction tx)
             {
+                _rm = rm;
+                _tx = tx;
                 _callbacks = callbacks;
             }
 
@@ -130,17 +138,39 @@ namespace Npgsql
 
             public void Prepare(PreparingEnlistment preparingEnlistment)
             {
-                _callbacks.PrepareTransaction();
-                // TODO: record prepared
-                preparingEnlistment.Prepared();
+                // PrepareTransaction may fail !
+                if (_callbacks.PrepareTransaction())
+                    preparingEnlistment.Prepared();
+                else
+                {
+                    preparingEnlistment.ForceRollback();
+                    // We should rollback manually
+                    // http://blog.jordanterrell.com/post/IEnlistmentNotification-Implementation-Nuances.aspx
+                    _callbacks.RollbackTransaction();
+                }
             }
 
             public void Rollback(Enlistment enlistment)
             {
-                _callbacks.RollbackTransaction();
-                // TODO: remove record of prepared
-                enlistment.Done();
-                _callbacks.Dispose();
+                // Everyting involving _callbacks may fail if the object was created more than 6 minutes ago.
+                // http://stackoverflow.com/questions/2410221/appdomain-and-marshalbyrefobject-life-time-how-to-avoid-remotingexception
+                // We could'nt tell that the object lifetime is infinite, this would be a huge memory leak because we create many objects
+
+                try
+                {
+                    _callbacks.RollbackTransaction();
+                    _callbacks.Dispose();
+                }
+                catch (System.Runtime.Remoting.RemotingException re)
+                {
+                    if (_tx != null && _tx.TransactionInformation != null && _tx.TransactionInformation.DistributedIdentifier != null)
+                        Log.Error($" The object underlying the transaction with DistributedId [{_tx.TransactionInformation.DistributedIdentifier}] has timed out.");
+                    Log.Error($"Your lease has expired and your connection to that remote object is lost. The client that enlisted in the transaction is faulty.", re);
+                }
+                finally
+                {
+                    enlistment.Done();
+                }
             }
 
 #endregion
@@ -156,7 +186,14 @@ namespace Npgsql
 
 #endregion
 
-            private static readonly Guid rmGuid = new Guid("9e1b6d2d-8cdb-40ce-ac37-edfe5f880716");
+            // A Durable resource manager should be identitifed with a same GUID across its entire lifetime
+            // Npgsql is actually not a durable ressource manager as :
+            // - This is a library that could be hosted in multiple process and/or appdomain. If it was a windows service this would be OK.
+            // - It does not persist anything to recover a crash or restart
+            // From now on a new guid is generated every time a Resource Manager is created.
+            private static readonly Guid rmGuid =
+                Guid.NewGuid();
+            // new Guid("9e1b6d2d-8cdb-40ce-ac37-edfe5f880716");
 
             public Transaction Enlist(byte[] token)
             {

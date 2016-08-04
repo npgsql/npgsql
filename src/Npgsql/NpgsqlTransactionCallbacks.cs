@@ -27,13 +27,15 @@ using System.Data;
 using System.Reflection;
 using Npgsql.Logging;
 using Npgsql.FrontendMessages;
+using System.IO;
 
 namespace Npgsql
 {
     internal interface INpgsqlTransactionCallbacks : IDisposable
     {
         string GetName();
-        void PrepareTransaction();
+        // Prepare Transaction may fail !
+        bool PrepareTransaction();
         void CommitTransaction();
         void RollbackTransaction();
     }
@@ -54,30 +56,48 @@ namespace Npgsql
             _connection.Disposed += new EventHandler(_connection_Disposed);
         }
 
+
+        public NpgsqlTransactionCallbacks(NpgsqlConnection connection, System.Transactions.Transaction tx)
+        {
+            _connection = connection;
+            _connectionString = _connection.ConnectionString;
+            _connection.Disposed += new EventHandler(_connection_Disposed);
+
+            // Use the transaction distributed identifier to ease log analysis.
+            if (tx.TransactionInformation.DistributedIdentifier.CompareTo(Guid.Empty) != 0)
+            {
+                // the distributed identifier is postfixed with the process id to support several prepared transaction for a single .NET transaction
+                _txName = String.Concat(tx.TransactionInformation.DistributedIdentifier.ToString(), @":", connection.ProcessID);
+            }
+        }
         private void _connection_Disposed(object sender, EventArgs e)
         {
             // TODO: what happens if this is called from another thread?
             // connections should not be shared across threads while in a transaction
             _connection.Disposed -= new EventHandler(_connection_Disposed);
-            _connection = null;
+            // There is no need to set the _connection reference to null here.
+            // It will be replaced by the conection that will be used to commit or rollback the prepared transaction. 
+            //_connection = null;
         }
 
         private NpgsqlConnection GetConnection()
         {
-            if (_connection == null || (_connection.FullState & ConnectionState.Open) != ConnectionState.Open)
+            // if the connection is already prepared, just grap a new one and return.
+            if (_prepared)
             {
                 _connection = new NpgsqlConnection(_connectionString);
                 _connection.Open();
                 _closeConnectionRequired = true;
                 return _connection;
             }
+            // if not, return the existing connection which should'nt be null and must be valid !
             else
             {
                 return _connection;
             }
         }
 
-#region INpgsqlTransactionCallbacks Members
+        #region INpgsqlTransactionCallbacks Members
 
         public string GetName()
         {
@@ -89,25 +109,54 @@ namespace Npgsql
             Log.Debug("Commit transaction");
             var connection = GetConnection();
 
-            if (_prepared)
+            try
             {
-                connection.Connector.ExecuteInternalCommand($"COMMIT PREPARED '{_txName}'");
+                if (_prepared)
+                {
+                    connection.Connector.ExecuteInternalCommand($"COMMIT PREPARED '{_txName}'");
+                }
+                else
+                {
+                    connection.Connector.ExecuteInternalCommand(PregeneratedMessage.CommitTransaction);
+                }
             }
-            else
+            catch (NpgsqlException backendFault)
             {
-                connection.Connector.ExecuteInternalCommand(PregeneratedMessage.CommitTransaction);
+                Log.Error(@"A NpgsqlException was caught. Details will follow.");
+                Log.Error(String.Format(@" ErrorCode is [{0}]", backendFault.ErrorCode));
+                Log.Error(String.Format(@" Message is [{0}]", backendFault.Message));
             }
         }
 
-        public void PrepareTransaction()
+        public bool PrepareTransaction()
         {
             if (!_prepared)
             {
                 Log.Debug("Prepare transaction");
                 NpgsqlConnection connection = GetConnection();
-                connection.Connector.ExecuteInternalCommand($"PREPARE TRANSACTION '{_txName}'");
-                _prepared = true;
+
+
+                try
+                {
+                    connection.Connector.ExecuteInternalCommand($"PREPARE TRANSACTION '{_txName}'");
+                    _prepared = true;
+                    // In case of error Rollback will be done in the lower level.
+                    connection.DistributedTransactionPreparePhaseEnded();
+                }
+                // If a NotSupportedException is thrown, then there may be one connection used by multiple threads
+                // and this is unsupported ! Check the consumer log to confirm.
+                catch (System.NotSupportedException nse)
+                {
+                    Log.Error(@"A System.NotSupportedException was caught. Details will follow.", nse);
+                }
+                catch (NpgsqlException backendFault)
+                {
+                    Log.Error(@"A NpgsqlException was caught. Details will follow.");
+                    Log.Error(String.Format(@" ErrorCode is [{0}]", backendFault.ErrorCode));
+                    Log.Error(String.Format(@" Message is [{0}]", backendFault.Message));
+                }
             }
+            return _prepared;
         }
 
         public void RollbackTransaction()
@@ -115,15 +164,87 @@ namespace Npgsql
             Log.Debug("Rollback transaction");
             NpgsqlConnection connection = GetConnection();
 
+            // If the transaction is aborted because of a timeout, the connection may still be busy (ConnectionState.Fetching)
+            // Therefore, we could not send a ROLLBACK, this will throw in InvalidOperationException (see below).
+            // The fix is to cancel the current request if the connection is busy.
+            // Failing to do so will leak the connection.
+
+            bool couldExecuteCommand = true;
+            string commandText = null;
+
             if (_prepared)
-                connection.Connector.ExecuteInternalCommand($"ROLLBACK PREPARED '{_txName}'");
+            {
+                commandText = $"ROLLBACK PREPARED '{_txName}'";
+            }
             else
-                connection.Connector.ExecuteInternalCommand(PregeneratedMessage.RollbackTransaction);
+            {
+                if (connection.Connector.State.HasFlag(ConnectionState.Executing) || connection.Connector.State.HasFlag(ConnectionState.Fetching))
+                {
+                    bool success = false;
+                    try
+                    {
+                        connection.Connector.CancelRequest();
+                        success = true;
+                    }
+                    catch (IOException)
+                    {
+                        NpgsqlConnection.ClearPool(connection);
+                    }
+                    catch (NpgsqlException)
+                    {
+                        // Cancel documentation says the Cancel doesn't throw on failure
+                    }
+                    if (success)
+                    {
+                        couldExecuteCommand = false;
+                    }
+                    else
+                        Log.Error("Failed to cancel the current request. The connection will leak.");
+                }
+                else
+                    commandText = PregeneratedMessage.RollbackTransaction.ToString();
+            }
+
+            if (couldExecuteCommand)
+            {
+                try
+                {
+                    connection.Connector.ExecuteInternalCommand(commandText);
+                }
+                // Due to threading issues, the connection could be already disposed by the caller
+                catch (System.ObjectDisposedException ode)
+                {
+                    Log.Error("A System.ObjectDisposedException was caught", ode);
+                }
+                catch (System.InvalidOperationException ioe)
+                {
+                    Log.Error(@"A System.InvalidOperationException was caught", ioe);
+                }
+                // If a NotSupportedException is thrown, then there may be one connection used by multiple threads
+                // and this is unsupported ! Check the consumer log to confirm.
+                catch (System.NotSupportedException nse)
+                {
+                    Log.Error("A System.NotSupportedException was caught", nse);
+                }
+                catch (NpgsqlException backendFault)
+                {
+                    Log.Error("A NpgsqlException was caught.");
+                    Log.Error($" ErrorCode is [{backendFault.ErrorCode}]");
+                    Log.Error($" Message is [{backendFault.Message}]");
+                }
+            }
+
+            // If we're enlisted in a distributed transaction but not prepared already, we should close it anyway !
+            // Otherwise it will leak !!!
+            if (!_prepared && !_closeConnectionRequired)
+            {
+                connection.DistributedTransactionAbortedBeforeBeeingPrepared();
+            }
         }
 
-#endregion
+        #endregion
 
-#region IDisposable Members
+        #region IDisposable Members
 
         public void Dispose()
         {
@@ -134,7 +255,7 @@ namespace Npgsql
             _closeConnectionRequired = false;
         }
 
-#endregion
+        #endregion
     }
 }
 #endif

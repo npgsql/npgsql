@@ -136,33 +136,43 @@ namespace Npgsql
             _inTransaction = false;
         }
 
-        public void SinglePhaseCommit(SinglePhaseEnlistment singlePhaseEnlistment)
-        {
-            Log.Debug("Single Phase Commit");
-            if (_npgsqlTx != null)
-            {
-                _npgsqlTx.Commit();
-                _npgsqlTx.Dispose();
-                _npgsqlTx = null;
-                singlePhaseEnlistment.Committed();
-                _connection.PromotableLocalTransactionEnded();
-            }
-            else if (_callbacks != null)
-            {
-                if (_rm != null)
-                {
-                    _rm.CommitWork(_callbacks.GetName());
-                    singlePhaseEnlistment.Committed();
-                }
-                else
-                {
-                    _callbacks.CommitTransaction();
-                    singlePhaseEnlistment.Committed();
-                }
-                _callbacks = null;
-            }
-            _inTransaction = false;
-        }
+
+		public void SinglePhaseCommit(SinglePhaseEnlistment singlePhaseEnlistment)
+		{
+			Log.Debug("Single Phase Commit");
+			if (_npgsqlTx != null)
+			{
+
+				// This could fail with a Serialization Exception !
+				// And the connection is leaked !
+				try
+				{
+					_npgsqlTx.Commit();
+					singlePhaseEnlistment.Committed();
+				}
+				finally
+				{
+					_npgsqlTx.Dispose();
+					_npgsqlTx = null;
+					_connection.PromotableLocalTransactionEnded();
+				}
+			}
+			else if (_callbacks != null)
+			{
+				if (_rm != null)
+				{
+					_rm.CommitWork(_callbacks.GetName());
+					singlePhaseEnlistment.Committed();
+				}
+				else
+				{
+					_callbacks.CommitTransaction();
+					singlePhaseEnlistment.Committed();
+				}
+				_callbacks = null;
+			}
+			_inTransaction = false;
+		}
 
 #endregion
 
@@ -193,22 +203,27 @@ namespace Npgsql
 
 #endregion
 
+		// Multiple threads may want to create the resource manager
+		private static readonly object lockme = new object();
         private static INpgsqlResourceManager _resourceManager;
         private static System.Runtime.Remoting.Lifetime.ClientSponsor _sponser;
 
         private static INpgsqlResourceManager CreateResourceManager()
         {
             // TODO: create network proxy for resource manager
-            if (_resourceManager == null)
-            {
-                _sponser = new System.Runtime.Remoting.Lifetime.ClientSponsor();
-                AppDomain rmDomain = AppDomain.CreateDomain("NpgsqlResourceManager", AppDomain.CurrentDomain.Evidence, AppDomain.CurrentDomain.SetupInformation);
-                _resourceManager =
-                    (INpgsqlResourceManager)
-                    rmDomain.CreateInstanceAndUnwrap(typeof (NpgsqlResourceManager).Assembly.FullName,
-                                                     typeof (NpgsqlResourceManager).FullName);
-                _sponser.Register((MarshalByRefObject)_resourceManager);
-            }
+			lock (lockme)
+			{
+	            if (_resourceManager == null)
+	            {
+	                _sponser = new System.Runtime.Remoting.Lifetime.ClientSponsor();
+	                AppDomain rmDomain = AppDomain.CreateDomain("NpgsqlResourceManager", AppDomain.CurrentDomain.Evidence, AppDomain.CurrentDomain.SetupInformation);
+	                _resourceManager =
+	                    (INpgsqlResourceManager)
+	                    rmDomain.CreateInstanceAndUnwrap(typeof (NpgsqlResourceManager).Assembly.FullName,
+	                                                     typeof (NpgsqlResourceManager).FullName);
+	                _sponser.Register((MarshalByRefObject)_resourceManager);
+	            }
+			}
             return _resourceManager;
             //return new NpgsqlResourceManager();
         }
