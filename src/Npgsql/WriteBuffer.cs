@@ -300,6 +300,23 @@ namespace Npgsql
             WritePosition += bytesUsed;
         }
 
+#if !NETSTANDARD1_3
+        internal unsafe void WriteStringChunked(string s, int charIndex, int charCount,
+                                                bool flush, out int charsUsed, out bool completed)
+        {
+            int bytesUsed;
+
+            fixed (char* sPtr = s)
+            fixed (byte* bufPtr = _buf)
+            {
+                _textEncoder.Convert(sPtr + charIndex, charCount, bufPtr + WritePosition, WriteSpaceLeft,
+                                     flush, out charsUsed, out bytesUsed, out completed);
+            }
+
+            WritePosition += bytesUsed;
+        }
+#endif
+
         #endregion
 
         #region Misc

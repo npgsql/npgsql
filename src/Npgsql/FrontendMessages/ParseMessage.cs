@@ -24,8 +24,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
 
 namespace Npgsql.FrontendMessages
 {
@@ -46,7 +44,9 @@ namespace Npgsql.FrontendMessages
 
         byte[] _statementNameBytes;
         int _queryLen;
+#if NETSTANDARD1_3
         char[] _queryChars;
+#endif
         int _charPos;
         int _parameterTypePos;
 
@@ -115,16 +115,23 @@ namespace Npgsql.FrontendMessages
                     return false;
                 }
 
-                _queryChars = Query.ToCharArray();
                 _charPos = 0;
+#if NETSTANDARD1_3
+                _queryChars = Query.ToCharArray();
+#endif
                 goto case State.WritingQuery;
 
             case State.WritingQuery:
                 _state = State.WritingQuery;
                 int charsUsed;
                 bool completed;
-                buf.WriteStringChunked(_queryChars, _charPos, _queryChars.Length - _charPos, true,
+#if NETSTANDARD1_3
+                buf.WriteStringChunked(_queryChars, _charPos, Query.Length - _charPos, true,
                                         out charsUsed, out completed);
+#else
+                buf.WriteStringChunked(Query, _charPos, Query.Length - _charPos, true,
+                                        out charsUsed, out completed);
+#endif
                 if (!completed)
                 {
                     _charPos += charsUsed;

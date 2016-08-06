@@ -203,25 +203,20 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter = null)
+        public override unsafe int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter = null)
         {
-            if (lengthCache == null) {
+            if (lengthCache == null)
                 lengthCache = new LengthCache(1);
-            }
-            if (lengthCache.IsPopulated) {
+            if (lengthCache.IsPopulated)
                 return lengthCache.Get();
-            }
-
-            //return lengthCache.Set(DoValidateAndGetLength(value, parameter));
 
             var asString = value as string;
             if (asString != null)
             {
-                return lengthCache.Set(
-                    parameter == null || parameter.Size <= 0 || parameter.Size >= asString.Length
-                  ? PGUtil.UTF8Encoding.GetByteCount(asString)
-                  : PGUtil.UTF8Encoding.GetByteCount(asString.ToCharArray(), 0, parameter.Size)
-                );
+                if (parameter == null || parameter.Size <= 0 || parameter.Size >= asString.Length)
+                    return lengthCache.Set(PGUtil.UTF8Encoding.GetByteCount(asString));
+                fixed (char* p = asString)
+                    return lengthCache.Set(PGUtil.UTF8Encoding.GetByteCount(p, parameter.Size));
             }
 
             var asCharArray = value as char[];
@@ -243,27 +238,23 @@ namespace Npgsql.TypeHandlers
             // Fallback - try to convert the value to string
             var converted = Convert.ToString(value);
             if (parameter == null)
-            {
                 throw CreateConversionButNoParamException(value.GetType());
-            }
             parameter.ConvertedValue = converted;
 
-            return lengthCache.Set(
-                parameter.Size <= 0 || parameter.Size >= converted.Length
-                ? PGUtil.UTF8Encoding.GetByteCount(converted)
-                : PGUtil.UTF8Encoding.GetByteCount(converted.ToCharArray(), 0, parameter.Size)
-            );
+            if (parameter.Size <= 0 || parameter.Size >= converted.Length)
+                return lengthCache.Set(PGUtil.UTF8Encoding.GetByteCount(converted));
+            fixed (char* p = converted)
+                return lengthCache.Set(PGUtil.UTF8Encoding.GetByteCount(p, parameter.Size));
         }
 
         public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             _writeBuf = buf;
-            _charPos = -1;
+            _charPos = 0;
             _byteLen = lengthCache.GetLast();
 
-            if (parameter?.ConvertedValue != null) {
+            if (parameter?.ConvertedValue != null)
                 value = parameter.ConvertedValue;
-            }
 
             _str = value as string;
             if (_str != null)
@@ -291,79 +282,75 @@ namespace Npgsql.TypeHandlers
             _charLen = parameter == null || parameter.Size <= 0 || parameter.Size >= _str.Length ? _str.Length : parameter.Size;
         }
 
+#if NETSTANDARD1_3
         public override bool Write(ref DirectBuffer directBuf)
         {
-            if (_charPos == -1)
+            // Unfortunately netstandard13 is missing the pointer overload of Encoder.Convert,
+            // see https://github.com/dotnet/corefx/issues/9583. We need to jump through some hoops
+            // and possibly be inefficient.
+            if (_str != null)
             {
-                if (_byteLen <= _writeBuf.WriteSpaceLeft)
+                // If the string fits in the buffer we write it unchunked.
+                if (_byteLen <= _writeBuf.UsableSize)
                 {
-                    // Can simply write the string to the buffer
-                    if (_str != null)
-                    {
-                        _writeBuf.WriteString(_str, _charLen);
-                        _str = null;
-                    }
-                    else
-                    {
-                        Debug.Assert(_chars != null);
-                        _writeBuf.WriteChars(_chars, _charLen);
-                        _str = null;
-                    }
+                    if (_byteLen > _writeBuf.WriteSpaceLeft)
+                        return false;
+                    _writeBuf.WriteString(_str, _charLen);
+                    _str = null;
                     _writeBuf = null;
                     return true;
                 }
-
-                if (_byteLen <= _writeBuf.UsableSize)
-                {
-                    // Buffer is currently too full, but the string can fit. Force a write to fill.
-                    return false;
-                }
-
-                // Bad case: the string doesn't fit in our buffer.
-                _charPos = 0;
-
-                // For strings, chunked/incremental conversion isn't supported
-                // (see https://visualstudio.uservoice.com/forums/121579-visual-studio/suggestions/6584398-add-system-text-encoder-convert-method-string-in)
-                // So for now allocate a temporary byte buffer to hold the entire string and write it directly.
-                if (_str != null)
-                {
-                    directBuf.Buffer = new byte[_byteLen];
-                    _writeBuf.TextEncoding.GetBytes(_str, 0, _charLen, directBuf.Buffer, 0);
-                    return false;
-                }
-                Debug.Assert(_chars != null);
-
-                // For char arrays, fall through to chunked writing below
-            }
-
-            if (_str != null)
-            {
-                // We did a direct buffer write above, and must now clean up
+                // String does not fit in buffer, convert to char[] (inefficient path)
+                _chars = _str.ToCharArray();
                 _str = null;
-                _writeBuf = null;
-                return true;
             }
+
+            Debug.Assert(_chars != null);
+            Debug.Assert(_str == null);
 
             int charsUsed;
             bool completed;
-            _writeBuf.WriteStringChunked(_chars, _charPos, _chars.Length - _charPos, false, out charsUsed, out completed);
-            if (completed)
-            {
-                // Flush encoder
-                _writeBuf.WriteStringChunked(_chars, _charPos, _chars.Length - _charPos, true, out charsUsed, out completed);
-                _chars = null;
-                _writeBuf = null;
-                return true;
-            }
+            _writeBuf.WriteStringChunked(_chars, _charPos, _charLen - _charPos, true, out charsUsed, out completed);
+
             _charPos += charsUsed;
-            return false;
+            if (!completed)
+                return false;
+
+            _str = null;
+            _chars = null;
+            _writeBuf = null;
+
+            return true;
         }
+#else
+        public override bool Write(ref DirectBuffer directBuf)
+        {
+            int charsUsed;
+            bool completed;
+            if (_str != null)
+            {
+                _writeBuf.WriteStringChunked(_str, _charPos, _charLen - _charPos, true, out charsUsed, out completed);
+            }
+            else
+            {
+                Debug.Assert(_chars != null);
+                _writeBuf.WriteStringChunked(_chars, _charPos, _charLen - _charPos, true, out charsUsed, out completed);
+            }
+
+            _charPos += charsUsed;
+            if (!completed)
+                return false;
+
+            _str = null;
+            _chars = null;
+            _writeBuf = null;
+
+            return true;
+        }
+#endif
 
         #endregion
 
-        public TextReader GetTextReader(Stream stream)
-        {
-            return new StreamReader(stream);
-        }
+        public TextReader GetTextReader(Stream stream) => new StreamReader(stream);
     }
 }

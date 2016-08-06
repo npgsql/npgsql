@@ -266,7 +266,7 @@ namespace Npgsql.Tests.Types
             using (var conn = OpenConnection())
             using (var cmd = new NpgsqlCommand("SELECT @p::TEXT", conn))
             {
-                var p = new NpgsqlParameter("p", data) {Size = 4};
+                var p = new NpgsqlParameter("p", data) { Size = 4 };
                 cmd.Parameters.Add(p);
                 Assert.That(cmd.ExecuteScalar(), Is.EqualTo(data.Substring(0, 4)));
 

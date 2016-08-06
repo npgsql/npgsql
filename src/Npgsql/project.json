@@ -34,6 +34,7 @@
     "warningsAsErrors": true,
     "debugType": "portable",
     "keyFile": "../../Npgsql.snk",
+    "allowUnsafe": true,
     "compile": {
       "include": "../Shared/*.cs"
     },

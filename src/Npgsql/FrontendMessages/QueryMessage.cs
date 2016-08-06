@@ -35,8 +35,11 @@ namespace Npgsql.FrontendMessages
     class QueryMessage : FrontendMessage
     {
         string _query;
-        char[] _queryChars;
         int _charPos;
+        State _state;
+#if NETSTANDARD1_3
+        char[] _queryChars;
+#endif
 
         internal const byte Code = (byte)'Q';
 
@@ -45,45 +48,69 @@ namespace Npgsql.FrontendMessages
             Debug.Assert(query != null);
 
             _query = query;
+            _state = State.Start;
             _charPos = -1;
             return this;
         }
 
         internal override bool Write(WriteBuffer buf)
         {
-            if (_charPos == -1)
+            switch (_state)
             {
-                // Start new query
+            case State.Start:
                 if (buf.WriteSpaceLeft < 1 + 4)
                     return false;
                 _charPos = 0;
                 var queryByteLen = PGUtil.UTF8Encoding.GetByteCount(_query);
+#if NETSTANDARD1_3
                 _queryChars = _query.ToCharArray();
+#endif
                 buf.WriteByte(Code);
                 buf.WriteInt32(4 +            // Message length (including self excluding code)
                                queryByteLen + // Query byte length
                                1);            // Null terminator
-            }
+                _state = State.Writing;
+                goto case State.Writing;
 
-            if (_charPos < _queryChars.Length)
-            {
+            case State.Writing:
                 int charsUsed;
                 bool completed;
-                buf.WriteStringChunked(_queryChars, _charPos, _queryChars.Length - _charPos, true,
+#if NETSTANDARD1_3
+                buf.WriteStringChunked(_queryChars, _charPos, _query.Length - _charPos, true,
                                        out charsUsed, out completed);
+#else
+                buf.WriteStringChunked(_query, _charPos, _query.Length - _charPos, true, out charsUsed, out completed);
+#endif
                 _charPos += charsUsed;
                 if (!completed)
                     return false;
+                _state = State.NullTerminator;
+                goto case State.NullTerminator;
+
+            case State.NullTerminator:
+                if (buf.WriteSpaceLeft < 1)
+                    return false;
+                buf.WriteByte(0);
+
+                _query = null;
+#if NETSTANDARD1_3
+                _queryChars = null;
+#endif
+                _charPos = -1;
+                return true;
+
+            default:
+                throw new ArgumentOutOfRangeException();
             }
-
-            if (buf.WriteSpaceLeft < 1)
-                return false;
-            buf.WriteByte(0);
-
-            _charPos = -1;
-            return true;
         }
 
-        public override string ToString() =>  $"[Query={_query}]";
+        public override string ToString() => $"[Query={_query}]";
+
+        enum State
+        {
+            Start,
+            Writing,
+            NullTerminator
+        }
     }
 }
