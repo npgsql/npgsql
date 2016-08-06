@@ -634,6 +634,7 @@ namespace Npgsql
                             return true;
                         case BackendMessageCode.CompletedResponse:
                         case BackendMessageCode.EmptyQueryResponse:
+                        case BackendMessageCode.ReadyForQuery:
                             _pendingMessage = msg;
                             _hasRows = false;
                             return false;
