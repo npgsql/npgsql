@@ -703,6 +703,7 @@ namespace Npgsql.Tests
         [Test]
         [IssueLink("https://github.com/npgsql/npgsql/issues/742")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/800")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/1234")]
         public void HasRows([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
         {
             using (var conn = OpenConnection())
@@ -721,6 +722,17 @@ namespace Npgsql.Tests
                     dr.NextResult();
                     Assert.That(dr.HasRows, Is.False);
                 }
+
+                command.CommandText = "SELECT * FROM data";
+                if (prepare == PrepareOrNot.Prepared)
+                    command.Prepare();
+                using (var dr = command.ExecuteReader())
+                {
+                    dr.Read();
+                    Assert.That(dr.HasRows, Is.False);
+                }
+
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
             }
         }
 
