@@ -906,7 +906,7 @@ namespace Npgsql
 
                 ReadBuffer.Ensure(5);
                 var messageCode = (BackendMessageCode)ReadBuffer.ReadByte();
-                Contract.Assume(Enum.IsDefined(typeof(BackendMessageCode), messageCode), "Unknown message code: " + messageCode);
+                PGUtil.ValidateBackendMessageCode(messageCode);
                 var len = ReadBuffer.ReadInt32() - 4;  // Transmitted length includes itself
 
                 if ((messageCode == BackendMessageCode.DataRow && dataRowLoadingMode != DataRowLoadingMode.NonSequential) ||
@@ -985,7 +985,7 @@ namespace Npgsql
                         ProcessNewTransactionStatus(rfq.TransactionStatusIndicator);
                     }
                     return rfq;
-            case BackendMessageCode.EmptyQueryResponse:
+                case BackendMessageCode.EmptyQueryResponse:
                     return EmptyQueryMessage.Instance;
                 case BackendMessageCode.ParseComplete:
                     return ParseCompleteMessage.Instance;
@@ -1474,8 +1474,22 @@ namespace Npgsql
             _pendingRfqPrependedMessages = 0;
 
             // Must rollback transaction before sending DISCARD ALL
-            if (InTransaction)
+            switch (TransactionStatus)
+            {
+            case TransactionStatus.Idle:
+                break;
+            case TransactionStatus.Pending:
+                // BeginTransaction() was called, but was left in the write buffer and not yet sent to server.
+                // Just clear the transaction state.
+                ClearTransaction();
+                break;
+            case TransactionStatus.InTransactionBlock:
+            case TransactionStatus.InFailedTransactionBlock:
                 Rollback();
+                break;
+            default:
+                throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {TransactionStatus} of enum {nameof(TransactionStatus)}. Please file a bug.");
+            }
 
             if (SupportsDiscard)
                 PrependInternalMessage(PregeneratedMessage.DiscardAll);

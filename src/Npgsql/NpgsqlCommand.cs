@@ -442,13 +442,13 @@ namespace Npgsql
             if (Parameters.Any(p => !p.IsTypeExplicitlySet))
                 throw new InvalidOperationException("The Prepare method requires all parameters to have an explicitly set type.");
 
+            DeallocatePrepared();
+            ProcessRawQuery();
+
             Log.Debug("Preparing: " + CommandText, _connector.Id);
 
             using (_connector.StartUserAction())
             {
-                DeallocatePrepared();
-                ProcessRawQuery();
-
                 _sendState = SendState.Start;
                 _writeStatementIndex = 0;
                 Send(PopulatePrepare);
@@ -566,10 +566,8 @@ namespace Npgsql
 
         #region Execute
 
-        void Validate()
+        void ValidateParameters()
         {
-            if (Parameters.Count > 65535)
-                throw new Exception("A command cannot have more than 65535 parameters");
             foreach (NpgsqlParameter p in Parameters.Where(p => p.IsInputDirection))
             {
                 p.Bind(Connection.Connector.TypeHandlerRegistry);
@@ -581,9 +579,11 @@ namespace Npgsql
         [RewriteAsync]
         NpgsqlDataReader Execute(CommandBehavior behavior = CommandBehavior.Default)
         {
-            Validate();
+            ValidateParameters();
             if (!IsPrepared)
                 ProcessRawQuery();
+            if (Statements.Any(s => s.InputParameters.Count > 65535))
+                throw new Exception("A statement cannot have more than 65535 parameters");
             LogCommand();
 
             State = CommandState.InProgress;
