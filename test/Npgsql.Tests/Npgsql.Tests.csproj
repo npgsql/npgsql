@@ -51,6 +51,7 @@
   <ItemGroup>
     <Compile Include="BugTests.cs" />
     <Compile Include="CommandBuilderTests.cs" />
+    <Compile Include="PerformanceCounterTests.cs" />
     <Compile Include="PrepareTests.cs" />
     <Compile Include="PgPassEntryTests.cs" />
     <Compile Include="PgPassFileTests.cs" />
@@ -106,6 +107,9 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <None Include="App.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Include="project.json" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.Targets" />

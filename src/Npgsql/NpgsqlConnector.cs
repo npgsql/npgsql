@@ -397,6 +397,7 @@ namespace Npgsql
 
                 HandleAuthentication(username, timeout);
                 TypeHandlerRegistry.Setup(this, timeout);
+                Counters.HardConnectsPerSecond.Increment();
                 Log.Debug($"Opened connection to {Host}:{Port}", Id);
             }
             catch
@@ -1349,6 +1350,7 @@ namespace Npgsql
             }
 
             State = ConnectorState.Closed;
+            Counters.HardDisconnectsPerSecond.Increment();
             Cleanup();
         }
 

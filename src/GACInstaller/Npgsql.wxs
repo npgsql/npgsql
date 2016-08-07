@@ -21,11 +21,21 @@
 
     <MediaTemplate EmbedCab="yes" />
 
-    <Feature Id="Npgsql" 
-             Title="Npgsql" 
-             Level="1" 
-             Description="Installs Npgsql into the GAC and adds it to your machine.config."
-             Absent="disallow"
+    <Feature Id="NpgsqlPerformanceCounters"
+             Title="Npgsql Performance Counters"
+             Level="1"
+             Description="Sets up the Npgsql performance counters, allowing you to track connections in applications."
+             Absent="allow"
+             AllowAdvertise="no"
+             Display="expand" >
+      <ComponentRef Id="PerformanceCounters" />
+    </Feature>
+
+    <Feature Id="Npgsql"
+             Title="Npgsql GAC Installation"
+             Level="32767"
+             Description="Installs Npgsql into the GAC and adds it to your machine.config. This is not the recommended way to use Npgsql (use nuget instead)."
+             Absent="allow"
              AllowAdvertise="no"
              Display="expand" >
       <ComponentRef Id="Npgsql" />
@@ -38,12 +48,58 @@
 
     <WixVariable Id="WixUILicenseRtf" Value="License.rtf" />
 
-    <!-- ICE Reference
+    <Directory Id="TARGETDIR" Name="SourceDir" />
+
+    <DirectoryRef Id="TARGETDIR">
+      <Component Id="PerformanceCounters" Guid="6091f777-8198-4872-88fe-bb3add625b09">
+        <util:PerformanceCategory Id="NpgsqlPerformanceCountersCategory"
+                                  Name=".NET Data Provider for PostgreSQL (Npgsql)"
+                                  MultiInstance="yes"
+                                  Help="Counters for Npgsql">
+
+          <util:PerformanceCounter Name="HardConnectsPerSecond"
+                                   Type="rateOfCountsPerSecond32"
+                                   Help="The number of connections per second that are being made to a database server." />
+          <util:PerformanceCounter Name="HardDisconnectsPerSecond"
+                                   Type="rateOfCountsPerSecond32"
+                                   Help="The number of disconnects per second that are being made to a database server." />
+          <util:PerformanceCounter Name="NumberOfActiveConnectionPools"
+                                   Type="numberOfItems32"
+                                   Help="The total number of connection pools." />
+          <util:PerformanceCounter Name="NumberOfActiveConnections"
+                                   Type="numberOfItems32"
+                                   Help="The number of (pooled) active connections that are currently in use." />
+          <util:PerformanceCounter Name="NumberOfFreeConnections"
+                                   Type="numberOfItems32"
+                                   Help="The number of connections available for use in the connection pools." />
+          <util:PerformanceCounter Name="NumberOfNonPooledConnections"
+                                   Type="numberOfItems32"
+                                   Help="The number of active connections that are not pooled." />
+          <util:PerformanceCounter Name="NumberOfPooledConnections"
+                                   Type="numberOfItems32"
+                                   Help="The number of active connections that are being managed by the connection pooling infrastructure." />
+          <util:PerformanceCounter Name="SoftConnectsPerSecond"
+                                   Type="rateOfCountsPerSecond32"
+                                   Help="The number of active connections being pulled from the connection pool. Not enabled by default." />
+          <util:PerformanceCounter Name="SoftDisconnectsPerSecond"
+                                   Type="rateOfCountsPerSecond32"
+                                   Help="The number of active connections that are being returned to the connection pool. Not enabled by default." />
+        </util:PerformanceCategory>
+
+        <!-- Required for .NET performance counters, see https://sourceforge.net/p/wix/mailman/message/24010508/ -->
+        <RegistryKey Root="HKLM" Key="SYSTEM\CurrentControlSet\services\.NET Data Provider for PostgreSQL (Npgsql)\Performance">
+          <RegistryValue Name="CategoryOptions" Type="integer" Value="3" />
+        </RegistryKey>
+      </Component>
+    </DirectoryRef>
+
+
+        <!-- ICE Reference
           http://technet.microsoft.com/ja-jp/events/aa369206 
           -->
     <!-- http://blogs.msdn.com/b/heaths/archive/2006/09/20/installing-assemblies-for-runtime-and-design_2d00_time-use.aspx -->
     <!-- http://stackoverflow.com/questions/17090689/wix-deploy-two-assemblies-to-gac -->
-    <Directory Id="TARGETDIR" Name="SourceDir">
+    <DirectoryRef Id="TARGETDIR">
       <Directory Id="Npgsql" Name="GAC">
         <Component Id="Npgsql" Guid="f842fa5e-5623-41aa-80aa-6d2e5bf97435">
           <File Id="Npgsql"
@@ -119,6 +175,6 @@
           </Directory>
         </Directory>
       </Directory>
-    </Directory>
+    </DirectoryRef>
   </Product>
 </Wix>

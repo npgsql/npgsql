@@ -71,6 +71,8 @@ namespace Npgsql
 
     sealed partial class ConnectorPool : IDisposable
     {
+        #region Fields
+
         internal NpgsqlConnectionStringBuilder ConnectionString;
 
         /// <summary>
@@ -97,6 +99,8 @@ namespace Npgsql
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
+        #endregion
+
         internal ConnectorPool(NpgsqlConnectionStringBuilder csb)
         {
             _max = csb.MaxPoolSize;
@@ -107,6 +111,19 @@ namespace Npgsql
             _prunedConnectors = new List<NpgsqlConnector>();
             Idle = new IdleConnectorList();
             Waiting = new Queue<TaskCompletionSource<NpgsqlConnector>>();
+            Counters.NumberOfActiveConnectionPools.Increment();
+        }
+
+        void IncrementBusy()
+        {
+            Busy++;
+            Counters.NumberOfActiveConnections.Increment();
+        }
+
+        void DecrementBusy()
+        {
+            Busy--;
+            Counters.NumberOfActiveConnections.Decrement();
         }
 
         [RewriteAsync]
@@ -122,7 +139,7 @@ namespace Npgsql
                 if (connector.IsBroken)
                     continue;
                 connector.Connection = conn;
-                Busy++;
+                IncrementBusy();
                 EnsurePruningTimerState();
                 Monitor.Exit(this);
                 return connector;
@@ -158,20 +175,21 @@ namespace Npgsql
             }
 
             // No idle connectors are available, and we're under the pool's maximum capacity.
-            Busy++;
+            IncrementBusy();
             Monitor.Exit(this);
 
             try
             {
                 connector = new NpgsqlConnector(conn) { ClearCounter = _clearCounter };
                 connector.Open(timeout);
+                Counters.NumberOfPooledConnections.Increment();
                 EnsureMinPoolSize(conn);
                 return connector;
             }
             catch
             {
                 lock (this)
-                    Busy--;
+                    DecrementBusy();
                 throw;
             }
         }
@@ -192,14 +210,16 @@ namespace Npgsql
                 }
 
                 lock (this)
-                    Busy--;
+                    DecrementBusy();
+                Counters.NumberOfPooledConnections.Decrement();
                 return;
             }
 
             if (connector.IsBroken)
             {
                 lock (this)
-                    Busy--;
+                    DecrementBusy();
+                Counters.NumberOfPooledConnections.Decrement();
                 return;
             }
 
@@ -222,7 +242,7 @@ namespace Npgsql
                 }
 
                 Idle.Push(connector);
-                Busy--;
+                DecrementBusy();
                 EnsurePruningTimerState();
                 Debug.Assert(Idle.Count <= _max);
             }
@@ -258,6 +278,7 @@ namespace Npgsql
                     };
                     connector.Open();
                     connector.Reset();
+                    Counters.NumberOfPooledConnections.Increment();
                     lock (this)
                     {
                         Idle.Push(connector);
@@ -323,6 +344,8 @@ namespace Npgsql
 
                 foreach (var connector in _prunedConnectors)
                 {
+                    Counters.NumberOfPooledConnections.Decrement();
+                    Counters.NumberOfFreeConnections.Decrement();
                     try { connector.Close(); }
                     catch (Exception e)
                     {
@@ -350,6 +373,8 @@ namespace Npgsql
 
             foreach (var connector in idleConnectors)
             {
+                Counters.NumberOfPooledConnections.Decrement();
+                Counters.NumberOfFreeConnections.Decrement();
                 try { connector.Close(); }
                 catch (Exception e)
                 {
@@ -389,6 +414,7 @@ namespace Npgsql
         {
             connector.ReleaseTimestamp = DateTime.UtcNow;
             Add(connector);
+            Counters.NumberOfFreeConnections.Increment();
         }
 
         internal NpgsqlConnector Pop()
@@ -396,6 +422,7 @@ namespace Npgsql
             var connector = this[Count - 1];
             connector.ReleaseTimestamp = DateTime.UtcNow;
             RemoveAt(Count - 1);
+            Counters.NumberOfFreeConnections.Decrement();
             return connector;
         }
     }

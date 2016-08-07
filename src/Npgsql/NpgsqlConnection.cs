@@ -220,6 +220,7 @@ namespace Npgsql
                 if (Settings.Pooling)
                 {
                     Connector = PoolManager.GetOrAdd(Settings).Allocate(this, timeout);
+                    Counters.SoftConnectsPerSecond.Increment();
 
                     // Since this pooled connector was opened, global enum/composite mappings may have
                     // changed. Bring this up to date if needed.
@@ -229,6 +230,7 @@ namespace Npgsql
                 {
                     Connector = new NpgsqlConnector(this);
                     Connector.Open(timeout);
+                    Counters.NumberOfNonPooledConnections.Increment();
                 }
 
                 Connector.Notice += _noticeDelegate;
@@ -608,9 +610,11 @@ namespace Npgsql
             if (Settings.Pooling)
             {
                 PoolManager.GetOrAdd(Settings).Release(Connector);
+                Counters.SoftDisconnectsPerSecond.Increment();
             }
             else
             {
+                Counters.NumberOfNonPooledConnections.Decrement();
                 Connector.Close();
             }
 
