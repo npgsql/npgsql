@@ -17,6 +17,7 @@ namespace NpgsqlTypes
     /// </summary>
     enum WkbIdentifier : uint
     {
+        Raw = 0,
         Point = 1,
         LineString = 2,
         Polygon = 3,
@@ -89,19 +90,128 @@ namespace NpgsqlTypes
         protected abstract int GetLenHelper();
         internal abstract WkbIdentifier Identifier { get;}
 
-        internal int GetLen()
+        internal virtual ByteOrder ByteOrder => ByteOrder.MSB;
+
+        public virtual uint WkbType => (uint)Identifier;
+
+        internal int GetLen(bool asSubGeometry)
         {
             // header =
             //      1 byte for the endianness of the structure
             //    + 4 bytes for the type identifier
             //   (+ 4 bytes for the SRID if present)
-            return 5 + (SRID == 0 ? 0 : 4) + GetLenHelper();
+            return 5 + (asSubGeometry || SRID == 0 ? 0 : 4) + GetLenHelper();
         }
 
         /// <summary>
         /// The Spatial Reference System Identifier of the geometry (0 if unspecified).
         /// </summary>
         public uint SRID { get; set; }
+    }
+
+    /// <summary>
+    /// Represents an unparsed geometry.
+    /// </summary>
+    public class PostgisRawGeometry : PostgisGeometry, IEquatable<PostgisRawGeometry>
+    {
+        internal override WkbIdentifier Identifier => WkbIdentifier.Raw;
+        internal override ByteOrder ByteOrder => (ByteOrder)_wkb[0];
+
+        public override uint WkbType
+        {
+            get
+            {
+                return ByteOrder == ByteOrder.LSB
+                    ? (uint)(_wkb[1] | _wkb[2] << 8 | _wkb[3] << 16 | _wkb[4] << 24)
+                    : (uint)(_wkb[4] | _wkb[3] << 8 | _wkb[2] << 16 | _wkb[1] << 24);
+            }
+        }
+
+        readonly byte[] _wkb;
+
+        public byte[] Wkb
+        {
+            get
+            {
+                return _wkb;
+            }
+        }
+
+        protected override int GetLenHelper()
+        {
+            return _wkb.Length - 5;
+        }
+
+        public PostgisRawGeometry(uint srid, byte[] wkb)
+        {
+            if (wkb == null)
+            {
+                throw new ArgumentNullException(nameof(wkb));
+            }
+            SRID = srid;
+            _wkb = wkb;
+        }
+
+        public bool Equals([CanBeNull] PostgisRawGeometry other)
+        {
+            if (other == null)
+            {
+                return false;
+            }
+
+            if (ReferenceEquals(this, other))
+            {
+                return true;
+            }
+
+            if (SRID != other.SRID || _wkb.Length != other._wkb.Length)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < _wkb.Length; i++)
+            {
+                if (_wkb[i] != other._wkb[i])
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        public override bool Equals([CanBeNull] object obj)
+        {
+            return Equals(obj as PostgisRawGeometry);
+        }
+
+        public static bool operator ==([CanBeNull] PostgisRawGeometry x, [CanBeNull] PostgisRawGeometry y)
+        {
+            if (ReferenceEquals(x, null))
+                return ReferenceEquals(y, null);
+            return x.Equals(y);
+        }
+
+        public static bool operator !=(PostgisRawGeometry x, PostgisRawGeometry y)
+        {
+            return !(x == y);
+        }
+
+        public override int GetHashCode()
+        {
+            var ret = 266370105;//seed with something other than zero to make paths of all zeros hash differently.
+            ret ^= _wkb.Length.GetHashCode();
+            for (var i = 0; i < _wkb.Length; i++)
+            {
+                ret ^= _wkb[i] << (i % 24);
+            }
+            return ret;
+        }
+
+        public override string ToString()
+        {
+            return string.Format("Geom(SRID[{0}],WKB[{1}])", SRID, _wkb.Length);
+        }
     }
 
     /// <summary>
@@ -341,7 +451,7 @@ namespace NpgsqlTypes
         {
             var n = 4;
             for (var i = 0; i < _lineStrings.Length; i++)
-                n += _lineStrings[i].GetLen();
+                n += _lineStrings[i].GetLen(true);
             return n;
         }
 
@@ -456,7 +566,7 @@ namespace NpgsqlTypes
         {
             var n = 4;
             for (var i = 0; i < _polygons.Length; i++)
-                n += _polygons[i].GetLen();
+                n += _polygons[i].GetLen(true);
             return n;
         }
 
@@ -519,10 +629,11 @@ namespace NpgsqlTypes
         {
             var n = 4;
             for (var i = 0; i < _geometries.Length; i++)
-                n += _geometries[i].GetLen();
+                n += _geometries[i].GetLen(true);
             return n;
         }
 
         public int GeometryCount => _geometries.Length;
     }
+    #pragma warning restore 1591
 }

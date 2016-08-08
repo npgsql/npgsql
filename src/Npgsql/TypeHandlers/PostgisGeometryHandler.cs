@@ -9,11 +9,23 @@ using NpgsqlTypes;
 namespace Npgsql.TypeHandlers
 {
     /// <summary>
+    /// Global PostgisConfig.
+    /// </summary>
+    public static class PostgisConfig
+    {
+        /// <summary>
+        /// Whether PostGIS geometries should be parsed.
+        /// </summary>
+        public static bool TryToParseGeometries = true;
+    }
+
+    /// <summary>
     /// Type Handler for the postgis geometry type.
     /// </summary>
     [TypeMapping("geometry", NpgsqlDbType.Geometry, new[]
     {
         typeof(PostgisGeometry),
+        typeof(PostgisRawGeometry),
         typeof(PostgisPoint),
         typeof(PostgisMultiPoint),
         typeof(PostgisLineString),
@@ -34,6 +46,9 @@ namespace Npgsql.TypeHandlers
         ReadBuffer _readBuf;
         WriteBuffer _writeBuf;
         ByteOrder _bo;
+        bool _tryToParseGeometry;
+        bool _isSubGeometry;
+        int _wkbPos;
         Coordinate2D[] _points;
         Coordinate2D[][] _rings;
         Coordinate2D[][][] _pols;
@@ -66,6 +81,9 @@ namespace Npgsql.TypeHandlers
         public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             Reset();
+            _tryToParseGeometry = PostgisConfig.TryToParseGeometries;
+            _isSubGeometry = false;
+            _wkbPos = 0;
             _readBuf = buf;
             _len = len;
             _srid = default(uint?);
@@ -107,6 +125,7 @@ namespace Npgsql.TypeHandlers
                     if (_readBuf.ReadBytesLeft < 4)
                         return false;
                     _srid = _readBuf.ReadUInt32(_bo);
+                    _id &= ~(uint)EwkbModifiers.HasSRID;
                 }
                 else
                 {
@@ -116,7 +135,45 @@ namespace Npgsql.TypeHandlers
 
             Debug.Assert(_srid.HasValue);
 
-            switch ((WkbIdentifier)(_id & 7))
+            if (!_isSubGeometry && (!_tryToParseGeometry || _id > 7))
+            {
+                if (_bytes == null)
+                {
+                    _bytes = new byte[_srid.Value != 0 ? _len - 4 : _len];
+                    _bytes[0] = (byte)_bo;
+
+                    if (_bo == ByteOrder.LSB)
+                    {
+                        _bytes[1] = (byte)_id;
+                        _bytes[2] = (byte)(_id >> 8);
+                        _bytes[3] = (byte)(_id >> 16);
+                        _bytes[4] = (byte)(_id >> 24);
+                    }
+                    else
+                    {
+                        _bytes[1] = (byte)(_id >> 24);
+                        _bytes[2] = (byte)(_id >> 16);
+                        _bytes[3] = (byte)(_id >> 8);
+                        _bytes[4] = (byte)_id;
+                    }
+                    _wkbPos = 5;
+                }
+
+                var toRead = Math.Min(_bytes.Length - _wkbPos, _readBuf.ReadBytesLeft);
+                _readBuf.ReadBytes(_bytes, _wkbPos, toRead);
+                _wkbPos += toRead;
+                if (_wkbPos == _bytes.Length)
+                {
+                    result = new PostgisRawGeometry(_srid.Value, _bytes);
+                    _bytes = null;
+                    _readBuf = null;
+                    return true;
+                }
+
+                return false;
+            }
+
+            switch ((WkbIdentifier)_id)
             {
                 case WkbIdentifier.Point:
                     if (_readBuf.ReadBytesLeft < 16)
@@ -278,6 +335,7 @@ namespace Npgsql.TypeHandlers
                             return false;
                         _geoms.Push(new PostgisGeometry[_readBuf.ReadInt32(_bo)]);
                         _icol.Push(0);
+                        _isSubGeometry = true;
                     }
                     _id = 0;
                     var g = _geoms.Peek();
@@ -329,7 +387,7 @@ namespace Npgsql.TypeHandlers
         {
             var asGeometry = value as PostgisGeometry;
             if (asGeometry != null)
-                return asGeometry.GetLen();
+                return asGeometry.GetLen(false);
 
             var asBytes = value as byte[];
             if (asBytes != null)
@@ -343,6 +401,8 @@ namespace Npgsql.TypeHandlers
             Reset();
             _writeBuf = buf;
             _icol.Clear();
+            _wkbPos = 0;
+            _isSubGeometry = false;
 
             _toWrite = value as PostgisGeometry;
             if (_toWrite != null)
@@ -364,29 +424,46 @@ namespace Npgsql.TypeHandlers
             throw new InvalidCastException("IGeometry type expected.");
         }
 
+        static uint AdjustByteOrder(uint x, bool swap)
+        {
+            return swap ? ((x & 0x000000FF) << 24) | ((x & 0x0000FF00) << 8) | ((x & 0x00FF0000) >> 8) | ((x & 0xFF000000) >> 24) : x;
+        }
+
         bool Write(PostgisGeometry geom)
         {
             if (_newGeom)
             {
-                if (geom.SRID == 0)
+                if (_isSubGeometry || geom.SRID == 0)
                 {
                     if (_writeBuf.WriteSpaceLeft < 5)
                         return false;
-                    _writeBuf.WriteByte(0); // We choose to ouput only XDR structure
-                    _writeBuf.WriteInt32((int)geom.Identifier);
+
+                    ByteOrder byteOrder = geom.ByteOrder;
+                    _writeBuf.WriteByte((byte)byteOrder);
+                    _writeBuf.WriteUInt32(AdjustByteOrder(geom.WkbType, byteOrder == ByteOrder.LSB));
                 }
                 else
                 {
                     if (_writeBuf.WriteSpaceLeft < 9)
                         return false;
-                    _writeBuf.WriteByte(0);
-                    _writeBuf.WriteInt32((int) ((uint)geom.Identifier | (uint)EwkbModifiers.HasSRID));
-                    _writeBuf.WriteInt32((int) geom.SRID);
+
+                    ByteOrder byteOrder = geom.ByteOrder;
+                    _writeBuf.WriteByte((byte)byteOrder);
+                    _writeBuf.WriteUInt32(AdjustByteOrder(geom.WkbType | (uint)EwkbModifiers.HasSRID, byteOrder == ByteOrder.LSB));
+                    _writeBuf.WriteUInt32(AdjustByteOrder(geom.SRID, byteOrder == ByteOrder.LSB));
                 }
                 _newGeom = false;
+                _wkbPos = 5;
             }
             switch (geom.Identifier)
             {
+                case WkbIdentifier.Raw:
+                    var raw = (PostgisRawGeometry)geom;
+                    var bytesToWrite = Math.Min(raw.Wkb.Length - _wkbPos, _writeBuf.WriteSpaceLeft);
+                    _writeBuf.WriteBytes(raw.Wkb, _wkbPos, bytesToWrite);
+                    _wkbPos += bytesToWrite;
+                    return _wkbPos == raw.Wkb.Length;
+
                 case WkbIdentifier.Point:
                     if (_writeBuf.WriteSpaceLeft < 16)
                         return false;
@@ -545,6 +622,7 @@ namespace Npgsql.TypeHandlers
                         _writeBuf.WriteInt32(coll.GeometryCount);
                         _icol.Push(0);
                         _newGeom = true;
+                        _isSubGeometry = true;
                     }
                     for (var i = _icol.Peek(); i < coll.GeometryCount; i++)
                     {
