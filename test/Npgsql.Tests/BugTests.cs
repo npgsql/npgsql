@@ -33,5 +33,19 @@ namespace Npgsql.Tests
                 );
             }
         }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1238")]
+        public void RecordWithNonIntField()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT ('one', 2)", conn))
+            using (var reader = cmd.ExecuteReader())
+            {
+                reader.Read();
+                var record = reader.GetFieldValue<object[]>(0);
+                Assert.That(record[0], Is.EqualTo("one"));
+                Assert.That(record[1], Is.EqualTo(2));
+            }
+        }
     }
 }
