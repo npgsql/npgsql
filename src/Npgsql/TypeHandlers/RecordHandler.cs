@@ -83,7 +83,7 @@ namespace Npgsql.TypeHandlers
                 if (_fieldLen == -1)
                 {
                     if (_readBuf.ReadBytesLeft < 8) { return false; }
-                    var typeOID = _readBuf.ReadInt32();
+                    var typeOID = _readBuf.ReadUInt32();
                     _fieldLen = _readBuf.ReadInt32();
                     if (_fieldLen == -1)  // Null field, simply skip it and leave at default
                         continue;
