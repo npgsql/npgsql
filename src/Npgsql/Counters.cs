@@ -47,21 +47,24 @@ namespace Npgsql
 
         static Counters()
         {
+#if NET45 || NET451
             var enabled = PerformanceCounterCategory.Exists(Counter.DiagnosticsCounterCategory);
+            var perfCtrSwitch = new TraceSwitch("ConnectionPoolPerformanceCounterDetail", "level of detail to track with connection pool performance counters");
+            var expensiveEnabled = enabled && perfCtrSwitch.Level == TraceLevel.Verbose;
+#else
+            var enabled = false;
+            var expensiveEnabled = false;
+#endif
 
             HardConnectsPerSecond         = new Counter(enabled, nameof(HardConnectsPerSecond));
             HardDisconnectsPerSecond      = new Counter(enabled, nameof(HardDisconnectsPerSecond));
             NumberOfActiveConnectionPools = new Counter(enabled, nameof(NumberOfActiveConnectionPools));
             NumberOfNonPooledConnections  = new Counter(enabled, nameof(NumberOfNonPooledConnections));
             NumberOfPooledConnections     = new Counter(enabled, nameof(NumberOfPooledConnections));
-
-            var perfCtrSwitch = new TraceSwitch("ConnectionPoolPerformanceCounterDetail", "level of detail to track with connection pool performance counters");
-            enabled = enabled && perfCtrSwitch.Level == TraceLevel.Verbose;
-
-            SoftConnectsPerSecond     = new Counter(enabled, nameof(SoftConnectsPerSecond));
-            SoftDisconnectsPerSecond  = new Counter(enabled, nameof(SoftDisconnectsPerSecond));
-            NumberOfActiveConnections = new Counter(enabled, nameof(NumberOfActiveConnections));
-            NumberOfFreeConnections   = new Counter(enabled, nameof(NumberOfFreeConnections));
+            SoftConnectsPerSecond         = new Counter(expensiveEnabled, nameof(SoftConnectsPerSecond));
+            SoftDisconnectsPerSecond      = new Counter(expensiveEnabled, nameof(SoftDisconnectsPerSecond));
+            NumberOfActiveConnections     = new Counter(expensiveEnabled, nameof(NumberOfActiveConnections));
+            NumberOfFreeConnections       = new Counter(expensiveEnabled, nameof(NumberOfFreeConnections));
         }
     }
 
@@ -125,6 +128,7 @@ namespace Npgsql
 #endif
         }
 
+#if NET45 || NET451
         void OnProcessExit(object sender, EventArgs e) => Dispose();
         void OnDomainUnload(object sender, EventArgs e) => Dispose();
         void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)
@@ -133,7 +137,6 @@ namespace Npgsql
                 Dispose();
         }
 
-#if NET45 || NET451
         const int CounterInstanceNameMaxLength = 127;
 
         static readonly string InstanceName = GetInstanceName();
