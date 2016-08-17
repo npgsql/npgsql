@@ -90,7 +90,7 @@ namespace Npgsql.Tests
                 Assert.That(conn.IsSecure, Is.False);
         }
 
-        [Test]
+        [Test, LinuxIgnore("No integrated security on Linux (yet)")]
         public void IntegratedSecurityWithUsername()
         {
             var username = Environment.GetEnvironmentVariable("USERNAME") ??
@@ -119,7 +119,7 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test]
+        [Test, LinuxIgnore("No integrated security on Linux (yet)")]
         public void IntegratedSecurityWithoutUsername()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
