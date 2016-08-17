@@ -50,7 +50,7 @@ namespace Npgsql.Tests
                 Assert.Ignore(message);
         }
 
-        public  static void IgnoreExceptOnBuildServer(string message, params object[] args)
+        public static void IgnoreExceptOnBuildServer(string message, params object[] args)
             => IgnoreExceptOnBuildServer(string.Format(message, args));
 
         public static void MinimumPgVersion(NpgsqlConnection conn, string minVersion, string ignoreText=null)
@@ -133,6 +133,32 @@ namespace Npgsql.Tests
             if (Type.GetType("Mono.Runtime") != null)
             {
                 var msg = "Ignored on mono";
+                if (_ignoreText != null)
+                    msg += ": " + _ignoreText;
+                Assert.Ignore(msg);
+            }
+        }
+
+        public void AfterTest([NotNull] ITest test) { }
+        public ActionTargets Targets => ActionTargets.Test;
+    }
+
+    /// <summary>
+    /// Causes the test to be ignored on mono
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class | AttributeTargets.Assembly, AllowMultiple = false)]
+    public class LinuxIgnore : Attribute, ITestAction
+    {
+        readonly string _ignoreText;
+
+        public LinuxIgnore(string ignoreText = null) { _ignoreText = ignoreText; }
+
+        public void BeforeTest([NotNull] ITest test)
+        {
+            var osEnvVar = Environment.GetEnvironmentVariable("OS");
+            if (osEnvVar == null || osEnvVar != "Windows_NT")
+            {
+                var msg = "Ignored on Linux";
                 if (_ignoreText != null)
                     msg += ": " + _ignoreText;
                 Assert.Ignore(msg);
