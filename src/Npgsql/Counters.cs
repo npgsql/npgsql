@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using JetBrains.Annotations;
+using Npgsql.Logging;
 
 namespace Npgsql
 {
@@ -45,15 +46,24 @@ namespace Npgsql
         /// </summary>
         internal static readonly Counter SoftDisconnectsPerSecond;
 
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+
         static Counters()
         {
-#if NET45 || NET451
-            var enabled = PerformanceCounterCategory.Exists(Counter.DiagnosticsCounterCategory);
-            var perfCtrSwitch = new TraceSwitch("ConnectionPoolPerformanceCounterDetail", "level of detail to track with connection pool performance counters");
-            var expensiveEnabled = enabled && perfCtrSwitch.Level == TraceLevel.Verbose;
-#else
             var enabled = false;
             var expensiveEnabled = false;
+#if NET45 || NET451
+            try
+            {
+                enabled = PerformanceCounterCategory.Exists(Counter.DiagnosticsCounterCategory);
+                var perfCtrSwitch = new TraceSwitch("ConnectionPoolPerformanceCounterDetail",
+                    "level of detail to track with connection pool performance counters");
+                expensiveEnabled = enabled && perfCtrSwitch.Level == TraceLevel.Verbose;
+            }
+            catch (Exception e)
+            {
+                Log.Debug("Exception while checking for performance country category (counters will be disabled)", e);
+            }
 #endif
 
             HardConnectsPerSecond         = new Counter(enabled, nameof(HardConnectsPerSecond));
