@@ -22,6 +22,7 @@
 #endregion
 
 #if NET451
+using System;
 using System.Diagnostics;
 using System.Threading;
 using NUnit.Framework;
@@ -136,8 +137,14 @@ namespace Npgsql.Tests
         [OneTimeSetUp]
         public void OneTimeSetup()
         {
-            if (!PerformanceCounterCategory.Exists(Counter.DiagnosticsCounterCategory))
-                Assert.Fail("The Npgsql performance counters haven't been created");
+            bool countersExist = false;
+            try
+            {
+                countersExist = PerformanceCounterCategory.Exists(Counter.DiagnosticsCounterCategory);
+            }
+            catch (UnauthorizedAccessException) {}
+
+            Assert.That(countersExist, "The Npgsql performance counters haven't been created");
 
             var perfCtrSwitch = new TraceSwitch("ConnectionPoolPerformanceCounterDetail", "level of detail to track with connection pool performance counters");
             var verboseCounters = perfCtrSwitch.Level == TraceLevel.Verbose;
