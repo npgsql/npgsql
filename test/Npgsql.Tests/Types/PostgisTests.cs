@@ -268,9 +268,6 @@ namespace Npgsql.Tests.Types
         [OneTimeSetUp]
         public void SetUp()
         {
-            if (Environment.GetEnvironmentVariable("NO_POSTGIS_TESTS") != null)
-                Assert.Ignore("Skipping PostGIS tests because the NO_POSTGIS_TESTS environment variable is present");
-
             using (var conn = OpenConnection())
             using (var cmd = conn.CreateCommand())
             {
