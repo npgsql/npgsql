@@ -23,6 +23,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using NpgsqlTypes;
 using NUnit.Framework;
 
@@ -269,16 +270,20 @@ namespace Npgsql.Tests.Types
         public void SetUp()
         {
             using (var conn = OpenConnection())
-            using (var cmd = conn.CreateCommand())
+            using (var cmd = new NpgsqlCommand("SELECT postgis_version()", conn))
             {
-                cmd.CommandText = "SELECT postgis_version();";
                 try
                 {
                     cmd.ExecuteNonQuery();
                 }
                 catch (PostgresException)
                 {
-                    TestUtil.IgnoreExceptOnBuildServer("Skipping tests : postgis extension not found.");
+                    cmd.CommandText = "SELECT version()";
+                    var version = (string)cmd.ExecuteScalar();
+                    Debug.Assert(version != null);
+                    if (version.Contains("beta"))
+                        Assert.Ignore($"PostGIS not installed, ignoring because we're on a beta version of PostgreSQL ({version})");
+                    TestUtil.IgnoreExceptOnBuildServer("PostGIS extension not installed.");
                 }
             }
         }
