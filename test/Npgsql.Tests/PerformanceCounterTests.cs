@@ -30,9 +30,10 @@ using NUnit.Framework;
 namespace Npgsql.Tests
 {
     [Parallelizable(ParallelScope.None)]
+    [Explicit]
     public class PerformanceCounterTests : TestBase
     {
-        [Test, Explicit("Too timing-sensitive for our crappy build server")]
+        [Test]
         public void HardConnectsAndDisconnectsPerSecond()
         {
             var hardConnectCounter = Counters.HardConnectsPerSecond.DiagnosticsCounter;
@@ -115,7 +116,6 @@ namespace Npgsql.Tests
                 Assert.That(activeCounter.RawValue, Is.Zero);
                 Assert.That(freeCounter.RawValue, Is.Zero);
                 pooledConn.Open();
-                Thread.Sleep(30000);
                 Assert.That(totalCounter.RawValue, Is.EqualTo(1));
                 Assert.That(activeCounter.RawValue, Is.EqualTo(1));
                 Assert.That(freeCounter.RawValue, Is.Zero);
