@@ -954,7 +954,7 @@ namespace Npgsql
         [Obsolete("The ConnectionLifeTime parameter is no longer supported")]
         public int ConnectionLifeTime
         {
-            get { throw new NotSupportedException("The ConnectionLifeTime parameter is no longer supported. Please see http://www.npgsql.org/doc/3.1/migration.html"); }
+            get { return 0; }
             set { throw new NotSupportedException("The ConnectionLifeTime parameter is no longer supported. Please see http://www.npgsql.org/doc/3.1/migration.html"); }
         }
 
