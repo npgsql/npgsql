@@ -1,1 +1,0 @@
-bin\Release-net452-vs2013\NpgsqlDdexProvider.vsix

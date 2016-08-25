@@ -1,0 +1,20 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NpgsqlDdexProvider2010", "NpgsqlDdexProvider2010.csproj", "{AB1E833A-ECF6-4996-AEE0-72474ADD70F1}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{AB1E833A-ECF6-4996-AEE0-72474ADD70F1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AB1E833A-ECF6-4996-AEE0-72474ADD70F1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AB1E833A-ECF6-4996-AEE0-72474ADD70F1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AB1E833A-ECF6-4996-AEE0-72474ADD70F1}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
