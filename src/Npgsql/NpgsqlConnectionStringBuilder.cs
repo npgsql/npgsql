@@ -439,7 +439,7 @@ namespace Npgsql
         string _searchpath;
 
         /// <summary>
-        /// Gets or sets the schema search path.
+        /// Gets or sets the client_encoding parameter.
         /// </summary>
         [Category("Connection")]
         [Description("Gets or sets the client_encoding parameter.")]
