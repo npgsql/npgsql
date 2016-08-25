@@ -291,15 +291,19 @@ namespace Npgsql
             using (connector.StartUserAction())
             {
                 Log.Trace("ExecuteNonQuery", connector.Id);
-                NpgsqlDataReader reader;
-                using (reader = await (ExecuteAsync(cancellationToken).ConfigureAwait(false)))
+                // Optimization: unprepared unparameterized non-queries can go through the PostgreSQL
+                // simple protocol which is more efficient
+                if (!IsPrepared && Parameters.Count == 0)
+                    return ExecuteSimple();
+                using (var reader = await (ExecuteAsync(cancellationToken).ConfigureAwait(false)))
                 {
                     while (await reader.NextResultAsync(cancellationToken).ConfigureAwait(false))
                     {
                     }
-                }
 
-                return reader.RecordsAffected;
+                    reader.Close();
+                    return reader.RecordsAffected;
+                }
             }
         }
 
@@ -366,6 +370,7 @@ namespace Npgsql
                 if (Settings.Pooling)
                 {
                     Connector = await (PoolManager.GetOrAdd(Settings).AllocateAsync(this, timeout, cancellationToken).ConfigureAwait(false));
+                    Counters.SoftConnectsPerSecond.Increment();
                     // Since this pooled connector was opened, global enum/composite mappings may have
                     // changed. Bring this up to date if needed.
                     Connector.TypeHandlerRegistry.ActivateGlobalMappings();
@@ -374,6 +379,7 @@ namespace Npgsql
                 {
                     Connector = new NpgsqlConnector(this);
                     await Connector.OpenAsync(timeout, cancellationToken).ConfigureAwait(false);
+                    Counters.NumberOfNonPooledConnections.Increment();
                 }
 
                 Connector.Notice += _noticeDelegate;
@@ -417,6 +423,7 @@ namespace Npgsql
                 timeout.Check();
                 await HandleAuthenticationAsync(username, timeout, cancellationToken).ConfigureAwait(false);
                 await TypeHandlerRegistry.SetupAsync(this, timeout, cancellationToken).ConfigureAwait(false);
+                Counters.HardConnectsPerSecond.Increment();
                 Log.Debug($"Opened connection to {Host}:{Port}", Id);
             }
             catch
@@ -1310,7 +1317,7 @@ namespace Npgsql
         }
     }
 
-    partial class ConnectorPool
+    sealed partial class ConnectorPool
     {
         internal async Task<NpgsqlConnector> AllocateAsync(NpgsqlConnection conn, NpgsqlTimeout timeout, CancellationToken cancellationToken)
         {
@@ -1323,7 +1330,7 @@ namespace Npgsql
                 if (connector.IsBroken)
                     continue;
                 connector.Connection = conn;
-                Busy++;
+                IncrementBusy();
                 EnsurePruningTimerState();
                 Monitor.Exit(this);
                 return connector;
@@ -1360,20 +1367,21 @@ namespace Npgsql
             }
 
             // No idle connectors are available, and we're under the pool's maximum capacity.
-            Busy++;
+            IncrementBusy();
             Monitor.Exit(this);
             try
             {
                 connector = new NpgsqlConnector(conn)
                 {ClearCounter = _clearCounter};
                 await connector.OpenAsync(timeout, cancellationToken).ConfigureAwait(false);
+                Counters.NumberOfPooledConnections.Increment();
                 EnsureMinPoolSize(conn);
                 return connector;
             }
             catch
             {
                 lock (this)
-                    Busy--;
+                    DecrementBusy();
                 throw;
             }
         }
