@@ -53,9 +53,9 @@ namespace Npgsql.TypeHandlers
         /// </summary>
         readonly TextHandler _textHandler;
 
-        internal JsonbHandler(IBackendType backendType) : base(backendType)
+        internal JsonbHandler(IBackendType backendType, TypeHandlerRegistry registry) : base(backendType)
         {
-            _textHandler = new TextHandler(backendType);
+            _textHandler = new TextHandler(backendType, registry);
         }
 
         #region Write

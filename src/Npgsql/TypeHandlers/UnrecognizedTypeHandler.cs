@@ -23,6 +23,7 @@
 
 using NpgsqlTypes;
 using System;
+using System.Text;
 using Npgsql.BackendMessages;
 
 namespace Npgsql.TypeHandlers
@@ -39,7 +40,7 @@ namespace Npgsql.TypeHandlers
     {
         static readonly IBackendType UnrecognizedBackendType = new UnrecognizedBackendType();
 
-        internal UnrecognizedTypeHandler() : base(UnrecognizedBackendType) {}
+        internal UnrecognizedTypeHandler(TypeHandlerRegistry registry) : base(UnrecognizedBackendType, registry) {}
 
         public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {

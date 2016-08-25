@@ -32,6 +32,7 @@ using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AsyncRewriter;
@@ -72,6 +73,8 @@ namespace Npgsql
         /// If non-cleartext authentication is requested from the server, this is set to null.
         /// </summary>
         readonly string _password;
+
+        internal Encoding TextEncoding { get; private set; }
 
         /// <summary>
         /// Buffer used for reading data.
@@ -228,12 +231,13 @@ namespace Npgsql
         #region Reusable Message Objects
 
         // Frontend
-        internal readonly ParseMessage    ParseMessage    = new ParseMessage();
         internal readonly BindMessage     BindMessage     = new BindMessage();
         internal readonly DescribeMessage DescribeMessage = new DescribeMessage();
         internal readonly ExecuteMessage  ExecuteMessage  = new ExecuteMessage();
-        internal readonly QueryMessage    QueryMessage    = new QueryMessage();
         internal readonly CloseMessage    CloseMessage    = new CloseMessage();
+        // ParseMessage and QueryMessage depend on the encoding, which isn't known until open-time
+        internal ParseMessage ParseMessage;
+        internal QueryMessage QueryMessage;
 
         // Backend
         readonly CommandCompleteMessage      _commandCompleteMessage      = new CommandCompleteMessage();
@@ -461,8 +465,14 @@ namespace Npgsql
                 Debug.Assert(_socket != null);
                 _baseStream = new NetworkStream(_socket, true);
                 _stream = _baseStream;
-                ReadBuffer = new ReadBuffer(this, _stream, BufferSize, PGUtil.UTF8Encoding);
-                WriteBuffer = new WriteBuffer(this, _stream, BufferSize, PGUtil.UTF8Encoding);
+
+                TextEncoding = _settings.Encoding == "UTF8"
+                    ? PGUtil.UTF8Encoding
+                    : Encoding.GetEncoding(_settings.Encoding, EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback);
+                ReadBuffer = new ReadBuffer(this, _stream, BufferSize, TextEncoding);
+                WriteBuffer = new WriteBuffer(this, _stream, BufferSize, TextEncoding);
+                ParseMessage = new ParseMessage(TextEncoding);
+                QueryMessage = new QueryMessage(TextEncoding);
 
                 if (SslMode == SslMode.Require || SslMode == SslMode.Prefer)
                 {

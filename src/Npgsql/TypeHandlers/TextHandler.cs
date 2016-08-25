@@ -27,6 +27,7 @@ using System.IO;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
+using System.Text;
 using JetBrains.Annotations;
 
 namespace Npgsql.TypeHandlers
@@ -51,6 +52,8 @@ namespace Npgsql.TypeHandlers
         // see https://github.com/npgsql/npgsql/issues/1210#issuecomment-235641670
         internal override bool PreferTextWrite => true;
 
+        readonly Encoding _encoding;
+
         #region State
 
         string _str;
@@ -64,7 +67,10 @@ namespace Npgsql.TypeHandlers
 
         #endregion
 
-        internal TextHandler(IBackendType backendType) : base(backendType) { }
+        internal TextHandler(IBackendType backendType, TypeHandlerRegistry registry) : base(backendType)
+        {
+            _encoding = registry.Connector.TextEncoding;
+        }
 
         #region Read
 
@@ -214,9 +220,9 @@ namespace Npgsql.TypeHandlers
             if (asString != null)
             {
                 if (parameter == null || parameter.Size <= 0 || parameter.Size >= asString.Length)
-                    return lengthCache.Set(PGUtil.UTF8Encoding.GetByteCount(asString));
+                    return lengthCache.Set(_encoding.GetByteCount(asString));
                 fixed (char* p = asString)
-                    return lengthCache.Set(PGUtil.UTF8Encoding.GetByteCount(p, parameter.Size));
+                    return lengthCache.Set(_encoding.GetByteCount(p, parameter.Size));
             }
 
             var asCharArray = value as char[];
@@ -224,15 +230,15 @@ namespace Npgsql.TypeHandlers
             {
                 return lengthCache.Set(
                     parameter == null || parameter.Size <= 0 || parameter.Size >= asCharArray.Length
-                  ? PGUtil.UTF8Encoding.GetByteCount(asCharArray)
-                  : PGUtil.UTF8Encoding.GetByteCount(asCharArray, 0, parameter.Size)
+                  ? _encoding.GetByteCount(asCharArray)
+                  : _encoding.GetByteCount(asCharArray, 0, parameter.Size)
                 );
             }
 
             if (value is char)
             {
                 _singleCharArray[0] = (char)value;
-                return lengthCache.Set(PGUtil.UTF8Encoding.GetByteCount(_singleCharArray));
+                return lengthCache.Set(_encoding.GetByteCount(_singleCharArray));
             }
 
             // Fallback - try to convert the value to string
@@ -242,9 +248,9 @@ namespace Npgsql.TypeHandlers
             parameter.ConvertedValue = converted;
 
             if (parameter.Size <= 0 || parameter.Size >= converted.Length)
-                return lengthCache.Set(PGUtil.UTF8Encoding.GetByteCount(converted));
+                return lengthCache.Set(_encoding.GetByteCount(converted));
             fixed (char* p = converted)
-                return lengthCache.Set(PGUtil.UTF8Encoding.GetByteCount(p, parameter.Size));
+                return lengthCache.Set(_encoding.GetByteCount(p, parameter.Size));
         }
 
         public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)

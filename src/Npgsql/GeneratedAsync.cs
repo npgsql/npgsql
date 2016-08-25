@@ -54,6 +54,7 @@ using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
@@ -441,8 +442,11 @@ namespace Npgsql
                 Debug.Assert(_socket != null);
                 _baseStream = new NetworkStream(_socket, true);
                 _stream = _baseStream;
-                ReadBuffer = new ReadBuffer(this, _stream, BufferSize, PGUtil.UTF8Encoding);
-                WriteBuffer = new WriteBuffer(this, _stream, BufferSize, PGUtil.UTF8Encoding);
+                TextEncoding = _settings.Encoding == "UTF8" ? PGUtil.UTF8Encoding : Encoding.GetEncoding(_settings.Encoding, EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback);
+                ReadBuffer = new ReadBuffer(this, _stream, BufferSize, TextEncoding);
+                WriteBuffer = new WriteBuffer(this, _stream, BufferSize, TextEncoding);
+                ParseMessage = new ParseMessage(TextEncoding);
+                QueryMessage = new QueryMessage(TextEncoding);
                 if (SslMode == SslMode.Require || SslMode == SslMode.Prefer)
                 {
                     Log.Trace("Attempting SSL negotiation");
