@@ -34,11 +34,17 @@ namespace Npgsql.FrontendMessages
     /// </summary>
     class QueryMessage : FrontendMessage
     {
+        readonly Encoding _encoding;
         string _query;
         char[] _queryChars;
         int _charPos;
 
-        internal const byte Code = (byte)'Q';
+        const byte Code = (byte)'Q';
+
+        internal QueryMessage(Encoding encoding)
+        {
+            _encoding = encoding;
+        }
 
         internal QueryMessage Populate(string query)
         {
@@ -57,7 +63,7 @@ namespace Npgsql.FrontendMessages
                 if (buf.WriteSpaceLeft < 1 + 4)
                     return false;
                 _charPos = 0;
-                var queryByteLen = PGUtil.UTF8Encoding.GetByteCount(_query);
+                var queryByteLen = _encoding.GetByteCount(_query);
                 _queryChars = _query.ToCharArray();
                 buf.WriteByte(Code);
                 buf.WriteInt32(4 +            // Message length (including self excluding code)

@@ -123,7 +123,7 @@ namespace Npgsql
         {
             Connector = connector;
             _backendTypes = EmptyBackendTypes;
-            UnrecognizedTypeHandler = new UnrecognizedTypeHandler();
+            UnrecognizedTypeHandler = new UnrecognizedTypeHandler(this);
             ByOID = new Dictionary<uint, TypeHandler>();
             _byDbType = new Dictionary<DbType, TypeHandler>();
             _byNpgsqlDbType = new Dictionary<NpgsqlDbType, TypeHandler>();

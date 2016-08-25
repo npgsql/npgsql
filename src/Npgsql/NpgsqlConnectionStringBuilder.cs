@@ -435,6 +435,25 @@ namespace Npgsql
         }
         string _clientEncoding;
 
+        /// <summary>
+        /// Gets or sets the client_encoding parameter.
+        /// </summary>
+        [Category("Connection")]
+        [Description("Gets or sets the .NET encoding that will be used to encode/decode PostgreSQL string data.")]
+        [DisplayName("Encoding")]
+        [DefaultValue("UTF8")]
+        [NpgsqlConnectionStringProperty]
+        public string Encoding
+        {
+            get { return _encoding; }
+            set
+            {
+                _encoding = value;
+                SetValue(nameof(Encoding), value);
+            }
+        }
+        string _encoding;
+
         #endregion
 
         #region Properties - Security

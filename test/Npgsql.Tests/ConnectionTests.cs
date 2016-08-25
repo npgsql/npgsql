@@ -33,6 +33,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Security;
+using System.Text;
 using System.Text.RegularExpressions;
 using NpgsqlTypes;
 
@@ -1019,6 +1020,54 @@ namespace Npgsql.Tests
                 finally
                 {
                     conn.ExecuteNonQuery("DROP TABLE record");
+                }
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/392")]
+        [LinuxIgnore]
+        public void NonUTF8Encoding()
+        {
+            using (var adminConn = OpenConnection())
+            {
+                // Create the database with server encoding sql-ascii
+                adminConn.ExecuteNonQuery("DROP DATABASE IF EXISTS sqlascii");
+                adminConn.ExecuteNonQuery("CREATE DATABASE sqlascii ENCODING 'sql_ascii' TEMPLATE template0");
+                try
+                {
+                    // Insert some win1252 data
+                    var goodCsb = new NpgsqlConnectionStringBuilder(ConnectionString)
+                    {
+                        Database = "sqlascii",
+                        Encoding = "windows-1252",
+                        ClientEncoding = "sql-ascii",
+                        Pooling = false
+                    };
+                    using (var conn = OpenConnection(goodCsb))
+                    {
+                        conn.ExecuteNonQuery("CREATE TABLE foo (bar TEXT)");
+                        conn.ExecuteNonQuery("INSERT INTO foo (bar) VALUES ('ιθιθ')");
+                        Assert.That(conn.ExecuteScalar("SELECT * FROM foo"), Is.EqualTo("ιθιθ"));
+                    }
+
+                    // A normal connection with the default UTF8 encoding and client_encoding should fail
+                    var badCsb = new NpgsqlConnectionStringBuilder(ConnectionString)
+                    {
+                        Database = "sqlascii",
+                        Pooling = false
+                    };
+                    using (var conn = OpenConnection(badCsb))
+                    {
+                        Assert.That(() => conn.ExecuteScalar("SELECT * FROM foo"),
+                            Throws.Exception.TypeOf<PostgresException>()
+                                .With.Property(nameof(PostgresException.SqlState)).EqualTo("22021")
+                                .Or.TypeOf<DecoderFallbackException>()
+                        );
+                    }
+                }
+                finally
+                {
+                    adminConn.ExecuteNonQuery("DROP DATABASE IF EXISTS sqlascii");
                 }
             }
         }

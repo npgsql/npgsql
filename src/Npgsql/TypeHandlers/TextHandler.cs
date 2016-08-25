@@ -53,6 +53,8 @@ namespace Npgsql.TypeHandlers
     {
         internal override bool PreferTextWrite => true;
 
+        readonly Encoding _encoding;
+
         #region State
 
         string _str;
@@ -66,7 +68,10 @@ namespace Npgsql.TypeHandlers
 
         #endregion
 
-        internal TextHandler(IBackendType backendType) : base(backendType) { }
+        internal TextHandler(IBackendType backendType, TypeHandlerRegistry registry) : base(backendType)
+        {
+            _encoding = registry.Connector.TextEncoding;
+        }
 
         #region Read
 
@@ -226,8 +231,8 @@ namespace Npgsql.TypeHandlers
             {
                 return lengthCache.Set(
                     parameter == null || parameter.Size <= 0 || parameter.Size >= asString.Length
-                  ? PGUtil.UTF8Encoding.GetByteCount(asString)
-                  : PGUtil.UTF8Encoding.GetByteCount(asString.ToCharArray(), 0, parameter.Size)
+                  ? _encoding.GetByteCount(asString)
+                  : _encoding.GetByteCount(asString.ToCharArray(), 0, parameter.Size)
                 );
             }
 
@@ -236,15 +241,15 @@ namespace Npgsql.TypeHandlers
             {
                 return lengthCache.Set(
                     parameter == null || parameter.Size <= 0 || parameter.Size >= asCharArray.Length
-                  ? PGUtil.UTF8Encoding.GetByteCount(asCharArray)
-                  : PGUtil.UTF8Encoding.GetByteCount(asCharArray, 0, parameter.Size)
+                  ? _encoding.GetByteCount(asCharArray)
+                  : _encoding.GetByteCount(asCharArray, 0, parameter.Size)
                 );
             }
 
             if (value is char)
             {
                 _singleCharArray[0] = (char)value;
-                return lengthCache.Set(PGUtil.UTF8Encoding.GetByteCount(_singleCharArray));
+                return lengthCache.Set(_encoding.GetByteCount(_singleCharArray));
             }
 
             // Fallback - try to convert the value to string
@@ -257,8 +262,8 @@ namespace Npgsql.TypeHandlers
 
             return lengthCache.Set(
                 parameter.Size <= 0 || parameter.Size >= converted.Length
-                ? PGUtil.UTF8Encoding.GetByteCount(converted)
-                : PGUtil.UTF8Encoding.GetByteCount(converted.ToCharArray(), 0, parameter.Size)
+                ? _encoding.GetByteCount(converted)
+                : _encoding.GetByteCount(converted.ToCharArray(), 0, parameter.Size)
             );
         }
 
