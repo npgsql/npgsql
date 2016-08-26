@@ -1,14 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using BenchmarkDotNet.Attributes;
+﻿using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
 #if NET46
 using BenchmarkDotNet.Diagnostics.Windows;
 #endif
+// ReSharper disable UnusedMember.Global
+// ReSharper disable MemberCanBePrivate.Global
 
 namespace Npgsql.Benchmarks
 {
@@ -29,14 +26,13 @@ namespace Npgsql.Benchmarks
         readonly NpgsqlConnection _nonPooledConnection;
         readonly NpgsqlCommand _nonPooledCmd;
 
+        // ReSharper disable once UnusedAutoPropertyAccessor.Global
         [Params(0, 1, 5, 10)]
         public int StatementsToSend { get; set; }
 
         public ConnectionOpenCloseBenchmarks()
         {
-            NpgsqlConnectionStringBuilder csb;
-
-            csb = new NpgsqlConnectionStringBuilder(BenchmarkEnvironment.ConnectionString) { ApplicationName = nameof(NoOpenClose)};
+            var csb = new NpgsqlConnectionStringBuilder(BenchmarkEnvironment.ConnectionString) { ApplicationName = nameof(NoOpenClose)};
             var noOpenCloseConn = new NpgsqlConnection(csb);
             noOpenCloseConn.Open();
             _noOpenCloseCmd = new NpgsqlCommand("SET lock_timeout = 1000", noOpenCloseConn);
