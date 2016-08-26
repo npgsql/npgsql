@@ -6,7 +6,9 @@ using System.Threading.Tasks;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
+#if NET46
 using BenchmarkDotNet.Diagnostics.Windows;
+#endif
 using NpgsqlTypes;
 
 namespace Npgsql.Benchmarks.Types
@@ -46,7 +48,9 @@ namespace Npgsql.Benchmarks.Types
         {
             public Config()
             {
+#if NET46
                 Add(new MemoryDiagnoser());
+#endif
                 Add(StatisticColumn.OperationsPerSecond);
             }
         }
