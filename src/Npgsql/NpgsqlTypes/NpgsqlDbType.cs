@@ -24,6 +24,8 @@
 using System;
 using Npgsql;
 
+#pragma warning disable CA1720
+
 // ReSharper disable once CheckNamespace
 namespace NpgsqlTypes
 {
@@ -250,7 +252,7 @@ namespace NpgsqlTypes
         /// Corresponds to the obsolete PostgreSQL "abstime" type.
         /// </summary>
         /// <remarks>See http://www.postgresql.org/docs/current/static/datatype-datetime.html</remarks>
-        [Obsolete]
+        [Obsolete("The PostgreSQL abstime time is obsolete.")]
         Abstime = 33,
 
         #endregion
@@ -437,6 +439,11 @@ namespace NpgsqlTypes
         /// Corresponds to the PostgreSQL "regtype" type, a numeric (OID) ID of a type in the pg_type table.
         /// </summary>
         Regtype = 49,
+
+        /// <summary>
+        /// Corresponds to the PostgreSQL "tid" type, a tuple id identifying the physical location of a row within its table.
+        /// </summary>
+        Tid = 53,
 
         #endregion
 

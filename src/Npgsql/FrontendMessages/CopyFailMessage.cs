@@ -23,7 +23,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Text;
 
@@ -40,29 +39,24 @@ namespace Npgsql.FrontendMessages
 
         internal CopyFailMessage(string errorMessage="")
         {
-            if (errorMessage.Length > 1024) {
+            if (errorMessage.Length > 1024)
                 throw new ArgumentException("CopyFail message must be 1024 characters or less");
-            }
             _errorMessage = errorMessage;
             _errorMessageLen = PGUtil.UTF8Encoding.GetByteCount(_errorMessage);
         }
 
         internal override int Length => 1 + 4 + (_errorMessageLen + 1);
 
-        internal override void Write(NpgsqlBuffer buf)
+        internal override void WriteFully(WriteBuffer buf)
         {
             buf.WriteByte(Code);
             buf.WriteInt32(Length - 1);
             if (_errorMessageLen == 0)
-            {
                 buf.WriteByte(0);
-            }
             else
-            {
                 buf.WriteBytesNullTerminated(PGUtil.UTF8Encoding.GetBytes(_errorMessage));
-            }
         }
 
-        public override string ToString() { return "[CopyFail]"; }
+        public override string ToString() => "[CopyFail]";
     }
 }

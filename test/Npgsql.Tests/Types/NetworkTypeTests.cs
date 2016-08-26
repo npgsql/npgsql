@@ -64,35 +64,35 @@ namespace Npgsql.Tests.Types
                     for (var i = 0; i < 2; i++)
                     {
                         // Regular type (IPAddress)
-                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof (IPAddress)));
+                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(IPAddress)));
                         Assert.That(reader.GetFieldValue<IPAddress>(i), Is.EqualTo(expectedIp));
                         Assert.That(reader[i], Is.EqualTo(expectedIp));
                         Assert.That(reader.GetValue(i), Is.EqualTo(expectedIp));
-                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof (IPAddress)));
+                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(IPAddress)));
 
                         // Provider-specific type (NpgsqlInet)
-                        Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof (NpgsqlInet)));
+                        Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof(NpgsqlInet)));
                         Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(expectedInet));
                         Assert.That(reader.GetFieldValue<NpgsqlInet>(i), Is.EqualTo(expectedInet));
                         Assert.That(reader.GetString(i), Is.EqualTo(expectedInet.ToString()));
-                        Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof (NpgsqlInet)));
+                        Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof(NpgsqlInet)));
                     }
 
                     for (var i = 2; i < 4; i++)
                     {
                         // Regular type (IPAddress)
-                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof (IPAddress)));
+                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(IPAddress)));
                         Assert.That(reader.GetFieldValue<IPAddress>(i), Is.EqualTo(expectedIp));
                         Assert.That(reader[i], Is.EqualTo(expectedIp));
                         Assert.That(reader.GetValue(i), Is.EqualTo(expectedIp));
-                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof (IPAddress)));
+                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(IPAddress)));
 
                         // Provider-specific type (NpgsqlInet)
-                        Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof (NpgsqlInet)));
+                        Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof(NpgsqlInet)));
                         Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(new NpgsqlInet(expectedIp)));
                         Assert.That(reader.GetFieldValue<NpgsqlInet>(i), Is.EqualTo(new NpgsqlInet(expectedIp)));
                         Assert.That(reader.GetString(i), Is.EqualTo(new NpgsqlInet(expectedIp).ToString()));
-                        Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof (NpgsqlInet)));
+                        Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof(NpgsqlInet)));
                     }
                 }
             }
@@ -122,36 +122,36 @@ namespace Npgsql.Tests.Types
                     for (var i = 0; i < 2; i++)
                     {
                         // Regular type (IPAddress)
-                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof (IPAddress)));
+                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(IPAddress)));
                         Assert.That(reader.GetFieldValue<IPAddress>(i), Is.EqualTo(expectedIp));
                         Assert.That(reader[i], Is.EqualTo(expectedIp));
                         Assert.That(reader.GetValue(i), Is.EqualTo(expectedIp));
                         Assert.That(reader.GetString(i), Is.EqualTo(addr + "/24"));
-                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof (IPAddress)));
+                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(IPAddress)));
 
                         // Provider-specific type (NpgsqlInet)
-                        Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof (NpgsqlInet)));
+                        Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof(NpgsqlInet)));
                         Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(expectedInet));
                         Assert.That(reader.GetFieldValue<NpgsqlInet>(i), Is.EqualTo(expectedInet));
                         Assert.That(reader.GetString(i), Is.EqualTo(expectedInet.ToString()));
-                        Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof (NpgsqlInet)));
+                        Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof(NpgsqlInet)));
                     }
 
                     for (var i = 2; i < 4; i++)
                     {
                         // Regular type (IPAddress)
-                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof (IPAddress)));
+                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(IPAddress)));
                         Assert.That(reader.GetFieldValue<IPAddress>(i), Is.EqualTo(expectedIp));
                         Assert.That(reader[i], Is.EqualTo(expectedIp));
                         Assert.That(reader.GetValue(i), Is.EqualTo(expectedIp));
-                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof (IPAddress)));
+                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(IPAddress)));
 
                         // Provider-specific type (NpgsqlInet)
-                        Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof (NpgsqlInet)));
+                        Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof(NpgsqlInet)));
                         Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(new NpgsqlInet(expectedIp)));
                         Assert.That(reader.GetFieldValue<NpgsqlInet>(i), Is.EqualTo(new NpgsqlInet(expectedIp)));
                         Assert.That(reader.GetString(i), Is.EqualTo(new NpgsqlInet(expectedIp).ToString()));
-                        Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof (NpgsqlInet)));
+                        Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof(NpgsqlInet)));
                     }
                 }
             }
@@ -178,6 +178,9 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
+#if NETCOREAPP1_0
+        [Ignore("See https://github.com/dotnet/corefx/pull/8413")]
+#endif
         public void Macaddr()
         {
             using (var conn = OpenConnection())
@@ -197,13 +200,16 @@ namespace Npgsql.Tests.Types
                         Assert.That(reader.GetFieldValue<PhysicalAddress>(i), Is.EqualTo(expected));
                         Assert.That(reader.GetValue(i), Is.EqualTo(expected));
                         Assert.That(reader.GetString(i), Is.EqualTo(expected.ToString()));
-                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof (PhysicalAddress)));
+                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(PhysicalAddress)));
                     }
                 }
             }
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/835")]
+#if NETCOREAPP1_0
+        [Ignore("See https://github.com/dotnet/corefx/pull/8413")]
+#endif
         public void MacaddrMultiple()
         {
             using (var conn = OpenConnection())
@@ -237,7 +243,5 @@ namespace Npgsql.Tests.Types
                 Assert.AreEqual(typeof(IPAddress), result.GetType());
             }
         }
-
-        public NetworkTypeTests(string backendVersion) : base(backendVersion) {}
     }
 }

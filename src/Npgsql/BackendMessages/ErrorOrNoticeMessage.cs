@@ -22,15 +22,14 @@
 #endregion
 
 using System;
-using System.Diagnostics.Contracts;
 using Npgsql.Logging;
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
 using System.Runtime.Serialization;
 #endif
 
 namespace Npgsql.BackendMessages
 {
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
     [Serializable]
 #endif
     class ErrorOrNoticeMessage
@@ -56,7 +55,7 @@ namespace Npgsql.BackendMessages
         internal string Routine { get; private set; }
 
         // ReSharper disable once FunctionComplexityOverflow
-        internal ErrorOrNoticeMessage(NpgsqlBuffer buf)
+        internal ErrorOrNoticeMessage(ReadBuffer buf)
         {
             while (true)
             {
@@ -134,13 +133,6 @@ namespace Npgsql.BackendMessages
                     break;
                 }
             }
-        }
-
-        [ContractInvariantMethod]
-        void ObjectInvariants()
-        {
-            Contract.Invariant(Code != null);
-            Contract.Invariant(Message != null);
         }
 
         /// <summary>

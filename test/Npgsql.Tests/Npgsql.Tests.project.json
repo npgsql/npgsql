@@ -1,0 +1,13 @@
+﻿{
+  "dependencies": {
+      "NUnit": "3.2.1",
+      "NUnitLite": "3.2.1",
+      "NLog": "4.4.0-beta5"
+  },
+  "frameworks": {
+    "net451": {}
+  },
+  "runtimes": {
+    "win": {}
+  }
+}

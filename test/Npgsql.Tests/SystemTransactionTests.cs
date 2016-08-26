@@ -21,6 +21,8 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
+#if NET451
+
 using System;
 using System.Data;
 using System.Reflection;
@@ -34,8 +36,6 @@ namespace Npgsql.Tests
     [Parallelizable(ParallelScope.None)]
     public class SystemTransactionTests : TestBase
     {
-        public SystemTransactionTests(string backendVersion) : base(backendVersion) { }
-
         [Test, Description("Single connection enlisting explicitly, committing")]
         public void ExplicitEnlist()
         {
@@ -292,3 +292,4 @@ namespace Npgsql.Tests
         #endregion
     }
 }
+#endif

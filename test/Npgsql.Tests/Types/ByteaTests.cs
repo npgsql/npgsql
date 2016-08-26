@@ -27,7 +27,6 @@ using System.Data;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Web.Caching;
 using Npgsql;
 using NpgsqlTypes;
 using NUnit.Framework;
@@ -43,8 +42,6 @@ namespace Npgsql.Tests.Types
     /// </summary>
     class ByteaTests : TestBase
     {
-        public ByteaTests(string backendVersion) : base(backendVersion) {}
-
         [Test, Description("Roundtrips a bytea")]
         public void Roundtrip()
         {
@@ -67,7 +64,7 @@ namespace Npgsql.Tests.Types
 
                     for (var i = 0; i < cmd.Parameters.Count; i++)
                     {
-                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof (byte[])));
+                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(byte[])));
                         Assert.That(reader.GetFieldValue<byte[]>(i), Is.EqualTo(expected));
                         Assert.That(reader.GetValue(i), Is.EqualTo(expected));
                     }
@@ -218,7 +215,7 @@ namespace Npgsql.Tests.Types
                     }
                     stream.Read(actual, 2, 1);
                     Assert.That(actual[2], Is.EqualTo(expected[2]));
-                    stream.Close();
+                    stream.Dispose();
 
                     if (IsSequential(behavior))
                         Assert.That(() => reader.GetBytes(0, 0, actual, 4, 1), Throws.Exception.TypeOf<InvalidOperationException>(), "Seek back sequential");
@@ -329,6 +326,27 @@ namespace Npgsql.Tests.Types
                 Assert.That(cmd.ExecuteScalar(), Is.EqualTo(data2));
 
                 Assert.That(() => p.Size = -2, Throws.Exception.TypeOf<ArgumentException>());
+            }
+        }
+
+        [Test]
+        public void ByteaOverArrayOfBytes()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ApplicationName = nameof(ByteaOverArrayOfBytes),  // Prevent backend type caching in TypeHandlerRegistry
+                Pooling = false
+            };
+
+            using (var conn = OpenConnection(csb))
+            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+            {
+                cmd.Parameters.AddWithValue("p", new byte[3]);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo("bytea"));
+                }
             }
         }
 

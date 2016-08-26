@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<build-type xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="06c8881d-347a-486d-8d4f-4a825df009b9" xsi:noNamespaceSchemaLocation="http://www.jetbrains.com/teamcity/schemas/9.0/project-config.xsd">
+  <name>Compile Release and Push</name>
+  <description>Compiles the project in release and pushes to myget</description>
+  <settings>
+    <options>
+      <option name="artifactRules" value="src/Npgsql/bin/ReleaseOptimizedCryptography/*.nupkg&#xA;src/GACInstaller/bin/ReleaseOptimizedCryptography/en-us/*.msi" />
+      <option name="checkoutMode" value="ON_AGENT" />
+    </options>
+    <parameters />
+    <build-runners>
+      <runner id="RUNNER_32" name="Set build number" type="simpleRunner">
+        <parameters>
+          <param name="script.content" value="echo ##teamcity[buildNumber '%dep.npgsql_CompileDebug.build.number%']" />
+          <param name="teamcity.step.mode" value="default" />
+          <param name="use.custom.script" value="true" />
+        </parameters>
+      </runner>
+      <runner id="RUNNER_21" name="Compile" type="simpleRunner">
+        <parameters>
+          <param name="script.content"><![CDATA[set KOREBUILD_DOTNET_PACK_OPTIONS= --version-suffix "%dep.npgsql_CompileDebug.build.counter%"
+set Configuration=ReleaseOptimizedCryptography
+build compile]]></param>
+          <param name="teamcity.step.mode" value="default" />
+          <param name="use.custom.script" value="true" />
+        </parameters>
+      </runner>
+      <runner id="RUNNER_29" name="Build GAC Installer" type="MSBuild">
+        <parameters>
+          <param name="build-file-path" value="src\GACInstaller\GACInstaller.wixproj" />
+          <param name="dotNetCoverage.NCover.HTMLReport.File.Sort" value="0" />
+          <param name="dotNetCoverage.NCover.HTMLReport.File.Type" value="1" />
+          <param name="dotNetCoverage.NCover.Reg" value="selected" />
+          <param name="dotNetCoverage.NCover.platformBitness" value="x86" />
+          <param name="dotNetCoverage.NCover.platformVersion" value="v2.0" />
+          <param name="dotNetCoverage.NCover3.Reg" value="selected" />
+          <param name="dotNetCoverage.NCover3.args" value="//ias .*" />
+          <param name="dotNetCoverage.NCover3.platformBitness" value="x86" />
+          <param name="dotNetCoverage.NCover3.platformVersion" value="v2.0" />
+          <param name="dotNetCoverage.NCover3.reporter.executable.args" value="//or FullCoverageReport:Html:{teamcity.report.path}" />
+          <param name="dotNetCoverage.PartCover.Reg" value="selected" />
+          <param name="dotNetCoverage.PartCover.includes" value="[*]*" />
+          <param name="dotNetCoverage.PartCover.platformBitness" value="x86" />
+          <param name="dotNetCoverage.PartCover.platformVersion" value="v2.0" />
+          <param name="msbuild_version" value="14.0" />
+          <param name="run-platform" value="x86" />
+          <param name="runnerArgs" value="/p:Configuration=ReleaseOptimizedCryptography" />
+          <param name="teamcity.build.workingDir" value="src\GACInstaller" />
+          <param name="teamcity.step.mode" value="default" />
+          <param name="toolsVersion" value="14.0" />
+        </parameters>
+      </runner>
+      <runner id="RUNNER_30" name="Publish nugets to myget" type="jb.nuget.publish">
+        <parameters>
+          <param name="nuget.path" value="?NuGet.CommandLine.DEFAULT" />
+          <param name="nuget.publish.files" value="src/Npgsql/bin/ReleaseOptimizedCryptography/*.nupkg" />
+          <param name="nuget.publish.source" value="https://www.myget.org/F/npgsql-unstable" />
+          <param name="nugetCustomPath" value="?NuGet.CommandLine.DEFAULT" />
+          <param name="nugetPathSelector" value="?NuGet.CommandLine.DEFAULT" />
+          <param name="secure:nuget.api.key" value="zxxca89988ce5b6f9ad529c572cd56e162ccda4fdff046b0cdb8bff3560c8e35dcbda3e64637e4ca2f1" />
+          <param name="teamcity.step.mode" value="default" />
+        </parameters>
+      </runner>
+    </build-runners>
+    <vcs-settings>
+      <vcs-entry-ref root-id="npgsql_github" />
+    </vcs-settings>
+    <requirements />
+    <build-triggers>
+      <build-trigger id="vcsTrigger" type="vcsTrigger">
+        <parameters>
+          <param name="branchFilter"><![CDATA[+:*
+-:support/*
+-:hotfix/2.*]]></param>
+          <param name="quietPeriodMode" value="DO_NOT_USE" />
+        </parameters>
+      </build-trigger>
+    </build-triggers>
+    <dependencies>
+      <depend-on sourceBuildTypeId="npgsql_TestOnPostgreSQL91">
+        <options>
+          <option name="run-build-if-dependency-failed" value="CANCEL" />
+          <option name="run-build-if-dependency-failed-to-start" value="CANCEL" />
+          <option name="take-started-build-with-same-revisions" value="true" />
+          <option name="take-successful-builds-only" value="true" />
+        </options>
+      </depend-on>
+      <depend-on sourceBuildTypeId="npgsql_TestOnPostgreSQL92">
+        <options>
+          <option name="run-build-if-dependency-failed" value="CANCEL" />
+          <option name="run-build-if-dependency-failed-to-start" value="CANCEL" />
+          <option name="take-started-build-with-same-revisions" value="true" />
+          <option name="take-successful-builds-only" value="true" />
+        </options>
+      </depend-on>
+      <depend-on sourceBuildTypeId="npgsql_TestOnPostgreSQL93">
+        <options>
+          <option name="run-build-if-dependency-failed" value="CANCEL" />
+          <option name="run-build-if-dependency-failed-to-start" value="CANCEL" />
+          <option name="take-started-build-with-same-revisions" value="true" />
+          <option name="take-successful-builds-only" value="true" />
+        </options>
+      </depend-on>
+      <depend-on sourceBuildTypeId="npgsql_TestOnPostgreSQL94">
+        <options>
+          <option name="run-build-if-dependency-failed" value="CANCEL" />
+          <option name="run-build-if-dependency-failed-to-start" value="CANCEL" />
+          <option name="take-started-build-with-same-revisions" value="true" />
+          <option name="take-successful-builds-only" value="true" />
+        </options>
+      </depend-on>
+      <depend-on sourceBuildTypeId="npgsql_TestOnPostgreSQL95">
+        <options>
+          <option name="run-build-if-dependency-failed" value="CANCEL" />
+          <option name="run-build-if-dependency-failed-to-start" value="CANCEL" />
+          <option name="take-started-build-with-same-revisions" value="true" />
+          <option name="take-successful-builds-only" value="true" />
+        </options>
+      </depend-on>
+      <depend-on sourceBuildTypeId="npgsql_TestOnPostgreSQL96">
+        <options>
+          <option name="run-build-if-dependency-failed" value="CANCEL" />
+          <option name="run-build-if-dependency-failed-to-start" value="CANCEL" />
+          <option name="take-started-build-with-same-revisions" value="true" />
+          <option name="take-successful-builds-only" value="true" />
+        </options>
+      </depend-on>
+      <depend-on sourceBuildTypeId="npgsql_TestCoreCLROnPostgreSQL95">
+        <options>
+          <option name="run-build-if-dependency-failed" value="CANCEL" />
+          <option name="run-build-if-dependency-failed-to-start" value="CANCEL" />
+          <option name="take-started-build-with-same-revisions" value="true" />
+          <option name="take-successful-builds-only" value="true" />
+        </options>
+      </depend-on>
+    </dependencies>
+    <cleanup />
+  </settings>
+</build-type>
+

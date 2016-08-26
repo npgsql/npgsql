@@ -23,12 +23,13 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using NpgsqlTypes;
 using NUnit.Framework;
 
 namespace Npgsql.Tests.Types
 {
-    class PostgisTest : TestBase
+    class PostgisTests : TestBase
     {
         public class TestAtt
         {
@@ -36,7 +37,7 @@ namespace Npgsql.Tests.Types
             public string SQL;
         }
 
-        readonly static TestAtt[] Tests =
+        static readonly TestAtt[] Tests =
         {
             new TestAtt { Geom = new PostgisPoint(1D, 2500D), SQL = "st_makepoint(1,2500)" },
             new TestAtt {
@@ -109,7 +110,7 @@ namespace Npgsql.Tests.Types
             }
         };
 
-        [Test,TestCaseSource("Tests")]
+        [Test,TestCaseSource(nameof(Tests))]
         public void PostgisTestRead(TestAtt att)
         {
             using (var conn = OpenConnection())
@@ -122,7 +123,7 @@ namespace Npgsql.Tests.Types
             }
         }
 
-        [Test, TestCaseSource("Tests")]
+        [Test, TestCaseSource(nameof(Tests))]
         public void PostgisTestWrite(TestAtt a)
         {
             using (var conn = OpenConnection())
@@ -139,11 +140,10 @@ namespace Npgsql.Tests.Types
                 {
                     Assert.Fail("Exception caught on " + a.Geom);
                 }
-
             }
         }
 
-        [Test, TestCaseSource("Tests")]
+        [Test, TestCaseSource(nameof(Tests))]
         public void PostgisTestWriteSrid(TestAtt a)
         {
             using (var conn = OpenConnection())
@@ -157,7 +157,7 @@ namespace Npgsql.Tests.Types
             }
         }
 
-        [Test, TestCaseSource("Tests")]
+        [Test, TestCaseSource(nameof(Tests))]
         public void PostgisTestReadSrid(TestAtt a)
         {
             using (var conn = OpenConnection())
@@ -179,7 +179,7 @@ namespace Npgsql.Tests.Types
                 cmd.CommandText = "Select ARRAY(select st_makepoint(1,1))";
                 var p = cmd.ExecuteScalar() as PostgisGeometry[];
                 var p2 = new PostgisPoint(1d, 1d);
-                Assert.IsTrue(p != null && p[0] is PostgisPoint && p2 == (PostgisPoint)p[0]);
+                Assert.IsTrue(p?[0] is PostgisPoint && p2 == (PostgisPoint)p[0]);
             }
         }
 
@@ -196,25 +196,96 @@ namespace Npgsql.Tests.Types
             }
         }
 
-        [SetUp]
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1022")]
+        public void MultiPolygonWithMultiplePolygons()
+        {
+            var geom2 = new PostgisMultiPolygon(new[]
+            {
+                new PostgisPolygon(new[] {
+                    new[]
+                    {
+                        new Coordinate2D(40, 40),
+                        new Coordinate2D(20, 45),
+                        new Coordinate2D(45, 30),
+                        new Coordinate2D(40, 40)
+                    }
+                }),
+                new PostgisPolygon(new[] {
+                    new[]
+                    {
+                        new Coordinate2D(20, 35),
+                        new Coordinate2D(10, 30),
+                        new Coordinate2D(10, 10),
+                        new Coordinate2D(30, 5),
+                        new Coordinate2D(45, 20),
+                        new Coordinate2D(20, 35)
+                    }
+                })
+            }) { SRID = 4326 };
+            using (var conn = OpenConnection())
+            using (var command = conn.CreateCommand())
+            {
+                command.Parameters.AddWithValue("p1", geom2);
+                command.CommandText = "Select :p1";
+                command.ExecuteScalar();
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1121")]
+        public void AsBinaryWkb()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo GEOMETRY)");
+                var point = new PostgisPoint(8, 8);
+
+                using (var cmd = new NpgsqlCommand("INSERT INTO data (foo) VALUES (@p)", conn))
+                {
+                    cmd.Parameters.AddWithValue("p", NpgsqlDbType.Geometry, point);
+                    cmd.ExecuteNonQuery();
+                }
+
+                byte[] bytes;
+                using (var cmd = new NpgsqlCommand("SELECT foo FROM data", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    bytes = reader.GetFieldValue<byte[]>(0);
+                }
+
+                conn.ExecuteNonQuery("TRUNCATE data");
+
+                using (var cmd = new NpgsqlCommand("INSERT INTO data (foo) VALUES (@p)", conn))
+                {
+                    cmd.Parameters.AddWithValue("p", NpgsqlDbType.Geometry, bytes);
+                    cmd.ExecuteNonQuery();
+                }
+
+                Assert.That(conn.ExecuteScalar("SELECT foo FROM data"), Is.EqualTo(point));
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+            }
+        }
+
+        [OneTimeSetUp]
         public void SetUp()
         {
             using (var conn = OpenConnection())
-            using (var cmd = conn.CreateCommand())
+            using (var cmd = new NpgsqlCommand("SELECT postgis_version()", conn))
             {
-                cmd.CommandText = "SELECT postgis_version();";
                 try
                 {
                     cmd.ExecuteNonQuery();
                 }
-                catch (NpgsqlException)
+                catch (PostgresException)
                 {
-                    TestUtil.IgnoreExceptOnBuildServer(("Skipping tests : postgis extension not found."));
+                    cmd.CommandText = "SELECT version()";
+                    var version = (string)cmd.ExecuteScalar();
+                    Debug.Assert(version != null);
+                    if (version.Contains("beta"))
+                        Assert.Ignore($"PostGIS not installed, ignoring because we're on a beta version of PostgreSQL ({version})");
+                    TestUtil.IgnoreExceptOnBuildServer("PostGIS extension not installed.");
                 }
             }
         }
-
-        public PostgisTest(string backendVersion)
-            : base(backendVersion){ }
     }
 }

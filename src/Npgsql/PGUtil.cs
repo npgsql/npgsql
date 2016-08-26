@@ -24,7 +24,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
 using System.Globalization;
 using System.IO;
 using System.Net;
@@ -37,10 +36,47 @@ using AsyncRewriter;
 namespace Npgsql
 {
     // ReSharper disable once InconsistentNaming
-    internal static class PGUtil
+    static class PGUtil
     {
+        internal static readonly byte[] EmptyBuffer = new byte[0];
+
         internal static readonly UTF8Encoding UTF8Encoding = new UTF8Encoding(false, true);
         internal static readonly UTF8Encoding RelaxedUTF8Encoding = new UTF8Encoding(false, false);
+
+        internal static void ValidateBackendMessageCode(BackendMessageCode code)
+        {
+            switch (code)
+            {
+            case BackendMessageCode.AuthenticationRequest:
+            case BackendMessageCode.BackendKeyData:
+            case BackendMessageCode.BindComplete:
+            case BackendMessageCode.CloseComplete:
+            case BackendMessageCode.CompletedResponse:
+            case BackendMessageCode.CopyData:
+            case BackendMessageCode.CopyDone:
+            case BackendMessageCode.CopyBothResponse:
+            case BackendMessageCode.CopyInResponse:
+            case BackendMessageCode.CopyOutResponse:
+            case BackendMessageCode.DataRow:
+            case BackendMessageCode.EmptyQueryResponse:
+            case BackendMessageCode.ErrorResponse:
+            case BackendMessageCode.FunctionCall:
+            case BackendMessageCode.FunctionCallResponse:
+            case BackendMessageCode.NoData:
+            case BackendMessageCode.NoticeResponse:
+            case BackendMessageCode.NotificationResponse:
+            case BackendMessageCode.ParameterDescription:
+            case BackendMessageCode.ParameterStatus:
+            case BackendMessageCode.ParseComplete:
+            case BackendMessageCode.PasswordPacket:
+            case BackendMessageCode.PortalSuspended:
+            case BackendMessageCode.ReadyForQuery:
+            case BackendMessageCode.RowDescription:
+                return;
+            default:
+                throw new NpgsqlException("Unknown message code: " + code);
+            }
+        }
 
         public static int RotateShift(int val, int shift)
         {
@@ -57,54 +93,29 @@ namespace Npgsql
         /// <typeparam name="TResult">The type of the result returned by the task.</typeparam>
         /// <param name="result">The result to store into the completed task.</param>
         /// <returns>The successfully completed task.</returns>
-#if !NET40
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-#endif
         internal static Task<TResult> TaskFromResult<TResult>(TResult result)
         {
-#if !NET40
             return Task.FromResult(result);
-#else
-            return TaskEx.FromResult(result);
-#endif
         }
 
         internal static readonly Task CompletedTask = TaskFromResult(0);
 
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
         internal static StringComparer InvariantCaseIgnoringStringComparer => StringComparer.InvariantCultureIgnoreCase;
 #else
         internal static StringComparer InvariantCaseIgnoringStringComparer => CultureInfo.InvariantCulture.CompareInfo.GetStringComparer(CompareOptions.IgnoreCase);
 #endif
 
-        /// <summary>
-        /// Throws an exception with the given string and also invokes a contract failure, allowing the static checker
-        /// to detect scenarios leading up to this error.
-        ///
-        /// See http://blogs.msdn.com/b/francesco/archive/2014/09/12/how-to-use-cccheck-to-prove-no-case-is-forgotten.aspx
-        /// </summary>
-        /// <param name="message">the exception message</param>
-        /// <returns>an exception to be thrown</returns>
-        [ContractVerification(false)]
-        public static Exception ThrowIfReached(string message = null)
-        {
-            Contract.Requires(false);
-            return message == null ? new Exception("An internal Npgsql occured, please open an issue in http://github.com/npgsql/npgsql with this exception's stack trace") : new Exception(message);
-        }
+        internal static bool IsWindows =>
+#if NET45 || NET451
+            Environment.OSVersion.Platform == PlatformID.Win32NT;
+#else
+            System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows);
+#endif
     }
 
-    /// <summary>
-    /// Represent the frontend/backend protocol version.
-    /// </summary>
-    public enum ProtocolVersion
-    {
-        /// <summary>
-        /// Protocol version 3 (the current version).
-        /// </summary>
-        Version3 = 3
-    }
-
-    internal enum FormatCode : short
+    enum FormatCode : short
     {
         Text = 0,
         Binary = 1
@@ -145,8 +156,30 @@ namespace Npgsql
 
         internal bool HasExpired => DateTime.Now >= Expiration;
 
-        internal Task AsTask => Task.Delay(TimeLeft);
+        internal TimeSpan TimeLeft => IsSet ? Expiration - DateTime.Now : Timeout.InfiniteTimeSpan;
+    }
 
-        internal TimeSpan TimeLeft => Expiration - DateTime.Now;
+    sealed class CultureSetter : IDisposable
+    {
+        readonly CultureInfo _oldCulture;
+
+        internal CultureSetter(CultureInfo newCulture)
+        {
+            _oldCulture = CultureInfo.CurrentCulture;
+#if NET45 || NET451
+            Thread.CurrentThread.CurrentCulture = newCulture;
+#else
+            CultureInfo.CurrentCulture = newCulture;
+#endif
+        }
+
+        public void Dispose()
+        {
+#if NET45 || NET451
+            Thread.CurrentThread.CurrentCulture = _oldCulture;
+#else
+            CultureInfo.CurrentCulture = _oldCulture;
+#endif
+        }
     }
 }

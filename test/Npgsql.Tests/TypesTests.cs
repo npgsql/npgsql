@@ -23,7 +23,9 @@
 
 using System;
 using System.Data;
+using System.Globalization;
 using System.Net;
+using System.Threading;
 using NpgsqlTypes;
 using NUnit.Framework;
 using Npgsql;
@@ -126,19 +128,13 @@ namespace Npgsql.Tests
             test = NpgsqlTimeSpan.Parse(input);
             Assert.AreEqual(new TimeSpan(1, 2, 3, 4, 5).Ticks, test.TotalTicks, input);
 
-            var oldCulture = System.Threading.Thread.CurrentThread.CurrentCulture;
-            var testCulture = new System.Globalization.CultureInfo("fr-FR");
+            var testCulture = new CultureInfo("fr-FR");
             Assert.AreEqual(",", testCulture.NumberFormat.NumberDecimalSeparator, "decimal seperator");
-            try
+            using (new CultureSetter(testCulture))
             {
-                System.Threading.Thread.CurrentThread.CurrentCulture = testCulture;
                 input = "1 day 2:3:4.005";
                 test = NpgsqlTimeSpan.Parse(input);
                 Assert.AreEqual(new TimeSpan(1, 2, 3, 4, 5).Ticks, test.TotalTicks, input);
-            }
-            finally
-            {
-                System.Threading.Thread.CurrentThread.CurrentCulture = oldCulture;
             }
         }
 
@@ -248,17 +244,11 @@ namespace Npgsql.Tests
             const long moreThanAMonthInTicks = TimeSpan.TicksPerDay*40;
             Assert.AreEqual(new NpgsqlTimeSpan(moreThanAMonthInTicks).ToString(), new NpgsqlTimeSpan(new TimeSpan(moreThanAMonthInTicks)).ToString());
 
-            var oldCulture = System.Threading.Thread.CurrentThread.CurrentCulture;
-            var testCulture = new System.Globalization.CultureInfo("fr-FR");
+            var testCulture = new CultureInfo("fr-FR");
             Assert.AreEqual(",", testCulture.NumberFormat.NumberDecimalSeparator, "decimal seperator");
-            try
+            using (new CultureSetter(testCulture))
             {
-                System.Threading.Thread.CurrentThread.CurrentCulture = testCulture;
                 Assert.AreEqual("14 mons 3 days 04:05:06.007", new NpgsqlTimeSpan(1, 2, 3, 4, 5, 6, 7).ToString());
-            }
-            finally
-            {
-                System.Threading.Thread.CurrentThread.CurrentCulture = oldCulture;
             }
         }
 
@@ -315,18 +305,10 @@ namespace Npgsql.Tests
 
             Assert.AreEqual("0001-05-07 BC", new NpgsqlDate(-1, 5, 7).ToString());
 
-            var oldCulture = System.Threading.Thread.CurrentThread.CurrentCulture;
-            var testCulture = new System.Globalization.CultureInfo("fr-FR");
+            var testCulture = new CultureInfo("fr-FR");
             Assert.AreEqual(",", testCulture.NumberFormat.NumberDecimalSeparator, "decimal seperator");
-            try
-            {
-                System.Threading.Thread.CurrentThread.CurrentCulture = testCulture;
+            using (new CultureSetter(testCulture))
                 Assert.AreEqual("2009-05-31", new NpgsqlDate(2009, 5, 31).ToString());
-            }
-            finally
-            {
-                System.Threading.Thread.CurrentThread.CurrentCulture = oldCulture;
-            }
         }
 
         [Test]

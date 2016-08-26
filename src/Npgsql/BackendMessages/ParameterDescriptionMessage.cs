@@ -28,22 +28,22 @@ using System.Text;
 
 namespace Npgsql.BackendMessages
 {
-    internal class ParameterDescriptionMessage : IBackendMessage
+    class ParameterDescriptionMessage : IBackendMessage
     {
-        internal List<uint> TypeOIDs { get; private set; }
+        // ReSharper disable once InconsistentNaming
+        internal List<uint> TypeOIDs { get; }
 
         internal ParameterDescriptionMessage()
         {
             TypeOIDs = new List<uint>();
         }
 
-        internal ParameterDescriptionMessage Load(NpgsqlBuffer buf)
+        internal ParameterDescriptionMessage Load(ReadBuffer buf)
         {
             var numParams = buf.ReadInt16();
             TypeOIDs.Clear();
-            for (var i = 0; i < numParams; i++) {
+            for (var i = 0; i < numParams; i++)
                 TypeOIDs.Add(buf.ReadUInt32());
-            }
             return this;
         }
 

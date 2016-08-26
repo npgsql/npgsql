@@ -22,12 +22,9 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
-using System.Diagnostics.Contracts;
-using System.Linq;
-using System.Net;
+using System.Diagnostics;
 using System.Net.NetworkInformation;
-using System.Text;
+using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 
@@ -37,11 +34,13 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-net-types.html
     /// </remarks>
     [TypeMapping("macaddr", NpgsqlDbType.MacAddr, typeof(PhysicalAddress))]
-    internal class MacaddrHandler : SimpleTypeHandler<PhysicalAddress>, ISimpleTypeHandler<string>
+    class MacaddrHandler : SimpleTypeHandler<PhysicalAddress>, ISimpleTypeHandler<string>
     {
-        public override PhysicalAddress Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        internal MacaddrHandler(IBackendType backendType) : base(backendType) { }
+
+        public override PhysicalAddress Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
-            Contract.Assume(len == 6);
+            Debug.Assert(len == 6);
 
             var bytes = new byte[6];
 
@@ -49,12 +48,10 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             return new PhysicalAddress(bytes);
         }
 
-        string ISimpleTypeHandler<string>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return Read(buf, len, fieldDescription).ToString();
-        }
+        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => Read(buf, len, fieldDescription).ToString();
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
         {
             var address = value as PhysicalAddress;
             if (address == null)
@@ -64,9 +61,7 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             return 6;
         }
 
-        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
-        {
-            buf.WriteBytes(((PhysicalAddress)value).GetAddressBytes(), 0, 6);
-        }
+        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
+            => buf.WriteBytes(((PhysicalAddress)value).GetAddressBytes(), 0, 6);
     }
 }

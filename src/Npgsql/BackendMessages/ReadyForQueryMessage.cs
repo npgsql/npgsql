@@ -21,20 +21,15 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
 namespace Npgsql.BackendMessages
 {
-    internal class ReadyForQueryMessage : IBackendMessage
+    class ReadyForQueryMessage : IBackendMessage
     {
         public BackendMessageCode Code => BackendMessageCode.ReadyForQuery;
 
         internal TransactionStatus TransactionStatusIndicator { get; private set; }
 
-        internal ReadyForQueryMessage Load(NpgsqlBuffer buf) {
+        internal ReadyForQueryMessage Load(ReadBuffer buf) {
             TransactionStatusIndicator = (TransactionStatus)buf.ReadByte();
             return this;
         }

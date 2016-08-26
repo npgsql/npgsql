@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -18,10 +19,15 @@ namespace Npgsql
         /// <returns>An awaitable task that represents the original task plus the timeout</returns>
         internal static async Task<T> WithTimeout<T>(this Task<T> task, NpgsqlTimeout timeout)
         {
-            var timeoutTask = Task.Delay(timeout.TimeLeft);
-            if (task != await Task.WhenAny(task, timeoutTask))
+            if (!timeout.IsSet)
+                return await task.ConfigureAwait(false);
+            var timeLeft = timeout.TimeLeft;
+            if (timeLeft < TimeSpan.Zero)
                 throw new TimeoutException();
-            return await task;
+            var timeoutTask = Task.Delay(timeLeft);
+            if (task != await Task.WhenAny(task, timeoutTask).ConfigureAwait(false))
+                throw new TimeoutException();
+            return await task.ConfigureAwait(false);
         }
 
         /// <summary>
@@ -33,10 +39,18 @@ namespace Npgsql
         /// <returns>An awaitable task that represents the original task plus the timeout</returns>
         internal static async Task WithTimeout(this Task task, NpgsqlTimeout timeout)
         {
-            var timeoutTask = Task.Delay(timeout.TimeLeft);
-            if (task != await Task.WhenAny(task, timeoutTask))
+            if (!timeout.IsSet)
+            {
+                await task.ConfigureAwait(false);
+                return;
+            }
+            var timeLeft = timeout.TimeLeft;
+            if (timeLeft < TimeSpan.Zero)
                 throw new TimeoutException();
-            await task;
+            var timeoutTask = Task.Delay(timeLeft);
+            if (task != await Task.WhenAny(task, timeoutTask).ConfigureAwait(false))
+                throw new TimeoutException();
+            await task.ConfigureAwait(false);
         }
 
         /// <summary>
@@ -51,9 +65,9 @@ namespace Npgsql
             var tcs = new TaskCompletionSource<bool>();
             using (cancellationToken.Register(
                         s => ((TaskCompletionSource<bool>)s).TrySetResult(true), tcs))
-                if (task != await Task.WhenAny(task, tcs.Task))
+                if (task != await Task.WhenAny(task, tcs.Task).ConfigureAwait(false))
                     throw new TaskCanceledException(task);
-            return await task;
+            return await task.ConfigureAwait(false);
         }
 
         /// <summary>
@@ -68,9 +82,9 @@ namespace Npgsql
             var tcs = new TaskCompletionSource<bool>();
             using (cancellationToken.Register(
                         s => ((TaskCompletionSource<bool>)s).TrySetResult(true), tcs))
-                if (task != await Task.WhenAny(task, tcs.Task))
+                if (task != await Task.WhenAny(task, tcs.Task).ConfigureAwait(false))
                     throw new TaskCanceledException(task);
-            await task;
+            await task.ConfigureAwait(false);
         }
 
         internal static Task<T> WithCancellationAndTimeout<T>(this Task<T> task, NpgsqlTimeout timeout, CancellationToken cancellationToken)

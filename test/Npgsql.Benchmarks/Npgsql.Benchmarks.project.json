@@ -1,0 +1,12 @@
+﻿{
+  "dependencies": {
+      "BenchmarkDotNet": "0.9.8",
+      "BenchmarkDotNet.Diagnostics.Windows": "0.9.8"
+  },
+  "frameworks": {
+    "net46": {}
+  },
+  "runtimes": {
+    "win": {}
+  }
+}

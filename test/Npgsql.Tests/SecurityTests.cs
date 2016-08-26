@@ -22,24 +22,15 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security;
-using System.Security.Permissions;
-using System.Text;
-using System.Web.UI.WebControls;
-using Npgsql;
 using NUnit.Framework;
 
 namespace Npgsql.Tests
 {
     public class SecurityTests : TestBase
     {
-        public SecurityTests(string backendVersion) : base(backendVersion) {}
-
         [Test, Description("Establishes an SSL connection, assuming a self-signed server certificate")]
-        [TestCase(false, TestName = "TlsClientStream")]
-        [TestCase(true,  TestName = "SslStream")]
+        [TestCase(false, TestName = "BasicSslWithTlsClientStream")]
+        [TestCase(true,  TestName = "BasicSslWithSslStream")]
         public void BasicSsl(bool useSslStream)
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
@@ -54,8 +45,8 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Makes sure a certificate whose root CA isn't known isn't accepted")]
-        [TestCase(false, TestName = "TlsClientStream")]
-        [TestCase(true,  TestName = "SslStream")]
+        [TestCase(false, TestName = "RejectSelfSignedCertificateWithTlsClientStream")]
+        [TestCase(true,  TestName = "RejectSelfSignedCertificateWithSslStream")]
         public void RejectSelfSignedCertificate(bool useSslStream)
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
@@ -99,10 +90,40 @@ namespace Npgsql.Tests
                 Assert.That(conn.IsSecure, Is.False);
         }
 
-        [Test]
-        public void IntegratedSecurity()
+        [Test, LinuxIgnore("No integrated security on Linux (yet)")]
+        public void IntegratedSecurityWithUsername()
         {
+            var username = Environment.GetEnvironmentVariable("USERNAME") ??
+                           Environment.GetEnvironmentVariable("USER");
+            if (username == null)
+                throw new Exception("Could find username");
+
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString) {
+                IntegratedSecurity = true,
+                Username = username,
+                Password = null,
+            };
+            using (var conn = new NpgsqlConnection(csb))
+            {
+                try
+                {
+                    conn.Open();
+                }
+                catch (Exception e)
+                {
+                    if (TestUtil.IsOnBuildServer)
+                        throw;
+                    Console.WriteLine(e);
+                    Assert.Ignore("Integrated security (GSS/SSPI) doesn't seem to be set up");
+                }
+            }
+        }
+
+        [Test, LinuxIgnore("No integrated security on Linux (yet)")]
+        public void IntegratedSecurityWithoutUsername()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
                 IntegratedSecurity = true,
                 Username = null,
                 Password = null,
@@ -122,50 +143,6 @@ namespace Npgsql.Tests
                 }
             }
         }
-
-        #region Partial Trust
-
-        [Test, Description("Makes sure Npgsql works when running under pseudo-medium trust")]
-        [Ignore("Doesn't work via DNX testing")]
-        public void RestrictedTrust()
-        {
-            var domainSetup = new AppDomainSetup { ApplicationBase = AppDomain.CurrentDomain.BaseDirectory };
-            var permissions = new PermissionSet(null);
-            permissions.AddPermission(new SecurityPermission(SecurityPermissionFlag.Execution));
-
-            var domain = AppDomain.CreateDomain("Partial Trust AppDomain", null, domainSetup, permissions);
-
-            try
-            {
-                var test = (TrustTestClass) domain.CreateInstanceAndUnwrap(
-                    typeof (TrustTestClass).Assembly.FullName,
-                    typeof (TrustTestClass).FullName
-                    );
-                test.Go(ConnectionString);
-            }
-            finally
-            {
-                AppDomain.Unload(domain);
-            }
-        }
-
-        [Serializable]
-        public class TrustTestClass
-        {
-            public void Go(string connString)
-            {
-                using (var conn = new NpgsqlConnection(connString))
-                {
-                    conn.Open();
-                    using (var cmd = new NpgsqlCommand("SELECT 1", conn))
-                    {
-                        Assert.That(cmd.ExecuteScalar(), Is.EqualTo(1));
-                    }
-                }
-            }
-        }
-
-        #endregion
 
         #region Setup / Teardown / Utils
 

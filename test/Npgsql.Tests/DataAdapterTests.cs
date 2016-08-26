@@ -21,10 +21,10 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
+#if NET451
+
 using System;
 using System.Data;
-using System.Data.SqlClient;
-using System.Web.UI.WebControls;
 using Npgsql;
 
 using NpgsqlTypes;
@@ -35,7 +35,63 @@ namespace Npgsql.Tests
 {
     public class DataAdapterTests : TestBase
     {
-        public DataAdapterTests(string backendVersion) : base(backendVersion) { }
+        [Test]
+        public void UseDataAdapter()
+        {
+            using (var conn = OpenConnection())
+            using (var command = new NpgsqlCommand("SELECT 1", conn))
+            {
+                var da = new NpgsqlDataAdapter();
+                da.SelectCommand = command;
+                var ds = new DataSet();
+                da.Fill(ds);
+                //ds.WriteXml("TestUseDataAdapter.xml");
+            }
+        }
+
+        [Test]
+        public void UseDataAdapterNpgsqlConnectionConstructor()
+        {
+            using (var conn = OpenConnection())
+            using (var command = new NpgsqlCommand("SELECT 1", conn))
+            {
+                command.Connection = conn;
+                var da = new NpgsqlDataAdapter(command);
+                var ds = new DataSet();
+                da.Fill(ds);
+                //ds.WriteXml("TestUseDataAdapterNpgsqlConnectionConstructor.xml");
+            }
+        }
+
+        [Test]
+        public void UseDataAdapterStringNpgsqlConnectionConstructor()
+        {
+            using (var conn = OpenConnection())
+            {
+                var da = new NpgsqlDataAdapter("SELECT 1", conn);
+                var ds = new DataSet();
+                da.Fill(ds);
+                //ds.WriteXml("TestUseDataAdapterStringNpgsqlConnectionConstructor.xml");
+            }
+        }
+
+        [Test]
+        public void UseDataAdapterStringStringConstructor()
+        {
+            var da = new NpgsqlDataAdapter("SELECT 1", ConnectionString);
+            var ds = new DataSet();
+            da.Fill(ds);
+            //ds.WriteXml("TestUseDataAdapterStringStringConstructor.xml");
+        }
+
+        [Test]
+        public void UseDataAdapterStringStringConstructor2()
+        {
+            var da = new NpgsqlDataAdapter("SELECT 1", ConnectionString);
+            var ds = new DataSet();
+            da.Fill(ds);
+            //ds.WriteXml("TestUseDataAdapterStringStringConstructor2.xml");
+        }
 
         [Test]
         [MonoIgnore("Bug in mono, submitted pull request: https://github.com/mono/mono/pull/1172")]
@@ -200,28 +256,28 @@ namespace Npgsql.Tests
                 Assert.IsFalse(field_serial.AllowDBNull);
                 Assert.IsTrue(field_serial.AutoIncrement);
                 Assert.AreEqual("field_serial", field_serial.ColumnName);
-                Assert.AreEqual(typeof (int), field_serial.DataType);
+                Assert.AreEqual(typeof(int), field_serial.DataType);
                 Assert.AreEqual(0, field_serial.Ordinal);
                 Assert.IsTrue(field_serial.Unique);
 
                 Assert.IsTrue(field_int2.AllowDBNull);
                 Assert.IsFalse(field_int2.AutoIncrement);
                 Assert.AreEqual("field_int2", field_int2.ColumnName);
-                Assert.AreEqual(typeof (short), field_int2.DataType);
+                Assert.AreEqual(typeof(short), field_int2.DataType);
                 Assert.AreEqual(1, field_int2.Ordinal);
                 Assert.IsFalse(field_int2.Unique);
 
                 Assert.IsTrue(field_timestamp.AllowDBNull);
                 Assert.IsFalse(field_timestamp.AutoIncrement);
                 Assert.AreEqual("field_timestamp", field_timestamp.ColumnName);
-                Assert.AreEqual(typeof (DateTime), field_timestamp.DataType);
+                Assert.AreEqual(typeof(DateTime), field_timestamp.DataType);
                 Assert.AreEqual(2, field_timestamp.Ordinal);
                 Assert.IsFalse(field_timestamp.Unique);
 
                 Assert.IsTrue(field_numeric.AllowDBNull);
                 Assert.IsFalse(field_numeric.AutoIncrement);
                 Assert.AreEqual("field_numeric", field_numeric.ColumnName);
-                Assert.AreEqual(typeof (decimal), field_numeric.DataType);
+                Assert.AreEqual(typeof(decimal), field_numeric.DataType);
                 Assert.AreEqual(3, field_numeric.Ordinal);
                 Assert.IsFalse(field_numeric.Unique);
             }
@@ -245,19 +301,19 @@ namespace Npgsql.Tests
                 var field_numeric = ds.Tables[0].Columns[3];
 
                 Assert.AreEqual("field_serial", field_serial.ColumnName);
-                Assert.AreEqual(typeof (int), field_serial.DataType);
+                Assert.AreEqual(typeof(int), field_serial.DataType);
                 Assert.AreEqual(0, field_serial.Ordinal);
 
                 Assert.AreEqual("field_int2", field_int2.ColumnName);
-                Assert.AreEqual(typeof (short), field_int2.DataType);
+                Assert.AreEqual(typeof(short), field_int2.DataType);
                 Assert.AreEqual(1, field_int2.Ordinal);
 
                 Assert.AreEqual("field_timestamp", field_timestamp.ColumnName);
-                Assert.AreEqual(typeof (DateTime), field_timestamp.DataType);
+                Assert.AreEqual(typeof(DateTime), field_timestamp.DataType);
                 Assert.AreEqual(2, field_timestamp.Ordinal);
 
                 Assert.AreEqual("field_numeric", field_numeric.ColumnName);
-                Assert.AreEqual(typeof (decimal), field_numeric.DataType);
+                Assert.AreEqual(typeof(decimal), field_numeric.DataType);
                 Assert.AreEqual(3, field_numeric.Ordinal);
             }
         }
@@ -548,6 +604,25 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test]
+        public void LoadDataTable()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (char5 CHAR(5), varchar5 VARCHAR(5))");
+                using (var command = new NpgsqlCommand("SELECT char5, varchar5 FROM data", conn))
+                using (var dr = command.ExecuteReader())
+                {
+                    var dt = new DataTable();
+                    dt.Load(dr);
+                    dr.Close();
+
+                    Assert.AreEqual(5, dt.Columns[0].MaxLength);
+                    Assert.AreEqual(5, dt.Columns[1].MaxLength);
+                }
+            }
+        }
+
         public void Setup(NpgsqlConnection conn)
         {
             conn.ExecuteNonQuery("CREATE TEMP TABLE data (" +
@@ -561,3 +636,5 @@ namespace Npgsql.Tests
         }
     }
 }
+
+#endif

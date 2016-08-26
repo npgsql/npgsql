@@ -22,12 +22,6 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
-using System.Diagnostics.Contracts;
-using System.Globalization;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 
@@ -40,21 +34,24 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-geometric.html
     /// </remarks>
     [TypeMapping("path", NpgsqlDbType.Path, typeof(NpgsqlPath))]
-    internal class PathHandler : ChunkingTypeHandler<NpgsqlPath>
+    class PathHandler : ChunkingTypeHandler<NpgsqlPath>
     {
         #region State
 
         NpgsqlPath _value;
-        NpgsqlBuffer _buf;
+        ReadBuffer _readBuf;
+        WriteBuffer _writeBuf;
         int _index;
 
         #endregion
 
+        internal PathHandler(IBackendType backendType) : base(backendType) { }
+
         #region Read
 
-        public override void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
-            _buf = buf;
+            _readBuf = buf;
             _index = -1;
         }
 
@@ -64,10 +61,10 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
 
             if (_index == -1)
             {
-                if (_buf.ReadBytesLeft < 5) { return false; }
+                if (_readBuf.ReadBytesLeft < 5) { return false; }
 
                 bool open;
-                var openByte = _buf.ReadByte();
+                var openByte = _readBuf.ReadByte();
                 switch (openByte) {
                     case 1:
                         open = false;
@@ -78,19 +75,19 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
                     default:
                         throw new Exception("Error decoding binary geometric path: bad open byte");
                 }
-                var numPoints = _buf.ReadInt32();
+                var numPoints = _readBuf.ReadInt32();
                 _value = new NpgsqlPath(numPoints, open);
                 _index = 0;
             }
 
             for (; _index < _value.Capacity; _index++)
             {
-                if (_buf.ReadBytesLeft < 16) { return false; }
-                _value.Add(new NpgsqlPoint(_buf.ReadDouble(), _buf.ReadDouble()));
+                if (_readBuf.ReadBytesLeft < 16) { return false; }
+                _value.Add(new NpgsqlPoint(_readBuf.ReadDouble(), _readBuf.ReadDouble()));
             }
             result = _value;
             _value = default(NpgsqlPath);
-            _buf = null;
+            _readBuf = null;
             return true;
         }
 
@@ -105,9 +102,9 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
             return 5 + ((NpgsqlPath)value).Count * 16;
         }
 
-        public override void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
+        public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
-            _buf = buf;
+            _writeBuf = buf;
             _value = (NpgsqlPath)value;
             _index = -1;
         }
@@ -116,20 +113,20 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
         {
             if (_index == -1)
             {
-                if (_buf.WriteSpaceLeft < 5) { return false; }
-                _buf.WriteByte((byte)(_value.Open ? 0 : 1));
-                _buf.WriteInt32(_value.Count);
+                if (_writeBuf.WriteSpaceLeft < 5) { return false; }
+                _writeBuf.WriteByte((byte)(_value.Open ? 0 : 1));
+                _writeBuf.WriteInt32(_value.Count);
                 _index = 0;
             }
 
             for (; _index < _value.Count; _index++)
             {
-                if (_buf.WriteSpaceLeft < 16) { return false; }
+                if (_writeBuf.WriteSpaceLeft < 16) { return false; }
                 var p = _value[_index];
-                _buf.WriteDouble(p.X);
-                _buf.WriteDouble(p.Y);
+                _writeBuf.WriteDouble(p.X);
+                _writeBuf.WriteDouble(p.Y);
             }
-            _buf = null;
+            _writeBuf = null;
             _value = default(NpgsqlPath);
             return true;
         }

@@ -1,4 +1,3 @@
-#if NET45 || NET451 || DNX451
 #region License
 // The PostgreSQL License
 //
@@ -23,195 +22,101 @@
 #endregion
 
 using System;
-using System.IO;
 using System.Runtime.InteropServices;
 using System.ComponentModel;
+using System.Diagnostics;
+using JetBrains.Annotations;
+using static Npgsql.SafeNativeMethods;
 
 namespace Npgsql
 {
     /// <summary>
     /// A class to handle everything associated with SSPI authentication
     /// </summary>
-    internal class SSPIHandler : IDisposable
+    class SSPIHandler : IDisposable
     {
-#region constants and structs
+        bool _disposed;
+        readonly string _sspiTarget;
+        SecHandle _sspiCred;
+        SecHandle _sspiCtx;
+        bool _isSSPICtxSet;
 
-        private const int SECBUFFER_VERSION = 0;
-        private const int SECBUFFER_TOKEN = 2;
-        private const int SEC_E_OK = 0x00000000;
-        private const int SEC_I_CONTINUE_NEEDED = 0x00090312;
-        private const int ISC_REQ_ALLOCATE_MEMORY=0x00000100;
-        private const int SECURITY_NETWORK_DREP=0x00000000;
-        private const int SECPKG_CRED_OUTBOUND=0x00000002;
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct SecHandle
-        {
-            public IntPtr dwLower;
-            public IntPtr dwUpper;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct SecBuffer
-        {
-            public int cbBuffer;
-            public int BufferType;
-            public IntPtr pvBuffer;
-        }
-
-        /// <summary>
-        /// Simplified SecBufferDesc struct with only one SecBuffer
-        /// </summary>
-        [StructLayout(LayoutKind.Sequential)]
-        private struct SecBufferDesc
-        {
-            public int ulVersion;
-            public int cBuffers;
-            public IntPtr pBuffer;
-        }
-
-#endregion
-
-#region p/invoke methods
-
-        [DllImport("Secur32.dll")]
-        private extern static int AcquireCredentialsHandle(
-            string pszPrincipal,
-            string pszPackage,
-            int fCredentialUse,
-            IntPtr pvLogonID,
-            IntPtr pAuthData,
-            IntPtr pGetKeyFn,
-            IntPtr pvGetKeyArgument,
-            ref SecHandle phCredential,
-            out SecHandle ptsExpiry
-        );
-
-        [DllImport("secur32", CharSet=CharSet.Auto, SetLastError=true)]
-        static extern int InitializeSecurityContext(
-            ref SecHandle phCredential,
-            ref SecHandle phContext,
-            string pszTargetName,
-            int fContextReq,
-            int Reserved1,
-            int TargetDataRep,
-            ref SecBufferDesc pInput,
-            int Reserved2,
-            out SecHandle phNewContext,
-            out SecBufferDesc pOutput,
-            out int pfContextAttr,
-            out SecHandle ptsExpiry);
-
-        [DllImport("secur32", CharSet=CharSet.Auto, SetLastError=true)]
-        static extern int InitializeSecurityContext(
-            ref SecHandle phCredential,
-            IntPtr phContext,
-            string pszTargetName,
-            int fContextReq,
-            int Reserved1,
-            int TargetDataRep,
-            IntPtr pInput,
-            int Reserved2,
-            out SecHandle phNewContext,
-            out SecBufferDesc pOutput,
-            out int pfContextAttr,
-            out SecHandle ptsExpiry);
-
-        [DllImport("Secur32.dll")]
-        private extern static int FreeContextBuffer(
-            IntPtr pvContextBuffer
-        );
-
-        [DllImport("Secur32.dll")]
-        private extern static int FreeCredentialsHandle(
-            ref SecHandle phCredential
-        );
-
-        [DllImport("Secur32.dll")]
-        private extern static int DeleteSecurityContext(
-            ref SecHandle phContext
-        );
-
-#endregion
-
-        private bool disposed;
-        private string sspitarget;
-        private SecHandle sspicred;
-        private SecHandle sspictx;
-        private bool sspictx_set;
-
-        public SSPIHandler(string pghost, string krbsrvname, bool useGssapi)
+        internal SSPIHandler(string pghost, [CanBeNull] string krbsrvname, bool useGssapi)
         {
             if (pghost == null)
                 throw new ArgumentNullException(nameof(pghost));
             if (krbsrvname == null)
-                krbsrvname = String.Empty;
-            sspitarget = $"{krbsrvname}/{pghost}";
+                krbsrvname = string.Empty;
+            _sspiTarget = $"{krbsrvname}/{pghost}";
 
             SecHandle expire;
-            int status = AcquireCredentialsHandle(
+            var status = AcquireCredentialsHandle(
                 "",
                 useGssapi ? "kerberos" : "negotiate",
-                SECPKG_CRED_OUTBOUND,
+                SecpkgCredOutbound,
                 IntPtr.Zero,
                 IntPtr.Zero,
                 IntPtr.Zero,
                 IntPtr.Zero,
-                ref sspicred,
+                ref _sspiCred,
                 out expire
             );
-            if (status != SEC_E_OK)
+            if (status != SecEOk)
             {
                 // This will automaticcaly fill in the message of the last Win32 error
                 throw new Win32Exception();
             }
         }
 
-        public byte[] Continue(byte[] authData)
+        internal byte[] Continue([CanBeNull] byte[] authData)
         {
-            if (authData == null && sspictx_set)
+            if (authData == null && _isSSPICtxSet)
                 throw new InvalidOperationException("The authData parameter con only be null at the first call to continue!");
 
-            int status;
+            var outBuffer = new SecBuffer
+            {
+                pvBuffer = IntPtr.Zero,
+                BufferType = SecbufferToken,
+                cbBuffer = 0
+            };
 
-            SecBuffer OutBuffer;
-            SecBuffer InBuffer;
-            SecBufferDesc inbuf;
-            SecBufferDesc outbuf;
-            SecHandle newContext;
-            SecHandle expire;
-            int contextAttr;
-
-            OutBuffer.pvBuffer = IntPtr.Zero;
-            OutBuffer.BufferType = SECBUFFER_TOKEN;
-            OutBuffer.cbBuffer = 0;
-            outbuf.cBuffers = 1;
-            outbuf.ulVersion = SECBUFFER_VERSION;
-            outbuf.pBuffer = Marshal.AllocHGlobal(Marshal.SizeOf(OutBuffer));
+            var outbuf = new SecBufferDesc
+            {
+                cBuffers = 1,
+                ulVersion = SecbufferVersion,
+                pBuffer = Marshal.AllocHGlobal(Marshal.SizeOf(outBuffer))
+            };
 
             try
             {
-                Marshal.StructureToPtr(OutBuffer, outbuf.pBuffer, false);
-                if (sspictx_set)
+                int status;
+                SecHandle newContext;
+                SecHandle expire;
+                int contextAttr;
+
+                Marshal.StructureToPtr(outBuffer, outbuf.pBuffer, false);
+
+                if (_isSSPICtxSet)
                 {
-                    inbuf.pBuffer = IntPtr.Zero;
-                    InBuffer.pvBuffer = Marshal.AllocHGlobal(authData.Length);
+                    Debug.Assert(authData != null);
+                    var inbuf = new SecBufferDesc { pBuffer = IntPtr.Zero };
+                    var inBuffer = new SecBuffer { pvBuffer = Marshal.AllocHGlobal(authData.Length) };
                     try
                     {
-                    Marshal.Copy(authData, 0, InBuffer.pvBuffer, authData.Length);
-                    InBuffer.cbBuffer = authData.Length;
-                    InBuffer.BufferType = SECBUFFER_TOKEN;
-                    inbuf.ulVersion = SECBUFFER_VERSION;
-                    inbuf.cBuffers = 1;
-                    inbuf.pBuffer = Marshal.AllocHGlobal(Marshal.SizeOf(InBuffer));
-                    Marshal.StructureToPtr(InBuffer, inbuf.pBuffer, false);
+                        Marshal.Copy(authData, 0, inBuffer.pvBuffer, authData.Length);
+                        inBuffer.cbBuffer = authData.Length;
+                        inBuffer.BufferType = SecbufferToken;
+                        inbuf.ulVersion = SecbufferVersion;
+                        inbuf.cBuffers = 1;
+                        inbuf.pBuffer = Marshal.AllocHGlobal(Marshal.SizeOf(inBuffer));
+                        Marshal.StructureToPtr(inBuffer, inbuf.pBuffer, false);
                         status = InitializeSecurityContext(
-                            ref sspicred,
-                            ref sspictx,
-                            sspitarget,
-                            ISC_REQ_ALLOCATE_MEMORY,
+                            ref _sspiCred,
+                            ref _sspiCtx,
+                            _sspiTarget,
+                            IscReqAllocateMemory,
                             0,
-                            SECURITY_NETWORK_DREP,
+                            SecurityNetworkDrep,
                             ref inbuf,
                             0,
                             out newContext,
@@ -222,8 +127,8 @@ namespace Npgsql
                     }
                     finally
                     {
-                        if (InBuffer.pvBuffer != IntPtr.Zero)
-                            Marshal.FreeHGlobal(InBuffer.pvBuffer);
+                        if (inBuffer.pvBuffer != IntPtr.Zero)
+                            Marshal.FreeHGlobal(inBuffer.pvBuffer);
                         if (inbuf.pBuffer != IntPtr.Zero)
                             Marshal.FreeHGlobal(inbuf.pBuffer);
                     }
@@ -231,12 +136,12 @@ namespace Npgsql
                 else
                 {
                     status = InitializeSecurityContext(
-                        ref sspicred,
+                        ref _sspiCred,
                         IntPtr.Zero,
-                        sspitarget,
-                        ISC_REQ_ALLOCATE_MEMORY,
+                        _sspiTarget,
+                        IscReqAllocateMemory,
                         0,
-                        SECURITY_NETWORK_DREP,
+                        SecurityNetworkDrep,
                         IntPtr.Zero,
                         0,
                         out newContext,
@@ -246,34 +151,36 @@ namespace Npgsql
                     );
                 }
 
-                if (status != SEC_E_OK && status != SEC_I_CONTINUE_NEEDED)
+                if (status != SecEOk && status != SecIContinueNeeded)
                 {
                     // This will automaticcaly fill in the message of the last Win32 error
                     throw new Win32Exception();
                 }
-                if (!sspictx_set)
+                if (!_isSSPICtxSet)
                 {
-                    sspictx.dwUpper = newContext.dwUpper;
-                    sspictx.dwLower = newContext.dwLower;
-                    sspictx_set = true;
+                    _sspiCtx.dwUpper = newContext.dwUpper;
+                    _sspiCtx.dwLower = newContext.dwLower;
+                    _isSSPICtxSet = true;
                 }
 
                 if (outbuf.cBuffers > 0)
                 {
                     if (outbuf.cBuffers != 1)
-                    {
                         throw new InvalidOperationException("SSPI returned invalid number of output buffers");
-                    }
                     // attention: OutBuffer is still our initially created struct but outbuf.pBuffer doesn't point to
                     // it but to the copy of it we created on the unmanaged heap and passed to InitializeSecurityContext()
                     // we have to marshal it back to see the content change
-                    OutBuffer = (SecBuffer)Marshal.PtrToStructure(outbuf.pBuffer, typeof(SecBuffer));
-                    if (OutBuffer.cbBuffer > 0)
+#if NET45
+                    outBuffer = (SecBuffer)Marshal.PtrToStructure(outbuf.pBuffer, typeof(SecBuffer));
+#else
+                    outBuffer = Marshal.PtrToStructure<SecBuffer>(outbuf.pBuffer);
+#endif
+                    if (outBuffer.cbBuffer > 0)
                     {
                         // we need the buffer with a terminating 0 so we
                         // make it one byte bigger
-                        byte[] buffer = new byte[OutBuffer.cbBuffer];
-                        Marshal.Copy(OutBuffer.pvBuffer, buffer, 0, buffer.Length);
+                        var buffer = new byte[outBuffer.cbBuffer];
+                        Marshal.Copy(outBuffer.pvBuffer, buffer, 0, buffer.Length);
                         // The SSPI authentication data must be sent as password message
 
                         return buffer;
@@ -283,25 +190,25 @@ namespace Npgsql
                         //stream.Flush();
                     }
                 }
-                return new byte[0];
+                return PGUtil.EmptyBuffer;
             }
             finally
             {
-                if (OutBuffer.pvBuffer != IntPtr.Zero)
-                    FreeContextBuffer(OutBuffer.pvBuffer);
+                if (outBuffer.pvBuffer != IntPtr.Zero)
+                    FreeContextBuffer(outBuffer.pvBuffer);
                 if (outbuf.pBuffer != IntPtr.Zero)
                     Marshal.FreeHGlobal(outbuf.pBuffer);
             }
         }
 
-#region resource cleanup
+        #region Resource Cleanup
 
-        private void FreeHandles()
+        void FreeHandles()
         {
-            if (sspictx_set)
+            if (_isSSPICtxSet)
             {
-                FreeCredentialsHandle(ref sspicred);
-                DeleteSecurityContext(ref sspictx);
+                FreeCredentialsHandle(ref _sspiCred);
+                DeleteSecurityContext(ref _sspiCtx);
             }
         }
 
@@ -318,17 +225,120 @@ namespace Npgsql
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!disposed)
-            {
-                if (disposing)
-                {
-                    FreeHandles();
-                }
-                disposed = true;
-            }
+            if (_disposed)
+                return;
+            if (disposing)
+                FreeHandles();
+            _disposed = true;
         }
 
-#endregion
+        #endregion
+    }
+
+    static class SafeNativeMethods
+    {
+        #region Constants and Structs
+
+        internal const int SecbufferVersion = 0;
+        internal const int SecbufferToken = 2;
+        internal const int SecEOk = 0x00000000;
+        internal const int SecIContinueNeeded = 0x00090312;
+        internal const int IscReqAllocateMemory = 0x00000100;
+        internal const int SecurityNetworkDrep = 0x00000000;
+        internal const int SecpkgCredOutbound = 0x00000002;
+
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct SecHandle
+        {
+            internal IntPtr dwLower;
+            internal IntPtr dwUpper;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct SecBuffer
+        {
+            internal int cbBuffer;
+            internal int BufferType;
+            internal IntPtr pvBuffer;
+        }
+
+        /// <summary>
+        /// Simplified SecBufferDesc struct with only one SecBuffer
+        /// </summary>
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct SecBufferDesc
+        {
+            internal int ulVersion;
+            internal int cBuffers;
+            internal IntPtr pBuffer;
+        }
+
+        #endregion
+
+        #region P/Invoke methods
+
+        // ReSharper disable InconsistentNaming
+
+        [DllImport("Secur32.dll")]
+        internal static extern int AcquireCredentialsHandle(
+            string pszPrincipal,
+            string pszPackage,
+            int fCredentialUse,
+            IntPtr pvLogonID,
+            IntPtr pAuthData,
+            IntPtr pGetKeyFn,
+            IntPtr pvGetKeyArgument,
+            ref SecHandle phCredential,
+            out SecHandle ptsExpiry
+        );
+
+        [DllImport("secur32", SetLastError = true)]
+        internal static extern int InitializeSecurityContext(
+            ref SecHandle phCredential,
+            ref SecHandle phContext,
+            string pszTargetName,
+            int fContextReq,
+            int Reserved1,
+            int TargetDataRep,
+            ref SecBufferDesc pInput,
+            int Reserved2,
+            out SecHandle phNewContext,
+            out SecBufferDesc pOutput,
+            out int pfContextAttr,
+            out SecHandle ptsExpiry);
+
+        [DllImport("secur32", SetLastError = true)]
+        internal static extern int InitializeSecurityContext(
+            ref SecHandle phCredential,
+            IntPtr phContext,
+            string pszTargetName,
+            int fContextReq,
+            int Reserved1,
+            int TargetDataRep,
+            IntPtr pInput,
+            int Reserved2,
+            out SecHandle phNewContext,
+            out SecBufferDesc pOutput,
+            out int pfContextAttr,
+            out SecHandle ptsExpiry);
+
+        [DllImport("Secur32.dll")]
+        internal static extern int FreeContextBuffer(
+            IntPtr pvContextBuffer
+        );
+
+        [DllImport("Secur32.dll")]
+        internal static extern int FreeCredentialsHandle(
+            ref SecHandle phCredential
+        );
+
+        [DllImport("Secur32.dll")]
+        internal static extern int DeleteSecurityContext(
+            ref SecHandle phContext
+        );
+
+        // ReSharper restore InconsistentNaming
+
+        #endregion
     }
 }
-#endif

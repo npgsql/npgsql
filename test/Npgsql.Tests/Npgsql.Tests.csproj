@@ -12,7 +12,7 @@
     <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\..\</SolutionDir>
     <RestorePackages>true</RestorePackages>
     <TargetFrameworkProfile />
-    <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5.1</TargetFrameworkVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <OutputPath>bin\Debug\</OutputPath>
@@ -23,7 +23,7 @@
     </RootNamespace>
     <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
     <WarningLevel>4</WarningLevel>
-    <DefineConstants>TRACE;DEBUG</DefineConstants>
+    <DefineConstants>TRACE;DEBUG;NET451</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <OutputPath>bin\Release\</OutputPath>
@@ -32,16 +32,9 @@
     <Optimize>true</Optimize>
     <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
     <WarningLevel>4</WarningLevel>
-    <DefineConstants>TRACE</DefineConstants>
+    <DefineConstants>TRACE;NET451</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="NLog">
-      <HintPath>..\..\packages\NLog.3.2.0.0\lib\net40\NLog.dll</HintPath>
-    </Reference>
-    <Reference Include="nunit.framework, Version=3.0.5813.39031, Culture=neutral, PublicKeyToken=2638cd05610744eb, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\NUnit.3.0.1\lib\net45\nunit.framework.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
     <Reference Include="System.Core">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
     </Reference>
@@ -56,10 +49,20 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ConnectionPoolTests.cs" />
+    <Compile Include="BugTests.cs" />
+    <Compile Include="CommandBuilderTests.cs" />
+    <Compile Include="PerformanceCounterTests.cs" />
+    <Compile Include="PrepareTests.cs" />
+    <Compile Include="PgPassEntryTests.cs" />
+    <Compile Include="PgPassFileTests.cs" />
+    <Compile Include="ReaderNewSchemaTests.cs" />
+    <Compile Include="ReaderOldSchemaTests.cs" />
+    <Compile Include="SchemaTests.cs" />
+    <Compile Include="PoolTests.cs" />
     <Compile Include="ConnectionStringBuilderTests.cs" />
     <Compile Include="LargeObjectTests.cs" />
     <Compile Include="NLogLoggingProvider.cs" />
+    <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SqlQueryParserTests.cs" />
     <Compile Include="TransactionTests.cs" />
@@ -86,7 +89,6 @@
     <Compile Include="DataAdapterTests.cs" />
     <Compile Include="ReaderTests.cs" />
     <Compile Include="ExceptionTests.cs" />
-    <Compile Include="SpeedTests.cs" />
     <Compile Include="NpgsqlParameterTests.cs">
       <SubType>Code</SubType>
     </Compile>
@@ -99,13 +101,16 @@
     <Compile Include="TypesTests.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="packages.config" />
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\..\src\Npgsql\Npgsql.csproj">
       <Project>{9D13B739-62B1-4190-B386-7A9547304EB3}</Project>
       <Name>Npgsql</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="App.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="project.json" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.Targets" />
 </Project>

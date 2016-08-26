@@ -23,13 +23,12 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
-using System.Linq;
+using System.Diagnostics;
 using System.Text;
 
 namespace Npgsql.FrontendMessages
 {
-    class ParseMessage : ChunkingFrontendMessage
+    class ParseMessage : FrontendMessage
     {
         /// <summary>
         /// The query string to be parsed.
@@ -42,11 +41,15 @@ namespace Npgsql.FrontendMessages
         string Statement { get; set; }
 
         // ReSharper disable once InconsistentNaming
-        internal List<uint> ParameterTypeOIDs { get; }
+        List<uint> ParameterTypeOIDs { get; }
+
+        readonly Encoding _encoding;
 
         byte[] _statementNameBytes;
         int _queryLen;
+#if NETSTANDARD1_3
         char[] _queryChars;
+#endif
         int _charPos;
         int _parameterTypePos;
 
@@ -54,8 +57,9 @@ namespace Npgsql.FrontendMessages
 
         const byte Code = (byte)'P';
 
-        internal ParseMessage()
+        internal ParseMessage(Encoding encoding)
         {
+            _encoding = encoding;
             ParameterTypeOIDs = new List<uint>();
         }
 
@@ -68,104 +72,106 @@ namespace Npgsql.FrontendMessages
             Statement = statement.PreparedStatementName ?? "";
             foreach (var inputParam in statement.InputParameters) {
                 inputParam.ResolveHandler(typeHandlerRegistry);
-                ParameterTypeOIDs.Add(inputParam.Handler.OID);
+                ParameterTypeOIDs.Add(inputParam.Handler.BackendType.OID);
             }
             return this;
         }
 
-        internal override bool Write(NpgsqlBuffer buf, ref DirectBuffer directBuf)
+        internal override bool Write(WriteBuffer buf)
         {
-            Contract.Requires(Statement != null && Statement.All(c => c < 128));
+            Debug.Assert(Statement != null);
 
             switch (_state)
             {
-                case State.WroteNothing:
-                    _statementNameBytes = PGUtil.UTF8Encoding.GetBytes(Statement);
-                    _queryLen = PGUtil.UTF8Encoding.GetByteCount(Query);
-                    if (buf.WriteSpaceLeft < 1 + 4 + _statementNameBytes.Length + 1) {
-                        return false;
-                    }
+            case State.WroteNothing:
+                _statementNameBytes = Statement.Length == 0 ? PGUtil.EmptyBuffer : _encoding.GetBytes(Statement);
+                _queryLen = _encoding.GetByteCount(Query);
+                if (buf.WriteSpaceLeft < 1 + 4 + _statementNameBytes.Length + 1) {
+                    return false;
+                }
 
-                    var messageLength =
-                        1 +                         // Message code
-                        4 +                         // Length
-                        _statementNameBytes.Length +
-                        1 +                         // Null terminator
-                        _queryLen +
-                        1 +                         // Null terminator
-                        2 +                         // Number of parameters
-                        ParameterTypeOIDs.Count * 4;
+                var messageLength =
+                    1 +                         // Message code
+                    4 +                         // Length
+                    _statementNameBytes.Length +
+                    1 +                         // Null terminator
+                    _queryLen +
+                    1 +                         // Null terminator
+                    2 +                         // Number of parameters
+                    ParameterTypeOIDs.Count * 4;
 
-                    buf.WriteByte(Code);
-                    buf.WriteInt32(messageLength - 1);
-                    buf.WriteBytesNullTerminated(_statementNameBytes);
-                    goto case State.WroteHeader;
+                buf.WriteByte(Code);
+                buf.WriteInt32(messageLength - 1);
+                buf.WriteBytesNullTerminated(_statementNameBytes);
+                goto case State.WroteHeader;
 
-                case State.WroteHeader:
-                    _state = State.WroteHeader;
+            case State.WroteHeader:
+                _state = State.WroteHeader;
 
-                    if (_queryLen <= buf.WriteSpaceLeft) {
-                        buf.WriteString(Query);
-                        goto case State.WroteQuery;
-                    }
-
-                    if (_queryLen <= buf.Size) {
-                        // String can fit entirely in an empty buffer. Flush and retry rather than
-                        // going into the partial writing flow below (which requires ToCharArray())
-                        return false;
-                    }
-
-                    _queryChars = Query.ToCharArray();
-                    _charPos = 0;
-                    goto case State.WritingQuery;
-
-                case State.WritingQuery:
-                    _state = State.WritingQuery;
-                    int charsUsed;
-                    bool completed;
-                    buf.WriteStringChunked(_queryChars, _charPos, _queryChars.Length - _charPos, true,
-                                           out charsUsed, out completed);
-                    if (!completed)
-                    {
-                        _charPos += charsUsed;
-                        return false;
-                    }
+                if (_queryLen <= buf.WriteSpaceLeft) {
+                    buf.WriteString(Query);
                     goto case State.WroteQuery;
+                }
 
-                case State.WroteQuery:
-                    _state = State.WroteQuery;
-                    if (buf.WriteSpaceLeft < 1 + 2) {
+                if (_queryLen <= buf.Size) {
+                    // String can fit entirely in an empty buffer. Flush and retry rather than
+                    // going into the partial writing flow below (which requires ToCharArray())
+                    return false;
+                }
+
+                _charPos = 0;
+#if NETSTANDARD1_3
+                _queryChars = Query.ToCharArray();
+#endif
+                goto case State.WritingQuery;
+
+            case State.WritingQuery:
+                _state = State.WritingQuery;
+                int charsUsed;
+                bool completed;
+#if NETSTANDARD1_3
+                buf.WriteStringChunked(_queryChars, _charPos, Query.Length - _charPos, true,
+                                        out charsUsed, out completed);
+#else
+                buf.WriteStringChunked(Query, _charPos, Query.Length - _charPos, true,
+                                        out charsUsed, out completed);
+#endif
+                if (!completed)
+                {
+                    _charPos += charsUsed;
+                    return false;
+                }
+                goto case State.WroteQuery;
+
+            case State.WroteQuery:
+                _state = State.WroteQuery;
+                if (buf.WriteSpaceLeft < 1 + 2)
+                    return false;
+                buf.WriteByte(0); // Null terminator for the query
+                buf.WriteInt16((short)ParameterTypeOIDs.Count);
+                goto case State.WritingParameterTypes;
+
+            case State.WritingParameterTypes:
+                _state = State.WritingParameterTypes;
+                for (; _parameterTypePos < ParameterTypeOIDs.Count; _parameterTypePos++)
+                {
+                    if (buf.WriteSpaceLeft < 4)
                         return false;
-                    }
-                    buf.WriteByte(0); // Null terminator for the query
-                    buf.WriteInt16((short)ParameterTypeOIDs.Count);
-                    goto case State.WritingParameterTypes;
+                    buf.WriteInt32((int)ParameterTypeOIDs[_parameterTypePos]);
+                }
 
-                case State.WritingParameterTypes:
-                    _state = State.WritingParameterTypes;
-                    for (; _parameterTypePos < ParameterTypeOIDs.Count; _parameterTypePos++)
-                    {
-                        if (buf.WriteSpaceLeft < 4)
-                        {
-                            return false;
-                        }
-                        buf.WriteInt32((int)ParameterTypeOIDs[_parameterTypePos]);
-                    }
+                _state = State.WroteAll;
+                return true;
 
-                    _state = State.WroteAll;
-                    return true;
-
-                default:
-                    throw PGUtil.ThrowIfReached();
+            default:
+                throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {_state} of enum {nameof(ParseMessage)}.{nameof(State)}. Please file a bug.");
             }
         }
 
         public override string ToString()
-        {
-            return $"[Parse(Statement={Statement},NumParams={ParameterTypeOIDs.Count}]";
-        }
+            => $"[Parse(Statement={Statement},NumParams={ParameterTypeOIDs.Count}]";
 
-        private enum State
+        enum State
         {
             WroteNothing,
             WroteHeader,

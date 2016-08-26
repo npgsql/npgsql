@@ -1,1 +1,0 @@
-msbuild Build-nsis-installer.csproj /p:Configuration=Release

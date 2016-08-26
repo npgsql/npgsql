@@ -23,7 +23,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -40,7 +40,7 @@ namespace Npgsql.BackendMessages
         /// </summary>
         List<IDisposable> _streams;
 
-        internal override DataRowMessage Load(NpgsqlBuffer buf)
+        internal override DataRowMessage Load(ReadBuffer buf)
         {
             NumColumns = buf.ReadInt16();
             Buffer = buf;
@@ -93,7 +93,7 @@ namespace Npgsql.BackendMessages
 
         internal override Stream GetStream()
         {
-            Contract.Requires(PosInColumn == 0);
+            Debug.Assert(PosInColumn == 0);
             var s = Buffer.GetMemoryStream(ColumnLen);
             if (_streams == null) {
                 _streams = new List<IDisposable>();

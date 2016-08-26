@@ -24,7 +24,7 @@
 using System;
 using System.Data;
 using System.Data.Common;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using AsyncRewriter;
@@ -47,6 +47,12 @@ namespace Npgsql
         /// </summary>
         /// <value>The <see cref="NpgsqlConnection"/> object associated with the transaction.</value>
         public new NpgsqlConnection Connection { get; internal set; }
+
+        /// <summary>
+        /// Specifies the completion state of the transaction.
+        /// </summary>
+        /// <value>The completion state of the transaction.</value>
+        public bool IsCompleted => Connection == null;
 
         /// <summary>
         /// Specifies the <see cref="NpgsqlConnection"/> object associated with the transaction.
@@ -84,13 +90,13 @@ namespace Npgsql
         internal NpgsqlTransaction(NpgsqlConnection conn)
             : this(conn, DefaultIsolationLevel)
         {
-            Contract.Requires(conn != null);
+            Debug.Assert(conn != null);
         }
 
         internal NpgsqlTransaction(NpgsqlConnection conn, IsolationLevel isolationLevel)
         {
-            Contract.Requires(conn != null);
-            Contract.Requires(isolationLevel != IsolationLevel.Chaos);
+            Debug.Assert(conn != null);
+            Debug.Assert(isolationLevel != IsolationLevel.Chaos);
 
             Connection = conn;
             Connector.Transaction = this;
@@ -98,25 +104,29 @@ namespace Npgsql
 
             switch (isolationLevel) {
                 case IsolationLevel.RepeatableRead:
-                    Connector.PrependInternalMessage(PregeneratedMessage.BeginTransRepeatableRead);
+                    Connector.PrependInternalMessage(PregeneratedMessage.BeginTrans);
+                    Connector.PrependInternalMessage(PregeneratedMessage.SetTransRepeatableRead);
                     break;
                 case IsolationLevel.Serializable:
                 case IsolationLevel.Snapshot:
-                    Connector.PrependInternalMessage(PregeneratedMessage.BeginTransSerializable);
+                    Connector.PrependInternalMessage(PregeneratedMessage.BeginTrans);
+                    Connector.PrependInternalMessage(PregeneratedMessage.SetTransSerializable);
                     break;
                 case IsolationLevel.ReadUncommitted:
                     // PG doesn't really support ReadUncommitted, it's the same as ReadCommitted. But we still
                     // send as if.
-                    Connector.PrependInternalMessage(PregeneratedMessage.BeginTransReadUncommitted);
+                    Connector.PrependInternalMessage(PregeneratedMessage.BeginTrans);
+                    Connector.PrependInternalMessage(PregeneratedMessage.SetTransReadUncommitted);
                     break;
                 case IsolationLevel.ReadCommitted:
-                    Connector.PrependInternalMessage(PregeneratedMessage.BeginTransReadCommitted);
+                    Connector.PrependInternalMessage(PregeneratedMessage.BeginTrans);
+                    Connector.PrependInternalMessage(PregeneratedMessage.SetTransReadCommitted);
                     break;
                 case IsolationLevel.Unspecified:
                     isolationLevel = DefaultIsolationLevel;
                     goto case DefaultIsolationLevel;
                 default:
-                    throw PGUtil.ThrowIfReached("Isolation level not supported: " + isolationLevel);
+                    throw new NotSupportedException("Isolation level not supported: " + isolationLevel);
             }
 
             _isolationLevel = isolationLevel;
@@ -129,37 +139,31 @@ namespace Npgsql
         /// <summary>
         /// Commits the database transaction.
         /// </summary>
-        public override void Commit()
-        {
-            CommitInternal();
-        }
+        public override void Commit() => CommitInternal();
 
         [RewriteAsync]
         void CommitInternal()
         {
-            CheckReady();
-            Log.Debug("Commit transaction", Connection.Connector.Id);
-            Connector.ExecuteInternalCommand(PregeneratedMessage.CommitTransaction);
-            Connection = null;
+            var connector = CheckReady();
+            using (connector.StartUserAction())
+            {
+                Log.Debug("Commit transaction", connector.Id);
+                connector.ExecuteInternalCommand(PregeneratedMessage.CommitTransaction);
+                Connection = null;
+            }
         }
 
         /// <summary>
         /// Commits the database transaction.
         /// </summary>
         [PublicAPI]
-        public Task CommitAsync(CancellationToken cancellationToken)
-        {
-            return CommitInternalAsync(cancellationToken);
-        }
+        public Task CommitAsync(CancellationToken cancellationToken) => CommitInternalAsync(cancellationToken);
 
         /// <summary>
         /// Commits the database transaction.
         /// </summary>
         [PublicAPI]
-        public Task CommitAsync()
-        {
-            return CommitAsync(CancellationToken.None);
-        }
+        public Task CommitAsync() => CommitAsync(CancellationToken.None);
 
         #endregion
 
@@ -168,36 +172,30 @@ namespace Npgsql
         /// <summary>
         /// Rolls back a transaction from a pending state.
         /// </summary>
-        public override void Rollback()
-        {
-            RollbackInternal();
-        }
+        public override void Rollback() => RollbackInternal();
 
         [RewriteAsync]
         void RollbackInternal()
         {
-            CheckReady();
-            Connector.Rollback();
-            Connection = null;
+            var connector = CheckReady();
+            using (connector.StartUserAction())
+            {
+                connector.Rollback();
+                Connection = null;
+            }
         }
 
         /// <summary>
         /// Rolls back a transaction from a pending state.
         /// </summary>
         [PublicAPI]
-        public Task RollbackAsync(CancellationToken cancellationToken)
-        {
-            return RollbackInternalAsync(cancellationToken);
-        }
+        public Task RollbackAsync(CancellationToken cancellationToken) => RollbackInternalAsync(cancellationToken);
 
         /// <summary>
         /// Rolls back a transaction from a pending state.
         /// </summary>
         [PublicAPI]
-        public Task RollbackAsync()
-        {
-            return RollbackInternalAsync(CancellationToken.None);
-        }
+        public Task RollbackAsync() => RollbackInternalAsync(CancellationToken.None);
 
         #endregion
 
@@ -214,11 +212,13 @@ namespace Npgsql
                 throw new ArgumentException("name can't be empty", nameof(name));
             if (name.Contains(";"))
                 throw new ArgumentException("name can't contain a semicolon");
-            Contract.EndContractBlock();
 
-            CheckReady();
-            Log.Debug("Create savepoint", Connection.Connector.Id);
-            Connector.ExecuteInternalCommand(new QueryMessage($"SAVEPOINT {name}"));
+            var connector = CheckReady();
+            using (connector.StartUserAction())
+            {
+                Log.Debug("Create savepoint", connector.Id);
+                connector.ExecuteInternalCommand($"SAVEPOINT {name}");
+            }
         }
 
         /// <summary>
@@ -232,19 +232,12 @@ namespace Npgsql
                 throw new ArgumentException("name can't be empty", nameof(name));
             if (name.Contains(";"))
                 throw new ArgumentException("name can't contain a semicolon");
-            Contract.EndContractBlock();
 
-            CheckReady();
-
-            Log.Debug("Rollback savepoint", Connection.Connector.Id);
-
-            try {
-                // If we're in a failed transaction we can't set the timeout
-                var withTimeout = Connector.TransactionStatus != TransactionStatus.InFailedTransactionBlock;
-                Connector.ExecuteInternalCommand(new QueryMessage($"ROLLBACK TO SAVEPOINT {name}"), withTimeout);
-            } finally {
-                // The rollback may change the value of statement_value, set to unknown
-                Connection.Connector.SetBackendTimeoutToUnknown();
+            var connector = CheckReady();
+            using (connector.StartUserAction())
+            {
+                Log.Debug("Rollback savepoint", connector.Id);
+                connector.ExecuteInternalCommand($"ROLLBACK TO SAVEPOINT {name}");
             }
         }
 
@@ -259,13 +252,13 @@ namespace Npgsql
                 throw new ArgumentException("name can't be empty", nameof(name));
             if (name.Contains(";"))
                 throw new ArgumentException("name can't contain a semicolon");
-            Contract.EndContractBlock();
 
-            CheckReady();
-
-            Log.Debug("Release savepoint", Connection.Connector.Id);
-
-            Connector.ExecuteInternalCommand(new QueryMessage($"RELEASE SAVEPOINT {name}"));
+            var connector = CheckReady();
+            using (connector.StartUserAction())
+            {
+                Log.Debug("Release savepoint", connector.Id);
+                connector.ExecuteInternalCommand($"RELEASE SAVEPOINT {name}");
+            }
         }
 
         #endregion
@@ -292,32 +285,23 @@ namespace Npgsql
 
         #region Checks
 
-        void CheckReady()
+        NpgsqlConnector CheckReady()
         {
             CheckDisposed();
             CheckCompleted();
-            Connection.CheckReady();
+            return Connection.CheckReadyAndGetConnector();
         }
 
-        [ContractArgumentValidator]
         void CheckCompleted()
         {
-            if (Connection == null)
+            if (IsCompleted)
                 throw new InvalidOperationException("This NpgsqlTransaction has completed; it is no longer usable.");
-            Contract.EndContractBlock();
         }
 
-        [ContractArgumentValidator]
         void CheckDisposed()
         {
             if (_isDisposed)
                 throw new ObjectDisposedException(typeof(NpgsqlTransaction).Name);
-            Contract.EndContractBlock();
-        }
-
-        [ContractInvariantMethod]
-        void ObjectInvariants()
-        {
         }
 
         #endregion

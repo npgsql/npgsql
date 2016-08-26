@@ -22,14 +22,9 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Npgsql.TypeHandlers;
 
 namespace Npgsql.BackendMessages
 {
@@ -37,7 +32,7 @@ namespace Npgsql.BackendMessages
     {
         public BackendMessageCode Code => BackendMessageCode.DataRow;
 
-        protected internal NpgsqlBuffer Buffer { get; protected set; }
+        protected internal ReadBuffer Buffer { get; protected set; }
 
         /// <summary>
         /// The number of columns in the current row
@@ -64,7 +59,7 @@ namespace Npgsql.BackendMessages
 
         internal bool IsColumnNull => ColumnLen == -1;
 
-        internal abstract DataRowMessage Load(NpgsqlBuffer buf);
+        internal abstract DataRowMessage Load(ReadBuffer buf);
 
         /// <summary>
         /// Places our position at the beginning of the given column, after the 4-byte length.

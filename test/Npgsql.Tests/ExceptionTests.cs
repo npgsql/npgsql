@@ -24,71 +24,67 @@
 using System;
 using System.Data;
 using System.Threading.Tasks;
-using System.Web.UI.WebControls;
-
+using NUnit.Framework;
+using NUnit.Framework.Constraints;
 using Npgsql;
 using NpgsqlTypes;
 
-using NUnit.Framework;
-using NUnit.Framework.Constraints;
 
 namespace Npgsql.Tests
 {
     public class ExceptionTests : TestBase
     {
-        public ExceptionTests(string backendVersion) : base(backendVersion) { }
-
         [Test, Description("Generates a basic server-side exception, checks that it's properly raised and populated")]
         public void Basic()
         {
             using (var conn = OpenConnection())
             {
                 // Make sure messages are in English
-                conn.ExecuteNonQuery(@"SET lc_messages='English_United States.1252'");
+                conn.ExecuteNonQuery(@"SET lc_messages='en_US.UTF8'");
                 conn.ExecuteNonQuery(@"
                      CREATE OR REPLACE FUNCTION pg_temp.emit_exception() RETURNS VOID AS
                         'BEGIN RAISE EXCEPTION ''testexception'' USING ERRCODE = ''12345''; END;'
                      LANGUAGE 'plpgsql';
                 ");
 
-                NpgsqlException ex = null;
+                PostgresException ex = null;
                 try
                 {
                     conn.ExecuteNonQuery("SELECT pg_temp.emit_exception()");
                     Assert.Fail("No exception was thrown");
                 }
-                catch (NpgsqlException e)
+                catch (PostgresException e)
                 {
                     ex = e;
                 }
 
                 Assert.That(ex.MessageText, Is.EqualTo("testexception"));
                 Assert.That(ex.Severity, Is.EqualTo("ERROR"));
-                Assert.That(ex.Code, Is.EqualTo("12345"));
+                Assert.That(ex.SqlState, Is.EqualTo("12345"));
                 Assert.That(ex.Position, Is.EqualTo(0));
 
                 var data = ex.Data;
-                Assert.That(data["Severity"], Is.EqualTo("ERROR"));
-                Assert.That(data["Code"], Is.EqualTo("12345"));
-                Assert.That(data.Contains("Position"), Is.False);
+                Assert.That(data[nameof(PostgresException.Severity)], Is.EqualTo("ERROR"));
+                Assert.That(data[nameof(PostgresException.SqlState)], Is.EqualTo("12345"));
+                Assert.That(data.Contains(nameof(PostgresException.Position)), Is.False);
 
                 Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1), "Connection in bad state after an exception");
             }
         }
 
         [Test]
-        [MinPgVersion(9, 3, 0, "5 error fields haven't been added yet")]
         public void ExceptionFieldsArePopulated()
         {
             using (var conn = OpenConnection())
             {
+                TestUtil.MinimumPgVersion(conn, "9.3.0", "5 error fields haven't been added yet");
                 conn.ExecuteNonQuery("CREATE TEMP TABLE uniqueviolation (id INT NOT NULL, CONSTRAINT uniqueviolation_pkey PRIMARY KEY (id))");
                 conn.ExecuteNonQuery("INSERT INTO uniqueviolation (id) VALUES(1)");
                 try
                 {
                     conn.ExecuteNonQuery("INSERT INTO uniqueviolation (id) VALUES(1)");
                 }
-                catch (NpgsqlException ex)
+                catch (PostgresException ex)
                 {
                     Assert.That(ex.ColumnName, Is.Null, "ColumnName should not be populated for unique violations");
                     Assert.That(ex.TableName, Is.EqualTo("uniqueviolation"));
@@ -100,17 +96,17 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        [MinPgVersion(9, 3, 0, "5 error fields haven't been added yet")]
         public void ColumnNameExceptionFieldIsPopulated()
         {
             using (var conn = OpenConnection())
             {
+                TestUtil.MinimumPgVersion(conn, "9.3.0", "5 error fields haven't been added yet");
                 conn.ExecuteNonQuery("CREATE TEMP TABLE notnullviolation (id INT NOT NULL)");
                 try
                 {
                     conn.ExecuteNonQuery("INSERT INTO notnullviolation (id) VALUES(NULL)");
                 }
-                catch (NpgsqlException ex)
+                catch (PostgresException ex)
                 {
                     Assert.That(ex.SchemaName, Does.StartWith("pg_temp"));
                     Assert.That(ex.TableName, Is.EqualTo("notnullviolation"));
@@ -120,7 +116,6 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        [MinPgVersion(9, 3, 0, "5 error fields haven't been added yet")]
         [Parallelizable(ParallelScope.None)]
         public void DataTypeNameExceptionFieldIsPopulated()
         {
@@ -134,6 +129,7 @@ namespace Npgsql.Tests
 
             using (var conn = OpenConnection())
             {
+                TestUtil.MinimumPgVersion(conn, "9.3.0", "5 error fields haven't been added yet");
                 try
                 {
                     var command = new NpgsqlCommand(dropDomain, conn);
@@ -147,7 +143,7 @@ namespace Npgsql.Tests
                     command.ExecuteNonQuery();
 
                 }
-                catch (NpgsqlException ex)
+                catch (PostgresException ex)
                 {
                     Assert.AreEqual("public", ex.SchemaName);
                     Assert.AreEqual("intnotnull", ex.DataTypeName);
@@ -161,8 +157,8 @@ namespace Npgsql.Tests
             using (var conn = OpenConnection())
             {
                 Assert.That(async () => await conn.ExecuteNonQueryAsync("MALFORMED"),
-                    Throws.Exception.TypeOf<NpgsqlException>());
-                // Just in case, anything but an NpgsqlException would trigger the connection breaking, check that
+                    Throws.Exception.TypeOf<PostgresException>());
+                // Just in case, anything but a PostgresException would trigger the connection breaking, check that
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
             }
         }

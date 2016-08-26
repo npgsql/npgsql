@@ -21,13 +21,7 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using System;
-using System.Collections.Generic;
-using System.Diagnostics.Contracts;
-using System.Globalization;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
+using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 
@@ -40,26 +34,24 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-geometric.html
     /// </remarks>
     [TypeMapping("circle", NpgsqlDbType.Circle, typeof(NpgsqlCircle))]
-    internal class CircleHandler : SimpleTypeHandler<NpgsqlCircle>, ISimpleTypeHandler<string>
+    class CircleHandler : SimpleTypeHandler<NpgsqlCircle>, ISimpleTypeHandler<string>
     {
-        public override NpgsqlCircle Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return new NpgsqlCircle(buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble());
-        }
+        internal CircleHandler(IBackendType backendType) : base(backendType) { }
 
-        string ISimpleTypeHandler<string>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return Read(buf, len, fieldDescription).ToString();
-        }
+        public override NpgsqlCircle Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+            => new NpgsqlCircle(buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble());
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => Read(buf, len, fieldDescription).ToString();
+
+        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
         {
             if (!(value is NpgsqlCircle))
                 throw CreateConversionException(value.GetType());
             return 24;
         }
 
-        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
         {
             var v = (NpgsqlCircle)value;
             buf.WriteDouble(v.X);

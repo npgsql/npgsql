@@ -23,7 +23,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
@@ -42,12 +42,12 @@ namespace Npgsql
     /// <remarks>
     /// See http://www.postgresql.org/docs/current/static/sql-copy.html.
     /// </remarks>
-    public class NpgsqlBinaryImporter : IDisposable, ICancelable
+    public sealed class NpgsqlBinaryImporter : ICancelable
     {
         #region Fields and Properties
 
         NpgsqlConnector _connector;
-        NpgsqlBuffer _buf;
+        WriteBuffer _buf;
         TypeHandlerRegistry _registry;
         LengthCache _lengthCache;
         bool _isDisposed;
@@ -76,7 +76,7 @@ namespace Npgsql
         internal NpgsqlBinaryImporter(NpgsqlConnector connector, string copyFromCommand)
         {
             _connector = connector;
-            _buf = connector.Buffer;
+            _buf = connector.WriteBuffer;
             _registry = connector.TypeHandlerRegistry;
             _lengthCache = new LengthCache();
             _column = -1;
@@ -84,7 +84,7 @@ namespace Npgsql
 
             try
             {
-                _connector.SendSingleMessage(new QueryMessage(copyFromCommand));
+                _connector.SendQuery(copyFromCommand);
 
                 // TODO: Failure will break the connection (e.g. if we get CopyOutResponse), handle more gracefully
                 var copyInResponse = _connector.ReadExpecting<CopyInResponseMessage>();
@@ -146,9 +146,10 @@ namespace Npgsql
         public void Write<T>(T value)
         {
             CheckDisposed();
-            if (_column == -1) {
+            if (_column == -1)
                 throw new InvalidOperationException("A row hasn't been started");
-            }
+            if (typeof(T) == typeof(DBNull))
+                throw new ArgumentException($"Can't write DBValue.Null, use {nameof(WriteNull)}() or the overload that accepts an NpgsqlDbType");
 
             var handler = _registry[value];
             DoWrite(handler, value);
@@ -168,8 +169,13 @@ namespace Npgsql
         public void Write<T>(T value, NpgsqlDbType type)
         {
             CheckDisposed();
-            if (_column == -1) {
+            if (_column == -1)
                 throw new InvalidOperationException("A row hasn't been started");
+
+            if (typeof(T) == typeof(DBNull))
+            {
+                WriteNull();
+                return;
             }
 
             var handler = _registry[type];
@@ -202,7 +208,7 @@ namespace Npgsql
                     _buf.WriteInt32(len);
                     if (_buf.WriteSpaceLeft < len)
                     {
-                        Contract.Assume(_buf.Size >= len);
+                        Debug.Assert(_buf.Size >= len);
                         FlushAndStartDataMessage();
                     }
                     asSimple.Write(asObject, _buf, _dummyParam);
@@ -240,7 +246,7 @@ namespace Npgsql
                             _buf.WriteInt32(len + 4);
                             _buf.Flush();
                             _writingDataMsg = false;
-                            _buf.Underlying.Write(directBuf.Buffer, directBuf.Offset, len);
+                            _buf.DirectWrite(directBuf.Buffer, directBuf.Offset, len);
                             directBuf.Buffer = null;
                             directBuf.Size = 0;
                         }
@@ -250,7 +256,7 @@ namespace Npgsql
                     return;
                 }
 
-                throw PGUtil.ThrowIfReached();
+                throw new InvalidOperationException($"Internal Npgsql bug, please report.");
             }
             catch
             {
@@ -313,7 +319,7 @@ namespace Npgsql
         {
             if (_writingDataMsg) { return; }
 
-            Contract.Assert(_buf.WritePosition == 0);
+            Debug.Assert(_buf.WritePosition == 0);
             _buf.WriteByte((byte)BackendMessageCode.CopyData);
             // Leave space for the message length
             _buf.WriteInt32(0);
@@ -331,14 +337,14 @@ namespace Npgsql
         {
             _isDisposed = true;
             _buf.Clear();
-            _connector.SendSingleMessage(new CopyFailMessage());
+            _connector.SendMessage(new CopyFailMessage());
             try {
-                var msg = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential);
+                var msg = _connector.ReadMessage(DataRowLoadingMode.NonSequential);
                 // The CopyFail should immediately trigger an exception from the read above.
                 _connector.Break();
-                throw new Exception("Expected ErrorResponse when cancelling COPY but got: " + msg.Code);
-            } catch (NpgsqlException e) {
-                if (e.Code == "57014") { return; }
+                throw new NpgsqlException("Expected ErrorResponse when cancelling COPY but got: " + msg.Code);
+            } catch (PostgresException e) {
+                if (e.SqlState == "57014") { return; }
                 throw;
             }
         }
@@ -361,7 +367,7 @@ namespace Npgsql
             }
             WriteTrailer();
 
-            _connector.SendSingleMessage(CopyDoneMessage.Instance);
+            _connector.SendMessage(CopyDoneMessage.Instance);
             _connector.ReadExpecting<CommandCompleteMessage>();
             _connector.ReadExpecting<ReadyForQueryMessage>();
             _connector.CurrentCopyOperation = null;
@@ -391,12 +397,6 @@ namespace Npgsql
             if (_isDisposed) {
                 throw new ObjectDisposedException(GetType().FullName, "The COPY operation has already ended.");
             }
-        }
-
-        [ContractInvariantMethod]
-        void ObjectInvariants()
-        {
-            Contract.Invariant(_isDisposed || _writingDataMsg);
         }
 
         #endregion

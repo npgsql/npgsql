@@ -38,12 +38,12 @@ namespace Npgsql.FrontendMessages
 
         internal override int Length => 1 + 4;
 
-        internal override void Write(NpgsqlBuffer buf)
+        internal override void WriteFully(WriteBuffer buf)
         {
             buf.WriteByte(Code);
             buf.WriteInt32(4);
         }
 
-        public override string ToString() { return "[Terminate]"; }
+        public override string ToString() => "[Terminate]";
     }
 }

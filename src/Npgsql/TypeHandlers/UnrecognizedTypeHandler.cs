@@ -23,9 +23,6 @@
 
 using NpgsqlTypes;
 using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Linq;
 using System.Text;
 using Npgsql.BackendMessages;
 
@@ -39,22 +36,32 @@ namespace Npgsql.TypeHandlers
     /// (chicken and egg problem).
     /// Also used for sending parameters with unknown types (OID=0)
     /// </summary>
-    internal class UnrecognizedTypeHandler : TextHandler
+    class UnrecognizedTypeHandler : TextHandler
     {
-        internal UnrecognizedTypeHandler()
-        {
-            OID = 0;
-            PgName = "<unknown>";
-        }
+        static readonly IBackendType UnrecognizedBackendType = new UnrecognizedBackendType();
 
-        internal override void PrepareRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        internal UnrecognizedTypeHandler(TypeHandlerRegistry registry) : base(UnrecognizedBackendType, registry) {}
+
+        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
+            if (fieldDescription == null)
+                throw new Exception($"Received an unknown field but {nameof(fieldDescription)} is null (i.e. COPY mode)");
+
             if (fieldDescription.IsBinaryFormat) {
                 buf.Skip(len);
-                throw new SafeReadException(new NotSupportedException(
-                    $"The field '{fieldDescription.Name}' has a type currently unknown to Npgsql (OID {fieldDescription.OID}). You can retrieve it as a string by marking it as unknown, please see the FAQ."));
+                throw new SafeReadException(new NotSupportedException($"The field '{fieldDescription.Name}' has a type currently unknown to Npgsql (OID {fieldDescription.TypeOID}). You can retrieve it as a string by marking it as unknown, please see the FAQ."));
             }
-            base.PrepareRead(buf, fieldDescription, len);
+            base.PrepareRead(buf, len, fieldDescription);
         }
+    }
+
+    class UnrecognizedBackendType : IBackendType
+    {
+        public string Namespace => "";
+        public string Name => "<unknown>";
+        public uint OID => 0;
+        public NpgsqlDbType? NpgsqlDbType => null;
+        public string FullName => "<unknown>";
+        public string DisplayName => "<unknown>";
     }
 }

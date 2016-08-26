@@ -35,11 +35,7 @@ namespace Npgsql.Tests
 {
     public static class TestUtil
     {
-        public static bool IsOnBuildServer {
-            get {
-                return Environment.GetEnvironmentVariable("TEAMCITY_VERSION") != null;
-            }
-        }
+        public static bool IsOnBuildServer => Environment.GetEnvironmentVariable("TEAMCITY_VERSION") != null;
 
         /// <summary>
         /// Calls Assert.Ignore() unless we're on the build server, in which case calls
@@ -55,14 +51,22 @@ namespace Npgsql.Tests
         }
 
         public static void IgnoreExceptOnBuildServer(string message, params object[] args)
+            => IgnoreExceptOnBuildServer(string.Format(message, args));
+
+        public static void MinimumPgVersion(NpgsqlConnection conn, string minVersion, string ignoreText=null)
         {
-            IgnoreExceptOnBuildServer(String.Format(message, args));
+            var min = new Version(minVersion);
+            if (conn.PostgreSqlVersion < min)
+            {
+                var msg = $"Postgresql backend version {conn.PostgreSqlVersion} is less than the required {min}";
+                if (ignoreText != null)
+                    msg += ": " + ignoreText;
+                Assert.Ignore(msg);
+            }
         }
 
         public static string GetUniqueIdentifier(string prefix)
-        {
-            return prefix + Interlocked.Increment(ref _counter);
-        }
+            => prefix + Interlocked.Increment(ref _counter);
 
         static int _counter;
     }
@@ -140,29 +144,21 @@ namespace Npgsql.Tests
     }
 
     /// <summary>
-    /// Causes the test to be ignored if the Postgresql backend version is less than the given one.
+    /// Causes the test to be ignored on mono
     /// </summary>
     [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class | AttributeTargets.Assembly, AllowMultiple = false)]
-    public class MinPgVersion : Attribute, ITestAction
+    public class LinuxIgnore : Attribute, ITestAction
     {
-        readonly Version _minVersion;
         readonly string _ignoreText;
 
-        public MinPgVersion(int major, int minor, int build, string ignoreText = null)
-        {
-            _minVersion = new Version(major, minor, build);
-            _ignoreText = ignoreText;
-        }
+        public LinuxIgnore(string ignoreText = null) { _ignoreText = ignoreText; }
 
         public void BeforeTest([NotNull] ITest test)
         {
-            var asTestBase = test.Fixture as TestBase;
-            if (asTestBase == null)
-                throw new Exception("[MinPgsqlVersion] can only be used in fixtures inheriting from TestBase");
-
-            if (asTestBase.BackendVersion < _minVersion)
+            var osEnvVar = Environment.GetEnvironmentVariable("OS");
+            if (osEnvVar == null || osEnvVar != "Windows_NT")
             {
-                var msg = $"Postgresql backend version {asTestBase.BackendVersion} is less than the required {_minVersion}";
+                var msg = "Ignored on Linux";
                 if (_ignoreText != null)
                     msg += ": " + _ignoreText;
                 Assert.Ignore(msg);
@@ -178,4 +174,15 @@ namespace Npgsql.Tests
         Prepared,
         NotPrepared
     }
+
+#if NETCOREAPP1_0
+    // When using netcoreapp, we use NUnit's portable library which doesn't include TimeoutAttribute
+    // (probably because it can't enforce it). So we define it here to allow us to compile, once there's
+    // proper support for netcoreapp this should be removed.
+    [AttributeUsage(AttributeTargets.Assembly | AttributeTargets.Class | AttributeTargets.Method, Inherited = false)]
+    class TimeoutAttribute : Attribute
+    {
+        public TimeoutAttribute(int timeout) {}
+    }
+#endif
 }

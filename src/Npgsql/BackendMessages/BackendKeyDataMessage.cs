@@ -21,21 +21,16 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
 namespace Npgsql.BackendMessages
 {
-    internal class BackendKeyDataMessage : IBackendMessage
+    class BackendKeyDataMessage : IBackendMessage
     {
         public BackendMessageCode Code => BackendMessageCode.BackendKeyData;
 
         internal int BackendProcessId { get; private set; }
         internal int BackendSecretKey { get; private set; }
 
-        internal BackendKeyDataMessage(NpgsqlBuffer buf)
+        internal BackendKeyDataMessage(ReadBuffer buf)
         {
             BackendProcessId = buf.ReadInt32();
             BackendSecretKey = buf.ReadInt32();

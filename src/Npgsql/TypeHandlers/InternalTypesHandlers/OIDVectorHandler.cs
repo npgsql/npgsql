@@ -22,13 +22,7 @@
 #endregion
 
 using NpgsqlTypes;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using Npgsql.Logging;
-using Npgsql.BackendMessages;
-using Npgsql.TypeHandlers.NumericHandlers;
 
 namespace Npgsql.TypeHandlers.InternalTypesHandlers
 {
@@ -37,11 +31,12 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
     /// be 0 (we send 1 for regular arrays).
     /// </summary>
     [TypeMapping("oidvector", NpgsqlDbType.Oidvector)]
-    internal class OIDVectorHandler : ArrayHandler<uint>
+    class OIDVectorHandler : ArrayHandler<uint>
     {
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
-        public OIDVectorHandler(TypeHandlerRegistry registry) : base(new UInt32Handler { PgName = "oid" })
+        public OIDVectorHandler(IBackendType backendType, TypeHandlerRegistry registry)
+            : base(backendType, null, 0)
         {
             // The pg_type SQL query makes sure that the oid type comes before oidvector, so we can
             // depend on it already being in the registry
@@ -51,8 +46,7 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
                 Log.Warn("oid type not present when setting up oidvector type. oidvector will not work.");
                 return;
             }
-            LowerBound = 0;
-            ElementHandler.OID = oidHandler.OID;
+            ElementHandler = oidHandler;
         }
     }
 }

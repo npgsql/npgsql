@@ -14,10 +14,52 @@ namespace Npgsql.Tests.Types
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/rangetypes.html
     /// </remarks>
-    [MinPgVersion(9, 2, 0, "Ranges supported only starting PostgreSQL 9.2")]
     class RangeTests : TestBase
     {
-        public RangeTests(string backendVersion) : base(backendVersion) { }
+        [Test, Description("Resolves a range type handler via the different pathways")]
+        public void RangeTypeResolution()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ApplicationName = nameof(RangeTypeResolution),  // Prevent backend type caching in TypeHandlerRegistry
+                Pooling = false
+            };
+
+            using (var conn = OpenConnection(csb))
+            {
+                // Resolve type by NpgsqlDbType
+                using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+                {
+                    cmd.Parameters.AddWithValue("p", NpgsqlDbType.Range | NpgsqlDbType.Integer, DBNull.Value);
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        reader.Read();
+                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("int4range"));
+                    }
+                }
+
+                // Resolve type by ClrType (type inference)
+                conn.ReloadTypes();
+                using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+                {
+                    cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Value = new NpgsqlRange<int>(3, 5) });
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        reader.Read();
+                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("int4range"));
+                    }
+                }
+
+                // Resolve type by OID (read)
+                conn.ReloadTypes();
+                using (var cmd = new NpgsqlCommand("SELECT int4range(3, 5)", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo("int4range"));
+                }
+            }
+        }
 
         [Test]
         public void Range()
@@ -25,7 +67,7 @@ namespace Npgsql.Tests.Types
             using (var conn = OpenConnection())
             using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4", conn))
             {
-                var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Range | NpgsqlDbType.Integer) { Value = NpgsqlRange<int>.Empty() };
+                var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Range | NpgsqlDbType.Integer) { Value = NpgsqlRange<int>.Empty };
                 var p2 = new NpgsqlParameter { ParameterName = "p2", Value = new NpgsqlRange<int>(1, 10) };
                 var p3 = new NpgsqlParameter { ParameterName = "p3", Value = new NpgsqlRange<int>(1, false, 10, false) };
                 var p4 = new NpgsqlParameter { ParameterName = "p4", Value = new NpgsqlRange<int>(0, false, true, 10, false, false) };
@@ -91,6 +133,13 @@ namespace Npgsql.Tests.Types
                 obj = cmd.ExecuteScalar();
                 Assert.AreEqual(new NpgsqlRange<int>(3, true, false, 9, false, false), ((NpgsqlRange<int>[])obj)[1]);
             }
+        }
+
+        [OneTimeSetUp]
+        public void OneTimeSetUp()
+        {
+            using (var conn = OpenConnection())
+                TestUtil.MinimumPgVersion(conn, "9.2.0");
         }
     }
 }

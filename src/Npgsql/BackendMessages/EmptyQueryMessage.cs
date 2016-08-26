@@ -21,14 +21,9 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
 namespace Npgsql.BackendMessages
 {
-    internal class EmptyQueryMessage : IBackendMessage
+    class EmptyQueryMessage : IBackendMessage
     {
         public BackendMessageCode Code => BackendMessageCode.EmptyQueryResponse;
         internal static readonly EmptyQueryMessage Instance = new EmptyQueryMessage();

@@ -25,6 +25,7 @@ using System;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
+using JetBrains.Annotations;
 
 namespace Npgsql.TypeHandlers.DateTimeHandlers
 {
@@ -32,19 +33,20 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-datetime.html
     /// </remarks>
     [TypeMapping("timestamptz", NpgsqlDbType.TimestampTZ, DbType.DateTimeOffset, typeof(DateTimeOffset))]
-    internal class TimeStampTzHandler : TimeStampHandler, ISimpleTypeHandler<DateTimeOffset>
+    class TimeStampTzHandler : TimeStampHandler, ISimpleTypeHandler<DateTimeOffset>
     {
-        public TimeStampTzHandler(TypeHandlerRegistry registry) : base(registry) {}
+        public TimeStampTzHandler(IBackendType backendType, TypeHandlerRegistry registry)
+            : base(backendType, registry) {}
 
-        public override DateTime Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        public override DateTime Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             // TODO: Convert directly to DateTime without passing through NpgsqlTimeStamp?
             var ts = ReadTimeStamp(buf, len, fieldDescription);
             try
             {
                 if (ts.IsFinite)
-                    return ts.DateTime.ToLocalTime();
-                if (!_convertInfinityDateTime)
+                    return ts.ToDateTime().ToLocalTime();
+                if (!ConvertInfinityDateTime)
                     throw new InvalidCastException("Can't convert infinite timestamptz values to DateTime");
                 if (ts.IsInfinity)
                     return DateTime.MaxValue;
@@ -54,27 +56,26 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             }
         }
 
-        internal override NpgsqlDateTime ReadPsv(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        internal override NpgsqlDateTime ReadPsv(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             var ts = ReadTimeStamp(buf, len, fieldDescription);
             return new NpgsqlDateTime(ts.Date, ts.Time, DateTimeKind.Utc).ToLocalTime();
         }
 
-        DateTimeOffset ISimpleTypeHandler<DateTimeOffset>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        DateTimeOffset ISimpleTypeHandler<DateTimeOffset>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
         {
             try
             {
-                return new DateTimeOffset(ReadTimeStamp(buf, len, fieldDescription).DateTime, TimeSpan.Zero);
+                return new DateTimeOffset(ReadTimeStamp(buf, len, fieldDescription).ToDateTime(), TimeSpan.Zero);
             } catch (Exception e) {
                 throw new SafeReadException(e);
             }
         }
 
-        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
         {
-            if (parameter != null && parameter.ConvertedValue != null) {
+            if (parameter?.ConvertedValue != null)
                 value = parameter.ConvertedValue;
-            }
 
             if (value is NpgsqlDateTime)
             {
@@ -88,7 +89,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                     ts = ts.ToUniversalTime();
                     break;
                 default:
-                    throw PGUtil.ThrowIfReached();
+                    throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {ts.Kind} of enum {nameof(DateTimeKind)}. Please file a bug.");
                 }
                 base.Write(ts, buf, parameter);
                 return;
@@ -106,7 +107,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                     dt = dt.ToUniversalTime();
                     break;
                 default:
-                    throw PGUtil.ThrowIfReached();
+                    throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {dt.Kind} of enum {nameof(DateTimeKind)}. Please file a bug.");
                 }
                 base.Write(dt, buf, parameter);
                 return;
@@ -118,7 +119,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                 return;
             }
 
-            throw PGUtil.ThrowIfReached();
+            throw new InvalidOperationException("Internal Npgsql bug, please report.");
         }
     }
 }

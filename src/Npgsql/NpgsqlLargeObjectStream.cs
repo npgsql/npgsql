@@ -24,7 +24,6 @@
 using Npgsql.FrontendMessages;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -37,15 +36,13 @@ namespace Npgsql
     /// An interface to remotely control the seekable stream for an opened large object on a PostgreSQL server.
     /// Note that the OpenRead/OpenReadWrite method as well as all operations performed on this stream must be wrapped inside a database transaction.
     /// </summary>
-    public partial class NpgsqlLargeObjectStream : Stream
+    public sealed partial class NpgsqlLargeObjectStream : Stream
     {
-        NpgsqlLargeObjectManager _manager;
-        int _fd;
+        readonly NpgsqlLargeObjectManager _manager;
+        readonly int _fd;
         long _pos;
-        bool _writeable;
+        readonly bool _writeable;
         bool _disposed;
-
-        private NpgsqlLargeObjectStream() { }
 
         internal NpgsqlLargeObjectStream(NpgsqlLargeObjectManager manager, uint oid, int fd, bool writeable)
         {
@@ -85,7 +82,6 @@ namespace Npgsql
                 throw new ArgumentOutOfRangeException(nameof(count));
             if (buffer.Length - offset < count)
                 throw new ArgumentException("Invalid offset or count for this buffer");
-            Contract.EndContractBlock();
 
             CheckDisposed();
 
@@ -122,7 +118,6 @@ namespace Npgsql
                 throw new ArgumentOutOfRangeException(nameof(count));
             if (buffer.Length - offset < count)
                 throw new ArgumentException("Invalid offset or count for this buffer");
-            Contract.EndContractBlock();
 
             CheckDisposed();
 
@@ -138,7 +133,7 @@ namespace Npgsql
                 totalWritten += bytesWritten;
 
                 if (bytesWritten != chunkSize)
-                    throw PGUtil.ThrowIfReached();
+                    throw new InvalidOperationException($"Internal Npgsql bug, please report");
 
                 _pos += bytesWritten;
             }
@@ -215,7 +210,6 @@ namespace Npgsql
                 throw new ArgumentException("Invalid origin");
             if (!Has64BitSupport && offset != (long)(int)offset)
                 throw new ArgumentOutOfRangeException(nameof(offset), "offset must fit in 32 bits for PostgreSQL versions older than 9.3");
-            Contract.EndContractBlock();
 
             CheckDisposed();
 
@@ -245,7 +239,6 @@ namespace Npgsql
                 throw new ArgumentOutOfRangeException(nameof(value));
             if (!Has64BitSupport && value != (long)(int)value)
                 throw new ArgumentOutOfRangeException(nameof(value), "offset must fit in 32 bits for PostgreSQL versions older than 9.3");
-            Contract.EndContractBlock();
 
             CheckDisposed();
 
@@ -261,7 +254,7 @@ namespace Npgsql
         /// <summary>
         /// Releases resources at the backend allocated for this stream.
         /// </summary>
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
         public override void Close()
 #else
         void Close()

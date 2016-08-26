@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using System.Collections.Generic;
 using Npgsql.BackendMessages;
 
 namespace Npgsql
@@ -17,19 +14,12 @@ namespace Npgsql
     /// Users can retrieve instances from <see cref="NpgsqlDataReader.Statements"/>
     /// and access information about statement execution (e.g. affected rows).
     /// </summary>
-    public class NpgsqlStatement
+    public sealed class NpgsqlStatement
     {
-        internal NpgsqlStatement(string sql, List<NpgsqlParameter> inputParameters, string preparedStatementName = null)
-        {
-            SQL = sql;
-            InputParameters = inputParameters;
-            PreparedStatementName = preparedStatementName;
-        }
-
         /// <summary>
         /// The SQL text of the statement.
         /// </summary>
-        public string SQL { get; }
+        public string SQL { get; set; } = string.Empty;
 
         /// <summary>
         /// Specifies the type of query, e.g. SELECT.
@@ -51,7 +41,7 @@ namespace Npgsql
         /// </summary>
         public uint OID { get; internal set; }
 
-        internal readonly List<NpgsqlParameter> InputParameters;
+        internal List<NpgsqlParameter> InputParameters { get; } = new List<NpgsqlParameter>();
 
         /// <summary>
         /// The RowDescription message for this query. If null, the query does not return rows (e.g. INSERT)
@@ -64,8 +54,37 @@ namespace Npgsql
         internal string PreparedStatementName;
 
         /// <summary>
+        /// Whether this statement has already been prepared.
+        /// </summary>
+        internal bool IsPrepared;
+
+        internal void Reset()
+        {
+            SQL = string.Empty;
+            StatementType = StatementType.Select;
+            Rows = 0;
+            OID = 0;
+            InputParameters.Clear();
+            Unprepare();
+        }
+
+        internal void Unprepare()
+        {
+            Description = null;
+            PreparedStatementName = null;
+            IsPrepared = false;
+        }
+
+        internal void ApplyCommandComplete(CommandCompleteMessage msg)
+        {
+            StatementType = msg.StatementType;
+            Rows = msg.Rows;
+            OID = msg.OID;
+        }
+
+        /// <summary>
         /// Returns the SQL text of the statement.
         /// </summary>
-        public override string ToString() { return SQL; }
+        public override string ToString() => SQL ?? "<none>";
     }
 }

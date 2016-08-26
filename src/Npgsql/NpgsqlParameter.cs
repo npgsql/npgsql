@@ -25,7 +25,7 @@ using System;
 using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.Reflection;
 using JetBrains.Annotations;
 using NpgsqlTypes;
@@ -42,7 +42,7 @@ namespace Npgsql
 #if WITHDESIGN
     [TypeConverter(typeof(NpgsqlParameterConverter))]
 #endif
-#if DOTNET5_4
+#if NETSTANDARD1_3
     public sealed class NpgsqlParameter : DbParameter
 #else
     public sealed class NpgsqlParameter : DbParameter, ICloneable
@@ -87,7 +87,7 @@ namespace Npgsql
         {
             SourceColumn = String.Empty;
             Direction = ParameterDirection.Input;
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
             SourceVersion = DataRowVersion.Current;
 #endif
         }
@@ -187,7 +187,7 @@ namespace Npgsql
             SourceColumn = sourceColumn;
         }
 
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
         /// <summary>
         /// Initializes a new instance of the <see cref="NpgsqlParameter">NpgsqlParameter</see>.
         /// </summary>
@@ -266,7 +266,7 @@ namespace Npgsql
         /// </summary>
         /// <value>An <see cref="System.Object">Object</see> that is the value of the parameter.
         /// The default value is null.</value>
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
         [TypeConverter(typeof(StringConverter)), Category("Data")]
 #endif
         public override object Value
@@ -383,9 +383,7 @@ namespace Npgsql
             set
             {
                 if (value < -1)
-                    throw new ArgumentException(
-                        $"Invalid parameter Size value '{value}'. The value must be greater than or equal to 0.");
-                Contract.EndContractBlock();
+                    throw new ArgumentException($"Invalid parameter Size value '{value}'. The value must be greater than or equal to 0.");
 
                 _size = value;
                 ClearBind();
@@ -450,13 +448,10 @@ namespace Npgsql
             }
             set
             {
-                if (value == NpgsqlDbType.Array) {
+                if (value == NpgsqlDbType.Array)
                     throw new ArgumentOutOfRangeException(nameof(value), "Cannot set NpgsqlDbType to just Array, Binary-Or with the element type (e.g. Array of Box is NpgsqlDbType.Array | NpgsqlDbType.Box).");
-                }
-                if (value == NpgsqlDbType.Range) {
+                if (value == NpgsqlDbType.Range)
                     throw new ArgumentOutOfRangeException(nameof(value), "Cannot set NpgsqlDbType to just Range, Binary-Or with the element type (e.g. Range of integer is NpgsqlDbType.Range | NpgsqlDbType.Integer)");
-                }
-                Contract.EndContractBlock();
 
                 ClearBind();
                 _npgsqlDbType = value;
@@ -493,18 +488,18 @@ namespace Npgsql
             }
         }
 
-                /// <summary>
+        /// <summary>
         /// Gets or sets The name of the source column that is mapped to the
-        /// <see cref="System.Data.DataSet">DataSet</see> and used for loading or
-        /// returning the <see cref="NpgsqlParameter.Value">Value</see>.
+        /// DataSet and used for loading or
+        /// returning the <see cref="Value">Value</see>.
         /// </summary>
-        /// <value>The name of the source column that is mapped to the
-        /// <see cref="System.Data.DataSet">DataSet</see>. The default is an empty string.</value>
+        /// <value>The name of the source column that is mapped to the DataSet.
+        /// The default is an empty string.</value>
         [DefaultValue("")]
         [Category("Data")]
         public override String SourceColumn { get; set; }
 
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
         /// <summary>
         /// Gets or sets the <see cref="System.Data.DataRowVersion">DataRowVersion</see>
         /// to use when loading <see cref="NpgsqlParameter.Value">Value</see>.
@@ -626,7 +621,7 @@ namespace Npgsql
         {
             ResolveHandler(registry);
 
-            Contract.Assert(Handler != null);
+            Debug.Assert(Handler != null);
             FormatCode = Handler.PreferTextWrite ? FormatCode.Text : FormatCode.Binary;
         }
 
@@ -647,7 +642,7 @@ namespace Npgsql
             }
 
             var asChunkingWriter = Handler as IChunkingTypeHandler;
-            Contract.Assert(asChunkingWriter != null,
+            Debug.Assert(asChunkingWriter != null,
                 $"Handler {Handler.GetType().Name} doesn't implement either ISimpleTypeWriter or IChunkingTypeWriter");
             var lengthCache = LengthCache;
             var len = asChunkingWriter.ValidateAndGetLength(Value, ref lengthCache, this);
@@ -701,7 +696,7 @@ namespace Npgsql
                 IsNullable = IsNullable,
                 _name = _name,
                 SourceColumn = SourceColumn,
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
                 SourceVersion = SourceVersion,
 #endif
                 _value = _value,
@@ -712,7 +707,7 @@ namespace Npgsql
             return clone;
         }
 
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
         object ICloneable.Clone()
         {
             return Clone();

@@ -23,7 +23,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 
@@ -42,18 +42,18 @@ namespace Npgsql.FrontendMessages
 
         const byte Code = (byte)'D';
 
-        internal DescribeMessage Populate(StatementOrPortal type, string name = "")
+        internal DescribeMessage Populate(StatementOrPortal type, string name = null)
         {
             StatementOrPortal = type;
-            Name = name;
+            Name = name ?? "";
             return this;
         }
 
         internal override int Length => 1 + 4 + 1 + (Name.Length + 1);
 
-        internal override void Write(NpgsqlBuffer buf)
+        internal override void WriteFully(WriteBuffer buf)
         {
-            Contract.Requires(Name != null && Name.All(c => c < 128));
+            Debug.Assert(Name != null && Name.All(c => c < 128));
 
             buf.WriteByte(Code);
             buf.WriteInt32(Length - 1);
@@ -61,9 +61,6 @@ namespace Npgsql.FrontendMessages
             buf.WriteBytesNullTerminated(Encoding.ASCII.GetBytes(Name));
         }
 
-        public override string ToString()
-        {
-            return $"[Describe({StatementOrPortal}={Name})]";
-        }
+        public override string ToString() => $"[Describe({StatementOrPortal}={Name})]";
     }
 }

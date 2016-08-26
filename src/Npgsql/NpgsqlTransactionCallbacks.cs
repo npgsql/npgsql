@@ -1,4 +1,4 @@
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
 #region License
 // The PostgreSQL License
 //
@@ -24,13 +24,12 @@
 
 using System;
 using System.Data;
-using System.Reflection;
 using Npgsql.Logging;
 using Npgsql.FrontendMessages;
 
 namespace Npgsql
 {
-    internal interface INpgsqlTransactionCallbacks : IDisposable
+    interface INpgsqlTransactionCallbacks : IDisposable
     {
         string GetName();
         void PrepareTransaction();
@@ -38,31 +37,31 @@ namespace Npgsql
         void RollbackTransaction();
     }
 
-    internal class NpgsqlTransactionCallbacks : MarshalByRefObject, INpgsqlTransactionCallbacks
+    sealed class NpgsqlTransactionCallbacks : MarshalByRefObject, INpgsqlTransactionCallbacks
     {
-        private NpgsqlConnection _connection;
-        private readonly string _connectionString;
-        private bool _closeConnectionRequired;
-        private bool _prepared;
-        private readonly string _txName = Guid.NewGuid().ToString();
-        private static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+        NpgsqlConnection _connection;
+        readonly string _connectionString;
+        bool _closeConnectionRequired;
+        bool _prepared;
+        readonly string _txName = Guid.NewGuid().ToString();
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         public NpgsqlTransactionCallbacks(NpgsqlConnection connection)
         {
             _connection = connection;
             _connectionString = _connection.ConnectionString;
-            _connection.Disposed += new EventHandler(_connection_Disposed);
+            _connection.Disposed += _connection_Disposed;
         }
 
-        private void _connection_Disposed(object sender, EventArgs e)
+        void _connection_Disposed(object sender, EventArgs e)
         {
             // TODO: what happens if this is called from another thread?
             // connections should not be shared across threads while in a transaction
-            _connection.Disposed -= new EventHandler(_connection_Disposed);
+            _connection.Disposed -= _connection_Disposed;
             _connection = null;
         }
 
-        private NpgsqlConnection GetConnection()
+        NpgsqlConnection GetConnection()
         {
             if (_connection == null || (_connection.FullState & ConnectionState.Open) != ConnectionState.Open)
             {
@@ -71,13 +70,10 @@ namespace Npgsql
                 _closeConnectionRequired = true;
                 return _connection;
             }
-            else
-            {
-                return _connection;
-            }
+            return _connection;
         }
 
-#region INpgsqlTransactionCallbacks Members
+        #region INpgsqlTransactionCallbacks Members
 
         public string GetName()
         {
@@ -90,52 +86,35 @@ namespace Npgsql
             var connection = GetConnection();
 
             if (_prepared)
-            {
                 connection.Connector.ExecuteInternalCommand($"COMMIT PREPARED '{_txName}'");
-            }
             else
-            {
                 connection.Connector.ExecuteInternalCommand(PregeneratedMessage.CommitTransaction);
-            }
         }
 
         public void PrepareTransaction()
         {
-            if (!_prepared)
-            {
-                Log.Debug("Prepare transaction");
-                NpgsqlConnection connection = GetConnection();
-                connection.Connector.ExecuteInternalCommand($"PREPARE TRANSACTION '{_txName}'");
-                _prepared = true;
-            }
+            if (_prepared)
+                return;
+            Log.Debug("Prepare transaction");
+            var connection = GetConnection();
+            connection.Connector.ExecuteInternalCommand($"PREPARE TRANSACTION '{_txName}'");
+            _prepared = true;
         }
 
         public void RollbackTransaction()
         {
             Log.Debug("Rollback transaction");
-            NpgsqlConnection connection = GetConnection();
+            var connection = GetConnection();
 
-            try
-            {
-                if (_prepared)
-                {
-                    connection.Connector.ExecuteInternalCommand($"ROLLBACK PREPARED '{_txName}'");
-                }
-                else
-                {
-                    connection.Connector.ExecuteInternalCommand(PregeneratedMessage.RollbackTransaction);
-                }
-            }
-            finally
-            {
-                // The rollback may change the value of statement_value, set to unknown
-                connection.Connector.SetBackendTimeoutToUnknown();
-            }
+            if (_prepared)
+                connection.Connector.ExecuteInternalCommand($"ROLLBACK PREPARED '{_txName}'");
+            else
+                connection.Connector.ExecuteInternalCommand(PregeneratedMessage.RollbackTransaction);
         }
 
-#endregion
+        #endregion
 
-#region IDisposable Members
+        #region IDisposable Members
 
         public void Dispose()
         {
@@ -146,7 +125,7 @@ namespace Npgsql
             _closeConnectionRequired = false;
         }
 
-#endregion
+        #endregion
     }
 }
 #endif

@@ -22,12 +22,9 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
-using System.Data;
+using JetBrains.Annotations;
 
 namespace Npgsql.TypeHandlers
 {
@@ -38,41 +35,33 @@ namespace Npgsql.TypeHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-character.html
     /// </remarks>
     [TypeMapping("char", NpgsqlDbType.InternalChar)]
-    internal class InternalCharHandler : SimpleTypeHandler<char>,
+    class InternalCharHandler : SimpleTypeHandler<char>,
         ISimpleTypeHandler<byte>, ISimpleTypeHandler<short>, ISimpleTypeHandler<int>, ISimpleTypeHandler<long>
     {
+        internal InternalCharHandler(IBackendType backendType) : base(backendType) { }
+
         #region Read
 
-        public override char Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return (char)buf.ReadByte();
-        }
+        public override char Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+            => (char)buf.ReadByte();
 
-        byte ISimpleTypeHandler<byte>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return buf.ReadByte();
-        }
+        byte ISimpleTypeHandler<byte>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => buf.ReadByte();
 
-        short ISimpleTypeHandler<short>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return buf.ReadByte();
-        }
+        short ISimpleTypeHandler<short>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => buf.ReadByte();
 
-        int ISimpleTypeHandler<int>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return buf.ReadByte();
-        }
+        int ISimpleTypeHandler<int>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => buf.ReadByte();
 
-        long ISimpleTypeHandler<long>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return buf.ReadByte();
-        }
+        long ISimpleTypeHandler<long>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => buf.ReadByte();
 
         #endregion
 
         #region Write
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
         {
             if (!(value is byte))
             {
@@ -82,7 +71,7 @@ namespace Npgsql.TypeHandlers
             return 1;
         }
 
-        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
         {
             buf.WriteByte(value as byte? ?? Convert.ToByte(value));
         }

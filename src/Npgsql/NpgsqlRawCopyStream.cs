@@ -23,7 +23,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -40,12 +40,13 @@ namespace Npgsql
     /// <remarks>
     /// See http://www.postgresql.org/docs/current/static/sql-copy.html.
     /// </remarks>
-    public class NpgsqlRawCopyStream : Stream, ICancelable
+    public sealed class NpgsqlRawCopyStream : Stream, ICancelable
     {
         #region Fields and Properties
 
         NpgsqlConnector _connector;
-        NpgsqlBuffer _buf;
+        ReadBuffer _readBuf;
+        WriteBuffer _writeBuf;
 
         bool _writingDataMsg;
         int _leftToReadInDataMsg;
@@ -75,9 +76,10 @@ namespace Npgsql
         internal NpgsqlRawCopyStream(NpgsqlConnector connector, string copyCommand)
         {
             _connector = connector;
-            _buf = connector.Buffer;
-            _connector.SendSingleMessage(new QueryMessage(copyCommand));
-            var msg = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential);
+            _readBuf = connector.ReadBuffer;
+            _writeBuf = connector.WriteBuffer;
+            _connector.SendQuery(copyCommand);
+            var msg = _connector.ReadMessage(DataRowLoadingMode.NonSequential);
             switch (msg.Code)
             {
             case BackendMessageCode.CopyInResponse:
@@ -109,9 +111,9 @@ namespace Npgsql
 
             EnsureDataMessage();
 
-            if (count <= _buf.WriteSpaceLeft)
+            if (count <= _writeBuf.WriteSpaceLeft)
             {
-                _buf.WriteBytes(buffer, offset, count);
+                _writeBuf.WriteBytes(buffer, offset, count);
                 return;
             }
 
@@ -120,10 +122,10 @@ namespace Npgsql
                 // directly with the buffer.
                 Flush();
 
-                _buf.WriteByte((byte)BackendMessageCode.CopyData);
-                _buf.WriteInt32(count + 4);
-                _buf.Flush();
-                _buf.Underlying.Write(buffer, offset, count);
+                _writeBuf.WriteByte((byte)BackendMessageCode.CopyData);
+                _writeBuf.WriteInt32(count + 4);
+                _writeBuf.Flush();
+                _writeBuf.DirectWrite(buffer, offset, count);
                 EnsureDataMessage();
             } catch {
                 _connector.Break();
@@ -138,11 +140,11 @@ namespace Npgsql
             if (!_writingDataMsg) { return; }
 
             // Need to update the length for the CopyData about to be sent
-            var pos = _buf.WritePosition;
-            _buf.WritePosition = 1;
-            _buf.WriteInt32(pos - 1);
-            _buf.WritePosition = pos;
-            _buf.Flush();
+            var pos = _writeBuf.WritePosition;
+            _writeBuf.WritePosition = 1;
+            _writeBuf.WriteInt32(pos - 1);
+            _writeBuf.WritePosition = pos;
+            _writeBuf.Flush();
             _writingDataMsg = false;
         }
 
@@ -150,10 +152,10 @@ namespace Npgsql
         {
             if (_writingDataMsg) { return; }
 
-            Contract.Assert(_buf.WritePosition == 0);
-            _buf.WriteByte((byte)BackendMessageCode.CopyData);
+            Debug.Assert(_writeBuf.WritePosition == 0);
+            _writeBuf.WriteByte((byte)BackendMessageCode.CopyData);
             // Leave space for the message length
-            _buf.WriteInt32(0);
+            _writeBuf.WriteInt32(0);
             _writingDataMsg = true;
         }
 
@@ -175,7 +177,7 @@ namespace Npgsql
             {
                 // We've consumed the current DataMessage (or haven't yet received the first),
                 // read the next message
-                var msg = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential);
+                var msg = _connector.ReadMessage(DataRowLoadingMode.NonSequential);
                 switch (msg.Code) {
                 case BackendMessageCode.CopyData:
                     _leftToReadInDataMsg = ((CopyDataMessage)msg).Length;
@@ -190,23 +192,23 @@ namespace Npgsql
                 }
             }
 
-            Contract.Assume(_leftToReadInDataMsg > 0);
+            Debug.Assert(_leftToReadInDataMsg > 0);
 
             // If our buffer is empty, read in more. Otherwise return whatever is there, even if the
             // user asked for more (normal socket behavior)
-            if (_buf.ReadBytesLeft == 0) {
-                _buf.ReadMore();
+            if (_readBuf.ReadBytesLeft == 0) {
+                _readBuf.ReadMore();
             }
 
-            Contract.Assert(_buf.ReadBytesLeft > 0);
+            Debug.Assert(_readBuf.ReadBytesLeft > 0);
 
-            var maxCount = Math.Min(_buf.ReadBytesLeft, _leftToReadInDataMsg);
+            var maxCount = Math.Min(_readBuf.ReadBytesLeft, _leftToReadInDataMsg);
             if (count > maxCount) {
                 count = maxCount;
             }
 
             _leftToReadInDataMsg -= count;
-            _buf.ReadBytes(buffer, offset, count);
+            _readBuf.ReadBytes(buffer, offset, count);
             return count;
         }
 
@@ -224,18 +226,18 @@ namespace Npgsql
             if (CanWrite)
             {
                 _isDisposed = true;
-                _buf.Clear();
-                _connector.SendSingleMessage(new CopyFailMessage());
+                _writeBuf.Clear();
+                _connector.SendMessage(new CopyFailMessage());
                 try
                 {
-                    var msg = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential);
+                    var msg = _connector.ReadMessage(DataRowLoadingMode.NonSequential);
                     // The CopyFail should immediately trigger an exception from the read above.
                     _connector.Break();
-                    throw new Exception("Expected ErrorResponse when cancelling COPY but got: " + msg.Code);
+                    throw new NpgsqlException("Expected ErrorResponse when cancelling COPY but got: " + msg.Code);
                 }
-                catch (NpgsqlException e)
+                catch (PostgresException e)
                 {
-                    if (e.Code == "57014") { return; }
+                    if (e.SqlState == "57014") { return; }
                     throw;
                 }
             }
@@ -256,7 +258,7 @@ namespace Npgsql
             if (CanWrite)
             {
                 Flush();
-                _connector.SendSingleMessage(CopyDoneMessage.Instance);
+                _connector.SendMessage(CopyDoneMessage.Instance);
                 _connector.ReadExpecting<CommandCompleteMessage>();
                 _connector.ReadExpecting<ReadyForQueryMessage>();
             }
@@ -264,7 +266,7 @@ namespace Npgsql
             {
                 if (!_isConsumed) {
                     if (_leftToReadInDataMsg > 0) {
-                        _buf.Skip(_leftToReadInDataMsg);
+                        _readBuf.Skip(_leftToReadInDataMsg);
                     }
                     _connector.SkipUntil(BackendMessageCode.ReadyForQuery);
                 }
@@ -278,7 +280,8 @@ namespace Npgsql
         void Cleanup()
         {
             _connector = null;
-            _buf = null;
+            _readBuf = null;
+            _writeBuf = null;
             _isDisposed = true;
         }
 
@@ -287,18 +290,6 @@ namespace Npgsql
             if (_isDisposed) {
                 throw new ObjectDisposedException(GetType().FullName, "The COPY operation has already ended.");
             }
-        }
-
-        #endregion
-
-        #region Invariants
-
-        [ContractInvariantMethod]
-        void ObjectInvariants()
-        {
-            Contract.Invariant(_isDisposed || (_connector != null && _buf != null));
-            Contract.Invariant(CanRead || CanWrite);
-            Contract.Invariant(_buf == null || _buf == _connector.Buffer);
         }
 
         #endregion
@@ -337,13 +328,12 @@ namespace Npgsql
     /// <remarks>
     /// See http://www.postgresql.org/docs/current/static/sql-copy.html.
     /// </remarks>
-    public class NpgsqlCopyTextWriter : StreamWriter, ICancelable
+    public sealed class NpgsqlCopyTextWriter : StreamWriter, ICancelable
     {
         internal NpgsqlCopyTextWriter(NpgsqlRawCopyStream underlying) : base(underlying)
         {
             if (underlying.IsBinary)
                 throw new Exception("Can't use a binary copy stream for text writing");
-            Contract.EndContractBlock();
         }
 
         /// <summary>
@@ -361,13 +351,12 @@ namespace Npgsql
     /// <remarks>
     /// See http://www.postgresql.org/docs/current/static/sql-copy.html.
     /// </remarks>
-    public class NpgsqlCopyTextReader : StreamReader, ICancelable
+    public sealed class NpgsqlCopyTextReader : StreamReader, ICancelable
     {
         internal NpgsqlCopyTextReader(NpgsqlRawCopyStream underlying) : base(underlying)
         {
             if (underlying.IsBinary)
                 throw new Exception("Can't use a binary copy stream for text reading");
-            Contract.EndContractBlock();
         }
 
         /// <summary>

@@ -24,70 +24,76 @@
 using System;
 using System.Data.Common;
 using System.Reflection;
-
-// Keep the xml comment warning quiet for this file.
-#pragma warning disable 1591
+using JetBrains.Annotations;
 
 namespace Npgsql
 {
     /// <summary>
     /// A factory to create instances of various Npgsql objects.
     /// </summary>
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
     [Serializable]
 #endif
     public sealed class NpgsqlFactory : DbProviderFactory, IServiceProvider
     {
-        public static NpgsqlFactory Instance = new NpgsqlFactory();
+        /// <summary>
+        /// Gets an instance of the <see cref="NpgsqlFactory"/>.
+        /// This can be used to retrieve strongly typed data objects.
+        /// </summary>
+        public static readonly NpgsqlFactory Instance = new NpgsqlFactory();
 
-        private NpgsqlFactory()
-        {
-        }
+        NpgsqlFactory() {}
 
         /// <summary>
-        /// Creates an NpgsqlCommand object.
+        /// Returns a strongly typed <see cref="DbCommand"/> instance.
         /// </summary>
-        public override DbCommand CreateCommand()
-        {
-            return new NpgsqlCommand();
-        }
+        [NotNull] public override DbCommand CreateCommand() => new NpgsqlCommand();
 
-        public override DbConnection CreateConnection()
-        {
-            return new NpgsqlConnection();
-        }
+        /// <summary>
+        /// Returns a strongly typed <see cref="DbConnection"/> instance.
+        /// </summary>
+        [NotNull] public override DbConnection CreateConnection() => new NpgsqlConnection();
 
+        /// <summary>
+        /// Returns a strongly typed <see cref="DbParameter"/> instance.
+        /// </summary>
+        [NotNull] public override DbParameter CreateParameter() => new NpgsqlParameter();
 
-        public override DbParameter CreateParameter()
-        {
-            return new NpgsqlParameter();
-        }
+        /// <summary>
+        /// Returns a strongly typed <see cref="DbConnectionStringBuilder"/> instance.
+        /// </summary>
+        [NotNull] public override DbConnectionStringBuilder CreateConnectionStringBuilder() => new NpgsqlConnectionStringBuilder();
 
-        public override DbConnectionStringBuilder CreateConnectionStringBuilder()
-        {
-            return new NpgsqlConnectionStringBuilder();
-        }
+#if NET45 || NET451
+        /// <summary>
+        /// Returns a strongly typed <see cref="DbCommandBuilder"/> instance.
+        /// </summary>
+        [NotNull] public override DbCommandBuilder CreateCommandBuilder() => new NpgsqlCommandBuilder();
 
-#if NET45 || NET451 || DNX451
-        public override DbCommandBuilder CreateCommandBuilder()
-        {
-            return new NpgsqlCommandBuilder();
-        }
-
-        public override DbDataAdapter CreateDataAdapter()
-        {
-            return new NpgsqlDataAdapter();
-        }
+        /// <summary>
+        /// Returns a strongly typed <see cref="DbDataAdapter"/> instance.
+        /// </summary>
+        [NotNull] public override DbDataAdapter CreateDataAdapter() => new NpgsqlDataAdapter();
 #endif
 
         #region IServiceProvider Members
 
-        public object GetService(Type serviceType) {
+        /// <summary>
+        /// Gets the service object of the specified type.
+        /// </summary>
+        /// <param name="serviceType">An object that specifies the type of service object to get.</param>
+        /// <returns>A service object of type serviceType, or null if there is no service object of type serviceType.</returns>
+        [CanBeNull]
+        public object GetService([NotNull] Type serviceType)
+        {
+            if (serviceType == null)
+                throw new ArgumentNullException(nameof(serviceType));
+
             // In legacy Entity Framework, this is the entry point for obtaining Npgsql's
             // implementation of DbProviderServices. We use reflection for all types to
             // avoid any dependencies on EF stuff in this project.
 
-            if (serviceType != null && serviceType.FullName == "System.Data.Common.DbProviderServices")
+            if (serviceType.FullName == "System.Data.Common.DbProviderServices")
             {
                 // User has requested a legacy EF DbProviderServices implementation. Check our cache first.
                 if (_legacyEntityFrameworkServices != null)
@@ -114,10 +120,8 @@ namespace Npgsql
             return null;
         }
 
-        private static object _legacyEntityFrameworkServices;
+        static object _legacyEntityFrameworkServices;
 
         #endregion
     }
 }
-
-#pragma warning restore 1591

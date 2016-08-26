@@ -25,14 +25,10 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data.Common;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using JetBrains.Annotations;
-#if NET45 || NET451 || DNX451
-using System.DirectoryServices;
-using System.Security.Principal;
-#endif
 
 namespace Npgsql
 {
@@ -40,7 +36,7 @@ namespace Npgsql
     /// Provides a simple way to create and manage the contents of connection strings used by
     /// the <see cref="NpgsqlConnection"/> class.
     /// </summary>
-    public sealed class NpgsqlConnectionStringBuilder : DbConnectionStringBuilder
+    public sealed class NpgsqlConnectionStringBuilder : DbConnectionStringBuilder, IDictionary<string, object>
     {
         #region Fields
 
@@ -71,7 +67,7 @@ namespace Npgsql
         /// </summary>
         public NpgsqlConnectionStringBuilder() { Init(); }
 
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
         /// <summary>
         /// Initializes a new instance of the NpgsqlConnectionStringBuilder class, optionally using ODBC rules for quoting values.
         /// </summary>
@@ -107,8 +103,8 @@ namespace Npgsql
                 .Where(p => p.GetCustomAttribute<NpgsqlConnectionStringPropertyAttribute>() != null)
                 .ToArray();
 
-            Contract.Assume(properties.All(p => p.CanRead && p.CanWrite));
-            Contract.Assume(properties.All(p => p.GetCustomAttribute<DisplayNameAttribute>() != null));
+            Debug.Assert(properties.All(p => p.CanRead && p.CanWrite));
+            Debug.Assert(properties.All(p => p.GetCustomAttribute<DisplayNameAttribute>() != null));
 
             PropertiesByKeyword = (
                 from p in properties
@@ -147,7 +143,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="keyword">The key of the item to get or set.</param>
         /// <returns>The value associated with the specified key.</returns>
-        public override object this[string keyword]
+        public override object this[[NotNull] string keyword]
         {
             get
             {
@@ -180,27 +176,43 @@ namespace Npgsql
         }
 
         /// <summary>
+        /// Adds an item to the <see cref="NpgsqlConnectionStringBuilder"/>.
+        /// </summary>
+        /// <param name="item">The key-value pair to be added.</param>
+        public void Add(KeyValuePair<string, object> item)
+            => this[item.Key] = item.Value;
+
+        /// <summary>
         /// Removes the entry with the specified key from the DbConnectionStringBuilder instance.
         /// </summary>
         /// <param name="keyword">The key of the key/value pair to be removed from the connection string in this DbConnectionStringBuilder.</param>
         /// <returns><b>true</b> if the key existed within the connection string and was removed; <b>false</b> if the key did not exist.</returns>
-        public override bool Remove(string keyword)
+        public override bool Remove([NotNull] string keyword)
         {
             var p = GetProperty(keyword);
-            var removed = base.ContainsKey(p.Name);
+            string cannonicalName = PropertyNameToCanonicalKeyword[p.Name];
+            var removed = base.ContainsKey(cannonicalName);
             // Note that string property setters call SetValue, which itself calls base.Remove().
             p.SetValue(this, PropertyDefaults[p]);
-            base.Remove(p.Name);
+            base.Remove(cannonicalName);
             return removed;
         }
+
+        /// <summary>
+        /// Removes the entry from the DbConnectionStringBuilder instance.
+        /// </summary>
+        /// <param name="item">The key/value pair to be removed from the connection string in this DbConnectionStringBuilder.</param>
+        /// <returns><b>true</b> if the key existed within the connection string and was removed; <b>false</b> if the key did not exist.</returns>
+        public bool Remove(KeyValuePair<string, object> item)
+            => Remove(item.Key);
 
         /// <summary>
         /// Clears the contents of the <see cref="NpgsqlConnectionStringBuilder"/> instance.
         /// </summary>
         public override void Clear()
         {
-            Contract.Assert(Keys != null);
-            foreach (var k in Keys.Cast<string>().ToArray()) {
+            Debug.Assert(Keys != null);
+            foreach (var k in Keys.ToArray()) {
                 Remove(k);
             }
         }
@@ -210,13 +222,24 @@ namespace Npgsql
         /// </summary>
         /// <param name="keyword">The key to locate in the <see cref="NpgsqlConnectionStringBuilder"/>.</param>
         /// <returns><b>true</b> if the <see cref="NpgsqlConnectionStringBuilder"/> contains an entry with the specified key; otherwise <b>false</b>.</returns>
-        public override bool ContainsKey(string keyword)
+        public override bool ContainsKey([CanBeNull] string keyword)
         {
             if (keyword == null)
                 throw new ArgumentNullException(nameof(keyword));
-            Contract.EndContractBlock();
 
             return PropertiesByKeyword.ContainsKey(keyword.ToUpperInvariant());
+        }
+
+        /// <summary>
+        /// Determines whether the <see cref="NpgsqlConnectionStringBuilder"/> contains a specific key-value pair.
+        /// </summary>
+        /// <param name="item">The itemto locate in the <see cref="NpgsqlConnectionStringBuilder"/>.</param>
+        /// <returns><b>true</b> if the <see cref="NpgsqlConnectionStringBuilder"/> contains the entry; otherwise <b>false</b>.</returns>
+        public bool Contains(KeyValuePair<string, object> item)
+        {
+            object value;
+            return TryGetValue(item.Key, out value) &&
+                ((value == null && item.Value == null) || (value != null && value.Equals(item.Value)));
         }
 
         PropertyInfo GetProperty(string keyword)
@@ -234,11 +257,10 @@ namespace Npgsql
         /// <param name="keyword">The key of the item to retrieve.</param>
         /// <param name="value">The value corresponding to the key.</param>
         /// <returns><b>true</b> if keyword was found within the connection string, <b>false</b> otherwise.</returns>
-        public override bool TryGetValue(string keyword, [CanBeNull] out object value)
+        public override bool TryGetValue([NotNull] string keyword, [CanBeNull] out object value)
         {
             if (keyword == null)
                 throw new ArgumentNullException(nameof(keyword));
-            Contract.EndContractBlock();
 
             PropertyInfo p;
             if (!PropertiesByKeyword.TryGetValue(keyword.ToUpperInvariant(), out p))
@@ -299,7 +321,6 @@ namespace Npgsql
             {
                 if (value <= 0)
                     throw new ArgumentOutOfRangeException(nameof(value), value, "Invalid port: " + value);
-                Contract.EndContractBlock();
 
                 _port = value;
                 SetValue(nameof(Port), value);
@@ -332,19 +353,10 @@ namespace Npgsql
         [Description("The username to connect with. Not required if using IntegratedSecurity.")]
         [DisplayName("Username")]
         [NpgsqlConnectionStringProperty("User Name", "UserId", "User Id", "UID")]
+        [CanBeNull]
         public string Username
         {
-            get
-            {
-#if NET45 || NET451 || DNX451
-                if ((_integratedSecurity) && (String.IsNullOrEmpty(_username))) {
-                    _username = GetIntegratedUserName();
-                }
-#endif
-
-                return _username;
-            }
-
+            get { return _username; }
             set
             {
                 _username = value;
@@ -426,6 +438,43 @@ namespace Npgsql
         }
         string _searchpath;
 
+        /// <summary>
+        /// Gets or sets the client_encoding parameter.
+        /// </summary>
+        [Category("Connection")]
+        [Description("Gets or sets the client_encoding parameter.")]
+        [DisplayName("Client Encoding")]
+        [NpgsqlConnectionStringProperty]
+        public string ClientEncoding
+        {
+            get { return _clientEncoding; }
+            set
+            {
+                _clientEncoding = value;
+                SetValue(nameof(ClientEncoding), value);
+            }
+        }
+        string _clientEncoding;
+
+        /// <summary>
+        /// Gets or sets the client_encoding parameter.
+        /// </summary>
+        [Category("Connection")]
+        [Description("Gets or sets the .NET encoding that will be used to encode/decode PostgreSQL string data.")]
+        [DisplayName("Encoding")]
+        [DefaultValue("UTF8")]
+        [NpgsqlConnectionStringProperty]
+        public string Encoding
+        {
+            get { return _encoding; }
+            set
+            {
+                _encoding = value;
+                SetValue(nameof(Encoding), value);
+            }
+        }
+        string _encoding;
+
         #endregion
 
         #region Properties - Security
@@ -496,10 +545,10 @@ namespace Npgsql
             get { return _integratedSecurity; }
             set
             {
-#if !NET40
-                if (value)
-                    CheckIntegratedSecuritySupport();
-#endif
+                // No integrated security if we're on mono and .NET 4.5 because of ClaimsIdentity,
+                // see https://github.com/npgsql/Npgsql/issues/133
+                if (value && Type.GetType("Mono.Runtime") != null)
+                    throw new NotSupportedException("IntegratedSecurity is currently unsupported on mono and .NET 4.5 (see https://github.com/npgsql/Npgsql/issues/133)");
                 _integratedSecurity = value;
                 SetValue(nameof(IntegratedSecurity), value);
             }
@@ -590,15 +639,14 @@ namespace Npgsql
         [Description("The minimum connection pool size.")]
         [DisplayName("Minimum Pool Size")]
         [NpgsqlConnectionStringProperty]
-        [DefaultValue(1)]
+        [DefaultValue(0)]
         public int MinPoolSize
         {
             get { return _minPoolSize; }
             set
             {
-                if (value < 0 || value > NpgsqlConnectorPool.PoolSizeLimit)
-                    throw new ArgumentOutOfRangeException(nameof(value), value, "MinPoolSize must be between 0 and " + NpgsqlConnectorPool.PoolSizeLimit);
-                Contract.EndContractBlock();
+                if (value < 0 || value > PoolManager.PoolSizeLimit)
+                    throw new ArgumentOutOfRangeException(nameof(value), value, "MinPoolSize must be between 0 and " + PoolManager.PoolSizeLimit);
 
                 _minPoolSize = value;
                 SetValue(nameof(MinPoolSize), value);
@@ -613,15 +661,14 @@ namespace Npgsql
         [Description("The maximum connection pool size.")]
         [DisplayName("Maximum Pool Size")]
         [NpgsqlConnectionStringProperty]
-        [DefaultValue(20)]
+        [DefaultValue(100)]
         public int MaxPoolSize
         {
             get { return _maxPoolSize; }
             set
             {
-                if (value < 0 || value > NpgsqlConnectorPool.PoolSizeLimit)
-                    throw new ArgumentOutOfRangeException(nameof(value), value, "MaxPoolSize must be between 0 and " + NpgsqlConnectorPool.PoolSizeLimit);
-                Contract.EndContractBlock();
+                if (value < 0 || value > PoolManager.PoolSizeLimit)
+                    throw new ArgumentOutOfRangeException(nameof(value), value, "MaxPoolSize must be between 0 and " + PoolManager.PoolSizeLimit);
 
                 _maxPoolSize = value;
                 SetValue(nameof(MaxPoolSize), value);
@@ -630,31 +677,46 @@ namespace Npgsql
         int _maxPoolSize;
 
         /// <summary>
-        /// The time to wait before closing unused connections in the pool if the count
-        /// of all connections exeeds MinPoolSize.
+        /// The time to wait before closing idle connections in the pool if the count
+        /// of all connections exceeds MinPoolSize.
         /// </summary>
-        /// <remarks>
-        /// If connection pool contains unused connections for ConnectionLifeTime seconds,
-        /// the half of them will be closed. If there will be unused connections in a second
-        /// later then again the half of them will be closed and so on.
-        /// This strategy provide smooth change of connection count in the pool.
-        /// </remarks>
-        /// <value>The time (in seconds) to wait. The default value is 15 seconds.</value>
+        /// <value>The time (in seconds) to wait. The default value is 300.</value>
         [Category("Pooling")]
         [Description("The time to wait before closing unused connections in the pool if the count of all connections exeeds MinPoolSize.")]
-        [DisplayName("Connection Lifetime")]
+        [DisplayName("Connection Idle Lifetime")]
         [NpgsqlConnectionStringProperty]
-        [DefaultValue(15)]
-        public int ConnectionLifeTime
+        [DefaultValue(300)]
+        public int ConnectionIdleLifetime
         {
-            get { return _connectionLifeTime; }
+            get { return _connectionIdleLifetime; }
             set
             {
-                _connectionLifeTime = value;
-                SetValue(nameof(ConnectionLifeTime), value);
+                _connectionIdleLifetime = value;
+                SetValue(nameof(ConnectionIdleLifetime), value);
             }
         }
-        int _connectionLifeTime;
+        int _connectionIdleLifetime;
+
+        /// <summary>
+        /// How many seconds the pool waits before attempting to prune idle connections that are beyond
+        /// idle lifetime (<see cref="ConnectionIdleLifetime"/>.
+        /// </summary>
+        /// <value>The interval (in seconds). The default value is 10.</value>
+        [Category("Pooling")]
+        [Description("How many seconds the pool waits before attempting to prune idle connections that are beyond idle lifetime.")]
+        [DisplayName("Connection Pruning Interval")]
+        [NpgsqlConnectionStringProperty]
+        [DefaultValue(10)]
+        public int ConnectionPruningInterval
+        {
+            get { return _connectionPruningInterval; }
+            set
+            {
+                _connectionPruningInterval = value;
+                SetValue(nameof(ConnectionPruningInterval), value);
+            }
+        }
+        int _connectionPruningInterval;
 
         #endregion
 
@@ -676,7 +738,6 @@ namespace Npgsql
             {
                 if (value < 0 || value > NpgsqlConnection.TimeoutLimit)
                     throw new ArgumentOutOfRangeException(nameof(value), value, "Timeout must be between 0 and " + NpgsqlConnection.TimeoutLimit);
-                Contract.EndContractBlock();
 
                 _timeout = value;
                 SetValue(nameof(Timeout), value);
@@ -700,7 +761,6 @@ namespace Npgsql
             {
                 if (value < 0)
                     throw new ArgumentOutOfRangeException(nameof(value), value, "CommandTimeout can't be negative");
-                Contract.EndContractBlock();
 
                 _commandTimeout = value;
                 SetValue(nameof(CommandTimeout), value);
@@ -724,33 +784,12 @@ namespace Npgsql
                 if (value != 0 && value != -1 && value < NpgsqlConnector.MinimumInternalCommandTimeout)
                     throw new ArgumentOutOfRangeException(nameof(value), value,
                         $"InternalCommandTimeout must be >= {NpgsqlConnector.MinimumInternalCommandTimeout}, 0 (infinite) or -1 (use CommandTimeout)");
-                Contract.EndContractBlock();
 
                 _internalCommandTimeout = value;
                 SetValue(nameof(InternalCommandTimeout), value);
             }
         }
         int _internalCommandTimeout;
-
-        /// <summary>
-        /// Whether to have the backend enforce <see cref="CommandTimeout"/> and <see cref="InternalCommandTimeout"/>
-        /// via the statement_timeout variable. Defaults to true.
-        /// </summary>
-        [Category("Timeouts")]
-        [Description("Whether to have the backend enforce CommandTimeout and InternalCommandTimeout via the statement_timeout variable.")]
-        [DisplayName("Backend Timeouts")]
-        [NpgsqlConnectionStringProperty]
-        [DefaultValue(true)]
-        public bool BackendTimeouts
-        {
-            get { return _backendTimeouts; }
-            set
-            {
-                _backendTimeouts = value;
-                SetValue(nameof(BackendTimeouts), value);
-            }
-        }
-        bool _backendTimeouts;
 
         #endregion
 
@@ -803,24 +842,6 @@ namespace Npgsql
         #region Properties - Advanced
 
         /// <summary>
-        /// Whether to process messages that arrive between command activity.
-        /// </summary>
-        [Category("Advanced")]
-        [Description("Whether to process messages that arrive between command activity.")]
-        [DisplayName("Continuous Processing")]
-        [NpgsqlConnectionStringProperty("SyncNotification")]
-        public bool ContinuousProcessing
-        {
-            get { return _continuousProcessing; }
-            set
-            {
-                _continuousProcessing = value;
-                SetValue(nameof(ContinuousProcessing), value);
-            }
-        }
-        bool _continuousProcessing;
-
-        /// <summary>
         /// The number of seconds of connection inactivity before Npgsql sends a keepalive query.
         /// Set to 0 (the default) to disable.
         /// </summary>
@@ -835,7 +856,6 @@ namespace Npgsql
             {
                 if (value < 0)
                     throw new ArgumentOutOfRangeException(nameof(value), value, "KeepAlive can't be negative");
-                Contract.EndContractBlock();
 
                 _keepAlive = value;
                 SetValue(nameof(KeepAlive), value);
@@ -850,7 +870,7 @@ namespace Npgsql
         [Description("Determines the size of the internal buffer Npgsql uses when reading or writing. Increasing may improve performance if transferring large values from the database.")]
         [DisplayName("Buffer Size")]
         [NpgsqlConnectionStringProperty]
-        [DefaultValue(NpgsqlBuffer.DefaultBufferSize)]
+        [DefaultValue(ReadBuffer.DefaultBufferSize)]
         public int BufferSize
         {
             get { return _bufferSize; }
@@ -861,6 +881,43 @@ namespace Npgsql
             }
         }
         int _bufferSize;
+
+        /// <summary>
+        /// If set to true, prepared statements are persisted when a pooled connection is closed for later use.
+        /// </summary>
+        [Category("Advanced")]
+        [Description("If set to true, prepared statements are persisted when a pooled connection is closed for later use.")]
+        [DisplayName("Persist Prepared")]
+        [NpgsqlConnectionStringProperty]
+        public bool PersistPrepared
+        {
+            get { return _persistPrepared; }
+            set
+            {
+                _persistPrepared = value;
+                SetValue(nameof(PersistPrepared), value);
+            }
+        }
+        bool _persistPrepared;
+
+        /// <summary>
+        /// If set to true, a pool connection's state won't be reset when it is closed (improves performance).
+        /// Do not specify this unless you know what you're doing.
+        /// </summary>
+        [Category("Advanced")]
+        [Description("If set to true, a pool connection's state won't be reset when it is closed (improves performance). Do not specify this unless you know what you're doing.")]
+        [DisplayName("No Reset On Close")]
+        [NpgsqlConnectionStringProperty]
+        public bool NoResetOnClose
+        {
+            get { return _noResetOnClose; }
+            set
+            {
+                _noResetOnClose = value;
+                SetValue(nameof(NoResetOnClose), value);
+            }
+        }
+        bool _noResetOnClose;
 
         #endregion
 
@@ -907,146 +964,74 @@ namespace Npgsql
         #region Properties - Obsolete
 
         /// <summary>
-        /// Obsolete, see https://github.com/npgsql/Npgsql/wiki/PreloadReader-Removal
+        /// Obsolete, see http://www.npgsql.org/doc/3.1/migration.html
         /// </summary>
         [Category("Obsolete")]
-        [Description("Obsolete, see https://github.com/npgsql/Npgsql/wiki/PreloadReader-Removal")]
+        [Description("Obsolete, see http://www.npgsql.org/doc/3.1/migration.html")]
+        [DisplayName("Connection Lifetime")]
+        [NpgsqlConnectionStringProperty]
+        [Obsolete("The ConnectionLifeTime parameter is no longer supported")]
+        public int ConnectionLifeTime
+        {
+            get { return 0; }
+            set { throw new NotSupportedException("The ConnectionLifeTime parameter is no longer supported. Please see http://www.npgsql.org/doc/3.1/migration.html"); }
+        }
+
+        /// <summary>
+        /// Obsolete, see http://www.npgsql.org/doc/3.1/migration.html
+        /// </summary>
+        [Category("Obsolete")]
+        [Description("Obsolete, see http://www.npgsql.org/doc/3.1/migration.html")]
+        [DisplayName("Continuous Processing")]
+        [NpgsqlConnectionStringProperty]
+        [Obsolete("The ContinuousProcessing parameter is no longer supported.")]
+        public bool ContinuousProcessing
+        {
+            get { return false; }
+            set { throw new NotSupportedException("The ContinuousProcessing parameter is no longer supported. Please see http://www.npgsql.org/doc/3.1/migration.html"); }
+        }
+
+        /// <summary>
+        /// Obsolete, see http://www.npgsql.org/doc/3.1/migration.html
+        /// </summary>
+        [Category("Obsolete")]
+        [Description("Obsolete, see http://www.npgsql.org/doc/3.1/migration.html")]
+        [DisplayName("Backend Timeouts")]
+        [NpgsqlConnectionStringProperty]
+        [Obsolete("The BackendTimeouts parameter is no longer supported")]
+        public bool BackendTimeouts
+        {
+            get { return false; }
+            set { throw new NotSupportedException("The BackendTimeouts parameter is no longer supported. Please see http://www.npgsql.org/doc/3.1/migration.html"); }
+        }
+
+        /// <summary>
+        /// Obsolete, see http://www.npgsql.org/doc/3.0/migration.html
+        /// </summary>
+        [Category("Obsolete")]
+        [Description("Obsolete, see http://www.npgsql.org/doc/3.0/migration.html")]
         [DisplayName("Preload Reader")]
         [NpgsqlConnectionStringProperty]
-        [Obsolete]
+        [Obsolete("The PreloadReader parameter is no longer supported")]
         public bool PreloadReader
         {
             get { return false; }
-            set { throw new NotSupportedException("The PreloadReader parameter is no longer supported. Please see https://github.com/npgsql/Npgsql/wiki/PreloadReader-Removal"); }
+            set { throw new NotSupportedException("The PreloadReader parameter is no longer supported. Please see http://www.npgsql.org/doc/3.0/migration.html"); }
         }
 
         /// <summary>
-        /// Obsolete, see https://github.com/npgsql/Npgsql/wiki/UseExtendedTypes-Removal
+        /// Obsolete, see http://www.npgsql.org/doc/3.0/migration.html
         /// </summary>
         [Category("Obsolete")]
-        [Description("Obsolete, see https://github.com/npgsql/Npgsql/wiki/UseExtendedTypes-Removal")]
+        [Description("Obsolete, see http://www.npgsql.org/doc/3.0/migration.html")]
         [DisplayName("Use Extended Types")]
         [NpgsqlConnectionStringProperty]
-        [Obsolete]
+        [Obsolete("The UseExtendedTypes parameter is no longer supported")]
         public bool UseExtendedTypes
         {
             get { return false; }
-            set { throw new NotSupportedException("The UseExtendedTypes parameter is no longer supported. Please see https://github.com/npgsql/Npgsql/wiki/UseExtendedTypes-Removal"); }
+            set { throw new NotSupportedException("The UseExtendedTypes parameter is no longer supported. Please see http://www.npgsql.org/doc/3.0/migration.html"); }
         }
-
-        #endregion
-
-        #region Integrated security support
-
-        /// <summary>
-        /// No integrated security if we're on mono and .NET 4.5 because of ClaimsIdentity,
-        /// see https://github.com/npgsql/Npgsql/issues/133
-        /// </summary>
-        static void CheckIntegratedSecuritySupport()
-        {
-            if (Type.GetType("Mono.Runtime") != null)
-                throw new NotSupportedException("IntegratedSecurity is currently unsupported on mono and .NET 4.5 (see https://github.com/npgsql/Npgsql/issues/133)");
-        }
-
-#if NET45 || NET451 || DNX451
-        class CachedUpn
-        {
-            public string Upn;
-            public DateTime ExpiryTimeUtc;
-        }
-
-        static readonly Dictionary<SecurityIdentifier, CachedUpn> CachedUpns = new Dictionary<SecurityIdentifier, CachedUpn>();
-
-        private string GetWindowsIdentityUserName()
-        {
-            var s = WindowsIdentity.GetCurrent()?.Name;
-            if (s == null)
-                return string.Empty;
-            var machineAndUser = s.Split('\\');
-            return _includeRealm ? $"{machineAndUser[1]}@{machineAndUser[0]}" : machineAndUser[1];
-        }
-
-        [CanBeNull]
-        string GetIntegratedUserName()
-        {
-            // Side note: This maintains the hack fix mentioned before for https://github.com/npgsql/Npgsql/issues/133.
-            // In a nutshell, starting with .NET 4.5 WindowsIdentity inherits from ClaimsIdentity
-            // which doesn't exist in mono, and calling a WindowsIdentity method bombs.
-            // The workaround is that this function that actually deals with WindowsIdentity never
-            // gets called on mono, so never gets JITted and the problem goes away.
-
-            // Gets the current user's username for integrated security purposes
-            var identity = WindowsIdentity.GetCurrent();
-            if (identity?.User == null) {
-                return null;
-            }
-            CachedUpn cachedUpn;
-            string upn = null;
-
-            // Check to see if we already have this UPN cached
-            lock (CachedUpns) {
-                if (CachedUpns.TryGetValue(identity.User, out cachedUpn)) {
-                    if (cachedUpn.ExpiryTimeUtc > DateTime.UtcNow)
-                        upn = cachedUpn.Upn;
-                    else
-                        CachedUpns.Remove(identity.User);
-                }
-            }
-
-            try {
-                if (upn == null) {
-                    // Try to get the user's UPN in its correct case; this is what the
-                    // server will need to verify against a Kerberos/SSPI ticket
-
-                    // If the computer does not belong to a domain, returns Empty.
-                    string domainName = System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties().DomainName;
-                    if (domainName.Equals(string.Empty))
-                    {
-                        return GetWindowsIdentityUserName();
-                    }
-
-                    // First, find a domain server we can talk to
-                    string domainHostName;
-
-                    using (DirectoryEntry rootDse = new DirectoryEntry("LDAP://rootDSE") { AuthenticationType = AuthenticationTypes.Secure }) {
-                        domainHostName = (string)rootDse.Properties["dnsHostName"].Value;
-                    }
-
-                    // Query the domain server by the current user's SID
-                    using (DirectoryEntry entry = new DirectoryEntry("LDAP://" + domainHostName) { AuthenticationType = AuthenticationTypes.Secure }) {
-                        DirectorySearcher search = new DirectorySearcher(entry,
-                            "(objectSid=" + identity.User.Value + ")", new[] { "userPrincipalName" });
-
-                        SearchResult result = search.FindOne();
-
-                        upn = (string)result.Properties["userPrincipalName"][0];
-                    }
-                }
-
-                if (cachedUpn == null) {
-                    // Save this value
-                    cachedUpn = new CachedUpn() { Upn = upn, ExpiryTimeUtc = DateTime.UtcNow.AddHours(3.0) };
-
-                    lock (CachedUpns) {
-                        CachedUpns[identity.User] = cachedUpn;
-                    }
-                }
-
-                string[] upnParts = upn.Split('@');
-
-                if (_includeRealm) {
-                    // Make it Kerberos-y by uppercasing the realm part
-                    return upnParts[0] + "@" + upnParts[1].ToUpperInvariant();
-                } else {
-                    return upnParts[0];
-                }
-            } catch {
-                // Querying the directory failed, so return the SAM name
-                // (which probably won't work, but it's better than nothing)
-                return GetWindowsIdentityUserName();
-            }
-        }
-#endif
 
         #endregion
 
@@ -1057,7 +1042,68 @@ namespace Npgsql
             return new NpgsqlConnectionStringBuilder(ConnectionString);
         }
 
+        /// <summary>
+        /// Determines whether the specified object is equal to the current object.
+        /// </summary>
+        public override bool Equals([CanBeNull] object obj)
+        {
+            var o = obj as NpgsqlConnectionStringBuilder;
+            return o != null && o.ConnectionString == ConnectionString;
+        }
+
+        /// <summary>
+        /// Hash function.
+        /// </summary>
+        /// <returns></returns>
+        public override int GetHashCode() => ConnectionString.GetHashCode();
+
         #endregion
+
+        #region IDictionary<string, object>
+
+        /// <summary>
+        /// Gets an ICollection{string} containing the keys of the <see cref="NpgsqlConnectionStringBuilder"/>.
+        /// </summary>
+        public new ICollection<string> Keys => new List<string>(base.Keys.Cast<string>());
+
+        /// <summary>
+        /// Gets an ICollection{string} containing the values in the <see cref="NpgsqlConnectionStringBuilder"/>.
+        /// </summary>
+        public new ICollection<object> Values => base.Values.Cast<object>().ToList();
+
+        /// <summary>
+        /// Copies the elements of the <see cref="NpgsqlConnectionStringBuilder"/> to an Array, starting at a particular Array index.
+        /// </summary>
+        /// <param name="array">
+        /// The one-dimensional Array that is the destination of the elements copied from <see cref="NpgsqlConnectionStringBuilder"/>.
+        /// The Array must have zero-based indexing.
+        /// </param>
+        /// <param name="arrayIndex">
+        /// The zero-based index in array at which copying begins.
+        /// </param>
+        public void CopyTo([NotNull] KeyValuePair<string, object>[] array, int arrayIndex)
+        {
+            foreach (var kv in this)
+                array[arrayIndex++] = kv;
+        }
+
+        /// <summary>
+        /// Returns an enumerator that iterates through the <see cref="NpgsqlConnectionStringBuilder"/>.
+        /// </summary>
+        /// <returns></returns>
+        public IEnumerator<KeyValuePair<string, object>> GetEnumerator()
+        {
+            foreach (var k in Keys)
+                yield return new KeyValuePair<string, object>(k, this[k]);
+        }
+
+#if !(NET45 || NET451)
+        /// <summary>
+        /// Gets a value indicating whether the ICollection{T} is read-only.
+        /// </summary>
+        public bool IsReadOnly => false;
+#endif
+        #endregion IDictionary<string, object>
 
         #region Attributes
 
@@ -1077,6 +1123,14 @@ namespace Npgsql
                 Aliases = aliases;
             }
         }
+
+#if NETSTANDARD1_3
+        [AttributeUsage(AttributeTargets.Property)]
+        class DescriptionAttribute : Attribute
+        {
+            internal DescriptionAttribute(string description) { }
+        }
+#endif
 
         #endregion
     }

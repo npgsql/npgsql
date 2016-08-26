@@ -100,11 +100,11 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Create an empty large object in the database. If an oid is specified but is already in use, an NpgsqlException will be thrown.
+        /// Create an empty large object in the database. If an oid is specified but is already in use, an PostgresException will be thrown.
         /// </summary>
         /// <param name="preferredOid">A preferred oid, or specify 0 if one should be automatically assigned</param>
         /// <returns>The oid for the large object created</returns>
-        /// <exception cref="NpgsqlException">If an oid is already in use</exception>
+        /// <exception cref="PostgresException">If an oid is already in use</exception>
         [RewriteAsync]
         public uint Create(uint preferredOid = 0)
         {

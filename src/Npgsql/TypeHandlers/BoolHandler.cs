@@ -32,33 +32,30 @@ namespace Npgsql.TypeHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-boolean.html
     /// </remarks>
     [TypeMapping("bool", NpgsqlDbType.Boolean, DbType.Boolean, typeof(bool))]
-    internal class BoolHandler : SimpleTypeHandler<bool>
+    class BoolHandler : SimpleTypeHandler<bool>
     {
-        public override bool Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return buf.ReadByte() != 0;
-        }
+        internal BoolHandler(IBackendType backendType) : base(backendType) {}
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public override bool Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+            => buf.ReadByte() != 0;
+
+        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
         {
             if (!(value is bool))
             {
                 var converted = Convert.ToBoolean(value);
                 if (parameter == null)
-                {
                     throw CreateConversionButNoParamException(value.GetType());
-                }
                 parameter.ConvertedValue = converted;
             }
             return 1;
         }
 
-        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
         {
-            if (parameter?.ConvertedValue != null) {
+            if (parameter?.ConvertedValue != null)
                 value = parameter.ConvertedValue;
-            }
-            buf.WriteByte(((bool)value) ? (byte)1 : (byte)0);
+            buf.WriteByte((bool)value ? (byte)1 : (byte)0);
         }
     }
 }

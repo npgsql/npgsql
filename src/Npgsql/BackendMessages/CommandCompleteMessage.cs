@@ -21,15 +21,11 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using Npgsql.Logging;
 
 namespace Npgsql.BackendMessages
 {
-    internal class CommandCompleteMessage : IBackendMessage
+    class CommandCompleteMessage : IBackendMessage
     {
         internal StatementType StatementType { get; private set; }
         internal uint OID { get; private set; }
@@ -37,7 +33,7 @@ namespace Npgsql.BackendMessages
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
-        internal CommandCompleteMessage Load(NpgsqlBuffer buf, int len)
+        internal CommandCompleteMessage Load(ReadBuffer buf, int len)
         {
             Rows = 0;
             OID = 0;
@@ -46,9 +42,8 @@ namespace Npgsql.BackendMessages
             buf.Skip(1);   // Null terminator
             var tokens = tag.Split();
 
-            if (tokens.Length == 0) {
+            if (tokens.Length == 0)
                 return this;
-            }
 
             switch (tokens[0])
             {
@@ -57,13 +52,9 @@ namespace Npgsql.BackendMessages
 
                 uint oid;
                 if (uint.TryParse(tokens[1], out oid))
-                {
                     OID = oid;
-                }
                 else
-                {
                     Log.Error("Ignoring unparseable OID in CommandComplete: " + tokens[1]);
-                }
 
                 ParseRows(tokens[2]);
                 break;
@@ -81,9 +72,8 @@ namespace Npgsql.BackendMessages
             case "SELECT":
                 StatementType = StatementType.Select;
                 // PostgreSQL 8.4 and below doesn't include the number of rows
-                if (tokens.Length > 1) {
+                if (tokens.Length > 1)
                     ParseRows(tokens[1]);
-                }
                 break;
 
             case "MOVE":
@@ -98,9 +88,8 @@ namespace Npgsql.BackendMessages
 
             case "COPY":
                 StatementType = StatementType.Copy;
-                if (tokens.Length > 1) {
+                if (tokens.Length > 1)
                     ParseRows(tokens[1]);
-                }
                 break;
 
             case "CREATE":
@@ -123,13 +112,9 @@ namespace Npgsql.BackendMessages
         {
             uint rows;
             if (uint.TryParse(token, out rows))
-            {
                 Rows = rows;
-            }
             else
-            {
                 Log.Error("Ignoring unparseable rows in CommandComplete: " + token);
-            }
         }
 
         public BackendMessageCode Code => BackendMessageCode.CompletedResponse;

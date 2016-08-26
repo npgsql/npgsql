@@ -22,6 +22,7 @@
 #endregion
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.IO;
@@ -121,8 +122,8 @@ namespace Npgsql.Tests
                 var inStream = conn.BeginRawBinaryCopy("COPY data (field_text, field_int4) FROM STDIN BINARY");
                 inStream.Write(NpgsqlRawCopyStream.BinarySignature, 0, NpgsqlRawCopyStream.BinarySignature.Length);
                 Assert.That(() => inStream.Dispose(), Throws.Exception
-                    .TypeOf<NpgsqlException>()
-                    .With.Property("Code").EqualTo("22P04")
+                    .TypeOf<PostgresException>()
+                    .With.Property(nameof(PostgresException.SqlState)).EqualTo("22P04")
                 );
                 Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
             }
@@ -213,6 +214,8 @@ namespace Npgsql.Tests
                     writer.WriteNull();
                 }
 
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+
                 using (var reader = conn.BeginBinaryExport("COPY data (field_text, field_int2) TO STDIN BINARY"))
                 {
                     StateAssertions(conn);
@@ -233,6 +236,8 @@ namespace Npgsql.Tests
 
                     Assert.That(reader.StartRow(), Is.EqualTo(-1));
                 }
+
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
             }
         }
 
@@ -304,7 +309,7 @@ namespace Npgsql.Tests
                     writer.StartRow();
                     writer.Write(data, NpgsqlDbType.Text);
                 }
-                Assert.That(conn.Connector.Buffer.UsableSize, Is.EqualTo(conn.Connector.Buffer.Size));
+                Assert.That(conn.Connector.WriteBuffer.UsableSize, Is.EqualTo(conn.Connector.WriteBuffer.Size));
                 Assert.That(conn.ExecuteScalar("SELECT field FROM data"), Is.EqualTo(data));
             }
         }
@@ -325,7 +330,6 @@ namespace Npgsql.Tests
                     writer.Write(data);
                     writer.StartRow();
                     writer.Write(data);
-                    writer.Dispose();
                 }
             }
         }
@@ -382,6 +386,50 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1134")]
+        public void ReadBitString()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (bits BIT(3), bitarray BIT(3)[])");
+                conn.ExecuteNonQuery("INSERT INTO data (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
+
+                using (var reader = conn.BeginBinaryExport("COPY data (bits, bitarray) TO STDIN BINARY"))
+                {
+                    reader.StartRow();
+                    Assert.That(reader.Read<BitArray>(), Is.EqualTo(new BitArray(new[] { true, false, true })));
+                    Assert.That(reader.Read<BitArray[]>(), Is.EqualTo(new[]
+                    {
+                        new BitArray(new[] { true, false, true }),
+                        new BitArray(new[] { true, true, true })
+                    }));
+                }
+            }
+        }
+
+        [Test]
+        public void Array()
+        {
+            var expected = new[] { 8 };
+
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (arr INTEGER[])");
+
+                using (var writer = conn.BeginBinaryImport("COPY data (arr) FROM STDIN BINARY"))
+                {
+                    writer.StartRow();
+                    writer.Write(expected);
+                }
+
+                using (var reader = conn.BeginBinaryExport("COPY data (arr) TO STDIN BINARY"))
+                {
+                    reader.StartRow();
+                    Assert.That(reader.Read<int[]>(), Is.EqualTo(expected));
+                }
+            }
+        }
+
         #endregion
 
         #region Text
@@ -398,17 +446,17 @@ namespace Npgsql.Tests
                 var writer = conn.BeginTextImport("COPY data (field_text, field_int4) FROM STDIN");
                 StateAssertions(conn);
                 writer.Write(line);
-                writer.Close();
+                writer.Dispose();
                 Assert.That(conn.ExecuteScalar(@"SELECT COUNT(*) FROM data WHERE field_int4=1"), Is.EqualTo(1));
                 Assert.That(() => writer.Write(line), Throws.Exception.TypeOf<ObjectDisposedException>());
                 conn.ExecuteNonQuery("TRUNCATE data");
 
                 // Long (multi-buffer) write
-                var iterations = NpgsqlBuffer.MinimumBufferSize/line.Length + 100;
+                var iterations = WriteBuffer.MinimumBufferSize/line.Length + 100;
                 writer = conn.BeginTextImport("COPY data (field_text, field_int4) FROM STDIN");
                 for (var i = 0; i < iterations; i++)
                     writer.Write(line);
-                writer.Close();
+                writer.Dispose();
                 Assert.That(conn.ExecuteScalar(@"SELECT COUNT(*) FROM data WHERE field_int4=1"), Is.EqualTo(iterations));
             }
         }
@@ -433,8 +481,9 @@ namespace Npgsql.Tests
             using (var conn = OpenConnection())
             {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER)");
-                var writer = conn.BeginTextImport("COPY data (field_text, field_int4) FROM STDIN");
-                writer.Close();
+                using (conn.BeginTextImport("COPY data (field_text, field_int4) FROM STDIN"))
+                {
+                }
                 Assert.That(conn.ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(0));
             }
         }
@@ -455,7 +504,7 @@ namespace Npgsql.Tests
                 Assert.That(new String(chars, 0, 8), Is.EqualTo("HELLO\t1\n"));
                 Assert.That(reader.Read(chars, 0, chars.Length), Is.EqualTo(0));
                 Assert.That(reader.Read(chars, 0, chars.Length), Is.EqualTo(0));
-                reader.Close();
+                reader.Dispose();
                 Assert.That(() => reader.Read(chars, 0, chars.Length), Throws.Exception.TypeOf<ObjectDisposedException>());
                 conn.ExecuteNonQuery("TRUNCATE data");
             }
@@ -494,7 +543,9 @@ namespace Npgsql.Tests
         {
             using (var conn = OpenConnection())
                 Assert.That(() => conn.BeginBinaryImport("COPY undefined_table (field_text, field_int2) FROM STDIN BINARY"),
-                    Throws.Exception.TypeOf<NpgsqlException>().With.Property("Code").EqualTo("42P01"));
+                    Throws.Exception.TypeOf<PostgresException>()
+                    .With.Property(nameof(PostgresException.SqlState)).EqualTo("42P01")
+                );
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/621")]
@@ -532,6 +583,53 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/994")]
+        public void NonAsciiColumnName()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (non_ascii_éè TEXT)");
+                using (conn.BeginBinaryImport("COPY data (non_ascii_éè) FROM STDIN BINARY")) { }
+            }
+        }
+
+        [Test, IssueLink("http://stackoverflow.com/questions/37431054/08p01-insufficient-data-left-in-message-for-nullable-datetime/37431464")]
+        public void WriteDbNullWithoutNpgsqlDbType()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo INT)");
+
+                using (var writer = conn.BeginBinaryImport("COPY data (foo) FROM STDIN BINARY"))
+                {
+                    writer.StartRow();
+                    Assert.That(() => writer.Write(DBNull.Value), Throws.ArgumentException);
+                    writer.Cancel();
+                }
+            }
+        }
+
+        [Test, IssueLink("http://stackoverflow.com/questions/37431054/08p01-insufficient-data-left-in-message-for-nullable-datetime/37431464")]
+        public void WriteDbNullWithNpgsqlDbType()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo INT)");
+
+                using (var writer = conn.BeginBinaryImport("COPY data (foo) FROM STDIN BINARY"))
+                {
+                    writer.StartRow();
+                    writer.Write(DBNull.Value, NpgsqlDbType.Integer);
+                }
+                using (var cmd = new NpgsqlCommand("SELECT foo FROM data", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    Assert.That(reader.Read(), Is.True);
+                    Assert.That(reader.IsDBNull(0), Is.True);
+                }
+            }
+        }
+
         #endregion
 
         #region Utils
@@ -548,7 +646,5 @@ namespace Npgsql.Tests
         }
 
         #endregion
-
-        public CopyTests(string backendVersion) : base(backendVersion) { }
     }
 }

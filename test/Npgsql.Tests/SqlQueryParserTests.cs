@@ -38,22 +38,15 @@ namespace Npgsql.Tests
         {
             _params.AddWithValue(":p1", "foo");
             _params.AddWithValue(":p2", "bar");
-            SqlQueryParser.ParseRawQuery("SELECT :p1, :p2", true, _params, _queries);
+            _parser.ParseRawQuery("SELECT :p1, :p2", true, _params, _queries);
             Assert.That(_queries.Single().InputParameters, Is.EqualTo(_params));
-        }
-
-        [Test]
-        public void ConsecutiveSemicolons()
-        {
-            SqlQueryParser.ParseRawQuery(";;SELECT 1", true, _params, _queries);
-            Assert.That(_queries, Has.Count.EqualTo(3));
         }
 
         [Test]
         public void ParamNameWithDot()
         {
             _params.AddWithValue(":a.parameter", "foo");
-            SqlQueryParser.ParseRawQuery("INSERT INTO data (field_char5) VALUES (:a.parameter)", true, _params, _queries);
+            _parser.ParseRawQuery("INSERT INTO data (field_char5) VALUES (:a.parameter)", true, _params, _queries);
             Assert.That(_queries.Single().InputParameters.Single(), Is.SameAs(_params.Single()));
         }
 
@@ -71,7 +64,7 @@ namespace Npgsql.Tests
         public void Untouched(string sql)
         {
             _params.AddWithValue(":param", "foo");
-            SqlQueryParser.ParseRawQuery(sql, true, _params, _queries);
+            _parser.ParseRawQuery(sql, true, _params, _queries);
             Assert.That(_queries.Single().SQL, Is.EqualTo(sql));
             Assert.That(_queries.Single().InputParameters, Is.Empty);
         }
@@ -84,7 +77,15 @@ namespace Npgsql.Tests
         public void ParamGetsBound(string sql)
         {
             _params.AddWithValue(":param", "foo");
-            SqlQueryParser.ParseRawQuery(sql, true, _params, _queries);
+            _parser.ParseRawQuery(sql, true, _params, _queries);
+            Assert.That(_queries.Single().InputParameters.Single(), Is.SameAs(_params.Single()));
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1177")]
+        public void ParamGetsBoundNonAscii()
+        {
+            _params.AddWithValue("漢字", "foo");
+            _parser.ParseRawQuery("SELECT @漢字", true, _params, _queries);
             Assert.That(_queries.Single().InputParameters.Single(), Is.SameAs(_params.Single()));
         }
 
@@ -97,14 +98,14 @@ namespace Npgsql.Tests
         public void ParamDoesntGetBound(string sql)
         {
             _params.AddWithValue(":param", "foo");
-            SqlQueryParser.ParseRawQuery(sql, true, _params, _queries);
+            _parser.ParseRawQuery(sql, true, _params, _queries);
             Assert.That(_queries.Single().InputParameters, Is.Empty);
         }
 
         [Test]
         public void NonConformantStrings()
         {
-            SqlQueryParser.ParseRawQuery(@"SELECT 'abc\':str''a:str'", false, _params, _queries);
+            _parser.ParseRawQuery(@"SELECT 'abc\':str''a:str'", false, _params, _queries);
             Assert.That(_queries.Single().SQL, Is.EqualTo(@"SELECT 'abc\':str''a:str'"));
             Assert.That(_queries.Single().InputParameters, Is.Empty);
         }
@@ -119,7 +120,7 @@ namespace Npgsql.Tests
             var p3 = new NpgsqlParameter("p3", DbType.String);
             _params.Add(p3);
 
-            SqlQueryParser.ParseRawQuery("SELECT @p3, @p1; SELECT @p2, @p3", true, _params, _queries);
+            _parser.ParseRawQuery("SELECT @p3, @p1; SELECT @p2, @p3", true, _params, _queries);
 
             Assert.That(_queries, Has.Count.EqualTo(2));
             Assert.That(_queries[0].InputParameters[0], Is.SameAs(p3));
@@ -133,26 +134,82 @@ namespace Npgsql.Tests
         {
             var p = new NpgsqlParameter("p", DbType.String) { Direction = ParameterDirection.Output };
             _params.Add(p);
-            Assert.That(() => SqlQueryParser.ParseRawQuery("SELECT @p", true, _params, _queries), Throws.Exception);
+            Assert.That(() => _parser.ParseRawQuery("SELECT @p", true, _params, _queries), Throws.Exception);
+        }
+
+        [Test]
+        public void MissingParamIsIgnored()
+        {
+            _parser.ParseRawQuery("SELECT @p; SELECT 1", true, _params, _queries);
+            Assert.That(_queries[0].SQL, Is.EqualTo("SELECT @p"));
+            Assert.That(_queries[1].SQL, Is.EqualTo("SELECT 1"));
+            Assert.That(_queries[0].InputParameters, Is.Empty);
+            Assert.That(_queries[1].InputParameters, Is.Empty);
+        }
+
+        [Test]
+        public void ConsecutiveSemicolons()
+        {
+            _parser.ParseRawQuery(";;SELECT 1", true, _params, _queries);
+            Assert.That(_queries, Has.Count.EqualTo(1));
+        }
+
+        [Test]
+        public void TrailingSemicolon()
+        {
+            _parser.ParseRawQuery("SELECT 1;", true, _params, _queries);
+            Assert.That(_queries, Has.Count.EqualTo(1));
+        }
+
+        [Test]
+        public void Empty()
+        {
+            _parser.ParseRawQuery("", true, _params, _queries);
+            Assert.That(_queries, Has.Count.EqualTo(1));
+        }
+
+        [Test]
+        public void SemicolonInParentheses()
+        {
+            _parser.ParseRawQuery("CREATE OR REPLACE RULE test AS ON UPDATE TO test DO (SELECT 1; SELECT 1)", true, _params, _queries);
+            Assert.That(_queries, Has.Count.EqualTo(1));
+        }
+
+        [Test]
+        public void SemicolonAfterParentheses()
+        {
+            _parser.ParseRawQuery("CREATE OR REPLACE RULE test AS ON UPDATE TO test DO (SELECT 1); SELECT 1", true, _params, _queries);
+            Assert.That(_queries, Has.Count.EqualTo(2));
+        }
+
+        [Test]
+        public void ReduceNumberOfStatements()
+        {
+            _parser.ParseRawQuery("SELECT 1; SELECT 2", true, _params, _queries);
+            Assert.That(_queries, Has.Count.EqualTo(2));
+            _parser.ParseRawQuery("SELECT 1", true, _params, _queries);
+            Assert.That(_queries, Has.Count.EqualTo(1));
         }
 
 #if TODO
         [Test]
         public void TrimWhitespace()
         {
-            SqlQueryParser.ParseRawQuery("   SELECT 1\t", true, _params, _queries);
+            _parser.ParseRawQuery("   SELECT 1\t", true, _params, _queries);
             Assert.That(_queries.Single().Sql, Is.EqualTo("SELECT 1"));
         }
 #endif
 
         #region Setup / Teardown / Utils
 
+        SqlQueryParser _parser;
         List<NpgsqlStatement> _queries;
         NpgsqlParameterCollection _params;
 
         [SetUp]
         public void SetUp()
         {
+            _parser = new SqlQueryParser();
             _queries = new List<NpgsqlStatement>();
             _params = new NpgsqlParameterCollection();
         }

@@ -66,7 +66,7 @@ namespace Npgsql.Tests.Types
 
                     for (var i = 0; i < cmd.Parameters.Count; i++)
                     {
-                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof (string)));
+                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(string)));
                         Assert.That(reader.GetString(i), Is.EqualTo(expected));
                         Assert.That(reader.GetFieldValue<string>(i), Is.EqualTo(expected));
                         Assert.That(reader.GetValue(i), Is.EqualTo(expected));
@@ -198,7 +198,7 @@ namespace Npgsql.Tests.Types
                     }
                     textReader.Read(actual, 2, 1);
                     Assert.That(actual[2], Is.EqualTo(expected[2]));
-                    textReader.Close();
+                    textReader.Dispose();
 
                     if (IsSequential(behavior))
                         Assert.That(() => reader.GetChars(0, 0, actual, 4, 1), Throws.Exception.TypeOf<InvalidOperationException>(), "Seek back sequential");
@@ -266,7 +266,7 @@ namespace Npgsql.Tests.Types
             using (var conn = OpenConnection())
             using (var cmd = new NpgsqlCommand("SELECT @p::TEXT", conn))
             {
-                var p = new NpgsqlParameter("p", data) {Size = 4};
+                var p = new NpgsqlParameter("p", data) { Size = 4 };
                 cmd.Parameters.Add(p);
                 Assert.That(cmd.ExecuteScalar(), Is.EqualTo(data.Substring(0, 4)));
 
@@ -295,15 +295,15 @@ namespace Npgsql.Tests.Types
             {
                 cmd.Parameters.Add(new NpgsqlParameter("p1", "string with \0\0\0 null \0bytes"));
                 Assert.That(() => cmd.ExecuteReader(),
-                    Throws.Exception.TypeOf<NpgsqlException>()
-                        .With.Property("Code").EqualTo("22021")
+                    Throws.Exception.TypeOf<PostgresException>()
+                        .With.Property(nameof(PostgresException.SqlState)).EqualTo("22021")
                     );
             }
         }
 
         [Test, Description("Tests some types which are aliased to strings")]
-        [TestCase("varchar")]
-        [TestCase("name")]
+        [TestCase("Varchar")]
+        [TestCase("Name")]
         public void AliasedPgTypes(string typename)
         {
             const string expected = "some_text";
@@ -415,7 +415,5 @@ namespace Npgsql.Tests.Types
                 }
             }
         }
-
-        public TextTests(string backendVersion) : base(backendVersion) { }
     }
 }

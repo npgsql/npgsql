@@ -24,9 +24,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
-using System.Linq;
-using System.Text;
+using JetBrains.Annotations;
 using Npgsql;
 #pragma warning disable 1591
 
@@ -38,7 +36,7 @@ namespace NpgsqlTypes
     /// DateTime is capable of storing values from year 1 to 9999 at 100-nanosecond precision,
     /// while PostgreSQL's timestamps store values from 4713BC to 5874897AD with 1-microsecond precision.
     /// </summary>
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
     [Serializable]
 #endif
     public struct NpgsqlDateTime : IEquatable<NpgsqlDateTime>, IComparable<NpgsqlDateTime>, IComparable,
@@ -74,7 +72,6 @@ namespace NpgsqlTypes
         {
             if (!date.IsFinite && type != InternalType.Infinity && type != InternalType.NegativeInfinity)
                 throw new ArgumentException("Can't construct an NpgsqlDateTime with a non-finite date, use Infinity and NegativeInfinity instead", nameof(date));
-            Contract.EndContractBlock();
 
             _type = type;
             _date = date;
@@ -136,7 +133,7 @@ namespace NpgsqlTypes
                 case InternalType.NegativeInfinity:
                     return false;
                 default:
-                    throw PGUtil.ThrowIfReached();
+                    throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {_type} of enum {nameof(NpgsqlDateTime)}.{nameof(InternalType)}. Please file a bug.");
                 }
             }
         }
@@ -156,7 +153,7 @@ namespace NpgsqlTypes
                 case InternalType.NegativeInfinity:
                     return DateTimeKind.Unspecified;
                 default:
-                    throw new ArgumentOutOfRangeException();
+                    throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {_type} of enum {nameof(DateTimeKind)}. Please file a bug.");
                 }
             }
         }
@@ -165,19 +162,15 @@ namespace NpgsqlTypes
         /// Cast of an <see cref="NpgsqlDateTime"/> to a <see cref="DateTime"/>.
         /// </summary>
         /// <returns>An equivalent <see cref="DateTime"/>.</returns>
-        public DateTime DateTime
+        public DateTime ToDateTime()
         {
-            get
-            {
-                if (!IsFinite)
-                    throw new InvalidCastException("Can't convert infinite timestamp values to DateTime");
-                Contract.EndContractBlock();
+            if (!IsFinite)
+                throw new InvalidCastException("Can't convert infinite timestamp values to DateTime");
 
-                if (_date.DaysSinceEra < 0 || _date.DaysSinceEra > MaxDateTimeDay)
-                    throw new InvalidCastException("Out of the range of DateTime (year must be between 1 and 9999)");
+            if (_date.DaysSinceEra < 0 || _date.DaysSinceEra > MaxDateTimeDay)
+                throw new InvalidCastException("Out of the range of DateTime (year must be between 1 and 9999)");
 
-                return new DateTime(Ticks, Kind);
-            }
+            return new DateTime(Ticks, Kind);
         }
 
         /// <summary>
@@ -199,7 +192,7 @@ namespace NpgsqlTypes
                 if (_date.DaysSinceEra >= 1 && _date.DaysSinceEra <= MaxDateTimeDay - 1)
                 {
                     // Day between 0001-01-02 and 9999-12-30, so we can use DateTime and it will always succeed
-                    return new NpgsqlDateTime(Subtract(TimeZoneInfo.Local.GetUtcOffset(new DateTime(DateTime.Ticks, DateTimeKind.Local))).Ticks, DateTimeKind.Utc);
+                    return new NpgsqlDateTime(Subtract(TimeZoneInfo.Local.GetUtcOffset(new DateTime(ToDateTime().Ticks, DateTimeKind.Local))).Ticks, DateTimeKind.Utc);
                 }
                 // Else there are no DST rules available in the system for outside the DateTime range, so just use the base offset
                 return new NpgsqlDateTime(Subtract(TimeZoneInfo.Local.BaseUtcOffset).Ticks, DateTimeKind.Utc);
@@ -208,7 +201,7 @@ namespace NpgsqlTypes
             case InternalType.NegativeInfinity:
                 return this;
             default:
-                throw PGUtil.ThrowIfReached();
+                throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {_type} of enum {nameof(NpgsqlDateTime)}.{nameof(InternalType)}. Please file a bug.");
             }
         }
 
@@ -230,7 +223,7 @@ namespace NpgsqlTypes
                 if (_date.DaysSinceEra >= 1 && _date.DaysSinceEra <= MaxDateTimeDay - 1)
                 {
                     // Day between 0001-01-02 and 9999-12-30, so we can use DateTime and it will always succeed
-                    return new NpgsqlDateTime(TimeZoneInfo.ConvertTime(new DateTime(DateTime.Ticks, DateTimeKind.Utc), TimeZoneInfo.Local));
+                    return new NpgsqlDateTime(TimeZoneInfo.ConvertTime(new DateTime(ToDateTime().Ticks, DateTimeKind.Utc), TimeZoneInfo.Local));
                 }
                 // Else there are no DST rules available in the system for outside the DateTime range, so just use the base offset
                 return new NpgsqlDateTime(Add(TimeZoneInfo.Local.BaseUtcOffset).Ticks, DateTimeKind.Local);
@@ -239,7 +232,7 @@ namespace NpgsqlTypes
             case InternalType.NegativeInfinity:
                 return this;
             default:
-                throw PGUtil.ThrowIfReached();
+                throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {_type} of enum {nameof(NpgsqlDateTime)}.{nameof(InternalType)}. Please file a bug.");
             }
         }
 
@@ -308,10 +301,8 @@ namespace NpgsqlTypes
             }
         }
 
-        public override bool Equals(object obj)
-        {
-            return obj is NpgsqlDateTime && Equals((NpgsqlDateTime)obj);
-        }
+        public override bool Equals([CanBeNull] object obj)
+            => obj is NpgsqlDateTime && Equals((NpgsqlDateTime)obj);
 
         public override int GetHashCode()
         {
@@ -345,33 +336,25 @@ namespace NpgsqlTypes
             }
         }
 
-        public int CompareTo(object obj)
+        public int CompareTo([CanBeNull] object o)
         {
-            if (obj == null) {
+            if (o == null)
                 return 1;
-            }
-            if (obj is NpgsqlDateTime) {
-                return CompareTo((NpgsqlDateTime)obj);
-            }
+            if (o is NpgsqlDateTime)
+                return CompareTo((NpgsqlDateTime)o);
             throw new ArgumentException();
         }
 
-        public int Compare(NpgsqlDateTime x, NpgsqlDateTime y)
-        {
-            return x.CompareTo(y);
-        }
+        public int Compare(NpgsqlDateTime x, NpgsqlDateTime y) => x.CompareTo(y);
 
-        public int Compare(object x, object y)
+        public int Compare([CanBeNull] object x, [CanBeNull] object y)
         {
-            if (x == null) {
+            if (x == null)
                 return y == null ? 0 : -1;
-            }
-            if (y == null) {
+            if (y == null)
                 return 1;
-            }
-            if (!(x is IComparable) || !(y is IComparable)) {
+            if (!(x is IComparable) || !(y is IComparable))
                 throw new ArgumentException();
-            }
             return ((IComparable)x).CompareTo(y);
         }
 
@@ -384,7 +367,6 @@ namespace NpgsqlTypes
         /// </summary>
         /// <param name="value">A positive or negative time interval.</param>
         /// <returns>An object whose value is the sum of the date and time represented by this instance and the time interval represented by value.</returns>
-        [Pure]
         public NpgsqlDateTime Add(NpgsqlTimeSpan value) { return AddTicks(value.Ticks); }
 
         /// <summary>
@@ -392,7 +374,6 @@ namespace NpgsqlTypes
         /// </summary>
         /// <param name="value">A positive or negative time interval.</param>
         /// <returns>An object whose value is the sum of the date and time represented by this instance and the time interval represented by value.</returns>
-        [Pure]
         public NpgsqlDateTime Add(TimeSpan value) { return AddTicks(value.Ticks); }
 
         /// <summary>
@@ -400,7 +381,6 @@ namespace NpgsqlTypes
         /// </summary>
         /// <param name="value">A number of years. The value parameter can be negative or positive.</param>
         /// <returns>An object whose value is the sum of the date and time represented by this instance and the number of years represented by value.</returns>
-        [Pure]
         public NpgsqlDateTime AddYears(int value)
         {
             switch (_type) {
@@ -417,7 +397,6 @@ namespace NpgsqlTypes
         /// </summary>
         /// <param name="value">A number of months. The months parameter can be negative or positive.</param>
         /// <returns>An object whose value is the sum of the date and time represented by this instance and months.</returns>
-        [Pure]
         public NpgsqlDateTime AddMonths(int value)
         {
             switch (_type) {
@@ -434,7 +413,6 @@ namespace NpgsqlTypes
         /// </summary>
         /// <param name="value">A number of whole and fractional days. The value parameter can be negative or positive.</param>
         /// <returns>An object whose value is the sum of the date and time represented by this instance and the number of days represented by value.</returns>
-        [Pure]
         public NpgsqlDateTime AddDays(double value) { return Add(TimeSpan.FromDays(value)); }
 
         /// <summary>
@@ -442,7 +420,6 @@ namespace NpgsqlTypes
         /// </summary>
         /// <param name="value">A number of whole and fractional hours. The value parameter can be negative or positive.</param>
         /// <returns>An object whose value is the sum of the date and time represented by this instance and the number of hours represented by value.</returns>
-        [Pure]
         public NpgsqlDateTime AddHours(double value) { return Add(TimeSpan.FromHours(value)); }
 
         /// <summary>
@@ -450,7 +427,6 @@ namespace NpgsqlTypes
         /// </summary>
         /// <param name="value">A number of whole and fractional minutes. The value parameter can be negative or positive.</param>
         /// <returns>An object whose value is the sum of the date and time represented by this instance and the number of minutes represented by value.</returns>
-        [Pure]
         public NpgsqlDateTime AddMinutes(double value) { return Add(TimeSpan.FromMinutes(value)); }
 
         /// <summary>
@@ -458,7 +434,6 @@ namespace NpgsqlTypes
         /// </summary>
         /// <param name="value">A number of whole and fractional minutes. The value parameter can be negative or positive.</param>
         /// <returns>An object whose value is the sum of the date and time represented by this instance and the number of minutes represented by value.</returns>
-        [Pure]
         public NpgsqlDateTime AddSeconds(double value) { return Add(TimeSpan.FromSeconds(value)); }
 
         /// <summary>
@@ -466,7 +441,6 @@ namespace NpgsqlTypes
         /// </summary>
         /// <param name="value">A number of whole and fractional milliseconds. The value parameter can be negative or positive. Note that this value is rounded to the nearest integer.</param>
         /// <returns>An object whose value is the sum of the date and time represented by this instance and the number of milliseconds represented by value.</returns>
-        [Pure]
         public NpgsqlDateTime AddMilliseconds(double value) { return Add(TimeSpan.FromMilliseconds(value)); }
 
         /// <summary>
@@ -474,7 +448,6 @@ namespace NpgsqlTypes
         /// </summary>
         /// <param name="value">A number of 100-nanosecond ticks. The value parameter can be positive or negative.</param>
         /// <returns>An object whose value is the sum of the date and time represented by this instance and the time represented by value.</returns>
-        [Pure]
         public NpgsqlDateTime AddTicks(long value)
         {
             switch (_type) {
@@ -486,24 +459,22 @@ namespace NpgsqlTypes
             }
         }
 
-        [Pure]
         public NpgsqlDateTime Subtract(NpgsqlTimeSpan interval)
         {
             return Add(-interval);
         }
 
-        [Pure]
         public NpgsqlTimeSpan Subtract(NpgsqlDateTime timestamp)
         {
             switch (_type) {
             case InternalType.Infinity:
             case InternalType.NegativeInfinity:
-                throw new ArgumentOutOfRangeException("this", "You cannot subtract infinity timestamps");
+                throw new InvalidOperationException("You cannot subtract infinity timestamps");
             }
             switch (timestamp._type) {
             case InternalType.Infinity:
             case InternalType.NegativeInfinity:
-                throw new ArgumentOutOfRangeException(nameof(timestamp), "You cannot subtract infinity timestamps");
+                throw new InvalidOperationException("You cannot subtract infinity timestamps");
             }
             return new NpgsqlTimeSpan(0, _date.DaysSinceEra - timestamp._date.DaysSinceEra, _time.Ticks - timestamp._time.Ticks);
         }
@@ -513,54 +484,21 @@ namespace NpgsqlTypes
         #region Operators
 
         public static NpgsqlDateTime operator +(NpgsqlDateTime timestamp, NpgsqlTimeSpan interval)
-        {
-            return timestamp.Add(interval);
-        }
+            => timestamp.Add(interval);
 
         public static NpgsqlDateTime operator +(NpgsqlTimeSpan interval, NpgsqlDateTime timestamp)
-        {
-            return timestamp.Add(interval);
-        }
+            => timestamp.Add(interval);
 
         public static NpgsqlDateTime operator -(NpgsqlDateTime timestamp, NpgsqlTimeSpan interval)
-        {
-            return timestamp.Subtract(interval);
-        }
+            => timestamp.Subtract(interval);
 
-        public static NpgsqlTimeSpan operator -(NpgsqlDateTime x, NpgsqlDateTime y)
-        {
-            return x.Subtract(y);
-        }
-
-        public static bool operator ==(NpgsqlDateTime x, NpgsqlDateTime y)
-        {
-            return x.Equals(y);
-        }
-
-        public static bool operator !=(NpgsqlDateTime x, NpgsqlDateTime y)
-        {
-            return !(x == y);
-        }
-
-        public static bool operator <(NpgsqlDateTime x, NpgsqlDateTime y)
-        {
-            return x.CompareTo(y) < 0;
-        }
-
-        public static bool operator >(NpgsqlDateTime x, NpgsqlDateTime y)
-        {
-            return x.CompareTo(y) > 0;
-        }
-
-        public static bool operator <=(NpgsqlDateTime x, NpgsqlDateTime y)
-        {
-            return x.CompareTo(y) <= 0;
-        }
-
-        public static bool operator >=(NpgsqlDateTime x, NpgsqlDateTime y)
-        {
-            return x.CompareTo(y) >= 0;
-        }
+        public static NpgsqlTimeSpan operator -(NpgsqlDateTime x, NpgsqlDateTime y) => x.Subtract(y);
+        public static bool operator ==(NpgsqlDateTime x, NpgsqlDateTime y) => x.Equals(y);
+        public static bool operator !=(NpgsqlDateTime x, NpgsqlDateTime y) => !(x == y);
+        public static bool operator <(NpgsqlDateTime x, NpgsqlDateTime y) => x.CompareTo(y) < 0;
+        public static bool operator >(NpgsqlDateTime x, NpgsqlDateTime y) => x.CompareTo(y) > 0;
+        public static bool operator <=(NpgsqlDateTime x, NpgsqlDateTime y) => x.CompareTo(y) <= 0;
+        public static bool operator >=(NpgsqlDateTime x, NpgsqlDateTime y) => x.CompareTo(y) >= 0;
 
         #endregion
 
@@ -571,10 +509,8 @@ namespace NpgsqlTypes
         /// </summary>
         /// <param name="dateTime">A <see cref="DateTime"/></param>
         /// <returns>An equivalent <see cref="NpgsqlDateTime"/>.</returns>
-        public static implicit operator NpgsqlDateTime(DateTime dateTime)
-        {
-            return new NpgsqlDateTime(dateTime);
-        }
+        public static implicit operator NpgsqlDateTime(DateTime dateTime) => ToNpgsqlDateTime(dateTime);
+        public static NpgsqlDateTime ToNpgsqlDateTime(DateTime dateTime) => new NpgsqlDateTime(dateTime);
 
         /// <summary>
         /// Explicit cast of an <see cref="NpgsqlDateTime"/> to a <see cref="DateTime"/>.
@@ -582,17 +518,11 @@ namespace NpgsqlTypes
         /// <param name="npgsqlDateTime">An <see cref="NpgsqlDateTime"/>.</param>
         /// <returns>An equivalent <see cref="DateTime"/>.</returns>
         public static explicit operator DateTime(NpgsqlDateTime npgsqlDateTime)
-        {
-            return npgsqlDateTime.DateTime;
-        }
+            => npgsqlDateTime.ToDateTime();
 
         #endregion
 
-        [Pure]
-        public NpgsqlDateTime Normalize()
-        {
-            return Add(NpgsqlTimeSpan.Zero);
-        }
+        public NpgsqlDateTime Normalize() => Add(NpgsqlTimeSpan.Zero);
 
         static InternalType KindToInternalType(DateTimeKind kind)
         {
@@ -604,7 +534,7 @@ namespace NpgsqlTypes
             case DateTimeKind.Local:
                 return InternalType.FiniteLocal;
             default:
-                throw PGUtil.ThrowIfReached();
+                throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {kind} of enum {nameof(NpgsqlDateTime)}.{nameof(InternalType)}. Please file a bug.");
             }
         }
 

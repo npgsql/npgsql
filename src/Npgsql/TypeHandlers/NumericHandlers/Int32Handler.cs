@@ -22,14 +22,10 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using System.Text;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
-using System.Diagnostics.Contracts;
+using JetBrains.Annotations;
 
 namespace Npgsql.TypeHandlers.NumericHandlers
 {
@@ -37,69 +33,53 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-numeric.html
     /// </remarks>
     [TypeMapping("int4", NpgsqlDbType.Integer, DbType.Int32, typeof(int))]
-    internal class Int32Handler : SimpleTypeHandler<int>,
+    class Int32Handler : SimpleTypeHandler<int>,
         ISimpleTypeHandler<byte>, ISimpleTypeHandler<short>, ISimpleTypeHandler<long>,
         ISimpleTypeHandler<float>, ISimpleTypeHandler<double>, ISimpleTypeHandler<decimal>,
         ISimpleTypeHandler<string>
     {
-        public override int Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return buf.ReadInt32();
-        }
+        internal Int32Handler(IBackendType backendType) : base(backendType) { }
 
-        byte ISimpleTypeHandler<byte>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return (byte)Read(buf, len, fieldDescription);
-        }
+        public override int Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+            => buf.ReadInt32();
 
-        short ISimpleTypeHandler<short>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return (short)Read(buf, len, fieldDescription);
-        }
+        byte ISimpleTypeHandler<byte>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => (byte)Read(buf, len, fieldDescription);
 
-        long ISimpleTypeHandler<long>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return Read(buf, len, fieldDescription);
-        }
+        short ISimpleTypeHandler<short>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => (short)Read(buf, len, fieldDescription);
 
-        float ISimpleTypeHandler<float>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return Read(buf, len, fieldDescription);
-        }
+        long ISimpleTypeHandler<long>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => Read(buf, len, fieldDescription);
 
-        double ISimpleTypeHandler<double>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return Read(buf, len, fieldDescription);
-        }
+        float ISimpleTypeHandler<float>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => Read(buf, len, fieldDescription);
 
-        decimal ISimpleTypeHandler<decimal>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return Read(buf, len, fieldDescription);
-        }
+        double ISimpleTypeHandler<double>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => Read(buf, len, fieldDescription);
 
-        string ISimpleTypeHandler<string>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return Read(buf, len, fieldDescription).ToString();
-        }
+        decimal ISimpleTypeHandler<decimal>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => Read(buf, len, fieldDescription);
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => Read(buf, len, fieldDescription).ToString();
+
+        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
         {
             if (!(value is int))
             {
                 var converted = Convert.ToInt32(value);
-                if (parameter == null) {
+                if (parameter == null)
                     throw CreateConversionButNoParamException(value.GetType());
-                }
                 parameter.ConvertedValue = converted;
             }
             return 4;
         }
 
-        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
         {
-            if (parameter?.ConvertedValue != null) {
+            if (parameter?.ConvertedValue != null)
                 value = parameter.ConvertedValue;
-            }
             buf.WriteInt32((int)value);
         }
     }

@@ -42,7 +42,50 @@ namespace Npgsql.Tests.Types
     /// </remarks>
     class ArrayTests : TestBase
     {
-        public ArrayTests(string backendVersion) : base(backendVersion) {}
+        [Test, Description("Resolves an array type handler via the different pathways")]
+        public void ArrayTypeResolution()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ApplicationName = nameof(ArrayTypeResolution),  // Prevent backend type caching in TypeHandlerRegistry
+                Pooling = false
+            };
+
+            using (var conn = OpenConnection(csb))
+            {
+                // Resolve type by NpgsqlDbType
+                using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+                {
+                    cmd.Parameters.AddWithValue("p", NpgsqlDbType.Array | NpgsqlDbType.Integer, DBNull.Value);
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        reader.Read();
+                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("_int4"));
+                    }
+                }
+
+                // Resolve type by ClrType (type inference)
+                conn.ReloadTypes();
+                using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+                {
+                    cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Value = new int[0] });
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        reader.Read();
+                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("_int4"));
+                    }
+                }
+
+                // Resolve type by OID (read)
+                conn.ReloadTypes();
+                using (var cmd = new NpgsqlCommand("SELECT '{1, 3}'::INTEGER[]", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo("_int4"));
+                }
+            }
+        }
 
         [Test, Description("Roundtrips a simple, one-dimensional array of ints")]
         public void Ints()
@@ -231,12 +274,13 @@ namespace Npgsql.Tests.Types
                     reader.Read();
                     Assert.That(reader.GetValue(0), Is.EqualTo(expected));
                     Assert.That(reader.GetFieldValue<byte[][]>(0), Is.EqualTo(expected));
-                    Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof (Array)));
-                    Assert.That(reader.GetProviderSpecificFieldType(0), Is.EqualTo(typeof (Array)));
+                    Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
+                    Assert.That(reader.GetProviderSpecificFieldType(0), Is.EqualTo(typeof(Array)));
                 }
             }
         }
 
+#if NET451
         [Test, Description("Roundtrips a non-generic IList as an array")]
         // ReSharper disable once InconsistentNaming
         public void IListNonGeneric()
@@ -250,6 +294,7 @@ namespace Npgsql.Tests.Types
                 Assert.That(cmd.ExecuteScalar(), Is.EqualTo(expected.ToArray()));
             }
         }
+#endif
 
         [Test, Description("Roundtrips a generic IList as an array")]
         // ReSharper disable once InconsistentNaming
@@ -280,6 +325,38 @@ namespace Npgsql.Tests.Types
             {
                 cmd.Parameters.AddWithValue("p1", Enumerable.Range(1, 3));
                 Assert.That(() => cmd.ExecuteScalar(), Throws.Exception.TypeOf<NotSupportedException>().With.Message.Contains("use .ToList()/.ToArray() instead"));
+            }
+        }
+
+#if NET451
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/960")]
+        public void MixedElementTypes()
+        {
+            var mixedList = new ArrayList { 1, "yo" };
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT @p1", conn))
+            {
+                cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Array | NpgsqlDbType.Integer, mixedList);
+                Assert.That(() => cmd.ExecuteNonQuery(), Throws.Exception
+                    .TypeOf<Exception>()
+                    .With.Message.Contains("mix"));
+            }
+        }
+#endif
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/960")]
+        public void JaggedArraysNotSupported()
+        {
+            var jagged = new int[2][];
+            jagged[0] = new[] { 8 };
+            jagged[1] = new[] { 8, 10 };
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT @p1", conn))
+            {
+                cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Array | NpgsqlDbType.Integer, jagged);
+                Assert.That(() => cmd.ExecuteNonQuery(), Throws.Exception
+                    .TypeOf<Exception>()
+                    .With.Message.Contains("jagged"));
             }
         }
     }

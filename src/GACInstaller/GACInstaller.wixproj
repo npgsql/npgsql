@@ -15,39 +15,20 @@
     <OutputPath>bin\$(Configuration)\</OutputPath>
     <IntermediateOutputPath>obj\$(Configuration)\</IntermediateOutputPath>
     <DefineConstants>Debug</DefineConstants>
+    <SuppressIces>ICE09;ICE32;ICE61</SuppressIces>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
     <OutputPath>bin\$(Configuration)\</OutputPath>
     <IntermediateOutputPath>obj\$(Configuration)\</IntermediateOutputPath>
+    <SuppressIces>ICE09;ICE32;ICE61</SuppressIces>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'ReleaseOptimizedCryptography|x86' ">
+    <OutputPath>bin\$(Configuration)\</OutputPath>
+    <IntermediateOutputPath>obj\$(Configuration)\</IntermediateOutputPath>
+    <SuppressIces>ICE09;ICE32;ICE61</SuppressIces>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Npgsql.wxs" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\EntityFramework5.Npgsql\EntityFramework5.Npgsql.xproj">
-      <Name>EntityFramework5.Npgsql</Name>
-      <Project>{62cfd550-7f37-499e-be88-7113e48bf06b}</Project>
-      <Private>True</Private>
-      <DoNotHarvest>True</DoNotHarvest>
-      <RefProjectOutputGroups>Binaries;Content;Satellites</RefProjectOutputGroups>
-      <RefTargetDir>INSTALLFOLDER</RefTargetDir>
-    </ProjectReference>
-    <ProjectReference Include="..\EntityFramework6.Npgsql\EntityFramework6.Npgsql.xproj">
-      <Name>EntityFramework6.Npgsql</Name>
-      <Project>{4f808f64-18db-4e91-a295-6fdb88893852}</Project>
-      <Private>True</Private>
-      <DoNotHarvest>True</DoNotHarvest>
-      <RefProjectOutputGroups>Binaries;Content;Satellites</RefProjectOutputGroups>
-      <RefTargetDir>INSTALLFOLDER</RefTargetDir>
-    </ProjectReference>
-    <ProjectReference Include="..\Npgsql\Npgsql.xproj">
-      <Name>Npgsql</Name>
-      <Project>{9d13b739-62b1-4190-b386-7a9547304eb3}</Project>
-      <Private>True</Private>
-      <DoNotHarvest>True</DoNotHarvest>
-      <RefProjectOutputGroups>Binaries;Content;Satellites</RefProjectOutputGroups>
-      <RefTargetDir>INSTALLFOLDER</RefTargetDir>
-    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <WixExtension Include="WixUIExtension">
@@ -69,7 +50,7 @@
   <Import Project="$(WixTargetsPath)" />
   <Target Name="CreateWixProperties" BeforeTargets="Compile">
     <!-- Get the programs assembly version from the .exe file -->
-    <GetAssemblyIdentity AssemblyFiles="..\Npgsql\bin\$(Configuration)\net45\Npgsql.dll">
+    <GetAssemblyIdentity AssemblyFiles="..\Npgsql\bin\$(Configuration)\net451\Npgsql.dll">
       <Output TaskParameter="Assemblies" ItemName="AsmInfo" />
     </GetAssemblyIdentity>
     <CreateProperty Value="%(AsmInfo.Version)">

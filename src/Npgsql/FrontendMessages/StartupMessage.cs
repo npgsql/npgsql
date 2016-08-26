@@ -23,7 +23,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Text;
 
@@ -52,7 +51,7 @@ namespace Npgsql.FrontendMessages
             }
         }
 
-        internal override void Write(NpgsqlBuffer buf)
+        internal override void WriteFully(WriteBuffer buf)
         {
             buf.WriteInt32(_length);
             buf.WriteInt32(ProtocolVersion3);

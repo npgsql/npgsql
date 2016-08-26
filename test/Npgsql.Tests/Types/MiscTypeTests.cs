@@ -24,7 +24,6 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
@@ -40,6 +39,63 @@ namespace Npgsql.Tests.Types
     /// </summary>
     class MiscTypeTests : TestBase
     {
+        [Test, Description("Resolves a base type handler via the different pathways")]
+        public void BaseTypeResolution()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ApplicationName = nameof(BaseTypeResolution),  // Prevent backend type caching in TypeHandlerRegistry
+                Pooling = false
+            };
+
+            using (var conn = OpenConnection(csb))
+            {
+                // Resolve type by NpgsqlDbType
+                using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+                {
+                    cmd.Parameters.AddWithValue("p", NpgsqlDbType.Integer, DBNull.Value);
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        reader.Read();
+                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("int4"));
+                    }
+                }
+
+                // Resolve type by DbType
+                conn.ReloadTypes();
+                using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+                {
+                    cmd.Parameters.Add(new NpgsqlParameter("p", DbType.Int32) { Value = DBNull.Value });
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        reader.Read();
+                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("int4"));
+                    }
+                }
+
+                // Resolve type by ClrType (type inference)
+                conn.ReloadTypes();
+                using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+                {
+                    cmd.Parameters.Add(new NpgsqlParameter { ParameterName="p", Value = 8 });
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        reader.Read();
+                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("int4"));
+                    }
+                }
+
+                // Resolve type by OID (read)
+                conn.ReloadTypes();
+                using (var cmd = new NpgsqlCommand("SELECT 8", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo("int4"));
+                }
+            }
+        }
+
         /// <summary>
         /// http://www.postgresql.org/docs/current/static/datatype-boolean.html
         /// </summary>
@@ -73,35 +129,9 @@ namespace Npgsql.Tests.Types
                         Assert.That(reader.GetBoolean(i), Is.True);
                         Assert.That(reader.GetValue(i), Is.True);
                         Assert.That(reader.GetProviderSpecificValue(i), Is.True);
-                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof (bool)));
+                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(bool)));
                         Assert.That(reader.GetDataTypeName(i), Is.EqualTo("bool"));
                     }
-                }
-            }
-        }
-
-        /// <summary>
-        /// http://www.postgresql.org/docs/current/static/datatype-money.html
-        /// </summary>
-        [Test]
-        public void Money()
-        {
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn))
-            {
-                var expected1 = 12345.12m;
-                var expected2 = -10.5m;
-                cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Money, expected1);
-                cmd.Parameters.Add(new NpgsqlParameter("p2", DbType.Currency) {Value = expected2});
-                using (var reader = cmd.ExecuteReader())
-                {
-                    reader.Read();
-                    Assert.That(reader.GetDecimal(0), Is.EqualTo(12345.12m));
-                    Assert.That(reader.GetValue(0), Is.EqualTo(12345.12m));
-                    Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(12345.12m));
-                    Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof (decimal)));
-
-                    Assert.That(reader.GetDecimal(1), Is.EqualTo(-10.5m));
                 }
             }
         }
@@ -133,7 +163,7 @@ namespace Npgsql.Tests.Types
                         Assert.That(reader.GetFieldValue<Guid>(i), Is.EqualTo(expected));
                         Assert.That(reader.GetValue(i), Is.EqualTo(expected));
                         Assert.That(reader.GetString(i), Is.EqualTo(expected.ToString()));
-                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof (Guid)));
+                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(Guid)));
                     }
                 }
             }
@@ -181,18 +211,18 @@ namespace Npgsql.Tests.Types
                 {
                     reader.Read();
                     Assert.That(reader.IsDBNull(0));
-                    Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof (int)));
+                    Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(int)));
                 }
             }
         }
 
         [Test]
-        [MinPgVersion(9, 2, 0, "JSON data type not yet introduced")]
         public void Json()
         {
             using (var conn = OpenConnection())
             using (var cmd = new NpgsqlCommand("SELECT @p", conn))
             {
+                TestUtil.MinimumPgVersion(conn, "9.2.0", "JSON data type not yet introduced");
                 const string expected = @"{ ""Key"" : ""Value"" }";
                 cmd.Parameters.AddWithValue("p", NpgsqlDbType.Json, expected);
                 using (var reader = cmd.ExecuteReader())
@@ -208,12 +238,12 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        [MinPgVersion(9, 4, 0, "JSONB data type not yet introduced")]
         public void Jsonb()
         {
             using (var conn = OpenConnection())
             using (var cmd = new NpgsqlCommand("SELECT @p", conn))
             {
+                TestUtil.MinimumPgVersion(conn, "9.4.0", "JSONB data type not yet introduced");
                 var sb = new StringBuilder();
                 sb.Append(@"{""Key"": """);
                 sb.Append('x', conn.BufferSize);
@@ -233,11 +263,11 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        [MinPgVersion(9, 1, 0, "HSTORE data type not yet introduced")]
         public void Hstore()
         {
             using (var conn = OpenConnection())
             {
+                TestUtil.MinimumPgVersion(conn, "9.1.0", "HSTORE data type not yet introduced");
                 conn.ExecuteNonQuery(@"CREATE EXTENSION IF NOT EXISTS hstore");
                 conn.ReloadTypes();
 
@@ -247,15 +277,20 @@ namespace Npgsql.Tests.Types
                     {"cd", "hello"}
                 };
 
-                using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+                using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn))
                 {
-                    cmd.Parameters.AddWithValue("p", NpgsqlDbType.Hstore, expected);
+                    cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Hstore, expected);
+                    cmd.Parameters.AddWithValue("p2", expected);
                     using (var reader = cmd.ExecuteReader())
                     {
                         reader.Read();
-                        Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof (IDictionary<string, string>)));
-                        Assert.That(reader.GetValue(0), Is.EqualTo(expected));
-                        Assert.That(reader.GetString(0), Is.EqualTo(@"""a""=>""3"",""b""=>NULL,""cd""=>""hello"""));
+                        for (var i = 0; i < cmd.Parameters.Count; i++)
+                        {
+                            Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(Dictionary<string, string>)));
+                            Assert.That(reader.GetFieldValue<Dictionary<string, string>>(i), Is.EqualTo(expected));
+                            Assert.That(reader.GetFieldValue<IDictionary<string, string>>(i), Is.EqualTo(expected));
+                            Assert.That(reader.GetString(i), Is.EqualTo(@"""a""=>""3"",""b""=>NULL,""cd""=>""hello"""));
+                        }
                     }
                 }
             }
@@ -347,7 +382,7 @@ namespace Npgsql.Tests.Types
                     using (var reader = cmd.ExecuteReader())
                     {
                         reader.Read();
-                        Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof (string)));
+                        Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(string)));
                         Assert.That(reader.GetString(0), Is.EqualTo(expected));
                     }
                 }
@@ -369,7 +404,7 @@ namespace Npgsql.Tests.Types
                     using (var reader = cmd.ExecuteReader())
                     {
                         reader.Read();
-                        Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof (string)));
+                        Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(string)));
                         Assert.That(reader.GetString(0), Is.EqualTo(expected));
                         Assert.That(reader.GetInt32(1), Is.EqualTo(8));
                     }
@@ -400,7 +435,7 @@ namespace Npgsql.Tests.Types
                 {
                     reader.Read();
                     Assert.That(reader.IsDBNull(0));
-                    Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof (string)));
+                    Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(string)));
                 }
             }
         }
@@ -416,7 +451,7 @@ namespace Npgsql.Tests.Types
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();
-                    Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof (int)));
+                    Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(int)));
                     Assert.That(reader.GetInt32(0), Is.EqualTo(8));
                 }
             }
@@ -424,13 +459,14 @@ namespace Npgsql.Tests.Types
 
         #endregion
 
-        [Test, MinPgVersion(9, 1, 0)]
+        [Test]
         public void Int2Vector()
         {
             var expected = new short[] { 4, 5, 6 };
             using (var conn = OpenConnection())
             using (var cmd = conn.CreateCommand())
             {
+                TestUtil.MinimumPgVersion(conn, "9.1.0");
                 cmd.CommandText = "SELECT @p::int2vector";
                 cmd.Parameters.AddWithValue("p", NpgsqlDbType.Int2Vector, expected);
                 using (var reader = cmd.ExecuteReader())
@@ -439,6 +475,33 @@ namespace Npgsql.Tests.Types
                     Assert.That(reader.GetFieldValue<short[]>(0), Is.EqualTo(expected));
                 }
             }
+        }
+
+        [Test]
+        public void Tid()
+        {
+            var expected = new NpgsqlTid(3, 5);
+            using (var conn = OpenConnection())
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = "SELECT '(1234,40000)'::tid, @p::tid";
+                cmd.Parameters.AddWithValue("p", NpgsqlDbType.Tid, expected);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.AreEqual(1234, reader.GetFieldValue<NpgsqlTid>(0).BlockNumber);
+                    Assert.AreEqual(40000, reader.GetFieldValue<NpgsqlTid>(0).OffsetNumber);
+                    Assert.AreEqual(expected.BlockNumber, reader.GetFieldValue<NpgsqlTid>(1).BlockNumber);
+                    Assert.AreEqual(expected.OffsetNumber, reader.GetFieldValue<NpgsqlTid>(1).OffsetNumber);
+                }
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1138")]
+        public void Void()
+        {
+            using (var conn = OpenConnection())
+                Assert.That(conn.ExecuteScalar("SELECT pg_sleep(0)"), Is.SameAs(DBNull.Value));
         }
 
         // Older tests
@@ -604,7 +667,7 @@ namespace Npgsql.Tests.Types
 
                 command = new NpgsqlCommand("SELECT person_uuid::uuid FROM person LIMIT 1", conn);
                 var result = command.ExecuteScalar();
-                Assert.AreEqual(typeof (Guid), result.GetType());
+                Assert.AreEqual(typeof(Guid), result.GetType());
             }
         }
 
@@ -656,7 +719,5 @@ namespace Npgsql.Tests.Types
                 Assert.AreEqual(query.ToString(), output.ToString());
             }
         }
-
-        public MiscTypeTests(string backendVersion) : base(backendVersion) {}
     }
 }

@@ -33,6 +33,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Security;
+using System.Text;
 using System.Text.RegularExpressions;
 using NpgsqlTypes;
 
@@ -40,8 +41,6 @@ namespace Npgsql.Tests
 {
     public class ConnectionTests : TestBase
     {
-        public ConnectionTests(string backendVersion) : base(backendVersion) { }
-
         [Test, Description("Makes sure the connection goes through the proper state lifecycle")]
         //[Timeout(5000)]
         public void BasicLifecycle()
@@ -125,7 +124,10 @@ namespace Npgsql.Tests
 
                 // Allow some time for the pg_terminate to kill our connection
                 using (var cmd = CreateSleepCommand(conn, 10))
-                    Assert.That(() => cmd.ExecuteNonQuery(), Throws.Exception.TypeOf<IOException>());
+                    Assert.That(() => cmd.ExecuteNonQuery(), Throws.Exception
+                        .TypeOf<NpgsqlException>()
+                        .With.InnerException.InstanceOf<IOException>()
+                    );
 
                 Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
@@ -135,6 +137,7 @@ namespace Npgsql.Tests
 
         #region Connection Errors
 
+#if IGNORE
         [Test]
         [TestCase(true)]
         [TestCase(false)]
@@ -144,7 +147,12 @@ namespace Npgsql.Tests
             using (var conn = new NpgsqlConnection(csb)) {
                 Assert.That(() => conn.Open(), Throws.Exception
                     .TypeOf<SocketException>()
-                    .With.Property("SocketErrorCode").EqualTo(SocketError.ConnectionRefused)
+#if !NETCOREAPP1_0
+// CoreCLR currently has an issue which causes the wrong SocketErrorCode to be set on Linux:
+// https://github.com/dotnet/corefx/issues/8464
+
+                    .With.Property(nameof(SocketException.SocketErrorCode)).EqualTo(SocketError.ConnectionRefused)
+#endif
                 );
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
             }
@@ -160,11 +168,12 @@ namespace Npgsql.Tests
             {
                 Assert.That(async () => await conn.OpenAsync(), Throws.Exception
                     .TypeOf<SocketException>()
-                    .With.Property("SocketErrorCode").EqualTo(SocketError.ConnectionRefused)
+                    .With.Property(nameof(SocketException.SocketErrorCode)).EqualTo(SocketError.ConnectionRefused)
                 );
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
             }
         }
+#endif
 
         [Test]
         [Ignore("Fails in a non-determinstic manner and only on the build server... investigate...")]
@@ -174,8 +183,8 @@ namespace Npgsql.Tests
             using (var conn = new NpgsqlConnection(csb))
             {
                 Assert.That(conn.Open, Throws.Exception
-                    .TypeOf<NpgsqlException>()
-                    .With.Property("Code").EqualTo("28P01")
+                    .TypeOf<PostgresException>()
+                    .With.Property(nameof(PostgresException.SqlState)).EqualTo("28P01")
                 );
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
             }
@@ -188,11 +197,22 @@ namespace Npgsql.Tests
             using (var conn = new NpgsqlConnection(csb))
             {
                 Assert.That(() => conn.Open(), Throws.Exception
-                    .TypeOf<NpgsqlException>()
-                    .With.Property("Code").EqualTo("28P01")
+                    .TypeOf<PostgresException>()
+                    .With.Property(nameof(PostgresException.SqlState)).EqualTo("28P01")
                 );
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
             }
+        }
+
+        [Test]
+        public void BadDatabase()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Database = "does_not_exist" };
+            using (var conn = new NpgsqlConnection(csb))
+                Assert.That(() => conn.Open(),
+                    Throws.Exception.TypeOf<PostgresException>()
+                    .With.Property(nameof(PostgresException.SqlState)).EqualTo("3D000")
+                );
         }
 
         [Test, Description("Tests that mandatory connection string parameters are indeed mandatory")]
@@ -220,8 +240,8 @@ namespace Npgsql.Tests
                     using (var conn2 = new NpgsqlConnection(csb))
                     {
                         Assert.That(() => conn2.Open(),
-                            Throws.Exception.TypeOf<NpgsqlException>()
-                            .With.Property("Code").EqualTo("3D000") // database doesn't exist
+                            Throws.Exception.TypeOf<PostgresException>()
+                            .With.Property(nameof(PostgresException.SqlState)).EqualTo("3D000") // database doesn't exist
                         );
                         Assert.That(conn2.FullState, Is.EqualTo(ConnectionState.Closed));
 
@@ -236,14 +256,6 @@ namespace Npgsql.Tests
                     //conn1.ExecuteNonQuery($"DROP DATABASE IF EXISTS \"{dbName}\"");
                 }
             }
-        }
-
-        [Test]
-        public void NoUsername()
-        {
-            var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Username = null };
-            using (var conn = new NpgsqlConnection(csb))
-                Assert.That(() => conn.Open(), Throws.Exception.TypeOf<ArgumentException>());
         }
 
         [Test]
@@ -317,8 +329,8 @@ namespace Npgsql.Tests
 
         #region Notification
 
-        [Test, Description("Simple synchronous LISTEN/NOTIFY scenario")]
-        public void NotificationSync()
+        [Test, Description("Simple LISTEN/NOTIFY scenario")]
+        public void Notification()
         {
             using (var conn = OpenConnection())
             {
@@ -327,76 +339,6 @@ namespace Npgsql.Tests
                 conn.Notification += (o, e) => receivedNotification = true;
                 conn.ExecuteNonQuery("NOTIFY notifytest");
                 Assert.IsTrue(receivedNotification);
-            }
-        }
-
-        [Test, Description("An asynchronous LISTEN/NOTIFY scenario")]
-        [Timeout(10000)]
-        public void NotificationAsync()
-        {
-            using (var notifyingConn = OpenConnection())
-            {
-                var mre = new ManualResetEvent(false);
-                using (var listeningConn = new NpgsqlConnection(ConnectionString + ";ContinuousProcessing=true"))
-                {
-                    listeningConn.Open();
-                    listeningConn.ExecuteNonQuery("LISTEN notifytest2");
-                    listeningConn.Notification += (o, e) => mre.Set();
-
-                    // Send notify via the other connection
-                    notifyingConn.ExecuteNonQuery("NOTIFY notifytest2");
-                    mre.WaitOne();
-
-                    // And again
-                    mre.Reset();
-                    notifyingConn.ExecuteNonQuery("NOTIFY notifytest2");
-                    mre.WaitOne();
-                }
-            }
-        }
-
-        [Test, Description("A notification arriving while we have an open Reader")]
-        public void NotificationDuringReader()
-        {
-            using (var notifyingConn = OpenConnection())
-            {
-                var receivedNotification = false;
-                using (var listeningConn = new NpgsqlConnection(ConnectionString + ";ContinuousProcessing=true"))
-                {
-                    listeningConn.Open();
-                    listeningConn.ExecuteNonQuery("LISTEN notifytest2");
-                    listeningConn.Notification += (o, e) => receivedNotification = true;
-
-                    using (var cmd = new NpgsqlCommand("SELECT 1", listeningConn))
-                    using (cmd.ExecuteReader())
-                    {
-                        // Send notify via the other connection
-                        notifyingConn.ExecuteNonQuery("NOTIFY notifytest2");
-                        Thread.Sleep(500);
-                    }
-                }
-                Assert.That(receivedNotification, Is.True);
-            }
-        }
-
-        [Test, Description("Receive an asynchronous notification when a message has already been prepended")]
-        [Timeout(10000)]
-        public void NotificationAsyncWithPrepend()
-        {
-            using (var notifyingConn = OpenConnection())
-            {
-                var mre = new ManualResetEvent(false);
-                using (var listeningConn = new NpgsqlConnection(ConnectionString + ";ContinuousProcessing=true"))
-                {
-                    listeningConn.Open();
-                    listeningConn.ExecuteNonQuery("LISTEN notifytest2");
-                    listeningConn.BeginTransaction();
-
-                    // Send notify via the other connection
-                    listeningConn.Notification += (o, e) => mre.Set();
-                    notifyingConn.ExecuteNonQuery("NOTIFY notifytest2");
-                    mre.WaitOne();
-                }
             }
         }
 
@@ -415,7 +357,6 @@ namespace Npgsql.Tests
                 cmd.CommandText = "SELECT generate_series(1,10000)";
                 using (var reader = cmd.ExecuteReader())
                 {
-
                     //After "notify notifytest1", a notification message will be sent to client,
                     //And so the notification message will stick with the last response message of "select generate_series(1,10000)" in Npgsql's tcp receiving buffer.
                     using (var conn2 = new NpgsqlConnection(ConnectionString))
@@ -440,6 +381,70 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1024")]
+        [Timeout(10000)]
+        public void Wait()
+        {
+            using (var conn = OpenConnection())
+            using (var notifyingConn = OpenConnection())
+            {
+                var receivedNotification = false;
+                conn.ExecuteNonQuery("LISTEN notifytest");
+                notifyingConn.ExecuteNonQuery("NOTIFY notifytest");
+                conn.Notification += (o, e) => receivedNotification = true;
+                Assert.That(conn.Wait(0), Is.EqualTo(true));
+                Assert.IsTrue(receivedNotification);
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1024")]
+        //[Timeout(10000)]
+        public void WaitWithTimeout()
+        {
+            using (var conn = OpenConnection())
+            {
+                Assert.That(conn.Wait(100), Is.EqualTo(false));
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1024")]
+        [Timeout(10000)]
+        public async Task WaitAsync()
+        {
+            using (var conn = OpenConnection())
+            using (var notifyingConn = OpenConnection())
+            {
+                var receivedNotification = false;
+                conn.ExecuteNonQuery("LISTEN notifytest");
+                notifyingConn.ExecuteNonQuery("NOTIFY notifytest");
+                conn.Notification += (o, e) => receivedNotification = true;
+                await conn.WaitAsync();
+                Assert.IsTrue(receivedNotification);
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+            }
+        }
+
+        [Test]
+        public void WaitBreaksConnection()
+        {
+            using (var conn = OpenConnection())
+            {
+                new Timer(o =>
+                {
+                    using (var conn2 = OpenConnection())
+                        conn2.ExecuteNonQuery($"SELECT pg_terminate_backend({conn.ProcessID})");
+                }, null, 500, Timeout.Infinite);
+
+                Assert.That(() => conn.Wait(), Throws.Exception
+                    .TypeOf<PostgresException>()
+                    .With.Property(nameof(PostgresException.SqlState)).EqualTo("57P01")
+                );
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+            }
+        }
+
         #endregion
 
         #region Keepalive
@@ -448,26 +453,73 @@ namespace Npgsql.Tests
         [Timeout(10000)]
         public void Keepalive()
         {
+            var csbWithKeepAlive = new NpgsqlConnectionStringBuilder(ConnectionString) { KeepAlive = 1 };
+            var mre = new ManualResetEvent(false);
             using (var conn1 = OpenConnection())
+            using (var conn2 = OpenConnection(csbWithKeepAlive))
             {
-                var mre = new ManualResetEvent(false);
-                using (var conn2 = new NpgsqlConnection(ConnectionString + ";KeepAlive=1;ContinuousProcessing=true"))
+                conn2.StateChange += (sender, args) =>
                 {
-                    conn2.Open();
+                    if (args.CurrentState == ConnectionState.Closed)
+                        mre.Set();
+                };
 
-                    conn2.StateChange += (sender, args) =>
-                    {
-                        if (args.CurrentState == ConnectionState.Closed)
-                            mre.Set();
-                    };
-
-                    // Use another connection to kill our keepalive connection
-                    conn1.ExecuteNonQuery($"SELECT pg_terminate_backend({conn2.ProcessID})");
-                    mre.WaitOne();
-                    Assert.That(conn2.State, Is.EqualTo(ConnectionState.Closed));
-                    Assert.That(conn2.FullState, Is.EqualTo(ConnectionState.Broken));
-                }
+                // Use another connection to kill our keepalive connection
+                conn1.ExecuteNonQuery($"SELECT pg_terminate_backend({conn2.ProcessID})");
+                mre.WaitOne();
+                Assert.That(conn2.State, Is.EqualTo(ConnectionState.Closed));
+                Assert.That(conn2.FullState, Is.EqualTo(ConnectionState.Broken));
             }
+        }
+
+        #endregion
+
+        #region Client Encoding
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1065")]
+        public void ClientEncodingIsUTF8ByDefault()
+        {
+            using (var conn = OpenConnection())
+                Assert.That(conn.ExecuteScalar("SHOW client_encoding"), Is.EqualTo("UTF8"));
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1065")]
+        [Parallelizable(ParallelScope.None)]
+        public void ClientEncodingEnvVar()
+        {
+            using (var conn = OpenConnection())
+                Assert.That(conn.ExecuteScalar("SHOW client_encoding"), Is.Not.EqualTo("SQL_ASCII"));
+            var prevEnvVar = Environment.GetEnvironmentVariable("PGCLIENTENCODING");
+            Environment.SetEnvironmentVariable("PGCLIENTENCODING", "SQL_ASCII");
+            // Note that the pool is unaware of the environment variable, so if a connection is
+            // returned from the pool it may contain the wrong client_encoding
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ApplicationName = nameof(ClientEncodingEnvVar),
+                Pooling = false
+            };
+            try
+            {
+                using (var conn = OpenConnection(connString))
+                    Assert.That(conn.ExecuteScalar("SHOW client_encoding"), Is.EqualTo("SQL_ASCII"));
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("PGCLIENTENCODING", prevEnvVar);
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1065")]
+        public void ClientEncodingConnectionParam()
+        {
+            using (var conn = OpenConnection())
+                Assert.That(conn.ExecuteScalar("SHOW client_encoding"), Is.Not.EqualTo("SQL_ASCII"));
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) {
+                ClientEncoding = "SQL_ASCII",
+                Pooling = false
+            };
+            using (var conn = OpenConnection(connString))
+                Assert.That(conn.ExecuteScalar("SHOW client_encoding"), Is.EqualTo("SQL_ASCII"));
         }
 
         #endregion
@@ -488,8 +540,8 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Breaks a connector while it's in the pool, with a keepalive and without")]
-        [TestCase(false, TestName = "WithoutKeepAlive")]
-        [TestCase(false, TestName = "WithKeepAlive")]
+        [TestCase(false, TestName = "BreakConnectorInPoolWithoutKeepAlive")]
+        [TestCase(true, TestName = "BreakConnectorInPoolWithKeepAlive")]
         public void BreakConnectorInPool(bool keepAlive)
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { MaxPoolSize = 1 };
@@ -510,12 +562,17 @@ namespace Npgsql.Tests
                 Thread.Sleep(2000);
 
                 conn.Open();
-                Assert.That(conn.ProcessID, Is.EqualTo(connectorId));
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
                 if (keepAlive)
+                {
+                    Assert.That(conn.ProcessID, Is.Not.EqualTo(connectorId));
                     Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+                }
                 else
-                    Assert.That(() => conn.ExecuteScalar("SELECT 1"), Throws.Exception.TypeOf<IOException>());
+                {
+                    Assert.That(conn.ProcessID, Is.EqualTo(connectorId));
+                    Assert.That(() => conn.ExecuteScalar("SELECT 1"), Throws.Exception.TypeOf<NpgsqlException>());
+                }
             }
         }
 
@@ -733,45 +790,6 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void GetSchemaForeignKeys()
-        {
-            using (var conn = OpenConnection())
-            {
-                var dt = conn.GetSchema("ForeignKeys");
-                Assert.IsNotNull(dt);
-            }
-        }
-
-        [Test]
-        public void GetSchemaParameterMarkerFormats()
-        {
-            using (var conn = OpenConnection())
-            {
-                conn.ExecuteNonQuery("DROP TABLE IF EXISTS data; CREATE TABLE data (int INTEGER);");
-                conn.ExecuteNonQuery("INSERT INTO data (int) VALUES (4)");
-                var dt = conn.GetSchema("DataSourceInformation");
-                var parameterMarkerFormat = (string) dt.Rows[0]["ParameterMarkerFormat"];
-
-                using (var conn2 = new NpgsqlConnection(ConnectionString))
-                {
-                    conn2.Open();
-                    using (var command = conn2.CreateCommand())
-                    {
-                        const String parameterName = "@p_int";
-                        command.CommandText = "SELECT * FROM data WHERE int=" +
-                                              String.Format(parameterMarkerFormat, parameterName);
-                        command.Parameters.Add(new NpgsqlParameter(parameterName, 4));
-                        using (var reader = command.ExecuteReader())
-                        {
-                            Assert.IsTrue(reader.Read());
-                            // This is OK, when no exceptions are occurred.
-                        }
-                    }
-                }
-            }
-        }
-
-        [Test]
         public void GetConnectionState()
         {
             // Test created to PR #164
@@ -795,14 +813,14 @@ namespace Npgsql.Tests
             using (var conn = OpenConnection())
             {
                 // Make sure messages are in English
-                conn.ExecuteNonQuery(@"SET lc_messages='English_United States.1252'");
+                conn.ExecuteNonQuery(@"SET lc_messages='en_US.UTF8'");
                 conn.ExecuteNonQuery(@"
                         CREATE OR REPLACE FUNCTION pg_temp.emit_notice() RETURNS VOID AS
                         'BEGIN RAISE NOTICE ''testnotice''; END;'
                         LANGUAGE 'plpgsql';
                 ");
 
-                NpgsqlNotice notice = null;
+                PostgresNotice notice = null;
                 NoticeEventHandler action = (sender, args) => notice = args.Notice;
                 conn.Notice += action;
                 try
@@ -826,13 +844,6 @@ namespace Npgsql.Tests
             using (var cmd = new NpgsqlCommand("SELECT 1", conn))
             using (cmd.ExecuteReader())
                 Assert.That(() => conn.ExecuteScalar("SELECT 1"), Throws.Exception.TypeOf<InvalidOperationException>());
-        }
-
-        [Test]
-        public void NoContinuousProcessingWithSslStream()
-        {
-            using (var conn = new NpgsqlConnection(ConnectionString + ";UseSslStream=true;ContinuousProcessing=true"))
-                Assert.That(() => conn.Open(), Throws.Exception.TypeOf<ArgumentException>());
         }
 
         [Test]
@@ -877,7 +888,11 @@ namespace Npgsql.Tests
                 conn.UserCertificateValidationCallback = callback2;
 
                 conn.Open();
-                using (var conn2 = (NpgsqlConnection) ((ICloneable) conn).Clone())
+#if NET451
+                using (var conn2 = (NpgsqlConnection)((ICloneable)conn).Clone())
+#else
+                using (var conn2 = conn.Clone())
+#endif
                 {
                     Assert.That(conn2.ConnectionString, Is.EqualTo(conn.ConnectionString));
                     Assert.That(conn2.ProvideClientCertificatesCallback, Is.SameAs(callback1));
@@ -968,7 +983,8 @@ namespace Npgsql.Tests
         [IssueLink("https://github.com/npgsql/npgsql/issues/777")]
         public void ExceptionDuringClose()
         {
-            using (var conn = OpenConnection(new NpgsqlConnectionStringBuilder(ConnectionString) { Pooling = false }))
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Pooling = false };
+            using (var conn = OpenConnection(csb))
             {
                 var connectorId = conn.ProcessID;
 
@@ -979,56 +995,138 @@ namespace Npgsql.Tests
             }
         }
 
-        #region GetSchema
-
-        [Test]
-        public void GetSchema()
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1180")]
+        public void PoolByPassword()
         {
-            using (var conn = OpenConnection())
+            NpgsqlConnection goodConn = null;
+            try
             {
-                DataTable metaDataCollections = conn.GetSchema();
-                Assert.IsTrue(metaDataCollections.Rows.Count > 0, "There should be one or more metadatacollections returned. No connectionstring is required.");
+                var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+                {
+                    ApplicationName = nameof(PoolByPassword)
+                };
+                using (goodConn = new NpgsqlConnection(csb))
+                    goodConn.Open();
+                csb.Password = "badpasswd";
+                using (var conn = new NpgsqlConnection(csb))
+                    Assert.That(conn.Open, Throws.Exception.TypeOf<PostgresException>());
+            }
+            finally
+            {
+                if (goodConn != null)
+                    NpgsqlConnection.ClearPool(goodConn);
             }
         }
 
-        [Test]
-        public void GetSchemaWithDbMetaDataCollectionNames()
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1158")]
+        public void TableNamedRecord()
         {
             using (var conn = OpenConnection())
             {
-                DataTable metaDataCollections = conn.GetSchema(System.Data.Common.DbMetaDataCollectionNames.MetaDataCollections);
-                Assert.IsTrue(metaDataCollections.Rows.Count > 0, "There should be one or more metadatacollections returned.");
-                foreach (DataRow row in metaDataCollections.Rows)
+                conn.ExecuteNonQuery("CREATE TABLE record ()");
+                try
                 {
-                    var collectionName = (string)row["CollectionName"];
-                    //checking this collection
-                    if (collectionName != System.Data.Common.DbMetaDataCollectionNames.MetaDataCollections)
-                    {
-                        var collection = conn.GetSchema(collectionName);
-                        Assert.IsNotNull(collection, "Each of the advertised metadata collections should work");
-                    }
+                    conn.ReloadTypes();
+                    Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM record"), Is.Zero);
+                }
+                finally
+                {
+                    conn.ExecuteNonQuery("DROP TABLE record");
                 }
             }
         }
 
-        [Test]
-        public void GetSchemaWithRestrictions()
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/392")]
+        [LinuxIgnore]
+        public void NonUTF8Encoding()
         {
-            using (var conn = OpenConnection())
+            using (var adminConn = OpenConnection())
             {
-                DataTable metaDataCollections = conn.GetSchema(System.Data.Common.DbMetaDataCollectionNames.Restrictions);
-                Assert.IsTrue(metaDataCollections.Rows.Count > 0, "There should be one or more Restrictions returned.");
+                // Create the database with server encoding sql-ascii
+                adminConn.ExecuteNonQuery("DROP DATABASE IF EXISTS sqlascii");
+                adminConn.ExecuteNonQuery("CREATE DATABASE sqlascii ENCODING 'sql_ascii' TEMPLATE template0");
+                try
+                {
+                    // Insert some win1252 data
+                    var goodCsb = new NpgsqlConnectionStringBuilder(ConnectionString)
+                    {
+                        Database = "sqlascii",
+                        Encoding = "windows-1252",
+                        ClientEncoding = "sql-ascii",
+                        Pooling = false
+                    };
+                    using (var conn = OpenConnection(goodCsb))
+                    {
+                        conn.ExecuteNonQuery("CREATE TABLE foo (bar TEXT)");
+                        conn.ExecuteNonQuery("INSERT INTO foo (bar) VALUES ('ιθιθ')");
+                        Assert.That(conn.ExecuteScalar("SELECT * FROM foo"), Is.EqualTo("ιθιθ"));
+                    }
+
+                    // A normal connection with the default UTF8 encoding and client_encoding should fail
+                    var badCsb = new NpgsqlConnectionStringBuilder(ConnectionString)
+                    {
+                        Database = "sqlascii",
+                        Pooling = false
+                    };
+                    using (var conn = OpenConnection(badCsb))
+                    {
+                        Assert.That(() => conn.ExecuteScalar("SELECT * FROM foo"),
+                            Throws.Exception.TypeOf<PostgresException>()
+                                .With.Property(nameof(PostgresException.SqlState)).EqualTo("22021")
+                                .Or.TypeOf<DecoderFallbackException>()
+                        );
+                    }
+                }
+                finally
+                {
+                    adminConn.ExecuteNonQuery("DROP DATABASE IF EXISTS sqlascii");
+                }
             }
         }
 
+        #region pgpass
+
         [Test]
-        public void GetSchemaWithReservedWords()
+        public void UsePgPassFile()
         {
-            using (var conn = OpenConnection())
+            var file = SetupTestData();
+
+            try
             {
-                DataTable metaDataCollections = conn.GetSchema(System.Data.Common.DbMetaDataCollectionNames.ReservedWords);
-                Assert.IsTrue(metaDataCollections.Rows.Count > 0, "There should be one or more ReservedWords returned.");
+                var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
+                {
+                    Pooling = false,
+                    IntegratedSecurity = false,
+                    Password = null
+                };
+                using (OpenConnection(builder)) {}
             }
+            finally
+            {
+                RestorePriorConfiguration(file, _pgpassEnvVarValue);
+            }
+        }
+
+        string _pgpassEnvVarValue;
+
+        public string SetupTestData()
+        {
+            _pgpassEnvVarValue = Environment.GetEnvironmentVariable("PGPASSFILE");
+
+            // set up pgpass file with connection credentials
+            var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
+            var content = $"*:*:*:{builder.Username}:{builder.Password}";
+            var pgpassFile = Path.GetTempFileName();
+            File.WriteAllText(pgpassFile, content);
+            Environment.SetEnvironmentVariable("PGPASSFILE", pgpassFile);
+            return pgpassFile;
+        }
+
+        public void RestorePriorConfiguration(string fileName, string environmentVariableValue)
+        {
+            if (File.Exists(fileName))
+                File.Delete(fileName);
+            Environment.SetEnvironmentVariable("PGPASSFILE", _pgpassEnvVarValue);
         }
 
         #endregion

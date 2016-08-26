@@ -22,10 +22,6 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using System.Text;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 
@@ -38,32 +34,29 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     [TypeMapping("xid", NpgsqlDbType.Xid)]
     [TypeMapping("cid", NpgsqlDbType.Cid)]
     [TypeMapping("regtype", NpgsqlDbType.Regtype)]
-    internal class UInt32Handler : SimpleTypeHandler<uint>
+    class UInt32Handler : SimpleTypeHandler<uint>
     {
-        public override uint Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return (uint)buf.ReadInt32();
-        }
+        internal UInt32Handler(IBackendType backendType) : base(backendType) { }
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public override uint Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+            => (uint)buf.ReadInt32();
+
+        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
         {
             if (!(value is uint))
             {
                 var converted = Convert.ToUInt32(value);
                 if (parameter == null)
-                {
                     throw CreateConversionButNoParamException(value.GetType());
-                }
                 parameter.ConvertedValue = converted;
             }
             return 4;
         }
 
-        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
         {
-            if (parameter?.ConvertedValue != null) {
+            if (parameter?.ConvertedValue != null)
                 value = parameter.ConvertedValue;
-            }
             buf.WriteInt32((int)(uint)value);
         }
     }

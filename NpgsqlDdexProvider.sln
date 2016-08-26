@@ -1,53 +1,24 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2012
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NpgsqlDdexProvider2012", "src\NpgsqlDdexProvider\NpgsqlDdexProvider2012.csproj", "{249C6185-C3B5-4D28-A508-ABD975702A0B}"
-	ProjectSection(ProjectDependencies) = postProject
-		{9D13B739-62B1-4190-B386-7A9547304EB3} = {9D13B739-62B1-4190-B386-7A9547304EB3}
-		{100998C4-5B85-11E3-911C-0022198AB089} = {100998C4-5B85-11E3-911C-0022198AB089}
-	EndProjectSection
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NpgsqlDdexProvider2013", "src\NpgsqlDdexProvider\NpgsqlDdexProvider2013.csproj", "{7B567DD4-CADF-474E-80AD-C46A54EC3902}"
-	ProjectSection(ProjectDependencies) = postProject
-		{100998C4-5B85-11E3-911C-0022198AB089} = {100998C4-5B85-11E3-911C-0022198AB089}
-	EndProjectSection
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NpgsqlDdexProvider2015", "src\NpgsqlDdexProvider\NpgsqlDdexProvider2015.csproj", "{7F83D084-9084-45DA-86AC-E934395BFF74}"
-	ProjectSection(ProjectDependencies) = postProject
-		{100998C4-5B85-11E3-911C-0022198AB089} = {100998C4-5B85-11E3-911C-0022198AB089}
-	EndProjectSection
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Npgsql", "src\Npgsql\Npgsql.csproj", "{9D13B739-62B1-4190-B386-7A9547304EB3}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EntityFramework5.Npgsql", "src\EntityFramework5.Npgsql\EntityFramework5.Npgsql.csproj", "{100998C4-5B85-11E3-911C-0022198AB089}"
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NpgsqlDdexProvider2010", "src\NpgsqlDdexProvider\NpgsqlDdexProvider2010.csproj", "{AB1E833A-ECF6-4996-AEE0-72474ADD70F1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
+		Debug-net40|Any CPU = Debug-net40|Any CPU
 		Release|Any CPU = Release|Any CPU
+		Release-net40|Any CPU = Release-net40|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Release|Any CPU.Build.0 = Release|Any CPU
-		{7B567DD4-CADF-474E-80AD-C46A54EC3902}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{7B567DD4-CADF-474E-80AD-C46A54EC3902}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{7B567DD4-CADF-474E-80AD-C46A54EC3902}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{7B567DD4-CADF-474E-80AD-C46A54EC3902}.Release|Any CPU.Build.0 = Release|Any CPU
-		{7F83D084-9084-45DA-86AC-E934395BFF74}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{7F83D084-9084-45DA-86AC-E934395BFF74}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{7F83D084-9084-45DA-86AC-E934395BFF74}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
-		{7F83D084-9084-45DA-86AC-E934395BFF74}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{7F83D084-9084-45DA-86AC-E934395BFF74}.Release|Any CPU.Build.0 = Release|Any CPU
-		{9D13B739-62B1-4190-B386-7A9547304EB3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{9D13B739-62B1-4190-B386-7A9547304EB3}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{9D13B739-62B1-4190-B386-7A9547304EB3}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{9D13B739-62B1-4190-B386-7A9547304EB3}.Release|Any CPU.Build.0 = Release|Any CPU
-		{100998C4-5B85-11E3-911C-0022198AB089}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{100998C4-5B85-11E3-911C-0022198AB089}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{100998C4-5B85-11E3-911C-0022198AB089}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{100998C4-5B85-11E3-911C-0022198AB089}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AB1E833A-ECF6-4996-AEE0-72474ADD70F1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AB1E833A-ECF6-4996-AEE0-72474ADD70F1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AB1E833A-ECF6-4996-AEE0-72474ADD70F1}.Debug-net40|Any CPU.ActiveCfg = Debug-net40|Any CPU
+		{AB1E833A-ECF6-4996-AEE0-72474ADD70F1}.Debug-net40|Any CPU.Build.0 = Debug-net40|Any CPU
+		{AB1E833A-ECF6-4996-AEE0-72474ADD70F1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AB1E833A-ECF6-4996-AEE0-72474ADD70F1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AB1E833A-ECF6-4996-AEE0-72474ADD70F1}.Release-net40|Any CPU.ActiveCfg = Release-net40|Any CPU
+		{AB1E833A-ECF6-4996-AEE0-72474ADD70F1}.Release-net40|Any CPU.Build.0 = Release-net40|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

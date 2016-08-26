@@ -1,24 +1,25 @@
-﻿#if DNX46
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using NUnit.Common;
 using NUnitLite;
+using System.Reflection;
 
-// Exists as a temporary test runner for DNX
-// (see http://www.alteridem.net/2015/11/04/testing-net-core-using-nunit-3/)
+// Exists as a temporary test runner for dotnet cli
+// (see https://github.com/nunit/nunit/issues/1371)
 namespace Npgsql.Tests
 {
     public class Program
     {
-        public int Main(string[] args)
+        public static int Main(string[] args)
         {
-#if DNX46
+#if NET451
             return new AutoRun().Execute(args);
 #else
-            return new AutoRun().Execute(typeof(Program).GetTypeInfo().Assembly, Console.Out, Console.In, args);
+            var writer = new ExtendedTextWrapper(Console.Out);
+            return new AutoRun(typeof(Program).GetTypeInfo().Assembly).Execute(args, writer, Console.In);
 #endif
         }
     }
 }
-#endif

@@ -26,12 +26,12 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Diagnostics.Contracts;
 using System.Globalization;
 using System.Net.Sockets;
 using AsyncRewriter;
@@ -49,7 +49,7 @@ namespace Npgsql
 #if WITHDESIGN
     [System.Drawing.ToolboxBitmapAttribute(typeof(NpgsqlCommand)), ToolboxItem(true)]
 #endif
-#if DOTNET5_4
+#if NETSTANDARD1_3
     public sealed partial class NpgsqlCommand : DbCommand
 #else
     // ReSharper disable once RedundantNameQualifier
@@ -65,13 +65,26 @@ namespace Npgsql
         /// </summary>
         NpgsqlConnector _connector;
         NpgsqlTransaction _transaction;
-        String _commandText;
+        readonly SqlQueryParser _sqlParser = new SqlQueryParser();
+        string _commandText;
         int? _timeout;
         readonly NpgsqlParameterCollection _parameters = new NpgsqlParameterCollection();
 
-        List<NpgsqlStatement> _queries;
+        List<NpgsqlStatement> _statements;
 
-        int _queryIndex;
+        /// <summary>
+        /// Returns details about each statement that this command has executed.
+        /// Is only populated when an Execute* method is called.
+        /// </summary>
+        public IReadOnlyList<NpgsqlStatement> Statements => _statements.AsReadOnly();
+
+        int _writeStatementIndex;
+
+        /// <summary>
+        /// If part of the send happens asynchronously (see <see cref="SendRemaining"/>,
+        /// the Task for that remaining send is stored here.
+        /// </summary>
+        internal Task RemainingSendTask;
 
         UpdateRowSource _updateRowSource = UpdateRowSource.Both;
 
@@ -95,14 +108,6 @@ namespace Npgsql
         #region Constants
 
         internal const int DefaultTimeout = 30;
-
-        /// <summary>
-        /// Specifies the maximum number of statements we allow in a multiquery, separated by semicolons.
-        /// We limit this because of deadlocks: as we send Parse and Bind messages to the backend, the backend
-        /// replies with ParseComplete and BindComplete messages which we do not read until we finished sending
-        /// all messages. Once our buffer gets full the backend will get stuck writing, and then so will we.
-        /// </summary>
-        public const int MaxStatements = 5000;
 
         #endregion
 
@@ -136,6 +141,7 @@ namespace Npgsql
         /// <param name="transaction">The <see cref="NpgsqlTransaction">NpgsqlTransaction</see> in which the <see cref="NpgsqlCommand">NpgsqlCommand</see> executes.</param>
         public NpgsqlCommand(string cmdText, [CanBeNull] NpgsqlConnection connection, [CanBeNull] NpgsqlTransaction transaction)
         {
+            GC.SuppressFinalize(this);
             Init(cmdText);
             Connection = connection;
             Transaction = transaction;
@@ -145,7 +151,7 @@ namespace Npgsql
         {
             _commandText = cmdText;
             CommandType = CommandType.Text;
-            _queries = new List<NpgsqlStatement>();
+            _statements = new List<NpgsqlStatement>();
         }
 
         #endregion Constructors
@@ -165,10 +171,9 @@ namespace Npgsql
             {
                 if (value == null)
                     throw new ArgumentNullException(nameof(value));
-                Contract.EndContractBlock();
 
                 _commandText = value;
-                DeallocatePrepared();
+                Unprepare();
             }
         }
 
@@ -252,9 +257,8 @@ namespace Npgsql
         public override bool DesignTimeVisible { get; set; }
 
         /// <summary>
-        /// Gets or sets how command results are applied to the <see cref="System.Data.DataRow">DataRow</see>
-        /// when used by the <see cref="System.Data.Common.DbDataAdapter.Update(DataSet)">Update</see>
-        /// method of the <see cref="System.Data.Common.DbDataAdapter">DbDataAdapter</see>.
+        /// Gets or sets how command results are applied to the DataRow when used by the
+        /// DbDataAdapter.Update(DataSet) method.
         /// </summary>
         /// <value>One of the <see cref="System.Data.UpdateRowSource">UpdateRowSource</see> values.</value>
         [Category("Behavior"), DefaultValue(UpdateRowSource.Both)]
@@ -287,7 +291,7 @@ namespace Npgsql
             {
                 if (_isPrepared)
                 {
-                    Contract.Assert(Connection != null);
+                    Debug.Assert(Connection != null);
                     if (Connection.State != ConnectionState.Open || _prepareConnectionOpenId != Connection.OpenCounter) {
                         _isPrepared = false;
                     }
@@ -297,13 +301,18 @@ namespace Npgsql
 
             private set
             {
-                Contract.Requires(!value || Connection != null);
+                Debug.Assert(!value || Connection != null);
                 _isPrepared = value;
                 if (value) {
                     _prepareConnectionOpenId = Connection.OpenCounter;
                 }
             }
         }
+
+        /// <summary>
+        /// Returns whether this is a prepared statement that will persist when its connection is returned to the pool.
+        /// </summary>
+        public bool IsPersistent { get; private set; }
 
         #endregion Public properties
 
@@ -316,7 +325,7 @@ namespace Npgsql
         /// </summary>
         public bool AllResultTypesAreUnknown
         {
-            private get { return _allResultTypesAreUnknown; }
+            get { return _allResultTypesAreUnknown; }
             set
             {
                 // TODO: Check that this isn't modified after calling prepare
@@ -341,7 +350,7 @@ namespace Npgsql
         /// </remarks>
         public bool[] UnknownResultTypeList
         {
-            private get { return _unknownResultTypeList; }
+            get { return _unknownResultTypeList; }
             set
             {
                 // TODO: Check that this isn't modified after calling prepare
@@ -384,6 +393,8 @@ namespace Npgsql
                 Interlocked.Exchange(ref _state, newState);
             }
         }
+
+        SendState _sendState;
 
         #endregion State management
 
@@ -431,83 +442,179 @@ namespace Npgsql
         /// </summary>
         public override void Prepare()
         {
-            Prechecks();
-            if (Parameters.Any(p => !p.IsTypeExplicitlySet)) {
-                throw new InvalidOperationException("NpgsqlCommand.Prepare method requires all parameters to have an explicitly set type.");
-            }
+            _connector = CheckReadyAndGetConnector();
+            Prepare(_connector.Connection.Settings.PersistPrepared);
+        }
 
-            _connector = Connection.Connector;
-            Log.Debug("Preparing: " + CommandText, _connector.Id);
+        /// <summary>
+        /// Creates a prepared version of the command on a PostgreSQL server.
+        /// </summary>
+        /// <param name="persist">
+        /// If set to true, prepared statements are persisted when a pooled connection is closed for later use.
+        /// </param>
+        public void Prepare(bool persist)
+        {
+            _connector = CheckReadyAndGetConnector();
+            if (Parameters.Any(p => !p.IsTypeExplicitlySet))
+                throw new InvalidOperationException("The Prepare method requires all parameters to have an explicitly set type.");
+
+            Unprepare();
+            ProcessRawQuery();
+
+            if (Log.IsEnabled(NpgsqlLogLevel.Debug))
+            {
+                var sb = new StringBuilder("Preparing");
+                if (persist)
+                    sb.Append(" (persistent)");
+                sb.Append(": ").Append(CommandText);
+                Log.Debug(sb.ToString(), _connector.Id);
+            }
 
             using (_connector.StartUserAction())
             {
-                DeallocatePrepared();
-                ProcessRawQuery();
+                _sendState = SendState.Start;
+                _writeStatementIndex = 0;
 
-                for (var i = 0; i < _queries.Count; i++)
+                Debug.Assert(Statements.All(s => !s.IsPrepared));
+
+                var needToPrepare = false;
+                if (persist)
                 {
-                    var query = _queries[i];
-                    ParseMessage parseMessage;
-                    DescribeMessage describeMessage;
-                    if (i == 0)
+                    foreach (var statement in Statements)
                     {
-                        parseMessage = _connector.ParseMessage;
-                        describeMessage = _connector.DescribeMessage;
-                    }
-                    else
-                    {
-                        parseMessage = new ParseMessage();
-                        describeMessage = new DescribeMessage();
-                    }
-
-                    query.PreparedStatementName = _connector.NextPreparedStatementName();
-                    _connector.AddMessage(parseMessage.Populate(query, _connector.TypeHandlerRegistry));
-                    _connector.AddMessage(describeMessage.Populate(StatementOrPortal.Statement,
-                        query.PreparedStatementName));
-                }
-
-                _connector.AddMessage(SyncMessage.Instance);
-                _connector.SendAllMessages();
-
-                _queryIndex = 0;
-
-                while (true)
-                {
-                    var msg = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential);
-                    switch (msg.Code)
-                    {
-                    case BackendMessageCode.CompletedResponse: // prepended messages, e.g. begin transaction
-                    case BackendMessageCode.ParseComplete:
-                    case BackendMessageCode.ParameterDescription:
-                        continue;
-                    case BackendMessageCode.RowDescription:
-                        var description = (RowDescriptionMessage) msg;
-                        FixupRowDescription(description, _queryIndex == 0);
-                        _queries[_queryIndex++].Description = description;
-                        continue;
-                    case BackendMessageCode.NoData:
-                        _queries[_queryIndex++].Description = null;
-                        continue;
-                    case BackendMessageCode.ReadyForQuery:
-                        Contract.Assume(_queryIndex == _queries.Count);
-                        IsPrepared = true;
-                        return;
-                    default:
-                        throw _connector.UnexpectedMessageReceived(msg.Code);
+                        PreparedStatementInfo statementInfo;
+                        if (_connector.PersistentPreparedStatements.TryGetValue(statement.SQL, out statementInfo))
+                        {
+                            // Statement has already been prepared, no need to do anything
+                            statement.IsPrepared = true;
+                            statement.PreparedStatementName = statementInfo.Name;
+                            statement.Description = statementInfo.Description;
+                        }
+                        else
+                        {
+                            // Statement hasn't been prepared yet
+                            statement.PreparedStatementName = _connector.NextPersistentPreparedStatementName();
+                            needToPrepare = true;
+                        }
                     }
                 }
+                else  // Non-persisting prepare
+                {
+                    foreach (var statement in Statements)
+                        statement.PreparedStatementName = _connector.NextPreparedStatementName();
+                    needToPrepare = true;
+                }
+
+                if (needToPrepare)
+                {
+                    Send(PopulateParseDescribe);
+
+                    // Loop over statements, skipping those that are already prepared (because they were persisted)
+                    var isFirst = true;
+                    foreach (var statement in Statements.Where(s => !s.IsPrepared))
+                    {
+                        _connector.ReadExpecting<ParseCompleteMessage>();
+                        _connector.ReadExpecting<ParameterDescriptionMessage>();
+                        var msg = _connector.ReadMessage(DataRowLoadingMode.NonSequential);
+                        switch (msg.Code)
+                        {
+                        case BackendMessageCode.RowDescription:
+                            var description = (RowDescriptionMessage)msg;
+                            FixupRowDescription(description, isFirst);
+                            statement.Description = description;
+                            break;
+                        case BackendMessageCode.NoData:
+                            statement.Description = null;
+                            break;
+                        default:
+                            throw _connector.UnexpectedMessageReceived(msg.Code);
+                        }
+                        statement.IsPrepared = true;
+                        if (persist)
+                        {
+                            _connector.PersistentPreparedStatements.Add(statement.SQL, new PreparedStatementInfo
+                            {
+                                Name = statement.PreparedStatementName,
+                                Description = statement.Description
+                            });
+                        }
+                        else
+                            _connector.PreparedStatements.Add(statement.PreparedStatementName);
+                        isFirst = false;
+                    }
+
+                    _connector.ReadExpecting<ReadyForQueryMessage>();
+                }
+
+                CompleteRemainingSend();
+
+                IsPrepared = true;
+                IsPersistent = persist;
+
+                Debug.Assert(Statements.All(s => s.IsPrepared));
+                Debug.Assert(Statements.All(s => s.PreparedStatementName != null));
             }
         }
 
-        void DeallocatePrepared()
+        void Unprepare()
         {
-            if (!IsPrepared) { return; }
+            if (!IsPrepared)
+                return;
 
-            foreach (var query in _queries) {
-                _connector.PrependInternalMessage(new CloseMessage(StatementOrPortal.Statement, query.PreparedStatementName));
+            // For persistent prepared commands, we don't actually Close the server-side statements,
+            // we just detach our statements from the server-side ones.
+            if (IsPersistent)
+            {
+                foreach (var statement in Statements)
+                    statement.Unprepare();
+                IsPrepared = false;
+                IsPersistent = false;
             }
-            _connector.PrependInternalMessage(SyncMessage.Instance);
-            IsPrepared = false;
+            else
+            {
+                foreach (var statement in Statements)
+                    _connector.PreparedStatements.Remove(statement.PreparedStatementName);
+                ClosePreparedStatements();
+            }
+        }
+
+        /// <summary>
+        /// Unpersists a persistent prepared command.
+        /// </summary>
+        public void Unpersist()
+        {
+            // We want to allow users to unpersist without having to persist first
+            if (!IsPersistent)
+                Prepare(true);
+
+            _connector = CheckReadyAndGetConnector();
+            foreach (var statement in Statements)
+                _connector.PersistentPreparedStatements.Remove(statement.SQL);
+            ClosePreparedStatements();
+        }
+
+        void ClosePreparedStatements()
+        {
+            Debug.Assert(IsPrepared);
+            Debug.Assert(Statements.All(s => s.IsPrepared));
+
+            _connector = CheckReadyAndGetConnector();
+            using (_connector.StartUserAction())
+            {
+                _writeStatementIndex = 0;
+                Send(PopulateClose);
+                foreach (var statement in Statements)
+                {
+                    _connector.ReadExpecting<CloseCompletedMessage>();
+                    statement.Unprepare();
+                }
+                _connector.ReadExpecting<ReadyForQueryMessage>();
+
+                CompleteRemainingSend();
+
+                IsPrepared = false;
+                IsPersistent = false;
+            }
         }
 
         #endregion Prepare
@@ -516,17 +623,27 @@ namespace Npgsql
 
         void ProcessRawQuery()
         {
-            _queries.Clear();
+            NpgsqlStatement statement;
             switch (CommandType) {
             case CommandType.Text:
-                SqlQueryParser.ParseRawQuery(CommandText, _connection == null || _connection.UseConformantStrings, _parameters, _queries);
-                if (_queries.Count > 1 && _parameters.Any(p => p.IsOutputDirection)) {
+                _sqlParser.ParseRawQuery(CommandText, _connection == null || _connection.UseConformantStrings, _parameters, _statements);
+                if (_statements.Count > 1 && _parameters.Any(p => p.IsOutputDirection))
                     throw new NotSupportedException("Commands with multiple queries cannot have out parameters");
-                }
                 break;
+
             case CommandType.TableDirect:
-                _queries.Add(new NpgsqlStatement("SELECT * FROM " + CommandText, new List<NpgsqlParameter>()));
+                if (_statements.Count == 0)
+                    statement = new NpgsqlStatement();
+                else
+                {
+                    statement = _statements[0];
+                    statement.Reset();
+                    _statements.Clear();
+                }
+                _statements.Add(statement);
+                statement.SQL = "SELECT * FROM " + CommandText;
                 break;
+
             case CommandType.StoredProcedure:
                 var inputList = _parameters.Where(p => p.IsInputDirection).ToList();
                 var numInput = inputList.Count;
@@ -566,200 +683,76 @@ namespace Npgsql
                     }
                 }
                 sb.Append(')');
-                _queries.Add(new NpgsqlStatement(sb.ToString(), inputList));
+
+                if (_statements.Count == 0)
+                    statement = new NpgsqlStatement();
+                else
+                {
+                    statement = _statements[0];
+                    statement.Reset();
+                    _statements.Clear();
+                }
+                statement.SQL = sb.ToString();
+                statement.InputParameters.AddRange(inputList);
+                _statements.Add(statement);
                 break;
             default:
-                throw PGUtil.ThrowIfReached();
+                throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {CommandType} of enum {nameof(CommandType)}. Please file a bug.");
             }
-        }
-
-        #endregion
-
-        #region Frontend message creation
-
-        void ValidateAndCreateMessages(CommandBehavior behavior = CommandBehavior.Default)
-        {
-            _connector = Connection.Connector;
-            if (Parameters.Count > 65535) {
-                throw new Exception("A command cannot have more than 65535 parameters");
-            }
-            foreach (NpgsqlParameter p in Parameters.Where(p => p.IsInputDirection)) {
-                p.Bind(_connector.TypeHandlerRegistry);
-                p.LengthCache?.Clear();
-                p.ValidateAndGetLength();
-            }
-
-            // For prepared SchemaOnly queries, we already have the RowDescriptions from the Prepare phase.
-            // No need to send anything
-            if (IsPrepared && (behavior & CommandBehavior.SchemaOnly) != 0) {
-                return;
-            }
-
-            // Set the frontend timeout
-            _connector.UserCommandFrontendTimeout = CommandTimeout;
-            // If needed, prepend a "SET statement_timeout" message to set the backend timeout
-            _connector.PrependBackendTimeoutMessage(CommandTimeout);
-
-            // Create actual messages depending on scenario
-            if (IsPrepared) {
-                CreateMessagesPrepared(behavior);
-            } else {
-                if ((behavior & CommandBehavior.SchemaOnly) == 0) {
-                    CreateMessagesNonPrepared(behavior);
-                } else {
-                    CreateMessagesSchemaOnly(behavior);
-                }
-            }
-        }
-
-        void CreateMessagesNonPrepared(CommandBehavior behavior)
-        {
-            Contract.Requires((behavior & CommandBehavior.SchemaOnly) == 0);
-
-            ProcessRawQuery();
-
-            var portalNames = _queries.Count > 1
-                ? Enumerable.Range(0, _queries.Count).Select(i => "MQ" + i).ToArray()
-                : null;
-
-            for (var i = 0; i < _queries.Count; i++)
-            {
-                var query = _queries[i];
-
-                ParseMessage parseMessage;
-                DescribeMessage describeMessage;
-                BindMessage bindMessage;
-                if (i == 0)
-                {
-                    parseMessage = _connector.ParseMessage;
-                    describeMessage = _connector.DescribeMessage;
-                    bindMessage = _connector.BindMessage;
-                }
-                else
-                {
-                    parseMessage = new ParseMessage();
-                    describeMessage = new DescribeMessage();
-                    bindMessage = new BindMessage();
-                }
-
-                _connector.AddMessage(parseMessage.Populate(query, _connector.TypeHandlerRegistry));
-                _connector.AddMessage(describeMessage.Populate(StatementOrPortal.Statement));
-
-                bindMessage.Populate(
-                    query.InputParameters,
-                    _queries.Count == 1 ? "" : portalNames[i]
-                );
-                if (AllResultTypesAreUnknown) {
-                    bindMessage.AllResultTypesAreUnknown = AllResultTypesAreUnknown;
-                } else if (i == 0 && UnknownResultTypeList != null) {
-                    bindMessage.UnknownResultTypeList = UnknownResultTypeList;
-                }
-                _connector.AddMessage(bindMessage);
-            }
-
-            if (_queries.Count == 1) {
-                _connector.AddMessage(_connector.ExecuteMessage.Populate("", (behavior & CommandBehavior.SingleRow) != 0 ? 1 : 0));
-            } else
-                for (var i = 0; i < _queries.Count; i++) {
-                    // TODO: Verify SingleRow behavior for multiqueries
-                    _connector.AddMessage(new ExecuteMessage(portalNames[i], (behavior & CommandBehavior.SingleRow) != 0 ? 1 : 0));
-                    _connector.AddMessage(new CloseMessage(StatementOrPortal.Portal, portalNames[i]));
-                }
-            _connector.AddMessage(SyncMessage.Instance);
-        }
-
-        void CreateMessagesPrepared(CommandBehavior behavior)
-        {
-            for (var i = 0; i < _queries.Count; i++)
-            {
-                BindMessage bindMessage;
-                ExecuteMessage executeMessage;
-                if (i == 0)
-                {
-                    bindMessage = _connector.BindMessage;
-                    executeMessage = _connector.ExecuteMessage;
-                }
-                else
-                {
-                    bindMessage = new BindMessage();
-                    executeMessage = new ExecuteMessage();
-                }
-
-                var query = _queries[i];
-                bindMessage.Populate(query.InputParameters, "", query.PreparedStatementName);
-                if (AllResultTypesAreUnknown) {
-                    bindMessage.AllResultTypesAreUnknown = AllResultTypesAreUnknown;
-                } else if (i == 0 && UnknownResultTypeList != null) {
-                    bindMessage.UnknownResultTypeList = UnknownResultTypeList;
-                }
-                _connector.AddMessage(bindMessage);
-                _connector.AddMessage(executeMessage.Populate("", (behavior & CommandBehavior.SingleRow) != 0 ? 1 : 0));
-            }
-            _connector.AddMessage(SyncMessage.Instance);
-        }
-
-        void CreateMessagesSchemaOnly(CommandBehavior behavior)
-        {
-            Contract.Requires((behavior & CommandBehavior.SchemaOnly) != 0);
-
-            ProcessRawQuery();
-
-            for (var i = 0; i < _queries.Count; i++)
-            {
-                ParseMessage parseMessage;
-                DescribeMessage describeMessage;
-                if (i == 0) {
-                    parseMessage = _connector.ParseMessage;
-                    describeMessage = _connector.DescribeMessage;
-                } else {
-                    parseMessage = new ParseMessage();
-                    describeMessage = new DescribeMessage();
-                }
-
-                _connector.AddMessage(parseMessage.Populate(_queries[i], _connector.TypeHandlerRegistry));
-                _connector.AddMessage(describeMessage.Populate(StatementOrPortal.Statement));
-            }
-
-            _connector.AddMessage(SyncMessage.Instance);
         }
 
         #endregion
 
         #region Execute
 
+        void ValidateParameters()
+        {
+            foreach (NpgsqlParameter p in Parameters.Where(p => p.IsInputDirection))
+            {
+                p.Bind(Connection.Connector.TypeHandlerRegistry);
+                p.LengthCache?.Clear();
+                p.ValidateAndGetLength();
+            }
+        }
+
         [RewriteAsync]
         NpgsqlDataReader Execute(CommandBehavior behavior = CommandBehavior.Default)
         {
+            ValidateParameters();
+            if (!IsPrepared)
+                ProcessRawQuery();
+            if (Statements.Any(s => s.InputParameters.Count > 65535))
+                throw new Exception("A statement cannot have more than 65535 parameters");
             LogCommand();
+
             State = CommandState.InProgress;
             try
             {
-                _queryIndex = 0;
-                _connector.SendAllMessages();
+                _connector = Connection.Connector;
 
-                // We consume response messages, positioning ourselves before the response of the first
-                // Execute.
-                if (IsPrepared)
+                // If a cancellation is in progress, wait for it to "complete" before proceeding (#615)
+                lock (_connector.CancelLock) { }
+
+                // Send protocol messages for the command
+                // Unless this is a prepared SchemaOnly command, in which case we already have the RowDescriptions
+                // from the Prepare phase (no need to send anything).
+                if (!IsPrepared || (behavior & CommandBehavior.SchemaOnly) == 0)
                 {
-                    if ((behavior & CommandBehavior.SchemaOnly) == 0)
-                    {
-                        // No binding in SchemaOnly mode
-                        var msg = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential);
-                        Contract.Assert(msg is BindCompleteMessage);
-                    }
-                }
-                else
-                {
-                    IBackendMessage msg;
-                    do
-                    {
-                        msg = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential);
-                        Contract.Assert(msg != null);
-                    } while (!ProcessMessageForUnprepared(msg, behavior));
+                    _connector.UserTimeout = CommandTimeout * 1000;
+
+                    _sendState = SendState.Start;
+                    _writeStatementIndex = 0;
+
+                    if (IsPrepared)
+                        Send(PopulateExecutePrepared);
+                    else if ((behavior & CommandBehavior.SchemaOnly) == 0)
+                        Send(PopulateExecuteNonPrepared);
+                    else
+                        Send(PopulateParseDescribe);
                 }
 
-                var reader = new NpgsqlDataReader(this, behavior, _queries);
-                reader.Init();
+                var reader = new NpgsqlDataReader(this, behavior, _statements);
+                reader.NextResult();
                 _connector.CurrentReader = reader;
                 return reader;
             }
@@ -770,37 +763,280 @@ namespace Npgsql
             }
         }
 
-        bool ProcessMessageForUnprepared(IBackendMessage msg, CommandBehavior behavior)
-        {
-            Contract.Requires(!IsPrepared);
+        #endregion
 
-            switch (msg.Code) {
-            case BackendMessageCode.CompletedResponse:  // e.g. begin transaction
-            case BackendMessageCode.ParseComplete:
-            case BackendMessageCode.ParameterDescription:
-                return false;
-            case BackendMessageCode.RowDescription:
-                Contract.Assert(_queryIndex < _queries.Count);
-                var description = (RowDescriptionMessage)msg;
-                FixupRowDescription(description, _queryIndex == 0);
-                _queries[_queryIndex].Description = description;
-                if ((behavior & CommandBehavior.SchemaOnly) != 0) {
-                    _queryIndex++;
+        #region Send
+
+        delegate bool PopulateMethod(ref DirectBuffer directBuf);
+
+        [RewriteAsync]
+        void Send(PopulateMethod populateMethod)
+        {
+            while (true)
+            {
+                var directBuf = new DirectBuffer();
+                var completed = populateMethod(ref directBuf);
+                _connector.SendBuffer();
+                if (completed)
+                    break;  // Sent all messages
+
+                // The following is an optimization hack for writing large byte arrays without passing
+                // through our buffer
+                if (directBuf.Buffer != null)
+                {
+                    _connector.WriteBuffer.DirectWrite(directBuf.Buffer, directBuf.Offset, directBuf.Size == 0 ? directBuf.Buffer.Length : directBuf.Size);
+                    directBuf.Buffer = null;
+                    directBuf.Size = 0;
                 }
-                return false;
-            case BackendMessageCode.NoData:
-                Contract.Assert(_queryIndex < _queries.Count);
-                _queries[_queryIndex].Description = null;
-                return false;
-            case BackendMessageCode.BindComplete:
-                Contract.Assume((behavior & CommandBehavior.SchemaOnly) == 0);
-                return ++_queryIndex == _queries.Count;
-            case BackendMessageCode.ReadyForQuery:
-                Contract.Assume((behavior & CommandBehavior.SchemaOnly) != 0);
-                return true;  // End of a SchemaOnly command
-            default:
-                throw _connector.UnexpectedMessageReceived(msg.Code);
+
+                if (_writeStatementIndex > 0)
+                {
+                    // We've send all the messages for the first statement in a multistatement command.
+                    // If we continue blocking writes for the rest of the messages, we risk a deadlock where
+                    // PostgreSQL sends large results for the first statement, while we're sending large
+                    // parameter data for the second. To avoid this, switch to async sends.
+                    // See #641
+                    RemainingSendTask = SendRemaining(populateMethod, CancellationToken.None);
+                    return;
+                }
             }
+        }
+
+        /// <summary>
+        /// This method is used to asynchronously sends all remaining protocol messages for statements
+        /// beyond the first one, and *without* waiting for the send to complete. This technique is
+        /// used to avoid the deadlock described in #641 by allowing the user to read query results
+        /// while at the same time sending messages for later statements.
+        /// </summary>
+        async Task SendRemaining(PopulateMethod populateMethod, CancellationToken cancellationToken)
+        {
+            Debug.Assert(_writeStatementIndex > 0);
+            try
+            {
+                while (true)
+                {
+                    var directBuf = new DirectBuffer();
+                    var completed = populateMethod(ref directBuf);
+                    await _connector.SendBufferAsync(cancellationToken).ConfigureAwait(false);
+                    if (completed)
+                        return; // Sent all messages
+
+                    // The following is an optimization hack for writing large byte arrays without passing
+                    // through our buffer
+                    if (directBuf.Buffer != null)
+                    {
+                        await _connector.WriteBuffer.DirectWriteAsync(directBuf.Buffer, directBuf.Offset,
+                                directBuf.Size == 0 ? directBuf.Buffer.Length : directBuf.Size, cancellationToken
+                        ).ConfigureAwait(false);
+                        directBuf.Buffer = null;
+                        directBuf.Size = 0;
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Error("Exception while asynchronously sending remaining messages", e, _connector.Id);
+            }
+        }
+
+        /// <summary>
+        /// Waits until any background async send task completes.
+        /// </summary>
+        internal void CompleteRemainingSend()
+        {
+            if (RemainingSendTask != null)
+            {
+                RemainingSendTask.Wait();
+                RemainingSendTask = null;
+            }
+        }
+
+        #endregion
+
+        #region Message Creation / Population
+
+        /// <summary>
+        /// Populates the send buffer with protocol messages for the execution of non-prepared statement(s).
+        /// </summary>
+        /// <returns>
+        /// true whether all messages could be populated in the buffer, false otherwise (method needs to be
+        /// called again)
+        /// </returns>
+        bool PopulateExecuteNonPrepared(ref DirectBuffer directBuf)
+        {
+            Debug.Assert(_connector != null);
+
+            var buf = _connector.WriteBuffer;
+            for (; _writeStatementIndex < _statements.Count; _writeStatementIndex++)
+            {
+                var statement = _statements[_writeStatementIndex];
+                switch (_sendState)
+                {
+                case SendState.Start:
+                    _connector.ParseMessage.Populate(statement, _connector.TypeHandlerRegistry);
+                    _sendState = SendState.Parse;
+                    goto case SendState.Parse;
+
+                case SendState.Parse:
+                    if (!_connector.ParseMessage.Write(buf))
+                        return false;
+                    var bind = _connector.BindMessage;
+                    bind.Populate(statement.InputParameters);
+                    if (AllResultTypesAreUnknown)
+                        bind.AllResultTypesAreUnknown = AllResultTypesAreUnknown;
+                    else if (_writeStatementIndex == 0 && UnknownResultTypeList != null)
+                        bind.UnknownResultTypeList = UnknownResultTypeList;
+                    _sendState = SendState.Bind;
+                    goto case SendState.Bind;
+
+                case SendState.Bind:
+                    if (!_connector.BindMessage.Write(buf, ref directBuf))
+                        return false;
+                    var describe = _connector.DescribeMessage;
+                    describe.Populate(StatementOrPortal.Portal);
+                    _sendState = SendState.Describe;
+                    goto case SendState.Describe;
+
+                case SendState.Describe:
+                    describe = _connector.DescribeMessage;
+                    if (describe.Length > buf.WriteSpaceLeft)
+                        return false;
+                    describe.WriteFully(buf);
+                    var execute = _connector.ExecuteMessage;
+                    execute.Populate();
+                    _sendState = SendState.Execute;
+                    goto case SendState.Execute;
+
+                case SendState.Execute:
+                    execute = _connector.ExecuteMessage;
+                    if (execute.Length > buf.WriteSpaceLeft)
+                        return false;
+                    execute.WriteFully(buf);
+                    _sendState = SendState.Start;
+                    continue;
+
+                default:
+                    throw new ArgumentOutOfRangeException($"Invalid state {_sendState} in {nameof(PopulateExecuteNonPrepared)}");
+                }
+            }
+            if (SyncMessage.Instance.Length > buf.WriteSpaceLeft)
+                return false;
+            SyncMessage.Instance.WriteFully(buf);
+            return true;
+        }
+
+        /// <summary>
+        /// Populates the send buffer with protocol messages for the execution of prepared statement(s).
+        /// </summary>
+        /// <returns>
+        /// true whether all messages could be populated in the buffer, false otherwise (method needs to be
+        /// called again)
+        /// </returns>
+        bool PopulateExecutePrepared(ref DirectBuffer directBuf)
+        {
+            Debug.Assert(_connector != null);
+
+            var buf = _connector.WriteBuffer;
+            for (; _writeStatementIndex < _statements.Count; _writeStatementIndex++)
+            {
+                var statement = _statements[_writeStatementIndex];
+                switch (_sendState)
+                {
+                case SendState.Start:
+                    var bind = _connector.BindMessage;
+                    bind.Populate(statement.InputParameters, "", statement.PreparedStatementName);
+                    if (AllResultTypesAreUnknown)
+                        bind.AllResultTypesAreUnknown = AllResultTypesAreUnknown;
+                    else if (_writeStatementIndex == 0 && UnknownResultTypeList != null)
+                        bind.UnknownResultTypeList = UnknownResultTypeList;
+                    _sendState = SendState.Bind;
+                    goto case SendState.Bind;
+
+                case SendState.Bind:
+                    if (!_connector.BindMessage.Write(buf, ref directBuf))
+                        return false;
+                    var execute = _connector.ExecuteMessage;
+                    execute.Populate();
+                    _sendState = SendState.Execute;
+                    goto case SendState.Execute;
+
+                case SendState.Execute:
+                    execute = _connector.ExecuteMessage;
+                    if (execute.Length > buf.WriteSpaceLeft)
+                        return false;
+                    execute.WriteFully(buf);
+                    _sendState = SendState.Start;
+                    continue;
+
+                default:
+                    throw new ArgumentOutOfRangeException($"Invalid state {_sendState} in {nameof(PopulateExecutePrepared)}");
+                }
+            }
+            if (SyncMessage.Instance.Length > buf.WriteSpaceLeft)
+                return false;
+            SyncMessage.Instance.WriteFully(buf);
+            return true;
+        }
+
+        bool PopulateParseDescribe(ref DirectBuffer directBuf)
+        {
+            Debug.Assert(_connector != null);
+
+            var buf = _connector.WriteBuffer;
+            for (; _writeStatementIndex < _statements.Count; _writeStatementIndex++)
+            {
+                var statement = _statements[_writeStatementIndex];
+
+                // Statement doesn't need preparation (persistent)
+                if (statement.IsPrepared)
+                    continue;
+
+                switch (_sendState)
+                {
+                case SendState.Start:
+                    _connector.ParseMessage.Populate(statement, _connector.TypeHandlerRegistry);
+                    _sendState = SendState.Parse;
+                    goto case SendState.Parse;
+
+                case SendState.Parse:
+                    if (!_connector.ParseMessage.Write(buf))
+                        return false;
+                    var describe = _connector.DescribeMessage;
+                    describe.Populate(StatementOrPortal.Statement, statement.PreparedStatementName);
+                    _sendState = SendState.Describe;
+                    goto case SendState.Describe;
+
+                case SendState.Describe:
+                    describe = _connector.DescribeMessage;
+                    if (!describe.Write(buf))
+                        return false;
+                    _sendState = SendState.Start;
+                    continue;
+
+                default:
+                    throw new ArgumentOutOfRangeException($"Invalid state {_sendState} in {nameof(PopulateParseDescribe)}");
+                }
+            }
+            if (!SyncMessage.Instance.Write(buf))
+                return false;
+            return true;
+        }
+
+        bool PopulateClose(ref DirectBuffer directBuf)
+        {
+            Debug.Assert(_connector != null);
+
+            var buf = _connector.WriteBuffer;
+            for (; _writeStatementIndex < _statements.Count; _writeStatementIndex++)
+            {
+                var statement = _statements[_writeStatementIndex];
+                var closeMsg = _connector.CloseMessage.Populate(StatementOrPortal.Statement, statement.PreparedStatementName);
+                if (!closeMsg.Write(buf))
+                    return false;
+            }
+            if (!SyncMessage.Instance.Write(buf))
+                return false;
+            return true;
         }
 
         #endregion
@@ -811,10 +1047,7 @@ namespace Npgsql
         /// Executes a SQL statement against the connection and returns the number of rows affected.
         /// </summary>
         /// <returns>The number of rows affected if known; -1 otherwise.</returns>
-        public override int ExecuteNonQuery()
-        {
-            return ExecuteNonQueryInternal();
-        }
+        public override int ExecuteNonQuery() => ExecuteNonQueryInternal();
 
         /// <summary>
         /// Asynchronous version of <see cref="ExecuteNonQuery"/>
@@ -825,35 +1058,78 @@ namespace Npgsql
         {
             cancellationToken.ThrowIfCancellationRequested();
             using (cancellationToken.Register(Cancel))
-            {
-                try
-                {
-                    return await ExecuteNonQueryInternalAsync(cancellationToken).ConfigureAwait(false);
-                }
-                catch (NpgsqlException e)
-                {
-                    if (e.Code == "57014")
-                        throw new TaskCanceledException(e.Message);
-                    throw;
-                }
-            }
+                return await ExecuteNonQueryInternalAsync(cancellationToken).ConfigureAwait(false);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [RewriteAsync]
         int ExecuteNonQueryInternal()
         {
-            Prechecks();
-            Log.Trace("ExecuteNonQuery", Connection.Connector.Id);
-            using (Connection.Connector.StartUserAction())
+            var connector = CheckReadyAndGetConnector();
+            using (connector.StartUserAction())
             {
-                ValidateAndCreateMessages();
-                NpgsqlDataReader reader;
-                using (reader = Execute())
+                Log.Trace("ExecuteNonQuery", connector.Id);
+
+                // Optimization: unprepared unparameterized non-queries can go through the PostgreSQL
+                // simple protocol which is more efficient
+                if (!IsPrepared && Parameters.Count == 0)
+                    return ExecuteSimple();
+
+                using (var reader = Execute())
                 {
                     while (reader.NextResult()) {}
+                    reader.Close();
+                    return reader.RecordsAffected;
                 }
-                return reader.RecordsAffected;
+            }
+        }
+
+        int ExecuteSimple()
+        {
+            ProcessRawQuery();
+            LogCommand();
+
+            var connector = Connection.Connector;
+
+            // If a cancellation is in progress, wait for it to "complete" before proceeding (#615)
+            lock (connector.CancelLock) { }
+
+            connector.UserTimeout = CommandTimeout * 1000;
+            State = CommandState.InProgress;
+
+            try
+            {
+                var queryMessage = connector.QueryMessage;
+                queryMessage.Populate(CommandText);
+                while (!queryMessage.Write(connector.WriteBuffer))
+                    connector.SendBuffer();
+                connector.SendBuffer();
+
+                var statementIndex = 0;
+                var recordsAffected = 0;
+                while (true)
+                {
+                    var msg = connector.ReadMessage(DataRowLoadingMode.Skip);
+                    switch (msg.Code)
+                    {
+                    case BackendMessageCode.CompletedResponse:
+                        var completedMsg = (CommandCompleteMessage)msg;
+                        Statements[statementIndex++].ApplyCommandComplete(completedMsg);
+                        recordsAffected += (int)completedMsg.Rows;
+                        continue;
+                    case BackendMessageCode.EmptyQueryResponse:
+                        statementIndex++;
+                        continue;
+                    case BackendMessageCode.ReadyForQuery:
+                        return recordsAffected;
+                    default:
+                        continue;
+                    }
+                }
+            }
+            finally
+            {
+                State = CommandState.Idle;
             }
         }
 
@@ -868,10 +1144,7 @@ namespace Npgsql
         /// <returns>The first column of the first row in the result set,
         /// or a null reference if the result set is empty.</returns>
         [CanBeNull]
-        public override object ExecuteScalar()
-        {
-            return ExecuteScalarInternal();
-        }
+        public override object ExecuteScalar() => ExecuteScalarInternal();
 
         /// <summary>
         /// Asynchronous version of <see cref="ExecuteScalar"/>
@@ -884,16 +1157,7 @@ namespace Npgsql
             cancellationToken.ThrowIfCancellationRequested();
             using (cancellationToken.Register(Cancel))
             {
-                try
-                {
-                    return await ExecuteScalarInternalAsync(cancellationToken).ConfigureAwait(false);
-                }
-                catch (NpgsqlException e)
-                {
-                    if (e.Code == "57014")
-                        throw new TaskCanceledException(e.Message);
-                    throw;
-                }
+                return await ExecuteScalarInternalAsync(cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -902,16 +1166,12 @@ namespace Npgsql
         [CanBeNull]
         object ExecuteScalarInternal()
         {
-            Prechecks();
-            Log.Trace("ExecuteNonScalar", Connection.Connector.Id);
-            using (Connection.Connector.StartUserAction())
+            var connector = CheckReadyAndGetConnector();
+            using (connector.StartUserAction())
             {
-                var behavior = CommandBehavior.SequentialAccess | CommandBehavior.SingleRow;
-                ValidateAndCreateMessages(behavior);
-                using (var reader = Execute(behavior))
-                {
+                Log.Trace("ExecuteNonScalar", connector.Id);
+                using (var reader = Execute(CommandBehavior.SequentialAccess | CommandBehavior.SingleRow))
                     return reader.Read() && reader.FieldCount != 0 ? reader.GetValue(0) : null;
-                }
             }
         }
 
@@ -927,10 +1187,7 @@ namespace Npgsql
         /// DataReader.
         /// </remarks>
         /// <returns>A DbDataReader object.</returns>
-        public new NpgsqlDataReader ExecuteReader()
-        {
-            return (NpgsqlDataReader)base.ExecuteReader();
-        }
+        public new NpgsqlDataReader ExecuteReader() => (NpgsqlDataReader) base.ExecuteReader();
 
         /// <summary>
         /// Executes the CommandText against the Connection, and returns an DbDataReader using one
@@ -941,10 +1198,7 @@ namespace Npgsql
         /// DataReader.
         /// </remarks>
         /// <returns>A DbDataReader object.</returns>
-        public new NpgsqlDataReader ExecuteReader(CommandBehavior behavior)
-        {
-            return (NpgsqlDataReader)base.ExecuteReader(behavior);
-        }
+        public new NpgsqlDataReader ExecuteReader(CommandBehavior behavior) => (NpgsqlDataReader) base.ExecuteReader(behavior);
 
         /// <summary>
         /// Executes the command text against the connection.
@@ -952,44 +1206,28 @@ namespace Npgsql
         /// <param name="behavior">An instance of <see cref="CommandBehavior"/>.</param>
         /// <param name="cancellationToken">A task representing the operation.</param>
         /// <returns></returns>
-        protected async override Task<DbDataReader> ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
+        protected override async Task<DbDataReader> ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
             using (cancellationToken.Register(Cancel))
-            {
-                try
-                {
-                    return await ExecuteDbDataReaderInternalAsync(behavior, cancellationToken).ConfigureAwait(false);
-                }
-                catch (NpgsqlException e)
-                {
-                    if (e.Code == "57014")
-                        throw new TaskCanceledException(e.Message);
-                    throw;
-                }
-            }
+                return await ExecuteDbDataReaderInternalAsync(behavior, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
         /// Executes the command text against the connection.
         /// </summary>
-        protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior)
-        {
-            return ExecuteDbDataReaderInternal(behavior);
-        }
+        [NotNull]
+        protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior) => ExecuteDbDataReaderInternal(behavior);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [RewriteAsync]
         NpgsqlDataReader ExecuteDbDataReaderInternal(CommandBehavior behavior)
         {
-            Prechecks();
-
-            Log.Trace("ExecuteReader", Connection.Connector.Id);
-
-            Connection.Connector.StartUserAction();
+            var connector = CheckReadyAndGetConnector();
+            connector.StartUserAction();
             try
             {
-                ValidateAndCreateMessages(behavior);
+                Log.Trace("ExecuteReader", connector.Id);
                 return Execute(behavior);
             }
             catch
@@ -998,10 +1236,7 @@ namespace Npgsql
 
                 // Close connection if requested even when there is an error.
                 if ((behavior & CommandBehavior.CloseConnection) == CommandBehavior.CloseConnection)
-                {
                     _connection.Close();
-                }
-
                 throw;
             }
         }
@@ -1016,7 +1251,7 @@ namespace Npgsql
         protected override DbTransaction DbTransaction
         {
             get { return Transaction; }
-            set { Transaction = (NpgsqlTransaction)value; }
+            set { Transaction = (NpgsqlTransaction) value; }
         }
 
         /// <summary>
@@ -1028,7 +1263,6 @@ namespace Npgsql
 #if WITHDESIGN
         [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 #endif
-
         public new NpgsqlTransaction Transaction
         {
             get
@@ -1039,10 +1273,7 @@ namespace Npgsql
                 }
                 return _transaction;
             }
-            set
-            {
-                _transaction = value;
-            }
+            set { _transaction = value; }
         }
 
         #endregion Transactions
@@ -1055,13 +1286,12 @@ namespace Npgsql
         /// <remarks>As per the specs, no exception will be thrown by this method in case of failure</remarks>
         public override void Cancel()
         {
-            if (State == CommandState.Disposed)
-                throw new ObjectDisposedException(GetType().FullName);
-            if (Connection == null)
-                throw new InvalidOperationException("Connection property has not been initialized.");
+            var connector = Connection?.Connector;
+            if (connector == null)
+                return;
 
-            var connector = Connection.Connector;
-            if (State != CommandState.InProgress) {
+            if (State != CommandState.InProgress)
+            {
                 Log.Debug($"Skipping cancel because command is in state {State}", connector.Id);
                 return;
             }
@@ -1075,9 +1305,7 @@ namespace Npgsql
             {
                 var socketException = e.InnerException as SocketException;
                 if (socketException == null || socketException.SocketErrorCode != SocketError.ConnectionReset)
-                {
-                    Log.Warn("Exception caught while attempting to cancel command", e, connector.Id);
-                }
+                    Log.Debug("Exception caught while attempting to cancel command", e, connector.Id);
             }
         }
 
@@ -1097,15 +1325,10 @@ namespace Npgsql
             {
                 // Note: we only actually perform cleanup here if called from Dispose() (disposing=true), and not
                 // if called from a finalizer (disposing=false). This is because we cannot perform any SQL
-                // operations from the finalizer (connection may be in use by someone else).
-                // We can implement a queue-based solution that will perform cleanup during the next possible
-                // window, but this isn't trivial (should not occur in transactions because of possible exceptions,
-                // etc.).
-
+                // operations from the finalizer (connection may be in use by someone else). Prepared statements
+                // which aren't explicitly disposed are leaked until the connection is closed.
                 if (IsPrepared)
-                {
-                    DeallocatePrepared();
-                }
+                    Unprepare();
             }
             Transaction = null;
             Connection = null;
@@ -1119,64 +1342,40 @@ namespace Npgsql
 
         /// <summary>
         /// Fixes up the text/binary flag on result columns.
-        /// Since we send the Describe command right after the Parse and before the Bind, the resulting RowDescription
+        /// Since Prepare() describes a statement rather than a portal, the resulting RowDescription
         /// will have text format on all result columns. Fix that up.
         /// </summary>
         /// <remarks>
         /// Note that UnknownResultTypeList only applies to the first query, while AllResultTypesAreUnknown applies
         /// to all of them.
         /// </remarks>
-        void FixupRowDescription(RowDescriptionMessage rowDescription, bool isFirst)
+        internal void FixupRowDescription(RowDescriptionMessage rowDescription, bool isFirst)
         {
             for (var i = 0; i < rowDescription.NumFields; i++)
-            {
-                var field = rowDescription[i];
-                field.FormatCode =
-                    (UnknownResultTypeList == null || !isFirst ? AllResultTypesAreUnknown : UnknownResultTypeList[i])
-                    ? FormatCode.Text
-                    : FormatCode.Binary;
-                if (field.FormatCode == FormatCode.Text)
-                {
-                    field.Handler = Connection.Connector.TypeHandlerRegistry.UnrecognizedTypeHandler;
-                }
-            }
+                rowDescription[i].FormatCode = (UnknownResultTypeList == null || !isFirst ? AllResultTypesAreUnknown : UnknownResultTypeList[i]) ? FormatCode.Text : FormatCode.Binary;
         }
 
         void LogCommand()
         {
-            if (!Log.IsEnabled(NpgsqlLogLevel.Debug)) {
+            if (!Log.IsEnabled(NpgsqlLogLevel.Debug))
                 return;
-            }
 
             var sb = new StringBuilder();
             sb.Append("Executing statement(s):");
-            foreach (var s in _queries)
-            {
-                sb
-                    .AppendLine()
-                    .Append("\t")
-                    .Append(s.SQL);
-            }
+            foreach (var s in _statements)
+                sb.AppendLine().Append("\t").Append(s.SQL);
 
             if (NpgsqlLogManager.IsParameterLoggingEnabled && Parameters.Any())
             {
-                sb
-                    .AppendLine()
-                    .AppendLine("Parameters:");
+                sb.AppendLine().AppendLine("Parameters:");
                 for (var i = 0; i < Parameters.Count; i++)
-                {
-                    sb
-                        .Append("\t$")
-                        .Append(i + 1)
-                        .Append(": ")
-                        .Append(Convert.ToString(Parameters[i].Value, CultureInfo.InvariantCulture));
-                }
+                    sb.Append("\t$").Append(i + 1).Append(": ").Append(Convert.ToString(Parameters[i].Value, CultureInfo.InvariantCulture));
             }
 
             Log.Debug(sb.ToString(), Connection.Connector.Id);
         }
 
-#if NET45 || NET451 || DNX451
+#if NET45 || NET451
         /// <summary>
         /// Create a new command based on this one.
         /// </summary>
@@ -1196,35 +1395,28 @@ namespace Npgsql
         {
             var clone = new NpgsqlCommand(CommandText, Connection, Transaction)
             {
-                CommandTimeout = CommandTimeout,
-                CommandType = CommandType,
-                DesignTimeVisible = DesignTimeVisible,
-                _allResultTypesAreUnknown = _allResultTypesAreUnknown,
-                _unknownResultTypeList = _unknownResultTypeList,
-                ObjectResultTypes = ObjectResultTypes
+                CommandTimeout = CommandTimeout, CommandType = CommandType, DesignTimeVisible = DesignTimeVisible, _allResultTypesAreUnknown = _allResultTypesAreUnknown, _unknownResultTypeList = _unknownResultTypeList, ObjectResultTypes = ObjectResultTypes
             };
             _parameters.CloneTo(clone._parameters);
             return clone;
         }
 
-        void Prechecks()
+        NpgsqlConnector CheckReadyAndGetConnector()
         {
             if (State == CommandState.Disposed)
                 throw new ObjectDisposedException(GetType().FullName);
             if (Connection == null)
                 throw new InvalidOperationException("Connection property has not been initialized.");
-            Connection.CheckReady();
+            return Connection.CheckReadyAndGetConnector();
         }
 
-        #endregion
-
-        #region Invariants
-
-        [ContractInvariantMethod]
-        void ObjectInvariants()
+        enum SendState
         {
-            Contract.Invariant(!(AllResultTypesAreUnknown && UnknownResultTypeList != null));
-            Contract.Invariant(Connection != null || !IsPrepared);
+            Start,
+            Parse,
+            Bind,
+            Describe,
+            Execute
         }
 
         #endregion

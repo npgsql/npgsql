@@ -21,13 +21,7 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using System;
-using System.Collections.Generic;
-using System.Diagnostics.Contracts;
-using System.Globalization;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
+using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 
@@ -40,26 +34,24 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-geometric.html
     /// </remarks>
     [TypeMapping("line", NpgsqlDbType.Line, typeof(NpgsqlLine))]
-    internal class LineHandler : SimpleTypeHandler<NpgsqlLine>, ISimpleTypeHandler<string>
+    class LineHandler : SimpleTypeHandler<NpgsqlLine>, ISimpleTypeHandler<string>
     {
-        public override NpgsqlLine Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return new NpgsqlLine(buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble());
-        }
+        internal LineHandler(IBackendType backendType) : base(backendType) { }
 
-        string ISimpleTypeHandler<string>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return Read(buf, len, fieldDescription).ToString();
-        }
+        public override NpgsqlLine Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+            => new NpgsqlLine(buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble());
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => Read(buf, len, fieldDescription).ToString();
+
+        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
         {
             if (!(value is NpgsqlLine))
                 throw CreateConversionException(value.GetType());
             return 24;
         }
 
-        public override void Write(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
         {
             var v = (NpgsqlLine)value;
             buf.WriteDouble(v.A);

@@ -21,14 +21,9 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
 namespace Npgsql.BackendMessages
 {
-    internal class BindCompleteMessage : IBackendMessage
+    class BindCompleteMessage : IBackendMessage
     {
         public BackendMessageCode Code => BackendMessageCode.BindComplete;
         internal static readonly BindCompleteMessage Instance = new BindCompleteMessage();

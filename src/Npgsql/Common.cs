@@ -22,7 +22,7 @@
 #endregion
 
 using System;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -31,22 +31,37 @@ namespace Npgsql
     /// <summary>
     /// Base class for all classes which represent a message sent by the PostgreSQL backend.
     /// </summary>
-    internal interface IBackendMessage
+    interface IBackendMessage
     {
         BackendMessageCode Code { get; }
     }
 
     /// <summary>
     /// Base class for all classes which represent a message sent to the PostgreSQL backend.
+    /// Concrete classes which directly inherit this represent arbitrary-length messages which can chunked.
     /// </summary>
-    internal abstract class FrontendMessage {}
+    abstract class FrontendMessage
+    {
+        /// <param name="buf">the buffer into which to write the message.</param>
+        /// <returns>
+        /// Whether there was enough space in the buffer to contain the entire message.
+        /// If false, the buffer should be flushed and write should be called again.
+        /// </returns>
+        internal abstract bool Write(WriteBuffer buf);
+
+        /// <summary>
+        /// Returns how many messages PostgreSQL is expected to send in response to this message.
+        /// Used for message prepending.
+        /// </summary>
+        internal virtual int ResponseMessageCount => 1;
+    }
 
     /// <summary>
     /// Represents a simple frontend message which is typically small and fits well within
     /// the write buffer. The message is first queries for the number of bytes it requires,
     /// and then writes itself out.
     /// </summary>
-    internal abstract class SimpleFrontendMessage : FrontendMessage
+    abstract class SimpleFrontendMessage : FrontendMessage
     {
         /// <summary>
         /// Returns the number of bytes needed to write this message.
@@ -56,28 +71,19 @@ namespace Npgsql
         /// <summary>
         /// Writes the message contents into the buffer.
         /// </summary>
-        internal abstract void Write(NpgsqlBuffer buf);
+        internal abstract void WriteFully(WriteBuffer buf);
+
+        internal sealed override bool Write(WriteBuffer buf)
+        {
+            Debug.Assert(Length < buf.UsableSize, $"Message of type {GetType().Name} has length {Length} which is bigger than the buffer ({buf.UsableSize})");
+            if (buf.WriteSpaceLeft < Length)
+                return false;
+            WriteFully(buf);
+            return true;
+        }
     }
 
-    /// <summary>
-    /// Represents an arbitrary-length message capable of flushing the buffer internally as it's
-    /// writing itself out.
-    /// </summary>
-    internal abstract class ChunkingFrontendMessage : FrontendMessage
-    {
-        /// <param name="buf">the buffer into which to write the message.</param>
-        /// <param name="directBuf">
-        /// an option buffer that, if returned, will be written to the server directly, bypassing our
-        /// NpgsqlBuffer. This is an optimization hack for bytea.
-        /// </param>
-        /// <returns>
-        /// Whether there was enough space in the buffer to contain the entire message.
-        /// If false, the buffer should be flushed and write should be called again.
-        /// </returns>
-        internal abstract bool Write(NpgsqlBuffer buf, ref DirectBuffer directBuf);
-    }
-
-    internal enum BackendMessageCode : byte
+    enum BackendMessageCode : byte
     {
         AuthenticationRequest = (byte)'R',
         BackendKeyData        = (byte)'K',
@@ -149,7 +155,7 @@ namespace Npgsql
 
     #region Component model attributes missing from CoreCLR
 
-#if DOTNET5_4
+#if NETSTANDARD1_3
     [AttributeUsage(AttributeTargets.Property)]
     class DisplayNameAttribute : Attribute
     {
@@ -165,12 +171,6 @@ namespace Npgsql
     class CategoryAttribute : Attribute
     {
         internal CategoryAttribute(string category) {}
-    }
-
-    [AttributeUsage(AttributeTargets.Property)]
-    class DescriptionAttribute : Attribute
-    {
-        internal DescriptionAttribute(string description) {}
     }
 
     [AttributeUsage(AttributeTargets.Property)]

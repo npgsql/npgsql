@@ -22,13 +22,7 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Diagnostics.Contracts;
 using System.IO;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
@@ -41,31 +35,34 @@ namespace Npgsql.TypeHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-binary.html
     /// </remarks>
-    [TypeMapping("bytea", NpgsqlDbType.Bytea, DbType.Binary, new Type[] { typeof(byte[]), typeof(ArraySegment<byte>) })]
-    internal class ByteaHandler : ChunkingTypeHandler<byte[]>
+    [TypeMapping("bytea", NpgsqlDbType.Bytea, DbType.Binary, new[] { typeof(byte[]), typeof(ArraySegment<byte>) })]
+    class ByteaHandler : ChunkingTypeHandler<byte[]>
     {
         bool _returnedBuffer;
         byte[] _bytes;
         int _pos;
-        NpgsqlBuffer _buf;
+        ReadBuffer _readBuf;
+        WriteBuffer _writeBuf;
 
-        public override void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        internal ByteaHandler(IBackendType backendType) : base(backendType) {}
+
+        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             _bytes = new byte[len];
             _pos = 0;
-            _buf = buf;
+            _readBuf = buf;
         }
 
         public override bool Read([CanBeNull] out byte[] result)
         {
-            var toRead = Math.Min(_bytes.Length - _pos, _buf.ReadBytesLeft);
-            _buf.ReadBytes(_bytes, _pos, toRead);
+            var toRead = Math.Min(_bytes.Length - _pos, _readBuf.ReadBytesLeft);
+            _readBuf.ReadBytes(_bytes, _pos, toRead);
             _pos += toRead;
             if (_pos == _bytes.Length)
             {
                 result = _bytes;
                 _bytes = null;
-                _buf = null;
+                _readBuf = null;
                 return true;
             }
             result = null;
@@ -74,9 +71,8 @@ namespace Npgsql.TypeHandlers
 
         public long GetBytes(DataRowMessage row, int offset, [CanBeNull] byte[] output, int outputOffset, int len, FieldDescription field)
         {
-            if (output == null) {
+            if (output == null)
                 return row.ColumnLen;
-            }
 
             row.SeekInColumn(offset);
 
@@ -110,26 +106,22 @@ namespace Npgsql.TypeHandlers
 
             var asArray = value as byte[];
             if (asArray != null)
-            {
                 return parameter == null || parameter.Size <= 0 || parameter.Size >= asArray.Length
                     ? asArray.Length
                     : parameter.Size;
-            }
 
             throw CreateConversionException(value.GetType());
         }
 
-        public override void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
+        public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
-            _buf = buf;
+            _writeBuf = buf;
 
             if (value is ArraySegment<byte>)
             {
                 _value = (ArraySegment<byte>)value;
                 if (!(parameter == null || parameter.Size <= 0 || parameter.Size >= _value.Count))
-                {
                      _value = new ArraySegment<byte>(_value.Array, _value.Offset, parameter.Size);
-                }
             }
             else
             {
@@ -153,9 +145,9 @@ namespace Npgsql.TypeHandlers
 
             // If the entire array fits in our buffer, copy it as usual.
             // Otherwise, switch to direct write from the user-provided buffer
-            if (_value.Count <= _buf.WriteSpaceLeft)
+            if (_value.Count <= _writeBuf.WriteSpaceLeft)
             {
-                _buf.WriteBytes(_value.Array, _value.Offset, _value.Count);
+                _writeBuf.WriteBytes(_value.Array, _value.Offset, _value.Count);
                 return true;
             }
 
@@ -190,11 +182,12 @@ namespace Npgsql.TypeHandlers
             return read;
         }
 
-        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken token)
+        public override async Task<int> ReadAsync([NotNull] byte[] buffer, int offset, int count, CancellationToken token)
         {
             CheckDisposed();
             count = Math.Min(count, _row.ColumnLen - _row.PosInColumn);
-            var read = await _row.Buffer.ReadAllBytesAsync(buffer, offset, count, true, token);
+            var read = await _row.Buffer.ReadAllBytesAsync(buffer, offset, count, true, token)
+                .ConfigureAwait(false);
             _row.PosInColumn += read;
             return read;
         }
@@ -229,9 +222,8 @@ namespace Npgsql.TypeHandlers
 
         void CheckDisposed()
         {
-            if (_disposed) {
+            if (_disposed)
                 throw new ObjectDisposedException(null);
-            }
         }
 
         #region Not Supported

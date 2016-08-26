@@ -24,7 +24,6 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.SqlClient;
 using System.Globalization;
 using System.Linq;
 using System.Text;
@@ -70,7 +69,7 @@ namespace Npgsql.Tests.Types
                         for (var i = 0; i < cmd.Parameters.Count; i++)
                         {
                             // Regular type (DateTime)
-                            Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof (DateTime)));
+                            Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(DateTime)));
                             Assert.That(reader.GetDateTime(i), Is.EqualTo(dateTime));
                             Assert.That(reader.GetFieldValue<DateTime>(i), Is.EqualTo(dateTime));
                             Assert.That(reader[i], Is.EqualTo(dateTime));
@@ -78,7 +77,7 @@ namespace Npgsql.Tests.Types
 
                             // Provider-specific type (NpgsqlDate)
                             Assert.That(reader.GetDate(i), Is.EqualTo(npgsqlDate));
-                            Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof (NpgsqlDate)));
+                            Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof(NpgsqlDate)));
                             Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(npgsqlDate));
                             Assert.That(reader.GetFieldValue<NpgsqlDate>(i), Is.EqualTo(npgsqlDate));
                         }
@@ -88,9 +87,9 @@ namespace Npgsql.Tests.Types
         }
 
         static readonly TestCaseData[] DateSpecialCases = {
-            new TestCaseData(NpgsqlDate.Infinity).SetName("Infinity"),
-            new TestCaseData(NpgsqlDate.NegativeInfinity).SetName("NegativeInfinity"),
-            new TestCaseData(new NpgsqlDate(-5, 3, 3)).SetName("BC"),
+            new TestCaseData(NpgsqlDate.Infinity).SetName(nameof(DateSpecial) + "Infinity"),
+            new TestCaseData(NpgsqlDate.NegativeInfinity).SetName(nameof(DateSpecial) + "NegativeInfinity"),
+            new TestCaseData(new NpgsqlDate(-5, 3, 3)).SetName(nameof(DateSpecial) +"BC"),
         };
 
         [Test, TestCaseSource(nameof(DateSpecialCases))]
@@ -150,7 +149,7 @@ namespace Npgsql.Tests.Types
 
                         for (var i = 0; i < cmd.Parameters.Count; i++)
                         {
-                            Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof (TimeSpan)));
+                            Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(TimeSpan)));
                             Assert.That(reader.GetTimeSpan(i), Is.EqualTo(expected));
                             Assert.That(reader.GetFieldValue<TimeSpan>(i), Is.EqualTo(expected));
                             Assert.That(reader[i], Is.EqualTo(expected));
@@ -173,7 +172,7 @@ namespace Npgsql.Tests.Types
             {
                 var tzOffset = TimeZoneInfo.Local.BaseUtcOffset;
                 if (tzOffset == TimeSpan.Zero)
-                    TestUtil.IgnoreExceptOnBuildServer("Test cannot run when machine timezone is UTC");
+                    Assert.Ignore("Test cannot run when machine timezone is UTC");
 
                 // Note that the date component of the below is ignored
                 var dto = new DateTimeOffset(5, 5, 5, 13, 3, 45, 510, tzOffset);
@@ -215,9 +214,9 @@ namespace Npgsql.Tests.Types
         #region Timestamp
 
         static readonly TestCaseData[] TimeStampCases = {
-            new TestCaseData(new DateTime(1998, 4, 12, 13, 26, 38)).SetName("Pre2000"),
-            new TestCaseData(new DateTime(2015, 1, 27, 8, 45, 12, 345)).SetName("Post2000"),
-            new TestCaseData(new DateTime(2013, 7, 25)).SetName("DateOnly"),
+            new TestCaseData(new DateTime(1998, 4, 12, 13, 26, 38)).SetName(nameof(Timestamp) + "Pre2000"),
+            new TestCaseData(new DateTime(2015, 1, 27, 8, 45, 12, 345)).SetName(nameof(Timestamp) + "Post2000"),
+            new TestCaseData(new DateTime(2013, 7, 25)).SetName(nameof(Timestamp) + "DateOnly"),
         };
 
         [Test, TestCaseSource(nameof(TimeStampCases))]
@@ -256,7 +255,7 @@ namespace Npgsql.Tests.Types
                         for (var i = 0; i < cmd.Parameters.Count; i++)
                         {
                             // Regular type (DateTime)
-                            Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof (DateTime)));
+                            Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(DateTime)));
                             Assert.That(reader.GetDateTime(i), Is.EqualTo(dateTime));
                             Assert.That(reader.GetDateTime(i).Kind, Is.EqualTo(DateTimeKind.Unspecified));
                             Assert.That(reader.GetFieldValue<DateTime>(i), Is.EqualTo(dateTime));
@@ -265,7 +264,7 @@ namespace Npgsql.Tests.Types
 
                             // Provider-specific type (NpgsqlTimeStamp)
                             Assert.That(reader.GetTimeStamp(i), Is.EqualTo(npgsqlTimeStamp));
-                            Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof (NpgsqlDateTime)));
+                            Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof(NpgsqlDateTime)));
                             Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(npgsqlTimeStamp));
                             Assert.That(reader.GetFieldValue<NpgsqlDateTime>(i), Is.EqualTo(npgsqlTimeStamp));
 
@@ -278,9 +277,9 @@ namespace Npgsql.Tests.Types
         }
 
         static readonly TestCaseData[] TimeStampSpecialCases = {
-            new TestCaseData(NpgsqlDateTime.Infinity).SetName("Infinity"),
-            new TestCaseData(NpgsqlDateTime.NegativeInfinity).SetName("NegativeInfinity"),
-            new TestCaseData(new NpgsqlDateTime(-5, 3, 3, 1, 0, 0)).SetName("BC"),
+            new TestCaseData(NpgsqlDateTime.Infinity).SetName(nameof(TimeStampSpecial) + "Infinity"),
+            new TestCaseData(NpgsqlDateTime.NegativeInfinity).SetName(nameof(TimeStampSpecial) + "NegativeInfinity"),
+            new TestCaseData(new NpgsqlDateTime(-5, 3, 3, 1, 0, 0)).SetName(nameof(TimeStampSpecial) + "BC"),
         };
 
         [Test, TestCaseSource(nameof(TimeStampSpecialCases))]
@@ -332,7 +331,7 @@ namespace Npgsql.Tests.Types
             {
                 var tzOffset = TimeZoneInfo.Local.BaseUtcOffset;
                 if (tzOffset == TimeSpan.Zero)
-                    TestUtil.IgnoreExceptOnBuildServer("Test cannot run when machine timezone is UTC");
+                    Assert.Ignore("Test cannot run when machine timezone is UTC");
 
                 var dateTimeUtc = new DateTime(2015, 6, 27, 8, 45, 12, 345, DateTimeKind.Utc);
                 var dateTimeLocal = dateTimeUtc.ToLocalTime();
@@ -421,7 +420,7 @@ namespace Npgsql.Tests.Types
                         reader.Read();
 
                         // Regular type (TimeSpan)
-                        Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof (TimeSpan)));
+                        Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(TimeSpan)));
                         Assert.That(reader.GetTimeSpan(0), Is.EqualTo(expectedTimeSpan));
                         Assert.That(reader.GetFieldValue<TimeSpan>(0), Is.EqualTo(expectedTimeSpan));
                         Assert.That(reader[0], Is.EqualTo(expectedTimeSpan));
@@ -429,7 +428,7 @@ namespace Npgsql.Tests.Types
 
                         // Provider-specific type (NpgsqlInterval)
                         Assert.That(reader.GetInterval(0), Is.EqualTo(expectedNpgsqlInterval));
-                        Assert.That(reader.GetProviderSpecificFieldType(0), Is.EqualTo(typeof (NpgsqlTimeSpan)));
+                        Assert.That(reader.GetProviderSpecificFieldType(0), Is.EqualTo(typeof(NpgsqlTimeSpan)));
                         Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(expectedNpgsqlInterval));
                         Assert.That(reader.GetFieldValue<NpgsqlTimeSpan>(0), Is.EqualTo(expectedNpgsqlInterval));
                     }
@@ -438,7 +437,5 @@ namespace Npgsql.Tests.Types
         }
 
         #endregion
-
-        public DateTimeTests(string backendVersion) : base(backendVersion) { }
     }
 }

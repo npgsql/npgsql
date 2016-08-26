@@ -23,8 +23,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace Npgsql.BackendMessages
 {
@@ -34,14 +32,14 @@ namespace Npgsql.BackendMessages
 
         internal bool IsBinary { get; private set; }
         internal short NumColumns { get; private set; }
-        internal List<FormatCode> ColumnFormatCodes { get; private set; }
+        internal List<FormatCode> ColumnFormatCodes { get; }
 
         internal CopyResponseMessageBase()
         {
             ColumnFormatCodes = new List<FormatCode>();
         }
 
-        internal void Load(NpgsqlBuffer buf)
+        internal void Load(ReadBuffer buf)
         {
             ColumnFormatCodes.Clear();
 
@@ -67,7 +65,7 @@ namespace Npgsql.BackendMessages
     {
         public override BackendMessageCode Code => BackendMessageCode.CopyInResponse;
 
-        internal new CopyInResponseMessage Load(NpgsqlBuffer buf)
+        internal new CopyInResponseMessage Load(ReadBuffer buf)
         {
             base.Load(buf);
             return this;
@@ -78,7 +76,7 @@ namespace Npgsql.BackendMessages
     {
         public override BackendMessageCode Code => BackendMessageCode.CopyOutResponse;
 
-        internal new CopyOutResponseMessage Load(NpgsqlBuffer buf)
+        internal new CopyOutResponseMessage Load(ReadBuffer buf)
         {
             base.Load(buf);
             return this;
@@ -89,7 +87,7 @@ namespace Npgsql.BackendMessages
     {
         public override BackendMessageCode Code => BackendMessageCode.CopyBothResponse;
 
-        internal new CopyBothResponseMessage Load(NpgsqlBuffer buf)
+        internal new CopyBothResponseMessage Load(ReadBuffer buf)
         {
             base.Load(buf);
             return this;
@@ -124,7 +122,7 @@ namespace Npgsql.BackendMessages
 
         internal override int Length => 5;
 
-        internal override void Write(NpgsqlBuffer buf)
+        internal override void WriteFully(WriteBuffer buf)
         {
             buf.WriteByte((byte)BackendMessageCode.CopyDone);
             buf.WriteInt32(4);

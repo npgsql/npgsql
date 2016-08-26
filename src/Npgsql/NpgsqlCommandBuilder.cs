@@ -1,6 +1,4 @@
-﻿#if NET45 || NET451 || DNX451
-
-#region License
+﻿#region License
 // The PostgreSQL License
 //
 // Copyright (C) 2016 The Npgsql Development Team
@@ -22,6 +20,8 @@
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
+
+#if NET45 || NET451
 
 using System;
 using System.Data;
@@ -216,10 +216,10 @@ namespace Npgsql
                     var param = new NpgsqlParameter();
 
                     // TODO: Fix enums, composite types
-                    var npgsqlDbType = c.Connection.Connector.TypeHandlerRegistry[types[i]].NpgsqlDbType;
-                    if (npgsqlDbType == NpgsqlDbType.Unknown)
+                    var npgsqlDbType = c.Connection.Connector.TypeHandlerRegistry[types[i]].BackendType.NpgsqlDbType;
+                    if (!npgsqlDbType.HasValue)
                         throw new InvalidOperationException($"Invalid parameter type: {types[i]}");
-                    param.NpgsqlDbType = npgsqlDbType;
+                    param.NpgsqlDbType = npgsqlDbType.Value;
 
                     if (names != null && i < names.Length)
                         param.ParameterName = ":" + names[i];

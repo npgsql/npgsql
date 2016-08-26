@@ -23,7 +23,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 
@@ -31,39 +31,92 @@ namespace Npgsql.FrontendMessages
 {
     /// <summary>
     /// A simple query message.
-    ///
-    /// Note that since this is only used to send some specific control messages (e.g. start transaction)
-    /// and never arbitrary-length user-provided queries, this message is treated as simple and not chunking,
-    /// and only ASCII is supported.
     /// </summary>
-    class QueryMessage : SimpleFrontendMessage
+    class QueryMessage : FrontendMessage
     {
-        string Query { get; set; }
+        readonly Encoding _encoding;
+        string _query;
+        int _charPos;
+        State _state;
+#if NETSTANDARD1_3
+        char[] _queryChars;
+#endif
 
-        internal const byte Code = (byte)'Q';
+        const byte Code = (byte)'Q';
 
-        internal QueryMessage(string query)
+        internal QueryMessage(Encoding encoding)
         {
-            Contract.Requires(query != null && query.All(c => c < 128), "Not ASCII");
-            Contract.Requires(PGUtil.UTF8Encoding.GetByteCount(query) + 5 < NpgsqlBuffer.MinimumBufferSize, "Too long");
-
-            Query = query;
+            _encoding = encoding;
         }
 
-        internal override int Length => 1 + 4 + (Query.Length + 1);
-
-        internal override void Write(NpgsqlBuffer buf)
+        internal QueryMessage Populate(string query)
         {
-            Contract.Requires(Query != null && Query.All(c => c < 128));
+            Debug.Assert(query != null);
 
-            buf.WriteByte(Code);
-            buf.WriteInt32(Length - 1);
-            buf.WriteBytesNullTerminated(Encoding.ASCII.GetBytes(Query));
+            _query = query;
+            _state = State.Start;
+            _charPos = -1;
+            return this;
         }
 
-        public override string ToString()
+        internal override bool Write(WriteBuffer buf)
         {
-            return $"[Query={Query}]";
+            switch (_state)
+            {
+            case State.Start:
+                if (buf.WriteSpaceLeft < 1 + 4)
+                    return false;
+                _charPos = 0;
+                var queryByteLen = _encoding.GetByteCount(_query);
+#if NETSTANDARD1_3
+                _queryChars = _query.ToCharArray();
+#endif
+                buf.WriteByte(Code);
+                buf.WriteInt32(4 +            // Message length (including self excluding code)
+                               queryByteLen + // Query byte length
+                               1);            // Null terminator
+                _state = State.Writing;
+                goto case State.Writing;
+
+            case State.Writing:
+                int charsUsed;
+                bool completed;
+#if NETSTANDARD1_3
+                buf.WriteStringChunked(_queryChars, _charPos, _query.Length - _charPos, true,
+                                       out charsUsed, out completed);
+#else
+                buf.WriteStringChunked(_query, _charPos, _query.Length - _charPos, true, out charsUsed, out completed);
+#endif
+                _charPos += charsUsed;
+                if (!completed)
+                    return false;
+                _state = State.NullTerminator;
+                goto case State.NullTerminator;
+
+            case State.NullTerminator:
+                if (buf.WriteSpaceLeft < 1)
+                    return false;
+                buf.WriteByte(0);
+
+                _query = null;
+#if NETSTANDARD1_3
+                _queryChars = null;
+#endif
+                _charPos = -1;
+                return true;
+
+            default:
+                throw new ArgumentOutOfRangeException();
+            }
+        }
+
+        public override string ToString() => $"[Query={_query}]";
+
+        enum State
+        {
+            Start,
+            Writing,
+            NullTerminator
         }
     }
 }
