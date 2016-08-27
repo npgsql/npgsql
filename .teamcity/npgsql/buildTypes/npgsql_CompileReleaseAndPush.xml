@@ -149,7 +149,7 @@
           <option name="take-successful-builds-only" value="true" />
         </options>
       </depend-on>
-      <depend-on sourceBuildTypeId="npgsql_Test_LinuxCoreCLR_PG95">
+      <depend-on sourceBuildTypeId="npgsql_TestLinuxCoreCLROnPostgreSQL95">
         <options>
           <option name="run-build-if-dependency-failed" value="CANCEL" />
           <option name="run-build-if-dependency-failed-to-start" value="CANCEL" />
