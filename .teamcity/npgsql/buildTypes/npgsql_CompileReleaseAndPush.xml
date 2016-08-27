@@ -83,6 +83,17 @@
         </parameters>
       </build-trigger>
     </build-triggers>
+    <build-extensions>
+      <extension id="BUILD_EXT_1" type="commit-status-publisher">
+        <parameters>
+          <param name="github_authentication_type" value="token" />
+          <param name="github_host" value="https://api.github.com" />
+          <param name="publisherId" value="githubStatusPublisher" />
+          <param name="secure:github_access_token" value="zxxc8c8345bd2f4d683b0edb8d14b644a8bfd3e3eb8cd102c0dea6b446b5b7e26d9c410d38688e9eb75775d03cbe80d301b" />
+          <param name="vcsRootId" value="npgsql_github" />
+        </parameters>
+      </extension>
+    </build-extensions>
     <artifact-dependencies>
       <dependency id="ARTIFACT_DEPENDENCY_28" sourceBuildTypeId="npgsql_CompileDebug" cleanDestination="false">
         <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
@@ -138,7 +149,7 @@
           <option name="take-successful-builds-only" value="true" />
         </options>
       </depend-on>
-      <depend-on sourceBuildTypeId="npgsql_TestOnWindowsNetFrameworkOnPostgreSQL95">
+      <depend-on sourceBuildTypeId="npgsql_Test_LinuxCoreCLR_PG95">
         <options>
           <option name="run-build-if-dependency-failed" value="CANCEL" />
           <option name="run-build-if-dependency-failed-to-start" value="CANCEL" />
