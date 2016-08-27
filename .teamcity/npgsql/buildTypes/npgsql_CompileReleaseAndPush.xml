@@ -1,28 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<build-type xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="06c8881d-347a-486d-8d4f-4a825df009b9" xsi:noNamespaceSchemaLocation="http://www.jetbrains.com/teamcity/schemas/9.0/project-config.xsd">
+<build-type xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="06c8881d-347a-486d-8d4f-4a825df009b9" xsi:noNamespaceSchemaLocation="http://www.jetbrains.com/teamcity/schemas/10.0/project-config.xsd">
   <name>Compile Release and Push</name>
   <description>Compiles the project in release and pushes to myget</description>
   <settings>
     <options>
       <option name="artifactRules" value="src/Npgsql/bin/ReleaseOptimizedCryptography/*.nupkg&#xA;src/GACInstaller/bin/ReleaseOptimizedCryptography/en-us/*.msi" />
+      <option name="buildNumberPattern" value="%dep.npgsql_CompileDebug.build.number%" />
       <option name="checkoutMode" value="ON_AGENT" />
     </options>
-    <parameters />
+    <parameters>
+      <param name="Configuration" value="ReleaseOptimizedCryptography" />
+      <param name="system.Configuration" value="%Configuration%" />
+    </parameters>
     <build-runners>
-      <runner id="RUNNER_32" name="Set build number" type="simpleRunner">
+      <runner id="RUNNER_15" name="Build (Release)" type="dotnet">
         <parameters>
-          <param name="script.content" value="echo ##teamcity[buildNumber '%dep.npgsql_CompileDebug.build.number%']" />
+          <param name="dotnet-build-config" value="%Configuration%" />
+          <param name="dotnet-build-profile" value="true" />
+          <param name="dotnet-command" value="build" />
+          <param name="dotnet-paths" value="src/Npgsql" />
           <param name="teamcity.step.mode" value="default" />
-          <param name="use.custom.script" value="true" />
         </parameters>
       </runner>
-      <runner id="RUNNER_21" name="Compile" type="simpleRunner">
+      <runner id="RUNNER_19" name="Pack" type="dotnet">
         <parameters>
-          <param name="script.content"><![CDATA[set KOREBUILD_DOTNET_PACK_OPTIONS= --version-suffix "%dep.npgsql_CompileDebug.build.counter%"
-set Configuration=ReleaseOptimizedCryptography
-build compile]]></param>
+          <param name="dotnet-command" value="pack" />
+          <param name="dotnet-pack-config" value="%Configuration%" />
+          <param name="dotnet-pack-no-build" value="true" />
+          <param name="dotnet-pack-version-suffix" value="%dep.npgsql_CompileDebug.build.counter%" />
+          <param name="dotnet-paths" value="src/Npgsql" />
           <param name="teamcity.step.mode" value="default" />
-          <param name="use.custom.script" value="true" />
         </parameters>
       </runner>
       <runner id="RUNNER_29" name="Build GAC Installer" type="MSBuild">
@@ -44,7 +51,6 @@ build compile]]></param>
           <param name="dotNetCoverage.PartCover.platformVersion" value="v2.0" />
           <param name="msbuild_version" value="14.0" />
           <param name="run-platform" value="x86" />
-          <param name="runnerArgs" value="/p:Configuration=ReleaseOptimizedCryptography" />
           <param name="teamcity.build.workingDir" value="src\GACInstaller" />
           <param name="teamcity.step.mode" value="default" />
           <param name="toolsVersion" value="14.0" />
@@ -52,20 +58,21 @@ build compile]]></param>
       </runner>
       <runner id="RUNNER_30" name="Publish nugets to myget" type="jb.nuget.publish">
         <parameters>
-          <param name="nuget.path" value="?NuGet.CommandLine.DEFAULT" />
-          <param name="nuget.publish.files" value="src/Npgsql/bin/ReleaseOptimizedCryptography/*.nupkg" />
+          <param name="nuget.path" value="%teamcity.tool.NuGet.CommandLine.DEFAULT%" />
+          <param name="nuget.publish.files" value="src/Npgsql/bin/%Configuration%/*.nupkg" />
           <param name="nuget.publish.source" value="https://www.myget.org/F/npgsql" />
-          <param name="nugetCustomPath" value="?NuGet.CommandLine.DEFAULT" />
-          <param name="nugetPathSelector" value="?NuGet.CommandLine.DEFAULT" />
           <param name="secure:nuget.api.key" value="zxxca89988ce5b6f9ad529c572cd56e162ccda4fdff046b0cdb8bff3560c8e35dcbda3e64637e4ca2f1" />
           <param name="teamcity.step.mode" value="default" />
+          <param name="toolPathSelector" value="%teamcity.tool.NuGet.CommandLine.DEFAULT%" />
         </parameters>
       </runner>
     </build-runners>
     <vcs-settings>
       <vcs-entry-ref root-id="npgsql_github" />
     </vcs-settings>
-    <requirements />
+    <requirements>
+      <contains id="RQ_3" name="teamcity.agent.jvm.os.name" value="Windows" />
+    </requirements>
     <build-triggers>
       <build-trigger id="vcsTrigger" type="vcsTrigger">
         <parameters>
@@ -76,8 +83,14 @@ build compile]]></param>
         </parameters>
       </build-trigger>
     </build-triggers>
+    <artifact-dependencies>
+      <dependency id="ARTIFACT_DEPENDENCY_28" sourceBuildTypeId="npgsql_CompileDebug" cleanDestination="false">
+        <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
+        <artifact sourcePath="**/project.lock.json" />
+      </dependency>
+    </artifact-dependencies>
     <dependencies>
-      <depend-on sourceBuildTypeId="npgsql_TestOnPostgreSQL91">
+      <depend-on sourceBuildTypeId="npgsql_TestOnWindowsNetFrameworkOnPostgreSQL91">
         <options>
           <option name="run-build-if-dependency-failed" value="CANCEL" />
           <option name="run-build-if-dependency-failed-to-start" value="CANCEL" />
@@ -85,7 +98,7 @@ build compile]]></param>
           <option name="take-successful-builds-only" value="true" />
         </options>
       </depend-on>
-      <depend-on sourceBuildTypeId="npgsql_TestOnPostgreSQL92">
+      <depend-on sourceBuildTypeId="npgsql_TestOnWindowsNetFrameworkOnPostgreSQL92">
         <options>
           <option name="run-build-if-dependency-failed" value="CANCEL" />
           <option name="run-build-if-dependency-failed-to-start" value="CANCEL" />
@@ -93,7 +106,7 @@ build compile]]></param>
           <option name="take-successful-builds-only" value="true" />
         </options>
       </depend-on>
-      <depend-on sourceBuildTypeId="npgsql_TestOnPostgreSQL93">
+      <depend-on sourceBuildTypeId="npgsql_TestOnWindowsNetFrameworkOnPostgreSQL93">
         <options>
           <option name="run-build-if-dependency-failed" value="CANCEL" />
           <option name="run-build-if-dependency-failed-to-start" value="CANCEL" />
@@ -101,7 +114,7 @@ build compile]]></param>
           <option name="take-successful-builds-only" value="true" />
         </options>
       </depend-on>
-      <depend-on sourceBuildTypeId="npgsql_TestOnPostgreSQL94">
+      <depend-on sourceBuildTypeId="npgsql_TestOnWindowsNetFrameworkOnPostgreSQL94">
         <options>
           <option name="run-build-if-dependency-failed" value="CANCEL" />
           <option name="run-build-if-dependency-failed-to-start" value="CANCEL" />
@@ -109,7 +122,7 @@ build compile]]></param>
           <option name="take-successful-builds-only" value="true" />
         </options>
       </depend-on>
-      <depend-on sourceBuildTypeId="npgsql_TestOnPostgreSQL95">
+      <depend-on sourceBuildTypeId="npgsql_TestOnWindowsNetFrameworkOnPostgreSQL95">
         <options>
           <option name="run-build-if-dependency-failed" value="CANCEL" />
           <option name="run-build-if-dependency-failed-to-start" value="CANCEL" />
@@ -117,7 +130,7 @@ build compile]]></param>
           <option name="take-successful-builds-only" value="true" />
         </options>
       </depend-on>
-      <depend-on sourceBuildTypeId="npgsql_TestOnPostgreSQL96">
+      <depend-on sourceBuildTypeId="npgsql_TestOnWindowsNetFrameworkOnPostgreSQL96">
         <options>
           <option name="run-build-if-dependency-failed" value="CANCEL" />
           <option name="run-build-if-dependency-failed-to-start" value="CANCEL" />
@@ -125,10 +138,45 @@ build compile]]></param>
           <option name="take-successful-builds-only" value="true" />
         </options>
       </depend-on>
-      <depend-on sourceBuildTypeId="npgsql_TestCoreCLROnPostgreSQL95">
+      <depend-on sourceBuildTypeId="npgsql_TestOnWindowsNetFrameworkOnPostgreSQL95">
         <options>
           <option name="run-build-if-dependency-failed" value="CANCEL" />
           <option name="run-build-if-dependency-failed-to-start" value="CANCEL" />
+          <option name="take-started-build-with-same-revisions" value="true" />
+          <option name="take-successful-builds-only" value="true" />
+        </options>
+      </depend-on>
+      <depend-on sourceBuildTypeId="npgsql_TestLinuxCoreCLROnPostgreSQL91">
+        <options>
+          <option name="run-build-if-dependency-failed" value="RUN_ADD_PROBLEM" />
+          <option name="take-started-build-with-same-revisions" value="true" />
+          <option name="take-successful-builds-only" value="true" />
+        </options>
+      </depend-on>
+      <depend-on sourceBuildTypeId="npgsql_TestLinuxCoreCLROnPostgreSQL92">
+        <options>
+          <option name="run-build-if-dependency-failed" value="RUN_ADD_PROBLEM" />
+          <option name="take-started-build-with-same-revisions" value="true" />
+          <option name="take-successful-builds-only" value="true" />
+        </options>
+      </depend-on>
+      <depend-on sourceBuildTypeId="npgsql_TestLinuxCoreCLROnPostgreSQL93">
+        <options>
+          <option name="run-build-if-dependency-failed" value="RUN_ADD_PROBLEM" />
+          <option name="take-started-build-with-same-revisions" value="true" />
+          <option name="take-successful-builds-only" value="true" />
+        </options>
+      </depend-on>
+      <depend-on sourceBuildTypeId="npgsql_TestLinuxCoreCLROnPostgreSQL94">
+        <options>
+          <option name="run-build-if-dependency-failed" value="RUN_ADD_PROBLEM" />
+          <option name="take-started-build-with-same-revisions" value="true" />
+          <option name="take-successful-builds-only" value="true" />
+        </options>
+      </depend-on>
+      <depend-on sourceBuildTypeId="npgsql_TestLinuxCoreCLROnPostgreSQL96">
+        <options>
+          <option name="run-build-if-dependency-failed" value="RUN_ADD_PROBLEM" />
           <option name="take-started-build-with-same-revisions" value="true" />
           <option name="take-successful-builds-only" value="true" />
         </options>
