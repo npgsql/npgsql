@@ -981,6 +981,7 @@ namespace Npgsql.Tests
 
         [Test, Description("Tests an exception happening when sending the Terminate message while closing a ready connector")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/777")]
+        [Ignore("Flaky")]
         public void ExceptionDuringClose()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Pooling = false };
@@ -996,6 +997,7 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1180")]
+        [Ignore("Flaky")]
         public void PoolByPassword()
         {
             NpgsqlConnection goodConn = null;
