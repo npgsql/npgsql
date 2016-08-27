@@ -142,6 +142,7 @@ namespace Npgsql
         /// </summary>
         int _pendingPrependedResponses;
 
+        [CanBeNull]
         internal NpgsqlDataReader CurrentReader;
 
         /// <summary>

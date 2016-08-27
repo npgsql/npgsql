@@ -373,6 +373,7 @@ namespace Npgsql
         [PasswordPropertyText(true)]
         [DisplayName("Password")]
         [NpgsqlConnectionStringProperty("PSW", "PWD")]
+        [CanBeNull]
         public string Password
         {
             get { return _password; }

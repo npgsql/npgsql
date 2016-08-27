@@ -86,6 +86,7 @@ namespace Npgsql
         /// <summary>
         /// The connector object connected to the backend.
         /// </summary>
+        [CanBeNull]
         internal NpgsqlConnector Connector { get; set; }
 
         /// <summary>
@@ -105,6 +106,7 @@ namespace Npgsql
 
 #if NET45 || NET451
         NpgsqlPromotableSinglePhaseNotification Promotable => _promotable ?? (_promotable = new NpgsqlPromotableSinglePhaseNotification(this));
+        [CanBeNull]
         NpgsqlPromotableSinglePhaseNotification _promotable;
 #endif
 
@@ -269,6 +271,7 @@ namespace Npgsql
         [NpgsqlSysDescription("Description_ConnectionString", typeof(NpgsqlConnection)), Category("Data")]
         [Editor(typeof(ConnectionStringEditor), typeof(System.Drawing.Design.UITypeEditor))]
 #endif
+        [CanBeNull]
         public override string ConnectionString
         {
             get
@@ -381,15 +384,12 @@ namespace Npgsql
         /// User name.
         /// </summary>
         [PublicAPI]
+        [CanBeNull]
         public string UserName => Settings.Username;
 
+        [CanBeNull]
         internal string Password => Settings.Password;
-        internal int MinPoolSize => Settings.MinPoolSize;
-        internal int MaxPoolSize => Settings.MaxPoolSize;
-        internal int Timeout => Settings.Timeout;
         internal int BufferSize => Settings.BufferSize;
-        internal string EntityTemplateDatabase => Settings.EntityTemplateDatabase;
-        internal string EntityAdminDatabase => Settings.EntityAdminDatabase;
 
         #endregion Configuration settings
 
@@ -522,6 +522,7 @@ namespace Npgsql
             if (level == IsolationLevel.Chaos)
                 throw new NotSupportedException("Unsupported IsolationLevel: " + level);
             var connector = CheckReadyAndGetConnector();
+            Debug.Assert(Connector != null);
 
             // Note that beginning a transaction doesn't actually send anything to the backend
             // (only prepends), so strictly speaking we don't have to start a user action.
@@ -592,6 +593,7 @@ namespace Npgsql
 
         internal void ReallyClose(bool wasBroken=false)
         {
+            Debug.Assert(Connector != null);
             var connectorId = Connector.Id;
             Log.Trace("Really closing connection", connectorId);
             _postponingClose = false;
@@ -632,10 +634,10 @@ namespace Npgsql
         /// </summary>
         void CloseOngoingOperations()
         {
-            if ((Thread.CurrentThread.ThreadState & (ThreadState.Aborted | ThreadState.AbortRequested)) != 0) {
+            if ((Thread.CurrentThread.ThreadState & (ThreadState.Aborted | ThreadState.AbortRequested)) != 0)
                 return;
-            }
 
+            Debug.Assert(Connector != null);
             if (Connector.CurrentReader != null)
                 Connector.CurrentReader.Close(true);
             else if (Connector.State == ConnectorState.Copy)
@@ -737,6 +739,7 @@ namespace Npgsql
             get
             {
                 CheckConnectionOpen();
+                Debug.Assert(Connector != null);
                 return Connector.IsSecure;
             }
         }
@@ -772,6 +775,7 @@ namespace Npgsql
             get
             {
                 CheckConnectionOpen();
+                Debug.Assert(Connector != null);
                 return Connector.ServerVersion;
             }
         }
@@ -792,6 +796,7 @@ namespace Npgsql
             get
             {
                 CheckConnectionOpen();
+                Debug.Assert(Connector != null);
                 return Connector.BackendProcessId;
             }
         }
@@ -809,6 +814,7 @@ namespace Npgsql
             get
             {
                 CheckConnectionOpen();
+                Debug.Assert(Connector != null);
                 return Connector.UseConformantStrings;
             }
         }
@@ -823,6 +829,7 @@ namespace Npgsql
             get
             {
                 CheckConnectionOpen();
+                Debug.Assert(Connector != null);
                 return Connector.SupportsEStringPrefix;
             }
         }
@@ -983,7 +990,7 @@ namespace Npgsql
                 if (!stream.IsBinary)
                 {
                     // TODO: Stop the COPY operation gracefully, no breaking
-                    Connector.Break();
+                    connector.Break();
                     throw new ArgumentException("copyToCommand triggered a text transfer, only binary is allowed", nameof(copyCommand));
                 }
                 connector.CurrentCopyOperation = stream;
@@ -1034,6 +1041,7 @@ namespace Npgsql
             if (State != ConnectionState.Open)
                 throw new InvalidOperationException("Connection must be open and idle to perform registration");
 
+            Debug.Assert(Connector != null);
             Connector.TypeHandlerRegistry.MapEnum<TEnum>(pgName, nameTranslator);
         }
 
@@ -1126,6 +1134,7 @@ namespace Npgsql
             if (State != ConnectionState.Open)
                 throw new InvalidOperationException("Connection must be open and idle to perform registration");
 
+            Debug.Assert(Connector != null);
             Connector.TypeHandlerRegistry.MapComposite<T>(pgName, nameTranslator);
         }
 
@@ -1196,6 +1205,7 @@ namespace Npgsql
                 throw new ArgumentException("Argument must be -1, 0 or positive", nameof(timeout));
 
             CheckConnectionOpen();
+            Debug.Assert(Connector != null);
             Log.Debug($"Starting to wait (timeout={timeout})", Connector.Id);
 
             using (Connector.StartUserAction(ConnectorState.Waiting))
@@ -1222,6 +1232,7 @@ namespace Npgsql
         /// The time-out value is passed to <see cref="Socket.ReceiveTimeout"/>.
         /// </param>
         /// <returns>true if an asynchronous message was received, false if timed out.</returns>
+        [PublicAPI]
         public bool Wait(TimeSpan timeout) => Wait((int)timeout.TotalMilliseconds);
 
         /// <summary>
@@ -1229,6 +1240,7 @@ namespace Npgsql
         /// exits immediately. The asynchronous message is delivered via the normal events
         /// (<see cref="Notification"/>, <see cref="Notice"/>).
         /// </summary>
+        [PublicAPI]
         public void Wait() => Wait(0);
 
         /// <summary>
@@ -1238,9 +1250,11 @@ namespace Npgsql
         /// CancelationToken can not cancel wait operation if underlying NetworkStream does not support it
         /// (see https://stackoverflow.com/questions/12421989/networkstream-readasync-with-a-cancellation-token-never-cancels ).
         /// </summary>
+        [PublicAPI]
         public async Task WaitAsync(CancellationToken cancellationToken)
         {
             CheckConnectionOpen();
+            Debug.Assert(Connector != null);
             Log.Debug("Starting to wait async", Connector.Id);
 
             using (Connector.StartUserAction(ConnectorState.Waiting))
@@ -1260,9 +1274,8 @@ namespace Npgsql
 
         void CheckConnectionOpen()
         {
-            if (_disposed) {
+            if (_disposed)
                 throw new ObjectDisposedException(typeof(NpgsqlConnection).Name);
-            }
 
             if (_fakingOpen)
             {
@@ -1282,9 +1295,7 @@ namespace Npgsql
             }
 
             if (_postponingClose || Connector == null)
-            {
                 throw new InvalidOperationException("Connection is not open");
-            }
         }
 
         void CheckConnectionClosed()
@@ -1419,6 +1430,7 @@ namespace Npgsql
         /// (password, SSL callbacks) while changing other connection parameters (e.g.
         /// database or pooling)
         /// </summary>
+        [PublicAPI]
         public NpgsqlConnection CloneWith(string connectionString)
         {
             CheckNotDisposed();
@@ -1446,6 +1458,7 @@ namespace Npgsql
                 throw new ArgumentOutOfRangeException(nameof(dbName), dbName, $"Invalid database name: {dbName}");
 
             CheckNotDisposed();
+            Debug.Assert(Connector != null);
             Log.Debug("Changing database to " + dbName, Connector.Id);
 
             Close();
