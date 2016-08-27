@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<build-type xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="e6996eb2-441e-4003-b2e1-3005597e6a34" xsi:noNamespaceSchemaLocation="http://www.jetbrains.com/teamcity/schemas/9.0/project-config.xsd">
+<build-type xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="e6996eb2-441e-4003-b2e1-3005597e6a34" xsi:noNamespaceSchemaLocation="http://www.jetbrains.com/teamcity/schemas/10.0/project-config.xsd">
   <name>All-2.2</name>
   <description>Triggers the different .NET and mono builds for Npgsql 2.2 (still supports .NET 2.0 and 3.5), collects all artifacts and generates nuget and docs</description>
   <settings>
@@ -58,19 +58,19 @@ Npgsql.EntityFramework/Npgsql.EntityFrameworkLegacy.nuspec]]></param>
       </extension>
     </build-extensions>
     <artifact-dependencies>
-      <dependency sourceBuildTypeId="npgsql_net20_2_2" cleanDestination="false">
+      <dependency id="ARTIFACT_DEPENDENCY_22" sourceBuildTypeId="npgsql_net20_2_2" cleanDestination="false">
         <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
         <artifact sourcePath="**" />
       </dependency>
-      <dependency sourceBuildTypeId="npgsql_net35_2_2" cleanDestination="false">
+      <dependency id="ARTIFACT_DEPENDENCY_23" sourceBuildTypeId="npgsql_net35_2_2" cleanDestination="false">
         <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
         <artifact sourcePath="**" />
       </dependency>
-      <dependency sourceBuildTypeId="npgsql_net40_2_2" cleanDestination="false">
+      <dependency id="ARTIFACT_DEPENDENCY_24" sourceBuildTypeId="npgsql_net40_2_2" cleanDestination="false">
         <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
         <artifact sourcePath="**" />
       </dependency>
-      <dependency sourceBuildTypeId="npgsql_net45_2_2" cleanDestination="false">
+      <dependency id="ARTIFACT_DEPENDENCY_25" sourceBuildTypeId="npgsql_net45_2_2" cleanDestination="false">
         <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
         <artifact sourcePath="**" />
       </dependency>

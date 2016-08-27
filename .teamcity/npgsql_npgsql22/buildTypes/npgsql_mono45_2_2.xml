@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<build-type xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="3d31f36a-58c0-475f-bd6b-2f05c5721766" xsi:noNamespaceSchemaLocation="http://www.jetbrains.com/teamcity/schemas/9.0/project-config.xsd">
+<build-type xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="3d31f36a-58c0-475f-bd6b-2f05c5721766" xsi:noNamespaceSchemaLocation="http://www.jetbrains.com/teamcity/schemas/10.0/project-config.xsd">
   <name>Mono (for 2.2)</name>
   <description>Run the unit tests on the binaries produced by the MS .NET 4.5 build (for 2.2)</description>
   <settings>
@@ -27,7 +27,7 @@
     <requirements />
     <build-triggers />
     <artifact-dependencies>
-      <dependency sourceBuildTypeId="npgsql_net45_2_2" cleanDestination="false">
+      <dependency id="ARTIFACT_DEPENDENCY_26" sourceBuildTypeId="npgsql_net45_2_2" cleanDestination="false">
         <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
         <artifact sourcePath="**" />
       </dependency>
