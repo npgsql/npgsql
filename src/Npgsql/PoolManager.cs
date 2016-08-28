@@ -2,10 +2,10 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AsyncRewriter;
+using JetBrains.Annotations;
 using Npgsql.Logging;
 
 namespace Npgsql
@@ -46,13 +46,6 @@ namespace Npgsql
             });
         }
 
-        internal static ConnectorPool Get(NpgsqlConnectionStringBuilder connString)
-        {
-            Debug.Assert(connString != null);
-
-            return Pools[connString];
-        }
-
         internal static void Clear(NpgsqlConnectionStringBuilder connString)
         {
             Debug.Assert(connString != null);
@@ -73,18 +66,18 @@ namespace Npgsql
     {
         #region Fields
 
-        internal NpgsqlConnectionStringBuilder ConnectionString;
+        readonly NpgsqlConnectionStringBuilder _connectionString;
 
         /// <summary>
         /// Open connectors waiting to be requested by new connections
         /// </summary>
-        internal IdleConnectorList Idle;
+        internal readonly IdleConnectorList Idle;
 
         readonly int _max;
-        internal int Min { get; }
+        readonly int _min;
         internal int Busy { get; private set; }
 
-        Queue<WaitingOpenAttempt> Waiting;
+        readonly Queue<WaitingOpenAttempt> _waiting;
 
         struct WaitingOpenAttempt
         {
@@ -99,6 +92,7 @@ namespace Npgsql
         /// </summary>
         int _clearCounter;
 
+        [CanBeNull]
         Timer _pruningTimer;
         readonly TimeSpan _pruningInterval;
         readonly List<NpgsqlConnector> _prunedConnectors;
@@ -110,13 +104,13 @@ namespace Npgsql
         internal ConnectorPool(NpgsqlConnectionStringBuilder csb)
         {
             _max = csb.MaxPoolSize;
-            Min = csb.MinPoolSize;
+            _min = csb.MinPoolSize;
 
-            ConnectionString = csb;
-            _pruningInterval = TimeSpan.FromSeconds(ConnectionString.ConnectionPruningInterval);
+            _connectionString = csb;
+            _pruningInterval = TimeSpan.FromSeconds(_connectionString.ConnectionPruningInterval);
             _prunedConnectors = new List<NpgsqlConnector>();
             Idle = new IdleConnectorList();
-            Waiting = new Queue<WaitingOpenAttempt>();
+            _waiting = new Queue<WaitingOpenAttempt>();
             Counters.NumberOfActiveConnectionPools.Increment();
         }
 
@@ -234,9 +228,9 @@ namespace Npgsql
             {
                 // If there are any pending open attempts in progress hand the connector off to
                 // them directly.
-                while (Waiting.Count > 0)
+                while (_waiting.Count > 0)
                 {
-                    var waitingOpenAttempt = Waiting.Dequeue();
+                    var waitingOpenAttempt = _waiting.Dequeue();
                     var tcs = waitingOpenAttempt.TaskCompletionSource;
                     // Some attempts may be in the queue but in cancelled state, since they've already timed out.
                     // Simply dequeue these and move on.
@@ -273,7 +267,7 @@ namespace Npgsql
             int missing;
             lock (this)
             {
-                missing = Min - (Busy + Idle.Count);
+                missing = _min - (Busy + Idle.Count);
                 if (missing <= 0)
                     return;
                 Busy += missing;
@@ -316,7 +310,7 @@ namespace Npgsql
         {
             Debug.Assert(Monitor.IsEntered(this));
 
-            if (Idle.Count + Busy <= Min)
+            if (Idle.Count + Busy <= _min)
             {
                 if (_pruningTimer != null)
                 {
@@ -328,9 +322,9 @@ namespace Npgsql
                 _pruningTimer = new Timer(PruneIdleConnectors, null, _pruningInterval, _pruningInterval);
         }
 
-        internal void PruneIdleConnectors(object state)
+        void PruneIdleConnectors(object state)
         {
-            if (Idle.Count + Busy <= Min)
+            if (Idle.Count + Busy <= _min)
                 return;
 
             if (!Monitor.TryEnter(_prunedConnectors))
@@ -338,7 +332,7 @@ namespace Npgsql
 
             try
             {
-                var idleLifetime = ConnectionString.ConnectionIdleLifetime;
+                var idleLifetime = _connectionString.ConnectionIdleLifetime;
                 lock (this)
                 {
                     var totalConnections = Idle.Count + Busy;
@@ -346,7 +340,7 @@ namespace Npgsql
                     for (i = 0; i < Idle.Count; i++)
                     {
                         var connector = Idle[i];
-                        if (totalConnections - i <= Min || (DateTime.UtcNow - connector.ReleaseTimestamp).TotalSeconds < idleLifetime)
+                        if (totalConnections - i <= _min || (DateTime.UtcNow - connector.ReleaseTimestamp).TotalSeconds < idleLifetime)
                             break;
                         _prunedConnectors.Add(connector);
                     }
@@ -405,19 +399,20 @@ namespace Npgsql
         // WaitingOpenAttempt. AsyncRewriter will automatically choose the right method.
         void EnqueueWaitingOpenAttempt(TaskCompletionSource<NpgsqlConnector> tcs)
         {
-            Waiting.Enqueue(new WaitingOpenAttempt { TaskCompletionSource = tcs, IsAsync =  false});
+            _waiting.Enqueue(new WaitingOpenAttempt { TaskCompletionSource = tcs, IsAsync =  false});
         }
 
+        // ReSharper disable once UnusedParameter.Local
         Task EnqueueWaitingOpenAttemptAsync(TaskCompletionSource<NpgsqlConnector> tcs, CancellationToken cancellationToken)
         {
-            Waiting.Enqueue(new WaitingOpenAttempt { TaskCompletionSource = tcs, IsAsync = true });
+            _waiting.Enqueue(new WaitingOpenAttempt { TaskCompletionSource = tcs, IsAsync = true });
             return PGUtil.CompletedTask;
         }
 
         void WaitForTask(Task task, TimeSpan timeout)
         {
             if (!task.Wait(timeout))
-                throw new NpgsqlException($"The connection pool has been exhausted, either raise MaxPoolSize (currently {_max}) or Timeout (currently {ConnectionString.Timeout} seconds)");
+                throw new NpgsqlException($"The connection pool has been exhausted, either raise MaxPoolSize (currently {_max}) or Timeout (currently {_connectionString.Timeout} seconds)");
         }
 
         async Task WaitForTaskAsync(Task task, TimeSpan timeout, CancellationToken cancellationToken)
@@ -426,7 +421,7 @@ namespace Npgsql
             if (task != await Task.WhenAny(task, timeoutTask).ConfigureAwait(false))
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                throw new NpgsqlException($"The connection pool has been exhausted, either raise MaxPoolSize (currently {_max}) or Timeout (currently {ConnectionString.Timeout} seconds)");
+                throw new NpgsqlException($"The connection pool has been exhausted, either raise MaxPoolSize (currently {_max}) or Timeout (currently {_connectionString.Timeout} seconds)");
             }
         }
 
@@ -435,7 +430,7 @@ namespace Npgsql
             _pruningTimer?.Dispose();
         }
 
-        public override string ToString() => $"[{Busy} busy, {Idle.Count} idle, {Waiting.Count} waiting]";
+        public override string ToString() => $"[{Busy} busy, {Idle.Count} idle, {_waiting.Count} waiting]";
     }
 
     class IdleConnectorList : List<NpgsqlConnector>
