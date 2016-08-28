@@ -22,6 +22,7 @@
 #endregion
 
 using System;
+using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
@@ -101,6 +102,8 @@ namespace Npgsql
         /// contain the password until the first Open() has been called.
         /// </summary>
         bool _alreadyOpened;
+
+        static readonly ConcurrentDictionary<string, NpgsqlConnectionStringBuilder> CsbCache = new ConcurrentDictionary<string, NpgsqlConnectionStringBuilder>();
 
 #if NET45 || NET451
         NpgsqlPromotableSinglePhaseNotification Promotable => _promotable ?? (_promotable = new NpgsqlPromotableSinglePhaseNotification(this));
@@ -280,7 +283,7 @@ namespace Npgsql
             {
                 if (value == null)
                     value = string.Empty;
-                Settings = new NpgsqlConnectionStringBuilder(value);
+                Settings = CsbCache.GetOrAdd(value, s => new NpgsqlConnectionStringBuilder(value));
             }
         }
 
