@@ -1406,7 +1406,7 @@ namespace Npgsql
             {
                 // TODO: Async cancellation
                 var tcs = new TaskCompletionSource<NpgsqlConnector>();
-                Waiting.Enqueue(tcs);
+                await EnqueueWaitingOpenAttemptAsync(tcs, cancellationToken).ConfigureAwait(false);
                 Monitor.Exit(this);
                 try
                 {

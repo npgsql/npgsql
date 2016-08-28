@@ -75,7 +75,13 @@ namespace Npgsql
         internal int Min { get; }
         internal int Busy { get; private set; }
 
-        internal Queue<TaskCompletionSource<NpgsqlConnector>> Waiting;
+        Queue<WaitingOpenAttempt> Waiting;
+
+        struct WaitingOpenAttempt
+        {
+            internal TaskCompletionSource<NpgsqlConnector> TaskCompletionSource;
+            internal bool IsAsync;
+        }
 
         /// <summary>
         /// Incremented every time this pool is cleared via <see cref="NpgsqlConnection.ClearPool"/> or
@@ -97,7 +103,7 @@ namespace Npgsql
             ConnectionString = csb;
             _pruningInterval = TimeSpan.FromSeconds(ConnectionString.ConnectionPruningInterval);
             Idle = new IdleConnectorList();
-            Waiting = new Queue<TaskCompletionSource<NpgsqlConnector>>();
+            Waiting = new Queue<WaitingOpenAttempt>();
         }
 
         [RewriteAsync]
@@ -124,7 +130,7 @@ namespace Npgsql
             {
                 // TODO: Async cancellation
                 var tcs = new TaskCompletionSource<NpgsqlConnector>();
-                Waiting.Enqueue(tcs);
+                EnqueueWaitingOpenAttempt(tcs);
                 Monitor.Exit(this);
                 try
                 {
@@ -201,14 +207,23 @@ namespace Npgsql
                 // them directly.
                 while (Waiting.Count > 0)
                 {
-                    var tcs = Waiting.Dequeue();
+                    var waitingOpenAttempt = Waiting.Dequeue();
+                    var tcs = waitingOpenAttempt.TaskCompletionSource;
                     // Some attempts may be in the queue but in cancelled state, since they've already timed out.
                     // Simply dequeue these and move on.
                     if (tcs.Task.IsCanceled)
                         continue;
                     // We have a pending open attempt. "Complete" it, handing off the connector.
-                    // We do this in another thread because we don't want to execute the continuation here.
-                    Task.Run(() => tcs.SetResult(connector));
+                    if (waitingOpenAttempt.IsAsync)
+                    {
+                        // If the waiting open attempt is asynchronous (i.e. OpenAsync()), we can't simply
+                        // call SetResult on its TaskCompletionSource, since it would execute the open's
+                        // continuation in our thread (the closing thread). Instead we schedule the completion
+                        // to run in the TP
+                        Task.Run(() => tcs.SetResult(connector));
+                    }
+                    else
+                        tcs.SetResult(connector);
                     return;
                 }
 
@@ -327,6 +342,20 @@ namespace Npgsql
                 }
             }
             _clearCounter++;
+        }
+
+        // This method (and its async counterpart below) are a hack to allow us to distinguish between whether
+        // we're executing in sync or async code - this is necessary to properly set IsAsync on the
+        // WaitingOpenAttempt. AsyncRewriter will automatically choose the right method.
+        void EnqueueWaitingOpenAttempt(TaskCompletionSource<NpgsqlConnector> tcs)
+        {
+            Waiting.Enqueue(new WaitingOpenAttempt { TaskCompletionSource = tcs, IsAsync =  false});
+        }
+
+        Task EnqueueWaitingOpenAttemptAsync(TaskCompletionSource<NpgsqlConnector> tcs, CancellationToken cancellationToken)
+        {
+            Waiting.Enqueue(new WaitingOpenAttempt { TaskCompletionSource = tcs, IsAsync = true });
+            return PGUtil.CompletedTask;
         }
 
         void WaitForTask(Task task, TimeSpan timeout)

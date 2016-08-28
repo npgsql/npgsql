@@ -257,6 +257,42 @@ namespace Npgsql.Tests
             Assert.That(PoolManager.Pools[connString].Idle, Has.Count.EqualTo(1));
         }
 
+        [Test, Description("Makes sure that when a waiting async open is is given a connection, the continuation is executed in the TP rather than on the closing thread")]
+        public void CloseReleasesWaiterOnAnotherThread()
+        {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ApplicationName = nameof(CloseReleasesWaiterOnAnotherThread),
+                MaxPoolSize = 1
+            };
+            var conn1 = new NpgsqlConnection(connString);
+            try
+            {
+                conn1.Open();   // Pool is now exhausted
+
+                Func<Task<int>> asyncOpener = async () =>
+                {
+                    using (var conn2 = new NpgsqlConnection(connString))
+                    {
+                        await conn2.OpenAsync();
+                        return Thread.CurrentThread.ManagedThreadId;
+                    }
+                };
+
+                // Start an async open which will not complete as the pool is exhausted.
+                var asyncOpenerTask = asyncOpener();
+                conn1.Close();  // Complete the async open by closing conn1
+                var asyncOpenerThreadId = asyncOpenerTask.Result;
+
+                Assert.That(asyncOpenerThreadId, Is.Not.EqualTo(Thread.CurrentThread.ManagedThreadId));
+            }
+            finally
+            {
+                conn1.Close();
+                NpgsqlConnection.ClearPool(conn1);
+            }
+        }
+
         [Test]
         public void ClearAll()
         {
