@@ -295,6 +295,7 @@ namespace Npgsql
         [Description("The hostname or IP address of the PostgreSQL server to connect to.")]
         [DisplayName("Host")]
         [NpgsqlConnectionStringProperty("Server")]
+        [CanBeNull]
         public string Host
         {
             get { return _host; }
@@ -1056,7 +1057,7 @@ namespace Npgsql
         /// Hash function.
         /// </summary>
         /// <returns></returns>
-        public override int GetHashCode() => ConnectionString.GetHashCode();
+        public override int GetHashCode() => Host?.GetHashCode() ?? 0;
 
         #endregion
 
