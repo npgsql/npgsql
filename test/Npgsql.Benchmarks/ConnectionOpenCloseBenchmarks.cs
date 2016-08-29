@@ -1,4 +1,5 @@
-﻿using BenchmarkDotNet.Attributes;
+﻿using System.Data.SqlClient;
+using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
 #if NET46
@@ -16,6 +17,9 @@ namespace Npgsql.Benchmarks
 
         readonly NpgsqlConnection _openCloseConn;
         readonly NpgsqlCommand _openCloseCmd;
+
+        readonly SqlConnection _sqlConnection;
+        readonly SqlCommand _sqlCommand;
 
         readonly NpgsqlConnection _persistentPreparedConn;
         readonly NpgsqlCommand _persistentPreparedCmd;
@@ -40,6 +44,9 @@ namespace Npgsql.Benchmarks
             csb = new NpgsqlConnectionStringBuilder(BenchmarkEnvironment.ConnectionString) { ApplicationName = nameof(OpenClose) };
             _openCloseConn = new NpgsqlConnection(csb);
             _openCloseCmd = new NpgsqlCommand("SET lock_timeout = 1000", _openCloseConn);
+
+            _sqlConnection = new SqlConnection(@"Data Source=(localdb)\mssqllocaldb");
+            _sqlCommand = new SqlCommand("SET LOCK_TIMEOUT 1000", _sqlConnection);
 
             csb = new NpgsqlConnectionStringBuilder(BenchmarkEnvironment.ConnectionString) { ApplicationName = nameof(WithPersistentPrepared) };
             _persistentPreparedConn = new NpgsqlConnection(csb);
@@ -71,13 +78,22 @@ namespace Npgsql.Benchmarks
                 _noOpenCloseCmd.ExecuteNonQuery();
         }
 
-        [Benchmark(Baseline = true)]
+        [Benchmark]
         public void OpenClose()
         {
             _openCloseConn.Open();
             for (var i = 0; i < StatementsToSend; i++)
                 _openCloseCmd.ExecuteNonQuery();
             _openCloseConn.Close();
+        }
+
+        [Benchmark(Baseline = true)]
+        public void SqlClientOpenClose()
+        {
+            _sqlConnection.Open();
+            for (var i = 0; i < StatementsToSend; i++)
+                _sqlCommand.ExecuteNonQuery();
+            _sqlConnection.Close();
         }
 
         /// <summary>
