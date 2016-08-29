@@ -1,7 +1,9 @@
 ﻿using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
+#if NET46
 using BenchmarkDotNet.Diagnostics.Windows;
+#endif
 
 // ReSharper disable UnusedMember.Global
 
