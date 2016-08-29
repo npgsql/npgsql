@@ -130,7 +130,7 @@ namespace Npgsql
         /// Initializes a new instance of the
         /// <see cref="NpgsqlConnection">NpgsqlConnection</see> class.
         /// </summary>
-        public NpgsqlConnection() : this(new NpgsqlConnectionStringBuilder()) {}
+        public NpgsqlConnection() : this(CsbCache.GetOrAdd("", s => new NpgsqlConnectionStringBuilder())) {}
 
         /// <summary>
         /// Initializes a new instance of <see cref="NpgsqlConnection"/> with the given strongly-typed

@@ -90,10 +90,12 @@ namespace Npgsql
 
         void Init()
         {
-            foreach (var kv in PropertyDefaults) {
+            // Set the strongly-typed properties to their default values
+            foreach (var kv in PropertyDefaults)
                 kv.Key.SetValue(this, kv.Value);
-                base.Clear();
-            }
+            // Setting the strongly-typed properties here also set the string-based properties in the base class.
+            // Clear them (default settings = empty connection string)
+            base.Clear();
         }
 
         #endregion
