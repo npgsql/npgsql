@@ -784,6 +784,34 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, Description("NextResult was throwing an ArgumentOutOfRangeException when trying to determine the statement to associate with the PostgresException")]
+        public void ReaderNextResultExceptionHandling() {
+            const string initializeTablesSql =
+                "DROP TABLE IF EXISTS A;\r\n" +
+                "DROP TABLE IF EXISTS B;\r\n" +
+                "CREATE TABLE A(value int NOT NULL);\r\n" +
+                "CREATE TABLE B(value int UNIQUE);\r\n" +
+                "ALTER TABLE ONLY A ADD CONSTRAINT fkey FOREIGN KEY (value) REFERENCES B(value) DEFERRABLE INITIALLY DEFERRED;\r\n" +
+                "CREATE OR REPLACE FUNCTION C(_value int) RETURNS int AS $BODY$\r\n" +
+                "BEGIN\r\n" +
+                "INSERT INTO A(value) VALUES(_value);\r\n" +
+                "RETURN _value;\r\n" +
+                "END;\r\n" +
+                "$BODY$\r\n" +
+                "LANGUAGE plpgsql VOLATILE;";
+            using (var conn = OpenConnection()) {
+                using (var init = new NpgsqlCommand(initializeTablesSql, conn)) {
+                    init.ExecuteNonQuery();
+                    using (var cmd = new NpgsqlCommand("SELECT C(1)", conn)) {
+                        using (var reader = cmd.ExecuteReader()) {
+                            Assert.That(() => reader.NextResult(),
+                                Throws.Exception.With.Message.EqualTo("23503: insert or update on table \"a\" violates foreign key constraint \"fkey\""));
+                        }
+                    }
+                }
+            }
+        }
+
 #if DEBUG
         [Test, Description("Tests that everything goes well when a type handler generates a SafeReadException")]
         [Timeout(5000)]
