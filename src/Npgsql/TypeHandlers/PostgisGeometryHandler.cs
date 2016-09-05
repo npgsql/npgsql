@@ -26,7 +26,7 @@ namespace Npgsql.TypeHandlers
         IChunkingTypeHandler<byte[]>
     {
         uint? _srid;
-        uint _id;
+        uint _id, _lastId;
 
         bool _newGeom;
         int _ipol, _ipts, _irng;
@@ -66,6 +66,7 @@ namespace Npgsql.TypeHandlers
         public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             Reset();
+            _inByteaMode = null;
             _readBuf = buf;
             _len = len;
             _srid = default(uint?);
@@ -81,7 +82,7 @@ namespace Npgsql.TypeHandlers
             _ipts = _irng = _ipol = -1;
             _newGeom = true;
             _id = 0;
-            _inByteaMode = null;
+            _lastId = 0;
             _bytes = null;
         }
 
@@ -119,6 +120,7 @@ namespace Npgsql.TypeHandlers
             switch ((WkbIdentifier)(_id & 7))
             {
                 case WkbIdentifier.Point:
+                    _lastId = _id;
                     if (_readBuf.ReadBytesLeft < 16)
                         return false;
                     result = new PostgisPoint(_readBuf.ReadDouble(_bo), _readBuf.ReadDouble(_bo)) {
@@ -127,6 +129,7 @@ namespace Npgsql.TypeHandlers
                     return true;
 
                 case WkbIdentifier.LineString:
+                    _lastId = _id;
                     if (_ipts == -1)
                     {
                         if (_readBuf.ReadBytesLeft < 4)
@@ -146,6 +149,7 @@ namespace Npgsql.TypeHandlers
                     return true;
 
                 case WkbIdentifier.Polygon:
+                    _lastId = _id;
                     if (_irng == -1)
                     {
                         if (_readBuf.ReadBytesLeft < 4)
@@ -177,6 +181,7 @@ namespace Npgsql.TypeHandlers
                     return true;
 
                 case WkbIdentifier.MultiPoint:
+                    _lastId = _id;
                     if (_ipts == -1)
                     {
                         if (_readBuf.ReadBytesLeft < 4)
@@ -197,6 +202,7 @@ namespace Npgsql.TypeHandlers
                     return true;
 
                 case WkbIdentifier.MultiLineString:
+                    _lastId = _id;
                     if (_irng == -1)
                     {
                         if (_readBuf.ReadBytesLeft < 4)
@@ -229,6 +235,7 @@ namespace Npgsql.TypeHandlers
                     return true;
 
                 case WkbIdentifier.MultiPolygon:
+                    _lastId = _id;
                     if (_ipol == -1)
                     {
                         if (_readBuf.ReadBytesLeft < 4)
@@ -272,22 +279,47 @@ namespace Npgsql.TypeHandlers
                     return true;
 
                 case WkbIdentifier.GeometryCollection:
-                    if (_newGeom)
+                    PostgisGeometry[] g;
+                    int i;
+                    if (_icol.Count == 0)
                     {
                         if (_readBuf.ReadBytesLeft < 4)
+                        {
+                            _lastId = _id;
                             return false;
-                        _geoms.Push(new PostgisGeometry[_readBuf.ReadInt32(_bo)]);
-                        _icol.Push(0);
+                        }
+                        g = new PostgisGeometry[_readBuf.ReadInt32(_bo)];
+                        i = 0;
+                        if (_newGeom) // We need to know whether we're in a nested geocoll or not.
+                        {
+                            _id = 0;
+                            _newGeom = false;
+                        }
+                        else
+                        { 
+                            _id = _lastId;
+                            _lastId = 0;
+                        }
                     }
-                    _id = 0;
-                    var g = _geoms.Peek();
-                    var i = _icol.Peek();
+                    else
+                    {
+                        g = _geoms.Pop();
+                        i = _icol.Pop();
+                        if (_icol.Count == 0)
+                        {
+                            _id = _lastId;
+                            _lastId = 0;
+                        }
+                    }
                     for (; i < g.Length; i++)
                     {
                         PostgisGeometry geom;
+
                         if (!Read(out geom))
                         {
-                            _newGeom = false;
+                            _icol.Push(i);
+                            _geoms.Push(g);
+                            _id = (uint)WkbIdentifier.GeometryCollection;
                             return false;
                         }
                         g[i] = geom;
@@ -296,8 +328,6 @@ namespace Npgsql.TypeHandlers
                     result = new PostgisGeometryCollection(g) {
                         SRID = _srid.Value
                     };
-                    _geoms.Pop();
-                    _icol.Pop();
                     return true;
 
                 default:
@@ -341,6 +371,7 @@ namespace Npgsql.TypeHandlers
         public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter = null)
         {
             Reset();
+            _inByteaMode = null;
             _writeBuf = buf;
             _icol.Clear();
 
@@ -366,7 +397,7 @@ namespace Npgsql.TypeHandlers
 
         bool Write(PostgisGeometry geom)
         {
-            if (_newGeom)
+            if (_newGeom & _icol.Count == 0)
             {
                 if (geom.SRID == 0)
                 {
@@ -538,21 +569,23 @@ namespace Npgsql.TypeHandlers
 
                 case WkbIdentifier.GeometryCollection:
                     var coll = (PostgisGeometryCollection)geom;
-                    if (!_newGeom)
+                    if (_icol.Count == 0)
                     {
                         if (_writeBuf.WriteSpaceLeft < 4)
                             return false;
                         _writeBuf.WriteInt32(coll.GeometryCount);
-                        _icol.Push(0);
                         _newGeom = true;
                     }
-                    for (var i = _icol.Peek(); i < coll.GeometryCount; i++)
+                    
+                    for (var i = _icol.Count > 0 ? _icol.Pop() : 0 ; i < coll.GeometryCount; i++)
                     {
                         if (!Write(coll[i]))
-                            return false;
+                        {
+                            _icol.Push(i);
+                            return false;                            
+                        }
                         Reset();
-                    }
-                    _icol.Pop();
+                    }                    
                     return true;
 
                 default:
