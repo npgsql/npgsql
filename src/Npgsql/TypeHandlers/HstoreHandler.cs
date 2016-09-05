@@ -193,6 +193,7 @@ namespace Npgsql.TypeHandlers
                 _value = new Dictionary<string, string>(_numElements);
                 if (_numElements == 0)
                 {
+                    result = (Dictionary<string, string>)_value;
                     CleanupState();
                     return true;
                 }
