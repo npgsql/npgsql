@@ -42,10 +42,10 @@ namespace Npgsql.TypeHandlers
         LengthCache _lengthCache;
         FieldDescription _fieldDescription;
         IDictionary<string, string> _value;
-        IEnumerator<KeyValuePair<string, string>> _enumerator;
-        string _key;
-        int _numElements;
-        State _state;
+        IEnumerator<bool> _read_enumerator;
+        IEnumerator<bool> _write_enumerator;
+        DirectBuffer directBuf;
+
 
         /// <summary>
         /// The text handler to which we delegate encoding/decoding of the actual strings
@@ -55,6 +55,7 @@ namespace Npgsql.TypeHandlers
         internal HstoreHandler(IBackendType backendType, TypeHandlerRegistry registry) : base(backendType)
         {
             _textHandler = new TextHandler(backendType, registry);
+            _write_enumerator = Writes();
         }
 
         #region Write
@@ -95,7 +96,6 @@ namespace Npgsql.TypeHandlers
             _writeBuf = buf;
             _lengthCache = lengthCache;
             _parameter = parameter;
-            _state = State.Count;
 
             var asDict = value as IDictionary<string, string>;
             if (asDict != null) {
@@ -108,62 +108,45 @@ namespace Npgsql.TypeHandlers
 
         public override bool Write(ref DirectBuffer directBuf)
         {
-            switch (_state)
+            this.directBuf = directBuf;
+            _write_enumerator.MoveNext();
+            if (_write_enumerator.Current)
             {
-                case State.Count:
-                    if (_writeBuf.WriteSpaceLeft < 4) { return false; }
-                    _writeBuf.WriteInt32(_value.Count);
-                    if (_value.Count == 0)
-                    {
-                        CleanupState();
-                        return true;
-                    }
-                    _enumerator = _value.GetEnumerator();
-                    _enumerator.MoveNext();
-                    goto case State.KeyLen;
+                CleanupState();
+                return true;
+            }
+            else
+            {
+                directBuf = this.directBuf;
+                return false;
+            }
+        }
 
-                case State.KeyLen:
-                    _state = State.KeyLen;
-                    if (_writeBuf.WriteSpaceLeft < 4) { return false; }
+        private IEnumerator<bool> Writes()
+        {
+            while (true)
+            {
+                while (_writeBuf.WriteSpaceLeft < 4) { yield return false; }
+                _writeBuf.WriteInt32(_value.Count);
+                foreach (var p in _value)
+                {
+                    while (_writeBuf.WriteSpaceLeft < 4) { yield return false; }
                     var keyLen = _lengthCache.Get();
                     _writeBuf.WriteInt32(keyLen);
-                    _textHandler.PrepareWrite(_enumerator.Current.Key, _writeBuf, _lengthCache, _parameter);
-                    goto case State.KeyData;
-
-                case State.KeyData:
-                    _state = State.KeyData;
-                    if (!_textHandler.Write(ref directBuf)) { return false; }
-                    goto case State.ValueLen;
-
-                case State.ValueLen:
-                    _state = State.ValueLen;
-                    if (_writeBuf.WriteSpaceLeft < 4) { return false; }
-                    if (_enumerator.Current.Value == null)
-                    {
+                    _textHandler.PrepareWrite(p.Key, _writeBuf, _lengthCache, _parameter);
+                    while (!_textHandler.Write(ref directBuf)) { yield return false; }
+                    while (_writeBuf.WriteSpaceLeft < 4) { yield return false; }
+                    if (p.Value == null)
                         _writeBuf.WriteInt32(-1);
-                        if (!_enumerator.MoveNext()) {
-                            CleanupState();
-                            return true;
-                        }
-                        goto case State.KeyLen;
-                    }
-                    var valueLen = _lengthCache.Get();
-                    _writeBuf.WriteInt32(valueLen);
-                    _textHandler.PrepareWrite(_enumerator.Current.Value, _writeBuf, _lengthCache, _parameter);
-                    goto case State.ValueData;
-
-                case State.ValueData:
-                    _state = State.ValueData;
-                    if (!_textHandler.Write(ref directBuf)) { return false; }
-                    if (!_enumerator.MoveNext())
+                    else
                     {
-                        CleanupState();
-                        return true;
+                        var valueLen = _lengthCache.Get();
+                        _writeBuf.WriteInt32(valueLen);
+                        _textHandler.PrepareWrite(p.Value, _writeBuf, _lengthCache, _parameter);
+                        while (!_textHandler.Write(ref directBuf)) { yield return false; }
                     }
-                    goto case State.KeyLen;
-
-                default:
-                    throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {_state} of enum {nameof(HstoreHandler)}.{nameof(State)}. Please file a bug.");
+                }
+                yield return true;
             }
         }
 
@@ -175,72 +158,46 @@ namespace Npgsql.TypeHandlers
         {
             _readBuf = buf;
             _fieldDescription = fieldDescription;
-            _state = State.Count;
+            _read_enumerator = Reads();
         }
 
         public override bool Read([CanBeNull] out Dictionary<string, string> result)
         {
             result = null;
-            switch (_state)
-            {
-            case State.Count:
-                if (_readBuf.ReadBytesLeft < 4) { return false; }
-                _numElements = _readBuf.ReadInt32();
-                _value = new Dictionary<string, string>(_numElements);
-                if (_numElements == 0)
-                {
-                    result = (Dictionary<string, string>)_value;
-                    CleanupState();
-                    return true;
-                }
-                goto case State.KeyLen;
+            if (_read_enumerator.MoveNext())
+                return false;
+            result = (Dictionary<string, string>)_value;
+            CleanupState();
+            return true;
+        }
 
-            case State.KeyLen:
-                _state = State.KeyLen;
-                if (_readBuf.ReadBytesLeft < 4) { return false; }
+        private IEnumerator<bool> Reads()
+        {
+            while (_readBuf.ReadBytesLeft < 4) { yield return false; }
+            var numElements = _readBuf.ReadInt32();
+            _value = new Dictionary<string, string>(numElements);
+
+            while (numElements-- > 0)
+            {
+                while (_readBuf.ReadBytesLeft < 4) { yield return false; }
                 var keyLen = _readBuf.ReadInt32();
                 Debug.Assert(keyLen != -1);
                 _textHandler.PrepareRead(_readBuf, keyLen, _fieldDescription);
-                goto case State.KeyData;
-
-            case State.KeyData:
-                _state = State.KeyData;
-                if (!_textHandler.Read(out _key)) { return false; }
-                goto case State.ValueLen;
-
-            case State.ValueLen:
-                _state = State.ValueLen;
-                if (_readBuf.ReadBytesLeft < 4) { return false; }
+                string key;
+                while (!_textHandler.Read(out key)) { yield return false; }
+                while (_readBuf.ReadBytesLeft < 4) { yield return false; }
                 var valueLen = _readBuf.ReadInt32();
                 if (valueLen == -1)
                 {
-                    _value[_key] = null;
-                    if (--_numElements == 0)
-                    {
-                        result = (Dictionary<string, string>)_value;
-                        CleanupState();
-                        return true;
-                    }
-                    goto case State.KeyLen;
+                    _value[key] = null;
                 }
-                _textHandler.PrepareRead(_readBuf, valueLen, _fieldDescription);
-                goto case State.ValueData;
-
-            case State.ValueData:
-                _state = State.ValueData;
-                string value;
-                if (!_textHandler.Read(out value)) { return false; }
-                _value[_key] = value;
-                if (--_numElements == 0)
+                else
                 {
-                    result = (Dictionary<string, string>)_value;
-                    CleanupState();
-                    return true;
+                    _textHandler.PrepareRead(_readBuf, valueLen, _fieldDescription);
+                    string value;
+                    while (!_textHandler.Read(out value)) { yield return false; }
+                    _value[key] = value;
                 }
-                goto case State.KeyLen;
-
-            default:
-                throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {_state} of enum {nameof(HstoreHandler)}.{nameof(State)}. Please file a bug.");
             }
         }
 
@@ -293,8 +250,7 @@ namespace Npgsql.TypeHandlers
             _value = null;
             _parameter = null;
             _fieldDescription = null;
-            _enumerator = null;
-            _key = null;
+            _read_enumerator = null;
         }
 
         enum State { Count, KeyLen, KeyData, ValueLen, ValueData }

@@ -278,13 +278,18 @@ namespace Npgsql.Tests.Types
                 };
 
                 var expected2 = new Dictionary<string, string> {};
+                var expected3 = new Dictionary<string, string> {};
 
-                using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4", conn))
+                for (int i = 0; i < conn.BufferSize; i++)
+                    expected3[$"K{i}"] = $"V{i}";
+
+                using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4, @p5", conn))
                 {
                     cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Hstore, expected);
                     cmd.Parameters.AddWithValue("p2", expected);
                     cmd.Parameters.AddWithValue("p3", NpgsqlDbType.Hstore, expected2);
                     cmd.Parameters.AddWithValue("p4", expected2);
+                    cmd.Parameters.AddWithValue("p5", expected3);
                     using (var reader = cmd.ExecuteReader())
                     {
                         reader.Read();
@@ -302,6 +307,8 @@ namespace Npgsql.Tests.Types
                             Assert.That(reader.GetFieldValue<IDictionary<string, string>>(i), Is.EqualTo(expected2));
                             Assert.That(reader.GetString(i), Is.EqualTo(""));
                         }
+
+                        Assert.That(reader.GetFieldValue<Dictionary<string, string>>(4), Is.EqualTo(expected3));
                     }
                 }
             }
