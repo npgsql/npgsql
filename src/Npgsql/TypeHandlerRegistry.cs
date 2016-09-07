@@ -410,7 +410,8 @@ JOIN pg_namespace AS ns ON (ns.oid = typ.typnamespace)
 JOIN pg_attribute AS att ON (att.attrelid = typ.typrelid)
 WHERE
   typ.typname = @name{(withSchema ? " AND ns.nspname = @schema" : "")} AND
-  attnum > 0; /* Don't load system attributes */
+  attnum > 0 AND     /* Don't load system attributes */
+  NOT attisdropped;
 
 SELECT ns.nspname, a.typname, a.oid
 FROM pg_type AS a
