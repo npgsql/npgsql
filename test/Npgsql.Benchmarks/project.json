@@ -20,7 +20,8 @@
         "Microsoft.NETCore.App": {
           "version": "1.0.0",
           "type": "platform"
-        }
+        },
+        "System.Data.SqlClient" : "4.1.0"
       }
     }
   }
