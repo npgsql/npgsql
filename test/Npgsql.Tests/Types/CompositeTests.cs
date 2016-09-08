@@ -398,6 +398,11 @@ CREATE TYPE address AS
             public string PostalCode { get; set; }
         }
 
+        class TableAsCompositeType
+        {
+            public int Foo { get; set; }
+        }
+        
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/990")]
         public void TableAsComposite()
         {
@@ -411,9 +416,20 @@ CREATE TYPE address AS
             }
         }
 
-        class TableAsCompositeType
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1267")]
+        public void TableAsCompositeWithDeleteColumns()
         {
-            public int Foo { get; set; }
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery(@"
+                    CREATE TEMP TABLE table_as_composite (foo int, bar int);
+                    ALTER TABLE table_as_composite DROP COLUMN bar;
+                    INSERT INTO table_as_composite (foo) VALUES (8)");
+                conn.ReloadTypes();
+                conn.MapComposite<TableAsCompositeType>("table_as_composite");
+                var value = (TableAsCompositeType)conn.ExecuteScalar(@"SELECT t.*::table_as_composite FROM table_as_composite AS t");
+                Assert.That(value.Foo, Is.EqualTo(8));
+            }
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1125")]
