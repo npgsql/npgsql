@@ -190,6 +190,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Timeout(10000)]
+        [Explicit("Flaky")]
         public async Task CancelOpenAsync()
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString) {
