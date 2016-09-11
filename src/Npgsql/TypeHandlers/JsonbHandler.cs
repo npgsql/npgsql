@@ -25,6 +25,7 @@ using System;
 using System.IO;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers
@@ -53,9 +54,9 @@ namespace Npgsql.TypeHandlers
         /// </summary>
         readonly TextHandler _textHandler;
 
-        internal JsonbHandler(IBackendType backendType, TypeHandlerRegistry registry) : base(backendType)
+        internal JsonbHandler(PostgresType postgresType, TypeHandlerRegistry registry) : base(postgresType)
         {
-            _textHandler = new TextHandler(backendType, registry);
+            _textHandler = new TextHandler(postgresType, registry);
         }
 
         #region Write

@@ -28,6 +28,7 @@ using System.Linq;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using JetBrains.Annotations;
+using Npgsql.PostgresTypes;
 
 namespace Npgsql.TypeHandlers
 {
@@ -51,7 +52,7 @@ namespace Npgsql.TypeHandlers
         object _value;
         int _pos;
 
-        internal BitStringHandler(IBackendType backendType) : base(backendType) {}
+        internal BitStringHandler(PostgresType postgresType) : base(postgresType) {}
 
         internal override Type GetFieldType(FieldDescription fieldDescription = null)
             => fieldDescription != null && fieldDescription.TypeModifier == 1 ? typeof(bool) : typeof(BitArray);
@@ -60,7 +61,7 @@ namespace Npgsql.TypeHandlers
             => GetFieldType(fieldDescription);
 
         // BitString requires a special array handler which returns bool or BitArray
-        internal override ArrayHandler CreateArrayHandler(IBackendType backendType) =>
+        internal override ArrayHandler CreateArrayHandler(PostgresType backendType) =>
             new BitStringArrayHandler(backendType, this);
 
         internal override object ReadValueAsObjectFully(DataRowMessage row, FieldDescription fieldDescription = null)
@@ -363,8 +364,8 @@ namespace Npgsql.TypeHandlers
         internal override Type GetElementPsvType(FieldDescription fieldDescription = null)
             => GetElementFieldType(fieldDescription);
 
-        public BitStringArrayHandler(IBackendType backendType, BitStringHandler elementHandler)
-            : base(backendType, elementHandler) {}
+        public BitStringArrayHandler(PostgresType postgresType, BitStringHandler elementHandler)
+            : base(postgresType, elementHandler) {}
 
         public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {

@@ -26,6 +26,7 @@ using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
 using JetBrains.Annotations;
+using Npgsql.PostgresTypes;
 
 namespace Npgsql.TypeHandlers
 {
@@ -35,7 +36,7 @@ namespace Npgsql.TypeHandlers
     [TypeMapping("uuid", NpgsqlDbType.Uuid, DbType.Guid, typeof(Guid))]
     class UuidHandler : SimpleTypeHandler<Guid>, ISimpleTypeHandler<string>
     {
-        internal UuidHandler(IBackendType backendType) : base(backendType) { }
+        internal UuidHandler(PostgresType postgresType) : base(postgresType) { }
 
         public override Guid Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {

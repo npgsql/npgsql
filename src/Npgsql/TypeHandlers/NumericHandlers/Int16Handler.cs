@@ -26,6 +26,7 @@ using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
 using JetBrains.Annotations;
+using Npgsql.PostgresTypes;
 
 namespace Npgsql.TypeHandlers.NumericHandlers
 {
@@ -38,7 +39,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         ISimpleTypeHandler<float>, ISimpleTypeHandler<double>, ISimpleTypeHandler<decimal>,
         ISimpleTypeHandler<string>
     {
-        internal Int16Handler(IBackendType backendType) : base(backendType) { }
+        internal Int16Handler(PostgresType postgresType) : base(postgresType) { }
 
         public override short Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => buf.ReadInt16();

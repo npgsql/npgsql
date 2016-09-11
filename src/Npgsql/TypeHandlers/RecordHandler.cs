@@ -24,6 +24,7 @@
 using System;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 
 namespace Npgsql.TypeHandlers
 {
@@ -49,8 +50,8 @@ namespace Npgsql.TypeHandlers
         TypeHandler _fieldHandler;
         object[] _value;
 
-        public RecordHandler(IBackendType backendType, TypeHandlerRegistry registry)
-            : base(backendType)
+        public RecordHandler(PostgresType postgresType, TypeHandlerRegistry registry)
+            : base(postgresType)
         {
             _registry = registry;
         }

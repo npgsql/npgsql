@@ -4,6 +4,7 @@ using System.Diagnostics;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.Logging;
+using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers
@@ -49,8 +50,8 @@ namespace Npgsql.TypeHandlers
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
-        internal PostgisGeometryHandler(IBackendType backendType, TypeHandlerRegistry registry)
-            : base(backendType)
+        internal PostgisGeometryHandler(PostgresType postgresType, TypeHandlerRegistry registry)
+            : base(postgresType)
         {
             var byteaHandler = registry[NpgsqlDbType.Bytea];
             if (_byteaHandler == registry.UnrecognizedTypeHandler)

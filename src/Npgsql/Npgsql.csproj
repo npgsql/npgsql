@@ -72,6 +72,8 @@
     <Compile Include="BackendMessages\ParseCompleteMessage.cs" />
     <Compile Include="BackendMessages\RowDescriptionMessage.cs" />
     <Compile Include="BackendMessages\DataRowSequentialMessage.cs" />
+    <Compile Include="PostgresTypes\PostgresArrayType.cs" />
+    <Compile Include="PostgresTypes\PostgresType.cs" />
     <Compile Include="FrontendMessages\CopyFailMessage.cs" />
     <Compile Include="FrontendMessages\SSLRequestMessage.cs" />
     <Compile Include="GlobalSuppressions.cs" />
@@ -115,6 +117,12 @@
     <Compile Include="NpgsqlTypes\NpgsqlTsVector.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlUserTypes.cs" />
     <Compile Include="NpgsqlTypes\PostgisTypes.cs" />
+    <Compile Include="PostgresTypes\PostgresBaseType.cs" />
+    <Compile Include="PostgresTypes\PostgresCompositeType.cs" />
+    <Compile Include="PostgresTypes\PostgresDomainType.cs" />
+    <Compile Include="PostgresTypes\PostgresEnumType.cs" />
+    <Compile Include="PostgresTypes\PostgresRangeType.cs" />
+    <Compile Include="PostgresTypes\PostgresUnknownType.cs" />
     <Compile Include="ReadBuffer.cs" />
     <Compile Include="NameTranslation\NpgsqlSnakeCaseNameTranslator.cs" />
     <Compile Include="PoolManager.cs" />

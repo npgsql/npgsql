@@ -216,7 +216,7 @@ namespace Npgsql
                     var param = new NpgsqlParameter();
 
                     // TODO: Fix enums, composite types
-                    var npgsqlDbType = c.Connection.Connector.TypeHandlerRegistry[types[i]].BackendType.NpgsqlDbType;
+                    var npgsqlDbType = c.Connection.Connector.TypeHandlerRegistry[types[i]].PostgresType.NpgsqlDbType;
                     if (!npgsqlDbType.HasValue)
                         throw new InvalidOperationException($"Invalid parameter type: {types[i]}");
                     param.NpgsqlDbType = npgsqlDbType.Value;

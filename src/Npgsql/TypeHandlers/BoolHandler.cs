@@ -25,6 +25,7 @@ using System;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
+using Npgsql.PostgresTypes;
 
 namespace Npgsql.TypeHandlers
 {
@@ -34,7 +35,7 @@ namespace Npgsql.TypeHandlers
     [TypeMapping("bool", NpgsqlDbType.Boolean, DbType.Boolean, typeof(bool))]
     class BoolHandler : SimpleTypeHandler<bool>
     {
-        internal BoolHandler(IBackendType backendType) : base(backendType) {}
+        internal BoolHandler(PostgresType postgresType) : base(postgresType) {}
 
         public override bool Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => buf.ReadByte() != 0;

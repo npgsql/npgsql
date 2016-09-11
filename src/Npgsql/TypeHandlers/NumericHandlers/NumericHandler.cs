@@ -27,6 +27,7 @@ using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
 using JetBrains.Annotations;
+using Npgsql.PostgresTypes;
 
 namespace Npgsql.TypeHandlers.NumericHandlers
 {
@@ -57,7 +58,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             10000000000000000000000000000M
         };
 
-        internal NumericHandler(IBackendType backendType) : base(backendType) { }
+        internal NumericHandler(PostgresType postgresType) : base(postgresType) { }
 
         public override decimal Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {

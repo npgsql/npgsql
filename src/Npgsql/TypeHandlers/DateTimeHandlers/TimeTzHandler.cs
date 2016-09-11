@@ -24,6 +24,7 @@
 using System;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers.DateTimeHandlers
@@ -36,7 +37,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     {
         // Binary Format: int64 expressing microseconds, int32 expressing timezone in seconds, negative
 
-        internal TimeTzHandler(IBackendType backendType) : base(backendType) { }
+        internal TimeTzHandler(PostgresType postgresType) : base(postgresType) { }
 
         public override DateTimeOffset Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {

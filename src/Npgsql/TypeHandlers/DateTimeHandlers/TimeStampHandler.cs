@@ -25,6 +25,7 @@ using System;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
+using Npgsql.PostgresTypes;
 
 namespace Npgsql.TypeHandlers.DateTimeHandlers
 {
@@ -46,8 +47,8 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         /// </summary>
         protected readonly bool ConvertInfinityDateTime;
 
-        internal TimeStampHandler(IBackendType backendType, TypeHandlerRegistry registry)
-            : base(backendType)
+        internal TimeStampHandler(PostgresType postgresType, TypeHandlerRegistry registry)
+            : base(postgresType)
         {
             // Check for the legacy floating point timestamps feature, defaulting to integer timestamps
             string s;

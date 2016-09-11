@@ -26,6 +26,7 @@ using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
 using JetBrains.Annotations;
+using Npgsql.PostgresTypes;
 
 namespace Npgsql.TypeHandlers.DateTimeHandlers
 {
@@ -44,8 +45,8 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         /// </summary>
         readonly bool _convertInfinityDateTime;
 
-        public DateHandler(IBackendType backendType, TypeHandlerRegistry registry)
-            : base(backendType)
+        public DateHandler(PostgresType postgresType, TypeHandlerRegistry registry)
+            : base(postgresType)
         {
             _convertInfinityDateTime = registry.Connector.ConvertInfinityDateTime;
         }

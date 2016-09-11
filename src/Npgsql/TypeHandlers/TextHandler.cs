@@ -29,6 +29,7 @@ using NpgsqlTypes;
 using System.Data;
 using System.Text;
 using JetBrains.Annotations;
+using Npgsql.PostgresTypes;
 
 namespace Npgsql.TypeHandlers
 {
@@ -69,7 +70,7 @@ namespace Npgsql.TypeHandlers
 
         #endregion
 
-        internal TextHandler(IBackendType backendType, TypeHandlerRegistry registry) : base(backendType)
+        internal TextHandler(PostgresType postgresType, TypeHandlerRegistry registry) : base(postgresType)
         {
             _encoding = registry.Connector.TextEncoding;
         }

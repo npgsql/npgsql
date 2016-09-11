@@ -23,6 +23,7 @@
 
 using NpgsqlTypes;
 using Npgsql.Logging;
+using Npgsql.PostgresTypes;
 
 namespace Npgsql.TypeHandlers.InternalTypesHandlers
 {
@@ -35,8 +36,8 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
     {
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
-        public OIDVectorHandler(IBackendType backendType, TypeHandlerRegistry registry)
-            : base(backendType, null, 0)
+        public OIDVectorHandler(PostgresType postgresType, TypeHandlerRegistry registry)
+            : base(postgresType, null, 0)
         {
             // The pg_type SQL query makes sure that the oid type comes before oidvector, so we can
             // depend on it already being in the registry

@@ -29,6 +29,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using Npgsql.PostgresTypes;
 
 namespace Npgsql.TypeHandlers
 {
@@ -45,7 +46,7 @@ namespace Npgsql.TypeHandlers
 
     interface IEnumHandlerFactory
     {
-        IEnumHandler Create(IBackendType backendType);
+        IEnumHandler Create(PostgresType backendType);
     }
 
     class EnumHandler<TEnum> : SimpleTypeHandler<TEnum>, IEnumHandler where TEnum : struct
@@ -57,8 +58,8 @@ namespace Npgsql.TypeHandlers
 
         #region Construction
 
-        internal EnumHandler(IBackendType backendType, INpgsqlNameTranslator nameTranslator)
-            : base(backendType)
+        internal EnumHandler(PostgresType postgresType, INpgsqlNameTranslator nameTranslator)
+            : base(postgresType)
         {
             Debug.Assert(typeof(TEnum).GetTypeInfo().IsEnum, "EnumHandler instantiated for non-enum type");
             _enumToLabel = new Dictionary<TEnum, string>();
@@ -66,8 +67,8 @@ namespace Npgsql.TypeHandlers
             GenerateMappings(nameTranslator, _enumToLabel, _labelToEnum);
         }
 
-        internal EnumHandler(IBackendType backendType, Dictionary<TEnum, string> enumToLabel, Dictionary<string, TEnum> labelToEnum)
-            : base(backendType)
+        internal EnumHandler(PostgresType postgresType, Dictionary<TEnum, string> enumToLabel, Dictionary<string, TEnum> labelToEnum)
+            : base(postgresType)
         {
             Debug.Assert(typeof(TEnum).GetTypeInfo().IsEnum, "EnumHandler instantiated for non-enum type");
             _enumToLabel = enumToLabel;
@@ -145,7 +146,7 @@ namespace Npgsql.TypeHandlers
                 GenerateMappings(nameTranslator, _enumToLabel, _labelToEnum);
             }
 
-            public IEnumHandler Create(IBackendType backendType)
+            public IEnumHandler Create(PostgresType backendType)
                 => new EnumHandler<TEnum>(backendType, _enumToLabel, _labelToEnum);
         }
     }

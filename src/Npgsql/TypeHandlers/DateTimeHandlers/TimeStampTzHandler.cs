@@ -26,6 +26,7 @@ using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
 using JetBrains.Annotations;
+using Npgsql.PostgresTypes;
 
 namespace Npgsql.TypeHandlers.DateTimeHandlers
 {
@@ -35,8 +36,8 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     [TypeMapping("timestamptz", NpgsqlDbType.TimestampTZ, DbType.DateTimeOffset, typeof(DateTimeOffset))]
     class TimeStampTzHandler : TimeStampHandler, ISimpleTypeHandler<DateTimeOffset>
     {
-        public TimeStampTzHandler(IBackendType backendType, TypeHandlerRegistry registry)
-            : base(backendType, registry) {}
+        public TimeStampTzHandler(PostgresType postgresType, TypeHandlerRegistry registry)
+            : base(postgresType, registry) {}
 
         public override DateTime Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {

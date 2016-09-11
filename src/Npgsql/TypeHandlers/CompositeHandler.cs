@@ -27,6 +27,7 @@ using System.Linq;
 using System.Reflection;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers
@@ -44,7 +45,7 @@ namespace Npgsql.TypeHandlers
 
     interface ICompositeHandlerFactory
     {
-        ICompositeHandler Create(IBackendType backendType, List<RawCompositeField> rawFields, TypeHandlerRegistry registry);
+        ICompositeHandler Create(PostgresType backendType, List<RawCompositeField> rawFields, TypeHandlerRegistry registry);
     }
 
     /// <summary>
@@ -79,8 +80,8 @@ namespace Npgsql.TypeHandlers
 
         public Type CompositeType => typeof(T);
 
-        internal CompositeHandler(IBackendType backendType, INpgsqlNameTranslator nameTranslator, List<RawCompositeField> rawFields, TypeHandlerRegistry registry)
-            : base (backendType)
+        internal CompositeHandler(PostgresType postgresType, INpgsqlNameTranslator nameTranslator, List<RawCompositeField> rawFields, TypeHandlerRegistry registry)
+            : base (postgresType)
         {
             _nameTranslator = nameTranslator;
 
@@ -233,7 +234,7 @@ namespace Npgsql.TypeHandlers
                 {
                     if (_writeBuf.WriteSpaceLeft < 4)
                         return false;
-                    _writeBuf.WriteUInt32(fieldHandler.BackendType.OID);
+                    _writeBuf.WriteUInt32(fieldHandler.PostgresType.OID);
                     _writeBuf.WriteInt32(-1);
                     continue;
                 }
@@ -243,7 +244,7 @@ namespace Npgsql.TypeHandlers
                 {
                     var elementLen = asSimpleWriter.ValidateAndGetLength(fieldValue, null);
                     if (_writeBuf.WriteSpaceLeft < 8 + elementLen) { return false; }
-                    _writeBuf.WriteUInt32(fieldHandler.BackendType.OID);
+                    _writeBuf.WriteUInt32(fieldHandler.PostgresType.OID);
                     _writeBuf.WriteInt32(elementLen);
                     asSimpleWriter.Write(fieldValue, _writeBuf, null);
                     continue;
@@ -255,7 +256,7 @@ namespace Npgsql.TypeHandlers
                     if (!_wroteFieldHeader)
                     {
                         if (_writeBuf.WriteSpaceLeft < 8) { return false; }
-                        _writeBuf.WriteUInt32(fieldHandler.BackendType.OID);
+                        _writeBuf.WriteUInt32(fieldHandler.PostgresType.OID);
                         _writeBuf.WriteInt32(asChunkedWriter.ValidateAndGetLength(fieldValue, ref _lengthCache, null));
                         asChunkedWriter.PrepareWrite(fieldValue, _writeBuf, _lengthCache, null);
                         _wroteFieldHeader = true;
@@ -377,7 +378,7 @@ namespace Npgsql.TypeHandlers
                 _nameTranslator = nameTranslator;
             }
 
-            public ICompositeHandler Create(IBackendType backendType, List<RawCompositeField> rawFields, TypeHandlerRegistry registry)
+            public ICompositeHandler Create(PostgresType backendType, List<RawCompositeField> rawFields, TypeHandlerRegistry registry)
                 => new CompositeHandler<T>(backendType, _nameTranslator, rawFields, registry);
         }
     }

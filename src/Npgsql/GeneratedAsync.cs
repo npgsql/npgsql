@@ -20,6 +20,7 @@ using System.Threading;
 using System.Threading.Tasks;
 #pragma warning disable
 using System;
+using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
@@ -134,9 +135,9 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using JetBrains.Annotations;
 using Npgsql.Logging;
 using System.Threading;
 using System.Threading.Tasks;
@@ -173,6 +174,7 @@ using System.Linq;
 using System.Reflection;
 using JetBrains.Annotations;
 using Npgsql.Logging;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandlers;
 using NpgsqlTypes;
 using System.Threading;
@@ -1572,16 +1574,16 @@ namespace Npgsql
             // Note that there's a chicken and egg problem here - LoadBackendTypes below needs a functional 
             // connector to load the types, hence the strange initialization code here
             connector.TypeHandlerRegistry = new TypeHandlerRegistry(connector);
-            BackendTypes types;
+            AvailablePostgresTypes types;
             if (!BackendTypeCache.TryGetValue(connector.ConnectionString, out types))
                 types = BackendTypeCache[connector.ConnectionString] = await (LoadBackendTypesAsync(connector, timeout, cancellationToken).ConfigureAwait(false));
-            connector.TypeHandlerRegistry._backendTypes = types;
+            connector.TypeHandlerRegistry._postgresTypes = types;
             connector.TypeHandlerRegistry.ActivateGlobalMappings();
         }
 
-        static async Task<BackendTypes> LoadBackendTypesAsync(NpgsqlConnector connector, NpgsqlTimeout timeout, CancellationToken cancellationToken)
+        static async Task<AvailablePostgresTypes> LoadBackendTypesAsync(NpgsqlConnector connector, NpgsqlTimeout timeout, CancellationToken cancellationToken)
         {
-            var types = new BackendTypes();
+            var types = new AvailablePostgresTypes();
             using (var command = new NpgsqlCommand(connector.SupportsRangeTypes ? TypesQueryWithRange : TypesQueryWithoutRange, connector.Connection))
             {
                 command.CommandTimeout = timeout.IsSet ? (int)timeout.TimeLeft.TotalSeconds : 0;

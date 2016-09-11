@@ -28,6 +28,7 @@ using System.Text;
 using JetBrains.Annotations;
 using NpgsqlTypes;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 
 namespace Npgsql.TypeHandlers.FullTextSearchHandlers
 {
@@ -49,7 +50,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
         int _bytesLeft;
         NpgsqlTsVector _value;
 
-        internal TsVectorHandler(IBackendType backendType) : base(backendType) { }
+        internal TsVectorHandler(PostgresType postgresType) : base(postgresType) { }
 
         public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {

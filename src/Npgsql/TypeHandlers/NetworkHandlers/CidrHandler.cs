@@ -23,6 +23,7 @@
 
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers.NetworkHandlers
@@ -33,7 +34,7 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
     [TypeMapping("cidr", NpgsqlDbType.Cidr)]
     class CidrHandler : SimpleTypeHandler<NpgsqlInet>, ISimpleTypeHandler<string>
     {
-        internal CidrHandler(IBackendType backendType) : base(backendType) { }
+        internal CidrHandler(PostgresType postgresType) : base(postgresType) { }
 
         public override NpgsqlInet Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => InetHandler.DoRead(buf, fieldDescription, len, true);

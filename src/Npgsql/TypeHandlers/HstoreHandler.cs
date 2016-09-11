@@ -28,6 +28,7 @@ using System.Linq;
 using System.Text;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers
@@ -52,9 +53,9 @@ namespace Npgsql.TypeHandlers
         /// </summary>
         readonly TextHandler _textHandler;
 
-        internal HstoreHandler(IBackendType backendType, TypeHandlerRegistry registry) : base(backendType)
+        internal HstoreHandler(PostgresType postgresType, TypeHandlerRegistry registry) : base(postgresType)
         {
-            _textHandler = new TextHandler(backendType, registry);
+            _textHandler = new TextHandler(postgresType, registry);
         }
 
         #region Write

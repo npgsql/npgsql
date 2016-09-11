@@ -25,6 +25,7 @@ using NpgsqlTypes;
 using System;
 using System.Text;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 
 namespace Npgsql.TypeHandlers
 {
@@ -38,7 +39,7 @@ namespace Npgsql.TypeHandlers
     /// </summary>
     class UnrecognizedTypeHandler : TextHandler
     {
-        static readonly IBackendType UnrecognizedBackendType = new UnrecognizedBackendType();
+        static readonly PostgresType UnrecognizedBackendType = new UnrecognizedBackendType();
 
         internal UnrecognizedTypeHandler(TypeHandlerRegistry registry) : base(UnrecognizedBackendType, registry) {}
 
@@ -53,15 +54,5 @@ namespace Npgsql.TypeHandlers
             }
             base.PrepareRead(buf, len, fieldDescription);
         }
-    }
-
-    class UnrecognizedBackendType : IBackendType
-    {
-        public string Namespace => "";
-        public string Name => "<unknown>";
-        public uint OID => 0;
-        public NpgsqlDbType? NpgsqlDbType => null;
-        public string FullName => "<unknown>";
-        public string DisplayName => "<unknown>";
     }
 }

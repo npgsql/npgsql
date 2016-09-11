@@ -26,6 +26,7 @@ using System;
 using System.Diagnostics;
 using NpgsqlTypes;
 using JetBrains.Annotations;
+using Npgsql.PostgresTypes;
 
 namespace Npgsql.TypeHandlers
 {
@@ -44,13 +45,13 @@ namespace Npgsql.TypeHandlers
         /// </summary>
         public TypeHandler ElementHandler { get; }
 
-        public RangeHandler(IBackendType backendType, TypeHandler<TElement> elementHandler)
-            : base(backendType)
+        public RangeHandler(PostgresType postgresType, TypeHandler<TElement> elementHandler)
+            : base(postgresType)
         {
             ElementHandler = elementHandler;
         }
 
-        internal override TypeHandler CreateRangeHandler(IBackendType backendType)
+        internal override TypeHandler CreateRangeHandler(PostgresType backendType)
         {
             throw new Exception("Can't create range handler of range types, this is an Npgsql bug, please report.");
         }

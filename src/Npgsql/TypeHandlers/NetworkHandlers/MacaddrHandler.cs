@@ -26,6 +26,7 @@ using System.Diagnostics;
 using System.Net.NetworkInformation;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers.NetworkHandlers
@@ -36,7 +37,7 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
     [TypeMapping("macaddr", NpgsqlDbType.MacAddr, typeof(PhysicalAddress))]
     class MacaddrHandler : SimpleTypeHandler<PhysicalAddress>, ISimpleTypeHandler<string>
     {
-        internal MacaddrHandler(IBackendType backendType) : base(backendType) { }
+        internal MacaddrHandler(PostgresType postgresType) : base(postgresType) { }
 
         public override PhysicalAddress Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {

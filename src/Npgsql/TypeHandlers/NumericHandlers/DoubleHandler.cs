@@ -25,6 +25,7 @@ using System;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
+using Npgsql.PostgresTypes;
 
 namespace Npgsql.TypeHandlers.NumericHandlers
 {
@@ -34,7 +35,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     [TypeMapping("float8", NpgsqlDbType.Double, DbType.Double, typeof(double))]
     class DoubleHandler : SimpleTypeHandler<double>
     {
-        internal DoubleHandler(IBackendType backendType) : base(backendType) { }
+        internal DoubleHandler(PostgresType postgresType) : base(postgresType) { }
 
         public override double Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => buf.ReadDouble();

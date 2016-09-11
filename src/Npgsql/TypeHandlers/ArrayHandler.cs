@@ -28,12 +28,13 @@ using System.Diagnostics;
 using System.Linq;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 
 namespace Npgsql.TypeHandlers
 {
     abstract class ArrayHandler : ChunkingTypeHandler<Array>
     {
-        internal ArrayHandler(IBackendType backendType) : base(backendType) {}
+        internal ArrayHandler(PostgresType postgresType) : base(postgresType) {}
         internal abstract Type GetElementFieldType(FieldDescription fieldDescription = null);
         internal abstract Type GetElementPsvType(FieldDescription fieldDescription = null);
     }
@@ -92,14 +93,14 @@ namespace Npgsql.TypeHandlers
         /// </summary>
         protected internal TypeHandler ElementHandler { get; protected set; }
 
-        public ArrayHandler(IBackendType backendType, [CanBeNull] TypeHandler elementHandler, int lowerBound) : base(backendType)
+        public ArrayHandler(PostgresType postgresType, [CanBeNull] TypeHandler elementHandler, int lowerBound) : base(postgresType)
         {
             LowerBound = lowerBound;
             ElementHandler = elementHandler;
         }
 
-        public ArrayHandler(IBackendType backendType, [CanBeNull] TypeHandler elementHandler)
-            : this(backendType, elementHandler, 1) {}
+        public ArrayHandler(PostgresType postgresType, [CanBeNull] TypeHandler elementHandler)
+            : this(postgresType, elementHandler, 1) {}
 
         #region Read
 
@@ -347,7 +348,7 @@ namespace Npgsql.TypeHandlers
                     }
                     _writeBuf.WriteInt32(_dimensions);
                     _writeBuf.WriteInt32(1);  // HasNulls=1. Not actually used by the backend.
-                    _writeBuf.WriteUInt32(ElementHandler.BackendType.OID);
+                    _writeBuf.WriteUInt32(ElementHandler.PostgresType.OID);
                     var asArray = _writeValue as Array;
                     if (asArray != null)
                     {
@@ -550,7 +551,7 @@ namespace Npgsql.TypeHandlers
             return result;
         }
 
-        public ArrayHandlerWithPsv(IBackendType backendType, TypeHandler elementHandler)
-            : base(backendType, elementHandler) {}
+        public ArrayHandlerWithPsv(PostgresType postgresType, TypeHandler elementHandler)
+            : base(postgresType, elementHandler) {}
     }
 }

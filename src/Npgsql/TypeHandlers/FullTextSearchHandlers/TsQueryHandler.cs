@@ -27,6 +27,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using JetBrains.Annotations;
+using Npgsql.PostgresTypes;
 
 namespace Npgsql.TypeHandlers.FullTextSearchHandlers
 {
@@ -52,7 +53,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
 
         Stack<NpgsqlTsQuery> _stack;
 
-        internal TsQueryHandler(IBackendType backendType) : base(backendType) { }
+        internal TsQueryHandler(PostgresType postgresType) : base(postgresType) { }
 
         public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {

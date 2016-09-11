@@ -29,6 +29,7 @@ using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
 using JetBrains.Annotations;
+using Npgsql.PostgresTypes;
 
 namespace Npgsql.TypeHandlers
 {
@@ -44,7 +45,7 @@ namespace Npgsql.TypeHandlers
         ReadBuffer _readBuf;
         WriteBuffer _writeBuf;
 
-        internal ByteaHandler(IBackendType backendType) : base(backendType) {}
+        internal ByteaHandler(PostgresType postgresType) : base(postgresType) {}
 
         public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {

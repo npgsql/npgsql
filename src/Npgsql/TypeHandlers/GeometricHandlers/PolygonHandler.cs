@@ -22,6 +22,7 @@
 #endregion
 
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers.GeometricHandlers
@@ -44,7 +45,7 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
 
         #endregion
 
-        internal PolygonHandler(IBackendType backendType) : base(backendType) { }
+        internal PolygonHandler(PostgresType postgresType) : base(postgresType) { }
 
         #region Read
 

@@ -28,6 +28,7 @@ using NUnit.Framework;
 using NUnit.Framework.Constraints;
 using Npgsql;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 
 namespace Npgsql.Tests
@@ -794,7 +795,7 @@ namespace Npgsql.Tests
                 // Temporarily reroute integer to go to a type handler which generates SafeReadExceptions
                 var registry = conn.Connector.TypeHandlerRegistry;
                 var intHandler = registry[typeof(int)];
-                registry.ByOID[intHandler.BackendType.OID] = new SafeExceptionGeneratingHandler(intHandler.BackendType);
+                registry.ByOID[intHandler.PostgresType.OID] = new SafeExceptionGeneratingHandler(intHandler.PostgresType);
                 try
                 {
                     using (var cmd = new NpgsqlCommand(@"SELECT 1, 'hello'", conn))
@@ -808,7 +809,7 @@ namespace Npgsql.Tests
                 }
                 finally
                 {
-                    registry.ByOID[intHandler.BackendType.OID] = intHandler;
+                    registry.ByOID[intHandler.PostgresType.OID] = intHandler;
                 }
             }
         }
@@ -822,7 +823,7 @@ namespace Npgsql.Tests
                 // Temporarily reroute integer to go to a type handler which generates some exception
                 var registry = conn.Connector.TypeHandlerRegistry;
                 var intHandler = registry[typeof(int)];
-                registry.ByOID[intHandler.BackendType.OID] = new NonSafeExceptionGeneratingHandler(intHandler.BackendType);
+                registry.ByOID[intHandler.PostgresType.OID] = new NonSafeExceptionGeneratingHandler(intHandler.PostgresType);
                 try
                 {
                     using (var cmd = new NpgsqlCommand(@"SELECT 1, 'hello'", conn))
@@ -837,7 +838,7 @@ namespace Npgsql.Tests
                 }
                 finally
                 {
-                    registry.ByOID[intHandler.BackendType.OID] = intHandler;
+                    registry.ByOID[intHandler.PostgresType.OID] = intHandler;
                 }
             }
         }
@@ -848,8 +849,8 @@ namespace Npgsql.Tests
 #if DEBUG
     class SafeExceptionGeneratingHandler : SimpleTypeHandler<int>
     {
-        internal SafeExceptionGeneratingHandler(IBackendType backendType)
-            : base (backendType) {}
+        internal SafeExceptionGeneratingHandler(PostgresType postgresType)
+            : base (postgresType) {}
 
         public override int Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
@@ -863,8 +864,8 @@ namespace Npgsql.Tests
 
     class NonSafeExceptionGeneratingHandler : SimpleTypeHandler<int>
     {
-        internal NonSafeExceptionGeneratingHandler(IBackendType backendType)
-            : base (backendType) { }
+        internal NonSafeExceptionGeneratingHandler(PostgresType postgresType)
+            : base (postgresType) { }
 
         public override int Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
