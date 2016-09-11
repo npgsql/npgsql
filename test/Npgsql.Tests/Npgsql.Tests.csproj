@@ -51,6 +51,7 @@
   <ItemGroup>
     <Compile Include="BugTests.cs" />
     <Compile Include="CommandBuilderTests.cs" />
+    <Compile Include="WriteBufferTests.cs" />
     <Compile Include="ReaderNewSchemaTests.cs" />
     <Compile Include="ReaderOldSchemaTests.cs" />
     <Compile Include="SchemaTests.cs" />
@@ -72,7 +73,7 @@
     <Compile Include="FunctionTests.cs">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="NpgsqlBufferTests.cs" />
+    <Compile Include="ReadBufferTests.cs" />
     <Compile Include="SecurityTests.cs" />
     <Compile Include="Types\EnumTests.cs" />
     <Compile Include="Types\GeometricTypeTests.cs" />
