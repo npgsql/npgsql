@@ -25,6 +25,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using JetBrains.Annotations;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandlers;
 
 namespace Npgsql.BackendMessages
@@ -178,7 +179,7 @@ namespace Npgsql.BackendMessages
         /// <summary>
         /// The object ID of the field's data type.
         /// </summary>
-        internal uint TypeOID { get; set; }
+        internal uint TypeOID { get; private set; }
 
         /// <summary>
         /// The data type size (see pg_type.typlen). Note that negative values denote variable-width types.
@@ -219,7 +220,7 @@ namespace Npgsql.BackendMessages
 
         /// <summary>
         /// The Npgsql type handler assigned to handle this field.
-        /// Returns <see cref="UnrecognizedTypeHandler"/> for fields with format text.
+        /// Returns <see cref="UnknownTypeHandler"/> for fields with format text.
         /// </summary>
         internal TypeHandler Handler { get; private set; }
 
@@ -228,7 +229,7 @@ namespace Npgsql.BackendMessages
         /// </summary>
         internal TypeHandler RealHandler { get; private set; }
 
-        public string DataTypeName => RealHandler.PgDisplayName;
+        internal PostgresType PostgresType => RealHandler.PostgresType;
         public Type FieldType => Handler.GetFieldType(this);
 
         void ResolveHandler()

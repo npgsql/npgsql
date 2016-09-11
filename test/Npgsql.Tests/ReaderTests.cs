@@ -261,6 +261,37 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        public void GetPostgresType()
+        {
+            using (var conn = OpenConnection())
+            {
+                PostgresType intType;
+                using (var cmd = new NpgsqlCommand(@"SELECT 1::INT4 AS some_column", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    intType = (PostgresBaseType)reader.GetPostgresType(0);
+                    Assert.That(intType.Namespace, Is.EqualTo("pg_catalog"));
+                    Assert.That(intType.Name, Is.EqualTo("int4"));
+                    Assert.That(intType.FullName, Is.EqualTo("pg_catalog.int4"));
+                    Assert.That(intType.DisplayName, Is.EqualTo("int4"));
+                    Assert.That(intType.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Integer));
+                }
+
+                using (var cmd = new NpgsqlCommand(@"SELECT '{1}'::INT4[] AS some_column", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    var intArrayType = (PostgresArrayType)reader.GetPostgresType(0);
+                    Assert.That(intArrayType.Name, Is.EqualTo("_int4"));
+                    Assert.That(intArrayType.Element, Is.SameAs(intType));
+                    Assert.That(intType.Array, Is.SameAs(intArrayType));
+                    Assert.That(intArrayType.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Integer | NpgsqlDbType.Array));
+                }
+            }
+        }
+
+        [Test]
         [IssueLink("https://github.com/npgsql/npgsql/issues/787")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/794")]
         public void GetDataTypeName()

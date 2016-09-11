@@ -37,11 +37,9 @@ namespace Npgsql.TypeHandlers
     /// (chicken and egg problem).
     /// Also used for sending parameters with unknown types (OID=0)
     /// </summary>
-    class UnrecognizedTypeHandler : TextHandler
+    class UnknownTypeHandler : TextHandler
     {
-        static readonly PostgresType UnrecognizedBackendType = new UnrecognizedBackendType();
-
-        internal UnrecognizedTypeHandler(TypeHandlerRegistry registry) : base(UnrecognizedBackendType, registry) {}
+        internal UnknownTypeHandler(TypeHandlerRegistry registry) : base(UnknownBackendType.Instance, registry) {}
 
         public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {

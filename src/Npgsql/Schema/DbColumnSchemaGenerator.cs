@@ -98,6 +98,8 @@ ORDER BY attnum";
                             Debug.Assert(ordinal >= 0);
                             var field = fields[ordinal];
 
+                            column.PostgresType = field.PostgresType;
+
                             // The column's ordinal is with respect to the resultset, not its table
                             column.ColumnOrdinal = ordinal;
                             // Overwrite the column's DataType because the field provides more information about it
@@ -177,10 +179,11 @@ ORDER BY attnum";
                 BaseColumnName = columnName,
                 BaseServerName = _connection.Host,
                 IsReadOnly = true,
-                DataTypeName = field.DataTypeName,
+                DataTypeName = field.PostgresType.DisplayName,
                 TypeOID = field.TypeOID,
                 TableOID = field.TableOID,
-                ColumnAttributeNumber = field.ColumnAttributeNumber
+                ColumnAttributeNumber = field.ColumnAttributeNumber,
+                PostgresType = field.PostgresType
             };
 
             ColumnPostConfig(column, field.TypeModifier);

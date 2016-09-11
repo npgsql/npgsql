@@ -125,7 +125,7 @@ namespace Npgsql
         {
             Connector = connector;
             _postgresTypes = EmptyPostgresTypes;
-            UnrecognizedTypeHandler = new UnrecognizedTypeHandler(this);
+            UnrecognizedTypeHandler = new UnknownTypeHandler(this);
             ByOID = new Dictionary<uint, TypeHandler>();
             ByDbType = new Dictionary<DbType, TypeHandler>();
             ByNpgsqlDbType = new Dictionary<NpgsqlDbType, TypeHandler>();

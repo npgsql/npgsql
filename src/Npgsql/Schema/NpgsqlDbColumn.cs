@@ -1,4 +1,7 @@
 ﻿using System;
+using JetBrains.Annotations;
+using Npgsql.PostgresTypes;
+
 #if NETSTANDARD1_3
 using System.Data.Common;
 #endif
@@ -9,7 +12,6 @@ namespace Npgsql.Schema
 {
     /// <summary>
     /// Provides schema information about a column.
-    /// (e.g. SELECT 8);
     /// </summary>
     /// <remarks>
     /// Note that this can correspond to a field returned in a query which isn't an actual table column
@@ -149,17 +151,26 @@ namespace Npgsql.Schema
 
         #region Npgsql-specific fields
 
+        [PublicAPI]
+        public PostgresType PostgresType { get; internal set; }
+        [PublicAPI]
         public uint TypeOID { get; internal set; }
+        [PublicAPI]
         public uint TableOID { get; internal set; }
+        [PublicAPI]
         public short? ColumnAttributeNumber { get; internal set; }
+        [PublicAPI]
         public string DefaultValue { get; internal set; }
 
+        [CanBeNull]
         public override object this[string propertyName]
         {
             get
             {
                 switch (propertyName)
                 {
+                case nameof(PostgresType):
+                    return PostgresType;
                 case nameof(TypeOID):
                     return TypeOID;
                 case nameof(TableOID):

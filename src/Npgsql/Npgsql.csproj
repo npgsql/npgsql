@@ -221,7 +221,7 @@
     <Compile Include="TypeHandler.cs" />
     <Compile Include="TypeHandlers\NumericHandlers\Int32Handler.cs" />
     <Compile Include="TypeHandlerRegistry.cs" />
-    <Compile Include="TypeHandlers\UnrecognizedTypeHandler.cs" />
+    <Compile Include="TypeHandlers\UnknownTypeHandler.cs" />
     <Compile Include="GeneratedAsync.cs" />
     <Compile Include="TypeMappingAttribute.cs" />
     <Compile Include="WriteBuffer.cs" />

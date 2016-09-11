@@ -457,6 +457,24 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        public void PostgresType()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo INTEGER)");
+
+                using (var cmd = new NpgsqlCommand("SELECT foo,8 FROM data", conn))
+                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                {
+                    var columns = reader.GetColumnSchema();
+                    var intType = columns[0].PostgresType;
+                    Assert.That(columns[1].PostgresType, Is.SameAs(intType));
+                    Assert.That(intType.Name, Is.EqualTo("int4"));
+                }
+            }
+        }
+
+        [Test]
         public void DataTypeName()
         {
             using (var conn = OpenConnection())

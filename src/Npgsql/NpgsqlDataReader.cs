@@ -37,6 +37,7 @@ using AsyncRewriter;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.Logging;
+using Npgsql.PostgresTypes;
 using Npgsql.Schema;
 using Npgsql.TypeHandlers;
 using NpgsqlTypes;
@@ -1087,19 +1088,27 @@ namespace Npgsql
         }
 
         /// <summary>
+        /// Gets a representation of the PostgreSQL data type for the specified field.
+        /// The returned representation can be used to access various information about the field.
+        /// </summary>
+        /// <param name="ordinal">The zero-based column index.</param>
+        [PublicAPI]
+        public PostgresType GetPostgresType(int ordinal)
+        {
+            CheckResultSet();
+            CheckOrdinal(ordinal);
+
+            return _rowDescription[ordinal].PostgresType;
+        }
+
+        /// <summary>
         /// Gets the data type information for the specified field.
         /// This will be the PostgreSQL type name (e.g. int4) as in the pg_type table,
         /// not the .NET type (see <see cref="GetFieldType"/> for that).
         /// </summary>
         /// <param name="ordinal">The zero-based column index.</param>
         /// <returns></returns>
-        public override string GetDataTypeName(int ordinal)
-        {
-            CheckResultSet();
-            CheckOrdinal(ordinal);
-
-            return _rowDescription[ordinal].DataTypeName;
-        }
+        public override string GetDataTypeName(int ordinal) => GetPostgresType(ordinal).DisplayName;
 
         /// <summary>
         /// Gets the OID for the PostgreSQL type for the specified field, as it appears in the pg_type table.
@@ -1109,7 +1118,6 @@ namespace Npgsql
         /// debugging purposes.
         /// </remarks>
         /// <param name="ordinal">The zero-based column index.</param>
-        /// <returns></returns>
         public uint GetDataTypeOID(int ordinal)
         {
             CheckResultSet();
