@@ -56,7 +56,9 @@ namespace Npgsql.TypeHandlers
 
         #region State
 
+        [CanBeNull]
         string _str;
+        [CanBeNull]
         char[] _chars;
         byte[] _tempBuf;
         int _byteLen, _charLen, _bytePos, _charPos;

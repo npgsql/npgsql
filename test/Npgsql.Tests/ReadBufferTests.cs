@@ -31,7 +31,7 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests
 {
-    class NpgsqlBufferTests
+    class ReadBufferTests
     {
         [Test]
         public void Skip()
