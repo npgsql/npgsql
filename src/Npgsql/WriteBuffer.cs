@@ -27,6 +27,8 @@ using System.IO;
 using System.Net;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using AsyncRewriter;
 using JetBrains.Annotations;
 
@@ -135,6 +137,41 @@ namespace Npgsql
             }
         }
 
+        /// <remarks>
+        /// This is a hack, see explanation in <see cref="NpgsqlCommand.Send"/>.
+        /// </remarks>
+        internal async Task FlushAsyncWithSyncContext(CancellationToken cancellationToken)
+        {
+            if (_writePosition == 0)
+                return;
+            try
+            {
+#pragma warning disable ConfigureAwaitChecker // CAC001
+                await Underlying.WriteAsync(_buf, 0, _writePosition, cancellationToken);
+#pragma warning restore ConfigureAwaitChecker // CAC001
+            }
+            catch (Exception e)
+            {
+                Connector.Break();
+                throw new NpgsqlException("Exception while writing to stream", e);
+            }
+
+            try
+            {
+#pragma warning disable ConfigureAwaitChecker // CAC001
+                await Underlying.FlushAsync(cancellationToken);
+#pragma warning restore ConfigureAwaitChecker // CAC001
+            }
+            catch (Exception e)
+            {
+                Connector.Break();
+                throw new NpgsqlException("Exception while flushing stream", e);
+            }
+
+            TotalBytesFlushed += _writePosition;
+            _writePosition = 0;
+        }
+
         [RewriteAsync]
         internal void DirectWrite(byte[] buffer, int offset, int count)
         {
@@ -143,6 +180,25 @@ namespace Npgsql
             try
             {
                 Underlying.Write(buffer, offset, count);
+            }
+            catch (Exception e)
+            {
+                Connector.Break();
+                throw new NpgsqlException("Exception while writing to stream", e);
+            }
+        }
+
+        /// <remarks>
+        /// This is a hack, see explanation in <see cref="NpgsqlCommand.Send"/>.
+        /// </remarks>
+        internal async Task DirectWriteAsyncWithSyncContext(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            Contract.Assert(WritePosition == 0);
+            try
+            {
+#pragma warning disable ConfigureAwaitChecker // CAC001
+                await Underlying.WriteAsync(buffer, offset, count, cancellationToken);
+#pragma warning restore ConfigureAwaitChecker // CAC001
             }
             catch (Exception e)
             {
