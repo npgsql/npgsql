@@ -544,6 +544,7 @@ namespace Npgsql
         [Description("The Kerberos service name to be used for authentication.")]
         [DisplayName("Kerberos Service Name")]
         [NpgsqlConnectionStringProperty("Krbsrvname")]
+        [DefaultValue("postgres")]
         public string KerberosServiceName
         {
             get { return _kerberosServiceName; }
