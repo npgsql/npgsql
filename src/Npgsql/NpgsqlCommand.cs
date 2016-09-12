@@ -101,6 +101,8 @@ namespace Npgsql
         /// </summary>
         int _prepareConnectionOpenId;
 
+        static readonly SingleThreadSynchronizationContext SingleThreadSynchronizationContext = new SingleThreadSynchronizationContext("NpgsqlRemainingAsyncSendWorker");
+
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         #endregion Fields
@@ -794,9 +796,26 @@ namespace Npgsql
                     // We've send all the messages for the first statement in a multistatement command.
                     // If we continue blocking writes for the rest of the messages, we risk a deadlock where
                     // PostgreSQL sends large results for the first statement, while we're sending large
-                    // parameter data for the second. To avoid this, switch to async sends.
-                    // See #641
-                    RemainingSendTask = SendRemaining(populateMethod, CancellationToken.None);
+                    // parameter data for the second. To avoid this, switch to async sends. See #641
+
+                    // When performing async sends here, our regular async code will do ConfigureAwait(false),
+                    // sending continuations to the thread pool. However, this is a synchronous operation -
+                    // so a deadlock may occur where TP threads synchronously block on database input which won't
+                    // become because async continuations can't run (TP is starved).
+                    // To work around this, we send all async continuations to a special synchronization context
+                    // which executes them on a special thread.
+
+                    var callerSyncContext = SynchronizationContext.Current;
+                    SynchronizationContext.SetSynchronizationContext(SingleThreadSynchronizationContext);
+                    try
+                    {
+                        RemainingSendTask = SendRemaining(populateMethod, CancellationToken.None);
+                    }
+                    finally
+                    {
+                        SynchronizationContext.SetSynchronizationContext(callerSyncContext);
+                    }
+
                     return;
                 }
             }
@@ -817,7 +836,9 @@ namespace Npgsql
                 {
                     var directBuf = new DirectBuffer();
                     var completed = populateMethod(ref directBuf);
-                    await _connector.SendBufferAsync(cancellationToken).ConfigureAwait(false);
+#pragma warning disable CA2007 // Do not directly await a Task
+                    await _connector.SendBufferAsyncWithSyncContext(cancellationToken);
+#pragma warning restore CA2007 // Do not directly await a Task
                     if (completed)
                         return; // Sent all messages
 
@@ -825,9 +846,10 @@ namespace Npgsql
                     // through our buffer
                     if (directBuf.Buffer != null)
                     {
-                        await _connector.WriteBuffer.DirectWriteAsync(directBuf.Buffer, directBuf.Offset,
-                                directBuf.Size == 0 ? directBuf.Buffer.Length : directBuf.Size, cancellationToken
-                        ).ConfigureAwait(false);
+#pragma warning disable CA2007 // Do not directly await a Task
+                        await _connector.WriteBuffer.DirectWriteAsyncWithSyncContext(directBuf.Buffer, directBuf.Offset,
+                                directBuf.Size == 0 ? directBuf.Buffer.Length : directBuf.Size, cancellationToken);
+#pragma warning restore CA2007 // Do not directly await a Task
                         directBuf.Buffer = null;
                         directBuf.Size = 0;
                     }

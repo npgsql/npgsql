@@ -129,6 +129,7 @@
     <Compile Include="Schema\DbColumn.cs" />
     <Compile Include="Schema\DbColumnSchemaGenerator.cs" />
     <Compile Include="Schema\NpgsqlDbColumn.cs" />
+    <Compile Include="SingleThreadSynchronizationContext.cs" />
     <Compile Include="SqlQueryParser.cs" />
     <Compile Include="TaskExtensions.cs" />
     <Compile Include="Tls\CipherSuiteInfo.cs" />

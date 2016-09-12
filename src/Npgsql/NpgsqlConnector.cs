@@ -846,6 +846,24 @@ namespace Npgsql
             }
         }
 
+        /// <remarks>
+        /// This is a hack, see explanation in <see cref="NpgsqlCommand.Send"/>.
+        /// </remarks>
+        internal async Task SendBufferAsyncWithSyncContext(CancellationToken cancellationToken)
+        {
+            try
+            {
+#pragma warning disable CA2007 // Do not directly await a Task
+                await WriteBuffer.FlushAsyncWithSyncContext(cancellationToken);
+#pragma warning restore CA2007 // Do not directly await a Task
+            }
+            catch
+            {
+                Break();
+                throw;
+            }
+        }
+
         #endregion
 
         #region Backend message processing
