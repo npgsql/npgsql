@@ -140,7 +140,10 @@ namespace Npgsql.FrontendMessages
                             return false;
                         buf.WriteInt16((short)InputParameters[_paramIndex].FormatCode);
                     }
+                _state = State.ParameterCount;
+                goto case State.ParameterCount;
 
+            case State.ParameterCount:
                 if (buf.WriteSpaceLeft < 2)
                     return false;
 
@@ -238,6 +241,7 @@ namespace Npgsql.FrontendMessages
         {
             Header,
             ParameterFormatCodes,
+            ParameterCount,
             ParameterValues,
             ResultFormatCodes,
             Done
