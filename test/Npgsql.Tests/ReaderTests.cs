@@ -803,7 +803,7 @@ LANGUAGE plpgsql VOLATILE";
             using (var conn = OpenConnection())
             {
                 conn.ExecuteNonQuery(initializeTablesSql);
-                using (var cmd = new NpgsqlCommand("SELECT C(1)", conn))
+                using (var cmd = new NpgsqlCommand("SELECT pg_temp.C(1)", conn))
                 using (var reader = cmd.ExecuteReader()) {
                     Assert.That(() => reader.NextResult(),
                         Throws.Exception.TypeOf<PostgresException>()
