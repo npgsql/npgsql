@@ -24,6 +24,7 @@
 using System;
 using System.Linq;
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 using NpgsqlTypes;
 using NUnit.Framework;
 
@@ -352,10 +353,15 @@ namespace Npgsql.Tests.Types
                 catch (PostgresException)
                 {
                     cmd.CommandText = "SELECT version()";
-                    var version = (string)cmd.ExecuteScalar();
-                    Debug.Assert(version != null);
-                    if (version.Contains("beta"))
-                        Assert.Ignore($"PostGIS not installed, ignoring because we're on a beta version of PostgreSQL ({version})");
+                    var versionString = (string)cmd.ExecuteScalar();
+                    Debug.Assert(versionString != null);
+                    var m = Regex.Match(versionString, @"^PostgreSQL ([0-9.]+(\w*)?)");
+                    if (!m.Success)
+                        throw new Exception("Couldn't parse PostgreSQL version string: " + versionString);
+                    var version = m.Groups[1].Value;
+                    var prerelease = m.Groups[2].Value;
+                    if (!string.IsNullOrWhiteSpace(prerelease))
+                        Assert.Ignore($"PostGIS not installed, ignoring because we're on a prerelease version of PostgreSQL ({version})");
                     TestUtil.IgnoreExceptOnBuildServer("PostGIS extension not installed.");
                 }
             }
