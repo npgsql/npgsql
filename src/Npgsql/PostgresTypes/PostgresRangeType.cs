@@ -21,6 +21,8 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
+using JetBrains.Annotations;
+
 namespace Npgsql.PostgresTypes
 {
     /// <summary>
@@ -31,7 +33,11 @@ namespace Npgsql.PostgresTypes
     /// </remarks>
     public class PostgresRangeType : PostgresType
     {
-        readonly PostgresType _subtype;
+        /// <summary>
+        /// The PostgreSQL data type of the subtype of this range.
+        /// </summary>
+        [PublicAPI]
+        public PostgresType Subtype { get; }
 
         /// <summary>
         /// Constructs a representation of a PostgreSQL range data type.
@@ -39,19 +45,19 @@ namespace Npgsql.PostgresTypes
         protected internal PostgresRangeType(string ns, string name, uint oid, PostgresType subtypePostgresType)
             : base(ns, name, oid)
         {
-            _subtype = subtypePostgresType;
+            Subtype = subtypePostgresType;
             if (subtypePostgresType.NpgsqlDbType.HasValue)
                 NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Range | subtypePostgresType.NpgsqlDbType;
-            _subtype.Range = this;
+            Subtype.Range = this;
         }
 
         internal override TypeHandler Activate(TypeHandlerRegistry registry)
         {
             TypeHandler subtypeHandler;
-            if (!registry.TryGetByOID(_subtype.OID, out subtypeHandler))
+            if (!registry.TryGetByOID(Subtype.OID, out subtypeHandler))
             {
                 // Subtype hasn't been set up yet, do it now
-                subtypeHandler = _subtype.Activate(registry);
+                subtypeHandler = Subtype.Activate(registry);
             }
 
             var handler = subtypeHandler.CreateRangeHandler(this);
