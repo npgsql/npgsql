@@ -52,9 +52,9 @@ namespace Npgsql.TypeHandlers
         /// </summary>
         readonly TextHandler _textHandler;
 
-        public HstoreHandler(IBackendType backendType) : base(backendType)
+        internal HstoreHandler(IBackendType backendType, TypeHandlerRegistry registry) : base(backendType)
         {
-            _textHandler = new TextHandler(backendType);
+            _textHandler = new TextHandler(backendType, registry);
         }
 
         #region Write
@@ -193,6 +193,7 @@ namespace Npgsql.TypeHandlers
                 _value = new Dictionary<string, string>(_numElements);
                 if (_numElements == 0)
                 {
+                    result = (Dictionary<string, string>)_value;
                     CleanupState();
                     return true;
                 }

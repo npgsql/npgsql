@@ -53,6 +53,7 @@ using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
@@ -360,8 +361,6 @@ namespace Npgsql
                 return;
             CheckConnectionClosed();
             Log.Trace("Opening connnection");
-            if (!Settings.PersistSecurityInfo)
-                RemovePasswordFromConnectionString();
             _wasBroken = false;
             try
             {
@@ -395,6 +394,7 @@ namespace Npgsql
             }
 
             OpenCounter++;
+            _alreadyOpened = true;
             OnStateChange(new StateChangeEventArgs(ConnectionState.Closed, ConnectionState.Open));
         }
     }
@@ -436,8 +436,11 @@ namespace Npgsql
                 Contract.Assert(_socket != null);
                 _baseStream = new NetworkStream(_socket, true);
                 _stream = _baseStream;
-                ReadBuffer = new ReadBuffer(this, _stream, BufferSize, PGUtil.UTF8Encoding);
-                WriteBuffer = new WriteBuffer(this, _stream, BufferSize, PGUtil.UTF8Encoding);
+                TextEncoding = _settings.Encoding == "UTF8" ? PGUtil.UTF8Encoding : Encoding.GetEncoding(_settings.Encoding, EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback);
+                ReadBuffer = new ReadBuffer(this, _stream, BufferSize, TextEncoding);
+                WriteBuffer = new WriteBuffer(this, _stream, BufferSize, TextEncoding);
+                ParseMessage = new ParseMessage(TextEncoding);
+                QueryMessage = new QueryMessage(TextEncoding);
                 if (SslMode == SslMode.Require || SslMode == SslMode.Prefer)
                 {
                     Log.Trace("Attempting SSL negotiation");
@@ -646,7 +649,7 @@ namespace Npgsql
                 var buf = ReadBuffer;
                 await ReadBuffer.EnsureAsync(5, cancellationToken).ConfigureAwait(false);
                 var messageCode = (BackendMessageCode)ReadBuffer.ReadByte();
-                Contract.Assume(Enum.IsDefined(typeof (BackendMessageCode), messageCode), "Unknown message code: " + messageCode);
+                PGUtil.ValidateBackendMessageCode(messageCode);
                 var len = ReadBuffer.ReadInt32() - 4; // Transmitted length includes itself
                 if ((messageCode == BackendMessageCode.DataRow && dataRowLoadingMode != DataRowLoadingMode.NonSequential) || messageCode == BackendMessageCode.CopyData)
                 {
@@ -1403,7 +1406,7 @@ namespace Npgsql
             {
                 // TODO: Async cancellation
                 var tcs = new TaskCompletionSource<NpgsqlConnector>();
-                Waiting.Enqueue(tcs);
+                await EnqueueWaitingOpenAttemptAsync(tcs, cancellationToken).ConfigureAwait(false);
                 Monitor.Exit(this);
                 try
                 {

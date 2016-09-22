@@ -784,6 +784,34 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/pull/1266")]
+        [Description("NextResult was throwing an ArgumentOutOfRangeException when trying to determine the statement to associate with the PostgresException")]
+        public void ReaderNextResultExceptionHandling()
+        {
+            const string initializeTablesSql = @"
+CREATE TEMP TABLE A(value int NOT NULL);
+CREATE TEMP TABLE B(value int UNIQUE);
+ALTER TABLE ONLY A ADD CONSTRAINT fkey FOREIGN KEY (value) REFERENCES B(value) DEFERRABLE INITIALLY DEFERRED;
+CREATE FUNCTION pg_temp.C(_value int) RETURNS int AS $BODY$
+BEGIN
+    INSERT INTO A(value) VALUES(_value);
+    RETURN _value;
+END;
+$BODY$
+LANGUAGE plpgsql VOLATILE";
+
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery(initializeTablesSql);
+                using (var cmd = new NpgsqlCommand("SELECT pg_temp.C(1)", conn))
+                using (var reader = cmd.ExecuteReader()) {
+                    Assert.That(() => reader.NextResult(),
+                        Throws.Exception.TypeOf<PostgresException>()
+                        .With.Property(nameof(PostgresException.SqlState)).EqualTo("23503"));
+                }
+            }
+        }
+
 #if DEBUG
         [Test, Description("Tests that everything goes well when a type handler generates a SafeReadException")]
         [Timeout(5000)]

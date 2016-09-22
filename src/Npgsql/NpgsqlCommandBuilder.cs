@@ -236,6 +236,7 @@ namespace Npgsql
                                 param.Direction = ParameterDirection.Input;
                                 break;
                             case 'o':
+                            case 't':
                                 param.Direction = ParameterDirection.Output;
                                 break;
                             case 'b':
@@ -243,8 +244,6 @@ namespace Npgsql
                                 break;
                             case 'v':
                                 throw new NotImplementedException("Cannot derive function parameter of type VARIADIC");
-                            case 't':
-                                throw new NotImplementedException("Cannot derive function parameter of type TABLE");
                             default:
                                 throw new ArgumentOutOfRangeException("proargmode", modes[i],
                                     "Unknown code in proargmodes while deriving: " + modes[i]);

@@ -22,6 +22,7 @@
 #endregion
 
 using System;
+using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
@@ -74,11 +75,12 @@ namespace Npgsql
         /// <summary>
         /// The parsed connection string set by the user
         /// </summary>
-        internal NpgsqlConnectionStringBuilder Settings { get; private set; }
+        NpgsqlConnectionStringBuilder _settings;
 
         /// <summary>
         /// The actual string provided by the user for the connection string
         /// </summary>
+        [CanBeNull]
         string _connectionString;
 
         /// <summary>
@@ -94,6 +96,14 @@ namespace Npgsql
         internal int OpenCounter { get; private set; }
 
         bool _wasBroken;
+
+        /// <summary>
+        /// Used to implement proper Persist Security Info behavior - the returned connection string should
+        /// contain the password until the first Open() has been called.
+        /// </summary>
+        bool _alreadyOpened;
+
+        static readonly ConcurrentDictionary<string, NpgsqlConnectionStringBuilder> CsbCache = new ConcurrentDictionary<string, NpgsqlConnectionStringBuilder>();
 
 #if NET45 || NET451
         NpgsqlPromotableSinglePhaseNotification Promotable => _promotable ?? (_promotable = new NpgsqlPromotableSinglePhaseNotification(this));
@@ -120,20 +130,22 @@ namespace Npgsql
         /// Initializes a new instance of the
         /// <see cref="NpgsqlConnection">NpgsqlConnection</see> class.
         /// </summary>
-        public NpgsqlConnection() : this(String.Empty) {}
+        public NpgsqlConnection() : this(CsbCache.GetOrAdd("", s => new NpgsqlConnectionStringBuilder())) {}
 
         /// <summary>
-        /// Initializes a new instance of the
-        /// <see cref="NpgsqlConnection">NpgsqlConnection</see> class
-        /// and sets the <see cref="NpgsqlConnection.ConnectionString">ConnectionString</see>.
+        /// Initializes a new instance of <see cref="NpgsqlConnection"/> with the given strongly-typed
+        /// connection string.
         /// </summary>
         /// <param name="builder">The connection used to open the PostgreSQL database.</param>
-        public NpgsqlConnection(NpgsqlConnectionStringBuilder builder) : this(builder.ConnectionString) { }
+        public NpgsqlConnection(NpgsqlConnectionStringBuilder builder)
+        {
+            GC.SuppressFinalize(this);
+            Settings = builder;
+            Init();
+        }
 
         /// <summary>
-        /// Initializes a new instance of the
-        /// <see cref="NpgsqlConnection">NpgsqlConnection</see> class
-        /// and sets the <see cref="NpgsqlConnection.ConnectionString">ConnectionString</see>.
+        /// Initializes a new instance of <see cref="NpgsqlConnection"/> with the given connection string.
         /// </summary>
         /// <param name="connectionString">The connection used to open the PostgreSQL database.</param>
         public NpgsqlConnection(string connectionString)
@@ -191,9 +203,6 @@ namespace Npgsql
 
             Log.Trace("Opening connnection");
 
-            if (!Settings.PersistSecurityInfo)
-                RemovePasswordFromConnectionString();
-
             _wasBroken = false;
 
             try
@@ -229,6 +238,7 @@ namespace Npgsql
                 throw;
             }
             OpenCounter++;
+            _alreadyOpened = true;
             OnStateChange(new StateChangeEventArgs(ConnectionState.Closed, ConnectionState.Open));
         }
 
@@ -250,16 +260,44 @@ namespace Npgsql
 #endif
         public override string ConnectionString
         {
-            get { return _connectionString; }
+            get
+            {
+                if (_connectionString != null)
+                    return _connectionString;
+                if (!_alreadyOpened)   // If not yet opened, return the full connstring but don't cache
+                    return Settings.ToString();
+
+                var passwd = Settings.Password;
+                if (!_settings.PersistSecurityInfo && passwd != null)
+                {
+                    Settings.Password = null;
+                    _connectionString = Settings.ToString();
+                    Settings.Password = passwd;
+                }
+                else
+                    _connectionString = Settings.ToString();
+
+                return _connectionString;
+            }
             set
             {
-                if (value == null) {
+                if (value == null)
                     value = string.Empty;
-                }
-                Settings = new NpgsqlConnectionStringBuilder(value);
-                // Note that settings.ConnectionString is canonical and may therefore be different from
-                // the provided value
-                _connectionString = Settings.ConnectionString;
+                Settings = CsbCache.GetOrAdd(value, s => new NpgsqlConnectionStringBuilder(value));
+            }
+        }
+
+        /// <summary>
+        /// The parsed connection string set by the user
+        /// </summary>
+        internal NpgsqlConnectionStringBuilder Settings
+        {
+            get { return _settings; }
+            private set
+            {
+                _settings = value;
+                _connectionString = null;
+                _alreadyOpened = false;
             }
         }
 
@@ -1355,20 +1393,6 @@ namespace Npgsql
         #region Misc
 
         /// <summary>
-        /// Remove password from externally-visible ConnectionString, but leave it in
-        /// the internally visible one - we need it for the connection pool key, Clone() etc.
-        /// </summary>
-        void RemovePasswordFromConnectionString()
-        {
-            var passwd = Settings.Password;
-            if (passwd == null)
-                return;
-            Settings.Password = null;
-            _connectionString = Settings.ToString();
-            Settings.Password = passwd;
-        }
-
-        /// <summary>
         /// Creates a closed connection with the connection string and authentication details of this message.
         /// </summary>
 #if NET45 || NET451
@@ -1380,9 +1404,10 @@ namespace Npgsql
             CheckNotDisposed();
             var conn = new NpgsqlConnection(Settings) {
                 ProvideClientCertificatesCallback = ProvideClientCertificatesCallback,
-                UserCertificateValidationCallback = UserCertificateValidationCallback
+                UserCertificateValidationCallback = UserCertificateValidationCallback,
+                _alreadyOpened = _alreadyOpened,
+                _connectionString = _connectionString
             };
-            conn.RemovePasswordFromConnectionString();
             return conn;
         }
 
@@ -1411,7 +1436,7 @@ namespace Npgsql
         /// database and connecting to the specified.
         /// </summary>
         /// <param name="dbName">The name of the database to use in place of the current database.</param>
-        public override void ChangeDatabase(String dbName)
+        public override void ChangeDatabase(string dbName)
         {
             if (dbName == null)
                 throw new ArgumentNullException(nameof(dbName));
@@ -1426,7 +1451,6 @@ namespace Npgsql
 
             Settings = Settings.Clone();
             Settings.Database = dbName;
-            _connectionString = Settings.ConnectionString;
 
             Open();
         }

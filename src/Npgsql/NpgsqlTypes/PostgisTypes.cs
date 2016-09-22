@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
@@ -241,7 +242,7 @@ namespace NpgsqlTypes
     /// <summary>
     /// Represents an Postgis 2D Polygon.
     /// </summary>
-    public class PostgisPolygon : PostgisGeometry, IEquatable<PostgisPolygon>
+    public class PostgisPolygon : PostgisGeometry, IEquatable<PostgisPolygon>, IEnumerable<IEnumerable<Coordinate2D>>
     {
         readonly Coordinate2D[][] _rings;
 
@@ -265,6 +266,11 @@ namespace NpgsqlTypes
         {
             _rings = rings.Select(x => x.ToArray()).ToArray();
         }
+
+        public IEnumerator<IEnumerable<Coordinate2D>> GetEnumerator()
+            => ((IEnumerable<IEnumerable<Coordinate2D>>)_rings).GetEnumerator();
+ 
+         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
         public bool Equals(PostgisPolygon other)
         {

@@ -22,7 +22,9 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
+using System.Linq;
+using System.Diagnostics;
+using System.Text.RegularExpressions;
 using NpgsqlTypes;
 using NUnit.Framework;
 
@@ -265,20 +267,114 @@ namespace Npgsql.Tests.Types
             }
         }
 
+        [Test, TestCaseSource(nameof(Tests)), IssueLink("https://github.com/npgsql/npgsql/issues/1260")]
+        public void CopyBinary(TestAtt a)
+        {
+            using (var c = OpenConnection())
+            {
+                using (var cmd = new NpgsqlCommand("CREATE TEMPORARY TABLE testcopybin (g geometry)", c))
+                    cmd.ExecuteNonQuery();
+
+                try
+                {
+                    using (var writer = c.BeginBinaryImport($"COPY testcopybin (g) FROM STDIN (FORMAT BINARY)"))
+                        for (int i = 0; i < 1000; i++)
+                            writer.WriteRow(a.Geom);
+                }
+                catch(Exception e)
+                {
+                    Assert.Fail($"Copy from stdin failed with {e} at geometry {a.Geom}.");
+                }
+
+                try
+                {
+                    using (var rdr = c.BeginBinaryExport($"COPY testcopybin (g) TO STDOUT (FORMAT BINARY) "))
+                    {
+                        for (int i =0; i < 1000; i++)
+                        {
+                            rdr.StartRow();
+                            Assert.IsTrue(a.Geom.Equals(rdr.Read<PostgisGeometry>()));
+                        }
+                    }
+                }
+                catch(Exception e)
+                {
+                    Assert.Fail($"Copy from stdout failed with {e} at geometry {a.Geom}.");
+                }
+            }
+        }
+
+        [Test, TestCaseSource(nameof(Tests)), IssueLink("https://github.com/npgsql/npgsql/issues/1260")]
+        public void CopyBinaryArray(TestAtt a)
+        {
+            using (var c = OpenConnection())
+            {
+                using (var cmd = new NpgsqlCommand("CREATE TEMPORARY TABLE testcopybinarray (g geometry[3])", c))
+                    cmd.ExecuteNonQuery();
+
+                var t = new PostgisGeometry[3] { a.Geom, a.Geom, a.Geom };
+                try
+                {
+                    using (var writer = c.BeginBinaryImport("COPY testcopybinarray (g) FROM STDIN (FORMAT BINARY)"))
+                        for (int i = 0; i < 1000; i++)
+                            writer.WriteRow(new[] {t});
+                }
+                catch(Exception e)
+                {
+                    Assert.Fail($"Copy from stdin failed with {e} at geometry {a.Geom}.");
+                }
+
+                try
+                {
+                    using (var rdr = c.BeginBinaryExport("COPY testcopybinarray (g) TO STDOUT (FORMAT BINARY)"))
+                        for (int i = 0; i < 1000; i++)
+                        {
+                            rdr.StartRow();
+                            Assert.IsTrue(t.SequenceEqual(rdr.Read<PostgisGeometry[]>()));
+                        }
+                }
+                catch(Exception e)
+                {
+                    Assert.Fail($"Copy to stdout failed with {e} at geometry {a.Geom}.");
+                }
+            }
+        }
+
+        [Test]
+        public void TestPolygonEnumeration()
+        {
+            var a = new Coordinate2D[2][] {
+                new Coordinate2D[4] { new Coordinate2D(0D, 0D), new Coordinate2D(0D, 1D),
+                                      new Coordinate2D(1D, 1D), new Coordinate2D(0D, 0D) },
+                new Coordinate2D[5] { new Coordinate2D(0D, 0D), new Coordinate2D(0D, 2D),
+                                      new Coordinate2D(2D, 2D),new Coordinate2D(2D, 0D),
+                                     new Coordinate2D(0D, 0D) } };
+            Assert.That(a.SequenceEqual(new PostgisPolygon(a)));
+        }
+
         [OneTimeSetUp]
         public void SetUp()
         {
             using (var conn = OpenConnection())
-            using (var cmd = conn.CreateCommand())
+            using (var cmd = new NpgsqlCommand("SELECT postgis_version()", conn))
             {
-                cmd.CommandText = "SELECT postgis_version();";
                 try
                 {
                     cmd.ExecuteNonQuery();
                 }
                 catch (PostgresException)
                 {
-                    TestUtil.IgnoreExceptOnBuildServer("Skipping tests : postgis extension not found.");
+                    cmd.CommandText = "SELECT version()";
+                    var versionString = (string)cmd.ExecuteScalar();
+                    Debug.Assert(versionString != null);
+                    var m = Regex.Match(versionString, @"^PostgreSQL ([0-9.]+(\w*)?)");
+                    if (!m.Success)
+                        throw new Exception("Couldn't parse PostgreSQL version string: " + versionString);
+                    var version = m.Groups[1].Value;
+                    var prerelease = m.Groups[2].Value;
+                    if (!string.IsNullOrWhiteSpace(prerelease))
+                        Assert.Ignore($"PostGIS not installed, ignoring because we're on a prerelease version of PostgreSQL ({version})");
+                    TestUtil.IgnoreExceptOnBuildServer("PostGIS extension not installed.");
                 }
             }
         }

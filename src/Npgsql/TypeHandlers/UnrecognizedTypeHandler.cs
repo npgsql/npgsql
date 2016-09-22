@@ -43,7 +43,7 @@ namespace Npgsql.TypeHandlers
     {
         static readonly IBackendType UnrecognizedBackendType = new UnrecognizedBackendType();
 
-        internal UnrecognizedTypeHandler() : base(UnrecognizedBackendType) {}
+        internal UnrecognizedTypeHandler(TypeHandlerRegistry registry) : base(UnrecognizedBackendType, registry) {}
 
         internal override void PrepareRead(ReadBuffer buf, FieldDescription fieldDescription, int len)
         {

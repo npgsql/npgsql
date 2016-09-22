@@ -336,7 +336,8 @@ namespace Npgsql
             catch (PostgresException e)
             {
                 _state = ReaderState.Consumed;
-                e.Statement = _statements[_statementIndex];
+                if ((_statementIndex >= 0) && (_statementIndex < _statements.Count))
+                    e.Statement = _statements[_statementIndex];
                 throw;
             }
         }

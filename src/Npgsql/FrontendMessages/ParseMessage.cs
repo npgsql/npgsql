@@ -42,7 +42,9 @@ namespace Npgsql.FrontendMessages
         string Statement { get; set; }
 
         // ReSharper disable once InconsistentNaming
-        internal List<uint> ParameterTypeOIDs { get; }
+        List<uint> ParameterTypeOIDs { get; }
+
+        readonly Encoding _encoding;
 
         byte[] _statementNameBytes;
         int _queryLen;
@@ -54,8 +56,9 @@ namespace Npgsql.FrontendMessages
 
         const byte Code = (byte)'P';
 
-        internal ParseMessage()
+        internal ParseMessage(Encoding encoding)
         {
+            _encoding = encoding;
             ParameterTypeOIDs = new List<uint>();
         }
 
@@ -80,8 +83,8 @@ namespace Npgsql.FrontendMessages
             switch (_state)
             {
                 case State.WroteNothing:
-                    _statementNameBytes = Statement.Length == 0 ? PGUtil.EmptyBuffer : PGUtil.UTF8Encoding.GetBytes(Statement);
-                    _queryLen = PGUtil.UTF8Encoding.GetByteCount(Query);
+                    _statementNameBytes = Statement.Length == 0 ? PGUtil.EmptyBuffer : _encoding.GetBytes(Statement);
+                    _queryLen = _encoding.GetByteCount(Query);
                     if (buf.WriteSpaceLeft < 1 + 4 + _statementNameBytes.Length + 1) {
                         return false;
                     }

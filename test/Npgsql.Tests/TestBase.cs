@@ -86,11 +86,14 @@ namespace Npgsql.Tests
 
         protected virtual void SetupLogging()
         {
+#if LOGGING_ENABLED
             var config = new LoggingConfiguration();
-            var consoleTarget = new ConsoleTarget();
-            consoleTarget.Layout = @"${message} ${exception:format=tostring}";
+            var consoleTarget = new ConsoleTarget
+            {
+                Layout = @"${message} ${exception:format=tostring}"
+            };
             config.AddTarget("console", consoleTarget);
-            var rule = new LoggingRule("*", NLog.LogLevel.Debug, consoleTarget);
+            var rule = new LoggingRule("*", LogLevel.Debug, consoleTarget);
             config.LoggingRules.Add(rule);
             NLog.LogManager.Configuration = config;
 
@@ -100,6 +103,7 @@ namespace Npgsql.Tests
                 NpgsqlLogManager.IsParameterLoggingEnabled = true;
                 _loggingSetUp = true;
             }
+#endif
         }
 
         #endregion

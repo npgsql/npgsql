@@ -27,6 +27,7 @@ using System;
 using System.Data;
 using System.Reflection;
 using System.Transactions;
+using JetBrains.Annotations;
 using Npgsql;
 using NpgsqlTypes;
 using NUnit.Framework;
@@ -259,10 +260,13 @@ namespace Npgsql.Tests
 
         #region Setup
 
-        [SetUp]
-        public void SetUp()
+        [CanBeNull]
+        NpgsqlConnection _controlConn;
+
+        [OneTimeSetUp]
+        public void OneTimeSetUp()
         {
-            using (var s = new TransactionScope(TransactionScopeOption.RequiresNew))
+            using (new TransactionScope(TransactionScopeOption.RequiresNew))
             {
                 try
                 {
@@ -274,11 +278,28 @@ namespace Npgsql.Tests
                 }
             }
 
+            // All tests in this fixture should have totally access to the database they're running on.
+            // If we run these tests in parallel (i.e. two builds in parallel) they will interfere.
+            // Solve this by taking a PostgreSQL advisory lock for the lifetime of the fixture.
+            _controlConn = OpenConnection();
+            _controlConn.ExecuteNonQuery("SELECT pg_advisory_lock(666)");
+        }
+
+        [SetUp]
+        public void SetUp()
+        {
             using (var conn = OpenConnection())
             {
                 conn.ExecuteNonQuery("DROP TABLE IF EXISTS data");
                 conn.ExecuteNonQuery("CREATE TABLE data (name TEXT)");
             }
+        }
+
+        [OneTimeTearDown]
+        public void OneTimeTearDown()
+        {
+            _controlConn?.Close();
+            _controlConn = null;
         }
 
         class FakePromotableSinglePhaseNotification : IPromotableSinglePhaseNotification

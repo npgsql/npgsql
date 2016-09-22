@@ -90,10 +90,12 @@ namespace Npgsql
 
         void Init()
         {
-            foreach (var kv in PropertyDefaults) {
+            // Set the strongly-typed properties to their default values
+            foreach (var kv in PropertyDefaults)
                 kv.Key.SetValue(this, kv.Value);
-                base.Clear();
-            }
+            // Setting the strongly-typed properties here also set the string-based properties in the base class.
+            // Clear them (default settings = empty connection string)
+            base.Clear();
         }
 
         #endregion
@@ -274,6 +276,7 @@ namespace Npgsql
         [Description("The hostname or IP address of the PostgreSQL server to connect to.")]
         [DisplayName("Host")]
         [NpgsqlConnectionStringProperty("Server")]
+        [CanBeNull]
         public string Host
         {
             get { return _host; }
@@ -435,6 +438,25 @@ namespace Npgsql
         }
         string _clientEncoding;
 
+        /// <summary>
+        /// Gets or sets the client_encoding parameter.
+        /// </summary>
+        [Category("Connection")]
+        [Description("Gets or sets the .NET encoding that will be used to encode/decode PostgreSQL string data.")]
+        [DisplayName("Encoding")]
+        [DefaultValue("UTF8")]
+        [NpgsqlConnectionStringProperty]
+        public string Encoding
+        {
+            get { return _encoding; }
+            set
+            {
+                _encoding = value;
+                SetValue(nameof(Encoding), value);
+            }
+        }
+        string _encoding;
+
         #endregion
 
         #region Properties - Security
@@ -522,6 +544,7 @@ namespace Npgsql
         [Description("The Kerberos service name to be used for authentication.")]
         [DisplayName("Kerberos Service Name")]
         [NpgsqlConnectionStringProperty("Krbsrvname")]
+        [DefaultValue("postgres")]
         public string KerberosServiceName
         {
             get { return _kerberosServiceName; }
@@ -902,8 +925,8 @@ namespace Npgsql
         [Obsolete]
         public int ConnectionLifeTime
         {
-            get { throw new NotSupportedException("The ContinuousProcessing parameter is no longer supported. Please see http://www.npgsql.org/doc/3.1/migration.html"); }
-            set { throw new NotSupportedException("The ContinuousProcessing parameter is no longer supported. Please see http://www.npgsql.org/doc/3.1/migration.html"); }
+            get { return 0; }
+            set { throw new NotSupportedException("The ConnectionLifeTime parameter is no longer supported. Please see http://www.npgsql.org/doc/3.1/migration.html"); }
         }
 
         /// <summary>
@@ -984,7 +1007,7 @@ namespace Npgsql
         /// Hash function.
         /// </summary>
         /// <returns></returns>
-        public override int GetHashCode() => ConnectionString.GetHashCode();
+        public override int GetHashCode() => Host?.GetHashCode() ?? 0;
 
         #endregion
 
