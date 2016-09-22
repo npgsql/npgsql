@@ -340,6 +340,18 @@ namespace Npgsql.Tests.Types
             }
         }
 
+        [Test]
+        public void TestPolygonEnumeration()
+        {
+            var a = new Coordinate2D[2][] {
+                new Coordinate2D[4] { new Coordinate2D(0D, 0D), new Coordinate2D(0D, 1D),
+                                      new Coordinate2D(1D, 1D), new Coordinate2D(0D, 0D) },
+                new Coordinate2D[5] { new Coordinate2D(0D, 0D), new Coordinate2D(0D, 2D),
+                                      new Coordinate2D(2D, 2D),new Coordinate2D(2D, 0D),
+                                     new Coordinate2D(0D, 0D) } };
+            Assert.That(a.SequenceEqual(new PostgisPolygon(a)));
+        }
+
         [OneTimeSetUp]
         public void SetUp()
         {
