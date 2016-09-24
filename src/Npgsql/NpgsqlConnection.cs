@@ -186,7 +186,11 @@ namespace Npgsql
         /// </remarks>
         /// <param name="cancellationToken">The cancellation instruction.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
-        public override Task OpenAsync(CancellationToken cancellationToken) => OpenInternalAsync(cancellationToken);
+        public override async Task OpenAsync(CancellationToken cancellationToken)
+        {
+            using (NoSynchronizationContextScope.Enter())
+                await OpenInternalAsync(cancellationToken);
+        }
 
         [RewriteAsync]
         void OpenInternal()
@@ -1261,7 +1265,8 @@ namespace Npgsql
             Log.Debug("Starting to wait async", Connector.Id);
 
             using (Connector.StartUserAction(ConnectorState.Waiting))
-                await Connector.ReadAsyncMessageAsync(cancellationToken).ConfigureAwait(false);
+            using (NoSynchronizationContextScope.Enter())
+                await Connector.ReadAsyncMessageAsync(cancellationToken);
         }
 
         /// <summary>

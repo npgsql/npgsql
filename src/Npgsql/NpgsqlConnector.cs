@@ -635,9 +635,7 @@ namespace Npgsql
         async Task ConnectAsync(NpgsqlTimeout timeout, CancellationToken cancellationToken)
         {
             // Note that there aren't any timeoutable or cancellable DNS methods
-            var ips = await Dns.GetHostAddressesAsync(Host)
-                .WithCancellation(cancellationToken)
-                .ConfigureAwait(false);
+            var ips = await Dns.GetHostAddressesAsync(Host).WithCancellation(cancellationToken);
 
             // Give each IP an equal share of the remaining time
             var perIpTimespan = timeout.IsSet ? new TimeSpan(timeout.TimeLeft.Ticks / ips.Length) : TimeSpan.Zero;
@@ -657,9 +655,7 @@ namespace Npgsql
                 {
                     try
                     {
-                        await connectTask
-                            .WithCancellationAndTimeout(perIpTimeout, cancellationToken)
-                            .ConfigureAwait(false);
+                        await connectTask.WithCancellationAndTimeout(perIpTimeout, cancellationToken);
                     }
                     catch (OperationCanceledException)
                     {
@@ -838,24 +834,6 @@ namespace Npgsql
             try
             {
                 WriteBuffer.Flush();
-            }
-            catch
-            {
-                Break();
-                throw;
-            }
-        }
-
-        /// <remarks>
-        /// This is a hack, see explanation in <see cref="NpgsqlCommand.Send"/>.
-        /// </remarks>
-        internal async Task SendBufferAsyncWithSyncContext(CancellationToken cancellationToken)
-        {
-            try
-            {
-#pragma warning disable CA2007 // Do not directly await a Task
-                await WriteBuffer.FlushAsyncWithSyncContext(cancellationToken);
-#pragma warning restore CA2007 // Do not directly await a Task
             }
             catch
             {

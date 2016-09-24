@@ -185,12 +185,14 @@ namespace Npgsql.TypeHandlers
 
         public override async Task<int> ReadAsync([NotNull] byte[] buffer, int offset, int count, CancellationToken token)
         {
-            CheckDisposed();
-            count = Math.Min(count, _row.ColumnLen - _row.PosInColumn);
-            var read = await _row.Buffer.ReadAllBytesAsync(buffer, offset, count, true, token)
-                .ConfigureAwait(false);
-            _row.PosInColumn += read;
-            return read;
+            using (NoSynchronizationContextScope.Enter())
+            {
+                CheckDisposed();
+                count = Math.Min(count, _row.ColumnLen - _row.PosInColumn);
+                var read = await _row.Buffer.ReadAllBytesAsync(buffer, offset, count, true, token);
+                _row.PosInColumn += read;
+                return read;
+            }
         }
 
         public override long Length

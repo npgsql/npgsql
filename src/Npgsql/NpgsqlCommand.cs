@@ -836,9 +836,7 @@ namespace Npgsql
                 {
                     var directBuf = new DirectBuffer();
                     var completed = populateMethod(ref directBuf);
-#pragma warning disable CA2007 // Do not directly await a Task
-                    await _connector.SendBufferAsyncWithSyncContext(cancellationToken);
-#pragma warning restore CA2007 // Do not directly await a Task
+                    await _connector.SendBufferAsync(cancellationToken);
                     if (completed)
                         return; // Sent all messages
 
@@ -846,10 +844,8 @@ namespace Npgsql
                     // through our buffer
                     if (directBuf.Buffer != null)
                     {
-#pragma warning disable CA2007 // Do not directly await a Task
-                        await _connector.WriteBuffer.DirectWriteAsyncWithSyncContext(directBuf.Buffer, directBuf.Offset,
+                        await _connector.WriteBuffer.DirectWriteAsync(directBuf.Buffer, directBuf.Offset,
                                 directBuf.Size == 0 ? directBuf.Buffer.Length : directBuf.Size, cancellationToken);
-#pragma warning restore CA2007 // Do not directly await a Task
                         directBuf.Buffer = null;
                         directBuf.Size = 0;
                     }
@@ -1079,8 +1075,9 @@ namespace Npgsql
         public override async Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            using (NoSynchronizationContextScope.Enter())
             using (cancellationToken.Register(Cancel))
-                return await ExecuteNonQueryInternalAsync(cancellationToken).ConfigureAwait(false);
+                return await ExecuteNonQueryInternalAsync(cancellationToken);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1177,10 +1174,9 @@ namespace Npgsql
         public override async Task<object> ExecuteScalarAsync(CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            using (NoSynchronizationContextScope.Enter())
             using (cancellationToken.Register(Cancel))
-            {
-                return await ExecuteScalarInternalAsync(cancellationToken).ConfigureAwait(false);
-            }
+                return await ExecuteScalarInternalAsync(cancellationToken);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1231,8 +1227,9 @@ namespace Npgsql
         protected override async Task<DbDataReader> ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            using (NoSynchronizationContextScope.Enter())
             using (cancellationToken.Register(Cancel))
-                return await ExecuteDbDataReaderInternalAsync(behavior, cancellationToken).ConfigureAwait(false);
+                return await ExecuteDbDataReaderInternalAsync(behavior, cancellationToken);
         }
 
         /// <summary>

@@ -25,6 +25,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using AsyncRewriter;
+using JetBrains.Annotations;
 using Npgsql.TypeHandlers;
 
 namespace Npgsql.BackendMessages
@@ -34,6 +35,7 @@ namespace Npgsql.BackendMessages
         /// <summary>
         /// A stream that has been opened on this colun, and needs to be disposed of when the column is consumed.
         /// </summary>
+        [CanBeNull]
         IDisposable _stream;
 
         internal override DataRowMessage Load(ReadBuffer buf)

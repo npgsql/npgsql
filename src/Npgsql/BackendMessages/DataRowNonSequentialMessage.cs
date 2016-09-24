@@ -27,6 +27,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using JetBrains.Annotations;
 
 namespace Npgsql.BackendMessages
 {
@@ -38,6 +39,7 @@ namespace Npgsql.BackendMessages
         /// List of all streams that have been opened on this row, and need to be disposed of when the row
         /// is consumed.
         /// </summary>
+        [CanBeNull]
         List<IDisposable> _streams;
 
         internal override DataRowMessage Load(ReadBuffer buf)

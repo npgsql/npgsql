@@ -134,41 +134,6 @@ namespace Npgsql
             _writePosition = 0;
         }
 
-        /// <remarks>
-        /// This is a hack, see explanation in <see cref="NpgsqlCommand.Send"/>.
-        /// </remarks>
-        internal async Task FlushAsyncWithSyncContext(CancellationToken cancellationToken)
-        {
-            if (_writePosition == 0)
-                return;
-            try
-            {
-#pragma warning disable CA2007 // Do not directly await a Task
-                await Underlying.WriteAsync(_buf, 0, _writePosition, cancellationToken);
-#pragma warning restore CA2007 // Do not directly await a Task
-            }
-            catch (Exception e)
-            {
-                Connector.Break();
-                throw new NpgsqlException("Exception while writing to stream", e);
-            }
-
-            try
-            {
-#pragma warning disable CA2007 // Do not directly await a Task
-                await Underlying.FlushAsync(cancellationToken);
-#pragma warning restore CA2007 // Do not directly await a Task
-            }
-            catch (Exception e)
-            {
-                Connector.Break();
-                throw new NpgsqlException("Exception while flushing stream", e);
-            }
-
-            TotalBytesFlushed += _writePosition;
-            _writePosition = 0;
-        }
-
         [RewriteAsync]
         internal void DirectWrite(byte[] buffer, int offset, int count)
         {
@@ -177,25 +142,6 @@ namespace Npgsql
             try
             {
                 Underlying.Write(buffer, offset, count);
-            }
-            catch (Exception e)
-            {
-                Connector.Break();
-                throw new NpgsqlException("Exception while writing to stream", e);
-            }
-        }
-
-        /// <remarks>
-        /// This is a hack, see explanation in <see cref="NpgsqlCommand.Send"/>.
-        /// </remarks>
-        internal async Task DirectWriteAsyncWithSyncContext(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-        {
-            Debug.Assert(WritePosition == 0);
-            try
-            {
-#pragma warning disable CA2007 // Do not directly await a Task
-                await Underlying.WriteAsync(buffer, offset, count, cancellationToken);
-#pragma warning restore CA2007 // Do not directly await a Task
             }
             catch (Exception e)
             {

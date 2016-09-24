@@ -194,7 +194,10 @@ namespace Npgsql
         /// <param name="cancellationToken">Ignored for now.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
         public override async Task<bool> ReadAsync(CancellationToken cancellationToken)
-            => await ReadInternalAsync(cancellationToken).ConfigureAwait(false);
+        {
+            using (NoSynchronizationContextScope.Enter())
+                return await ReadInternalAsync(cancellationToken);
+        }
 
         [RewriteAsync]
         bool ReadInternal()
@@ -331,13 +334,16 @@ namespace Npgsql
         /// </summary>
         /// <param name="cancellationToken">Currently ignored.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
-        public sealed override async Task<bool> NextResultAsync(CancellationToken cancellationToken)
+        public override async Task<bool> NextResultAsync(CancellationToken cancellationToken)
         {
             try
             {
-                return IsSchemaOnly
-                    ? await NextResultSchemaOnlyAsync(cancellationToken).ConfigureAwait(false)
-                    : await NextResultInternalAsync(cancellationToken).ConfigureAwait(false);
+                using (NoSynchronizationContextScope.Enter())
+                {
+                    return IsSchemaOnly
+                        ? await NextResultSchemaOnlyAsync(cancellationToken)
+                        : await NextResultInternalAsync(cancellationToken);
+                }
             }
             catch (PostgresException e)
             {
@@ -345,7 +351,6 @@ namespace Npgsql
                 e.Statement = _statements[_statementIndex];
                 throw;
             }
-
         }
 
         [RewriteAsync]
@@ -1052,7 +1057,10 @@ namespace Npgsql
         /// <param name="cancellationToken">Currently ignored.</param>
         /// <returns><b>true</b> if the specified column value is equivalent to <see cref="DBNull"/> otherwise <b>false</b>.</returns>
         public override async Task<bool> IsDBNullAsync(int ordinal, CancellationToken cancellationToken)
-            => await IsDBNullInternalAsync(ordinal, cancellationToken).ConfigureAwait(false);
+        {
+            using (NoSynchronizationContextScope.Enter())
+                return await IsDBNullInternalAsync(ordinal, cancellationToken);
+        }
 
         [RewriteAsync]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1226,7 +1234,10 @@ namespace Npgsql
         /// <param name="cancellationToken">Currently ignored.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
         public override async Task<T> GetFieldValueAsync<T>(int ordinal, CancellationToken cancellationToken)
-            => await GetFieldValueInternalAsync<T>(ordinal, cancellationToken).ConfigureAwait(false);
+        {
+            using (NoSynchronizationContextScope.Enter())
+                return await GetFieldValueInternalAsync<T>(ordinal, cancellationToken);
+        }
 
         [RewriteAsync]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

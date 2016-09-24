@@ -8,3 +8,5 @@
 [assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1032:Implement standard exception constructors", Justification = "We have several exception classes where this makes no sense")]
 [assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1710:Identifiers should have correct suffix", Justification = "Disagree")]
 [assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1707:Remove the underscores from member name", Justification = "Seems to cause some false positives on implicit/explicit cast operators, strange")]
+[assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2007:Do not directly await a Task", Justification = "Npgsql uses NoSynchronizationContextScope instead of ConfigureAwait(false)")]
+
