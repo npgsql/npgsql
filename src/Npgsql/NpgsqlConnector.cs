@@ -189,6 +189,7 @@ namespace Npgsql
         /// A lock that's taken while a connection keepalive is in progress. Used to make sure
         /// keepalives and user actions don't interfere with one another.
         /// </summary>
+        [CanBeNull]
         readonly SemaphoreSlim _keepAliveLock;
 
         /// <summary>
@@ -198,8 +199,14 @@ namespace Npgsql
         /// </summary>
         internal object CancelLock { get; }
 
-        readonly UserAction _userAction;
         readonly Timer _keepAliveTimer;
+
+        /// <summary>
+        /// The command currently being executed by the connector, null otherwise.
+        /// Used only for concurrent use error reporting purposes.
+        /// </summary>
+        [CanBeNull]
+        NpgsqlCommand _currentCommand;
 
         internal HashSet<string> PreparedStatements { get; } = new HashSet<string>();
 
@@ -278,7 +285,6 @@ namespace Npgsql
             _preparedStatementIndex = 0;
 
             _userLock = new SemaphoreSlim(1, 1);
-            _userAction = new UserAction(this);
             CancelLock = new object();
 
             if (IsKeepAliveEnabled) {
@@ -1435,6 +1441,7 @@ namespace Npgsql
             Connection = null;
             BackendParams.Clear();
             ServerVersion = null;
+            _currentCommand = null;
 
             // Disposing SemaphoreSlim leaves CurrentCount at 0, so increment back to 1 if needed
             if (_userLock.CurrentCount == 0)
@@ -1588,10 +1595,17 @@ namespace Npgsql
 
         #region Locking
 
-        internal IDisposable StartUserAction(ConnectorState newState=ConnectorState.Executing)
+        internal UserAction StartUserAction(NpgsqlCommand command)
+            => StartUserAction(ConnectorState.Executing, command);
+
+        internal UserAction StartUserAction(ConnectorState newState=ConnectorState.Executing, NpgsqlCommand command=null)
         {
             if (!_userLock.Wait(0))
-                throw new InvalidOperationException("An operation is already in progress.");
+            {
+                throw _currentCommand == null
+                    ? new NpgsqlOperationInProgressException(State)
+                    : new NpgsqlOperationInProgressException(_currentCommand);
+            }
 
             // We now have the user lock, no user operation may be in progress but a keepalive might be
 
@@ -1630,7 +1644,8 @@ namespace Npgsql
             Debug.Assert(IsReady);
             Log.Trace("Start user action", Id);
             State = newState;
-            return _userAction;
+            _currentCommand = command;
+            return new UserAction(this);
         }
 
         internal void EndUserAction()
@@ -1654,6 +1669,7 @@ namespace Npgsql
 
             Log.Trace("End user action", Id);
             State = ConnectorState.Ready;
+            _currentCommand = null;
             _keepAliveLock?.Release();
             _userLock.Release();
         }
@@ -1661,10 +1677,9 @@ namespace Npgsql
         bool IsInUserAction => _userLock.CurrentCount == 0;
 
         /// <summary>
-        /// An IDisposable wrapper around <see cref="StartUserAction"/> and
-        /// <see cref="EndUserAction"/>.
+        /// An IDisposable wrapper around <see cref="EndUserAction"/>.
         /// </summary>
-        class UserAction : IDisposable
+        internal struct UserAction : IDisposable
         {
             readonly NpgsqlConnector _connector;
 

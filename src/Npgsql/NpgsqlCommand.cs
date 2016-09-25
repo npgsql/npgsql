@@ -1085,7 +1085,7 @@ namespace Npgsql
         int ExecuteNonQueryInternal()
         {
             var connector = CheckReadyAndGetConnector();
-            using (connector.StartUserAction())
+            using (connector.StartUserAction(this))
             {
                 Log.Trace("ExecuteNonQuery", connector.Id);
 
@@ -1185,7 +1185,7 @@ namespace Npgsql
         object ExecuteScalarInternal()
         {
             var connector = CheckReadyAndGetConnector();
-            using (connector.StartUserAction())
+            using (connector.StartUserAction(this))
             {
                 Log.Trace("ExecuteNonScalar", connector.Id);
                 using (var reader = Execute(CommandBehavior.SequentialAccess | CommandBehavior.SingleRow))
@@ -1243,7 +1243,7 @@ namespace Npgsql
         NpgsqlDataReader ExecuteDbDataReaderInternal(CommandBehavior behavior)
         {
             var connector = CheckReadyAndGetConnector();
-            connector.StartUserAction();
+            connector.StartUserAction(this);
             try
             {
                 Log.Trace("ExecuteReader", connector.Id);

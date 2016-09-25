@@ -80,6 +80,7 @@ using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.Logging;
+using Npgsql.PostgresTypes;
 using Npgsql.Schema;
 using Npgsql.TypeHandlers;
 using NpgsqlTypes;
@@ -160,6 +161,7 @@ using Npgsql.BackendMessages;
 using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandlers;
 using System.Threading;
 using System.Threading.Tasks;
@@ -185,6 +187,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using JetBrains.Annotations;
 using System.Threading;
 using System.Threading.Tasks;
@@ -265,14 +269,14 @@ namespace Npgsql
             {
                 var directBuf = new DirectBuffer();
                 var completed = populateMethod(ref directBuf);
-                await _connector.SendBufferAsync(cancellationToken).ConfigureAwait(false);
+                await _connector.SendBufferAsync(cancellationToken);
                 if (completed)
                     break; // Sent all messages
                 // The following is an optimization hack for writing large byte arrays without passing
                 // through our buffer
                 if (directBuf.Buffer != null)
                 {
-                    await _connector.WriteBuffer.DirectWriteAsync(directBuf.Buffer, directBuf.Offset, directBuf.Size == 0 ? directBuf.Buffer.Length : directBuf.Size, cancellationToken).ConfigureAwait(false);
+                    await _connector.WriteBuffer.DirectWriteAsync(directBuf.Buffer, directBuf.Offset, directBuf.Size == 0 ? directBuf.Buffer.Length : directBuf.Size, cancellationToken);
                     directBuf.Buffer = null;
                     directBuf.Size = 0;
                 }
@@ -282,9 +286,24 @@ namespace Npgsql
                     // We've send all the messages for the first statement in a multistatement command.
                     // If we continue blocking writes for the rest of the messages, we risk a deadlock where
                     // PostgreSQL sends large results for the first statement, while we're sending large
-                    // parameter data for the second. To avoid this, switch to async sends.
-                    // See #641
-                    RemainingSendTask = SendRemaining(populateMethod, CancellationToken.None);
+                    // parameter data for the second. To avoid this, switch to async sends. See #641
+                    // When performing async sends here, our regular async code will do ConfigureAwait(false),
+                    // sending continuations to the thread pool. However, this is a synchronous operation -
+                    // so a deadlock may occur where TP threads synchronously block on database input which won't
+                    // become because async continuations can't run (TP is starved).
+                    // To work around this, we send all async continuations to a special synchronization context
+                    // which executes them on a special thread.
+                    var callerSyncContext = SynchronizationContext.Current;
+                    SynchronizationContext.SetSynchronizationContext(SingleThreadSynchronizationContext);
+                    try
+                    {
+                        RemainingSendTask = SendRemaining(populateMethod, CancellationToken.None);
+                    }
+                    finally
+                    {
+                        SynchronizationContext.SetSynchronizationContext(callerSyncContext);
+                    }
+
                     return;
                 }
             }
@@ -293,7 +312,7 @@ namespace Npgsql
         async Task<int> ExecuteNonQueryInternalAsync(CancellationToken cancellationToken)
         {
             var connector = CheckReadyAndGetConnector();
-            using (connector.StartUserAction())
+            using (connector.StartUserAction(this))
             {
                 Log.Trace("ExecuteNonQuery", connector.Id);
                 // Optimization: unprepared unparameterized non-queries can go through the PostgreSQL
@@ -315,7 +334,7 @@ namespace Npgsql
         async Task<object> ExecuteScalarInternalAsync(CancellationToken cancellationToken)
         {
             var connector = CheckReadyAndGetConnector();
-            using (connector.StartUserAction())
+            using (connector.StartUserAction(this))
             {
                 Log.Trace("ExecuteNonScalar", connector.Id);
                 using (var reader = Execute(CommandBehavior.SequentialAccess | CommandBehavior.SingleRow))
@@ -326,7 +345,7 @@ namespace Npgsql
         async Task<NpgsqlDataReader> ExecuteDbDataReaderInternalAsync(CommandBehavior behavior, CancellationToken cancellationToken)
         {
             var connector = CheckReadyAndGetConnector();
-            connector.StartUserAction();
+            connector.StartUserAction(this);
             try
             {
                 Log.Trace("ExecuteReader", connector.Id);

@@ -682,13 +682,13 @@ namespace Npgsql.Tests
             using (var cmd1 = new NpgsqlCommand("SELECT 1", conn))
             using (var reader1 = cmd1.ExecuteReader())
             {
-                Assert.That(() => conn.ExecuteNonQuery("SELECT 1"), Throws.Exception.TypeOf<InvalidOperationException>());
-                Assert.That(() => conn.ExecuteScalar("SELECT 1"), Throws.Exception.TypeOf<InvalidOperationException>());
+                Assert.That(() => conn.ExecuteNonQuery("SELECT 1"), Throws.Exception.TypeOf<NpgsqlOperationInProgressException>());
+                Assert.That(() => conn.ExecuteScalar("SELECT 1"), Throws.Exception.TypeOf<NpgsqlOperationInProgressException>());
 
                 using (var cmd2 = new NpgsqlCommand("SELECT 2", conn))
                 {
-                    Assert.That(() => cmd2.ExecuteReader(), Throws.Exception.TypeOf<InvalidOperationException>());
-                    Assert.That(() => cmd2.Prepare(), Throws.Exception.TypeOf<InvalidOperationException>());
+                    Assert.That(() => cmd2.ExecuteReader(), Throws.Exception.TypeOf<NpgsqlOperationInProgressException>());
+                    Assert.That(() => cmd2.Prepare(), Throws.Exception.TypeOf<NpgsqlOperationInProgressException>());
                 }
             }
         }

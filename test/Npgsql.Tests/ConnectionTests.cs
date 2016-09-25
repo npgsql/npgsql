@@ -841,9 +841,21 @@ namespace Npgsql.Tests
         public void ConcurrentUse()
         {
             using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT 1", conn))
-            using (cmd.ExecuteReader())
-                Assert.That(() => conn.ExecuteScalar("SELECT 1"), Throws.Exception.TypeOf<InvalidOperationException>());
+            {
+                using (var cmd = new NpgsqlCommand("SELECT 1", conn))
+                using (cmd.ExecuteReader())
+                    Assert.That(() => conn.ExecuteScalar("SELECT 2"),
+                        Throws.Exception.TypeOf<NpgsqlOperationInProgressException>()
+                            .With.Property(nameof(NpgsqlOperationInProgressException.CommandInProgress)).SameAs(cmd));
+
+                conn.ExecuteNonQuery("CREATE TEMP TABLE foo (bar INT)");
+                using (conn.BeginBinaryImport("COPY foo (bar) FROM STDIN BINARY"))
+                {
+                    Assert.That(() => conn.ExecuteScalar("SELECT 2"),
+                        Throws.Exception.TypeOf<NpgsqlOperationInProgressException>()
+                            .With.Message.Contains("Copy"));
+                }
+            }
         }
 
         [Test]

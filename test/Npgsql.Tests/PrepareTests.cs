@@ -142,7 +142,7 @@ namespace Npgsql.Tests
                 cmd2.Prepare();
                 var reader = cmd2.ExecuteReader();
                 reader.Read();
-                Assert.That(() => cmd1.Dispose(), Throws.Exception.TypeOf<InvalidOperationException>());
+                Assert.That(() => cmd1.Dispose(), Throws.Exception.TypeOf<NpgsqlOperationInProgressException>());
                 reader.Close();
                 cmd1.Dispose();
                 cmd2.Dispose();

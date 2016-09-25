@@ -577,7 +577,7 @@ namespace Npgsql.Tests
                 cmd.ExecuteReader();
                 cmd.Dispose();
                 cmd = new NpgsqlCommand("SELECT 3", conn);
-                Assert.That(() => cmd.ExecuteScalar(), Throws.Exception.TypeOf<InvalidOperationException>());
+                Assert.That(() => cmd.ExecuteScalar(), Throws.Exception.TypeOf<NpgsqlOperationInProgressException>());
             }
         }
 
