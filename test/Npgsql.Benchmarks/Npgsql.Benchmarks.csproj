@@ -44,6 +44,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CommandExecuteBenchmarks.cs" />
+    <Compile Include="Commit.cs" />
     <Compile Include="ConnectionCreationBenchmarks.cs" />
     <Compile Include="ConnectionOpenCloseBenchmarks.cs" />
     <Compile Include="BenchmarkEnvironment.cs" />
