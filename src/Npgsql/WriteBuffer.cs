@@ -342,6 +342,17 @@ namespace Npgsql
             WritePosition = 0;
         }
 
+        /// <summary>
+        /// Returns all contents currently written to the buffer (but not flushed).
+        /// Useful for pregenerating messages.
+        /// </summary>
+        internal byte[] GetContents()
+        {
+            var buf = new byte[_writePosition];
+            Array.Copy(_buf, buf, _writePosition);
+            return buf;
+        }
+
         internal void ResetTotalBytesFlushed()
         {
             TotalBytesFlushed = 0;

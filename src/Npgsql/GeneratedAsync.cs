@@ -446,6 +446,7 @@ namespace Npgsql
                 await WriteBuffer.FlushAsync(cancellationToken);
                 timeout.Check();
                 await HandleAuthenticationAsync(username, timeout, cancellationToken);
+                GenerateResetMessage();
                 await TypeHandlerRegistry.SetupAsync(this, timeout, cancellationToken);
                 Counters.HardConnectsPerSecond.Increment();
                 Log.Debug($"Opened connection to {Host}:{Port}", Id);

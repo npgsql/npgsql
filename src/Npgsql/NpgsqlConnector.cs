@@ -246,6 +246,9 @@ namespace Npgsql
         // ParseMessage and QueryMessage depend on the encoding, which isn't known until open-time
         internal ParseMessage ParseMessage;
         internal QueryMessage QueryMessage;
+        // The reset message depends on the server version, which isn't known until open-time
+        [CanBeNull]
+        PregeneratedMessage _resetWithoutDeallocateMessage;
 
         // Backend
         readonly CommandCompleteMessage      _commandCompleteMessage      = new CommandCompleteMessage();
@@ -253,6 +256,7 @@ namespace Npgsql
         readonly ParameterDescriptionMessage _parameterDescriptionMessage = new ParameterDescriptionMessage();
         readonly DataRowSequentialMessage    _dataRowSequentialMessage    = new DataRowSequentialMessage();
         readonly DataRowNonSequentialMessage _dataRowNonSequentialMessage = new DataRowNonSequentialMessage();
+
 
         // Since COPY is rarely used, allocate these lazily
         CopyInResponseMessage  _copyInResponseMessage;
@@ -407,6 +411,7 @@ namespace Npgsql
                 timeout.Check();
 
                 HandleAuthentication(username, timeout);
+                GenerateResetMessage();
                 TypeHandlerRegistry.Setup(this, timeout);
                 Counters.HardConnectsPerSecond.Increment();
                 Log.Debug($"Opened connection to {Host}:{Port}", Id);
@@ -1457,6 +1462,41 @@ namespace Npgsql
             }
         }
 
+        void GenerateResetMessage()
+        {
+            var sb = new StringBuilder("SET SESSION AUTHORIZATION DEFAULT;RESET ALL;");
+            var responseMessages = 2;
+            if (SupportsCloseAll)
+            {
+                sb.Append("CLOSE ALL;");
+                responseMessages++;
+            }
+            if (SupportsUnlisten)
+            {
+                sb.Append("UNLISTEN *;");
+                responseMessages++;
+            }
+            if (SupportsAdvisoryLocks)
+            {
+                sb.Append("SELECT pg_advisory_unlock_all();");
+                responseMessages += 2;
+            }
+            if (SupportsDiscardSequences)
+            {
+                sb.Append("DISCARD SEQUENCES;");
+                responseMessages++;
+            }
+            if (SupportsDiscardTemp)
+            {
+                sb.Append("DISCARD TEMP");
+                responseMessages++;
+            }
+
+            responseMessages++;  // One ReadyForQuery at the end
+
+            _resetWithoutDeallocateMessage = PregeneratedMessage.Generate(WriteBuffer, QueryMessage, sb.ToString(), responseMessages);
+        }
+
         /// <summary>
         /// Called when a pooled connection is closed, and its connector is returned to the pool.
         /// Resets the connector back to its initial state, releasing server-side sources
@@ -1518,18 +1558,7 @@ namespace Npgsql
                 {
                     // We have persistent prepared statements, so we can't reset the connection state with DISCARD ALL
                     // Note: the send buffer has been cleared above, and we assume all this will fit in it.
-                    PrependInternalMessage(PregeneratedMessage.ResetSessionAuthorization);
-                    PrependInternalMessage(PregeneratedMessage.ResetAll);
-                    if (SupportsCloseAll)
-                        PrependInternalMessage(PregeneratedMessage.CloseAll);
-                    if (SupportsUnlisten)
-                        PrependInternalMessage(PregeneratedMessage.UnlistenAll);
-                    if (SupportsAdvisoryLocks)
-                        PrependInternalMessage(PregeneratedMessage.AdvisoryUnlockAll);
-                    if (SupportsDiscardSequences)
-                        PrependInternalMessage(PregeneratedMessage.DiscardSequences);
-                    if (SupportsDiscardTemp)
-                        PrependInternalMessage(PregeneratedMessage.DiscardTemp);
+                    PrependInternalMessage(_resetWithoutDeallocateMessage);
 
                     // This needs to come last, because it can produce an arbitrary number of messages, possibly sending
                     // them now if they are larger than the buffer.

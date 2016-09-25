@@ -65,48 +65,33 @@ namespace Npgsql.FrontendMessages
 
         public override string ToString() =>  _description ?? "[?]";
 
-        static readonly WriteBuffer _tempBuf;
-        static readonly QueryMessage _tempQuery;
-
         static PregeneratedMessage()
         {
-            _tempBuf = new WriteBuffer(null, new MemoryStream(), WriteBuffer.MinimumBufferSize, Encoding.ASCII);
-            _tempQuery = new QueryMessage(PGUtil.UTF8Encoding);
+            var buf = new WriteBuffer(null, new MemoryStream(), WriteBuffer.MinimumBufferSize, Encoding.ASCII);
+            var message = new QueryMessage(PGUtil.UTF8Encoding);
 
-            BeginTrans                = BuildQuery("BEGIN");
-            SetTransRepeatableRead    = BuildQuery("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ");
-            SetTransSerializable      = BuildQuery("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE");
-            SetTransReadCommitted     = BuildQuery("SET TRANSACTION ISOLATION LEVEL READ COMMITTED");
-            SetTransReadUncommitted   = BuildQuery("SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED");
-            CommitTransaction         = BuildQuery("COMMIT");
-            RollbackTransaction       = BuildQuery("ROLLBACK");
-            KeepAlive                 = BuildQuery("SELECT NULL");
+            BeginTrans                = Generate(buf, message, "BEGIN");
+            SetTransRepeatableRead    = Generate(buf, message, "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ");
+            SetTransSerializable      = Generate(buf, message, "SET TRANSACTION ISOLATION LEVEL SERIALIZABLE");
+            SetTransReadCommitted     = Generate(buf, message, "SET TRANSACTION ISOLATION LEVEL READ COMMITTED");
+            SetTransReadUncommitted   = Generate(buf, message, "SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED");
+            CommitTransaction         = Generate(buf, message, "COMMIT");
+            RollbackTransaction       = Generate(buf, message, "ROLLBACK");
+            KeepAlive                 = Generate(buf, message, "SELECT NULL");
 
-            DiscardAll                = BuildQuery("DISCARD ALL");
-
-            ResetSessionAuthorization = BuildQuery("SET SESSION AUTHORIZATION DEFAULT");
-            ResetAll                  = BuildQuery("RESET ALL");
-            CloseAll                  = BuildQuery("CLOSE ALL");
-            UnlistenAll               = BuildQuery("UNLISTEN *");
-            AdvisoryUnlockAll         = BuildQuery("SELECT pg_advisory_unlock_all()", 3);
-            DiscardTemp               = BuildQuery("DISCARD TEMP");
-            DiscardSequences          = BuildQuery("DISCARD SEQUENCES");
-
-            _tempBuf = null;
-            _tempQuery = null;
+            DiscardAll                = Generate(buf, message, "DISCARD ALL");
         }
 
-        static PregeneratedMessage BuildQuery(string query, int responseMessageCount=2)
+        internal static PregeneratedMessage Generate(WriteBuffer buf, QueryMessage queryMessage, string query, int responseMessageCount=2)
         {
+            Debug.Assert(buf.WritePosition == 0);
             Debug.Assert(query != null && query.All(c => c < 128));
-
-            var totalLen = 5 + query.Length;
-            var ms = new MemoryStream(totalLen);
-            _tempBuf.Underlying = ms;
-            _tempQuery.Populate(query);
-            _tempQuery.Write(_tempBuf);
-            _tempBuf.Flush();
-            return new PregeneratedMessage(ms.ToArray(), _tempQuery.ToString(), responseMessageCount);
+            queryMessage.Populate(query);
+            var description = queryMessage.ToString();
+            queryMessage.Write(buf);
+            var bytes = buf.GetContents();
+            buf.Clear();
+            return new PregeneratedMessage(bytes, description, responseMessageCount);
         }
 
         internal static readonly PregeneratedMessage BeginTrans;
@@ -119,13 +104,5 @@ namespace Npgsql.FrontendMessages
         internal static readonly PregeneratedMessage KeepAlive;
 
         internal static readonly PregeneratedMessage DiscardAll;
-
-        internal static readonly PregeneratedMessage ResetSessionAuthorization;
-        internal static readonly PregeneratedMessage ResetAll;
-        internal static readonly PregeneratedMessage CloseAll;
-        internal static readonly PregeneratedMessage UnlistenAll;
-        internal static readonly PregeneratedMessage AdvisoryUnlockAll;
-        internal static readonly PregeneratedMessage DiscardTemp;
-        internal static readonly PregeneratedMessage DiscardSequences;
     }
 }
