@@ -263,6 +263,11 @@ namespace Npgsql
             } else {
                 base[canonicalKeyword] = value;
             }
+
+            lock (_connectionStringWithoutPasswordLocker)
+            {
+                _connectionStringWithoutPassword = null;
+            }
         }
 
         #endregion
@@ -988,6 +993,25 @@ namespace Npgsql
         #endregion
 
         #region Misc
+
+        internal string ToStringWithoutPassword()
+        {
+            lock (_connectionStringWithoutPasswordLocker)
+            {
+                if (_connectionStringWithoutPassword != null)
+                {
+                    return _connectionStringWithoutPassword;
+                }
+
+                var clone = Clone();
+                clone.Password = null;
+                _connectionStringWithoutPassword = clone.ToString();
+                return _connectionStringWithoutPassword;
+            }
+        }
+
+        readonly object _connectionStringWithoutPasswordLocker = new object();
+        string _connectionStringWithoutPassword;
 
         internal NpgsqlConnectionStringBuilder Clone()
         {
