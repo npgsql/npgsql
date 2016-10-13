@@ -20,6 +20,7 @@ using System.Threading;
 using System.Threading.Tasks;
 #pragma warning disable
 using System;
+using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
@@ -190,6 +191,8 @@ using System.IO;
 using System.Net;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using JetBrains.Annotations;
 using System.Threading;
 using System.Threading.Tasks;
@@ -290,9 +293,24 @@ namespace Npgsql
                     // We've send all the messages for the first statement in a multistatement command.
                     // If we continue blocking writes for the rest of the messages, we risk a deadlock where
                     // PostgreSQL sends large results for the first statement, while we're sending large
-                    // parameter data for the second. To avoid this, switch to async sends.
-                    // See #641
-                    RemainingSendTask = SendRemaining(populateMethod, CancellationToken.None);
+                    // parameter data for the second. To avoid this, switch to async sends. See #641
+                    // When performing async sends here, our regular async code will do ConfigureAwait(false),
+                    // sending continuations to the thread pool. However, this is a synchronous operation -
+                    // so a deadlock may occur where TP threads synchronously block on database input which won't
+                    // become because async continuations can't run (TP is starved).
+                    // To work around this, we send all async continuations to a special synchronization context
+                    // which executes them on a special thread.
+                    var callerSyncContext = SynchronizationContext.Current;
+                    SynchronizationContext.SetSynchronizationContext(SingleThreadSynchronizationContext);
+                    try
+                    {
+                        RemainingSendTask = SendRemaining(populateMethod, CancellationToken.None);
+                    }
+                    finally
+                    {
+                        SynchronizationContext.SetSynchronizationContext(callerSyncContext);
+                    }
+
                     return;
                 }
             }
@@ -322,7 +340,7 @@ namespace Npgsql
             using (connector.StartUserAction())
             {
                 Log.Trace("ExecuteNonScalar", connector.Id);
-                using (var reader = Execute(CommandBehavior.SequentialAccess | CommandBehavior.SingleRow))
+                using (var reader = await (ExecuteAsync(cancellationToken, CommandBehavior.SequentialAccess | CommandBehavior.SingleRow).ConfigureAwait(false)))
                     return await (reader.ReadAsync(cancellationToken).ConfigureAwait(false)) && reader.FieldCount != 0 ? reader.GetValue(0) : null;
             }
         }
