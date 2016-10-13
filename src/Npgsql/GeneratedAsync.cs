@@ -337,7 +337,7 @@ namespace Npgsql
             using (connector.StartUserAction(this))
             {
                 Log.Trace("ExecuteNonScalar", connector.Id);
-                using (var reader = Execute(CommandBehavior.SequentialAccess | CommandBehavior.SingleRow))
+                using (var reader = await (ExecuteAsync(cancellationToken, CommandBehavior.SequentialAccess | CommandBehavior.SingleRow)))
                     return await (reader.ReadAsync(cancellationToken)) && reader.FieldCount != 0 ? reader.GetValue(0) : null;
             }
         }
