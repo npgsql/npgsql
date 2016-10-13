@@ -13,6 +13,12 @@
       <param name="system.Configuration" value="%Configuration%" />
     </parameters>
     <build-runners>
+      <runner id="RUNNER_45" name="Restore" type="dotnet">
+        <parameters>
+          <param name="dotnet-command" value="restore" />
+          <param name="teamcity.step.mode" value="default" />
+        </parameters>
+      </runner>
       <runner id="RUNNER_15" name="Build (Release)" type="dotnet">
         <parameters>
           <param name="dotnet-build-config" value="%Configuration%" />
