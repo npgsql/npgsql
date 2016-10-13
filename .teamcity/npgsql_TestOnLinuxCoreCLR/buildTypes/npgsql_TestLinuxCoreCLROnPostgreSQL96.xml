@@ -6,7 +6,7 @@
     <parameters>
       <param name="env.NPGSQL_TEST_DB" value="Server=localhost;Username=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;Port=5496" />
     </parameters>
-    <build-runners order="RUNNER_35" />
+    <build-runners order="RUNNER_42, RUNNER_35" />
     <vcs-settings />
     <requirements />
     <build-triggers />
