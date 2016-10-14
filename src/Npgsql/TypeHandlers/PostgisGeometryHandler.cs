@@ -6,6 +6,7 @@ using Npgsql.BackendMessages;
 using Npgsql.Logging;
 using Npgsql.PostgresTypes;
 using NpgsqlTypes;
+using System.Linq;
 
 namespace Npgsql.TypeHandlers
 {
@@ -26,330 +27,188 @@ namespace Npgsql.TypeHandlers
     class PostgisGeometryHandler : ChunkingTypeHandler<PostgisGeometry>,
         IChunkingTypeHandler<byte[]>
     {
-        uint? _srid;
-        uint _id, _lastId;
-
-        bool _newGeom;
-        int _ipol, _ipts, _irng;
-
         ReadBuffer _readBuf;
         WriteBuffer _writeBuf;
-        ByteOrder _bo;
-        Coordinate2D[] _points;
-        Coordinate2D[][] _rings;
-        Coordinate2D[][][] _pols;
-        readonly Stack<PostgisGeometry[]> _geoms = new Stack<PostgisGeometry[]>();
-        readonly Stack<int> _icol = new Stack<int>();
-        PostgisGeometry _toWrite;
+
+        int _len;
+
+        readonly IEnumerator<PostgisGeometry> _geometry_reader;
+        readonly IEnumerator<byte[]> _bytea_reader;
+        readonly IEnumerator<bool> _geometry_writer;
+
+        PostgisGeometry _geometry_toWrite;
+        byte[] _bytea_toWrite;
 
         [CanBeNull]
         readonly ByteaHandler _byteaHandler;
-        bool? _inByteaMode;
-        byte[] _bytes;
-        int _len;
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         internal PostgisGeometryHandler(PostgresType postgresType, TypeHandlerRegistry registry)
             : base(postgresType)
         {
-            var byteaHandler = registry[NpgsqlDbType.Bytea];
-            if (_byteaHandler == registry.UnrecognizedTypeHandler)
-            {
-                Log.Warn("oid type not present when setting up oidvector type. oidvector will not work.");
-                return;
-            }
-            _byteaHandler = (ByteaHandler)byteaHandler;
+            var handler = registry[NpgsqlDbType.Bytea];
+            if (handler == registry.UnrecognizedTypeHandler)
+                throw new Exception("bytea type not present when setting up PostgisGeometry type.");
+            _byteaHandler = (ByteaHandler)handler;
+
+            _geometry_reader = GeometryReader().GetEnumerator();
+            _bytea_reader = ByteaReader().GetEnumerator();
+            _geometry_writer = GeometryWriter().GetEnumerator();
         }
 
         #region Read
 
         public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
-            Reset();
-            _inByteaMode = null;
             _readBuf = buf;
             _len = len;
-            _srid = default(uint?);
-            _geoms.Clear();
-            _icol.Clear();
-        }
-
-        void Reset()
-        {
-            _points = null;
-            _rings = null;
-            _pols = null;
-            _ipts = _irng = _ipol = -1;
-            _newGeom = true;
-            _id = 0;
-            _lastId = 0;
-            _bytes = null;
         }
 
         [ContractAnnotation("=> true, result:notnull; => false, result:null")]
         public override bool Read([CanBeNull] out PostgisGeometry result)
         {
-            Debug.Assert(_inByteaMode != true);
-            if (!_inByteaMode.HasValue)
-                _inByteaMode = false;
-
-            result = default(PostgisGeometry);
-            if (_id == 0)
+            _geometry_reader.MoveNext();
+            if (_geometry_reader.Current != null)
             {
-                if (_readBuf.ReadBytesLeft < 5)
-                    return false;
-                _bo = (ByteOrder)_readBuf.ReadByte();
-                _id = _readBuf.ReadUInt32(_bo);
+                result = _geometry_reader.Current;
+                return true;
             }
-            if (!_srid.HasValue)
+            else
             {
-                if ((_id & (uint)EwkbModifiers.HasSRID) != 0)
-                {
-                    if (_readBuf.ReadBytesLeft < 4)
-                        return false;
-                    _srid = _readBuf.ReadUInt32(_bo);
-                }
-                else
-                {
-                    _srid = 0;
-                }
+                result = null;
+                return false;
             }
+        }
 
-            Debug.Assert(_srid.HasValue);
-
-            switch ((WkbIdentifier)(_id & 7))
+        public IEnumerable<PostgisGeometry> GeometryReader(uint? outer_srid = null)
+        {
+            while (true)
             {
-                case WkbIdentifier.Point:
-                    _lastId = _id;
-                    if (_readBuf.ReadBytesLeft < 16)
-                        return false;
-                    result = new PostgisPoint(_readBuf.ReadDouble(_bo), _readBuf.ReadDouble(_bo)) {
-                        SRID = _srid.Value
-                    };
-                    return true;
+                uint srid = 0;
 
-                case WkbIdentifier.LineString:
-                    _lastId = _id;
-                    if (_ipts == -1)
-                    {
-                        if (_readBuf.ReadBytesLeft < 4)
-                            return false;
-                        _points = new Coordinate2D[_readBuf.ReadInt32(_bo)];
-                        _ipts = 0;
-                    }
-                    for (; _ipts < _points.Length; _ipts++)
-                    {
-                        if (_readBuf.ReadBytesLeft < 16)
-                            return false;
-                        _points[_ipts] = new Coordinate2D(_readBuf.ReadDouble(_bo), _readBuf.ReadDouble(_bo));
-                    }
-                    result = new PostgisLineString(_points) {
-                        SRID = _srid.Value
-                    };
-                    return true;
+                while (_readBuf.ReadBytesLeft < 5)
+                    yield return null;
+                ByteOrder bo = (ByteOrder)_readBuf.ReadByte();
+                var id = _readBuf.ReadUInt32(bo);
+                if ((id & (uint)EwkbModifiers.HasSRID) != 0)
+                {
+                    while (_readBuf.ReadBytesLeft < 4)
+                        yield return null;
+                    srid = _readBuf.ReadUInt32(bo);
+                }
+                if (outer_srid.HasValue)
+                    srid = outer_srid.Value;
+                WkbIdentifier geometry_type = (WkbIdentifier)(id & 0xffff);
 
-                case WkbIdentifier.Polygon:
-                    _lastId = _id;
-                    if (_irng == -1)
-                    {
-                        if (_readBuf.ReadBytesLeft < 4)
-                            return false;
-                        _rings = new Coordinate2D[_readBuf.ReadInt32(_bo)][];
-                        _irng = 0;
-                    }
-
-                    for (; _irng < _rings.Length; _irng++)
-                    {
-                        if (_ipts == -1)
+                switch (geometry_type)
+                {
+                    case WkbIdentifier.Point:
+                        while (_readBuf.ReadBytesLeft < 16)
+                            yield return null;
+                        yield return new PostgisPoint(_readBuf.ReadDouble(bo), _readBuf.ReadDouble(bo)) { SRID = srid };
+                        break;
+                    case WkbIdentifier.LineString:
                         {
-                            if (_readBuf.ReadBytesLeft < 4)
-                                return false;
-                            _rings[_irng] = new Coordinate2D[_readBuf.ReadInt32(_bo)];
-                            _ipts = 0;
-                        }
-                        for (; _ipts < _rings[_irng].Length; _ipts++)
-                        {
-                            if (_readBuf.ReadBytesLeft < 16)
-                                return false;
-                            _rings[_irng][_ipts] = new Coordinate2D(_readBuf.ReadDouble(_bo), _readBuf.ReadDouble(_bo));
-                        }
-                        _ipts = -1;
-                    }
-                    result = new PostgisPolygon(_rings) {
-                        SRID = _srid.Value
-                    };
-                    return true;
-
-                case WkbIdentifier.MultiPoint:
-                    _lastId = _id;
-                    if (_ipts == -1)
-                    {
-                        if (_readBuf.ReadBytesLeft < 4)
-                            return false;
-                        _points = new Coordinate2D[_readBuf.ReadInt32(_bo)];
-                        _ipts = 0;
-                    }
-                    for (; _ipts < _points.Length; _ipts++)
-                    {
-                        if (_readBuf.ReadBytesLeft < 21)
-                            return false;
-                        _readBuf.Skip(5);
-                        _points[_ipts] = new Coordinate2D(_readBuf.ReadDouble(_bo), _readBuf.ReadDouble(_bo));
-                    }
-                    result = new PostgisMultiPoint(_points) {
-                        SRID = _srid.Value
-                    };
-                    return true;
-
-                case WkbIdentifier.MultiLineString:
-                    _lastId = _id;
-                    if (_irng == -1)
-                    {
-                        if (_readBuf.ReadBytesLeft < 4)
-                            return false;
-                        _rings = new Coordinate2D[_readBuf.ReadInt32(_bo)][];
-                        _irng = 0;
-                    }
-
-                    for (; _irng < _rings.Length; _irng++)
-                    {
-                        if (_ipts == -1)
-                        {
-                            if (_readBuf.ReadBytesLeft < 9)
-                                return false;
-                            _readBuf.Skip(5);
-                            _rings[_irng] = new Coordinate2D[_readBuf.ReadInt32(_bo)];
-                            _ipts = 0;
-                        }
-                        for (; _ipts < _rings[_irng].Length; _ipts++)
-                        {
-                            if (_readBuf.ReadBytesLeft < 16)
-                                return false;
-                            _rings[_irng][_ipts] = new Coordinate2D(_readBuf.ReadDouble(_bo), _readBuf.ReadDouble(_bo));
-                        }
-                        _ipts = -1;
-                    }
-                    result = new PostgisMultiLineString(_rings) {
-                        SRID = _srid.Value
-                    };
-                    return true;
-
-                case WkbIdentifier.MultiPolygon:
-                    _lastId = _id;
-                    if (_ipol == -1)
-                    {
-                        if (_readBuf.ReadBytesLeft < 4)
-                            return false;
-                        _pols = new Coordinate2D[_readBuf.ReadInt32(_bo)][][];
-                        _ipol = 0;
-                    }
-
-                    for (; _ipol < _pols.Length; _ipol++)
-                    {
-                        if (_irng == -1)
-                        {
-                            if (_readBuf.ReadBytesLeft < 9)
-                                return false;
-                            _readBuf.Skip(5);
-                            _pols[_ipol] = new Coordinate2D[_readBuf.ReadInt32(_bo)][];
-                            _irng = 0;
-                        }
-                        for (; _irng < _pols[_ipol].Length; _irng++)
-                        {
-                            if (_ipts == -1)
+                            while (_readBuf.ReadBytesLeft < 4)
+                                yield return null;
+                            var point_count = _readBuf.ReadInt32(bo);
+                            var points = new Coordinate2D[point_count];
+                            for (int i = 0; i < point_count; i++)
                             {
-                                if (_readBuf.ReadBytesLeft < 4)
-                                    return false;
-                                _pols[_ipol][_irng] = new Coordinate2D[_readBuf.ReadInt32(_bo)];
-                                _ipts = 0;
+                                while (_readBuf.ReadBytesLeft < 16)
+                                    yield return null;
+                                points[i] = new Coordinate2D(_readBuf.ReadDouble(bo), _readBuf.ReadDouble(bo));
                             }
-                            for (; _ipts < _pols[_ipol][_irng].Length; _ipts++)
+                            yield return new PostgisLineString(points) { SRID = srid };
+                        }
+                        break;
+                    case WkbIdentifier.Polygon:
+                        {
+                            while (_readBuf.ReadBytesLeft < 4)
+                                yield return null;
+                            var ring_count = _readBuf.ReadInt32(bo);
+                            var rings = new Coordinate2D[ring_count][];
+
+                            for (int i = 0; i < ring_count; i++)
                             {
-                                if (_readBuf.ReadBytesLeft < 16)
-                                    return false;
-                                _pols[_ipol][_irng][_ipts] = new Coordinate2D(_readBuf.ReadDouble(_bo), _readBuf.ReadDouble(_bo));
+                                while (_readBuf.ReadBytesLeft < 4)
+                                    yield return null;
+                                int point_count = _readBuf.ReadInt32(bo);
+                                var ring = rings[i] = new Coordinate2D[point_count];
+                                for (int j = 0; j < point_count; j++)
+                                {
+                                    while (_readBuf.ReadBytesLeft < 16)
+                                        yield return null;
+                                    ring[j] = new Coordinate2D(_readBuf.ReadDouble(bo), _readBuf.ReadDouble(bo));
+                                }
                             }
-                            _ipts = -1;
+                            yield return new PostgisPolygon(rings) { SRID = srid };
                         }
-                        _irng = -1;
-                    }
-                    result = new PostgisMultiPolygon(_pols) {
-                        SRID = _srid.Value
-                    };
-                    return true;
+                        break;
+                    case WkbIdentifier.MultiLineString:
+                    case WkbIdentifier.MultiPoint:
+                    case WkbIdentifier.MultiPolygon:
+                    case WkbIdentifier.GeometryCollection:
+                        while (_readBuf.ReadBytesLeft < 4)
+                            yield return null;
+                        {
+                            var geometry_count = _readBuf.ReadInt32(bo);
+                            var geometries = new PostgisGeometry[geometry_count];
+                            for (int i = 0; i < geometry_count; i++)
+                            {
+                                foreach (var geom in GeometryReader(outer_srid: srid))
+                                {
+                                    if (geom != null)
+                                    {
+                                        geometries[i] = geom;
+                                        break;
+                                    }
+                                    else
+                                        yield return null;
+                                } 
+                            }
+                            switch (geometry_type)
+                            {
+                                case WkbIdentifier.MultiPoint:
+                                    yield return new PostgisMultiPoint(geometries.Select(g => (PostgisPoint)g)) { SRID = srid };
+                                    break;
+                                case WkbIdentifier.MultiLineString:
+                                    yield return new PostgisMultiLineString(geometries.Select(g => (PostgisLineString)g)) { SRID = srid };
+                                    break;
+                                case WkbIdentifier.MultiPolygon:
+                                    yield return new PostgisMultiPolygon(geometries.Select(g => (PostgisPolygon)g)) { SRID = srid };
+                                    break;
+                                case WkbIdentifier.GeometryCollection:
+                                    yield return new PostgisGeometryCollection(geometries) { SRID = srid };
+                                    break;
+                            }
+                        }
+                        break;
 
-                case WkbIdentifier.GeometryCollection:
-                    PostgisGeometry[] g;
-                    int i;
-                    if (_icol.Count == 0)
-                    {
-                        if (_readBuf.ReadBytesLeft < 4)
-                        {
-                            _lastId = _id;
-                            return false;
-                        }
-                        g = new PostgisGeometry[_readBuf.ReadInt32(_bo)];
-                        i = 0;
-                        if (_newGeom) // We need to know whether we're in a nested geocoll or not.
-                        {
-                            _id = 0;
-                            _newGeom = false;
-                        }
-                        else
-                        { 
-                            _id = _lastId;
-                            _lastId = 0;
-                        }
-                    }
-                    else
-                    {
-                        g = _geoms.Pop();
-                        i = _icol.Pop();
-                        if (_icol.Count == 0)
-                        {
-                            _id = _lastId;
-                            _lastId = 0;
-                        }
-                    }
-                    for (; i < g.Length; i++)
-                    {
-                        PostgisGeometry geom;
-
-                        if (!Read(out geom))
-                        {
-                            _icol.Push(i);
-                            _geoms.Push(g);
-                            _id = (uint)WkbIdentifier.GeometryCollection;
-                            return false;
-                        }
-                        g[i] = geom;
-                        Reset();
-                    }
-                    result = new PostgisGeometryCollection(g) {
-                        SRID = _srid.Value
-                    };
-                    return true;
-
-                default:
-                    throw new InvalidOperationException("Unknown Postgis identifier.");
+                    default:
+                        throw new InvalidOperationException($"Unknown Postgis identifier: {geometry_type}");
+                }
             }
         }
 
         public bool Read([CanBeNull] out byte[] result)
         {
-            Debug.Assert(_inByteaMode != false);
-            if (!_inByteaMode.HasValue)
+            _bytea_reader.MoveNext();
+            result = _bytea_reader.Current;
+            return result != null;
+        }
+
+        private IEnumerable<byte[]> ByteaReader()
+        {
+            while (true)
             {
-                if (_byteaHandler == null)
-                    throw new NpgsqlException("Bytea handler was not found during initialization of PostGIS handler");
-                _inByteaMode = true;
-
                 _byteaHandler.PrepareRead(_readBuf, _len);
-            }
-
-            Debug.Assert(_byteaHandler != null);
-            return _byteaHandler.Read(out result);
+                byte[] result;
+                while (!_byteaHandler.Read(out result))
+                    yield return null;
+                yield return result;
+            } 
         }
 
         #endregion Read
@@ -366,246 +225,152 @@ namespace Npgsql.TypeHandlers
             if (asBytes != null)
                 return asBytes.Length;
 
-            throw new InvalidCastException("IGeometry type expected.");
+            throw new InvalidCastException($"{nameof(PostgisGeometry)} or byte[] expected");
         }
 
         public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter = null)
         {
-            Reset();
-            _inByteaMode = null;
             _writeBuf = buf;
-            _icol.Clear();
+            _geometry_toWrite = null;
+            _bytea_toWrite = null;
 
-            _toWrite = value as PostgisGeometry;
-            if (_toWrite != null)
+            _geometry_toWrite = value as PostgisGeometry;
+            if (_geometry_toWrite != null)
+                return;
+
+            _bytea_toWrite = value as byte[];
+            if (_bytea_toWrite != null)
             {
-                _inByteaMode = false;
+                _byteaHandler.PrepareWrite(_bytea_toWrite, _writeBuf, lengthCache, parameter);
                 return;
             }
 
-            _bytes = value as byte[];
-            if (_bytes != null)
-            {
-                if (_byteaHandler == null)
-                    throw new NpgsqlException("Bytea handler was not found during initialization of PostGIS handler");
-                _inByteaMode = true;
-                _byteaHandler.PrepareWrite(_bytes, _writeBuf, lengthCache, parameter);
-                return;
-            }
-
-            throw new InvalidCastException("IGeometry type expected.");
+            throw new InvalidCastException("{nameof(PostgisGeometry)} or byte[] expected");
         }
 
-        bool Write(PostgisGeometry geom)
+        public override bool Write(ref DirectBuffer buf)
         {
-            if (_newGeom & _icol.Count == 0)
+            if (_geometry_toWrite != null)
             {
-                if (geom.SRID == 0)
+                _geometry_writer.MoveNext();
+                var done = _geometry_writer.Current;
+                if (done)
+                    _geometry_toWrite = null;
+                return done;
+            }
+            else if (_bytea_toWrite != null)
+            {
+                var done = _byteaHandler.Write(ref buf);
+                if (done)
+                    _bytea_toWrite = null;
+                return done;
+            }
+            else
+                throw new InvalidOperationException("Unreacable code");
+        }
+
+        public IEnumerable<bool> GeometryWriter(bool skip_srid=false)
+        {
+            while (true)
+            {
+                var geom = _geometry_toWrite;
+                
+                if (geom.SRID == 0 || skip_srid)
                 {
-                    if (_writeBuf.WriteSpaceLeft < 5)
-                        return false;
+                    while (_writeBuf.WriteSpaceLeft < 5)
+                        yield return false;
                     _writeBuf.WriteByte(0); // We choose to ouput only XDR structure
                     _writeBuf.WriteInt32((int)geom.Identifier);
                 }
                 else
                 {
-                    if (_writeBuf.WriteSpaceLeft < 9)
-                        return false;
+                    while (_writeBuf.WriteSpaceLeft < 9)
+                        yield return false;
                     _writeBuf.WriteByte(0);
                     _writeBuf.WriteInt32((int) ((uint)geom.Identifier | (uint)EwkbModifiers.HasSRID));
                     _writeBuf.WriteInt32((int) geom.SRID);
                 }
-                _newGeom = false;
-            }
-            switch (geom.Identifier)
-            {
-                case WkbIdentifier.Point:
-                    if (_writeBuf.WriteSpaceLeft < 16)
-                        return false;
-                    var p = (PostgisPoint)geom;
-                    _writeBuf.WriteDouble(p.X);
-                    _writeBuf.WriteDouble(p.Y);
-                    return true;
 
-                case WkbIdentifier.LineString:
-                    var l = (PostgisLineString)geom;
-                    if (_ipts == -1)
-                    {
-                        if (_writeBuf.WriteSpaceLeft < 4)
-                            return false;
-                        _writeBuf.WriteInt32(l.PointCount);
-                        _ipts = 0;
-                    }
-                    for (; _ipts < l.PointCount; _ipts++)
-                    {
-                        if (_writeBuf.WriteSpaceLeft < 16)
-                            return false;
-                        _writeBuf.WriteDouble(l[_ipts].X);
-                        _writeBuf.WriteDouble(l[_ipts].Y);
-                    }
-                    return true;
-
-                case WkbIdentifier.Polygon:
-                    var pol = (PostgisPolygon)geom;
-                    if (_irng == -1)
-                    {
-                        if (_writeBuf.WriteSpaceLeft < 4)
-                            return false;
-                        _writeBuf.WriteInt32(pol.RingCount);
-                        _irng = 0;
-                    }
-                    for (; _irng < pol.RingCount; _irng++)
-                    {
-                        if (_ipts == -1)
+                switch (geom.Identifier)
+                {
+                    case WkbIdentifier.Point:
                         {
-                            if (_writeBuf.WriteSpaceLeft < 4)
-                                return false;
-                            _writeBuf.WriteInt32(pol[_irng].Length);
-                            _ipts = 0;
+                            var p = (PostgisPoint)geom;
+                            while (_writeBuf.WriteSpaceLeft < 16)
+                                yield return false;
+                            _writeBuf.WriteDouble(p.X);
+                            _writeBuf.WriteDouble(p.Y);
+                            yield return true;
                         }
-                        for (; _ipts < pol[_irng].Length; _ipts++)
+                        break;
+                    case WkbIdentifier.LineString:
                         {
-                            if (_writeBuf.WriteSpaceLeft < 16)
-                                return false;
-                            _writeBuf.WriteDouble(pol[_irng][_ipts].X);
-                            _writeBuf.WriteDouble(pol[_irng][_ipts].Y);
-                        }
-                        _ipts = -1;
-                    }
-                    return true;
-
-                case WkbIdentifier.MultiPoint:
-                    var mp = (PostgisMultiPoint)geom;
-                    if (_ipts == -1)
-                    {
-                        if (_writeBuf.WriteSpaceLeft < 4)
-                            return false;
-                        _writeBuf.WriteInt32(mp.PointCount);
-                        _ipts = 0;
-                    }
-                    for (; _ipts < mp.PointCount; _ipts++)
-                    {
-                        if (_writeBuf.WriteSpaceLeft < 21)
-                            return false;
-                        _writeBuf.WriteByte(0);
-                        _writeBuf.WriteInt32((int)WkbIdentifier.Point);
-                        _writeBuf.WriteDouble(mp[_ipts].X);
-                        _writeBuf.WriteDouble(mp[_ipts].Y);
-                    }
-                    return true;
-
-                case WkbIdentifier.MultiLineString:
-                    var ml = (PostgisMultiLineString)geom;
-                    if (_irng == -1)
-                    {
-                        if (_writeBuf.WriteSpaceLeft < 4)
-                            return false;
-                        _writeBuf.WriteInt32(ml.LineCount);
-                        _irng = 0;
-                    }
-                    for (; _irng < ml.LineCount; _irng++)
-                    {
-                        if (_ipts == -1)
-                        {
-                            if (_writeBuf.WriteSpaceLeft < 9)
-                                return false;
-                            _writeBuf.WriteByte(0);
-                            _writeBuf.WriteInt32((int)WkbIdentifier.LineString);
-                            _writeBuf.WriteInt32(ml[_irng].PointCount);
-                            _ipts = 0;
-                        }
-                        for (; _ipts < ml[_irng].PointCount; _ipts++)
-                        {
-                            if (_writeBuf.WriteSpaceLeft < 16)
-                                return false;
-                            _writeBuf.WriteDouble(ml[_irng][_ipts].X);
-                            _writeBuf.WriteDouble(ml[_irng][_ipts].Y);
-                        }
-                        _ipts = -1;
-                    }
-                    return true;
-
-                case WkbIdentifier.MultiPolygon:
-                    var mpl = (PostgisMultiPolygon)geom;
-                    if (_ipol == -1)
-                    {
-                        if (_writeBuf.WriteSpaceLeft < 4)
-                            return false;
-                        _writeBuf.WriteInt32(mpl.PolygonCount);
-                        _ipol = 0;
-                    }
-                    for (; _ipol < mpl.PolygonCount; _ipol++)
-                    {
-                        if (_irng == -1)
-                        {
-                            if (_writeBuf.WriteSpaceLeft < 9)
-                                return false;
-                            _writeBuf.WriteByte(0);
-                            _writeBuf.WriteInt32((int)WkbIdentifier.Polygon);
-                            _writeBuf.WriteInt32(mpl[_ipol].RingCount);
-                            _irng = 0;
-                        }
-                        for (; _irng < mpl[_ipol].RingCount; _irng++)
-                        {
-                            if (_ipts == -1)
+                            var l = (PostgisLineString)geom;
+                            while (_writeBuf.WriteSpaceLeft < 4)
+                                yield return false;
+                            _writeBuf.WriteInt32(l.PointCount);
+                            foreach (var p in l)
                             {
-                                if (_writeBuf.WriteSpaceLeft < 4)
-                                    return false;
-                                _writeBuf.WriteInt32(mpl[_ipol][_irng].Length);
-                                _ipts = 0;
+                                while (_writeBuf.WriteSpaceLeft < 16)
+                                    yield return false;
+                                _writeBuf.WriteDouble(p.X);
+                                _writeBuf.WriteDouble(p.Y);
                             }
-                            for (; _ipts < mpl[_ipol][_irng].Length; _ipts++)
-                            {
-                                if (_writeBuf.WriteSpaceLeft < 16)
-                                    return false;
-                                _writeBuf.WriteDouble(mpl[_ipol][_irng][_ipts].X);
-                                _writeBuf.WriteDouble(mpl[_ipol][_irng][_ipts].Y);
-                            }
-                            _ipts = -1;
+                            yield return true;
                         }
-                        _irng = -1;
-                    }
-                    _ipol = -1;
-                    return true;
-
-                case WkbIdentifier.GeometryCollection:
-                    var coll = (PostgisGeometryCollection)geom;
-                    if (_icol.Count == 0)
-                    {
-                        if (_writeBuf.WriteSpaceLeft < 4)
-                            return false;
-                        _writeBuf.WriteInt32(coll.GeometryCount);
-                        _newGeom = true;
-                    }
-                    
-                    for (var i = _icol.Count > 0 ? _icol.Pop() : 0 ; i < coll.GeometryCount; i++)
-                    {
-                        if (!Write(coll[i]))
+                        break;
+                    case WkbIdentifier.Polygon:
                         {
-                            _icol.Push(i);
-                            return false;                            
+                            var pol = (PostgisPolygon)geom;
+                            while (_writeBuf.WriteSpaceLeft < 4)
+                                yield return false;
+                            _writeBuf.WriteInt32(pol.RingCount);
+                            foreach (var ring in pol)
+                            {
+                                while (_writeBuf.WriteSpaceLeft < 4)
+                                    yield return false;
+                                _writeBuf.WriteInt32(ring.Length);
+                                foreach (var p in ring)
+                                {
+                                    while (_writeBuf.WriteSpaceLeft < 16)
+                                        yield return false;
+                                    _writeBuf.WriteDouble(p.X);
+                                    _writeBuf.WriteDouble(p.Y);
+                                }
+                            }
+                            yield return true;
                         }
-                        Reset();
-                    }                    
-                    return true;
+                        break;
+                    case WkbIdentifier.MultiPoint:
+                    case WkbIdentifier.MultiLineString:
+                    case WkbIdentifier.MultiPolygon:
+                    case WkbIdentifier.GeometryCollection:
+                        {
+                            var coll = (IPostgisGeometryCollection)geom;
+                            while (_writeBuf.WriteSpaceLeft < 4)
+                                yield return false;
+                            _writeBuf.WriteInt32(coll.GeometryCount);
 
-                default:
-                    throw new InvalidOperationException("Unknown Postgis identifier.");
+                            foreach (var g in coll)
+                            {
+                                _geometry_toWrite = g;
+                                foreach (var done in GeometryWriter(skip_srid: true))
+                                {
+                                    if (done)
+                                        break;
+                                    else
+                                        yield return false;
+                                }
+                            }
+                            _geometry_toWrite = geom;
+                            yield return true;
+                        }
+                        break;
+                    default:
+                        throw new InvalidOperationException("Unknown Postgis identifier.");
+                }
             }
         }
-
-        bool WriteBytes(ref DirectBuffer buf)
-        {
-            Debug.Assert(_byteaHandler != null);
-            return _byteaHandler.Write(ref buf);
-        }
-
-        public override bool Write(ref DirectBuffer buf)
-        {
-            Debug.Assert(_inByteaMode.HasValue);
-            return _inByteaMode.Value? WriteBytes(ref buf) : Write(_toWrite);
-        }
-
         #endregion Write
     }
 }
