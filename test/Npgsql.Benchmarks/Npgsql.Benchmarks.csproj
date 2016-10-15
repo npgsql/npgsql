@@ -51,6 +51,7 @@
     <Compile Include="PreparedStatementAcrossOpenCloseBenchmarks.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Types\GeometryWriteBenchmarks.cs" />
     <Compile Include="Types\TextWriteBenchmarks.cs" />
   </ItemGroup>
   <ItemGroup>
