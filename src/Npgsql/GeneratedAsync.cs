@@ -216,152 +216,6 @@ using System.Threading.Tasks;
 
 namespace Npgsql
 {
-    public sealed partial class NpgsqlCommand
-    {
-        async Task<NpgsqlDataReader> ExecuteAsync(CancellationToken cancellationToken, CommandBehavior behavior = CommandBehavior.Default)
-        {
-            ValidateParameters();
-            if (!IsPrepared)
-                ProcessRawQuery();
-            if (Statements.Any(s => s.InputParameters.Count > 65535))
-                throw new Exception("A statement cannot have more than 65535 parameters");
-            LogCommand();
-            State = CommandState.InProgress;
-            try
-            {
-                _connector = Connection.Connector;
-                // If a cancellation is in progress, wait for it to "complete" before proceeding (#615)
-                lock (_connector.CancelLock)
-                {
-                }
-
-                // Send protocol messages for the command
-                // Unless this is a prepared SchemaOnly command, in which case we already have the RowDescriptions
-                // from the Prepare phase (no need to send anything).
-                if (!IsPrepared || (behavior & CommandBehavior.SchemaOnly) == 0)
-                {
-                    _connector.UserTimeout = CommandTimeout * 1000;
-                    _sendState = SendState.Start;
-                    _writeStatementIndex = 0;
-                    if (IsPrepared)
-                        await SendAsync(PopulateExecutePrepared, cancellationToken);
-                    else if ((behavior & CommandBehavior.SchemaOnly) == 0)
-                        await SendAsync(PopulateExecuteNonPrepared, cancellationToken);
-                    else
-                        await SendAsync(PopulateParseDescribe, cancellationToken);
-                }
-
-                var reader = new NpgsqlDataReader(this, behavior, _statements);
-                await reader.NextResultAsync(cancellationToken);
-                _connector.CurrentReader = reader;
-                return reader;
-            }
-            catch
-            {
-                State = CommandState.Idle;
-                throw;
-            }
-        }
-
-        async Task SendAsync(PopulateMethod populateMethod, CancellationToken cancellationToken)
-        {
-            while (true)
-            {
-                var directBuf = new DirectBuffer();
-                var completed = populateMethod(ref directBuf);
-                await _connector.SendBufferAsync(cancellationToken);
-                if (completed)
-                    break; // Sent all messages
-                // The following is an optimization hack for writing large byte arrays without passing
-                // through our buffer
-                if (directBuf.Buffer != null)
-                {
-                    await _connector.WriteBuffer.DirectWriteAsync(directBuf.Buffer, directBuf.Offset, directBuf.Size == 0 ? directBuf.Buffer.Length : directBuf.Size, cancellationToken);
-                    directBuf.Buffer = null;
-                    directBuf.Size = 0;
-                }
-
-                if (_writeStatementIndex > 0)
-                {
-                    // We've send all the messages for the first statement in a multistatement command.
-                    // If we continue blocking writes for the rest of the messages, we risk a deadlock where
-                    // PostgreSQL sends large results for the first statement, while we're sending large
-                    // parameter data for the second. To avoid this, switch to async sends. See #641
-                    // When performing async sends here, our regular async code will do ConfigureAwait(false),
-                    // sending continuations to the thread pool. However, this is a synchronous operation -
-                    // so a deadlock may occur where TP threads synchronously block on database input which won't
-                    // become because async continuations can't run (TP is starved).
-                    // To work around this, we send all async continuations to a special synchronization context
-                    // which executes them on a special thread.
-                    var callerSyncContext = SynchronizationContext.Current;
-                    SynchronizationContext.SetSynchronizationContext(SingleThreadSynchronizationContext);
-                    try
-                    {
-                        RemainingSendTask = SendRemaining(populateMethod, CancellationToken.None);
-                    }
-                    finally
-                    {
-                        SynchronizationContext.SetSynchronizationContext(callerSyncContext);
-                    }
-
-                    return;
-                }
-            }
-        }
-
-        async Task<int> ExecuteNonQueryInternalAsync(CancellationToken cancellationToken)
-        {
-            var connector = CheckReadyAndGetConnector();
-            using (connector.StartUserAction(this))
-            {
-                Log.Trace("ExecuteNonQuery", connector.Id);
-                // Optimization: unprepared unparameterized non-queries can go through the PostgreSQL
-                // simple protocol which is more efficient
-                if (!IsPrepared && Parameters.Count == 0)
-                    return ExecuteSimple();
-                using (var reader = await (ExecuteAsync(cancellationToken)))
-                {
-                    while (await reader.NextResultAsync(cancellationToken))
-                    {
-                    }
-
-                    reader.Close();
-                    return reader.RecordsAffected;
-                }
-            }
-        }
-
-        async Task<object> ExecuteScalarInternalAsync(CancellationToken cancellationToken)
-        {
-            var connector = CheckReadyAndGetConnector();
-            using (connector.StartUserAction(this))
-            {
-                Log.Trace("ExecuteNonScalar", connector.Id);
-                using (var reader = await (ExecuteAsync(cancellationToken, CommandBehavior.SequentialAccess | CommandBehavior.SingleRow)))
-                    return await (reader.ReadAsync(cancellationToken)) && reader.FieldCount != 0 ? reader.GetValue(0) : null;
-            }
-        }
-
-        async Task<NpgsqlDataReader> ExecuteDbDataReaderInternalAsync(CommandBehavior behavior, CancellationToken cancellationToken)
-        {
-            var connector = CheckReadyAndGetConnector();
-            connector.StartUserAction(this);
-            try
-            {
-                Log.Trace("ExecuteReader", connector.Id);
-                return await ExecuteAsync(cancellationToken, behavior);
-            }
-            catch
-            {
-                Connection.Connector?.EndUserAction();
-                // Close connection if requested even when there is an error.
-                if ((behavior & CommandBehavior.CloseConnection) == CommandBehavior.CloseConnection)
-                    _connection.Close();
-                throw;
-            }
-        }
-    }
-
     public sealed partial class NpgsqlConnection
     {
         async Task OpenInternalAsync(CancellationToken cancellationToken)
@@ -599,31 +453,6 @@ namespace Npgsql
             }
         }
 
-        internal async Task SendMessageAsync(FrontendMessage msg, CancellationToken cancellationToken)
-        {
-            Log.Trace($"Sending: {msg}", Id);
-            while (true)
-            {
-                var completed = msg.Write(WriteBuffer);
-                await SendBufferAsync(cancellationToken);
-                if (completed)
-                    break; // Sent all messages
-            }
-        }
-
-        internal async Task SendBufferAsync(CancellationToken cancellationToken)
-        {
-            try
-            {
-                await WriteBuffer.FlushAsync(cancellationToken);
-            }
-            catch
-            {
-                Break();
-                throw;
-            }
-        }
-
         async Task<IBackendMessage> ReadMessageWithPrependedAsync(CancellationToken cancellationToken, DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential)
         {
             // First read the responses of any prepended messages.
@@ -776,20 +605,6 @@ namespace Npgsql
                     Break();
                     throw new NpgsqlException($"Received unexpected message {msg} while waiting for an asynchronous message");
             }
-        }
-
-        internal async Task RollbackAsync(CancellationToken cancellationToken)
-        {
-            Log.Debug("Rollback transaction", Id);
-            await ExecuteInternalCommandAsync(PregeneratedMessage.RollbackTransaction, cancellationToken);
-        }
-
-        internal async Task ExecuteInternalCommandAsync(FrontendMessage message, CancellationToken cancellationToken)
-        {
-            Debug.Assert(message is QueryMessage || message is PregeneratedMessage);
-            await SendMessageAsync(message, cancellationToken);
-            await ReadExpectingAsync<CommandCompleteMessage>(cancellationToken);
-            await ReadExpectingAsync<ReadyForQueryMessage>(cancellationToken);
         }
     }
 
@@ -1315,33 +1130,6 @@ namespace Npgsql
                 await _manager.ExecuteFunctionAsync<int>("lo_truncate64", cancellationToken, _fd, value);
             else
                 await _manager.ExecuteFunctionAsync<int>("lo_truncate", cancellationToken, _fd, (int)value);
-        }
-    }
-
-    /// <summary>
-    /// Represents a transaction to be made in a PostgreSQL database. This class cannot be inherited.
-    /// </summary>
-    public sealed partial class NpgsqlTransaction
-    {
-        async Task CommitInternalAsync(CancellationToken cancellationToken)
-        {
-            var connector = CheckReady();
-            using (connector.StartUserAction())
-            {
-                Log.Debug("Commit transaction", connector.Id);
-                await connector.ExecuteInternalCommandAsync(PregeneratedMessage.CommitTransaction, cancellationToken);
-                Connection = null;
-            }
-        }
-
-        async Task RollbackInternalAsync(CancellationToken cancellationToken)
-        {
-            var connector = CheckReady();
-            using (connector.StartUserAction())
-            {
-                await connector.RollbackAsync(cancellationToken);
-                Connection = null;
-            }
         }
     }
 

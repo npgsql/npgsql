@@ -309,7 +309,6 @@ namespace Npgsql.Tests
                     writer.StartRow();
                     writer.Write(data, NpgsqlDbType.Text);
                 }
-                Assert.That(conn.Connector.WriteBuffer.UsableSize, Is.EqualTo(conn.Connector.WriteBuffer.Size));
                 Assert.That(conn.ExecuteScalar("SELECT field FROM data"), Is.EqualTo(data));
             }
         }
@@ -323,7 +322,7 @@ namespace Npgsql.Tests
 
                 using (var writer = conn.BeginBinaryImport("COPY data (blob) FROM STDIN BINARY"))
                 {
-                    // Big value - triggers use of the direct buffer optimization
+                    // Big value - triggers use of the direct write optimization
                     var data = new byte[conn.BufferSize + 10];
 
                     writer.StartRow();

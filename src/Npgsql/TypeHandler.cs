@@ -56,6 +56,12 @@ namespace Npgsql
         internal virtual object ReadPsvAsObjectFully(DataRowMessage row, FieldDescription fieldDescription)
             => ReadValueAsObjectFully(row, fieldDescription);
 
+        public abstract int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter = null);
+
+        internal abstract Task WriteWithLength([CanBeNull] object value, WriteBuffer buf, LengthCache lengthCache,
+            NpgsqlParameter parameter,
+            bool async, CancellationToken cancellationToken);
+
         internal virtual bool PreferTextWrite => false;
 
         [RewriteAsync]
@@ -135,8 +141,6 @@ namespace Npgsql
 
     interface ISimpleTypeHandler
     {
-        int ValidateAndGetLength(object value, [CanBeNull] NpgsqlParameter parameter);
-        void Write(object value, WriteBuffer buf, [CanBeNull] NpgsqlParameter parameter);
         object ReadAsObject(ReadBuffer buf, int len, FieldDescription fieldDescription = null);
     }
 
@@ -144,8 +148,30 @@ namespace Npgsql
     {
         internal SimpleTypeHandler(PostgresType postgresType) : base(postgresType) { }
         public abstract T Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null);
+
+        internal sealed override async Task WriteWithLength(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter,
+            bool async, CancellationToken cancellationToken)
+        {
+            if (value == null || value is DBNull)
+            {
+                if (buf.WriteSpaceLeft < 4)
+                    await buf.Flush(async, cancellationToken);
+                buf.WriteInt32(-1);
+                return;
+            }
+
+            var elementLen = ValidateAndGetLength(value, parameter);
+            if (buf.WriteSpaceLeft < 4 + elementLen)
+                await buf.Flush(async, cancellationToken);
+            buf.WriteInt32(elementLen);
+            Write(value, buf, parameter);
+        }
+
+        public sealed override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter = null)
+            => ValidateAndGetLength(value, parameter);
+
         public abstract int ValidateAndGetLength(object value, NpgsqlParameter parameter = null);
-        public abstract void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null);
+        protected abstract void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null);
 
         /// <remarks>
         /// A type handler may implement ISimpleTypeHandler for types other than its primary one.
@@ -209,9 +235,6 @@ namespace Npgsql
     interface IChunkingTypeHandler
     {
         void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null);
-        int ValidateAndGetLength(object value, ref LengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter);
-        void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter);
-        bool Write(ref DirectBuffer directBuf);
         bool ReadAsObject(out object result);
     }
 
@@ -222,25 +245,24 @@ namespace Npgsql
         public abstract void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null);
         public abstract bool Read([CanBeNull] out T result);
 
-        /// <param name="value">the value to be examined</param>
-        /// <param name="lengthCache">a cache in which to store length(s) of values to be written</param>
-        /// <param name="parameter">
-        /// the <see cref="NpgsqlParameter"/> containing <paramref name="value"/>. Consulted for settings
-        /// which impact how to send the parameter, e.g. <see cref="NpgsqlParameter.Size"/>. Can be null.
-        /// </param>
-        public abstract int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter = null);
+        internal sealed override async Task WriteWithLength(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter,
+            bool async, CancellationToken cancellationToken)
+        {
+            if (buf.WriteSpaceLeft < 4)
+                await buf.Flush(async, cancellationToken);
 
-        /// <param name="value">the value to be written</param>
-        /// <param name="buf"></param>
-        /// <param name="lengthCache">a cache in which to store length(s) of values to be written</param>
-        /// <param name="parameter">
-        /// the <see cref="NpgsqlParameter"/> containing <paramref name="value"/>. Consulted for settings
-        /// which impact how to send the parameter, e.g. <see cref="NpgsqlParameter.Size"/>. Can be null.
-        /// <see cref="NpgsqlParameter.Size"/>.
-        /// </param>
-        public abstract void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter = null);
+            if (value == null || value is DBNull)
+            {
+                buf.WriteInt32(-1);
+                return;
+            }
 
-        public abstract bool Write(ref DirectBuffer directBuf);
+            buf.WriteInt32(ValidateAndGetLength(value, ref lengthCache, parameter));
+            await Write(value, buf, lengthCache, parameter, async, cancellationToken);
+        }
+
+        protected abstract Task Write(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter,
+            bool async, CancellationToken cancellationToken);
 
         /// <remarks>
         /// A type handler may implement IChunkingTypeHandler for types other than its primary one.
@@ -289,13 +311,6 @@ namespace Npgsql
     interface ITextReaderHandler
     {
         TextReader GetTextReader(Stream stream);
-    }
-
-    struct DirectBuffer
-    {
-        internal byte[] Buffer;
-        internal int Offset;
-        internal int Size;
     }
 
 #pragma warning disable CA1032

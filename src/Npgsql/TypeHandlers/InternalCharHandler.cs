@@ -72,7 +72,7 @@ namespace Npgsql.TypeHandlers
             return 1;
         }
 
-        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
+        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
         {
             buf.WriteByte(value as byte? ?? Convert.ToByte(value));
         }

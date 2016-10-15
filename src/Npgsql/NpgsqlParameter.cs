@@ -27,6 +27,8 @@ using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
 using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
 using JetBrains.Annotations;
 using NpgsqlTypes;
 
@@ -69,6 +71,7 @@ namespace Npgsql
         internal object ConvertedValue { get; set; }
 
         NpgsqlParameterCollection _collection;
+        [CanBeNull]
         internal LengthCache LengthCache { get; private set; }
 
         internal TypeHandler Handler { get; private set; }
@@ -627,28 +630,19 @@ namespace Npgsql
 
         internal int ValidateAndGetLength()
         {
-            if (_value == null) {
+            if (_value == null)
                 throw new InvalidCastException($"Parameter {ParameterName} must be set");
-            }
-
-            if (_value is DBNull) {
+            if (_value is DBNull)
                 return 0;
-            }
 
-            // No length caching for simple types
-            var asSimpleWriter = Handler as ISimpleTypeHandler;
-            if (asSimpleWriter != null) {
-                return asSimpleWriter.ValidateAndGetLength(Value, this);
-            }
-
-            var asChunkingWriter = Handler as IChunkingTypeHandler;
-            Debug.Assert(asChunkingWriter != null,
-                $"Handler {Handler.GetType().Name} doesn't implement either ISimpleTypeWriter or IChunkingTypeWriter");
             var lengthCache = LengthCache;
-            var len = asChunkingWriter.ValidateAndGetLength(Value, ref lengthCache, this);
+            var len = Handler.ValidateAndGetLength(Value, ref lengthCache, this);
             LengthCache = lengthCache;
             return len;
         }
+
+        internal Task WriteWithLength(WriteBuffer buf, bool async, CancellationToken cancellationToken)
+            => Handler.WriteWithLength(Value, buf, LengthCache, this, async, cancellationToken);
 
         void ClearBind()
         {

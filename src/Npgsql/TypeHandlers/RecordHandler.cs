@@ -22,6 +22,8 @@
 #endregion
 
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
@@ -126,12 +128,8 @@ namespace Npgsql.TypeHandlers
             throw new NotSupportedException("Can't write record types");
         }
 
-        public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter)
-        {
-            throw new NotSupportedException("Can't write record types");
-        }
-
-        public override bool Write(ref DirectBuffer directBuf)
+        protected override Task Write(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter,
+            bool async, CancellationToken cancellationToken)
         {
             throw new NotSupportedException("Can't write record types");
         }

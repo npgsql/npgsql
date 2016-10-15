@@ -133,7 +133,7 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             buf.WriteBytes(bytes, 0, bytes.Length);
         }
 
-        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
+        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
             => DoWrite(value, buf, false);
     }
 }

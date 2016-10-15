@@ -25,6 +25,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using JetBrains.Annotations;
 using NpgsqlTypes;
 using Npgsql.BackendMessages;
@@ -43,12 +45,10 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
         const int MaxSingleLexemeBytes = 2561;
 
         ReadBuffer _readBuf;
-        WriteBuffer _writeBuf;
         List<NpgsqlTsVector.Lexeme> _lexemes;
         int _numLexemes;
         int _lexemePos;
         int _bytesLeft;
-        NpgsqlTsVector _value;
 
         internal TsVectorHandler(PostgresType postgresType) : base(postgresType) { }
 
@@ -113,36 +113,26 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             return 4 + vec.Sum(l => Encoding.UTF8.GetByteCount(l.Text) + 1 + 2 + l.Count * 2);
         }
 
-        public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
+        protected override async Task Write(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter,
+            bool async, CancellationToken cancellationToken)
         {
-            _lexemePos = -1;
-            _writeBuf = buf;
-            _value = (NpgsqlTsVector)value;
-        }
+            var vector = (NpgsqlTsVector)value;
 
-        public override bool Write(ref DirectBuffer directBuf)
-        {
-            if (_lexemePos == -1)
+            if (buf.WriteSpaceLeft < 4)
+                await buf.Flush(async, cancellationToken);
+            buf.WriteInt32(vector.Count);
+
+            foreach (NpgsqlTsVector.Lexeme lexeme in vector)
             {
-                if (_writeBuf.WriteSpaceLeft < 4)
-                    return false;
-                _writeBuf.WriteInt32(_value.Count);
-                _lexemePos = 0;
+                if (buf.WriteSpaceLeft < MaxSingleLexemeBytes)
+                    await buf.Flush(async, cancellationToken);
+
+                buf.WriteString(lexeme.Text);
+                buf.WriteByte(0);
+                buf.WriteInt16(lexeme.Count);
+                for (var i = 0; i < lexeme.Count; i++)
+                    buf.WriteInt16(lexeme[i].Value);
             }
-
-            for (; _lexemePos < _value.Count; _lexemePos++)
-            {
-                if (_writeBuf.WriteSpaceLeft < MaxSingleLexemeBytes)
-                    return false;
-
-                _writeBuf.WriteString(_value[_lexemePos].Text);
-                _writeBuf.WriteByte(0);
-                _writeBuf.WriteInt16(_value[_lexemePos].Count);
-                for (var i = 0; i < _value[_lexemePos].Count; i++)
-                    _writeBuf.WriteInt16(_value[_lexemePos][i].Value);
-            }
-
-            return true;
         }
     }
 }

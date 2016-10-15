@@ -139,16 +139,15 @@ namespace Npgsql
         /// <summary>
         /// Commits the database transaction.
         /// </summary>
-        public override void Commit() => CommitInternal();
+        public override void Commit() => Commit(false, CancellationToken.None).GetAwaiter().GetResult();
 
-        [RewriteAsync]
-        void CommitInternal()
+        async Task Commit(bool async, CancellationToken cancellationToken)
         {
             var connector = CheckReady();
             using (connector.StartUserAction())
             {
                 Log.Debug("Commit transaction", connector.Id);
-                connector.ExecuteInternalCommand(PregeneratedMessage.CommitTransaction);
+                await connector.ExecuteInternalCommand(PregeneratedMessage.CommitTransaction, async, cancellationToken);
                 Connection = null;
             }
         }
@@ -157,7 +156,7 @@ namespace Npgsql
         /// Commits the database transaction.
         /// </summary>
         [PublicAPI]
-        public Task CommitAsync(CancellationToken cancellationToken) => CommitInternalAsync(cancellationToken);
+        public Task CommitAsync(CancellationToken cancellationToken) => Commit(true, cancellationToken);
 
         /// <summary>
         /// Commits the database transaction.
@@ -172,15 +171,14 @@ namespace Npgsql
         /// <summary>
         /// Rolls back a transaction from a pending state.
         /// </summary>
-        public override void Rollback() => RollbackInternal();
+        public override void Rollback() => Rollback(false, CancellationToken.None).GetAwaiter().GetResult();
 
-        [RewriteAsync]
-        void RollbackInternal()
+        async Task Rollback(bool async, CancellationToken cancellationToken)
         {
             var connector = CheckReady();
             using (connector.StartUserAction())
             {
-                connector.Rollback();
+                await connector.Rollback(async, cancellationToken);
                 Connection = null;
             }
         }
@@ -189,13 +187,13 @@ namespace Npgsql
         /// Rolls back a transaction from a pending state.
         /// </summary>
         [PublicAPI]
-        public Task RollbackAsync(CancellationToken cancellationToken) => RollbackInternalAsync(cancellationToken);
+        public Task RollbackAsync(CancellationToken cancellationToken) => Rollback(true, cancellationToken);
 
         /// <summary>
         /// Rolls back a transaction from a pending state.
         /// </summary>
         [PublicAPI]
-        public Task RollbackAsync() => RollbackInternalAsync(CancellationToken.None);
+        public Task RollbackAsync() => RollbackAsync(CancellationToken.None);
 
         #endregion
 

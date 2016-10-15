@@ -26,6 +26,8 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
@@ -56,19 +58,13 @@ namespace Npgsql.TypeHandlers
         #region State
 
         Array _readValue;
-        IList _writeValue;
         ReadState _readState;
-        WriteState _writeState;
-        IEnumerator _enumerator;
         ReadBuffer _readBuf;
-        WriteBuffer _writeBuf;
-        LengthCache _lengthCache;
         FieldDescription _fieldDescription;
         int _dimensions;
         int[] _dimLengths, _indices;
         int _index;
         int _elementLen;
-        bool _wroteElementLen;
         bool _preparedRead;
 
         #endregion
@@ -310,139 +306,48 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
-        {
-            Debug.Assert(_readState == ReadState.NeedPrepare);
-            if (_writeState != WriteState.NeedPrepare)  // Checks against recursion and bugs
-                throw new InvalidOperationException("Started reading a value before completing a previous value");
+        protected override Task Write(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter,
+            bool async, CancellationToken cancellationToken)
+            => Write<TElement>(value, buf, lengthCache, parameter, async, cancellationToken);
 
-            _writeBuf = buf;
-            _lengthCache = lengthCache;
+        public async Task Write<TElement2>(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter,
+            bool async, CancellationToken cancellationToken)
+        {
             var asArray = value as Array;
-            _writeValue = (IList)value;
-            _dimensions = asArray?.Rank ?? 1;
-            _index = 0;
-            _wroteElementLen = false;
-            _writeState = WriteState.WroteNothing;
-        }
+            var dimensions = asArray?.Rank ?? 1;
+            var writeValue = (IList)value;
 
-        public override bool Write(ref DirectBuffer directBuf)
-        {
-            return Write<TElement>(ref directBuf);
-        }
+            var len =
+                4 +               // ndim
+                4 +               // has_nulls
+                4 +               // element_oid
+                dimensions * 8;   // dim (4) + lBound (4)
 
-        public bool Write<TElement2>(ref DirectBuffer directBuf)
-        {
-            switch (_writeState)
+            if (buf.WriteSpaceLeft < len)
             {
-                case WriteState.WroteNothing:
-                    var len =
-                        4 +               // ndim
-                        4 +               // has_nulls
-                        4 +               // element_oid
-                        _dimensions * 8;  // dim (4) + lBound (4)
-
-                    if (_writeBuf.WriteSpaceLeft < len) {
-                        Debug.Assert(_writeBuf.UsableSize >= len, "Buffer too small for header");
-                        return false;
-                    }
-                    _writeBuf.WriteInt32(_dimensions);
-                    _writeBuf.WriteInt32(1);  // HasNulls=1. Not actually used by the backend.
-                    _writeBuf.WriteUInt32(ElementHandler.PostgresType.OID);
-                    var asArray = _writeValue as Array;
-                    if (asArray != null)
-                    {
-                        for (var i = 0; i < _dimensions; i++)
-                        {
-                            _writeBuf.WriteInt32(asArray.GetLength(i));
-                            _writeBuf.WriteInt32(LowerBound);  // We don't map .NET lower bounds to PG
-                        }
-                    }
-                    else
-                    {
-                        _writeBuf.WriteInt32(_writeValue.Count);
-                        _writeBuf.WriteInt32(LowerBound);  // We don't map .NET lower bounds to PG
-                        _enumerator = _writeValue.GetEnumerator();
-                    }
-
-                    var asGeneric = _writeValue as IList<TElement2>;
-                    _enumerator = asGeneric?.GetEnumerator() ?? _writeValue.GetEnumerator();
-                    if (!_enumerator.MoveNext()) {
-                        goto case WriteState.Cleanup;
-                    }
-
-                    _writeState = WriteState.WritingElements;
-                    goto case WriteState.WritingElements;
-
-                case WriteState.WritingElements:
-                    var genericEnumerator = _enumerator as IEnumerator<TElement2>;
-                    if (genericEnumerator != null)
-                    {
-                        // TODO: Actually call the element writer generically...!
-                        do
-                        {
-                            if (!WriteSingleElement(genericEnumerator.Current, ref directBuf)) { return false; }
-                        } while (genericEnumerator.MoveNext());
-                    }
-                    else
-                    {
-                        do {
-                            if (!WriteSingleElement(_enumerator.Current, ref directBuf)) { return false; }
-                        } while (_enumerator.MoveNext());
-                    }
-                    goto case WriteState.Cleanup;
-
-                case WriteState.Cleanup:
-                    _writeValue = null;
-                    _writeBuf = null;
-                    _writeState = WriteState.NeedPrepare;
-                    return true;
-
-                default:
-                    throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {_writeState} of enum {nameof(ArrayHandler)}.{nameof(WriteState)}. Please file a bug.");
-            }
-        }
-
-        bool WriteSingleElement([CanBeNull] object element, ref DirectBuffer directBuf)
-        {
-            // TODO: Need generic version of this...
-            if (element == null || element is DBNull) {
-                if (_writeBuf.WriteSpaceLeft < 4) {
-                    return false;
-                }
-                _writeBuf.WriteInt32(-1);
-                return true;
+                await buf.Flush(async, cancellationToken);
+                Debug.Assert(buf.WriteSpaceLeft >= len, "Buffer too small for header");
             }
 
-            var asSimpleWriter = ElementHandler as ISimpleTypeHandler;
-            if (asSimpleWriter != null)
+            buf.WriteInt32(dimensions);
+            buf.WriteInt32(1);  // HasNulls=1. Not actually used by the backend.
+            buf.WriteUInt32(ElementHandler.PostgresType.OID);
+            if (asArray != null)
             {
-                var elementLen = asSimpleWriter.ValidateAndGetLength(element, null);
-                if (_writeBuf.WriteSpaceLeft < 4 + elementLen) { return false; }
-                _writeBuf.WriteInt32(elementLen);
-                asSimpleWriter.Write(element, _writeBuf, null);
-                return true;
+                for (var i = 0; i < dimensions; i++)
+                {
+                    buf.WriteInt32(asArray.GetLength(i));
+                    buf.WriteInt32(LowerBound);  // We don't map .NET lower bounds to PG
+                }
             }
-
-            var asChunkedWriter = ElementHandler as IChunkingTypeHandler;
-            if (asChunkedWriter != null)
+            else
             {
-                if (!_wroteElementLen) {
-                    if (_writeBuf.WriteSpaceLeft < 4) {
-                        return false;
-                    }
-                    _writeBuf.WriteInt32(asChunkedWriter.ValidateAndGetLength(element, ref _lengthCache, null));
-                    asChunkedWriter.PrepareWrite(element, _writeBuf, _lengthCache, null);
-                    _wroteElementLen = true;
-                }
-                if (!asChunkedWriter.Write(ref directBuf)) {
-                    return false;
-                }
-                _wroteElementLen = false;
-                return true;
+                buf.WriteInt32(writeValue.Count);
+                buf.WriteInt32(LowerBound);  // We don't map .NET lower bounds to PG
             }
 
-            throw new InvalidOperationException("Internal Npgsql bug, please report.");
+            foreach (var element in writeValue)
+                await ElementHandler.WriteWithLength(element, buf, lengthCache, null, async, cancellationToken);
         }
 
         public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter = null)
@@ -456,17 +361,20 @@ namespace Npgsql.TypeHandlers
             var asGenericList = value as IList<TElement2>;
             if (asGenericList != null)
             {
-                if (lengthCache == null) {
+                if (lengthCache == null)
                     lengthCache = new LengthCache(1);
-                }
-                if (lengthCache.IsPopulated) {
+                if (lengthCache.IsPopulated)
                     return lengthCache.Get();
-                }
                 // Leave empty slot for the entire array length, and go ahead an populate the element slots
                 var pos = lengthCache.Position;
                 lengthCache.Set(0);
                 var lengthCache2 = lengthCache;
-                var len = 12 + (1 * 8) + asGenericList.Sum(e => 4 + GetSingleElementLength(e, ref lengthCache2, parameter));
+                var len =
+                    4 +       // dimensions
+                    4 +       // has_nulls (unused)
+                    4 +       // type OID
+                    1 * 8 +   // number of dimensions (1) * (length + lower bound)
+                    asGenericList.Sum(e => 4 + GetSingleElementLength(e, ref lengthCache2, parameter));
                 lengthCache = lengthCache2;
                 return lengthCache.Lengths[pos] = len;
             }
@@ -476,12 +384,10 @@ namespace Npgsql.TypeHandlers
             var asNonGenericList = value as IList;
             if (asNonGenericList != null)
             {
-                if (lengthCache == null) {
+                if (lengthCache == null)
                     lengthCache = new LengthCache(1);
-                }
-                if (lengthCache.IsPopulated) {
+                if (lengthCache.IsPopulated)
                     return lengthCache.Get();
-                }
                 var asMultidimensional = value as Array;
                 var dimensions = asMultidimensional?.Rank ?? 1;
 
@@ -489,7 +395,12 @@ namespace Npgsql.TypeHandlers
                 var pos = lengthCache.Position;
                 lengthCache.Set(0);
                 var lengthCache2 = lengthCache;
-                var len = 12 + (dimensions * 8) + asNonGenericList.Cast<object>().Sum(element => 4 + GetSingleElementLength(element, ref lengthCache2, parameter));
+                var len =
+                    4 +       // dimensions
+                    4 +       // has_nulls (unused)
+                    4 +       // type OID
+                    dimensions * 8 +  // number of dimensions * (length + lower bound)
+                    asNonGenericList.Cast<object>().Sum(element => 4 + GetSingleElementLength(element, ref lengthCache2, parameter));
                 lengthCache = lengthCache2;
                 lengthCache.Lengths[pos] = len;
                 return len;
@@ -500,14 +411,11 @@ namespace Npgsql.TypeHandlers
 
         int GetSingleElementLength([CanBeNull] object element, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
-            if (element == null || element is DBNull) {
+            if (element == null || element is DBNull)
                 return 0;
-            }
-            var asChunkingWriter = ElementHandler as IChunkingTypeHandler;
             try
             {
-                return asChunkingWriter?.ValidateAndGetLength(element, ref lengthCache, parameter) ??
-                       ((ISimpleTypeHandler) ElementHandler).ValidateAndGetLength(element, null);
+                return ElementHandler.ValidateAndGetLength(element, ref lengthCache, parameter);
             }
             catch (Exception e)
             {

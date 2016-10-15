@@ -45,7 +45,7 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
         public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
             => InetHandler.DoValidateAndGetLength(value);
 
-        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
+        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
             => InetHandler.DoWrite(value, buf, true);
     }
 }

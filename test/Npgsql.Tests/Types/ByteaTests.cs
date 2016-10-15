@@ -350,25 +350,23 @@ namespace Npgsql.Tests.Types
             }
         }
 
-        // Older tests from here
-
         [Test]
-        public void MultidimensionalRoundtrip()
+        public void ArrayOfBytea()
         {
             using (var conn = OpenConnection())
             using (var cmd = new NpgsqlCommand("SELECT :p1", conn))
             {
                 var bytes = new byte[] { 1, 2, 3, 4, 5, 34, 39, 48, 49, 50, 51, 52, 92, 127, 128, 255, 254, 253, 252, 251 };
                 var inVal = new[] { bytes, bytes };
-                var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Bytea | NpgsqlDbType.Array);
-                parameter.Value = inVal;
-                cmd.Parameters.Add(parameter);
+                cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Bytea | NpgsqlDbType.Array, inVal);
                 var retVal = (byte[][])cmd.ExecuteScalar();
                 Assert.AreEqual(inVal.Length, retVal.Length);
                 Assert.AreEqual(inVal[0], retVal[0]);
                 Assert.AreEqual(inVal[1], retVal[1]);
             }
         }
+
+        // Older tests from here
 
         [Test]
         public void Prepared()

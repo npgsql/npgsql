@@ -125,7 +125,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             return 8;
         }
 
-        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
+        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
         {
             if (parameter?.ConvertedValue != null)
                 value = parameter.ConvertedValue;

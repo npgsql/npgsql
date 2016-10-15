@@ -26,6 +26,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Npgsql.FrontendMessages
 {
@@ -36,11 +38,6 @@ namespace Npgsql.FrontendMessages
     {
         readonly Encoding _encoding;
         string _query;
-        int _charPos;
-        State _state;
-#if NETSTANDARD1_3
-        char[] _queryChars;
-#endif
 
         const byte Code = (byte)'Q';
 
@@ -54,69 +51,26 @@ namespace Npgsql.FrontendMessages
             Debug.Assert(query != null);
 
             _query = query;
-            _state = State.Start;
-            _charPos = -1;
             return this;
         }
 
-        internal override bool Write(WriteBuffer buf)
+        internal override async Task Write(WriteBuffer buf, bool async, CancellationToken cancellationToken)
         {
-            switch (_state)
-            {
-            case State.Start:
-                if (buf.WriteSpaceLeft < 1 + 4)
-                    return false;
-                _charPos = 0;
-                var queryByteLen = _encoding.GetByteCount(_query);
-#if NETSTANDARD1_3
-                _queryChars = _query.ToCharArray();
-#endif
-                buf.WriteByte(Code);
-                buf.WriteInt32(4 +            // Message length (including self excluding code)
-                               queryByteLen + // Query byte length
-                               1);            // Null terminator
-                _state = State.Writing;
-                goto case State.Writing;
+            if (buf.WriteSpaceLeft < 1 + 4)
+                await buf.Flush(async, cancellationToken);
+            var queryByteLen = _encoding.GetByteCount(_query);
 
-            case State.Writing:
-                int charsUsed;
-                bool completed;
-#if NETSTANDARD1_3
-                buf.WriteStringChunked(_queryChars, _charPos, _query.Length - _charPos, true,
-                                       out charsUsed, out completed);
-#else
-                buf.WriteStringChunked(_query, _charPos, _query.Length - _charPos, true, out charsUsed, out completed);
-#endif
-                _charPos += charsUsed;
-                if (!completed)
-                    return false;
-                _state = State.NullTerminator;
-                goto case State.NullTerminator;
+            buf.WriteByte(Code);
+            buf.WriteInt32(4 +            // Message length (including self excluding code)
+                           queryByteLen + // Query byte length
+                           1);            // Null terminator
 
-            case State.NullTerminator:
-                if (buf.WriteSpaceLeft < 1)
-                    return false;
-                buf.WriteByte(0);
-
-                _query = null;
-#if NETSTANDARD1_3
-                _queryChars = null;
-#endif
-                _charPos = -1;
-                return true;
-
-            default:
-                throw new ArgumentOutOfRangeException();
-            }
+            await buf.WriteString(_query, queryByteLen, async, cancellationToken);
+            if (buf.WriteSpaceLeft < 1)
+                await buf.Flush(async, cancellationToken);
+            buf.WriteByte(0);
         }
 
         public override string ToString() => $"[Query={_query}]";
-
-        enum State
-        {
-            Start,
-            Writing,
-            NullTerminator
-        }
     }
 }

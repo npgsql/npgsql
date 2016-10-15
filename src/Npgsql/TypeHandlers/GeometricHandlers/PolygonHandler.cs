@@ -21,6 +21,8 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
+using System.Threading;
+using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
 using NpgsqlTypes;
@@ -40,7 +42,6 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
 
         NpgsqlPolygon _value;
         ReadBuffer _readBuf;
-        WriteBuffer _writeBuf;
         int _index;
 
         #endregion
@@ -88,32 +89,22 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
             return 4 + ((NpgsqlPolygon)value).Count * 16;
         }
 
-        public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter = null)
+        protected override async Task Write(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter,
+            bool async, CancellationToken cancellationToken)
         {
-            _writeBuf = buf;
-            _value = (NpgsqlPolygon)value;
-            _index = -1;
-        }
+            var polygon = (NpgsqlPolygon)value;
 
-        public override bool Write(ref DirectBuffer directBuf)
-        {
-            if (_index == -1)
-            {
-                if (_writeBuf.WriteSpaceLeft < 4) { return false; }
-                _writeBuf.WriteInt32(_value.Count);
-                _index = 0;
-            }
+            if (buf.WriteSpaceLeft < 4)
+                await buf.Flush(async, cancellationToken);
+            buf.WriteInt32(polygon.Count);
 
-            for (; _index < _value.Count; _index++)
+            foreach (var p in polygon)
             {
-                if (_writeBuf.WriteSpaceLeft < 16) { return false; }
-                var p = _value[_index];
-                _writeBuf.WriteDouble(p.X);
-                _writeBuf.WriteDouble(p.Y);
+                if (buf.WriteSpaceLeft < 16)
+                    await buf.Flush(async, cancellationToken);
+                buf.WriteDouble(p.X);
+                buf.WriteDouble(p.Y);
             }
-            _writeBuf = null;
-            _value = default(NpgsqlPolygon);
-            return true;
         }
 
         #endregion

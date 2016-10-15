@@ -62,7 +62,7 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             return 6;
         }
 
-        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
+        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
             => buf.WriteBytes(((PhysicalAddress)value).GetAddressBytes(), 0, 6);
     }
 }

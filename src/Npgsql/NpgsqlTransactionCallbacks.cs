@@ -24,6 +24,7 @@
 
 using System;
 using System.Data;
+using System.Threading;
 using Npgsql.Logging;
 using Npgsql.FrontendMessages;
 

@@ -60,7 +60,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             return 12;
         }
 
-        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
+        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
         {
             if (value is DateTimeOffset)
             {

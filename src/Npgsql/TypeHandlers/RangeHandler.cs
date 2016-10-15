@@ -24,6 +24,8 @@
 using Npgsql.BackendMessages;
 using System;
 using System.Diagnostics;
+using System.Threading;
+using System.Threading.Tasks;
 using NpgsqlTypes;
 using JetBrains.Annotations;
 using Npgsql.PostgresTypes;
@@ -59,22 +61,16 @@ namespace Npgsql.TypeHandlers
         #region State
 
         ReadBuffer _readBuf;
-        WriteBuffer _writeBuf;
-        LengthCache _lengthCache;
-        NpgsqlRange<TElement> _value;
         TElement _lowerBound;
         RangeFlags _flags;
         State _state;
         FieldDescription _fieldDescription;
         int _elementLen;
-        bool _wroteElementLen;
         bool _preparedRead;
 
         void CleanupState()
         {
             _readBuf = null;
-            _writeBuf = null;
-            _value = default(NpgsqlRange<TElement>);
             _lowerBound = default(TElement);
             _fieldDescription = null;
             _state = State.Done;
@@ -207,20 +203,10 @@ namespace Npgsql.TypeHandlers
             var lengthCachePos = lengthCache?.Position ?? 0;
             if (!range.IsEmpty)
             {
-                var asChunkingWriter = ElementHandler as IChunkingTypeHandler;
-                if (!range.LowerBoundInfinite) {
-                    totalLen += 4 + (
-                        asChunkingWriter?.ValidateAndGetLength(range.LowerBound, ref lengthCache, null)
-                        ?? ((ISimpleTypeHandler)ElementHandler).ValidateAndGetLength(range.LowerBound, null)
-                    );
-                }
-
-                if (!range.UpperBoundInfinite) {
-                    totalLen += 4 + (
-                        asChunkingWriter?.ValidateAndGetLength(range.UpperBound, ref lengthCache, null)
-                        ?? ((ISimpleTypeHandler)ElementHandler).ValidateAndGetLength(range.UpperBound, null)
-                    );
-                }
+                if (!range.LowerBoundInfinite)
+                    totalLen += 4 + ElementHandler.ValidateAndGetLength(range.LowerBound, ref lengthCache);
+                if (!range.UpperBoundInfinite)
+                    totalLen += 4 + ElementHandler.ValidateAndGetLength(range.UpperBound, ref lengthCache);
             }
 
             // If we're traversing an already-populated length cache, rewind to first element slot so that
@@ -231,95 +217,19 @@ namespace Npgsql.TypeHandlers
             return totalLen;
         }
 
-        public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter = null)
+        protected override async Task Write(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter,
+            bool async, CancellationToken cancellationToken)
         {
-            _writeBuf = buf;
-            _lengthCache = lengthCache;
-            _value = (NpgsqlRange<TElement>)value;
-            _state = State.Flags;
-        }
-
-        public override bool Write(ref DirectBuffer directBuf)
-        {
-            switch (_state)
-            {
-            case State.Flags:
-                if (_writeBuf.WriteSpaceLeft < 1)
-                    return false;
-                _writeBuf.WriteByte((byte)_value.Flags);
-                if (_value.IsEmpty)
-                {
-                    CleanupState();
-                    return true;
-                }
-                goto case State.LowerBound;
-
-            case State.LowerBound:
-                _state = State.LowerBound;
-                if (_value.LowerBoundInfinite)
-                    goto case State.UpperBound;
-
-                if (!WriteSingleElement(_value.LowerBound, ref directBuf))
-                    return false;
-                goto case State.UpperBound;
-
-            case State.UpperBound:
-                _state = State.UpperBound;
-                if (_value.UpperBoundInfinite)
-                {
-                    CleanupState();
-                    return true;
-                }
-                if (!WriteSingleElement(_value.UpperBound, ref directBuf))
-                    return false;
-                CleanupState();
-                return true;
-
-            default:
-                throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {_state} of enum {nameof(RangeHandler<TElement>)}.{nameof(State)}. Please file a bug.");
-            }
-        }
-
-        // TODO: Duplicated from ArrayHandler... Refactor...
-        bool WriteSingleElement([CanBeNull] object element, ref DirectBuffer directBuf)
-        {
-            if (element == null || element is DBNull)
-            {
-                if (_writeBuf.WriteSpaceLeft < 4)
-                    return false;
-                _writeBuf.WriteInt32(-1);
-                return true;
-            }
-
-            var asSimpleWriter = ElementHandler as ISimpleTypeHandler;
-            if (asSimpleWriter != null)
-            {
-                var elementLen = asSimpleWriter.ValidateAndGetLength(element, null);
-                if (_writeBuf.WriteSpaceLeft < 4 + elementLen)
-                    return false;
-                _writeBuf.WriteInt32(elementLen);
-                asSimpleWriter.Write(element, _writeBuf, null);
-                return true;
-            }
-
-            var asChunkedWriter = ElementHandler as IChunkingTypeHandler;
-            if (asChunkedWriter != null)
-            {
-                if (!_wroteElementLen)
-                {
-                    if (_writeBuf.WriteSpaceLeft < 4)
-                        return false;
-                    _writeBuf.WriteInt32(asChunkedWriter.ValidateAndGetLength(element, ref _lengthCache, null));
-                    asChunkedWriter.PrepareWrite(element, _writeBuf, _lengthCache, null);
-                    _wroteElementLen = true;
-                }
-                if (!asChunkedWriter.Write(ref directBuf))
-                    return false;
-                _wroteElementLen = false;
-                return true;
-            }
-
-            throw new InvalidOperationException("Internal Npgsql bug, please report.");
+            var range = (NpgsqlRange<TElement>)value;
+            if (buf.WriteSpaceLeft < 1)
+                await buf.Flush(async, cancellationToken);
+            buf.WriteByte((byte)range.Flags);
+            if (range.IsEmpty)
+                return;
+            if (!range.LowerBoundInfinite)
+                await ElementHandler.WriteWithLength(range.LowerBound, buf, lengthCache, null, async, cancellationToken);
+            if (!range.UpperBoundInfinite)
+                await ElementHandler.WriteWithLength(range.UpperBound, buf, lengthCache, null, async, cancellationToken);
         }
 
         #endregion

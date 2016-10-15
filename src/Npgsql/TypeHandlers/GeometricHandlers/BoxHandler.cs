@@ -55,7 +55,7 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
             return 32;
         }
 
-        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
+        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
         {
             var v = (NpgsqlBox)value;
             buf.WriteDouble(v.Right);

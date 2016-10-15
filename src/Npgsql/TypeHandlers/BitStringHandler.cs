@@ -25,6 +25,8 @@ using System;
 using System.Collections;
 using System.Collections.Specialized;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using JetBrains.Annotations;
@@ -46,10 +48,8 @@ namespace Npgsql.TypeHandlers
         IChunkingTypeHandler<BitVector32>, IChunkingTypeHandler<bool>
     {
         ReadBuffer _readBuf;
-        WriteBuffer _writeBuf;
         int _len;
         BitArray _bitArray;
-        object _value;
         int _pos;
 
         internal BitStringHandler(PostgresType postgresType) : base(postgresType) {}
@@ -216,132 +216,120 @@ namespace Npgsql.TypeHandlers
             throw CreateConversionException(value.GetType());
         }
 
-        public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter = null)
+        protected override Task Write(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter,
+            bool async, CancellationToken cancellationToken)
         {
-            _writeBuf = buf;
-            _pos = -1;
-
-            _value = value;
-        }
-
-        public override bool Write(ref DirectBuffer directBuf)
-        {
-            var bitArray = _value as BitArray;
+            var bitArray = value as BitArray;
             if (bitArray != null)
-                return WriteBitArray(bitArray);
+                return WriteBitArray(bitArray, buf, async, cancellationToken);
 
-            if (_value is BitVector32)
-                return WriteBitVector32((BitVector32)_value);
+            if (value is BitVector32)
+                return WriteBitVector32((BitVector32)value, buf, async, cancellationToken);
 
-            if (_value is bool)
-                return WriteBool((bool)_value);
+            if (value is bool)
+                return WriteBool((bool)value, buf, async, cancellationToken);
 
-            var str = _value as string;
+            var str = value as string;
             if (str != null)
-                return WriteString(str);
+                return WriteString(str, buf, async, cancellationToken);
 
-            throw new InvalidOperationException($"Bad type {_value.GetType()} some made its way into BitStringHandler.Write()");
+            throw new InvalidOperationException($"Bad type {value.GetType()} some made its way into BitStringHandler.Write()");
         }
 
-        bool WriteBitArray(BitArray bitArray)
+        async Task WriteBitArray(BitArray bitArray, WriteBuffer buf, bool async, CancellationToken cancellationToken)
         {
-            if (_pos < 0)
-            {
-                // Initial bitlength byte
-                if (_writeBuf.WriteSpaceLeft < 4) { return false; }
-                _writeBuf.WriteInt32(bitArray.Length);
-                _pos = 0;
-            }
+            // Initial bitlength byte
+            if (buf.WriteSpaceLeft < 4)
+                await buf.Flush(async, cancellationToken);
+            buf.WriteInt32(bitArray.Length);
+
             var byteLen = (bitArray.Length + 7) / 8;
-            var endPos = _pos + Math.Min(byteLen - _pos, _writeBuf.WriteSpaceLeft);
-            for (; _pos < endPos; _pos++) {
-                var bitPos = _pos * 8;
-                var b = 0;
-                for (var i = 0; i < Math.Min(8, bitArray.Length - bitPos); i++)
-                    b += (bitArray[bitPos + i] ? 1 : 0) << (8 - i - 1);
-                _writeBuf.WriteByte((byte)b);
+            var pos = 0;
+            while (true)
+            {
+                var endPos = pos + Math.Min(byteLen - pos, buf.WriteSpaceLeft);
+                for (; pos < endPos; pos++)
+                {
+                    var bitPos = pos*8;
+                    var b = 0;
+                    for (var i = 0; i < Math.Min(8, bitArray.Length - bitPos); i++)
+                        b += (bitArray[bitPos + i] ? 1 : 0) << (8 - i - 1);
+                    buf.WriteByte((byte)b);
+                }
+
+                if (pos == byteLen)
+                    return;
+                await buf.Flush(async, cancellationToken);
             }
-
-            if (_pos < byteLen) { return false; }
-
-            _writeBuf = null;
-            _value = null;
-            return true;
         }
 
-        bool WriteBitVector32(BitVector32 bitVector)
+        async Task WriteBitVector32(BitVector32 bitVector, WriteBuffer buf, bool async, CancellationToken cancellationToken)
         {
+            if (buf.WriteSpaceLeft < 8)
+                await buf.Flush(async, cancellationToken);
+
             if (bitVector.Data == 0)
-            {
-                if (_writeBuf.WriteSpaceLeft < 4)
-                    return false;
-                _writeBuf.WriteInt32(0);
-            }
+                buf.WriteInt32(0);
             else
             {
-                if (_writeBuf.WriteSpaceLeft < 8)
-                    return false;
-                _writeBuf.WriteInt32(32);
-                _writeBuf.WriteInt32(bitVector.Data);
+                buf.WriteInt32(32);
+                buf.WriteInt32(bitVector.Data);
             }
-            return true;
         }
 
-        bool WriteBool(bool b)
+        async Task WriteBool(bool b, WriteBuffer buf, bool async, CancellationToken cancellationToken)
         {
-            if (_writeBuf.WriteSpaceLeft < 5)
-                return false;
-            _writeBuf.WriteInt32(1);
-            _writeBuf.WriteByte(b ? (byte)0x80 : (byte)0);
-            _writeBuf = null;
-            _value = null;
-            return true;
+            if (buf.WriteSpaceLeft < 5)
+                await buf.Flush(async, cancellationToken);
+            buf.WriteInt32(1);
+            buf.WriteByte(b ? (byte)0x80 : (byte)0);
         }
 
-        bool WriteString(string str)
+        async Task WriteString(string str, WriteBuffer buf, bool async, CancellationToken cancellationToken)
         {
-            if (_pos < 0)
-            {
-                // Initial bitlength byte
-                if (_writeBuf.WriteSpaceLeft < 4) { return false; }
-                _writeBuf.WriteInt32(str.Length);
-                _pos = 0;
-            }
+            // Initial bitlength byte
+            if (buf.WriteSpaceLeft < 4)
+                await buf.Flush(async, cancellationToken);
+            buf.WriteInt32(str.Length);
 
+            var pos = 0;
             var byteLen = (str.Length + 7) / 8;
-            var bytePos = (_pos + 7) / 8;
-            var endBytePos = bytePos + Math.Min(byteLen - bytePos - 1, _writeBuf.WriteSpaceLeft);
+            var bytePos = 0;
 
-            for (; bytePos < endBytePos; bytePos++)
+            while (true)
             {
-                var b = 0;
-                b += (str[_pos++] - '0') << 7;
-                b += (str[_pos++] - '0') << 6;
-                b += (str[_pos++] - '0') << 5;
-                b += (str[_pos++] - '0') << 4;
-                b += (str[_pos++] - '0') << 3;
-                b += (str[_pos++] - '0') << 2;
-                b += (str[_pos++] - '0') << 1;
-                b += (str[_pos++] - '0');
-                _writeBuf.WriteByte((byte)b);
+                var endBytePos = bytePos + Math.Min(byteLen - bytePos - 1, buf.WriteSpaceLeft);
+
+                for (; bytePos < endBytePos; bytePos++)
+                {
+                    var b = 0;
+                    b += (str[pos++] - '0') << 7;
+                    b += (str[pos++] - '0') << 6;
+                    b += (str[pos++] - '0') << 5;
+                    b += (str[pos++] - '0') << 4;
+                    b += (str[pos++] - '0') << 3;
+                    b += (str[pos++] - '0') << 2;
+                    b += (str[pos++] - '0') << 1;
+                    b += (str[pos++] - '0');
+                    buf.WriteByte((byte)b);
+                }
+
+                if (bytePos >= byteLen - 1)
+                    break;
+                await buf.Flush(async, cancellationToken);
             }
 
-            if (bytePos < byteLen - 1) { return false; }
-
-            if (_pos < str.Length)
+            if (pos < str.Length)
             {
-                var remainder = str.Length - _pos;
+                if (buf.WriteSpaceLeft < 1)
+                    await buf.Flush(async, cancellationToken);
+
+                var remainder = str.Length - pos;
                 var lastChunk = 0;
                 for (var i = 7; i >= 8 - remainder; i--)
-                {
-                    lastChunk += (str[_pos++] - '0') << i;
-                }
-                _writeBuf.WriteByte((byte)lastChunk);
+                    lastChunk += (str[pos++] - '0') << i;
+                buf.WriteByte((byte)lastChunk);
             }
-
-            _writeBuf = null;
-            _value = null;
-            return true;
         }
 
         #endregion
@@ -356,7 +344,6 @@ namespace Npgsql.TypeHandlers
     {
         [CanBeNull]
         FieldDescription _fieldDescription;
-        object _value;
 
         internal override Type GetElementFieldType(FieldDescription fieldDescription = null)
             => fieldDescription?.TypeModifier == 1 ? typeof(bool) : typeof(BitArray);
@@ -380,38 +367,27 @@ namespace Npgsql.TypeHandlers
                 : Read<BitArray>(out result);
         }
 
-        public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
-        {
-            base.PrepareWrite(value, buf, lengthCache, parameter);
-            _value = value;
-        }
-
-        public override bool Write(ref DirectBuffer directBuf)
-        {
-            if (_value is BitArray[]) {
-                return base.Write<BitArray>(ref directBuf);
-            }
-            if (_value is bool[]) {
-                return base.Write<bool>(ref directBuf);
-            }
-            if (_value is string[]) {
-                return base.Write<string>(ref directBuf);
-            }
-            throw new InvalidOperationException($"Can't write type {_value.GetType()} as an bitstring array");
-        }
-
         public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
-            if (value is BitArray[]) {
-                return base.ValidateAndGetLength<BitArray>(value, ref lengthCache, parameter);
-            }
-            if (value is bool[]) {
-                return base.ValidateAndGetLength<bool>(value, ref lengthCache, parameter);
-            }
-            if (value is string[]) {
-                return base.ValidateAndGetLength<string>(value, ref lengthCache, parameter);
-            }
+            if (value is BitArray[])
+                return ValidateAndGetLength<BitArray>(value, ref lengthCache, parameter);
+            if (value is bool[])
+                return ValidateAndGetLength<bool>(value, ref lengthCache, parameter);
+            if (value is string[])
+                return ValidateAndGetLength<string>(value, ref lengthCache, parameter);
             throw new InvalidCastException($"Can't write type {value.GetType()} as an bitstring array");
+        }
+
+        protected override Task Write(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter,
+            bool async, CancellationToken cancellationToken)
+        {
+            if (value is BitArray[])
+                return Write<BitArray>(value, buf, lengthCache, parameter, async, cancellationToken);
+            if (value is bool[])
+                return Write<bool>(value, buf, lengthCache, parameter, async, cancellationToken);
+            if (value is string[])
+                return Write<string>(value, buf, lengthCache, parameter, async, cancellationToken);
+            throw new InvalidOperationException($"Can't write type {value.GetType()} as an bitstring array");
         }
     }
 }

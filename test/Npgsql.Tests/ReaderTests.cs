@@ -918,7 +918,7 @@ LANGUAGE plpgsql VOLATILE";
         }
 
         public override int ValidateAndGetLength(object value, NpgsqlParameter parameter) { throw new NotSupportedException(); }
-        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter) { throw new NotSupportedException(); }
+        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter) { throw new NotSupportedException(); }
     }
 
     class NonSafeExceptionGeneratingHandler : SimpleTypeHandler<int>
@@ -932,7 +932,7 @@ LANGUAGE plpgsql VOLATILE";
         }
 
         public override int ValidateAndGetLength(object value, NpgsqlParameter parameter) { throw new NotSupportedException(); }
-        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter) { throw new NotSupportedException();}
+        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter) { throw new NotSupportedException();}
     }
 #endif
     #endregion

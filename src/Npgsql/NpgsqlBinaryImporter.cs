@@ -28,6 +28,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
@@ -51,7 +52,6 @@ namespace Npgsql
         TypeHandlerRegistry _registry;
         LengthCache _lengthCache;
         bool _isDisposed;
-        bool _writingDataMsg;
 
         /// <summary>
         /// The number of columns in the current (not-yet-written) row.
@@ -89,14 +89,10 @@ namespace Npgsql
                 // TODO: Failure will break the connection (e.g. if we get CopyOutResponse), handle more gracefully
                 var copyInResponse = _connector.ReadExpecting<CopyInResponseMessage>();
                 if (!copyInResponse.IsBinary)
-                {
                     throw new ArgumentException("copyFromCommand triggered a text transfer, only binary is allowed", nameof(copyFromCommand));
-                }
                 NumColumns = copyInResponse.NumColumns;
+                _buf.StartCopyMode();
                 WriteHeader();
-
-                // We will be sending CopyData messages from now on, deduct the header from the buffer's usable size
-                _buf.UsableSize -= 5;
             }
             catch
             {
@@ -107,7 +103,6 @@ namespace Npgsql
 
         void WriteHeader()
         {
-            EnsureDataMessage();
             _buf.WriteBytes(NpgsqlRawCopyStream.BinarySignature, 0, NpgsqlRawCopyStream.BinarySignature.Length);
             _buf.WriteInt32(0);   // Flags field. OID inclusion not supported at the moment.
             _buf.WriteInt32(0);   // Header extension area length
@@ -124,11 +119,11 @@ namespace Npgsql
         {
             CheckDisposed();
 
-            if (_column != -1 && _column != NumColumns) {
+            if (_column != -1 && _column != NumColumns)
                 throw new InvalidOperationException("Row has already been started and must be finished");
-            }
 
-            if (_buf.WriteSpaceLeft < 2) { FlushAndStartDataMessage(); }
+            if (_buf.WriteSpaceLeft < 2)
+                _buf.Flush();
             _buf.WriteInt16(NumColumns);
 
             _column = 0;
@@ -186,77 +181,14 @@ namespace Npgsql
         {
             try
             {
-                if (_buf.WriteSpaceLeft < 4)
-                {
-                    FlushAndStartDataMessage();
-                }
-
-                var asObject = (object) value; // TODO: Implement boxless writing in the future
-                if (asObject == null)
-                {
-                    _buf.WriteInt32(-1);
-                    _column++;
-                    return;
-                }
-
+                // We simulate the regular writing process with a validation/length calculation pass,
+                // followed by a write pass
                 _dummyParam.ConvertedValue = null;
-
-                var asSimple = handler as ISimpleTypeHandler;
-                if (asSimple != null)
-                {
-                    var len = asSimple.ValidateAndGetLength(asObject, _dummyParam);
-                    _buf.WriteInt32(len);
-                    if (_buf.WriteSpaceLeft < len)
-                    {
-                        Debug.Assert(_buf.Size >= len);
-                        FlushAndStartDataMessage();
-                    }
-                    asSimple.Write(asObject, _buf, _dummyParam);
-                    _column++;
-                    return;
-                }
-
-                var asChunking = handler as IChunkingTypeHandler;
-                if (asChunking != null)
-                {
-                    _lengthCache.Clear();
-                    var len = asChunking.ValidateAndGetLength(asObject, ref _lengthCache, _dummyParam);
-                    _buf.WriteInt32(len);
-
-                    // If the type handler used the length cache, rewind it to skip the first position:
-                    // it contains the entire value length which we already have in len.
-                    if (_lengthCache.Position > 0)
-                    {
-                        _lengthCache.Rewind();
-                        _lengthCache.Position++;
-                    }
-
-                    asChunking.PrepareWrite(asObject, _buf, _lengthCache, _dummyParam);
-                    var directBuf = new DirectBuffer();
-                    while (!asChunking.Write(ref directBuf))
-                    {
-                        Flush();
-
-                        // The following is an optimization hack for writing large byte arrays without passing
-                        // through our buffer
-                        if (directBuf.Buffer != null)
-                        {
-                            len = directBuf.Size == 0 ? directBuf.Buffer.Length : directBuf.Size;
-                            _buf.WritePosition = 1;
-                            _buf.WriteInt32(len + 4);
-                            _buf.Flush();
-                            _writingDataMsg = false;
-                            _buf.DirectWrite(directBuf.Buffer, directBuf.Offset, len);
-                            directBuf.Buffer = null;
-                            directBuf.Size = 0;
-                        }
-                        EnsureDataMessage();
-                    }
-                    _column++;
-                    return;
-                }
-
-                throw new InvalidOperationException($"Internal Npgsql bug, please report.");
+                _lengthCache.Clear();
+                handler.ValidateAndGetLength(value, ref _lengthCache, _dummyParam);
+                _lengthCache.Rewind();
+                handler.WriteWithLength(value, _buf, _lengthCache, _dummyParam, false, CancellationToken.None);
+                _column++;
             }
             catch
             {
@@ -272,11 +204,11 @@ namespace Npgsql
         public void WriteNull()
         {
             CheckDisposed();
-            if (_column == -1) {
+            if (_column == -1)
                 throw new InvalidOperationException("A row hasn't been started");
-            }
 
-            if (_buf.WriteSpaceLeft < 4) { FlushAndStartDataMessage(); }
+            if (_buf.WriteSpaceLeft < 4)
+                _buf.Flush();
 
             _buf.WriteInt32(-1);
             _column++;
@@ -291,39 +223,8 @@ namespace Npgsql
         public void WriteRow(params object[] values)
         {
             StartRow();
-            foreach (var value in values) {
+            foreach (var value in values)
                 Write(value);
-            }
-        }
-
-        void FlushAndStartDataMessage()
-        {
-            Flush();
-            EnsureDataMessage();
-        }
-
-        void Flush()
-        {
-            if (!_writingDataMsg) { return; }
-
-            // Need to update the length for the CopyData about to be sent
-            var pos = _buf.WritePosition;
-            _buf.WritePosition = 1;
-            _buf.WriteInt32(pos - 1);
-            _buf.WritePosition = pos;
-            _buf.Flush();
-            _writingDataMsg = false;
-        }
-
-        void EnsureDataMessage()
-        {
-            if (_writingDataMsg) { return; }
-
-            Debug.Assert(_buf.WritePosition == 0);
-            _buf.WriteByte((byte)BackendMessageCode.CopyData);
-            // Leave space for the message length
-            _buf.WriteInt32(0);
-            _writingDataMsg = true;
         }
 
         #endregion
@@ -336,7 +237,7 @@ namespace Npgsql
         public void Cancel()
         {
             _isDisposed = true;
-            _buf.Clear();
+            _buf.EndCopyMode();
             _connector.SendMessage(new CopyFailMessage());
             try {
                 var msg = _connector.ReadMessage(DataRowLoadingMode.NonSequential);
@@ -352,7 +253,7 @@ namespace Npgsql
         /// <summary>
         /// Completes that binary import and sets the connection back to idle state
         /// </summary>
-        public void Dispose() { Close(); }
+        public void Dispose() => Close();
 
         /// <summary>
         /// Completes the import process and signals to the database to write everything.
@@ -360,12 +261,14 @@ namespace Npgsql
         [PublicAPI]
         public void Close()
         {
-            if (_isDisposed) { return; }
+            if (_isDisposed)
+                return;
 
-            if (_column != -1 && _column != NumColumns) {
+            if (_column != -1 && _column != NumColumns)
                 throw new InvalidOperationException("Can't close writer, a row is still in progress, end it first");
-            }
             WriteTrailer();
+            _buf.Flush();
+            _buf.EndCopyMode();
 
             _connector.SendMessage(CopyDoneMessage.Instance);
             _connector.ReadExpecting<CommandCompleteMessage>();
@@ -380,23 +283,21 @@ namespace Npgsql
         {
             _connector = null;
             _registry = null;
-            _buf.UsableSize = _buf.Size;
             _buf = null;
             _isDisposed = true;
         }
 
         void WriteTrailer()
         {
-            if (_buf.WriteSpaceLeft < 2) { FlushAndStartDataMessage(); }
+            if (_buf.WriteSpaceLeft < 2)
+                _buf.Flush();
             _buf.WriteInt16(-1);
-            Flush();
         }
 
         void CheckDisposed()
         {
-            if (_isDisposed) {
+            if (_isDisposed)
                 throw new ObjectDisposedException(GetType().FullName, "The COPY operation has already ended.");
-            }
         }
 
         #endregion

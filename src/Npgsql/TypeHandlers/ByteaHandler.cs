@@ -39,11 +39,9 @@ namespace Npgsql.TypeHandlers
     [TypeMapping("bytea", NpgsqlDbType.Bytea, DbType.Binary, new[] { typeof(byte[]), typeof(ArraySegment<byte>) })]
     class ByteaHandler : ChunkingTypeHandler<byte[]>
     {
-        bool _returnedBuffer;
         byte[] _bytes;
         int _pos;
         ReadBuffer _readBuf;
-        WriteBuffer _writeBuf;
 
         internal ByteaHandler(PostgresType postgresType) : base(postgresType) {}
 
@@ -89,17 +87,11 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        ArraySegment<byte> _value;
-
         public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             if (value is ArraySegment<byte>)
             {
                 var arraySegment = (ArraySegment<byte>)value;
-
-                if (arraySegment.Array == null)
-                    throw new InvalidCastException("Array in ArraySegment<byte> is null");
-
                 return parameter == null || parameter.Size <= 0 || parameter.Size >= arraySegment.Count
                     ? arraySegment.Count
                     : parameter.Size;
@@ -114,15 +106,16 @@ namespace Npgsql.TypeHandlers
             throw CreateConversionException(value.GetType());
         }
 
-        public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
+        protected override async Task Write(object value, WriteBuffer buf, LengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter,
+            bool async, CancellationToken cancellationToken)
         {
-            _writeBuf = buf;
+            ArraySegment<byte> segment;
 
             if (value is ArraySegment<byte>)
             {
-                _value = (ArraySegment<byte>)value;
-                if (!(parameter == null || parameter.Size <= 0 || parameter.Size >= _value.Count))
-                     _value = new ArraySegment<byte>(_value.Array, _value.Offset, parameter.Size);
+                segment = (ArraySegment<byte>)value;
+                if (!(parameter == null || parameter.Size <= 0 || parameter.Size >= segment.Count))
+                    segment = new ArraySegment<byte>(segment.Array, segment.Offset, parameter.Size);
             }
             else
             {
@@ -130,34 +123,26 @@ namespace Npgsql.TypeHandlers
                 var len = parameter == null || parameter.Size <= 0 || parameter.Size >= array.Length
                     ? array.Length
                     : parameter.Size;
-                _value = new ArraySegment<byte>(array, 0, len);
+                segment = new ArraySegment<byte>(array, 0, len);
             }
+
+            // The entire segment fits in our buffer, copy it as usual.
+            if (segment.Count <= buf.WriteSpaceLeft)
+            {
+                buf.WriteBytes(segment.Array, segment.Offset, segment.Count);
+                return;
+            }
+
+            // The segment is larger than our buffer. Flush whatever is currently in the buffer and
+            // write the array directly to the socket.
+            await buf.Flush(async, cancellationToken);
+            buf.DirectWrite(segment.Array, segment.Offset, segment.Count);
         }
 
-        // ReSharper disable once RedundantAssignment
-        public override bool Write(ref DirectBuffer directBuf)
-        {
-            // If we're back here after having returned a direct buffer, we're done.
-            if (_returnedBuffer)
-            {
-                _returnedBuffer = false;
-                return true;
-            }
-
-            // If the entire array fits in our buffer, copy it as usual.
-            // Otherwise, switch to direct write from the user-provided buffer
-            if (_value.Count <= _writeBuf.WriteSpaceLeft)
-            {
-                _writeBuf.WriteBytes(_value.Array, _value.Offset, _value.Count);
-                return true;
-            }
-
-            directBuf.Buffer = _value.Array;
-            directBuf.Offset = _value.Offset;
-            directBuf.Size = _value.Count;
-            _returnedBuffer = true;
-            return false;
-        }
+        internal Task WriteInternal(object value, WriteBuffer buf, LengthCache lengthCache,
+                [CanBeNull] NpgsqlParameter parameter,
+                bool async, CancellationToken cancellationToken)
+            => Write(value, buf, lengthCache, parameter, async, cancellationToken);
 
         #endregion
     }

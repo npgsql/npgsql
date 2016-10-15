@@ -45,13 +45,14 @@ namespace Npgsql.Tests.Types
         public void Roundtrip()
         {
             using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4", conn))
+            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4, @p5", conn))
             {
                 const string expected = "Something";
                 var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Text);
                 var p2 = new NpgsqlParameter("p2", NpgsqlDbType.Varchar);
                 var p3 = new NpgsqlParameter("p3", DbType.String);
-                var p4 = new NpgsqlParameter {ParameterName = "p4", Value = expected};
+                var p4 = new NpgsqlParameter { ParameterName = "p4", Value = expected };
+                var p5 = new NpgsqlParameter("p5", NpgsqlDbType.Text);
                 Assert.That(p2.DbType, Is.EqualTo(DbType.String));
                 Assert.That(p3.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Text));
                 Assert.That(p3.DbType, Is.EqualTo(DbType.String));
@@ -59,7 +60,9 @@ namespace Npgsql.Tests.Types
                 cmd.Parameters.Add(p2);
                 cmd.Parameters.Add(p3);
                 cmd.Parameters.Add(p4);
+                cmd.Parameters.Add(p5);
                 p1.Value = p2.Value = p3.Value = expected;
+                p5.Value = expected.ToCharArray();
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();

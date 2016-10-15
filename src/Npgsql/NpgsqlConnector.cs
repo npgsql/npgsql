@@ -814,43 +814,16 @@ namespace Npgsql
         {
             _pendingPrependedResponses += msg.ResponseMessageCount;
 
-            if (!msg.Write(WriteBuffer))
-                throw new NpgsqlException($"Could not fully write message of type {msg.GetType().Name} into the buffer");
-        }
-
-        /// <summary>
-        /// Sends a single frontend message, used for simple messages such as rollback, etc.
-        /// Note that additional prepend messages may be previously enqueued, and will be sent along
-        /// with this message.
-        /// </summary>
-        /// <param name="msg"></param>
-        [RewriteAsync]
-        internal void SendMessage(FrontendMessage msg)
-        {
-            Log.Trace($"Sending: {msg}", Id);
-            while (true)
-            {
-                var completed = msg.Write(WriteBuffer);
-                SendBuffer();
-                if (completed)
-                    break;  // Sent all messages
-            }
+            var t = msg.Write(WriteBuffer, false, CancellationToken.None);
+            Debug.Assert(t.IsCompleted, $"Could not fully write message of type {msg.GetType().Name} into the buffer");
         }
 
         internal void SendQuery(string query) => SendMessage(QueryMessage.Populate(query));
 
-        [RewriteAsync]
-        internal void SendBuffer()
+        internal void SendMessage(FrontendMessage message)
         {
-            try
-            {
-                WriteBuffer.Flush();
-            }
-            catch
-            {
-                Break();
-                throw;
-            }
+            message.Write(WriteBuffer, false, CancellationToken.None).Wait();
+            WriteBuffer.Flush();
         }
 
         #endregion
@@ -1184,11 +1157,10 @@ namespace Npgsql
 
         #region Transactions
 
-        [RewriteAsync]
-        internal void Rollback()
+        internal Task Rollback(bool async, CancellationToken cancellationToken)
         {
             Log.Debug("Rollback transaction", Id);
-            ExecuteInternalCommand(PregeneratedMessage.RollbackTransaction);
+            return ExecuteInternalCommand(PregeneratedMessage.RollbackTransaction, async, cancellationToken);
         }
 
         internal bool InTransaction
@@ -1546,7 +1518,7 @@ namespace Npgsql
                 break;
             case TransactionStatus.InTransactionBlock:
             case TransactionStatus.InFailedTransactionBlock:
-                Rollback();
+                Rollback(false, CancellationToken.None);
                 break;
             default:
                 throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {TransactionStatus} of enum {nameof(TransactionStatus)}. Please file a bug.");
@@ -1589,6 +1561,17 @@ namespace Npgsql
             if (PreparedStatements.Count == 0)
                 return;
 
+            foreach (var statement in PreparedStatements)
+            {
+                CloseMessage
+                    .Populate(StatementOrPortal.Statement, statement)
+                    .Write(WriteBuffer, false, CancellationToken.None)
+                    .Wait();
+            }
+            SyncMessage.Instance.Write(WriteBuffer, false, CancellationToken.None).Wait();
+
+            // TODO: Bring this optimization back
+            /*
             var flushing = false;
             foreach (var statement in PreparedStatements)
             {
@@ -1618,6 +1601,7 @@ namespace Npgsql
 
             _pendingPrependedResponses += SyncMessage.Instance.ResponseMessageCount;
             PreparedStatements.Clear();
+            */
         }
 
         #endregion Close
@@ -1790,17 +1774,26 @@ namespace Npgsql
         #region Execute internal command
 
         internal void ExecuteInternalCommand(string query)
-        {
-            ExecuteInternalCommand(QueryMessage.Populate(query));
-        }
+            => ExecuteInternalCommand(QueryMessage.Populate(query), false, CancellationToken.None).Wait();
 
-        [RewriteAsync]
         internal void ExecuteInternalCommand(FrontendMessage message)
+            => ExecuteInternalCommand(message, false, CancellationToken.None).Wait();
+
+        internal async Task ExecuteInternalCommand(FrontendMessage message, bool async, CancellationToken cancellationToken)
         {
             Debug.Assert(message is QueryMessage || message is PregeneratedMessage);
-            SendMessage(message);
-            ReadExpecting<CommandCompleteMessage>();
-            ReadExpecting<ReadyForQueryMessage>();
+            await message.Write(WriteBuffer, async, cancellationToken);
+            await WriteBuffer.Flush(async, cancellationToken);
+            if (async)
+            {
+                await ReadExpectingAsync<CommandCompleteMessage>(cancellationToken);
+                await ReadExpectingAsync<ReadyForQueryMessage>(cancellationToken);
+            }
+            else
+            {
+                ReadExpecting<CommandCompleteMessage>();
+                ReadExpecting<ReadyForQueryMessage>();
+            }
         }
 
         #endregion

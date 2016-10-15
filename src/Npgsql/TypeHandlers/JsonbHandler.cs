@@ -23,6 +23,8 @@
 
 using System;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
@@ -34,7 +36,7 @@ namespace Npgsql.TypeHandlers
     /// JSONB binary encoding is a simple UTF8 string, but prepended with a version number.
     /// </summary>
     [TypeMapping("jsonb", NpgsqlDbType.Jsonb)]
-    class JsonbHandler : ChunkingTypeHandler<string>, ITextReaderHandler
+    class JsonbHandler : TextHandler
     {
         /// <summary>
         /// Prepended to the string in the wire encoding
@@ -47,17 +49,10 @@ namespace Npgsql.TypeHandlers
         bool _handledVersion;
 
         ReadBuffer _readBuf;
-        WriteBuffer _writeBuf;
 
-        /// <summary>
-        /// The text handler which does most of the encoding/decoding work.
-        /// </summary>
-        readonly TextHandler _textHandler;
+        internal override bool PreferTextWrite => false;
 
-        internal JsonbHandler(PostgresType postgresType, TypeHandlerRegistry registry) : base(postgresType)
-        {
-            _textHandler = new TextHandler(postgresType, registry);
-        }
+        internal JsonbHandler(PostgresType postgresType, TypeHandlerRegistry registry) : base(postgresType, registry) {}
 
         #region Write
 
@@ -69,27 +64,16 @@ namespace Npgsql.TypeHandlers
                 return lengthCache.Get() + 1;
 
             // Add one byte for the prepended version number
-            return _textHandler.ValidateAndGetLength(value, ref lengthCache, parameter) + 1;
+            return base.ValidateAndGetLength(value, ref lengthCache, parameter) + 1;
         }
 
-        public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter = null)
+        protected override async Task Write(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter,
+            bool async, CancellationToken cancellationToken)
         {
-            _textHandler.PrepareWrite(value, buf, lengthCache, parameter);
-            _writeBuf = buf;
-            _handledVersion = false;
-        }
-
-        public override bool Write(ref DirectBuffer directBuf)
-        {
-            if (!_handledVersion)
-            {
-                if (_writeBuf.WriteSpaceLeft < 1) { return false; }
-                _writeBuf.WriteByte(JsonbProtocolVersion);
-                _handledVersion = true;
-            }
-            if (!_textHandler.Write(ref directBuf)) { return false; }
-            _writeBuf = null;
-            return true;
+            if (buf.WriteSpaceLeft < 1)
+                await buf.Flush(async, cancellationToken);
+            buf.WriteByte(JsonbProtocolVersion);
+            await base.Write(value, buf, lengthCache, parameter, async, cancellationToken);
         }
 
         #endregion
@@ -99,12 +83,12 @@ namespace Npgsql.TypeHandlers
         public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             // Subtract one byte for the version number
-            _textHandler.PrepareRead(buf, len - 1, fieldDescription);
+            base.PrepareRead(buf, len - 1, fieldDescription);
             _readBuf = buf;
             _handledVersion = false;
         }
 
-        public override bool Read([CanBeNull] out string result)
+        public override bool Read(out string result)
         {
             if (!_handledVersion)
             {
@@ -119,20 +103,20 @@ namespace Npgsql.TypeHandlers
                 _handledVersion = true;
             }
 
-            if (!_textHandler.Read(out result)) { return false; }
+            if (!base.Read(out result)) { return false; }
             _readBuf = null;
             return true;
         }
 
         #endregion
 
-        public TextReader GetTextReader(Stream stream)
+        public override TextReader GetTextReader(Stream stream)
         {
             var version = stream.ReadByte();
             if (version != JsonbProtocolVersion)
                 throw new NpgsqlException($"Don't know how to decode jsonb with wire format {version}, your connection is now broken");
 
-            return new StreamReader(stream);
+            return base.GetTextReader(stream);
         }
     }
 }

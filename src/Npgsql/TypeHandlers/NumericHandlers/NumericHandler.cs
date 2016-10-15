@@ -172,7 +172,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             return 4 * sizeof(short) + numGroups * sizeof(short);
         }
 
-        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
+        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
         {
             var num = (decimal) (parameter?.ConvertedValue ?? value);
             if (num == 0M)

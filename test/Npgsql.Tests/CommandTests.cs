@@ -883,59 +883,61 @@ namespace Npgsql.Tests
         [Test, Description("Bypasses PostgreSQL's int16 limitation on the number of parameters")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/831")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/858")]
-        [IssueLink("https://github.com/npgsql/npgsql/issues/1199")]
         public void TooManyParameters()
         {
             using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand { Connection = conn })
             {
-                using (var cmd = new NpgsqlCommand { Connection = conn })
+                var sb = new StringBuilder("SELECT ");
+                for (var i = 0; i < 65536; i++)
                 {
-                    var sb = new StringBuilder("SELECT ");
-                    for (var i = 0; i < 65536; i++)
+                    var paramName = "p" + i;
+                    cmd.Parameters.Add(new NpgsqlParameter(paramName, 8));
+                    if (i > 0)
+                        sb.Append(", ");
+                    sb.Append('@');
+                    sb.Append(paramName);
+                }
+                cmd.CommandText = sb.ToString();
+                Assert.That(() => cmd.ExecuteNonQuery(), Throws.Exception
+                    .InstanceOf<Exception>()
+                    .With.Message.EqualTo("A statement cannot have more than 65535 parameters")
+                    );
+            }
+        }
+
+        [Test, Description("An individual statement cannot have more than 65535 parameters, but a command can (across multiple statements).")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/1199")]
+        public void ManyParametersAcrossStatements()
+        {
+            // Create a command with 1000 statements which have 70 params each
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand { Connection = conn })
+            {
+                var paramIndex = 0;
+                var sb = new StringBuilder();
+                for (var statementIndex = 0; statementIndex < 1000; statementIndex++)
+                {
+                    if (statementIndex > 0)
+                        sb.Append("; ");
+                    sb.Append("SELECT ");
+                    var startIndex = paramIndex;
+                    var endIndex = paramIndex + 70;
+                    for (; paramIndex < endIndex; paramIndex++)
                     {
-                        var paramName = "p" + i;
+                        var paramName = "p" + paramIndex;
                         cmd.Parameters.Add(new NpgsqlParameter(paramName, 8));
-                        if (i > 0)
+                        if (paramIndex > startIndex)
                             sb.Append(", ");
                         sb.Append('@');
                         sb.Append(paramName);
                     }
-                    cmd.CommandText = sb.ToString();
-                    Assert.That(() => cmd.ExecuteNonQuery(), Throws.Exception
-                        .InstanceOf<Exception>()
-                        .With.Message.EqualTo("A statement cannot have more than 65535 parameters")
-                        );
                 }
 
-                // An individual statement cannot have more than 65535 parameters, but a command can
-                // (across multiple statements).
-                // Create a command with 1000 statements which have 70 params each
-                using (var cmd = new NpgsqlCommand { Connection = conn })
-                {
-                    var paramIndex = 0;
-                    var sb = new StringBuilder();
-                    for (var statementIndex = 0; statementIndex < 1000; statementIndex++)
-                    {
-                        if (statementIndex > 0)
-                            sb.Append("; ");
-                        sb.Append("SELECT ");
-                        var startIndex = paramIndex;
-                        var endIndex = paramIndex + 70;
-                        for (; paramIndex < endIndex; paramIndex++)
-                        {
-                            var paramName = "p" + paramIndex;
-                            cmd.Parameters.Add(new NpgsqlParameter(paramName, 8));
-                            if (paramIndex > startIndex)
-                                sb.Append(", ");
-                            sb.Append('@');
-                            sb.Append(paramName);
-                        }
-                    }
-
-                    cmd.CommandText = sb.ToString();
-                    cmd.ExecuteNonQuery();
-                }
+                cmd.CommandText = sb.ToString();
+                cmd.ExecuteNonQuery();
             }
+
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1037")]

@@ -54,7 +54,7 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
             return 6;
         }
 
-        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
+        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
         {
             var tid = (NpgsqlTid)value;
             buf.WriteUInt32(tid.BlockNumber);

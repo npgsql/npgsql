@@ -22,6 +22,8 @@
 #endregion
 
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
 using NpgsqlTypes;
@@ -41,7 +43,6 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
 
         NpgsqlPath _value;
         ReadBuffer _readBuf;
-        WriteBuffer _writeBuf;
         int _index;
 
         #endregion
@@ -103,33 +104,23 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
             return 5 + ((NpgsqlPath)value).Count * 16;
         }
 
-        public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
+        protected override async Task Write(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter,
+            bool async, CancellationToken cancellationToken)
         {
-            _writeBuf = buf;
-            _value = (NpgsqlPath)value;
-            _index = -1;
-        }
+            var path = (NpgsqlPath)value;
 
-        public override bool Write(ref DirectBuffer directBuf)
-        {
-            if (_index == -1)
-            {
-                if (_writeBuf.WriteSpaceLeft < 5) { return false; }
-                _writeBuf.WriteByte((byte)(_value.Open ? 0 : 1));
-                _writeBuf.WriteInt32(_value.Count);
-                _index = 0;
-            }
+            if (buf.WriteSpaceLeft < 5)
+                await buf.Flush(async, cancellationToken);
+            buf.WriteByte((byte)(path.Open ? 0 : 1));
+            buf.WriteInt32(path.Count);
 
-            for (; _index < _value.Count; _index++)
+            foreach (var p in path)
             {
-                if (_writeBuf.WriteSpaceLeft < 16) { return false; }
-                var p = _value[_index];
-                _writeBuf.WriteDouble(p.X);
-                _writeBuf.WriteDouble(p.Y);
+                if (buf.WriteSpaceLeft < 16)
+                    await buf.Flush(async, cancellationToken);
+                buf.WriteDouble(p.X);
+                buf.WriteDouble(p.Y);
             }
-            _writeBuf = null;
-            _value = default(NpgsqlPath);
-            return true;
         }
 
         #endregion

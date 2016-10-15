@@ -26,6 +26,8 @@ using NpgsqlTypes;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.PostgresTypes;
 
@@ -44,14 +46,13 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
         const int MaxSingleTokenBytes = 2050;
 
         ReadBuffer  _readBuf;
-        WriteBuffer _writeBuf;
         Stack<Tuple<NpgsqlTsQuery, int>> _nodes;
         int _numTokens;
         int _tokenPos;
         int _bytesLeft;
         NpgsqlTsQuery _value;
 
-        Stack<NpgsqlTsQuery> _stack;
+        readonly Stack<NpgsqlTsQuery> _stack = new Stack<NpgsqlTsQuery>();
 
         internal TsQueryHandler(PostgresType postgresType) : base(postgresType) { }
 
@@ -194,11 +195,53 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             }
         }
 
-        public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
+        protected override async Task Write(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter,
+            bool async, CancellationToken cancellationToken)
         {
-            _writeBuf = buf;
-            _value = (NpgsqlTsQuery)value;
-            _numTokens = GetTokenCount(_value);
+            var query = (NpgsqlTsQuery)value;
+            var numTokens = GetTokenCount(query);
+
+            if (buf.WriteSpaceLeft < 4)
+                await buf.Flush(async, cancellationToken);
+            buf.WriteInt32(numTokens);
+
+            if (numTokens == 0)
+                return;
+
+            _stack.Push(query);
+
+            while (_stack.Count > 0)
+            {
+                if (buf.WriteSpaceLeft < 2)
+                    await buf.Flush(async, cancellationToken);
+
+                if (_stack.Peek().Kind == NpgsqlTsQuery.NodeKind.Lexeme && buf.WriteSpaceLeft < MaxSingleTokenBytes)
+                    await buf.Flush(async, cancellationToken);
+
+                var node = _stack.Pop();
+                buf.WriteByte(node.Kind == NpgsqlTsQuery.NodeKind.Lexeme ? (byte)1 : (byte)2);
+                if (node.Kind != NpgsqlTsQuery.NodeKind.Lexeme)
+                {
+                    buf.WriteByte((byte)node.Kind);
+                    if (node.Kind == NpgsqlTsQuery.NodeKind.Not)
+                        _stack.Push(((NpgsqlTsQueryNot)node).Child);
+                    else
+                    {
+                        _stack.Push(((NpgsqlTsQueryBinOp)node).Right);
+                        _stack.Push(((NpgsqlTsQueryBinOp)node).Left);
+                    }
+                }
+                else
+                {
+                    var lexemeNode = (NpgsqlTsQueryLexeme)node;
+                    buf.WriteByte((byte)lexemeNode.Weights);
+                    buf.WriteByte(lexemeNode.IsPrefixSearch ? (byte)1 : (byte)0);
+                    buf.WriteString(lexemeNode.Text);
+                    buf.WriteByte(0);
+                }
+            }
+
+            _stack.Clear();
         }
 
         int GetTokenCount(NpgsqlTsQuery node)
@@ -216,61 +259,6 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
                 return 0;
             }
             return -1;
-        }
-
-        public override bool Write(ref DirectBuffer directBuf)
-        {
-            if (_stack == null)
-            {
-                if (_writeBuf.WriteSpaceLeft < 4)
-                    return false;
-                _writeBuf.WriteInt32(_numTokens);
-
-                if (_numTokens == 0)
-                {
-                    _writeBuf = null;
-                    _value = null;
-                    return true;
-                }
-                _stack = new Stack<NpgsqlTsQuery>();
-                _stack.Push(_value);
-            }
-
-            while (_stack.Count > 0)
-            {
-                if (_writeBuf.WriteSpaceLeft < 2)
-                    return false;
-
-                if (_stack.Peek().Kind == NpgsqlTsQuery.NodeKind.Lexeme && _writeBuf.WriteSpaceLeft < MaxSingleTokenBytes)
-                    return false;
-
-                var node = _stack.Pop();
-                _writeBuf.WriteByte(node.Kind == NpgsqlTsQuery.NodeKind.Lexeme ? (byte)1 : (byte)2);
-                if (node.Kind != NpgsqlTsQuery.NodeKind.Lexeme)
-                {
-                    _writeBuf.WriteByte((byte)node.Kind);
-                    if (node.Kind == NpgsqlTsQuery.NodeKind.Not)
-                        _stack.Push(((NpgsqlTsQueryNot)node).Child);
-                    else
-                    {
-                        _stack.Push(((NpgsqlTsQueryBinOp)node).Right);
-                        _stack.Push(((NpgsqlTsQueryBinOp)node).Left);
-                    }
-                }
-                else
-                {
-                    var lexemeNode = (NpgsqlTsQueryLexeme)node;
-                    _writeBuf.WriteByte((byte)lexemeNode.Weights);
-                    _writeBuf.WriteByte(lexemeNode.IsPrefixSearch ? (byte)1 : (byte)0);
-                    _writeBuf.WriteString(lexemeNode.Text);
-                    _writeBuf.WriteByte(0);
-                }
-            }
-
-            _writeBuf = null;
-            _value = null;
-            _stack = null;
-            return true;
         }
     }
 }

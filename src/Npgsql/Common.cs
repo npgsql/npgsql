@@ -24,6 +24,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Npgsql
@@ -43,11 +44,13 @@ namespace Npgsql
     abstract class FrontendMessage
     {
         /// <param name="buf">the buffer into which to write the message.</param>
+        /// <param name="async"></param>
+        /// <param name="cancellationToken"></param>
         /// <returns>
         /// Whether there was enough space in the buffer to contain the entire message.
         /// If false, the buffer should be flushed and write should be called again.
         /// </returns>
-        internal abstract bool Write(WriteBuffer buf);
+        internal abstract Task Write(WriteBuffer buf, bool async, CancellationToken cancellationToken);
 
         /// <summary>
         /// Returns how many messages PostgreSQL is expected to send in response to this message.
@@ -73,13 +76,12 @@ namespace Npgsql
         /// </summary>
         internal abstract void WriteFully(WriteBuffer buf);
 
-        internal sealed override bool Write(WriteBuffer buf)
+        internal sealed override async Task Write(WriteBuffer buf, bool async, CancellationToken cancellationToken)
         {
-            Debug.Assert(Length < buf.UsableSize, $"Message of type {GetType().Name} has length {Length} which is bigger than the buffer ({buf.UsableSize})");
             if (buf.WriteSpaceLeft < Length)
-                return false;
+                await buf.Flush(async, cancellationToken);
+            Debug.Assert(Length <= buf.WriteSpaceLeft, $"Message of type {GetType().Name} has length {Length} which is bigger than the buffer ({buf.WriteSpaceLeft})");
             WriteFully(buf);
-            return true;
         }
     }
 

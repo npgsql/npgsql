@@ -133,14 +133,15 @@ namespace Npgsql.Tests.Types
                 cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Geometry,a.Geom);
                 a.Geom.SRID = 0;
                 cmd.CommandText = "Select st_asewkb(:p1) = st_asewkb(" + a.SQL + ")";
-                try
-                {
-                    Assert.IsTrue((bool)cmd.ExecuteScalar(),"Error on comparison of " + a.Geom);
+                bool areEqual;
+                try {
+                    areEqual = (bool)cmd.ExecuteScalar();
                 }
-                catch (Exception)
+                catch (Exception e)
                 {
-                    Assert.Fail("Exception caught on " + a.Geom);
+                    throw new Exception("Exception caught on " + a.Geom, e);
                 }
+                Assert.IsTrue(areEqual, "Error on comparison of " + a.Geom);
             }
         }
 

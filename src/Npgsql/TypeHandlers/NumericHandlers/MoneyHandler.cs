@@ -60,7 +60,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             return 8;
         }
 
-        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
+        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
         {
             var v = (decimal)(parameter?.ConvertedValue ?? value);
             buf.WriteInt64((long)(Math.Round(v, 2, MidpointRounding.AwayFromZero) * 100m));
