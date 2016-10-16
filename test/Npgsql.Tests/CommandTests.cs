@@ -940,6 +940,33 @@ namespace Npgsql.Tests
 
         }
 
+        [Test, Description("Makes sure that Npgsql doesn't attempt to send all data before the user can start reading. That would cause a deadlock.")]
+        public void ReadWriteDeadlock()
+        {
+            // We're going to send a large multistatement query that would exhaust both the client's and server's
+            // send and receive buffers (assume 64k per buffer).
+            var data = new string('x', 1024);
+            using (var conn = OpenConnection())
+            {
+                var sb = new StringBuilder();
+                for (var i = 0; i < 500; i++)
+                    sb.Append("SELECT @p;");
+                using (var cmd = new NpgsqlCommand(sb.ToString(), conn))
+                {
+                    cmd.Parameters.AddWithValue("p", NpgsqlDbType.Text, data);
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        for (var i = 0; i < 500; i++)
+                        {
+                            reader.Read();
+                            Assert.That(reader.GetString(0), Is.EqualTo(data));
+                            reader.NextResult();
+                        }
+                    }
+                }
+            }
+        }
+
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1037")]
         public void Statements([Values(true, false)] bool withParam)
         {
