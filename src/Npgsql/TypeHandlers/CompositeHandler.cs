@@ -231,7 +231,7 @@ namespace Npgsql.TypeHandlers
 
                 if (fieldValue == null)
                 {
-                    if (_writeBuf.WriteSpaceLeft < 4)
+                    if (_writeBuf.WriteSpaceLeft < 8)
                         return false;
                     _writeBuf.WriteUInt32(fieldHandler.BackendType.OID);
                     _writeBuf.WriteInt32(-1);
