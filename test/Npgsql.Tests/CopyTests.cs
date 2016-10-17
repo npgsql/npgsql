@@ -83,11 +83,11 @@ namespace Npgsql.Tests
 
                 conn.ExecuteNonQuery("TRUNCATE data");
 
-                using (var outStream = conn.BeginRawBinaryCopy("COPY data (field_text, field_int4) FROM STDIN BINARY"))
+                using (var inStream = conn.BeginRawBinaryCopy("COPY data (field_text, field_int4) FROM STDIN BINARY"))
                 {
                     StateAssertions(conn);
 
-                    outStream.Write(data, 0, len);
+                    inStream.Write(data, 0, len);
                 }
 
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM DATA"), Is.EqualTo(iterations));

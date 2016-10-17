@@ -49,7 +49,6 @@ namespace Npgsql
         bool _copyMode;
         internal Encoding TextEncoding { get; }
 
-        internal int WritePosition { get { return _writePosition; } set { _writePosition = value; } }
         internal int WriteSpaceLeft => Size - _writePosition;
 
         internal long TotalBytesFlushed { get; private set; }
@@ -97,7 +96,7 @@ namespace Npgsql
                 // length.
                 if (_writePosition == 1)
                     return;
-                var pos = WritePosition;
+                var pos = _writePosition;
                 _writePosition = 1;
                 WriteInt32(pos - 1);
                 _writePosition = pos;
@@ -148,18 +147,18 @@ namespace Npgsql
             if (_copyMode)
             {
                 // Flush has already written the CopyData header, need to update the length
-                Debug.Assert(WritePosition == 5);
+                Debug.Assert(_writePosition == 5);
 
-                WritePosition = 1;
+                _writePosition = 1;
                 WriteInt32(count + 4);
-                WritePosition = 5;
+                _writePosition = 5;
                 _copyMode = false;
                 Flush();
                 _copyMode = true;
                 WriteCopyDataHeader();
             }
             else
-                Debug.Assert(WritePosition == 0);
+                Debug.Assert(_writePosition == 0);
 
             try
             {
@@ -355,20 +354,20 @@ namespace Npgsql
         internal void WriteString(string s, int len = 0)
         {
             Debug.Assert(TextEncoding.GetByteCount(s) <= WriteSpaceLeft);
-            WritePosition += TextEncoding.GetBytes(s, 0, len == 0 ? s.Length : len, _buf, WritePosition);
+            _writePosition += TextEncoding.GetBytes(s, 0, len == 0 ? s.Length : len, _buf, _writePosition);
         }
 
         internal void WriteChars(char[] chars, int len = 0)
         {
             Debug.Assert(TextEncoding.GetByteCount(chars) <= WriteSpaceLeft);
-            WritePosition += TextEncoding.GetBytes(chars, 0, len == 0 ? chars.Length : len, _buf, WritePosition);
+            _writePosition += TextEncoding.GetBytes(chars, 0, len == 0 ? chars.Length : len, _buf, _writePosition);
         }
 
         public void WriteBytes(byte[] buf, int offset, int count)
         {
             Debug.Assert(count <= WriteSpaceLeft);
-            Buffer.BlockCopy(buf, offset, _buf, WritePosition, count);
-            WritePosition += count;
+            Buffer.BlockCopy(buf, offset, _buf, _writePosition, count);
+            _writePosition += count;
         }
 
         public void WriteBytesNullTerminated(byte[] buf)
@@ -393,9 +392,9 @@ namespace Npgsql
             }
 
             int bytesUsed;
-            _textEncoder.Convert(chars, charIndex, charCount, _buf, WritePosition, WriteSpaceLeft,
+            _textEncoder.Convert(chars, charIndex, charCount, _buf, _writePosition, WriteSpaceLeft,
                                  flush, out charsUsed, out bytesUsed, out completed);
-            WritePosition += bytesUsed;
+            _writePosition += bytesUsed;
         }
 
 #if !NETSTANDARD1_3
@@ -414,11 +413,11 @@ namespace Npgsql
             fixed (char* sPtr = s)
             fixed (byte* bufPtr = _buf)
             {
-                _textEncoder.Convert(sPtr + charIndex, charCount, bufPtr + WritePosition, WriteSpaceLeft,
+                _textEncoder.Convert(sPtr + charIndex, charCount, bufPtr + _writePosition, WriteSpaceLeft,
                                      flush, out charsUsed, out bytesUsed, out completed);
             }
 
-            WritePosition += bytesUsed;
+            _writePosition += bytesUsed;
         }
 #endif
 
@@ -445,7 +444,7 @@ namespace Npgsql
         void WriteCopyDataHeader()
         {
             Debug.Assert(_copyMode);
-            Debug.Assert(WritePosition == 0);
+            Debug.Assert(_writePosition == 0);
             WriteByte((byte)BackendMessageCode.CopyData);
             // Leave space for the message length
             WriteInt32(0);
@@ -457,7 +456,7 @@ namespace Npgsql
 
         internal void Clear()
         {
-            WritePosition = 0;
+            _writePosition = 0;
         }
 
         /// <summary>

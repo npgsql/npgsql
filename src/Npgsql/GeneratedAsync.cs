@@ -297,7 +297,7 @@ namespace Npgsql
                 await RawOpenAsync(timeout, cancellationToken);
                 var username = GetUsername();
                 WriteStartupMessage(username);
-                await WriteBuffer.FlushAsync(cancellationToken);
+                WriteBuffer.Flush();
                 timeout.Check();
                 await HandleAuthenticationAsync(username, timeout, cancellationToken);
                 GenerateResetMessage();
@@ -329,7 +329,7 @@ namespace Npgsql
                 {
                     Log.Trace("Attempting SSL negotiation");
                     SSLRequestMessage.Instance.WriteFully(WriteBuffer);
-                    await WriteBuffer.FlushAsync(cancellationToken);
+                    WriteBuffer.Flush();
                     await ReadBuffer.EnsureAsync(1, cancellationToken);
                     var response = (char)ReadBuffer.ReadByte();
                     timeout.Check();
@@ -434,7 +434,7 @@ namespace Npgsql
                         if (passwordMessage != null)
                         {
                             passwordMessage.WriteFully(WriteBuffer);
-                            await WriteBuffer.FlushAsync(cancellationToken);
+                            WriteBuffer.Flush();
                             timeout.Check();
                         }
 
@@ -1409,51 +1409,6 @@ namespace Npgsql
             }
 
             return types;
-        }
-    }
-
-    partial class WriteBuffer
-    {
-        internal async Task FlushAsync(CancellationToken cancellationToken)
-        {
-            if (_writePosition == 0)
-                return;
-            try
-            {
-                await Underlying.WriteAsync(_buf, 0, _writePosition, cancellationToken);
-            }
-            catch (Exception e)
-            {
-                Connector.Break();
-                throw new NpgsqlException("Exception while writing to stream", e);
-            }
-
-            try
-            {
-                await Underlying.FlushAsync(cancellationToken);
-            }
-            catch (Exception e)
-            {
-                Connector.Break();
-                throw new NpgsqlException("Exception while flushing stream", e);
-            }
-
-            TotalBytesFlushed += _writePosition;
-            _writePosition = 0;
-        }
-
-        internal async Task DirectWriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-        {
-            Debug.Assert(WritePosition == 0);
-            try
-            {
-                await Underlying.WriteAsync(buffer, offset, count, cancellationToken);
-            }
-            catch (Exception e)
-            {
-                Connector.Break();
-                throw new NpgsqlException("Exception while writing to stream", e);
-            }
         }
     }
 }

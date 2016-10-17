@@ -85,7 +85,6 @@ namespace Npgsql.FrontendMessages
 
         internal static PregeneratedMessage Generate(WriteBuffer buf, QueryMessage queryMessage, string query, int responseMessageCount=2)
         {
-            Debug.Assert(buf.WritePosition == 0);
             Debug.Assert(query != null && query.All(c => c < 128));
             queryMessage.Populate(query);
             var description = queryMessage.ToString();

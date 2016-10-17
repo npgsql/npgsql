@@ -48,7 +48,6 @@ namespace Npgsql
         ReadBuffer _readBuf;
         WriteBuffer _writeBuf;
 
-        bool _writingDataMsg;
         int _leftToReadInDataMsg;
         bool _isDisposed, _isConsumed;
 
@@ -86,6 +85,7 @@ namespace Npgsql
                 var copyInResponse = (CopyInResponseMessage) msg;
                 IsBinary = copyInResponse.IsBinary;
                 _canWrite = true;
+                _writeBuf.StartCopyMode();
                 break;
             case BackendMessageCode.CopyOutResponse:
                 var copyOutResponse = (CopyOutResponseMessage) msg;
@@ -109,8 +109,6 @@ namespace Npgsql
 
             if (count == 0) { return; }
 
-            EnsureDataMessage();
-
             if (count <= _writeBuf.WriteSpaceLeft)
             {
                 _writeBuf.WriteBytes(buffer, offset, count);
@@ -118,15 +116,17 @@ namespace Npgsql
             }
 
             try {
-                // Value is too big. Flush whatever is in the buffer, then write a new CopyData
-                // directly with the buffer.
+                // Value is too big, flush.
                 Flush();
 
-                _writeBuf.WriteByte((byte)BackendMessageCode.CopyData);
-                _writeBuf.WriteInt32(count + 4);
-                _writeBuf.Flush();
+                if (count <= _writeBuf.WriteSpaceLeft)
+                {
+                    _writeBuf.WriteBytes(buffer, offset, count);
+                    return;
+                }
+
+                // Value is too big even after a flush - bypass the buffer and write directly.
                 _writeBuf.DirectWrite(buffer, offset, count);
-                EnsureDataMessage();
             } catch {
                 _connector.Break();
                 Cleanup();
@@ -137,26 +137,7 @@ namespace Npgsql
         public override void Flush()
         {
             CheckDisposed();
-            if (!_writingDataMsg) { return; }
-
-            // Need to update the length for the CopyData about to be sent
-            var pos = _writeBuf.WritePosition;
-            _writeBuf.WritePosition = 1;
-            _writeBuf.WriteInt32(pos - 1);
-            _writeBuf.WritePosition = pos;
             _writeBuf.Flush();
-            _writingDataMsg = false;
-        }
-
-        void EnsureDataMessage()
-        {
-            if (_writingDataMsg) { return; }
-
-            Debug.Assert(_writeBuf.WritePosition == 0);
-            _writeBuf.WriteByte((byte)BackendMessageCode.CopyData);
-            // Leave space for the message length
-            _writeBuf.WriteInt32(0);
-            _writingDataMsg = true;
         }
 
         #endregion
@@ -226,6 +207,7 @@ namespace Npgsql
             if (CanWrite)
             {
                 _isDisposed = true;
+                _writeBuf.EndCopyMode();
                 _writeBuf.Clear();
                 _connector.SendMessage(new CopyFailMessage());
                 try
@@ -258,6 +240,7 @@ namespace Npgsql
             if (CanWrite)
             {
                 Flush();
+                _writeBuf.EndCopyMode();
                 _connector.SendMessage(CopyDoneMessage.Instance);
                 _connector.ReadExpecting<CommandCompleteMessage>();
                 _connector.ReadExpecting<ReadyForQueryMessage>();
