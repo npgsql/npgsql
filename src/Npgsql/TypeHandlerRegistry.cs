@@ -531,8 +531,7 @@ WHERE a.typtype = 'b' AND b.typname = @name{(withSchema ? " AND ns.nspname = @sc
                 // Couldn't find already activated type, attempt to activate
 
                 if (npgsqlDbType == NpgsqlDbType.Enum || npgsqlDbType == NpgsqlDbType.Composite)
-                    throw new InvalidCastException(string.Format("When specifying NpgsqlDbType.{0}, {0}Type must be specified as well",
-                                                    npgsqlDbType == NpgsqlDbType.Enum ? "Enum" : "Composite"));
+                    throw new InvalidCastException($"When specifying NpgsqlDbType.{nameof(NpgsqlDbType.Enum)}, {nameof(NpgsqlParameter.SpecificType)} must be specified as well");
 
                 // Base, range or array of base/range
                 PostgresType postgresType;
