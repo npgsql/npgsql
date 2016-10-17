@@ -23,6 +23,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
@@ -67,7 +68,8 @@ namespace Npgsql.TypeHandlers
     {
         readonly TypeHandlerRegistry _registry;
         readonly INpgsqlNameTranslator _nameTranslator;
-        List<RawCompositeField> _rawFields { get; set; }
+        List<RawCompositeField> _rawFields;
+        [CanBeNull]
         List<MemberDescriptor> _members;
 
         ReadBuffer _readBuf;
@@ -106,6 +108,8 @@ namespace Npgsql.TypeHandlers
 
         public override bool Read(out T result)
         {
+            Debug.Assert(_members != null);
+
             result = default(T);
 
             if (_fieldIndex == -1)
@@ -138,7 +142,7 @@ namespace Npgsql.TypeHandlers
 
                 // Get the field's type handler and read the value
                 var handler = fieldDescriptor.Handler;
-                object fieldValue = null;
+                object fieldValue;
 
                 if (handler is ISimpleTypeHandler)
                 {
@@ -177,15 +181,12 @@ namespace Npgsql.TypeHandlers
         public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter)
         {
             ResolveFieldsIfNeeded();
+            Debug.Assert(_members != null);
 
             if (lengthCache == null)
-            {
                 lengthCache = new LengthCache(1);
-            }
             if (lengthCache.IsPopulated)
-            {
                 return lengthCache.Get();
-            }
 
             // Leave empty slot for the entire composite type, and go ahead an populate the element slots
             var pos = lengthCache.Position;
@@ -205,6 +206,8 @@ namespace Npgsql.TypeHandlers
         protected override async Task Write(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter,
             bool async, CancellationToken cancellationToken)
         {
+            Debug.Assert(_members != null);
+
             var composite = (T)value;
 
             if (buf.WriteSpaceLeft < 4)
@@ -219,7 +222,7 @@ namespace Npgsql.TypeHandlers
                 if (buf.WriteSpaceLeft < 4)
                     await buf.Flush(async, cancellationToken);
 
-                buf.WriteUInt32(fieldHandler.PostgresType.OID);
+                buf.WriteUInt32(fieldDescriptor.OID);
                 await fieldHandler.WriteWithLength(fieldValue, buf, lengthCache, null, async, cancellationToken);
             }
         }
@@ -254,14 +257,14 @@ namespace Npgsql.TypeHandlers
                 var property = member as PropertyInfo;
                 if (property != null)
                 {
-                    _members.Add(new MemberDescriptor(rawField.PgName, handler, property));
+                    _members.Add(new MemberDescriptor(rawField.PgName, rawField.TypeOID, handler, property));
                     continue;
                 }
 
                 var field = member as FieldInfo;
                 if (field != null)
                 {
-                    _members.Add(new MemberDescriptor(rawField.PgName, handler, field));
+                    _members.Add(new MemberDescriptor(rawField.PgName, rawField.TypeOID, handler, field));
                     continue;
                 }
 
@@ -276,21 +279,26 @@ namespace Npgsql.TypeHandlers
             // ReSharper disable once NotAccessedField.Local
             // ReSharper disable once MemberCanBePrivate.Local
             internal readonly string PgName;
+            internal readonly uint OID;
             internal readonly TypeHandler Handler;
+            [CanBeNull]
             readonly PropertyInfo _property;
+            [CanBeNull]
             readonly FieldInfo _field;
 
-            internal MemberDescriptor(string pgName, TypeHandler handler, PropertyInfo property)
+            internal MemberDescriptor(string pgName, uint oid, TypeHandler handler, PropertyInfo property)
             {
                 PgName = pgName;
+                OID = oid;
                 Handler = handler;
                 _property = property;
                 _field = null;
             }
 
-            internal MemberDescriptor(string pgName, TypeHandler handler, FieldInfo field)
+            internal MemberDescriptor(string pgName, uint oid, TypeHandler handler, FieldInfo field)
             {
                 PgName = pgName;
+                OID = oid;
                 Handler = handler;
                 _property = null;
                 _field = field;
