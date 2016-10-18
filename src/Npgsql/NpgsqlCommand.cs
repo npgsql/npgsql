@@ -799,17 +799,6 @@ namespace Npgsql
             await sender(async, cancellationToken);
             _connector.WriteBuffer.CurrentCommand = null;
             SynchronizationContext.SetSynchronizationContext(null);
-
-            /*
-            return sender(async, cancellationToken).ContinueWith((t,o) =>
-            {
-                if (!t.IsFaulted)
-                {
-                    ((WriteBuffer)o).CurrentCommand = null;
-                    SynchronizationContext.SetSynchronizationContext(null);
-                }
-            }, _connector.WriteBuffer, cancellationToken);
-            */
         }
 
         /// <summary>
