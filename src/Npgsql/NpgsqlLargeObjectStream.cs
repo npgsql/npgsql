@@ -27,6 +27,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using AsyncRewriter;
 
@@ -71,8 +72,26 @@ namespace Npgsql
         /// <param name="offset">The offset in the buffer where the first byte should be read.</param>
         /// <param name="count">The maximum number of bytes that should be read.</param>
         /// <returns>How many bytes actually read, or 0 if end of file was already reached.</returns>
-        [RewriteAsync]
         public override int Read(byte[] buffer, int offset, int count)
+            => ReadInternal(buffer, offset, count);
+
+        /// <summary>
+        /// Reads <i>count</i> bytes from the large object. The only case when fewer bytes are read is when end of stream is reached.
+        /// </summary>
+        /// <param name="buffer">The buffer where read data should be stored.</param>
+        /// <param name="offset">The offset in the buffer where the first byte should be read.</param>
+        /// <param name="count">The maximum number of bytes that should be read.</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>How many bytes actually read, or 0 if end of file was already reached.</returns>
+        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            using (NoSynchronizationContextScope.Enter())
+                return await ReadInternalAsync(buffer, offset, count, cancellationToken);
+        }
+
+        [RewriteAsync]
+        int ReadInternal(byte[] buffer, int offset, int count)
         {
             if (buffer == null)
                 throw new ArgumentNullException(nameof(buffer));
@@ -107,8 +126,25 @@ namespace Npgsql
         /// <param name="buffer">The buffer to write data from.</param>
         /// <param name="offset">The offset in the buffer at which to begin copying bytes.</param>
         /// <param name="count">The number of bytes to write.</param>
-        [RewriteAsync]
         public override void Write(byte[] buffer, int offset, int count)
+            => WriteInternal(buffer, offset, count);
+
+        /// <summary>
+        /// Writes <i>count</i> bytes to the large object.
+        /// </summary>
+        /// <param name="buffer">The buffer to write data from.</param>
+        /// <param name="offset">The offset in the buffer at which to begin copying bytes.</param>
+        /// <param name="count">The number of bytes to write.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            using (NoSynchronizationContextScope.Enter())
+                await WriteInternalAsync(buffer, offset, count, cancellationToken);
+        }
+
+        [RewriteAsync]
+        void WriteInternal(byte[] buffer, int offset, int count)
         {
             if (buffer == null)
                 throw new ArgumentNullException(nameof(buffer));
@@ -203,8 +239,25 @@ namespace Npgsql
         /// <param name="offset">A byte offset relative to the <i>origin</i> parameter.</param>
         /// <param name="origin">A value of type SeekOrigin indicating the reference point used to obtain the new position.</param>
         /// <returns></returns>
-        [RewriteAsync]
         public override long Seek(long offset, SeekOrigin origin)
+            => SeekInternal(offset, origin);
+
+        /// <summary>
+        /// Seeks in the stream to the specified position. This requires a round-trip to the backend.
+        /// </summary>
+        /// <param name="offset">A byte offset relative to the <i>origin</i> parameter.</param>
+        /// <param name="origin">A value of type SeekOrigin indicating the reference point used to obtain the new position.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns></returns>
+        public async Task<long> SeekAsync(long offset, SeekOrigin origin, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            using (NoSynchronizationContextScope.Enter())
+                return await SeekInternalAsync(offset, origin, cancellationToken);
+        }
+
+        [RewriteAsync]
+        long SeekInternal(long offset, SeekOrigin origin)
         {
             if (origin < SeekOrigin.Begin || origin > SeekOrigin.End)
                 throw new ArgumentException("Invalid origin");
@@ -222,18 +275,31 @@ namespace Npgsql
         /// <summary>
         /// Does nothing.
         /// </summary>
-        [RewriteAsync]
-        public override void Flush()
-        {
-        }
+        public override void Flush() {}
 
         /// <summary>
         /// Truncates or enlarges the large object to the given size. If enlarging, the large object is extended with null bytes.
         /// For PostgreSQL versions earlier than 9.3, the value must fit in an Int32.
         /// </summary>
         /// <param name="value">Number of bytes to either truncate or enlarge the large object.</param>
-        [RewriteAsync]
         public override void SetLength(long value)
+            => SetLengthInternal(value);
+
+        /// <summary>
+        /// Truncates or enlarges the large object to the given size. If enlarging, the large object is extended with null bytes.
+        /// For PostgreSQL versions earlier than 9.3, the value must fit in an Int32.
+        /// </summary>
+        /// <param name="value">Number of bytes to either truncate or enlarge the large object.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        public async Task SetLength(long value, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            using (NoSynchronizationContextScope.Enter())
+                await SetLengthInternalAsync(value, cancellationToken);
+        }
+
+        [RewriteAsync]
+        void SetLengthInternal(long value)
         {
             if (value < 0)
                 throw new ArgumentOutOfRangeException(nameof(value));

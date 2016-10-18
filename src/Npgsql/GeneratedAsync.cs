@@ -95,6 +95,8 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Threading;
+using System.Threading.Tasks;
 #pragma warning disable
 using Npgsql.FrontendMessages;
 using System;
@@ -102,6 +104,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Threading;
 using System.Threading.Tasks;
@@ -999,36 +1002,17 @@ namespace Npgsql
             }
         }
 
-        public async Task<uint> CreateAsync(CancellationToken cancellationToken, uint preferredOid = 0)
-        {
-            return await ExecuteFunctionAsync<uint>("lo_create", cancellationToken, (int)preferredOid);
-        }
-
-        public async Task<NpgsqlLargeObjectStream> OpenReadAsync(uint oid, CancellationToken cancellationToken)
+        async Task<uint> CreateInternalAsync(uint preferredOid, CancellationToken cancellationToken) => await (ExecuteFunctionAsync<uint>("lo_create", cancellationToken, (int)preferredOid));
+        async Task<NpgsqlLargeObjectStream> OpenReadInternalAsync(uint oid, CancellationToken cancellationToken)
         {
             var fd = await (ExecuteFunctionAsync<int>("lo_open", cancellationToken, (int)oid, INV_READ));
             return new NpgsqlLargeObjectStream(this, oid, fd, false);
         }
 
-        public async Task<NpgsqlLargeObjectStream> OpenReadWriteAsync(uint oid, CancellationToken cancellationToken)
+        async Task<NpgsqlLargeObjectStream> OpenReadWriteInternalAsync(uint oid, CancellationToken cancellationToken)
         {
             var fd = await (ExecuteFunctionAsync<int>("lo_open", cancellationToken, (int)oid, INV_READ | INV_WRITE));
             return new NpgsqlLargeObjectStream(this, oid, fd, true);
-        }
-
-        public async Task UnlinkAsync(uint oid, CancellationToken cancellationToken)
-        {
-            await ExecuteFunctionAsync<object>("lo_unlink", cancellationToken, (int)oid);
-        }
-
-        public async Task ExportRemoteAsync(uint oid, string path, CancellationToken cancellationToken)
-        {
-            await ExecuteFunctionAsync<object>("lo_export", cancellationToken, (int)oid, path);
-        }
-
-        public async Task ImportRemoteAsync(string path, CancellationToken cancellationToken, uint oid = 0)
-        {
-            await ExecuteFunctionAsync<object>("lo_import", cancellationToken, path, (int)oid);
         }
     }
 
@@ -1038,7 +1022,7 @@ namespace Npgsql
     /// </summary>
     public sealed partial class NpgsqlLargeObjectStream
     {
-        public async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        async Task<int> ReadInternalAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
             if (buffer == null)
                 throw new ArgumentNullException(nameof(buffer));
@@ -1065,7 +1049,7 @@ namespace Npgsql
             return read;
         }
 
-        public async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        async Task WriteInternalAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
             if (buffer == null)
                 throw new ArgumentNullException(nameof(buffer));
@@ -1100,7 +1084,7 @@ namespace Npgsql
             return retval;
         }
 
-        public async Task<long> SeekAsync(long offset, SeekOrigin origin, CancellationToken cancellationToken)
+        async Task<long> SeekInternalAsync(long offset, SeekOrigin origin, CancellationToken cancellationToken)
         {
             if (origin < SeekOrigin.Begin || origin > SeekOrigin.End)
                 throw new ArgumentException("Invalid origin");
@@ -1113,11 +1097,7 @@ namespace Npgsql
                 return _pos = await (_manager.ExecuteFunctionAsync<int>("lo_lseek", cancellationToken, _fd, (int)offset, (int)origin));
         }
 
-        public async Task FlushAsync(CancellationToken cancellationToken)
-        {
-        }
-
-        public async Task SetLengthAsync(long value, CancellationToken cancellationToken)
+        async Task SetLengthInternalAsync(long value, CancellationToken cancellationToken)
         {
             if (value < 0)
                 throw new ArgumentOutOfRangeException(nameof(value));
