@@ -101,8 +101,6 @@ ORDER BY attnum";
 
                             // The column's ordinal is with respect to the resultset, not its table
                             column.ColumnOrdinal = ordinal;
-                            // Overwrite the column's DataType because the field provides more information about it
-                            column.DataType = field.FieldType;
 
                             result[ordinal] = column;
                         }
