@@ -410,6 +410,25 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1305")]
+        public void DataTypeUnknownType()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo INTEGER)");
+
+                using (var cmd = new NpgsqlCommand("SELECT foo::INTEGER FROM data", conn))
+                {
+                    cmd.AllResultTypesAreUnknown = true;
+                    using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                    {
+                        var columns = reader.GetColumnSchema();
+                        Assert.That(columns[0].DataType, Is.SameAs(typeof(int)));
+                    }
+                }
+            }
+        }
+
         [Test]
         public void DataTypeWithComposite()
         {
