@@ -1458,7 +1458,7 @@ namespace Npgsql
             if (string.IsNullOrEmpty(dbName))
                 throw new ArgumentOutOfRangeException(nameof(dbName), dbName, $"Invalid database name: {dbName}");
 
-            CheckNotDisposed();
+            CheckConnectionOpen();
             Debug.Assert(Connector != null);
             Log.Debug("Changing database to " + dbName, Connector.Id);
 
