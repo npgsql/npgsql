@@ -565,6 +565,8 @@ namespace Npgsql.Tests
             }
         }
 
+        #region ChangeDatabase
+
         [Test]
         public void ChangeDatabase()
         {
@@ -592,6 +594,17 @@ namespace Npgsql.Tests
                 Assert.That(conn2.ExecuteScalar("SELECT current_database()"), Is.Not.EqualTo(conn1.Database));
             }
         }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1331")]
+        public void ChangeDatabaseConnectionNotOpen()
+        {
+            using (var conn = new NpgsqlConnection(ConnectionString))
+                Assert.That(() => conn.ChangeDatabase("template1"), Throws.Exception
+                    .TypeOf<InvalidOperationException>()
+                    .With.Message.EqualTo("Connection is not open"));
+        }
+
+        #endregion
 
         [Test]
         public void NestedTransaction()
