@@ -588,23 +588,19 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void ChangeDatabaseTestConnectionCache()
+        public void ChangeDatabaseDoesNotAffectOtherConnections()
         {
             using (var conn1 = new NpgsqlConnection(ConnectionString))
             using (var conn2 = new NpgsqlConnection(ConnectionString))
             {
-                //    connection 1 change database
+                // Connection 1 changes database
                 conn1.Open();
                 conn1.ChangeDatabase("template1");
-                var command = new NpgsqlCommand("select current_database()", conn1);
-                var db1 = (String)command.ExecuteScalar();
-                Assert.AreEqual("template1", db1);
+                Assert.That(conn1.ExecuteScalar("SELECT current_database()"), Is.EqualTo("template1"));
 
-                //    connection 2 's database should not changed, so should different from conn1
+                // Connection 2's database should not changed
                 conn2.Open();
-                command = new NpgsqlCommand("select current_database()", conn2);
-                var db2 = (String)command.ExecuteScalar();
-                Assert.AreNotEqual(db1, db2);
+                Assert.That(conn2.ExecuteScalar("SELECT current_database()"), Is.Not.EqualTo(conn1.Database));
             }
         }
 
