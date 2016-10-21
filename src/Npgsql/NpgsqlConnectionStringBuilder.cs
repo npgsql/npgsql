@@ -1064,20 +1064,18 @@ namespace Npgsql
         }
 
         readonly object _connectionStringWithoutPasswordLocker = new object();
+        [CanBeNull]
         string _connectionStringWithoutPassword;
 
-        internal NpgsqlConnectionStringBuilder Clone()
-        {
-            return new NpgsqlConnectionStringBuilder(ConnectionString);
-        }
+        internal NpgsqlConnectionStringBuilder Clone() => new NpgsqlConnectionStringBuilder(ConnectionString);
 
         /// <summary>
         /// Determines whether the specified object is equal to the current object.
         /// </summary>
-        public override bool Equals([CanBeNull] object obj)
+        public override bool Equals(object obj)
         {
             var o = obj as NpgsqlConnectionStringBuilder;
-            return o != null && o.ConnectionString == ConnectionString;
+            return o != null && EquivalentTo(o);
         }
 
         /// <summary>
