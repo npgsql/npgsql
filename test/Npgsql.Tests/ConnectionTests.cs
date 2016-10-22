@@ -617,33 +617,6 @@ namespace Npgsql.Tests
 
         #endregion
 
-        [Test]
-        public void NestedTransaction()
-        {
-            using (var conn = OpenConnection())
-            {
-                conn.BeginTransaction();
-                Assert.That(() => conn.BeginTransaction(), Throws.TypeOf<NotSupportedException>());
-            }
-        }
-
-        [Test]
-        public void BeginTransactionBeforeOpen()
-        {
-            using (var conn = new NpgsqlConnection())
-                Assert.That(() => conn.BeginTransaction(), Throws.Exception.TypeOf<InvalidOperationException>());
-        }
-
-        [Test]
-        public void SequencialTransaction()
-        {
-            using (var conn = OpenConnection())
-            {
-                conn.BeginTransaction().Rollback();
-                conn.BeginTransaction();
-            }
-        }
-
         [Test, Description("Tests closing a connector while a reader is open")]
         [TestCase(true)]
         [TestCase(false)]

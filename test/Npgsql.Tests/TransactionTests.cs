@@ -232,6 +232,23 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        public void Nested()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.BeginTransaction();
+                Assert.That(() => conn.BeginTransaction(), Throws.TypeOf<NotSupportedException>());
+            }
+        }
+
+        [Test]
+        public void BeginTransactionBeforeOpen()
+        {
+            using (var conn = new NpgsqlConnection())
+                Assert.That(() => conn.BeginTransaction(), Throws.Exception.TypeOf<InvalidOperationException>());
+        }
+
+        [Test]
         public void RollbackFailedTransactionWithTimeout()
         {
             using (var conn = OpenConnection())
