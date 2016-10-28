@@ -107,14 +107,6 @@
       </dependency>
     </artifact-dependencies>
     <dependencies>
-      <depend-on sourceBuildTypeId="npgsql_TestOnWindowsNetFrameworkOnPostgreSQL91">
-        <options>
-          <option name="run-build-if-dependency-failed" value="CANCEL" />
-          <option name="run-build-if-dependency-failed-to-start" value="CANCEL" />
-          <option name="take-started-build-with-same-revisions" value="true" />
-          <option name="take-successful-builds-only" value="true" />
-        </options>
-      </depend-on>
       <depend-on sourceBuildTypeId="npgsql_TestOnWindowsNetFrameworkOnPostgreSQL92">
         <options>
           <option name="run-build-if-dependency-failed" value="CANCEL" />
@@ -159,13 +151,6 @@
         <options>
           <option name="run-build-if-dependency-failed" value="CANCEL" />
           <option name="run-build-if-dependency-failed-to-start" value="CANCEL" />
-          <option name="take-started-build-with-same-revisions" value="true" />
-          <option name="take-successful-builds-only" value="true" />
-        </options>
-      </depend-on>
-      <depend-on sourceBuildTypeId="npgsql_TestLinuxCoreCLROnPostgreSQL91">
-        <options>
-          <option name="run-build-if-dependency-failed" value="RUN_ADD_PROBLEM" />
           <option name="take-started-build-with-same-revisions" value="true" />
           <option name="take-successful-builds-only" value="true" />
         </options>
