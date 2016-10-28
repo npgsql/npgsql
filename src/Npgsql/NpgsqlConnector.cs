@@ -623,6 +623,7 @@ namespace Npgsql
                         continue;
                     }
                     socket.Blocking = true;
+                    socket.NoDelay = true;
                     _socket = socket;
                     return;
                 }
