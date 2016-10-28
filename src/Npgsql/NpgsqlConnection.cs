@@ -1437,7 +1437,7 @@ namespace Npgsql
                 throw new ArgumentOutOfRangeException(nameof(dbName), dbName, $"Invalid database name: {dbName}");
             Contract.EndContractBlock();
 
-            CheckNotDisposed();
+            CheckConnectionOpen();
             Log.Debug("Changing database to " + dbName, Connector.Id);
 
             Close();
