@@ -207,6 +207,21 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
+        [TestCase(double.NaN)]
+        [TestCase(double.PositiveInfinity)]
+        [TestCase(double.NegativeInfinity)]
+        public void DoubleSpecial(double value)
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+            {
+                cmd.Parameters.AddWithValue("p", NpgsqlDbType.Double, value);
+                var actual = cmd.ExecuteScalar();
+                Assert.That(actual, Is.EqualTo(value));
+            }
+        }
+
+        [Test]
         public void Float()
         {
             const float expected = .123456F;
@@ -230,6 +245,21 @@ namespace Npgsql.Tests.Types
                         Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(float)));
                     }
                 }
+            }
+        }
+
+        [Test]
+        [TestCase(double.NaN)]
+        [TestCase(double.PositiveInfinity)]
+        [TestCase(double.NegativeInfinity)]
+        public void DoubleFloat(double value)
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+            {
+                cmd.Parameters.AddWithValue("p", NpgsqlDbType.Real, value);
+                var actual = cmd.ExecuteScalar();
+                Assert.That(actual, Is.EqualTo(value));
             }
         }
 
