@@ -15,11 +15,13 @@ namespace Npgsql.Schema
     {
         readonly RowDescriptionMessage _rowDescription;
         readonly NpgsqlConnection _connection;
+        readonly bool _fetchAdditionalInfo;
 
-        internal DbColumnSchemaGenerator(NpgsqlConnection connection, RowDescriptionMessage rowDescription)
+        internal DbColumnSchemaGenerator(NpgsqlConnection connection, RowDescriptionMessage rowDescription, bool fetchAdditionalInfo)
         {
             _connection = connection;
             _rowDescription = rowDescription;
+            _fetchAdditionalInfo = fetchAdditionalInfo;
         }
 
         const string GetColumnsQuery = @"
@@ -68,14 +70,14 @@ ORDER BY attnum";
 
             // We have two types of fields - those which correspond to actual database columns
             // and those that don't (e.g. SELECT 8). For the former we load lots of info from
-            // the backend, for the latter we only have the RowDescription
+            // the backend (if fetchAdditionalInfo is true), for the latter we only have the RowDescription
 
             var columnFieldFilter = _rowDescription.Fields
                 .Where(f => f.TableOID != 0)  // Only column fields
                 .Select(c => $"(attr.attrelid={c.TableOID} AND attr.attnum={c.ColumnAttributeNumber})")
                 .Join(" OR ");
 
-            if (columnFieldFilter != "")
+            if (_fetchAdditionalInfo && columnFieldFilter != "")
             {
                 var query = string.Format(GetColumnsQuery, columnFieldFilter);
 
@@ -116,7 +118,7 @@ ORDER BY attnum";
                 }
             }
 
-            // We had some fields which don't correspond to regular table columns
+            // We had some fields which don't correspond to regular table columns (or fetchAdditionalInfo is false).
             // Fill in whatever info we have from the RowDescription itself
             for (var i = 0; i < fields.Count; i++)
             {
