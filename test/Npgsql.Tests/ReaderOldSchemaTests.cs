@@ -152,7 +152,7 @@ namespace Npgsql.Tests
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (nullable INTEGER, non_nullable INTEGER NOT NULL)");
 
                 using (var cmd = new NpgsqlCommand("SELECT * FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
                 using (var metadata = reader.GetSchemaTable())
                 {
                     foreach (DataRow row in metadata.Rows)

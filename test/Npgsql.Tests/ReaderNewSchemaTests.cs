@@ -46,7 +46,7 @@ namespace Npgsql.Tests
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (nullable INTEGER, non_nullable INTEGER NOT NULL)");
 
                 using (var cmd = new NpgsqlCommand("SELECT nullable,non_nullable,8 FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
                 {
                     var columns = reader.GetColumnSchema();
                     Assert.That(columns[0].AllowDBNull, Is.True);
@@ -101,7 +101,7 @@ namespace Npgsql.Tests
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo INTEGER)");
 
                 using (var cmd = new NpgsqlCommand("SELECT foo,8 FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
                 {
                     var columns = reader.GetColumnSchema();
                     Assert.That(columns[0].BaseSchemaName, Does.StartWith("pg_temp"));
@@ -136,7 +136,7 @@ namespace Npgsql.Tests
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo INTEGER)");
 
                 using (var cmd = new NpgsqlCommand("SELECT foo,8 FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
                 {
                     var columns = reader.GetColumnSchema();
                     Assert.That(columns[0].BaseTableName, Is.EqualTo("data"));
@@ -191,7 +191,7 @@ namespace Npgsql.Tests
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (first INTEGER, second INTEGER)");
 
                 using (var cmd = new NpgsqlCommand("SELECT second,first FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
                 {
                     var columns = reader.GetColumnSchema();
                     Assert.That(columns[0].ColumnName, Is.EqualTo("second"));
@@ -229,7 +229,7 @@ namespace Npgsql.Tests
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (inc SERIAL, non_inc INT)");
 
                 using (var cmd = new NpgsqlCommand("SELECT inc,non_inc,8 FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
                 {
                     var columns = reader.GetColumnSchema();
                     Assert.That(columns[0].IsAutoIncrement, Is.True);
@@ -247,7 +247,7 @@ namespace Npgsql.Tests
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (id INT PRIMARY KEY, non_id INT, uniq INT UNIQUE)");
 
                 using (var cmd = new NpgsqlCommand("SELECT id,non_id,uniq,8 FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
                 {
                     var columns = reader.GetColumnSchema();
                     Assert.That(columns[0].IsKey, Is.True);
@@ -271,7 +271,7 @@ namespace Npgsql.Tests
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (id1 INT, id2 INT, PRIMARY KEY (id1, id2))");
 
                 using (var cmd = new NpgsqlCommand("SELECT id1,id2 FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
                 {
                     var columns = reader.GetColumnSchema();
                     Assert.That(columns[0].IsKey, Is.True);
@@ -311,7 +311,7 @@ namespace Npgsql.Tests
                 try
                 {
                     using (var cmd = new NpgsqlCommand("SELECT foo,bar FROM view,data", conn))
-                    using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                    using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
                     {
                         var columns = reader.GetColumnSchema();
                         Assert.That(columns[0].IsReadOnly, Is.True);
@@ -344,7 +344,7 @@ namespace Npgsql.Tests
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (id INT PRIMARY KEY, non_id INT, uniq INT UNIQUE)");
 
                 using (var cmd = new NpgsqlCommand("SELECT id,non_id,uniq,8 FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
                 {
                     var columns = reader.GetColumnSchema();
                     Assert.That(columns[0].IsUnique, Is.True);
@@ -500,7 +500,7 @@ namespace Npgsql.Tests
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (with_default INTEGER DEFAULT(8), without_default INTEGER)");
 
                 using (var cmd = new NpgsqlCommand("SELECT with_default,without_default,8 FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
                 {
                     var columns = reader.GetColumnSchema();
                     Assert.That(columns[0].DefaultValue, Is.EqualTo("8"));
@@ -518,7 +518,7 @@ namespace Npgsql.Tests
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data1 (foo INTEGER); CREATE TEMP TABLE data2 (foo INTEGER)");
 
                 using (var cmd = new NpgsqlCommand("SELECT data1.foo,data2.foo FROM data1,data2", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
                 {
                     var columns = reader.GetColumnSchema();
                     Assert.That(columns[0].ColumnName, Is.EqualTo("foo"));
