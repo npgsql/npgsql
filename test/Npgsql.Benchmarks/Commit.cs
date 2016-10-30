@@ -7,7 +7,9 @@ using System.Threading.Tasks;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
+#if NET46
 using BenchmarkDotNet.Diagnostics.Windows;
+#endif
 
 namespace Npgsql.Benchmarks
 {
