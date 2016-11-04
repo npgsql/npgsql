@@ -26,6 +26,10 @@ namespace Npgsql.TypeHandlers
         typeof(PostgisGeometryCollection),
     })]
     class PostgisGeometryHandler : ChunkingTypeHandler<PostgisGeometry>,
+        IChunkingTypeHandler<PostgisPoint>, IChunkingTypeHandler<PostgisMultiPoint>,
+        IChunkingTypeHandler<PostgisLineString>, IChunkingTypeHandler<PostgisMultiLineString>,
+        IChunkingTypeHandler<PostgisPolygon>, IChunkingTypeHandler<PostgisMultiPolygon>,
+        IChunkingTypeHandler<PostgisGeometryCollection>,
         IChunkingTypeHandler<byte[]>
     {
         uint? _srid;
@@ -351,6 +355,30 @@ namespace Npgsql.TypeHandlers
         }
 
         #endregion Read
+
+        #region Read concrete types
+
+        bool ReadConcrete<T>(out T result) where T : PostgisGeometry
+        {
+            PostgisGeometry geometry;
+            if (!Read(out geometry))
+            {
+                result = default(T);
+                return false;
+            }
+            result = (T)geometry;
+            return true;
+        }
+
+        public bool Read(out PostgisPoint result)              => ReadConcrete(out result);
+        public bool Read(out PostgisMultiPoint result)         => ReadConcrete(out result);
+        public bool Read(out PostgisLineString result)         => ReadConcrete(out result);
+        public bool Read(out PostgisMultiLineString result)    => ReadConcrete(out result);
+        public bool Read(out PostgisPolygon result)            => ReadConcrete(out result);
+        public bool Read(out PostgisMultiPolygon result)       => ReadConcrete(out result);
+        public bool Read(out PostgisGeometryCollection result) => ReadConcrete(out result);
+
+        #endregion
 
         #region Write
 
