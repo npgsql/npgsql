@@ -49,6 +49,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AutoPrepareTests.cs" />
     <Compile Include="BugTests.cs" />
     <Compile Include="CommandBuilderTests.cs" />
     <Compile Include="PerformanceCounterTests.cs" />

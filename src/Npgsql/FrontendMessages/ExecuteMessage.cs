@@ -31,7 +31,9 @@ namespace Npgsql.FrontendMessages
 {
     class ExecuteMessage : SimpleFrontendMessage
     {
-        internal string Portal { get; private set; }
+        internal static readonly ExecuteMessage DefaultExecute = new ExecuteMessage();
+
+        internal string Portal { get; private set; } = "";
         internal int MaxRows { get; private set; }
 
         const byte Code = (byte)'E';

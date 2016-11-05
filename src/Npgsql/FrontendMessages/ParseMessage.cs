@@ -55,12 +55,12 @@ namespace Npgsql.FrontendMessages
             ParameterTypeOIDs = new List<uint>();
         }
 
-        internal ParseMessage Populate(NpgsqlStatement statement, TypeHandlerRegistry typeHandlerRegistry)
+        internal ParseMessage Populate(string sql, string statementName, List<NpgsqlParameter> inputParameters, TypeHandlerRegistry typeHandlerRegistry)
         {
             ParameterTypeOIDs.Clear();
-            Query = statement.SQL;
-            Statement = statement.PreparedStatementName ?? "";
-            foreach (var inputParam in statement.InputParameters) {
+            Query = sql;
+            Statement = statementName;
+            foreach (var inputParam in inputParameters) {
                 inputParam.ResolveHandler(typeHandlerRegistry);
                 ParameterTypeOIDs.Add(inputParam.Handler.PostgresType.OID);
             }

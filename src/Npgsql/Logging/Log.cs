@@ -39,8 +39,10 @@ namespace Npgsql.Logging
         static readonly Action<ILogger, int, Exception> _startUserAction = LoggerMessage.Define<int>(LogLevel.Trace, NpgsqlEventId.StartUserAction, "[{ConnectorId}] Start user action");
         static readonly Action<ILogger, int, Exception> _endUserAction = LoggerMessage.Define<int>(LogLevel.Trace, NpgsqlEventId.EndUserAction, "[{ConnectorId}] End user action");
         static readonly Action<ILogger, int, string, Exception> _executingInternalCommand = LoggerMessage.Define<int, string>(LogLevel.Trace, NpgsqlEventId.ExecutingInternalCommand, "[{ConnectorId}] Executing internal command: {Message}");
-        static readonly Action<ILogger, int, bool, string, Exception> _preparing = LoggerMessage.Define<int, bool, string>(LogLevel.Debug, NpgsqlEventId.Preparing, "[{ConnectorId}] Preparing (persistent={IsPersistent}): {Sql}");
+        static readonly Action<ILogger, int, string, Exception> _preparing = LoggerMessage.Define<int, string>(LogLevel.Debug, NpgsqlEventId.Preparing, "[{ConnectorId}] Preparing: {Sql}");
         static readonly Action<ILogger, int, Exception> _readerCleanup = LoggerMessage.Define<int>(LogLevel.Trace, NpgsqlEventId.ReaderCleanup, "[{ConnectorId}] Cleaning up reader");
+        static readonly Action<ILogger, int, string, Exception> _autoPrepareing = LoggerMessage.Define<int, string>(LogLevel.Trace, NpgsqlEventId.AutoPreparing, "[{ConnectorId}] Automatically preparing statement: {Sql}");
+        static readonly Action<ILogger, int, Exception> _closingCommandPreparedStatements = LoggerMessage.Define<int>(LogLevel.Debug, NpgsqlEventId.ClosingCommandPreparedStatements, "[{ConnectorId}] Closing command's prepared statements");
 
         // Transactions
         static readonly Action<ILogger, int, IsolationLevel, Exception> _beginningTransaction = LoggerMessage.Define<int, IsolationLevel>(LogLevel.Debug, NpgsqlEventId.BeginningTransaction, "[{ConnectorId}] Beginning transaction with isolation level {IsolationLevel}");
@@ -94,8 +96,10 @@ namespace Npgsql.Logging
         internal static void StartUserAction(int connectorId) => _startUserAction(Logger, connectorId, null);
         internal static void EndUserAction(int connectorId) => _endUserAction(Logger, connectorId, null);
         internal static void ExecutingInternalCommand(int connectorId, FrontendMessage message) => _executingInternalCommand(Logger, connectorId, message.ToString(), null);
-        internal static void Preparing(int connectorId, bool isPersistent, string sql) => _preparing(Logger, connectorId, isPersistent, sql, null);
+        internal static void Preparing(int connectorId, string sql) => _preparing(Logger, connectorId, sql, null);
         internal static void ReaderCleanup(int connectorId) => _readerCleanup(Logger, connectorId, null);
+        internal static void AutoPreparing(int connectorId, string sql) => _autoPrepareing(Logger, connectorId, sql, null);
+        internal static void ClosingCommandPreparedStatements(int connectorId) => _closingCommandPreparedStatements(Logger, connectorId, null);
 
         // Transactions
         internal static void BeginningTransaction(int connectorId, IsolationLevel isolationLevel) => _beginningTransaction(Logger, connectorId, isolationLevel, null);

@@ -607,17 +607,12 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void SchemaOnlyCommandBehaviorSupport()
+        public void SchemaOnlyReturnsNoData()
         {
             using (var conn = OpenConnection())
-            using (var command = new NpgsqlCommand("SELECT 1", conn))
-            using (var dr = command.ExecuteReader(CommandBehavior.SchemaOnly))
-            {
-                var i = 0;
-                while (dr.Read())
-                    i++;
-                Assert.AreEqual(0, i);
-            }
+            using (var cmd = new NpgsqlCommand("SELECT 1", conn))
+            using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                Assert.That(reader.Read(), Is.False);
         }
 
         [Test]

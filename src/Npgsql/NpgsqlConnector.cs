@@ -67,7 +67,7 @@ namespace Npgsql
         /// </summary>
         Stream _stream;
 
-        internal NpgsqlConnectionStringBuilder Settings { get; private set; }
+        internal NpgsqlConnectionStringBuilder Settings { get; }
 
         /// <summary>
         /// Contains the clear text password which was extracted from the user-provided connection string.
@@ -147,6 +147,8 @@ namespace Npgsql
         [CanBeNull]
         internal NpgsqlDataReader CurrentReader;
 
+        internal PreparedStatementManager PreparedStatementManager;
+
         /// <summary>
         /// If the connector is currently in COPY mode, holds a reference to the importer/exporter object.
         /// Otherwise null.
@@ -210,14 +212,6 @@ namespace Npgsql
         [CanBeNull]
         NpgsqlCommand _currentCommand;
 
-        internal HashSet<string> PreparedStatements { get; } = new HashSet<string>();
-
-        /// <summary>
-        /// For all persistent prepared statements, maps their SQL to their prepared statement info.
-        /// </summary>
-        internal Dictionary<string, PreparedStatementInfo> PersistentPreparedStatements { get; }
-            = new Dictionary<string, PreparedStatementInfo>();
-
         /// <summary>
         /// If pooled, the timestamp when this connector was returned to the pool.
         /// </summary>
@@ -241,7 +235,6 @@ namespace Npgsql
         // Frontend
         internal readonly BindMessage     BindMessage     = new BindMessage();
         internal readonly DescribeMessage DescribeMessage = new DescribeMessage();
-        internal readonly ExecuteMessage  ExecuteMessage  = new ExecuteMessage();
         internal readonly CloseMessage    CloseMessage    = new CloseMessage();
         // ParseMessage and QueryMessage depend on the encoding, which isn't known until open-time
         internal ParseMessage ParseMessage;
@@ -286,7 +279,6 @@ namespace Npgsql
             Settings = connectionString;
             _password = password;
             BackendParams = new Dictionary<string, string>();
-            _preparedStatementIndex = 0;
 
             _userLock = new SemaphoreSlim(1, 1);
             CancelLock = new object();
@@ -295,6 +287,9 @@ namespace Npgsql
                 _keepAliveTimer = new Timer(PerformKeepAlive, null, Timeout.Infinite, Timeout.Infinite);
                 _keepAliveLock = new SemaphoreSlim(1, 1);
             }
+
+            // TODO: Not just for automatic preparation anymore...
+            PreparedStatementManager = new PreparedStatementManager(this);
         }
 
         #endregion
@@ -417,8 +412,9 @@ namespace Npgsql
                 ReadExpecting<ReadyForQueryMessage>();
                 State = ConnectorState.Ready;
 
-                GenerateResetMessage();
                 TypeHandlerRegistry.Setup(this, timeout);
+                if (Settings.Pooling)
+                    GenerateResetMessage();
                 Counters.HardConnectsPerSecond.Increment();
                 Log.OpenedConnection(Id, Host, Port);
             }
@@ -1454,85 +1450,29 @@ namespace Npgsql
 
             if (!Settings.NoResetOnClose)
             {
-                if (PersistentPreparedStatements.Count > 0)
+                if (PreparedStatementManager.NumPrepared > 0)
                 {
-                    // We have persistent prepared statements, so we can't reset the connection state with DISCARD ALL
+                    // We have prepared statements, so we can't reset the connection state with DISCARD ALL
                     // Note: the send buffer has been cleared above, and we assume all this will fit in it.
+                    Debug.Assert(_resetWithoutDeallocateMessage != null);
                     PrependInternalMessage(_resetWithoutDeallocateMessage);
-
-                    // This needs to come last, because it can produce an arbitrary number of messages, possibly sending
-                    // them now if they are larger than the buffer.
-                    ClosePreparedStatements();
                 }
                 else
                 {
-                    // There are no persistent prepared statements.
+                    // There are no prepared statements.
                     // We simply send DISCARD ALL which is more efficient than sending the above messages separately
                     PrependInternalMessage(PregeneratedMessage.DiscardAll);
-                    PreparedStatements.Clear();
                 }
             }
         }
 
-        /// <summary>
-        /// Closes (deallocates) all non-persisted prepared statements.
-        /// </summary>
-        /// <remarks>
-        /// If possible, this method will prepend Close messages in the buffer, without sending - this will
-        /// delay sending until the next command is sent and will save a roundtrip.
-        /// However, if there are many prepared statements and their Closes won't fit in a single buffer,
-        /// this function actually sends the messages and processes the responses.
-        /// </remarks>
-        void ClosePreparedStatements()
+        internal void UnprepareAll()
         {
-            _preparedStatementIndex = 0;
-            if (PreparedStatements.Count == 0)
-                return;
+            ExecuteInternalCommand("DEALLOCATE ALL");
+            PreparedStatementManager.ClearAll();
+        }
 
-            foreach (var statement in PreparedStatements)
-            {
-                CloseMessage
-                    .Populate(StatementOrPortal.Statement, statement)
-                    .Write(WriteBuffer, false, CancellationToken.None)
-                    .Wait();
-            }
-            SyncMessage.Instance.Write(WriteBuffer, false, CancellationToken.None).Wait();
-
-            // TODO: Bring this optimization back
-            /*
-            var flushing = false;
-            foreach (var statement in PreparedStatements)
-            {
-                CloseMessage.Populate(StatementOrPortal.Statement, statement);
-                if (!CloseMessage.Write(WriteBuffer))
-                {
-                    WriteBuffer.Flush();
-                    flushing = true;
-                    var written = CloseMessage.Write(WriteBuffer);
-                    Debug.Assert(written);
-                }
-                _pendingPrependedResponses += CloseMessage.ResponseMessageCount;
-            }
-            if (!SyncMessage.Instance.Write(WriteBuffer))
-            {
-                WriteBuffer.Flush();
-                flushing = true;
-                var written = SyncMessage.Instance.Write(WriteBuffer);
-                Debug.Assert(written);
-            }
-
-            if (flushing)
-            {
-                WriteBuffer.Flush();
-                ReadPrependedMessages();
-            }
-
-            _pendingPrependedResponses += SyncMessage.Instance.ResponseMessageCount;
-            PreparedStatements.Clear();
-            */
-            }
-
-        #endregion Close
+        #endregion Close / Reset
 
         #region Locking
 
@@ -1959,12 +1899,6 @@ namespace Npgsql
             }
         }
 
-        internal string NextPreparedStatementName() => "_p" + (++_preparedStatementIndex);
-        internal string NextPersistentPreparedStatementName() => "_pp" + (++_persistentPreparedStatementIndex);
-
-        ulong _preparedStatementIndex;
-        ulong _persistentPreparedStatementIndex;
-
         #endregion Misc
     }
 
@@ -2063,12 +1997,6 @@ namespace Npgsql
         /// Skip DataRow messages altogether
         /// </summary>
         Skip
-    }
-
-    struct PreparedStatementInfo
-    {
-        internal string Name;
-        internal RowDescriptionMessage Description;
     }
 
     #endregion

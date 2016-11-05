@@ -1,4 +1,6 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics;
+using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 
 namespace Npgsql
@@ -46,33 +48,60 @@ namespace Npgsql
         /// <summary>
         /// The RowDescription message for this query. If null, the query does not return rows (e.g. INSERT)
         /// </summary>
-        internal RowDescriptionMessage Description;
+        [CanBeNull]
+        internal RowDescriptionMessage Description
+        {
+            get { return PreparedStatement == null ? _description : PreparedStatement.Description; }
+            set
+            {
+                if (PreparedStatement == null)
+                    _description = value;
+                else
+                    PreparedStatement.Description = value;
+            }
+        }
+
+        [CanBeNull]
+        RowDescriptionMessage _description;
 
         /// <summary>
-        /// For prepared statements, holds the server-side prepared statement name.
+        /// If this statement has been automatically prepared, references the <see cref="PreparedStatement"/>.
+        /// Null otherwise.
         /// </summary>
-        internal string PreparedStatementName;
+        [CanBeNull]
+        internal PreparedStatement PreparedStatement
+        {
+            get
+            {
+                if (_preparedStatement != null && _preparedStatement.State == PreparedState.Unprepared)
+                    _preparedStatement = null;
+                return _preparedStatement;
+            }
+            set { _preparedStatement = value; }
+        }
+
+        [CanBeNull]
+        PreparedStatement _preparedStatement;
 
         /// <summary>
-        /// Whether this statement has already been prepared.
+        /// Holds the server-side (prepared) statement name. Empty string for non-prepared statements.
         /// </summary>
-        internal bool IsPrepared;
+        internal string StatementName => PreparedStatement?.Name ?? "";
+
+        /// <summary>
+        /// Whether this statement has already been prepared (including automatic preparation).
+        /// </summary>
+        internal bool IsPrepared => PreparedStatement?.IsPrepared == true;
 
         internal void Reset()
         {
             SQL = string.Empty;
             StatementType = StatementType.Select;
+            _description = null;
             Rows = 0;
             OID = 0;
             InputParameters.Clear();
-            Unprepare();
-        }
-
-        internal void Unprepare()
-        {
-            Description = null;
-            PreparedStatementName = null;
-            IsPrepared = false;
+            PreparedStatement = null;
         }
 
         internal void ApplyCommandComplete(CommandCompleteMessage msg)

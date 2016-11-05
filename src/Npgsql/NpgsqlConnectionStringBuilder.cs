@@ -931,22 +931,50 @@ namespace Npgsql
         int _writeBufferSize;
 
         /// <summary>
-        /// If set to true, prepared statements are persisted when a pooled connection is closed for later use.
+        /// The maximum number SQL statements that can be automatically prepared at any given point.
+        /// Beyond this number the least-recently-used statement will be recycled.
+        /// Zero (the default) disables automatic preparation.
         /// </summary>
         [Category("Advanced")]
-        [Description("If set to true, prepared statements are persisted when a pooled connection is closed for later use.")]
-        [DisplayName("Persist Prepared")]
+        [Description("The maximum number SQL statements that can be automatically prepared at any given point. Beyond this number the least-recently-used statement will be recycled. Zero (the default) disables automatic preparation.")]
+        [DisplayName("Max Auto Prepare")]
         [NpgsqlConnectionStringProperty]
-        public bool PersistPrepared
+        public int MaxAutoPrepare
         {
-            get { return _persistPrepared; }
+            get { return _maxAutoPrepare; }
             set
             {
-                _persistPrepared = value;
-                SetValue(nameof(PersistPrepared), value);
+                if (value < 0)
+                    throw new ArgumentOutOfRangeException(nameof(value), value, $"{nameof(MaxAutoPrepare)} cannot be negative");
+
+                _maxAutoPrepare = value;
+                SetValue(nameof(MaxAutoPrepare), value);
             }
         }
-        bool _persistPrepared;
+        int _maxAutoPrepare;
+
+        /// <summary>
+        /// The minimum number of usages an SQL statement is used before it's automatically prepared.
+        /// Defaults to 5.
+        /// </summary>
+        [Category("Advanced")]
+        [Description("The minimum number of usages an SQL statement is used before it's automatically prepared. Defaults to 5.")]
+        [DisplayName("Auto Prepare Min Usages")]
+        [NpgsqlConnectionStringProperty]
+        [DefaultValue(5)]
+        public int AutoPrepareMinUsages
+        {
+            get { return _autoPrepareMinUsages; }
+            set
+            {
+                if (value < 1)
+                    throw new ArgumentOutOfRangeException(nameof(value), value, $"{nameof(AutoPrepareMinUsages)} must be 1 or greater");
+
+                _autoPrepareMinUsages = value;
+                SetValue(nameof(AutoPrepareMinUsages), value);
+            }
+        }
+        int _autoPrepareMinUsages;
 
         /// <summary>
         /// If set to true, a pool connection's state won't be reset when it is closed (improves performance).

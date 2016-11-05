@@ -18,8 +18,8 @@ namespace Npgsql.Benchmarks
         readonly SqlConnection _sqlConnection;
         readonly SqlCommand _sqlCommand;
 
-        readonly NpgsqlConnection _persistentPreparedConn;
-        readonly NpgsqlCommand _persistentPreparedCmd;
+        readonly NpgsqlConnection _connWithPrepared;
+        readonly NpgsqlCommand _withPreparedCmd;
 
         readonly NpgsqlConnection _noResetConn;
         readonly NpgsqlCommand _noResetCmd;
@@ -46,12 +46,12 @@ namespace Npgsql.Benchmarks
             _sqlCommand = new SqlCommand("SET LOCK_TIMEOUT 1000", _sqlConnection);
 
             csb = new NpgsqlConnectionStringBuilder(BenchmarkEnvironment.ConnectionString) { ApplicationName = nameof(WithPersistentPrepared) };
-            _persistentPreparedConn = new NpgsqlConnection(csb);
-            _persistentPreparedConn.Open();
-            using (var persistent = new NpgsqlCommand("SELECT 1", _persistentPreparedConn))
-                persistent.Prepare(true);
-            _persistentPreparedConn.Close();
-            _persistentPreparedCmd = new NpgsqlCommand("SET lock_timeout = 1000", _persistentPreparedConn);
+            _connWithPrepared = new NpgsqlConnection(csb);
+            _connWithPrepared.Open();
+            using (var somePreparedCmd = new NpgsqlCommand("SELECT 1", _connWithPrepared))
+                somePreparedCmd.Prepare();
+            _connWithPrepared.Close();
+            _withPreparedCmd = new NpgsqlCommand("SET lock_timeout = 1000", _connWithPrepared);
 
             csb = new NpgsqlConnectionStringBuilder(BenchmarkEnvironment.ConnectionString)
             {
@@ -99,10 +99,10 @@ namespace Npgsql.Benchmarks
         [Benchmark]
         public void WithPersistentPrepared()
         {
-            _persistentPreparedConn.Open();
+            _connWithPrepared.Open();
             for (var i = 0; i < StatementsToSend; i++)
-                _persistentPreparedCmd.ExecuteNonQuery();
-            _persistentPreparedConn.Close();
+                _withPreparedCmd.ExecuteNonQuery();
+            _connWithPrepared.Close();
         }
 
         /// <summary>

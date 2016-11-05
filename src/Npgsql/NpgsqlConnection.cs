@@ -91,13 +91,6 @@ namespace Npgsql
         [CanBeNull]
         ConnectorPool _pool;
 
-        /// <summary>
-        /// A counter that gets incremented every time the connection is (re-)opened.
-        /// This allows us to identify an "instance" of connection, which is useful since
-        /// some resources are released when a connection is closed (e.g. prepared statements).
-        /// </summary>
-        internal int OpenCounter { get; private set; }
-
         bool _wasBroken;
 
         /// <summary>
@@ -264,7 +257,6 @@ namespace Npgsql
                 Connector = null;
                 throw;
             }
-            OpenCounter++;
             _alreadyOpened = true;
             Log.ConnectionOpened(Connector.Id);
             OnStateChange(new StateChangeEventArgs(ConnectionState.Closed, ConnectionState.Open));
@@ -1427,6 +1419,17 @@ namespace Npgsql
         /// Clear all connection pools.
         /// </summary>
         public static void ClearAllPools() => PoolManager.ClearAll();
+
+        /// <summary>
+        /// Unprepares all prepared statements on this connection.
+        /// </summary>
+        [PublicAPI]
+        public void UnprepareAll()
+        {
+            var connector = CheckReadyAndGetConnector();
+            using (connector.StartUserAction())
+                connector.UnprepareAll();
+        }
 
         /// <summary>
         /// Flushes the type cache for this connection's connection string and reloads the

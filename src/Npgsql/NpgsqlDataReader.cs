@@ -111,7 +111,6 @@ namespace Npgsql
         bool IsSequential => (_behavior & CommandBehavior.SequentialAccess) != 0;
         bool IsCaching => !IsSequential;
         bool IsSchemaOnly => (_behavior & CommandBehavior.SchemaOnly) != 0;
-        bool IsPrepared { get; }
 
         internal NpgsqlDataReader(NpgsqlCommand command, CommandBehavior behavior, List<NpgsqlStatement> statements)
         {
@@ -122,7 +121,6 @@ namespace Npgsql
             _statements = statements;
             _statementIndex = -1;
             _state = ReaderState.BetweenResults;
-            IsPrepared = command.IsPrepared;
 
             if (IsCaching)
                 _rowCache = new RowCache();
@@ -396,29 +394,47 @@ namespace Npgsql
             // prepared statements receive only BindComplete
             for (_statementIndex++; _statementIndex < _statements.Count; _statementIndex++)
             {
-                if (IsPrepared)
+                var statement = _statements[_statementIndex];
+                if (statement.IsPrepared)
                 {
                     _connector.ReadExpecting<BindCompleteMessage>();
-                    // Row descriptions have already been populated in the statement objects at the
-                    // Prepare phase
-                    _rowDescription = _statements[_statementIndex].Description;
+                    _rowDescription = statement.Description;
                 }
                 else  // Non-prepared flow
                 {
+                    var pStatement = statement.PreparedStatement;
+                    if (pStatement != null)
+                    {
+                        Debug.Assert(!pStatement.IsPrepared);
+                        Debug.Assert(pStatement.Description == null);
+                        if (pStatement.StatementBeingReplaced != null)
+                        {
+                            _connector.ReadExpecting<CloseCompletedMessage>();
+                            pStatement.StatementBeingReplaced.CompleteUnprepare();
+                            pStatement.StatementBeingReplaced = null;
+                        }
+                    }
+
                     _connector.ReadExpecting<ParseCompleteMessage>();
                     _connector.ReadExpecting<BindCompleteMessage>();
                     var msg = _connector.ReadMessage(DataRowLoadingMode.NonSequential);
                     switch (msg.Code)
                     {
                     case BackendMessageCode.NoData:
-                        _rowDescription = _statements[_statementIndex].Description = null;
+                        _rowDescription = statement.Description = null;
                         break;
                     case BackendMessageCode.RowDescription:
                         // We have a resultset
-                        _rowDescription = _statements[_statementIndex].Description = (RowDescriptionMessage)msg;
+                        _rowDescription = statement.Description = (RowDescriptionMessage)msg;
                         break;
                     default:
                         throw _connector.UnexpectedMessageReceived(msg.Code);
+                    }
+
+                    if (pStatement != null)
+                    {
+                        Debug.Assert(!pStatement.IsPrepared);
+                        pStatement.CompletePrepare();
                     }
                 }
 
@@ -469,7 +485,8 @@ namespace Npgsql
 
             for (_statementIndex++; _statementIndex < _statements.Count; _statementIndex++)
             {
-                if (IsPrepared)
+                var statement = _statements[_statementIndex];
+                if (statement.IsPrepared)
                 {
                     // Row descriptions have already been populated in the statement objects at the
                     // Prepare phase
@@ -501,7 +518,7 @@ namespace Npgsql
             }
 
             // There are no more queries, we're done. Read to the RFQ.
-            if (!IsPrepared)
+            if (!_statements.All(s => s.IsPrepared))
             {
                 ProcessMessage(_connector.ReadExpecting<ReadyForQueryMessage>());
                 _rowDescription = null;
@@ -645,7 +662,7 @@ namespace Npgsql
         [RewriteAsync]
         void Consume()
         {
-            if (IsSchemaOnly && IsPrepared)
+            if (IsSchemaOnly && _statements.All(s => s.IsPrepared))
             {
                 _state = ReaderState.Consumed;
                 return;

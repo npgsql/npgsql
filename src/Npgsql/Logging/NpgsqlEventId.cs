@@ -40,6 +40,8 @@ namespace Npgsql.Logging
         public const int Cleanup = 108;
         public const int ExecutingInternalCommand = 109;
         public const int ReaderCleanup = 110;
+        public const int AutoPreparing = 111;
+        public const int ClosingCommandPreparedStatements = 112;
 
         // Pool
         public const int ExceptionClosingOutdatedConnector = 200;

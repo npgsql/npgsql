@@ -122,6 +122,8 @@
     <Compile Include="PostgresTypes\PostgresEnumType.cs" />
     <Compile Include="PostgresTypes\PostgresRangeType.cs" />
     <Compile Include="PostgresTypes\PostgresUnknownType.cs" />
+    <Compile Include="PreparedStatement.cs" />
+    <Compile Include="PreparedStatementManager.cs" />
     <Compile Include="ReadBuffer.cs" />
     <Compile Include="NameTranslation\NpgsqlSnakeCaseNameTranslator.cs" />
     <Compile Include="PoolManager.cs" />
