@@ -1,7 +1,7 @@
 ﻿{
   "dependencies": {
-      "NUnit": "3.2.1",
-      "NUnitLite": "3.2.1",
+      "NUnit": "3.5.0",
+      "NUnitLite": "3.5.0",
       "NLog": "4.4.0-beta5"
   },
   "frameworks": {
