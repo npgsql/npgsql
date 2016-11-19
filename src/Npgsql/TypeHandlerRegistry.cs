@@ -714,7 +714,10 @@ WHERE a.typtype = 'b' AND b.typname = @name{(withSchema ? " AND ns.nspname = @sc
 
         internal static NpgsqlDbType ToNpgsqlDbType(DbType dbType)
         {
-            return DbTypeToNpgsqlDbType[dbType];
+            NpgsqlDbType npgsqlDbType;
+            if (!DbTypeToNpgsqlDbType.TryGetValue(dbType, out npgsqlDbType))
+                throw new NotSupportedException($"The parameter type DbType.{dbType} isn't supported by PostgreSQL or Npgsql");
+            return npgsqlDbType;
         }
 
         internal static NpgsqlDbType ToNpgsqlDbType(object value)
