@@ -37,11 +37,6 @@ namespace Npgsql
     /// This class cannot be inherited.
     /// </summary>
 
-#if WITHDESIGN
-    [ListBindable(false)]
-    [Editor(typeof(NpgsqlParametersEditor), typeof(System.Drawing.Design.UITypeEditor))]
-#endif
-
     public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<NpgsqlParameter>
     {
         readonly List<NpgsqlParameter> _internalList = new List<NpgsqlParameter>();
@@ -76,9 +71,6 @@ namespace Npgsql
         /// </summary>
         /// <param name="parameterName">The name of the <see cref="NpgsqlParameter">NpgsqlParameter</see> to retrieve.</param>
         /// <value>The <see cref="NpgsqlParameter">NpgsqlParameter</see> with the specified name, or a null reference if the parameter is not found.</value>
-#if WITHDESIGN
-        [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-#endif
         [PublicAPI]
         public new NpgsqlParameter this[string parameterName]
         {
@@ -116,9 +108,6 @@ namespace Npgsql
         /// </summary>
         /// <param name="index">The zero-based index of the <see cref="NpgsqlParameter">NpgsqlParameter</see> to retrieve.</param>
         /// <value>The <see cref="NpgsqlParameter">NpgsqlParameter</see> at the specified index.</value>
-#if WITHDESIGN
-        [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-#endif
         [PublicAPI]
         public new NpgsqlParameter this[int index]
         {
@@ -613,11 +602,6 @@ namespace Npgsql
         /// Gets the number of <see cref="NpgsqlParameter">NpgsqlParameter</see> objects in the collection.
         /// </summary>
         /// <value>The number of <see cref="NpgsqlParameter">NpgsqlParameter</see> objects in the collection.</value>
-
-#if WITHDESIGN
-        [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-#endif
-
         public override int Count => _internalList.Count;
 
         /// <summary>

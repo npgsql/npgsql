@@ -46,9 +46,6 @@ namespace Npgsql
     /// Represents a SQL statement or function (stored procedure) to execute
     /// against a PostgreSQL database. This class cannot be inherited.
     /// </summary>
-#if WITHDESIGN
-    [System.Drawing.ToolboxBitmapAttribute(typeof(NpgsqlCommand)), ToolboxItem(true)]
-#endif
 #if NETSTANDARD1_3
     public sealed partial class NpgsqlCommand : DbCommand
 #else
@@ -422,10 +419,6 @@ namespace Npgsql
         /// Gets the <see cref="NpgsqlParameterCollection">NpgsqlParameterCollection</see>.
         /// </summary>
         /// <value>The parameters of the SQL statement or function (stored procedure). The default is an empty collection.</value>
-#if WITHDESIGN
-        [Category("Data"), DesignerSerializationVisibility(DesignerSerializationVisibility.Content)]
-#endif
-
         public new NpgsqlParameterCollection Parameters => _parameters;
 
         #endregion
@@ -1153,9 +1146,6 @@ namespace Npgsql
         /// </summary>
         /// <value>The <see cref="NpgsqlTransaction">NpgsqlTransaction</see>.
         /// The default value is a null reference.</value>
-#if WITHDESIGN
-        [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-#endif
         public new NpgsqlTransaction Transaction
         {
             get

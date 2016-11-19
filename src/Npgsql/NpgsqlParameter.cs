@@ -32,18 +32,11 @@ using System.Threading.Tasks;
 using JetBrains.Annotations;
 using NpgsqlTypes;
 
-#if WITHDESIGN
-using Npgsql.Design;
-#endif
-
 namespace Npgsql
 {
     ///<summary>
     /// This class represents a parameter to a command that will be sent to server
     ///</summary>
-#if WITHDESIGN
-    [TypeConverter(typeof(NpgsqlParameterConverter))]
-#endif
 #if NETSTANDARD1_3
     public sealed class NpgsqlParameter : DbParameter
 #else
