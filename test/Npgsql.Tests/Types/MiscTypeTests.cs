@@ -305,7 +305,6 @@ namespace Npgsql.Tests.Types
                     }
                 }
             }
-
         }
 
         [Test]
@@ -513,6 +512,17 @@ namespace Npgsql.Tests.Types
         {
             using (var conn = OpenConnection())
                 Assert.That(conn.ExecuteScalar("SELECT pg_sleep(0)"), Is.SameAs(DBNull.Value));
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1364")]
+        public void UnsupportedDbType()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+            {
+                Assert.That(() => cmd.Parameters.Add(new NpgsqlParameter("p", DbType.UInt32) { Value = 8u }),
+                    Throws.Exception.TypeOf<NotSupportedException>());
+            }
         }
 
         // Older tests
