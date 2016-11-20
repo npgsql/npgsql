@@ -63,7 +63,6 @@ namespace Npgsql
         /// </summary>
         internal object ConvertedValue { get; set; }
 
-        NpgsqlParameterCollection _collection;
         [CanBeNull]
         internal LengthCache LengthCache { get; private set; }
 
@@ -475,9 +474,9 @@ namespace Npgsql
 
                 _name = _name.Trim();
 
-                if (_collection != null)
+                if (Collection != null)
                 {
-                    _collection.InvalidateHashLookups();
+                    Collection.InvalidateHashLookups();
                     ClearBind();
                 }
                 AutoAssignedName = false;
@@ -551,16 +550,10 @@ namespace Npgsql
         /// <summary>
         /// The collection to which this parameter belongs, if any.
         /// </summary>
-        public NpgsqlParameterCollection Collection
-        {
-            get { return _collection; }
-
-            internal set
-            {
-                _collection = value;
-                ClearBind();
-            }
-        }
+#pragma warning disable CA2227
+        [CanBeNull]
+        public NpgsqlParameterCollection Collection { get; set; }
+#pragma warning restore CA2227
 
         #endregion
 
