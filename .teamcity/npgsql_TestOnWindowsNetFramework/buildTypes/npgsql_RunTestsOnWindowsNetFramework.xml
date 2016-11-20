@@ -8,6 +8,12 @@
     </options>
     <parameters />
     <build-runners>
+      <runner id="RUNNER_43" name="Restore" type="dotnet">
+        <parameters>
+          <param name="dotnet-command" value="restore" />
+          <param name="teamcity.step.mode" value="default" />
+        </parameters>
+      </runner>
       <runner id="RUNNER_18" name="Test" type="simpleRunner">
         <parameters>
           <param name="command.executable" value="dotnet" />

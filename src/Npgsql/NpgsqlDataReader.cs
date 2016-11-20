@@ -1615,7 +1615,8 @@ namespace Npgsql
         /// </summary>
         /// <returns></returns>
         public ReadOnlyCollection<NpgsqlDbColumn> GetColumnSchema()
-            => new DbColumnSchemaGenerator(_connection, _rowDescription).GetColumnSchema();
+            => new DbColumnSchemaGenerator(_connection, _rowDescription, (_behavior & CommandBehavior.KeyInfo) != 0)
+                .GetColumnSchema();
 
 #if NETSTANDARD1_3
         ReadOnlyCollection<DbColumn> IDbColumnSchemaGenerator.GetColumnSchema()

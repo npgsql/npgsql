@@ -381,13 +381,17 @@ CREATE TYPE address AS
                 conn.ReloadTypes();
                 conn.MapComposite<Address>();
 
-                using (var cmd = new NpgsqlCommand(@"SELECT ROW('x', '12345')::address", conn))
-                using (var reader = cmd.ExecuteReader())
+                var expected = new Address { PostalCode = "12345", Street = "Main St."};
+                using (var cmd = new NpgsqlCommand(@"SELECT @p", conn))
                 {
-                    reader.Read();
-                    var address = reader.GetFieldValue<Address>(0);
-                    Assert.That(address.Street, Is.EqualTo("x"));
-                    Assert.That(address.PostalCode, Is.EqualTo("12345"));
+                    cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Value=expected });
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        reader.Read();
+                        var actual = reader.GetFieldValue<Address>(0);
+                        Assert.That(actual.Street, Is.EqualTo(expected.Street));
+                        Assert.That(actual.PostalCode, Is.EqualTo(expected.PostalCode));
+                    }
                 }
             }
         }

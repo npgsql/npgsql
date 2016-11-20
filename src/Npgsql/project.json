@@ -1,5 +1,5 @@
 {
-  "version": "3.1.8",
+  "version": "3.1.9",
   "packOptions": {
     "owners": [
       "Shay Rojansky",
@@ -62,7 +62,7 @@
     }
   },
   "tools": {
-    "dotnet-rewrite-async": "0.8.6"
+    "dotnet-rewrite-async": "[0.8.6.2]"
   },
   "frameworks": {
     "net45": {

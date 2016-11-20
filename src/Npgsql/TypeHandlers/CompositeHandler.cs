@@ -23,6 +23,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Reflection;
@@ -69,6 +70,7 @@ namespace Npgsql.TypeHandlers
         readonly TypeHandlerRegistry _registry;
         readonly INpgsqlNameTranslator _nameTranslator;
         public List<RawCompositeField> RawFields { get; set; }
+        [CanBeNull]
         List<MemberDescriptor> _members;
 
         ReadBuffer _readBuf;
@@ -104,6 +106,8 @@ namespace Npgsql.TypeHandlers
 
         public override bool Read(out T result)
         {
+            Contract.Assert(_members != null);
+
             result = default(T);
 
             if (_fieldIndex == -1)
@@ -136,7 +140,7 @@ namespace Npgsql.TypeHandlers
 
                 // Get the field's type handler and read the value
                 var handler = fieldDescriptor.Handler;
-                object fieldValue = null;
+                object fieldValue;
 
                 if (handler is ISimpleTypeHandler)
                 {
@@ -175,15 +179,12 @@ namespace Npgsql.TypeHandlers
         public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter)
         {
             ResolveFieldsIfNeeded();
+            Contract.Assert(_members != null);
 
             if (lengthCache == null)
-            {
                 lengthCache = new LengthCache(1);
-            }
             if (lengthCache.IsPopulated)
-            {
                 return lengthCache.Get();
-            }
 
             // Leave empty slot for the entire composite type, and go ahead an populate the element slots
             var pos = lengthCache.Position;
@@ -214,6 +215,7 @@ namespace Npgsql.TypeHandlers
 
         public override bool Write(ref DirectBuffer directBuf)
         {
+            Contract.Assert(_members != null);
             if (_fieldIndex == -1)
             {
                 if (_writeBuf.WriteSpaceLeft < 4) { return false; }
@@ -229,7 +231,7 @@ namespace Npgsql.TypeHandlers
 
                 if (fieldValue == null)
                 {
-                    if (_writeBuf.WriteSpaceLeft < 4)
+                    if (_writeBuf.WriteSpaceLeft < 8)
                         return false;
                     _writeBuf.WriteUInt32(fieldHandler.BackendType.OID);
                     _writeBuf.WriteInt32(-1);
@@ -241,7 +243,7 @@ namespace Npgsql.TypeHandlers
                 {
                     var elementLen = asSimpleWriter.ValidateAndGetLength(fieldValue, null);
                     if (_writeBuf.WriteSpaceLeft < 8 + elementLen) { return false; }
-                    _writeBuf.WriteUInt32(fieldHandler.BackendType.OID);
+                    _writeBuf.WriteUInt32(fieldDescriptor.OID);
                     _writeBuf.WriteInt32(elementLen);
                     asSimpleWriter.Write(fieldValue, _writeBuf, null);
                     continue;
@@ -253,7 +255,7 @@ namespace Npgsql.TypeHandlers
                     if (!_wroteFieldHeader)
                     {
                         if (_writeBuf.WriteSpaceLeft < 8) { return false; }
-                        _writeBuf.WriteUInt32(fieldHandler.BackendType.OID);
+                        _writeBuf.WriteUInt32(fieldDescriptor.OID);
                         _writeBuf.WriteInt32(asChunkedWriter.ValidateAndGetLength(fieldValue, ref _lengthCache, null));
                         asChunkedWriter.PrepareWrite(fieldValue, _writeBuf, _lengthCache, null);
                         _wroteFieldHeader = true;
@@ -302,14 +304,14 @@ namespace Npgsql.TypeHandlers
                 var property = member as PropertyInfo;
                 if (property != null)
                 {
-                    _members.Add(new MemberDescriptor(rawField.PgName, handler, property));
+                    _members.Add(new MemberDescriptor(rawField.PgName, rawField.TypeOID, handler, property));
                     continue;
                 }
 
                 var field = member as FieldInfo;
                 if (field != null)
                 {
-                    _members.Add(new MemberDescriptor(rawField.PgName, handler, field));
+                    _members.Add(new MemberDescriptor(rawField.PgName, rawField.TypeOID, handler, field));
                     continue;
                 }
 
@@ -324,21 +326,26 @@ namespace Npgsql.TypeHandlers
             // ReSharper disable once NotAccessedField.Local
             // ReSharper disable once MemberCanBePrivate.Local
             internal readonly string PgName;
+            internal readonly uint OID;
             internal readonly TypeHandler Handler;
+            [CanBeNull]
             readonly PropertyInfo _property;
+            [CanBeNull]
             readonly FieldInfo _field;
 
-            internal MemberDescriptor(string pgName, TypeHandler handler, PropertyInfo property)
+            internal MemberDescriptor(string pgName, uint oid, TypeHandler handler, PropertyInfo property)
             {
                 PgName = pgName;
+                OID = oid;
                 Handler = handler;
                 _property = property;
                 _field = null;
             }
 
-            internal MemberDescriptor(string pgName, TypeHandler handler, FieldInfo field)
+            internal MemberDescriptor(string pgName, uint oid, TypeHandler handler, FieldInfo field)
             {
                 PgName = pgName;
+                OID = oid;
                 Handler = handler;
                 _property = null;
                 _field = field;

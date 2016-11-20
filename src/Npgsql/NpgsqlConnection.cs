@@ -266,17 +266,10 @@ namespace Npgsql
                     return _connectionString;
                 if (!_alreadyOpened)   // If not yet opened, return the full connstring but don't cache
                     return Settings.ToString();
+                if (!_settings.PersistSecurityInfo)
+                    return Settings.ToStringWithoutPassword();
 
-                var passwd = Settings.Password;
-                if (!_settings.PersistSecurityInfo && passwd != null)
-                {
-                    Settings.Password = null;
-                    _connectionString = Settings.ToString();
-                    Settings.Password = passwd;
-                }
-                else
-                    _connectionString = Settings.ToString();
-
+                _connectionString = Settings.ToString();
                 return _connectionString;
             }
             set
@@ -1444,7 +1437,7 @@ namespace Npgsql
                 throw new ArgumentOutOfRangeException(nameof(dbName), dbName, $"Invalid database name: {dbName}");
             Contract.EndContractBlock();
 
-            CheckNotDisposed();
+            CheckConnectionOpen();
             Log.Debug("Changing database to " + dbName, Connector.Id);
 
             Close();

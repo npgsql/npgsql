@@ -352,6 +352,19 @@ namespace Npgsql.Tests.Types
             Assert.That(a.SequenceEqual(new PostgisPolygon(a)));
         }
 
+        [Test]
+        public void ReadAsConcreteType()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT st_makepoint(1, 1)", conn))
+            using (var reader = cmd.ExecuteReader())
+            {
+                reader.Read();
+                Assert.That(reader.GetFieldValue<PostgisPoint>(0), Is.EqualTo(new PostgisPoint(1, 1)));
+                Assert.That(() => reader.GetFieldValue<PostgisPolygon>(0), Throws.Exception.TypeOf<InvalidCastException>());
+            }
+        }
+
         [OneTimeSetUp]
         public void SetUp()
         {

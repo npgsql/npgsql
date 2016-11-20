@@ -1,1 +1,1 @@
-echo ##teamcity[buildNumber '3.1.8-%1']
+echo ##teamcity[buildNumber '3.1.9-%1']

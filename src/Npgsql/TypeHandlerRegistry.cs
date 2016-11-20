@@ -561,8 +561,7 @@ WHERE a.typtype = 'b' AND b.typname = @name{(withSchema ? " AND ns.nspname = @sc
                 // Couldn't find already activated type, attempt to activate
 
                 if (npgsqlDbType == NpgsqlDbType.Enum || npgsqlDbType == NpgsqlDbType.Composite)
-                    throw new InvalidCastException(string.Format("When specifying NpgsqlDbType.{0}, {0}Type must be specified as well",
-                                                    npgsqlDbType == NpgsqlDbType.Enum ? "Enum" : "Composite"));
+                    throw new InvalidCastException($"When specifying NpgsqlDbType.{nameof(NpgsqlDbType.Enum)}, {nameof(NpgsqlParameter.SpecificType)} must be specified as well");
 
                 // Base, range or array of base/range
                 BackendType backendType;
@@ -715,7 +714,10 @@ WHERE a.typtype = 'b' AND b.typname = @name{(withSchema ? " AND ns.nspname = @sc
 
         internal static NpgsqlDbType ToNpgsqlDbType(DbType dbType)
         {
-            return DbTypeToNpgsqlDbType[dbType];
+            NpgsqlDbType npgsqlDbType;
+            if (!DbTypeToNpgsqlDbType.TryGetValue(dbType, out npgsqlDbType))
+                throw new NotSupportedException($"The parameter type DbType.{dbType} isn't supported by PostgreSQL or Npgsql");
+            return npgsqlDbType;
         }
 
         internal static NpgsqlDbType ToNpgsqlDbType(object value)

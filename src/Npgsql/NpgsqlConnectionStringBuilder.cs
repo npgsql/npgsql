@@ -263,6 +263,11 @@ namespace Npgsql
             } else {
                 base[canonicalKeyword] = value;
             }
+
+            lock (_connectionStringWithoutPasswordLocker)
+            {
+                _connectionStringWithoutPassword = null;
+            }
         }
 
         #endregion
@@ -989,10 +994,27 @@ namespace Npgsql
 
         #region Misc
 
-        internal NpgsqlConnectionStringBuilder Clone()
+        internal string ToStringWithoutPassword()
         {
-            return new NpgsqlConnectionStringBuilder(ConnectionString);
+            lock (_connectionStringWithoutPasswordLocker)
+            {
+                if (_connectionStringWithoutPassword != null)
+                {
+                    return _connectionStringWithoutPassword;
+                }
+
+                var clone = Clone();
+                clone.Password = null;
+                _connectionStringWithoutPassword = clone.ToString();
+                return _connectionStringWithoutPassword;
+            }
         }
+
+        readonly object _connectionStringWithoutPasswordLocker = new object();
+        [CanBeNull]
+        string _connectionStringWithoutPassword;
+
+        internal NpgsqlConnectionStringBuilder Clone() => new NpgsqlConnectionStringBuilder(ConnectionString);
 
         /// <summary>
         /// Determines whether the specified object is equal to the current object.
@@ -1000,7 +1022,7 @@ namespace Npgsql
         public override bool Equals(object obj)
         {
             var o = obj as NpgsqlConnectionStringBuilder;
-            return o != null && o.ConnectionString == ConnectionString;
+            return o != null && EquivalentTo(o);
         }
 
         /// <summary>
