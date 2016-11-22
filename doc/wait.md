@@ -40,4 +40,4 @@ while (true) {
 
 ## Keepalive
 
-You may want to turn on [keepalives](keepalive.md).
+![warning](/img/warning.png) Keepalives unfortunately aren't sent while in Wait, here's a [workaround](https://github.com/npgsql/npgsql/issues/1214#issuecomment-235828359). This will be fixed in 3.2.
