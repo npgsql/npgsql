@@ -843,7 +843,10 @@ namespace Npgsql
         [RewriteAsync]
         [CanBeNull]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        IBackendMessage ReadMessageWithPrepended(DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential)
+        IBackendMessage ReadMessageWithPrepended(
+            DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential,
+            bool returnNullForAsyncMessage = false
+        )
         {
             // First read the responses of any prepended messages.
             ReadPrependedMessages();
@@ -852,7 +855,7 @@ namespace Npgsql
             try
             {
                 ReceiveTimeout = UserTimeout;
-                return DoReadMessage(dataRowLoadingMode);
+                return DoReadMessage(dataRowLoadingMode, returnNullForAsyncMessage);
             }
             catch (PostgresException)
             {
@@ -871,8 +874,10 @@ namespace Npgsql
 
         [RewriteAsync]
         [CanBeNull]
-        IBackendMessage DoReadMessage(DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential,
-                                      bool isPrependedMessage = false)
+        IBackendMessage DoReadMessage(
+            DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential,
+            bool returnNullForAsyncMessage = false,
+            bool isPrependedMessage = false)
         {
             PostgresException error = null;
 
@@ -929,7 +934,9 @@ namespace Npgsql
                 case BackendMessageCode.NotificationResponse:
                 case BackendMessageCode.ParameterStatus:
                     Debug.Assert(msg == null);
-                    continue;
+                    if (!returnNullForAsyncMessage)
+                        continue;
+                    return null;
                 }
 
                 Debug.Assert(msg != null, "Message is null for code: " + messageCode);
@@ -1049,7 +1056,7 @@ namespace Npgsql
             {
                 ReceiveTimeout = InternalCommandTimeout;
                 for (; _pendingPrependedResponses > 0; _pendingPrependedResponses--)
-                    DoReadMessage(DataRowLoadingMode.Skip, true);
+                    DoReadMessage(DataRowLoadingMode.Skip, false, true);
             }
             catch (PostgresException)
             {
@@ -1116,42 +1123,6 @@ namespace Npgsql
         }
 
         #endregion Backend message processing
-
-        #region Backend asynchronous message processing
-
-        /// <summary>
-        /// Reads a PostgreSQL asynchronous message (e.g. notification).
-        /// This has nothing to do with .NET async processing of messages or queries.
-        /// </summary>
-        [RewriteAsync]
-        internal void ReadAsyncMessage()
-        {
-            ReceiveTimeout = UserTimeout;
-            ReadBuffer.Ensure(5, true);
-            var messageCode = (BackendMessageCode)ReadBuffer.ReadByte();
-            Debug.Assert(Enum.IsDefined(typeof(BackendMessageCode), messageCode), "Unknown message code: " + messageCode);
-            var len = ReadBuffer.ReadInt32() - 4;  // Transmitted length includes itself
-            var buf = ReadBuffer.EnsureOrAllocateTemp(len);
-            var msg = ParseServerMessage(buf, messageCode, len, DataRowLoadingMode.NonSequential, false);
-
-            switch (messageCode)
-            {
-            case BackendMessageCode.NoticeResponse:
-            case BackendMessageCode.NotificationResponse:
-            case BackendMessageCode.ParameterStatus:
-                break;
-            case BackendMessageCode.ErrorResponse:
-                // We can get certain asynchronous errors if the remote process is terminated, etc.
-                // We assume this is fatal.
-                Break();
-                throw new PostgresException(buf);
-            default:
-                Break();
-                throw new NpgsqlException($"Received unexpected message {msg} while waiting for an asynchronous message");
-            }
-        }
-
-        #endregion Backend asynchronous message processing
 
         #region Transactions
 
@@ -1763,6 +1734,120 @@ namespace Npgsql
             {
                 Log.Logger.LogError(NpgsqlEventId.KeepaliveFailure, e, "[{ConnectorId}] Keepalive failure", Id);
                 Break();
+            }
+        }
+
+        #endregion
+
+        #region Wait
+
+        public async Task WaitAsync(CancellationToken cancellationToken)
+        {
+            var keepaliveSent = false;
+            var keepaliveLock = new SemaphoreSlim(1, 1);
+
+            TimerCallback performKeepaliveMethod = state =>
+            {
+                if (!keepaliveLock.Wait(0))
+                    return;
+                try
+                {
+                    if (keepaliveSent)
+                        return;
+                    keepaliveSent = true;
+                    SendMessage(PregeneratedMessage.KeepAlive);
+                }
+                finally
+                {
+                    keepaliveLock.Release();
+                }
+            };
+
+            using (NoSynchronizationContextScope.Enter())
+            using (StartUserAction(ConnectorState.Waiting))
+            using (cancellationToken.Register(() => performKeepaliveMethod(null)))
+            {
+                Timer keepaliveTimer = null;
+                if (IsKeepAliveEnabled)
+                    keepaliveTimer = new Timer(performKeepaliveMethod, null, _settings.KeepAlive*1000, Timeout.Infinite);
+                try
+                {
+                    while (true)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        var msg = await ReadMessageWithPrependedAsync(cancellationToken, DataRowLoadingMode.NonSequential, true);
+                        if (!keepaliveSent)
+                        {
+                            if (msg != null)
+                            {
+                                Break();
+                                throw new NpgsqlException($"Received unexpected message of type {msg.Code} while waiting");
+                            }
+                            return;
+                        }
+
+                        // A keepalive was sent. Consume the response (RowDescription, CommandComplete,
+                        // ReadyForQuery) while also keeping track if an async message was received in between.
+                        keepaliveLock.Wait();
+                        try
+                        {
+                            var receivedNotification = false;
+                            var expectedMessageCode = BackendMessageCode.RowDescription;
+
+                            while (true)
+                            {
+                                while (msg == null)
+                                {
+                                    receivedNotification = true;
+                                    msg = await ReadMessageWithPrependedAsync(cancellationToken, DataRowLoadingMode.NonSequential, true);
+                                }
+
+                                if (msg.Code != expectedMessageCode)
+                                    throw new NpgsqlException($"Received unexpected message of type {msg.Code} while expecting {expectedMessageCode} as part of keepalive");
+
+                                var finishedKeepalive = false;
+                                switch (msg.Code)
+                                {
+                                case BackendMessageCode.RowDescription:
+                                    expectedMessageCode = BackendMessageCode.DataRow;
+                                    break;
+                                case BackendMessageCode.DataRow:
+                                    expectedMessageCode = BackendMessageCode.CompletedResponse;
+                                    break;
+                                case BackendMessageCode.CompletedResponse:
+                                    expectedMessageCode = BackendMessageCode.ReadyForQuery;
+                                    break;
+                                case BackendMessageCode.ReadyForQuery:
+                                    finishedKeepalive = true;
+                                    break;
+                                }
+
+                                if (!finishedKeepalive)
+                                {
+                                    msg = await ReadMessageWithPrependedAsync(cancellationToken, DataRowLoadingMode.NonSequential, true);
+                                    continue;
+                                }
+
+                                if (receivedNotification)
+                                    return; // Notification was received during the keepalive
+
+                                cancellationToken.ThrowIfCancellationRequested();
+                                // Keepalive completed without notification, set up the next one and continue waiting
+                                keepaliveTimer.Change(_settings.KeepAlive*1000, Timeout.Infinite);
+                                keepaliveSent = false;
+                                break;
+                            }
+                        }
+                        finally
+                        {
+                            keepaliveLock.Release();
+                        }
+                    }
+                }
+                finally
+                {
+                    keepaliveTimer?.Dispose();
+                }
             }
         }
 

@@ -1179,6 +1179,8 @@ namespace Npgsql
         /// <returns>true if an asynchronous message was received, false if timed out.</returns>
         public bool Wait(int timeout)
         {
+            throw new NotImplementedException();
+#if NO
             if (timeout != -1 && timeout < 0)
                 throw new ArgumentException("Argument must be -1, 0 or positive", nameof(timeout));
 
@@ -1199,6 +1201,7 @@ namespace Npgsql
                 }
             }
             return true;
+#endif
         }
 
         /// <summary>
@@ -1229,15 +1232,13 @@ namespace Npgsql
         /// (see https://stackoverflow.com/questions/12421989/networkstream-readasync-with-a-cancellation-token-never-cancels ).
         /// </summary>
         [PublicAPI]
-        public async Task WaitAsync(CancellationToken cancellationToken)
+        public Task WaitAsync(CancellationToken cancellationToken)
         {
             CheckConnectionOpen();
             Debug.Assert(Connector != null);
             Log.StartingAsyncWait(Connector.Id);
 
-            using (Connector.StartUserAction(ConnectorState.Waiting))
-            using (NoSynchronizationContextScope.Enter())
-                await Connector.ReadAsyncMessageAsync(cancellationToken);
+            return Connector.WaitAsync(cancellationToken);
         }
 
         /// <summary>
