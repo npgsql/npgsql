@@ -1,4 +1,49 @@
 #pragma warning disable
+using Npgsql.FrontendMessages;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Threading;
+using System.Threading.Tasks;
+#pragma warning disable
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Data;
+using System.Data.Common;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Threading.Tasks;
+using JetBrains.Annotations;
+using Npgsql.BackendMessages;
+using Npgsql.Logging;
+using Npgsql.PostgresTypes;
+using Npgsql.Schema;
+using Npgsql.TypeHandlers;
+using NpgsqlTypes;
+using System.Threading;
+using System.Threading.Tasks;
+#pragma warning disable
+using System;
+using System.Diagnostics;
+using System.IO;
+using Npgsql.BackendMessages;
+using System.Threading;
+using System.Threading.Tasks;
+using JetBrains.Annotations;
+using Npgsql.PostgresTypes;
+using Npgsql.TypeHandlers;
+using System.Threading;
+using System.Threading.Tasks;
+#pragma warning disable
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -12,6 +57,113 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Globalization;
 using System.Net.Sockets;
+using JetBrains.Annotations;
+using Npgsql.BackendMessages;
+using Npgsql.FrontendMessages;
+using Npgsql.Logging;
+using System.Threading;
+using System.Threading.Tasks;
+#pragma warning disable
+using System;
+using System.Data;
+using System.Data.Common;
+using System.Diagnostics;
+using System.Threading;
+using System.Threading.Tasks;
+using JetBrains.Annotations;
+using Npgsql.BackendMessages;
+using Npgsql.FrontendMessages;
+using Npgsql.Logging;
+using System.Threading;
+using System.Threading.Tasks;
+#pragma warning disable
+using System;
+using System.Collections;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Data;
+using System.Diagnostics;
+using System.Linq;
+using System.Reflection;
+using JetBrains.Annotations;
+using Npgsql.Logging;
+using Npgsql.PostgresTypes;
+using Npgsql.TypeHandlers;
+using NpgsqlTypes;
+using System.Threading;
+using System.Threading.Tasks;
+#pragma warning disable
+using System;
+using System.Diagnostics;
+using System.IO;
+using System.Net;
+using System.Net.Sockets;
+using System.Runtime.InteropServices;
+using System.Text;
+using JetBrains.Annotations;
+using System.Threading;
+using System.Threading.Tasks;
+#pragma warning disable
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Threading;
+using System.Threading.Tasks;
+using JetBrains.Annotations;
+using Npgsql.Logging;
+using System.Threading;
+using System.Threading.Tasks;
+#pragma warning disable
+using System;
+using System.Diagnostics;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using JetBrains.Annotations;
+using System.Threading;
+using System.Threading.Tasks;
+#pragma warning disable
+using Npgsql.FrontendMessages;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Threading;
+using System.Threading.Tasks;
+#pragma warning disable
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Net;
+using System.Runtime.CompilerServices;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Threading;
+using System.Threading.Tasks;
+#pragma warning disable
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Net.Security;
+using System.Net.Sockets;
+using System.Runtime.CompilerServices;
+using System.Security.Authentication;
+using System.Security.Cryptography.X509Certificates;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
@@ -45,158 +197,6 @@ using System.Threading;
 using System.Threading.Tasks;
 #pragma warning disable
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Net;
-using System.Net.Security;
-using System.Net.Sockets;
-using System.Runtime.CompilerServices;
-using System.Security.Authentication;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using JetBrains.Annotations;
-using Npgsql.BackendMessages;
-using Npgsql.FrontendMessages;
-using Npgsql.Logging;
-using System.Threading;
-using System.Threading.Tasks;
-#pragma warning disable
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Data;
-using System.Data.Common;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Threading;
-using System.Threading.Tasks;
-using JetBrains.Annotations;
-using Npgsql.BackendMessages;
-using Npgsql.Logging;
-using Npgsql.PostgresTypes;
-using Npgsql.Schema;
-using Npgsql.TypeHandlers;
-using NpgsqlTypes;
-using System.Threading;
-using System.Threading.Tasks;
-#pragma warning disable
-using Npgsql.FrontendMessages;
-using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Threading;
-using System.Threading.Tasks;
-#pragma warning disable
-using Npgsql.FrontendMessages;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Threading;
-using System.Threading.Tasks;
-#pragma warning disable
-using System;
-using System.Data;
-using System.Data.Common;
-using System.Diagnostics;
-using System.Threading;
-using System.Threading.Tasks;
-using JetBrains.Annotations;
-using Npgsql.BackendMessages;
-using Npgsql.FrontendMessages;
-using Npgsql.Logging;
-using System.Threading;
-using System.Threading.Tasks;
-#pragma warning disable
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Globalization;
-using System.IO;
-using System.Net;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Threading;
-using System.Threading.Tasks;
-#pragma warning disable
-using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Threading;
-using System.Threading.Tasks;
-using JetBrains.Annotations;
-using Npgsql.Logging;
-using System.Threading;
-using System.Threading.Tasks;
-#pragma warning disable
-using System;
-using System.Diagnostics;
-using System.IO;
-using System.Net;
-using System.Net.Sockets;
-using System.Runtime.InteropServices;
-using System.Text;
-using JetBrains.Annotations;
-using System.Threading;
-using System.Threading.Tasks;
-#pragma warning disable
-using System;
-using System.Diagnostics;
-using System.IO;
-using Npgsql.BackendMessages;
-using System.Threading;
-using System.Threading.Tasks;
-using JetBrains.Annotations;
-using Npgsql.PostgresTypes;
-using Npgsql.TypeHandlers;
-using System.Threading;
-using System.Threading.Tasks;
-#pragma warning disable
-using System;
-using System.Collections;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Data;
-using System.Diagnostics;
-using System.Linq;
-using System.Reflection;
-using JetBrains.Annotations;
-using Npgsql.Logging;
-using Npgsql.PostgresTypes;
-using Npgsql.TypeHandlers;
-using NpgsqlTypes;
-using System.Threading;
-using System.Threading.Tasks;
-#pragma warning disable
-using System;
-using System.Diagnostics;
-using System.IO;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using JetBrains.Annotations;
-using System.Threading;
-using System.Threading.Tasks;
-#pragma warning disable
-using System;
 using System.Diagnostics;
 using System.IO;
 using JetBrains.Annotations;
@@ -219,395 +219,57 @@ using System.Threading.Tasks;
 
 namespace Npgsql
 {
-    public sealed partial class NpgsqlConnection
-    {
-        async Task OpenInternalAsync(CancellationToken cancellationToken)
-        {
-            if (string.IsNullOrWhiteSpace(Host))
-                throw new ArgumentException("Host can't be null");
-            var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
-            // If we're postponing a close (see doc on this variable), the connection is already
-            // open and can be silently reused
-            if (_postponingClose)
-                return;
-            CheckConnectionClosed();
-            Log.Trace("Opening connnection");
-            if (Settings.Password == null)
-            {
-                // no password was provided. Attempt to pull the password from the pgpass file.
-                var pgPassFile = PgPassFile.LoadDefaultFile();
-                var matchingEntry = pgPassFile?.GetFirstMatchingEntry(Settings.Host, Settings.Port, Settings.Database, Settings.Username);
-                if (matchingEntry != null)
-                {
-                    Log.Trace("Taking password from pgpass file");
-                    Settings.Password = matchingEntry.Password;
-                }
-            }
-
-            _wasBroken = false;
-            try
-            {
-                // Get a Connector, either from the pool or creating one ourselves.
-                if (Settings.Pooling)
-                {
-                    Connector = await (PoolManager.GetOrAdd(Settings).AllocateAsync(this, timeout, cancellationToken));
-                    Counters.SoftConnectsPerSecond.Increment();
-                    // Since this pooled connector was opened, global enum/composite mappings may have
-                    // changed. Bring this up to date if needed.
-                    Connector.TypeHandlerRegistry.ActivateGlobalMappings();
-                }
-                else
-                {
-                    Connector = new NpgsqlConnector(this);
-                    await Connector.OpenAsync(timeout, cancellationToken);
-                    Counters.NumberOfNonPooledConnections.Increment();
-                }
-
-                Connector.Notice += _noticeDelegate;
-                Connector.Notification += _notificationDelegate;
-#if NET45 || NET451
-                if (Settings.Enlist)
-                {
-                    Promotable.Enlist(Transaction.Current);
-                }
-#endif
-            }
-            catch
-            {
-                Connector = null;
-                throw;
-            }
-
-            OpenCounter++;
-            _alreadyOpened = true;
-            OnStateChange(new StateChangeEventArgs(ConnectionState.Closed, ConnectionState.Open));
-        }
-    }
-
     /// <summary>
-    /// Represents a connection to a PostgreSQL backend. Unlike NpgsqlConnection objects, which are
-    /// exposed to users, connectors are internal to Npgsql and are recycled by the connection pool.
+    /// Large object manager. This class can be used to store very large files in a PostgreSQL database.
     /// </summary>
-    sealed partial class NpgsqlConnector
+    public partial class NpgsqlLargeObjectManager
     {
-        internal async Task OpenAsync(NpgsqlTimeout timeout, CancellationToken cancellationToken)
+        internal async Task<T> ExecuteFunctionAsync<T>(string function, CancellationToken cancellationToken, params object[] arguments)
         {
-            Debug.Assert(Connection != null && Connection.Connector == this);
-            Debug.Assert(State == ConnectorState.Closed);
-            State = ConnectorState.Connecting;
-            try
+            using (var command = new NpgsqlCommand(function, _connection))
             {
-                await RawOpenAsync(timeout, cancellationToken);
-                var username = GetUsername();
-                WriteStartupMessage(username);
-                WriteBuffer.Flush();
-                timeout.Check();
-                await HandleAuthenticationAsync(username, timeout, cancellationToken);
-                GenerateResetMessage();
-                await TypeHandlerRegistry.SetupAsync(this, timeout, cancellationToken);
-                Counters.HardConnectsPerSecond.Increment();
-                Log.Debug($"Opened connection to {Host}:{Port}", Id);
-            }
-            catch
-            {
-                Break();
-                throw;
+                command.CommandType = CommandType.StoredProcedure;
+                command.CommandText = function;
+                foreach (var argument in arguments)
+                {
+                    command.Parameters.Add(new NpgsqlParameter()
+                    {Value = argument});
+                }
+
+                return (T)await (command.ExecuteScalarAsync(cancellationToken));
             }
         }
 
-        async Task RawOpenAsync(NpgsqlTimeout timeout, CancellationToken cancellationToken)
+        internal async Task<int> ExecuteFunctionGetBytesAsync(string function, byte[] buffer, int offset, int len, CancellationToken cancellationToken, params object[] arguments)
         {
-            try
+            using (var command = new NpgsqlCommand(function, _connection))
             {
-                await ConnectAsync(timeout, cancellationToken);
-                Debug.Assert(_socket != null);
-                _baseStream = new NetworkStream(_socket, true);
-                _stream = _baseStream;
-                TextEncoding = _settings.Encoding == "UTF8" ? PGUtil.UTF8Encoding : Encoding.GetEncoding(_settings.Encoding, EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback);
-                ReadBuffer = new ReadBuffer(this, _stream, BufferSize, TextEncoding);
-                WriteBuffer = new WriteBuffer(this, _stream, BufferSize, TextEncoding);
-                ParseMessage = new ParseMessage(TextEncoding);
-                QueryMessage = new QueryMessage(TextEncoding);
-                if (SslMode == SslMode.Require || SslMode == SslMode.Prefer)
+                command.CommandType = CommandType.StoredProcedure;
+                foreach (var argument in arguments)
                 {
-                    Log.Trace("Attempting SSL negotiation");
-                    SSLRequestMessage.Instance.WriteFully(WriteBuffer);
-                    WriteBuffer.Flush();
-                    await ReadBuffer.EnsureAsync(1, cancellationToken);
-                    var response = (char)ReadBuffer.ReadByte();
-                    timeout.Check();
-                    switch (response)
-                    {
-                        default:
-                            throw new NpgsqlException($"Received unknown response {response} for SSLRequest (expecting S or N)");
-                        case 'N':
-                            if (SslMode == SslMode.Require)
-                            {
-                                throw new NpgsqlException("SSL connection requested. No SSL enabled connection from this host is configured.");
-                            }
-
-                            break;
-                        case 'S':
-                            var clientCertificates = new X509CertificateCollection();
-                            Connection.ProvideClientCertificatesCallback?.Invoke(clientCertificates);
-                            RemoteCertificateValidationCallback certificateValidationCallback;
-                            if (_settings.TrustServerCertificate)
-                                certificateValidationCallback = (sender, certificate, chain, errors) => true;
-                            else if (Connection.UserCertificateValidationCallback != null)
-                                certificateValidationCallback = Connection.UserCertificateValidationCallback;
-                            else
-                                certificateValidationCallback = DefaultUserCertificateValidationCallback;
-                            if (!UseSslStream)
-                            {
-                                var sslStream = new Tls.TlsClientStream(_stream);
-                                sslStream.PerformInitialHandshake(Host, clientCertificates, certificateValidationCallback, false);
-                                _stream = sslStream;
-                            }
-                            else
-                            {
-                                var sslStream = new SslStream(_stream, false, certificateValidationCallback);
-#if NETSTANDARD1_3
-                            // CoreCLR removed sync methods from SslStream, see https://github.com/dotnet/corefx/pull/4868.
-                            // Consider exactly what to do here.
-                            sslStream.AuthenticateAsClientAsync(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, false).Wait();
-#else
-                                sslStream.AuthenticateAsClient(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, false);
-#endif
-                                _stream = sslStream;
-                            }
-
-                            timeout.Check();
-                            ReadBuffer.Underlying = _stream;
-                            WriteBuffer.Underlying = _stream;
-                            IsSecure = true;
-                            Log.Trace("SSL negotiation successful");
-                            break;
-                    }
+                    command.Parameters.Add(new NpgsqlParameter()
+                    {Value = argument});
                 }
 
-                Log.Trace($"Socket connected to {Host}:{Port}");
-            }
-            catch
-            {
-                try
+                using (var reader = command.ExecuteReader(System.Data.CommandBehavior.SequentialAccess))
                 {
-                    _stream?.Dispose();
-                }
-                catch
-                {
-                // ignored
-                }
-
-                _stream = null;
-                try
-                {
-                    _baseStream?.Dispose();
-                }
-                catch
-                {
-                // ignored
-                }
-
-                _baseStream = null;
-                try
-                {
-                    _socket?.Dispose();
-                }
-                catch
-                {
-                // ignored
-                }
-
-                _socket = null;
-                throw;
-            }
-        }
-
-        async Task HandleAuthenticationAsync(string username, NpgsqlTimeout timeout, CancellationToken cancellationToken)
-        {
-            Log.Trace("Authenticating...", Id);
-            while (true)
-            {
-                var msg = await (ReadMessageAsync(DataRowLoadingMode.NonSequential, cancellationToken));
-                timeout.Check();
-                switch (msg.Code)
-                {
-                    case BackendMessageCode.AuthenticationRequest:
-                        var passwordMessage = ProcessAuthenticationMessage(username, (AuthenticationRequestMessage)msg);
-                        if (passwordMessage != null)
-                        {
-                            passwordMessage.WriteFully(WriteBuffer);
-                            WriteBuffer.Flush();
-                            timeout.Check();
-                        }
-
-                        continue;
-                    case BackendMessageCode.BackendKeyData:
-                        var backendKeyDataMsg = (BackendKeyDataMessage)msg;
-                        BackendProcessId = backendKeyDataMsg.BackendProcessId;
-                        _backendSecretKey = backendKeyDataMsg.BackendSecretKey;
-                        continue;
-                    case BackendMessageCode.ReadyForQuery:
-                        State = ConnectorState.Ready;
-                        return;
-                    default:
-                        throw new NpgsqlException("Unexpected message received while authenticating: " + msg.Code);
+                    await reader.ReadAsync(cancellationToken);
+                    return (int)reader.GetBytes(0, 0, buffer, offset, len);
                 }
             }
         }
 
-        async Task<IBackendMessage> ReadMessageWithPrependedAsync(CancellationToken cancellationToken, DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential)
+        async Task<uint> CreateInternalAsync(uint preferredOid, CancellationToken cancellationToken) => await (ExecuteFunctionAsync<uint>("lo_create", cancellationToken, (int)preferredOid));
+        async Task<NpgsqlLargeObjectStream> OpenReadInternalAsync(uint oid, CancellationToken cancellationToken)
         {
-            // First read the responses of any prepended messages.
-            ReadPrependedMessages();
-            // Now read a non-prepended message
-            try
-            {
-                ReceiveTimeout = UserTimeout;
-                return await DoReadMessageAsync(cancellationToken, dataRowLoadingMode);
-            }
-            catch (PostgresException)
-            {
-                if (CurrentReader != null)
-                {
-                    // The reader cleanup will call EndUserAction
-                    CurrentReader.Cleanup();
-                }
-                else
-                {
-                    EndUserAction();
-                }
-
-                throw;
-            }
+            var fd = await (ExecuteFunctionAsync<int>("lo_open", cancellationToken, (int)oid, INV_READ));
+            return new NpgsqlLargeObjectStream(this, oid, fd, false);
         }
 
-        async Task<IBackendMessage> DoReadMessageAsync(CancellationToken cancellationToken, DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential, bool isPrependedMessage = false)
+        async Task<NpgsqlLargeObjectStream> OpenReadWriteInternalAsync(uint oid, CancellationToken cancellationToken)
         {
-            PostgresException error = null;
-            while (true)
-            {
-                var buf = ReadBuffer;
-                await ReadBuffer.EnsureAsync(5, cancellationToken);
-                var messageCode = (BackendMessageCode)ReadBuffer.ReadByte();
-                PGUtil.ValidateBackendMessageCode(messageCode);
-                var len = ReadBuffer.ReadInt32() - 4; // Transmitted length includes itself
-                if ((messageCode == BackendMessageCode.DataRow && dataRowLoadingMode != DataRowLoadingMode.NonSequential) || messageCode == BackendMessageCode.CopyData)
-                {
-                    if (dataRowLoadingMode == DataRowLoadingMode.Skip)
-                    {
-                        await ReadBuffer.SkipAsync(len, cancellationToken);
-                        continue;
-                    }
-                }
-                else if (len > ReadBuffer.ReadBytesLeft)
-                {
-                    buf = await (buf.EnsureOrAllocateTempAsync(len, cancellationToken));
-                }
-
-                var msg = ParseServerMessage(buf, messageCode, len, dataRowLoadingMode, isPrependedMessage);
-                switch (messageCode)
-                {
-                    case BackendMessageCode.ErrorResponse:
-                        Debug.Assert(msg == null);
-                        // An ErrorResponse is (almost) always followed by a ReadyForQuery. Save the error
-                        // and throw it as an exception when the ReadyForQuery is received (next).
-                        error = new PostgresException(buf);
-                        if (State == ConnectorState.Connecting)
-                        {
-                            // During the startup/authentication phase, an ErrorResponse isn't followed by
-                            // an RFQ. Instead, the server closes the connection immediately
-                            throw error;
-                        }
-
-                        continue;
-                    case BackendMessageCode.ReadyForQuery:
-                        if (error != null)
-                        {
-                            throw error;
-                        }
-
-                        break;
-                    // Asynchronous messages which can come anytime, they have already been handled
-                    // in ParseServerMessage. Read the next message.
-                    case BackendMessageCode.NoticeResponse:
-                    case BackendMessageCode.NotificationResponse:
-                    case BackendMessageCode.ParameterStatus:
-                        Debug.Assert(msg == null);
-                        continue;
-                }
-
-                Debug.Assert(msg != null, "Message is null for code: " + messageCode);
-                return msg;
-            }
-        }
-
-        internal async Task<IBackendMessage> SkipUntilAsync(BackendMessageCode stopAt, CancellationToken cancellationToken)
-        {
-            Debug.Assert(stopAt != BackendMessageCode.DataRow, "Shouldn't be used for rows, doesn't know about sequential");
-            while (true)
-            {
-                var msg = await (ReadMessageAsync(DataRowLoadingMode.Skip, cancellationToken));
-                Debug.Assert(!(msg is DataRowMessage));
-                if (msg.Code == stopAt)
-                {
-                    return msg;
-                }
-            }
-        }
-
-        internal async Task<IBackendMessage> SkipUntilAsync(BackendMessageCode stopAt1, BackendMessageCode stopAt2, CancellationToken cancellationToken)
-        {
-            Debug.Assert(stopAt1 != BackendMessageCode.DataRow, "Shouldn't be used for rows, doesn't know about sequential");
-            Debug.Assert(stopAt2 != BackendMessageCode.DataRow, "Shouldn't be used for rows, doesn't know about sequential");
-            while (true)
-            {
-                var msg = await (ReadMessageAsync(DataRowLoadingMode.Skip, cancellationToken));
-                Debug.Assert(!(msg is DataRowMessage));
-                if (msg.Code == stopAt1 || msg.Code == stopAt2)
-                {
-                    return msg;
-                }
-            }
-        }
-
-        internal async Task<T> ReadExpectingAsync<T>(CancellationToken cancellationToken)where T : class, IBackendMessage
-        {
-            var msg = await (ReadMessageAsync(DataRowLoadingMode.NonSequential, cancellationToken));
-            var asExpected = msg as T;
-            if (asExpected == null)
-            {
-                Break();
-                throw new NpgsqlException($"Received backend message {msg.Code} while expecting {typeof (T).Name}. Please file a bug.");
-            }
-
-            return asExpected;
-        }
-
-        internal async Task ReadAsyncMessageAsync(CancellationToken cancellationToken)
-        {
-            ReceiveTimeout = UserTimeout;
-            await ReadBuffer.EnsureAsync(5, cancellationToken, true);
-            var messageCode = (BackendMessageCode)ReadBuffer.ReadByte();
-            Debug.Assert(Enum.IsDefined(typeof (BackendMessageCode), messageCode), "Unknown message code: " + messageCode);
-            var len = ReadBuffer.ReadInt32() - 4; // Transmitted length includes itself
-            var buf = await (ReadBuffer.EnsureOrAllocateTempAsync(len, cancellationToken));
-            var msg = ParseServerMessage(buf, messageCode, len, DataRowLoadingMode.NonSequential, false);
-            switch (messageCode)
-            {
-                case BackendMessageCode.NoticeResponse:
-                case BackendMessageCode.NotificationResponse:
-                case BackendMessageCode.ParameterStatus:
-                    break;
-                case BackendMessageCode.ErrorResponse:
-                    // We can get certain asynchronous errors if the remote process is terminated, etc.
-                    // We assume this is fatal.
-                    Break();
-                    throw new PostgresException(buf);
-                default:
-                    Break();
-                    throw new NpgsqlException($"Received unexpected message {msg} while waiting for an asynchronous message");
-            }
+            var fd = await (ExecuteFunctionAsync<int>("lo_open", cancellationToken, (int)oid, INV_READ | INV_WRITE));
+            return new NpgsqlLargeObjectStream(this, oid, fd, true);
         }
     }
 
@@ -962,57 +624,283 @@ namespace Npgsql
         }
     }
 
-    /// <summary>
-    /// Large object manager. This class can be used to store very large files in a PostgreSQL database.
-    /// </summary>
-    public partial class NpgsqlLargeObjectManager
+#pragma warning restore CA1040
+    abstract partial class TypeHandler
     {
-        internal async Task<T> ExecuteFunctionAsync<T>(string function, CancellationToken cancellationToken, params object[] arguments)
+        internal async Task<T> ReadFullyAsync<T>(DataRowMessage row, int len, CancellationToken cancellationToken, FieldDescription fieldDescription = null)
         {
-            using (var command = new NpgsqlCommand(function, _connection))
+            Debug.Assert(row.PosInColumn == 0);
+            T result;
+            try
             {
-                command.CommandType = CommandType.StoredProcedure;
-                command.CommandText = function;
-                foreach (var argument in arguments)
-                {
-                    command.Parameters.Add(new NpgsqlParameter()
-                    {Value = argument});
-                }
+                result = await (ReadFullyAsync<T>(row.Buffer, len, cancellationToken, fieldDescription));
+            }
+            finally
+            {
+                // Important in case a SafeReadException was thrown, position must still be updated
+                row.PosInColumn += row.ColumnLen;
+            }
 
-                return (T)await (command.ExecuteScalarAsync(cancellationToken));
+            return result;
+        }
+    }
+
+    abstract partial class SimpleTypeHandler<T>
+    {
+        internal async override Task<T2> ReadFullyAsync<T2>(ReadBuffer buf, int len, CancellationToken cancellationToken, FieldDescription fieldDescription = null)
+        {
+            await buf.EnsureAsync(len, cancellationToken);
+            var asTypedHandler = this as ISimpleTypeHandler<T2>;
+            if (asTypedHandler == null)
+                throw new InvalidCastException(fieldDescription == null ? "Can't cast database type to " + typeof (T2).Name : $"Can't cast database type {fieldDescription.Handler.PgDisplayName} to {typeof (T2).Name}");
+            return asTypedHandler.Read(buf, len, fieldDescription);
+        }
+    }
+
+    abstract partial class ChunkingTypeHandler<T>
+    {
+        internal async override Task<T2> ReadFullyAsync<T2>(ReadBuffer buf, int len, CancellationToken cancellationToken, FieldDescription fieldDescription = null)
+        {
+            var asTypedHandler = this as IChunkingTypeHandler<T2>;
+            if (asTypedHandler == null)
+                throw new InvalidCastException(fieldDescription == null ? "Can't cast database type to " + typeof (T2).Name : $"Can't cast database type {fieldDescription.Handler.PgDisplayName} to {typeof (T2).Name}");
+            asTypedHandler.PrepareRead(buf, len, fieldDescription);
+            T2 result;
+            while (!asTypedHandler.Read(out result))
+                await buf.ReadMoreAsync(cancellationToken);
+            return result;
+        }
+    }
+
+    partial class TypeHandlerRegistry
+    {
+        internal static async Task SetupAsync(NpgsqlConnector connector, NpgsqlTimeout timeout, CancellationToken cancellationToken)
+        {
+            // Note that there's a chicken and egg problem here - LoadBackendTypes below needs a functional 
+            // connector to load the types, hence the strange initialization code here
+            connector.TypeHandlerRegistry = new TypeHandlerRegistry(connector);
+            AvailablePostgresTypes types;
+            if (!BackendTypeCache.TryGetValue(connector.ConnectionString, out types))
+                types = BackendTypeCache[connector.ConnectionString] = await (LoadBackendTypesAsync(connector, timeout, cancellationToken));
+            connector.TypeHandlerRegistry._postgresTypes = types;
+            connector.TypeHandlerRegistry.ActivateGlobalMappings();
+        }
+
+        static async Task<AvailablePostgresTypes> LoadBackendTypesAsync(NpgsqlConnector connector, NpgsqlTimeout timeout, CancellationToken cancellationToken)
+        {
+            var types = new AvailablePostgresTypes();
+            using (var command = new NpgsqlCommand(connector.SupportsRangeTypes ? TypesQueryWithRange : TypesQueryWithoutRange, connector.Connection))
+            {
+                command.CommandTimeout = timeout.IsSet ? (int)timeout.TimeLeft.TotalSeconds : 0;
+                command.AllResultTypesAreUnknown = true;
+                using (var reader = command.ExecuteReader())
+                {
+                    while (await reader.ReadAsync(cancellationToken))
+                    {
+                        timeout.Check();
+                        LoadBackendType(reader, types, connector);
+                    }
+                }
+            }
+
+            return types;
+        }
+    }
+
+    partial class ReadBuffer
+    {
+        internal async Task EnsureAsync(int count, CancellationToken cancellationToken, bool dontBreakOnTimeouts = false)
+        {
+            Debug.Assert(count <= Size);
+            count -= ReadBytesLeft;
+            if (count <= 0)
+            {
+                return;
+            }
+
+            if (ReadPosition == _filledBytes)
+            {
+                Clear();
+            }
+            else if (count > Size - _filledBytes)
+            {
+                Array.Copy(_buf, ReadPosition, _buf, 0, ReadBytesLeft);
+                _filledBytes = ReadBytesLeft;
+                ReadPosition = 0;
+            }
+
+            try
+            {
+                while (count > 0)
+                {
+                    var toRead = Size - _filledBytes;
+                    var read = await (Underlying.ReadAsync(_buf, _filledBytes, toRead, cancellationToken));
+                    if (read == 0)
+                        throw new EndOfStreamException();
+                    count -= read;
+                    _filledBytes += read;
+                }
+            }
+            // We have a special case when reading async notifications - a timeout may be normal
+            // shouldn't be fatal
+            // Note that mono throws SocketException with the wrong error (see #1330)
+            catch (IOException e)when (dontBreakOnTimeouts && (e.InnerException as SocketException)?.SocketErrorCode == (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock))
+            {
+                throw new TimeoutException("Timeout while reading from stream");
+            }
+            catch (Exception e)
+            {
+                Connector.Break();
+                throw new NpgsqlException("Exception while reading from stream", e);
             }
         }
 
-        internal async Task<int> ExecuteFunctionGetBytesAsync(string function, byte[] buffer, int offset, int len, CancellationToken cancellationToken, params object[] arguments)
+        internal async Task ReadMoreAsync(CancellationToken cancellationToken)
         {
-            using (var command = new NpgsqlCommand(function, _connection))
+            await EnsureAsync(ReadBytesLeft + 1, cancellationToken);
+        }
+
+        internal async Task<ReadBuffer> EnsureOrAllocateTempAsync(int count, CancellationToken cancellationToken)
+        {
+            if (count <= Size)
             {
-                command.CommandType = CommandType.StoredProcedure;
-                foreach (var argument in arguments)
+                await EnsureAsync(count, cancellationToken);
+                return this;
+            }
+
+            // Worst case: our buffer isn't big enough. For now, allocate a new buffer
+            // and copy into it
+            // TODO: Optimize with a pool later?
+            var tempBuf = new ReadBuffer(Connector, Underlying, count, TextEncoding);
+            CopyTo(tempBuf);
+            Clear();
+            await tempBuf.EnsureAsync(count, cancellationToken);
+            return tempBuf;
+        }
+
+        internal async Task SkipAsync(long len, CancellationToken cancellationToken)
+        {
+            Debug.Assert(len >= 0);
+            if (len > ReadBytesLeft)
+            {
+                len -= ReadBytesLeft;
+                while (len > Size)
                 {
-                    command.Parameters.Add(new NpgsqlParameter()
-                    {Value = argument});
+                    Clear();
+                    await EnsureAsync(Size, cancellationToken);
+                    len -= Size;
                 }
 
-                using (var reader = command.ExecuteReader(System.Data.CommandBehavior.SequentialAccess))
+                Clear();
+                await EnsureAsync((int)len, cancellationToken);
+            }
+
+            ReadPosition += (int)len;
+        }
+
+        internal async Task<int> ReadAllBytesAsync(byte[] output, int outputOffset, int len, bool readOnce, CancellationToken cancellationToken)
+        {
+            if (len <= ReadBytesLeft)
+            {
+                Array.Copy(_buf, ReadPosition, output, outputOffset, len);
+                ReadPosition += len;
+                return len;
+            }
+
+            Array.Copy(_buf, ReadPosition, output, outputOffset, ReadBytesLeft);
+            var offset = outputOffset + ReadBytesLeft;
+            var totalRead = ReadBytesLeft;
+            Clear();
+            try
+            {
+                while (totalRead < len)
                 {
-                    await reader.ReadAsync(cancellationToken);
-                    return (int)reader.GetBytes(0, 0, buffer, offset, len);
+                    var read = await (Underlying.ReadAsync(output, offset, len - totalRead, cancellationToken));
+                    if (read == 0)
+                        throw new EndOfStreamException();
+                    totalRead += read;
+                    if (readOnce)
+                        return totalRead;
+                    offset += read;
                 }
             }
-        }
+            catch (Exception e)
+            {
+                Connector.Break();
+                throw new NpgsqlException("Exception while reading from stream", e);
+            }
 
-        async Task<uint> CreateInternalAsync(uint preferredOid, CancellationToken cancellationToken) => await (ExecuteFunctionAsync<uint>("lo_create", cancellationToken, (int)preferredOid));
-        async Task<NpgsqlLargeObjectStream> OpenReadInternalAsync(uint oid, CancellationToken cancellationToken)
-        {
-            var fd = await (ExecuteFunctionAsync<int>("lo_open", cancellationToken, (int)oid, INV_READ));
-            return new NpgsqlLargeObjectStream(this, oid, fd, false);
+            return len;
         }
+    }
 
-        async Task<NpgsqlLargeObjectStream> OpenReadWriteInternalAsync(uint oid, CancellationToken cancellationToken)
+    sealed partial class ConnectorPool
+    {
+        internal async Task<NpgsqlConnector> AllocateAsync(NpgsqlConnection conn, NpgsqlTimeout timeout, CancellationToken cancellationToken)
         {
-            var fd = await (ExecuteFunctionAsync<int>("lo_open", cancellationToken, (int)oid, INV_READ | INV_WRITE));
-            return new NpgsqlLargeObjectStream(this, oid, fd, true);
+            NpgsqlConnector connector;
+            Monitor.Enter(this);
+            while (Idle.Count > 0)
+            {
+                connector = Idle.Pop();
+                // An idle connector could be broken because of a keepalive
+                if (connector.IsBroken)
+                    continue;
+                connector.Connection = conn;
+                IncrementBusy();
+                EnsurePruningTimerState();
+                Monitor.Exit(this);
+                return connector;
+            }
+
+            Debug.Assert(Busy <= _max);
+            if (Busy == _max)
+            {
+                // TODO: Async cancellation
+                var tcs = new TaskCompletionSource<NpgsqlConnector>();
+                await EnqueueWaitingOpenAttemptAsync(tcs, cancellationToken);
+                Monitor.Exit(this);
+                try
+                {
+                    await WaitForTaskAsync(tcs.Task, timeout.TimeLeft, cancellationToken);
+                }
+                catch
+                {
+                    // We're here if the timeout expired or the cancellation token was triggered
+                    // Re-lock and check in case the task was set to completed after coming out of the Wait
+                    lock (this)
+                    {
+                        if (!tcs.Task.IsCompleted)
+                        {
+                            tcs.SetCanceled();
+                            throw;
+                        }
+                    }
+                }
+
+                connector = tcs.Task.Result;
+                connector.Connection = conn;
+                return connector;
+            }
+
+            // No idle connectors are available, and we're under the pool's maximum capacity.
+            IncrementBusy();
+            Monitor.Exit(this);
+            try
+            {
+                connector = new NpgsqlConnector(conn)
+                {ClearCounter = _clearCounter};
+                await connector.OpenAsync(timeout, cancellationToken);
+                Counters.NumberOfPooledConnections.Increment();
+                EnsureMinPoolSize(conn);
+                return connector;
+            }
+            catch
+            {
+                lock (this)
+                    DecrementBusy();
+                throw;
+            }
         }
     }
 
@@ -1113,282 +1001,395 @@ namespace Npgsql
         }
     }
 
-    sealed partial class ConnectorPool
+    /// <summary>
+    /// Represents a connection to a PostgreSQL backend. Unlike NpgsqlConnection objects, which are
+    /// exposed to users, connectors are internal to Npgsql and are recycled by the connection pool.
+    /// </summary>
+    sealed partial class NpgsqlConnector
     {
-        internal async Task<NpgsqlConnector> AllocateAsync(NpgsqlConnection conn, NpgsqlTimeout timeout, CancellationToken cancellationToken)
+        internal async Task OpenAsync(NpgsqlTimeout timeout, CancellationToken cancellationToken)
         {
-            NpgsqlConnector connector;
-            Monitor.Enter(this);
-            while (Idle.Count > 0)
-            {
-                connector = Idle.Pop();
-                // An idle connector could be broken because of a keepalive
-                if (connector.IsBroken)
-                    continue;
-                connector.Connection = conn;
-                IncrementBusy();
-                EnsurePruningTimerState();
-                Monitor.Exit(this);
-                return connector;
-            }
-
-            Debug.Assert(Busy <= _max);
-            if (Busy == _max)
-            {
-                // TODO: Async cancellation
-                var tcs = new TaskCompletionSource<NpgsqlConnector>();
-                await EnqueueWaitingOpenAttemptAsync(tcs, cancellationToken);
-                Monitor.Exit(this);
-                try
-                {
-                    await WaitForTaskAsync(tcs.Task, timeout.TimeLeft, cancellationToken);
-                }
-                catch
-                {
-                    // We're here if the timeout expired or the cancellation token was triggered
-                    // Re-lock and check in case the task was set to completed after coming out of the Wait
-                    lock (this)
-                    {
-                        if (!tcs.Task.IsCompleted)
-                        {
-                            tcs.SetCanceled();
-                            throw;
-                        }
-                    }
-                }
-
-                connector = tcs.Task.Result;
-                connector.Connection = conn;
-                return connector;
-            }
-
-            // No idle connectors are available, and we're under the pool's maximum capacity.
-            IncrementBusy();
-            Monitor.Exit(this);
+            Debug.Assert(Connection != null && Connection.Connector == this);
+            Debug.Assert(State == ConnectorState.Closed);
+            State = ConnectorState.Connecting;
             try
             {
-                connector = new NpgsqlConnector(conn)
-                {ClearCounter = _clearCounter};
-                await connector.OpenAsync(timeout, cancellationToken);
-                Counters.NumberOfPooledConnections.Increment();
-                EnsureMinPoolSize(conn);
-                return connector;
+                await RawOpenAsync(timeout, cancellationToken);
+                var username = GetUsername();
+                WriteStartupMessage(username);
+                WriteBuffer.Flush();
+                timeout.Check();
+                await HandleAuthenticationAsync(username, timeout, cancellationToken);
+                GenerateResetMessage();
+                await TypeHandlerRegistry.SetupAsync(this, timeout, cancellationToken);
+                Counters.HardConnectsPerSecond.Increment();
+                Log.Debug($"Opened connection to {Host}:{Port}", Id);
             }
             catch
             {
-                lock (this)
-                    DecrementBusy();
+                Break();
                 throw;
             }
         }
-    }
 
-    partial class ReadBuffer
-    {
-        internal async Task EnsureAsync(int count, CancellationToken cancellationToken, bool dontBreakOnTimeouts = false)
+        async Task RawOpenAsync(NpgsqlTimeout timeout, CancellationToken cancellationToken)
         {
-            Debug.Assert(count <= Size);
-            count -= ReadBytesLeft;
-            if (count <= 0)
-            {
-                return;
-            }
-
-            if (ReadPosition == _filledBytes)
-            {
-                Clear();
-            }
-            else if (count > Size - _filledBytes)
-            {
-                Array.Copy(_buf, ReadPosition, _buf, 0, ReadBytesLeft);
-                _filledBytes = ReadBytesLeft;
-                ReadPosition = 0;
-            }
-
             try
             {
-                while (count > 0)
+                await ConnectAsync(timeout, cancellationToken);
+                Debug.Assert(_socket != null);
+                _baseStream = new NetworkStream(_socket, true);
+                _stream = _baseStream;
+                TextEncoding = _settings.Encoding == "UTF8" ? PGUtil.UTF8Encoding : Encoding.GetEncoding(_settings.Encoding, EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback);
+                ReadBuffer = new ReadBuffer(this, _stream, BufferSize, TextEncoding);
+                WriteBuffer = new WriteBuffer(this, _stream, BufferSize, TextEncoding);
+                ParseMessage = new ParseMessage(TextEncoding);
+                QueryMessage = new QueryMessage(TextEncoding);
+                if (SslMode == SslMode.Require || SslMode == SslMode.Prefer)
                 {
-                    var toRead = Size - _filledBytes;
-                    var read = await (Underlying.ReadAsync(_buf, _filledBytes, toRead, cancellationToken));
-                    if (read == 0)
-                        throw new EndOfStreamException();
-                    count -= read;
-                    _filledBytes += read;
-                }
-            }
-            // We have a special case when reading async notifications - a timeout may be normal
-            // shouldn't be fatal
-            catch (IOException e)when (dontBreakOnTimeouts && (e.InnerException as SocketException)?.SocketErrorCode == SocketError.TimedOut)
-            {
-                throw new TimeoutException("Timeout while reading from stream");
-            }
-            catch (Exception e)
-            {
-                Connector.Break();
-                throw new NpgsqlException("Exception while reading from stream", e);
-            }
-        }
-
-        internal async Task ReadMoreAsync(CancellationToken cancellationToken)
-        {
-            await EnsureAsync(ReadBytesLeft + 1, cancellationToken);
-        }
-
-        internal async Task<ReadBuffer> EnsureOrAllocateTempAsync(int count, CancellationToken cancellationToken)
-        {
-            if (count <= Size)
-            {
-                await EnsureAsync(count, cancellationToken);
-                return this;
-            }
-
-            // Worst case: our buffer isn't big enough. For now, allocate a new buffer
-            // and copy into it
-            // TODO: Optimize with a pool later?
-            var tempBuf = new ReadBuffer(Connector, Underlying, count, TextEncoding);
-            CopyTo(tempBuf);
-            Clear();
-            await tempBuf.EnsureAsync(count, cancellationToken);
-            return tempBuf;
-        }
-
-        internal async Task SkipAsync(long len, CancellationToken cancellationToken)
-        {
-            Debug.Assert(len >= 0);
-            if (len > ReadBytesLeft)
-            {
-                len -= ReadBytesLeft;
-                while (len > Size)
-                {
-                    Clear();
-                    await EnsureAsync(Size, cancellationToken);
-                    len -= Size;
-                }
-
-                Clear();
-                await EnsureAsync((int)len, cancellationToken);
-            }
-
-            ReadPosition += (int)len;
-        }
-
-        internal async Task<int> ReadAllBytesAsync(byte[] output, int outputOffset, int len, bool readOnce, CancellationToken cancellationToken)
-        {
-            if (len <= ReadBytesLeft)
-            {
-                Array.Copy(_buf, ReadPosition, output, outputOffset, len);
-                ReadPosition += len;
-                return len;
-            }
-
-            Array.Copy(_buf, ReadPosition, output, outputOffset, ReadBytesLeft);
-            var offset = outputOffset + ReadBytesLeft;
-            var totalRead = ReadBytesLeft;
-            Clear();
-            try
-            {
-                while (totalRead < len)
-                {
-                    var read = await (Underlying.ReadAsync(output, offset, len - totalRead, cancellationToken));
-                    if (read == 0)
-                        throw new EndOfStreamException();
-                    totalRead += read;
-                    if (readOnce)
-                        return totalRead;
-                    offset += read;
-                }
-            }
-            catch (Exception e)
-            {
-                Connector.Break();
-                throw new NpgsqlException("Exception while reading from stream", e);
-            }
-
-            return len;
-        }
-    }
-
-#pragma warning restore CA1040
-    abstract partial class TypeHandler
-    {
-        internal async Task<T> ReadFullyAsync<T>(DataRowMessage row, int len, CancellationToken cancellationToken, FieldDescription fieldDescription = null)
-        {
-            Debug.Assert(row.PosInColumn == 0);
-            T result;
-            try
-            {
-                result = await (ReadFullyAsync<T>(row.Buffer, len, cancellationToken, fieldDescription));
-            }
-            finally
-            {
-                // Important in case a SafeReadException was thrown, position must still be updated
-                row.PosInColumn += row.ColumnLen;
-            }
-
-            return result;
-        }
-    }
-
-    abstract partial class SimpleTypeHandler<T>
-    {
-        internal async override Task<T2> ReadFullyAsync<T2>(ReadBuffer buf, int len, CancellationToken cancellationToken, FieldDescription fieldDescription = null)
-        {
-            await buf.EnsureAsync(len, cancellationToken);
-            var asTypedHandler = this as ISimpleTypeHandler<T2>;
-            if (asTypedHandler == null)
-                throw new InvalidCastException(fieldDescription == null ? "Can't cast database type to " + typeof (T2).Name : $"Can't cast database type {fieldDescription.Handler.PgDisplayName} to {typeof (T2).Name}");
-            return asTypedHandler.Read(buf, len, fieldDescription);
-        }
-    }
-
-    abstract partial class ChunkingTypeHandler<T>
-    {
-        internal async override Task<T2> ReadFullyAsync<T2>(ReadBuffer buf, int len, CancellationToken cancellationToken, FieldDescription fieldDescription = null)
-        {
-            var asTypedHandler = this as IChunkingTypeHandler<T2>;
-            if (asTypedHandler == null)
-                throw new InvalidCastException(fieldDescription == null ? "Can't cast database type to " + typeof (T2).Name : $"Can't cast database type {fieldDescription.Handler.PgDisplayName} to {typeof (T2).Name}");
-            asTypedHandler.PrepareRead(buf, len, fieldDescription);
-            T2 result;
-            while (!asTypedHandler.Read(out result))
-                await buf.ReadMoreAsync(cancellationToken);
-            return result;
-        }
-    }
-
-    partial class TypeHandlerRegistry
-    {
-        internal static async Task SetupAsync(NpgsqlConnector connector, NpgsqlTimeout timeout, CancellationToken cancellationToken)
-        {
-            // Note that there's a chicken and egg problem here - LoadBackendTypes below needs a functional 
-            // connector to load the types, hence the strange initialization code here
-            connector.TypeHandlerRegistry = new TypeHandlerRegistry(connector);
-            AvailablePostgresTypes types;
-            if (!BackendTypeCache.TryGetValue(connector.ConnectionString, out types))
-                types = BackendTypeCache[connector.ConnectionString] = await (LoadBackendTypesAsync(connector, timeout, cancellationToken));
-            connector.TypeHandlerRegistry._postgresTypes = types;
-            connector.TypeHandlerRegistry.ActivateGlobalMappings();
-        }
-
-        static async Task<AvailablePostgresTypes> LoadBackendTypesAsync(NpgsqlConnector connector, NpgsqlTimeout timeout, CancellationToken cancellationToken)
-        {
-            var types = new AvailablePostgresTypes();
-            using (var command = new NpgsqlCommand(connector.SupportsRangeTypes ? TypesQueryWithRange : TypesQueryWithoutRange, connector.Connection))
-            {
-                command.CommandTimeout = timeout.IsSet ? (int)timeout.TimeLeft.TotalSeconds : 0;
-                command.AllResultTypesAreUnknown = true;
-                using (var reader = command.ExecuteReader())
-                {
-                    while (await reader.ReadAsync(cancellationToken))
+                    Log.Trace("Attempting SSL negotiation");
+                    SSLRequestMessage.Instance.WriteFully(WriteBuffer);
+                    WriteBuffer.Flush();
+                    await ReadBuffer.EnsureAsync(1, cancellationToken);
+                    var response = (char)ReadBuffer.ReadByte();
+                    timeout.Check();
+                    switch (response)
                     {
-                        timeout.Check();
-                        LoadBackendType(reader, types, connector);
+                        default:
+                            throw new NpgsqlException($"Received unknown response {response} for SSLRequest (expecting S or N)");
+                        case 'N':
+                            if (SslMode == SslMode.Require)
+                            {
+                                throw new NpgsqlException("SSL connection requested. No SSL enabled connection from this host is configured.");
+                            }
+
+                            break;
+                        case 'S':
+                            var clientCertificates = new X509CertificateCollection();
+                            Connection.ProvideClientCertificatesCallback?.Invoke(clientCertificates);
+                            RemoteCertificateValidationCallback certificateValidationCallback;
+                            if (_settings.TrustServerCertificate)
+                                certificateValidationCallback = (sender, certificate, chain, errors) => true;
+                            else if (Connection.UserCertificateValidationCallback != null)
+                                certificateValidationCallback = Connection.UserCertificateValidationCallback;
+                            else
+                                certificateValidationCallback = DefaultUserCertificateValidationCallback;
+                            if (!UseSslStream)
+                            {
+                                var sslStream = new Tls.TlsClientStream(_stream);
+                                sslStream.PerformInitialHandshake(Host, clientCertificates, certificateValidationCallback, _settings.CheckCertificateRevocation);
+                                _stream = sslStream;
+                            }
+                            else
+                            {
+                                var sslStream = new SslStream(_stream, false, certificateValidationCallback);
+#if NETSTANDARD1_3
+                            // CoreCLR removed sync methods from SslStream, see https://github.com/dotnet/corefx/pull/4868.
+                            // Consider exactly what to do here.
+                            sslStream.AuthenticateAsClientAsync(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, _settings.CheckCertificateRevocation).Wait();
+#else
+                                sslStream.AuthenticateAsClient(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, _settings.CheckCertificateRevocation);
+#endif
+                                _stream = sslStream;
+                            }
+
+                            timeout.Check();
+                            ReadBuffer.Underlying = _stream;
+                            WriteBuffer.Underlying = _stream;
+                            IsSecure = true;
+                            Log.Trace("SSL negotiation successful");
+                            break;
                     }
                 }
+
+                Log.Trace($"Socket connected to {Host}:{Port}");
+            }
+            catch
+            {
+                try
+                {
+                    _stream?.Dispose();
+                }
+                catch
+                {
+                // ignored
+                }
+
+                _stream = null;
+                try
+                {
+                    _baseStream?.Dispose();
+                }
+                catch
+                {
+                // ignored
+                }
+
+                _baseStream = null;
+                try
+                {
+                    _socket?.Dispose();
+                }
+                catch
+                {
+                // ignored
+                }
+
+                _socket = null;
+                throw;
+            }
+        }
+
+        async Task HandleAuthenticationAsync(string username, NpgsqlTimeout timeout, CancellationToken cancellationToken)
+        {
+            Log.Trace("Authenticating...", Id);
+            while (true)
+            {
+                var msg = await (ReadMessageAsync(DataRowLoadingMode.NonSequential, cancellationToken));
+                timeout.Check();
+                switch (msg.Code)
+                {
+                    case BackendMessageCode.AuthenticationRequest:
+                        var passwordMessage = ProcessAuthenticationMessage(username, (AuthenticationRequestMessage)msg);
+                        if (passwordMessage != null)
+                        {
+                            passwordMessage.WriteFully(WriteBuffer);
+                            WriteBuffer.Flush();
+                            timeout.Check();
+                        }
+
+                        continue;
+                    case BackendMessageCode.BackendKeyData:
+                        var backendKeyDataMsg = (BackendKeyDataMessage)msg;
+                        BackendProcessId = backendKeyDataMsg.BackendProcessId;
+                        _backendSecretKey = backendKeyDataMsg.BackendSecretKey;
+                        continue;
+                    case BackendMessageCode.ReadyForQuery:
+                        State = ConnectorState.Ready;
+                        return;
+                    default:
+                        throw new NpgsqlException("Unexpected message received while authenticating: " + msg.Code);
+                }
+            }
+        }
+
+        async Task<IBackendMessage> ReadMessageWithPrependedAsync(CancellationToken cancellationToken, DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential)
+        {
+            // First read the responses of any prepended messages.
+            ReadPrependedMessages();
+            // Now read a non-prepended message
+            try
+            {
+                ReceiveTimeout = UserTimeout;
+                return await DoReadMessageAsync(cancellationToken, dataRowLoadingMode);
+            }
+            catch (PostgresException)
+            {
+                if (CurrentReader != null)
+                {
+                    // The reader cleanup will call EndUserAction
+                    CurrentReader.Cleanup();
+                }
+                else
+                {
+                    EndUserAction();
+                }
+
+                throw;
+            }
+        }
+
+        async Task<IBackendMessage> DoReadMessageAsync(CancellationToken cancellationToken, DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential, bool isPrependedMessage = false)
+        {
+            PostgresException error = null;
+            while (true)
+            {
+                var buf = ReadBuffer;
+                await ReadBuffer.EnsureAsync(5, cancellationToken);
+                var messageCode = (BackendMessageCode)ReadBuffer.ReadByte();
+                PGUtil.ValidateBackendMessageCode(messageCode);
+                var len = ReadBuffer.ReadInt32() - 4; // Transmitted length includes itself
+                if ((messageCode == BackendMessageCode.DataRow && dataRowLoadingMode != DataRowLoadingMode.NonSequential) || messageCode == BackendMessageCode.CopyData)
+                {
+                    if (dataRowLoadingMode == DataRowLoadingMode.Skip)
+                    {
+                        await ReadBuffer.SkipAsync(len, cancellationToken);
+                        continue;
+                    }
+                }
+                else if (len > ReadBuffer.ReadBytesLeft)
+                {
+                    buf = await (buf.EnsureOrAllocateTempAsync(len, cancellationToken));
+                }
+
+                var msg = ParseServerMessage(buf, messageCode, len, dataRowLoadingMode, isPrependedMessage);
+                switch (messageCode)
+                {
+                    case BackendMessageCode.ErrorResponse:
+                        Debug.Assert(msg == null);
+                        // An ErrorResponse is (almost) always followed by a ReadyForQuery. Save the error
+                        // and throw it as an exception when the ReadyForQuery is received (next).
+                        error = new PostgresException(buf);
+                        if (State == ConnectorState.Connecting)
+                        {
+                            // During the startup/authentication phase, an ErrorResponse isn't followed by
+                            // an RFQ. Instead, the server closes the connection immediately
+                            throw error;
+                        }
+
+                        continue;
+                    case BackendMessageCode.ReadyForQuery:
+                        if (error != null)
+                        {
+                            throw error;
+                        }
+
+                        break;
+                    // Asynchronous messages which can come anytime, they have already been handled
+                    // in ParseServerMessage. Read the next message.
+                    case BackendMessageCode.NoticeResponse:
+                    case BackendMessageCode.NotificationResponse:
+                    case BackendMessageCode.ParameterStatus:
+                        Debug.Assert(msg == null);
+                        continue;
+                }
+
+                Debug.Assert(msg != null, "Message is null for code: " + messageCode);
+                return msg;
+            }
+        }
+
+        internal async Task<IBackendMessage> SkipUntilAsync(BackendMessageCode stopAt, CancellationToken cancellationToken)
+        {
+            Debug.Assert(stopAt != BackendMessageCode.DataRow, "Shouldn't be used for rows, doesn't know about sequential");
+            while (true)
+            {
+                var msg = await (ReadMessageAsync(DataRowLoadingMode.Skip, cancellationToken));
+                Debug.Assert(!(msg is DataRowMessage));
+                if (msg.Code == stopAt)
+                {
+                    return msg;
+                }
+            }
+        }
+
+        internal async Task<IBackendMessage> SkipUntilAsync(BackendMessageCode stopAt1, BackendMessageCode stopAt2, CancellationToken cancellationToken)
+        {
+            Debug.Assert(stopAt1 != BackendMessageCode.DataRow, "Shouldn't be used for rows, doesn't know about sequential");
+            Debug.Assert(stopAt2 != BackendMessageCode.DataRow, "Shouldn't be used for rows, doesn't know about sequential");
+            while (true)
+            {
+                var msg = await (ReadMessageAsync(DataRowLoadingMode.Skip, cancellationToken));
+                Debug.Assert(!(msg is DataRowMessage));
+                if (msg.Code == stopAt1 || msg.Code == stopAt2)
+                {
+                    return msg;
+                }
+            }
+        }
+
+        internal async Task<T> ReadExpectingAsync<T>(CancellationToken cancellationToken)where T : class, IBackendMessage
+        {
+            var msg = await (ReadMessageAsync(DataRowLoadingMode.NonSequential, cancellationToken));
+            var asExpected = msg as T;
+            if (asExpected == null)
+            {
+                Break();
+                throw new NpgsqlException($"Received backend message {msg.Code} while expecting {typeof (T).Name}. Please file a bug.");
             }
 
-            return types;
+            return asExpected;
+        }
+
+        internal async Task ReadAsyncMessageAsync(CancellationToken cancellationToken)
+        {
+            ReceiveTimeout = UserTimeout;
+            await ReadBuffer.EnsureAsync(5, cancellationToken, true);
+            var messageCode = (BackendMessageCode)ReadBuffer.ReadByte();
+            Debug.Assert(Enum.IsDefined(typeof (BackendMessageCode), messageCode), "Unknown message code: " + messageCode);
+            var len = ReadBuffer.ReadInt32() - 4; // Transmitted length includes itself
+            var buf = await (ReadBuffer.EnsureOrAllocateTempAsync(len, cancellationToken));
+            var msg = ParseServerMessage(buf, messageCode, len, DataRowLoadingMode.NonSequential, false);
+            switch (messageCode)
+            {
+                case BackendMessageCode.NoticeResponse:
+                case BackendMessageCode.NotificationResponse:
+                case BackendMessageCode.ParameterStatus:
+                    break;
+                case BackendMessageCode.ErrorResponse:
+                    // We can get certain asynchronous errors if the remote process is terminated, etc.
+                    // We assume this is fatal.
+                    Break();
+                    throw new PostgresException(buf);
+                default:
+                    Break();
+                    throw new NpgsqlException($"Received unexpected message {msg} while waiting for an asynchronous message");
+            }
+        }
+    }
+
+    public sealed partial class NpgsqlConnection
+    {
+        async Task OpenInternalAsync(CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(Host))
+                throw new ArgumentException("Host can't be null");
+            var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
+            // If we're postponing a close (see doc on this variable), the connection is already
+            // open and can be silently reused
+            if (_postponingClose)
+                return;
+            CheckConnectionClosed();
+            Log.Trace("Opening connnection");
+            if (Settings.Password == null)
+            {
+                // no password was provided. Attempt to pull the password from the pgpass file.
+                var pgPassFile = PgPassFile.LoadDefaultFile();
+                var matchingEntry = pgPassFile?.GetFirstMatchingEntry(Settings.Host, Settings.Port, Settings.Database, Settings.Username);
+                if (matchingEntry != null)
+                {
+                    Log.Trace("Taking password from pgpass file");
+                    Settings.Password = matchingEntry.Password;
+                }
+            }
+
+            _wasBroken = false;
+            try
+            {
+                // Get a Connector, either from the pool or creating one ourselves.
+                if (Settings.Pooling)
+                {
+                    Connector = await (PoolManager.GetOrAdd(Settings).AllocateAsync(this, timeout, cancellationToken));
+                    Counters.SoftConnectsPerSecond.Increment();
+                    // Since this pooled connector was opened, global enum/composite mappings may have
+                    // changed. Bring this up to date if needed.
+                    Connector.TypeHandlerRegistry.ActivateGlobalMappings();
+                }
+                else
+                {
+                    Connector = new NpgsqlConnector(this);
+                    await Connector.OpenAsync(timeout, cancellationToken);
+                    Counters.NumberOfNonPooledConnections.Increment();
+                }
+
+                Connector.Notice += _noticeDelegate;
+                Connector.Notification += _notificationDelegate;
+#if NET45 || NET451
+                if (Settings.Enlist)
+                {
+                    Promotable.Enlist(Transaction.Current);
+                }
+#endif
+            }
+            catch
+            {
+                Connector = null;
+                throw;
+            }
+
+            OpenCounter++;
+            _alreadyOpened = true;
+            OnStateChange(new StateChangeEventArgs(ConnectionState.Closed, ConnectionState.Open));
         }
     }
 }
