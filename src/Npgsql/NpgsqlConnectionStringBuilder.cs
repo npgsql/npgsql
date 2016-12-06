@@ -525,6 +525,25 @@ namespace Npgsql
         bool _trustServerCertificate;
 
         /// <summary>
+        /// Whether to check the certificate revocation list during authentication.
+        /// False by default.
+        /// </summary>
+        [Category("Security")]
+        [Description("Whether to check the certificate revocation list during authentication.")]
+        [DisplayName("Check Certificate Revocation")]
+        [NpgsqlConnectionStringProperty]
+        public bool CheckCertificateRevocation
+        {
+            get { return _checkCertificateRevocation; }
+            set
+            {
+                _checkCertificateRevocation = value;
+                SetValue(nameof(CheckCertificateRevocation), value);
+            }
+        }
+        bool _checkCertificateRevocation;
+
+        /// <summary>
         /// Npgsql uses its own internal implementation of TLS/SSL. Turn this on to use .NET SslStream instead.
         /// </summary>
         [Category("Security")]
