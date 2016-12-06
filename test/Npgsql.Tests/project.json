@@ -22,11 +22,11 @@
         "System.Web": { "version": "4.0.0.0", "type": "build" }
       }
     },
-    "netcoreapp1.0": {
+    "netcoreapp1.1": {
       "imports": [ "dotnet54" ],
       "dependencies": {
         "Microsoft.NETCore.App": {
-          "version": "1.0.1",
+          "version": "1.1.0",
           "type": "platform"
         }
       }
