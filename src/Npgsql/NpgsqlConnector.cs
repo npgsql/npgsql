@@ -190,7 +190,9 @@ namespace Npgsql
         /// keepalives and user actions don't interfere with one another.
         /// </summary>
         [CanBeNull]
-        readonly SemaphoreSlim _keepAliveLock;
+        SemaphoreSlim _keepAliveLock;
+
+        readonly object _keepAliveDisposeLock = new object();
 
         /// <summary>
         /// A lock that's taken while a cancellation is being delivered; new queries are blocked until the
@@ -1439,9 +1441,13 @@ namespace Npgsql
             if (IsKeepAliveEnabled)
             {
                 _keepAliveTimer.Change(Timeout.Infinite, Timeout.Infinite);
-                if (_keepAliveLock.CurrentCount == 0)
-                    _keepAliveLock.Release();
-                _keepAliveLock.Dispose();
+                // SemaphoreSlim.Dispose() isn't threadsafe - we shouldn't invoke it while the keepalive timer is
+                // trying to wait on it. So we need a standard lock to protect it.
+                lock (_keepAliveDisposeLock)
+                {
+                    _keepAliveLock.Dispose();
+                    _keepAliveLock = null;
+                }
             }
         }
 
@@ -1723,12 +1729,23 @@ namespace Npgsql
         {
             Debug.Assert(IsKeepAliveEnabled);
 
-            if (!_keepAliveLock.Wait(0))
+            // SemaphoreSlim.Dispose() isn't threadsafe - it may be in progress so we shouldn't try to wait on it;
+            // we need a standard lock to protect it.
+            lock (_keepAliveDisposeLock)
             {
-                // The async semaphore has already been acquired, either by a user action,
-                // or, improbably, by a previous keepalive.
-                // Whatever the case, exit immediately, no need to perform a keepalive.
-                return;
+                if (_keepAliveLock == null)
+                {
+                    Log.Debug("Connector already closed, aborting keepalive");
+                    return;
+                }
+
+                if (!_keepAliveLock.Wait(0))
+                {
+                    // The async semaphore has already been acquired, either by a user action,
+                    // or, improbably, by a previous keepalive.
+                    // Whatever the case, exit immediately, no need to perform a keepalive.
+                    return;
+                }
             }
 
             if (!IsConnected)
@@ -1738,7 +1755,16 @@ namespace Npgsql
             {
                 SendMessage(PregeneratedMessage.KeepAlive);
                 SkipUntil(BackendMessageCode.ReadyForQuery);
-                _keepAliveLock.Release();
+                lock (_keepAliveDisposeLock)
+                {
+                    if (_keepAliveLock == null)
+                    {
+                        Log.Debug("Connector already closed during or after keepalive");
+                        return;
+                    }
+
+                    _keepAliveLock.Release();
+                }
             }
             catch (Exception e)
             {
