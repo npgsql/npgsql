@@ -501,7 +501,7 @@ namespace Npgsql
                         if (!UseSslStream)
                         {
                             var sslStream = new TlsClientStream.TlsClientStream(_stream);
-                            sslStream.PerformInitialHandshake(Host, clientCertificates, certificateValidationCallback, false);
+                            sslStream.PerformInitialHandshake(Host, clientCertificates, certificateValidationCallback, _settings.CheckCertificateRevocation);
                             _stream = sslStream;
                         }
                         else
@@ -510,9 +510,9 @@ namespace Npgsql
 #if NETSTANDARD1_3
                             // CoreCLR removed sync methods from SslStream, see https://github.com/dotnet/corefx/pull/4868.
                             // Consider exactly what to do here.
-                            sslStream.AuthenticateAsClientAsync(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, false).Wait();
+                            sslStream.AuthenticateAsClientAsync(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, _settings.CheckCertificateRevocation).Wait();
 #else
-                            sslStream.AuthenticateAsClient(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, false);
+                            sslStream.AuthenticateAsClient(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, _settings.CheckCertificateRevocation);
 #endif
                             _stream = sslStream;
                         }
