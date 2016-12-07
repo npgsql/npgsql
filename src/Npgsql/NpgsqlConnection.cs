@@ -1179,8 +1179,6 @@ namespace Npgsql
         /// <returns>true if an asynchronous message was received, false if timed out.</returns>
         public bool Wait(int timeout)
         {
-            throw new NotImplementedException();
-#if NO
             if (timeout != -1 && timeout < 0)
                 throw new ArgumentException("Argument must be -1, 0 or positive", nameof(timeout));
 
@@ -1188,20 +1186,7 @@ namespace Npgsql
             Debug.Assert(Connector != null);
             Log.StartingSyncWait(Connector.Id, timeout);
 
-            using (Connector.StartUserAction(ConnectorState.Waiting))
-            {
-                Connector.UserTimeout = timeout;
-                try
-                {
-                    Connector.ReadAsyncMessage();
-                }
-                catch (TimeoutException)
-                {
-                    return false;
-                }
-            }
-            return true;
-#endif
+            return Connector.Wait(timeout);
         }
 
         /// <summary>

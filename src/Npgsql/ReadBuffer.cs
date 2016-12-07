@@ -149,10 +149,10 @@ namespace Npgsql
         /// read it in sequentially.
         /// </summary>
         [RewriteAsync]
-        internal ReadBuffer EnsureOrAllocateTemp(int count)
+        internal ReadBuffer EnsureOrAllocateTemp(int count, bool dontBreakOnTimeouts=false)
         {
             if (count <= Size) {
-                Ensure(count);
+                Ensure(count, dontBreakOnTimeouts);
                 return this;
             }
 
@@ -162,7 +162,7 @@ namespace Npgsql
             var tempBuf = new ReadBuffer(Connector, Underlying, count, TextEncoding);
             CopyTo(tempBuf);
             Clear();
-            tempBuf.Ensure(count);
+            tempBuf.Ensure(count, dontBreakOnTimeouts);
             return tempBuf;
         }
 

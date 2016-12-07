@@ -25,7 +25,8 @@ namespace Npgsql.Logging
         public const int Authenticating = 12;
         public const int ConnectorClosing = 13;
         public const int Breaking = 14;
-        public const int KeepaliveFailure = 15;
+        public const int Keepalive = 15;
+        public const int KeepaliveFailure = 16;
 
         // Command processing
         public const int ExecuteCommand = 100;

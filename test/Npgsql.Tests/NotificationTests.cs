@@ -1,6 +1,10 @@
-﻿using System.Data;
+﻿using System;
+using System.Data;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Npgsql.Logging;
 using NUnit.Framework;
 
 namespace Npgsql.Tests
@@ -20,7 +24,7 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test, Description("Generates a notification that arrives after reader data that is already being read")]
+        //[Test, Description("Generates a notification that arrives after reader data that is already being read")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/252")]
         public void NotificationAfterData()
         {
@@ -87,6 +91,14 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test]
+        public void WaitWithPrependedMessage()
+        {
+            using (OpenConnection()) {}  // A DISCARD ALL is now prepended in the connection's write buffer
+            using (var conn = OpenConnection())
+                Assert.That(conn.Wait(100), Is.EqualTo(false));
+        }
+
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1024")]
         [Timeout(10000)]
         public async Task WaitAsync()
@@ -105,7 +117,45 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task WaitAsyncCancellation()
+        public void WaitWithKeepalive()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                KeepAlive = 1,
+                Pooling = false
+            };
+            using (var conn = OpenConnection(csb))
+            using (var notifyingConn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("LISTEN notifytest");
+                Task.Delay(2000).ContinueWith(t => notifyingConn.ExecuteNonQuery("NOTIFY notifytest"));
+                conn.Wait();
+                Assert.That(TestLoggerSink.Records, Has.Some.With.Property("EventId").EqualTo(new EventId(NpgsqlEventId.Keepalive)));
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+            }
+        }
+
+        [Test]
+        public async Task WaitAsyncWithKeepalive()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                KeepAlive = 1,
+                Pooling = false
+            };
+            using (var conn = OpenConnection(csb))
+            using (var notifyingConn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("LISTEN notifytest");
+                Task.Delay(2000).ContinueWith(t => notifyingConn.ExecuteNonQuery("NOTIFY notifytest"));
+                await conn.WaitAsync();
+                Assert.That(TestLoggerSink.Records, Has.Some.With.Property("EventId").EqualTo(new EventId(NpgsqlEventId.Keepalive)));
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+            }
+        }
+
+        [Test]
+        public void WaitAsyncCancellation()
         {
             using (var conn = OpenConnection())
             {
@@ -121,16 +171,13 @@ namespace Npgsql.Tests
         {
             using (var conn = OpenConnection())
             {
-                new Timer(o =>
+                Task.Delay(1000).ContinueWith(t =>
                 {
                     using (var conn2 = OpenConnection())
                         conn2.ExecuteNonQuery($"SELECT pg_terminate_backend({conn.ProcessID})");
-                }, null, 500, Timeout.Infinite);
+                });
 
-                Assert.That(() => conn.Wait(), Throws.Exception
-                        .TypeOf<PostgresException>()
-                        .With.Property(nameof(PostgresException.SqlState)).EqualTo("57P01")
-                );
+                Assert.That(() => conn.Wait(), Throws.Exception.TypeOf<NpgsqlException>());
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
             }
         }

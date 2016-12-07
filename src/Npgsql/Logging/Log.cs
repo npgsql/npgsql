@@ -32,6 +32,7 @@ namespace Npgsql.Logging
         static readonly Action<ILogger, double, IPAddress, Exception> _timeoutConnecting = LoggerMessage.Define<double, IPAddress>(LogLevel.Trace, NpgsqlEventId.TimeoutConnecting, "Timeout after {Seconds} seconds when connecting to {IP}");
         static readonly Action<ILogger, IPAddress, Exception> _failedToConnect = LoggerMessage.Define<IPAddress>(LogLevel.Trace, NpgsqlEventId.FailedToConnect, "Failed to connect to {IP}");
         static readonly Action<ILogger, int, Exception> _authenticating = LoggerMessage.Define<int>(LogLevel.Trace, NpgsqlEventId.Authenticating, "[{ConnectorId}] Authenticating...");
+        static readonly Action<ILogger, int, Exception> _keepalive = LoggerMessage.Define<int>(LogLevel.Trace, NpgsqlEventId.Keepalive, "[{ConnectorId}] Performed keepalive");
 
         static readonly Action<ILogger, int, Exception> _cancel = LoggerMessage.Define<int>(LogLevel.Debug, NpgsqlEventId.Cancel, "[{ConnectorId}] Sending cancellation...");
         static readonly Action<ILogger, int, Exception> _cleanup = LoggerMessage.Define<int>(LogLevel.Trace, NpgsqlEventId.Cleanup, "[{ConnectorId}] Cleaning up connector");
@@ -86,6 +87,7 @@ namespace Npgsql.Logging
         internal static void TimeoutConnecting(double seconds, IPAddress ip) => _timeoutConnecting(Logger, seconds, ip, null);
         internal static void FailedToConnect(IPAddress ip) => _failedToConnect(Logger, ip, null);
         internal static void Authenticating(int connectorId) => _authenticating(Logger, connectorId, null);
+        internal static void Keepalive(int connectorId) => _keepalive(Logger, connectorId, null);
 
         internal static void Cancel(int connectorId) => _cancel(Logger, connectorId, null);
         internal static void Cleanup(int connectorId) => _cleanup(Logger, connectorId, null);

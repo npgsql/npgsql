@@ -845,7 +845,7 @@ namespace Npgsql
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         IBackendMessage ReadMessageWithPrepended(
             DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential,
-            bool returnNullForAsyncMessage = false
+            bool readingNotifications = false
         )
         {
             // First read the responses of any prepended messages.
@@ -855,7 +855,7 @@ namespace Npgsql
             try
             {
                 ReceiveTimeout = UserTimeout;
-                return DoReadMessage(dataRowLoadingMode, returnNullForAsyncMessage);
+                return DoReadMessage(dataRowLoadingMode, readingNotifications);
             }
             catch (PostgresException)
             {
@@ -876,7 +876,7 @@ namespace Npgsql
         [CanBeNull]
         IBackendMessage DoReadMessage(
             DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential,
-            bool returnNullForAsyncMessage = false,
+            bool readingNotifications = false,
             bool isPrependedMessage = false)
         {
             PostgresException error = null;
@@ -885,7 +885,7 @@ namespace Npgsql
             {
                 var buf = ReadBuffer;
 
-                ReadBuffer.Ensure(5);
+                ReadBuffer.Ensure(5, readingNotifications);
                 var messageCode = (BackendMessageCode)ReadBuffer.ReadByte();
                 PGUtil.ValidateBackendMessageCode(messageCode);
                 var len = ReadBuffer.ReadInt32() - 4;  // Transmitted length includes itself
@@ -934,7 +934,7 @@ namespace Npgsql
                 case BackendMessageCode.NotificationResponse:
                 case BackendMessageCode.ParameterStatus:
                     Debug.Assert(msg == null);
-                    if (!returnNullForAsyncMessage)
+                    if (!readingNotifications)
                         continue;
                     return null;
                 }
@@ -1729,6 +1729,7 @@ namespace Npgsql
 
                     _keepAliveLock.Release();
                 }
+                Log.Keepalive(Id);
             }
             catch (Exception e)
             {
@@ -1740,6 +1741,80 @@ namespace Npgsql
         #endregion
 
         #region Wait
+
+        public bool Wait(int timeout)
+        {
+            using (StartUserAction(ConnectorState.Waiting))
+            {
+                // We may have prepended messages in the connection's write buffer - these need to be flushed now.
+                WriteBuffer.Flush();
+
+                var keepaliveMs = Settings.KeepAlive * 1000;
+                while (true)
+                {
+                    var timeoutForKeepalive = IsKeepAliveEnabled && (timeout == 0 || timeout == -1 || keepaliveMs < timeout);
+                    UserTimeout = timeoutForKeepalive ? keepaliveMs : timeout;
+                    try
+                    {
+                        var msg = ReadMessageWithPrepended(DataRowLoadingMode.NonSequential, true);
+                        if (msg != null)
+                        {
+                            Break();
+                            throw new NpgsqlException($"Received unexpected message of type {msg.Code} while waiting");
+                        }
+                        return true;
+                    }
+                    catch (TimeoutException)
+                    {
+                        if (!timeoutForKeepalive)  // We really timed out
+                            return false;
+                    }
+
+                    // Time for a keepalive
+                    var keepaliveTime = Stopwatch.StartNew();
+                    SendMessage(PregeneratedMessage.KeepAlive);
+
+                    var receivedNotification = false;
+                    var expectedMessageCode = BackendMessageCode.RowDescription;
+
+                    while (true)
+                    {
+                        var msg = ReadMessageWithPrepended(DataRowLoadingMode.NonSequential, true);
+                        if (msg == null)
+                        {
+                            receivedNotification = true;
+                            continue;
+                        }
+
+                        if (msg.Code != expectedMessageCode)
+                            throw new NpgsqlException($"Received unexpected message of type {msg.Code} while expecting {expectedMessageCode} as part of keepalive");
+
+                        switch (msg.Code)
+                        {
+                        case BackendMessageCode.RowDescription:
+                            expectedMessageCode = BackendMessageCode.DataRow;
+                            continue;
+                        case BackendMessageCode.DataRow:
+                            expectedMessageCode = BackendMessageCode.CompletedResponse;
+                            continue;
+                        case BackendMessageCode.CompletedResponse:
+                            expectedMessageCode = BackendMessageCode.ReadyForQuery;
+                            continue;
+                        case BackendMessageCode.ReadyForQuery:
+                            break;
+                        }
+                        Log.Keepalive(Id);
+
+                        if (receivedNotification)
+                            return true; // Notification was received during the keepalive
+                        break;
+                    }
+
+                    if (timeout > 0)
+                        timeout -= (keepaliveMs + (int)keepaliveTime.ElapsedMilliseconds);
+                }
+            }
+        }
 
         public async Task WaitAsync(CancellationToken cancellationToken)
         {
@@ -1767,9 +1842,12 @@ namespace Npgsql
             using (StartUserAction(ConnectorState.Waiting))
             using (cancellationToken.Register(() => performKeepaliveMethod(null)))
             {
+                // We may have prepended messages in the connection's write buffer - these need to be flushed now.
+                WriteBuffer.Flush();
+
                 Timer keepaliveTimer = null;
                 if (IsKeepAliveEnabled)
-                    keepaliveTimer = new Timer(performKeepaliveMethod, null, _settings.KeepAlive*1000, Timeout.Infinite);
+                    keepaliveTimer = new Timer(performKeepaliveMethod, null, Settings.KeepAlive*1000, Timeout.Infinite);
                 try
                 {
                     while (true)
@@ -1828,12 +1906,14 @@ namespace Npgsql
                                     continue;
                                 }
 
+                                Log.Keepalive(Id);
+
                                 if (receivedNotification)
                                     return; // Notification was received during the keepalive
 
                                 cancellationToken.ThrowIfCancellationRequested();
                                 // Keepalive completed without notification, set up the next one and continue waiting
-                                keepaliveTimer.Change(_settings.KeepAlive*1000, Timeout.Infinite);
+                                keepaliveTimer.Change(Settings.KeepAlive*1000, Timeout.Infinite);
                                 keepaliveSent = false;
                                 break;
                             }
