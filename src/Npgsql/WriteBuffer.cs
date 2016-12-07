@@ -287,13 +287,20 @@ namespace Npgsql
         internal Task WriteString(string s, int byteLen, bool async, CancellationToken cancellationToken)
             => WriteString(s, s.Length, byteLen, async, cancellationToken);
 
-        internal async Task WriteString(string s, int charLen, int byteLen, bool async, CancellationToken cancellationToken)
+        internal Task WriteString(string s, int charLen, int byteLen, bool async, CancellationToken cancellationToken)
         {
             if (byteLen <= WriteSpaceLeft)
             {
                 WriteString(s, charLen);
+                return PGUtil.CompletedTask;
             }
-            else if (byteLen <= Size)
+            return WriteStringLong(s, charLen, byteLen, async, cancellationToken);
+        }
+
+        async Task WriteStringLong(string s, int charLen, int byteLen, bool async, CancellationToken cancellationToken)
+        {
+            Debug.Assert(byteLen > WriteSpaceLeft);
+            if (byteLen <= Size)
             {
                 // String can fit entirely in an empty buffer. Flush and retry rather than
                 // going into the partial writing flow below (which requires ToCharArray())
@@ -321,13 +328,20 @@ namespace Npgsql
             }
         }
 
-        internal async Task WriteChars(char[] chars, int charLen, int byteLen, bool async, CancellationToken cancellationToken)
+        internal Task WriteChars(char[] chars, int charLen, int byteLen, bool async, CancellationToken cancellationToken)
         {
             if (byteLen <= WriteSpaceLeft)
             {
                 WriteChars(chars, charLen);
+                return PGUtil.CompletedTask;
             }
-            else if (byteLen <= Size)
+            return WriteCharsLong(chars, charLen, byteLen, async, cancellationToken);
+        }
+
+        async Task WriteCharsLong(char[] chars, int charLen, int byteLen, bool async, CancellationToken cancellationToken)
+        {
+            Debug.Assert(byteLen > WriteSpaceLeft);
+            if (byteLen <= Size)
             {
                 // String can fit entirely in an empty buffer. Flush and retry rather than
                 // going into the partial writing flow below (which requires ToCharArray())
