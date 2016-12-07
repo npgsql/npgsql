@@ -308,7 +308,6 @@ namespace Npgsql
         string KerberosServiceName => _settings.KerberosServiceName;
         SslMode SslMode => _settings.SslMode;
         bool UseSslStream => _settings.UseSslStream;
-        int BufferSize => _settings.BufferSize;
         int ConnectionTimeout => _settings.Timeout;
         int KeepAlive => _settings.KeepAlive;
         bool IsKeepAliveEnabled => KeepAlive > 0;
@@ -481,8 +480,8 @@ namespace Npgsql
                 TextEncoding = _settings.Encoding == "UTF8"
                     ? PGUtil.UTF8Encoding
                     : Encoding.GetEncoding(_settings.Encoding, EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback);
-                ReadBuffer = new ReadBuffer(this, _stream, BufferSize, TextEncoding);
-                WriteBuffer = new WriteBuffer(this, _stream, BufferSize, TextEncoding);
+                ReadBuffer = new ReadBuffer(this, _stream, _settings.ReadBufferSize, TextEncoding);
+                WriteBuffer = new WriteBuffer(this, _stream, _settings.ReadBufferSize, TextEncoding);
                 ParseMessage = new ParseMessage(TextEncoding);
                 QueryMessage = new QueryMessage(TextEncoding);
 

@@ -48,7 +48,7 @@ namespace Npgsql.FrontendMessages
         /// <param name="responseMessageCount">Returns how many messages PostgreSQL is expected to send in response to this message.</param>
         internal PregeneratedMessage(byte[] data, string description, int responseMessageCount)
         {
-            Debug.Assert(data.Length < WriteBuffer.MinimumBufferSize);
+            Debug.Assert(data.Length < WriteBuffer.MinimumSize);
 
             _data = data;
             _description = description;
@@ -68,7 +68,7 @@ namespace Npgsql.FrontendMessages
 
         static PregeneratedMessage()
         {
-            var buf = new WriteBuffer(null, new MemoryStream(), WriteBuffer.MinimumBufferSize, Encoding.ASCII);
+            var buf = new WriteBuffer(null, new MemoryStream(), WriteBuffer.MinimumSize, Encoding.ASCII);
             var message = new QueryMessage(PGUtil.UTF8Encoding);
 
             BeginTrans                = Generate(buf, message, "BEGIN");

@@ -893,23 +893,42 @@ namespace Npgsql
         int _keepAlive;
 
         /// <summary>
-        /// Gets or sets the buffer size.
+        /// Determines the size of the internal buffer Npgsql uses when reading. Increasing may improve performance if transferring large values from the database.
         /// </summary>
         [Category("Advanced")]
-        [Description("Determines the size of the internal buffer Npgsql uses when reading or writing. Increasing may improve performance if transferring large values from the database.")]
-        [DisplayName("Buffer Size")]
+        [Description("Determines the size of the internal buffer Npgsql uses when reading. Increasing may improve performance if transferring large values from the database.")]
+        [DisplayName("Read Buffer Size")]
         [NpgsqlConnectionStringProperty]
-        [DefaultValue(ReadBuffer.DefaultBufferSize)]
-        public int BufferSize
+        [DefaultValue(ReadBuffer.DefaultSize)]
+        public int ReadBufferSize
         {
-            get { return _bufferSize; }
+            get { return _readBufferSize; }
             set
             {
-                _bufferSize = value;
-                SetValue(nameof(BufferSize), value);
+                _readBufferSize = value;
+                SetValue(nameof(ReadBufferSize), value);
             }
         }
-        int _bufferSize;
+        int _readBufferSize;
+
+        /// <summary>
+        /// Determines the size of the internal buffer Npgsql uses when reading. Increasing may improve performance if transferring large values from the database.
+        /// </summary>
+        [Category("Advanced")]
+        [Description("Determines the size of the internal buffer Npgsql uses when writing. Increasing may improve performance if transferring large values to the database.")]
+        [DisplayName("Write Buffer Size")]
+        [NpgsqlConnectionStringProperty]
+        [DefaultValue(WriteBuffer.DefaultSize)]
+        public int WriteBufferSize
+        {
+            get { return _writeBufferSize; }
+            set
+            {
+                _writeBufferSize = value;
+                SetValue(nameof(WriteBufferSize), value);
+            }
+        }
+        int _writeBufferSize;
 
         /// <summary>
         /// If set to true, prepared statements are persisted when a pooled connection is closed for later use.

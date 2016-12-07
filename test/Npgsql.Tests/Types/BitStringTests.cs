@@ -87,7 +87,7 @@ namespace Npgsql.Tests.Types
         {
             using (var conn = OpenConnection())
             {
-                var bitLen = (conn.BufferSize + 10) * 8;
+                var bitLen = (conn.Settings.WriteBufferSize + 10) * 8;
                 var chars = new char[bitLen];
                 for (var i = 0; i < bitLen; i++)
                     chars[i] = i % 2 == 0 ? '0' : '1';

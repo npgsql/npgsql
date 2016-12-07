@@ -78,7 +78,7 @@ namespace Npgsql.Tests
                         len += read;
                     }
 
-                    Assert.That(len, Is.GreaterThan(conn.BufferSize) & Is.LessThan(data.Length));
+                    Assert.That(len, Is.GreaterThan(conn.Settings.ReadBufferSize) & Is.LessThan(data.Length));
                 }
 
                 conn.ExecuteNonQuery("TRUNCATE data");
@@ -153,8 +153,8 @@ namespace Npgsql.Tests
             {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (blob BYTEA)");
 
-                var data = new byte[conn.BufferSize + 10];
-                var dump = new byte[conn.BufferSize + 200];
+                var data = new byte[conn.Settings.WriteBufferSize + 10];
+                var dump = new byte[conn.Settings.WriteBufferSize + 200];
                 var len = 0;
 
                 // Insert a blob with a regular insert
@@ -197,7 +197,7 @@ namespace Npgsql.Tests
             using (var conn = OpenConnection())
             {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER)");
-                var longString = new StringBuilder(conn.BufferSize + 50).Append('a').ToString();
+                var longString = new StringBuilder(conn.Settings.WriteBufferSize + 50).Append('a').ToString();
 
                 using (var writer = conn.BeginBinaryImport("COPY data (field_text, field_int2) FROM STDIN BINARY"))
                 {
@@ -303,7 +303,7 @@ namespace Npgsql.Tests
             {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (field TEXT)");
 
-                var data = new string('a', conn.BufferSize);
+                var data = new string('a', conn.Settings.WriteBufferSize);
                 using (var writer = conn.BeginBinaryImport("COPY data (field) FROM STDIN BINARY"))
                 {
                     writer.StartRow();
@@ -323,7 +323,7 @@ namespace Npgsql.Tests
                 using (var writer = conn.BeginBinaryImport("COPY data (blob) FROM STDIN BINARY"))
                 {
                     // Big value - triggers use of the direct write optimization
-                    var data = new byte[conn.BufferSize + 10];
+                    var data = new byte[conn.Settings.WriteBufferSize + 10];
 
                     writer.StartRow();
                     writer.Write(data);
@@ -341,7 +341,7 @@ namespace Npgsql.Tests
             {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (blob BYTEA)");
 
-                var data = new byte[conn.BufferSize + 10];
+                var data = new byte[conn.Settings.WriteBufferSize + 10];
 
                 var writer = conn.BeginBinaryImport("COPY data (blob) FROM STDIN BINARY");
 
@@ -451,7 +451,7 @@ namespace Npgsql.Tests
                 conn.ExecuteNonQuery("TRUNCATE data");
 
                 // Long (multi-buffer) write
-                var iterations = WriteBuffer.MinimumBufferSize/line.Length + 100;
+                var iterations = WriteBuffer.MinimumSize/line.Length + 100;
                 writer = conn.BeginTextImport("COPY data (field_text, field_int4) FROM STDIN");
                 for (var i = 0; i < iterations; i++)
                     writer.Write(line);

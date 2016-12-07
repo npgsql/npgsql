@@ -48,7 +48,8 @@ Parameter keywords are case-insensitive.
 
 | Parameter                | Description                                                  | Default                      |
 |--------------------------|--------------------------------------------------------------|------------------------------|
-| Buffer Size              | Determines the size of the internal buffer Npgsql uses when reading or writing. Increasing may improve performance if transferring large values from the database. | 8192 |
+| Read Buffer Size         | Determines the size of the internal buffer Npgsql uses when reading. Increasing may improve performance if transferring large values from the database. | 8192 |
+| Write Buffer Size        | Determines the size of the internal buffer Npgsql uses when writing. Increasing may improve performance if transferring large values to the database. | 8192 |
 
 ## Misc
 

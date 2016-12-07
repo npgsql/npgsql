@@ -84,8 +84,8 @@ namespace Npgsql.Tests.Types
         {
             using (var conn = OpenConnection())
             {
-                var builder = new StringBuilder("ABCDEééé", conn.BufferSize);
-                builder.Append('X', conn.BufferSize);
+                var builder = new StringBuilder("ABCDEééé", conn.Settings.WriteBufferSize);
+                builder.Append('X', conn.Settings.WriteBufferSize);
                 var expected = builder.ToString();
                 using (var cmd = new NpgsqlCommand(@"INSERT INTO data (name) VALUES (@p)", conn))
                 {

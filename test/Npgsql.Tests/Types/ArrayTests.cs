@@ -118,7 +118,7 @@ namespace Npgsql.Tests.Types
         {
             using (var conn = OpenConnection())
             {
-                var expected = new int[conn.BufferSize/4 + 100];
+                var expected = new int[conn.Settings.WriteBufferSize/4 + 100];
                 for (var i = 0; i < expected.Length; i++)
                     expected[i] = i;
                 using (var cmd = new NpgsqlCommand("SELECT @p", conn))
@@ -139,7 +139,7 @@ namespace Npgsql.Tests.Types
         {
             using (var conn = OpenConnection())
             {
-                var len = conn.BufferSize/2 + 100;
+                var len = conn.Settings.WriteBufferSize/2 + 100;
                 var expected = new int[2, len];
                 for (var i = 0; i < len; i++)
                     expected[0, i] = i;
@@ -164,7 +164,7 @@ namespace Npgsql.Tests.Types
             using (var conn = OpenConnection())
             {
                 var largeString = new StringBuilder();
-                largeString.Append('a', conn.BufferSize);
+                largeString.Append('a', conn.Settings.WriteBufferSize);
                 var expected = new[] {"value1", null, largeString.ToString(), "val3"};
                 using (var cmd = new NpgsqlCommand("SELECT @p", conn))
                 {

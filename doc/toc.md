@@ -10,6 +10,7 @@
 ## [Basic Type Mapping](types/basic.md)
 ## [Date and Time](types/datetime.md)
 ## [Enums and Composites](types/enums_and_composites.md)
+# [Performance](performance.md)
 # [Waiting for Notifications](wait.md)
 # [Keepalive](keepalive.md)
 # [Bulk Copy](copy.md)

@@ -98,8 +98,8 @@ namespace Npgsql.Tests.Types
                 Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
 
                 var value = new NpgsqlRange<string>(
-                    new string('a', conn.BufferSize + 10),
-                    new string('z', conn.BufferSize + 10)
+                    new string('a', conn.Settings.WriteBufferSize + 10),
+                    new string('z', conn.Settings.WriteBufferSize + 10)
                     );
 
                 //var value = new NpgsqlRange<string>("bar", "foo");

@@ -1041,8 +1041,8 @@ namespace Npgsql
                 _baseStream = new NetworkStream(_socket, true);
                 _stream = _baseStream;
                 TextEncoding = _settings.Encoding == "UTF8" ? PGUtil.UTF8Encoding : Encoding.GetEncoding(_settings.Encoding, EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback);
-                ReadBuffer = new ReadBuffer(this, _stream, BufferSize, TextEncoding);
-                WriteBuffer = new WriteBuffer(this, _stream, BufferSize, TextEncoding);
+                ReadBuffer = new ReadBuffer(this, _stream, _settings.ReadBufferSize, TextEncoding);
+                WriteBuffer = new WriteBuffer(this, _stream, _settings.WriteBufferSize, TextEncoding);
                 ParseMessage = new ParseMessage(TextEncoding);
                 QueryMessage = new QueryMessage(TextEncoding);
                 if (SslMode == SslMode.Require || SslMode == SslMode.Prefer)

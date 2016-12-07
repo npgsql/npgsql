@@ -63,8 +63,8 @@ namespace Npgsql
         /// <summary>
         /// The minimum buffer size possible.
         /// </summary>
-        internal const int MinimumBufferSize = ReadBuffer.MinimumBufferSize;
-        internal const int DefaultBufferSize = ReadBuffer.DefaultBufferSize;
+        internal const int MinimumSize = 4096;
+        internal const int DefaultSize = 8192;
 
         #endregion
 
@@ -72,8 +72,8 @@ namespace Npgsql
 
         internal WriteBuffer([CanBeNull] NpgsqlConnector connector, Stream stream, int size, Encoding textEncoding)
         {
-            if (size < MinimumBufferSize)
-                throw new ArgumentOutOfRangeException(nameof(size), size, "Buffer size must be at least " + MinimumBufferSize);
+            if (size < MinimumSize)
+                throw new ArgumentOutOfRangeException(nameof(size), size, "Buffer size must be at least " + MinimumSize);
 
             Connector = connector;
             Underlying = stream;

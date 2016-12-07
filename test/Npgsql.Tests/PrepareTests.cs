@@ -203,7 +203,7 @@ namespace Npgsql.Tests
             {
                 cmd.Connection = conn;
                 var sb = new StringBuilder();
-                for (var i = 0; i < conn.BufferSize; i++)
+                for (var i = 0; i < conn.Settings.WriteBufferSize; i++)
                     sb.Append("SELECT 1;");
                 cmd.CommandText = sb.ToString();
                 cmd.Prepare();
@@ -226,7 +226,7 @@ namespace Npgsql.Tests
 
                 var cmd = new NpgsqlCommand { Connection = conn };
                 var sb = new StringBuilder();
-                for (var i = 0; i < conn.BufferSize; i++)
+                for (var i = 0; i < conn.Settings.WriteBufferSize; i++)
                     sb.Append("SELECT 1;");
                 cmd.CommandText = sb.ToString();
                 cmd.Prepare();

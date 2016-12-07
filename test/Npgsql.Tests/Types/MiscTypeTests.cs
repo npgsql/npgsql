@@ -246,7 +246,7 @@ namespace Npgsql.Tests.Types
                 TestUtil.MinimumPgVersion(conn, "9.4.0", "JSONB data type not yet introduced");
                 var sb = new StringBuilder();
                 sb.Append(@"{""Key"": """);
-                sb.Append('x', conn.BufferSize);
+                sb.Append('x', conn.Settings.WriteBufferSize);
                 sb.Append(@"""}");
                 var value = sb.ToString();
                 cmd.Parameters.AddWithValue("p", NpgsqlDbType.Jsonb, value);

@@ -18,7 +18,7 @@ namespace Npgsql.Tests
                 cmd.Connection = conn;
                 var sb = new StringBuilder("SELECT @text_param");
                 cmd.Parameters.AddWithValue("@text_param", "some_text");
-                for (var i = 0; i < conn.BufferSize; i++)
+                for (var i = 0; i < conn.Settings.WriteBufferSize; i++)
                 {
                     var paramName = $"@binary_param{i}";
                     sb.Append(",");

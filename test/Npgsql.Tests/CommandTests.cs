@@ -150,10 +150,10 @@ namespace Npgsql.Tests
         public void MultipleCommandsLargeFirstCommand()
         {
             using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand($"SELECT repeat('X', {conn.BufferSize}); SELECT @p", conn))
+            using (var cmd = new NpgsqlCommand($"SELECT repeat('X', {conn.Settings.WriteBufferSize}); SELECT @p", conn))
             {
-                var expected1 = new string('X', conn.BufferSize);
-                var expected2 = new string('Y', conn.BufferSize);
+                var expected1 = new string('X', conn.Settings.WriteBufferSize);
+                var expected2 = new string('Y', conn.Settings.WriteBufferSize);
                 cmd.Parameters.AddWithValue("p", expected2);
                 using (var reader = cmd.ExecuteReader())
                 {
@@ -545,7 +545,7 @@ namespace Npgsql.Tests
                     cmd.CommandText = "INSERT INTO data (name) VALUES ('John'); INSERT INTO data (name) VALUES ('John')";
                     Assert.That(cmd.ExecuteNonQuery(), Is.EqualTo(2));
 
-                    cmd.CommandText = $"INSERT INTO data (name) VALUES ('{new string('x', conn.BufferSize)}')";
+                    cmd.CommandText = $"INSERT INTO data (name) VALUES ('{new string('x', conn.Settings.WriteBufferSize)}')";
                     Assert.That(cmd.ExecuteNonQuery(), Is.EqualTo(1));
 
                     // A non-prepared non-parameterized ExecuteNonQuery uses the PG simple protocol as an
@@ -876,7 +876,7 @@ namespace Npgsql.Tests
             using (var conn = OpenConnection())
             using (var cmd = new NpgsqlCommand("SELECT 1", conn))
             {
-                for (var i = 0; i < conn.BufferSize; i++)
+                for (var i = 0; i < conn.Settings.WriteBufferSize; i++)
                     cmd.Parameters.Add(new NpgsqlParameter("p" + i, 8));
                 cmd.ExecuteNonQuery();
             }

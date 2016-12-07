@@ -372,7 +372,6 @@ namespace Npgsql
 
         [CanBeNull]
         internal string Password => Settings.Password;
-        internal int BufferSize => Settings.BufferSize;
 
         #endregion Configuration settings
 

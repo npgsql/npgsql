@@ -78,7 +78,7 @@ namespace Npgsql.Tests.Types
             using (var conn = OpenConnection())
             using (var cmd = new NpgsqlCommand("SELECT @p::BYTEA", conn))
             {
-                var expected = new byte[conn.BufferSize + 100];
+                var expected = new byte[conn.Settings.WriteBufferSize + 100];
                 for (int i = 0; i < expected.Length; i++)
                     expected[i] = 8;
                 cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType.Bytea) { Value = expected });
