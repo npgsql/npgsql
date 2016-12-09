@@ -21,11 +21,15 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-#if NET451
+#if NET452
 
 using System;
+using System.Collections.Generic;
+using System.Configuration;
 using System.Data;
 using System.Reflection;
+using System.ServiceModel.Security;
+using System.Threading;
 using System.Transactions;
 using JetBrains.Annotations;
 using Npgsql;
@@ -41,222 +45,298 @@ namespace Npgsql.Tests
         public void ExplicitEnlist()
         {
             using (var conn = new NpgsqlConnection(ConnectionString))
-            using (var scope = new TransactionScope())
             {
                 conn.Open();
-                conn.EnlistTransaction(Transaction.Current);
-                Assert.That(conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES('test')"), Is.EqualTo(1));
-                scope.Complete();
+                using (var scope = new TransactionScope())
+                {
+                    conn.EnlistTransaction(Transaction.Current);
+                    Assert.That(conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test')"), Is.EqualTo(1));
+                    AssertNoPreparedTransactions();
+                    scope.Complete();
+                }
+                AssertNoPreparedTransactions();
+                using (var tx = conn.BeginTransaction())
+                {
+                    Assert.That(conn.ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(1));
+                    tx.Rollback();
+                }
             }
-            AssertNoPreparedTransactions();
-            using (var conn = OpenConnection())
-                Assert.That(conn.ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(1));
         }
 
         [Test, Description("Single connection enlisting implicitly, committing")]
         public void ImplicitEnlist()
         {
-            var connectionString = ConnectionString + ";enlist=true";
+            var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString) { Enlist = true };
+            var conn = new NpgsqlConnection(connectionString);
             using (var scope = new TransactionScope())
             {
-                using (var conn = new NpgsqlConnection(connectionString))
-                {
-                    conn.Open();
-                    Assert.That(conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES('test')"), Is.EqualTo(1));
-                }
+                conn.Open();
+                Assert.That(conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test')"), Is.EqualTo(1));
+                AssertNoPreparedTransactions();
                 scope.Complete();
             }
-            AssertNoPreparedTransactions();
-            using (var conn = OpenConnection())
+            using (var tx = conn.BeginTransaction())
+            {
                 Assert.That(conn.ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(1));
+                tx.Rollback();
+            }
         }
 
         [Test, Description("Single connection rollback")]
         public void Rollback()
         {
-            var connectionString = ConnectionString + ";enlist=true";
-            using (var scope = new TransactionScope())
-            using (var conn = new NpgsqlConnection(connectionString))
-            {
-                conn.Open();
-                Assert.That(conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES('test')"), Is.EqualTo(1));
-                // No commit
-            }
-            AssertNoPreparedTransactions();
             using (var conn = OpenConnection())
-                Assert.That(conn.ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(0));
-        }
-
-        [Test]
-        [Ignore("Causing a weird timeout issue for other tests? Also clean up...")]
-        public void DistributedTransactionRollback()
-        {
-            int field_serial1;
-            int field_serial2;
-            var connectionString = ConnectionString + ";enlist=true";
-            using (var scope = new TransactionScope())
             {
-                //UseStringParameterWithNoNpgsqlDbType
-                using (var connection = new NpgsqlConnection(connectionString))
+                using (new TransactionScope())
                 {
-                    connection.Open();
-                    var command = new NpgsqlCommand("insert into data (field_text) values (:p0)", connection);
-                    command.Parameters.Add(new NpgsqlParameter("p0", "test"));
-                    Assert.AreEqual(command.Parameters[0].NpgsqlDbType, NpgsqlDbType.Text);
-                    Assert.AreEqual(command.Parameters[0].DbType, DbType.String);
-                    object result = command.ExecuteNonQuery();
-                    Assert.AreEqual(1, result);
-
-                    field_serial1 = (int) new NpgsqlCommand("select max(field_serial) from data", connection).ExecuteScalar();
-                    var command2 = new NpgsqlCommand("select field_text from data where field_serial = (select max(field_serial) from data)", connection);
-                    result = command2.ExecuteScalar();
-                    Assert.AreEqual("test", result);
+                    conn.EnlistTransaction(Transaction.Current);
+                    Assert.That(conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test')"), Is.EqualTo(1));
+                    // No commit
                 }
-                //UseIntegerParameterWithNoNpgsqlDbType
-                using (var connection = new NpgsqlConnection(connectionString))
+                AssertNoPreparedTransactions();
+                using (var tx = conn.BeginTransaction())
                 {
-                    connection.Open();
-                    var command = new NpgsqlCommand("insert into data(field_int4) values (:p0)", connection);
-                    command.Parameters.Add(new NpgsqlParameter("p0", 5));
-                    Assert.AreEqual(command.Parameters[0].NpgsqlDbType, NpgsqlDbType.Integer);
-                    Assert.AreEqual(command.Parameters[0].DbType, DbType.Int32);
-                    Object result = command.ExecuteNonQuery();
-                    Assert.AreEqual(1, result);
-
-                    field_serial2 = (int) new NpgsqlCommand("select max(field_serial) from data", connection).ExecuteScalar();
-                    var command2 = new NpgsqlCommand( "select field_int4 from data where field_serial = (select max(field_serial) from data)", connection);
-                    result = command2.ExecuteScalar();
-                    Assert.AreEqual(5, result);
-
-                    // using new connection here... make sure we can't see previous results even though
-                    // it is the same distributed transaction
-                    var command3 = new NpgsqlCommand("select field_text from data where field_serial = :p0", connection);
-                    command3.Parameters.Add(new NpgsqlParameter("p0", field_serial1));
-                    result = command3.ExecuteScalar();
-
-                    // won't see value of "test" since that's
-                    // another connection
-                    Assert.AreEqual(null, result);
+                    Assert.That(conn.ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(0));
+                    tx.Rollback();
                 }
-                // not commiting here.
             }
-            // This is an attempt to wait for the distributed transaction to rollback
-            // not guaranteed to work, but should be good enough for testing purposes.
-            System.Threading.Thread.Sleep(500);
-            AssertNoPreparedTransactions();
-            // ensure they no longer exist since we rolled back
-            AssertRowNotExist("field_text", field_serial1);
-            AssertRowNotExist("field_int4", field_serial2);
         }
 
         [Test]
-        [Ignore("Causing a weird timeout issue for other tests? Also clean up...")]
-        public void TwoDistributedInSequence()
+        public void TwoConnections()
         {
-            DistributedTransactionRollback();
-            DistributedTransactionRollback();
-        }
-
-        [Test, Description("Makes sure that when a timeout occurs, the transaction is rolled backed")]
-        [IssueLink("https://github.com/npgsql/npgsql/issues/495")]
-        [MonoIgnore("Mono's TransactionScope doesn't enforce the timeout: https://bugzilla.xamarin.com/show_bug.cgi?id=31197")]
-        public void RollbackOnTimeout()
-        {
-            Assert.That(() =>
+            using (var conn1 = OpenConnection())
+            using (var conn2 = OpenConnection())
             {
-                using (var scope = new TransactionScope(TransactionScopeOption.Required, new TimeSpan(0, 0, 1)))
+                using (var scope = new TransactionScope())
                 {
-                    using (var conn = new NpgsqlConnection(ConnectionString + ";enlist=true"))
-                    {
-                        conn.Open();
-                        var cmd = new NpgsqlCommand(@"INSERT INTO data (name) VALUES ('HELLO')", conn);
-                        cmd.ExecuteNonQuery(); // the update operation is expected to rollback
-                        System.Threading.Thread.Sleep(2000);
-                    }
+                    conn1.EnlistTransaction(Transaction.Current);
+                    conn2.EnlistTransaction(Transaction.Current);
+
+                    Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1));
+                    Assert.That(conn2.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test2')"), Is.EqualTo(1));
                     scope.Complete();
                 }
-            }, Throws.Exception.AssignableTo<TransactionException>());
-            using (var conn = OpenConnection())
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
+            }
+            // TODO: There may be a race condition here, where the prepared transaction above still hasn't committed.
+            AssertNoPreparedTransactions();
+            AssertNumberOfRows(2);
         }
 
-        [Test, Description("Not sure what this test is supposed to check...")]
-        [Ignore("There's a real failure here")]
-        public void FunctionTestTimestamptzParameterSupport()
+        [Test]
+        public void TwoConnectionsRollback()
         {
-            /*
-            ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('X')");
-            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION testtimestamptzparameter(timestamptz) returns refcursor as
-                              $BODY$
-                              declare ref refcursor;
-                              begin
-                                      open ref for select * from data;
-                                      return ref;
-                              end
-                              $BODY$
-                              language 'plpgsql' volatile called on null input security invoker;");
-            var connectionString = ConnectionString + ";enlist=true";
-            using (var scope = new TransactionScope())
+            using (var conn1 = OpenConnection())
+            using (var conn2 = OpenConnection())
             {
-                using (var connection = new NpgsqlConnection(connectionString))
+                using (new TransactionScope())
                 {
-                    connection.Open();
-                    var command = new NpgsqlCommand("testtimestamptzparameter", connection);
-                    command.CommandType = CommandType.StoredProcedure;
+                    conn1.EnlistTransaction(Transaction.Current);
+                    conn2.EnlistTransaction(Transaction.Current);
 
-                    command.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.TimestampTZ));
-
-                    //NpgsqlDataReader dr = command.ExecuteReader();
-
-                    //Int32 count = 0;
-
-                    //while (dr.Read())
-                    //count++;
-                    var da = new NpgsqlDataAdapter(command);
-                    var dt = new DataTable();
-                    da.Fill(dt);
-
-                    Assert.AreEqual(1, dt.Rows.Count);
+                    Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1));
+                    Assert.That(conn2.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test2')"), Is.EqualTo(1));
                 }
             }
-            */
+            // TODO: There may be a race condition here, where the prepared transaction above still hasn't committed.
+            AssertNoPreparedTransactions();
+            AssertNumberOfRows(0);
         }
 
-        private void AssertNoPreparedTransactions()
+        [Test]
+        public void TwoConnectionsWithFailure()
         {
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("select count(*) from pg_prepared_xacts where database = :database", conn))
+            using (var conn1 = OpenConnection())
+            using (var conn2 = OpenConnection())
             {
-                cmd.Parameters.Add(new NpgsqlParameter("database", conn.Database));
-                Assert.That(cmd.ExecuteScalar(), Is.EqualTo(0));
+                var scope = new TransactionScope();
+                conn1.EnlistTransaction(Transaction.Current);
+                conn2.EnlistTransaction(Transaction.Current);
+
+                Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1));
+                Assert.That(conn2.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test2')"), Is.EqualTo(1));
+                conn1.ExecuteNonQuery($"SELECT pg_terminate_backend({conn2.ProcessID})");
+                scope.Complete();
+                Assert.That(() => scope.Dispose(), Throws.Exception.TypeOf<TransactionAbortedException>());
+                AssertNoPreparedTransactions();
+                using (var tx = conn1.BeginTransaction())
+                {
+                    Assert.That(conn1.ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(0));
+                    tx.Rollback();
+                }
             }
         }
 
-        private void AssertRowNotExist(string columnName, int field_serial)
+        [Test]
+        public void CloseConnection()
+        {
+            var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString) { Enlist = true };
+            using (var scope = new TransactionScope())
+            using (var conn = OpenConnection(connectionString))
+            {
+                Assert.That(conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test')"), Is.EqualTo(1));
+                conn.Close();
+                AssertNoPreparedTransactions();
+                scope.Complete();
+            }
+            AssertNumberOfRows(1);
+        }
+
+        [Test]
+        public void EnlistToTwoTransactions()
         {
             using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("select " + columnName + " from data where field_serial = :p0", conn))
             {
-                cmd.Parameters.Add(new NpgsqlParameter("p0", field_serial));
-                Assert.That(cmd.ExecuteScalar(), Is.Null);
+                var ctx = new CommittableTransaction();
+                conn.EnlistTransaction(ctx);
+                Assert.That(() => conn.EnlistTransaction(new CommittableTransaction()), Throws.Exception.TypeOf<InvalidOperationException>());
+                ctx.Rollback();
+
+                using (var tx = conn.BeginTransaction())
+                {
+                    Assert.That(conn.ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(0));
+                    tx.Rollback();
+                }
+            }
+        }
+
+        [Test]
+        public void EnlistTwiceToSameTransaction()
+        {
+            using (var conn = OpenConnection())
+            {
+                var ctx = new CommittableTransaction();
+                conn.EnlistTransaction(ctx);
+                conn.EnlistTransaction(ctx);
+                ctx.Rollback();
+
+                using (var tx = conn.BeginTransaction())
+                {
+                    Assert.That(conn.ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(0));
+                    tx.Rollback();
+                }
+            }
+        }
+
+        [Test]
+        public void ScopeAfterScope()
+        {
+            using (var conn = OpenConnection())
+            {
+                using (new TransactionScope())
+                    conn.EnlistTransaction(Transaction.Current);
+                using (new TransactionScope())
+                    conn.EnlistTransaction(Transaction.Current);
+
+                using (var tx = conn.BeginTransaction())
+                {
+                    Assert.That(conn.ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(0));
+                    tx.Rollback();
+                }
             }
         }
 
         [Test]
         public void ReuseConnection()
         {
-            var connectionString = ConnectionString + ";enlist=true";
+            var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString) { Enlist = true };
             using (var scope = new TransactionScope())
             {
                 using (var conn = new NpgsqlConnection(connectionString))
                 {
                     conn.Open();
+                    var processId = conn.ProcessID;
+                    conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')");
                     conn.Close();
+
                     conn.Open();
+                    Assert.That(conn.ProcessID, Is.EqualTo(processId));
+                    conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test2')");
                     conn.Close();
+
+                    scope.Complete();
+                }
+            }
+            AssertNumberOfRows(2);
+        }
+
+        [Test]
+        public void ReuseConnectionRollback()
+        {
+            var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString) { Enlist = true };
+            using (var scope = new TransactionScope())
+            {
+                using (var conn = new NpgsqlConnection(connectionString))
+                {
+                    conn.Open();
+                    var processId = conn.ProcessID;
+                    conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')");
+                    conn.Close();
+
+                    conn.Open();
+                    Assert.That(conn.ProcessID, Is.EqualTo(processId));
+                    conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test2')");
+                    conn.Close();
+
+                    scope.Complete();
+                }
+            }
+            AssertNumberOfRows(2);
+        }
+
+        [Test]
+        public void ReuseConnectionWithEscalation()
+        {
+            var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString) { Enlist = true };
+            using (new TransactionScope())
+            {
+                using (var conn1 = new NpgsqlConnection(connectionString))
+                {
+                    conn1.Open();
+                    var processId = conn1.ProcessID;
+                    using (var conn2 = new NpgsqlConnection(connectionString)) {}
+                    conn1.Close();
+
+                    conn1.Open();
+                    Assert.That(conn1.ProcessID, Is.EqualTo(processId));
+                    conn1.Close();
                 }
             }
         }
+
+        [Test]
+        public void TimeoutTriggersRollbackWhileBusy()
+        {
+            using (var conn = OpenConnection())
+            {
+                using (new TransactionScope(TransactionScopeOption.Required, TimeSpan.FromSeconds(1)))
+                {
+                    conn.EnlistTransaction(Transaction.Current);
+                    Assert.That(() => CreateSleepCommand(conn, 5).ExecuteNonQuery(),
+                        Throws.Exception.TypeOf<PostgresException>()
+                            .With.Property(nameof(PostgresException.SqlState))
+                            .EqualTo("57014"));
+
+                }
+            }
+            AssertNumberOfRows(0);
+        }
+
+        void AssertNoPreparedTransactions()
+            => Assert.That(GetNumberOfPreparedTransactions(), Is.EqualTo(0));
+
+        int GetNumberOfPreparedTransactions()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT COUNT(*) FROM pg_prepared_xacts WHERE database = @database", conn))
+            {
+                cmd.Parameters.Add(new NpgsqlParameter("database", conn.Database));
+                return (int)(long)cmd.ExecuteScalar();
+            }
+        }
+
+        void AssertNumberOfRows(int expected)
+          => Assert.That(_controlConn.ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(expected));
 
         #region Setup
 
@@ -278,21 +358,42 @@ namespace Npgsql.Tests
                 }
             }
 
-            // All tests in this fixture should have totally access to the database they're running on.
+            _controlConn = OpenConnection();
+
+            // Make sure prepared transactions are enabled in postgresql.conf (disabled by default)
+            if (int.Parse((string)_controlConn.ExecuteScalar("SHOW max_prepared_transactions")) == 0)
+            {
+                TestUtil.IgnoreExceptOnBuildServer("max_prepared_transactions is set to 0 in your postgresql.conf");
+                _controlConn.Close();
+            }
+
+            // Rollback any lingering prepared transactions from failed previous runs
+            var lingeringTrqnsqctions = new List<string>();
+            using (var cmd = new NpgsqlCommand("SELECT gid FROM pg_prepared_xacts WHERE database=@database", _controlConn))
+            {
+                cmd.Parameters.AddWithValue("database", new NpgsqlConnectionStringBuilder(ConnectionString).Database);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                        lingeringTrqnsqctions.Add(reader.GetString(0));
+                }
+            }
+            foreach (var xactGid in lingeringTrqnsqctions)
+                _controlConn.ExecuteNonQuery($"ROLLBACK PREPARED '{xactGid}'");
+
+            // All tests in this fixture should have exclusive access to the database they're running on.
             // If we run these tests in parallel (i.e. two builds in parallel) they will interfere.
             // Solve this by taking a PostgreSQL advisory lock for the lifetime of the fixture.
-            _controlConn = OpenConnection();
             _controlConn.ExecuteNonQuery("SELECT pg_advisory_lock(666)");
+
+            _controlConn.ExecuteNonQuery("DROP TABLE IF EXISTS data");
+            _controlConn.ExecuteNonQuery("CREATE TABLE data (name TEXT)");
         }
 
         [SetUp]
         public void SetUp()
         {
-            using (var conn = OpenConnection())
-            {
-                conn.ExecuteNonQuery("DROP TABLE IF EXISTS data");
-                conn.ExecuteNonQuery("CREATE TABLE data (name TEXT)");
-            }
+            _controlConn.ExecuteNonQuery("TRUNCATE data");
         }
 
         [OneTimeTearDown]

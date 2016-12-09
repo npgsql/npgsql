@@ -365,7 +365,7 @@ namespace Npgsql.Tls
             return bigEndian;
         }
 
-#if NET45 || NET451
+#if NET45 || NET451 || NET452
         public static void TransformBlock(this HashAlgorithm hashAlg, byte[] buf, int offset, int len)
         {
             hashAlg.TransformBlock(buf, offset, len, null, 0);
@@ -387,7 +387,7 @@ namespace Npgsql.Tls
 
         public static byte[] EncryptPkcsPadding(X509Certificate2 cert, byte[] rgb)
         {
-#if NET45 || NET451
+#if NET45 || NET451 || NET452
             return ((RSACryptoServiceProvider)cert.PublicKey.Key).Encrypt(rgb, false);
 #else
             using (var rsa = cert.GetRSAPublicKey())

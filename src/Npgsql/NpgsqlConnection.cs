@@ -23,6 +23,7 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
@@ -31,13 +32,14 @@ using System.IO;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Reflection;
+using System.Resources;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using AsyncRewriter;
 using JetBrains.Annotations;
-#if NET45 || NET451
+#if NET45 || NET451 || NET452
 using System.Transactions;
 #endif
 using Npgsql.Logging;
@@ -63,13 +65,6 @@ namespace Npgsql
         // Set this when disposed is called.
         bool _disposed;
 
-        // Used when we closed the connector due to an error, but are pretending it's open.
-        bool _fakingOpen;
-        // Used when the connection is closed but an TransactionScope is still active
-        // (the actual close is postponed until the scope ends)
-        bool _postponingClose;
-        bool _postponingDispose;
-
         /// <summary>
         /// The parsed connection string set by the user
         /// </summary>
@@ -88,6 +83,14 @@ namespace Npgsql
         internal NpgsqlConnector Connector { get; set; }
 
         /// <summary>
+        /// Caches the connection's pool to save repeated hash lookups.
+        /// </summary>
+        ConnectorPool Pool => _pool ?? (_pool = PoolManager.GetOrAdd(Settings));
+
+        [CanBeNull]
+        ConnectorPool _pool;
+
+        /// <summary>
         /// A counter that gets incremented every time the connection is (re-)opened.
         /// This allows us to identify an "instance" of connection, which is useful since
         /// some resources are released when a connection is closed (e.g. prepared statements).
@@ -104,10 +107,8 @@ namespace Npgsql
 
         static readonly ConcurrentDictionary<string, NpgsqlConnectionStringBuilder> CsbCache = new ConcurrentDictionary<string, NpgsqlConnectionStringBuilder>();
 
-#if NET45 || NET451
-        NpgsqlPromotableSinglePhaseNotification Promotable => _promotable ?? (_promotable = new NpgsqlPromotableSinglePhaseNotification(this));
-        [CanBeNull]
-        NpgsqlPromotableSinglePhaseNotification _promotable;
+#if NET45 || NET451 || NET452
+        internal Transaction EnlistedTransaction { get; set; }
 #endif
 
         /// <summary>
@@ -160,12 +161,10 @@ namespace Npgsql
             _noticeDelegate = OnNotice;
             _notificationDelegate = OnNotification;
 
-#if NET45 || NET451
+#if NET45 || NET451 || NET452
             // Fix authentication problems. See https://bugzilla.novell.com/show_bug.cgi?id=MONO77559 and
             // http://pgfoundry.org/forum/message.php?msg_id=1002377 for more info.
             RSACryptoServiceProvider.UseMachineKeyStore = true;
-
-            _promotable = new NpgsqlPromotableSinglePhaseNotification(this);
 #endif
         }
 
@@ -197,11 +196,6 @@ namespace Npgsql
 
             var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
 
-            // If we're postponing a close (see doc on this variable), the connection is already
-            // open and can be silently reused
-            if (_postponingClose)
-                return;
-
             CheckConnectionClosed();
 
             Log.Trace("Opening connnection");
@@ -225,7 +219,25 @@ namespace Npgsql
                 // Get a Connector, either from the pool or creating one ourselves.
                 if (Settings.Pooling)
                 {
-                    Connector = PoolManager.GetOrAdd(Settings).Allocate(this, timeout);
+#if NET45 || NET451 || NET452
+                    if (Settings.Enlist)
+                    {
+                        if (Transaction.Current != null)
+                        {
+                            // First, check to see if we have a connection enlisted to this transaction which has been closed.
+                            // If so, return that as an optimization rather than opening a new one and triggering escalation
+                            // to a distributed transaction.
+                            Connector = Pool.TryAllocateEnlistedPending(Transaction.Current);
+                            if (Connector != null)
+                                EnlistedTransaction = Transaction.Current;
+                        }
+                        if (Connector == null)
+                            Connector = Pool.Allocate(this, timeout);
+                    }
+                    else  // No enlist
+#endif
+                        Connector = Pool.Allocate(this, timeout);
+
                     Counters.SoftConnectsPerSecond.Increment();
 
                     // Since this pooled connector was opened, global enum/composite mappings may have
@@ -239,15 +251,14 @@ namespace Npgsql
                     Counters.NumberOfNonPooledConnections.Increment();
                 }
 
+#if NET45 || NET451 || NET452
+                // We may have gotten an already enlisted pending connector above, no need to enlist in that case
+                if (Settings.Enlist && Transaction.Current != null && EnlistedTransaction != null)
+                    EnlistTransaction(Transaction.Current);
+#endif
+
                 Connector.Notice += _noticeDelegate;
                 Connector.Notification += _notificationDelegate;
-
-#if NET45 || NET451
-                if (Settings.Enlist)
-                {
-                    Promotable.Enlist(Transaction.Current);
-                }
-#endif
             }
             catch
             {
@@ -287,6 +298,9 @@ namespace Npgsql
             }
             set
             {
+                CheckConnectionClosed();
+
+                _pool = null;
                 if (value == null)
                     value = string.Empty;
                 Settings = CsbCache.GetOrAdd(value, s => new NpgsqlConnectionStringBuilder(value));
@@ -304,6 +318,7 @@ namespace Npgsql
                 _settings = value;
                 _connectionString = null;
                 _alreadyOpened = false;
+                _pool = null;
             }
         }
 
@@ -452,7 +467,7 @@ namespace Npgsql
         /// <returns>A <see cref="NpgsqlCommand">NpgsqlCommand</see> object.</returns>
         public new NpgsqlCommand CreateCommand()
         {
-            CheckNotDisposed();
+            CheckDisposed();
             return new NpgsqlCommand("", this);
         }
 
@@ -483,11 +498,7 @@ namespace Npgsql
         /// <remarks>
         /// Currently there's no support for nested transactions. Transactions created by this method will have Read Committed isolation level.
         /// </remarks>
-        public new NpgsqlTransaction BeginTransaction()
-        {
-            // ReSharper disable once IntroduceOptionalParameters.Global
-            return BeginTransaction(IsolationLevel.Unspecified);
-        }
+        public new NpgsqlTransaction BeginTransaction() => BeginTransaction(IsolationLevel.Unspecified);
 
         /// <summary>
         /// Begins a database transaction with the specified isolation level.
@@ -520,30 +531,51 @@ namespace Npgsql
             }
         }
 
-        /// <summary>
-        /// When a connection is closed within an enclosing TransactionScope and the transaction
-        /// hasn't been promoted, we defer the actual closing until the scope ends.
-        /// </summary>
-        internal void PromotableLocalTransactionEnded()
-        {
-            if (_postponingDispose)
-                Dispose(true);
-            else if (_postponingClose)
-                ReallyClose();
-        }
-
-#if NET45 || NET451
+#if NET45 || NET451 || NET452
         /// <summary>
         /// Enlist transation.
         /// </summary>
-        /// <param name="transaction"></param>
-        // ReSharper disable once ImplicitNotNullOverridesUnknownExternalMember
         public override void EnlistTransaction(Transaction transaction)
         {
             if (transaction == null)
                 throw new ArgumentNullException(nameof(transaction));
 
-            Promotable.Enlist(transaction);
+            if (EnlistedTransaction == transaction)
+                return;
+
+            if (EnlistedTransaction != null)
+                throw new InvalidOperationException($"Already enlisted to transaction (localid={EnlistedTransaction.TransactionInformation.LocalIdentifier})");
+
+            var connector = CheckReadyAndGetConnector();
+
+            EnlistedTransaction = transaction;
+
+            var resourceManager = new NpgsqlResourceManager(this, transaction);
+
+            // Until #1378 is implemented, we have no recovery, and so no need to enlist as a durable resource manager
+            // (or as promotable single phase).
+            transaction.EnlistVolatile(resourceManager, EnlistmentOptions.None);
+            resourceManager.Initialize();
+            Log.Debug($"Enlisted resource manager as volatile (local txid={transaction.TransactionInformation.LocalIdentifier})", connector.Id);
+            return;
+
+#pragma warning disable CS0162
+            // The following code implements durable/PSPE enlistment
+            if (transaction.EnlistPromotableSinglePhase(resourceManager))
+            {
+                Log.Debug($"Enlisted resource manager as PSPE (local txid={transaction.TransactionInformation.LocalIdentifier})", connector.Id);
+                return;
+            }
+
+            // Escalation is occuring (more than one durable enlistment)
+
+            // If PSP enlistment succeeds above, Initialize() is called by the system.
+            // Otherwise we need to do it outselves here.
+            resourceManager.Initialize();
+
+            transaction.EnlistDurable(Guid.NewGuid(), resourceManager, EnlistmentOptions.None);
+            Log.Debug($"Enlisted resource manager as durable (local txid={transaction.TransactionInformation.LocalIdentifier})", connector.Id);
+#pragma warning restore CS0162
         }
 #endif
 
@@ -552,57 +584,45 @@ namespace Npgsql
         #region Close
 
         /// <summary>
-        /// Releases the connection to the database.  If the connection is pooled, it will be
+        /// releases the connection to the database.  If the connection is pooled, it will be
         /// made available for re-use.  If it is non-pooled, the actual connection will be shutdown.
         /// </summary>
-        public override void Close()
+        public override void Close() => Close(false);
+
+        internal void Close(bool wasBroken)
         {
             if (Connector == null)
                 return;
-
-            Log.Trace("Closing connection", Connector.Id);
-
-#if NET45 || NET451
-            if (_promotable != null && _promotable.InLocalTransaction)
-            {
-                _postponingClose = true;
-                return;
-            }
-#endif
-
-            ReallyClose();
-        }
-
-        internal void ReallyClose(bool wasBroken=false)
-        {
-            Debug.Assert(Connector != null);
             var connectorId = Connector.Id;
-            Log.Trace("Really closing connection", connectorId);
-            _postponingClose = false;
+            Log.Trace("Closing connection", connectorId);
             _wasBroken = wasBroken;
-
-#if NET45 || NET451
-            // clear the way for another promotable transaction
-            _promotable = null;
-#endif
 
             Connector.Notification -= _notificationDelegate;
             Connector.Notice -= _noticeDelegate;
 
             CloseOngoingOperations();
 
-            if (Settings.Pooling)
+#if NET45 || NET451 || NET452
+            if (EnlistedTransaction == null)
             {
-                PoolManager.GetOrAdd(Settings).Release(Connector);
-                Counters.SoftDisconnectsPerSecond.Increment();
+#endif
+                if (Settings.Pooling)
+                    Pool.Release(Connector);
+                else
+                    Connector.Close();
+#if NET45 || NET451 || NET452
             }
             else
             {
-                Counters.NumberOfNonPooledConnections.Decrement();
-                Connector.Close();
+                // A System.Transactions transaction is still in progress, we need to wait for it to complete.
+                // Close the connection and disconnect it from the resource manager but leave the connector
+                // in a enlisted pending list in the pool.
+                Pool.AddPendingEnlistedConnector(Connector, EnlistedTransaction);
+                EnlistedTransaction = null;
             }
+#endif
 
-            Log.Debug("Connection closed", Connector.Id);
+            Log.Debug("Connection closed", connectorId);
 
             Connector = null;
 
@@ -664,18 +684,8 @@ namespace Npgsql
         {
             if (_disposed)
                 return;
-
-            _postponingDispose = false;
             if (disposing)
-            {
                 Close();
-                if (_postponingClose)
-                {
-                    _postponingDispose = true;
-                    return;
-                }
-            }
-
             base.Dispose(disposing);
             _disposed = true;
         }
@@ -1257,39 +1267,19 @@ namespace Npgsql
 
         void CheckConnectionOpen()
         {
-            if (_disposed)
-                throw new ObjectDisposedException(typeof(NpgsqlConnection).Name);
-
-            if (_fakingOpen)
-            {
-                if (Connector != null)
-                {
-                    try
-                    {
-                        Close();
-                    }
-                    catch
-                    {
-                        // ignored
-                    }
-                }
-                Open();
-                _fakingOpen = false;
-            }
-
-            if (_postponingClose || Connector == null)
+            CheckDisposed();
+            if (Connector == null)
                 throw new InvalidOperationException("Connection is not open");
         }
 
         void CheckConnectionClosed()
         {
-            if (_disposed)
-                throw new ObjectDisposedException(typeof(NpgsqlConnection).Name);
+            CheckDisposed();
             if (Connector != null)
                 throw new InvalidOperationException("Connection already open");
         }
 
-        void CheckNotDisposed()
+        void CheckDisposed()
         {
             if (_disposed)
                 throw new ObjectDisposedException(typeof(NpgsqlConnection).Name);
@@ -1297,8 +1287,7 @@ namespace Npgsql
 
         internal NpgsqlConnector CheckReadyAndGetConnector()
         {
-            if (_disposed)
-                throw new ObjectDisposedException(typeof(NpgsqlConnection).Name);
+            CheckDisposed();
 
             // This method gets called outside any lock, and might be in a race condition
             // with an ongoing keepalive, which may break the connector (setting the connection's
@@ -1312,7 +1301,7 @@ namespace Npgsql
         #endregion State checks
 
         #region Schema operations
-#if NET45 || NET451
+#if NET45 || NET451 || NET452
         /// <summary>
         /// Returns the supported collections
         /// </summary>
@@ -1391,13 +1380,13 @@ namespace Npgsql
         /// <summary>
         /// Creates a closed connection with the connection string and authentication details of this message.
         /// </summary>
-#if NET45 || NET451
+#if NET45 || NET451 || NET452
         object ICloneable.Clone()
 #else
         public NpgsqlConnection Clone()
 #endif
         {
-            CheckNotDisposed();
+            CheckDisposed();
             var conn = new NpgsqlConnection(Settings) {
                 ProvideClientCertificatesCallback = ProvideClientCertificatesCallback,
                 UserCertificateValidationCallback = UserCertificateValidationCallback,
@@ -1416,7 +1405,7 @@ namespace Npgsql
         [PublicAPI]
         public NpgsqlConnection CloneWith(string connectionString)
         {
-            CheckNotDisposed();
+            CheckDisposed();
             var csb = new NpgsqlConnectionStringBuilder(connectionString);
             if (csb.Password == null && Password != null)
             {
@@ -1452,7 +1441,7 @@ namespace Npgsql
             Open();
         }
 
-#if NET45 || NET451
+#if NET45 || NET451 || NET452
         /// <summary>
         /// DB provider factory.
         /// </summary>

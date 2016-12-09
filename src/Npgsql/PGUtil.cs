@@ -24,6 +24,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Data;
 using System.Globalization;
 using System.IO;
 using System.Net;
@@ -101,14 +102,14 @@ namespace Npgsql
 
         internal static readonly Task CompletedTask = TaskFromResult(0);
 
-#if NET45 || NET451
+#if NET45 || NET451 || NET452
         internal static StringComparer InvariantCaseIgnoringStringComparer => StringComparer.InvariantCultureIgnoreCase;
 #else
         internal static StringComparer InvariantCaseIgnoringStringComparer => CultureInfo.InvariantCulture.CompareInfo.GetStringComparer(CompareOptions.IgnoreCase);
 #endif
 
         internal static bool IsWindows =>
-#if NET45 || NET451
+#if NET45 || NET451 || NET452
             Environment.OSVersion.Platform == PlatformID.Win32NT;
 #else
             System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows);
@@ -166,7 +167,7 @@ namespace Npgsql
         internal CultureSetter(CultureInfo newCulture)
         {
             _oldCulture = CultureInfo.CurrentCulture;
-#if NET45 || NET451
+#if NET45 || NET451 || NET452
             Thread.CurrentThread.CurrentCulture = newCulture;
 #else
             CultureInfo.CurrentCulture = newCulture;
@@ -175,7 +176,7 @@ namespace Npgsql
 
         public void Dispose()
         {
-#if NET45 || NET451
+#if NET45 || NET451 || NET452
             Thread.CurrentThread.CurrentCulture = _oldCulture;
 #else
             CultureInfo.CurrentCulture = _oldCulture;

@@ -1179,17 +1179,7 @@ namespace Npgsql
                 return;
             }
 
-            Log.Debug("Cancelling command", connector.Id);
-            try
-            {
-                connector.CancelRequest();
-            }
-            catch (Exception e)
-            {
-                var socketException = e.InnerException as SocketException;
-                if (socketException == null || socketException.SocketErrorCode != SocketError.ConnectionReset)
-                    Log.Debug("Exception caught while attempting to cancel command", e, connector.Id);
-            }
+            connector.CancelRequest();
         }
 
         #endregion Cancel
@@ -1258,7 +1248,7 @@ namespace Npgsql
             Log.Debug(sb.ToString(), Connection.Connector.Id);
         }
 
-#if NET45 || NET451
+#if NET45 || NET451 || NET452
         /// <summary>
         /// Create a new command based on this one.
         /// </summary>

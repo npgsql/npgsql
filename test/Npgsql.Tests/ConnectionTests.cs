@@ -882,7 +882,7 @@ namespace Npgsql.Tests
                 conn.UserCertificateValidationCallback = callback2;
 
                 conn.Open();
-#if NET451
+#if NET452
                 using (var conn2 = (NpgsqlConnection)((ICloneable)conn).Clone())
 #else
                 using (var conn2 = conn.Clone())

@@ -741,7 +741,7 @@ namespace Npgsql.Tests
             }
         }
 
-#if NET451
+#if NET452
         [Test]
         public void Bug1010788UpdateRowSource()
         {

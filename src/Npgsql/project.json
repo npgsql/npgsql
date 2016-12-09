@@ -86,6 +86,16 @@
         "System.Xml": { "version": "4.0.0.0", "type": "build" }
       }
     },
+    "net452": {
+      "frameworkAssemblies": {
+        "System.Collections": { "version": "4.0.0.0", "type": "build" },
+        "System.Transactions": { "version": "4.0.0.0", "type": "build" },
+        "System.DirectoryServices": { "version": "4.0.0.0", "type": "build" },
+        "System.Data": { "version": "4.0.0.0", "type": "build" },
+        "System.Numerics": { "version": "4.0.0.0", "type": "build" },
+        "System.Xml": { "version": "4.0.0.0", "type": "build" }
+      }
+    },
     "netstandard1.3": {
       "dependencies": {
         "System.Collections.Specialized": "4.0.1",

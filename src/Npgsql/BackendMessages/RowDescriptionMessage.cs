@@ -120,7 +120,7 @@ namespace Npgsql.BackendMessages
                 => CompareInfo.Compare(x, y, CompareOptions.IgnoreWidth) == 0;
             public int GetHashCode([NotNull] string o)
             {
-#if NET45 || NET451
+#if NET45 || NET451 || NET452
                 return CompareInfo.GetSortKey(o, CompareOptions.IgnoreWidth).GetHashCode();
 #else
                 return CompareInfo.GetHashCode(o, CompareOptions.IgnoreWidth);
@@ -136,7 +136,7 @@ namespace Npgsql.BackendMessages
                 => CompareInfo.Compare(x, y, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase) == 0;
             public int GetHashCode([NotNull] string o)
             {
-#if NET45 || NET451
+#if NET45 || NET451 || NET452
                 return CompareInfo.GetSortKey(o, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase).GetHashCode();
 #else
                 return CompareInfo.GetHashCode(o, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase);

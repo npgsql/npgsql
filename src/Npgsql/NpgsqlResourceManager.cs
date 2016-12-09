@@ -1,4 +1,4 @@
-#if NET45 || NET451
+#if NET45 || NET451 || NET452
 #region License
 // The PostgreSQL License
 //
@@ -24,151 +24,326 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Threading;
 using System.Transactions;
+using JetBrains.Annotations;
+using Npgsql.Logging;
 
 namespace Npgsql
 {
-    interface INpgsqlResourceManager
+    /// <summary>
+    ///
+    /// </summary>
+    /// <remarks>
+    /// Note that a connection may be closed before its TransactionScope completes. In this case we close the NpgsqlConnection
+    /// as usual but the connector in a special list in the pool; it will be closed only when the scope completes.
+    /// </remarks>
+    class NpgsqlResourceManager : ISinglePhaseNotification, IPromotableSinglePhaseNotification
     {
-        void Enlist(INpgsqlTransactionCallbacks transactionCallbacks, byte[] txToken);
-        byte[] Promote(INpgsqlTransactionCallbacks transactionCallbacks);
-        void CommitWork(string txName);
-        void RollbackWork(string txName);
-    }
+        [CanBeNull]
+        internal NpgsqlConnection _connection { get; set; }
 
-    class NpgsqlResourceManager : MarshalByRefObject, INpgsqlResourceManager
-    {
-        private readonly Dictionary<string, CommittableTransaction> _transactions = new Dictionary<string, CommittableTransaction>();
+        [CanBeNull] NpgsqlConnector _connector;
+        [CanBeNull]
+        internal Transaction Transaction { get; private set; }
+        [CanBeNull] readonly string _txId;
+        [CanBeNull] NpgsqlTransaction _localTx;
+        [CanBeNull] string _preparedTxName;
+        bool IsPrepared => _preparedTxName != null;
+        bool _isDisposed;
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
-#region INpgsqlTransactionManager Members
-
-        public byte[] Promote(INpgsqlTransactionCallbacks callbacks)
+        internal NpgsqlResourceManager(NpgsqlConnection connection, [NotNull] Transaction transaction)
         {
-            CommittableTransaction tx = new CommittableTransaction();
-            DurableResourceManager rm = new DurableResourceManager(this, callbacks, tx);
-            byte[] token = TransactionInterop.GetTransmitterPropagationToken(tx);
-            _transactions.Add(rm.TxName, tx);
-            rm.Enlist(tx);
-            return token;
+            _connection = connection;
+            _connector = connection.Connector;
+            Transaction = transaction;
+            // _tx gets disposed by System.Transactions at some point, but we want to be able to log its local ID
+            _txId = transaction.TransactionInformation.LocalIdentifier;
         }
 
-        public void Enlist(INpgsqlTransactionCallbacks callbacks, byte[] txToken)
+        public void Initialize()
         {
-            DurableResourceManager rm = new DurableResourceManager(this, callbacks);
-            rm.Enlist(txToken);
+            CheckDisposed();
+            Debug.Assert(_connection?.Connector != null, "No connection/connector");
+            Debug.Assert(Transaction != null, "No transaction");
+
+            _localTx = _connection.BeginTransaction(ConvertIsolationLevel(Transaction.IsolationLevel));
+            // Once we have the local transaction, we won't be needing the NpgsqlConnection instance - all further
+            // communication will occur directly via the connector. This is important since the connection may be
+            // closed before the TransactionScope completes.
+            _connection = null;
         }
 
-        public void CommitWork(string txName)
+        #region Single-Phase Operations
+
+        public byte[] Promote()
         {
-            CommittableTransaction tx;
-            if (_transactions.TryGetValue(txName, out tx))
+            CheckDisposed();
+            Debug.Assert(Transaction != null, "No transaction");
+            Debug.Assert(_connector != null, "No connector");
+
+            Log.Debug($"Promoting local transaction to distributed (localid={_txId})", _connector.Id);
+
+#if NET45 || NET451
+            throw new NotSupportedException("Can't promote to distributed transaction, use at least .NET 4.5.2");
+#else
+            Transaction.PromoteAndEnlistDurable(Guid.NewGuid(), this, this, EnlistmentOptions.None);
+            return null;
+#endif
+        }
+
+        public void SinglePhaseCommit(SinglePhaseEnlistment singlePhaseEnlistment)
+        {
+            CheckDisposed();
+
+            Debug.Assert(Transaction != null, "No transaction");
+            Debug.Assert(_localTx != null, "No local transaction");
+            Debug.Assert(_connector != null, "No connector");
+
+            Log.Debug($"Single Phase Commit (localid={_txId})", _connector.Id);
+
+            try
             {
-                tx.Commit();
-                _transactions.Remove(txName);
+                _localTx.Commit();
+                singlePhaseEnlistment.Committed();
+            }
+            catch (Exception e)
+            {
+                singlePhaseEnlistment.InDoubt(e);
+            }
+            finally
+            {
+                Dispose();
             }
         }
 
-        public void RollbackWork(string txName)
+        public void Rollback(SinglePhaseEnlistment singlePhaseEnlistment)
         {
-            CommittableTransaction tx;
-            if (_transactions.TryGetValue(txName, out tx))
+            CheckDisposed();
+
+            Debug.Assert(Transaction != null, "No transaction");
+            Debug.Assert(_localTx != null, "No local transaction");
+            Debug.Assert(_connector != null, "No connector");
+
+            Log.Debug($"Single Phase Rollback (localid={_txId})", _connector.Id);
+
+            try
             {
-                _transactions.Remove(txName);
-                // you can fail to commit,
-                // but you're not getting out
-                // of a rollback.  Remove from list first.
-                tx.Rollback();
+                RollbackLocal();
+                singlePhaseEnlistment.Aborted();
+            }
+            catch (Exception e)
+            {
+                singlePhaseEnlistment.InDoubt(e);
+            }
+            finally
+            {
+                Dispose();
             }
         }
 
-#endregion
+        #endregion
 
-        private class DurableResourceManager : ISinglePhaseNotification
+        #region Two-Phase Operations
+
+        public void Prepare(PreparingEnlistment preparingEnlistment)
         {
-            private readonly INpgsqlTransactionCallbacks _callbacks;
-            private string _txName;
+            CheckDisposed();
+            Debug.Assert(Transaction != null, "No transaction");
+            Debug.Assert(_localTx != null, "No local transaction");
+            Debug.Assert(_connector != null, "No connector");
 
-            public DurableResourceManager(NpgsqlResourceManager rm, INpgsqlTransactionCallbacks callbacks)
-                : this(rm, callbacks, null)
+            Log.Debug($"Two-phase transaction prepare (localid={_txId}, distributed txid={Transaction.TransactionInformation.DistributedIdentifier}", _connector.Id);
+
+            _preparedTxName = Guid.NewGuid().ToString();
+            try
             {
-            }
-
-            public DurableResourceManager(NpgsqlResourceManager rm, INpgsqlTransactionCallbacks callbacks,
-                                          CommittableTransaction tx)
-            {
-                _callbacks = callbacks;
-            }
-
-            public string TxName
-            {
-                get
-                {
-                    // delay initialize since callback methods may be expensive
-                    if (_txName == null)
-                    {
-                        _txName = _callbacks.GetName();
-                    }
-                    return _txName;
-                }
-            }
-
-#region IEnlistmentNotification Members
-
-            public void Commit(Enlistment enlistment)
-            {
-                _callbacks.CommitTransaction();
-                // TODO: remove record of prepared
-                enlistment.Done();
-                _callbacks.Dispose();
-            }
-
-            public void InDoubt(Enlistment enlistment)
-            {
-                // not going to happen when enlisted durably
-                throw new NotImplementedException();
-            }
-
-            public void Prepare(PreparingEnlistment preparingEnlistment)
-            {
-                _callbacks.PrepareTransaction();
-                // TODO: record prepared
+                _connector.ExecuteInternalCommand($"PREPARE TRANSACTION '{_preparedTxName}'");
+                //_localTx.Dispose(true, false);
+                //_localTx = null;
                 preparingEnlistment.Prepared();
             }
-
-            public void Rollback(Enlistment enlistment)
+            catch (Exception e)
             {
-                _callbacks.RollbackTransaction();
-                // TODO: remove record of prepared
-                enlistment.Done();
-                _callbacks.Dispose();
-            }
-
-#endregion
-
-#region ISinglePhaseNotification Members
-
-            public void SinglePhaseCommit(SinglePhaseEnlistment singlePhaseEnlistment)
-            {
-                _callbacks.CommitTransaction();
-                singlePhaseEnlistment.Committed();
-                _callbacks.Dispose();
-            }
-
-#endregion
-
-            private static readonly Guid rmGuid = new Guid("9e1b6d2d-8cdb-40ce-ac37-edfe5f880716");
-
-            public Transaction Enlist(byte[] token)
-            {
-                return Enlist(TransactionInterop.GetTransactionFromTransmitterPropagationToken(token));
-            }
-
-            public Transaction Enlist(Transaction tx)
-            {
-                tx.EnlistDurable(rmGuid, this, EnlistmentOptions.None);
-                return tx;
+                Dispose();
+                preparingEnlistment.ForceRollback(e);
             }
         }
+
+        public void Commit(Enlistment enlistment)
+        {
+            CheckDisposed();
+            Debug.Assert(Transaction != null, "No transaction");
+            Debug.Assert(_connector != null, "No connector");
+
+            Log.Debug($"Two-phase transaction commit (localid={_txId})", _connector.Id);
+
+            try
+            {
+                _connector.ExecuteInternalCommand($"COMMIT PREPARED '{_preparedTxName}'");
+            }
+            catch (Exception e)
+            {
+                Log.Error($"Exception while committing transaction (localid={_txId})", e, _connector.Id);
+            }
+            finally
+            {
+                Dispose();
+                enlistment.Done();
+            }
+        }
+
+        public void Rollback(Enlistment enlistment)
+        {
+            CheckDisposed();
+            Debug.Assert(Transaction != null, "No transaction");
+            Debug.Assert(_connector != null, "No connector");
+
+            try
+            {
+                if (IsPrepared)
+                {
+                    // This only occurs if we've started a two-phase commit but one of the commits has failed.
+                    Log.Debug($"Two-phase transaction rollback (localid={_txId})", _connector.Id);
+                    _connector.ExecuteInternalCommand($"ROLLBACK PREPARED '{_preparedTxName}'");
+                }
+                else
+                {
+                    Log.Debug($"Single-phase transaction rollback (localid={_txId})", _connector.Id);
+                    Debug.Assert(_localTx != null);
+                    RollbackLocal();
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Error($"Exception while rolling back transaction (localid={_txId})", e, _connector.Id);
+            }
+            finally
+            {
+                Dispose();
+                enlistment.Done();
+            }
+        }
+
+        public void InDoubt(Enlistment enlistment)
+        {
+            Debug.Assert(Transaction != null, "No transaction");
+            Debug.Assert(_connector != null, "No connector");
+
+            Log.Debug($"Two-phase transaction in-doubt (localid={_txId})", _connector.Id);
+
+            // TODO: Is this the correct behavior?
+            try
+            {
+                _connector.ExecuteInternalCommand($"ROLLBACK PREPARED '{_preparedTxName}'");
+            }
+            catch (Exception e)
+            {
+                Log.Error($"Exception while rolling back in-doubt transaction (localid={_txId})", e, _connector.Id);
+            }
+            finally
+            {
+                Dispose();
+                enlistment.Done();
+            }
+        }
+
+        #endregion
+
+        /// <summary>
+        /// Repeatedly attempts to rollback, to support timeout-triggered rollbacks that occur while the connection is busy.
+        /// </summary>
+        void RollbackLocal()
+        {
+            Debug.Assert(_connector != null, "No connector");
+            Debug.Assert(_localTx != null, "No local transaction");
+
+            while (true)
+            {
+                try
+                {
+                    _localTx.Rollback();
+                    return;
+                }
+                catch (NpgsqlOperationInProgressException)
+                {
+                    Log.Debug("Connection in use while trying to rollback, will cancel and retry", _connector.Id);
+                    _connector.CancelRequest();
+                    // Cancellations are asynchronous, give it some time
+                    Thread.Sleep(500);
+                }
+            }
+        }
+
+        #region Dispose/Cleanup
+
+        void Dispose()
+        {
+            if (_isDisposed)
+                return;
+            Debug.Assert(Transaction != null, "No transaction");
+            Debug.Assert(_connector != null, "No connector");
+
+            Log.Debug($"Cleaning up RM (localid={_txId})", _connector.Id);
+            if (_localTx != null)
+            {
+                _localTx.Dispose();
+                _localTx = null;
+            }
+
+            if (_connector.Connection != null)
+                _connector.Connection.EnlistedTransaction = null;
+            else
+            {
+                // We're here for connections which were closed before their TransactionScope completes.
+                // These need to be closed now.
+                if (_connector.Settings.Pooling)
+                {
+                    var pool = PoolManager.GetOrAdd(_connector.Settings);
+                    pool.RemovePendingEnlistedConnector(_connector, Transaction);
+                    pool.Release(_connector);
+                }
+                else
+                    _connector.Close();
+            }
+
+            _connector = null;
+            Transaction = null;
+            _isDisposed = true;
+        }
+
+        void CheckDisposed()
+        {
+            if (_isDisposed)
+                throw new ObjectDisposedException(nameof(NpgsqlResourceManager));
+        }
+
+        #endregion
+
+        static System.Data.IsolationLevel ConvertIsolationLevel(IsolationLevel isolationLevel)
+        {
+            switch (isolationLevel)
+            {
+            case IsolationLevel.Chaos:
+                return System.Data.IsolationLevel.Chaos;
+            case IsolationLevel.ReadCommitted:
+                return System.Data.IsolationLevel.ReadCommitted;
+            case IsolationLevel.ReadUncommitted:
+                return System.Data.IsolationLevel.ReadUncommitted;
+            case IsolationLevel.RepeatableRead:
+                return System.Data.IsolationLevel.RepeatableRead;
+            case IsolationLevel.Serializable:
+                return System.Data.IsolationLevel.Serializable;
+            case IsolationLevel.Snapshot:
+                return System.Data.IsolationLevel.Snapshot;
+            case IsolationLevel.Unspecified:
+            default:
+                return System.Data.IsolationLevel.Unspecified;
+            }
+        }
+
     }
 }
 #endif

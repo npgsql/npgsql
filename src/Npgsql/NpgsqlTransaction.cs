@@ -27,9 +27,7 @@ using System.Data.Common;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
-using AsyncRewriter;
 using JetBrains.Annotations;
-using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
 using Npgsql.Logging;
 
@@ -38,7 +36,7 @@ namespace Npgsql
     /// <summary>
     /// Represents a transaction to be made in a PostgreSQL database. This class cannot be inherited.
     /// </summary>
-    public sealed partial class NpgsqlTransaction : DbTransaction
+    public sealed class NpgsqlTransaction : DbTransaction
     {
         #region Fields and Properties
 
@@ -48,11 +46,15 @@ namespace Npgsql
         /// <value>The <see cref="NpgsqlConnection"/> object associated with the transaction.</value>
         public new NpgsqlConnection Connection { get; internal set; }
 
+        // Note that with ambient transactions, it's possible for a transaction to be pending after its connection
+        // is already closed. So we capture the connector and perform everything directly on it.
+        NpgsqlConnector _connector;
+
         /// <summary>
         /// Specifies the completion state of the transaction.
         /// </summary>
         /// <value>The completion state of the transaction.</value>
-        public bool IsCompleted => Connection == null;
+        public bool IsCompleted => _connector == null;
 
         /// <summary>
         /// Specifies the <see cref="NpgsqlConnection"/> object associated with the transaction.
@@ -60,7 +62,6 @@ namespace Npgsql
         /// <value>The <see cref="NpgsqlConnection"/> object associated with the transaction.</value>
         protected override DbConnection DbConnection => Connection;
 
-        NpgsqlConnector Connector => Connection.Connector;
 
         bool _isDisposed;
 
@@ -87,40 +88,35 @@ namespace Npgsql
 
         #region Constructors
 
-        internal NpgsqlTransaction(NpgsqlConnection conn)
-            : this(conn, DefaultIsolationLevel)
-        {
-            Debug.Assert(conn != null);
-        }
-
-        internal NpgsqlTransaction(NpgsqlConnection conn, IsolationLevel isolationLevel)
+        internal NpgsqlTransaction(NpgsqlConnection conn, IsolationLevel isolationLevel = DefaultIsolationLevel)
         {
             Debug.Assert(conn != null);
             Debug.Assert(isolationLevel != IsolationLevel.Chaos);
 
             Connection = conn;
-            Connector.Transaction = this;
-            Connector.TransactionStatus = TransactionStatus.Pending;
+            _connector = Connection.CheckReadyAndGetConnector();
+            _connector.Transaction = this;
+            _connector.TransactionStatus = TransactionStatus.Pending;
 
             switch (isolationLevel) {
                 case IsolationLevel.RepeatableRead:
-                    Connector.PrependInternalMessage(PregeneratedMessage.BeginTrans);
-                    Connector.PrependInternalMessage(PregeneratedMessage.SetTransRepeatableRead);
+                    _connector.PrependInternalMessage(PregeneratedMessage.BeginTrans);
+                    _connector.PrependInternalMessage(PregeneratedMessage.SetTransRepeatableRead);
                     break;
                 case IsolationLevel.Serializable:
                 case IsolationLevel.Snapshot:
-                    Connector.PrependInternalMessage(PregeneratedMessage.BeginTrans);
-                    Connector.PrependInternalMessage(PregeneratedMessage.SetTransSerializable);
+                    _connector.PrependInternalMessage(PregeneratedMessage.BeginTrans);
+                    _connector.PrependInternalMessage(PregeneratedMessage.SetTransSerializable);
                     break;
                 case IsolationLevel.ReadUncommitted:
                     // PG doesn't really support ReadUncommitted, it's the same as ReadCommitted. But we still
                     // send as if.
-                    Connector.PrependInternalMessage(PregeneratedMessage.BeginTrans);
-                    Connector.PrependInternalMessage(PregeneratedMessage.SetTransReadUncommitted);
+                    _connector.PrependInternalMessage(PregeneratedMessage.BeginTrans);
+                    _connector.PrependInternalMessage(PregeneratedMessage.SetTransReadUncommitted);
                     break;
                 case IsolationLevel.ReadCommitted:
-                    Connector.PrependInternalMessage(PregeneratedMessage.BeginTrans);
-                    Connector.PrependInternalMessage(PregeneratedMessage.SetTransReadCommitted);
+                    _connector.PrependInternalMessage(PregeneratedMessage.BeginTrans);
+                    _connector.PrependInternalMessage(PregeneratedMessage.SetTransReadCommitted);
                     break;
                 case IsolationLevel.Unspecified:
                     isolationLevel = DefaultIsolationLevel;
@@ -143,12 +139,12 @@ namespace Npgsql
 
         async Task Commit(bool async, CancellationToken cancellationToken)
         {
-            var connector = CheckReady();
-            using (connector.StartUserAction())
+            CheckReady();
+            using (_connector.StartUserAction())
             {
-                Log.Debug("Commit transaction", connector.Id);
-                await connector.ExecuteInternalCommand(PregeneratedMessage.CommitTransaction, async, cancellationToken);
-                Connection = null;
+                Log.Debug("Commit transaction", _connector.Id);
+                await _connector.ExecuteInternalCommand(PregeneratedMessage.CommitTransaction, async, cancellationToken);
+                Clear();
             }
         }
 
@@ -175,11 +171,11 @@ namespace Npgsql
 
         async Task Rollback(bool async, CancellationToken cancellationToken)
         {
-            var connector = CheckReady();
-            using (connector.StartUserAction())
+            CheckReady();
+            using (_connector.StartUserAction())
             {
-                await connector.Rollback(async, cancellationToken);
-                Connection = null;
+                await _connector.Rollback(async, cancellationToken);
+                Clear();
             }
         }
 
@@ -211,11 +207,11 @@ namespace Npgsql
             if (name.Contains(";"))
                 throw new ArgumentException("name can't contain a semicolon");
 
-            var connector = CheckReady();
-            using (connector.StartUserAction())
+            CheckReady();
+            using (_connector.StartUserAction())
             {
-                Log.Debug("Create savepoint", connector.Id);
-                connector.ExecuteInternalCommand($"SAVEPOINT {name}");
+                Log.Debug("Create savepoint", _connector.Id);
+                _connector.ExecuteInternalCommand($"SAVEPOINT {name}");
             }
         }
 
@@ -231,11 +227,11 @@ namespace Npgsql
             if (name.Contains(";"))
                 throw new ArgumentException("name can't contain a semicolon");
 
-            var connector = CheckReady();
-            using (connector.StartUserAction())
+            CheckReady();
+            using (_connector.StartUserAction())
             {
-                Log.Debug("Rollback savepoint", connector.Id);
-                connector.ExecuteInternalCommand($"ROLLBACK TO SAVEPOINT {name}");
+                Log.Debug("Rollback savepoint", _connector.Id);
+                _connector.ExecuteInternalCommand($"ROLLBACK TO SAVEPOINT {name}");
             }
         }
 
@@ -251,11 +247,11 @@ namespace Npgsql
             if (name.Contains(";"))
                 throw new ArgumentException("name can't contain a semicolon");
 
-            var connector = CheckReady();
-            using (connector.StartUserAction())
+            CheckReady();
+            using (_connector.StartUserAction())
             {
-                Log.Debug("Release savepoint", connector.Id);
-                connector.ExecuteInternalCommand($"RELEASE SAVEPOINT {name}");
+                Log.Debug("Release savepoint", _connector.Id);
+                _connector.ExecuteInternalCommand($"RELEASE SAVEPOINT {name}");
             }
         }
 
@@ -267,27 +263,35 @@ namespace Npgsql
         /// Dispose.
         /// </summary>
         /// <param name="disposing"></param>
-        protected override void Dispose(bool disposing)
+        protected override void Dispose(bool disposing) => Dispose(disposing, true);
+
+        internal void Dispose(bool disposing, bool doRollbackIfNeeded)
         {
             if (_isDisposed) { return; }
 
-            if (disposing && Connection != null) {
+            if (disposing && doRollbackIfNeeded && !IsCompleted)
                 Rollback();
-            }
 
-            _isDisposed = true;
+            Clear();
+
             base.Dispose(disposing);
+            _isDisposed = true;
+        }
+
+        internal void Clear()
+        {
+            _connector = null;
+            Connection = null;
         }
 
         #endregion
 
         #region Checks
 
-        NpgsqlConnector CheckReady()
+        void CheckReady()
         {
             CheckDisposed();
             CheckCompleted();
-            return Connection.CheckReadyAndGetConnector();
         }
 
         void CheckCompleted()

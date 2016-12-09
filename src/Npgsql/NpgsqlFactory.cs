@@ -31,7 +31,7 @@ namespace Npgsql
     /// <summary>
     /// A factory to create instances of various Npgsql objects.
     /// </summary>
-#if NET45 || NET451
+#if NET45 || NET451 || NET452
     [Serializable]
 #endif
     public sealed class NpgsqlFactory : DbProviderFactory, IServiceProvider
@@ -64,7 +64,7 @@ namespace Npgsql
         /// </summary>
         [NotNull] public override DbConnectionStringBuilder CreateConnectionStringBuilder() => new NpgsqlConnectionStringBuilder();
 
-#if NET45 || NET451
+#if NET45 || NET451 || NET452
         /// <summary>
         /// Returns a strongly typed <see cref="DbCommandBuilder"/> instance.
         /// </summary>

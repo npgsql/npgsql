@@ -5,7 +5,7 @@
       "NLog": "4.4.0-beta5"
   },
   "frameworks": {
-    "net451": {}
+    "net452": {}
   },
   "runtimes": {
     "win": {}

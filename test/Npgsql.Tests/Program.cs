@@ -14,7 +14,7 @@ namespace Npgsql.Tests
     {
         public static int Main(string[] args)
         {
-#if NET451
+#if NET452
             return new AutoRun().Execute(args);
 #else
             var writer = new ExtendedTextWrapper(Console.Out);

@@ -42,7 +42,7 @@ namespace Npgsql.Tls
 
         protected virtual void Dispose(bool disposing) {}
 
-#if !(NET45 || NET451)
+#if !(NET45 || NET451 || NET452)
         public static HashAlgorithmName GetHashAlgorithmName(TlsHashAlgorithm hashAlgorithm)
         {
             switch (hashAlgorithm)
@@ -61,7 +61,7 @@ namespace Npgsql.Tls
         {
             switch (hashAlgorithm)
             {
-#if NET45 || NET451
+#if NET45 || NET451 || NET452
                 case TlsHashAlgorithm.MD5: return new HashAlgorithmHasher(new MD5CryptoServiceProvider());
                 case TlsHashAlgorithm.SHA1: return new HashAlgorithmHasher(new SHA1CryptoServiceProvider());
                 case TlsHashAlgorithm.SHA256: return new HashAlgorithmHasher(new SHA256CryptoServiceProvider());
@@ -81,7 +81,7 @@ namespace Npgsql.Tls
             }
         }
 
-#if NET45 || NET451
+#if NET45 || NET451 || NET452
         sealed class HashAlgorithmHasher : Hasher
         {
             readonly HashAlgorithm _hashAlgorithm;

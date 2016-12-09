@@ -81,7 +81,7 @@ ORDER BY attnum";
             {
                 var query = string.Format(GetColumnsQuery, columnFieldFilter);
 
-#if NET45 || NET451
+#if NET45 || NET451 || NET452
                 using (var connection = (NpgsqlConnection)((ICloneable)_connection).Clone())
 #else
                 using (var connection = _connection.Clone())
