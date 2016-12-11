@@ -1054,8 +1054,8 @@ namespace Npgsql.Tests
                     using (var conn = OpenConnection(goodCsb))
                     {
                         conn.ExecuteNonQuery("CREATE TABLE foo (bar TEXT)");
-                        conn.ExecuteNonQuery("INSERT INTO foo (bar) VALUES ('ιθιθ')");
-                        Assert.That(conn.ExecuteScalar("SELECT * FROM foo"), Is.EqualTo("ιθιθ"));
+                        conn.ExecuteNonQuery("INSERT INTO foo (bar) VALUES ('Γ©Γ Γ§')");
+                        Assert.That(conn.ExecuteScalar("SELECT * FROM foo"), Is.EqualTo("Γ©Γ Γ§"));
                     }
 
                     // A normal connection with the default UTF8 encoding and client_encoding should fail
