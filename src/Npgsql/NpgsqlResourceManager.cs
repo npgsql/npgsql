@@ -86,12 +86,18 @@ namespace Npgsql
 
             Log.Debug($"Promoting local transaction to distributed (localid={_txId})", _connector.Id);
 
+            // When we actually implement some sort of recovery mechanism (#1378), it will make sense to implement PSPE.
+            // For now this is compiled out because unfortunately mono's .NET 4.5.2 doesn't have PromoteAndEnlistDurable :/
+            // PR to add it: https://github.com/mono/mono/pull/4129
+            throw new NotSupportedException("Transaction promotion isn't supported at this time");
+            /*
 #if NET45 || NET451
             throw new NotSupportedException("Can't promote to distributed transaction, use at least .NET 4.5.2");
 #else
             Transaction.PromoteAndEnlistDurable(Guid.NewGuid(), this, this, EnlistmentOptions.None);
             return null;
 #endif
+*/
         }
 
         public void SinglePhaseCommit(SinglePhaseEnlistment singlePhaseEnlistment)
