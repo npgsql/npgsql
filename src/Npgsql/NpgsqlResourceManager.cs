@@ -157,7 +157,9 @@ namespace Npgsql
 
             Log.Debug($"Two-phase transaction prepare (localid={_txId}, distributed txid={Transaction.TransactionInformation.DistributedIdentifier}", _connector.Id);
 
-            _preparedTxName = Guid.NewGuid().ToString();
+            // The PostgreSQL prepared transaction name is the distributed GUID + our connection's process ID, for uniqueness
+            _preparedTxName = $"{Transaction.TransactionInformation.DistributedIdentifier}/{_connector.BackendProcessId}";
+
             try
             {
                 _connector.ExecuteInternalCommand($"PREPARE TRANSACTION '{_preparedTxName}'");
