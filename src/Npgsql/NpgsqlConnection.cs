@@ -600,6 +600,7 @@ namespace Npgsql
                 // Close the connection and disconnect it from the resource manager but leave the connector
                 // in a enlisted pending list in the pool.
                 Pool.AddPendingEnlistedConnector(Connector, EnlistedTransaction);
+                Connector.Connection = null;
                 EnlistedTransaction = null;
             }
 #endif

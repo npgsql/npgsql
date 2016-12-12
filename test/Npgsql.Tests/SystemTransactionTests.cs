@@ -166,9 +166,13 @@ namespace Npgsql.Tests
         [Test]
         public void CloseConnection()
         {
-            var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString) { Enlist = true };
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ApplicationName = nameof(CloseConnection),
+                Enlist = true
+            };
             using (var scope = new TransactionScope())
-            using (var conn = OpenConnection(connectionString))
+            using (var conn = OpenConnection(connString))
             {
                 Assert.That(conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test')"), Is.EqualTo(1));
                 conn.Close();
@@ -176,6 +180,11 @@ namespace Npgsql.Tests
                 scope.Complete();
             }
             AssertNumberOfRows(1);
+            var pool = PoolManager.Pools[connString];
+            Assert.That(pool.Idle, Has.Count.EqualTo(1));
+
+            using (var conn = new NpgsqlConnection(connString))
+                NpgsqlConnection.ClearPool(conn);
         }
 
         [Test]
