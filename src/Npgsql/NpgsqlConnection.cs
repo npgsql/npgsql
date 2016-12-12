@@ -557,7 +557,7 @@ namespace Npgsql
             // distributed transactions aren't supported.
 
             transaction.EnlistVolatile(new VolatileResourceManager(this, transaction), EnlistmentOptions.None);
-            Log.Debug($"Enlisted volatile resource manager (local txid={transaction.TransactionInformation.LocalIdentifier})", connector.Id);
+            Log.Debug($"Enlisted volatile resource manager (localid={transaction.TransactionInformation.LocalIdentifier})", connector.Id);
         }
 #endif
 
