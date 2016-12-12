@@ -126,17 +126,13 @@ namespace Npgsql.Tests
         [Test]
         public void TwoConnectionsRollback()
         {
-            using (var conn1 = OpenConnection())
-            using (var conn2 = OpenConnection())
+            var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString) { Enlist = true };
+            using (new TransactionScope())
+            using (var conn1 = OpenConnection(connectionString))
+            using (var conn2 = OpenConnection(connectionString))
             {
-                using (new TransactionScope())
-                {
-                    conn1.EnlistTransaction(Transaction.Current);
-                    conn2.EnlistTransaction(Transaction.Current);
-
-                    Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1));
-                    Assert.That(conn2.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test2')"), Is.EqualTo(1));
-                }
+                Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1));
+                Assert.That(conn2.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test2')"), Is.EqualTo(1));
             }
             // TODO: There may be a race condition here, where the prepared transaction above still hasn't committed.
             AssertNoPreparedTransactions();
