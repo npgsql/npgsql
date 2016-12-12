@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using AsyncRewriter;
 using JetBrains.Annotations;
 using Npgsql.Logging;
-#if NET45 || NET451 || NET452
+#if NET45 || NET451
 using System.Transactions;
 #endif
 
@@ -29,7 +29,7 @@ namespace Npgsql
         {
             Pools = new ConcurrentDictionary<NpgsqlConnectionStringBuilder, ConnectorPool>();
 
-#if NET45 || NET451 || NET452
+#if NET45 || NET451
             // When the appdomain gets unloaded (e.g. web app redeployment) attempt to nicely
             // close idle connectors to prevent errors in PostgreSQL logs (#491).
             AppDomain.CurrentDomain.DomainUnload += (sender, args) => ClearAll();
@@ -283,7 +283,7 @@ namespace Npgsql
 
                 try
                 {
-#if NET45 || NET451 || NET452
+#if NET45 || NET451
                     var connector = new NpgsqlConnector((NpgsqlConnection) ((ICloneable) conn).Clone())
 #else
                     var connector = new NpgsqlConnector(conn.Clone())
@@ -432,7 +432,7 @@ namespace Npgsql
 
         #region Pending Enlisted Connections
 
-#if NET45 || NET451 || NET452
+#if NET45 || NET451
         internal void AddPendingEnlistedConnector(NpgsqlConnector connector, Transaction transaction)
         {
             lock (_pendingEnlistedConnectors)

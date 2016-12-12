@@ -39,7 +39,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AsyncRewriter;
 using JetBrains.Annotations;
-#if NET45 || NET451 || NET452
+#if NET45 || NET451
 using System.Transactions;
 #endif
 using Npgsql.Logging;
@@ -107,7 +107,7 @@ namespace Npgsql
 
         static readonly ConcurrentDictionary<string, NpgsqlConnectionStringBuilder> CsbCache = new ConcurrentDictionary<string, NpgsqlConnectionStringBuilder>();
 
-#if NET45 || NET451 || NET452
+#if NET45 || NET451
         internal Transaction EnlistedTransaction { get; set; }
 #endif
 
@@ -161,7 +161,7 @@ namespace Npgsql
             _noticeDelegate = OnNotice;
             _notificationDelegate = OnNotification;
 
-#if NET45 || NET451 || NET452
+#if NET45 || NET451
             // Fix authentication problems. See https://bugzilla.novell.com/show_bug.cgi?id=MONO77559 and
             // http://pgfoundry.org/forum/message.php?msg_id=1002377 for more info.
             RSACryptoServiceProvider.UseMachineKeyStore = true;
@@ -219,7 +219,7 @@ namespace Npgsql
                 // Get a Connector, either from the pool or creating one ourselves.
                 if (Settings.Pooling)
                 {
-#if NET45 || NET451 || NET452
+#if NET45 || NET451
                     if (Settings.Enlist)
                     {
                         if (Transaction.Current != null)
@@ -251,7 +251,7 @@ namespace Npgsql
                     Counters.NumberOfNonPooledConnections.Increment();
                 }
 
-#if NET45 || NET451 || NET452
+#if NET45 || NET451
                 // We may have gotten an already enlisted pending connector above, no need to enlist in that case
                 if (Settings.Enlist && Transaction.Current != null && EnlistedTransaction == null)
                     EnlistTransaction(Transaction.Current);
@@ -531,7 +531,7 @@ namespace Npgsql
             }
         }
 
-#if NET45 || NET451 || NET452
+#if NET45 || NET451
         /// <summary>
         /// Enlist transation.
         /// </summary>
@@ -550,36 +550,14 @@ namespace Npgsql
 
             EnlistedTransaction = transaction;
 
-            var resourceManager = new NpgsqlResourceManager(this, transaction);
-
             // Until #1378 is implemented, we have no recovery, and so no need to enlist as a durable resource manager
             // (or as promotable single phase).
 
             // Note that even when #1378 is implemented in some way, we should check for mono and go volatile in any case -
             // distributed transactions aren't supported.
 
-            transaction.EnlistVolatile(resourceManager, EnlistmentOptions.None);
-            resourceManager.Initialize();
-            Log.Debug($"Enlisted resource manager as volatile (local txid={transaction.TransactionInformation.LocalIdentifier})", connector.Id);
-            return;
-
-#pragma warning disable CS0162
-            // The following code implements durable/PSPE enlistment
-            if (transaction.EnlistPromotableSinglePhase(resourceManager))
-            {
-                Log.Debug($"Enlisted resource manager as PSPE (local txid={transaction.TransactionInformation.LocalIdentifier})", connector.Id);
-                return;
-            }
-
-            // Escalation is occuring (more than one durable enlistment)
-
-            // If PSP enlistment succeeds above, Initialize() is called by the system.
-            // Otherwise we need to do it outselves here.
-            resourceManager.Initialize();
-
-            transaction.EnlistDurable(Guid.NewGuid(), resourceManager, EnlistmentOptions.None);
-            Log.Debug($"Enlisted resource manager as durable (local txid={transaction.TransactionInformation.LocalIdentifier})", connector.Id);
-#pragma warning restore CS0162
+            transaction.EnlistVolatile(new VolatileResourceManager(this, transaction), EnlistmentOptions.None);
+            Log.Debug($"Enlisted volatile resource manager (local txid={transaction.TransactionInformation.LocalIdentifier})", connector.Id);
         }
 #endif
 
@@ -606,7 +584,7 @@ namespace Npgsql
 
             CloseOngoingOperations();
 
-#if NET45 || NET451 || NET452
+#if NET45 || NET451
             if (EnlistedTransaction == null)
             {
 #endif
@@ -614,7 +592,7 @@ namespace Npgsql
                     Pool.Release(Connector);
                 else
                     Connector.Close();
-#if NET45 || NET451 || NET452
+#if NET45 || NET451
             }
             else
             {
@@ -1305,7 +1283,7 @@ namespace Npgsql
         #endregion State checks
 
         #region Schema operations
-#if NET45 || NET451 || NET452
+#if NET45 || NET451
         /// <summary>
         /// Returns the supported collections
         /// </summary>
@@ -1384,7 +1362,7 @@ namespace Npgsql
         /// <summary>
         /// Creates a closed connection with the connection string and authentication details of this message.
         /// </summary>
-#if NET45 || NET451 || NET452
+#if NET45 || NET451
         object ICloneable.Clone()
 #else
         public NpgsqlConnection Clone()
@@ -1445,7 +1423,7 @@ namespace Npgsql
             Open();
         }
 
-#if NET45 || NET451 || NET452
+#if NET45 || NET451
         /// <summary>
         /// DB provider factory.
         /// </summary>

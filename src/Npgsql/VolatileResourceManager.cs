@@ -1,4 +1,4 @@
-#if NET45 || NET451 || NET452
+#if NET45 || NET451
 #region License
 // The PostgreSQL License
 //
@@ -39,14 +39,10 @@ namespace Npgsql
     /// Note that a connection may be closed before its TransactionScope completes. In this case we close the NpgsqlConnection
     /// as usual but the connector in a special list in the pool; it will be closed only when the scope completes.
     /// </remarks>
-    class NpgsqlResourceManager : ISinglePhaseNotification, IPromotableSinglePhaseNotification
+    class VolatileResourceManager : ISinglePhaseNotification
     {
-        [CanBeNull]
-        internal NpgsqlConnection _connection { get; set; }
-
         [CanBeNull] NpgsqlConnector _connector;
-        [CanBeNull]
-        internal Transaction Transaction { get; private set; }
+        [CanBeNull] Transaction _transaction;
         [CanBeNull] readonly string _txId;
         [CanBeNull] NpgsqlTransaction _localTx;
         [CanBeNull] string _preparedTxName;
@@ -54,57 +50,20 @@ namespace Npgsql
         bool _isDisposed;
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
-        internal NpgsqlResourceManager(NpgsqlConnection connection, [NotNull] Transaction transaction)
+        internal VolatileResourceManager(NpgsqlConnection connection, [NotNull] Transaction transaction)
         {
-            _connection = connection;
             _connector = connection.Connector;
-            Transaction = transaction;
+            _transaction = transaction;
             // _tx gets disposed by System.Transactions at some point, but we want to be able to log its local ID
             _txId = transaction.TransactionInformation.LocalIdentifier;
-        }
-
-        public void Initialize()
-        {
-            CheckDisposed();
-            Debug.Assert(_connection?.Connector != null, "No connection/connector");
-            Debug.Assert(Transaction != null, "No transaction");
-
-            _localTx = _connection.BeginTransaction(ConvertIsolationLevel(Transaction.IsolationLevel));
-            // Once we have the local transaction, we won't be needing the NpgsqlConnection instance - all further
-            // communication will occur directly via the connector. This is important since the connection may be
-            // closed before the TransactionScope completes.
-            _connection = null;
-        }
-
-        #region Single-Phase Operations
-
-        public byte[] Promote()
-        {
-            CheckDisposed();
-            Debug.Assert(Transaction != null, "No transaction");
-            Debug.Assert(_connector != null, "No connector");
-
-            Log.Debug($"Promoting local transaction to distributed (localid={_txId})", _connector.Id);
-
-            // When we actually implement some sort of recovery mechanism (#1378), it will make sense to implement PSPE.
-            // For now this is compiled out because unfortunately mono's .NET 4.5.2 doesn't have PromoteAndEnlistDurable :/
-            // PR to add it: https://github.com/mono/mono/pull/4129
-            throw new NotSupportedException("Transaction promotion isn't supported at this time");
-            /*
-#if NET45 || NET451
-            throw new NotSupportedException("Can't promote to distributed transaction, use at least .NET 4.5.2");
-#else
-            Transaction.PromoteAndEnlistDurable(Guid.NewGuid(), this, this, EnlistmentOptions.None);
-            return null;
-#endif
-*/
+            _localTx = connection.BeginTransaction(ConvertIsolationLevel(_transaction.IsolationLevel));
         }
 
         public void SinglePhaseCommit(SinglePhaseEnlistment singlePhaseEnlistment)
         {
             CheckDisposed();
 
-            Debug.Assert(Transaction != null, "No transaction");
+            Debug.Assert(_transaction != null, "No transaction");
             Debug.Assert(_localTx != null, "No local transaction");
             Debug.Assert(_connector != null, "No connector");
 
@@ -125,52 +84,21 @@ namespace Npgsql
             }
         }
 
-        public void Rollback(SinglePhaseEnlistment singlePhaseEnlistment)
-        {
-            CheckDisposed();
-
-            Debug.Assert(Transaction != null, "No transaction");
-            Debug.Assert(_localTx != null, "No local transaction");
-            Debug.Assert(_connector != null, "No connector");
-
-            Log.Debug($"Single Phase Rollback (localid={_txId})", _connector.Id);
-
-            try
-            {
-                RollbackLocal();
-                singlePhaseEnlistment.Aborted();
-            }
-            catch (Exception e)
-            {
-                singlePhaseEnlistment.InDoubt(e);
-            }
-            finally
-            {
-                Dispose();
-            }
-        }
-
-        #endregion
-
-        #region Two-Phase Operations
-
         public void Prepare(PreparingEnlistment preparingEnlistment)
         {
             CheckDisposed();
-            Debug.Assert(Transaction != null, "No transaction");
+            Debug.Assert(_transaction != null, "No transaction");
             Debug.Assert(_localTx != null, "No local transaction");
             Debug.Assert(_connector != null, "No connector");
 
-            Log.Debug($"Two-phase transaction prepare (localid={_txId}, distributed txid={Transaction.TransactionInformation.DistributedIdentifier}", _connector.Id);
+            Log.Debug($"Two-phase transaction prepare (localid={_txId}, distributed txid={_transaction.TransactionInformation.DistributedIdentifier}", _connector.Id);
 
             // The PostgreSQL prepared transaction name is the distributed GUID + our connection's process ID, for uniqueness
-            _preparedTxName = $"{Transaction.TransactionInformation.DistributedIdentifier}/{_connector.BackendProcessId}";
+            _preparedTxName = $"{_transaction.TransactionInformation.DistributedIdentifier}/{_connector.BackendProcessId}";
 
             try
             {
                 _connector.ExecuteInternalCommand($"PREPARE TRANSACTION '{_preparedTxName}'");
-                //_localTx.Dispose(true, false);
-                //_localTx = null;
                 preparingEnlistment.Prepared();
             }
             catch (Exception e)
@@ -183,7 +111,7 @@ namespace Npgsql
         public void Commit(Enlistment enlistment)
         {
             CheckDisposed();
-            Debug.Assert(Transaction != null, "No transaction");
+            Debug.Assert(_transaction != null, "No transaction");
             Debug.Assert(_connector != null, "No connector");
 
             Log.Debug($"Two-phase transaction commit (localid={_txId})", _connector.Id);
@@ -206,7 +134,7 @@ namespace Npgsql
         public void Rollback(Enlistment enlistment)
         {
             CheckDisposed();
-            Debug.Assert(Transaction != null, "No transaction");
+            Debug.Assert(_transaction != null, "No transaction");
             Debug.Assert(_connector != null, "No connector");
 
             try
@@ -237,7 +165,7 @@ namespace Npgsql
 
         public void InDoubt(Enlistment enlistment)
         {
-            Debug.Assert(Transaction != null, "No transaction");
+            Debug.Assert(_transaction != null, "No transaction");
             Debug.Assert(_connector != null, "No connector");
 
             Log.Debug($"Two-phase transaction in-doubt (localid={_txId})", _connector.Id);
@@ -257,8 +185,6 @@ namespace Npgsql
                 enlistment.Done();
             }
         }
-
-        #endregion
 
         /// <summary>
         /// Repeatedly attempts to rollback, to support timeout-triggered rollbacks that occur while the connection is busy.
@@ -291,7 +217,7 @@ namespace Npgsql
         {
             if (_isDisposed)
                 return;
-            Debug.Assert(Transaction != null, "No transaction");
+            Debug.Assert(_transaction != null, "No transaction");
             Debug.Assert(_connector != null, "No connector");
 
             Log.Debug($"Cleaning up RM (localid={_txId})", _connector.Id);
@@ -310,7 +236,7 @@ namespace Npgsql
                 if (_connector.Settings.Pooling)
                 {
                     var pool = PoolManager.GetOrAdd(_connector.Settings);
-                    pool.RemovePendingEnlistedConnector(_connector, Transaction);
+                    pool.RemovePendingEnlistedConnector(_connector, _transaction);
                     pool.Release(_connector);
                 }
                 else
@@ -318,14 +244,14 @@ namespace Npgsql
             }
 
             _connector = null;
-            Transaction = null;
+            _transaction = null;
             _isDisposed = true;
         }
 
         void CheckDisposed()
         {
             if (_isDisposed)
-                throw new ObjectDisposedException(nameof(NpgsqlResourceManager));
+                throw new ObjectDisposedException(nameof(VolatileResourceManager));
         }
 
         #endregion

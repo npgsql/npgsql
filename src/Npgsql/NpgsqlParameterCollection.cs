@@ -426,7 +426,7 @@ namespace Npgsql
 
         #region IList Member
 
-#if NET45 || NET451 || NET452
+#if NET45 || NET451
         /// <summary>
         /// Report whether the collection is read only.  Always false.
         /// </summary>
@@ -580,7 +580,7 @@ namespace Npgsql
             return Count - 1;
         }
 
-#if NET45 || NET451 || NET452
+#if NET45 || NET451
         /// <summary>
         /// Report whether the collection is fixed size.  Always false.
         /// </summary>
@@ -591,7 +591,7 @@ namespace Npgsql
 
         #region ICollection Member
 
-#if NET45 || NET451 || NET452
+#if NET45 || NET451
         /// <summary>
         /// Report whether the collection is synchronized.
         /// </summary>

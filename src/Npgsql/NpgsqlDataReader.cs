@@ -684,7 +684,7 @@ namespace Npgsql
         /// <summary>
         /// Closes the <see cref="NpgsqlDataReader"/> object.
         /// </summary>
-#if NET45 || NET451 || NET452
+#if NET45 || NET451
         public override void Close()
 #else
         public void Close()
@@ -1343,7 +1343,7 @@ namespace Npgsql
         /// <returns>An <see cref="IEnumerator"/> that can be used to iterate through the rows in the data reader.</returns>
         public override IEnumerator GetEnumerator()
         {
-#if NET45 || NET451 || NET452
+#if NET45 || NET451
             return new DbEnumerator(this);
 #else
             throw new NotSupportedException("GetEnumerator not yet supported in .NET Core");
@@ -1414,7 +1414,7 @@ namespace Npgsql
         #endregion
 
         #region Schema metadata table
-#if NET45 || NET451 || NET452
+#if NET45 || NET451
 
         /// <summary>
         /// Returns a System.Data.DataTable that describes the column metadata of the DataReader.

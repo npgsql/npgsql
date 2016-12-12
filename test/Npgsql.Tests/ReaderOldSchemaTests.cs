@@ -21,7 +21,7 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-#if NET452
+#if NET451
 
 using System;
 using System.Collections.Generic;

@@ -452,7 +452,7 @@ namespace Npgsql
         string GetUsername()
         {
             var username = Settings.Username;
-#if NET45 || NET451 || NET452
+#if NET45 || NET451
             if (string.IsNullOrEmpty(username) && PGUtil.IsWindows && Type.GetType("Mono.Runtime") == null)
                 username = WindowsUsernameProvider.GetUserName(Settings.IncludeRealm);
             if (string.IsNullOrEmpty(username))
@@ -570,7 +570,7 @@ namespace Npgsql
 
         void Connect(NpgsqlTimeout timeout)
         {
-#if NET45 || NET451 || NET452
+#if NET45 || NET451
             // Note that there aren't any timeoutable DNS methods, and we want to use sync-only
             // methods (not to rely on any TP threads etc.)
             var ips = Dns.GetHostAddresses(Host);

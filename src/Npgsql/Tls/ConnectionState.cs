@@ -33,7 +33,7 @@ namespace Npgsql.Tls
         public Aes ReadAes { get; set; }
         public Aes WriteAes { get; set; }
         public int BlockLen => 16;
-#if NET45 || NET451 || NET452
+#if NET45 || NET451
         public HMAC ReadMac { get; set; }
         public HMAC WriteMac { get; set; }
 #else

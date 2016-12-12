@@ -32,7 +32,7 @@ using JetBrains.Annotations;
 // ReSharper disable once CheckNamespace
 namespace NpgsqlTypes
 {
-#if NET45 || NET451 || NET452
+#if NET45 || NET451
     [Serializable]
 #endif
     public struct NpgsqlDate : IEquatable<NpgsqlDate>, IComparable<NpgsqlDate>, IComparable, IComparer<NpgsqlDate>,

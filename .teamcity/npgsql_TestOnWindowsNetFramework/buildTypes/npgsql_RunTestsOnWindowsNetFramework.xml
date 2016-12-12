@@ -17,7 +17,7 @@
       <runner id="RUNNER_18" name="Test" type="simpleRunner">
         <parameters>
           <param name="command.executable" value="dotnet" />
-          <param name="command.parameters" value="run -f net452 -c DebugOptimizedCryptography -- --teamcity" />
+          <param name="command.parameters" value="run -f net451 -c DebugOptimizedCryptography -- --teamcity" />
           <param name="teamcity.build.workingDir" value="test/Npgsql.Tests" />
           <param name="teamcity.step.mode" value="default" />
         </parameters>

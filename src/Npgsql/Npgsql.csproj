@@ -16,7 +16,7 @@
     <NuGetPackageImportStamp>
     </NuGetPackageImportStamp>
     <TargetFrameworkProfile />
-    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5.1</TargetFrameworkVersion>
     <!-- This is somehow important for Microsoft.ApiDesignGuidelines.Analyzers -->
     <Features>IOperation</Features>
   </PropertyGroup>
@@ -25,7 +25,7 @@
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>TRACE;DEBUG;NET452</DefineConstants>
+    <DefineConstants>TRACE;DEBUG;NET451</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <DocumentationFile>bin\Debug\Npgsql.xml</DocumentationFile>
@@ -36,7 +36,7 @@
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE;NET452</DefineConstants>
+    <DefineConstants>TRACE;NET451</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <DocumentationFile>bin\Release\Npgsql.xml</DocumentationFile>
@@ -187,7 +187,7 @@
     <Compile Include="NpgsqlNotificationEventArgs.cs" />
     <Compile Include="NpgsqlParameter.cs" />
     <Compile Include="NpgsqlParameterCollection.cs" />
-    <Compile Include="NpgsqlResourceManager.cs" />
+    <Compile Include="VolatileResourceManager.cs" />
     <Compile Include="NpgsqlSchema.cs" />
     <Compile Include="NpgsqlTransaction.cs" />
     <Compile Include="PGUtil.cs" />

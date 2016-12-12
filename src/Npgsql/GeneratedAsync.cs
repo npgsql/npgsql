@@ -36,7 +36,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
-#if NET45 || NET451 || NET452
+#if NET45 || NET451
 using System.Transactions;
 #endif
 using Npgsql.Logging;
@@ -236,7 +236,7 @@ namespace Npgsql
                 // Get a Connector, either from the pool or creating one ourselves.
                 if (Settings.Pooling)
                 {
-#if NET45 || NET451 || NET452
+#if NET45 || NET451
                     if (Settings.Enlist)
                     {
                         if (Transaction.Current != null)
@@ -266,7 +266,7 @@ namespace Npgsql
                     Counters.NumberOfNonPooledConnections.Increment();
                 }
 
-#if NET45 || NET451 || NET452
+#if NET45 || NET451
                 // We may have gotten an already enlisted pending connector above, no need to enlist in that case
                 if (Settings.Enlist && Transaction.Current != null && EnlistedTransaction == null)
                     EnlistTransaction(Transaction.Current);

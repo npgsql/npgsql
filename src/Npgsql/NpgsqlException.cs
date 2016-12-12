@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
-#if NET45 || NET451 || NET452
+#if NET45 || NET451
 using System.Runtime.Serialization;
 #endif
 
@@ -20,7 +20,7 @@ namespace Npgsql
     /// Purely Npgsql-related issues which aren't related to the server will be raised
     /// via the standard CLR exceptions (e.g. ArgumentException).
     /// </remarks>
-#if NET45 || NET451 || NET452
+#if NET45 || NET451
     [Serializable]
 #endif
     public class NpgsqlException : DbException
@@ -55,7 +55,7 @@ namespace Npgsql
         public string BaseMessage => ((PostgresException)this).MessageText;
 
         #region Serialization
-#if NET45 || NET451 || NET452
+#if NET45 || NET451
         /// <summary>
         /// Initializes a new instance of the <see cref="NpgsqlException"/> class with serialized data.
         /// </summary>

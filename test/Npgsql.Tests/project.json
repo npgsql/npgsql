@@ -12,7 +12,7 @@
       "Npgsql": "3.2.0-*"
   },
   "frameworks": {
-    "net452": {
+    "net451": {
       "frameworkAssemblies": {
         "System.Diagnostics.Contracts": { "version": "4.0.0.0", "type": "build" },
         "System.Transactions": { "version": "4.0.0.0", "type": "build" },

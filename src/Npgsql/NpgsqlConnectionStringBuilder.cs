@@ -67,7 +67,7 @@ namespace Npgsql
         /// </summary>
         public NpgsqlConnectionStringBuilder() { Init(); }
 
-#if NET45 || NET451 || NET452
+#if NET45 || NET451
         /// <summary>
         /// Initializes a new instance of the NpgsqlConnectionStringBuilder class, optionally using ODBC rules for quoting values.
         /// </summary>
@@ -1162,7 +1162,7 @@ namespace Npgsql
                 yield return new KeyValuePair<string, object>(k, this[k]);
         }
 
-#if !(NET45 || NET451 || NET452)
+#if !(NET45 || NET451)
         /// <summary>
         /// Gets a value indicating whether the ICollection{T} is read-only.
         /// </summary>

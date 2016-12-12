@@ -280,7 +280,7 @@ namespace Npgsql.Tests.Types
             }
         }
 
-#if NET452
+#if NET451
         [Test, Description("Roundtrips a non-generic IList as an array")]
         // ReSharper disable once InconsistentNaming
         public void IListNonGeneric()
@@ -328,7 +328,7 @@ namespace Npgsql.Tests.Types
             }
         }
 
-#if NET452
+#if NET451
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/960")]
         public void MixedElementTypes()
         {

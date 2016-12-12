@@ -44,7 +44,7 @@ namespace Npgsql.Tls
         public int MACLen => Utils.GetHashLen(HashAlgorithm);
 
         public
-#if NET45 || NET451 || NET452
+#if NET45 || NET451
             HMAC
 #else
             IncrementalHash
@@ -53,7 +53,7 @@ namespace Npgsql.Tls
         {
             switch (HashAlgorithm)
             {
-#if NET45 || NET451 || NET452
+#if NET45 || NET451
                 case TlsHashAlgorithm.SHA1:
                     return new HMACSHA1(key);
                 case TlsHashAlgorithm.SHA256:
