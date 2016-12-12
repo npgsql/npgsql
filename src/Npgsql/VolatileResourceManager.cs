@@ -50,6 +50,8 @@ namespace Npgsql
         bool _isDisposed;
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
+        const int MaximumRollbackAttempts = 20;
+
         internal VolatileResourceManager(NpgsqlConnection connection, [NotNull] Transaction transaction)
         {
             _connector = connection.Connector;
@@ -194,6 +196,7 @@ namespace Npgsql
             Debug.Assert(_connector != null, "No connector");
             Debug.Assert(_localTx != null, "No local transaction");
 
+            var attempt = 0;
             while (true)
             {
                 try
@@ -203,6 +206,10 @@ namespace Npgsql
                 }
                 catch (NpgsqlOperationInProgressException)
                 {
+                    // This really shouldn't be necessary, but just in case
+                    if (attempt++ == MaximumRollbackAttempts)
+                        throw new Exception($"Could not roll back after {MaximumRollbackAttempts} attempts, aborting. Transaction is in an unknown state.");
+
                     Log.Debug("Connection in use while trying to rollback, will cancel and retry", _connector.Id);
                     _connector.CancelRequest();
                     // Cancellations are asynchronous, give it some time
