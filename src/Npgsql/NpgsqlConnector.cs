@@ -66,7 +66,7 @@ namespace Npgsql
         /// </summary>
         Stream _stream;
 
-        readonly NpgsqlConnectionStringBuilder _settings;
+        internal NpgsqlConnectionStringBuilder Settings { get; private set; }
 
         /// <summary>
         /// Contains the clear text password which was extracted from the user-provided connection string.
@@ -283,7 +283,7 @@ namespace Npgsql
         {
             State = ConnectorState.Closed;
             TransactionStatus = TransactionStatus.Idle;
-            _settings = connectionString;
+            Settings = connectionString;
             _password = password;
             BackendParams = new Dictionary<string, string>();
             _preparedStatementIndex = 0;
@@ -301,26 +301,26 @@ namespace Npgsql
 
         #region Configuration settings
 
-        internal string ConnectionString => _settings.ConnectionString;
-        string Host => _settings.Host;
-        int Port => _settings.Port;
-        string Database => _settings.Database;
-        string KerberosServiceName => _settings.KerberosServiceName;
-        SslMode SslMode => _settings.SslMode;
-        bool UseSslStream => _settings.UseSslStream;
-        int ConnectionTimeout => _settings.Timeout;
-        int KeepAlive => _settings.KeepAlive;
+        internal string ConnectionString => Settings.ConnectionString;
+        string Host => Settings.Host;
+        int Port => Settings.Port;
+        string Database => Settings.Database;
+        string KerberosServiceName => Settings.KerberosServiceName;
+        SslMode SslMode => Settings.SslMode;
+        bool UseSslStream => Settings.UseSslStream;
+        int ConnectionTimeout => Settings.Timeout;
+        int KeepAlive => Settings.KeepAlive;
         bool IsKeepAliveEnabled => KeepAlive > 0;
-        bool IntegratedSecurity => _settings.IntegratedSecurity;
-        internal bool ConvertInfinityDateTime => _settings.ConvertInfinityDateTime;
+        bool IntegratedSecurity => Settings.IntegratedSecurity;
+        internal bool ConvertInfinityDateTime => Settings.ConvertInfinityDateTime;
 
         int InternalCommandTimeout
         {
             get
             {
-                var internalTimeout = _settings.InternalCommandTimeout;
+                var internalTimeout = Settings.InternalCommandTimeout;
                 if (internalTimeout == -1)
-                    return Math.Max(_settings.CommandTimeout, MinimumInternalCommandTimeout) * 1000;
+                    return Math.Max(Settings.CommandTimeout, MinimumInternalCommandTimeout) * 1000;
 
                 Debug.Assert(internalTimeout == 0 || internalTimeout >= MinimumInternalCommandTimeout);
                 return internalTimeout * 1000;
@@ -428,17 +428,17 @@ namespace Npgsql
             {
                 ["user"] = username,
                 ["client_encoding"] =
-                    _settings.ClientEncoding ??
+                    Settings.ClientEncoding ??
                     Environment.GetEnvironmentVariable("PGCLIENTENCODING") ??
                     "UTF8"
             };
 
             if (!string.IsNullOrEmpty(Database))
                 startupMessage["database"] = Database;
-            if (!string.IsNullOrEmpty(_settings.ApplicationName))
-                startupMessage["application_name"] = _settings.ApplicationName;
-            if (!string.IsNullOrEmpty(_settings.SearchPath))
-                startupMessage["search_path"] = _settings.SearchPath;
+            if (!string.IsNullOrEmpty(Settings.ApplicationName))
+                startupMessage["application_name"] = Settings.ApplicationName;
+            if (!string.IsNullOrEmpty(Settings.SearchPath))
+                startupMessage["search_path"] = Settings.SearchPath;
             if (IsSecure && !IsRedshift)
                 startupMessage["ssl_renegotiation_limit"] = "0";
 
@@ -451,10 +451,10 @@ namespace Npgsql
 
         string GetUsername()
         {
-            var username = _settings.Username;
+            var username = Settings.Username;
 #if NET45 || NET451
             if (string.IsNullOrEmpty(username) && PGUtil.IsWindows && Type.GetType("Mono.Runtime") == null)
-                username = WindowsUsernameProvider.GetUserName(_settings.IncludeRealm);
+                username = WindowsUsernameProvider.GetUserName(Settings.IncludeRealm);
             if (string.IsNullOrEmpty(username))
                 username = Environment.UserName;
 #endif
@@ -477,11 +477,11 @@ namespace Npgsql
                 _baseStream = new NetworkStream(_socket, true);
                 _stream = _baseStream;
 
-                TextEncoding = _settings.Encoding == "UTF8"
+                TextEncoding = Settings.Encoding == "UTF8"
                     ? PGUtil.UTF8Encoding
-                    : Encoding.GetEncoding(_settings.Encoding, EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback);
-                ReadBuffer = new ReadBuffer(this, _stream, _settings.ReadBufferSize, TextEncoding);
-                WriteBuffer = new WriteBuffer(this, _stream, _settings.ReadBufferSize, TextEncoding);
+                    : Encoding.GetEncoding(Settings.Encoding, EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback);
+                ReadBuffer = new ReadBuffer(this, _stream, Settings.ReadBufferSize, TextEncoding);
+                WriteBuffer = new WriteBuffer(this, _stream, Settings.ReadBufferSize, TextEncoding);
                 ParseMessage = new ParseMessage(TextEncoding);
                 QueryMessage = new QueryMessage(TextEncoding);
 
@@ -510,7 +510,7 @@ namespace Npgsql
                         Connection.ProvideClientCertificatesCallback?.Invoke(clientCertificates);
 
                         RemoteCertificateValidationCallback certificateValidationCallback;
-                        if (_settings.TrustServerCertificate)
+                        if (Settings.TrustServerCertificate)
                             certificateValidationCallback = (sender, certificate, chain, errors) => true;
                         else if (Connection.UserCertificateValidationCallback != null)
                             certificateValidationCallback = Connection.UserCertificateValidationCallback;
@@ -520,7 +520,7 @@ namespace Npgsql
                         if (!UseSslStream)
                         {
                             var sslStream = new Tls.TlsClientStream(_stream);
-                            sslStream.PerformInitialHandshake(Host, clientCertificates, certificateValidationCallback, _settings.CheckCertificateRevocation);
+                            sslStream.PerformInitialHandshake(Host, clientCertificates, certificateValidationCallback, Settings.CheckCertificateRevocation);
                             _stream = sslStream;
                         }
                         else
@@ -529,9 +529,9 @@ namespace Npgsql
 #if NETSTANDARD1_3
                             // CoreCLR removed sync methods from SslStream, see https://github.com/dotnet/corefx/pull/4868.
                             // Consider exactly what to do here.
-                            sslStream.AuthenticateAsClientAsync(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, _settings.CheckCertificateRevocation).Wait();
+                            sslStream.AuthenticateAsClientAsync(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, Settings.CheckCertificateRevocation).Wait();
 #else
-                            sslStream.AuthenticateAsClient(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, _settings.CheckCertificateRevocation);
+                            sslStream.AuthenticateAsClient(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, Settings.CheckCertificateRevocation);
 #endif
                             _stream = sslStream;
                         }
@@ -1202,13 +1202,13 @@ namespace Npgsql
             TransactionStatus = newStatus;
         }
 
-        internal void ClearTransaction()
+        void ClearTransaction()
         {
             if (TransactionStatus == TransactionStatus.Idle) { return; }
             // We may not have an NpgsqlTransaction for the transaction (i.e. user executed BEGIN)
             if (Transaction != null)
             {
-                Transaction.Connection = null;
+                Transaction.Clear();
                 Transaction = null;
             }
             TransactionStatus = TransactionStatus.Idle;
@@ -1281,10 +1281,20 @@ namespace Npgsql
         /// </summary>
         internal void CancelRequest()
         {
+            Log.Debug("Sending cancellation", Id);
             lock (CancelLock)
             {
-                var cancelConnector = new NpgsqlConnector(_settings, _password);
-                cancelConnector.DoCancelRequest(BackendProcessId, _backendSecretKey, cancelConnector.ConnectionTimeout);
+                try
+                {
+                    var cancelConnector = new NpgsqlConnector(Settings, _password);
+                    cancelConnector.DoCancelRequest(BackendProcessId, _backendSecretKey, cancelConnector.ConnectionTimeout);
+                }
+                catch (Exception e)
+                {
+                    var socketException = e.InnerException as SocketException;
+                    if (socketException == null || socketException.SocketErrorCode != SocketError.ConnectionReset)
+                        Log.Debug("Exception caught while attempting to cancel command", e, Id);
+                }
             }
         }
 
@@ -1340,6 +1350,7 @@ namespace Npgsql
             }
 
             State = ConnectorState.Closed;
+            Counters.NumberOfNonPooledConnections.Decrement();
             Counters.HardDisconnectsPerSecond.Increment();
             Cleanup();
         }
@@ -1384,7 +1395,7 @@ namespace Npgsql
                 // states closed/broken the connector is null. We therefore need a way to distinguish between
                 // Closed and Broken on the connection.
                 if (prevState != ConnectorState.Connecting)
-                    conn.ReallyClose(true);
+                    conn.Close(true);
             }
         }
 
@@ -1524,7 +1535,7 @@ namespace Npgsql
                 throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {TransactionStatus} of enum {nameof(TransactionStatus)}. Please file a bug.");
             }
 
-            if (!_settings.NoResetOnClose)
+            if (!Settings.NoResetOnClose)
             {
                 if (PersistentPreparedStatements.Count > 0)
                 {
@@ -1767,7 +1778,7 @@ namespace Npgsql
         /// <summary>
         /// Whether the backend is an AWS Redshift instance
         /// </summary>
-        bool IsRedshift => _settings.ServerCompatibilityMode == ServerCompatibilityMode.Redshift;
+        bool IsRedshift => Settings.ServerCompatibilityMode == ServerCompatibilityMode.Redshift;
 
         #endregion Supported features
 

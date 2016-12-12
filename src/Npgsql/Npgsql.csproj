@@ -187,11 +187,9 @@
     <Compile Include="NpgsqlNotificationEventArgs.cs" />
     <Compile Include="NpgsqlParameter.cs" />
     <Compile Include="NpgsqlParameterCollection.cs" />
-    <Compile Include="NpgsqlPromotableSinglePhaseNotification.cs" />
-    <Compile Include="NpgsqlResourceManager.cs" />
+    <Compile Include="VolatileResourceManager.cs" />
     <Compile Include="NpgsqlSchema.cs" />
     <Compile Include="NpgsqlTransaction.cs" />
-    <Compile Include="NpgsqlTransactionCallbacks.cs" />
     <Compile Include="PGUtil.cs" />
     <Compile Include="SSPIHandler.cs" />
     <Compile Include="..\CommonAssemblyInfo.cs">

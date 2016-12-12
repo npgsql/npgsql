@@ -7,6 +7,9 @@ using System.Threading.Tasks;
 using AsyncRewriter;
 using JetBrains.Annotations;
 using Npgsql.Logging;
+#if NET45 || NET451
+using System.Transactions;
+#endif
 
 namespace Npgsql
 {
@@ -96,6 +99,7 @@ namespace Npgsql
         Timer _pruningTimer;
         readonly TimeSpan _pruningInterval;
         readonly List<NpgsqlConnector> _prunedConnectors;
+
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
@@ -211,6 +215,7 @@ namespace Npgsql
 
                 lock (this)
                     DecrementBusy();
+                Counters.SoftDisconnectsPerSecond.Increment();
                 Counters.NumberOfPooledConnections.Decrement();
                 return;
             }
@@ -278,7 +283,7 @@ namespace Npgsql
 
                 try
                 {
-#if NET451 || NET45
+#if NET45 || NET451
                     var connector = new NpgsqlConnector((NpgsqlConnection) ((ICloneable) conn).Clone())
 #else
                     var connector = new NpgsqlConnector(conn.Clone())
@@ -424,6 +429,49 @@ namespace Npgsql
                 throw new NpgsqlException($"The connection pool has been exhausted, either raise MaxPoolSize (currently {_max}) or Timeout (currently {_connectionString.Timeout} seconds)");
             }
         }
+
+        #region Pending Enlisted Connections
+
+#if NET45 || NET451
+        internal void AddPendingEnlistedConnector(NpgsqlConnector connector, Transaction transaction)
+        {
+            lock (_pendingEnlistedConnectors)
+            {
+                List<NpgsqlConnector> list;
+                if (!_pendingEnlistedConnectors.TryGetValue(transaction, out list))
+                    list = _pendingEnlistedConnectors[transaction] = new List<NpgsqlConnector>();
+                list.Add(connector);
+            }
+        }
+
+        internal void RemovePendingEnlistedConnector(NpgsqlConnector connector, Transaction transaction)
+        {
+            lock (_pendingEnlistedConnectors)
+                _pendingEnlistedConnectors[transaction].Remove(connector);
+        }
+
+        [CanBeNull]
+        internal NpgsqlConnector TryAllocateEnlistedPending(Transaction transaction)
+        {
+            lock (_pendingEnlistedConnectors)
+            {
+                List<NpgsqlConnector> list;
+                if (!_pendingEnlistedConnectors.TryGetValue(transaction, out list))
+                    return null;
+                var connector = list[list.Count - 1];
+                list.RemoveAt(list.Count - 1);
+                return connector;
+            }
+        }
+
+        // Note that while the dictionary is threadsafe, we assume that the lists it contains don't need to be
+        // (i.e. access to connectors of a specific transaction won't be concurrent)
+        readonly Dictionary<Transaction, List<NpgsqlConnector>> _pendingEnlistedConnectors
+            = new Dictionary<Transaction, List<NpgsqlConnector>>();
+#endif
+
+        #endregion
+
 
         public void Dispose()
         {
