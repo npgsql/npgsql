@@ -268,7 +268,7 @@ namespace Npgsql
 
 #if NET45 || NET451 || NET452
                 // We may have gotten an already enlisted pending connector above, no need to enlist in that case
-                if (Settings.Enlist && Transaction.Current != null && EnlistedTransaction != null)
+                if (Settings.Enlist && Transaction.Current != null && EnlistedTransaction == null)
                     EnlistTransaction(Transaction.Current);
 #endif
                 Connector.Notice += _noticeDelegate;
