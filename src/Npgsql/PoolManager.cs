@@ -435,38 +435,39 @@ namespace Npgsql
 #if NET45 || NET451 || NET452
         internal void AddPendingEnlistedConnector(NpgsqlConnector connector, Transaction transaction)
         {
-            var connectors = PendingEnlistedConnectors.GetOrAdd(transaction, t => new List<NpgsqlConnector>());
-            lock (connectors)
-                connectors.Add(connector);
+            lock (_pendingEnlistedConnectors)
+            {
+                List<NpgsqlConnector> list;
+                if (!_pendingEnlistedConnectors.TryGetValue(transaction, out list))
+                    list = _pendingEnlistedConnectors[transaction] = new List<NpgsqlConnector>();
+                list.Add(connector);
+            }
         }
 
         internal void RemovePendingEnlistedConnector(NpgsqlConnector connector, Transaction transaction)
         {
-            var connectors = PendingEnlistedConnectors[transaction];
-            lock (connectors)
-                connectors.Remove(connector);
+            lock (_pendingEnlistedConnectors)
+                _pendingEnlistedConnectors[transaction].Remove(connector);
         }
 
         [CanBeNull]
         internal NpgsqlConnector TryAllocateEnlistedPending(Transaction transaction)
         {
-            List<NpgsqlConnector> connectors;
-            if (!PendingEnlistedConnectors.TryGetValue(transaction, out connectors))
-                return null;
-            lock (connectors)
+            lock (_pendingEnlistedConnectors)
             {
-                var connector = connectors[connectors.Count - 1];
-                connectors.RemoveAt(connectors.Count - 1);
+                List<NpgsqlConnector> list;
+                if (!_pendingEnlistedConnectors.TryGetValue(transaction, out list))
+                    return null;
+                var connector = list[list.Count - 1];
+                list.RemoveAt(list.Count - 1);
                 return connector;
             }
         }
 
         // Note that while the dictionary is threadsafe, we assume that the lists it contains don't need to be
         // (i.e. access to connectors of a specific transaction won't be concurrent)
-        ConcurrentDictionary<Transaction, List<NpgsqlConnector>> PendingEnlistedConnectors
-            => _pendingEnlistedConnections ??
-            (_pendingEnlistedConnections = new ConcurrentDictionary<Transaction, List<NpgsqlConnector>>());
-        ConcurrentDictionary<Transaction, List<NpgsqlConnector>> _pendingEnlistedConnections;
+        readonly Dictionary<Transaction, List<NpgsqlConnector>> _pendingEnlistedConnectors
+            = new Dictionary<Transaction, List<NpgsqlConnector>>();
 #endif
 
         #endregion
