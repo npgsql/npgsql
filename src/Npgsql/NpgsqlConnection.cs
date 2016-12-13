@@ -623,22 +623,22 @@ namespace Npgsql
                 return;
 
             Debug.Assert(Connector != null);
-            if (Connector.CurrentReader != null)
-                Connector.CurrentReader.Close(true);
-            else if (Connector.State == ConnectorState.Copy)
+            Connector.CurrentReader?.Close(true);
+            var currentCopyOperation = Connector.CurrentCopyOperation;
+            if (currentCopyOperation != null)
             {
-                Debug.Assert(Connector.CurrentCopyOperation != null);
+                // TODO: There's probably a race condition as the COPY operation may finish on its own during the next few lines
 
                 // Note: we only want to cancel import operations, since in these cases cancel is safe.
                 // Export cancellations go through the PostgreSQL "asynchronous" cancel mechanism and are
                 // therefore vulnerable to the race condition in #615.
-                if (Connector.CurrentCopyOperation is NpgsqlBinaryImporter ||
-                    Connector.CurrentCopyOperation is NpgsqlCopyTextWriter ||
-                    (Connector.CurrentCopyOperation is NpgsqlRawCopyStream && ((NpgsqlRawCopyStream)Connector.CurrentCopyOperation).CanWrite))
+                if (currentCopyOperation is NpgsqlBinaryImporter ||
+                    currentCopyOperation is NpgsqlCopyTextWriter ||
+                    (currentCopyOperation is NpgsqlRawCopyStream && ((NpgsqlRawCopyStream)currentCopyOperation).CanWrite))
                 {
                     try
                     {
-                        Connector.CurrentCopyOperation.Cancel();
+                        currentCopyOperation.Cancel();
                     }
                     catch (Exception e)
                     {
@@ -648,7 +648,7 @@ namespace Npgsql
 
                 try
                 {
-                    Connector.CurrentCopyOperation.Dispose();
+                    currentCopyOperation.Dispose();
                 }
                 catch (Exception e)
                 {
