@@ -100,7 +100,8 @@ namespace Npgsql
 
             try
             {
-                _connector.ExecuteInternalCommand($"PREPARE TRANSACTION '{_preparedTxName}'");
+                using (_connector.StartUserAction())
+                    _connector.ExecuteInternalCommand($"PREPARE TRANSACTION '{_preparedTxName}'");
                 preparingEnlistment.Prepared();
             }
             catch (Exception e)
@@ -120,7 +121,8 @@ namespace Npgsql
 
             try
             {
-                _connector.ExecuteInternalCommand($"COMMIT PREPARED '{_preparedTxName}'");
+                using (_connector.StartUserAction())
+                    _connector.ExecuteInternalCommand($"COMMIT PREPARED '{_preparedTxName}'");
             }
             catch (Exception e)
             {
@@ -145,7 +147,8 @@ namespace Npgsql
                 {
                     // This only occurs if we've started a two-phase commit but one of the commits has failed.
                     Log.Debug($"Two-phase transaction rollback (localid={_txId})", _connector.Id);
-                    _connector.ExecuteInternalCommand($"ROLLBACK PREPARED '{_preparedTxName}'");
+                    using (_connector.StartUserAction())
+                        _connector.ExecuteInternalCommand($"ROLLBACK PREPARED '{_preparedTxName}'");
                 }
                 else
                 {

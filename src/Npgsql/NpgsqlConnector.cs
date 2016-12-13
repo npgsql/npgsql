@@ -1793,8 +1793,11 @@ namespace Npgsql
         internal async Task ExecuteInternalCommand(FrontendMessage message, bool async, CancellationToken cancellationToken)
         {
             Debug.Assert(message is QueryMessage || message is PregeneratedMessage);
+            Debug.Assert(_userLock.CurrentCount == 0, "Forgot to start a user action...");
+
             if (Log.IsEnabled(NpgsqlLogLevel.Trace))
                 Log.Trace("Executing internal command: " + message);
+
             await message.Write(WriteBuffer, async, cancellationToken);
             await WriteBuffer.Flush(async, cancellationToken);
             if (async)
