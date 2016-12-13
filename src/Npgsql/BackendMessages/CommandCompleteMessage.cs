@@ -21,6 +21,7 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
+using Microsoft.Extensions.Logging;
 using Npgsql.Logging;
 
 namespace Npgsql.BackendMessages
@@ -30,8 +31,6 @@ namespace Npgsql.BackendMessages
         internal StatementType StatementType { get; private set; }
         internal uint OID { get; private set; }
         internal uint Rows { get; private set; }
-
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         internal CommandCompleteMessage Load(ReadBuffer buf, int len)
         {
@@ -54,7 +53,7 @@ namespace Npgsql.BackendMessages
                 if (uint.TryParse(tokens[1], out oid))
                     OID = oid;
                 else
-                    Log.Error("Ignoring unparseable OID in CommandComplete: " + tokens[1]);
+                    Log.Logger.LogError("Ignoring unparseable OID in CommandComplete: " + tokens[1]);
 
                 ParseRows(tokens[2]);
                 break;
@@ -114,7 +113,7 @@ namespace Npgsql.BackendMessages
             if (uint.TryParse(token, out rows))
                 Rows = rows;
             else
-                Log.Error("Ignoring unparseable rows in CommandComplete: " + token);
+                Log.Logger.LogWarning("Ignoring unparseable rows in CommandComplete: " + token);
         }
 
         public BackendMessageCode Code => BackendMessageCode.CompletedResponse;

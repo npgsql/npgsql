@@ -80,12 +80,7 @@
     <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="ICancelable.cs" />
     <Compile Include="NameTranslation\INpgsqlNameTranslator.cs" />
-    <Compile Include="Logging\ConsoleLoggingProvider.cs" />
-    <Compile Include="Logging\NoOpLoggingProvider.cs" />
-    <Compile Include="Logging\NpgsqlLogger.cs" />
-    <Compile Include="Logging\INpgsqlLoggingProvider.cs" />
-    <Compile Include="Logging\NpgsqlLogManager.cs" />
-    <Compile Include="Logging\NpgsqlLogLevel.cs" />
+    <Compile Include="NpgsqlLogManager.cs" />
     <Compile Include="NameTranslation\NpgsqlNullNameTranslator.cs" />
     <Compile Include="NpgsqlException.cs" />
     <Compile Include="NpgsqlLargeObjectManager.cs" />

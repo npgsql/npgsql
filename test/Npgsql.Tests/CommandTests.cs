@@ -37,7 +37,6 @@ using System.Resources;
 using System.Threading;
 using System.Reflection;
 using System.Text;
-using Npgsql.Logging;
 using NUnit.Framework.Constraints;
 
 namespace Npgsql.Tests

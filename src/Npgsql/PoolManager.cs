@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AsyncRewriter;
 using JetBrains.Annotations;
+using Microsoft.Extensions.Logging;
 using Npgsql.Logging;
 #if NET45 || NET451
 using System.Transactions;
@@ -99,9 +100,6 @@ namespace Npgsql
         Timer _pruningTimer;
         readonly TimeSpan _pruningInterval;
         readonly List<NpgsqlConnector> _prunedConnectors;
-
-
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         #endregion
 
@@ -210,7 +208,7 @@ namespace Npgsql
                 }
                 catch (Exception e)
                 {
-                    Log.Warn("Exception while closing outdated connector", e, connector.Id);
+                    Log.Logger.LogWarning(NpgsqlEventId.ExceptionClosingOutdatedConnector, e, "[{ConnectorId}] Exception while closing outdated connector", connector.Id);
                 }
 
                 lock (this)
@@ -305,7 +303,7 @@ namespace Npgsql
                 {
                     lock (this)
                         Busy -= missing;
-                    Log.Warn("Connection error while attempting to ensure MinPoolSize", e);
+                    Log.Logger.LogWarning(NpgsqlEventId.ExceptionEnsuringMinPoolSize, e, "Connection error while attempting to ensure MinPoolSize");
                     return;
                 }
             }
@@ -364,7 +362,7 @@ namespace Npgsql
                     try { connector.Close(); }
                     catch (Exception e)
                     {
-                        Log.Warn("Exception while closing pruned connector", e, connector.Id);
+                        Log.Logger.LogWarning(NpgsqlEventId.ExceptionClosingPrunedConnector, e, "[{ConnectorId}] Exception while closing pruned connector", connector.Id);
                     }
                 }
 
@@ -393,7 +391,7 @@ namespace Npgsql
                 try { connector.Close(); }
                 catch (Exception e)
                 {
-                    Log.Warn("Exception while closing connector during clear", e, connector.Id);
+                    Log.Logger.LogWarning(NpgsqlEventId.ExceptionClearingConnector, e, "[{ConnectorId}] Exception while closing connector during clear", connector.Id);
                 }
             }
             _clearCounter++;

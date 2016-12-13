@@ -27,6 +27,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
+using Npgsql.Logging;
 using Npgsql.TypeHandlers;
 using NpgsqlTypes;
 
@@ -322,6 +323,7 @@ namespace Npgsql
 
         void Cleanup()
         {
+            Log.EndCopy(_connector.Id);
             _connector = null;
             _registry = null;
             _buf = null;

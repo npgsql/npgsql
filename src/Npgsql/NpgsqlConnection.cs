@@ -39,10 +39,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using AsyncRewriter;
 using JetBrains.Annotations;
+using Microsoft.Extensions.Logging;
+using Npgsql.Logging;
 #if NET45 || NET451
 using System.Transactions;
 #endif
-using Npgsql.Logging;
 using NpgsqlTypes;
 using IsolationLevel = System.Data.IsolationLevel;
 using ThreadState = System.Threading.ThreadState;
@@ -121,8 +122,6 @@ namespace Npgsql
         /// </summary>
         internal const int TimeoutLimit = 1024;
 
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
-
         #endregion Fields
 
         #region Constructors / Init / Open
@@ -198,7 +197,7 @@ namespace Npgsql
 
             CheckConnectionClosed();
 
-            Log.Trace("Opening connnection");
+            Log.OpeningConnection();
 
             if (Settings.Password == null)
             {
@@ -207,7 +206,7 @@ namespace Npgsql
                 var matchingEntry = pgPassFile?.GetFirstMatchingEntry(Settings.Host, Settings.Port, Settings.Database, Settings.Username);
                 if (matchingEntry != null)
                 {
-                    Log.Trace("Taking password from pgpass file");
+                    Log.UsingPgpassFile();
                     Settings.Password = matchingEntry.Password;
                 }
             }
@@ -267,6 +266,7 @@ namespace Npgsql
             }
             OpenCounter++;
             _alreadyOpened = true;
+            Log.ConnectionOpened(Connector.Id);
             OnStateChange(new StateChangeEventArgs(ConnectionState.Closed, ConnectionState.Open));
         }
 
@@ -525,8 +525,6 @@ namespace Npgsql
                 if (connector.InTransaction)
                     throw new NotSupportedException("Nested/Concurrent transactions aren't supported.");
 
-                Log.Debug("Beginning transaction with isolation level " + level, Connector.Id);
-
                 return new NpgsqlTransaction(this, level);
             }
         }
@@ -557,7 +555,7 @@ namespace Npgsql
             // distributed transactions aren't supported.
 
             transaction.EnlistVolatile(new VolatileResourceManager(this, transaction), EnlistmentOptions.None);
-            Log.Debug($"Enlisted volatile resource manager (localid={transaction.TransactionInformation.LocalIdentifier})", connector.Id);
+            Log.Enlisted(connector.Id, transaction.TransactionInformation.LocalIdentifier);
         }
 #endif
 
@@ -576,7 +574,7 @@ namespace Npgsql
             if (Connector == null)
                 return;
             var connectorId = Connector.Id;
-            Log.Trace("Closing connection", connectorId);
+            Log.ClosingConnection(connectorId);
             _wasBroken = wasBroken;
 
             Connector.Notification -= _notificationDelegate;
@@ -605,7 +603,7 @@ namespace Npgsql
             }
 #endif
 
-            Log.Debug("Connection closed", connectorId);
+            Log.ConnectionClosed(connectorId);
 
             Connector = null;
 
@@ -642,7 +640,7 @@ namespace Npgsql
                     }
                     catch (Exception e)
                     {
-                        Log.Warn("Error while cancelling COPY on connector close", e);
+                        Log.Logger.LogWarning(0, e, "[{ConnectorId}] Error while cancelling COPY on connector close", Connector.Id);
                     }
                 }
 
@@ -652,7 +650,7 @@ namespace Npgsql
                 }
                 catch (Exception e)
                 {
-                    Log.Warn("Error while disposing cancelled COPY on connector close", e);
+                    Log.Logger.LogWarning(0, e, "[{ConnectorId}] Error while disposing cancelled COPY on connector close", Connector.Id);
                 }
             }
         }
@@ -829,6 +827,7 @@ namespace Npgsql
                 throw new ArgumentException("Must contain a COPY FROM STDIN command!", nameof(copyFromCommand));
 
             var connector = CheckReadyAndGetConnector();
+            Log.StartingBinaryImport(connector.Id);
             connector.StartUserAction(ConnectorState.Copy);
             try
             {
@@ -859,6 +858,7 @@ namespace Npgsql
                 throw new ArgumentException("Must contain a COPY TO STDOUT command!", nameof(copyToCommand));
 
             var connector = CheckReadyAndGetConnector();
+            Log.StartingBinaryExport(connector.Id);
             connector.StartUserAction(ConnectorState.Copy);
             try
             {
@@ -892,6 +892,7 @@ namespace Npgsql
                 throw new ArgumentException("Must contain a COPY FROM STDIN command!", nameof(copyFromCommand));
 
             var connector = CheckReadyAndGetConnector();
+            Log.StartingTextImport(connector.Id);
             connector.StartUserAction(ConnectorState.Copy);
             try
             {
@@ -925,6 +926,7 @@ namespace Npgsql
                 throw new ArgumentException("Must contain a COPY TO STDOUT command!", nameof(copyToCommand));
 
             var connector = CheckReadyAndGetConnector();
+            Log.StartingTextExport(connector.Id);
             connector.StartUserAction(ConnectorState.Copy);
             try
             {
@@ -958,6 +960,7 @@ namespace Npgsql
                 throw new ArgumentException("Must contain a COPY TO STDOUT OR COPY FROM STDIN command!", nameof(copyCommand));
 
             var connector = CheckReadyAndGetConnector();
+            Log.StartingRawCopy(connector.Id);
             connector.StartUserAction(ConnectorState.Copy);
             try
             {
@@ -1181,7 +1184,7 @@ namespace Npgsql
 
             CheckConnectionOpen();
             Debug.Assert(Connector != null);
-            Log.Debug($"Starting to wait (timeout={timeout})", Connector.Id);
+            Log.StartingSyncWait(Connector.Id, timeout);
 
             using (Connector.StartUserAction(ConnectorState.Waiting))
             {
@@ -1230,7 +1233,7 @@ namespace Npgsql
         {
             CheckConnectionOpen();
             Debug.Assert(Connector != null);
-            Log.Debug("Starting to wait async", Connector.Id);
+            Log.StartingAsyncWait(Connector.Id);
 
             using (Connector.StartUserAction(ConnectorState.Waiting))
             using (NoSynchronizationContextScope.Enter())
@@ -1413,8 +1416,6 @@ namespace Npgsql
                 throw new ArgumentOutOfRangeException(nameof(dbName), dbName, $"Invalid database name: {dbName}");
 
             CheckConnectionOpen();
-            Debug.Assert(Connector != null);
-            Log.Debug("Changing database to " + dbName, Connector.Id);
 
             Close();
 

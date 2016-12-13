@@ -6,6 +6,7 @@
     "win": {}
   },
   "dependencies": {
-    "Microsoft.ApiDesignGuidelines.Analyzers": "1.2.0-beta2"
+    "Microsoft.ApiDesignGuidelines.Analyzers": "1.2.0-beta2",
+    "Microsoft.Extensions.Logging": "1.1.0"
   }
 }

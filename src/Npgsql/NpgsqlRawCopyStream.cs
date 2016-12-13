@@ -29,6 +29,8 @@ using System.Linq;
 using System.Text;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
+using Npgsql.Logging;
+
 #pragma warning disable 1591
 
 namespace Npgsql
@@ -269,6 +271,7 @@ namespace Npgsql
 
         void Cleanup()
         {
+            Log.EndCopy(_connector.Id);
             _connector.CurrentCopyOperation = null;
             _connector = null;
             _readBuf = null;

@@ -3,6 +3,8 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using JetBrains.Annotations;
+using Microsoft.Extensions.Logging;
+using Npgsql.BackendMessages;
 using Npgsql.Logging;
 
 namespace Npgsql
@@ -46,8 +48,6 @@ namespace Npgsql
         /// </summary>
         internal static readonly Counter SoftDisconnectsPerSecond;
 
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
-
         static Counters()
         {
             var enabled = false;
@@ -62,7 +62,7 @@ namespace Npgsql
             }
             catch (Exception e)
             {
-                Log.Debug("Exception while checking for performance country category (counters will be disabled)", e);
+                Log.Logger.LogDebug("Exception while checking for performance country category (counters will be disabled)", e);
             }
 #endif
 

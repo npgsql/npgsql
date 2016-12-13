@@ -22,6 +22,7 @@
 #endregion
 
 using System;
+using Microsoft.Extensions.Logging;
 using Npgsql.Logging;
 #if NET45 || NET451
 using System.Runtime.Serialization;
@@ -34,8 +35,6 @@ namespace Npgsql.BackendMessages
 #endif
     class ErrorOrNoticeMessage
     {
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
-
         internal string Severity { get; private set; }
         internal string Code { get; private set; }
         internal string Message { get; private set; }
@@ -83,7 +82,7 @@ namespace Npgsql.BackendMessages
                     var positionStr = buf.ReadNullTerminatedString();
                     int position;
                     if (!int.TryParse(positionStr, out position)) {
-                        Log.Warn("Non-numeric position in ErrorResponse: " + positionStr);
+                        Log.Logger.LogWarning("Non-numeric position in ErrorResponse: " + positionStr);
                         continue;
                     }
                     Position = position;
@@ -92,7 +91,7 @@ namespace Npgsql.BackendMessages
                     var internalPositionStr = buf.ReadNullTerminatedString();
                     int internalPosition;
                     if (!Int32.TryParse(internalPositionStr, out internalPosition)) {
-                        Log.Warn("Non-numeric position in ErrorResponse: " + internalPositionStr);
+                        Log.Logger.LogWarning("Non-numeric position in ErrorResponse: " + internalPositionStr);
                         continue;
                     }
                     InternalPosition = internalPosition;

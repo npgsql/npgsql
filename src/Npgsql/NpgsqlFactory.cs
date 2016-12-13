@@ -120,6 +120,7 @@ namespace Npgsql
             return null;
         }
 
+        [CanBeNull]
         static object _legacyEntityFrameworkServices;
 
         #endregion

@@ -36,6 +36,7 @@ using System.Globalization;
 using System.Net.Sockets;
 using AsyncRewriter;
 using JetBrains.Annotations;
+using Microsoft.Extensions.Logging;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
 using Npgsql.Logging;
@@ -94,8 +95,6 @@ namespace Npgsql
         int _prepareConnectionOpenId;
 
         static readonly SingleThreadSynchronizationContext SingleThreadSynchronizationContext = new SingleThreadSynchronizationContext("NpgsqlRemainingAsyncSendWorker");
-
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         #endregion Fields
 
@@ -449,15 +448,7 @@ namespace Npgsql
             Unprepare();
             ProcessRawQuery();
 
-            if (Log.IsEnabled(NpgsqlLogLevel.Debug))
-            {
-                var sb = new StringBuilder("Preparing");
-                if (persist)
-                    sb.Append(" (persistent)");
-                sb.Append(": ").Append(CommandText);
-                Log.Debug(sb.ToString(), _connector.Id);
-            }
-
+            Log.Preparing(_connector.Id, persist, CommandText);
             using (_connector.StartUserAction())
             {
                 Debug.Assert(Statements.All(s => !s.IsPrepared));
@@ -706,12 +697,13 @@ namespace Npgsql
                 ProcessRawQuery();
             if (Statements.Any(s => s.InputParameters.Count > 65535))
                 throw new Exception("A statement cannot have more than 65535 parameters");
-            LogCommand();
 
             State = CommandState.InProgress;
             try
             {
                 _connector = Connection.Connector;
+                Debug.Assert(_connector != null);
+                Log.ExecuteCommand(_connector.Id, this);
 
                 // If a cancellation is in progress, wait for it to "complete" before proceeding (#615)
                 lock (_connector.CancelLock) { }
@@ -956,8 +948,6 @@ namespace Npgsql
             var connector = CheckReadyAndGetConnector();
             using (connector.StartUserAction(this))
             {
-                Log.Trace("ExecuteNonQuery", connector.Id);
-
                 // Optimization: unprepared unparameterized non-queries can go through the PostgreSQL
                 // simple protocol which is more efficient
                 if (!IsPrepared && Parameters.Count == 0)
@@ -975,9 +965,11 @@ namespace Npgsql
         async Task<int> ExecuteSimple(bool async, CancellationToken cancellationToken)
         {
             ProcessRawQuery();
-            LogCommand();
 
             var connector = Connection.Connector;
+            Debug.Assert(connector != null);
+
+            Log.ExecuteCommand(connector.Id, this);
 
             // If a cancellation is in progress, wait for it to "complete" before proceeding (#615)
             lock (connector.CancelLock) { }
@@ -1054,11 +1046,8 @@ namespace Npgsql
         {
             var connector = CheckReadyAndGetConnector();
             using (connector.StartUserAction(this))
-            {
-                Log.Trace("ExecuteNonScalar", connector.Id);
-                using (var reader = await Execute(CommandBehavior.SequentialAccess | CommandBehavior.SingleRow, async, cancellationToken))
-                    return reader.Read() && reader.FieldCount != 0 ? reader.GetValue(0) : null;
-            }
+            using (var reader = await Execute(CommandBehavior.SequentialAccess | CommandBehavior.SingleRow, async, cancellationToken))
+                return reader.Read() && reader.FieldCount != 0 ? reader.GetValue(0) : null;
         }
 
         #endregion Execute Scalar
@@ -1113,7 +1102,6 @@ namespace Npgsql
             connector.StartUserAction(this);
             try
             {
-                Log.Trace("ExecuteReader", connector.Id);
                 return await Execute(behavior, async, cancellationToken);
             }
             catch
@@ -1174,10 +1162,7 @@ namespace Npgsql
                 return;
 
             if (State != CommandState.InProgress)
-            {
-                Log.Debug($"Skipping cancel because command is in state {State}", connector.Id);
                 return;
-            }
 
             connector.CancelRequest();
         }
@@ -1226,26 +1211,6 @@ namespace Npgsql
         {
             for (var i = 0; i < rowDescription.NumFields; i++)
                 rowDescription[i].FormatCode = (UnknownResultTypeList == null || !isFirst ? AllResultTypesAreUnknown : UnknownResultTypeList[i]) ? FormatCode.Text : FormatCode.Binary;
-        }
-
-        void LogCommand()
-        {
-            if (!Log.IsEnabled(NpgsqlLogLevel.Debug))
-                return;
-
-            var sb = new StringBuilder();
-            sb.Append("Executing statement(s):");
-            foreach (var s in _statements)
-                sb.AppendLine().Append("\t").Append(s.SQL);
-
-            if (NpgsqlLogManager.IsParameterLoggingEnabled && Parameters.Any())
-            {
-                sb.AppendLine().AppendLine("Parameters:");
-                for (var i = 0; i < Parameters.Count; i++)
-                    sb.Append("\t$").Append(i + 1).Append(": ").Append(Convert.ToString(Parameters[i].Value, CultureInfo.InvariantCulture));
-            }
-
-            Log.Debug(sb.ToString(), Connection.Connector.Id);
         }
 
 #if NET45 || NET451

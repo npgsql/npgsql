@@ -82,8 +82,6 @@ namespace Npgsql
 
         const IsolationLevel DefaultIsolationLevel = IsolationLevel.ReadCommitted;
 
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
-
         #endregion
 
         #region Constructors
@@ -93,8 +91,10 @@ namespace Npgsql
             Debug.Assert(conn != null);
             Debug.Assert(isolationLevel != IsolationLevel.Chaos);
 
+
             Connection = conn;
             _connector = Connection.CheckReadyAndGetConnector();
+            Log.BeginningTransaction(_connector.Id, isolationLevel);
             _connector.Transaction = this;
             _connector.TransactionStatus = TransactionStatus.Pending;
 
@@ -142,7 +142,7 @@ namespace Npgsql
             CheckReady();
             using (_connector.StartUserAction())
             {
-                Log.Debug("Commit transaction", _connector.Id);
+                Log.Committing(_connector.Id);
                 await _connector.ExecuteInternalCommand(PregeneratedMessage.CommitTransaction, async, cancellationToken);
                 Clear();
             }
@@ -207,7 +207,7 @@ namespace Npgsql
             CheckReady();
             using (_connector.StartUserAction())
             {
-                Log.Debug("Create savepoint", _connector.Id);
+                Log.CreatingSavepoint(_connector.Id, name);
                 _connector.ExecuteInternalCommand($"SAVEPOINT {name}");
             }
         }
@@ -227,7 +227,7 @@ namespace Npgsql
             CheckReady();
             using (_connector.StartUserAction())
             {
-                Log.Debug("Rollback savepoint", _connector.Id);
+                Log.RollingBackSavepoint(_connector.Id, name);
                 _connector.ExecuteInternalCommand($"ROLLBACK TO SAVEPOINT {name}");
             }
         }
@@ -247,7 +247,7 @@ namespace Npgsql
             CheckReady();
             using (_connector.StartUserAction())
             {
-                Log.Debug("Release savepoint", _connector.Id);
+                Log.ReleasingSavepoint(_connector.Id, name);
                 _connector.ExecuteInternalCommand($"RELEASE SAVEPOINT {name}");
             }
         }

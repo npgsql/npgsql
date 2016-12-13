@@ -32,6 +32,7 @@ using System.Threading;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
+using Npgsql.Logging;
 using NpgsqlTypes;
 
 namespace Npgsql
@@ -284,6 +285,7 @@ namespace Npgsql
 
         void Cleanup()
         {
+            Log.EndCopy(_connector.Id);
             _connector.CurrentCopyOperation = null;
             _connector = null;
             _registry = null;

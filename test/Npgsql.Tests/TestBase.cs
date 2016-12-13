@@ -25,19 +25,15 @@ using System;
 using System.Data;
 using System.IO;
 using System.Linq;
-using NLog.Config;
-using NLog.Targets;
-using NLog;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Console;
 using Npgsql.Logging;
-
 using NUnit.Framework;
 
 namespace Npgsql.Tests
 {
     public abstract class TestBase
     {
-        static readonly Logger _log = LogManager.GetCurrentClassLogger();
-
         /// <summary>
         /// The connection string that will be used when opening the connection to the tests database.
         /// May be overridden in fixtures, e.g. to set special connection parameters
@@ -60,30 +56,19 @@ namespace Npgsql.Tests
         [OneTimeSetUp]
         public virtual void TestFixtureSetup()
         {
-            SetupLogging();
-            _log.Debug("Connection string is: " + ConnectionString);
+            if (!_loggingSetUp)
+                SetupLogging();
         }
 
         protected virtual void SetupLogging()
         {
-#if LOGGING_ENABLED
-            var config = new LoggingConfiguration();
-            var consoleTarget = new ConsoleTarget
+            if (Environment.GetEnvironmentVariable("NPGSQL_TEST_LOGGING") != null)
             {
-                Layout = @"${message} ${exception:format=tostring}"
-            };
-            config.AddTarget("console", consoleTarget);
-            var rule = new LoggingRule("*", LogLevel.Debug, consoleTarget);
-            config.LoggingRules.Add(rule);
-            NLog.LogManager.Configuration = config;
-
-            if (!_loggingSetUp)
-            {
-                NpgsqlLogManager.Provider = new NLogLoggingProvider();
+                NpgsqlLogManager.LoggerFactory = new LoggerFactory()
+                        .AddConsole((text, logLevel) => logLevel >= LogLevel.Debug);
                 NpgsqlLogManager.IsParameterLoggingEnabled = true;
-                _loggingSetUp = true;
             }
-#endif
+            _loggingSetUp = true;
         }
 
         #endregion

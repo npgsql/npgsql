@@ -57,11 +57,12 @@
     }
   },
   "dependencies": {
-    "NETStandard.Library": "1.6",
+    "NETStandard.Library": "1.6.1",
     "Microsoft.ApiDesignGuidelines.Analyzers": {
       "version": "1.2.0-beta2",
       "type": "build"
-    }
+    },
+    "Microsoft.Extensions.Logging": "1.1.0"
   },
   "tools": {
     "dotnet-rewrite-async": "[0.8.10]"
@@ -97,7 +98,7 @@
         "System.Net.NetworkInformation": "4.1.0",
         "System.Reflection.TypeExtensions": "4.1.0",
         "System.Threading.Thread": "4.0.0",
-        "Microsoft.Win32.Primitives": "4.0.1"
+        "Microsoft.Win32.Primitives": "4.3.0"
       }
     }
   }

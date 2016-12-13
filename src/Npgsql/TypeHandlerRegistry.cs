@@ -31,6 +31,7 @@ using System.Linq;
 using System.Reflection;
 using AsyncRewriter;
 using JetBrains.Annotations;
+using Microsoft.Extensions.Logging;
 using Npgsql.Logging;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandlers;
@@ -100,7 +101,6 @@ namespace Npgsql
 
         static readonly INpgsqlNameTranslator DefaultNameTranslator = new NpgsqlSnakeCaseNameTranslator();
         static readonly AvailablePostgresTypes EmptyPostgresTypes = new AvailablePostgresTypes();
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         #endregion
 
@@ -144,7 +144,7 @@ namespace Npgsql
                 var backendEnumType = backendType as PostgresEnumType;
                 if (backendEnumType == null)
                 {
-                    Log.Warn($"While attempting to activate global enum mappings, PostgreSQL type {kv.Key} was found but is not an enum. Skipping it.", Connector.Id);
+                    Log.Logger.LogWarning($"While attempting to activate global enum mappings, PostgreSQL type {kv.Key} was found but is not an enum. Skipping it.", Connector.Id);
                     continue;
                 }
                 backendEnumType.Activate(this, kv.Value);
@@ -158,7 +158,7 @@ namespace Npgsql
                 }
                 catch (Exception e)
                 {
-                    Log.Warn("Caught an exception while attempting to activate global composite mappings", e, Connector.Id);
+                    Log.Logger.LogWarning(0, e, "Caught an exception while attempting to activate global composite mappings", Connector.Id);
                 }
             }
 
@@ -250,7 +250,7 @@ ORDER BY ord";
                 PostgresType elementPostgresType;
                 if (!types.ByOID.TryGetValue(elementOID, out elementPostgresType))
                 {
-                    Log.Trace($"Array type '{name}' refers to unknown element with OID {elementOID}, skipping", connector.Id);
+                    Log.Logger.LogTrace($"Array type '{name}' refers to unknown element with OID {elementOID}, skipping", connector.Id);
                     return;
                 }
                 new PostgresArrayType(ns, name, oid, elementPostgresType).AddTo(types);
@@ -260,7 +260,7 @@ ORDER BY ord";
                 Debug.Assert(elementOID > 0);
                 if (!types.ByOID.TryGetValue(elementOID, out elementPostgresType))
                 {
-                    Log.Trace($"Range type '{name}' refers to unknown subtype with OID {elementOID}, skipping", connector.Id);
+                    Log.Logger.LogTrace($"Range type '{name}' refers to unknown subtype with OID {elementOID}, skipping", connector.Id);
                     return;
                 }
                 new PostgresRangeType(ns, name, oid, elementPostgresType).AddTo(types);
@@ -274,7 +274,7 @@ ORDER BY ord";
                 PostgresType basePostgresType;
                 if (!types.ByOID.TryGetValue(baseTypeOID, out basePostgresType))
                 {
-                    Log.Trace($"Domain type '{name}' refers to unknown base type with OID {baseTypeOID}, skipping", connector.Id);
+                    Log.Logger.LogTrace($"Domain type '{name}' refers to unknown base type with OID {baseTypeOID}, skipping", connector.Id);
                     return;
                 }
                 new PostgresDomainType(ns, name, oid, basePostgresType).AddTo(types);
@@ -463,7 +463,7 @@ WHERE a.typtype = 'b' AND b.typname = @name{(withSchema ? " AND ns.nspname = @sc
 
                         new PostgresArrayType(arrayNs, arrayName, arrayOID, compositeType).AddTo(_postgresTypes);
                     } else
-                        Log.Warn($"Could not find array type corresponding to composite {pgName}");
+                        Log.Logger.LogWarning($"Could not find array type corresponding to composite {pgName}");
 
                     return compositeType;
                 }

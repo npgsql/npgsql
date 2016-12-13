@@ -35,6 +35,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AsyncRewriter;
 using JetBrains.Annotations;
+using Microsoft.Extensions.Logging;
 using Npgsql.BackendMessages;
 using Npgsql.Logging;
 using Npgsql.PostgresTypes;
@@ -111,8 +112,6 @@ namespace Npgsql
         bool IsCaching => !IsSequential;
         bool IsSchemaOnly => (_behavior & CommandBehavior.SchemaOnly) != 0;
         bool IsPrepared { get; }
-
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         internal NpgsqlDataReader(NpgsqlCommand command, CommandBehavior behavior, List<NpgsqlStatement> statements)
         {
@@ -719,7 +718,7 @@ namespace Npgsql
 
         internal void Cleanup(bool connectionClosing=false)
         {
-            Log.Trace("Cleaning up reader", _connector.Id);
+            Log.ReaderCleanup(_connector.Id);
             _state = ReaderState.Closed;
             Command.State = CommandState.Idle;
             _connector.CurrentReader = null;

@@ -37,6 +37,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AsyncRewriter;
 using JetBrains.Annotations;
+using Microsoft.Extensions.Logging;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
 using Npgsql.Logging;
@@ -224,8 +225,6 @@ namespace Npgsql
         internal DateTime ReleaseTimestamp { get; set; } = DateTime.MaxValue;
 
         internal int ClearCounter { get; set; }
-
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         #endregion
 
@@ -415,7 +414,7 @@ namespace Npgsql
                 GenerateResetMessage();
                 TypeHandlerRegistry.Setup(this, timeout);
                 Counters.HardConnectsPerSecond.Increment();
-                Log.Debug($"Opened connection to {Host}:{Port}", Id);
+                Log.OpenedConnection(Id, Host, Port);
             }
             catch
             {
@@ -489,7 +488,6 @@ namespace Npgsql
 
                 if (SslMode == SslMode.Require || SslMode == SslMode.Prefer)
                 {
-                    Log.Trace("Attempting SSL negotiation");
                     SSLRequestMessage.Instance.WriteFully(WriteBuffer);
                     WriteBuffer.Flush();
 
@@ -541,12 +539,12 @@ namespace Npgsql
                         ReadBuffer.Underlying = _stream;
                         WriteBuffer.Underlying = _stream;
                         IsSecure = true;
-                        Log.Trace("SSL negotiation successful");
+                        Log.SslNegotiationSuccessful();
                         break;
                     }
                 }
 
-                Log.Trace($"Socket connected to {Host}:{Port}");
+                Log.SocketConnected(Host, Port);
             }
             catch
             {
@@ -587,7 +585,7 @@ namespace Npgsql
 
             for (var i = 0; i < ips.Length; i++)
             {
-                Log.Trace("Attempting to connect to " + ips[i]);
+                Log.AttemptingToConnectTo(ips[i]);
                 var ep = new IPEndPoint(ips[i], Port);
                 var socket = new Socket(ep.AddressFamily, SocketType.Stream, ProtocolType.Tcp)
                 {
@@ -613,7 +611,7 @@ namespace Npgsql
                         throw new SocketException(errorCode);
                     if (!write.Any())
                     {
-                        Log.Warn($"Timeout after {new TimeSpan(perIpTimeout*10).TotalSeconds} seconds when connecting to {ips[i]}");
+                        Log.TimeoutConnecting(new TimeSpan(perIpTimeout*10).TotalSeconds, ips[i]);
                         try { socket.Dispose(); }
                         catch
                         {
@@ -637,7 +635,7 @@ namespace Npgsql
                         // ignored
                     }
 
-                    Log.Warn("Failed to connect to " + ips[i]);
+                    Log.FailedToConnect(ips[i]);
 
                     if (i == ips.Length - 1)
                         throw;
@@ -656,7 +654,7 @@ namespace Npgsql
 
             for (var i = 0; i < ips.Length; i++)
             {
-                Log.Trace("Attempting to connect to " + ips[i], Id);
+                Log.AttemptingToConnectTo(ips[i]);
                 var ep = new IPEndPoint(ips[i], Port);
                 var socket = new Socket(ep.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 #if NETSTANDARD1_3
@@ -680,7 +678,7 @@ namespace Npgsql
 
                         if (timeout.HasExpired)
                         {
-                            Log.Warn($"Timeout after {perIpTimespan.TotalSeconds} seconds when connecting to {ips[i]}");
+                            Log.TimeoutConnecting(perIpTimespan.TotalSeconds, ips[i]);
                             if (i == ips.Length - 1)
                             {
                                 throw new TimeoutException();
@@ -705,7 +703,7 @@ namespace Npgsql
                         // ignored
                     }
 
-                    Log.Warn("Failed to connect to " + ips[i]);
+                    Log.FailedToConnect(ips[i]);
 
                     if (i == ips.Length - 1)
                     {
@@ -718,7 +716,7 @@ namespace Npgsql
         [RewriteAsync]
         void HandleAuthentication(string username, NpgsqlTimeout timeout)
         {
-            Log.Trace("Authenticating...", Id);
+            Log.Authenticating(Id);
             while (true)
             {
                 var msg = ReadMessage(DataRowLoadingMode.NonSequential);
@@ -989,7 +987,6 @@ namespace Npgsql
 
                 case BackendMessageCode.AuthenticationRequest:
                     var authType = (AuthenticationRequestType)buf.ReadInt32();
-                    Log.Trace("Received AuthenticationRequest of type " + authType, Id);
                     switch (authType)
                     {
                         case AuthenticationRequestType.AuthenticationOk:
@@ -1005,8 +1002,7 @@ namespace Npgsql
                         case AuthenticationRequestType.AuthenticationGSSContinue:
                             return AuthenticationGSSContinueMessage.Load(buf, len);
                         default:
-                            throw new NotSupportedException(
-                                $"Authentication method not supported (Received: {authType})");
+                            throw new NotSupportedException($"Authentication method not supported (Received: {authType})");
                     }
 
                 case BackendMessageCode.BackendKeyData:
@@ -1161,7 +1157,7 @@ namespace Npgsql
 
         internal Task Rollback(bool async, CancellationToken cancellationToken)
         {
-            Log.Debug("Rollback transaction", Id);
+            Log.RollingBack(Id);
             using (StartUserAction())
                 return ExecuteInternalCommand(PregeneratedMessage.RollbackTransaction, async, cancellationToken);
         }
@@ -1284,7 +1280,7 @@ namespace Npgsql
         /// </summary>
         internal void CancelRequest()
         {
-            Log.Debug("Sending cancellation", Id);
+            Log.Cancel(Id);
             lock (CancelLock)
             {
                 try
@@ -1296,7 +1292,7 @@ namespace Npgsql
                 {
                     var socketException = e.InnerException as SocketException;
                     if (socketException == null || socketException.SocketErrorCode != SocketError.ConnectionReset)
-                        Log.Debug("Exception caught while attempting to cancel command", e, Id);
+                        Log.Logger.LogDebug(NpgsqlEventId.ExceptionWhileCancellingConnector, e, "[{ConnectorId}] Exception caught while attempting to cancel command", Id);
                 }
             }
         }
@@ -1304,7 +1300,6 @@ namespace Npgsql
         void DoCancelRequest(int backendProcessId, int backendSecretKey, int connectionTimeout)
         {
             Debug.Assert(State == ConnectorState.Closed);
-            Log.Debug("Performing cancel", Id);
 
             try
             {
@@ -1317,9 +1312,7 @@ namespace Npgsql
                 // actually being delivered before we continue with the user's logic.
                 var count = _stream.Read(ReadBuffer._buf, 0, 1);
                 if (count != -1)
-                {
-                    Log.Error("Received response after sending cancel request, shouldn't happen! First byte: " + ReadBuffer._buf[0]);
-                }
+                    Log.Logger.LogError(NpgsqlEventId.ResponseAfterCancel, "Received response after sending cancel request, shouldn\'t happen! First byte: " + ReadBuffer._buf[0]);
             }
             finally
             {
@@ -1333,14 +1326,14 @@ namespace Npgsql
 
         internal void Close()
         {
-            Log.Trace("Closing connector", Id);
+            Log.ConnectorClosing(Id);
 
             if (IsReady)
             {
                 try { SendMessage(TerminateMessage.Instance); }
                 catch (Exception e)
                 {
-                    Log.Error("Exception while closing connector", e, Id);
+                    Log.Logger.LogError(NpgsqlEventId.ExceptionWhileClosing, e, "[{ConnectorId}] Exception while closing connector", Id);
                     Debug.Assert(IsBroken);
                 }
             }
@@ -1382,7 +1375,7 @@ namespace Npgsql
             if (State == ConnectorState.Broken)
                 return;
 
-            Log.Trace("Break connector", Id);
+            Log.Logger.LogError(NpgsqlEventId.Breaking, "[{ConnectorId}] Breaking connector", Id);
             var prevState = State;
             State = ConnectorState.Broken;
             var conn = Connection;
@@ -1407,7 +1400,7 @@ namespace Npgsql
         /// </summary>
         void Cleanup()
         {
-            Log.Trace("Cleanup connector", Id);
+            Log.Cleanup(Id);
             try
             {
                 _stream?.Dispose();
@@ -1505,7 +1498,6 @@ namespace Npgsql
                 break;
             case ConnectorState.Closed:
             case ConnectorState.Broken:
-                Log.Warn($"Reset() called on connector with state {State}, ignoring", Id);
                 return;
             case ConnectorState.Connecting:
             case ConnectorState.Executing:
@@ -1673,7 +1665,7 @@ namespace Npgsql
             }
 
             Debug.Assert(IsReady);
-            Log.Trace("Start user action", Id);
+            Log.StartUserAction(Id);
             State = newState;
             _currentCommand = command;
             return new UserAction(this);
@@ -1698,7 +1690,7 @@ namespace Npgsql
                 _keepAliveTimer.Change(keepAlive, keepAlive);
             }
 
-            Log.Trace("End user action", Id);
+            Log.EndUserAction(Id);
             State = ConnectorState.Ready;
             _currentCommand = null;
             _keepAliveLock?.Release();
@@ -1736,7 +1728,7 @@ namespace Npgsql
             {
                 if (_keepAliveLock == null)
                 {
-                    Log.Debug("Connector already closed, aborting keepalive");
+                    Log.Logger.LogDebug("[{ConnectorId}] Connector already closed, aborting keepalive", Id);
                     return;
                 }
 
@@ -1760,7 +1752,7 @@ namespace Npgsql
                 {
                     if (_keepAliveLock == null)
                     {
-                        Log.Debug("Connector already closed during or after keepalive");
+                        Log.Logger.LogDebug("[{ConnectorId}] Connector already closed during or after keepalive", Id);
                         return;
                     }
 
@@ -1769,7 +1761,7 @@ namespace Npgsql
             }
             catch (Exception e)
             {
-                Log.Fatal("Keepalive failure", e, Id);
+                Log.Logger.LogError(NpgsqlEventId.KeepaliveFailure, e, "[{ConnectorId}] Keepalive failure", Id);
                 Break();
             }
         }
@@ -1814,16 +1806,12 @@ namespace Npgsql
         internal void ExecuteInternalCommand(string query)
             => ExecuteInternalCommand(QueryMessage.Populate(query), false, CancellationToken.None).Wait();
 
-        internal void ExecuteInternalCommand(FrontendMessage message)
-            => ExecuteInternalCommand(message, false, CancellationToken.None).Wait();
-
         internal async Task ExecuteInternalCommand(FrontendMessage message, bool async, CancellationToken cancellationToken)
         {
             Debug.Assert(message is QueryMessage || message is PregeneratedMessage);
             Debug.Assert(_userLock.CurrentCount == 0, "Forgot to start a user action...");
 
-            if (Log.IsEnabled(NpgsqlLogLevel.Trace))
-                Log.Trace("Executing internal command: " + message);
+            Log.ExecutingInternalCommand(Id, message);
 
             await message.Write(WriteBuffer, async, cancellationToken);
             await WriteBuffer.Flush(async, cancellationToken);
