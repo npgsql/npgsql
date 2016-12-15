@@ -172,11 +172,8 @@ namespace Npgsql
         async Task Rollback(bool async, CancellationToken cancellationToken)
         {
             CheckReady();
-            using (_connector.StartUserAction())
-            {
-                await _connector.Rollback(async, cancellationToken);
-                Clear();
-            }
+            await _connector.Rollback(async, cancellationToken);
+            Clear();
         }
 
         /// <summary>
