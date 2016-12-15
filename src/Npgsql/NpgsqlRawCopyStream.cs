@@ -255,30 +255,38 @@ namespace Npgsql
         {
             if (_isDisposed || !disposing) { return; }
 
-            if (CanWrite)
+            try
             {
-                Flush();
-                _connector.SendMessage(CopyDoneMessage.Instance);
-                _connector.ReadExpecting<CommandCompleteMessage>();
-                _connector.ReadExpecting<ReadyForQueryMessage>();
-            }
-            else
-            {
-                if (!_isConsumed) {
-                    if (_leftToReadInDataMsg > 0) {
-                        _readBuf.Skip(_leftToReadInDataMsg);
+                if (CanWrite)
+                {
+                    Flush();
+                    _connector.SendMessage(CopyDoneMessage.Instance);
+                    _connector.ReadExpecting<CommandCompleteMessage>();
+                    _connector.ReadExpecting<ReadyForQueryMessage>();
+                }
+                else
+                {
+                    if (!_isConsumed)
+                    {
+                        if (_leftToReadInDataMsg > 0)
+                        {
+                            _readBuf.Skip(_leftToReadInDataMsg);
+                        }
+                        _connector.SkipUntil(BackendMessageCode.ReadyForQuery);
                     }
-                    _connector.SkipUntil(BackendMessageCode.ReadyForQuery);
                 }
             }
-
-            _connector.CurrentCopyOperation = null;
-            _connector.EndUserAction();
-            Cleanup();
+            finally
+            {
+                var connector = _connector;
+                Cleanup();
+                connector.EndUserAction();
+            }
         }
 
         void Cleanup()
         {
+            _connector.CurrentCopyOperation = null;
             _connector = null;
             _readBuf = null;
             _writeBuf = null;
