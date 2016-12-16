@@ -385,7 +385,7 @@ namespace Npgsql.TypeHandlers
         {
             var asGeometry = value as PostgisGeometry;
             if (asGeometry != null)
-                return asGeometry.GetLen();
+                return asGeometry.GetLen(true);
 
             var asBytes = value as byte[];
             if (asBytes != null)
