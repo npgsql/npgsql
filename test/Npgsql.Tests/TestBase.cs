@@ -28,6 +28,7 @@ using System.Linq;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Console;
 using Npgsql.Logging;
+using Npgsql.Tests.Util.Logging;
 using NUnit.Framework;
 
 namespace Npgsql.Tests
@@ -44,6 +45,7 @@ namespace Npgsql.Tests
         string _connectionString;
 
         static bool _loggingSetUp;
+        protected static TestLoggerSink TestLoggerSink { get; } = new TestLoggerSink();
 
         /// <summary>
         /// Unless the NPGSQL_TEST_DB environment variable is defined, this is used as the connection string for the
@@ -52,6 +54,12 @@ namespace Npgsql.Tests
         const string DefaultConnectionString = "Server=localhost;User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests";
 
         #region Setup / Teardown
+
+        [SetUp]
+        public void Setup()
+        {
+            TestLoggerSink.Clear();
+        }
 
         [OneTimeSetUp]
         public virtual void TestFixtureSetup()
@@ -62,12 +70,15 @@ namespace Npgsql.Tests
 
         protected virtual void SetupLogging()
         {
+            NpgsqlLogManager.LoggerFactory = new LoggerFactory();
+            NpgsqlLogManager.LoggerFactory.AddProvider(new TestLoggerProvider(TestLoggerSink));
+
             if (Environment.GetEnvironmentVariable("NPGSQL_TEST_LOGGING") != null)
             {
-                NpgsqlLogManager.LoggerFactory = new LoggerFactory()
-                        .AddConsole((text, logLevel) => logLevel >= LogLevel.Debug);
+                NpgsqlLogManager.LoggerFactory.AddConsole((text, logLevel) => logLevel >= LogLevel.Debug);
                 NpgsqlLogManager.IsParameterLoggingEnabled = true;
             }
+
             _loggingSetUp = true;
         }
 
