@@ -365,6 +365,33 @@ namespace Npgsql.Tests.Types
             }
         }
 
+        [Test]
+        public void Bug1381()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+            {
+                cmd.Parameters.Add("p", NpgsqlTypes.NpgsqlDbType.Geometry).Value = new PostgisMultiPolygon(new[]
+                {
+                    new PostgisPolygon(new[]
+                        {
+                            new[]
+                            {
+                                new Coordinate2D(-0.555701, 46.42473701),
+                                new Coordinate2D(-0.549486, 46.42707801),
+                                new Coordinate2D(-0.549843, 46.42749901),
+                                new Coordinate2D(-0.555524, 46.42533901),
+                                new Coordinate2D(-0.555701, 46.42473701)
+                            }
+                        })
+                        // This is the problem:
+                        { SRID = 4326 }
+                }) { SRID = 4326 };
+
+                cmd.ExecuteNonQuery();
+            }
+        }
+
         [OneTimeSetUp]
         public void SetUp()
         {
