@@ -315,8 +315,9 @@ namespace Npgsql
                 _connector.ReadExpecting<ReadyForQueryMessage>();
             }
 
-            _connector.EndUserAction();
+            var connector = _connector;
             Cleanup();
+            connector.EndUserAction();
         }
 
         void Cleanup()

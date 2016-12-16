@@ -244,14 +244,14 @@ namespace Npgsql
                 // The CopyFail should immediately trigger an exception from the read above.
                 _connector.Break();
                 throw new NpgsqlException("Expected ErrorResponse when cancelling COPY but got: " + msg.Code);
-            } catch (PostgresException e) {
-                if (e.SqlState == "57014")
-                {
-                    _connector.CurrentCopyOperation = null;
-                    return;
-                }
-                throw;
             }
+            catch (PostgresException e)
+            {
+                if (e.SqlState != "57014")
+                    throw;
+            }
+            // Note that the exception has already ended the user action for us
+            Cleanup();
         }
 
         /// <summary>
@@ -274,17 +274,17 @@ namespace Npgsql
             _buf.Flush();
             _buf.EndCopyMode();
 
-            _connector.SendMessage(CopyDoneMessage.Instance);
-            _connector.ReadExpecting<CommandCompleteMessage>();
-            _connector.ReadExpecting<ReadyForQueryMessage>();
-            _connector.CurrentCopyOperation = null;
-            _connector.EndUserAction();
-
+            var connector = _connector;
+            connector.SendMessage(CopyDoneMessage.Instance);
+            connector.ReadExpecting<CommandCompleteMessage>();
+            connector.ReadExpecting<ReadyForQueryMessage>();
             Cleanup();
+            connector.EndUserAction();
         }
 
         void Cleanup()
         {
+            _connector.CurrentCopyOperation = null;
             _connector = null;
             _registry = null;
             _buf = null;
