@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Globalization;
+using System.Linq;
 using System.Net;
 using System.Text;
 using Microsoft.Extensions.Logging;
@@ -168,7 +169,7 @@ namespace Npgsql.Logging
             public IEnumerator<KeyValuePair<string, object>> GetEnumerator()
             {
                 yield return new KeyValuePair<string, object>("ConnectorId", _connectorId);
-                yield return new KeyValuePair<string, object>("CommandText", _command.CommandText);
+                yield return new KeyValuePair<string, object>("CommandText", _command.Statements.Select(s => s.SQL).Join("; "));
                 yield return new KeyValuePair<string, object>("CommandTimeout", _command.CommandTimeout);
                 yield return new KeyValuePair<string, object>("Parameters", _command.Parameters);
             }
