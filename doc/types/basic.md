@@ -56,27 +56,23 @@ range subtypes		| NpgsqlRange<TElement>		|				|
 enum types		| TEnum				|				|
 array types		| Array	(of child element type)	|				|
 
-The Default .NET type column specifies the data type `NpgsqlDataReader.GetValue` will return.
+The Default .NET type column specifies the data type `NpgsqlDataReader.GetValue()` will return.
 
-`NpgsqlDataReader.GetProviderSpecificValue` will return a value of a data type specified in the Provider-specific type column,
-or the Default .NET type if there is no specialization.
+`NpgsqlDataReader.GetProviderSpecificValue` will return a value of a data type specified in the Provider-specific type column, or the Default .NET type if there is no specialization.
 
-The Other .NET types column specifies which other data types in which the value can be retrieved using
-`NpgsqlDataReader.GetBoolean`, `.GetByte`, `.GetDouble` etc. or by `.GetFieldValue<T>`.
+Finally, the third column specifies other CLR types which Npgsql supports for the PostgreSQL data type. These can be retrieved by calling `NpgsqlDataReader.GetBoolean()`, `GetByte()`, `GetDouble()` etc. or via `GetFieldValue<T>()`.
 
 ## Type mappings when sending parameters to the backend
 
-There are three rules that decides what backend type a parameter will sent as.
+There are three rules that determine the PostgreSQL type sent for a parameter:
 
 1. If the parameter's `NpgsqlDbType` is set, it is used.
 2. If the parameter's `DbType` is set, it is used.
-3. Of neither of the above is set, the the backend type will be inferred based on the type the value has.
+3. If neither of the above is set, the backend type will be inferred from the CLR value type.
 
-Note that for DateTime and NpgsqlDateTime, the `Kind` attribute tells wether to use `timestamp` or `timestamptz`.
+Note that for DateTime and NpgsqlDateTime, the `Kind` attribute determines whether to use `timestamp` or `timestamptz`.
 
-Note that when `NpgsqlDbType` or `DbType` is set to a primitive type (bool, numbers and string),
-most other primitive types are accepted since they all implement the IConvertible interface,
-which is what Npgsql uses to convert the value to the target type.
+Note that when `NpgsqlDbType` or `DbType` is set to a primitive type (bool, numbers and string), most other primitive types are accepted since they all implement the IConvertible interface, which is what Npgsql uses to convert the value to the target type.
 
 NpgsqlDbType	| DbType		| PostgreSQL type	| Accepted .NET types
 ----------------|-----------------------|-----------------------|--------------------
@@ -130,9 +126,7 @@ Range \| (other NpgsqlDbType) |		| range types		| NpgsqlRange<TElement>
 Enum		|			| enum types		| TEnum
 Array \| (other NpgsqlDbType) | 	| array types		| Array, IList<T>, IList
 
-Notes when using Range and Array, bitwise-or NpgsqlDbType.Range or NpgsqlDbType.Array with the child type.
-For example, to construct the NpgsqlDbType for a `int4range`, write `NpgsqlDbType.Range | NpgsqlDbType.Integer`.
-To construct the NpgsqlDbType for an `int[]`, write `NpgsqlDbType.Array | NpgsqlDbType.Integer`.
+Notes when using Range and Array, bitwise-or NpgsqlDbType.Range or NpgsqlDbType.Array with the child type. For example, to construct the NpgsqlDbType for a `int4range`, write `NpgsqlDbType.Range | NpgsqlDbType.Integer`. To construct the NpgsqlDbType for an `int[]`, write `NpgsqlDbType.Array | NpgsqlDbType.Integer`.
 
 For information about enums, [see the Enums and Composites page](enums_and_composites.md).
 
