@@ -2,9 +2,6 @@
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
-#if NET46
-using BenchmarkDotNet.Diagnostics.Windows;
-#endif
 
 // ReSharper disable UnusedMember.Global
 
@@ -31,9 +28,6 @@ namespace Npgsql.Benchmarks
         {
             public Config()
             {
-#if NET46
-                Add(new MemoryDiagnoser());
-#endif
                 Add(StatisticColumn.OperationsPerSecond);
             }
         }

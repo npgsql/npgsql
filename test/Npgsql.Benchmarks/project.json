@@ -7,18 +7,18 @@
   },
   "dependencies": {
     "Npgsql": "3.2.0-*",
-    "BenchmarkDotNet": "0.10.0"
+    "BenchmarkDotNet": "0.10.1"
   },
   "frameworks": {
     "net46": {
       "dependencies": {
-        "BenchmarkDotNet.Diagnostics.Windows": "0.10.0"
+        "BenchmarkDotNet.Diagnostics.Windows": "0.10.1"
       }
     },
-    "netcoreapp1.0": {
+    "netcoreapp1.1": {
       "dependencies": {
         "Microsoft.NETCore.App": {
-          "version": "1.0.0",
+          "version": "1.1.0",
           "type": "platform"
         },
         "System.Data.SqlClient" : "4.1.0"
