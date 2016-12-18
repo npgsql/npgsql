@@ -482,7 +482,7 @@ namespace Npgsql
                     ? PGUtil.UTF8Encoding
                     : Encoding.GetEncoding(Settings.Encoding, EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback);
                 ReadBuffer = new ReadBuffer(this, _stream, Settings.ReadBufferSize, TextEncoding);
-                WriteBuffer = new WriteBuffer(this, _stream, Settings.ReadBufferSize, TextEncoding);
+                WriteBuffer = new WriteBuffer(this, _stream, Settings.WriteBufferSize, TextEncoding);
                 ParseMessage = new ParseMessage(TextEncoding);
                 QueryMessage = new QueryMessage(TextEncoding);
 
