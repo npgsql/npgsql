@@ -76,10 +76,18 @@ namespace Npgsql
         /// </summary>
         internal abstract void WriteFully(WriteBuffer buf);
 
-        internal sealed override async Task Write(WriteBuffer buf, bool async, CancellationToken cancellationToken)
+        internal sealed override Task Write(WriteBuffer buf, bool async, CancellationToken cancellationToken)
         {
             if (buf.WriteSpaceLeft < Length)
-                await buf.Flush(async, cancellationToken);
+                return FlushAndWrite(buf, async, cancellationToken);
+            Debug.Assert(Length <= buf.WriteSpaceLeft, $"Message of type {GetType().Name} has length {Length} which is bigger than the buffer ({buf.WriteSpaceLeft})");
+            WriteFully(buf);
+            return PGUtil.CompletedTask;
+        }
+
+        async Task FlushAndWrite(WriteBuffer buf, bool async, CancellationToken cancellationToken)
+        {
+            await buf.Flush(async, cancellationToken);
             Debug.Assert(Length <= buf.WriteSpaceLeft, $"Message of type {GetType().Name} has length {Length} which is bigger than the buffer ({buf.WriteSpaceLeft})");
             WriteFully(buf);
         }
