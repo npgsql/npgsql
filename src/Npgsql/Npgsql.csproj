@@ -72,6 +72,9 @@
     <Compile Include="BackendMessages\ParseCompleteMessage.cs" />
     <Compile Include="BackendMessages\RowDescriptionMessage.cs" />
     <Compile Include="BackendMessages\DataRowSequentialMessage.cs" />
+    <Compile Include="Logging\Log.cs" />
+    <Compile Include="Logging\NpgsqlEventId.cs" />
+    <Compile Include="Logging\NpgsqlLogManager.cs" />
     <Compile Include="NpgsqlOperationInProgressException.cs" />
     <Compile Include="PostgresTypes\PostgresArrayType.cs" />
     <Compile Include="PostgresTypes\PostgresType.cs" />
@@ -80,7 +83,6 @@
     <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="ICancelable.cs" />
     <Compile Include="NameTranslation\INpgsqlNameTranslator.cs" />
-    <Compile Include="NpgsqlLogManager.cs" />
     <Compile Include="NameTranslation\NpgsqlNullNameTranslator.cs" />
     <Compile Include="NpgsqlException.cs" />
     <Compile Include="NpgsqlLargeObjectManager.cs" />

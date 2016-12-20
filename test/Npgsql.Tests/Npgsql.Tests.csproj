@@ -55,6 +55,9 @@
     <Compile Include="PrepareTests.cs" />
     <Compile Include="PgPassEntryTests.cs" />
     <Compile Include="PgPassFileTests.cs" />
+    <Compile Include="Util\Logging\TestLogger.cs" />
+    <Compile Include="Util\Logging\TestLoggerProvider.cs" />
+    <Compile Include="Util\Logging\TestLoggerSink.cs" />
     <Compile Include="WriteBufferTests.cs" />
     <Compile Include="ReaderNewSchemaTests.cs" />
     <Compile Include="ReaderOldSchemaTests.cs" />
