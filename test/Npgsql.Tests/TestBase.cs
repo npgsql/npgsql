@@ -73,9 +73,13 @@ namespace Npgsql.Tests
             NpgsqlLogManager.LoggerFactory = new LoggerFactory();
             NpgsqlLogManager.LoggerFactory.AddProvider(new TestLoggerProvider(TestLoggerSink));
 
-            if (Environment.GetEnvironmentVariable("NPGSQL_TEST_LOGGING") != null)
+            var logLevelText = Environment.GetEnvironmentVariable("NPGSQL_TEST_LOGGING");
+            if (logLevelText != null)
             {
-                NpgsqlLogManager.LoggerFactory.AddConsole((text, logLevel) => logLevel >= LogLevel.Debug);
+                LogLevel logLevel;
+                if (!Enum.TryParse(logLevelText, true, out logLevel))
+                    throw new ArgumentOutOfRangeException($"Invalid loglevel in NPGSQL_TEST_LOGGING: {logLevelText}");
+                NpgsqlLogManager.LoggerFactory.AddConsole((text, level) => level >= logLevel);
                 NpgsqlLogManager.IsParameterLoggingEnabled = true;
             }
 
