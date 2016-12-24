@@ -75,6 +75,7 @@
     <Compile Include="Logging\Log.cs" />
     <Compile Include="Logging\NpgsqlEventId.cs" />
     <Compile Include="Logging\NpgsqlLogManager.cs" />
+    <Compile Include="NpgsqlConnector.Auth.cs" />
     <Compile Include="NpgsqlOperationInProgressException.cs" />
     <Compile Include="PostgresTypes\PostgresArrayType.cs" />
     <Compile Include="PostgresTypes\PostgresType.cs" />
@@ -188,7 +189,6 @@
     <Compile Include="NpgsqlSchema.cs" />
     <Compile Include="NpgsqlTransaction.cs" />
     <Compile Include="PGUtil.cs" />
-    <Compile Include="SSPIHandler.cs" />
     <Compile Include="..\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
       <SubType>Code</SubType>

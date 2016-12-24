@@ -73,6 +73,7 @@ namespace Npgsql
         /// Contains the clear text password which was extracted from the user-provided connection string.
         /// If non-cleartext authentication is requested from the server, this is set to null.
         /// </summary>
+        [CanBeNull]
         readonly string _password;
 
         internal Encoding TextEncoding { get; private set; }
@@ -156,8 +157,6 @@ namespace Npgsql
         /// Holds all run-time parameters received from the backend (via ParameterStatus messages)
         /// </summary>
         internal readonly Dictionary<string, string> BackendParams;
-
-        SSPIHandler _sspi;
 
         /// <summary>
         /// The timeout for reading messages that are part of the user's command
@@ -410,7 +409,14 @@ namespace Npgsql
                 WriteBuffer.Flush();
                 timeout.Check();
 
-                HandleAuthentication(username, timeout);
+                Authenticate(username, timeout);
+
+                var keyDataMsg = ReadExpecting<BackendKeyDataMessage>();
+                BackendProcessId = keyDataMsg.BackendProcessId;
+                _backendSecretKey = keyDataMsg.BackendSecretKey;
+                ReadExpecting<ReadyForQueryMessage>();
+                State = ConnectorState.Ready;
+
                 GenerateResetMessage();
                 TypeHandlerRegistry.Setup(this, timeout);
                 Counters.HardConnectsPerSecond.Increment();
@@ -713,96 +719,6 @@ namespace Npgsql
             }
         }
 
-        [RewriteAsync]
-        void HandleAuthentication(string username, NpgsqlTimeout timeout)
-        {
-            Log.Authenticating(Id);
-            while (true)
-            {
-                var msg = ReadMessage(DataRowLoadingMode.NonSequential);
-                timeout.Check();
-                switch (msg.Code)
-                {
-                case BackendMessageCode.AuthenticationRequest:
-                    var passwordMessage = ProcessAuthenticationMessage(username, (AuthenticationRequestMessage)msg);
-                    if (passwordMessage != null)
-                    {
-                        passwordMessage.WriteFully(WriteBuffer);
-                        WriteBuffer.Flush();
-                        timeout.Check();
-                    }
-
-                    continue;
-                case BackendMessageCode.BackendKeyData:
-                    var backendKeyDataMsg = (BackendKeyDataMessage) msg;
-                    BackendProcessId = backendKeyDataMsg.BackendProcessId;
-                    _backendSecretKey = backendKeyDataMsg.BackendSecretKey;
-                    continue;
-                case BackendMessageCode.ReadyForQuery:
-                    State = ConnectorState.Ready;
-                    return;
-                default:
-                    throw new NpgsqlException("Unexpected message received while authenticating: " + msg.Code);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Performs a step in the PostgreSQL authentication protocol
-        /// </summary>
-        /// <param name="username">The username being used to connect.</param>
-        /// <param name="msg">A message read from the server, instructing us on the required response</param>
-        /// <returns>a PasswordMessage to be sent, or null if authentication has completed successfully</returns>
-        [CanBeNull]
-        PasswordMessage ProcessAuthenticationMessage(string username, AuthenticationRequestMessage msg)
-        {
-            switch (msg.AuthRequestType)
-            {
-            case AuthenticationRequestType.AuthenticationOk:
-                return null;
-
-            case AuthenticationRequestType.AuthenticationCleartextPassword:
-                if (_password == null)
-                    throw new NpgsqlException("No password has been provided but the backend requires one (in cleartext)");
-                return PasswordMessage.CreateClearText(_password);
-
-            case AuthenticationRequestType.AuthenticationMD5Password:
-                if (_password == null)
-                    throw new NpgsqlException("No password has been provided but the backend requires one (in MD5)");
-                return PasswordMessage.CreateMD5(_password, username, ((AuthenticationMD5PasswordMessage)msg).Salt);
-
-            case AuthenticationRequestType.AuthenticationGSS:
-                if (!IntegratedSecurity)
-                    throw new NpgsqlException("GSS authentication but IntegratedSecurity not enabled");
-
-                if (!PGUtil.IsWindows)
-                    throw new NotSupportedException("GSS authentication is only supported on Windows for now");
-
-                // For GSSAPI we have to use the supplied hostname
-                _sspi = new SSPIHandler(Host, KerberosServiceName, true);
-                return new PasswordMessage(_sspi.Continue(null));
-
-            case AuthenticationRequestType.AuthenticationSSPI:
-                if (!IntegratedSecurity)
-                    throw new NpgsqlException("SSPI authentication but IntegratedSecurity not enabled");
-
-                if (!PGUtil.IsWindows)
-                    throw new NotSupportedException("SSPI authentication is only supported on Windows");
-
-                _sspi = new SSPIHandler(Host, KerberosServiceName, false);
-                return new PasswordMessage(_sspi.Continue(null));
-
-            case AuthenticationRequestType.AuthenticationGSSContinue:
-                var passwdRead = _sspi.Continue(((AuthenticationGSSContinueMessage)msg).AuthenticationData);
-                if (passwdRead.Length != 0)
-                    return new PasswordMessage(passwdRead);
-                return null;
-
-            default:
-                throw new NotSupportedException($"Authentication method not supported (Received: {msg.AuthRequestType})");
-            }
-        }
-
         #endregion
 
         #region Frontend message processing
@@ -1101,6 +1017,15 @@ namespace Npgsql
                     return msg;
                 }
             }
+        }
+
+        internal Task<T> ReadExpecting<T>(bool async, CancellationToken token) where T : class, IBackendMessage
+        {
+            if (async)
+                return ReadExpectingAsync<T>(token);
+            var tcs = new TaskCompletionSource<T>();
+            tcs.SetResult(ReadExpecting<T>());
+            return tcs.Task;
         }
 
         /// <summary>
@@ -1583,7 +1508,7 @@ namespace Npgsql
             _pendingPrependedResponses += SyncMessage.Instance.ResponseMessageCount;
             PreparedStatements.Clear();
             */
-        }
+            }
 
         #endregion Close
 

@@ -32,7 +32,9 @@ namespace Npgsql.FrontendMessages
 {
     class PasswordMessage : SimpleFrontendMessage
     {
-        internal byte[] Password { get; set; }
+        internal byte[] Payload { get; private set; }
+        internal int PayloadOffset { get; private set; }
+        internal int PayloadLength { get; private set; }
 
         const byte Code = (byte)'p';
 
@@ -88,18 +90,30 @@ namespace Npgsql.FrontendMessages
             return new PasswordMessage(result);
         }
 
-        internal PasswordMessage(byte[] password)
+        internal PasswordMessage() {}
+
+        PasswordMessage(byte[] payload)
         {
-            Password = password;
+            Payload = payload;
+            PayloadOffset = 0;
+            PayloadLength = payload.Length;
         }
 
-        internal override int Length => 1 + 4 + Password.Length;
+        internal PasswordMessage Populate(byte[] payload, int offset, int count)
+        {
+            Payload = payload;
+            PayloadOffset = offset;
+            PayloadLength = count;
+            return this;
+        }
+
+        internal override int Length => 1 + 4 + PayloadLength;
 
         internal override void WriteFully(WriteBuffer buf)
         {
             buf.WriteByte(Code);
             buf.WriteInt32(Length - 1);
-            buf.WriteBytes(Password, 0, Password.Length);
+            buf.WriteBytes(Payload, PayloadOffset, Payload.Length);
         }
 
         public override string ToString() =>  "[Password]";
