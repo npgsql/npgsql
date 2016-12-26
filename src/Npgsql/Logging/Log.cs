@@ -28,9 +28,9 @@ namespace Npgsql.Logging
         static readonly Action<ILogger, int, string, int, Exception> _openedConnection = LoggerMessage.Define<int, string, int>(LogLevel.Trace, NpgsqlEventId.OpenedConnection, "[{ConnectorId}] Opened connection to {Host}:{Port}");
         static readonly Action<ILogger, Exception> _sslNegotiationSuccessful = LoggerMessage.Define(LogLevel.Trace, NpgsqlEventId.SslNegotiationSuccessful, "SSL negotiation successful");
         static readonly Action<ILogger, string, int, Exception> _socketConnected = LoggerMessage.Define<string, int>(LogLevel.Trace, NpgsqlEventId.SocketConnected, "Socket connected to {Host}:{Port}");
-        static readonly Action<ILogger, IPAddress, Exception> _attemptingToConnectTo = LoggerMessage.Define<IPAddress>(LogLevel.Trace, NpgsqlEventId.AttemptingToConnectTo, "Attempting to connect to {IP}");
-        static readonly Action<ILogger, double, IPAddress, Exception> _timeoutConnecting = LoggerMessage.Define<double, IPAddress>(LogLevel.Trace, NpgsqlEventId.TimeoutConnecting, "Timeout after {Seconds} seconds when connecting to {IP}");
-        static readonly Action<ILogger, IPAddress, Exception> _failedToConnect = LoggerMessage.Define<IPAddress>(LogLevel.Trace, NpgsqlEventId.FailedToConnect, "Failed to connect to {IP}");
+        static readonly Action<ILogger, EndPoint, Exception> _attemptingToConnectTo = LoggerMessage.Define<EndPoint>(LogLevel.Trace, NpgsqlEventId.AttemptingToConnectTo, "Attempting to connect to {Endpoint}");
+        static readonly Action<ILogger, double, EndPoint, Exception> _timeoutConnecting = LoggerMessage.Define<double, EndPoint>(LogLevel.Trace, NpgsqlEventId.TimeoutConnecting, "Timeout after {Seconds} seconds when connecting to {Endpoint}");
+        static readonly Action<ILogger, EndPoint, Exception> _failedToConnect = LoggerMessage.Define<EndPoint>(LogLevel.Trace, NpgsqlEventId.FailedToConnect, "Failed to connect to {Endpoint}");
         static readonly Action<ILogger, int, Exception> _authenticating = LoggerMessage.Define<int>(LogLevel.Trace, NpgsqlEventId.Authenticating, "[{ConnectorId}] Authenticating...");
         static readonly Action<ILogger, int, Exception> _keepalive = LoggerMessage.Define<int>(LogLevel.Trace, NpgsqlEventId.Keepalive, "[{ConnectorId}] Performed keepalive");
 
@@ -83,9 +83,9 @@ namespace Npgsql.Logging
         internal static void OpenedConnection(int connectorId, string host, int port) => _openedConnection(Logger, connectorId, host, port, null);
         internal static void SslNegotiationSuccessful() => _sslNegotiationSuccessful(Logger, null);
         internal static void SocketConnected(string host, int port) => _socketConnected(Logger, host, port, null);
-        internal static void AttemptingToConnectTo(IPAddress ip) => _attemptingToConnectTo(Logger, ip, null);
-        internal static void TimeoutConnecting(double seconds, IPAddress ip) => _timeoutConnecting(Logger, seconds, ip, null);
-        internal static void FailedToConnect(IPAddress ip) => _failedToConnect(Logger, ip, null);
+        internal static void AttemptingToConnectTo(EndPoint ip) => _attemptingToConnectTo(Logger, ip, null);
+        internal static void TimeoutConnecting(double seconds, EndPoint ep) => _timeoutConnecting(Logger, seconds, ep, null);
+        internal static void FailedToConnect(EndPoint ep) => _failedToConnect(Logger, ep, null);
         internal static void Authenticating(int connectorId) => _authenticating(Logger, connectorId, null);
         internal static void Keepalive(int connectorId) => _keepalive(Logger, connectorId, null);
 

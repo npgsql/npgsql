@@ -1,5 +1,9 @@
 # Performance
 
+## Unix Domain Socket
+
+If you're on Linux and are connecting to a PostgreSQL server on the same machine, you can boost performance by connecting via Unix domain socket rather than via a regular TCP/IP socket. To do this, simply specify the directory of your PostgreSQL sockets in the `Host` connection string parameter - if this parameter starts with a slash, it will be taken to mean a filesystem path.
+
 ## Reading Large Values
 
 When reading results from PostgreSQL, Npgsql first writes raw binary data from the network into an internal read buffer, and then parses that data as you call methods such as `NpgsqlDataReader.GetString()`. While this allows for efficient network reads, it's worth thinking about the size of this buffer, which is 8K by default. By default, Npgsql attempts to read each row into the buffer. If the entire row fits in 8K, you'll have optimal performance. However, if a row is bigger than 8K, Npgsql will allocate a temporary one-time buffer for the row, and discard it immediately afterwards; this can create very significant memory churn that will slow down your application (future versions may reuse these large buffers). To avoid this, if you know you're going to be reading 16k rows, you can specify `Read Buffer Size=18000` in your connection string (leaving some margin for protocol overhead), this will ensure that the read buffer is reused and no extra allocation occur.

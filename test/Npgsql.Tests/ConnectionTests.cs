@@ -32,6 +32,7 @@ using NUnit.Framework;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Net.Security;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -403,6 +404,28 @@ namespace Npgsql.Tests
         }
 
         #endregion
+
+        [Test, WindowsIgnore]
+        public void UnixDomainSocket()
+        {
+            var port = new NpgsqlConnectionStringBuilder(ConnectionString).Port;
+            var candidateDirectories = new[] { "/var/run/postgresql", "/tmp" };
+            var dir = candidateDirectories.FirstOrDefault(d => File.Exists(Path.Combine(d, $".s.PGSQL.{port}")));
+            if (dir == null)
+            {
+                TestUtil.IgnoreExceptOnBuildServer("No PostgreSQL unix domain socket was found");
+                return;
+            }
+
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Host=dir
+            };
+            using (var conn = OpenConnection(csb))
+            {
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+            }
+        }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/903")]
         public void DataSource()

@@ -576,24 +576,33 @@ namespace Npgsql
 
         void Connect(NpgsqlTimeout timeout)
         {
-#if NET45 || NET451
-            // Note that there aren't any timeoutable DNS methods, and we want to use sync-only
-            // methods (not to rely on any TP threads etc.)
-            var ips = Dns.GetHostAddresses(Host);
-#else
-            // .NET Core doesn't appear to have sync DNS methods (yet?)
-            var ips = Dns.GetHostAddressesAsync(Host).Result;
-#endif
-            timeout.Check();
-
-            // Give each IP an equal share of the remaining time
-            var perIpTimeout = timeout.IsSet ? (int)((timeout.TimeLeft.Ticks / ips.Length) / 10) : -1;
-
-            for (var i = 0; i < ips.Length; i++)
+            EndPoint[] endpoints;
+            if (Host.StartsWith("/"))
             {
-                Log.AttemptingToConnectTo(ips[i]);
-                var ep = new IPEndPoint(ips[i], Port);
-                var socket = new Socket(ep.AddressFamily, SocketType.Stream, ProtocolType.Tcp)
+                endpoints = new EndPoint[] { new UnixEndPoint(Path.Combine(Host, $".s.PGSQL.{Port}")) };
+            }
+            else
+            {
+#if NET45 || NET451
+                // Note that there aren't any timeoutable DNS methods, and we want to use sync-only
+                // methods (not to rely on any TP threads etc.)
+                endpoints = Dns.GetHostAddresses(Host).Select(a => new IPEndPoint(a, Port)).ToArray();
+#else
+                // .NET Core doesn't appear to have sync DNS methods (yet?)
+                endpoints = Dns.GetHostAddressesAsync(Host).Result.Select(a => new IPEndPoint(a, Port)).ToArray();
+#endif
+                timeout.Check();
+            }
+
+            // Give each endpoint an equal share of the remaining time
+            var perEndpointTimeout = timeout.IsSet ? (int)((timeout.TimeLeft.Ticks / endpoints.Length) / 10) : -1;
+
+            for (var i = 0; i < endpoints.Length; i++)
+            {
+                var endpoint = endpoints[i];
+                Log.AttemptingToConnectTo(endpoint);
+                var protocolType = endpoint.AddressFamily == AddressFamily.InterNetwork ? ProtocolType.Tcp : ProtocolType.IP;
+                var socket = new Socket(endpoint.AddressFamily, SocketType.Stream, protocolType)
                 {
                     Blocking = false
                 };
@@ -602,7 +611,7 @@ namespace Npgsql
                 {
                     try
                     {
-                        socket.Connect(ep);
+                        socket.Connect(endpoint);
                     }
                     catch (SocketException e)
                     {
@@ -611,24 +620,25 @@ namespace Npgsql
                     }
                     var write = new List<Socket> { socket };
                     var error = new List<Socket> { socket };
-                    Socket.Select(null, write, error, perIpTimeout);
+                    Socket.Select(null, write, error, perEndpointTimeout);
                     var errorCode = (int) socket.GetSocketOption(SocketOptionLevel.Socket, SocketOptionName.Error);
                     if (errorCode != 0)
                         throw new SocketException(errorCode);
                     if (!write.Any())
                     {
-                        Log.TimeoutConnecting(new TimeSpan(perIpTimeout*10).TotalSeconds, ips[i]);
+                        Log.TimeoutConnecting(new TimeSpan(perEndpointTimeout*10).TotalSeconds, endpoint);
                         try { socket.Dispose(); }
                         catch
                         {
                             // ignored
                         }
-                        if (i == ips.Length - 1)
+                        if (i == endpoints.Length - 1)
                             throw new TimeoutException();
                         continue;
                     }
                     socket.Blocking = true;
-                    socket.NoDelay = true;
+                    if (socket.AddressFamily == AddressFamily.InterNetwork)
+                        socket.NoDelay = true;
                     _socket = socket;
                     return;
                 }
@@ -641,9 +651,9 @@ namespace Npgsql
                         // ignored
                     }
 
-                    Log.FailedToConnect(ips[i]);
+                    Log.FailedToConnect(endpoint);
 
-                    if (i == ips.Length - 1)
+                    if (i == endpoints.Length - 1)
                         throw;
                 }
             }
@@ -651,22 +661,32 @@ namespace Npgsql
 
         async Task ConnectAsync(NpgsqlTimeout timeout, CancellationToken cancellationToken)
         {
-            // Note that there aren't any timeoutable or cancellable DNS methods
-            var ips = await Dns.GetHostAddressesAsync(Host).WithCancellation(cancellationToken);
+            EndPoint[] endpoints;
+            if (Host.StartsWith("/"))
+            {
+                endpoints = new EndPoint[] { new UnixEndPoint(Path.Combine(Host, $".s.PGSQL.{Port}")) };
+            }
+            else
+            {
+                // Note that there aren't any timeoutable or cancellable DNS methods
+                endpoints = (await Dns.GetHostAddressesAsync(Host).WithCancellation(cancellationToken))
+                    .Select(a => new IPEndPoint(a, Port)).ToArray();
+            }
 
             // Give each IP an equal share of the remaining time
-            var perIpTimespan = timeout.IsSet ? new TimeSpan(timeout.TimeLeft.Ticks / ips.Length) : TimeSpan.Zero;
+            var perIpTimespan = timeout.IsSet ? new TimeSpan(timeout.TimeLeft.Ticks / endpoints.Length) : TimeSpan.Zero;
             var perIpTimeout = timeout.IsSet ? new NpgsqlTimeout(perIpTimespan) : timeout;
 
-            for (var i = 0; i < ips.Length; i++)
+            for (var i = 0; i < endpoints.Length; i++)
             {
-                Log.AttemptingToConnectTo(ips[i]);
-                var ep = new IPEndPoint(ips[i], Port);
-                var socket = new Socket(ep.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+                var endpoint = endpoints[i];
+                Log.AttemptingToConnectTo(endpoint);
+                var protocolType = endpoint.AddressFamily == AddressFamily.InterNetwork ? ProtocolType.Tcp : ProtocolType.IP;
+                var socket = new Socket(endpoint.AddressFamily, SocketType.Stream, protocolType);
 #if NETSTANDARD1_3
-                var connectTask = socket.ConnectAsync(ep);
+                var connectTask = socket.ConnectAsync(endpoint);
 #else
-                var connectTask = Task.Factory.FromAsync(socket.BeginConnect, socket.EndConnect, ep, null);
+                var connectTask = Task.Factory.FromAsync(socket.BeginConnect, socket.EndConnect, endpoint, null);
 #endif
                 try
                 {
@@ -684,8 +704,8 @@ namespace Npgsql
 
                         if (timeout.HasExpired)
                         {
-                            Log.TimeoutConnecting(perIpTimespan.TotalSeconds, ips[i]);
-                            if (i == ips.Length - 1)
+                            Log.TimeoutConnecting(perIpTimespan.TotalSeconds, endpoint);
+                            if (i == endpoints.Length - 1)
                             {
                                 throw new TimeoutException();
                             }
@@ -696,6 +716,8 @@ namespace Npgsql
                         throw;
                     }
 
+                    if (socket.AddressFamily == AddressFamily.InterNetwork)
+                        socket.NoDelay = true;
                     _socket = socket;
                     return;
                 }
@@ -709,9 +731,9 @@ namespace Npgsql
                         // ignored
                     }
 
-                    Log.FailedToConnect(ips[i]);
+                    Log.FailedToConnect(endpoint);
 
-                    if (i == ips.Length - 1)
+                    if (i == endpoints.Length - 1)
                     {
                         throw;
                     }

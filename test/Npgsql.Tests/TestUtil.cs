@@ -144,7 +144,7 @@ namespace Npgsql.Tests
     }
 
     /// <summary>
-    /// Causes the test to be ignored on mono
+    /// Causes the test to be ignored on Linux
     /// </summary>
     [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class | AttributeTargets.Assembly, AllowMultiple = false)]
     public class LinuxIgnore : Attribute, ITestAction
@@ -159,6 +159,32 @@ namespace Npgsql.Tests
             if (osEnvVar == null || osEnvVar != "Windows_NT")
             {
                 var msg = "Ignored on Linux";
+                if (_ignoreText != null)
+                    msg += ": " + _ignoreText;
+                Assert.Ignore(msg);
+            }
+        }
+
+        public void AfterTest([NotNull] ITest test) { }
+        public ActionTargets Targets => ActionTargets.Test;
+    }
+
+    /// <summary>
+    /// Causes the test to be ignored on Windows
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class | AttributeTargets.Assembly, AllowMultiple = false)]
+    public class WindowsIgnore : Attribute, ITestAction
+    {
+        readonly string _ignoreText;
+
+        public WindowsIgnore(string ignoreText = null) { _ignoreText = ignoreText; }
+
+        public void BeforeTest([NotNull] ITest test)
+        {
+            var osEnvVar = Environment.GetEnvironmentVariable("OS");
+            if (osEnvVar == "Windows_NT")
+            {
+                var msg = "Ignored on Windows";
                 if (_ignoreText != null)
                     msg += ": " + _ignoreText;
                 Assert.Ignore(msg);

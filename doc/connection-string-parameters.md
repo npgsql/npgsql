@@ -6,7 +6,7 @@ Parameter keywords are case-insensitive.
 
 | Parameter | Description                                                             | Default          |
 |-----------|-------------------------------------------------------------------------|------------------|
-| Host      | The hostname or IP address of the PostgreSQL server to connect to.      | *Required*       |
+| Host      | Specifies the host name of the machine on which the server is running. If the value begins with a slash, it is used as the directory for the Unix-domain socket. | *Required*       |
 | Port      | The TCP port of the PostgreSQL server.                                  | 5432             |
 | Database  | The PostgreSQL database to connect to.                                  | Same as Username |
 | Username  | The username to connect with. Not required if using IntegratedSecurity. |                  |
