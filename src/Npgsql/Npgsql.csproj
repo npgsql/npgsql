@@ -185,6 +185,7 @@
     <Compile Include="NpgsqlNotificationEventArgs.cs" />
     <Compile Include="NpgsqlParameter.cs" />
     <Compile Include="NpgsqlParameterCollection.cs" />
+    <Compile Include="UnixEndPoint.cs" />
     <Compile Include="VolatileResourceManager.cs" />
     <Compile Include="NpgsqlSchema.cs" />
     <Compile Include="NpgsqlTransaction.cs" />
