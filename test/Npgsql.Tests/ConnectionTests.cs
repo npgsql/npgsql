@@ -419,7 +419,8 @@ namespace Npgsql.Tests
 
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                Host=dir
+                Host=dir,
+                Username=null  // Let Npgsql detect the username
             };
             using (var conn = OpenConnection(csb))
             {
