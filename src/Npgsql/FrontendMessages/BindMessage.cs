@@ -71,12 +71,10 @@ namespace Npgsql.FrontendMessages
             Debug.Assert(Statement != null && Statement.All(c => c < 128));
             Debug.Assert(Portal != null && Portal.All(c => c < 128));
 
-            var formatCodesSum = InputParameters.Select(p => p.FormatCode).Sum(c => (int)c);
-            var formatCodeListLength = formatCodesSum == 0 ? 0 : formatCodesSum == InputParameters.Count ? 1 : InputParameters.Count;
             var headerLength =
                 1 +                        // Message code
                 4 +                        // Message length
-                Portal.Length + 1 +
+                1 +                        // Portal is always empty (only a null terminator)
                 Statement.Length + 1 +
                 2;                         // Number of parameter format codes that follow
 
@@ -86,21 +84,31 @@ namespace Npgsql.FrontendMessages
                 await buf.Flush(async, cancellationToken);
             }
 
-            foreach (var c in InputParameters.Select(p => p.LengthCache).Where(c => c != null))
-                c.Rewind();
+            var formatCodesSum = 0;
+            var paramsLength = 0;
+            foreach (var p in InputParameters)
+            {
+                formatCodesSum += (int)p.FormatCode;
+                p.LengthCache?.Rewind();
+                paramsLength += p.ValidateAndGetLength();
+            }
+
+            var formatCodeListLength = formatCodesSum == 0 ? 0 : formatCodesSum == InputParameters.Count ? 1 : InputParameters.Count;
 
             var messageLength = headerLength +
                 2 * formatCodeListLength + // List of format codes
                 2 +                         // Number of parameters
                 4 * InputParameters.Count +                                     // Parameter lengths
-                InputParameters.Select(p => p.ValidateAndGetLength()).Sum() +   // Parameter values
+                paramsLength +                                                  // Parameter values
                 2 +                                                             // Number of result format codes
                 2 * (UnknownResultTypeList?.Length ?? 1);                       // Result format codes
 
             buf.WriteByte(Code);
             buf.WriteInt32(messageLength - 1);
-            buf.WriteBytesNullTerminated(Encoding.ASCII.GetBytes(Portal));
-            buf.WriteBytesNullTerminated(Encoding.ASCII.GetBytes(Statement));
+            Debug.Assert(Portal == string.Empty);
+            buf.WriteByte(0);  // Portal is always empty
+            
+            buf.WriteNullTerminatedString(Statement);
             buf.WriteInt16(formatCodeListLength);
 
             // 0 length implicitly means all-text, 1 means all-binary, >1 means mix-and-match

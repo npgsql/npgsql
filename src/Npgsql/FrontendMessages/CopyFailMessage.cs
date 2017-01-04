@@ -23,8 +23,10 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using JetBrains.Annotations;
 
 namespace Npgsql.FrontendMessages
 {
@@ -32,6 +34,7 @@ namespace Npgsql.FrontendMessages
     {
         const byte Code = (byte)'f';
 
+        [CanBeNull]
         readonly string _errorMessage;
         readonly int _errorMessageLen;
 
@@ -51,10 +54,9 @@ namespace Npgsql.FrontendMessages
         {
             buf.WriteByte(Code);
             buf.WriteInt32(Length - 1);
-            if (_errorMessageLen == 0)
-                buf.WriteByte(0);
-            else
-                buf.WriteBytesNullTerminated(PGUtil.UTF8Encoding.GetBytes(_errorMessage));
+            // Error message not supported for now
+            Debug.Assert(_errorMessage == null);
+            buf.WriteByte(0);
         }
 
         public override string ToString() => "[CopyFail]";

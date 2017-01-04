@@ -47,19 +47,32 @@ namespace Npgsql.FrontendMessages
 
         internal ExecuteMessage Populate(int maxRows) => Populate("", maxRows);
 
-        internal override int Length => 1 + 4 + (Portal.Length + 1) + 4;
+        internal override int Length => 1 + 4 + 1 + 4;
 
         internal override void WriteFully(WriteBuffer buf)
         {
             Debug.Assert(Portal != null && Portal.All(c => c < 128));
 
-            var portalNameBytes = Portal == "" ? PGUtil.EmptyBuffer : Encoding.ASCII.GetBytes(Portal);
             buf.WriteByte(Code);
             buf.WriteInt32(Length - 1);
-            buf.WriteBytesNullTerminated(portalNameBytes);
+            Debug.Assert(Portal == string.Empty);
+            buf.WriteByte(0);   // Portal is always an empty string
             buf.WriteInt32(MaxRows);
         }
 
-        public override string ToString() => $"[Execute(Portal={Portal},MaxRows={MaxRows}]";
+        public override string ToString()
+        {
+            var sb = new StringBuilder();
+            sb.Append("[Execute");
+            if (Portal != "" && MaxRows != 0)
+            {
+                if (Portal != "")
+                    sb.Append("Portal=").Append(Portal);
+                if (MaxRows != 0)
+                    sb.Append("MaxRows=").Append(MaxRows);
+            }
+            sb.Append(']');
+            return sb.ToString();
+        }
     }
 }

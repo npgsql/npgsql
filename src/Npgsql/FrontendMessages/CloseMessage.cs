@@ -59,7 +59,7 @@ namespace Npgsql.FrontendMessages
             buf.WriteByte(Code);
             buf.WriteInt32(Length - 1);
             buf.WriteByte((byte)StatementOrPortal);
-            buf.WriteBytesNullTerminated(Encoding.ASCII.GetBytes(Name));
+            buf.WriteNullTerminatedString(Name);
         }
 
         public override string ToString() => $"[Close {StatementOrPortal}={Name}]";

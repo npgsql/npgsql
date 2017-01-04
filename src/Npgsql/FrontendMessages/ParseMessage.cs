@@ -24,6 +24,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -69,17 +70,16 @@ namespace Npgsql.FrontendMessages
 
         internal override async Task Write(WriteBuffer buf, bool async, CancellationToken cancellationToken)
         {
-            Debug.Assert(Statement != null);
+            Debug.Assert(Statement != null && Statement.All(c => c < 128));
 
-            var statementNameBytes = Statement.Length == 0 ? PGUtil.EmptyBuffer : _encoding.GetBytes(Statement);
             var queryByteLen = _encoding.GetByteCount(Query);
-            if (buf.WriteSpaceLeft < 1 + 4 + statementNameBytes.Length + 1)
+            if (buf.WriteSpaceLeft < 1 + 4 + Statement.Length + 1)
                 await buf.Flush(async, cancellationToken);
 
             var messageLength =
                 1 +                         // Message code
                 4 +                         // Length
-                statementNameBytes.Length +
+                Statement.Length +
                 1 +                         // Null terminator
                 queryByteLen +
                 1 +                         // Null terminator
@@ -88,7 +88,7 @@ namespace Npgsql.FrontendMessages
 
             buf.WriteByte(Code);
             buf.WriteInt32(messageLength - 1);
-            buf.WriteBytesNullTerminated(statementNameBytes);
+            buf.WriteNullTerminatedString(Statement);
 
             await buf.WriteString(Query, queryByteLen, async, cancellationToken);
 

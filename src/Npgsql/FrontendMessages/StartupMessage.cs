@@ -30,24 +30,28 @@ namespace Npgsql.FrontendMessages
 {
     class StartupMessage : SimpleFrontendMessage
     {
-        readonly Dictionary<byte[], byte[]> _parameters = new Dictionary<byte[], byte[]>();
+        readonly Dictionary<string, string> _parameters = new Dictionary<string, string>();
         int _length;
 
         const int ProtocolVersion3 = 3 << 16; // 196608
 
         internal string this[string key]
         {
-            set { _parameters[PGUtil.UTF8Encoding.GetBytes(key)] = PGUtil.UTF8Encoding.GetBytes(value); }
+            set { _parameters[key] = value; }
         }
 
         internal override int Length
         {
             get
             {
-                return _length = 4 + // len
-                                 4 + // protocol version
-                                 _parameters.Select(kv => kv.Key.Length + kv.Value.Length + 2).Sum() +
-                                 1; // trailing zero byte
+                _length = 4 + // len
+                          4 + // protocol version
+                          1;  // trailing zero byte
+
+                foreach (var kvp in _parameters)
+                    _length += PGUtil.UTF8Encoding.GetByteCount(kvp.Key) + 1 +
+                               PGUtil.UTF8Encoding.GetByteCount(kvp.Value) + 1;
+                return _length;
             }
         }
 
@@ -58,8 +62,10 @@ namespace Npgsql.FrontendMessages
 
             foreach (var kv in _parameters)
             {
-                buf.WriteBytesNullTerminated(kv.Key);
-                buf.WriteBytesNullTerminated(kv.Value);
+                buf.WriteString(kv.Key);
+                buf.WriteByte(0);
+                buf.WriteString(kv.Value);
+                buf.WriteByte(0);
             }
 
             buf.WriteByte(0);

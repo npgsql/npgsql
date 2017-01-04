@@ -454,6 +454,7 @@ namespace Npgsql
         [Description("Gets or sets the client_encoding parameter.")]
         [DisplayName("Client Encoding")]
         [NpgsqlConnectionStringProperty]
+        [CanBeNull]
         public string ClientEncoding
         {
             get { return _clientEncoding; }

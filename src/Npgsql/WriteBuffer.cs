@@ -24,6 +24,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
@@ -384,10 +385,11 @@ namespace Npgsql
             _writePosition += count;
         }
 
-        public void WriteBytesNullTerminated(byte[] buf)
+        public void WriteNullTerminatedString(string s)
         {
-            Debug.Assert(WriteSpaceLeft >= buf.Length + 1);
-            WriteBytes(buf, 0, buf.Length);
+            Debug.Assert(s.All(c => c < 128), "Method only supports ASCII strings");
+            Debug.Assert(WriteSpaceLeft >= s.Length + 1);
+            _writePosition += Encoding.ASCII.GetBytes(s, 0, s.Length, _buf, _writePosition);
             WriteByte(0);
         }
 
