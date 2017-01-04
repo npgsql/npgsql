@@ -595,18 +595,14 @@ WHERE a.typtype = 'b' AND b.typname = @name{(withSchema ? " AND ns.nspname = @sc
                 if (ByType.TryGetValue(type, out handler))
                     return handler;
 
-                Type arrayElementType = null;
+                PostgresType postgresType;
 
-                // Detect arrays and generic ILists
-                if (type.IsArray)
-                    arrayElementType = type.GetElementType();
-                else if (typeof(IList).IsAssignableFrom(type))
-                {
-                    if (!type.GetTypeInfo().IsGenericType)
-                        throw new NotSupportedException("Non-generic IList is a supported parameter, but the NpgsqlDbType parameter must be set on the parameter");
-                    arrayElementType = type.GetGenericArguments()[0];
-                }
+                // Try to find the backend type by a simple lookup on the given CLR type, this will handle base types.
+                if (_postgresTypes.ByClrType.TryGetValue(type, out postgresType))
+                    return postgresType.Activate(this);
 
+                // Try to see if it is an array type
+                var arrayElementType = GetArrayElementType(type);
                 if (arrayElementType != null)
                 {
                     TypeHandler elementHandler;
@@ -648,12 +644,6 @@ WHERE a.typtype = 'b' AND b.typname = @name{(withSchema ? " AND ns.nspname = @sc
                     return elementPostgresType.Array.Activate(this);
                 }
 
-                PostgresType postgresType;
-
-                // Try to find the backend type by a simple lookup on the given CLR type, this will handle base types.
-                if (_postgresTypes.ByClrType.TryGetValue(type, out postgresType))
-                    return postgresType.Activate(this);
-
                 // Range type which hasn't yet been set up
                 if (type.GetTypeInfo().IsGenericType && type.GetGenericTypeDefinition() == typeof(NpgsqlRange<>))
                 {
@@ -677,6 +667,22 @@ WHERE a.typtype = 'b' AND b.typname = @name{(withSchema ? " AND ns.nspname = @sc
                 throw new NotSupportedException($"The CLR type {type} isn't supported by Npgsql or your PostgreSQL. " +
                                                  "If you wish to map it to a PostgreSQL composite type you need to register it before usage, please refer to the documentation.");
             }
+        }
+
+        static Type GetArrayElementType(Type type)
+        {
+            var info = type.GetTypeInfo();
+            if (info.IsArray)
+                return type.GetElementType();
+
+            var list = info.ImplementedInterfaces.FirstOrDefault(x => x.GetTypeInfo().IsGenericType && x.GetGenericTypeDefinition() == typeof(IList<>));
+            if (list != null)
+                return list.GetGenericArguments()[0];
+
+            if (typeof(IList).IsAssignableFrom(type))
+                throw new NotSupportedException("Non-generic IList is a supported parameter, but the NpgsqlDbType parameter must be set on the parameter");
+
+            return null;
         }
 
         internal static NpgsqlDbType ToNpgsqlDbType(DbType dbType)

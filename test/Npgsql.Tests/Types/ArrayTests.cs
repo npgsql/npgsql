@@ -359,5 +359,36 @@ namespace Npgsql.Tests.Types
                     .With.Message.Contains("jagged"));
             }
         }
+
+        [Test, Description("Checks that IList<T>s are properly serialized as arrays of their underlying types")]
+        public void ListTypeResolution()
+        {
+            using (var conn = OpenConnection(ConnectionString))
+            {
+                AssertIListRoundtrips(conn, new[] { 1, 2, 3 });
+                AssertIListRoundtrips(conn, new IntList() { 1, 2, 3 });
+                AssertIListRoundtrips(conn, new MisleadingIntList<string>() { 1, 2, 3 });
+            }
+        }
+
+        void AssertIListRoundtrips<TElement>(NpgsqlConnection conn, IEnumerable<TElement> value)
+        {
+            conn.ReloadTypes();
+
+            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+            {
+                cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Value = value });
+
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo("_int4"));
+                    Assert.That(reader[0], Is.EqualTo(value.ToArray()));
+                }
+            }
+        }
+
+        class IntList : List<int> { }
+        class MisleadingIntList<T> : List<int> { }
     }
 }
