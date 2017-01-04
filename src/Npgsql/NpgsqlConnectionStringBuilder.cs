@@ -932,6 +932,44 @@ namespace Npgsql
         int _writeBufferSize;
 
         /// <summary>
+        /// Determines the size of socket read buffer.
+        /// </summary>
+        [Category("Advanced")]
+        [Description("Determines the size of socket receive buffer.")]
+        [DisplayName("Socket Receive Buffer Size")]
+        [NpgsqlConnectionStringProperty]
+        [CanBeNull]
+        public int? SocketReceiveBufferSize
+        {
+            get { return _socketReceiveBufferSize; }
+            set
+            {
+                _socketReceiveBufferSize = value;
+                SetValue(nameof(SocketReceiveBufferSize), value);
+            }
+        }
+        int? _socketReceiveBufferSize;
+
+        /// <summary>
+        /// Determines the size of socket send buffer.
+        /// </summary>
+        [Category("Advanced")]
+        [Description("Determines the size of socket send buffer.")]
+        [DisplayName("Socket Send Buffer Size")]
+        [NpgsqlConnectionStringProperty]
+        [CanBeNull]
+        public int? SocketSendBufferSize
+        {
+            get { return _socketSendBufferSize; }
+            set
+            {
+                _socketSendBufferSize = value;
+                SetValue(nameof(SocketSendBufferSize), value);
+            }
+        }
+        int? _socketSendBufferSize;
+
+        /// <summary>
         /// The maximum number SQL statements that can be automatically prepared at any given point.
         /// Beyond this number the least-recently-used statement will be recycled.
         /// Zero (the default) disables automatic preparation.
