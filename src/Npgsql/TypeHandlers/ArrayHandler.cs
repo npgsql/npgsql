@@ -454,8 +454,16 @@ namespace Npgsql.TypeHandlers
         {
             PrepareRead(row.Buffer, row.ColumnLen, fieldDescription);
             Array result;
-            while (!Read<TPsv>(out result))
-                row.Buffer.ReadMore();
+            try
+            {
+                while (!Read<TPsv>(out result))
+                    row.Buffer.ReadMore();
+            }
+            finally
+            {
+                // Important in case a SafeReadException was thrown, position must still be updated
+                row.PosInColumn += row.ColumnLen;
+            }
             return result;
         }
 
