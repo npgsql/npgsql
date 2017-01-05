@@ -33,7 +33,7 @@ namespace Npgsql.BackendMessages
 {
     class DataRowNonSequentialMessage : DataRowMessage
     {
-        List<int> _columnOffsets;
+        readonly List<int> _columnOffsets = new List<int>();
         int _endOffset;
         /// <summary>
         /// List of all streams that have been opened on this row, and need to be disposed of when the row
@@ -49,8 +49,8 @@ namespace Npgsql.BackendMessages
             Column = -1;
             ColumnLen = -1;
             PosInColumn = 0;
-            // TODO: Recycle message objects rather than recreating for each row
-            _columnOffsets = new List<int>(NumColumns);
+            // TODO: One big row with many columns will make the DataRow's _columnOffsets big forever...
+            _columnOffsets.Clear();
             for (var i = 0; i < NumColumns; i++)
             {
                 _columnOffsets.Add(buf.ReadPosition);

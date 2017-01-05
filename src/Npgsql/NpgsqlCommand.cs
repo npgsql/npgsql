@@ -419,7 +419,7 @@ namespace Npgsql
                 // all statements - nothing to do.
                 if (_statements.Any(s => s.PreparedStatement?.State == PreparedState.NotYetPrepared))
                 {
-                    SendWrapper(SendPrepare, false, CancellationToken.None).Wait();
+                    SendPrepare(false, CancellationToken.None).Wait();
 
                     // Loop over statements, skipping those that are already prepared (because they were persisted)
                     var isFirst = true;
@@ -586,8 +586,11 @@ namespace Npgsql
 
         void ValidateParameters()
         {
-            foreach (NpgsqlParameter p in Parameters.Where(p => p.IsInputDirection))
+            for (var i = 0; i < Parameters.Count; i++)
             {
+                var p = Parameters[i];
+                if (!p.IsInputDirection)
+                    continue;
                 p.Bind(Connection.Connector.TypeHandlerRegistry);
                 p.LengthCache?.Clear();
                 p.ValidateAndGetLength();
@@ -653,11 +656,11 @@ namespace Npgsql
                     // to prevents a dependency on the thread pool (which would also trigger deadlocks).
                     // The WriteBuffer notifies this command when the first buffer flush occurs, so that the
                     // send functions can switch to the special async mode when needed.
-                    CurrentSendTask = SendWrapper(SendExecute, async, cancellationToken);
+                    CurrentSendTask = SendExecute(async, cancellationToken);
                 }
                 else
                 {
-                    CurrentSendTask = SendWrapper(SendExecuteSchemaOnly, async, cancellationToken);
+                    CurrentSendTask = SendExecuteSchemaOnly(async, cancellationToken);
                 }
 
                 // The following is a hack. It raises an exception if one was thrown in the first phases
@@ -703,19 +706,25 @@ namespace Npgsql
 
         internal bool FlushOccurred { get; set; }
 
-        async Task SendWrapper(Func<bool, CancellationToken, Task> sender, bool async, CancellationToken cancellationToken)
+        void BeginSend()
         {
             Debug.Assert(Connection?.Connector != null);
             Connection.Connector.WriteBuffer.CurrentCommand = this;
             FlushOccurred = false;
-            await sender(async, cancellationToken);
+        }
+
+        void CleanupSend()
+        {
             Debug.Assert(Connection?.Connector != null);
             Connection.Connector.WriteBuffer.CurrentCommand = null;
-            SynchronizationContext.SetSynchronizationContext(null);
+            // ReSharper disable once ConditionIsAlwaysTrueOrFalse
+            if (SynchronizationContext.Current != null)  // Check first because SetSynchronizationContext allocates
+                SynchronizationContext.SetSynchronizationContext(null);
         }
 
         async Task SendExecute(bool async, CancellationToken cancellationToken)
         {
+            BeginSend();
             var connector = Connection.Connector;
             Debug.Assert(connector != null);
 
@@ -769,10 +778,12 @@ namespace Npgsql
             }
             await SyncMessage.Instance.Write(buf, async, cancellationToken);
             await buf.Flush(async, cancellationToken);
+            CleanupSend();
         }
 
         async Task SendExecuteSchemaOnly(bool async, CancellationToken cancellationToken)
         {
+            BeginSend();
             var connector = Connection.Connector;
             Debug.Assert(connector != null);
 
@@ -810,10 +821,12 @@ namespace Npgsql
                 await SyncMessage.Instance.Write(buf, async, cancellationToken);
                 await buf.Flush(async, cancellationToken);
             }
+            CleanupSend();
         }
 
         async Task SendPrepare(bool async, CancellationToken cancellationToken)
         {
+            BeginSend();
             var connector = Connection.Connector;
             Debug.Assert(connector != null);
 
@@ -858,40 +871,36 @@ namespace Npgsql
 
             await SyncMessage.Instance.Write(buf, async, cancellationToken);
             await buf.Flush(async, cancellationToken);
+            CleanupSend();
         }
 
         async Task SendClose(bool async, CancellationToken cancellationToken)
         {
+            BeginSend();
             var connector = Connection.Connector;
             Debug.Assert(connector != null);
 
             connector.WriteBuffer.CurrentCommand = this;
             FlushOccurred = false;
 
-            try
+            var buf = connector.WriteBuffer;
+            foreach (var statement in _statements.Where(s => s.IsPrepared))
             {
-                var buf = connector.WriteBuffer;
-                foreach (var statement in _statements.Where(s => s.IsPrepared))
+                if (FlushOccurred)
                 {
-                    if (FlushOccurred)
-                    {
-                        async = true;
-                        SynchronizationContext.SetSynchronizationContext(SingleThreadSynchronizationContext);
-                    }
-
-                    await connector.CloseMessage
-                        .Populate(StatementOrPortal.Statement, statement.StatementName)
-                        .Write(buf, async, cancellationToken);
-                    Debug.Assert(statement.PreparedStatement != null);
-                    statement.PreparedStatement.State = PreparedState.BeingUnprepared;
+                    async = true;
+                    SynchronizationContext.SetSynchronizationContext(SingleThreadSynchronizationContext);
                 }
-                await SyncMessage.Instance.Write(buf, async, cancellationToken);
-                await buf.Flush(async, cancellationToken);
+
+                await connector.CloseMessage
+                    .Populate(StatementOrPortal.Statement, statement.StatementName)
+                    .Write(buf, async, cancellationToken);
+                Debug.Assert(statement.PreparedStatement != null);
+                statement.PreparedStatement.State = PreparedState.BeingUnprepared;
             }
-            finally
-            {
-                SynchronizationContext.SetSynchronizationContext(null);
-            }
+            await SyncMessage.Instance.Write(buf, async, cancellationToken);
+            await buf.Flush(async, cancellationToken);
+            CleanupSend();
         }
 
         #endregion
