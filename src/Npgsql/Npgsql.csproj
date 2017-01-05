@@ -172,7 +172,6 @@
     <Compile Include="NpgsqlTypes\NpgsqlDate.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlDbType.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlTypes.cs" />
-    <Compile Include="CachedValue.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="NpgsqlCommand.cs" />
     <Compile Include="NpgsqlCommandBuilder.cs" />

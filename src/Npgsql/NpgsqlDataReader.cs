@@ -101,11 +101,6 @@ namespace Npgsql
         /// </summary>
         public event EventHandler ReaderClosed;
 
-        /// <summary>
-        /// In non-sequential mode, contains the cached values already read from the current row
-        /// </summary>
-        readonly RowCache _rowCache;
-
         // static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         bool IsSequential => (_behavior & CommandBehavior.SequentialAccess) != 0;
@@ -121,9 +116,6 @@ namespace Npgsql
             _statements = statements;
             _statementIndex = -1;
             _state = ReaderState.BetweenResults;
-
-            if (IsCaching)
-                _rowCache = new RowCache();
         }
 
         /// <summary>
@@ -146,9 +138,6 @@ namespace Npgsql
 
             // Temporarily set _row to the pending data row in order to retrieve the values
             _row = asDataRow;
-
-            if (IsCaching)
-                _rowCache.Clear();
 
             var pending = new Queue<NpgsqlParameter>();
             var taken = new List<int>();
@@ -259,8 +248,6 @@ namespace Npgsql
                 _connector.State = ConnectorState.Fetching;
                 _row = (DataRowMessage)msg;
                 Debug.Assert(_rowDescription.NumFields == _row.NumColumns);
-                if (IsCaching)
-                    _rowCache.Clear();
                 _readOneRow = true;
                 _hasRows = true;
                 return ReadResult.RowRead;
@@ -776,21 +763,21 @@ namespace Npgsql
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        public override bool GetBoolean(int ordinal) => ReadColumnWithoutCache<bool>(ordinal);
+        public override bool GetBoolean(int ordinal) => ReadColumn<bool>(ordinal);
 
         /// <summary>
         /// Gets the value of the specified column as a byte.
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        public override byte GetByte(int ordinal) => ReadColumnWithoutCache<byte>(ordinal);
+        public override byte GetByte(int ordinal) => ReadColumn<byte>(ordinal);
 
         /// <summary>
         /// Gets the value of the specified column as a single character.
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        public override char GetChar(int ordinal) => ReadColumnWithoutCache<char>(ordinal);
+        public override char GetChar(int ordinal) => ReadColumn<char>(ordinal);
 
         /// <summary>
         /// Gets the value of the specified column as a 16-bit signed integer.
@@ -1189,14 +1176,6 @@ namespace Npgsql
         {
             CheckRowAndOrdinal(ordinal);
 
-            CachedValue<object> cache = null;
-            if (IsCaching)
-            {
-                cache = _rowCache.Get<object>(ordinal);
-                if (cache.IsSet && !cache.IsProviderSpecificValue)
-                    return cache.Value;
-            }
-
             // TODO: Code duplication with ReadColumn<T>
             _row.SeekToColumnStart(ordinal);
             if (_row.IsColumnNull) {
@@ -1224,12 +1203,6 @@ namespace Npgsql
                     : Convert.ChangeType(result, type);
             }
 
-            if (IsCaching)
-            {
-                Debug.Assert(cache != null);
-                cache.Value = result;
-                cache.IsProviderSpecificValue = false;
-            }
             return result;
         }
 
@@ -1302,14 +1275,6 @@ namespace Npgsql
         {
             CheckRowAndOrdinal(ordinal);
 
-            CachedValue<object> cache = null;
-            if (IsCaching)
-            {
-                cache = _rowCache.Get<object>(ordinal);
-                if (cache.IsSet && cache.IsProviderSpecificValue)
-                    return cache.Value;
-            }
-
             // TODO: Code duplication with ReadColumn<T>
             _row.SeekToColumnStart(ordinal);
             if (_row.IsColumnNull)
@@ -1327,12 +1292,6 @@ namespace Npgsql
                 throw;
             }
 
-            if (IsCaching)
-            {
-                Debug.Assert(cache != null);
-                cache.Value = result;
-                cache.IsProviderSpecificValue = true;
-            }
             return result;
         }
 
@@ -1368,7 +1327,7 @@ namespace Npgsql
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [RewriteAsync]
-        T ReadColumnWithoutCache<T>(int ordinal)
+        T ReadColumn<T>(int ordinal)
         {
             CheckRowAndOrdinal(ordinal);
 
@@ -1388,28 +1347,6 @@ namespace Npgsql
                 _connector.Break();
                 throw;
             }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [RewriteAsync]
-        T ReadColumn<T>(int ordinal)
-        {
-            CheckRowAndOrdinal(ordinal);
-
-            CachedValue<T> cache = null;
-            if (IsCaching)
-            {
-                cache = _rowCache.Get<T>(ordinal);
-                if (cache.IsSet)
-                    return cache.Value;
-            }
-            var result = ReadColumnWithoutCache<T>(ordinal);
-            if (IsCaching)
-            {
-                Debug.Assert(cache != null);
-                cache.Value = result;
-            }
-            return result;
         }
 
         #region New (CoreCLR) schema API

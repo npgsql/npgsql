@@ -185,6 +185,7 @@ using System.Threading.Tasks;
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
@@ -724,7 +725,18 @@ namespace Npgsql
                 // We got a new resultset.
                 // Read the next message and store it in _pendingRow, this is to make sure that if the
                 // statement generated an error, it gets thrown here and not on the first call to Read().
-                if (_statementIndex == 0 && Command.Parameters.Any(p => p.IsOutputDirection))
+                // Check if the user specified any output parameters, populate those if needed
+                var hasOutputParams = false;
+                for (var i = 0; i < Command.Parameters.Count; i++)
+                {
+                    if (Command.Parameters[i].IsOutputDirection)
+                    {
+                        hasOutputParams = true;
+                        break;
+                    }
+                }
+
+                if (_statementIndex == 0 && hasOutputParams)
                 {
                     // If output parameters are present and this is the first row of the first resultset,
                     // we must read it in non-sequential mode because it will be traversed twice (once
@@ -895,7 +907,7 @@ namespace Npgsql
             throw new InvalidCastException($"Can't cast database type {handler.PgDisplayName} to {typeof (T).Name}");
         }
 
-        async Task<T> ReadColumnWithoutCacheAsync<T>(int ordinal, CancellationToken cancellationToken)
+        async Task<T> ReadColumnAsync<T>(int ordinal, CancellationToken cancellationToken)
         {
             CheckRowAndOrdinal(ordinal);
             _row.SeekToColumnStart(ordinal);
@@ -914,27 +926,6 @@ namespace Npgsql
                 _connector.Break();
                 throw;
             }
-        }
-
-        async Task<T> ReadColumnAsync<T>(int ordinal, CancellationToken cancellationToken)
-        {
-            CheckRowAndOrdinal(ordinal);
-            CachedValue<T> cache = null;
-            if (IsCaching)
-            {
-                cache = _rowCache.Get<T>(ordinal);
-                if (cache.IsSet)
-                    return cache.Value;
-            }
-
-            var result = await (ReadColumnWithoutCacheAsync<T>(ordinal, cancellationToken));
-            if (IsCaching)
-            {
-                Debug.Assert(cache != null);
-                cache.Value = result;
-            }
-
-            return result;
         }
     }
 
