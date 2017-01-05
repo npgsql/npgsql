@@ -21,6 +21,10 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
+using System;
+using System.Diagnostics;
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.Extensions.Logging;
 using Npgsql.Logging;
 
@@ -37,83 +41,86 @@ namespace Npgsql.BackendMessages
             Rows = 0;
             OID = 0;
 
-            var tag = buf.ReadString(len-1);
-            buf.Skip(1);   // Null terminator
-            var tokens = tag.Split();
-
-            if (tokens.Length == 0)
+            var bytes = buf.Buffer;
+            var i = buf.ReadPosition;
+            buf.Skip(len);
+            switch (bytes[i])
+            {
+            case (byte)'I':
+                if (!AreEqual(bytes, i, "INSERT "))
+                    goto default;
+                StatementType = StatementType.Insert;
+                i += 7;
+                OID = ParseNumber(bytes, ref i);
+                i++;
+                Rows = ParseNumber(bytes, ref i);
                 return this;
 
-            switch (tokens[0])
-            {
-            case "INSERT":
-                StatementType = StatementType.Insert;
-
-                uint oid;
-                if (uint.TryParse(tokens[1], out oid))
-                    OID = oid;
-                else
-                    Log.Logger.LogError("Ignoring unparseable OID in CommandComplete: " + tokens[1]);
-
-                ParseRows(tokens[2]);
-                break;
-
-            case "DELETE":
+            case (byte)'D':
+                if (!AreEqual(bytes, i, "DELETE "))
+                    goto default;
                 StatementType = StatementType.Delete;
-                ParseRows(tokens[1]);
-                break;
+                i += 7;
+                Rows = ParseNumber(bytes, ref i);
+                return this;
 
-            case "UPDATE":
+            case (byte)'U':
+                if (!AreEqual(bytes, i, "UPDATE "))
+                    goto default;
                 StatementType = StatementType.Update;
-                ParseRows(tokens[1]);
-                break;
+                i += 7;
+                Rows = ParseNumber(bytes, ref i);
+                return this;
 
-            case "SELECT":
+            case (byte)'S':
+                if (!AreEqual(bytes, i, "SELECT "))
+                    goto default;
                 StatementType = StatementType.Select;
-                // PostgreSQL 8.4 and below doesn't include the number of rows
-                if (tokens.Length > 1)
-                    ParseRows(tokens[1]);
-                break;
+                i += 7;
+                Rows = ParseNumber(bytes, ref i);
+                return this;
 
-            case "MOVE":
+            case (byte)'M':
+                if (!AreEqual(bytes, i, "MOVE "))
+                    goto default;
                 StatementType = StatementType.Move;
-                ParseRows(tokens[1]);
-                break;
+                i += 5;
+                Rows = ParseNumber(bytes, ref i);
+                return this;
 
-            case "FETCH":
+            case (byte)'F':
+                if (!AreEqual(bytes, i, "FETCH "))
+                    goto default;
                 StatementType = StatementType.Fetch;
-                ParseRows(tokens[1]);
-                break;
-
-            case "COPY":
-                StatementType = StatementType.Copy;
-                if (tokens.Length > 1)
-                    ParseRows(tokens[1]);
-                break;
-
-            case "CREATE":
-                if (tag.StartsWith("CREATE TABLE AS"))
-                {
-                    StatementType = StatementType.CreateTableAs;
-                    ParseRows(tokens[3]);
-                    break;
-                }
-                goto default;
+                i += 6;
+                Rows = ParseNumber(bytes, ref i);
+                return this;
 
             default:
                 StatementType = StatementType.Other;
-                break;
+                return this;
             }
-            return this;
         }
 
-        void ParseRows(string token)
+        static bool AreEqual(byte[] bytes, int pos, string s)
         {
-            uint rows;
-            if (uint.TryParse(token, out rows))
-                Rows = rows;
-            else
-                Log.Logger.LogWarning("Ignoring unparseable rows in CommandComplete: " + token);
+            for (var i = 0; i < s.Length; i++)
+            {
+                if (bytes[pos+i] != s[i])
+                    return false;
+            }
+            return true;
+        }
+
+        static uint ParseNumber(byte[] bytes, ref int pos)
+        {
+            Debug.Assert(bytes[pos] >= '0' && bytes[pos] <= '9');
+            uint result = 0;
+            do
+            {
+                result = result * 10 + bytes[pos++] - '0';
+            } while (bytes[pos] >= '0' && bytes[pos] <= '9');
+            return result;
         }
 
         public BackendMessageCode Code => BackendMessageCode.CompletedResponse;

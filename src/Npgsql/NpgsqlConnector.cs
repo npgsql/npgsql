@@ -1232,9 +1232,9 @@ namespace Npgsql
 
                 // Now wait for the server to close the connection, better chance of the cancellation
                 // actually being delivered before we continue with the user's logic.
-                var count = _stream.Read(ReadBuffer._buf, 0, 1);
+                var count = _stream.Read(ReadBuffer.Buffer, 0, 1);
                 if (count != -1)
-                    Log.Logger.LogError(NpgsqlEventId.ResponseAfterCancel, "Received response after sending cancel request, shouldn\'t happen! First byte: " + ReadBuffer._buf[0]);
+                    Log.Logger.LogError(NpgsqlEventId.ResponseAfterCancel, "Received response after sending cancel request, shouldn\'t happen! First byte: " + ReadBuffer.Buffer[0]);
             }
             finally
             {

@@ -24,6 +24,7 @@
 using System;
 using System.Data;
 using System.Linq;
+using System.Text;
 using NUnit.Framework;
 using NUnit.Framework.Constraints;
 using Npgsql;
@@ -87,25 +88,34 @@ namespace Npgsql.Tests
             using (var conn = OpenConnection())
             {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (int INTEGER)");
-                var cmd = new NpgsqlCommand("INSERT INTO data (int) VALUES (7); INSERT INTO data (int) VALUES (8)", conn);
+
+                var sb = new StringBuilder();
+                for (var i = 0; i < 15; i++)
+                    sb.Append($"INSERT INTO data (int) VALUES ({i});");
+                var cmd = new NpgsqlCommand(sb.ToString(), conn);
                 var reader = cmd.ExecuteReader();
                 reader.Close();
-                Assert.That(reader.RecordsAffected, Is.EqualTo(2));
+                Assert.That(reader.RecordsAffected, Is.EqualTo(15));
 
                 cmd = new NpgsqlCommand("SELECT * FROM data", conn);
                 reader = cmd.ExecuteReader();
                 reader.Close();
                 Assert.That(reader.RecordsAffected, Is.EqualTo(-1));
 
-                cmd = new NpgsqlCommand("UPDATE data SET int=8", conn);
+                cmd = new NpgsqlCommand("UPDATE data SET int=int+1 WHERE int > 10", conn);
                 reader = cmd.ExecuteReader();
                 reader.Close();
-                Assert.That(reader.RecordsAffected, Is.EqualTo(2));
+                Assert.That(reader.RecordsAffected, Is.EqualTo(4));
 
                 cmd = new NpgsqlCommand("UPDATE data SET int=8 WHERE int=666", conn);
                 reader = cmd.ExecuteReader();
                 reader.Close();
                 Assert.That(reader.RecordsAffected, Is.EqualTo(0));
+
+                cmd = new NpgsqlCommand("DELETE FROM data WHERE int > 10", conn);
+                reader = cmd.ExecuteReader();
+                reader.Close();
+                Assert.That(reader.RecordsAffected, Is.EqualTo(4));
             }
         }
 

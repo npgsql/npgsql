@@ -1176,7 +1176,7 @@ namespace Npgsql
             }
             else if (count > Size - _filledBytes)
             {
-                Array.Copy(_buf, ReadPosition, _buf, 0, ReadBytesLeft);
+                Array.Copy(Buffer, ReadPosition, Buffer, 0, ReadBytesLeft);
                 _filledBytes = ReadBytesLeft;
                 ReadPosition = 0;
             }
@@ -1186,7 +1186,7 @@ namespace Npgsql
                 while (count > 0)
                 {
                     var toRead = Size - _filledBytes;
-                    var read = await (Underlying.ReadAsync(_buf, _filledBytes, toRead, cancellationToken));
+                    var read = await (Underlying.ReadAsync(Buffer, _filledBytes, toRead, cancellationToken));
                     if (read == 0)
                         throw new EndOfStreamException();
                     count -= read;
@@ -1254,12 +1254,12 @@ namespace Npgsql
         {
             if (len <= ReadBytesLeft)
             {
-                Array.Copy(_buf, ReadPosition, output, outputOffset, len);
+                Array.Copy(Buffer, ReadPosition, output, outputOffset, len);
                 ReadPosition += len;
                 return len;
             }
 
-            Array.Copy(_buf, ReadPosition, output, outputOffset, ReadBytesLeft);
+            Array.Copy(Buffer, ReadPosition, output, outputOffset, ReadBytesLeft);
             var offset = outputOffset + ReadBytesLeft;
             var totalRead = ReadBytesLeft;
             Clear();
