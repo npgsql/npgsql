@@ -373,8 +373,6 @@ namespace Npgsql.Tests.Types
 
         void AssertIListRoundtrips<TElement>(NpgsqlConnection conn, IEnumerable<TElement> value)
         {
-            conn.ReloadTypes();
-
             using (var cmd = new NpgsqlCommand("SELECT @p", conn))
             {
                 cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Value = value });

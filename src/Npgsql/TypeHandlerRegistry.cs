@@ -669,15 +669,16 @@ WHERE a.typtype = 'b' AND b.typname = @name{(withSchema ? " AND ns.nspname = @sc
             }
         }
 
+        [CanBeNull]
         static Type GetArrayElementType(Type type)
         {
-            var info = type.GetTypeInfo();
-            if (info.IsArray)
+            var typeInfo = type.GetTypeInfo();
+            if (typeInfo.IsArray)
                 return type.GetElementType();
 
-            var list = info.ImplementedInterfaces.FirstOrDefault(x => x.GetTypeInfo().IsGenericType && x.GetGenericTypeDefinition() == typeof(IList<>));
-            if (list != null)
-                return list.GetGenericArguments()[0];
+            var ilist = typeInfo.ImplementedInterfaces.FirstOrDefault(x => x.GetTypeInfo().IsGenericType && x.GetGenericTypeDefinition() == typeof(IList<>));
+            if (ilist != null)
+                return ilist.GetGenericArguments()[0];
 
             if (typeof(IList).IsAssignableFrom(type))
                 throw new NotSupportedException("Non-generic IList is a supported parameter, but the NpgsqlDbType parameter must be set on the parameter");
