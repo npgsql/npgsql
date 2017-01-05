@@ -2,7 +2,7 @@
 
 ## Prepared Statements
 
-One of the most important (and easiest) way to improve your application's performance is to prepare your commands. Even if you're not coding against ADO.NET directly, Npgsql has an automatic preparation feature which allows you to benefit from the performance gains associated with prepared statements. [See the documentation for more details](prepare.md).
+One of the most important (and easy) ways to improve your application's performance is to prepare your commands. Even if you're not coding against ADO.NET directly (e.g. using Dapper or an O/RM), Npgsql has an automatic preparation feature which allows you to benefit from the performance gains associated with prepared statements. [See the documentation for more details](prepare.md).
 
 ## Reading Large Values
 
@@ -12,11 +12,13 @@ Another option is to pass `CommandBehavior.SequentialAccess` to `NpgsqlCommand.E
 
 For more information on `CommandBehavior.SequentialAccess`, see [this page](https://msdn.microsoft.com/en-us/library/87z0hy49(v=vs.110).aspx). If you decide to use this feature, be aware that it isn't used as often and may therefore contain bugs.
 
+You can also control the socket's receive buffer size (not to be confused with Npgsql's internal buffer) by setting the `Socket Receive Buffer Size` connection string parameter.
+
 ## Writing Large Values
 
-Writing is somewhat similar - Npgsql has an internally write buffer (also 8K by default). When writing your query's SQL and parameters to PostgreSQL, Npgsql always writes "sequentially", that is, filling up the 8K buffer and flushing it when full. You can use `Write Buffer Size` to control the buffer's size, although there are less reasons for doing so. One reason could be to reduce the number of I/O systems performed when writing - a bigger buffer means less write calls. However, keep in mind that the underlying networking stack will split your data into packets regardless of how you write.
+Writing is somewhat similar - Npgsql has an internally write buffer (also 8K by default). When writing your query's SQL and parameters to PostgreSQL, Npgsql always writes "sequentially", that is, filling up the 8K buffer and flushing it when full. You can use `Write Buffer Size` to control the buffer's size.
 
-This option is better left untouched unless you know what you're doing.
+You can also control the socket's receive buffer size (not to be confused with Npgsql's internal buffer) by setting the `Socket Receive Buffer Size` connection string parameter.
 
 ## Performance Counters
 
