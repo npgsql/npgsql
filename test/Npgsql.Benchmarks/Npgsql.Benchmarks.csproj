@@ -51,6 +51,7 @@
     <Compile Include="Prepare.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="UnixDomainSocket.cs" />
     <Compile Include="WriteBenchmarks.cs" />
   </ItemGroup>
   <ItemGroup>
