@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using AsyncRewriter;
@@ -247,7 +248,13 @@ namespace Npgsql
                         // call SetResult on its TaskCompletionSource, since it would execute the open's
                         // continuation in our thread (the closing thread). Instead we schedule the completion
                         // to run in the TP
-                        Task.Run(() => tcs.SetResult(connector));
+
+                        // We copy tcs2 and especially connector2 to avoid allocations caused by the closure, see
+                        // http://stackoverflow.com/questions/41507166/closure-heap-allocation-happening-at-start-of-method
+                        var tcs2 = tcs;
+                        var connector2 = connector;
+
+                        Task.Run(() => tcs2.SetResult(connector2));
                     }
                     else
                         tcs.SetResult(connector);

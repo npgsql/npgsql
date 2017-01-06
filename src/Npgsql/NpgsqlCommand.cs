@@ -133,7 +133,7 @@ namespace Npgsql
         public NpgsqlCommand(string cmdText, [CanBeNull] NpgsqlConnection connection, [CanBeNull] NpgsqlTransaction transaction)
         {
             GC.SuppressFinalize(this);
-            _statements = new List<NpgsqlStatement>();
+            _statements = new List<NpgsqlStatement>(1);
             _parameters = new NpgsqlParameterCollection();
             _commandText = cmdText;
             Connection = connection;
@@ -510,7 +510,7 @@ namespace Npgsql
             case CommandType.Text:
                 Debug.Assert(_connection?.Connector != null);
                 _connection.Connector.SqlParser.ParseRawQuery(CommandText, _connection == null || _connection.UseConformantStrings, _parameters, _statements);
-                if (_statements.Count > 1 && _parameters.Any(p => p.IsOutputDirection))
+                if (_statements.Count > 1 && _parameters.HasOutputParameters)
                     throw new NotSupportedException("Commands with multiple queries cannot have out parameters");
                 break;
 
@@ -583,8 +583,9 @@ namespace Npgsql
                 throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {CommandType} of enum {nameof(CommandType)}. Please file a bug.");
             }
 
-            if (Statements.Any(s => s.InputParameters.Count > 65535))
-                throw new Exception("A statement cannot have more than 65535 parameters");
+            foreach (var s in _statements)
+                if (s.InputParameters.Count > 65535)
+                    throw new Exception("A statement cannot have more than 65535 parameters");
 
             _isParsed = true;
         }

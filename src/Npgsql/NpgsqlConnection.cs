@@ -289,7 +289,7 @@ namespace Npgsql
                 _pool = null;
                 if (value == null)
                     value = string.Empty;
-                Settings = CsbCache.GetOrAdd(value, s => new NpgsqlConnectionStringBuilder(value));
+                Settings = CsbCache.GetOrAdd(value, s => new NpgsqlConnectionStringBuilder(s));
             }
         }
 

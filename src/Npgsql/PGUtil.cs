@@ -144,7 +144,7 @@ namespace Npgsql
         {
             _expiration = expiration == TimeSpan.Zero
                 ? DateTime.MaxValue
-                : DateTime.Now + expiration;
+                : DateTime.UtcNow + expiration;
         }
 
         internal void Check()
@@ -155,9 +155,9 @@ namespace Npgsql
 
         internal bool IsSet => _expiration != DateTime.MaxValue;
 
-        internal bool HasExpired => DateTime.Now >= Expiration;
+        internal bool HasExpired => DateTime.UtcNow >= Expiration;
 
-        internal TimeSpan TimeLeft => IsSet ? Expiration - DateTime.Now : Timeout.InfiniteTimeSpan;
+        internal TimeSpan TimeLeft => IsSet ? Expiration - DateTime.UtcNow : Timeout.InfiniteTimeSpan;
     }
 
     sealed class CultureSetter : IDisposable

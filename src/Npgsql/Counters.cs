@@ -88,6 +88,7 @@ namespace Npgsql
 #if NET45 || NET451
         internal const string DiagnosticsCounterCategory = ".NET Data Provider for PostgreSQL (Npgsql)";
 
+        [CanBeNull]
         internal PerformanceCounter DiagnosticsCounter { get; private set; }
 #endif
         public string Name { get; }
