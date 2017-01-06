@@ -405,59 +405,67 @@ namespace Npgsql
             var connector = CheckReadyAndGetConnector();
             using (connector.StartUserAction())
             {
-                if (Parameters.Any(p => !p.IsTypeExplicitlySet))
-                    throw new InvalidOperationException("The Prepare method requires all parameters to have an explicitly set type.");
+                for (var i = 0; i < Parameters.Count; i++)
+                    if (!Parameters[i].IsTypeExplicitlySet)
+                        throw new InvalidOperationException("The Prepare method requires all parameters to have an explicitly set type.");
 
                 ProcessRawQuery();
 
                 Log.Preparing(connector.Id, CommandText);
 
-                foreach (var statement in _statements.Where(s => !s.IsPrepared))
+                var needToPrepare = false;
+                foreach (var statement in _statements)
+                {
+                    if (statement.IsPrepared)
+                        continue;
                     statement.PreparedStatement = connector.PreparedStatementManager.GetOrAddExplicit(statement);
+                    if (statement.PreparedStatement?.State == PreparedState.NotYetPrepared)
+                        needToPrepare = true;
+                }
 
                 // It's possible the command was already prepared, or that presistent prepared statements were found for
-                // all statements - nothing to do.
-                if (_statements.Any(s => s.PreparedStatement?.State == PreparedState.NotYetPrepared))
+                // all statements. Nothing to do here, move along.
+                if (!needToPrepare)
+                    return;
+
+                SendPrepare(false, CancellationToken.None).Wait();
+
+                // Loop over statements, skipping those that are already prepared (because they were persisted)
+                var isFirst = true;
+                foreach (var statement in _statements.Where(s => s.PreparedStatement?.State == PreparedState.BeingPrepared))
                 {
-                    SendPrepare(false, CancellationToken.None).Wait();
-
-                    // Loop over statements, skipping those that are already prepared (because they were persisted)
-                    var isFirst = true;
-                    foreach (var statement in _statements.Where(s => s.PreparedStatement?.State == PreparedState.BeingPrepared))
+                    var pStatement = statement.PreparedStatement;
+                    Debug.Assert(pStatement != null);
+                    Debug.Assert(pStatement.Description == null);
+                    if (pStatement.StatementBeingReplaced != null)
                     {
-                        var pStatement = statement.PreparedStatement;
-                        Debug.Assert(pStatement != null);
-                        Debug.Assert(pStatement.Description == null);
-                        if (pStatement.StatementBeingReplaced != null)
-                        {
-                            connector.ReadExpecting<CloseCompletedMessage>();
-                            pStatement.StatementBeingReplaced.CompleteUnprepare();
-                            pStatement.StatementBeingReplaced = null;
-                        }
-
-                        connector.ReadExpecting<ParseCompleteMessage>();
-                        connector.ReadExpecting<ParameterDescriptionMessage>();
-                        var msg = connector.ReadMessage(DataRowLoadingMode.NonSequential);
-                        switch (msg.Code)
-                        {
-                        case BackendMessageCode.RowDescription:
-                            var description = (RowDescriptionMessage)msg;
-                            FixupRowDescription(description, isFirst);
-                            statement.Description = description;
-                            break;
-                        case BackendMessageCode.NoData:
-                            statement.Description = null;
-                            break;
-                        default:
-                            throw connector.UnexpectedMessageReceived(msg.Code);
-                        }
-                        pStatement.CompletePrepare();
-                        isFirst = false;
+                        connector.ReadExpecting<CloseCompletedMessage>();
+                        pStatement.StatementBeingReplaced.CompleteUnprepare();
+                        pStatement.StatementBeingReplaced = null;
                     }
 
-                    connector.ReadExpecting<ReadyForQueryMessage>();
-                    CompleteRemainingSend();
+                    connector.ReadExpecting<ParseCompleteMessage>();
+                    connector.ReadExpecting<ParameterDescriptionMessage>();
+                    var msg = connector.ReadMessage(DataRowLoadingMode.NonSequential);
+                    switch (msg.Code)
+                    {
+                    case BackendMessageCode.RowDescription:
+                        var description = (RowDescriptionMessage)msg;
+                        FixupRowDescription(description, isFirst);
+                        statement.Description = description;
+                        break;
+                    case BackendMessageCode.NoData:
+                        statement.Description = null;
+                        break;
+                    default:
+                        throw connector.UnexpectedMessageReceived(msg.Code);
+                    }
+                    pStatement.CompletePrepare();
+                    isFirst = false;
                 }
+
+                connector.ReadExpecting<ReadyForQueryMessage>();
+                CompleteRemainingSend();
 
                 _connectorPreparedOn = connector;
             }
