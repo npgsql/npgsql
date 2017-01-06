@@ -70,7 +70,6 @@ namespace Npgsql
         NpgsqlConnector _connectorPreparedOn;
 
         NpgsqlTransaction _transaction;
-        readonly SqlQueryParser _sqlParser = new SqlQueryParser();
         string _commandText;
         int? _timeout;
         readonly NpgsqlParameterCollection _parameters;
@@ -404,14 +403,15 @@ namespace Npgsql
         public override void Prepare()
         {
             var connector = CheckReadyAndGetConnector();
-            if (Parameters.Any(p => !p.IsTypeExplicitlySet))
-                throw new InvalidOperationException("The Prepare method requires all parameters to have an explicitly set type.");
-
-            ProcessRawQuery();
-
-            Log.Preparing(connector.Id, CommandText);
             using (connector.StartUserAction())
             {
+                if (Parameters.Any(p => !p.IsTypeExplicitlySet))
+                    throw new InvalidOperationException("The Prepare method requires all parameters to have an explicitly set type.");
+
+                ProcessRawQuery();
+
+                Log.Preparing(connector.Id, CommandText);
+
                 foreach (var statement in _statements.Where(s => !s.IsPrepared))
                     statement.PreparedStatement = connector.PreparedStatementManager.GetOrAddExplicit(statement);
 
@@ -500,7 +500,8 @@ namespace Npgsql
             NpgsqlStatement statement;
             switch (CommandType) {
             case CommandType.Text:
-                _sqlParser.ParseRawQuery(CommandText, _connection == null || _connection.UseConformantStrings, _parameters, _statements);
+                Debug.Assert(_connection?.Connector != null);
+                _connection.Connector.SqlParser.ParseRawQuery(CommandText, _connection == null || _connection.UseConformantStrings, _parameters, _statements);
                 if (_statements.Count > 1 && _parameters.Any(p => p.IsOutputDirection))
                     throw new NotSupportedException("Commands with multiple queries cannot have out parameters");
                 break;

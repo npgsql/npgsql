@@ -182,6 +182,10 @@ namespace Npgsql
         /// </summary>
         int _currentTimeout;
 
+        // This is used by NpgsqlCommand, but we place it on the connector because only one instance is needed
+        // at any one time (per connection).
+        internal SqlQueryParser SqlParser { get; } = new SqlQueryParser();
+
         /// <summary>
         /// A lock that's taken while a user action is in progress, e.g. a command being executed.
         /// </summary>
