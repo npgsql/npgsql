@@ -273,14 +273,11 @@ namespace Npgsql
                     await Connector.OpenAsync(timeout, cancellationToken);
                     Counters.NumberOfNonPooledConnections.Increment();
                 }
-
 #if NET45 || NET451
                 // We may have gotten an already enlisted pending connector above, no need to enlist in that case
                 if (Settings.Enlist && Transaction.Current != null && EnlistedTransaction == null)
                     EnlistTransaction(Transaction.Current);
 #endif
-                Connector.Notice += _noticeDelegate;
-                Connector.Notification += _notificationDelegate;
             }
             catch
             {
@@ -725,18 +722,7 @@ namespace Npgsql
                 // We got a new resultset.
                 // Read the next message and store it in _pendingRow, this is to make sure that if the
                 // statement generated an error, it gets thrown here and not on the first call to Read().
-                // Check if the user specified any output parameters, populate those if needed
-                var hasOutputParams = false;
-                for (var i = 0; i < Command.Parameters.Count; i++)
-                {
-                    if (Command.Parameters[i].IsOutputDirection)
-                    {
-                        hasOutputParams = true;
-                        break;
-                    }
-                }
-
-                if (_statementIndex == 0 && hasOutputParams)
+                if (_statementIndex == 0 && Command.Parameters.HasOutputParameters)
                 {
                     // If output parameters are present and this is the first row of the first resultset,
                     // we must read it in non-sequential mode because it will be traversed twice (once

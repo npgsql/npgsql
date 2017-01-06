@@ -150,9 +150,6 @@ namespace Npgsql
 
         void Init()
         {
-            _noticeDelegate = OnNotice;
-            _notificationDelegate = OnNotification;
-
 #if NET45 || NET451
             // Fix authentication problems. See https://bugzilla.novell.com/show_bug.cgi?id=MONO77559 and
             // http://pgfoundry.org/forum/message.php?msg_id=1002377 for more info.
@@ -248,9 +245,6 @@ namespace Npgsql
                 if (Settings.Enlist && Transaction.Current != null && EnlistedTransaction == null)
                     EnlistTransaction(Transaction.Current);
 #endif
-
-                Connector.Notice += _noticeDelegate;
-                Connector.Notification += _notificationDelegate;
             }
             catch
             {
@@ -569,9 +563,6 @@ namespace Npgsql
             Log.ClosingConnection(connectorId);
             _wasBroken = wasBroken;
 
-            Connector.Notification -= _notificationDelegate;
-            Connector.Notice -= _noticeDelegate;
-
             CloseOngoingOperations();
 
 #if NET45 || NET451
@@ -671,25 +662,36 @@ namespace Npgsql
         /// Occurs on NoticeResponses from the PostgreSQL backend.
         /// </summary>
         public event NoticeEventHandler Notice;
-        NoticeEventHandler _noticeDelegate;
 
         /// <summary>
         /// Occurs on NotificationResponses from the PostgreSQL backend.
         /// </summary>
         public event NotificationEventHandler Notification;
-        NotificationEventHandler _notificationDelegate;
 
-        //
-        // Internal methods and properties
-        //
-        void OnNotice(object o, NpgsqlNoticeEventArgs e)
+        internal void OnNotice(PostgresNotice e)
         {
-            Notice?.Invoke(this, e);
+            try
+            {
+                Notice?.Invoke(this, new NpgsqlNoticeEventArgs(e));
+            }
+            catch (Exception ex)
+            {
+                // Block all exceptions bubbling up from the user's event handler
+                Log.Logger.LogError(0, ex, "User exception caught when emitting notice event");
+            }
         }
 
-        void OnNotification(object o, NpgsqlNotificationEventArgs e)
+        internal void OnNotification(NpgsqlNotificationEventArgs e)
         {
-            Notification?.Invoke(this, e);
+            try
+            {
+                Notification?.Invoke(this, e);
+            }
+            catch (Exception ex)
+            {
+                // Block all exceptions bubbling up from the user's event handler
+                Log.Logger.LogError(0, ex, "User exception caught when emitting notification event");
+            }
         }
 
         #endregion Notifications

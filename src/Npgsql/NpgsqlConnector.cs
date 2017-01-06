@@ -136,6 +136,7 @@ namespace Npgsql
         /// The NpgsqlConnection that (currently) owns this connector. Null if the connector isn't
         /// owned (i.e. idle in the pool)
         /// </summary>
+        [CanBeNull]
         internal NpgsqlConnection Connection { get; set; }
 
         /// <summary>
@@ -932,10 +933,10 @@ namespace Npgsql
                     HandleParameterStatus(buf.ReadNullTerminatedString(), buf.ReadNullTerminatedString());
                     return null;
                 case BackendMessageCode.NoticeResponse:
-                    OnNotice(new PostgresNotice(buf));
+                    Connection?.OnNotice(new PostgresNotice(buf));
                     return null;
                 case BackendMessageCode.NotificationResponse:
-                    OnNotification(new NpgsqlNotificationEventArgs(buf));
+                    Connection?.OnNotification(new NpgsqlNotificationEventArgs(buf));
                     return null;
 
                 case BackendMessageCode.AuthenticationRequest:
@@ -1140,52 +1141,6 @@ namespace Npgsql
         }
 
         #endregion
-
-        #region Notifications
-
-        /// <summary>
-        /// Occurs on NoticeResponses from the PostgreSQL backend.
-        /// </summary>
-        internal event NoticeEventHandler Notice;
-
-        /// <summary>
-        /// Occurs on NotificationResponses from the PostgreSQL backend.
-        /// </summary>
-        internal event NotificationEventHandler Notification;
-
-        void OnNotice(PostgresNotice e)
-        {
-            var notice = Notice;
-            if (notice != null)
-            {
-                try
-                {
-                    notice(this, new NpgsqlNoticeEventArgs(e));
-                }
-                catch
-                {
-                    // Ignore all exceptions bubbling up from the user's event handler
-                }
-            }
-        }
-
-        void OnNotification(NpgsqlNotificationEventArgs e)
-        {
-            var notification = Notification;
-            if (notification != null)
-            {
-                try
-                {
-                    notification(this, e);
-                }
-                catch
-                {
-                    // Ignore all exceptions bubbling up from the user's event handler
-                }
-            }
-        }
-
-        #endregion Notifications
 
         #region SSL
 
