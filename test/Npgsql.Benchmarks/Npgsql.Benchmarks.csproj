@@ -48,6 +48,7 @@
     <Compile Include="ConnectionCreationBenchmarks.cs" />
     <Compile Include="ConnectionOpenCloseBenchmarks.cs" />
     <Compile Include="BenchmarkEnvironment.cs" />
+    <Compile Include="Insert.cs" />
     <Compile Include="Prepare.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
