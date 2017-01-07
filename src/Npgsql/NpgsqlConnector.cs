@@ -460,17 +460,38 @@ namespace Npgsql
         string GetUsername()
         {
             var username = Settings.Username;
+            if (!string.IsNullOrEmpty(username))
+                return Settings.Username;
+
 #if NET45 || NET451
-            if (string.IsNullOrEmpty(username) && PGUtil.IsWindows && Type.GetType("Mono.Runtime") == null)
-                username = WindowsUsernameProvider.GetUserName(Settings.IncludeRealm);
-            if (string.IsNullOrEmpty(username))
-                username = Environment.UserName;
+            if (PGUtil.IsWindows && Type.GetType("Mono.Runtime") == null)
+            {
+                username = WindowsUsernameProvider.GetUsername(Settings.IncludeRealm);
+                if (!string.IsNullOrEmpty(username))
+                    return username;
+            }
 #endif
-            if (string.IsNullOrEmpty(username))
-                username = Environment.GetEnvironmentVariable("USERNAME") ??
-                       Environment.GetEnvironmentVariable("USER");
+
+            if (!PGUtil.IsWindows)
+            {
+                username = KerberosUsernameProvider.GetUsername(Settings.IncludeRealm);
+                if (!string.IsNullOrEmpty(username))
+                    return username;
+            }
+
+#if NET45 || NET451
+            username = Environment.UserName;
+            if (!string.IsNullOrEmpty(username))
+                return username;
+#endif
+
+            username = Environment.GetEnvironmentVariable("USERNAME") ?? Environment.GetEnvironmentVariable("USER");
+            if (!string.IsNullOrEmpty(username))
+                return username;
+
             if (username == null)
-                throw new Exception("No username could be found, please specify one explicitly");
+                throw new NpgsqlException("No username could be found, please specify one explicitly");
+
             return username;
         }
 

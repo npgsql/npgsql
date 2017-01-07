@@ -72,6 +72,7 @@
     <Compile Include="BackendMessages\ParseCompleteMessage.cs" />
     <Compile Include="BackendMessages\RowDescriptionMessage.cs" />
     <Compile Include="BackendMessages\DataRowSequentialMessage.cs" />
+    <Compile Include="KerberosUsernameProvider.cs" />
     <Compile Include="Logging\Log.cs" />
     <Compile Include="Logging\NpgsqlEventId.cs" />
     <Compile Include="Logging\NpgsqlLogManager.cs" />
