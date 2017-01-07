@@ -4,6 +4,26 @@
 
 One of the most important (and easy) ways to improve your application's performance is to prepare your commands. Even if you're not coding against ADO.NET directly (e.g. using Dapper or an O/RM), Npgsql has an automatic preparation feature which allows you to benefit from the performance gains associated with prepared statements. [See the documentation for more details](prepare.md).
 
+## Batching/Pipelining
+
+When you execute a command, Npgsql executes a roundtrip to the database. If you execute multiple commands (say, inserting 3 rows or performing multiple selects), you're executing multiple roundtrips; each command has to complete before the next command can start execution. Depending on your network latency, this can considerably degrade your application's performance.
+
+You can batch multiple SQL statements in a single command, executing them a single roundtrip:
+
+```c#
+using (var cmd = new NpgsqlCommand("SELECT ...; SELECT ..."))
+using (var reader = cmd.ExecuteReader())
+{
+    while (reader.Read()) {
+        // Read first resultset
+    }
+    reader.NextResult();
+    while (reader.Read()) {
+        // Read second resultset
+    }
+}
+```
+
 ## Reading Large Values
 
 When reading results from PostgreSQL, Npgsql first writes raw binary data from the network into an internal read buffer, and then parses that data as you call methods such as `NpgsqlDataReader.GetString()`. While this allows for efficient network reads, it's worth thinking about the size of this buffer, which is 8K by default. By default, Npgsql attempts to read each row into the buffer. If the entire row fits in 8K, you'll have optimal performance. However, if a row is bigger than 8K, Npgsql will allocate a temporary one-time buffer for the row, and discard it immediately afterwards; this can create very significant memory churn that will slow down your application (future versions may reuse these large buffers). To avoid this, if you know you're going to be reading 16k rows, you can specify `Read Buffer Size=18000` in your connection string (leaving some margin for protocol overhead), this will ensure that the read buffer is reused and no extra allocation occur.
