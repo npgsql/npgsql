@@ -152,6 +152,23 @@ namespace Npgsql
         }
 
         /// <summary>
+        /// Writes a single column in the current row. This overloaded method writes nullable types using WriteNull() when they are null.
+        /// </summary>
+        /// <param name="value">The value to be written</param>
+        /// <typeparam name="T">
+        /// The type of the column to be written. This must correspond to the actual type or data
+        /// corruption will occur. If in doubt, use <see cref="Write{T}(T, NpgsqlDbType)"/> to manually
+        /// specify the type.
+        /// </typeparam>
+        public void SafeWrite<T>(T value)
+        {
+            if (value == null)
+                WriteNull();
+            else
+                Write(value);
+        }
+
+        /// <summary>
         /// Writes a single column in the current row as type <paramref name="type"/>.
         /// </summary>
         /// <param name="value">The value to be written</param>
