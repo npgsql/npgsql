@@ -142,27 +142,13 @@ namespace Npgsql
             Ensure(ReadBytesLeft + 1);
         }
 
-        /// <summary>
-        /// Reads in the requested bytes into the buffer, or if the buffer isn't big enough, allocates a new
-        /// temporary buffer and reads into it. Returns the buffer that contains the data (either itself or the
-        /// temp buffer). Used in cases where we absolutely have to have an entire value in memory and cannot
-        /// read it in sequentially.
-        /// </summary>
         [RewriteAsync]
-        internal ReadBuffer EnsureOrAllocateTemp(int count, bool dontBreakOnTimeouts=false)
+        internal ReadBuffer AllocateOversize(int count)
         {
-            if (count <= Size) {
-                Ensure(count, dontBreakOnTimeouts);
-                return this;
-            }
-
-            // Worst case: our buffer isn't big enough. For now, allocate a new buffer
-            // and copy into it
-            // TODO: Optimize with a pool later?
+            Debug.Assert(count > Size);
             var tempBuf = new ReadBuffer(Connector, Underlying, count, TextEncoding);
             CopyTo(tempBuf);
             Clear();
-            tempBuf.Ensure(count, dontBreakOnTimeouts);
             return tempBuf;
         }
 

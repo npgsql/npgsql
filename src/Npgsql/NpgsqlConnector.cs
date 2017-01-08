@@ -84,6 +84,13 @@ namespace Npgsql
         internal ReadBuffer ReadBuffer { get; private set; }
 
         /// <summary>
+        /// If we read a data row that's bigger than <see cref="ReadBuffer"/>, we allocate an oversize buffer.
+        /// The original (smaller) buffer is stored here, and restored when the connection is reset.
+        /// </summary>
+        [CanBeNull]
+        ReadBuffer _origReadBuffer;
+
+        /// <summary>
         /// Buffer used for writing data.
         /// </summary>
         internal WriteBuffer WriteBuffer { get; private set; }
@@ -851,8 +858,6 @@ namespace Npgsql
 
             while (true)
             {
-                var buf = ReadBuffer;
-
                 ReadBuffer.Ensure(5, readingNotifications);
                 var messageCode = (BackendMessageCode)ReadBuffer.ReadByte();
                 PGUtil.ValidateBackendMessageCode(messageCode);
@@ -869,10 +874,16 @@ namespace Npgsql
                 }
                 else if (len > ReadBuffer.ReadBytesLeft)
                 {
-                    buf = buf.EnsureOrAllocateTemp(len);
+                    if (len > ReadBuffer.Size)
+                    {
+                        if (_origReadBuffer == null)
+                            _origReadBuffer = ReadBuffer;
+                        ReadBuffer = ReadBuffer.AllocateOversize(len);
+                    }
+                    ReadBuffer.Ensure(len);
                 }
 
-                var msg = ParseServerMessage(buf, messageCode, len, dataRowLoadingMode, isPrependedMessage);
+                var msg = ParseServerMessage(ReadBuffer, messageCode, len, dataRowLoadingMode, isPrependedMessage);
 
                 switch (messageCode) {
                 case BackendMessageCode.ErrorResponse:
@@ -880,7 +891,7 @@ namespace Npgsql
 
                     // An ErrorResponse is (almost) always followed by a ReadyForQuery. Save the error
                     // and throw it as an exception when the ReadyForQuery is received (next).
-                    error = new PostgresException(buf);
+                    error = new PostgresException(ReadBuffer);
 
                     if (State == ConnectorState.Connecting) {
                         // During the startup/authentication phase, an ErrorResponse isn't followed by
@@ -1417,6 +1428,13 @@ namespace Npgsql
             // Our buffer may contain unsent prepended messages (such as BeginTransaction), clear it out completely
             WriteBuffer.Clear();
             _pendingPrependedResponses = 0;
+
+            // We may have allocated an oversize read buffer, switch back to the original one
+            if (_origReadBuffer != null)
+            {
+                ReadBuffer = _origReadBuffer;
+                _origReadBuffer = null;
+            }
 
             // Must rollback transaction before sending DISCARD ALL
             switch (TransactionStatus)

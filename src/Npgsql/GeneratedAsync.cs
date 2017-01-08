@@ -134,6 +134,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
@@ -466,7 +467,6 @@ namespace Npgsql
             PostgresException error = null;
             while (true)
             {
-                var buf = ReadBuffer;
                 await ReadBuffer.EnsureAsync(5, cancellationToken, readingNotifications);
                 var messageCode = (BackendMessageCode)ReadBuffer.ReadByte();
                 PGUtil.ValidateBackendMessageCode(messageCode);
@@ -481,17 +481,23 @@ namespace Npgsql
                 }
                 else if (len > ReadBuffer.ReadBytesLeft)
                 {
-                    buf = await (buf.EnsureOrAllocateTempAsync(len, cancellationToken));
+                    if (len > ReadBuffer.Size)
+                    {
+                        _origReadBuffer = ReadBuffer;
+                        ReadBuffer = await (ReadBuffer.AllocateOversizeAsync(len, cancellationToken));
+                    }
+
+                    await ReadBuffer.EnsureAsync(len, cancellationToken);
                 }
 
-                var msg = ParseServerMessage(buf, messageCode, len, dataRowLoadingMode, isPrependedMessage);
+                var msg = ParseServerMessage(ReadBuffer, messageCode, len, dataRowLoadingMode, isPrependedMessage);
                 switch (messageCode)
                 {
                     case BackendMessageCode.ErrorResponse:
                         Debug.Assert(msg == null);
                         // An ErrorResponse is (almost) always followed by a ReadyForQuery. Save the error
                         // and throw it as an exception when the ReadyForQuery is received (next).
-                        error = new PostgresException(buf);
+                        error = new PostgresException(ReadBuffer);
                         if (State == ConnectorState.Connecting)
                         {
                             // During the startup/authentication phase, an ErrorResponse isn't followed by
@@ -1189,21 +1195,12 @@ namespace Npgsql
             await EnsureAsync(ReadBytesLeft + 1, cancellationToken);
         }
 
-        internal async Task<ReadBuffer> EnsureOrAllocateTempAsync(int count, CancellationToken cancellationToken, bool dontBreakOnTimeouts = false)
+        internal async Task<ReadBuffer> AllocateOversizeAsync(int count, CancellationToken cancellationToken)
         {
-            if (count <= Size)
-            {
-                await EnsureAsync(count, cancellationToken, dontBreakOnTimeouts);
-                return this;
-            }
-
-            // Worst case: our buffer isn't big enough. For now, allocate a new buffer
-            // and copy into it
-            // TODO: Optimize with a pool later?
+            Debug.Assert(count > Size);
             var tempBuf = new ReadBuffer(Connector, Underlying, count, TextEncoding);
             CopyTo(tempBuf);
             Clear();
-            await tempBuf.EnsureAsync(count, cancellationToken, dontBreakOnTimeouts);
             return tempBuf;
         }
 
