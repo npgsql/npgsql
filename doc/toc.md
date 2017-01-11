@@ -1,7 +1,8 @@
 ﻿# [Getting Started](index.md)
 # Migration Notes
-## [From 3.0 to 3.1](migration/3.1.md)
-## [From 2.2 to 3.0](migration/3.0.md)
+## [3.2](migration/3.1.md)
+## [3.1](migration/3.1.md)
+## [3.0](migration/3.0.md)
 # [FAQ](faq.md)
 # [Compatibility Notes](compatibility.md)
 # [Connection String Parameters](connection-string-parameters.md)
