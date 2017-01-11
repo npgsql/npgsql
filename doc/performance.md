@@ -2,7 +2,7 @@
 
 ## Prepared Statements
 
-One of the most important (and easy) ways to improve your application's performance is to prepare your commands. Even if you're not coding against ADO.NET directly (e.g. using Dapper or an O/RM), Npgsql has an automatic preparation feature which allows you to benefit from the performance gains associated with prepared statements. [See the documentation for more details](prepare.md).
+One of the most important (and easy) ways to improve your application's performance is to prepare your commands. Even if you're not coding against ADO.NET directly (e.g. using Dapper or an O/RM), Npgsql has an automatic preparation feature which allows you to benefit from the performance gains associated with prepared statements. [See this blog post](http://www.roji.org/prepared-statements-in-npgsql-3-2) and/or [the documentation](prepare.md) for more details.
 
 ## Batching/Pipelining
 

@@ -1,6 +1,6 @@
 ﻿# [Getting Started](index.md)
 # Migration Notes
-## [3.2](migration/3.1.md)
+## [3.2](migration/3.2.md)
 ## [3.1](migration/3.1.md)
 ## [3.0](migration/3.0.md)
 # [FAQ](faq.md)
@@ -13,9 +13,9 @@
 ## [Enums and Composites](types/enums_and_composites.md)
 # [Transactions](transactions.md)
 # [Performance](performance.md)
+# [Prepared Statements](prepare.md)
 # [Waiting for Notifications](wait.md)
 # [Keepalive](keepalive.md)
 # [Bulk Copy](copy.md)
 # [Logging](logging.md)
-# [System.Transactions](system_transactions.md)
 # [Visual Studio Integration](ddex.md)

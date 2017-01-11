@@ -2,22 +2,24 @@
 
 ## Introduction
 
+It's recommended that you start by reading [this blog post](http://www.roji.org/prepared-statements-in-npgsql-3-2).
+
 Most applications repeat the same SQL statements many times, passing different parameters. In such cases, it's very beneficial to *prepare* commands - this will send the command's statement(s) to PostgreSQL, which will parse and plan for them. The prepared statements can then be used on execution, saving valuable planning time. The more complex your queries, the more you'll notice the performance gain; but even very simple queries tend to benefit from preparation.
 
 Following is a benchmark Npgsql.Benchmarks.Prepare, which measures the execution time of the same query, executed prepared and unprepared. `TablesToJoin` is a parameter which increases the query complexity - it determines how many tables the query joins from.
 
-       Method | TablesToJoin |           Mean |      StdDev |     Op/s | Scaled | Scaled-StdDev | Allocated |
-------------- |------------- |--------------- |------------ |--------- |------- |-------------- |---------- |
-   **Unprepared** |            **0** |     **73.5353 us** |   **0.6033 us** | **13598.91** |   **1.00** |          **0.00** |   **3.36 kB** |
-     Prepared |            0 |     47.0393 us |   0.4579 us |  21258.8 |   0.64 |          0.01 |    1.4 kB |
-   **Unprepared** |            **1** |    **106.7306 us** |   **1.2891 us** |  **9369.39** |   **1.00** |          **0.00** |    **3.5 kB** |
-     Prepared |            1 |     59.4692 us |   0.7175 us | 16815.41 |   0.56 |          0.01 |    1.4 kB |
-   **Unprepared** |            **2** |    **189.4992 us** |   **2.0745 us** |  **5277.07** |   **1.00** |          **0.00** |   **3.73 kB** |
-     Prepared |            2 |     76.0352 us |   1.5647 us | 13151.81 |   0.40 |          0.01 |    1.4 kB |
-   **Unprepared** |            **5** |  **1,089.1583 us** |   **9.5710 us** |   **918.14** |   **1.00** |          **0.00** |   **4.35 kB** |
-     Prepared |            5 |    111.6496 us |   0.9084 us |  8956.59 |   0.10 |          0.00 |    1.4 kB |
-   **Unprepared** |           **10** | **23,293.9641 us** | **215.0200 us** |    **42.93** |   **1.00** |          **0.00** |   **5.63 kB** |
-     Prepared |           10 |    180.7498 us |   1.8213 us |  5532.51 |   0.01 |          0.00 |    1.4 kB |
+|        Method | TablesToJoin |           Mean |     StdErr |      StdDev |     Op/s | Scaled | Scaled-StdDev | Allocated |
+| ------------- |------------- |--------------- |----------- |------------ |--------- |------- |-------------- |---------- |
+|    **Unprepared** |            **0** |     **67.1964 us** |  **0.1586 us** |   **0.6142 us** | **14881.75** |   **1.00** |          **0.00** |    **1.9 kB** |
+|      Prepared |            0 |     43.5007 us |  0.2466 us |   0.9227 us | 22988.13 |   0.65 |          0.01 |     305 B |
+|    **Unprepared** |            **1** |     **98.8502 us** |  **0.1278 us** |   **0.4949 us** | **10116.32** |   **1.00** |          **0.00** |   **1.93 kB** |
+|      Prepared |            1 |     53.7518 us |  0.0486 us |   0.1818 us | 18604.04 |   0.54 |          0.00 |     306 B |
+|    **Unprepared** |            **2** |    **180.0599 us** |  **0.2990 us** |   **1.1579 us** |  **5553.71** |   **1.00** |          **0.00** |   **2.06 kB** |
+|      Prepared |            2 |     70.3609 us |  0.1715 us |   0.6417 us | 14212.44 |   0.39 |          0.00 |     306 B |
+|    **Unprepared** |            **5** |  **1,084.6065 us** |  **1.1822 us** |   **4.2626 us** |   **921.99** |   **1.00** |          **0.00** |   **2.37 kB** |
+|      Prepared |            5 |    110.0652 us |  0.1098 us |   0.3805 us |  9085.52 |   0.10 |          0.00 |     308 B |
+|    **Unprepared** |           **10** | **23,086.5956 us** | **37.2072 us** | **139.2167 us** |    **43.32** |   **1.00** |          **0.00** |   **3.11 kB** |
+|      Prepared |           10 |    197.1392 us |  0.3044 us |   1.1790 us |  5072.56 |   0.01 |          0.00 |     308 B |
 
 As is immediately apparent, even an extremely simple scenario (TablesToJoin=0, SQL=SELECT 1), preparing the query with PostgreSQL provides a 36% speedup. As query complexity increases by adding join tables, the gap widens dramatically.
 
@@ -81,23 +83,3 @@ Npgsql 3.2 introduces automatic preparation. When turned on, this will make Npgs
 Note that if you're coding directly against Npgsql or ADO.NET, explicitly preparing your commands with `Prepare()` is still recommended over letting Npgsql prepare automatically. Automatic preparation does incur a slight performance cost compared to explicit preparation, because of the internal LRU cache and various book-keeping data structures. Explicitly preparing also allows you to better control exactly which statements are prepared and which aren't, and ensures your statements will always stay prepared, and never get ejected because of the LRU mechanism.
 
 Note that automatic preparation is a complex new feature which should be considered somewhat experimental; test carefully, and if you see any strange behavior or problem try turning it off.
-
-The following benchmark results show automatic preparation alongside explicit preparation (and unprepared execution):
-
-       Method | TablesToJoin |           Mean |      StdDev |     Op/s | Scaled | Scaled-StdDev | Allocated |
-------------- |------------- |--------------- |------------ |--------- |------- |-------------- |---------- |
-   **Unprepared** |            **0** |     **73.5353 us** |   **0.6033 us** | **13598.91** |   **1.00** |          **0.00** |   **3.36 kB** |
- AutoPrepared |            0 |     50.6906 us |   0.5909 us | 19727.53 |   0.69 |          0.01 |   2.19 kB |
-     Prepared |            0 |     47.0393 us |   0.4579 us |  21258.8 |   0.64 |          0.01 |    1.4 kB |
-   **Unprepared** |            **1** |    **106.7306 us** |   **1.2891 us** |  **9369.39** |   **1.00** |          **0.00** |    **3.5 kB** |
- AutoPrepared |            1 |     62.2421 us |   0.4101 us | 16066.31 |   0.58 |          0.01 |   2.35 kB |
-     Prepared |            1 |     59.4692 us |   0.7175 us | 16815.41 |   0.56 |          0.01 |    1.4 kB |
-   **Unprepared** |            **2** |    **189.4992 us** |   **2.0745 us** |  **5277.07** |   **1.00** |          **0.00** |   **3.73 kB** |
- AutoPrepared |            2 |     87.4430 us |   4.0486 us | 11436.02 |   0.46 |          0.02 |   2.56 kB |
-     Prepared |            2 |     76.0352 us |   1.5647 us | 13151.81 |   0.40 |          0.01 |    1.4 kB |
-   **Unprepared** |            **5** |  **1,089.1583 us** |   **9.5710 us** |   **918.14** |   **1.00** |          **0.00** |   **4.35 kB** |
- AutoPrepared |            5 |    131.4522 us |   1.0954 us |  7607.33 |   0.12 |          0.00 |   3.15 kB |
-     Prepared |            5 |    111.6496 us |   0.9084 us |  8956.59 |   0.10 |          0.00 |    1.4 kB |
-   **Unprepared** |           **10** | **23,293.9641 us** | **215.0200 us** |    **42.93** |   **1.00** |          **0.00** |   **5.63 kB** |
- AutoPrepared |           10 |    199.7185 us |   2.4733 us |  5007.05 |   0.01 |          0.00 |   4.16 kB |
-     Prepared |           10 |    180.7498 us |   1.8213 us |  5532.51 |   0.01 |          0.00 |    1.4 kB |
