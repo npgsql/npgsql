@@ -147,7 +147,9 @@ namespace Npgsql.Tests
             using (var notifyingConn = OpenConnection())
             {
                 conn.ExecuteNonQuery("LISTEN notifytest");
+#pragma warning disable 4014
                 Task.Delay(2000).ContinueWith(t => notifyingConn.ExecuteNonQuery("NOTIFY notifytest"));
+#pragma warning restore 4014
                 await conn.WaitAsync();
                 Assert.That(TestLoggerSink.Records, Has.Some.With.Property("EventId").EqualTo(new EventId(NpgsqlEventId.Keepalive)));
                 Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
