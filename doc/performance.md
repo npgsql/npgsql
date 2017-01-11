@@ -24,6 +24,22 @@ using (var reader = cmd.ExecuteReader())
 }
 ```
 
+## Performance Counters
+
+Npgsql 3.2 includes support for *performance counters*, which provide visibility into connections and the connection pool - this helps you understand what your application is doing in real-time, whether there's a connection leak, etc. Npgsql counter support is very similar to [that of other ADO.NET providers, such as SqlClient](https://msdn.microsoft.com/en-us/library/ms254503(v=vs.110).aspx), it's recommended that your read that page first.
+
+Using performance counters first involves setting them up on your Windows system. To do this you will need to install Npgsql's MSI, which is available on the [github releases page](https://github.com/npgsql/npgsql/releases). Note that GAC installation isn't necessary (or recommended). Once the counters are installed, fire up the Windows Performance Monitor and look for the category ".NET Data Provider for PostgreSQL (Npgsql)". Restart your Npgsql application, and you should start seeing real-time data.
+
+Performance counters are currently only available on Windows with .NET Framework (.NET Core doesn't include performance counters yet).
+
+## Pooled Connection Reset
+
+When a pooled connection is closed, Npgsql will arrange for its state to be reset the next time it's used. This prevents leakage of state from one usage cycle of a physical connection to another one. For example, you may change certain PostgreSQL parameters (e.g. `statement_timeout`), and it's undesirable for this change to persist when the connection is closed.
+
+Connection reset happens via the PostgreSQL [`DISCARD ALL` command](https://www.postgresql.org/docs/current/static/sql-discard.html), or, if there are any prepared statements at the time of closing, by a combination of the equivalent statements described in the docs (to prevent closing those statements). Note that these statements aren't actually sent when closing the connection - they're written into Npgsql's internal write buffer, and will be sent with the first user statement after the connection is reopened. This prevents a costly database roundtrip.
+
+If you really want to squeeze every last bit of performance from PostgreSQL, you may disable connect reset by specifying `No Reset On Close` on your connection string - this will slightly improve performance in scenarios where connection are very short-lived, and especially if prepared statements are in use.
+
 ## Reading Large Values
 
 When reading results from PostgreSQL, Npgsql first writes raw binary data from the network into an internal read buffer, and then parses that data as you call methods such as `NpgsqlDataReader.GetString()`. While this allows for efficient network reads, it's worth thinking about the size of this buffer, which is 8K by default. By default, Npgsql attempts to read each row into the buffer. If the entire row fits in 8K, you'll have optimal performance. However, if a row is bigger than 8K, Npgsql will allocate a temporary one-time buffer for the row, and discard it immediately afterwards; this can create very significant memory churn that will slow down your application (future versions may reuse these large buffers). To avoid this, if you know you're going to be reading 16k rows, you can specify `Read Buffer Size=18000` in your connection string (leaving some margin for protocol overhead), this will ensure that the read buffer is reused and no extra allocation occur.
@@ -39,14 +55,6 @@ You can also control the socket's receive buffer size (not to be confused with N
 Writing is somewhat similar - Npgsql has an internally write buffer (also 8K by default). When writing your query's SQL and parameters to PostgreSQL, Npgsql always writes "sequentially", that is, filling up the 8K buffer and flushing it when full. You can use `Write Buffer Size` to control the buffer's size.
 
 You can also control the socket's receive buffer size (not to be confused with Npgsql's internal buffer) by setting the `Socket Receive Buffer Size` connection string parameter.
-
-## Performance Counters
-
-Npgsql 3.2 includes support for *performance counters*, which provide visibility into connections and the connection pool - this helps you understand what your application is doing in real-time, whether there's a connection leak, etc. Npgsql counter support is very similar to [that of other ADO.NET providers, such as SqlClient](https://msdn.microsoft.com/en-us/library/ms254503(v=vs.110).aspx), it's recommended that your read that page first.
-
-Using performance counters first involves setting them up on your Windows system. To do this you will need to install Npgsql's MSI, which is available on the [github releases page](https://github.com/npgsql/npgsql/releases). Note that GAC installation isn't necessary (or recommended). Once the counters are installed, fire up the Windows Performance Monitor and look for the category ".NET Data Provider for PostgreSQL (Npgsql)". Restart your Npgsql application, and you should start seeing real-time data.
-
-Performance counters are currently only available on Windows with .NET Framework (.NET Core doesn't include performance counters yet).
 
 ## Unix Domain Socket
 
