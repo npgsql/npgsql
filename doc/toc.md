@@ -16,5 +16,4 @@
 # [Keepalive](keepalive.md)
 # [Bulk Copy](copy.md)
 # [Logging](logging.md)
-# [System.Transactions](system_transactions.md)
 # [Visual Studio Integration](ddex.md)
