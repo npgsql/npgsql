@@ -150,8 +150,8 @@ namespace Npgsql.Tests
             {
                 var invalidCommandName = new NpgsqlCommand("invalidfunctionname", conn);
                 Assert.That(() => NpgsqlCommandBuilder.DeriveParameters(invalidCommandName),
-                    Throws.Exception.TypeOf<InvalidOperationException>()
-                                    .With.Message.Contains("does not exist"));
+                    Throws.Exception.TypeOf<PostgresException>()
+                        .With.Property("SqlState").EqualTo("42883"));
             }
         }
 
@@ -287,8 +287,8 @@ RESET search_path;
 ");
                     var command = new NpgsqlCommand("schema1func", conn) { CommandType = CommandType.StoredProcedure };
                     Assert.That(() => NpgsqlCommandBuilder.DeriveParameters(command),
-                        Throws.Exception.TypeOf<NpgsqlException>()
-                        .With.Property("Code").EqualTo("42883"));
+                        Throws.Exception.TypeOf<PostgresException>()
+                        .With.Property("SqlState").EqualTo("42883"));
                 }
                 finally
                 {
@@ -327,10 +327,9 @@ LANGUAGE 'plpgsql';
 SET search_path TO schema1, schema2;
 ");
                     var command = new NpgsqlCommand("redundantfunc", conn) { CommandType = CommandType.StoredProcedure };
-                    NpgsqlCommandBuilder.DeriveParameters(command);
                     Assert.That(() => NpgsqlCommandBuilder.DeriveParameters(command),
-                        Throws.Exception.TypeOf<NpgsqlException>()
-                        .With.Property("Code").EqualTo("42725"));
+                        Throws.Exception.TypeOf<PostgresException>()
+                        .With.Property("SqlState").EqualTo("42725"));
                 }
                 finally
                 {
