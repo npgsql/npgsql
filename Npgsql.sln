@@ -21,6 +21,8 @@ Project("{930C7802-8A8C-48F9-8165-68863BCCD9DD}") = "GACInstaller", "src\GACInst
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Npgsql.Benchmarks", "test\Npgsql.Benchmarks\Npgsql.Benchmarks.csproj", "{8B4AE9B6-CDAC-44DD-A5CD-28A470D363B8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VSIX", "src\VSIX\VSIX.csproj", "{ECFD8615-DEAD-4498-B262-85A4D0230229}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -59,6 +61,14 @@ Global
 		{8B4AE9B6-CDAC-44DD-A5CD-28A470D363B8}.Release|Any CPU.Build.0 = Release|Any CPU
 		{8B4AE9B6-CDAC-44DD-A5CD-28A470D363B8}.Release|x86.ActiveCfg = Release|Any CPU
 		{8B4AE9B6-CDAC-44DD-A5CD-28A470D363B8}.Release|x86.Build.0 = Release|Any CPU
+		{ECFD8615-DEAD-4498-B262-85A4D0230229}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ECFD8615-DEAD-4498-B262-85A4D0230229}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ECFD8615-DEAD-4498-B262-85A4D0230229}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{ECFD8615-DEAD-4498-B262-85A4D0230229}.Debug|x86.Build.0 = Debug|Any CPU
+		{ECFD8615-DEAD-4498-B262-85A4D0230229}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ECFD8615-DEAD-4498-B262-85A4D0230229}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ECFD8615-DEAD-4498-B262-85A4D0230229}.Release|x86.ActiveCfg = Release|Any CPU
+		{ECFD8615-DEAD-4498-B262-85A4D0230229}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -68,6 +78,7 @@ Global
 		{E9C258D7-0D8E-4E6A-9857-5C6438591755} = {ED612DB1-AB32-4603-95E7-891BACA71C39}
 		{3E9D78D3-C5D4-40E3-9FDD-AC91E19618AB} = {8537E50E-CF7F-49CB-B4EF-3E2A1B11F050}
 		{8B4AE9B6-CDAC-44DD-A5CD-28A470D363B8} = {ED612DB1-AB32-4603-95E7-891BACA71C39}
+		{ECFD8615-DEAD-4498-B262-85A4D0230229} = {8537E50E-CF7F-49CB-B4EF-3E2A1B11F050}
 	EndGlobalSection
 	GlobalSection(MonoDevelopProperties) = preSolution
 		StartupItem = Npgsql.csproj

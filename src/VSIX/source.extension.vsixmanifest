@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
+  <Metadata>
+    <Identity Id="Npgsql.VSIX.07074491-d0c6-4138-9d44-ea3f8920e84b" Version="3.2.0" Language="en-US" Publisher="Npgsql Development Team" />
+    <DisplayName>Npgsql PostgreSQL Integration</DisplayName>
+    <Description xml:space="preserve">Allows you to connect to PostgreSQL from within Visual Studio via Server Explorer, create EF6 model from existing database, etc.</Description>
+    <MoreInfo>http://www.npgsql.org/doc/ddex.html</MoreInfo>
+    <License>Resources\License.txt</License>
+    <Icon>Resources\PostgreSQL.ico</Icon>
+    <Tags>npgsql;postgresql;postgres;database;ddex;entity framework</Tags>
+  </Metadata>
+  <Installation>
+    <InstallationTarget Version="[14.0,15.0]" Id="Microsoft.VisualStudio.Community" />
+    <InstallationTarget Version="[14.0,15.0]" Id="Microsoft.VisualStudio.Pro" />
+    <InstallationTarget Version="[14.0,15.0]" Id="Microsoft.VisualStudio.Enterprise" />
+  </Installation>
+  <Dependencies>
+    <Dependency Id="Microsoft.Framework.NDP" DisplayName="Microsoft .NET Framework" d:Source="Manual" Version="[4.5,)" />
+    <Dependency Id="Microsoft.VisualStudio.MPF.14.0" DisplayName="Visual Studio MPF 14.0" d:Source="Installed" Version="[14.0]" />
+  </Dependencies>
+  <Assets>
+    <Asset Type="Microsoft.VisualStudio.VsPackage" d:Source="Project" d:ProjectName="%CurrentProject%" Path="|%CurrentProject%;PkgdefProjectOutputGroup|" />
+  </Assets>
+</PackageManifest>
