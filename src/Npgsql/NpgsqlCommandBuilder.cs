@@ -133,11 +133,7 @@ namespace Npgsql
             }
         }
 
-        private static void DoDeriveParameters(NpgsqlCommand command)
-        {
-            // See http://www.postgresql.org/docs/current/static/catalog-pg-proc.html
-            command.Parameters.Clear();
-            string query = @"
+        private const string DeriveParametersQuery = @"
 SELECT
 CASE
 	WHEN pg_proc.proargnames IS NULL THEN array_cat(array_fill(''::name,ARRAY[pg_proc.pronargs]),array_agg(pg_attribute.attname ORDER BY pg_attribute.attnum))
@@ -155,10 +151,15 @@ END AS proargmodes
 FROM pg_proc
 LEFT JOIN pg_type ON pg_proc.prorettype = pg_type.oid
 LEFT JOIN pg_attribute ON pg_type.typrelid = pg_attribute.attrelid AND pg_attribute.attnum >= 1
-WHERE pg_proc.oid = :proname::regproc::oid
+WHERE pg_proc.oid = :proname::regproc
 GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_proc.proargmodes, pg_proc.pronargs;
 ";
-            using (var c = new NpgsqlCommand(query, command.Connection))
+
+        private static void DoDeriveParameters(NpgsqlCommand command)
+        {
+            // See http://www.postgresql.org/docs/current/static/catalog-pg-proc.html
+            command.Parameters.Clear();
+            using (var c = new NpgsqlCommand(DeriveParametersQuery, command.Connection))
             {
                 c.Parameters.Add(new NpgsqlParameter("proname", NpgsqlDbType.Text));
                 c.Parameters[0].Value = command.CommandText;

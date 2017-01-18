@@ -151,7 +151,7 @@ namespace Npgsql.Tests
                 var invalidCommandName = new NpgsqlCommand("invalidfunctionname", conn);
                 Assert.That(() => NpgsqlCommandBuilder.DeriveParameters(invalidCommandName),
                     Throws.Exception.TypeOf<PostgresException>()
-                        .With.Property("SqlState").EqualTo("42883"));
+                        .With.Property(nameof(PostgresException.SqlState)).EqualTo("42883"));
             }
         }
 
@@ -288,7 +288,7 @@ RESET search_path;
                     var command = new NpgsqlCommand("schema1func", conn) { CommandType = CommandType.StoredProcedure };
                     Assert.That(() => NpgsqlCommandBuilder.DeriveParameters(command),
                         Throws.Exception.TypeOf<PostgresException>()
-                        .With.Property("SqlState").EqualTo("42883"));
+                        .With.Property(nameof(PostgresException.SqlState)).EqualTo("42883"));
                 }
                 finally
                 {
@@ -329,7 +329,7 @@ SET search_path TO schema1, schema2;
                     var command = new NpgsqlCommand("redundantfunc", conn) { CommandType = CommandType.StoredProcedure };
                     Assert.That(() => NpgsqlCommandBuilder.DeriveParameters(command),
                         Throws.Exception.TypeOf<PostgresException>()
-                        .With.Property("SqlState").EqualTo("42725"));
+                        .With.Property(nameof(PostgresException.SqlState)).EqualTo("42725"));
                 }
                 finally
                 {
