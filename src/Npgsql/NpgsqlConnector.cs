@@ -669,10 +669,10 @@ namespace Npgsql
                     socket.Blocking = true;
                     if (socket.AddressFamily == AddressFamily.InterNetwork)
                         socket.NoDelay = true;
-                    if (Settings.SocketReceiveBufferSize.HasValue)
-                        socket.ReceiveBufferSize = Settings.SocketReceiveBufferSize.Value;
-                    if (Settings.SocketSendBufferSize.HasValue)
-                        socket.SendBufferSize = Settings.SocketSendBufferSize.Value;
+                    if (Settings.SocketReceiveBufferSize > 0)
+                        socket.ReceiveBufferSize = Settings.SocketReceiveBufferSize;
+                    if (Settings.SocketSendBufferSize > 0)
+                        socket.SendBufferSize = Settings.SocketSendBufferSize;
                     _socket = socket;
                     return;
                 }
@@ -752,10 +752,10 @@ namespace Npgsql
 
                     if (socket.AddressFamily == AddressFamily.InterNetwork)
                         socket.NoDelay = true;
-                    if (Settings.SocketReceiveBufferSize.HasValue)
-                        socket.ReceiveBufferSize = Settings.SocketReceiveBufferSize.Value;
-                    if (Settings.SocketSendBufferSize.HasValue)
-                        socket.SendBufferSize = Settings.SocketSendBufferSize.Value;
+                    if (Settings.SocketReceiveBufferSize > 0)
+                        socket.ReceiveBufferSize = Settings.SocketReceiveBufferSize;
+                    if (Settings.SocketSendBufferSize > 0)
+                        socket.SendBufferSize = Settings.SocketSendBufferSize;
                     _socket = socket;
                     return;
                 }

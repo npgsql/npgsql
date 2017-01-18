@@ -940,7 +940,7 @@ namespace Npgsql
         [DisplayName("Socket Receive Buffer Size")]
         [NpgsqlConnectionStringProperty]
         [CanBeNull]
-        public int? SocketReceiveBufferSize
+        public int SocketReceiveBufferSize
         {
             get { return _socketReceiveBufferSize; }
             set
@@ -949,7 +949,7 @@ namespace Npgsql
                 SetValue(nameof(SocketReceiveBufferSize), value);
             }
         }
-        int? _socketReceiveBufferSize;
+        int _socketReceiveBufferSize;
 
         /// <summary>
         /// Determines the size of socket send buffer.
@@ -958,8 +958,7 @@ namespace Npgsql
         [Description("Determines the size of socket send buffer.")]
         [DisplayName("Socket Send Buffer Size")]
         [NpgsqlConnectionStringProperty]
-        [CanBeNull]
-        public int? SocketSendBufferSize
+        public int SocketSendBufferSize
         {
             get { return _socketSendBufferSize; }
             set
@@ -968,7 +967,7 @@ namespace Npgsql
                 SetValue(nameof(SocketSendBufferSize), value);
             }
         }
-        int? _socketSendBufferSize;
+        int _socketSendBufferSize;
 
         /// <summary>
         /// The maximum number SQL statements that can be automatically prepared at any given point.
