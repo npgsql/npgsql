@@ -307,6 +307,8 @@ namespace Npgsql
             {
                 await RawOpenAsync(timeout, cancellationToken);
                 var username = GetUsername();
+                if (Settings.Database == null)
+                    Settings.Database = username;
                 WriteStartupMessage(username);
                 WriteBuffer.Flush();
                 timeout.Check();
@@ -483,7 +485,8 @@ namespace Npgsql
                 {
                     if (len > ReadBuffer.Size)
                     {
-                        _origReadBuffer = ReadBuffer;
+                        if (_origReadBuffer == null)
+                            _origReadBuffer = ReadBuffer;
                         ReadBuffer = await (ReadBuffer.AllocateOversizeAsync(len, cancellationToken));
                     }
 

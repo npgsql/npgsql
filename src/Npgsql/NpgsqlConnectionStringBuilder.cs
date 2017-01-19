@@ -343,6 +343,7 @@ namespace Npgsql
         [Description("The PostgreSQL database to connect to.")]
         [DisplayName("Database")]
         [NpgsqlConnectionStringProperty("DB")]
+        [CanBeNull]
         public string Database
         {
             get { return _database; }

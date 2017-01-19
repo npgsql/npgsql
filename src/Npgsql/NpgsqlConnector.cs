@@ -311,7 +311,6 @@ namespace Npgsql
         internal string ConnectionString => Settings.ConnectionString;
         string Host => Settings.Host;
         int Port => Settings.Port;
-        string Database => Settings.Database;
         string KerberosServiceName => Settings.KerberosServiceName;
         SslMode SslMode => Settings.SslMode;
         bool UseSslStream => Settings.UseSslStream;
@@ -412,6 +411,8 @@ namespace Npgsql
             try {
                 RawOpen(timeout);
                 var username = GetUsername();
+                if (Settings.Database == null)
+                    Settings.Database = username;
                 WriteStartupMessage(username);
                 WriteBuffer.Flush();
                 timeout.Check();
@@ -448,8 +449,8 @@ namespace Npgsql
                     "UTF8"
             };
 
-            if (!string.IsNullOrEmpty(Database))
-                startupMessage["database"] = Database;
+            Debug.Assert(Settings.Database != null);
+            startupMessage["database"] = Settings.Database;
             if (!string.IsNullOrEmpty(Settings.ApplicationName))
                 startupMessage["application_name"] = Settings.ApplicationName;
             if (!string.IsNullOrEmpty(Settings.SearchPath))
