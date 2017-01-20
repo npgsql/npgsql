@@ -374,6 +374,10 @@ namespace Npgsql
         [CanBeNull]
         internal string Password => Settings.Password;
 
+        // The following two lines are here for backwards compatibility with the EF6 provider
+        internal string EntityTemplateDatabase => Settings.EntityTemplateDatabase;
+        internal string EntityAdminDatabase => Settings.EntityAdminDatabase;
+
         #endregion Configuration settings
 
         #region State management
