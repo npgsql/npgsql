@@ -803,13 +803,13 @@ namespace Npgsql.Tests
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/824")]
         public void ReloadTypes()
         {
-            using (var conn1 = OpenConnection())
-            using (var conn2 = OpenConnection())
+            using (var conn = OpenConnection())
             {
-                Assert.That(conn2.ExecuteScalar("SELECT EXISTS (SELECT * FROM pg_type WHERE typname='reload_types_enum')"), Is.False);
-                conn2.ExecuteNonQuery("CREATE TYPE pg_temp.reload_types_enum AS ENUM ('First', 'Second')");
-                conn1.ReloadTypes();
-                conn1.MapEnum<ReloadTypesEnum>("reload_types_enum");
+                Assert.That(conn.ExecuteScalar("SELECT EXISTS (SELECT * FROM pg_type WHERE typname='reload_types_enum')"), Is.False);
+                conn.ExecuteNonQuery("CREATE TYPE pg_temp.reload_types_enum AS ENUM ('First', 'Second')");
+                Assert.That(() => conn.MapEnum<ReloadTypesEnum>(), Throws.Exception.TypeOf<NpgsqlException>());
+                conn.ReloadTypes();
+                conn.MapEnum<ReloadTypesEnum>();
             }
         }
         enum ReloadTypesEnum { First, Second };
