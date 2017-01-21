@@ -22,6 +22,7 @@
 #endregion
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data.Common;
@@ -55,8 +56,6 @@ namespace Npgsql
         /// Maps each property to its [DefaultValue]
         /// </summary>
         static readonly Dictionary<PropertyInfo, object> PropertyDefaults;
-
-        static readonly string[] Empty = new string[0];
 
         #endregion
 
@@ -113,8 +112,8 @@ namespace Npgsql
                 let displayName = p.GetCustomAttribute<DisplayNameAttribute>().DisplayName.ToUpperInvariant()
                 let propertyName = p.Name.ToUpperInvariant()
                 from k in new[] { displayName }
-                  .Concat(propertyName != displayName ? new[] { propertyName } : Empty )
-                  .Concat(p.GetCustomAttribute<NpgsqlConnectionStringPropertyAttribute>().Aliases
+                  .Concat(propertyName != displayName ? new[] { propertyName } : EmptyStringArray )
+                  .Concat(p.GetCustomAttribute<NpgsqlConnectionStringPropertyAttribute>().Synonyms
                     .Select(a => a.ToUpperInvariant())
                   )
                   .Select(k => new { Property = p, Keyword = k })
@@ -343,6 +342,7 @@ namespace Npgsql
         [Description("The PostgreSQL database to connect to.")]
         [DisplayName("Database")]
         [NpgsqlConnectionStringProperty("DB")]
+        [CanBeNull]
         public string Database
         {
             get { return _database; }
@@ -939,7 +939,7 @@ namespace Npgsql
         [DisplayName("Socket Receive Buffer Size")]
         [NpgsqlConnectionStringProperty]
         [CanBeNull]
-        public int? SocketReceiveBufferSize
+        public int SocketReceiveBufferSize
         {
             get { return _socketReceiveBufferSize; }
             set
@@ -948,7 +948,7 @@ namespace Npgsql
                 SetValue(nameof(SocketReceiveBufferSize), value);
             }
         }
-        int? _socketReceiveBufferSize;
+        int _socketReceiveBufferSize;
 
         /// <summary>
         /// Determines the size of socket send buffer.
@@ -957,8 +957,7 @@ namespace Npgsql
         [Description("Determines the size of socket send buffer.")]
         [DisplayName("Socket Send Buffer Size")]
         [NpgsqlConnectionStringProperty]
-        [CanBeNull]
-        public int? SocketSendBufferSize
+        public int SocketSendBufferSize
         {
             get { return _socketSendBufferSize; }
             set
@@ -967,7 +966,7 @@ namespace Npgsql
                 SetValue(nameof(SocketSendBufferSize), value);
             }
         }
-        int? _socketSendBufferSize;
+        int _socketSendBufferSize;
 
         /// <summary>
         /// The maximum number SQL statements that can be automatically prepared at any given point.
@@ -1237,24 +1236,32 @@ namespace Npgsql
 #endif
         #endregion IDictionary<string, object>
 
-        #region Attributes
+        #region ICustomTypeDescriptor
 
-        [AttributeUsage(AttributeTargets.Property)]
-        [MeansImplicitUse]
-        class NpgsqlConnectionStringPropertyAttribute : Attribute
+#if NET45 || NET451
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
+        protected override void GetProperties(Hashtable propertyDescriptors)
         {
-            internal string[] Aliases { get; }
+            // Tweak which properties are exposed via TypeDescriptor. This affects the VS DDEX
+            // provider, for example.
+            base.GetProperties(propertyDescriptors);
 
-            internal NpgsqlConnectionStringPropertyAttribute()
-            {
-                Aliases = Empty;
-            }
-
-            internal NpgsqlConnectionStringPropertyAttribute(params string[] aliases)
-            {
-                Aliases = aliases;
-            }
+            var toRemove = propertyDescriptors.Values
+                .Cast<PropertyDescriptor>()
+                .Where(d =>
+                    !d.Attributes.Cast<Attribute>().Any(a => a is NpgsqlConnectionStringPropertyAttribute) ||
+                    d.Attributes.Cast<Attribute>().Any(a => a is ObsoleteAttribute)
+                )
+                .ToList();
+            foreach (var o in toRemove)
+                propertyDescriptors.Remove(o.DisplayName);
         }
+#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
+#endif
+
+        #endregion
+
+        #region Attributes
 
 #if NETSTANDARD1_3
         [AttributeUsage(AttributeTargets.Property)]
@@ -1265,7 +1272,43 @@ namespace Npgsql
 #endif
 
         #endregion
+
+        internal static readonly string[] EmptyStringArray = new string[0];
     }
+
+    #region Attributes
+
+    /// <summary>
+    /// Marks on <see cref="NpgsqlConnectionStringBuilder"/> which participate in the connection
+    /// string. Optionally holds a set of synonyms for the property.
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Property)]
+    [MeansImplicitUse]
+    public class NpgsqlConnectionStringPropertyAttribute : Attribute
+    {
+        /// <summary>
+        /// Holds a list of synonyms for the property.
+        /// </summary>
+        public string[] Synonyms { get; }
+
+        /// <summary>
+        /// Creates a <see cref="NpgsqlConnectionStringPropertyAttribute"/>.
+        /// </summary>
+        public NpgsqlConnectionStringPropertyAttribute()
+        {
+            Synonyms = NpgsqlConnectionStringBuilder.EmptyStringArray;
+        }
+
+        /// <summary>
+        /// Creates a <see cref="NpgsqlConnectionStringPropertyAttribute"/>.
+        /// </summary>
+        public NpgsqlConnectionStringPropertyAttribute(params string[] synonyms)
+        {
+            Synonyms = synonyms;
+        }
+    }
+
+    #endregion
 
     #region Enums
 

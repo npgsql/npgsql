@@ -144,6 +144,33 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, LinuxIgnore("Needs to be run explicitly with Kerberos credentials")]
+        public void ConnectionDatabasePopulatedOnConnect()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                IntegratedSecurity = true,
+                Username = null,
+                Password = null,
+                Database = null
+            };
+            using (var conn = new NpgsqlConnection(csb))
+            {
+                try
+                {
+                    conn.Open();
+                }
+                catch (Exception e)
+                {
+                    if (TestUtil.IsOnBuildServer)
+                        throw;
+                    Console.WriteLine(e);
+                    Assert.Ignore("Integrated security (GSS/SSPI) doesn't seem to be set up");
+                }
+                Assert.That(conn.Database, Is.Not.Null);
+            }
+        }
+
         #region Setup / Teardown / Utils
 
         [SetUp]

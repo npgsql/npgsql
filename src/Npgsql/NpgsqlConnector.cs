@@ -311,7 +311,6 @@ namespace Npgsql
         internal string ConnectionString => Settings.ConnectionString;
         string Host => Settings.Host;
         int Port => Settings.Port;
-        string Database => Settings.Database;
         string KerberosServiceName => Settings.KerberosServiceName;
         SslMode SslMode => Settings.SslMode;
         bool UseSslStream => Settings.UseSslStream;
@@ -412,6 +411,8 @@ namespace Npgsql
             try {
                 RawOpen(timeout);
                 var username = GetUsername();
+                if (Settings.Database == null)
+                    Settings.Database = username;
                 WriteStartupMessage(username);
                 WriteBuffer.Flush();
                 timeout.Check();
@@ -448,8 +449,8 @@ namespace Npgsql
                     "UTF8"
             };
 
-            if (!string.IsNullOrEmpty(Database))
-                startupMessage["database"] = Database;
+            Debug.Assert(Settings.Database != null);
+            startupMessage["database"] = Settings.Database;
             if (!string.IsNullOrEmpty(Settings.ApplicationName))
                 startupMessage["application_name"] = Settings.ApplicationName;
             if (!string.IsNullOrEmpty(Settings.SearchPath))
@@ -668,10 +669,10 @@ namespace Npgsql
                     socket.Blocking = true;
                     if (socket.AddressFamily == AddressFamily.InterNetwork)
                         socket.NoDelay = true;
-                    if (Settings.SocketReceiveBufferSize.HasValue)
-                        socket.ReceiveBufferSize = Settings.SocketReceiveBufferSize.Value;
-                    if (Settings.SocketSendBufferSize.HasValue)
-                        socket.SendBufferSize = Settings.SocketSendBufferSize.Value;
+                    if (Settings.SocketReceiveBufferSize > 0)
+                        socket.ReceiveBufferSize = Settings.SocketReceiveBufferSize;
+                    if (Settings.SocketSendBufferSize > 0)
+                        socket.SendBufferSize = Settings.SocketSendBufferSize;
                     _socket = socket;
                     return;
                 }
@@ -751,10 +752,10 @@ namespace Npgsql
 
                     if (socket.AddressFamily == AddressFamily.InterNetwork)
                         socket.NoDelay = true;
-                    if (Settings.SocketReceiveBufferSize.HasValue)
-                        socket.ReceiveBufferSize = Settings.SocketReceiveBufferSize.Value;
-                    if (Settings.SocketSendBufferSize.HasValue)
-                        socket.SendBufferSize = Settings.SocketSendBufferSize.Value;
+                    if (Settings.SocketReceiveBufferSize > 0)
+                        socket.ReceiveBufferSize = Settings.SocketReceiveBufferSize;
+                    if (Settings.SocketSendBufferSize > 0)
+                        socket.SendBufferSize = Settings.SocketSendBufferSize;
                     _socket = socket;
                     return;
                 }
