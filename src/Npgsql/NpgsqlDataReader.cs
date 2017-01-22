@@ -59,6 +59,7 @@ namespace Npgsql
         readonly NpgsqlConnector _connector;
         readonly NpgsqlConnection _connection;
         readonly CommandBehavior _behavior;
+        readonly Task _sendTask;
 
         ReaderState _state;
 
@@ -104,10 +105,9 @@ namespace Npgsql
         // static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         bool IsSequential => (_behavior & CommandBehavior.SequentialAccess) != 0;
-        bool IsCaching => !IsSequential;
         bool IsSchemaOnly => (_behavior & CommandBehavior.SchemaOnly) != 0;
 
-        internal NpgsqlDataReader(NpgsqlCommand command, CommandBehavior behavior, List<NpgsqlStatement> statements)
+        internal NpgsqlDataReader(NpgsqlCommand command, CommandBehavior behavior, List<NpgsqlStatement> statements, Task sendTask)
         {
             Command = command;
             _connection = command.Connection;
@@ -115,6 +115,7 @@ namespace Npgsql
             _behavior = behavior;
             _statements = statements;
             _statementIndex = -1;
+            _sendTask = sendTask;
             _state = ReaderState.BetweenResults;
         }
 
@@ -716,7 +717,9 @@ namespace Npgsql
             if (_state != ReaderState.Consumed)
                 Consume();
 
-            Command.CompleteRemainingSend();
+            // Make sure the send task for this command, which may have executed asynchronously and in
+            // parallel with the reading, has completed, throwing any exceptions it generated.
+            _sendTask.GetAwaiter().GetResult();
 
             Cleanup(connectionClosing);
         }

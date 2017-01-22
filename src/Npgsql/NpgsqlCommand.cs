@@ -82,9 +82,6 @@ namespace Npgsql
         /// </summary>
         public IReadOnlyList<NpgsqlStatement> Statements => _statements.AsReadOnly();
 
-        [CanBeNull]
-        internal Task CurrentSendTask;
-
         UpdateRowSource _updateRowSource = UpdateRowSource.Both;
 
         /// <summary>
@@ -428,7 +425,7 @@ namespace Npgsql
                 if (!needToPrepare)
                     return;
 
-                SendPrepare(false, CancellationToken.None).Wait();
+                var sendTask = SendPrepare(false, CancellationToken.None);
 
                 // Loop over statements, skipping those that are already prepared (because they were persisted)
                 var isFirst = true;
@@ -465,7 +462,7 @@ namespace Npgsql
                 }
 
                 connector.ReadExpecting<ReadyForQueryMessage>();
-                CompleteRemainingSend();
+                sendTask.GetAwaiter().GetResult();
 
                 _connectorPreparedOn = connector;
             }
@@ -485,7 +482,7 @@ namespace Npgsql
             Log.ClosingCommandPreparedStatements(connector.Id);
             using (connector.StartUserAction())
             {
-                SendClose(false, CancellationToken.None).Wait();
+                var sendTask = SendClose(false, CancellationToken.None);
                 foreach (var statement in _statements.Where(s => s.PreparedStatement?.State == PreparedState.BeingUnprepared))
                 {
                     connector.ReadExpecting<CloseCompletedMessage>();
@@ -494,8 +491,7 @@ namespace Npgsql
                     statement.PreparedStatement = null;
                 }
                 connector.ReadExpecting<ReadyForQueryMessage>();
-
-                CompleteRemainingSend();
+                sendTask.GetAwaiter().GetResult();
             }
         }
 
@@ -633,6 +629,7 @@ namespace Npgsql
             try
             {
                 Log.ExecuteCommand(connector.Id, this);
+                Task sendTask;
 
                 // If a cancellation is in progress, wait for it to "complete" before proceeding (#615)
                 lock (connector.CancelLock) { }
@@ -666,20 +663,20 @@ namespace Npgsql
                     // to prevents a dependency on the thread pool (which would also trigger deadlocks).
                     // The WriteBuffer notifies this command when the first buffer flush occurs, so that the
                     // send functions can switch to the special async mode when needed.
-                    CurrentSendTask = SendExecute(async, cancellationToken);
+                    sendTask = SendExecute(async, cancellationToken);
                 }
                 else
                 {
-                    CurrentSendTask = SendExecuteSchemaOnly(async, cancellationToken);
+                    sendTask = SendExecuteSchemaOnly(async, cancellationToken);
                 }
 
                 // The following is a hack. It raises an exception if one was thrown in the first phases
                 // of the send (i.e. in parts of the send that executed synchronously). Exceptions may
                 // still happen later and aren't properly handled. See #1323.
-                if (CurrentSendTask.IsFaulted)
-                    CurrentSendTask.GetAwaiter().GetResult();
+                if (sendTask.IsFaulted)
+                    sendTask.GetAwaiter().GetResult();
 
-                var reader = new NpgsqlDataReader(this, behavior, _statements);
+                var reader = new NpgsqlDataReader(this, behavior, _statements, sendTask);
                 if (async)
                     await reader.NextResultAsync(cancellationToken);
                 else
@@ -691,22 +688,6 @@ namespace Npgsql
             {
                 State = CommandState.Idle;
                 throw;
-            }
-        }
-
-        #endregion
-
-        #region Send
-
-        /// <summary>
-        /// Waits until any background async send task completes.
-        /// </summary>
-        internal void CompleteRemainingSend()
-        {
-            if (CurrentSendTask != null)
-            {
-                CurrentSendTask.Wait();
-                CurrentSendTask = null;
             }
         }
 
