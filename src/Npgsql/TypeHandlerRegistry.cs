@@ -881,7 +881,7 @@ WHERE a.typtype = 'b' AND b.typname = @name{(withSchema ? " AND ns.nspname = @sc
             {
                 // No dot, this is a partial type name
                 if (!_postgresTypes.ByName.TryGetValue(pgName, out postgresType))
-                    throw new NpgsqlException($"An PostgreSQL type with the name {pgName} was not found in the database");
+                    throw new NpgsqlException($"A PostgreSQL type with the name {pgName} was not found in the database");
                 if (postgresType == null)
                     throw new NpgsqlException($"More than one PostgreSQL type was found with the name {pgName}, please specify a full name including schema");
                 return postgresType;
@@ -889,7 +889,7 @@ WHERE a.typtype = 'b' AND b.typname = @name{(withSchema ? " AND ns.nspname = @sc
 
             // Full type name with namespace
             if (!_postgresTypes.ByFullName.TryGetValue(pgName, out postgresType))
-                throw new Exception($"An PostgreSQL type with the name {pgName} was not found in the database");
+                throw new Exception($"A PostgreSQL type with the name {pgName} was not found in the database");
             return postgresType;
         }
 
