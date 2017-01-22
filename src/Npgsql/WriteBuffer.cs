@@ -133,7 +133,10 @@ namespace Npgsql
             TotalBytesFlushed += _writePosition;
             _writePosition = 0;
             if (CurrentCommand != null)
+            {
                 CurrentCommand.FlushOccurred = true;
+                CurrentCommand = null;
+            }
             if (_copyMode)
                 WriteCopyDataHeader();
         }

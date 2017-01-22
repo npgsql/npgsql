@@ -706,8 +706,6 @@ namespace Npgsql
 
         void CleanupSend()
         {
-            Debug.Assert(Connection?.Connector != null);
-            Connection.Connector.WriteBuffer.CurrentCommand = null;
             // ReSharper disable once ConditionIsAlwaysTrueOrFalse
             if (SynchronizationContext.Current != null)  // Check first because SetSynchronizationContext allocates
                 SynchronizationContext.SetSynchronizationContext(null);
@@ -870,9 +868,6 @@ namespace Npgsql
             BeginSend();
             var connector = Connection.Connector;
             Debug.Assert(connector != null);
-
-            connector.WriteBuffer.CurrentCommand = this;
-            FlushOccurred = false;
 
             var buf = connector.WriteBuffer;
             foreach (var statement in _statements.Where(s => s.IsPrepared))
