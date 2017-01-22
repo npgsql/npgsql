@@ -55,20 +55,6 @@ namespace Npgsql.TypeHandlers
         /// </summary>
         protected int LowerBound { get; set; }
 
-        #region State
-
-        Array _readValue;
-        ReadState _readState;
-        ReadBuffer _readBuf;
-        FieldDescription _fieldDescription;
-        int _dimensions;
-        int[] _dimLengths, _indices;
-        int _index;
-        int _elementLen;
-        bool _preparedRead;
-
-        #endregion
-
         internal override Type GetFieldType(FieldDescription fieldDescription = null) => typeof(Array);
         internal override Type GetProviderSpecificFieldType(FieldDescription fieldDescription = null) => typeof(Array);
 
@@ -100,206 +86,62 @@ namespace Npgsql.TypeHandlers
 
         #region Read
 
-        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override ValueTask<Array> Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
+            => Read<TElement>(buf, async);
+
+        protected async ValueTask<Array> Read<TElement2>(ReadBuffer buf, bool async)
         {
-            Debug.Assert(_readState == ReadState.NeedPrepare);
-            if (_readState != ReadState.NeedPrepare) // Checks against recursion and bugs
-                throw new InvalidOperationException("Started reading a value before completing a previous value");
+            await buf.Ensure(12, async);
+            var dimensions = buf.ReadInt32();
+            buf.ReadInt32();        // Has nulls. Not populated by PG?
+            var elementOID = buf.ReadUInt32();
+            // The following should hold but fails in test CopyTests.ReadBitString
+            //Debug.Assert(elementOID == ElementHandler.BackendType.OID);
 
-            _readBuf = buf;
-            _fieldDescription = fieldDescription;
-            _elementLen = -1;
-            _readState = ReadState.ReadNothing;
-            _preparedRead = false;
-        }
+            var dimLengths = new int[dimensions];
 
-        public override bool Read([CanBeNull] out Array result) => Read<TElement>(out result);
-
-        [ContractAnnotation("=> true, result:notnull; => false, result:null")]
-        protected bool Read<TElement2>([CanBeNull] out Array result)
-        {
-            switch (_readState)
+            await buf.Ensure(dimensions * 8, async);
+            for (var i = 0; i < dimensions; i++)
             {
-                case ReadState.ReadNothing:
-                    if (_readBuf.ReadBytesLeft < 12)
-                    {
-                        result = null;
-                        return false;
-                    }
-                    _dimensions = _readBuf.ReadInt32();
-                    _readBuf.ReadInt32();        // Has nulls. Not populated by PG?
-
-                    _readBuf.ReadUInt32();
-                    // The following should hold but fails in test CopyTests.ReadBitString
-                    //var elementOID = _readBuf.ReadUInt32();
-                    //Debug.Assert(elementOID == ElementHandler.BackendType.OID);
-
-                    _dimLengths = new int[_dimensions];
-                    if (_dimensions > 1) {
-                        _indices = new int[_dimensions];
-                    }
-                    _index = 0;
-                    _readState = ReadState.ReadHeader;
-                    goto case ReadState.ReadHeader;
-
-                case ReadState.ReadHeader:
-                    if (_readBuf.ReadBytesLeft < _dimensions * 8) {
-                        result = null;
-                        return false;
-                    }
-                    for (var i = 0; i < _dimensions; i++)
-                    {
-                        _dimLengths[i] = _readBuf.ReadInt32();
-                        _readBuf.ReadInt32(); // We don't care about the lower bounds
-                    }
-                    if (_dimensions == 0)
-                    {
-                        result = new TElement2[0];
-                        _readState = ReadState.NeedPrepare;
-                        return true;
-                    }
-                    _readValue = Array.CreateInstance(typeof(TElement2), _dimLengths);
-                    _readState = ReadState.ReadingElements;
-                    goto case ReadState.ReadingElements;
-
-                case ReadState.ReadingElements:
-                    var completed = _readValue is TElement2[]
-                        ? ReadElementsOneDimensional<TElement2>()
-                        : ReadElementsMultidimensional<TElement2>();
-
-                    if (!completed)
-                    {
-                        result = null;
-                        return false;
-                    }
-
-                    result = _readValue;
-                    _readValue = null;
-                    _readBuf = null;
-                    _fieldDescription = null;
-                    _readState = ReadState.NeedPrepare;
-                    return true;
-
-                default:
-                    throw new ArgumentOutOfRangeException();
+                dimLengths[i] = buf.ReadInt32();
+                buf.ReadInt32(); // We don't care about the lower bounds
             }
-        }
 
-        /// <summary>
-        /// Optimized population for one-dimensional arrays without boxing/unboxing
-        /// </summary>
-        bool ReadElementsOneDimensional<TElement2>()
-        {
-            var array = (TElement2[])_readValue;
+            if (dimensions == 0)
+                return new TElement2[0];   // TODO: static instance
 
-            for (; _index < array.Length; _index++)
+            var result = Array.CreateInstance(typeof(TElement2), dimLengths);
+
+            if (dimensions == 1)
             {
-                TElement2 element;
-                if (!ReadSingleElement(out element)) { return false; }
-                array[_index] = element;
+                var oneDimensional = (TElement2[])result;
+                for (var i = 0; i < oneDimensional.Length; i++)
+                    oneDimensional[i] = await ElementHandler.ReadWithLength<TElement2>(buf, async);
+                return oneDimensional;
             }
-            return true;
-        }
 
-        /// <summary>
-        /// Recursively populates an array from PB binary data representation.
-        /// </summary>
-        bool ReadElementsMultidimensional<TElement2>()
-        {
+            // Multidimensional
+            var indices = new int[dimensions];
             while (true)
             {
-                TElement2 element;
-                if (!ReadSingleElement(out element)) { return false; }
-                _readValue.SetValue(element, _indices);
-                if (!MoveNextInMultidimensional()) { return true; }
-            }
-        }
+                var element = await ElementHandler.ReadWithLength<TElement2>(buf, async);
+                result.SetValue(element, indices);
 
-        bool MoveNextInMultidimensional()
-        {
-            _indices[_dimensions - 1]++;
-            for (var dim = _dimensions - 1; dim >= 0; dim--) {
-                if (_indices[dim] <= _readValue.GetUpperBound(dim)) {
-                    continue;
-                }
-
-                if (dim == 0) {
-                    return false;
-                }
-
-                for (var j = dim; j < _dimensions; j++)
-                    _indices[j] = _readValue.GetLowerBound(j);
-                _indices[dim - 1]++;
-            }
-            return true;
-        }
-
-        bool ReadSingleElement<TElement2>([CanBeNull] out TElement2 element)
-        {
-            try
-            {
-                if (_elementLen == -1)
+                // TODO: Overly complicated/inefficient...
+                indices[dimensions - 1]++;
+                for (var dim = dimensions - 1; dim >= 0; dim--)
                 {
-                    if (_readBuf.ReadBytesLeft < 4)
-                    {
-                        element = default(TElement2);
-                        return false;
-                    }
-                    _elementLen = _readBuf.ReadInt32();
-                    if (_elementLen == -1)
-                    {
-                        // TODO: Nullables
-                        element = default(TElement2);
-                        return true;
-                    }
-                }
+                    if (indices[dim] <= result.GetUpperBound(dim))
+                        continue;
 
-                var asSimpleReader = ElementHandler as ISimpleTypeHandler<TElement2>;
-                if (asSimpleReader != null)
-                {
-                    if (_readBuf.ReadBytesLeft < _elementLen)
-                    {
-                        element = default(TElement2);
-                        return false;
-                    }
-                    element = asSimpleReader.Read(_readBuf, _elementLen, _fieldDescription);
-                    _elementLen = -1;
-                    return true;
-                }
+                    if (dim == 0)
+                        return result;
 
-                var asChunkingReader = ElementHandler as IChunkingTypeHandler<TElement2>;
-                if (asChunkingReader != null)
-                {
-                    if (!_preparedRead)
-                    {
-                        asChunkingReader.PrepareRead(_readBuf, _elementLen, _fieldDescription);
-                        _preparedRead = true;
-                    }
-                    if (!asChunkingReader.Read(out element))
-                    {
-                        return false;
-                    }
-                    _elementLen = -1;
-                    _preparedRead = false;
-                    return true;
+                    for (var j = dim; j < dimensions; j++)
+                        indices[j] = result.GetLowerBound(j);
+                    indices[dim - 1]++;
                 }
-
-                throw new InvalidOperationException("Internal Npgsql bug, please report.");
             }
-            catch (SafeReadException e)
-            {
-                // TODO: Implement safe reading for array: read all values to the end, only then raise the
-                // SafeReadException. For now, translate the safe exception to an unsafe one to break the connector.
-                throw e.InnerException;
-            }
-        }
-
-        enum ReadState
-        {
-            NeedPrepare,
-            ReadNothing,
-            ReadHeader,
-            ReadingElements,
         }
 
         #endregion
@@ -423,14 +265,6 @@ namespace Npgsql.TypeHandlers
             }
         }
 
-        enum WriteState
-        {
-            NeedPrepare,
-            WroteNothing,
-            WritingElements,
-            Cleanup,
-        }
-
         #endregion
     }
 
@@ -446,25 +280,19 @@ namespace Npgsql.TypeHandlers
         /// </summary>
         /// <param name="fieldDescription"></param>
         internal override Type GetElementPsvType(FieldDescription fieldDescription)
-        {
-            return typeof(TPsv);
-        }
+            => typeof(TPsv);
 
-        internal override object ReadPsvAsObjectFully(DataRowMessage row, FieldDescription fieldDescription)
+        internal override object ReadPsvAsObject(DataRowMessage row, FieldDescription fieldDescription)
         {
-            PrepareRead(row.Buffer, row.ColumnLen, fieldDescription);
-            Array result;
             try
             {
-                while (!Read<TPsv>(out result))
-                    row.Buffer.ReadMore();
+                return Read<TPsv>(row.Buffer, false).Result;
             }
             finally
             {
                 // Important in case a SafeReadException was thrown, position must still be updated
                 row.PosInColumn += row.ColumnLen;
             }
-            return result;
         }
 
         public ArrayHandlerWithPsv(PostgresType postgresType, TypeHandler elementHandler)

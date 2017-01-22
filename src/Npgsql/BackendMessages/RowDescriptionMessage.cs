@@ -36,7 +36,7 @@ namespace Npgsql.BackendMessages
     /// <remarks>
     /// See http://www.postgresql.org/docs/current/static/protocol-message-formats.html
     /// </remarks>
-    internal sealed class RowDescriptionMessage : IBackendMessage
+    sealed class RowDescriptionMessage : IBackendMessage
     {
         public List<FieldDescription> Fields { get; }
         readonly Dictionary<string, int> _nameIndex;

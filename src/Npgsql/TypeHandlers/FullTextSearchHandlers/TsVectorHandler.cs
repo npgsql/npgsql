@@ -44,62 +44,38 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
         // 2 (num_pos) + sizeof(int16) * 256 (max_num_pos (positions/wegihts))
         const int MaxSingleLexemeBytes = 2561;
 
-        ReadBuffer _readBuf;
-        List<NpgsqlTsVector.Lexeme> _lexemes;
-        int _numLexemes;
-        int _lexemePos;
-        int _bytesLeft;
-
         internal TsVectorHandler(PostgresType postgresType) : base(postgresType) { }
 
-        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override async ValueTask<NpgsqlTsVector> Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
         {
-            _readBuf = buf;
-            _lexemes = new List<NpgsqlTsVector.Lexeme>();
-            _numLexemes = -1;
-            _lexemePos = 0;
-            _bytesLeft = len;
-        }
+            await buf.Ensure(4, async);
+            var numLexemes = buf.ReadInt32();
+            len -= 4;
 
-        public override bool Read([CanBeNull] out NpgsqlTsVector result)
-        {
-            result = null;
-
-            if (_numLexemes == -1)
+            var lexemes = new List<NpgsqlTsVector.Lexeme>();
+            for (var lexemePos = 0; lexemePos < numLexemes; lexemePos++)
             {
-                if (_readBuf.ReadBytesLeft < 4)
-                    return false;
-                _numLexemes = _readBuf.ReadInt32();
-                _bytesLeft -= 4;
-            }
-
-            for (; _lexemePos < _numLexemes; _lexemePos++)
-            {
-                if (_readBuf.ReadBytesLeft < Math.Min(_bytesLeft, MaxSingleLexemeBytes))
-                    return false;
-                var posBefore = _readBuf.ReadPosition;
+                await buf.Ensure(Math.Min(len, MaxSingleLexemeBytes), async);
+                var posBefore = buf.ReadPosition;
 
                 List<NpgsqlTsVector.Lexeme.WordEntryPos> positions = null;
 
-                var lexemeString = _readBuf.ReadNullTerminatedString();
-                int numPositions = _readBuf.ReadInt16();
+                var lexemeString = buf.ReadNullTerminatedString();
+                int numPositions = buf.ReadInt16();
                 for (var i = 0; i < numPositions; i++)
                 {
-                    var wordEntryPos = _readBuf.ReadInt16();
+                    var wordEntryPos = buf.ReadInt16();
                     if (positions == null)
                         positions = new List<NpgsqlTsVector.Lexeme.WordEntryPos>();
                     positions.Add(new NpgsqlTsVector.Lexeme.WordEntryPos(wordEntryPos));
                 }
 
-                _lexemes.Add(new NpgsqlTsVector.Lexeme(lexemeString, positions, true));
+                lexemes.Add(new NpgsqlTsVector.Lexeme(lexemeString, positions, true));
 
-                _bytesLeft -= _readBuf.ReadPosition - posBefore;
+                len -= buf.ReadPosition - posBefore;
             }
 
-            result = new NpgsqlTsVector(_lexemes, true);
-            _lexemes = null;
-            _readBuf = null;
-            return true;
+            return new NpgsqlTsVector(lexemes, true);
         }
 
         public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)

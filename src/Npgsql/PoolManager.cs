@@ -2,10 +2,8 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using AsyncRewriter;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
 using Npgsql.Logging;
@@ -67,7 +65,7 @@ namespace Npgsql
         }
     }
 
-    sealed partial class ConnectorPool : IDisposable
+    sealed class ConnectorPool : IDisposable
     {
         #region Fields
 
@@ -129,15 +127,13 @@ namespace Npgsql
             Counters.NumberOfActiveConnections.Decrement();
         }
 
-        [RewriteAsync]
-        internal NpgsqlConnector Allocate(NpgsqlConnection conn, NpgsqlTimeout timeout)
+        internal ValueTask<NpgsqlConnector> Allocate(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
         {
-            NpgsqlConnector connector;
             Monitor.Enter(this);
 
             while (Idle.Count > 0)
             {
-                connector = Idle.Pop();
+                var connector = Idle.Pop();
                 // An idle connector could be broken because of a keepalive
                 if (connector.IsBroken)
                     continue;
@@ -145,19 +141,42 @@ namespace Npgsql
                 IncrementBusy();
                 EnsurePruningTimerState();
                 Monitor.Exit(this);
-                return connector;
+                return new ValueTask<NpgsqlConnector>(connector);
             }
+
+            // No idle connectors available. Have to actually open a new connector or wait for one.
+            return AllocateLong(conn, timeout, async);
+        }
+
+        internal async ValueTask<NpgsqlConnector> AllocateLong(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
+        {
+            NpgsqlConnector connector;
 
             Debug.Assert(Busy <= _max);
             if (Busy == _max)
             {
                 // TODO: Async cancellation
                 var tcs = new TaskCompletionSource<NpgsqlConnector>();
-                EnqueueWaitingOpenAttempt(tcs);
+                _waiting.Enqueue(new WaitingOpenAttempt { TaskCompletionSource = tcs, IsAsync = async });
                 Monitor.Exit(this);
+                
                 try
                 {
-                    WaitForTask(tcs.Task, timeout.TimeLeft);
+                    if (async)
+                    {
+                        // TODO: Async cancellation
+                        var timeoutTask = Task.Delay(timeout.TimeLeft);
+                        if (tcs.Task != await Task.WhenAny(tcs.Task, timeoutTask))
+                        {
+                            //cancellationToken.ThrowIfCancellationRequested();
+                            throw new NpgsqlException($"The connection pool has been exhausted, either raise MaxPoolSize (currently {_max}) or Timeout (currently {_connectionString.Timeout} seconds)");
+                        }
+                    }
+                    else
+                    {
+                        if (!tcs.Task.Wait(timeout.TimeLeft))
+                            throw new NpgsqlException($"The connection pool has been exhausted, either raise MaxPoolSize (currently {_max}) or Timeout (currently {_connectionString.Timeout} seconds)");
+                    }
                 }
                 catch
                 {
@@ -184,7 +203,7 @@ namespace Npgsql
             try
             {
                 connector = new NpgsqlConnector(conn) { ClearCounter = _clearCounter };
-                connector.Open(timeout);
+                await connector.Open(timeout, async, CancellationToken.None);
                 Counters.NumberOfPooledConnections.Increment();
                 EnsureMinPoolSize(conn);
                 return connector;
@@ -296,7 +315,8 @@ namespace Npgsql
                     {
                         ClearCounter = _clearCounter
                     };
-                    connector.Open();
+                    // TODO: Think about the timeout here...
+                    connector.Open(new NpgsqlTimeout(TimeSpan.Zero), false, CancellationToken.None).Wait();
                     connector.Reset();
                     Counters.NumberOfPooledConnections.Increment();
                     lock (this)
@@ -402,37 +422,6 @@ namespace Npgsql
                 }
             }
             _clearCounter++;
-        }
-
-        // This method (and its async counterpart below) are a hack to allow us to distinguish between whether
-        // we're executing in sync or async code - this is necessary to properly set IsAsync on the
-        // WaitingOpenAttempt. AsyncRewriter will automatically choose the right method.
-        void EnqueueWaitingOpenAttempt(TaskCompletionSource<NpgsqlConnector> tcs)
-        {
-            _waiting.Enqueue(new WaitingOpenAttempt { TaskCompletionSource = tcs, IsAsync =  false});
-        }
-
-        // ReSharper disable once UnusedParameter.Local
-        Task EnqueueWaitingOpenAttemptAsync(TaskCompletionSource<NpgsqlConnector> tcs, CancellationToken cancellationToken)
-        {
-            _waiting.Enqueue(new WaitingOpenAttempt { TaskCompletionSource = tcs, IsAsync = true });
-            return PGUtil.CompletedTask;
-        }
-
-        void WaitForTask(Task task, TimeSpan timeout)
-        {
-            if (!task.Wait(timeout))
-                throw new NpgsqlException($"The connection pool has been exhausted, either raise MaxPoolSize (currently {_max}) or Timeout (currently {_connectionString.Timeout} seconds)");
-        }
-
-        async Task WaitForTaskAsync(Task task, TimeSpan timeout, CancellationToken cancellationToken)
-        {
-            var timeoutTask = Task.Delay(timeout, cancellationToken);
-            if (task != await Task.WhenAny(task, timeoutTask))
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                throw new NpgsqlException($"The connection pool has been exhausted, either raise MaxPoolSize (currently {_max}) or Timeout (currently {_connectionString.Timeout} seconds)");
-            }
         }
 
         #region Pending Enlisted Connections

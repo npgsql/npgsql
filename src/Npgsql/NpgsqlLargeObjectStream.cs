@@ -29,7 +29,6 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using AsyncRewriter;
 
 namespace Npgsql
 {
@@ -37,7 +36,7 @@ namespace Npgsql
     /// An interface to remotely control the seekable stream for an opened large object on a PostgreSQL server.
     /// Note that the OpenRead/OpenReadWrite method as well as all operations performed on this stream must be wrapped inside a database transaction.
     /// </summary>
-    public sealed partial class NpgsqlLargeObjectStream : Stream
+    public sealed class NpgsqlLargeObjectStream : Stream
     {
         readonly NpgsqlLargeObjectManager _manager;
         readonly int _fd;
@@ -73,7 +72,7 @@ namespace Npgsql
         /// <param name="count">The maximum number of bytes that should be read.</param>
         /// <returns>How many bytes actually read, or 0 if end of file was already reached.</returns>
         public override int Read(byte[] buffer, int offset, int count)
-            => ReadInternal(buffer, offset, count);
+            => Read(buffer, offset, count, false).GetAwaiter().GetResult();
 
         /// <summary>
         /// Reads <i>count</i> bytes from the large object. The only case when fewer bytes are read is when end of stream is reached.
@@ -87,11 +86,10 @@ namespace Npgsql
         {
             cancellationToken.ThrowIfCancellationRequested();
             using (NoSynchronizationContextScope.Enter())
-                return await ReadInternalAsync(buffer, offset, count, cancellationToken);
+                return await Read(buffer, offset, count, true);
         }
 
-        [RewriteAsync]
-        int ReadInternal(byte[] buffer, int offset, int count)
+        async Task<int> Read(byte[] buffer, int offset, int count, bool async)
         {
             if (buffer == null)
                 throw new ArgumentNullException(nameof(buffer));
@@ -109,7 +107,7 @@ namespace Npgsql
 
             while (read < count)
             {
-                var bytesRead = _manager.ExecuteFunctionGetBytes("loread", buffer, offset + read, count - read, _fd, chunkCount);
+                var bytesRead = await _manager.ExecuteFunctionGetBytes("loread", buffer, offset + read, count - read, async, _fd, chunkCount);
                 _pos += bytesRead;
                 read += bytesRead;
                 if (bytesRead < chunkCount)
@@ -127,7 +125,7 @@ namespace Npgsql
         /// <param name="offset">The offset in the buffer at which to begin copying bytes.</param>
         /// <param name="count">The number of bytes to write.</param>
         public override void Write(byte[] buffer, int offset, int count)
-            => WriteInternal(buffer, offset, count);
+            => Write(buffer, offset, count, false).GetAwaiter().GetResult();
 
         /// <summary>
         /// Writes <i>count</i> bytes to the large object.
@@ -140,11 +138,10 @@ namespace Npgsql
         {
             cancellationToken.ThrowIfCancellationRequested();
             using (NoSynchronizationContextScope.Enter())
-                await WriteInternalAsync(buffer, offset, count, cancellationToken);
+                await Write(buffer, offset, count, true);
         }
 
-        [RewriteAsync]
-        void WriteInternal(byte[] buffer, int offset, int count)
+        async Task Write(byte[] buffer, int offset, int count, bool async)
         {
             if (buffer == null)
                 throw new ArgumentNullException(nameof(buffer));
@@ -165,7 +162,7 @@ namespace Npgsql
             while (totalWritten < count)
             {
                 var chunkSize = Math.Min(count - totalWritten, _manager.MaxTransferBlockSize);
-                var bytesWritten = _manager.ExecuteFunction<int>("lowrite", _fd, new ArraySegment<byte>(buffer, offset + totalWritten, chunkSize));
+                var bytesWritten = await _manager.ExecuteFunction<int>("lowrite", async, _fd, new ArraySegment<byte>(buffer, offset + totalWritten, chunkSize));
                 totalWritten += bytesWritten;
 
                 if (bytesWritten != chunkSize)
@@ -214,24 +211,30 @@ namespace Npgsql
         /// <summary>
         /// Gets the length of the large object. This internally seeks to the end of the stream to retrieve the length, and then back again.
         /// </summary>
-        public override long Length => GetLengthInternal();
+#pragma warning disable CA1721 
+        public override long Length => GetLength(false).GetAwaiter().GetResult();
+#pragma warning restore CA1721
 
-        // TODO: uncomment this when finally implementing async
-        /*public Task<long> GetLengthAsync()
+        /// <summary>
+        /// Gets the length of the large object. This internally seeks to the end of the stream to retrieve the length, and then back again.
+        /// </summary>
+        public async Task<long> GetLengthAsync()
         {
-            return GetLengthInternalAsync();
-        }*/
+            using (NoSynchronizationContextScope.Enter())
+                return await GetLength(true);
+        }
 
-        [RewriteAsync]
-        long GetLengthInternal()
+#pragma warning disable CA1721 
+        async Task<long> GetLength(bool async)
         {
             CheckDisposed();
             long old = _pos;
-            long retval = Seek(0, SeekOrigin.End);
+            long retval = await Seek(0, SeekOrigin.End, async);
             if (retval != old)
-                Seek(old, SeekOrigin.Begin);
+                await Seek(old, SeekOrigin.Begin, async);
             return retval;
         }
+#pragma warning restore CA1721
 
         /// <summary>
         /// Seeks in the stream to the specified position. This requires a round-trip to the backend.
@@ -240,7 +243,7 @@ namespace Npgsql
         /// <param name="origin">A value of type SeekOrigin indicating the reference point used to obtain the new position.</param>
         /// <returns></returns>
         public override long Seek(long offset, SeekOrigin origin)
-            => SeekInternal(offset, origin);
+            => Seek(offset, origin, false).GetAwaiter().GetResult();
 
         /// <summary>
         /// Seeks in the stream to the specified position. This requires a round-trip to the backend.
@@ -253,11 +256,10 @@ namespace Npgsql
         {
             cancellationToken.ThrowIfCancellationRequested();
             using (NoSynchronizationContextScope.Enter())
-                return await SeekInternalAsync(offset, origin, cancellationToken);
+                return await Seek(offset, origin, true);
         }
 
-        [RewriteAsync]
-        long SeekInternal(long offset, SeekOrigin origin)
+        async Task<long> Seek(long offset, SeekOrigin origin, bool async)
         {
             if (origin < SeekOrigin.Begin || origin > SeekOrigin.End)
                 throw new ArgumentException("Invalid origin");
@@ -267,9 +269,9 @@ namespace Npgsql
             CheckDisposed();
 
             if (_manager.Has64BitSupport)
-                return _pos = _manager.ExecuteFunction<long>("lo_lseek64", _fd, offset, (int)origin);
+                return _pos = await _manager.ExecuteFunction<long>("lo_lseek64", async, _fd, offset, (int)origin);
             else
-                return _pos = _manager.ExecuteFunction<int>("lo_lseek", _fd, (int)offset, (int)origin);
+                return _pos = await _manager.ExecuteFunction<int>("lo_lseek", async, _fd, (int)offset, (int)origin);
         }
 
         /// <summary>
@@ -283,7 +285,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="value">Number of bytes to either truncate or enlarge the large object.</param>
         public override void SetLength(long value)
-            => SetLengthInternal(value);
+            => SetLength(value, false).GetAwaiter().GetResult();
 
         /// <summary>
         /// Truncates or enlarges the large object to the given size. If enlarging, the large object is extended with null bytes.
@@ -295,11 +297,10 @@ namespace Npgsql
         {
             cancellationToken.ThrowIfCancellationRequested();
             using (NoSynchronizationContextScope.Enter())
-                await SetLengthInternalAsync(value, cancellationToken);
+                await SetLength(value, true);
         }
 
-        [RewriteAsync]
-        void SetLengthInternal(long value)
+        async Task SetLength(long value, bool async)
         {
             if (value < 0)
                 throw new ArgumentOutOfRangeException(nameof(value));
@@ -312,9 +313,9 @@ namespace Npgsql
                 throw new NotSupportedException("SetLength cannot be called on a stream opened with no write permissions");
 
             if (_manager.Has64BitSupport)
-                _manager.ExecuteFunction<int>("lo_truncate64", _fd, value);
+                await _manager.ExecuteFunction<int>("lo_truncate64", async, _fd, value);
             else
-                _manager.ExecuteFunction<int>("lo_truncate", _fd, (int)value);
+                await _manager.ExecuteFunction<int>("lo_truncate", async, _fd, (int)value);
         }
 
         /// <summary>
@@ -328,7 +329,7 @@ namespace Npgsql
         {
             if (!_disposed)
             {
-                _manager.ExecuteFunction<int>("lo_close", _fd);
+                _manager.ExecuteFunction<int>("lo_close", false, _fd).GetAwaiter().GetResult();
                 _disposed = true;
             }
         }

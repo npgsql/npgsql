@@ -34,7 +34,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Globalization;
 using System.Net.Sockets;
-using AsyncRewriter;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
 using Npgsql.BackendMessages;
@@ -49,11 +48,11 @@ namespace Npgsql
     /// against a PostgreSQL database. This class cannot be inherited.
     /// </summary>
 #if NETSTANDARD1_3
-    public sealed partial class NpgsqlCommand : DbCommand
+    public sealed class NpgsqlCommand : DbCommand
 #else
     // ReSharper disable once RedundantNameQualifier
     [System.ComponentModel.DesignerCategory("")]
-    public sealed partial class NpgsqlCommand : DbCommand, ICloneable
+    public sealed class NpgsqlCommand : DbCommand, ICloneable
 #endif
     {
         #region Fields
@@ -443,7 +442,7 @@ namespace Npgsql
 
                     connector.ReadExpecting<ParseCompleteMessage>();
                     connector.ReadExpecting<ParameterDescriptionMessage>();
-                    var msg = connector.ReadMessage(DataRowLoadingMode.NonSequential);
+                    var msg = connector.ReadMessage();
                     switch (msg.Code)
                     {
                     case BackendMessageCode.RowDescription:

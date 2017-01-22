@@ -38,44 +38,21 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     [TypeMapping("polygon", NpgsqlDbType.Polygon, typeof(NpgsqlPolygon))]
     class PolygonHandler : ChunkingTypeHandler<NpgsqlPolygon>
     {
-        #region State
-
-        NpgsqlPolygon _value;
-        ReadBuffer _readBuf;
-        int _index;
-
-        #endregion
-
         internal PolygonHandler(PostgresType postgresType) : base(postgresType) { }
 
         #region Read
 
-        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override async ValueTask<NpgsqlPolygon> Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
         {
-            _readBuf = buf;
-            _index = -1;
-        }
-
-        public override bool Read(out NpgsqlPolygon result)
-        {
-            result = default(NpgsqlPolygon);
-
-            if (_index == -1)
+            await buf.Ensure(4, async);
+            var numPoints = buf.ReadInt32();
+            var result = new NpgsqlPolygon(numPoints);
+            for (var i = 0; i < numPoints; i++)
             {
-                if (_readBuf.ReadBytesLeft < 4) { return false; }
-                var numPoints = _readBuf.ReadInt32();
-                _value = new NpgsqlPolygon(numPoints);
-                _index = 0;
+                await buf.Ensure(16, async);
+                result.Add(new NpgsqlPoint(buf.ReadDouble(), buf.ReadDouble()));
             }
-
-            for (; _index < _value.Capacity; _index++) {
-                if (_readBuf.ReadBytesLeft < 16) { return false; }
-                _value.Add(new NpgsqlPoint(_readBuf.ReadDouble(), _readBuf.ReadDouble()));
-            }
-            result = _value;
-            _value = default(NpgsqlPolygon);
-            _readBuf = null;
-            return true;
+            return result;
         }
 
         #endregion

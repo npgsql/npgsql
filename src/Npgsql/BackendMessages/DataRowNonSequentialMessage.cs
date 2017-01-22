@@ -64,7 +64,7 @@ namespace Npgsql.BackendMessages
             return this;
         }
 
-        internal override void SeekToColumn(int column)
+        internal override Task SeekToColumn(int column, bool async)
         {
             CheckColumnIndex(column);
 
@@ -75,15 +75,11 @@ namespace Npgsql.BackendMessages
                 ColumnLen = Buffer.ReadInt32();
                 PosInColumn = 0;
             }
-        }
 
-        internal override Task SeekToColumnAsync(int column, CancellationToken cancellationToken)
-        {
-            SeekToColumn(column);
             return PGUtil.CompletedTask;
         }
 
-        internal override void SeekInColumn(int posInColumn)
+        internal override Task SeekInColumn(int posInColumn, bool async)
         {
             if (posInColumn > ColumnLen) {
                 posInColumn = ColumnLen;
@@ -91,6 +87,7 @@ namespace Npgsql.BackendMessages
 
             Buffer.Seek(_columnOffsets[Column] + 4 + posInColumn, SeekOrigin.Begin);
             PosInColumn = posInColumn;
+            return PGUtil.CompletedTask;
         }
 
         internal override Stream GetStream()
@@ -104,7 +101,7 @@ namespace Npgsql.BackendMessages
             return s;
         }
 
-        internal override void Consume()
+        internal override Task Consume(bool async)
         {
             Buffer.Seek(_endOffset, SeekOrigin.Begin);
             if (_streams != null)
@@ -114,11 +111,6 @@ namespace Npgsql.BackendMessages
                 }
                 _streams.Clear();
             }
-        }
-
-        internal override Task ConsumeAsync(CancellationToken cancellationToken)
-        {
-            Consume();
             return PGUtil.CompletedTask;
         }
     }

@@ -207,7 +207,7 @@ namespace Npgsql
                 // The type handler supports the requested type directly
                 var tHandler = handler as ITypeHandler<T>;
                 if (tHandler != null)
-                    result = handler.ReadFully<T>(_buf, _columnLen);
+                    result = handler.Read<T>(_buf, _columnLen, false).Result;
                 else
                 {
                     var t = typeof(T);
@@ -224,9 +224,9 @@ namespace Npgsql
                         throw new InvalidCastException($"Can't cast database type {handler.PgDisplayName} to {typeof(T).Name}");
 
                     if (arrayHandler.GetElementFieldType() == elementType)
-                        result = (T)handler.ReadValueAsObjectFully(_buf, _columnLen);
+                        result = (T)handler.ReadAsObject(_buf, _columnLen, false).Result;
                     else if (arrayHandler.GetElementPsvType() == elementType)
-                        result = (T)handler.ReadPsvAsObjectFully(_buf, _columnLen);
+                        result = (T)handler.ReadPsvAsObject(_buf, _columnLen, false).Result;
                     else
                         throw new InvalidCastException($"Can't cast database type {handler.PgDisplayName} to {typeof(T).Name}");
                 }

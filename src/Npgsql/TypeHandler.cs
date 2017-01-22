@@ -27,7 +27,6 @@ using System.IO;
 using Npgsql.BackendMessages;
 using System.Threading;
 using System.Threading.Tasks;
-using AsyncRewriter;
 using JetBrains.Annotations;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandlers;
@@ -39,7 +38,7 @@ namespace Npgsql
     interface ITypeHandler<T> { }
 #pragma warning restore CA1040
 
-    abstract partial class TypeHandler
+    abstract class TypeHandler
     {
         internal PostgresType PostgresType { get; }
 
@@ -51,10 +50,10 @@ namespace Npgsql
         internal abstract Type GetFieldType(FieldDescription fieldDescription = null);
         internal abstract Type GetProviderSpecificFieldType(FieldDescription fieldDescription = null);
 
-        internal abstract object ReadValueAsObjectFully(DataRowMessage row, FieldDescription fieldDescription = null);
+        internal abstract object ReadAsObject(DataRowMessage row, FieldDescription fieldDescription = null);
 
-        internal virtual object ReadPsvAsObjectFully(DataRowMessage row, FieldDescription fieldDescription)
-            => ReadValueAsObjectFully(row, fieldDescription);
+        internal virtual object ReadPsvAsObject(DataRowMessage row, FieldDescription fieldDescription)
+            => ReadAsObject(row, fieldDescription);
 
         public abstract int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter = null);
 
@@ -64,15 +63,14 @@ namespace Npgsql
 
         internal virtual bool PreferTextWrite => false;
 
-        [RewriteAsync]
-        internal T ReadFully<T>(DataRowMessage row, int len, FieldDescription fieldDescription = null)
+        internal async ValueTask<T> Read<T>(DataRowMessage row, int len, bool async, FieldDescription fieldDescription = null)
         {
             Debug.Assert(row.PosInColumn == 0);
 
             T result;
             try
             {
-                result = ReadFully<T>(row.Buffer, len, fieldDescription);
+                result = await Read<T>(row.Buffer, len, async, fieldDescription);
             }
             finally
             {
@@ -82,13 +80,26 @@ namespace Npgsql
             return result;
         }
 
-        internal abstract T ReadFully<T>(ReadBuffer buf, int len, FieldDescription fieldDescription = null);
-        internal abstract Task<T> ReadFullyAsync<T>(ReadBuffer buf, int len, CancellationToken cancellationToken, FieldDescription fieldDescription = null);
+        /// <summary>
+        /// Reads a value from the buffer, assuming our read position is at the value's preceding length.
+        /// If the length is -1 (null), this method will return the default value.
+        /// </summary>
+        [ItemCanBeNull]
+        internal async ValueTask<T> ReadWithLength<T>(ReadBuffer buf, bool async, FieldDescription fieldDescription = null)
+        {
+            await buf.Ensure(4, async);
+            var len = buf.ReadInt32();
+            if (len == -1)
+                return default(T);
+            return await Read<T>(buf, len, async, fieldDescription);
+        }
 
-        internal abstract object ReadValueAsObjectFully(ReadBuffer buf, int len, FieldDescription fieldDescription = null);
+        internal abstract ValueTask<T> Read<T>(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null);
 
-        internal virtual object ReadPsvAsObjectFully(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
-            => ReadValueAsObjectFully(buf, len, fieldDescription);
+        internal abstract ValueTask<object> ReadAsObject(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null);
+
+        internal virtual ValueTask<object> ReadPsvAsObject(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
+            => ReadAsObject(buf, len, async, fieldDescription);
 
         /// <summary>
         /// Creates a type handler for arrays of this handler's type.
@@ -126,11 +137,11 @@ namespace Npgsql
         internal override Type GetFieldType(FieldDescription fieldDescription = null) => typeof(T);
         internal override Type GetProviderSpecificFieldType(FieldDescription fieldDescription = null) => typeof(T);
 
-        internal override object ReadValueAsObjectFully(DataRowMessage row, FieldDescription fieldDescription = null)
-            => ReadFully<T>(row, row.ColumnLen, fieldDescription);
+        internal override object ReadAsObject(DataRowMessage row, FieldDescription fieldDescription = null)
+            => Read<T>(row, row.ColumnLen, false, fieldDescription).Result;
 
-        internal override object ReadValueAsObjectFully(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
-            => ReadFully<T>(buf, len, fieldDescription);
+        internal override async ValueTask<object> ReadAsObject(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
+            => await Read<T>(buf, len, async, fieldDescription);
 
         internal override ArrayHandler CreateArrayHandler(PostgresType arrayBackendType)
             => new ArrayHandler<T>(arrayBackendType, this);
@@ -139,12 +150,7 @@ namespace Npgsql
             => new RangeHandler<T>(rangeBackendType, this);
     }
 
-    interface ISimpleTypeHandler
-    {
-        object ReadAsObject(ReadBuffer buf, int len, FieldDescription fieldDescription = null);
-    }
-
-    abstract partial class SimpleTypeHandler<T> : TypeHandler<T>, ISimpleTypeHandler<T>
+    abstract class SimpleTypeHandler<T> : TypeHandler<T>, ISimpleTypeHandler<T>
     {
         internal SimpleTypeHandler(PostgresType postgresType) : base(postgresType) { }
         public abstract T Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null);
@@ -177,10 +183,10 @@ namespace Npgsql
         /// A type handler may implement ISimpleTypeHandler for types other than its primary one.
         /// This is why this method has type parameter T2 and not T.
         /// </remarks>
-        [RewriteAsync(true)]
-        internal override T2 ReadFully<T2>(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        internal override async ValueTask<T2> Read<T2>(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
         {
-            buf.Ensure(len);
+            await buf.Ensure(len, async);
+
             var asTypedHandler = this as ISimpleTypeHandler<T2>;
             if (asTypedHandler == null)
                 throw new InvalidCastException(fieldDescription == null
@@ -190,16 +196,13 @@ namespace Npgsql
 
             return asTypedHandler.Read(buf, len, fieldDescription);
         }
-
-        public object ReadAsObject(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
-            => Read(buf, len, fieldDescription);
     }
 
     /// <summary>
     /// Type handlers that wish to support reading other types in additional to the main one can
     /// implement this interface for all those types.
     /// </summary>
-    interface ISimpleTypeHandler<T> : ITypeHandler<T>, ISimpleTypeHandler
+    interface ISimpleTypeHandler<T> : ITypeHandler<T>
     {
         T Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null);
     }
@@ -217,11 +220,11 @@ namespace Npgsql
         internal override Type GetProviderSpecificFieldType(FieldDescription fieldDescription = null)
             => typeof(TPsv);
 
-        internal override object ReadPsvAsObjectFully(DataRowMessage row, FieldDescription fieldDescription)
-            => ReadFully<TPsv>(row, row.ColumnLen, fieldDescription);
+        internal override object ReadPsvAsObject(DataRowMessage row, FieldDescription fieldDescription)
+            => Read<TPsv>(row, row.ColumnLen, false, fieldDescription).Result;
 
-        internal override object ReadPsvAsObjectFully(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
-            => ReadFully<TPsv>(buf, len, fieldDescription);
+        internal override async ValueTask<object> ReadPsvAsObject(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
+            => await Read<TPsv>(buf, len, async, fieldDescription);
 
         internal abstract TPsv ReadPsv(ReadBuffer buf, int len, FieldDescription fieldDescription = null);
 
@@ -232,18 +235,11 @@ namespace Npgsql
             => new ArrayHandlerWithPsv<T, TPsv>(arrayBackendType, this);
     }
 
-    interface IChunkingTypeHandler
-    {
-        void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null);
-        bool ReadAsObject(out object result);
-    }
-
-    abstract partial class ChunkingTypeHandler<T> : TypeHandler<T>, IChunkingTypeHandler<T>
+    abstract class ChunkingTypeHandler<T> : TypeHandler<T>, IChunkingTypeHandler<T>
     {
         internal ChunkingTypeHandler(PostgresType postgresType) : base(postgresType) { }
 
-        public abstract void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null);
-        public abstract bool Read([CanBeNull] out T result);
+        public abstract ValueTask<T> Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null);
 
         internal sealed override async Task WriteWithLength(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter,
             bool async, CancellationToken cancellationToken)
@@ -268,8 +264,7 @@ namespace Npgsql
         /// A type handler may implement IChunkingTypeHandler for types other than its primary one.
         /// This is why this method has type parameter T2 and not T.
         /// </remarks>
-        [RewriteAsync(true)]
-        internal override T2 ReadFully<T2>(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        internal override ValueTask<T2> Read<T2>(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
         {
             var asTypedHandler = this as IChunkingTypeHandler<T2>;
             if (asTypedHandler == null)
@@ -278,19 +273,7 @@ namespace Npgsql
                     : $"Can't cast database type {fieldDescription.Handler.PgDisplayName} to {typeof(T2).Name}"
                 );
 
-            asTypedHandler.PrepareRead(buf, len, fieldDescription);
-            T2 result;
-            while (!asTypedHandler.Read(out result))
-                buf.ReadMore();
-            return result;
-        }
-
-        public bool ReadAsObject(out object result)
-        {
-            T result2;
-            var completed = Read(out result2);
-            result = result2;
-            return completed;
+            return asTypedHandler.Read(buf, len, async, fieldDescription);
         }
     }
 
@@ -298,10 +281,9 @@ namespace Npgsql
     /// Type handlers that wish to support reading other types in additional to the main one can
     /// implement this interface for all those types.
     /// </summary>
-    interface IChunkingTypeHandler<T> : ITypeHandler<T>, IChunkingTypeHandler
+    interface IChunkingTypeHandler<T> : ITypeHandler<T>
     {
-        [ContractAnnotation("=> true, result:notnull; => false, result:null")]
-        bool Read([CanBeNull] out T result);
+        ValueTask<T> Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null);
     }
 
     /// <summary>

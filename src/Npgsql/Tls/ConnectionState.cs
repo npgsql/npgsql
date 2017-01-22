@@ -23,12 +23,14 @@
 
 using System;
 using System.Security.Cryptography;
+using JetBrains.Annotations;
 
 namespace Npgsql.Tls
 {
     sealed class ConnectionState : IDisposable
     {
         public TlsVersion TlsVersion { get; set; }
+        [CanBeNull]
         public CipherSuiteInfo CipherSuite { get; set; }
         public Aes ReadAes { get; set; }
         public Aes WriteAes { get; set; }

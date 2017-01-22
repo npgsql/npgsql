@@ -241,7 +241,7 @@ namespace Npgsql
             _buf.EndCopyMode();
             _connector.SendMessage(new CopyFailMessage());
             try {
-                var msg = _connector.ReadMessage(DataRowLoadingMode.NonSequential);
+                var msg = _connector.ReadMessage();
                 // The CopyFail should immediately trigger an exception from the read above.
                 _connector.Break();
                 throw new NpgsqlException("Expected ErrorResponse when cancelling COPY but got: " + msg.Code);

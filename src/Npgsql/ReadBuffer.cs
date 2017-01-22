@@ -26,14 +26,13 @@ using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
-using System.Runtime.InteropServices;
 using System.Text;
-using AsyncRewriter;
+using System.Threading.Tasks;
 using JetBrains.Annotations;
 
 namespace Npgsql
 {
-    partial class ReadBuffer
+    class ReadBuffer
     {
         #region Fields and Properties
 
@@ -92,8 +91,7 @@ namespace Npgsql
 
         #region I/O
 
-        [RewriteAsync]
-        internal void Ensure(int count, bool dontBreakOnTimeouts=false)
+        internal async Task Ensure(int count, bool async, bool dontBreakOnTimeouts=false)
         {
             Debug.Assert(count <= Size);
             count -= ReadBytesLeft;
@@ -112,7 +110,9 @@ namespace Npgsql
                 while (count > 0)
                 {
                     var toRead = Size - _filledBytes;
-                    var read = Underlying.Read(Buffer, _filledBytes, toRead);
+                    var read = async
+                        ? await Underlying.ReadAsync(Buffer, _filledBytes, toRead)
+                        : Underlying.Read(Buffer, _filledBytes, toRead);
                     if (read == 0)
                         throw new EndOfStreamException();
                     count -= read;
@@ -136,13 +136,11 @@ namespace Npgsql
             }
         }
 
-        [RewriteAsync]
-        internal void ReadMore()
-        {
-            Ensure(ReadBytesLeft + 1);
-        }
+        internal void Ensure(int count)
+            => Ensure(count, false).GetAwaiter().GetResult();
 
-        [RewriteAsync]
+        internal Task ReadMore(bool async) => Ensure(ReadBytesLeft + 1, async);
+
         internal ReadBuffer AllocateOversize(int count)
         {
             Debug.Assert(count > Size);
@@ -152,8 +150,17 @@ namespace Npgsql
             return tempBuf;
         }
 
-        [RewriteAsync]
+        /// <summary>
+        /// Does not perform any I/O - assuming that the bytes to be skipped are in the memory buffer.
+        /// </summary>
+        /// <param name="len"></param>
         internal void Skip(long len)
+        {
+            Debug.Assert(ReadBytesLeft >= len);
+            ReadPosition += (int)len;
+        }
+
+        internal async Task Skip(long len, bool async)
         {
             Debug.Assert(len >= 0);
 
@@ -163,11 +170,11 @@ namespace Npgsql
                 while (len > Size)
                 {
                     Clear();
-                    Ensure(Size);
+                    await Ensure(Size, async);
                     len -= Size;
                 }
                 Clear();
-                Ensure((int)len);
+                await Ensure((int)len, async);
             }
 
             ReadPosition += (int)len;
@@ -292,8 +299,7 @@ namespace Npgsql
 
         #region Read Complex
 
-        [RewriteAsync]
-        internal int ReadAllBytes(byte[] output, int outputOffset, int len, bool readOnce)
+        internal async ValueTask<int> ReadAllBytes(byte[] output, int outputOffset, int len, bool readOnce, bool async)
         {
             if (len <= ReadBytesLeft)
             {
@@ -310,7 +316,9 @@ namespace Npgsql
             {
                 while (totalRead < len)
                 {
-                    var read = Underlying.Read(output, offset, len - totalRead);
+                    var read = async
+                        ? await Underlying.ReadAsync(output, offset, len - totalRead)
+                        : Underlying.Read(output, offset, len - totalRead);
                     if (read == 0)
                         throw new EndOfStreamException();
                     totalRead += read;
@@ -388,9 +396,8 @@ namespace Npgsql
                     ReadPosition += bytesUsed;
                     bytesRead += bytesUsed;
                     charsRead += charsUsed;
-                    if (charsRead == charCount || bytesRead == byteCount) {
+                    if (charsRead == charCount || bytesRead == byteCount)
                         return;
-                    }
                     outputOffset += charsUsed;
                     Clear();
                 }

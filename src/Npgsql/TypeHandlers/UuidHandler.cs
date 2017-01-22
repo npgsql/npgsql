@@ -40,7 +40,6 @@ namespace Npgsql.TypeHandlers
 
         public override Guid Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
-            buf.Ensure(16);
             var a = buf.ReadInt32();
             var b = buf.ReadInt16();
             var c = buf.ReadInt16();

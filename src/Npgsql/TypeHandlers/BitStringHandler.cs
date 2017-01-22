@@ -47,11 +47,6 @@ namespace Npgsql.TypeHandlers
     class BitStringHandler : ChunkingTypeHandler<BitArray>,
         IChunkingTypeHandler<BitVector32>, IChunkingTypeHandler<bool>
     {
-        ReadBuffer _readBuf;
-        int _len;
-        BitArray _bitArray;
-        int _pos;
-
         internal BitStringHandler(PostgresType postgresType) : base(postgresType) {}
 
         internal override Type GetFieldType(FieldDescription fieldDescription = null)
@@ -64,130 +59,85 @@ namespace Npgsql.TypeHandlers
         internal override ArrayHandler CreateArrayHandler(PostgresType backendType) =>
             new BitStringArrayHandler(backendType, this);
 
-        internal override object ReadValueAsObjectFully(DataRowMessage row, FieldDescription fieldDescription = null)
-        {
-            return fieldDescription?.TypeModifier == 1
-                ? (object)ReadFully<bool>(row, row.ColumnLen, fieldDescription)
-                : ReadFully<BitArray>(row, row.ColumnLen, fieldDescription);
-        }
-
-        internal override object ReadValueAsObjectFully(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
-        {
-            return fieldDescription?.TypeModifier == 1
-                ? (object)ReadFully<bool>(buf, len, fieldDescription)
-                : ReadFully<BitArray>(buf, len, fieldDescription);
-        }
-
         #region Read
 
-        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override async ValueTask<BitArray> Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
         {
-            _readBuf = buf;
-            _pos = -1;
-            _len = len - 4;   // Subtract leading bit length field
+            await buf.Ensure(4, async);
+            var numBits = buf.ReadInt32();
+            var result = new BitArray(numBits);
+            var bytesLeft = len - 4;  // Remove leading number of bits
+            var bitNo = 0;
+
+            do
+            {
+                var iterationEndPos = bytesLeft - Math.Min(bytesLeft, buf.ReadBytesLeft) + 1;
+                for (; bytesLeft > iterationEndPos; bytesLeft--)
+                {
+                    var chunk = buf.ReadByte();
+                    result[bitNo++] = (chunk & (1 << 7)) != 0;
+                    result[bitNo++] = (chunk & (1 << 6)) != 0;
+                    result[bitNo++] = (chunk & (1 << 5)) != 0;
+                    result[bitNo++] = (chunk & (1 << 4)) != 0;
+                    result[bitNo++] = (chunk & (1 << 3)) != 0;
+                    result[bitNo++] = (chunk & (1 << 2)) != 0;
+                    result[bitNo++] = (chunk & (1 << 1)) != 0;
+                    result[bitNo++] = (chunk & (1 << 0)) != 0;
+                }
+            } while (bytesLeft > 1);
+
+            if (bitNo < result.Length)
+            {
+                var remainder = result.Length - bitNo;
+                await buf.Ensure(1, async);
+                var lastChunk = buf.ReadByte();
+                for (var i = 7; i >= 8 - remainder; i--)
+                    result[bitNo++] = (lastChunk & (1 << i)) != 0;
+            }
+
+            return result;
         }
 
-        bool IChunkingTypeHandler<bool>.Read(out bool result)
+        async ValueTask<BitVector32> IChunkingTypeHandler<BitVector32>.Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
         {
-            result = false;
-            if (_readBuf.ReadBytesLeft < 4) { return false; }
-            var bitLen = _readBuf.ReadInt32();
+            if (len > 4 + 4)
+            {
+                buf.Skip(len);
+                throw new SafeReadException("Can't read PostgreSQL bitstring with more than 32 bits into BitVector32");
+            }
+
+            await buf.Ensure(4 + 4, async);
+
+            var numBits = buf.ReadInt32();
+            return numBits == 0
+                ? new BitVector32(0)
+                : new BitVector32(buf.ReadInt32());
+        }
+
+        async ValueTask<bool> IChunkingTypeHandler<bool>.Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        {
+            await buf.Ensure(5, async);
+            var bitLen = buf.ReadInt32();
             if (bitLen != 1)
             {
                 // This isn't a single bit - error.
                 // Consume the rest of the value first so the connection is left in a good state.
-                _readBuf.Skip(_len);
+                buf.Skip(len - 4);
                 throw new SafeReadException(new InvalidCastException("Can't convert a BIT(N) type to bool, only BIT(1)"));
             }
-            var b = _readBuf.ReadByte();
-            result = (b & 128) != 0;
-            return true;
+            var b = buf.ReadByte();
+            return (b & 128) != 0;
         }
 
-        /// <summary>
-        /// Reads a BitArray from a binary PostgreSQL value. First 32-bit big endian length,
-        /// then the data in big-endian. Zero-padded low bits in the end if length is not multiple of 8.
-        /// </summary>
-        public override bool Read([CanBeNull] out BitArray result)
-        {
-            if (_pos == -1)
-            {
-                if (_readBuf.ReadBytesLeft < 4)
-                {
-                    result = null;
-                    return false;
-                }
-                var numBits = _readBuf.ReadInt32();
-                _bitArray = new BitArray(numBits);
-                _pos = 0;
-            }
+        internal override object ReadAsObject(DataRowMessage row, FieldDescription fieldDescription = null)
+            => fieldDescription?.TypeModifier == 1
+                ? (object) Read<bool>(row, row.ColumnLen, false, fieldDescription).Result
+                : Read<BitArray>(row, row.ColumnLen, false, fieldDescription).Result;
 
-            var bitNo = _pos * 8;
-            var maxBytes = _pos + Math.Min(_len - _pos - 1, _readBuf.ReadBytesLeft);
-            for (; _pos < maxBytes; _pos++)
-            {
-                var chunk = _readBuf.ReadByte();
-                _bitArray[bitNo++] = (chunk & (1 << 7)) != 0;
-                _bitArray[bitNo++] = (chunk & (1 << 6)) != 0;
-                _bitArray[bitNo++] = (chunk & (1 << 5)) != 0;
-                _bitArray[bitNo++] = (chunk & (1 << 4)) != 0;
-                _bitArray[bitNo++] = (chunk & (1 << 3)) != 0;
-                _bitArray[bitNo++] = (chunk & (1 << 2)) != 0;
-                _bitArray[bitNo++] = (chunk & (1 << 1)) != 0;
-                _bitArray[bitNo++] = (chunk & (1 << 0)) != 0;
-            }
-
-            if (_pos < _len - 1)
-            {
-                result = null;
-                return false;
-            }
-
-            if (bitNo < _bitArray.Length)
-            {
-                var remainder = _bitArray.Length - bitNo;
-                var lastChunk = _readBuf.ReadByte();
-                for (var i = 7; i >= 8 - remainder; i--)
-                {
-                    _bitArray[bitNo++] = (lastChunk & (1 << i)) != 0;
-                }
-            }
-
-            result = _bitArray;
-            return true;
-        }
-
-        public bool Read(out BitVector32 result)
-        {
-            if (_len > 4)
-            {
-                // Note: _len doesn't include the leading int32 containing the number of bits
-                _readBuf.Skip(4 + _len);
-                throw new SafeReadException("Can't read PostgreSQL bitstring with more than 32 bits into BitVector32");
-            }
-
-            if (_readBuf.ReadBytesLeft < 4)
-            {
-                result = default(BitVector32);
-                return false;
-            }
-
-            var numBits = _readBuf.ReadInt32();
-            if (numBits == 0)
-            {
-                result = new BitVector32(0);
-                return true;
-            }
-
-            if (_readBuf.ReadBytesLeft < 4)
-            {
-                result = default(BitVector32);
-                return false;
-            }
-
-            result = new BitVector32(_readBuf.ReadInt32());
-            return true;
-        }
+        internal override object ReadPsvAsObject(DataRowMessage row, FieldDescription fieldDescription = null)
+            => fieldDescription?.TypeModifier == 1
+                ? (object)Read<bool>(row, row.ColumnLen, false, fieldDescription).Result
+                : Read<BitArray>(row, row.ColumnLen, false, fieldDescription);
 
         #endregion
 
@@ -342,9 +292,6 @@ namespace Npgsql.TypeHandlers
     /// </summary>
     class BitStringArrayHandler : ArrayHandler<BitArray>
     {
-        [CanBeNull]
-        FieldDescription _fieldDescription;
-
         internal override Type GetElementFieldType(FieldDescription fieldDescription = null)
             => fieldDescription?.TypeModifier == 1 ? typeof(bool) : typeof(BitArray);
 
@@ -354,18 +301,10 @@ namespace Npgsql.TypeHandlers
         public BitStringArrayHandler(PostgresType postgresType, BitStringHandler elementHandler)
             : base(postgresType, elementHandler) {}
 
-        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
-        {
-            base.PrepareRead(buf, len, fieldDescription);
-            _fieldDescription = fieldDescription;
-        }
-
-        public override bool Read([CanBeNull] out Array result)
-        {
-            return _fieldDescription?.TypeModifier == 1
-                ? Read<bool>(out result)
-                : Read<BitArray>(out result);
-        }
+        public override ValueTask<Array> Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
+            => fieldDescription?.TypeModifier == 1
+                ? Read<bool>(buf, async)
+                : Read<BitArray>(buf, async);
 
         public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
         {

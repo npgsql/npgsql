@@ -54,7 +54,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AsyncRewriterHelpers.cs" />
     <Compile Include="BackendMessages\CopyMessages.cs" />
     <Compile Include="BackendMessages\DataRowNonSequentialMessage.cs" />
     <Compile Include="BackendMessages\CloseCompletedMessage.cs" />
@@ -222,7 +221,6 @@
     <Compile Include="TypeHandlers\NumericHandlers\Int32Handler.cs" />
     <Compile Include="TypeHandlerRegistry.cs" />
     <Compile Include="TypeHandlers\UnknownTypeHandler.cs" />
-    <Compile Include="GeneratedAsync.cs" />
     <Compile Include="TypeMappingAttribute.cs" />
     <Compile Include="WriteBuffer.cs" />
     <Compile Include="WindowsUsernameProvider.cs" />

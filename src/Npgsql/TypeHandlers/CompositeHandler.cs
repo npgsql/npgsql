@@ -72,13 +72,6 @@ namespace Npgsql.TypeHandlers
         [CanBeNull]
         List<MemberDescriptor> _members;
 
-        ReadBuffer _readBuf;
-        bool _preparedRead;
-
-        int _fieldIndex;
-        int _len;
-        object _value;
-
         public Type CompositeType => typeof(T);
 
         internal CompositeHandler(PostgresType postgresType, INpgsqlNameTranslator nameTranslator, List<RawCompositeField> rawFields, TypeHandlerRegistry registry)
@@ -96,84 +89,105 @@ namespace Npgsql.TypeHandlers
 
         #region Read
 
-        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override async ValueTask<T> Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
         {
             ResolveFieldsIfNeeded();
-            _readBuf = buf;
-            _fieldIndex = -1;
-            _len = -1;
-            _preparedRead = false;
-            _value = new T();
-        }
-
-        public override bool Read(out T result)
-        {
             Debug.Assert(_members != null);
 
-            result = default(T);
-
-            if (_fieldIndex == -1)
+            await buf.Ensure(4, async);
+            var fieldCount = buf.ReadInt32();
+            if (fieldCount != _members.Count)
             {
-                if (_readBuf.ReadBytesLeft < 4) { return false; }
-                var fieldCount = _readBuf.ReadInt32();
-                if (fieldCount != _members.Count) {
-                    // PostgreSQL sanity check
-                    throw new Exception($"pg_attributes contains {_members.Count} rows for type {PgDisplayName}, but {fieldCount} fields were received!");
-                }
-                _fieldIndex = 0;
+                // PostgreSQL sanity check
+                throw new Exception($"pg_attributes contains {_members.Count} rows for type {PgDisplayName}, but {fieldCount} fields were received!");
             }
 
-            for (; _fieldIndex < _members.Count; _fieldIndex++)
+            // If T is a struct, we have to box it here to properly set its fields below
+            object result = new T();
+
+            foreach (var fieldDescriptor in _members)
             {
-                var fieldDescriptor = _members[_fieldIndex];
-                // Not yet started reading the field.
-                // Read the type OID (not really needed), then the length.
-                if (_len == -1)
+                await buf.Ensure(8, async);
+                buf.ReadInt32();  // read typeOID, not used
+                var fieldLen = buf.ReadInt32();
+                if (fieldLen == -1)
                 {
-                    if (_readBuf.ReadBytesLeft < 8) { return false; }
-                    _readBuf.ReadInt32();  // read typeOID, not used
-                    _len = _readBuf.ReadInt32();
-                    if (_len == -1)
-                    {
-                        // Null field, simply skip it and leave at default
-                        continue;
-                    }
+                    // Null field, simply skip it and leave at default
+                    continue;
                 }
-
-                // Get the field's type handler and read the value
-                var handler = fieldDescriptor.Handler;
-                object fieldValue;
-
-                if (handler is ISimpleTypeHandler)
-                {
-                    var asSimpleReader = (ISimpleTypeHandler)handler;
-                    if (_readBuf.ReadBytesLeft < _len)
-                        return false;
-                    fieldValue = asSimpleReader.ReadAsObject(_readBuf, _len);
-                }
-                else if (handler is IChunkingTypeHandler)
-                {
-                    var asChunkingReader = (IChunkingTypeHandler)handler;
-                    if (!_preparedRead)
-                    {
-                        asChunkingReader.PrepareRead(_readBuf, _len);
-                        _preparedRead = true;
-                    }
-
-                    if (!asChunkingReader.ReadAsObject(out fieldValue))
-                        return false;
-                    _preparedRead = false;
-                }
-                else throw new InvalidOperationException("Internal Npgsql bug, please report.");
-
-                fieldDescriptor.SetValue(_value, fieldValue);
-                _len = -1;
+                fieldDescriptor.SetValue(result, await fieldDescriptor.Handler.ReadAsObject(buf, fieldLen, async));
             }
-
-            result = (T)_value;
-            return true;
+            return (T)result;
         }
+        /*
+                public override bool Read(out T result)
+                {
+                    Debug.Assert(_members != null);
 
+                    result = default(T);
+
+                    if (_fieldIndex == -1)
+                    {
+                        if (_readBuf.ReadBytesLeft < 4) { return false; }
+                        var fieldCount = _readBuf.ReadInt32();
+                        if (fieldCount != _members.Count) {
+                            // PostgreSQL sanity check
+                            throw new Exception($"pg_attributes contains {_members.Count} rows for type {PgDisplayName}, but {fieldCount} fields were received!");
+                        }
+                        _fieldIndex = 0;
+                    }
+
+                    for (; _fieldIndex < _members.Count; _fieldIndex++)
+                    {
+                        var fieldDescriptor = _members[_fieldIndex];
+                        // Not yet started reading the field.
+                        // Read the type OID (not really needed), then the length.
+                        if (_len == -1)
+                        {
+                            if (_readBuf.ReadBytesLeft < 8) { return false; }
+                            _readBuf.ReadInt32();  // read typeOID, not used
+                            _len = _readBuf.ReadInt32();
+                            if (_len == -1)
+                            {
+                                // Null field, simply skip it and leave at default
+                                continue;
+                            }
+                        }
+
+                        // Get the field's type handler and read the value
+                        var handler = fieldDescriptor.Handler;
+                        object fieldValue;
+
+                        if (handler is ISimpleTypeHandler)
+                        {
+                            var asSimpleReader = (ISimpleTypeHandler)handler;
+                            if (_readBuf.ReadBytesLeft < _len)
+                                return false;
+                            fieldValue = asSimpleReader.ReadAsObject(_readBuf, _len);
+                        }
+                        else if (handler is IChunkingTypeHandler)
+                        {
+                            var asChunkingReader = (IChunkingTypeHandler)handler;
+                            if (!_preparedRead)
+                            {
+                                asChunkingReader.PrepareRead(_readBuf, _len);
+                                _preparedRead = true;
+                            }
+
+                            if (!asChunkingReader.ReadAsObject(out fieldValue))
+                                return false;
+                            _preparedRead = false;
+                        }
+                        else throw new InvalidOperationException("Internal Npgsql bug, please report.");
+
+                        fieldDescriptor.SetValue(_value, fieldValue);
+                        _len = -1;
+                    }
+
+                    result = (T)_value;
+                    return true;
+                }
+                */
         #endregion
 
         #region Write
