@@ -7,12 +7,12 @@
   },
   "dependencies": {
     "Npgsql": "3.2.0-*",
-    "BenchmarkDotNet": "0.10.1"
+    "BenchmarkDotNet": "0.10.2"
   },
   "frameworks": {
     "net46": {
       "dependencies": {
-        "BenchmarkDotNet.Diagnostics.Windows": "0.10.1"
+        "BenchmarkDotNet.Diagnostics.Windows": "0.10.2"
       }
     },
     "netcoreapp1.1": {

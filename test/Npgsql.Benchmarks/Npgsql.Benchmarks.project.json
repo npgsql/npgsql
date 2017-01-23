@@ -1,7 +1,7 @@
 ﻿{
   "dependencies": {
-      "BenchmarkDotNet": "0.10.1",
-      "BenchmarkDotNet.Diagnostics.Windows": "0.10.1"
+      "BenchmarkDotNet": "0.10.2",
+      "BenchmarkDotNet.Diagnostics.Windows": "0.10.2"
   },
   "frameworks": {
     "net46": {}
