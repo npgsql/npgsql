@@ -195,9 +195,11 @@ namespace Npgsql
         public PasswordPropertyTextAttribute(bool password) {}
     }
 
+#pragma warning disable CA1717
     enum RefreshProperties {
         All
     }
+#pragma warning restore CA1717
 
     [AttributeUsage(AttributeTargets.Property)]
     sealed class RefreshPropertiesAttribute : Attribute
