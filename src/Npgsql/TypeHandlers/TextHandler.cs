@@ -38,7 +38,7 @@ namespace Npgsql.TypeHandlers
 {
     [TypeMapping("text",      NpgsqlDbType.Text,
       new[] { DbType.String, DbType.StringFixedLength, DbType.AnsiString, DbType.AnsiStringFixedLength },
-      new[] { typeof(string), typeof(char[]), typeof(char) },
+      new[] { typeof(string), typeof(char[]), typeof(char), typeof(ArraySegment<char>) },
       DbType.String
     )]
     [TypeMapping("xml",       NpgsqlDbType.Xml, dbType: DbType.Xml)]
