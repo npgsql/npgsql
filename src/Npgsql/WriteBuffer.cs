@@ -314,7 +314,7 @@ namespace Npgsql
             else
             {
 #if NETSTANDARD1_3
-                await WriteChars(s.ToCharArray(), charLen, byteLen, async, cancellationToken);
+                await WriteChars(s.ToCharArray(), 0, charLen, byteLen, async, cancellationToken);
                 return;
 #else
                 var charPos = 0;
@@ -332,17 +332,17 @@ namespace Npgsql
             }
         }
 
-        internal Task WriteChars(char[] chars, int charLen, int byteLen, bool async, CancellationToken cancellationToken)
+        internal Task WriteChars(char[] chars, int offset, int charLen, int byteLen, bool async, CancellationToken cancellationToken)
         {
             if (byteLen <= WriteSpaceLeft)
             {
-                WriteChars(chars, charLen);
+                WriteChars(chars, offset, charLen);
                 return PGUtil.CompletedTask;
             }
-            return WriteCharsLong(chars, charLen, byteLen, async, cancellationToken);
+            return WriteCharsLong(chars, offset, charLen, byteLen, async, cancellationToken);
         }
 
-        async Task WriteCharsLong(char[] chars, int charLen, int byteLen, bool async, CancellationToken cancellationToken)
+        async Task WriteCharsLong(char[] chars, int offset, int charLen, int byteLen, bool async, CancellationToken cancellationToken)
         {
             Debug.Assert(byteLen > WriteSpaceLeft);
             if (byteLen <= Size)
@@ -350,7 +350,7 @@ namespace Npgsql
                 // String can fit entirely in an empty buffer. Flush and retry rather than
                 // going into the partial writing flow below (which requires ToCharArray())
                 await Flush(async, cancellationToken);
-                WriteChars(chars, charLen);
+                WriteChars(chars, offset, charLen);
             }
             else
             {
@@ -360,7 +360,7 @@ namespace Npgsql
                 {
                     int charsUsed;
                     bool completed;
-                    WriteStringChunked(chars, charPos, charLen - charPos, true, out charsUsed, out completed);
+                    WriteStringChunked(chars, charPos + offset, charLen - charPos, true, out charsUsed, out completed);
                     if (completed)
                         break;
                     await Flush(async, cancellationToken);
@@ -375,10 +375,10 @@ namespace Npgsql
             _writePosition += TextEncoding.GetBytes(s, 0, len == 0 ? s.Length : len, _buf, _writePosition);
         }
 
-        internal void WriteChars(char[] chars, int len = 0)
+        internal void WriteChars(char[] chars, int offset, int len)
         {
             Debug.Assert(TextEncoding.GetByteCount(chars) <= WriteSpaceLeft);
-            _writePosition += TextEncoding.GetBytes(chars, 0, len == 0 ? chars.Length : len, _buf, _writePosition);
+            _writePosition += TextEncoding.GetBytes(chars, offset, len == 0 ? chars.Length : len, _buf, _writePosition);
         }
 
         public void WriteBytes(byte[] buf, int offset, int count)

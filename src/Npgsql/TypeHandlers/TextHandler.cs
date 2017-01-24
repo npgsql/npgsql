@@ -38,7 +38,7 @@ namespace Npgsql.TypeHandlers
 {
     [TypeMapping("text",      NpgsqlDbType.Text,
       new[] { DbType.String, DbType.StringFixedLength, DbType.AnsiString, DbType.AnsiStringFixedLength },
-      new[] { typeof(string), typeof(char[]), typeof(char) },
+      new[] { typeof(string), typeof(char[]), typeof(char), typeof(ArraySegment<char>) },
       DbType.String
     )]
     [TypeMapping("xml",       NpgsqlDbType.Xml, dbType: DbType.Xml)]
@@ -242,6 +242,18 @@ namespace Npgsql.TypeHandlers
                 return lengthCache.Set(_encoding.GetByteCount(_singleCharArray));
             }
 
+            if (value is ArraySegment<char>)
+            {
+                if (parameter != null && parameter.Size > 0)
+                {
+                    var paramName = parameter.ParameterName;
+                    throw new ArgumentException($"Parameter {paramName} is of type ArraySegment<char> and should not have its Size set", paramName);
+                }
+
+                var segment = (ArraySegment<char>)value;
+                return lengthCache.Set(_encoding.GetByteCount(segment.Array, segment.Offset, segment.Count));
+            }
+
             // Fallback - try to convert the value to string
             var converted = Convert.ToString(value);
             if (parameter == null)
@@ -272,13 +284,20 @@ namespace Npgsql.TypeHandlers
                 var charLen = parameter == null || parameter.Size <= 0 || parameter.Size >= chars.Length
                     ? chars.Length
                     : parameter.Size;
-                return buf.WriteChars(chars, charLen, lengthCache.GetLast(), async, cancellationToken);
+                return buf.WriteChars(chars, 0, charLen, lengthCache.GetLast(), async, cancellationToken);
             }
 
             if (value is char)
             {
                 _singleCharArray[0] = (char)value;
-                return buf.WriteChars(_singleCharArray, 1, lengthCache.GetLast(), async, cancellationToken);
+                return buf.WriteChars(_singleCharArray, 0, 1, lengthCache.GetLast(), async, cancellationToken);
+            }
+
+            if (value is ArraySegment<char>)
+            {
+                var segment = (ArraySegment<char>)value;
+                return buf.WriteChars(segment.Array, segment.Offset, segment.Count, lengthCache.GetLast(), async,
+                    cancellationToken);
             }
 
             return WriteString(Convert.ToString(value), buf, lengthCache, parameter, async, cancellationToken);
