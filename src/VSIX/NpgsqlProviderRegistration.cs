@@ -29,6 +29,7 @@ namespace Npgsql.VSIX
                 supportedObjectsKey.CreateSubkey(nameof(IVsDataConnectionSupport));
                 supportedObjectsKey.CreateSubkey(nameof(IVsDataConnectionUIControl));
                 supportedObjectsKey.CreateSubkey(nameof(IVsDataConnectionProperties));
+                supportedObjectsKey.CreateSubkey(nameof(IVsDataConnectionEquivalencyComparer));
                 supportedObjectsKey.CreateSubkey(nameof(IVsDataSourceInformation));
                 supportedObjectsKey.CreateSubkey(nameof(IVsDataObjectSupport));
                 supportedObjectsKey.CreateSubkey(nameof(IVsDataViewSupport));

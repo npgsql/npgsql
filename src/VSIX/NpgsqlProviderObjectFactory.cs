@@ -26,6 +26,8 @@ namespace Npgsql.VSIX
                 return new DataObjectSupport($"{GetType().Namespace}.NpgsqlDataObjectSupport", Assembly.GetExecutingAssembly());
             if (objType == typeof(IVsDataViewSupport))
                 return new DataViewSupport($"{GetType().Namespace}.NpgsqlDataViewSupport", Assembly.GetExecutingAssembly());
+            if (objType == typeof(IVsDataConnectionEquivalencyComparer))
+                return new NpgsqlConnectionEquivalencyComparer();
             return null;
         }
     }

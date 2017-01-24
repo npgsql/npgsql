@@ -71,6 +71,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Constants.cs" />
+    <Compile Include="NpgsqlConnectionEquivalencyComparer.cs" />
     <Compile Include="NpgsqlConnectionProperties.cs" />
     <Compile Include="NpgsqlConnectionUIControl.cs">
       <SubType>UserControl</SubType>
