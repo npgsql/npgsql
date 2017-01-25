@@ -80,7 +80,7 @@ namespace Npgsql
             _readBuf = connector.ReadBuffer;
             _writeBuf = connector.WriteBuffer;
             _connector.SendQuery(copyCommand);
-            var msg = _connector.ReadMessage(DataRowLoadingMode.NonSequential);
+            var msg = _connector.ReadMessage();
             switch (msg.Code)
             {
             case BackendMessageCode.CopyInResponse:
@@ -160,7 +160,7 @@ namespace Npgsql
             {
                 // We've consumed the current DataMessage (or haven't yet received the first),
                 // read the next message
-                var msg = _connector.ReadMessage(DataRowLoadingMode.NonSequential);
+                var msg = _connector.ReadMessage();
                 switch (msg.Code) {
                 case BackendMessageCode.CopyData:
                     _leftToReadInDataMsg = ((CopyDataMessage)msg).Length;
@@ -180,7 +180,7 @@ namespace Npgsql
             // If our buffer is empty, read in more. Otherwise return whatever is there, even if the
             // user asked for more (normal socket behavior)
             if (_readBuf.ReadBytesLeft == 0) {
-                _readBuf.ReadMore();
+                _readBuf.ReadMore(false).GetAwaiter().GetResult();
             }
 
             Debug.Assert(_readBuf.ReadBytesLeft > 0);
@@ -214,7 +214,7 @@ namespace Npgsql
                 _connector.SendMessage(new CopyFailMessage());
                 try
                 {
-                    var msg = _connector.ReadMessage(DataRowLoadingMode.NonSequential);
+                    var msg = _connector.ReadMessage();
                     // The CopyFail should immediately trigger an exception from the read above.
                     _connector.Break();
                     throw new NpgsqlException("Expected ErrorResponse when cancelling COPY but got: " + msg.Code);

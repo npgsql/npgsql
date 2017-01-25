@@ -24,11 +24,9 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
 using NpgsqlTypes;
@@ -39,13 +37,6 @@ namespace Npgsql.TypeHandlers
     class HstoreHandler : ChunkingTypeHandler<Dictionary<string, string>>,
         IChunkingTypeHandler<IDictionary<string, string>>, IChunkingTypeHandler<string>
     {
-        ReadBuffer _readBuf;
-        FieldDescription _fieldDescription;
-        IDictionary<string, string> _value;
-        string _key;
-        int _numElements;
-        State _state;
-
         /// <summary>
         /// The text handler to which we delegate encoding/decoding of the actual strings
         /// </summary>
@@ -109,96 +100,35 @@ namespace Npgsql.TypeHandlers
 
         #region Read
 
-        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription)
+        public override async ValueTask<Dictionary<string, string>> Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
         {
-            _readBuf = buf;
-            _fieldDescription = fieldDescription;
-            _state = State.Count;
-        }
+            await buf.Ensure(4, async);
+            var numElements = buf.ReadInt32();
+            var hstore = new Dictionary<string, string>(numElements);
 
-        public override bool Read([CanBeNull] out Dictionary<string, string> result)
-        {
-            result = null;
-            switch (_state)
+            for (var i = 0; i < numElements; i++)
             {
-            case State.Count:
-                if (_readBuf.ReadBytesLeft < 4) { return false; }
-                _numElements = _readBuf.ReadInt32();
-                _value = new Dictionary<string, string>(_numElements);
-                if (_numElements == 0)
-                {
-                    result = (Dictionary<string, string>)_value;
-                    CleanupState();
-                    return true;
-                }
-                goto case State.KeyLen;
-
-            case State.KeyLen:
-                _state = State.KeyLen;
-                if (_readBuf.ReadBytesLeft < 4) { return false; }
-                var keyLen = _readBuf.ReadInt32();
+                await buf.Ensure(4, async);
+                var keyLen = buf.ReadInt32();
                 Debug.Assert(keyLen != -1);
-                _textHandler.PrepareRead(_readBuf, keyLen, _fieldDescription);
-                goto case State.KeyData;
+                var key = await _textHandler.Read(buf, keyLen, async);
 
-            case State.KeyData:
-                _state = State.KeyData;
-                if (!_textHandler.Read(out _key)) { return false; }
-                goto case State.ValueLen;
+                await buf.Ensure(4, async);
+                var valueLen = buf.ReadInt32();
 
-            case State.ValueLen:
-                _state = State.ValueLen;
-                if (_readBuf.ReadBytesLeft < 4) { return false; }
-                var valueLen = _readBuf.ReadInt32();
-                if (valueLen == -1)
-                {
-                    _value[_key] = null;
-                    if (--_numElements == 0)
-                    {
-                        result = (Dictionary<string, string>)_value;
-                        CleanupState();
-                        return true;
-                    }
-                    goto case State.KeyLen;
-                }
-                _textHandler.PrepareRead(_readBuf, valueLen, _fieldDescription);
-                goto case State.ValueData;
-
-            case State.ValueData:
-                _state = State.ValueData;
-                string value;
-                if (!_textHandler.Read(out value)) { return false; }
-                _value[_key] = value;
-                if (--_numElements == 0)
-                {
-                    result = (Dictionary<string, string>)_value;
-                    CleanupState();
-                    return true;
-                }
-                goto case State.KeyLen;
-
-            default:
-                throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {_state} of enum {nameof(HstoreHandler)}.{nameof(State)}. Please file a bug.");
+                hstore[key] = valueLen == -1
+                    ? null
+                    : await _textHandler.Read(buf, valueLen, async);
             }
+            return hstore;
         }
 
-        public bool Read([CanBeNull] out IDictionary<string, string> result)
-        {
-            Dictionary<string, string> result2;
-            var completed = Read(out result2);
-            result = result2;
-            return completed;
-        }
+        ValueTask<IDictionary<string, string>> IChunkingTypeHandler<IDictionary<string, string>>.Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+            => new ValueTask<IDictionary<string, string>>(Read(buf, len, async, fieldDescription).Result);
 
-        public bool Read([CanBeNull] out string result)
+        async ValueTask<string> IChunkingTypeHandler<string>.Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
         {
-            IDictionary<string, string> dict;
-            if (!((IChunkingTypeHandler<IDictionary<string, string>>) this).Read(out dict))
-            {
-                result = null;
-                return false;
-            }
-
+            var dict = await Read(buf, len, async, fieldDescription);
             var sb = new StringBuilder();
             var i = dict.Count;
             foreach (var kv in dict)
@@ -217,20 +147,9 @@ namespace Npgsql.TypeHandlers
                 if (--i > 0)
                     sb.Append(',');
             }
-            result = sb.ToString();
-            return true;
+            return sb.ToString();
         }
 
         #endregion
-
-        void CleanupState()
-        {
-            _readBuf = null;
-            _value = null;
-            _fieldDescription = null;
-            _key = null;
-        }
-
-        enum State { Count, KeyLen, KeyData, ValueLen, ValueData }
     }
 }

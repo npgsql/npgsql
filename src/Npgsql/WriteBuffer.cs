@@ -29,12 +29,11 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using AsyncRewriter;
 using JetBrains.Annotations;
 
 namespace Npgsql
 {
-    partial class WriteBuffer
+    class WriteBuffer
     {
         #region Fields and Properties
 
@@ -88,6 +87,9 @@ namespace Npgsql
 
         #region I/O
 
+        internal Task Flush(bool async)
+            => Flush(async, CancellationToken.None);
+
         internal async Task Flush(bool async, CancellationToken cancellationToken)
         {
             if (_copyMode)
@@ -107,7 +109,7 @@ namespace Npgsql
             try
             {
                 if (async)
-                    await Underlying.WriteAsync(_buf, 0, _writePosition, cancellationToken);
+                    await Underlying.WriteAsync(_buf, 0, _writePosition);
                 else
                     Underlying.Write(_buf, 0, _writePosition);
             }
@@ -120,7 +122,7 @@ namespace Npgsql
             try
             {
                 if (async)
-                    await Underlying.FlushAsync(cancellationToken);
+                    await Underlying.FlushAsync();
                 else
                     Underlying.Flush();
             }
@@ -141,7 +143,7 @@ namespace Npgsql
                 WriteCopyDataHeader();
         }
 
-        internal void Flush() => Flush(false, CancellationToken.None).GetAwaiter().GetResult();
+        internal void Flush() => Flush(false).GetAwaiter().GetResult();
 
         [CanBeNull]
         internal NpgsqlCommand CurrentCommand { get; set; }
@@ -308,7 +310,7 @@ namespace Npgsql
             {
                 // String can fit entirely in an empty buffer. Flush and retry rather than
                 // going into the partial writing flow below (which requires ToCharArray())
-                await Flush(async, cancellationToken);
+                await Flush(async);
                 WriteString(s, charLen);
             }
             else
@@ -325,7 +327,7 @@ namespace Npgsql
                     WriteStringChunked(s, charPos, charLen - charPos, true, out charsUsed, out completed);
                     if (completed)
                         break;
-                    await Flush(async, cancellationToken);
+                    await Flush(async);
                     charPos += charsUsed;
                 }
 #endif
@@ -349,7 +351,7 @@ namespace Npgsql
             {
                 // String can fit entirely in an empty buffer. Flush and retry rather than
                 // going into the partial writing flow below (which requires ToCharArray())
-                await Flush(async, cancellationToken);
+                await Flush(async);
                 WriteChars(chars, offset, charLen);
             }
             else
@@ -363,7 +365,7 @@ namespace Npgsql
                     WriteStringChunked(chars, charPos + offset, charLen - charPos, true, out charsUsed, out completed);
                     if (completed)
                         break;
-                    await Flush(async, cancellationToken);
+                    await Flush(async);
                     charPos += charsUsed;
                 }
             }

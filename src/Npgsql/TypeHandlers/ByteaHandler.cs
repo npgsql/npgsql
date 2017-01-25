@@ -39,33 +39,22 @@ namespace Npgsql.TypeHandlers
     [TypeMapping("bytea", NpgsqlDbType.Bytea, DbType.Binary, new[] { typeof(byte[]), typeof(ArraySegment<byte>) })]
     class ByteaHandler : ChunkingTypeHandler<byte[]>
     {
-        byte[] _bytes;
-        int _pos;
-        ReadBuffer _readBuf;
-
         internal ByteaHandler(PostgresType postgresType) : base(postgresType) {}
 
-        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override async ValueTask<byte[]> Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
         {
-            _bytes = new byte[len];
-            _pos = 0;
-            _readBuf = buf;
-        }
-
-        public override bool Read([CanBeNull] out byte[] result)
-        {
-            var toRead = Math.Min(_bytes.Length - _pos, _readBuf.ReadBytesLeft);
-            _readBuf.ReadBytes(_bytes, _pos, toRead);
-            _pos += toRead;
-            if (_pos == _bytes.Length)
+            var bytes = new byte[len];
+            var pos = 0;
+            while (true)
             {
-                result = _bytes;
-                _bytes = null;
-                _readBuf = null;
-                return true;
+                var toRead = Math.Min(len - pos, buf.ReadBytesLeft);
+                buf.ReadBytes(bytes, pos, toRead);
+                pos += toRead;
+                if (pos == len)
+                    break;
+                await buf.ReadMore(async);
             }
-            result = null;
-            return false;
+            return bytes;
         }
 
         public long GetBytes(DataRowMessage row, int offset, [CanBeNull] byte[] output, int outputOffset, int len, FieldDescription field)
@@ -73,16 +62,15 @@ namespace Npgsql.TypeHandlers
             if (output == null)
                 return row.ColumnLen;
 
-            row.SeekInColumn(offset);
+            row.SeekInColumn(offset, false).GetAwaiter().GetResult();
 
             // Attempt to read beyond the end of the column
-            if (offset + len > row.ColumnLen) {
+            if (offset + len > row.ColumnLen)
                 len = row.ColumnLen - offset;
-            }
 
-            row.Buffer.ReadAllBytes(output, outputOffset, len, false);
-            row.PosInColumn += len;
-            return len;
+            var read = row.Buffer.ReadAllBytes(output, outputOffset, len, false, false).Result;
+            row.PosInColumn += read;
+            return read;
         }
 
         #region Write
@@ -163,7 +151,7 @@ namespace Npgsql.TypeHandlers
         {
             CheckDisposed();
             count = Math.Min(count, _row.ColumnLen - _row.PosInColumn);
-            var read = _row.Buffer.ReadAllBytes(buffer, offset, count, true);
+            var read = _row.Buffer.ReadAllBytes(buffer, offset, count, true, false).Result;
             _row.PosInColumn += read;
             return read;
         }
@@ -174,7 +162,7 @@ namespace Npgsql.TypeHandlers
             {
                 CheckDisposed();
                 count = Math.Min(count, _row.ColumnLen - _row.PosInColumn);
-                var read = await _row.Buffer.ReadAllBytesAsync(buffer, offset, count, true, token);
+                var read = await _row.Buffer.ReadAllBytes(buffer, offset, count, true, true);
                 _row.PosInColumn += read;
                 return read;
             }

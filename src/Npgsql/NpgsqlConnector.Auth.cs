@@ -15,17 +15,11 @@ namespace Npgsql
 {
     partial class NpgsqlConnector
     {
-        void Authenticate(string username, NpgsqlTimeout timeout)
-            => Authenticate(username, timeout, false, CancellationToken.None).GetAwaiter().GetResult();
-
-        Task AuthenticateAsync(string username, NpgsqlTimeout timeout, CancellationToken cancellationToken)
-            => Authenticate(username, timeout, true, cancellationToken);
-
         async Task Authenticate(string username, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
         {
             Log.Authenticating(Id);
 
-            var msg = await ReadExpecting<AuthenticationRequestMessage>(async, cancellationToken);
+            var msg = await ReadExpecting<AuthenticationRequestMessage>(async);
             timeout.Check();
             switch (msg.AuthRequestType)
             {
@@ -60,8 +54,8 @@ namespace Npgsql
             await PasswordMessage
                 .CreateClearText(_password)
                 .Write(WriteBuffer, async, cancellationToken);
-            await WriteBuffer.Flush(async, cancellationToken);
-            await ReadExpecting<AuthenticationRequestMessage>(async, cancellationToken);
+            await WriteBuffer.Flush(async);
+            await ReadExpecting<AuthenticationRequestMessage>(async);
         }
 
         async Task AuthenticateMD5(string username, byte[] salt, bool async, CancellationToken cancellationToken)
@@ -71,8 +65,8 @@ namespace Npgsql
             await PasswordMessage
                 .CreateMD5(_password, username, salt)
                 .Write(WriteBuffer, async, cancellationToken);
-            await WriteBuffer.Flush(async, cancellationToken);
-            await ReadExpecting<AuthenticationRequestMessage>(async, cancellationToken);
+            await WriteBuffer.Flush(async);
+            await ReadExpecting<AuthenticationRequestMessage>(async);
         }
 
 #pragma warning disable 1998
@@ -137,7 +131,13 @@ namespace Npgsql
                 _msg = new PasswordMessage();
             }
 
+            public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+                => Write(buffer, offset, count, true);
+
             public override void Write(byte[] buffer, int offset, int count)
+                => Write(buffer, offset, count, false).GetAwaiter().GetResult();
+
+            async Task Write(byte[] buffer, int offset, int count, bool async)
             {
                 if (_leftToWrite == 0)
                 {
@@ -159,17 +159,23 @@ namespace Npgsql
 
                 if (count > _leftToWrite)
                     throw new NpgsqlException($"NegotiateStream trying to write {count} bytes but according to frame header we only have {_leftToWrite} left!");
-                _msg.Populate(buffer, offset, count)
+                await _msg.Populate(buffer, offset, count)
                     .Write(_connector.WriteBuffer, false, CancellationToken.None);
-                _connector.WriteBuffer.Flush();
+                await _connector.WriteBuffer.Flush(async);
                 _leftToWrite -= count;
             }
 
+            public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+                => Read(buffer, offset, count, true);
+
             public override int Read(byte[] buffer, int offset, int count)
+                => Read(buffer, offset, count, false).GetAwaiter().GetResult();
+
+            async Task<int> Read(byte[] buffer, int offset, int count, bool async)
             {
                 if (_leftToRead == 0)
                 {
-                    var response = _connector.ReadExpecting<AuthenticationRequestMessage>();
+                    var response = await _connector.ReadExpecting<AuthenticationRequestMessage>(async);
                     if (response.AuthRequestType == AuthenticationRequestType.AuthenticationOk)
                         throw new AuthenticationCompleteException();
                     var gssMsg = response as AuthenticationGSSContinueMessage;

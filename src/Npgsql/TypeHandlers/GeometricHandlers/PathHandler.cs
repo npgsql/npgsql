@@ -39,58 +39,35 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     [TypeMapping("path", NpgsqlDbType.Path, typeof(NpgsqlPath))]
     class PathHandler : ChunkingTypeHandler<NpgsqlPath>
     {
-        #region State
-
-        NpgsqlPath _value;
-        ReadBuffer _readBuf;
-        int _index;
-
-        #endregion
-
         internal PathHandler(PostgresType postgresType) : base(postgresType) { }
 
         #region Read
 
-        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override async ValueTask<NpgsqlPath> Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
         {
-            _readBuf = buf;
-            _index = -1;
-        }
-
-        public override bool Read(out NpgsqlPath result)
-        {
-            result = default(NpgsqlPath);
-
-            if (_index == -1)
+            await buf.Ensure(5, async);
+            bool open;
+            var openByte = buf.ReadByte();
+            switch (openByte)
             {
-                if (_readBuf.ReadBytesLeft < 5) { return false; }
-
-                bool open;
-                var openByte = _readBuf.ReadByte();
-                switch (openByte) {
-                    case 1:
-                        open = false;
-                        break;
-                    case 0:
-                        open = true;
-                        break;
-                    default:
-                        throw new Exception("Error decoding binary geometric path: bad open byte");
-                }
-                var numPoints = _readBuf.ReadInt32();
-                _value = new NpgsqlPath(numPoints, open);
-                _index = 0;
+            case 1:
+                open = false;
+                break;
+            case 0:
+                open = true;
+                break;
+            default:
+                throw new Exception("Error decoding binary geometric path: bad open byte");
             }
 
-            for (; _index < _value.Capacity; _index++)
+            var numPoints = buf.ReadInt32();
+            var result = new NpgsqlPath(numPoints, open);
+            for (var i = 0; i < numPoints; i++)
             {
-                if (_readBuf.ReadBytesLeft < 16) { return false; }
-                _value.Add(new NpgsqlPoint(_readBuf.ReadDouble(), _readBuf.ReadDouble()));
+                await buf.Ensure(16, async);
+                result.Add(new NpgsqlPoint(buf.ReadDouble(), buf.ReadDouble()));
             }
-            result = _value;
-            _value = default(NpgsqlPath);
-            _readBuf = null;
-            return true;
+            return result;
         }
 
         #endregion

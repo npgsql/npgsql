@@ -60,10 +60,7 @@ namespace Npgsql.TypeHandlers
 
         #region State
 
-        byte[] _tempBuf;
-        int _byteLen, _bytePos, _charPos;
-        ReadBuffer _readBuf;
-
+        int _charPos;
         readonly char[] _singleCharArray = new char[1];
 
         #endregion
@@ -75,98 +72,78 @@ namespace Npgsql.TypeHandlers
 
         #region Read
 
-        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override ValueTask<string> Read(ReadBuffer buf, int byteLen, bool async, FieldDescription fieldDescription = null)
         {
-            _readBuf = buf;
-            _byteLen = len;
-            _bytePos = -1;
+            if (buf.ReadBytesLeft >= byteLen)
+                return new ValueTask<string>(buf.ReadString(byteLen));
+            return ReadLong(buf, byteLen, async);
         }
 
-        public override bool Read([CanBeNull] out string result)
+        async ValueTask<string> ReadLong(ReadBuffer buf, int byteLen, bool async)
         {
-            if (_bytePos == -1)
+            if (byteLen <= buf.Size)
             {
-                if (_byteLen <= _readBuf.ReadBytesLeft)
+                // The string's byte representation can fit in our read buffer, read it.
+                while (buf.ReadBytesLeft < byteLen)
+                    await buf.ReadMore(async);
+                return buf.ReadString(byteLen);
+            }
+
+            // Bad case: the string's byte representation doesn't fit in our buffer.
+            // This is rare - will only happen in CommandBehavior.Sequential mode (otherwise the
+            // entire row is in memory). Tweaking the buffer length via the connection string can
+            // help avoid this.
+
+            // Allocate a temporary byte buffer to hold the entire string and read it in chunks.
+            var tempBuf = new byte[byteLen];
+            var pos = 0;
+            while (true)
+            {
+                var len = Math.Min(buf.ReadBytesLeft, byteLen - pos);
+                buf.ReadBytes(tempBuf, pos, len);
+                pos += len;
+                if (pos < byteLen)
                 {
-                    // Already have the entire string in the buffer, decode and return
-                    result = _readBuf.ReadString(_byteLen);
-                    _readBuf = null;
-                    return true;
+                    await buf.ReadMore(async);
+                    continue;
                 }
-
-                if (_byteLen <= _readBuf.Size) {
-                    // Don't have the entire string in the buffer, but it can fit. Force a read to fill.
-                    result = null;
-                    return false;
-                }
-
-                // Bad case: the string doesn't fit in our buffer.
-                // Allocate a temporary byte buffer to hold the entire string and read it in chunks.
-                // TODO: Pool/recycle the buffer?
-                _tempBuf = new byte[_byteLen];
-                _bytePos = 0;
+                break;
             }
-
-            var len = Math.Min(_readBuf.ReadBytesLeft, _byteLen - _bytePos);
-            _readBuf.ReadBytes(_tempBuf, _bytePos, len);
-            _bytePos += len;
-            if (_bytePos < _byteLen)
-            {
-                result = null;
-                return false;
-            }
-
-            result = _readBuf.TextEncoding.GetString(_tempBuf);
-            _tempBuf = null;
-            _readBuf = null;
-            return true;
+            return buf.TextEncoding.GetString(tempBuf);
         }
 
-        public bool Read([CanBeNull] out char[] result)
+        async ValueTask<char[]> IChunkingTypeHandler<char[]>.Read(ReadBuffer buf, int byteLen, bool async, FieldDescription fieldDescription)
         {
-            if (_bytePos == -1)
+            if (byteLen <= buf.Size)
             {
-                if (_byteLen <= _readBuf.ReadBytesLeft)
-                {
-                    // Already have the entire string in the buffer, decode and return
-                    result = _readBuf.ReadChars(_byteLen);
-                    _readBuf = null;
-                    return true;
-                }
-
-                if (_byteLen <= _readBuf.Size)
-                {
-                    // Don't have the entire string in the buffer, but it can fit. Force a read to fill.
-                    result = null;
-                    return false;
-                }
-
-                // Bad case: the string doesn't fit in our buffer.
-                // Allocate a temporary byte buffer to hold the entire string and read it in chunks.
-                // TODO: Pool/recycle the buffer?
-                _tempBuf = new byte[_byteLen];
-                _bytePos = 0;
+                // The string's byte representation can fit in our read buffer, read it.
+                while (buf.ReadBytesLeft < byteLen)
+                    await buf.ReadMore(async);
+                return buf.ReadChars(byteLen);
             }
 
-            var len = Math.Min(_readBuf.ReadBytesLeft, _byteLen - _bytePos);
-            _readBuf.ReadBytes(_tempBuf, _bytePos, len);
-            _bytePos += len;
-            if (_bytePos < _byteLen) {
-                result = null;
-                return false;
+            // TODO: The following can be optimized with Decoder - no need to allocate a byte[]
+            var tempBuf = new byte[byteLen];
+            var pos = 0;
+            while (true)
+            {
+                var len = Math.Min(buf.ReadBytesLeft, byteLen - pos);
+                buf.ReadBytes(tempBuf, pos, len);
+                pos += len;
+                if (pos < byteLen)
+                {
+                    await buf.ReadMore(async);
+                    continue;
+                }
+                break;
             }
-
-            result = _readBuf.TextEncoding.GetChars(_tempBuf);
-            _tempBuf = null;
-            _readBuf = null;
-            return true;
+            return buf.TextEncoding.GetChars(tempBuf);
         }
 
         public long GetChars(DataRowMessage row, int charOffset, [CanBeNull] char[] output, int outputOffset, int charsCount, FieldDescription field)
         {
-            if (row.PosInColumn == 0) {
+            if (row.PosInColumn == 0)
                 _charPos = 0;
-            }
 
             if (output == null)
             {
@@ -182,7 +159,7 @@ namespace Npgsql.TypeHandlers
             }
 
             if (charOffset < _charPos) {
-                row.SeekInColumn(0);
+                row.SeekInColumn(0, false).GetAwaiter().GetResult();
                 _charPos = 0;
             }
 
@@ -244,7 +221,7 @@ namespace Npgsql.TypeHandlers
 
             if (value is ArraySegment<char>)
             {
-                if (parameter != null && parameter.Size > 0)
+                if (parameter?.Size > 0)
                 {
                     var paramName = parameter.ParameterName;
                     throw new ArgumentException($"Parameter {paramName} is of type ArraySegment<char> and should not have its Size set", paramName);

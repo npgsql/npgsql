@@ -65,9 +65,8 @@ namespace Npgsql.BackendMessages
         /// Places our position at the beginning of the given column, after the 4-byte length.
         /// The length is available in ColumnLen.
         /// </summary>
-        internal abstract void SeekToColumn(int column);
-        internal abstract Task SeekToColumnAsync(int column, CancellationToken cancellationToken);
-        internal abstract void SeekInColumn(int posInColumn);
+        internal abstract Task SeekToColumn(int column, bool async);
+        internal abstract Task SeekInColumn(int posInColumn, bool async);
 
         /// <summary>
         /// Returns a stream for the current column.
@@ -77,19 +76,14 @@ namespace Npgsql.BackendMessages
         /// <summary>
         /// Consumes the current row, allowing the reader to read in the next one.
         /// </summary>
-        internal abstract void Consume();
+        internal abstract Task Consume(bool async);
 
-        /// <summary>
-        /// Consumes the current row asynchronously, allowing the reader to read in the next one.
-        /// </summary>
-        internal abstract Task ConsumeAsync(CancellationToken token);
-
-        internal void SeekToColumnStart(int column)
+        // TODO: Possibly make this non-async for NonSequential
+        internal async Task SeekToColumnStart(int column, bool async)
         {
-            SeekToColumn(column);
-            if (PosInColumn != 0) {
-                SeekInColumn(0);
-            }
+            await SeekToColumn(column, async);
+            if (PosInColumn != 0)
+                await SeekInColumn(0, async);
         }
 
         #region Checks

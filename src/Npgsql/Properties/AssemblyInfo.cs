@@ -1,15 +1,14 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System;
+using System.Runtime.CompilerServices;
 using System.Reflection;
+using System.Security;
 
-// Additional assembly attributes are defined in GlobalAssemblyInfo.cs
+[assembly: CLSCompliant(false)]
+[assembly: AllowPartiallyTrustedCallers]
+[assembly: AssemblyTrademark("")]
 
-[assembly: AssemblyTitle("Npgsql - .Net Data Provider for PostgreSQL")]
-[assembly: AssemblyDescription(".Net Data Provider for PostgreSQL")]
-
-#if DEBUG
-[assembly: AssemblyConfiguration("Debug")]
-#elif DEBUG
-[assembly: AssemblyConfiguration("Release")]
+#if !NETSTANDARD1_3
+[assembly: SecurityRules(SecurityRuleSet.Level1)]
 #endif
 
 [assembly: InternalsVisibleTo("Npgsql.EntityFrameworkCore.PostgreSQL, PublicKey=" +

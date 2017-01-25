@@ -32,11 +32,13 @@ using System.Numerics;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
-using AsyncRewriter;
+using System.Threading;
+using System.Threading.Tasks;
+using JetBrains.Annotations;
 
 namespace Npgsql.Tls
 {
-    partial class TlsClientStream : Stream
+    class TlsClientStream : Stream
     {
         const TlsVersion HighestTlsVersionSupported = TlsVersion.TLSv1_2;
 
@@ -54,6 +56,7 @@ namespace Npgsql.Tls
         // Read connection state is for the purpose when we have sent ChangeCipherSpec but the server hasn't yet
         ConnectionState _connState;
         ConnectionState _readConnState;
+        [CanBeNull]
         ConnectionState _pendingConnState;
 
         readonly RandomNumberGenerator _rng = RandomNumberGenerator.Create();
@@ -122,8 +125,7 @@ namespace Npgsql.Tls
         /// Also sets _packetLen (does not include packet header of 5 bytes).
         /// </summary>
         /// <returns>True on success, false on End Of Stream.</returns>
-        [RewriteAsync]
-        bool ReadRecord()
+        async Task<bool> ReadRecord(bool async)
         {
             int packetLength = -1;
             while (true)
@@ -159,7 +161,9 @@ namespace Npgsql.Tls
                         _readStart = 0;
                         _readEnd = 0;
                     }
-                    int read = _baseStream.Read(_buf, _readEnd, _buf.Length - _readEnd);
+                    int read = async
+                        ? await _baseStream.ReadAsync(_buf, _readEnd, _buf.Length - _readEnd)
+                        : _baseStream.Read(_buf, _readEnd, _buf.Length - _readEnd);
                     if (read == 0)
                     {
                         return false;
@@ -346,19 +350,18 @@ namespace Npgsql.Tls
             _handshakeData.CertificateVerifyHash_SHA1?.Update(buf, offset, len);
         }
 
-        [RewriteAsync]
-        void GetInitialHandshakeMessages(bool allowApplicationData = false)
+        async Task GetInitialHandshakeMessages(bool async, bool allowApplicationData = false)
         {
             while (!_handshakeMessagesBuffer.HasServerHelloDone)
             {
-                if (!ReadRecord())
+                if (!await ReadRecord(async))
                     throw new IOException("Connection EOF in initial handshake");
                 Decrypt();
 
                 switch (_contentType)
                 {
                     case ContentType.Alert:
-                        HandleAlertMessage();
+                        await HandleAlertMessage(async);
                         break;
                     case ContentType.Handshake:
                         _handshakeMessagesBuffer.AddBytes(_buf, _plaintextStart, _plaintextLen, HandshakeMessagesBuffer.IgnoreHelloRequestsSetting.IgnoreHelloRequests);
@@ -581,12 +584,11 @@ namespace Npgsql.Tls
             offset = Encrypt(start, offset - messageStart);
         }
 
-        [RewriteAsync]
-        void WaitForHandshakeCompleted(bool initialHandshake)
+        async Task WaitForHandshakeCompleted(bool initialHandshake, bool async)
         {
             for (; ; )
             {
-                if (!ReadRecord())
+                if (!await ReadRecord(async))
                 {
                     _eof = true;
                     throw new IOException("Unexpected connection EOF in handshake");
@@ -606,7 +608,7 @@ namespace Npgsql.Tls
 
             while (_handshakeMessagesBuffer.Messages.Count == 0)
             {
-                if (!ReadRecord())
+                if (!await ReadRecord(async))
                 {
                     _eof = true;
                     throw new IOException("Unexpected connection EOF in handshake");
@@ -1623,16 +1625,25 @@ namespace Npgsql.Tls
             throw new ClientAlertException(description, message);
         }
 
-        [RewriteAsync]
-        void WriteAlertFatal(AlertDescription description)
+        async Task WriteAlertFatal(AlertDescription description, bool async)
         {
             _buf[0] = (byte)ContentType.Alert;
             Utils.WriteUInt16(_buf, 1, (ushort)_connState.TlsVersion);
             _buf[5 + _connState.IvLen] = (byte)AlertLevel.Fatal;
             _buf[5 + _connState.IvLen + 1] = (byte)description;
             int endPos = Encrypt(0, 2);
-            _baseStream.Write(_buf, 0, endPos);
-            _baseStream.Flush();
+
+            if (async)
+            {
+                await _baseStream.WriteAsync(_buf, 0, endPos);
+                await _baseStream.FlushAsync();
+            }
+            else
+            {
+                _baseStream.Write(_buf, 0, endPos);
+                _baseStream.Flush();
+            }
+
             _baseStream.Dispose();
             _eof = true;
             _closed = true;
@@ -1642,20 +1653,26 @@ namespace Npgsql.Tls
                 Utils.ClearArray(_temp512);
         }
 
-        [RewriteAsync]
-        void SendClosureAlert()
+        async Task SendClosureAlert(bool async)
         {
             _buf[0] = (byte)ContentType.Alert;
             Utils.WriteUInt16(_buf, 1, (ushort)_connState.TlsVersion);
             _buf[5 + _connState.IvLen] = (byte)AlertLevel.Warning;
             _buf[5 + _connState.IvLen + 1] = (byte)AlertDescription.CloseNotify;
             int endPos = Encrypt(0, 2);
-            _baseStream.Write(_buf, 0, endPos);
-            _baseStream.Flush();
+            if (async)
+            {
+                await _baseStream.WriteAsync(_buf, 0, endPos);
+                await _baseStream.FlushAsync();
+            }
+            else
+            {
+                _baseStream.Write(_buf, 0, endPos);
+                _baseStream.Flush();
+            }
         }
 
-        [RewriteAsync]
-        void HandleAlertMessage()
+        async Task HandleAlertMessage(bool async)
         {
             if (_plaintextLen != 2)
                 SendAlertFatal(AlertDescription.DecodeError);
@@ -1669,7 +1686,7 @@ namespace Npgsql.Tls
                     _eof = true;
                     try
                     {
-                        SendClosureAlert();
+                        await SendClosureAlert(async);
                     }
                     catch (IOException)
                     {
@@ -1679,7 +1696,10 @@ namespace Npgsql.Tls
                     // Now, did the stream end normally (end of stream) or was the connection reset?
                     // We read 0 bytes to find out. If end of stream, it will just return 0, otherwise an exception will be thrown, as we want.
                     // TODO: what to do with _closed? (_eof is true)
-                    _baseStream.Read(_buf, 0, 0);
+                    if (async)
+                        await _baseStream.ReadAsync(_buf, 0, 0);
+                    else
+                        _baseStream.Read(_buf, 0, 0);
 
                     _baseStream.Dispose();
                     break;
@@ -1735,13 +1755,13 @@ namespace Npgsql.Tls
             }
             else if (_contentType == ContentType.Alert)
             {
-                HandleAlertMessage();
+                // TODO: Should this whole method be async?
+                HandleAlertMessage(false).GetAwaiter().GetResult();
             }
             SendAlertFatal(AlertDescription.UnexpectedMessage);
         }
 
-        [RewriteAsync]
-        public void PerformInitialHandshake(string hostName, X509CertificateCollection clientCertificates, System.Net.Security.RemoteCertificateValidationCallback remoteCertificateValidationCallback, bool checkCertificateRevocation)
+        public async Task PerformInitialHandshake(string hostName, X509CertificateCollection clientCertificates, System.Net.Security.RemoteCertificateValidationCallback remoteCertificateValidationCallback, bool checkCertificateRevocation, bool async)
         {
             if (_connState.CipherSuite != null || _pendingConnState != null || _closed)
                 throw new InvalidOperationException("Already performed initial handshake");
@@ -1757,19 +1777,19 @@ namespace Npgsql.Tls
                 SendHandshakeMessage(SendClientHello, ref offset, 0);
                 _baseStream.Write(_buf, 0, offset);
                 _baseStream.Flush();
-                GetInitialHandshakeMessages();
+                await GetInitialHandshakeMessages(async);
 
                 var keyExchange = _connState.CipherSuite.KeyExchange;
                 if (keyExchange == KeyExchange.RSA || keyExchange == KeyExchange.ECDH_ECDSA || keyExchange == KeyExchange.ECDH_RSA)
                 {
                     // Don't use false start for non-forward-secrecy key exchanges; we have to wait for the finished message and verify it
 
-                    WaitForHandshakeCompleted(true);
+                    await WaitForHandshakeCompleted(true, async);
                 }
             }
             catch (ClientAlertException e)
             {
-                WriteAlertFatal(e.Description);
+                await WriteAlertFatal(e.Description, async);
                 throw new IOException(e.ToString(), e);
             }
         }
@@ -1778,8 +1798,14 @@ namespace Npgsql.Tls
 
         #region Stream overrides
 
-        [RewriteAsync(true)]
         public override void Write(byte[] buffer, int offset, int len)
+            => Write(buffer, offset, len, false).GetAwaiter().GetResult();
+
+        // Note: As this is an internal component, we don't set NoSynchronizationContextScope
+        public override Task WriteAsync(byte[] buffer, int offset, int len, CancellationToken cancellationToken)
+            => Write(buffer, offset, len, true);
+
+        async Task Write(byte[] buffer, int offset, int len, bool async)
         {
 #if CHECK_ARGUMENTS
             if (buffer == null)
@@ -1802,10 +1828,10 @@ namespace Npgsql.Tls
                 {
                     // OpenSSL violates TLS 1.2 spec by not allowing interleaved application data and handshake data,
                     // so we wait for the handshake to complete
-                    GetInitialHandshakeMessages(true);
+                    await GetInitialHandshakeMessages(true, async);
 
                     // For simplicity, don't try to do a "false start" here, so wait until Finished has been received
-                    WaitForHandshakeCompleted(false);
+                    await WaitForHandshakeCompleted(false, async);
                 }
                 CheckCanWrite();
                 for (; ; )
@@ -1824,13 +1850,16 @@ namespace Npgsql.Tls
             }
             catch (ClientAlertException e)
             {
-                WriteAlertFatal(e.Description);
+                await WriteAlertFatal(e.Description, async);
                 throw new IOException(e.ToString(), e);
             }
         }
 
-        [RewriteAsync(true)]
-        public override void Flush()
+        public override void Flush() => Flush(false).GetAwaiter().GetResult();
+
+        public override Task FlushAsync(CancellationToken cancellataionToken) => Flush(true);
+
+        async Task Flush(bool async)
         {
             CheckNotClosed();
             if (_writePos > _connState.WriteStartPos)
@@ -1853,20 +1882,33 @@ namespace Npgsql.Tls
                         offset = 0;
                     }
                     int endPos = Encrypt(offset, _writePos - offset - 5 - _connState.IvLen);
-                    _baseStream.Write(_buf, 0, endPos);
-                    _baseStream.Flush();
+                    if (async)
+                    {
+                        await _baseStream.WriteAsync(_buf, 0, endPos);
+                        await _baseStream.FlushAsync();
+                    }
+                    else
+                    {
+                        _baseStream.Write(_buf, 0, endPos);
+                        _baseStream.Flush();
+                    }
                     ResetWritePos();
                 }
                 catch (ClientAlertException e)
                 {
-                    WriteAlertFatal(e.Description);
+                    await WriteAlertFatal(e.Description, async);
                     throw new IOException(e.ToString(), e);
                 }
             }
         }
 
-        [RewriteAsync(true)]
         public override int Read(byte[] buffer, int offset, int len)
+            => Read(buffer, offset, len, false, false, false).GetAwaiter().GetResult();
+
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int len, CancellationToken cancellationToken)
+            => Read(buffer, offset, len, false, false, true);
+
+        async Task<int> Read(byte[] buffer, int offset, int len, bool onlyProcessHandshake, bool readNewDataIfAvailable, bool async)
         {
 #if CHECK_ARGUMENTS
             if (buffer == null)
@@ -1877,13 +1919,7 @@ namespace Npgsql.Tls
                 throw new ArgumentOutOfRangeException("len");
 #endif
 
-            return ReadInternal(buffer, offset, len, false, false);
-        }
-
-        [RewriteAsync]
-        int ReadInternal(byte[] buffer, int offset, int len, bool onlyProcessHandshake, bool readNewDataIfAvailable)
-        {
-            Flush();
+            await Flush(async);
             try
             {
                 for (; ; )
@@ -1915,8 +1951,16 @@ namespace Npgsql.Tls
                                 _buf = _renegotiationTempWriteBuf;
                                 int writeOffset = 0;
                                 SendHandshakeMessage(SendClientHello, ref writeOffset, _connState.IvLen);
-                                _baseStream.Write(_buf, 0, writeOffset);
-                                _baseStream.Flush();
+                                if (async)
+                                {
+                                    await _baseStream.WriteAsync(_buf, 0, writeOffset);
+                                    await _baseStream.FlushAsync();
+                                }
+                                else
+                                {
+                                    _baseStream.Write(_buf, 0, writeOffset);
+                                    _baseStream.Flush();
+                                }
                                 _buf = bufSaved;
 
                                 _handshakeMessagesBuffer.ClearMessages();
@@ -1935,8 +1979,16 @@ namespace Npgsql.Tls
                                     _buf = _renegotiationTempWriteBuf;
                                     var responseLen = TraverseHandshakeMessages();
 
-                                    _baseStream.Write(_buf, 0, responseLen);
-                                    _baseStream.Flush();
+                                    if (async)
+                                    {
+                                        await _baseStream.WriteAsync(_buf, 0, responseLen);
+                                        await _baseStream.FlushAsync();
+                                    }
+                                    else
+                                    {
+                                        _baseStream.Write(_buf, 0, responseLen);
+                                        _baseStream.Flush();
+                                    }
                                     ResetWritePos();
                                     _waitingForChangeCipherSpec = true;
 
@@ -1994,7 +2046,7 @@ namespace Npgsql.Tls
                             return toRead;
                         }
                     }
-                    if (!ReadRecord())
+                    if (!await ReadRecord(async))
                     {
                         _eof = true;
                         return 0;
@@ -2033,7 +2085,7 @@ namespace Npgsql.Tls
                     }
                     else if (_contentType == ContentType.Alert)
                     {
-                        HandleAlertMessage();
+                        await HandleAlertMessage(async);
                     }
                     else
                     {
@@ -2043,7 +2095,7 @@ namespace Npgsql.Tls
             }
             catch (ClientAlertException e)
             {
-                WriteAlertFatal(e.Description);
+                await WriteAlertFatal(e.Description, async);
                 throw new IOException(e.ToString(), e);
             }
         }
@@ -2059,7 +2111,7 @@ namespace Npgsql.Tls
                     {
                         // TODO: Ok or not if this throws an exception?
 
-                        SendClosureAlert();
+                        SendClosureAlert(false).GetAwaiter().GetResult();
                         _baseStream.Dispose();
                     }
                 }
@@ -2067,8 +2119,7 @@ namespace Npgsql.Tls
                 {
                     _closed = true;
                     _connState.Dispose();
-                    if (_pendingConnState != null)
-                        _pendingConnState.Dispose();
+                    _pendingConnState?.Dispose();
                     if (_temp512 != null)
                         Utils.ClearArray(_temp512);
                 }
@@ -2118,7 +2169,6 @@ namespace Npgsql.Tls
         /// </summary>
         /// <param name="checkNetworkStream">Whether we should also look in the underlying NetworkStream</param>
         /// <returns>Whether there is available application data</returns>
-        [RewriteAsync]
         public bool HasBufferedReadData(bool checkNetworkStream)
         {
             if (_closed)
@@ -2145,7 +2195,7 @@ namespace Npgsql.Tls
 
             // If none of them were application data, they should be handshake messages/change cipher suite.
             // Process potential renegotiation, but stop when application data is received, or the buffer(s) becomes empty.
-            return ReadInternal(null, 0, 0, true, checkNetworkStream) == 1;
+            return Read(null, 0, 0, true, checkNetworkStream, false).GetAwaiter().GetResult() == 1;
         }
     }
 }

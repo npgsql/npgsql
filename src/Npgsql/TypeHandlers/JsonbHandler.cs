@@ -43,13 +43,6 @@ namespace Npgsql.TypeHandlers
         /// </summary>
         const byte JsonbProtocolVersion = 1;
 
-        /// <summary>
-        /// Indicates whether the prepended version byte has already been read or written
-        /// </summary>
-        bool _handledVersion;
-
-        ReadBuffer _readBuf;
-
         internal override bool PreferTextWrite => false;
 
         internal JsonbHandler(PostgresType postgresType, TypeHandlerRegistry registry) : base(postgresType, registry) {}
@@ -80,32 +73,14 @@ namespace Npgsql.TypeHandlers
 
         #region Read
 
-        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override async ValueTask<string> Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
         {
-            // Subtract one byte for the version number
-            base.PrepareRead(buf, len - 1, fieldDescription);
-            _readBuf = buf;
-            _handledVersion = false;
-        }
+            await buf.Ensure(1, async);
+            var version = buf.ReadByte();
+            if (version != JsonbProtocolVersion)
+                throw new NotSupportedException($"Don't know how to decode JSONB with wire format {version}, your connection is now broken");
 
-        public override bool Read(out string result)
-        {
-            if (!_handledVersion)
-            {
-                if (_readBuf.ReadBytesLeft < 1)
-                {
-                    result = null;
-                    return false;
-                }
-                var version = _readBuf.ReadByte();
-                if (version != JsonbProtocolVersion)
-                    throw new NotSupportedException($"Don't know how to decode JSONB with wire format {version}, your connection is now broken");
-                _handledVersion = true;
-            }
-
-            if (!base.Read(out result)) { return false; }
-            _readBuf = null;
-            return true;
+            return await base.Read(buf, len - 1, async, fieldDescription);
         }
 
         #endregion

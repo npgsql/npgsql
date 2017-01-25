@@ -45,57 +45,32 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
         // 1 (type) + 1 (weight) + 1 (is prefix search) + 2046 (max str len) + 1 (null terminator)
         const int MaxSingleTokenBytes = 2050;
 
-        ReadBuffer  _readBuf;
         Stack<Tuple<NpgsqlTsQuery, int>> _nodes;
-        int _numTokens;
-        int _tokenPos;
-        int _bytesLeft;
         NpgsqlTsQuery _value;
 
         readonly Stack<NpgsqlTsQuery> _stack = new Stack<NpgsqlTsQuery>();
 
         internal TsQueryHandler(PostgresType postgresType) : base(postgresType) { }
 
-        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override async ValueTask<NpgsqlTsQuery> Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
         {
-            _readBuf = buf;
+            await buf.Ensure(4, async);
+            var numTokens = buf.ReadInt32();
+            if (numTokens == 0)
+                return new NpgsqlTsQueryEmpty();
+
             _nodes = new Stack<Tuple<NpgsqlTsQuery, int>>();
-            _tokenPos = -1;
-            _bytesLeft = len;
-        }
+            len -= 4;
 
-        public override bool Read([CanBeNull] out NpgsqlTsQuery result)
-        {
-            result = null;
-
-            if (_tokenPos == -1)
+            for (var tokenPos = 0; tokenPos < numTokens; tokenPos++)
             {
-                if (_readBuf.ReadBytesLeft < 4)
-                    return false;
-                _numTokens = _readBuf.ReadInt32();
-                _bytesLeft -= 4;
-                _tokenPos = 0;
-            }
+                await buf.Ensure(Math.Min(len, MaxSingleTokenBytes), async);
+                var readPos = buf.ReadPosition;
 
-            if (_numTokens == 0)
-            {
-                result = new NpgsqlTsQueryEmpty();
-                _readBuf = null;
-                _nodes = null;
-                return true;
-            }
-
-            for (; _tokenPos < _numTokens; _tokenPos++)
-            {
-                if (_readBuf.ReadBytesLeft < Math.Min(_bytesLeft, MaxSingleTokenBytes))
-                    return false;
-
-                var readPos = _readBuf.ReadPosition;
-
-                var isOper = _readBuf.ReadByte() == 2;
+                var isOper = buf.ReadByte() == 2;
                 if (isOper)
                 {
-                    var operKind = (NpgsqlTsQuery.NodeKind)_readBuf.ReadByte();
+                    var operKind = (NpgsqlTsQuery.NodeKind)buf.ReadByte();
                     if (operKind == NpgsqlTsQuery.NodeKind.Not)
                     {
                         var node = new NpgsqlTsQueryNot(null);
@@ -126,23 +101,19 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
                 }
                 else
                 {
-                    var weight = (NpgsqlTsQueryLexeme.Weight)_readBuf.ReadByte();
-                    var prefix = _readBuf.ReadByte() != 0;
-                    var str = _readBuf.ReadNullTerminatedString();
+                    var weight = (NpgsqlTsQueryLexeme.Weight)buf.ReadByte();
+                    var prefix = buf.ReadByte() != 0;
+                    var str = buf.ReadNullTerminatedString();
                     InsertInTree(new NpgsqlTsQueryLexeme(str, weight, prefix));
                 }
 
-                _bytesLeft -= _readBuf.ReadPosition - readPos;
+                len -= buf.ReadPosition - readPos;
             }
 
             if (_nodes.Count != 0)
                 throw new InvalidOperationException("Internal Npgsql bug, please report.");
 
-            result = _value;
-            _readBuf = null;
-            _nodes = null;
-            _value = null;
-            return true;
+            return _value;
         }
 
         void InsertInTree([CanBeNull] NpgsqlTsQuery node)

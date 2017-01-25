@@ -130,9 +130,9 @@ namespace Npgsql.Tests
                 conn.ExecuteNonQuery("LISTEN notifytest");
                 Task.Delay(2000).ContinueWith(t => notifyingConn.ExecuteNonQuery("NOTIFY notifytest"));
                 conn.Wait();
-                Assert.That(TestLoggerSink.Records, Has.Some.With.Property("EventId").EqualTo(new EventId(NpgsqlEventId.Keepalive)));
                 Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
             }
+            Assert.That(TestLoggerSink.Records, Has.Some.With.Property("EventId").EqualTo(new EventId(NpgsqlEventId.Keepalive)));
         }
 
         [Test]

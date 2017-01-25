@@ -24,6 +24,7 @@
 using NpgsqlTypes;
 using System;
 using System.Text;
+using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
 
@@ -41,16 +42,17 @@ namespace Npgsql.TypeHandlers
     {
         internal UnknownTypeHandler(TypeHandlerRegistry registry) : base(UnknownBackendType.Instance, registry) {}
 
-        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override ValueTask<string> Read(ReadBuffer buf, int byteLen, bool async, FieldDescription fieldDescription = null)
         {
             if (fieldDescription == null)
                 throw new Exception($"Received an unknown field but {nameof(fieldDescription)} is null (i.e. COPY mode)");
 
-            if (fieldDescription.IsBinaryFormat) {
-                buf.Skip(len);
+            if (fieldDescription.IsBinaryFormat)
+            {
+                buf.Skip(byteLen);
                 throw new SafeReadException(new NotSupportedException($"The field '{fieldDescription.Name}' has a type currently unknown to Npgsql (OID {fieldDescription.TypeOID}). You can retrieve it as a string by marking it as unknown, please see the FAQ."));
             }
-            base.PrepareRead(buf, len, fieldDescription);
+            return base.Read(buf, byteLen, async, fieldDescription);
         }
     }
 }

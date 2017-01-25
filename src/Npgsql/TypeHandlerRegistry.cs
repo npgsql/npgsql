@@ -26,10 +26,11 @@ using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
+using System.Data.Common;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
-using AsyncRewriter;
+using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
 using Npgsql.Logging;
@@ -39,7 +40,7 @@ using NpgsqlTypes;
 
 namespace Npgsql
 {
-    partial class TypeHandlerRegistry
+    class TypeHandlerRegistry
     {
         #region Members
 
@@ -106,8 +107,7 @@ namespace Npgsql
 
         #region Initialization and Loading
 
-        [RewriteAsync]
-        internal static void Setup(NpgsqlConnector connector, NpgsqlTimeout timeout)
+        internal static async Task Setup(NpgsqlConnector connector, NpgsqlTimeout timeout, bool async)
         {
             // Note that there's a chicken and egg problem here - LoadBackendTypes below needs a functional 
             // connector to load the types, hence the strange initialization code here
@@ -115,7 +115,7 @@ namespace Npgsql
 
             AvailablePostgresTypes types;
             if (!BackendTypeCache.TryGetValue(connector.ConnectionString, out types))
-                types = BackendTypeCache[connector.ConnectionString] = LoadBackendTypes(connector, timeout);
+                types = BackendTypeCache[connector.ConnectionString] = await LoadBackendTypes(connector, timeout, async);
 
             connector.TypeHandlerRegistry._postgresTypes = types;
             connector.TypeHandlerRegistry.ActivateGlobalMappings();
@@ -203,17 +203,16 @@ WHERE
 ORDER BY ord";
         }
 
-        [RewriteAsync]
-        static AvailablePostgresTypes LoadBackendTypes(NpgsqlConnector connector, NpgsqlTimeout timeout)
+        static async Task<AvailablePostgresTypes> LoadBackendTypes(NpgsqlConnector connector, NpgsqlTimeout timeout, bool async)
         {
             var types = new AvailablePostgresTypes();
             using (var command = new NpgsqlCommand(connector.SupportsRangeTypes ? TypesQueryWithRange : TypesQueryWithoutRange, connector.Connection))
             {
                 command.CommandTimeout = timeout.IsSet ? (int)timeout.TimeLeft.TotalSeconds : 0;
                 command.AllResultTypesAreUnknown = true;
-                using (var reader = command.ExecuteReader())
+                using (var reader = async ? await command.ExecuteReaderAsync() : command.ExecuteReader())
                 {
-                    while (reader.Read())
+                    while (async ? await reader.ReadAsync() : reader.Read())
                     {
                         timeout.Check();
                         LoadBackendType(reader, types, connector);
@@ -223,7 +222,7 @@ ORDER BY ord";
             return types;
         }
 
-        static void LoadBackendType(NpgsqlDataReader reader, AvailablePostgresTypes types, NpgsqlConnector connector)
+        static void LoadBackendType(DbDataReader reader, AvailablePostgresTypes types, NpgsqlConnector connector)
         {
             var ns = reader.GetString(0);
             var name = reader.GetString(1);

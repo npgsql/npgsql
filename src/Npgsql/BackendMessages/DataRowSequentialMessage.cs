@@ -24,13 +24,13 @@
 using System;
 using System.Diagnostics;
 using System.IO;
-using AsyncRewriter;
+using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.TypeHandlers;
 
 namespace Npgsql.BackendMessages
 {
-    partial class DataRowSequentialMessage : DataRowMessage
+    class DataRowSequentialMessage : DataRowMessage
     {
         /// <summary>
         /// A stream that has been opened on this colun, and needs to be disposed of when the column is consumed.
@@ -53,8 +53,7 @@ namespace Npgsql.BackendMessages
         /// Places our position at the beginning of the given column, after the 4-byte length.
         /// The length is available in ColumnLen.
         /// </summary>
-        [RewriteAsync(withOverride: true)]
-        internal override void SeekToColumn(int column)
+        internal override async Task SeekToColumn(int column, bool async)
         {
             CheckColumnIndex(column);
 
@@ -67,7 +66,7 @@ namespace Npgsql.BackendMessages
             // Skip to end of column if needed
             var remainingInColumn = (ColumnLen == -1 ? 0 : ColumnLen - PosInColumn);
             if (remainingInColumn > 0)
-                Buffer.Skip(remainingInColumn);
+                await Buffer.Skip(remainingInColumn, async);
 
             // Shut down any streaming going on on the colun
             if (_stream != null)
@@ -79,19 +78,19 @@ namespace Npgsql.BackendMessages
             // Skip over unwanted fields
             for (; Column < column - 1; Column++)
             {
-                Buffer.Ensure(4);
+                await Buffer.Ensure(4, async);
                 var len = Buffer.ReadInt32();
                 if (len != -1)
-                    Buffer.Skip(len);
+                    await Buffer.Skip(len, async);
             }
 
-            Buffer.Ensure(4);
+            await Buffer.Ensure(4, async);
             ColumnLen = Buffer.ReadInt32();
             PosInColumn = 0;
             Column = column;
         }
 
-        internal override void SeekInColumn(int posInColumn)
+        internal override async Task SeekInColumn(int posInColumn, bool async)
         {
             if (posInColumn < PosInColumn)
                 throw new InvalidOperationException("Attempt to read a position in the column which has already been read");
@@ -101,7 +100,7 @@ namespace Npgsql.BackendMessages
 
             if (posInColumn > PosInColumn)
             {
-                Buffer.Skip(posInColumn - PosInColumn);
+                await Buffer.Skip(posInColumn - PosInColumn, async);
                 PosInColumn = posInColumn;
             }
         }
@@ -116,21 +115,20 @@ namespace Npgsql.BackendMessages
             return stream;
         }
 
-        [RewriteAsync(withOverride: true)]
-        internal override void Consume()
+        internal override async Task Consume(bool async)
         {
             // Skip to end of column if needed
-            var remainingInColumn = (ColumnLen == -1 ? 0 : ColumnLen - PosInColumn);
+            var remainingInColumn = ColumnLen == -1 ? 0 : ColumnLen - PosInColumn;
             if (remainingInColumn > 0)
-                Buffer.Skip(remainingInColumn);
+                await Buffer.Skip(remainingInColumn, async);
 
             // Skip over the remaining columns in the row
             for (; Column < NumColumns - 1; Column++)
             {
-                Buffer.Ensure(4);
+                await Buffer.Ensure(4, async);
                 var len = Buffer.ReadInt32();
                 if (len != -1)
-                    Buffer.Skip(len);
+                    await Buffer.Skip(len, async);
             }
         }
     }

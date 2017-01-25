@@ -58,134 +58,21 @@ namespace Npgsql.TypeHandlers
             throw new Exception("Can't create range handler of range types, this is an Npgsql bug, please report.");
         }
 
-        #region State
-
-        ReadBuffer _readBuf;
-        TElement _lowerBound;
-        RangeFlags _flags;
-        State _state;
-        FieldDescription _fieldDescription;
-        int _elementLen;
-        bool _preparedRead;
-
-        void CleanupState()
-        {
-            _readBuf = null;
-            _lowerBound = default(TElement);
-            _fieldDescription = null;
-            _state = State.Done;
-        }
-
-        #endregion
-
         #region Read
 
-        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override async ValueTask<NpgsqlRange<TElement>> Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
         {
-            _readBuf = buf;
-            _state = State.Flags;
-            _lowerBound = default(TElement);
-            _elementLen = -1;
-        }
+            await buf.Ensure(1, async);
+            var flags = (RangeFlags)buf.ReadByte();
+            if ((flags & RangeFlags.Empty) != 0)
+                return NpgsqlRange<TElement>.Empty;
 
-        public override bool Read(out NpgsqlRange<TElement> result)
-        {
-            switch (_state) {
-            case State.Flags:
-                if (_readBuf.ReadBytesLeft < 1)
-                {
-                    result = default(NpgsqlRange<TElement>);
-                    return false;
-                }
-                _flags = (RangeFlags)_readBuf.ReadByte();
-
-                if ((_flags & RangeFlags.Empty) != 0) {
-                    result = NpgsqlRange<TElement>.Empty;
-                    CleanupState();
-                    return true;
-                }
-
-                if ((_flags & RangeFlags.LowerBoundInfinite) != 0)
-                    goto case State.UpperBound;
-
-                _state = State.LowerBound;
-                goto case State.LowerBound;
-
-            case State.LowerBound:
-                _state = State.LowerBound;
-                if (!ReadSingleElement(out _lowerBound))
-                {
-                    result = default(NpgsqlRange<TElement>);
-                    return false;
-                }
-                goto case State.UpperBound;
-
-            case State.UpperBound:
-                _state = State.UpperBound;
-                if ((_flags & RangeFlags.UpperBoundInfinite) != 0) {
-                    result = new NpgsqlRange<TElement>(_lowerBound, default(TElement), _flags);
-                    CleanupState();
-                    return true;
-                }
-
-                TElement upperBound;
-                if (!ReadSingleElement(out upperBound))
-                {
-                    result = default(NpgsqlRange<TElement>);
-                    return false;
-                }
-                result = new NpgsqlRange<TElement>(_lowerBound, upperBound, _flags);
-                CleanupState();
-                return true;
-
-            default:
-                throw new ArgumentOutOfRangeException();
-            }
-        }
-
-        bool ReadSingleElement([CanBeNull] out TElement element)
-        {
-            try {
-                if (_elementLen == -1) {
-                    if (_readBuf.ReadBytesLeft < 4) {
-                        element = default(TElement);
-                        return false;
-                    }
-                    _elementLen = _readBuf.ReadInt32();
-                    Debug.Assert(_elementLen != -1);
-                }
-
-                var asSimpleReader = ElementHandler as ISimpleTypeHandler<TElement>;
-                if (asSimpleReader != null) {
-                    if (_readBuf.ReadBytesLeft < _elementLen) {
-                        element = default(TElement);
-                        return false;
-                    }
-                    element = asSimpleReader.Read(_readBuf, _elementLen, _fieldDescription);
-                    _elementLen = -1;
-                    return true;
-                }
-
-                var asChunkingReader = ElementHandler as IChunkingTypeHandler<TElement>;
-                if (asChunkingReader != null) {
-                    if (!_preparedRead)
-                    {
-                        asChunkingReader.PrepareRead(_readBuf, _elementLen, _fieldDescription);
-                        _preparedRead = true;
-                    }
-                    if (!asChunkingReader.Read(out element))
-                        return false;
-                    _elementLen = -1;
-                    _preparedRead = false;
-                    return true;
-                }
-
-                throw new InvalidOperationException("Internal Npgsql bug, please report.");
-            } catch (SafeReadException e) {
-                // TODO: Implement safe reading. For now, translate the safe exception to an unsafe one
-                // to break the connector.
-                throw e.InnerException;
-            }
+            TElement lowerBound = default(TElement), upperBound = default(TElement);
+            if ((flags & RangeFlags.LowerBoundInfinite) == 0)
+                lowerBound = await ElementHandler.ReadWithLength<TElement>(buf, async);
+            if ((flags & RangeFlags.UpperBoundInfinite) == 0)
+                upperBound = await ElementHandler.ReadWithLength<TElement>(buf, async);
+            return new NpgsqlRange<TElement>(lowerBound, upperBound, flags);
         }
 
         #endregion
@@ -233,13 +120,5 @@ namespace Npgsql.TypeHandlers
         }
 
         #endregion
-
-        enum State
-        {
-            Flags,
-            LowerBound,
-            UpperBound,
-            Done
-        }
     }
 }

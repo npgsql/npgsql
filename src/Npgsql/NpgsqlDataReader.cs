@@ -33,9 +33,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using AsyncRewriter;
 using JetBrains.Annotations;
-using Microsoft.Extensions.Logging;
 using Npgsql.BackendMessages;
 using Npgsql.Logging;
 using Npgsql.PostgresTypes;
@@ -49,7 +47,7 @@ namespace Npgsql
     /// Reads a forward-only stream of rows from a data source.
     /// </summary>
 #pragma warning disable CA1010
-    public sealed partial class NpgsqlDataReader : DbDataReader
+    public sealed class NpgsqlDataReader : DbDataReader
 #pragma warning restore CA1010
 #if NETSTANDARD1_3
         , IDbColumnSchemaGenerator
@@ -78,6 +76,7 @@ namespace Npgsql
         /// </summary>
         RowDescriptionMessage _rowDescription;
 
+        [CanBeNull]
         DataRowMessage _row;
         uint? _recordsAffected;
 
@@ -95,6 +94,7 @@ namespace Npgsql
         /// If HasRows was called before any rows were read, it was forced to read messages. A pending
         /// message may be stored here for processing in the next Read() or NextResult().
         /// </summary>
+        [CanBeNull]
         IBackendMessage _pendingMessage;
 
         /// <summary>
@@ -173,24 +173,23 @@ namespace Npgsql
         /// <remarks>
         /// The default position of a data reader is before the first record. Therefore, you must call Read to begin accessing data.
         /// </remarks>
-        public override bool Read() => ReadInternal();
+        public override bool Read() => Read(false).GetAwaiter().GetResult();
 
         /// <summary>
-        /// This is the asynchronous version of <see cref="Read"/> The cancellation token is currently ignored.
+        /// This is the asynchronous version of <see cref="Read()"/> The cancellation token is currently ignored.
         /// </summary>
         /// <param name="cancellationToken">Ignored for now.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
         public override async Task<bool> ReadAsync(CancellationToken cancellationToken)
         {
             using (NoSynchronizationContextScope.Enter())
-                return await ReadInternalAsync(cancellationToken);
+                return await Read(true);
         }
 
-        [RewriteAsync]
-        bool ReadInternal()
+        async Task<bool> Read(bool async)
         {
             if (_row != null) {
-                _row.Consume();
+                await _row.Consume(async );
                 _row = null;
             }
 
@@ -211,13 +210,13 @@ namespace Npgsql
                 if ((_behavior & CommandBehavior.SingleRow) != 0 && _readOneRow)
                 {
                     // TODO: See optimization proposal in #410
-                    Consume();
+                    await Consume(async);
                     return false;
                 }
 
                 while (true)
                 {
-                    var msg = ReadMessage();
+                    var msg = await ReadMessage(async);
                     switch (ProcessMessage(msg))
                     {
                     case ReadResult.RowRead:
@@ -302,7 +301,8 @@ namespace Npgsql
         {
             try
             {
-                return IsSchemaOnly ? NextResultSchemaOnly() : NextResultInternal();
+                return (IsSchemaOnly ? NextResultSchemaOnly(false) : NextResult(false))
+                    .GetAwaiter().GetResult();
             }
             catch (PostgresException e)
             {
@@ -324,11 +324,7 @@ namespace Npgsql
             try
             {
                 using (NoSynchronizationContextScope.Enter())
-                {
-                    return IsSchemaOnly
-                        ? await NextResultSchemaOnlyAsync(cancellationToken)
-                        : await NextResultInternalAsync(cancellationToken);
-                }
+                    return IsSchemaOnly ? await NextResultSchemaOnly(true) : await NextResult(true);
             }
             catch (PostgresException e)
             {
@@ -339,8 +335,7 @@ namespace Npgsql
             }
         }
 
-        [RewriteAsync]
-        bool NextResultInternal()
+        async Task<bool> NextResult(bool async)
         {
             Debug.Assert(!IsSchemaOnly);
 
@@ -349,12 +344,12 @@ namespace Npgsql
             {
             case ReaderState.InResult:
                 if (_row != null) {
-                    _row.Consume();
+                    await _row.Consume(async);
                     _row = null;
                 }
 
                 // TODO: Duplication with SingleResult handling above
-                var completedMsg = SkipUntil(BackendMessageCode.CompletedResponse, BackendMessageCode.EmptyQueryResponse);
+                var completedMsg = await SkipUntil(BackendMessageCode.CompletedResponse, BackendMessageCode.EmptyQueryResponse, async);
                 ProcessMessage(completedMsg);
                 break;
 
@@ -374,7 +369,7 @@ namespace Npgsql
             if ((_behavior & CommandBehavior.SingleResult) != 0 && _statementIndex == 0)
             {
                 if (_state == ReaderState.BetweenResults)
-                    Consume();
+                    await Consume(async);
                 return false;
             }
 
@@ -386,7 +381,7 @@ namespace Npgsql
                 var statement = _statements[_statementIndex];
                 if (statement.IsPrepared)
                 {
-                    _connector.ReadExpecting<BindCompleteMessage>();
+                    await _connector.ReadExpecting<BindCompleteMessage>(async);
                     _rowDescription = statement.Description;
                 }
                 else  // Non-prepared flow
@@ -398,15 +393,15 @@ namespace Npgsql
                         Debug.Assert(pStatement.Description == null);
                         if (pStatement.StatementBeingReplaced != null)
                         {
-                            _connector.ReadExpecting<CloseCompletedMessage>();
+                            await _connector.ReadExpecting<CloseCompletedMessage>(async);
                             pStatement.StatementBeingReplaced.CompleteUnprepare();
                             pStatement.StatementBeingReplaced = null;
                         }
                     }
 
-                    _connector.ReadExpecting<ParseCompleteMessage>();
-                    _connector.ReadExpecting<BindCompleteMessage>();
-                    var msg = _connector.ReadMessage(DataRowLoadingMode.NonSequential);
+                    await _connector.ReadExpecting<ParseCompleteMessage>(async);
+                    await _connector.ReadExpecting<BindCompleteMessage>(async);
+                    var msg = await _connector.ReadMessage(async);
                     switch (msg.Code)
                     {
                     case BackendMessageCode.NoData:
@@ -431,7 +426,7 @@ namespace Npgsql
                 {
                     // Statement did not generate a resultset (e.g. INSERT)
                     // Read and process its completion message and move on to the next
-                    var msg = _connector.ReadMessage(DataRowLoadingMode.NonSequential);
+                    var msg = await _connector.ReadMessage(async);
                     if (msg.Code != BackendMessageCode.CompletedResponse && msg.Code != BackendMessageCode.EmptyQueryResponse)
                         throw _connector.UnexpectedMessageReceived(msg.Code);
                     ProcessMessage(msg);
@@ -448,11 +443,11 @@ namespace Npgsql
                     // If output parameters are present and this is the first row of the first resultset,
                     // we must read it in non-sequential mode because it will be traversed twice (once
                     // here for the parameters, then as a regular row).
-                    _pendingMessage = _connector.ReadMessage(DataRowLoadingMode.NonSequential);
+                    _pendingMessage = await _connector.ReadMessage(async);
                     PopulateOutputParameters();
                 }
                 else
-                    _pendingMessage = _connector.ReadMessage(IsSequential ? DataRowLoadingMode.Sequential : DataRowLoadingMode.NonSequential);
+                    _pendingMessage = await _connector.ReadMessage(async, IsSequential ? DataRowLoadingMode.Sequential : DataRowLoadingMode.NonSequential);
 
                 _state = ReaderState.InResult;
                 return true;
@@ -468,8 +463,7 @@ namespace Npgsql
         /// Note that in SchemaOnly mode there are no resultsets, and we read nothing from the backend (all
         /// RowDescriptions have already been processed and are available)
         /// </summary>
-        [RewriteAsync]
-        bool NextResultSchemaOnly()
+        async Task<bool> NextResultSchemaOnly(bool async)
         {
             Debug.Assert(IsSchemaOnly);
 
@@ -484,9 +478,9 @@ namespace Npgsql
                 }
                 else
                 {
-                    _connector.ReadExpecting<ParseCompleteMessage>();
-                    _connector.ReadExpecting<ParameterDescriptionMessage>();
-                    var msg = _connector.ReadMessage(DataRowLoadingMode.NonSequential);
+                    await _connector.ReadExpecting<ParseCompleteMessage>(async);
+                    await _connector.ReadExpecting<ParameterDescriptionMessage>(async);
+                    var msg = await _connector.ReadMessage(async);
                     switch (msg.Code)
                     {
                     case BackendMessageCode.NoData:
@@ -510,7 +504,7 @@ namespace Npgsql
             // There are no more queries, we're done. Read to the RFQ.
             if (!_statements.All(s => s.IsPrepared))
             {
-                ProcessMessage(_connector.ReadExpecting<ReadyForQueryMessage>());
+                ProcessMessage(await _connector.ReadExpecting<ReadyForQueryMessage>(async));
                 _rowDescription = null;
             }
             return false;
@@ -518,19 +512,17 @@ namespace Npgsql
 
         #endregion
 
-        [RewriteAsync]
-        IBackendMessage ReadMessage()
+        ValueTask<IBackendMessage> ReadMessage(bool async)
         {
             if (_pendingMessage != null) {
                 var msg = _pendingMessage;
                 _pendingMessage = null;
-                return msg;
+                return new ValueTask<IBackendMessage>(msg);
             }
-            return _connector.ReadMessage(IsSequential ? DataRowLoadingMode.Sequential : DataRowLoadingMode.NonSequential);
+            return _connector.ReadMessage(async, IsSequential ? DataRowLoadingMode.Sequential : DataRowLoadingMode.NonSequential);
         }
 
-        [RewriteAsync]
-        IBackendMessage SkipUntil(BackendMessageCode stopAt1, BackendMessageCode stopAt2)
+        async ValueTask<IBackendMessage> SkipUntil(BackendMessageCode stopAt1, BackendMessageCode stopAt2, bool async)
         {
             if (_pendingMessage != null) {
                 if (_pendingMessage.Code == stopAt1 || _pendingMessage.Code == stopAt2) {
@@ -541,10 +533,10 @@ namespace Npgsql
                 var asDataRow = _pendingMessage as DataRowMessage;
                 // ReSharper disable once UseNullPropagation
                 if (asDataRow != null)
-                    asDataRow.Consume();
+                    await asDataRow.Consume(async);
                 _pendingMessage = null;
             }
-            return _connector.SkipUntil(stopAt1, stopAt2);
+            return await _connector.SkipUntil(stopAt1, stopAt2, async);
         }
 
         /// <summary>
@@ -588,7 +580,7 @@ namespace Npgsql
                     return false;
                 while (true)
                 {
-                    var msg = ReadMessage();
+                    var msg = ReadMessage(false).Result;
                     switch (msg.Code)
                     {
                     case BackendMessageCode.BindComplete:
@@ -619,7 +611,7 @@ namespace Npgsql
         /// Indicates whether the reader is currently positioned on a row, i.e. whether reading a
         /// column is possible.
         /// This property is different from <see cref="HasRows"/> in that <see cref="HasRows"/> will
-        /// return true even if attempting to read a column will fail, e.g. before <see cref="Read"/>
+        /// return true even if attempting to read a column will fail, e.g. before <see cref="Read()"/>
         /// has been called
         /// </summary>
         [PublicAPI]
@@ -649,8 +641,7 @@ namespace Npgsql
         /// Consumes all result sets for this reader, leaving the connector ready for sending and processing further
         /// queries
         /// </summary>
-        [RewriteAsync]
-        void Consume()
+        async Task Consume(bool async)
         {
             if (IsSchemaOnly && _statements.All(s => s.IsPrepared))
             {
@@ -660,14 +651,14 @@ namespace Npgsql
 
             if (_row != null)
             {
-                _row.Consume();
+                await _row.Consume(async);
                 _row = null;
             }
 
             // Skip over the other result sets, processing only CommandCompleted for RecordsAffected
             while (true)
             {
-                var msg = SkipUntil(BackendMessageCode.CompletedResponse, BackendMessageCode.ReadyForQuery);
+                var msg = await SkipUntil(BackendMessageCode.CompletedResponse, BackendMessageCode.ReadyForQuery, async);
                 switch (msg.Code)
                 {
                 case BackendMessageCode.CompletedResponse:
@@ -716,7 +707,7 @@ namespace Npgsql
             }
 
             if (_state != ReaderState.Consumed)
-                Consume();
+                Consume(false).GetAwaiter().GetResult();
 
             // Make sure the send task for this command, which may have executed asynchronously and in
             // parallel with the reading, has completed, throwing any exceptions it generated.
@@ -966,7 +957,7 @@ namespace Npgsql
                 throw new InvalidCastException("GetBytes() not supported for type " + fieldDescription.Name);
 
             var row = Row;
-            row.SeekToColumn(ordinal);
+            row.SeekToColumn(ordinal, false).GetAwaiter().GetResult();
             row.CheckNotNull();
             return handler.GetBytes(row, (int)dataOffset, buffer, bufferOffset, length, fieldDescription);
         }
@@ -986,7 +977,7 @@ namespace Npgsql
                 throw new InvalidCastException("GetStream() not supported for type " + fieldDescription.Handler.PgDisplayName);
 
             var row = Row;
-            row.SeekToColumnStart(ordinal);
+            row.SeekToColumnStart(ordinal, false).GetAwaiter().GetResult();
             row.CheckNotNull();
             return row.GetStream();
         }
@@ -1020,7 +1011,7 @@ namespace Npgsql
                 throw new InvalidCastException("GetChars() not supported for type " + fieldDescription.Name);
 
             var row = Row;
-            row.SeekToColumn(ordinal);
+            row.SeekToColumn(ordinal, false).GetAwaiter().GetResult(); ;
             row.CheckNotNull();
             return handler.GetChars(row, (int)dataOffset, buffer, bufferOffset, length, fieldDescription);
         }
@@ -1040,7 +1031,7 @@ namespace Npgsql
                 throw new InvalidCastException("GetTextReader() not supported for type " + fieldDescription.Handler.PgDisplayName);
 
             var row = Row;
-            row.SeekToColumnStart(ordinal);
+            row.SeekToColumnStart(ordinal, false).GetAwaiter().GetResult();
             row.CheckNotNull();
 
             return handler.GetTextReader(row.GetStream());
@@ -1055,10 +1046,10 @@ namespace Npgsql
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns><b>true</b> if the specified column is equivalent to <see cref="DBNull"/>; otherwise <b>false</b>.</returns>
-        public override bool IsDBNull(int ordinal) => IsDBNullInternal(ordinal);
+        public override bool IsDBNull(int ordinal) => IsDBNull(ordinal, false).GetAwaiter().GetResult();
 
         /// <summary>
-        /// An asynchronous version of <see cref="IsDBNull"/>, which gets a value that indicates whether the column contains non-existent or missing values.
+        /// An asynchronous version of <see cref="IsDBNull(int)"/>, which gets a value that indicates whether the column contains non-existent or missing values.
         /// The <paramref name="cancellationToken"/> parameter is currently ignored.
         /// </summary>
         /// <param name="ordinal">The zero-based column to be retrieved.</param>
@@ -1067,18 +1058,17 @@ namespace Npgsql
         public override async Task<bool> IsDBNullAsync(int ordinal, CancellationToken cancellationToken)
         {
             using (NoSynchronizationContextScope.Enter())
-                return await IsDBNullInternalAsync(ordinal, cancellationToken);
+                return await IsDBNull(ordinal, true);
         }
 
-        [RewriteAsync]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         // ReSharper disable once InconsistentNaming
-        bool IsDBNullInternal(int ordinal)
+        async Task<bool> IsDBNull(int ordinal, bool async)
         {
             CheckRowAndOrdinal(ordinal);
 
-            Row.SeekToColumn(ordinal);
-            return _row.IsColumnNull;
+            await Row.SeekToColumn(ordinal, async);
+            return Row.IsColumnNull;
         }
 
         #endregion
@@ -1182,16 +1172,15 @@ namespace Npgsql
             CheckRowAndOrdinal(ordinal);
 
             // TODO: Code duplication with ReadColumn<T>
-            _row.SeekToColumnStart(ordinal);
-            if (_row.IsColumnNull) {
+            _row.SeekToColumnStart(ordinal, false).GetAwaiter().GetResult();
+            if (_row.IsColumnNull)
                 return DBNull.Value;
-            }
             var fieldDescription = _rowDescription[ordinal];
             var handler = fieldDescription.Handler;
 
             object result;
             try {
-                result = handler.ReadValueAsObjectFully(_row, fieldDescription);
+                result = handler.ReadAsObject(_row, fieldDescription);
             } catch (SafeReadException e) {
                 throw e.InnerException;
             } catch {
@@ -1217,7 +1206,7 @@ namespace Npgsql
         /// <typeparam name="T">Synchronously gets the value of the specified column as a type.</typeparam>
         /// <param name="ordinal">The column to be retrieved.</param>
         /// <returns>The column to be retrieved.</returns>
-        public override T GetFieldValue<T>(int ordinal) => GetFieldValueInternal<T>(ordinal);
+        public override T GetFieldValue<T>(int ordinal) => GetFieldValue<T>(ordinal, false).Result;
 
         /// <summary>
         /// Asynchronously gets the value of the specified column as a type.
@@ -1230,20 +1219,18 @@ namespace Npgsql
         public override async Task<T> GetFieldValueAsync<T>(int ordinal, CancellationToken cancellationToken)
         {
             using (NoSynchronizationContextScope.Enter())
-                return await GetFieldValueInternalAsync<T>(ordinal, cancellationToken);
+                return await GetFieldValue<T>(ordinal, true);
         }
 
-        [RewriteAsync]
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        T GetFieldValueInternal<T>(int ordinal)
+        async ValueTask<T> GetFieldValue<T>(int ordinal, bool async)
         {
             CheckRowAndOrdinal(ordinal);
 
             var t = typeof(T);
             if (!t.IsArray) {
                 if (t == typeof(object))
-                    return (T)GetValue(ordinal);
-                return ReadColumn<T>(ordinal);
+                    return (T)GetValue(ordinal);  // TODO: Sync...
+                return await ReadColumn<T>(ordinal, async);
             }
 
             // Getting an array
@@ -1255,7 +1242,7 @@ namespace Npgsql
             // of reading a string as char[], a bytea as a byte[]...
             var tHandler = handler as ITypeHandler<T>;
             if (tHandler != null)
-                return ReadColumn<T>(ordinal);
+                return await ReadColumn<T>(ordinal, async);
 
             // We need to treat this as an actual array type, these need special treatment because of
             // typing/generics reasons
@@ -1281,7 +1268,7 @@ namespace Npgsql
             CheckRowAndOrdinal(ordinal);
 
             // TODO: Code duplication with ReadColumn<T>
-            _row.SeekToColumnStart(ordinal);
+            _row.SeekToColumnStart(ordinal, false).GetAwaiter().GetResult();
             if (_row.IsColumnNull)
                 return DBNull.Value;
             var fieldDescription = _rowDescription[ordinal];
@@ -1289,7 +1276,7 @@ namespace Npgsql
 
             object result;
             try {
-                result = handler.ReadPsvAsObjectFully(_row, fieldDescription);
+                result = handler.ReadPsvAsObject(_row, fieldDescription);
             } catch (SafeReadException e) {
                 throw e.InnerException;
             } catch {
@@ -1331,17 +1318,16 @@ namespace Npgsql
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [RewriteAsync]
-        T ReadColumn<T>(int ordinal)
+        async ValueTask<T> ReadColumn<T>(int ordinal, bool async)
         {
             CheckRowAndOrdinal(ordinal);
 
-            _row.SeekToColumnStart(ordinal);
+            await _row.SeekToColumnStart(ordinal, false);
             Row.CheckNotNull();
             var fieldDescription = _rowDescription[ordinal];
             try
             {
-                return fieldDescription.Handler.ReadFully<T>(_row, Row.ColumnLen, fieldDescription);
+                return await fieldDescription.Handler.Read<T>(_row, Row.ColumnLen, async, fieldDescription);
             }
             catch (SafeReadException e)
             {
@@ -1353,6 +1339,9 @@ namespace Npgsql
                 throw;
             }
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        T ReadColumn<T>(int ordinal) => ReadColumn<T>(ordinal, true).Result;
 
         #region New (CoreCLR) schema API
 

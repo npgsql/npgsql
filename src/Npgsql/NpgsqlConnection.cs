@@ -37,7 +37,6 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
-using AsyncRewriter;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
 using Npgsql.Logging;
@@ -54,11 +53,11 @@ namespace Npgsql
     /// This class represents a connection to a PostgreSQL server.
     /// </summary>
 #if NETSTANDARD1_3
-    public sealed partial class NpgsqlConnection : DbConnection
+    public sealed class NpgsqlConnection : DbConnection
 #else
     // ReSharper disable once RedundantNameQualifier
     [System.ComponentModel.DesignerCategory("")]
-    public sealed partial class NpgsqlConnection : DbConnection, ICloneable
+    public sealed class NpgsqlConnection : DbConnection, ICloneable
 #endif
     {
         #region Fields
@@ -102,6 +101,7 @@ namespace Npgsql
         static readonly ConcurrentDictionary<string, NpgsqlConnectionStringBuilder> CsbCache = new ConcurrentDictionary<string, NpgsqlConnectionStringBuilder>();
 
 #if NET45 || NET451
+        [CanBeNull]
         internal Transaction EnlistedTransaction { get; set; }
 #endif
 
@@ -161,10 +161,10 @@ namespace Npgsql
         /// Opens a database connection with the property settings specified by the
         /// <see cref="NpgsqlConnection.ConnectionString">ConnectionString</see>.
         /// </summary>
-        public override void Open() => OpenInternal();
+        public override void Open() => Open(false).GetAwaiter().GetResult();
 
         /// <summary>
-        /// This is the asynchronous version of <see cref="Open"/>.
+        /// This is the asynchronous version of <see cref="Open()"/>.
         /// </summary>
         /// <remarks>
         /// Do not invoke other methods and properties of the <see cref="NpgsqlConnection"/> object until the returned Task is complete.
@@ -174,11 +174,10 @@ namespace Npgsql
         public override async Task OpenAsync(CancellationToken cancellationToken)
         {
             using (NoSynchronizationContextScope.Enter())
-                await OpenInternalAsync(cancellationToken);
+                await Open(true);
         }
 
-        [RewriteAsync]
-        void OpenInternal()
+        async Task Open(bool async)
         {
             if (string.IsNullOrWhiteSpace(Host))
                 throw new ArgumentException("Host can't be null");
@@ -221,11 +220,11 @@ namespace Npgsql
                                 EnlistedTransaction = Transaction.Current;
                         }
                         if (Connector == null)
-                            Connector = Pool.Allocate(this, timeout);
+                            Connector = await Pool.Allocate(this, timeout, async);
                     }
                     else  // No enlist
 #endif
-                        Connector = Pool.Allocate(this, timeout);
+                        Connector = await Pool.Allocate(this, timeout, async);
 
                     Counters.SoftConnectsPerSecond.Increment();
 
@@ -236,7 +235,7 @@ namespace Npgsql
                 else
                 {
                     Connector = new NpgsqlConnector(this);
-                    Connector.Open(timeout);
+                    await Connector.Open(timeout, async, CancellationToken.None);
                     Counters.NumberOfNonPooledConnections.Increment();
                 }
 
@@ -721,6 +720,7 @@ namespace Npgsql
         /// <remarks>
         /// See <see href="https://msdn.microsoft.com/en-us/library/system.net.security.localcertificateselectioncallback(v=vs.110).aspx"/>
         /// </remarks>
+        [CanBeNull]
         public ProvideClientCertificatesCallback ProvideClientCertificatesCallback { get; set; }
 
         /// <summary>
@@ -730,6 +730,7 @@ namespace Npgsql
         /// <remarks>
         /// See <see href="https://msdn.microsoft.com/en-us/library/system.net.security.remotecertificatevalidationcallback(v=vs.110).aspx"/>
         /// </remarks>
+        [CanBeNull]
         public RemoteCertificateValidationCallback UserCertificateValidationCallback { get; set; }
 
         #endregion SSL
@@ -1445,7 +1446,8 @@ namespace Npgsql
         {
             var conn = CheckReadyAndGetConnector();
             TypeHandlerRegistry.ClearBackendTypeCache(Settings.ConnectionString);
-            TypeHandlerRegistry.Setup(conn, new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout)));
+            TypeHandlerRegistry.Setup(conn, new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout)), false)
+                .GetAwaiter().GetResult();
         }
 
         #endregion Misc
