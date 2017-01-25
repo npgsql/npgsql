@@ -367,5 +367,25 @@ namespace Npgsql.Tests
             using (var conn = new NpgsqlConnection(connString))
                 NpgsqlConnection.ClearPool(conn);
         }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1412")]
+        public void ReuseConnectionStringBuilderWithChange()
+        {
+            var appName1 = nameof(ReuseConnectionStringBuilderWithChange);
+            var appName2 = appName1 + "2";
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ApplicationName = appName1
+            };
+            using (var conn = new NpgsqlConnection(csb))
+                conn.Open();
+
+            csb.ApplicationName = appName2;
+            using (var conn = new NpgsqlConnection(csb))
+            {
+                conn.Open();
+                Assert.That(conn.ExecuteScalar("SHOW application_name"), Is.EqualTo(appName2));
+            }
+        }
     }
 }
