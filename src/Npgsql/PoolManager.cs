@@ -18,7 +18,8 @@ namespace Npgsql
         /// <summary>
         /// Holds connector pools indexed by their connection strings.
         /// </summary>
-        internal static ConcurrentDictionary<NpgsqlConnectionStringBuilder, ConnectorPool> Pools { get; }
+        internal static Dictionary<NpgsqlConnectionStringBuilder, ConnectorPool> Pools { get; }
+            = new Dictionary<NpgsqlConnectionStringBuilder, ConnectorPool>();
 
         /// <summary>
         /// Maximum number of possible connections in the pool.
@@ -27,8 +28,6 @@ namespace Npgsql
 
         static PoolManager()
         {
-            Pools = new ConcurrentDictionary<NpgsqlConnectionStringBuilder, ConnectorPool>();
-
 #if NET45 || NET451
             // When the appdomain gets unloaded (e.g. web app redeployment) attempt to nicely
             // close idle connectors to prevent errors in PostgreSQL logs (#491).
@@ -41,12 +40,14 @@ namespace Npgsql
         {
             Debug.Assert(connString != null);
 
-            return Pools.GetOrAdd(connString, cs =>
+            lock (Pools)
             {
-                if (cs.MaxPoolSize < cs.MinPoolSize)
-                    throw new ArgumentException($"Connection can't have MaxPoolSize {cs.MaxPoolSize} under MinPoolSize {cs.MinPoolSize}");
-                return new ConnectorPool(cs);
-            });
+                if (Pools.TryGetValue(connString, out var pool))
+                    return pool;
+                if (connString.MaxPoolSize < connString.MinPoolSize)
+                    throw new ArgumentException($"Connection can't have MaxPoolSize {connString.MaxPoolSize} under MinPoolSize {connString.MinPoolSize}");
+                return Pools[connString.Clone()] = new ConnectorPool(connString);
+            }
         }
 
         internal static void Clear(NpgsqlConnectionStringBuilder connString)
@@ -54,14 +55,20 @@ namespace Npgsql
             Debug.Assert(connString != null);
 
             ConnectorPool pool;
-            if (Pools.TryGetValue(connString, out pool))
-                pool.Clear();
+            lock (Pools)
+            {
+                if (Pools.TryGetValue(connString, out pool))
+                    pool.Clear();
+            }
         }
 
         internal static void ClearAll()
         {
-            foreach (var kvp in Pools)
-                kvp.Value.Clear();
+            lock (Pools)
+            {
+                foreach (var kvp in Pools)
+                    kvp.Value.Clear();
+            }
         }
     }
 
