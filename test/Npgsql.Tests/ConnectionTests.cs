@@ -180,8 +180,11 @@ namespace Npgsql.Tests
         [Ignore("Fails in a non-determinstic manner and only on the build server... investigate...")]
         public void InvalidUserId()
         {
-            var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Username = "unknown", Pooling = false };
-            using (var conn = new NpgsqlConnection(csb))
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Username = "unknown", Pooling = false
+            }.ToString();
+            using (var conn = new NpgsqlConnection(connString))
             {
                 Assert.That(conn.Open, Throws.Exception
                     .TypeOf<PostgresException>()
@@ -194,8 +197,12 @@ namespace Npgsql.Tests
         [Test, Description("Connects with a bad password to ensure the proper error is thrown")]
         public void AuthenticationFailure()
         {
-            var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Password = "bad", Pooling = false };
-            using (var conn = new NpgsqlConnection(csb))
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Password = "bad",
+                Pooling = false
+            }.ToString();
+            using (var conn = new NpgsqlConnection(connString))
             {
                 Assert.That(() => conn.Open(), Throws.Exception
                     .TypeOf<PostgresException>()
@@ -208,8 +215,11 @@ namespace Npgsql.Tests
         [Test]
         public void BadDatabase()
         {
-            var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Database = "does_not_exist" };
-            using (var conn = new NpgsqlConnection(csb))
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Database = "does_not_exist"
+            }.ToString();
+            using (var conn = new NpgsqlConnection(connString))
                 Assert.That(() => conn.Open(),
                     Throws.Exception.TypeOf<PostgresException>()
                     .With.Property(nameof(PostgresException.SqlState)).EqualTo("3D000")
@@ -232,13 +242,13 @@ namespace Npgsql.Tests
                 conn1.ExecuteNonQuery($"DROP DATABASE IF EXISTS \"{dbName}\"");
                 try
                 {
-                    var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+                    var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
                     {
                         Database = dbName,
                         Pooling = false
-                    };
+                    }.ToString();
 
-                    using (var conn2 = new NpgsqlConnection(csb))
+                    using (var conn2 = new NpgsqlConnection(connString))
                     {
                         Assert.That(() => conn2.Open(),
                             Throws.Exception.TypeOf<PostgresException>()
@@ -272,7 +282,7 @@ namespace Npgsql.Tests
                 Pooling = false,
                 Timeout = 2
             };
-            using (var conn = new NpgsqlConnection(csb))
+            using (var conn = new NpgsqlConnection(csb.ToString()))
             {
                 var sw = Stopwatch.StartNew();
                 Assert.That(() => conn.Open(), Throws.Exception.TypeOf<TimeoutException>());
@@ -290,13 +300,13 @@ namespace Npgsql.Tests
             if (unknownIp == null)
                 TestUtil.IgnoreExceptOnBuildServer("NPGSQL_UNKNOWN_IP isn't defined and is required for connection timeout tests");
 
-            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 Host = unknownIp,
                 Pooling = false,
                 Timeout = 2
-            };
-            using (var conn = new NpgsqlConnection(csb))
+            }.ToString();
+            using (var conn = new NpgsqlConnection(connString))
             {
                 Assert.That(async () => await conn.OpenAsync(), Throws.Exception.TypeOf<TimeoutException>());
                 Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
@@ -311,13 +321,13 @@ namespace Npgsql.Tests
             if (unknownIp == null)
                 TestUtil.IgnoreExceptOnBuildServer("NPGSQL_UNKNOWN_IP isn't defined and is required for connection cancellation tests");
 
-            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 Host = unknownIp,
                 Pooling = false,
                 Timeout = 30
-            };
-            using (var conn = new NpgsqlConnection(csb))
+            }.ToString();
+            using (var conn = new NpgsqlConnection(connString))
             {
                 var cts = new CancellationTokenSource();
                 cts.CancelAfter(1000);
@@ -451,8 +461,7 @@ namespace Npgsql.Tests
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { MaxPoolSize = 1 };
             if (keepAlive)
                 csb.KeepAlive = 1;
-
-            using (var conn = new NpgsqlConnection(csb))
+            using (var conn = new NpgsqlConnection(csb.ToString()))
             {
                 conn.Open();
                 var connectorId = conn.ProcessID;
@@ -746,9 +755,13 @@ namespace Npgsql.Tests
 
         [Test]
         [IssueLink("https://github.com/npgsql/npgsql/issues/783")]
-        public void PersistSecurityInfoIsOn()
+        public void PersistSecurityInfoIsOn([Values(true, false)] bool pooling)
         {
-            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) { PersistSecurityInfo = true };
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                PersistSecurityInfo = true,
+                Pooling = pooling
+            }.ToString();
             using (var conn = new NpgsqlConnection(connString))
             {
                 var passwd = new NpgsqlConnectionStringBuilder(conn.ConnectionString).Password;
@@ -760,9 +773,13 @@ namespace Npgsql.Tests
 
         [Test]
         [IssueLink("https://github.com/npgsql/npgsql/issues/783")]
-        public void NoPasswordWithoutPersistSecurityInfo()
+        public void NoPasswordWithoutPersistSecurityInfo([Values(true, false)] bool pooling)
         {
-            using (var conn = new NpgsqlConnection(ConnectionString))
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Pooling = pooling
+            }.ToString();
+            using (var conn = new NpgsqlConnection(connString))
             {
                 var csb = new NpgsqlConnectionStringBuilder(conn.ConnectionString);
                 Assert.That(csb.PersistSecurityInfo, Is.False);
@@ -777,7 +794,10 @@ namespace Npgsql.Tests
         [IssueLink("https://github.com/npgsql/npgsql/issues/783")]
         public void Clone()
         {
-            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) { Pooling = false };
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Pooling = false
+            }.ToString();
             using (var conn = new NpgsqlConnection(connString))
             {
                 ProvideClientCertificatesCallback callback1 = certificates => { };
@@ -906,10 +926,10 @@ namespace Npgsql.Tests
                 {
                     ApplicationName = nameof(PoolByPassword)
                 };
-                using (goodConn = new NpgsqlConnection(csb))
+                using (goodConn = new NpgsqlConnection(csb.ToString()))
                     goodConn.Open();
                 csb.Password = "badpasswd";
-                using (var conn = new NpgsqlConnection(csb))
+                using (var conn = new NpgsqlConnection(csb.ToString()))
                     Assert.That(conn.Open, Throws.Exception.TypeOf<PostgresException>());
             }
             finally

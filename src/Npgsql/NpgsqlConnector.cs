@@ -67,13 +67,7 @@ namespace Npgsql
         Stream _stream;
 
         internal NpgsqlConnectionStringBuilder Settings { get; }
-
-        /// <summary>
-        /// Contains the clear text password which was extracted from the user-provided connection string.
-        /// If non-cleartext authentication is requested from the server, this is set to null.
-        /// </summary>
-        [CanBeNull]
-        readonly string _password;
+        internal string ConnectionString { get; }
 
         internal Encoding TextEncoding { get; private set; }
 
@@ -272,7 +266,7 @@ namespace Npgsql
         #region Constructors
 
         internal NpgsqlConnector(NpgsqlConnection connection)
-            : this(connection.Settings, connection.Password)
+            : this(connection.Settings, connection.OriginalConnectionString)
         {
             Connection = connection;
             Connection.Connector = this;
@@ -281,14 +275,14 @@ namespace Npgsql
         /// <summary>
         /// Creates a new connector with the given connection string.
         /// </summary>
+        /// <param name="settings">The parsed connection string.</param>
         /// <param name="connectionString">The connection string.</param>
-        /// <param name="password">The clear-text password or null if not using a password.</param>
-        NpgsqlConnector(NpgsqlConnectionStringBuilder connectionString, string password)
+        NpgsqlConnector(NpgsqlConnectionStringBuilder settings, string connectionString)
         {
             State = ConnectorState.Closed;
             TransactionStatus = TransactionStatus.Idle;
-            Settings = connectionString;
-            _password = password;
+            Settings = settings;
+            ConnectionString = connectionString;
             BackendParams = new Dictionary<string, string>();
 
             _userLock = new SemaphoreSlim(1, 1);
@@ -307,7 +301,6 @@ namespace Npgsql
 
         #region Configuration settings
 
-        internal string ConnectionString => Settings.ConnectionString;
         string Host => Settings.Host;
         int Port => Settings.Port;
         string KerberosServiceName => Settings.KerberosServiceName;
@@ -395,6 +388,9 @@ namespace Npgsql
         {
             Debug.Assert(Connection != null && Connection.Connector == this);
             Debug.Assert(State == ConnectorState.Closed);
+
+            if (string.IsNullOrWhiteSpace(Host))
+                throw new ArgumentException("Host can't be null");
 
             State = ConnectorState.Connecting;
 
@@ -891,9 +887,8 @@ namespace Npgsql
                     continue;
 
                 case BackendMessageCode.ReadyForQuery:
-                    if (error != null) {
+                    if (error != null)
                         throw error;
-                    }
                     break;
 
                 // Asynchronous messages which can come anytime, they have already been handled
@@ -1094,7 +1089,7 @@ namespace Npgsql
 
         #endregion Backend message processing
 
-            #region Transactions
+        #region Transactions
 
         internal Task Rollback(bool async, CancellationToken cancellationToken)
         {
@@ -1180,7 +1175,7 @@ namespace Npgsql
             {
                 try
                 {
-                    var cancelConnector = new NpgsqlConnector(Settings, _password);
+                    var cancelConnector = new NpgsqlConnector(Settings, ConnectionString);
                     cancelConnector.DoCancelRequest(BackendProcessId, _backendSecretKey, cancelConnector.ConnectionTimeout);
                 }
                 catch (Exception e)

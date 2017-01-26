@@ -41,27 +41,26 @@ namespace Npgsql.Tests
             using (var conn = new NpgsqlConnection(new NpgsqlConnectionStringBuilder(ConnectionString) {
                 MinPoolSize = 30,
                 MaxPoolSize = 30
-            }))
+            }.ToString()))
             {
                 conn.Open();
             }
         }
 
         [Test]
-        public void MinPoolSizeLargeThanMaxPoolSize()
+        public void MinPoolSizeLargerThanMaxPoolSize()
         {
-            using (var conn = new NpgsqlConnection(new NpgsqlConnectionStringBuilder(ConnectionString)
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 MinPoolSize = 2,
                 MaxPoolSize = 1
-            }))
-            {
-                Assert.That(() => conn.Open(), Throws.Exception.TypeOf<ArgumentException>());
-            }
+            }.ToString();
+
+            Assert.That(() => new NpgsqlConnection(connString), Throws.Exception.TypeOf<ArgumentException>());
         }
 
         [Test]
-        public void MinPoolSizeLargeThanPoolSizeLimit()
+        public void MinPoolSizeLargerThanPoolSizeLimit()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString);
             Assert.That(() => csb.MinPoolSize = PoolManager.PoolSizeLimit + 1, Throws.Exception.TypeOf<ArgumentOutOfRangeException>());
@@ -70,10 +69,12 @@ namespace Npgsql.Tests
         [Test]
         public void MinPoolSize()
         {
-            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) { MinPoolSize = 2 };
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                MinPoolSize = 2
+            }.ToString();
             using (var conn = new NpgsqlConnection(connString))
             {
-                connString = conn.Settings; // Shouldn't be necessary
                 conn.Open();
                 conn.Close();
             }
@@ -110,7 +111,7 @@ namespace Npgsql.Tests
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString) {
                 MaxPoolSize = 1,
                 Timeout = 0
-            };
+            }.ToString();
 
             using (var conn1 = new NpgsqlConnection(connString))
             {
@@ -132,7 +133,7 @@ namespace Npgsql.Tests
             {
                 MaxPoolSize = 1,
                 Timeout = 0
-            };
+            }.ToString();
 
             using (var conn1 = new NpgsqlConnection(connString))
             {
@@ -153,7 +154,7 @@ namespace Npgsql.Tests
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString) {
                 MaxPoolSize = 1,
                 Timeout = 1
-            };
+            }.ToString();
 
             using (var conn1 = new NpgsqlConnection(connString))
             {
@@ -174,7 +175,7 @@ namespace Npgsql.Tests
             {
                 MaxPoolSize = 1,
                 Timeout = 1
-            };
+            }.ToString();
 
             using (var conn1 = new NpgsqlConnection(connString))
             {
@@ -196,7 +197,7 @@ namespace Npgsql.Tests
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString) {
                 ApplicationName = nameof(CancelOpenAsync),
                 MaxPoolSize = 1,
-            };
+            }.ToString();
 
             using (var conn1 = new NpgsqlConnection(connString))
             {
@@ -222,7 +223,11 @@ namespace Npgsql.Tests
         [Test, Description("Makes sure that when a pooled connection is closed it's properly reset, and that parameter settings aren't leaked")]
         public void ResetOnClose()
         {
-            using (var conn = new NpgsqlConnection(ConnectionString + ";SearchPath=public"))
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                SearchPath = "public"
+            }.ToString();
+            using (var conn = new NpgsqlConnection(connString))
             {
                 conn.Open();
                 Assert.That(conn.ExecuteScalar("SHOW search_path"), Is.Not.Contains("pg_temp"));
@@ -246,13 +251,11 @@ namespace Npgsql.Tests
                 MinPoolSize = 2,
                 ConnectionIdleLifetime = 2,
                 ConnectionPruningInterval = 1
-            };
+            }.ToString();
             using (var conn1 = OpenConnection(connString))
             using (var conn2 = OpenConnection(connString))
             using (var conn3 = OpenConnection(connString))
             {
-                connString = conn1.Settings; // Shouldn't be necessary
-
                 conn1.Close();
                 conn2.Close();
                 Assert.That(PoolManager.Pools[connString].Idle, Has.Count.EqualTo(2));
@@ -277,7 +280,7 @@ namespace Npgsql.Tests
             {
                 ApplicationName = nameof(CloseReleasesWaiterOnAnotherThread),
                 MaxPoolSize = 1
-            };
+            }.ToString();
             var conn1 = new NpgsqlConnection(connString);
             try
             {
@@ -309,12 +312,12 @@ namespace Npgsql.Tests
         [Test]
         public void ClearAll()
         {
-            NpgsqlConnectionStringBuilder connString;
-            using (var conn = OpenConnection())
-                connString = conn.Settings; // Shouldn't be necessary
+            using (OpenConnection()) {}
             // Now have one connection in the pool
+            var pool = PoolManager.Pools[ConnectionString];
+            Assert.That(pool.Idle, Has.Count.EqualTo(1));
+
             NpgsqlConnection.ClearAllPools();
-            var pool = PoolManager.Pools[connString];
             Assert.That(pool.Idle, Has.Count.Zero);
             Assert.That(pool.Busy, Is.Zero);
         }
@@ -323,14 +326,13 @@ namespace Npgsql.Tests
         public void ClearAllWithBusy()
         {
             ConnectorPool pool;
-            using (var conn1 = OpenConnection())
+            using (OpenConnection())
             {
-                var connString = conn1.Settings;
                 using (OpenConnection()) { }
                 // We have one idle, one busy
 
                 NpgsqlConnection.ClearAllPools();
-                pool = PoolManager.Pools[connString];
+                pool = PoolManager.Pools[ConnectionString];
                 Assert.That(pool.Idle, Has.Count.Zero);
                 Assert.That(pool.Busy, Is.EqualTo(1));
             }
@@ -341,13 +343,13 @@ namespace Npgsql.Tests
         [Test]
         public void ClearPool()
         {
-            NpgsqlConnectionStringBuilder connString;
             NpgsqlConnection conn;
-            using (conn = OpenConnection())
-                connString = conn.Settings; // Shouldn't be necessary
+            using (conn = OpenConnection()) {}
             // Now have one connection in the pool
+            var pool = PoolManager.Pools[ConnectionString];
+            Assert.That(pool.Idle, Has.Count.EqualTo(1));
+
             NpgsqlConnection.ClearPool(conn);
-            var pool = PoolManager.Pools[connString];
             Assert.That(pool.Idle, Has.Count.Zero);
             Assert.That(pool.Busy, Is.Zero);
         }
@@ -358,11 +360,10 @@ namespace Npgsql.Tests
             ConnectorPool pool;
             using (var conn = OpenConnection())
             {
-                var connString = conn.Settings;
                 NpgsqlConnection.ClearPool(conn);
                 // conn is still busy but should get closed when returned to the pool
 
-                pool = PoolManager.Pools[connString];
+                pool = PoolManager.Pools[ConnectionString];
                 Assert.That(pool.Idle, Has.Count.Zero);
                 Assert.That(pool.Busy, Is.EqualTo(1));
             }
@@ -375,29 +376,9 @@ namespace Npgsql.Tests
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString) {
                 ApplicationName = nameof(ClearWithNoPool)
-            };
+            }.ToString();
             using (var conn = new NpgsqlConnection(connString))
                 NpgsqlConnection.ClearPool(conn);
-        }
-
-        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1412")]
-        public void ReuseConnectionStringBuilderWithChange()
-        {
-            var appName1 = nameof(ReuseConnectionStringBuilderWithChange);
-            var appName2 = appName1 + "2";
-            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-            {
-                ApplicationName = appName1
-            };
-            using (var conn = new NpgsqlConnection(csb))
-                conn.Open();
-
-            csb.ApplicationName = appName2;
-            using (var conn = new NpgsqlConnection(csb))
-            {
-                conn.Open();
-                Assert.That(conn.ExecuteScalar("SHOW application_name"), Is.EqualTo(appName2));
-            }
         }
     }
 }

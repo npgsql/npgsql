@@ -41,19 +41,19 @@ namespace Npgsql.Benchmarks
         public ConnectionOpenCloseBenchmarks()
         {
             var csb = new NpgsqlConnectionStringBuilder(BenchmarkEnvironment.ConnectionString) { ApplicationName = nameof(NoOpenClose)};
-            var noOpenCloseConn = new NpgsqlConnection(csb);
+            var noOpenCloseConn = new NpgsqlConnection(csb.ToString());
             noOpenCloseConn.Open();
             _noOpenCloseCmd = new NpgsqlCommand("SET lock_timeout = 1000", noOpenCloseConn);
 
             csb = new NpgsqlConnectionStringBuilder(BenchmarkEnvironment.ConnectionString) { ApplicationName = nameof(OpenCloseSameConnection) };
-            _openCloseSameConn = new NpgsqlConnection(csb);
+            _openCloseSameConn = new NpgsqlConnection(csb.ToString());
             _openCloseSameCmd = new NpgsqlCommand("SET lock_timeout = 1000", _openCloseSameConn);
 
             _sqlOpenCloseSameConn = new SqlConnection(SqlClientConnectionString);
             _sqlOpenCloseSameCmd = new SqlCommand("SET LOCK_TIMEOUT 1000", _sqlOpenCloseSameConn);
 
             csb = new NpgsqlConnectionStringBuilder(BenchmarkEnvironment.ConnectionString) { ApplicationName = nameof(WithPrepared) };
-            _connWithPrepared = new NpgsqlConnection(csb);
+            _connWithPrepared = new NpgsqlConnection(csb.ToString());
             _connWithPrepared.Open();
             using (var somePreparedCmd = new NpgsqlCommand("SELECT 1", _connWithPrepared))
                 somePreparedCmd.Prepare();
@@ -65,13 +65,13 @@ namespace Npgsql.Benchmarks
                 ApplicationName = nameof(NoResetOnClose),
                 NoResetOnClose = true
             };
-            _noResetConn = new NpgsqlConnection(csb);
+            _noResetConn = new NpgsqlConnection(csb.ToString());
             _noResetCmd = new NpgsqlCommand("SET lock_timeout = 1000", _noResetConn);
             csb = new NpgsqlConnectionStringBuilder(BenchmarkEnvironment.ConnectionString) {
                 ApplicationName = nameof(NonPooled),
                 Pooling = false
             };
-            _nonPooledConnection = new NpgsqlConnection(csb);
+            _nonPooledConnection = new NpgsqlConnection(csb.ToString());
             _nonPooledCmd = new NpgsqlCommand("SET lock_timeout = 1000", _nonPooledConnection);
         }
 

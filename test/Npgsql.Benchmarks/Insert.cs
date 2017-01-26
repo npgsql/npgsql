@@ -19,11 +19,11 @@ namespace Npgsql.Benchmarks
         [Setup]
         public void Setup()
         {
-            var csb = new NpgsqlConnectionStringBuilder(BenchmarkEnvironment.ConnectionString)
+            var connString = new NpgsqlConnectionStringBuilder(BenchmarkEnvironment.ConnectionString)
             {
                 Pooling = false
-            };
-            _conn = new NpgsqlConnection(csb);
+            }.ToString();
+            _conn = new NpgsqlConnection(connString);
             _conn.Open();
 
             using (var cmd = new NpgsqlCommand("CREATE TEMP TABLE data (int1 INT4, text1 TEXT, int2 INT4, text2 TEXT)", _conn))

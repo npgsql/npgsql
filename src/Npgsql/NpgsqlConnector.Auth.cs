@@ -49,10 +49,24 @@ namespace Npgsql
 
         async Task AuthenticateCleartext(bool async, CancellationToken cancellationToken)
         {
-            if (_password == null)
+            var passwd = Settings.Password;
+
+            if (passwd == null)
+            {
+                // No password was provided. Attempt to pull the password from the pgpass file.
+                var matchingEntry = PgPassFile.LoadDefaultFile()?.GetFirstMatchingEntry(Settings.Host, Settings.Port, Settings.Database, Settings.Username);
+                if (matchingEntry != null)
+                {
+                    Log.UsingPgpassFile();
+                    passwd = matchingEntry.Password;
+                }
+            }
+
+            if (passwd == null)
                 throw new NpgsqlException("No password has been provided but the backend requires one (in cleartext)");
+
             await PasswordMessage
-                .CreateClearText(_password)
+                .CreateClearText(passwd)
                 .Write(WriteBuffer, async, cancellationToken);
             await WriteBuffer.Flush(async);
             await ReadExpecting<AuthenticationRequestMessage>(async);
@@ -60,10 +74,23 @@ namespace Npgsql
 
         async Task AuthenticateMD5(string username, byte[] salt, bool async, CancellationToken cancellationToken)
         {
-            if (_password == null)
+            var passwd = Settings.Password;
+            if (passwd == null)
+            {
+                // No password was provided. Attempt to pull the password from the pgpass file.
+                var matchingEntry = PgPassFile.LoadDefaultFile()?.GetFirstMatchingEntry(Settings.Host, Settings.Port, Settings.Database, Settings.Username);
+                if (matchingEntry != null)
+                {
+                    Log.UsingPgpassFile();
+                    passwd = matchingEntry.Password;
+                }
+            }
+
+            if (passwd == null)
                 throw new NpgsqlException("No password has been provided but the backend requires one (in MD5)");
+
             await PasswordMessage
-                .CreateMD5(_password, username, salt)
+                .CreateMD5(passwd, username, salt)
                 .Write(WriteBuffer, async, cancellationToken);
             await WriteBuffer.Flush(async);
             await ReadExpecting<AuthenticationRequestMessage>(async);

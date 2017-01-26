@@ -145,12 +145,12 @@ namespace Npgsql.Tests
         [Test]
         public void AcrossCloseOpenDifferentConnector()
         {
-            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 ApplicationName = nameof(PrepareTests) + '.' + nameof(AcrossCloseOpenDifferentConnector)
-            };
-            using (var conn1 = new NpgsqlConnection(csb))
-            using (var conn2 = new NpgsqlConnection(csb))
+            }.ToString();
+            using (var conn1 = new NpgsqlConnection(connString))
+            using (var conn2 = new NpgsqlConnection(connString))
             using (var cmd = new NpgsqlCommand("SELECT 1", conn1))
             {
                 conn1.Open();

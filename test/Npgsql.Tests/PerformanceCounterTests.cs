@@ -41,9 +41,12 @@ namespace Npgsql.Tests
             var softConnectCounter = Counters.SoftConnectsPerSecond.DiagnosticsCounter;
             var softDisconnectCounter = Counters.SoftDisconnectsPerSecond.DiagnosticsCounter;
 
-            var nonPooledCsb = new NpgsqlConnectionStringBuilder(ConnectionString) { Pooling = false };
+            var nonPooledConnString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Pooling = false
+            }.ToString();
             using (var pooledConn = new NpgsqlConnection(ConnectionString))
-            using (var nonPooledConn = new NpgsqlConnection(nonPooledCsb))
+            using (var nonPooledConn = new NpgsqlConnection(nonPooledConnString))
             {
                 Thread.Sleep(2000);  // Let the counter reset
                 Assert.That(hardConnectCounter.RawValue, Is.Zero);
@@ -81,9 +84,12 @@ namespace Npgsql.Tests
         {
             var counter = Counters.NumberOfNonPooledConnections.DiagnosticsCounter;
 
-            var nonPooledCsb = new NpgsqlConnectionStringBuilder(ConnectionString) { Pooling = false };
+            var nonPooledConnString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Pooling = false
+            }.ToString();
             using (var pooledConn = new NpgsqlConnection(ConnectionString))
-            using (var nonPooledConn = new NpgsqlConnection(nonPooledCsb))
+            using (var nonPooledConn = new NpgsqlConnection(nonPooledConnString))
             {
                 Assert.That(counter.RawValue, Is.Zero);
                 nonPooledConn.Open();
@@ -104,9 +110,12 @@ namespace Npgsql.Tests
             var activeCounter = Counters.NumberOfActiveConnections.DiagnosticsCounter;
             var freeCounter = Counters.NumberOfFreeConnections.DiagnosticsCounter;
 
-            var nonPooledCsb = new NpgsqlConnectionStringBuilder(ConnectionString) { Pooling = false };
+            var nonPooledConnString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Pooling = false
+            }.ToString();
             using (var pooledConn = new NpgsqlConnection(ConnectionString))
-            using (var nonPooledConn = new NpgsqlConnection(nonPooledCsb))
+            using (var nonPooledConn = new NpgsqlConnection(nonPooledConnString))
             {
                 Assert.That(totalCounter.RawValue, Is.Zero);
                 Assert.That(activeCounter.RawValue, Is.Zero);

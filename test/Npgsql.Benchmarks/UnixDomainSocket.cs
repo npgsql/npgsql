@@ -24,11 +24,11 @@ namespace Npgsql.Benchmarks
             if (dir == null)
                 throw new Exception("No PostgreSQL unix domain socket was found");
 
-            var csb = new NpgsqlConnectionStringBuilder(BenchmarkEnvironment.ConnectionString)
+            var connString = new NpgsqlConnectionStringBuilder(BenchmarkEnvironment.ConnectionString)
             {
                 Host = dir
-            };
-            _unixConn = new NpgsqlConnection(csb);
+            }.ToString();
+            _unixConn = new NpgsqlConnection(connString);
             _unixConn.Open();
             _unixCmd = new NpgsqlCommand("SELECT @p", _unixConn);
             _unixCmd.Parameters.AddWithValue("p", new string('x', 10000));

@@ -66,15 +66,16 @@ namespace Npgsql
         bool _disposed;
 
         /// <summary>
-        /// The parsed connection string set by the user
+        /// The connection string, without the password after open (unless Persist Security Info=true)
         /// </summary>
-        NpgsqlConnectionStringBuilder _settings;
+        string _userFacingConnectionString;
 
         /// <summary>
-        /// The actual string provided by the user for the connection string
+        /// The original connection string provided by the user, including the password.
         /// </summary>
-        [CanBeNull]
         string _connectionString;
+
+        internal string OriginalConnectionString => _connectionString;
 
         /// <summary>
         /// The connector object connected to the backend.
@@ -83,22 +84,14 @@ namespace Npgsql
         internal NpgsqlConnector Connector { get; set; }
 
         /// <summary>
-        /// Caches the connection's pool to save repeated hash lookups.
+        /// The parsed connection string set by the user
         /// </summary>
-        ConnectorPool Pool => _pool ?? (_pool = PoolManager.GetOrAdd(Settings));
+        internal NpgsqlConnectionStringBuilder Settings { get; private set; }
 
         [CanBeNull]
         ConnectorPool _pool;
 
         bool _wasBroken;
-
-        /// <summary>
-        /// Used to implement proper Persist Security Info behavior - the returned connection string should
-        /// contain the password until the first Open() has been called.
-        /// </summary>
-        bool _alreadyOpened;
-
-        static readonly ConcurrentDictionary<string, NpgsqlConnectionStringBuilder> CsbCache = new ConcurrentDictionary<string, NpgsqlConnectionStringBuilder>();
 
 #if NET45 || NET451
         [CanBeNull]
@@ -123,19 +116,7 @@ namespace Npgsql
         /// Initializes a new instance of the
         /// <see cref="NpgsqlConnection">NpgsqlConnection</see> class.
         /// </summary>
-        public NpgsqlConnection() : this(CsbCache.GetOrAdd("", s => new NpgsqlConnectionStringBuilder())) {}
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="NpgsqlConnection"/> with the given strongly-typed
-        /// connection string.
-        /// </summary>
-        /// <param name="builder">The connection used to open the PostgreSQL database.</param>
-        public NpgsqlConnection(NpgsqlConnectionStringBuilder builder)
-        {
-            GC.SuppressFinalize(this);
-            Settings = builder;
-            Init();
-        }
+        public NpgsqlConnection() : this("") {}
 
         /// <summary>
         /// Initializes a new instance of <see cref="NpgsqlConnection"/> with the given connection string.
@@ -145,11 +126,7 @@ namespace Npgsql
         {
             GC.SuppressFinalize(this);
             ConnectionString = connectionString;
-            Init();
-        }
 
-        void Init()
-        {
 #if NET45 || NET451
             // Fix authentication problems. See https://bugzilla.novell.com/show_bug.cgi?id=MONO77559 and
             // http://pgfoundry.org/forum/message.php?msg_id=1002377 for more info.
@@ -159,7 +136,7 @@ namespace Npgsql
 
         /// <summary>
         /// Opens a database connection with the property settings specified by the
-        /// <see cref="NpgsqlConnection.ConnectionString">ConnectionString</see>.
+        /// <see cref="ConnectionString">ConnectionString</see>.
         /// </summary>
         public override void Open() => Open(false).GetAwaiter().GetResult();
 
@@ -177,36 +154,68 @@ namespace Npgsql
                 await Open(true);
         }
 
+        void GetPoolAndSettings()
+        {
+            Debug.Assert(_pool == null);
+
+            var pools = PoolManager.Pools;
+            lock (pools)
+            {
+                if (pools.TryGetValue(_connectionString, out _pool))
+                    Settings = _pool.Settings;  // Great, we already have a pool
+                else
+                {
+                    // Connection string hasn't been seen before. Parse it.
+                    Settings = new NpgsqlConnectionStringBuilder(_connectionString);
+
+                    // Maybe pooling is off
+                    if (Settings.Pooling)
+                    {
+                        // Connstring may be equivalent to one that has already been seen though (e.g. different
+                        // ordering). Have NpgsqlConnectionStringBuilder produce a canonical string representation
+                        // and recheck.
+                        var canonical = Settings.ConnectionString;
+                        if (pools.TryGetValue(canonical, out _pool))
+                            pools[_connectionString] = _pool;
+                        else
+                        {
+                            // Really unseen, need to create a new pool
+                            _pool = pools[_connectionString] = new ConnectorPool(Settings, canonical);
+                            if (_connectionString != canonical)
+                                pools[canonical] = _pool;
+                        }
+                    }
+                }
+            }
+        }
+
         async Task Open(bool async)
         {
-            if (string.IsNullOrWhiteSpace(Host))
-                throw new ArgumentException("Host can't be null");
-
-            var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
-
             CheckConnectionClosed();
 
             Log.OpeningConnection();
-
-            if (Settings.Password == null)
-            {
-                // no password was provided. Attempt to pull the password from the pgpass file.
-                var pgPassFile = PgPassFile.LoadDefaultFile();
-                var matchingEntry = pgPassFile?.GetFirstMatchingEntry(Settings.Host, Settings.Port, Settings.Database, Settings.Username);
-                if (matchingEntry != null)
-                {
-                    Log.UsingPgpassFile();
-                    Settings.Password = matchingEntry.Password;
-                }
-            }
 
             _wasBroken = false;
 
             try
             {
-                // Get a Connector, either from the pool or creating one ourselves.
-                if (Settings.Pooling)
+                Debug.Assert(Settings != null);
+
+                var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
+
+                if (_pool == null) // Unpooled connection
                 {
+                    if (!Settings.PersistSecurityInfo)
+                        _userFacingConnectionString = Settings.ToStringWithoutPassword();
+
+                    Connector = new NpgsqlConnector(this);
+                    await Connector.Open(timeout, async, CancellationToken.None);
+                    Counters.NumberOfNonPooledConnections.Increment();
+                }
+                else
+                {
+                    _userFacingConnectionString = _pool.UserFacingConnectionString;
+
 #if NET45 || NET451
                     if (Settings.Enlist)
                     {
@@ -215,28 +224,22 @@ namespace Npgsql
                             // First, check to see if we have a connection enlisted to this transaction which has been closed.
                             // If so, return that as an optimization rather than opening a new one and triggering escalation
                             // to a distributed transaction.
-                            Connector = Pool.TryAllocateEnlistedPending(Transaction.Current);
+                            Connector = _pool.TryAllocateEnlistedPending(Transaction.Current);
                             if (Connector != null)
                                 EnlistedTransaction = Transaction.Current;
                         }
                         if (Connector == null)
-                            Connector = await Pool.Allocate(this, timeout, async);
+                            Connector = await _pool.Allocate(this, timeout, async);
                     }
                     else  // No enlist
 #endif
-                        Connector = await Pool.Allocate(this, timeout, async);
+                        Connector = await _pool.Allocate(this, timeout, async);
 
                     Counters.SoftConnectsPerSecond.Increment();
 
                     // Since this pooled connector was opened, global enum/composite mappings may have
                     // changed. Bring this up to date if needed.
                     Connector.TypeHandlerRegistry.ActivateGlobalMappings();
-                }
-                else
-                {
-                    Connector = new NpgsqlConnector(this);
-                    await Connector.Open(timeout, async, CancellationToken.None);
-                    Counters.NumberOfNonPooledConnections.Increment();
                 }
 
 #if NET45 || NET451
@@ -250,7 +253,6 @@ namespace Npgsql
                 Connector = null;
                 throw;
             }
-            _alreadyOpened = true;
             Log.ConnectionOpened(Connector.Id);
             OnStateChange(new StateChangeEventArgs(ConnectionState.Closed, ConnectionState.Open));
         }
@@ -269,41 +271,15 @@ namespace Npgsql
         [CanBeNull]
         public override string ConnectionString
         {
-            get
-            {
-                if (_connectionString != null)
-                    return _connectionString;
-                if (!_alreadyOpened)   // If not yet opened, return the full connstring but don't cache
-                    return Settings.ToString();
-                if (!_settings.PersistSecurityInfo)
-                    return Settings.ToStringWithoutPassword();
-
-                _connectionString = Settings.ToString();
-                return _connectionString;
-            }
+            get { return _userFacingConnectionString; }
             set
             {
                 CheckConnectionClosed();
 
-                _pool = null;
                 if (value == null)
                     value = string.Empty;
-                Settings = CsbCache.GetOrAdd(value, s => new NpgsqlConnectionStringBuilder(s));
-            }
-        }
-
-        /// <summary>
-        /// The parsed connection string set by the user
-        /// </summary>
-        internal NpgsqlConnectionStringBuilder Settings
-        {
-            get { return _settings; }
-            private set
-            {
-                _settings = value;
-                _connectionString = null;
-                _alreadyOpened = false;
-                _pool = null;
+                _userFacingConnectionString = _connectionString = value;
+                GetPoolAndSettings();
             }
         }
 
@@ -573,7 +549,7 @@ namespace Npgsql
             {
 #endif
                 if (Settings.Pooling)
-                    Pool.Release(Connector);
+                    _pool.Release(Connector);
                 else
                     Connector.Close();
 #if NET45 || NET451
@@ -583,7 +559,7 @@ namespace Npgsql
                 // A System.Transactions transaction is still in progress, we need to wait for it to complete.
                 // Close the connection and disconnect it from the resource manager but leave the connector
                 // in a enlisted pending list in the pool.
-                Pool.AddPendingEnlistedConnector(Connector, EnlistedTransaction);
+                _pool.AddPendingEnlistedConnector(Connector, EnlistedTransaction);
                 Connector.Connection = null;
                 EnlistedTransaction = null;
             }
@@ -1358,11 +1334,10 @@ namespace Npgsql
 #endif
         {
             CheckDisposed();
-            var conn = new NpgsqlConnection(Settings) {
+            var conn = new NpgsqlConnection(_connectionString) {
                 ProvideClientCertificatesCallback = ProvideClientCertificatesCallback,
                 UserCertificateValidationCallback = UserCertificateValidationCallback,
-                _alreadyOpened = _alreadyOpened,
-                _connectionString = _connectionString
+                _userFacingConnectionString = _userFacingConnectionString
             };
             return conn;
         }
@@ -1379,10 +1354,8 @@ namespace Npgsql
             CheckDisposed();
             var csb = new NpgsqlConnectionStringBuilder(connectionString);
             if (csb.Password == null && Password != null)
-            {
                 csb.Password = Password;
-            }
-            return new NpgsqlConnection(csb) {
+            return new NpgsqlConnection(csb.ToString()) {
                 ProvideClientCertificatesCallback = ProvideClientCertificatesCallback,
                 UserCertificateValidationCallback = UserCertificateValidationCallback
             };
@@ -1404,8 +1377,10 @@ namespace Npgsql
 
             Close();
 
+            _pool = null;
             Settings = Settings.Clone();
             Settings.Database = dbName;
+            ConnectionString = Settings.ToString();
 
             Open();
         }
@@ -1420,7 +1395,7 @@ namespace Npgsql
         /// <summary>
         /// Clear connection pool.
         /// </summary>
-        public static void ClearPool(NpgsqlConnection connection) => PoolManager.Clear(connection.Settings);
+        public static void ClearPool(NpgsqlConnection connection) => PoolManager.Clear(connection._connectionString);
 
         /// <summary>
         /// Clear all connection pools.
@@ -1445,7 +1420,7 @@ namespace Npgsql
         public void ReloadTypes()
         {
             var conn = CheckReadyAndGetConnector();
-            TypeHandlerRegistry.ClearBackendTypeCache(Settings.ConnectionString);
+            TypeHandlerRegistry.ClearBackendTypeCache(_connectionString);
             TypeHandlerRegistry.Setup(conn, new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout)), false)
                 .GetAwaiter().GetResult();
         }

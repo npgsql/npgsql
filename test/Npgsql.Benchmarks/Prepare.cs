@@ -31,7 +31,7 @@ namespace Npgsql.Benchmarks
             _autoPreparingConn = new NpgsqlConnection(new NpgsqlConnectionStringBuilder(BenchmarkEnvironment.ConnectionString)
             {
                 MaxAutoPrepare = 10
-            });
+            }.ToString());
             _autoPreparingConn.Open();
 
             foreach (var conn in new[] { _conn, _autoPreparingConn })

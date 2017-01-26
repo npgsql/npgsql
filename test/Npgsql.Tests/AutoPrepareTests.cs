@@ -103,15 +103,15 @@ namespace Npgsql.Tests
         [Test]
         public void Persist()
         {
-            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 ApplicationName = nameof(Persist),
                 MaxAutoPrepare = 10,
                 AutoPrepareMinUsages = 2
-            };
+            }.ToString();
             try
             {
-                using (var conn = OpenConnection(csb))
+                using (var conn = OpenConnection(connString))
                 using (var checkCmd = new NpgsqlCommand(CountPreparedStatements, conn))
                 {
                     checkCmd.Prepare();
@@ -121,7 +121,7 @@ namespace Npgsql.Tests
 
                 // We now have two prepared statements which should be persisted
 
-                using (var conn = OpenConnection(csb))
+                using (var conn = OpenConnection(connString))
                 using (var checkCmd = new NpgsqlCommand(CountPreparedStatements, conn))
                 {
                     checkCmd.Prepare();
@@ -136,7 +136,7 @@ namespace Npgsql.Tests
             }
             finally
             {
-                using (var conn = new NpgsqlConnection(csb))
+                using (var conn = new NpgsqlConnection(connString))
                     NpgsqlConnection.ClearPool(conn);
             }
         }
@@ -242,14 +242,14 @@ namespace Npgsql.Tests
         [Test]
         public void AcrossCloseOpenDifferentConnector()
         {
-            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 ApplicationName = nameof(AutoPrepareTests) + '.' + nameof(AcrossCloseOpenDifferentConnector),
                 MaxAutoPrepare = 10,
                 AutoPrepareMinUsages = 2
-            };
-            using (var conn1 = new NpgsqlConnection(csb))
-            using (var conn2 = new NpgsqlConnection(csb))
+            }.ToString();
+            using (var conn1 = new NpgsqlConnection(connString))
+            using (var conn2 = new NpgsqlConnection(connString))
             using (var cmd = new NpgsqlCommand("SELECT 1", conn1))
             {
                 conn1.Open();

@@ -304,8 +304,11 @@ namespace Npgsql.Tests
         [IssueLink("https://github.com/npgsql/npgsql/issues/719")]
         public void FailedTransactionOnCloseWithCustom()
         {
-            var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Pooling = true };
-            using (var conn = new NpgsqlConnection(csb))
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Pooling = true
+            }.ToString();
+            using (var conn = new NpgsqlConnection(connString))
             {
                 conn.Open();
                 var backendProcessId = conn.ProcessID;

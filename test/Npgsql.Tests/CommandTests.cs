@@ -194,8 +194,11 @@ namespace Npgsql.Tests
         {
             Assert.That(NpgsqlConnector.MinimumInternalCommandTimeout, Is.Not.EqualTo(NpgsqlCommand.DefaultTimeout));
             var timeout = NpgsqlConnector.MinimumInternalCommandTimeout;
-            var csbWithTimout = new NpgsqlConnectionStringBuilder(ConnectionString) { CommandTimeout = timeout };
-            using (var conn = new NpgsqlConnection(csbWithTimout))
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                CommandTimeout = timeout
+            }.ToString();
+            using (var conn = new NpgsqlConnection(connString))
             {
                 var command = new NpgsqlCommand("SELECT 1", conn);
                 conn.Open();

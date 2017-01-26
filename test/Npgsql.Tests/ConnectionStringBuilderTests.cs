@@ -131,20 +131,6 @@ namespace Npgsql.Tests
                 Throws.Exception.TypeOf<ArgumentException>());
         }
 
-        [Test]
-        public void ToStringWithoutPassword()
-        {
-            Builder.ConnectionString = "Host=host1;Username=user;Password=password";
-            var builderWithoutPassword = new NpgsqlConnectionStringBuilder(Builder.ToStringWithoutPassword());
-            Assert.That(builderWithoutPassword.Host, Is.EqualTo(Builder.Host));
-            Assert.That(builderWithoutPassword.Username, Is.EqualTo(Builder.Username));
-            Assert.That(builderWithoutPassword.Password, Is.Null);
-
-            Builder.Host = "host2";
-            builderWithoutPassword = new NpgsqlConnectionStringBuilder(Builder.ToStringWithoutPassword());
-            Assert.That(builderWithoutPassword.Host, Is.EqualTo(Builder.Host));
-        }
-
         #region Setup
 
         NpgsqlConnectionStringBuilder Builder { get; set; }

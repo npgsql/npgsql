@@ -49,13 +49,13 @@ namespace Npgsql.Tests
         [TestCase(true,  TestName = "RejectSelfSignedCertificateWithSslStream")]
         public void RejectSelfSignedCertificate(bool useSslStream)
         {
-            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 SslMode = SslMode.Require,
                 UseSslStream = useSslStream
-            };
+            }.ToString();
 
-            using (var conn = new NpgsqlConnection(csb))
+            using (var conn = new NpgsqlConnection(connString))
             {
                 // The following is necessary since a pooled connector may exist from a previous
                 // SSL test
@@ -98,12 +98,12 @@ namespace Npgsql.Tests
             if (username == null)
                 throw new Exception("Could find username");
 
-            var csb = new NpgsqlConnectionStringBuilder(ConnectionString) {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) {
                 IntegratedSecurity = true,
                 Username = username,
                 Password = null
-            };
-            using (var conn = new NpgsqlConnection(csb))
+            }.ToString();
+            using (var conn = new NpgsqlConnection(connString))
             {
                 try
                 {
@@ -122,13 +122,13 @@ namespace Npgsql.Tests
         [Test, LinuxIgnore("Needs to be run explicitly with Kerberos credentials")]
         public void IntegratedSecurityWithoutUsername()
         {
-            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 IntegratedSecurity = true,
                 Username = null,
                 Password = null
-            };
-            using (var conn = new NpgsqlConnection(csb))
+            }.ToString();
+            using (var conn = new NpgsqlConnection(connString))
             {
                 try
                 {
@@ -147,14 +147,14 @@ namespace Npgsql.Tests
         [Test, LinuxIgnore("Needs to be run explicitly with Kerberos credentials")]
         public void ConnectionDatabasePopulatedOnConnect()
         {
-            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 IntegratedSecurity = true,
                 Username = null,
                 Password = null,
                 Database = null
-            };
-            using (var conn = new NpgsqlConnection(csb))
+            }.ToString();
+            using (var conn = new NpgsqlConnection(connString))
             {
                 try
                 {

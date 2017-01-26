@@ -25,14 +25,8 @@
 
 using System;
 using System.Collections.Generic;
-using System.Configuration;
-using System.Data;
-using System.Reflection;
-using System.Threading;
 using System.Transactions;
 using JetBrains.Annotations;
-using Npgsql;
-using NpgsqlTypes;
 using NUnit.Framework;
 
 namespace Npgsql.Tests
@@ -65,7 +59,10 @@ namespace Npgsql.Tests
         [Test, Description("Single connection enlisting implicitly, committing")]
         public void ImplicitEnlist()
         {
-            var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString) { Enlist = true };
+            var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Enlist = true
+            }.ToString();
             var conn = new NpgsqlConnection(connectionString);
             using (var scope = new TransactionScope())
             {
@@ -125,10 +122,10 @@ namespace Npgsql.Tests
         [Test]
         public void TwoConnectionsRollback()
         {
-            var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString) { Enlist = true };
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) { Enlist = true };
             using (new TransactionScope())
-            using (var conn1 = OpenConnection(connectionString))
-            using (var conn2 = OpenConnection(connectionString))
+            using (var conn1 = OpenConnection(connString))
+            using (var conn2 = OpenConnection(connString))
             {
                 Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1));
                 Assert.That(conn2.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test2')"), Is.EqualTo(1));
@@ -169,7 +166,7 @@ namespace Npgsql.Tests
             {
                 ApplicationName = nameof(CloseConnection),
                 Enlist = true
-            };
+            }.ToString();
             using (var scope = new TransactionScope())
             using (var conn = OpenConnection(connString))
             {
@@ -243,10 +240,13 @@ namespace Npgsql.Tests
         [Test]
         public void ReuseConnection()
         {
-            var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString) { Enlist = true };
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Enlist = true
+            }.ToString();
             using (var scope = new TransactionScope())
             {
-                using (var conn = new NpgsqlConnection(connectionString))
+                using (var conn = new NpgsqlConnection(connString))
                 {
                     conn.Open();
                     var processId = conn.ProcessID;
@@ -267,23 +267,24 @@ namespace Npgsql.Tests
         [Test]
         public void ReuseConnectionRollback()
         {
-            var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString) { Enlist = true };
-            using (var scope = new TransactionScope())
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                using (var conn = new NpgsqlConnection(connectionString))
-                {
-                    conn.Open();
-                    var processId = conn.ProcessID;
-                    conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')");
-                    conn.Close();
+                Enlist = true
+            }.ToString();
+            using (var scope = new TransactionScope())
+            using (var conn = new NpgsqlConnection(connString))
+            {
+                conn.Open();
+                var processId = conn.ProcessID;
+                conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')");
+                conn.Close();
 
-                    conn.Open();
-                    Assert.That(conn.ProcessID, Is.EqualTo(processId));
-                    conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test2')");
-                    conn.Close();
+                conn.Open();
+                Assert.That(conn.ProcessID, Is.EqualTo(processId));
+                conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test2')");
+                conn.Close();
 
-                    scope.Complete();
-                }
+                scope.Complete();
             }
             AssertNumberOfRows(2);
         }
@@ -291,14 +292,17 @@ namespace Npgsql.Tests
         [Test]
         public void ReuseConnectionWithEscalation()
         {
-            var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString) { Enlist = true };
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Enlist = true
+            }.ToString();
             using (new TransactionScope())
             {
-                using (var conn1 = new NpgsqlConnection(connectionString))
+                using (var conn1 = new NpgsqlConnection(connString))
                 {
                     conn1.Open();
                     var processId = conn1.ProcessID;
-                    using (var conn2 = new NpgsqlConnection(connectionString)) {}
+                    using (var conn2 = new NpgsqlConnection(connString)) {}
                     conn1.Close();
 
                     conn1.Open();

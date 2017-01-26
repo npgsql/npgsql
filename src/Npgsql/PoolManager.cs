@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
@@ -18,8 +19,8 @@ namespace Npgsql
         /// <summary>
         /// Holds connector pools indexed by their connection strings.
         /// </summary>
-        internal static Dictionary<NpgsqlConnectionStringBuilder, ConnectorPool> Pools { get; }
-            = new Dictionary<NpgsqlConnectionStringBuilder, ConnectorPool>();
+        internal static Dictionary<string, ConnectorPool> Pools { get; }
+            = new Dictionary<string, ConnectorPool>();
 
         /// <summary>
         /// Maximum number of possible connections in the pool.
@@ -36,28 +37,13 @@ namespace Npgsql
 #endif
         }
 
-        internal static ConnectorPool GetOrAdd(NpgsqlConnectionStringBuilder connString)
+        internal static void Clear(string connString)
         {
             Debug.Assert(connString != null);
 
             lock (Pools)
             {
                 if (Pools.TryGetValue(connString, out var pool))
-                    return pool;
-                if (connString.MaxPoolSize < connString.MinPoolSize)
-                    throw new ArgumentException($"Connection can't have MaxPoolSize {connString.MaxPoolSize} under MinPoolSize {connString.MinPoolSize}");
-                return Pools[connString.Clone()] = new ConnectorPool(connString);
-            }
-        }
-
-        internal static void Clear(NpgsqlConnectionStringBuilder connString)
-        {
-            Debug.Assert(connString != null);
-
-            ConnectorPool pool;
-            lock (Pools)
-            {
-                if (Pools.TryGetValue(connString, out pool))
                     pool.Clear();
             }
         }
@@ -76,16 +62,22 @@ namespace Npgsql
     {
         #region Fields
 
-        readonly NpgsqlConnectionStringBuilder _connectionString;
+        internal NpgsqlConnectionStringBuilder Settings { get; }
+
+        /// <summary>
+        /// Contains the connection string returned to the user from <see cref="NpgsqlConnection.ConnectionString"/>
+        /// after the connection has been opened. Does not contain the password unless Persist Security Info=true.
+        /// </summary>
+        internal string UserFacingConnectionString { get; }
+
+        readonly int _max;
+        readonly int _min;
+        internal int Busy { get; private set; }
 
         /// <summary>
         /// Open connectors waiting to be requested by new connections
         /// </summary>
         internal readonly IdleConnectorList Idle;
-
-        readonly int _max;
-        readonly int _min;
-        internal int Busy { get; private set; }
 
         readonly Queue<WaitingOpenAttempt> _waiting;
 
@@ -109,13 +101,21 @@ namespace Npgsql
 
         #endregion
 
-        internal ConnectorPool(NpgsqlConnectionStringBuilder csb)
+        internal ConnectorPool(NpgsqlConnectionStringBuilder settings, string connString)
         {
-            _max = csb.MaxPoolSize;
-            _min = csb.MinPoolSize;
+            if (settings.MaxPoolSize < settings.MinPoolSize)
+                throw new ArgumentException($"Connection can't have MaxPoolSize {settings.MaxPoolSize} under MinPoolSize {settings.MinPoolSize}");
 
-            _connectionString = csb;
-            _pruningInterval = TimeSpan.FromSeconds(_connectionString.ConnectionPruningInterval);
+            Settings = settings;
+
+            _max = settings.MaxPoolSize;
+            _min = settings.MinPoolSize;
+
+            UserFacingConnectionString = settings.PersistSecurityInfo
+                ? connString
+                : settings.ToStringWithoutPassword();
+
+            _pruningInterval = TimeSpan.FromSeconds(Settings.ConnectionPruningInterval);
             _prunedConnectors = new List<NpgsqlConnector>();
             Idle = new IdleConnectorList();
             _waiting = new Queue<WaitingOpenAttempt>();
@@ -134,6 +134,7 @@ namespace Npgsql
             Counters.NumberOfActiveConnections.Decrement();
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal ValueTask<NpgsqlConnector> Allocate(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
         {
             Monitor.Enter(this);
@@ -176,13 +177,13 @@ namespace Npgsql
                         if (tcs.Task != await Task.WhenAny(tcs.Task, timeoutTask))
                         {
                             //cancellationToken.ThrowIfCancellationRequested();
-                            throw new NpgsqlException($"The connection pool has been exhausted, either raise MaxPoolSize (currently {_max}) or Timeout (currently {_connectionString.Timeout} seconds)");
+                            throw new NpgsqlException($"The connection pool has been exhausted, either raise MaxPoolSize (currently {_max}) or Timeout (currently {Settings.Timeout} seconds)");
                         }
                     }
                     else
                     {
                         if (!tcs.Task.Wait(timeout.TimeLeft))
-                            throw new NpgsqlException($"The connection pool has been exhausted, either raise MaxPoolSize (currently {_max}) or Timeout (currently {_connectionString.Timeout} seconds)");
+                            throw new NpgsqlException($"The connection pool has been exhausted, either raise MaxPoolSize (currently {_max}) or Timeout (currently {Settings.Timeout} seconds)");
                     }
                 }
                 catch
@@ -369,7 +370,7 @@ namespace Npgsql
 
             try
             {
-                var idleLifetime = _connectionString.ConnectionIdleLifetime;
+                var idleLifetime = Settings.ConnectionIdleLifetime;
                 lock (this)
                 {
                     var totalConnections = Idle.Count + Busy;
