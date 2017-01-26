@@ -17,7 +17,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Npgsql", "src\Npgsql\Npgsql
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Npgsql.Tests", "test\Npgsql.Tests\Npgsql.Tests.csproj", "{E9C258D7-0D8E-4E6A-9857-5C6438591755}"
 EndProject
-Project("{930C7802-8A8C-48F9-8165-68863BCCD9DD}") = "GACInstaller", "src\GACInstaller\GACInstaller.wixproj", "{3E9D78D3-C5D4-40E3-9FDD-AC91E19618AB}"
+Project("{930C7802-8A8C-48F9-8165-68863BCCD9DD}") = "MSI", "src\MSI\MSI.wixproj", "{3E9D78D3-C5D4-40E3-9FDD-AC91E19618AB}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Npgsql.Benchmarks", "test\Npgsql.Benchmarks\Npgsql.Benchmarks.csproj", "{8B4AE9B6-CDAC-44DD-A5CD-28A470D363B8}"
 EndProject

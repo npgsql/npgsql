@@ -40,8 +40,7 @@ or in many tutorials on the Internet.
 
 ## GAC Installation
 
-In some cases you'll want to install Npgsql into your [Global Assembly Cache (GAC)](https://msdn.microsoft.com/en-us/library/yf1d93sz%28v=vs.110%29.aspx?f=255&MSPPError=-2147217396).
-This is usually the case when you're using a generic database program that can work with any ADO.NET provider but doesn't come with Npgsql or reference it directly. For these cases, you can download the Npgsql Windows installer from [our Github releases page](https://github.com/npgsql/npgsql/releases): it will install Npgsql (and optionally the Entity Framework providers) into your GAC and add Npgsql's DbProviderFactory into your `machine.config` file.  This is *not* the general recommended method of using Npgsql - install via Nuget if possible.
+In some cases you'll want to install Npgsql into your [Global Assembly Cache (GAC)](https://msdn.microsoft.com/en-us/library/yf1d93sz%28v=vs.110%29.aspx?f=255&MSPPError=-2147217396). This is usually the case when you're using a generic database program that can work with any ADO.NET provider but doesn't come with Npgsql or reference it directly. For these cases, you can download the Npgsql Windows installer from [our Github releases page](https://github.com/npgsql/npgsql/releases): it will install Npgsql (and optionally the Entity Framework providers) into your GAC and add Npgsql's DbProviderFactory into your `machine.config` file.  This is *not* the general recommended method of using Npgsql - always install via Nuget if possible. In addition to Npgsql.dll, this will also install `System.Threading.Tasks.Extensions.dll` and `Microsoft.Extensions.Logging.dll` into the GAC.
 
 ## Visual Studio Integration
 
