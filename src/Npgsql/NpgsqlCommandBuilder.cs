@@ -133,54 +133,36 @@ namespace Npgsql
             }
         }
 
+        private const string DeriveParametersQuery = @"
+SELECT
+CASE
+	WHEN pg_proc.proargnames IS NULL THEN array_cat(array_fill(''::name,ARRAY[pg_proc.pronargs]),array_agg(pg_attribute.attname ORDER BY pg_attribute.attnum))
+	ELSE pg_proc.proargnames
+END AS proargnames,
+pg_proc.proargtypes,
+CASE
+	WHEN pg_proc.proallargtypes IS NULL AND (array_agg(pg_attribute.atttypid))[1] IS NOT NULL THEN array_cat(string_to_array(pg_proc.proargtypes::text,' ')::oid[],array_agg(pg_attribute.atttypid ORDER BY pg_attribute.attnum))
+	ELSE pg_proc.proallargtypes
+END AS proallargtypes,
+CASE
+	WHEN pg_proc.proargmodes IS NULL AND (array_agg(pg_attribute.atttypid))[1] IS NOT NULL THEN array_cat(array_fill('i'::""char"",ARRAY[pg_proc.pronargs]),array_fill('o'::""char"",ARRAY[array_length(array_agg(pg_attribute.atttypid), 1)]))
+    ELSE pg_proc.proargmodes
+END AS proargmodes
+FROM pg_proc
+LEFT JOIN pg_type ON pg_proc.prorettype = pg_type.oid
+LEFT JOIN pg_attribute ON pg_type.typrelid = pg_attribute.attrelid AND pg_attribute.attnum >= 1
+WHERE pg_proc.oid = :proname::regproc
+GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_proc.proargmodes, pg_proc.pronargs;
+";
+
         private static void DoDeriveParameters(NpgsqlCommand command)
         {
             // See http://www.postgresql.org/docs/current/static/catalog-pg-proc.html
             command.Parameters.Clear();
-            // Updated after 0.99.3 to support the optional existence of a name qualifying schema and case insensitivity when the schema ror procedure name do not contain a quote.
-            // This fixed an incompatibility with NpgsqlCommand.CheckFunctionReturn(String ReturnType)
-            var serverVersion = command.Connection.Connector.ServerVersion;
-            string query;
-            string procedureName;
-            string schemaName = null;
-            var fullName = command.CommandText.Split('.');
-            if (fullName.Length > 1 && fullName[0].Length > 0)
-            {
-                // proargsmodes is supported for Postgresql 8.1 and above
-                query = serverVersion >= new Version(8, 1, 0)
-                    ? "select proargnames, proargtypes, proallargtypes, proargmodes from pg_proc p left join pg_namespace n on p.pronamespace = n.oid where proname=:proname and n.nspname=:nspname"
-                    : "select proargnames, proargtypes from pg_proc p left join pg_namespace n on p.pronamespace = n.oid where proname=:proname and n.nspname=:nspname";
-                schemaName = (fullName[0].IndexOf("\"") != -1) ? fullName[0] : fullName[0].ToLower();
-                procedureName = (fullName[1].IndexOf("\"") != -1) ? fullName[1] : fullName[1].ToLower();
-
-                // The pg_temp pseudo-schema is special - it's an alias to a real schema name (e.g. pg_temp_2).
-                // We get the real name with pg_my_temp_schema().
-                if (schemaName == "pg_temp")
-                {
-                    using (var c = new NpgsqlCommand("SELECT nspname FROM pg_namespace WHERE oid=pg_my_temp_schema()", command.Connection))
-                    {
-                        schemaName = (string)c.ExecuteScalar();
-                    }
-                }
-            }
-            else
-            {
-                // proargsmodes is supported for Postgresql 8.1 and above
-                query = serverVersion >= new Version(8, 1, 0)
-                    ? "select proargnames, proargtypes, proallargtypes, proargmodes from pg_proc where proname = :proname"
-                    : "select proargnames, proargtypes from pg_proc where proname = :proname";
-                procedureName = (fullName[0].IndexOf("\"") != -1) ? fullName[0] : fullName[0].ToLower();
-            }
-
-            using (var c = new NpgsqlCommand(query, command.Connection))
+            using (var c = new NpgsqlCommand(DeriveParametersQuery, command.Connection))
             {
                 c.Parameters.Add(new NpgsqlParameter("proname", NpgsqlDbType.Text));
-                c.Parameters[0].Value = procedureName.Replace("\"", "").Trim();
-                if (fullName.Length > 1 && !string.IsNullOrEmpty(schemaName))
-                {
-                    var prm = c.Parameters.Add(new NpgsqlParameter("nspname", NpgsqlDbType.Text));
-                    prm.Value = schemaName.Replace("\"", "").Trim();
-                }
+                c.Parameters[0].Value = command.CommandText;
 
                 string[] names = null;
                 uint[] types = null;
@@ -192,13 +174,10 @@ namespace Npgsql
                     {
                         if (!rdr.IsDBNull(0))
                             names = rdr.GetValue(0) as string[];
-                        if (serverVersion >= new Version("8.1.0"))
-                        {
-                            if (!rdr.IsDBNull(2))
-                                types = rdr.GetValue(2) as uint[];
-                            if (!rdr.IsDBNull(3))
-                                modes = rdr.GetValue(3) as char[];
-                        }
+                        if (!rdr.IsDBNull(2))
+                            types = rdr.GetValue(2) as uint[];
+                        if (!rdr.IsDBNull(3))
+                            modes = rdr.GetValue(3) as char[];
                         if (types == null)
                         {
                             if (rdr.IsDBNull(1) || rdr.GetFieldValue<uint[]>(1).Length == 0)
