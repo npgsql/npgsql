@@ -39,6 +39,9 @@
              AllowAdvertise="no"
              Display="expand" >
       <ComponentRef Id="Npgsql" />
+      <ComponentRef Id="Microsoft.Extensions.Logging.Abstractions" />
+      <ComponentRef Id="Microsoft.Extensions.Logging" />
+      <ComponentRef Id="System.Threading.Tasks.Extensions" />
       <ComponentRef Id="MachineConfig_x86" />
       <ComponentRef Id="MachineConfig_x64" />
       
@@ -105,6 +108,27 @@
           <File Id="Npgsql"
                 Name="Npgsql.dll"
                 Source="..\npgsql\bin\$(var.Configuration)\net451\Npgsql.dll"
+                KeyPath="yes"
+                Assembly=".net" />
+        </Component>
+        <Component Id="Microsoft.Extensions.Logging.Abstractions" Guid="94a955b9-732c-48cd-b070-91954029b59c">
+          <File Id="Microsoft.Extensions.Logging.Abstractions"
+                Name="Microsoft.Extensions.Logging.Abstractions.dll"
+                Source="..\npgsql\bin\$(var.Configuration)\net451\Microsoft.Extensions.Logging.Abstractions.dll"
+                KeyPath="yes"
+                Assembly=".net" />
+        </Component>
+        <Component Id="Microsoft.Extensions.Logging" Guid="01ae68d2-6161-4516-8ddf-0ffb66fa5831">
+          <File Id="Microsoft.Extensions.Logging"
+                Name="Microsoft.Extensions.Logging.dll"
+                Source="..\npgsql\bin\$(var.Configuration)\net451\Microsoft.Extensions.Logging.dll"
+                KeyPath="yes"
+                Assembly=".net" />
+        </Component>
+        <Component Id="System.Threading.Tasks.Extensions" Guid="d978c06f-7e7f-4865-858e-b9eee77d7470">
+          <File Id="System.Threading.Tasks.Extensions"
+                Name="System.Threading.Tasks.Extensions.dll"
+                Source="..\npgsql\bin\$(var.Configuration)\net451\System.Threading.Tasks.Extensions.dll"
                 KeyPath="yes"
                 Assembly=".net" />
         </Component>
