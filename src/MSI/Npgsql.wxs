@@ -3,12 +3,13 @@
      xmlns:util="http://schemas.microsoft.com/wix/UtilExtension"
   >
   
-  <Product Id="772a9e26-9ab8-4011-bce6-d95b19d22b57"
+  <Product Id="*"
            Name="Npgsql $(var.Version)"
            Language="1033"
            Version="$(var.Version)"
            Manufacturer="The Npgsql Development Team"
            UpgradeCode="df971e89-5e78-4142-9ed2-179c0255a800">
+
     <Package InstallerVersion="200"
              Compressed="yes"
              InstallScope="perMachine"
@@ -155,18 +156,18 @@
                 <Component Id="MachineConfig_x86" Guid="faf79467-d78b-4535-9f0f-86ff446a4294">
                   <CreateFolder/>
 
-                  <?define MachineConfigPath = "[WindowsFolder]Microsoft.NET\Framework\v4.0.30319\CONFIG\machine.config" ?>
+                  <?define MachineConfigPath86 = "[WindowsFolder]Microsoft.NET\Framework\v4.0.30319\CONFIG\machine.config" ?>
 
-                  <util:XmlConfig Id="DeletePreviousAddElement32" File="$(var.MachineConfigPath)" Action="delete" On="install" ElementPath="//configuration/system.data/DbProviderFactories" VerifyPath="//configuration/system.data/DbProviderFactories/add[\[]@invariant='Npgsql'[\]]" Node="element" Sequence="1"/>
+                  <util:XmlConfig Id="DeletePreviousAddElement32" File="$(var.MachineConfigPath86)" Action="delete" On="install" ElementPath="//configuration/system.data/DbProviderFactories" VerifyPath="//configuration/system.data/DbProviderFactories/add[\[]@invariant='Npgsql'[\]]" Node="element" Sequence="1"/>
 
-                  <util:XmlConfig Id="CreateAddElement32" File="$(var.MachineConfigPath)" Action="create" On="install" ElementPath="//configuration/system.data/DbProviderFactories" Name="add" Node="element" VerifyPath="//configuration/system.data/DbProviderFactories/add[\[]@invariant='Npgsql'[\]]" Sequence="1">
-                    <util:XmlConfig Id="NameAttribute32" ElementId="CreateAddElement32" Name="name" Value="Npgsql Data Provider" File="$(var.MachineConfigPath)" />
-                    <util:XmlConfig Id="InvariantAttribute32" ElementId="CreateAddElement32" Name="invariant" Value="Npgsql" File="$(var.MachineConfigPath)" />
-                    <util:XmlConfig Id="DescriptionAttribute32" ElementId="CreateAddElement32" Name="description" Value=".NET Data Provider for PostgreSQL" File="$(var.MachineConfigPath)" />
-                    <util:XmlConfig Id="TypeAttribute32" ElementId="CreateAddElement32" Name="type" Value="Npgsql.NpgsqlFactory, Npgsql, Version=$(var.FullVersion), Culture=neutral, PublicKeyToken=$(var.AssemblyPublicKeyToken)" File="$(var.MachineConfigPath)" />
+                  <util:XmlConfig Id="CreateAddElement32" File="$(var.MachineConfigPath86)" Action="create" On="install" ElementPath="//configuration/system.data/DbProviderFactories" Name="add" Node="element" VerifyPath="//configuration/system.data/DbProviderFactories/add[\[]@invariant='Npgsql'[\]]" Sequence="1">
+                    <util:XmlConfig Id="NameAttribute32" ElementId="CreateAddElement32" Name="name" Value="Npgsql Data Provider" File="$(var.MachineConfigPath86)" />
+                    <util:XmlConfig Id="InvariantAttribute32" ElementId="CreateAddElement32" Name="invariant" Value="Npgsql" File="$(var.MachineConfigPath86)" />
+                    <util:XmlConfig Id="DescriptionAttribute32" ElementId="CreateAddElement32" Name="description" Value=".NET Data Provider for PostgreSQL" File="$(var.MachineConfigPath86)" />
+                    <util:XmlConfig Id="TypeAttribute32" ElementId="CreateAddElement32" Name="type" Value="Npgsql.NpgsqlFactory, Npgsql, Version=$(var.FullVersion), Culture=neutral, PublicKeyToken=$(var.AssemblyPublicKeyToken)" File="$(var.MachineConfigPath86)" />
                   </util:XmlConfig>
 
-                  <util:XmlConfig Id="DeleteAddElement32" File="$(var.MachineConfigPath)" Action="delete" On="uninstall" ElementPath="//configuration/system.data/DbProviderFactories" VerifyPath="//configuration/system.data/DbProviderFactories/add[\[]@invariant='Npgsql'[\]]" Node="element" Sequence="1"/>
+                  <util:XmlConfig Id="DeleteAddElement32" File="$(var.MachineConfigPath86)" Action="delete" On="uninstall" ElementPath="//configuration/system.data/DbProviderFactories" VerifyPath="//configuration/system.data/DbProviderFactories/add[\[]@invariant='Npgsql'[\]]" Node="element" Sequence="1"/>
 
                 </Component>
               </Directory>
@@ -180,18 +181,18 @@
                   <Condition>VersionNT64</Condition>
                   <CreateFolder/>
 
-                  <?define MachineConfigPath = "[WindowsFolder]Microsoft.NET\Framework64\v4.0.30319\CONFIG\machine.config" ?>
+                  <?define MachineConfigPath64 = "[WindowsFolder]Microsoft.NET\Framework64\v4.0.30319\CONFIG\machine.config" ?>
 
-                  <util:XmlConfig Id="DeletePreviousAddElement64" File="$(var.MachineConfigPath)" Action="delete" On="install" ElementPath="//configuration/system.data/DbProviderFactories" VerifyPath="//configuration/system.data/DbProviderFactories/add[\[]@invariant='Npgsql'[\]]" Node="element" Sequence="1"/>
+                  <util:XmlConfig Id="DeletePreviousAddElement64" File="$(var.MachineConfigPath64)" Action="delete" On="install" ElementPath="//configuration/system.data/DbProviderFactories" VerifyPath="//configuration/system.data/DbProviderFactories/add[\[]@invariant='Npgsql'[\]]" Node="element" Sequence="1"/>
 
-                  <util:XmlConfig Id="CreateAddElement64" File="$(var.MachineConfigPath)" Action="create" On="install" ElementPath="//configuration/system.data/DbProviderFactories" Name="add" Node="element" VerifyPath="//configuration/system.data/DbProviderFactories/add[\[]@invariant='Npgsql'[\]]" Sequence="1">
-                    <util:XmlConfig Id="NameAttribute64" ElementId="CreateAddElement64" Name="name" Value="Npgsql Data Provider" File="$(var.MachineConfigPath)" />
-                    <util:XmlConfig Id="InvariantAttribute64" ElementId="CreateAddElement64" Name="invariant" Value="Npgsql" File="$(var.MachineConfigPath)" />
-                    <util:XmlConfig Id="DescriptionAttribute64" ElementId="CreateAddElement64" Name="description" Value=".NET Data Provider for PostgreSQL" File="$(var.MachineConfigPath)" />
-                    <util:XmlConfig Id="TypeAttribute64" ElementId="CreateAddElement64" Name="type" Value="Npgsql.NpgsqlFactory, Npgsql, Version=$(var.FullVersion), Culture=neutral, PublicKeyToken=$(var.AssemblyPublicKeyToken)" File="$(var.MachineConfigPath)" />
+                  <util:XmlConfig Id="CreateAddElement64" File="$(var.MachineConfigPath64)" Action="create" On="install" ElementPath="//configuration/system.data/DbProviderFactories" Name="add" Node="element" VerifyPath="//configuration/system.data/DbProviderFactories/add[\[]@invariant='Npgsql'[\]]" Sequence="1">
+                    <util:XmlConfig Id="NameAttribute64" ElementId="CreateAddElement64" Name="name" Value="Npgsql Data Provider" File="$(var.MachineConfigPath64)" />
+                    <util:XmlConfig Id="InvariantAttribute64" ElementId="CreateAddElement64" Name="invariant" Value="Npgsql" File="$(var.MachineConfigPath64)" />
+                    <util:XmlConfig Id="DescriptionAttribute64" ElementId="CreateAddElement64" Name="description" Value=".NET Data Provider for PostgreSQL" File="$(var.MachineConfigPath64)" />
+                    <util:XmlConfig Id="TypeAttribute64" ElementId="CreateAddElement64" Name="type" Value="Npgsql.NpgsqlFactory, Npgsql, Version=$(var.FullVersion), Culture=neutral, PublicKeyToken=$(var.AssemblyPublicKeyToken)" File="$(var.MachineConfigPath64)" />
                   </util:XmlConfig>
 
-                  <util:XmlConfig Id="DeleteAddElement64" File="$(var.MachineConfigPath)" Action="delete" On="uninstall" ElementPath="//configuration/system.data/DbProviderFactories" VerifyPath="//configuration/system.data/DbProviderFactories/add[\[]@invariant='Npgsql'[\]]" Node="element" Sequence="1"/>
+                  <util:XmlConfig Id="DeleteAddElement64" File="$(var.MachineConfigPath64)" Action="delete" On="uninstall" ElementPath="//configuration/system.data/DbProviderFactories" VerifyPath="//configuration/system.data/DbProviderFactories/add[\[]@invariant='Npgsql'[\]]" Node="element" Sequence="1"/>
                   
                 </Component>
               </Directory>
