@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -22,114 +22,105 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.Diagnostics;
+using System.Security.Cryptography;
 using System.Text;
+using Microsoft.Extensions.Logging;
 using Npgsql.Logging;
 
 namespace Npgsql.BackendMessages
 {
-    internal class CommandCompleteMessage : IBackendMessage
+    class CommandCompleteMessage : IBackendMessage
     {
         internal StatementType StatementType { get; private set; }
         internal uint OID { get; private set; }
         internal uint Rows { get; private set; }
-
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         internal CommandCompleteMessage Load(ReadBuffer buf, int len)
         {
             Rows = 0;
             OID = 0;
 
-            var tag = buf.ReadString(len-1);
-            buf.Skip(1);   // Null terminator
-            var tokens = tag.Split();
-
-            if (tokens.Length == 0) {
-                return this;
-            }
-
-            switch (tokens[0])
+            var bytes = buf.Buffer;
+            var i = buf.ReadPosition;
+            buf.Skip(len);
+            switch (bytes[i])
             {
-            case "INSERT":
+            case (byte)'I':
+                if (!AreEqual(bytes, i, "INSERT "))
+                    goto default;
                 StatementType = StatementType.Insert;
+                i += 7;
+                OID = ParseNumber(bytes, ref i);
+                i++;
+                Rows = ParseNumber(bytes, ref i);
+                return this;
 
-                uint oid;
-                if (uint.TryParse(tokens[1], out oid))
-                {
-                    OID = oid;
-                }
-                else
-                {
-                    Log.Error("Ignoring unparseable OID in CommandComplete: " + tokens[1]);
-                }
-
-                ParseRows(tokens[2]);
-                break;
-
-            case "DELETE":
+            case (byte)'D':
+                if (!AreEqual(bytes, i, "DELETE "))
+                    goto default;
                 StatementType = StatementType.Delete;
-                ParseRows(tokens[1]);
-                break;
+                i += 7;
+                Rows = ParseNumber(bytes, ref i);
+                return this;
 
-            case "UPDATE":
+            case (byte)'U':
+                if (!AreEqual(bytes, i, "UPDATE "))
+                    goto default;
                 StatementType = StatementType.Update;
-                ParseRows(tokens[1]);
-                break;
+                i += 7;
+                Rows = ParseNumber(bytes, ref i);
+                return this;
 
-            case "SELECT":
+            case (byte)'S':
+                if (!AreEqual(bytes, i, "SELECT "))
+                    goto default;
                 StatementType = StatementType.Select;
-                // PostgreSQL 8.4 and below doesn't include the number of rows
-                if (tokens.Length > 1) {
-                    ParseRows(tokens[1]);
-                }
-                break;
+                i += 7;
+                Rows = ParseNumber(bytes, ref i);
+                return this;
 
-            case "MOVE":
+            case (byte)'M':
+                if (!AreEqual(bytes, i, "MOVE "))
+                    goto default;
                 StatementType = StatementType.Move;
-                ParseRows(tokens[1]);
-                break;
+                i += 5;
+                Rows = ParseNumber(bytes, ref i);
+                return this;
 
-            case "FETCH":
+            case (byte)'F':
+                if (!AreEqual(bytes, i, "FETCH "))
+                    goto default;
                 StatementType = StatementType.Fetch;
-                ParseRows(tokens[1]);
-                break;
-
-            case "COPY":
-                StatementType = StatementType.Copy;
-                if (tokens.Length > 1) {
-                    ParseRows(tokens[1]);
-                }
-                break;
-
-            case "CREATE":
-                if (tag.StartsWith("CREATE TABLE AS"))
-                {
-                    StatementType = StatementType.CreateTableAs;
-                    ParseRows(tokens[3]);
-                    break;
-                }
-                goto default;
+                i += 6;
+                Rows = ParseNumber(bytes, ref i);
+                return this;
 
             default:
                 StatementType = StatementType.Other;
-                break;
+                return this;
             }
-            return this;
         }
 
-        void ParseRows(string token)
+        static bool AreEqual(byte[] bytes, int pos, string s)
         {
-            uint rows;
-            if (uint.TryParse(token, out rows))
+            for (var i = 0; i < s.Length; i++)
             {
-                Rows = rows;
+                if (bytes[pos+i] != s[i])
+                    return false;
             }
-            else
+            return true;
+        }
+
+        static uint ParseNumber(byte[] bytes, ref int pos)
+        {
+            Debug.Assert(bytes[pos] >= '0' && bytes[pos] <= '9');
+            uint result = 0;
+            do
             {
-                Log.Error("Ignoring unparseable rows in CommandComplete: " + token);
-            }
+                result = result * 10 + bytes[pos++] - '0';
+            } while (bytes[pos] >= '0' && bytes[pos] <= '9');
+            return result;
         }
 
         public BackendMessageCode Code => BackendMessageCode.CompletedResponse;

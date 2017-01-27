@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -22,11 +22,12 @@
 #endregion
 
 using System;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
+using Npgsql.Logging;
 using Npgsql.TypeHandlers;
 using NpgsqlTypes;
 
@@ -36,7 +37,7 @@ namespace Npgsql
     /// Provides an API for a binary COPY TO operation, a high-performance data export mechanism from
     /// a PostgreSQL table. Initiated by <see cref="NpgsqlConnection.BeginBinaryExport"/>
     /// </summary>
-    public class NpgsqlBinaryExporter : IDisposable, ICancelable
+    public sealed class NpgsqlBinaryExporter : ICancelable
     {
         #region Fields and Properties
 
@@ -132,7 +133,7 @@ namespace Npgsql
             var numColumns = _buf.ReadInt16();
             if (numColumns == -1)
             {
-                Contract.Assume(_leftToReadInDataMsg == 0);
+                Debug.Assert(_leftToReadInDataMsg == 0);
                 _connector.ReadExpecting<CopyDoneMessage>();
                 _connector.ReadExpecting<CommandCompleteMessage>();
                 _connector.ReadExpecting<ReadyForQueryMessage>();
@@ -140,7 +141,7 @@ namespace Npgsql
                 _isConsumed = true;
                 return -1;
             }
-            Contract.Assume(numColumns == NumColumns);
+            Debug.Assert(numColumns == NumColumns);
 
             _column = 0;
             return NumColumns;
@@ -206,7 +207,7 @@ namespace Npgsql
                 // The type handler supports the requested type directly
                 var tHandler = handler as ITypeHandler<T>;
                 if (tHandler != null)
-                    result = handler.ReadFully<T>(_buf, _columnLen);
+                    result = handler.Read<T>(_buf, _columnLen, false).Result;
                 else
                 {
                     var t = typeof(T);
@@ -223,9 +224,9 @@ namespace Npgsql
                         throw new InvalidCastException($"Can't cast database type {handler.PgDisplayName} to {typeof(T).Name}");
 
                     if (arrayHandler.GetElementFieldType() == elementType)
-                        result = (T)handler.ReadValueAsObjectFully(_buf, _columnLen);
+                        result = (T)handler.ReadAsObject(_buf, _columnLen, false).Result;
                     else if (arrayHandler.GetElementPsvType() == elementType)
-                        result = (T)handler.ReadPsvAsObjectFully(_buf, _columnLen);
+                        result = (T)handler.ReadPsvAsObject(_buf, _columnLen, false).Result;
                     else
                         throw new InvalidCastException($"Can't cast database type {handler.PgDisplayName} to {typeof(T).Name}");
                 }
@@ -315,12 +316,14 @@ namespace Npgsql
                 _connector.ReadExpecting<ReadyForQueryMessage>();
             }
 
-            _connector.EndUserAction();
+            var connector = _connector;
             Cleanup();
+            connector.EndUserAction();
         }
 
         void Cleanup()
         {
+            Log.EndCopy(_connector.Id);
             _connector = null;
             _registry = null;
             _buf = null;

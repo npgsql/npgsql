@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -25,6 +25,8 @@ using System;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
+using JetBrains.Annotations;
+using Npgsql.PostgresTypes;
 
 namespace Npgsql.TypeHandlers.DateTimeHandlers
 {
@@ -32,7 +34,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-datetime.html
     /// </remarks>
     [TypeMapping("date", NpgsqlDbType.Date, DbType.Date, typeof(NpgsqlDate))]
-    internal class DateHandler : SimpleTypeHandlerWithPsv<DateTime, NpgsqlDate>
+    class DateHandler : SimpleTypeHandlerWithPsv<DateTime, NpgsqlDate>
     {
         internal const int PostgresEpochJdate = 2451545; // == date2j(2000, 1, 1)
         internal const int MonthsPerYear = 12;
@@ -43,13 +45,13 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         /// </summary>
         readonly bool _convertInfinityDateTime;
 
-        public DateHandler(IBackendType backendType, TypeHandlerRegistry registry)
-            : base(backendType)
+        public DateHandler(PostgresType postgresType, TypeHandlerRegistry registry)
+            : base(postgresType)
         {
             _convertInfinityDateTime = registry.Connector.ConvertInfinityDateTime;
         }
 
-        public override DateTime Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
+        public override DateTime Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             // TODO: Convert directly to DateTime without passing through NpgsqlDate?
             var npgsqlDate = ((ISimpleTypeHandler<NpgsqlDate>) this).Read(buf, len, fieldDescription);
@@ -69,7 +71,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         /// <remarks>
         /// Copied wholesale from Postgresql backend/utils/adt/datetime.c:j2date
         /// </remarks>
-        internal override NpgsqlDate ReadPsv(ReadBuffer buf, int len, FieldDescription fieldDescription)
+        internal override NpgsqlDate ReadPsv(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             var binDate = buf.ReadInt32();
 
@@ -84,58 +86,43 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             }
         }
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(object value, [CanBeNull] NpgsqlParameter parameter)
         {
             if (!(value is DateTime) && !(value is NpgsqlDate))
             {
                 var converted = Convert.ToDateTime(value);
                 if (parameter == null)
-                {
                     throw CreateConversionButNoParamException(value.GetType());
-                }
                 parameter.ConvertedValue = converted;
             }
             return 4;
         }
 
-        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
+        protected override void Write(object value, WriteBuffer buf, [CanBeNull] NpgsqlParameter parameter)
         {
-            if (parameter != null && parameter.ConvertedValue != null) {
+            if (parameter?.ConvertedValue != null)
                 value = parameter.ConvertedValue;
-            }
 
             NpgsqlDate date;
             if (value is NpgsqlDate)
-            {
                 date = (NpgsqlDate)value;
-            }
             else if (value is DateTime)
             {
                 var dt = (DateTime)value;
                 if (_convertInfinityDateTime)
                 {
                     if (dt == DateTime.MaxValue)
-                    {
                         date = NpgsqlDate.Infinity;
-                    }
                     else if (dt == DateTime.MinValue)
-                    {
                         date = NpgsqlDate.NegativeInfinity;
-                    }
                     else
-                    {
                         date = new NpgsqlDate(dt);
-                    }
                 }
                 else
-                {
                     date = new NpgsqlDate(dt);
-                }
             }
             else
-            {
-                throw PGUtil.ThrowIfReached();
-            }
+                throw new InvalidOperationException("Internal Npgsql bug, please report.");
 
             if (date == NpgsqlDate.NegativeInfinity)
                 buf.WriteInt32(int.MinValue);

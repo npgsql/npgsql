@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -23,9 +23,11 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Npgsql.FrontendMessages
 {
@@ -36,8 +38,6 @@ namespace Npgsql.FrontendMessages
     {
         readonly Encoding _encoding;
         string _query;
-        char[] _queryChars;
-        int _charPos;
 
         const byte Code = (byte)'Q';
 
@@ -48,51 +48,29 @@ namespace Npgsql.FrontendMessages
 
         internal QueryMessage Populate(string query)
         {
-            Contract.Requires(query != null);
+            Debug.Assert(query != null);
 
             _query = query;
-            _charPos = -1;
             return this;
         }
 
-        internal override bool Write(WriteBuffer buf)
+        internal override async Task Write(WriteBuffer buf, bool async, CancellationToken cancellationToken)
         {
-            if (_charPos == -1)
-            {
-                // Start new query
-                if (buf.WriteSpaceLeft < 1 + 4)
-                    return false;
-                _charPos = 0;
-                var queryByteLen = _encoding.GetByteCount(_query);
-                _queryChars = _query.ToCharArray();
-                buf.WriteByte(Code);
-                buf.WriteInt32(4 +            // Message length (including self excluding code)
-                               queryByteLen + // Query byte length
-                               1);            // Null terminator
-            }
+            if (buf.WriteSpaceLeft < 1 + 4)
+                await buf.Flush(async, cancellationToken);
+            var queryByteLen = _encoding.GetByteCount(_query);
 
-            if (_charPos < _queryChars.Length)
-            {
-                int charsUsed;
-                bool completed;
-                buf.WriteStringChunked(_queryChars, _charPos, _queryChars.Length - _charPos, true,
-                                       out charsUsed, out completed);
-                _charPos += charsUsed;
-                if (!completed)
-                    return false;
-            }
+            buf.WriteByte(Code);
+            buf.WriteInt32(4 +            // Message length (including self excluding code)
+                           queryByteLen + // Query byte length
+                           1);            // Null terminator
 
+            await buf.WriteString(_query, queryByteLen, async, cancellationToken);
             if (buf.WriteSpaceLeft < 1)
-                return false;
+                await buf.Flush(async, cancellationToken);
             buf.WriteByte(0);
-
-            _charPos = -1;
-            return true;
         }
 
-        public override string ToString()
-        {
-            return $"[Query={_query}]";
-        }
+        public override string ToString() => $"[Query={_query}]";
     }
 }

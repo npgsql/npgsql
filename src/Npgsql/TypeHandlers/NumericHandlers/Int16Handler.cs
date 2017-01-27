@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -22,14 +22,11 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using System.Text;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
-using System.Diagnostics.Contracts;
+using JetBrains.Annotations;
+using Npgsql.PostgresTypes;
 
 namespace Npgsql.TypeHandlers.NumericHandlers
 {
@@ -37,77 +34,56 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-numeric.html
     /// </remarks>
     [TypeMapping("int2", NpgsqlDbType.Smallint, new[] { DbType.Int16, DbType.Byte, DbType.SByte }, new[] { typeof(short), typeof(byte), typeof(sbyte) }, DbType.Int16)]
-    internal class Int16Handler : SimpleTypeHandler<short>,
+    class Int16Handler : SimpleTypeHandler<short>,
         ISimpleTypeHandler<byte>, ISimpleTypeHandler<sbyte>, ISimpleTypeHandler<int>, ISimpleTypeHandler<long>,
         ISimpleTypeHandler<float>, ISimpleTypeHandler<double>, ISimpleTypeHandler<decimal>,
         ISimpleTypeHandler<string>
     {
-        internal Int16Handler(IBackendType backendType) : base(backendType) { }
+        internal Int16Handler(PostgresType postgresType) : base(postgresType) { }
 
-        public override short Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return buf.ReadInt16();
-        }
+        public override short Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+            => buf.ReadInt16();
 
-        byte ISimpleTypeHandler<byte>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return (byte)Read(buf, len, fieldDescription);
-        }
+        byte ISimpleTypeHandler<byte>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => (byte)Read(buf, len, fieldDescription);
 
-        sbyte ISimpleTypeHandler<sbyte>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return (sbyte)Read(buf, len, fieldDescription);
-        }
+        sbyte ISimpleTypeHandler<sbyte>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => (sbyte)Read(buf, len, fieldDescription);
 
-        int ISimpleTypeHandler<int>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return Read(buf, len, fieldDescription);
-        }
+        int ISimpleTypeHandler<int>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => Read(buf, len, fieldDescription);
 
-        long ISimpleTypeHandler<long>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return Read(buf, len, fieldDescription);
-        }
+        long ISimpleTypeHandler<long>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => Read(buf, len, fieldDescription);
 
-        float ISimpleTypeHandler<float>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return Read(buf, len, fieldDescription);
-        }
+        float ISimpleTypeHandler<float>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => Read(buf, len, fieldDescription);
 
-        double ISimpleTypeHandler<double>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return Read(buf, len, fieldDescription);
-        }
+        double ISimpleTypeHandler<double>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => Read(buf, len, fieldDescription);
 
-        decimal ISimpleTypeHandler<decimal>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return Read(buf, len, fieldDescription);
-        }
+        decimal ISimpleTypeHandler<decimal>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => Read(buf, len, fieldDescription);
 
-        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return Read(buf, len, fieldDescription).ToString();
-        }
+        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => Read(buf, len, fieldDescription).ToString();
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
         {
             if (!(value is short))
             {
                 var converted = Convert.ToInt16(value);
                 if (parameter == null)
-                {
                     throw CreateConversionButNoParamException(value.GetType());
-                }
                 parameter.ConvertedValue = converted;
             }
             return 2;
         }
 
-        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
+        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
         {
-            if (parameter?.ConvertedValue != null) {
+            if (parameter?.ConvertedValue != null)
                 value = parameter.ConvertedValue;
-            }
             buf.WriteInt16((short)value);
         }
     }

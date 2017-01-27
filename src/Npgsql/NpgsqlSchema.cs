@@ -2,7 +2,7 @@
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -199,11 +199,11 @@ namespace Npgsql
 
             columns.Columns.AddRange(new [] {
                 new DataColumn("table_catalog"), new DataColumn("table_schema"), new DataColumn("table_name"),
-                new DataColumn("column_name"), new DataColumn("ordinal_position", typeof (int)), new DataColumn("column_default"),
+                new DataColumn("column_name"), new DataColumn("ordinal_position", typeof(int)), new DataColumn("column_default"),
                 new DataColumn("is_nullable"), new DataColumn("data_type"),
-                new DataColumn("character_maximum_length", typeof (int)), new DataColumn("character_octet_length", typeof (int)),
-                new DataColumn("numeric_precision", typeof (int)), new DataColumn("numeric_precision_radix", typeof (int)),
-                new DataColumn("numeric_scale", typeof (int)), new DataColumn("datetime_precision", typeof (int)),
+                new DataColumn("character_maximum_length", typeof(int)), new DataColumn("character_octet_length", typeof(int)),
+                new DataColumn("numeric_precision", typeof(int)), new DataColumn("numeric_precision_radix", typeof(int)),
+                new DataColumn("numeric_scale", typeof(int)), new DataColumn("datetime_precision", typeof(int)),
                 new DataColumn("character_set_catalog"), new DataColumn("character_set_schema"),
                 new DataColumn("character_set_name"), new DataColumn("collation_catalog")
             });
@@ -256,7 +256,7 @@ namespace Npgsql
         {
             var users = new DataTable("Users") { Locale = CultureInfo.InvariantCulture };
 
-            users.Columns.AddRange(new[] {new DataColumn("user_name"), new DataColumn("user_sysid", typeof (int))});
+            users.Columns.AddRange(new[] {new DataColumn("user_name"), new DataColumn("user_sysid", typeof(int))});
 
             var getUsers = new StringBuilder();
 
@@ -429,7 +429,7 @@ and n.nspname not in ('pg_catalog', 'pg_toast')");
         public static DataTable GetReservedWords()
         {
             var table = new DataTable("ReservedWords") { Locale = CultureInfo.InvariantCulture };
-            table.Columns.Add("ReservedWord", typeof (string));
+            table.Columns.Add("ReservedWord", typeof(string));
             foreach (var keyword in ReservedKeywords)
                 table.Rows.Add(keyword);
             return table;

@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -129,20 +129,6 @@ namespace Npgsql.Tests
         {
             Assert.That(() => Builder.ConnectionString = "Server=127.0.0.1;User Id=npgsql_tests;Pooling:false",
                 Throws.Exception.TypeOf<ArgumentException>());
-        }
-
-        [Test]
-        public void ToStringWithoutPassword()
-        {
-            Builder.ConnectionString = "Host=host1;Username=user;Password=password";
-            var builderWithoutPassword = new NpgsqlConnectionStringBuilder(Builder.ToStringWithoutPassword());
-            Assert.That(builderWithoutPassword.Host, Is.EqualTo(Builder.Host));
-            Assert.That(builderWithoutPassword.Username, Is.EqualTo(Builder.Username));
-            Assert.That(builderWithoutPassword.Password, Is.Null);
-
-            Builder.Host = "host2";
-            builderWithoutPassword = new NpgsqlConnectionStringBuilder(Builder.ToStringWithoutPassword());
-            Assert.That(builderWithoutPassword.Host, Is.EqualTo(Builder.Host));
         }
 
         #region Setup

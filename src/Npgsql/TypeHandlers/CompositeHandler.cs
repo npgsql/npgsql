@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -24,13 +24,13 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Reflection;
-using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers
@@ -38,18 +38,17 @@ namespace Npgsql.TypeHandlers
     /// <summary>
     /// Interface implemented by all concrete handlers which handle enums
     /// </summary>
-    internal interface ICompositeHandler
+    interface ICompositeHandler
     {
         /// <summary>
         /// The CLR type mapped to the PostgreSQL composite type.
         /// </summary>
         Type CompositeType { get; }
-        List<RawCompositeField> RawFields { get; set; }
     }
 
     interface ICompositeHandlerFactory
     {
-        ICompositeHandler Create(IBackendType backendType, TypeHandlerRegistry registry);
+        ICompositeHandler Create(PostgresType backendType, List<RawCompositeField> rawFields, TypeHandlerRegistry registry);
     }
 
     /// <summary>
@@ -65,113 +64,130 @@ namespace Npgsql.TypeHandlers
     /// * The column data encoded as binary
     /// </remarks>
     /// <typeparam name="T">the CLR type to map to the PostgreSQL composite type </typeparam>
-    internal class CompositeHandler<T> : ChunkingTypeHandler<T>, ICompositeHandler where T : new()
+    class CompositeHandler<T> : ChunkingTypeHandler<T>, ICompositeHandler where T : new()
     {
         readonly TypeHandlerRegistry _registry;
         readonly INpgsqlNameTranslator _nameTranslator;
-        public List<RawCompositeField> RawFields { get; set; }
+        List<RawCompositeField> _rawFields;
         [CanBeNull]
         List<MemberDescriptor> _members;
 
-        ReadBuffer _readBuf;
-        WriteBuffer _writeBuf;
-        LengthCache _lengthCache;
-        bool _preparedRead;
+        public Type CompositeType => typeof(T);
 
-        int _fieldIndex;
-        int _len;
-        object _value;
-        bool _wroteFieldHeader;
-
-        public Type CompositeType => typeof (T);
-
-        internal CompositeHandler(IBackendType backendType, INpgsqlNameTranslator nameTranslator, TypeHandlerRegistry registry)
-            : base (backendType)
+        internal CompositeHandler(PostgresType postgresType, INpgsqlNameTranslator nameTranslator, List<RawCompositeField> rawFields, TypeHandlerRegistry registry)
+            : base (postgresType)
         {
             _nameTranslator = nameTranslator;
+
+            // At this point the composite handler nows about the fields, but hasn't yet resolved the
+            // type OIDs to their type handlers. This is done only very late upon first usage of the handler,
+            // allowing composite types to be registered and activated in any order regardless of dependencies.
+            _rawFields = rawFields;
+
             _registry = registry;
         }
 
         #region Read
 
-        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override async ValueTask<T> Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
         {
             ResolveFieldsIfNeeded();
-            _readBuf = buf;
-            _fieldIndex = -1;
-            _len = -1;
-            _preparedRead = false;
-            _value = new T();
-        }
+            Debug.Assert(_members != null);
 
-        public override bool Read(out T result)
-        {
-            Contract.Assert(_members != null);
-
-            result = default(T);
-
-            if (_fieldIndex == -1)
+            await buf.Ensure(4, async);
+            var fieldCount = buf.ReadInt32();
+            if (fieldCount != _members.Count)
             {
-                if (_readBuf.ReadBytesLeft < 4) { return false; }
-                var fieldCount = _readBuf.ReadInt32();
-                if (fieldCount != _members.Count) {
-                    // PostgreSQL sanity check
-                    throw new Exception($"pg_attributes contains {_members.Count} rows for type {PgDisplayName}, but {fieldCount} fields were received!");
-                }
-                _fieldIndex = 0;
+                // PostgreSQL sanity check
+                throw new Exception($"pg_attributes contains {_members.Count} rows for type {PgDisplayName}, but {fieldCount} fields were received!");
             }
 
-            for (; _fieldIndex < _members.Count; _fieldIndex++)
+            // If T is a struct, we have to box it here to properly set its fields below
+            object result = new T();
+
+            foreach (var fieldDescriptor in _members)
             {
-                var fieldDescriptor = _members[_fieldIndex];
-                // Not yet started reading the field.
-                // Read the type OID (not really needed), then the length.
-                if (_len == -1)
+                await buf.Ensure(8, async);
+                buf.ReadInt32();  // read typeOID, not used
+                var fieldLen = buf.ReadInt32();
+                if (fieldLen == -1)
                 {
-                    if (_readBuf.ReadBytesLeft < 8) { return false; }
-                    _readBuf.ReadInt32();  // read typeOID, not used
-                    _len = _readBuf.ReadInt32();
-                    if (_len == -1)
-                    {
-                        // Null field, simply skip it and leave at default
-                        continue;
-                    }
+                    // Null field, simply skip it and leave at default
+                    continue;
                 }
-
-                // Get the field's type handler and read the value
-                var handler = fieldDescriptor.Handler;
-                object fieldValue;
-
-                if (handler is ISimpleTypeHandler)
-                {
-                    var asSimpleReader = (ISimpleTypeHandler)handler;
-                    if (_readBuf.ReadBytesLeft < _len)
-                        return false;
-                    fieldValue = asSimpleReader.ReadAsObject(_readBuf, _len);
-                }
-                else if (handler is IChunkingTypeHandler)
-                {
-                    var asChunkingReader = (IChunkingTypeHandler)handler;
-                    if (!_preparedRead)
-                    {
-                        asChunkingReader.PrepareRead(_readBuf, _len);
-                        _preparedRead = true;
-                    }
-
-                    if (!asChunkingReader.ReadAsObject(out fieldValue))
-                        return false;
-                    _preparedRead = false;
-                }
-                else throw PGUtil.ThrowIfReached();
-
-                fieldDescriptor.SetValue(_value, fieldValue);
-                _len = -1;
+                fieldDescriptor.SetValue(result, await fieldDescriptor.Handler.ReadAsObject(buf, fieldLen, async));
             }
-
-            result = (T)_value;
-            return true;
+            return (T)result;
         }
+        /*
+                public override bool Read(out T result)
+                {
+                    Debug.Assert(_members != null);
 
+                    result = default(T);
+
+                    if (_fieldIndex == -1)
+                    {
+                        if (_readBuf.ReadBytesLeft < 4) { return false; }
+                        var fieldCount = _readBuf.ReadInt32();
+                        if (fieldCount != _members.Count) {
+                            // PostgreSQL sanity check
+                            throw new Exception($"pg_attributes contains {_members.Count} rows for type {PgDisplayName}, but {fieldCount} fields were received!");
+                        }
+                        _fieldIndex = 0;
+                    }
+
+                    for (; _fieldIndex < _members.Count; _fieldIndex++)
+                    {
+                        var fieldDescriptor = _members[_fieldIndex];
+                        // Not yet started reading the field.
+                        // Read the type OID (not really needed), then the length.
+                        if (_len == -1)
+                        {
+                            if (_readBuf.ReadBytesLeft < 8) { return false; }
+                            _readBuf.ReadInt32();  // read typeOID, not used
+                            _len = _readBuf.ReadInt32();
+                            if (_len == -1)
+                            {
+                                // Null field, simply skip it and leave at default
+                                continue;
+                            }
+                        }
+
+                        // Get the field's type handler and read the value
+                        var handler = fieldDescriptor.Handler;
+                        object fieldValue;
+
+                        if (handler is ISimpleTypeHandler)
+                        {
+                            var asSimpleReader = (ISimpleTypeHandler)handler;
+                            if (_readBuf.ReadBytesLeft < _len)
+                                return false;
+                            fieldValue = asSimpleReader.ReadAsObject(_readBuf, _len);
+                        }
+                        else if (handler is IChunkingTypeHandler)
+                        {
+                            var asChunkingReader = (IChunkingTypeHandler)handler;
+                            if (!_preparedRead)
+                            {
+                                asChunkingReader.PrepareRead(_readBuf, _len);
+                                _preparedRead = true;
+                            }
+
+                            if (!asChunkingReader.ReadAsObject(out fieldValue))
+                                return false;
+                            _preparedRead = false;
+                        }
+                        else throw new InvalidOperationException("Internal Npgsql bug, please report.");
+
+                        fieldDescriptor.SetValue(_value, fieldValue);
+                        _len = -1;
+                    }
+
+                    result = (T)_value;
+                    return true;
+                }
+                */
         #endregion
 
         #region Write
@@ -179,7 +195,7 @@ namespace Npgsql.TypeHandlers
         public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter)
         {
             ResolveFieldsIfNeeded();
-            Contract.Assert(_members != null);
+            Debug.Assert(_members != null);
 
             if (lengthCache == null)
                 lengthCache = new LengthCache(1);
@@ -196,82 +212,33 @@ namespace Npgsql.TypeHandlers
                 var fieldValue = f.GetValue(value);
                 if (fieldValue == null)
                     continue;
-
-                var asChunkingWriter = f.Handler as IChunkingTypeHandler;
-                totalLen += asChunkingWriter?.ValidateAndGetLength(fieldValue, ref lengthCache, parameter) ??
-                    ((ISimpleTypeHandler)f.Handler).ValidateAndGetLength(fieldValue, null);
+                totalLen += f.Handler.ValidateAndGetLength(fieldValue, ref lengthCache);
             }
             return lengthCache.Lengths[pos] = totalLen;
         }
 
-        public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter)
+        protected override async Task Write(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter,
+            bool async, CancellationToken cancellationToken)
         {
-            _value = (T)value;
-            _writeBuf = buf;
-            _lengthCache = lengthCache;
-            _fieldIndex = -1;
-            _wroteFieldHeader = false;
-        }
+            Debug.Assert(_members != null);
 
-        public override bool Write(ref DirectBuffer directBuf)
-        {
-            Contract.Assert(_members != null);
-            if (_fieldIndex == -1)
-            {
-                if (_writeBuf.WriteSpaceLeft < 4) { return false; }
-                _writeBuf.WriteInt32(_members.Count);
-                _fieldIndex = 0;
-            }
+            var composite = (T)value;
 
-            for (; _fieldIndex < _members.Count; _fieldIndex++)
+            if (buf.WriteSpaceLeft < 4)
+                await buf.Flush(async, cancellationToken);
+            buf.WriteInt32(_members.Count);
+
+            foreach (var fieldDescriptor in _members)
             {
-                var fieldDescriptor = _members[_fieldIndex];
                 var fieldHandler = fieldDescriptor.Handler;
-                var fieldValue = fieldDescriptor.GetValue(_value);
+                var fieldValue = fieldDescriptor.GetValue(composite);
 
-                if (fieldValue == null)
-                {
-                    if (_writeBuf.WriteSpaceLeft < 8)
-                        return false;
-                    _writeBuf.WriteUInt32(fieldHandler.BackendType.OID);
-                    _writeBuf.WriteInt32(-1);
-                    continue;
-                }
+                if (buf.WriteSpaceLeft < 4)
+                    await buf.Flush(async, cancellationToken);
 
-                var asSimpleWriter = fieldHandler as ISimpleTypeHandler;
-                if (asSimpleWriter != null)
-                {
-                    var elementLen = asSimpleWriter.ValidateAndGetLength(fieldValue, null);
-                    if (_writeBuf.WriteSpaceLeft < 8 + elementLen) { return false; }
-                    _writeBuf.WriteUInt32(fieldDescriptor.OID);
-                    _writeBuf.WriteInt32(elementLen);
-                    asSimpleWriter.Write(fieldValue, _writeBuf, null);
-                    continue;
-                }
-
-                var asChunkedWriter = fieldHandler as IChunkingTypeHandler;
-                if (asChunkedWriter != null)
-                {
-                    if (!_wroteFieldHeader)
-                    {
-                        if (_writeBuf.WriteSpaceLeft < 8) { return false; }
-                        _writeBuf.WriteUInt32(fieldDescriptor.OID);
-                        _writeBuf.WriteInt32(asChunkedWriter.ValidateAndGetLength(fieldValue, ref _lengthCache, null));
-                        asChunkedWriter.PrepareWrite(fieldValue, _writeBuf, _lengthCache, null);
-                        _wroteFieldHeader = true;
-                    }
-                    if (!asChunkedWriter.Write(ref directBuf))
-                    {
-                        return false;
-                    }
-                    _wroteFieldHeader = false;
-                    continue;
-                }
-
-                throw PGUtil.ThrowIfReached();
+                buf.WriteUInt32(fieldDescriptor.OID);
+                await fieldHandler.WriteWithLength(fieldValue, buf, lengthCache, null, async, cancellationToken);
             }
-
-            return true;
         }
 
         #endregion
@@ -283,15 +250,15 @@ namespace Npgsql.TypeHandlers
             if (_members != null)
                 return;
 
-            _members = new List<MemberDescriptor>(RawFields.Count);
-            foreach (var rawField in RawFields)
+            _members = new List<MemberDescriptor>(_rawFields.Count);
+            foreach (var rawField in _rawFields)
             {
                 TypeHandler handler;
                 if (!_registry.TryGetByOID(rawField.TypeOID, out handler))
-                    throw new Exception($"PostgreSQL composite type {PgDisplayName}, mapped to CLR type {typeof (T).Name}, has field {rawField.PgName} with an unknown type (TypeOID={rawField.TypeOID})");
+                    throw new Exception($"PostgreSQL composite type {PgDisplayName}, mapped to CLR type {typeof(T).Name}, has field {rawField.PgName} with an unknown type (TypeOID={rawField.TypeOID})");
 
                 var member = (
-                    from m in typeof (T).GetMembers()
+                    from m in typeof(T).GetMembers()
                     let attr = m.GetCustomAttribute<PgNameAttribute>()
                     where (attr != null && attr.PgName == rawField.PgName) ||
                           (attr == null && _nameTranslator.TranslateMemberName(m.Name) == rawField.PgName)
@@ -299,7 +266,7 @@ namespace Npgsql.TypeHandlers
                 ).SingleOrDefault();
 
                 if (member == null)
-                    throw new Exception($"PostgreSQL composite type {PgDisplayName} contains field {rawField.PgName} which could not match any on CLR type {typeof (T).Name}");
+                    throw new Exception($"PostgreSQL composite type {PgDisplayName} contains field {rawField.PgName} which could not match any on CLR type {typeof(T).Name}");
 
                 var property = member as PropertyInfo;
                 if (property != null)
@@ -315,10 +282,10 @@ namespace Npgsql.TypeHandlers
                     continue;
                 }
 
-                throw new Exception($"PostgreSQL composite type {PgDisplayName} contains field {rawField.PgName} which cannot map to CLR type {typeof (T).Name}'s field {member.Name} of type {member.GetType().Name}");
+                throw new Exception($"PostgreSQL composite type {PgDisplayName} contains field {rawField.PgName} which cannot map to CLR type {typeof(T).Name}'s field {member.Name} of type {member.GetType().Name}");
             }
 
-            RawFields = null;
+            _rawFields = null;
         }
 
         struct MemberDescriptor
@@ -357,7 +324,7 @@ namespace Npgsql.TypeHandlers
                     _property.SetValue(container, fieldValue);
                 else if (_field != null)
                     _field.SetValue(container, fieldValue);
-                else throw PGUtil.ThrowIfReached();
+                else throw new InvalidOperationException("Internal Npgsql bug, please report.");
             }
 
             [CanBeNull]
@@ -367,7 +334,7 @@ namespace Npgsql.TypeHandlers
                     return _property.GetValue(container);
                 if (_field != null)
                     return _field.GetValue(container);
-                throw PGUtil.ThrowIfReached();
+                throw new InvalidOperationException("Internal Npgsql bug, please report.");
             }
         }
 
@@ -382,12 +349,12 @@ namespace Npgsql.TypeHandlers
                 _nameTranslator = nameTranslator;
             }
 
-            public ICompositeHandler Create(IBackendType backendType, TypeHandlerRegistry registry)
-                => new CompositeHandler<T>(backendType, _nameTranslator, registry);
+            public ICompositeHandler Create(PostgresType backendType, List<RawCompositeField> rawFields, TypeHandlerRegistry registry)
+                => new CompositeHandler<T>(backendType, _nameTranslator, rawFields, registry);
         }
     }
 
-    internal struct RawCompositeField
+    struct RawCompositeField
     {
         internal string PgName;
         internal uint TypeOID;

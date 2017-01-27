@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -45,13 +45,15 @@ namespace Npgsql.Tests.Types
         public void Roundtrip()
         {
             using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4", conn))
+            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4, @p5, @p6", conn))
             {
                 const string expected = "Something";
                 var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Text);
                 var p2 = new NpgsqlParameter("p2", NpgsqlDbType.Varchar);
                 var p3 = new NpgsqlParameter("p3", DbType.String);
-                var p4 = new NpgsqlParameter {ParameterName = "p4", Value = expected};
+                var p4 = new NpgsqlParameter { ParameterName = "p4", Value = expected };
+                var p5 = new NpgsqlParameter("p5", NpgsqlDbType.Text);
+                var p6 = new NpgsqlParameter("p6", NpgsqlDbType.Text);
                 Assert.That(p2.DbType, Is.EqualTo(DbType.String));
                 Assert.That(p3.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Text));
                 Assert.That(p3.DbType, Is.EqualTo(DbType.String));
@@ -59,14 +61,18 @@ namespace Npgsql.Tests.Types
                 cmd.Parameters.Add(p2);
                 cmd.Parameters.Add(p3);
                 cmd.Parameters.Add(p4);
+                cmd.Parameters.Add(p5);
+                cmd.Parameters.Add(p6);
                 p1.Value = p2.Value = p3.Value = expected;
+                p5.Value = expected.ToCharArray();
+                p6.Value = new ArraySegment<char>(("X" + expected).ToCharArray(), 1, expected.Length);
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();
 
                     for (var i = 0; i < cmd.Parameters.Count; i++)
                     {
-                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof (string)));
+                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(string)));
                         Assert.That(reader.GetString(i), Is.EqualTo(expected));
                         Assert.That(reader.GetFieldValue<string>(i), Is.EqualTo(expected));
                         Assert.That(reader.GetValue(i), Is.EqualTo(expected));
@@ -81,8 +87,8 @@ namespace Npgsql.Tests.Types
         {
             using (var conn = OpenConnection())
             {
-                var builder = new StringBuilder("ABCDEééé", conn.BufferSize);
-                builder.Append('X', conn.BufferSize);
+                var builder = new StringBuilder("ABCDEééé", conn.Settings.WriteBufferSize);
+                builder.Append('X', conn.Settings.WriteBufferSize);
                 var expected = builder.ToString();
                 using (var cmd = new NpgsqlCommand(@"INSERT INTO data (name) VALUES (@p)", conn))
                 {
@@ -109,7 +115,7 @@ namespace Npgsql.Tests.Types
                     Assert.That(reader.GetFieldValue<string>(2), Is.EqualTo(expected));
                     Assert.That(reader.GetValue(3), Is.EqualTo(expected));
                     Assert.That(reader.GetFieldValue<string>(4), Is.EqualTo(expected));
-                    Assert.That(reader.GetFieldValue<char[]>(5), Is.EqualTo(expected.ToCharArray()));
+                    //Assert.That(reader.GetFieldValue<char[]>(5), Is.EqualTo(expected.ToCharArray()));
                 }
             }
         }
@@ -266,7 +272,7 @@ namespace Npgsql.Tests.Types
             using (var conn = OpenConnection())
             using (var cmd = new NpgsqlCommand("SELECT @p::TEXT", conn))
             {
-                var p = new NpgsqlParameter("p", data) {Size = 4};
+                var p = new NpgsqlParameter("p", data) { Size = 4 };
                 cmd.Parameters.Add(p);
                 Assert.That(cmd.ExecuteScalar(), Is.EqualTo(data.Substring(0, 4)));
 

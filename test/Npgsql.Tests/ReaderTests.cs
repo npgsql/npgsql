@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -24,10 +24,12 @@
 using System;
 using System.Data;
 using System.Linq;
+using System.Text;
 using NUnit.Framework;
 using NUnit.Framework.Constraints;
 using Npgsql;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 
 namespace Npgsql.Tests
@@ -86,25 +88,34 @@ namespace Npgsql.Tests
             using (var conn = OpenConnection())
             {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (int INTEGER)");
-                var cmd = new NpgsqlCommand("INSERT INTO data (int) VALUES (7); INSERT INTO data (int) VALUES (8)", conn);
+
+                var sb = new StringBuilder();
+                for (var i = 0; i < 15; i++)
+                    sb.Append($"INSERT INTO data (int) VALUES ({i});");
+                var cmd = new NpgsqlCommand(sb.ToString(), conn);
                 var reader = cmd.ExecuteReader();
                 reader.Close();
-                Assert.That(reader.RecordsAffected, Is.EqualTo(2));
+                Assert.That(reader.RecordsAffected, Is.EqualTo(15));
 
                 cmd = new NpgsqlCommand("SELECT * FROM data", conn);
                 reader = cmd.ExecuteReader();
                 reader.Close();
                 Assert.That(reader.RecordsAffected, Is.EqualTo(-1));
 
-                cmd = new NpgsqlCommand("UPDATE data SET int=8", conn);
+                cmd = new NpgsqlCommand("UPDATE data SET int=int+1 WHERE int > 10", conn);
                 reader = cmd.ExecuteReader();
                 reader.Close();
-                Assert.That(reader.RecordsAffected, Is.EqualTo(2));
+                Assert.That(reader.RecordsAffected, Is.EqualTo(4));
 
                 cmd = new NpgsqlCommand("UPDATE data SET int=8 WHERE int=666", conn);
                 reader = cmd.ExecuteReader();
                 reader.Close();
                 Assert.That(reader.RecordsAffected, Is.EqualTo(0));
+
+                cmd = new NpgsqlCommand("DELETE FROM data WHERE int > 10", conn);
+                reader = cmd.ExecuteReader();
+                reader.Close();
+                Assert.That(reader.RecordsAffected, Is.EqualTo(4));
             }
         }
 
@@ -231,7 +242,7 @@ namespace Npgsql.Tests
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();
-                    Assert.That(reader.GetFieldType(0), Is.SameAs(typeof (int)));
+                    Assert.That(reader.GetFieldType(0), Is.SameAs(typeof(int)));
                 }
                 using (var cmd = new NpgsqlCommand(@"SELECT 1::INT4 AS some_column", conn))
                 {
@@ -239,7 +250,7 @@ namespace Npgsql.Tests
                     using (var reader = cmd.ExecuteReader())
                     {
                         reader.Read();
-                        Assert.That(reader.GetFieldType(0), Is.SameAs(typeof (string)));
+                        Assert.That(reader.GetFieldType(0), Is.SameAs(typeof(string)));
                     }
                 }
             }
@@ -255,6 +266,37 @@ namespace Npgsql.Tests
                 {
                     reader.Read();
                     Assert.That(reader.GetFieldType(0), Is.SameAs(typeof(int)));
+                }
+            }
+        }
+
+        [Test]
+        public void GetPostgresType()
+        {
+            using (var conn = OpenConnection())
+            {
+                PostgresType intType;
+                using (var cmd = new NpgsqlCommand(@"SELECT 1::INT4 AS some_column", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    intType = (PostgresBaseType)reader.GetPostgresType(0);
+                    Assert.That(intType.Namespace, Is.EqualTo("pg_catalog"));
+                    Assert.That(intType.Name, Is.EqualTo("int4"));
+                    Assert.That(intType.FullName, Is.EqualTo("pg_catalog.int4"));
+                    Assert.That(intType.DisplayName, Is.EqualTo("int4"));
+                    Assert.That(intType.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Integer));
+                }
+
+                using (var cmd = new NpgsqlCommand(@"SELECT '{1}'::INT4[] AS some_column", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    var intArrayType = (PostgresArrayType)reader.GetPostgresType(0);
+                    Assert.That(intArrayType.Name, Is.EqualTo("_int4"));
+                    Assert.That(intArrayType.Element, Is.SameAs(intType));
+                    Assert.That(intType.Array, Is.SameAs(intArrayType));
+                    Assert.That(intArrayType.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Integer | NpgsqlDbType.Array));
                 }
             }
         }
@@ -575,17 +617,12 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void SchemaOnlyCommandBehaviorSupport()
+        public void SchemaOnlyReturnsNoData()
         {
             using (var conn = OpenConnection())
-            using (var command = new NpgsqlCommand("SELECT 1", conn))
-            using (var dr = command.ExecuteReader(CommandBehavior.SchemaOnly))
-            {
-                var i = 0;
-                while (dr.Read())
-                    i++;
-                Assert.AreEqual(0, i);
-            }
+            using (var cmd = new NpgsqlCommand("SELECT 1", conn))
+            using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                Assert.That(reader.Read(), Is.False);
         }
 
         [Test]
@@ -650,13 +687,13 @@ namespace Npgsql.Tests
             using (var cmd1 = new NpgsqlCommand("SELECT 1", conn))
             using (var reader1 = cmd1.ExecuteReader())
             {
-                Assert.That(() => conn.ExecuteNonQuery("SELECT 1"), Throws.Exception.TypeOf<InvalidOperationException>());
-                Assert.That(() => conn.ExecuteScalar("SELECT 1"), Throws.Exception.TypeOf<InvalidOperationException>());
+                Assert.That(() => conn.ExecuteNonQuery("SELECT 1"), Throws.Exception.TypeOf<NpgsqlOperationInProgressException>());
+                Assert.That(() => conn.ExecuteScalar("SELECT 1"), Throws.Exception.TypeOf<NpgsqlOperationInProgressException>());
 
                 using (var cmd2 = new NpgsqlCommand("SELECT 2", conn))
                 {
-                    Assert.That(() => cmd2.ExecuteReader(), Throws.Exception.TypeOf<InvalidOperationException>());
-                    Assert.That(() => cmd2.Prepare(), Throws.Exception.TypeOf<InvalidOperationException>());
+                    Assert.That(() => cmd2.ExecuteReader(), Throws.Exception.TypeOf<NpgsqlOperationInProgressException>());
+                    Assert.That(() => cmd2.Prepare(), Throws.Exception.TypeOf<NpgsqlOperationInProgressException>());
                 }
             }
         }
@@ -821,8 +858,8 @@ LANGUAGE plpgsql VOLATILE";
             {
                 // Temporarily reroute integer to go to a type handler which generates SafeReadExceptions
                 var registry = conn.Connector.TypeHandlerRegistry;
-                var intHandler = registry[typeof (int)];
-                registry.ByOID[intHandler.BackendType.OID] = new SafeExceptionGeneratingHandler(intHandler.BackendType);
+                var intHandler = registry[typeof(int)];
+                registry.ByOID[intHandler.PostgresType.OID] = new SafeExceptionGeneratingHandler(intHandler.PostgresType);
                 try
                 {
                     using (var cmd = new NpgsqlCommand(@"SELECT 1, 'hello'", conn))
@@ -836,7 +873,7 @@ LANGUAGE plpgsql VOLATILE";
                 }
                 finally
                 {
-                    registry.ByOID[intHandler.BackendType.OID] = intHandler;
+                    registry.ByOID[intHandler.PostgresType.OID] = intHandler;
                 }
             }
         }
@@ -849,8 +886,8 @@ LANGUAGE plpgsql VOLATILE";
             {
                 // Temporarily reroute integer to go to a type handler which generates some exception
                 var registry = conn.Connector.TypeHandlerRegistry;
-                var intHandler = registry[typeof (int)];
-                registry.ByOID[intHandler.BackendType.OID] = new NonSafeExceptionGeneratingHandler(intHandler.BackendType);
+                var intHandler = registry[typeof(int)];
+                registry.ByOID[intHandler.PostgresType.OID] = new NonSafeExceptionGeneratingHandler(intHandler.PostgresType);
                 try
                 {
                     using (var cmd = new NpgsqlCommand(@"SELECT 1, 'hello'", conn))
@@ -865,7 +902,7 @@ LANGUAGE plpgsql VOLATILE";
                 }
                 finally
                 {
-                    registry.ByOID[intHandler.BackendType.OID] = intHandler;
+                    registry.ByOID[intHandler.PostgresType.OID] = intHandler;
                 }
             }
         }
@@ -874,10 +911,10 @@ LANGUAGE plpgsql VOLATILE";
 
     #region Mock Type Handlers
 #if DEBUG
-    internal class SafeExceptionGeneratingHandler : SimpleTypeHandler<int>
+    class SafeExceptionGeneratingHandler : SimpleTypeHandler<int>
     {
-        internal SafeExceptionGeneratingHandler(IBackendType backendType)
-            : base (backendType) {}
+        internal SafeExceptionGeneratingHandler(PostgresType postgresType)
+            : base (postgresType) {}
 
         public override int Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
@@ -886,13 +923,13 @@ LANGUAGE plpgsql VOLATILE";
         }
 
         public override int ValidateAndGetLength(object value, NpgsqlParameter parameter) { throw new NotSupportedException(); }
-        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter) { throw new NotSupportedException(); }
+        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter) { throw new NotSupportedException(); }
     }
 
-    internal class NonSafeExceptionGeneratingHandler : SimpleTypeHandler<int>
+    class NonSafeExceptionGeneratingHandler : SimpleTypeHandler<int>
     {
-        internal NonSafeExceptionGeneratingHandler(IBackendType backendType)
-            : base (backendType) { }
+        internal NonSafeExceptionGeneratingHandler(PostgresType postgresType)
+            : base (postgresType) { }
 
         public override int Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
         {
@@ -900,7 +937,7 @@ LANGUAGE plpgsql VOLATILE";
         }
 
         public override int ValidateAndGetLength(object value, NpgsqlParameter parameter) { throw new NotSupportedException(); }
-        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter) { throw new NotSupportedException();}
+        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter) { throw new NotSupportedException();}
     }
 #endif
     #endregion

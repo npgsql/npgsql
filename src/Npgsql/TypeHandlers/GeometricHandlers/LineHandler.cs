@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -21,14 +21,9 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using System;
-using System.Collections.Generic;
-using System.Diagnostics.Contracts;
-using System.Globalization;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
+using JetBrains.Annotations;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers.GeometricHandlers
@@ -40,28 +35,24 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-geometric.html
     /// </remarks>
     [TypeMapping("line", NpgsqlDbType.Line, typeof(NpgsqlLine))]
-    internal class LineHandler : SimpleTypeHandler<NpgsqlLine>, ISimpleTypeHandler<string>
+    class LineHandler : SimpleTypeHandler<NpgsqlLine>, ISimpleTypeHandler<string>
     {
-        internal LineHandler(IBackendType backendType) : base(backendType) { }
+        internal LineHandler(PostgresType postgresType) : base(postgresType) { }
 
-        public override NpgsqlLine Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return new NpgsqlLine(buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble());
-        }
+        public override NpgsqlLine Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+            => new NpgsqlLine(buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble());
 
-        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return Read(buf, len, fieldDescription).ToString();
-        }
+        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => Read(buf, len, fieldDescription).ToString();
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
         {
             if (!(value is NpgsqlLine))
                 throw CreateConversionException(value.GetType());
             return 24;
         }
 
-        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
+        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
         {
             var v = (NpgsqlLine)value;
             buf.WriteDouble(v.A);

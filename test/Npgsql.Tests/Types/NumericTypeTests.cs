@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -200,9 +200,24 @@ namespace Npgsql.Tests.Types
                     for (var i = 0; i < cmd.Parameters.Count; i++)
                     {
                         Assert.That(reader.GetDouble(i), Is.EqualTo(expected).Within(10E-07));
-                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof (double)));
+                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(double)));
                     }
                 }
+            }
+        }
+
+        [Test]
+        [TestCase(double.NaN)]
+        [TestCase(double.PositiveInfinity)]
+        [TestCase(double.NegativeInfinity)]
+        public void DoubleSpecial(double value)
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+            {
+                cmd.Parameters.AddWithValue("p", NpgsqlDbType.Double, value);
+                var actual = cmd.ExecuteScalar();
+                Assert.That(actual, Is.EqualTo(value));
             }
         }
 
@@ -227,9 +242,24 @@ namespace Npgsql.Tests.Types
                     for (var i = 0; i < cmd.Parameters.Count; i++)
                     {
                         Assert.That(reader.GetFloat(i), Is.EqualTo(expected).Within(10E-07));
-                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof (float)));
+                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(float)));
                     }
                 }
+            }
+        }
+
+        [Test]
+        [TestCase(double.NaN)]
+        [TestCase(double.PositiveInfinity)]
+        [TestCase(double.NegativeInfinity)]
+        public void DoubleFloat(double value)
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+            {
+                cmd.Parameters.AddWithValue("p", NpgsqlDbType.Real, value);
+                var actual = cmd.ExecuteScalar();
+                Assert.That(actual, Is.EqualTo(value));
             }
         }
 
@@ -295,6 +325,32 @@ namespace Npgsql.Tests.Types
                             Assert.That(reader.GetDataTypeName(i),          Is.EqualTo("numeric"));
                         }
                     }
+                }
+            }
+        }
+
+        /// <summary>
+        /// http://www.postgresql.org/docs/current/static/datatype-money.html
+        /// </summary>
+        [Test]
+        public void Money()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn))
+            {
+                var expected1 = 12345.12m;
+                var expected2 = -10.5m;
+                cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Money, expected1);
+                cmd.Parameters.Add(new NpgsqlParameter("p2", DbType.Currency) { Value = expected2 });
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetDecimal(0), Is.EqualTo(12345.12m));
+                    Assert.That(reader.GetValue(0), Is.EqualTo(12345.12m));
+                    Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(12345.12m));
+                    Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(decimal)));
+
+                    Assert.That(reader.GetDecimal(1), Is.EqualTo(-10.5m));
                 }
             }
         }

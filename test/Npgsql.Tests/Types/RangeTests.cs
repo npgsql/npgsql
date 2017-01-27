@@ -67,7 +67,7 @@ namespace Npgsql.Tests.Types
             using (var conn = OpenConnection())
             using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4", conn))
             {
-                var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Range | NpgsqlDbType.Integer) { Value = NpgsqlRange<int>.Empty() };
+                var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Range | NpgsqlDbType.Integer) { Value = NpgsqlRange<int>.Empty };
                 var p2 = new NpgsqlParameter { ParameterName = "p2", Value = new NpgsqlRange<int>(1, 10) };
                 var p3 = new NpgsqlParameter { ParameterName = "p3", Value = new NpgsqlRange<int>(1, false, 10, false) };
                 var p4 = new NpgsqlParameter { ParameterName = "p4", Value = new NpgsqlRange<int>(0, false, true, 10, false, false) };
@@ -98,8 +98,8 @@ namespace Npgsql.Tests.Types
                 Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
 
                 var value = new NpgsqlRange<string>(
-                    new string('a', conn.BufferSize + 10),
-                    new string('z', conn.BufferSize + 10)
+                    new string('a', conn.Settings.WriteBufferSize + 10),
+                    new string('z', conn.Settings.WriteBufferSize + 10)
                     );
 
                 //var value = new NpgsqlRange<string>("bar", "foo");

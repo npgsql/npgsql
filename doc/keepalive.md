@@ -1,7 +1,5 @@
 # Keepalive
 
-![warning](/img/warning.png) Keepalives unfortunately aren't sent while in Wait, here's a [workaround](https://github.com/npgsql/npgsql/issues/1214#issuecomment-235828359). This will be fixed in 3.2.
-
 Some clients keep idle connections for long periods of time - this is especially frequent when waiting for PostgreSQL notifications.
 In this scenario, how can the client know the connection is still up, and hasn't been broken by a server or network outage?
 For this purpose, Npgsql has a keepalive feature, which makes it send periodic `SELECT NULL` queries.

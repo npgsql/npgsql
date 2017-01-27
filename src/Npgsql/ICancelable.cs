@@ -5,7 +5,7 @@ using System.Text;
 
 namespace Npgsql
 {
-    internal interface ICancelable : IDisposable
+    interface ICancelable : IDisposable
     {
         void Cancel();
     }

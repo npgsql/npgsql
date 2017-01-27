@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -23,8 +23,8 @@
 
 using System;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using NpgsqlTypes;
-using System.Data;
 
 namespace Npgsql.TypeHandlers.DateTimeHandlers
 {
@@ -32,7 +32,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-datetime.html
     /// </remarks>
     [TypeMapping("interval", NpgsqlDbType.Interval, new[] { typeof(TimeSpan), typeof(NpgsqlTimeSpan) })]
-    internal class IntervalHandler : SimpleTypeHandlerWithPsv<TimeSpan, NpgsqlTimeSpan>
+    class IntervalHandler : SimpleTypeHandlerWithPsv<TimeSpan, NpgsqlTimeSpan>
     {
         /// <summary>
         /// A deprecated compile-time option of PostgreSQL switches to a floating-point representation of some date/time
@@ -40,20 +40,20 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         /// </summary>
         readonly bool _integerFormat;
 
-        public IntervalHandler(IBackendType backendType, TypeHandlerRegistry registry)
-            : base(backendType)
+        public IntervalHandler(PostgresType postgresType, TypeHandlerRegistry registry)
+            : base(postgresType)
         {
             // Check for the legacy floating point timestamps feature, defaulting to integer timestamps
             string s;
             _integerFormat = !registry.Connector.BackendParams.TryGetValue("integer_datetimes", out s) || s == "on";
         }
 
-        public override TimeSpan Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
+        public override TimeSpan Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             return (TimeSpan)((ISimpleTypeHandler<NpgsqlTimeSpan>)this).Read(buf, len, fieldDescription);
         }
 
-        internal override NpgsqlTimeSpan ReadPsv(ReadBuffer buf, int len, FieldDescription fieldDescription)
+        internal override NpgsqlTimeSpan ReadPsv(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             if (!_integerFormat) {
                 throw new NotSupportedException("Old floating point representation for timestamps not supported");
@@ -64,7 +64,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             return new NpgsqlTimeSpan(month, day, ticks * 10);
         }
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
         {
             if (!_integerFormat) {
                 throw new NotSupportedException("Old floating point representation for timestamps not supported");
@@ -74,28 +74,22 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             if (asString != null)
             {
                 var converted = NpgsqlTimeSpan.Parse(asString);
-                if (parameter == null) {
+                if (parameter == null)
                     throw CreateConversionButNoParamException(value.GetType());
-                }
                 parameter.ConvertedValue = converted;
             }
             else if (!(value is TimeSpan) && !(value is NpgsqlTimeSpan))
-            {
                 throw CreateConversionException(value.GetType());
-            }
 
             return 16;
         }
 
-        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
+        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
         {
-            if (parameter != null && parameter.ConvertedValue != null) {
+            if (parameter?.ConvertedValue != null)
                 value = parameter.ConvertedValue;
-            }
 
-            var interval = (value is TimeSpan)
-                ? ((NpgsqlTimeSpan)(TimeSpan)value)
-                : ((NpgsqlTimeSpan)value);
+            var interval = value as TimeSpan? ?? (NpgsqlTimeSpan)value;
 
             buf.WriteInt64(interval.Ticks / 10); // TODO: round?
             buf.WriteInt32(interval.Days);

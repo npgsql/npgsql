@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -21,20 +21,17 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using Npgsql.FrontendMessages;
 using System;
-using System.Collections.Generic;
 using System.Data;
-using System.Linq;
-using System.Text;
-using AsyncRewriter;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Npgsql
 {
     /// <summary>
     /// Large object manager. This class can be used to store very large files in a PostgreSQL database.
     /// </summary>
-    public partial class NpgsqlLargeObjectManager
+    public class NpgsqlLargeObjectManager
     {
         const int INV_WRITE = 0x00020000;
         const int INV_READ = 0x00040000;
@@ -59,21 +56,15 @@ namespace Npgsql
         /// <summary>
         /// Execute a function
         /// </summary>
-        /// <param name="function"></param>
-        /// <param name="arguments"></param>
-        /// <returns></returns>
-        [RewriteAsync]
-        internal T ExecuteFunction<T>(string function, params object[] arguments)
+        internal async Task<T> ExecuteFunction<T>(string function, bool async, params object[] arguments)
         {
             using (var command = new NpgsqlCommand(function, _connection))
             {
                 command.CommandType = CommandType.StoredProcedure;
                 command.CommandText = function;
                 foreach (var argument in arguments)
-                {
-                    command.Parameters.Add(new NpgsqlParameter() { Value = argument });
-                }
-                return (T)command.ExecuteScalar();
+                    command.Parameters.Add(new NpgsqlParameter { Value = argument });
+                return (T)(async ? await command.ExecuteScalarAsync() : command.ExecuteScalar());
             }
         }
 
@@ -81,19 +72,19 @@ namespace Npgsql
         /// Execute a function that returns a byte array
         /// </summary>
         /// <returns></returns>
-        [RewriteAsync]
-        internal int ExecuteFunctionGetBytes(string function, byte[] buffer, int offset, int len, params object[] arguments)
+        internal async Task<int> ExecuteFunctionGetBytes(string function, byte[] buffer, int offset, int len, bool async, params object[] arguments)
         {
             using (var command = new NpgsqlCommand(function, _connection))
             {
                 command.CommandType = CommandType.StoredProcedure;
                 foreach (var argument in arguments)
+                    command.Parameters.Add(new NpgsqlParameter { Value = argument });
+                using (var reader = async ? await command.ExecuteReaderAsync(CommandBehavior.SequentialAccess) : command.ExecuteReader(CommandBehavior.SequentialAccess))
                 {
-                    command.Parameters.Add(new NpgsqlParameter() { Value = argument });
-                }
-                using (var reader = command.ExecuteReader(System.Data.CommandBehavior.SequentialAccess))
-                {
-                    reader.Read();
+                    if (async)
+                        await reader.ReadAsync();
+                    else
+                        reader.Read();
                     return (int)reader.GetBytes(0, 0, buffer, offset, len);
                 }
             }
@@ -105,12 +96,20 @@ namespace Npgsql
         /// <param name="preferredOid">A preferred oid, or specify 0 if one should be automatically assigned</param>
         /// <returns>The oid for the large object created</returns>
         /// <exception cref="PostgresException">If an oid is already in use</exception>
-        [RewriteAsync]
-        public uint Create(uint preferredOid = 0)
-        {
+        public uint Create(uint preferredOid = 0) => Create(preferredOid, false).GetAwaiter().GetResult();
 
-            return ExecuteFunction<uint>("lo_create", (int)preferredOid);
-        }
+        /// <summary>
+        /// Create an empty large object in the database. If an oid is specified but is already in use, an PostgresException will be thrown.
+        /// </summary>
+        /// <param name="preferredOid">A preferred oid, or specify 0 if one should be automatically assigned</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>The oid for the large object created</returns>
+        /// <exception cref="PostgresException">If an oid is already in use</exception>
+        public Task<uint> CreateAsync(uint preferredOid, CancellationToken cancellationToken)
+            => Create(preferredOid, true);
+
+        Task<uint> Create(uint preferredOid, bool async)
+            => ExecuteFunction<uint>("lo_create", async, (int)preferredOid);
 
         /// <summary>
         /// Opens a large object on the backend, returning a stream controlling this remote object.
@@ -120,10 +119,28 @@ namespace Npgsql
         /// </summary>
         /// <param name="oid">Oid of the object</param>
         /// <returns>An NpgsqlLargeObjectStream</returns>
-        [RewriteAsync]
         public NpgsqlLargeObjectStream OpenRead(uint oid)
+            => OpenRead(oid, false).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Opens a large object on the backend, returning a stream controlling this remote object.
+        /// A transaction snapshot is taken by the backend when the object is opened with only read permissions.
+        /// When reading from this object, the contents reflects the time when the snapshot was taken.
+        /// Note that this method, as well as operations on the stream must be wrapped inside a transaction.
+        /// </summary>
+        /// <param name="oid">Oid of the object</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>An NpgsqlLargeObjectStream</returns>
+        public async Task<NpgsqlLargeObjectStream> OpenReadAsync(uint oid, CancellationToken cancellationToken)
         {
-            var fd = ExecuteFunction<int>("lo_open", (int)oid, INV_READ);
+            cancellationToken.ThrowIfCancellationRequested();
+            using (NoSynchronizationContextScope.Enter())
+                return await OpenRead(oid, true);
+        }
+
+        async Task<NpgsqlLargeObjectStream> OpenRead(uint oid, bool async)
+        {
+            var fd = await ExecuteFunction<int>("lo_open", async, (int)oid, INV_READ);
             return new NpgsqlLargeObjectStream(this, oid, fd, false);
         }
 
@@ -133,10 +150,26 @@ namespace Npgsql
         /// </summary>
         /// <param name="oid">Oid of the object</param>
         /// <returns>An NpgsqlLargeObjectStream</returns>
-        [RewriteAsync]
         public NpgsqlLargeObjectStream OpenReadWrite(uint oid)
+            => OpenReadWrite(oid, false).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Opens a large object on the backend, returning a stream controlling this remote object.
+        /// Note that this method, as well as operations on the stream must be wrapped inside a transaction.
+        /// </summary>
+        /// <param name="oid">Oid of the object</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>An NpgsqlLargeObjectStream</returns>
+        public async Task<NpgsqlLargeObjectStream> OpenReadWriteAsync(uint oid, CancellationToken cancellationToken)
         {
-            var fd = ExecuteFunction<int>("lo_open", (int)oid, INV_READ | INV_WRITE);
+            cancellationToken.ThrowIfCancellationRequested();
+            using (NoSynchronizationContextScope.Enter())
+                return await OpenReadWrite(oid, true);
+        }
+
+        async Task<NpgsqlLargeObjectStream> OpenReadWrite(uint oid, bool async)
+        {
+            var fd = await ExecuteFunction<int>("lo_open", async, (int)oid, INV_READ | INV_WRITE);
             return new NpgsqlLargeObjectStream(this, oid, fd, true);
         }
 
@@ -144,10 +177,19 @@ namespace Npgsql
         /// Deletes a large object on the backend.
         /// </summary>
         /// <param name="oid">Oid of the object to delete</param>
-        [RewriteAsync]
         public void Unlink(uint oid)
+            => ExecuteFunction<object>("lo_unlink", false, (int)oid).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Deletes a large object on the backend.
+        /// </summary>
+        /// <param name="oid">Oid of the object to delete</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        public async Task UnlinkAsync(uint oid, CancellationToken cancellationToken)
         {
-            ExecuteFunction<object>("lo_unlink", (int)oid);
+            cancellationToken.ThrowIfCancellationRequested();
+            using (NoSynchronizationContextScope.Enter())
+                await ExecuteFunction<object>("lo_unlink", true, (int)oid);
         }
 
         /// <summary>
@@ -155,10 +197,20 @@ namespace Npgsql
         /// </summary>
         /// <param name="oid">Oid of the object to export</param>
         /// <param name="path">Path to write the file on the backend</param>
-        [RewriteAsync]
         public void ExportRemote(uint oid, string path)
+            => ExecuteFunction<object>("lo_export", false, (int)oid, path).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Exports a large object stored in the database to a file on the backend. This requires superuser permissions.
+        /// </summary>
+        /// <param name="oid">Oid of the object to export</param>
+        /// <param name="path">Path to write the file on the backend</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        public async Task ExportRemoteAsync(uint oid, string path, CancellationToken cancellationToken)
         {
-            ExecuteFunction<object>("lo_export", (int)oid, path);
+            cancellationToken.ThrowIfCancellationRequested();
+            using (NoSynchronizationContextScope.Enter())
+                await ExecuteFunction<object>("lo_export", true, (int)oid, path);
         }
 
         /// <summary>
@@ -166,10 +218,20 @@ namespace Npgsql
         /// </summary>
         /// <param name="path">Path to read the file on the backend</param>
         /// <param name="oid">A preferred oid, or specify 0 if one should be automatically assigned</param>
-        [RewriteAsync]
         public void ImportRemote(string path, uint oid = 0)
+            => ExecuteFunction<object>("lo_import", false, path, (int)oid).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Imports a large object to be stored as a large object in the database from a file stored on the backend. This requires superuser permissions.
+        /// </summary>
+        /// <param name="path">Path to read the file on the backend</param>
+        /// <param name="oid">A preferred oid, or specify 0 if one should be automatically assigned</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        public async Task ImportRemoteAsync(string path, uint oid, CancellationToken cancellationToken)
         {
-            ExecuteFunction<object>("lo_import", path, (int)oid);
+            cancellationToken.ThrowIfCancellationRequested();
+            using (NoSynchronizationContextScope.Enter())
+                await ExecuteFunction<object>("lo_import", true, path, (int)oid);
         }
 
         /// <summary>

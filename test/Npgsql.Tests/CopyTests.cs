@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -78,16 +78,16 @@ namespace Npgsql.Tests
                         len += read;
                     }
 
-                    Assert.That(len, Is.GreaterThan(conn.BufferSize) & Is.LessThan(data.Length));
+                    Assert.That(len, Is.GreaterThan(conn.Settings.ReadBufferSize) & Is.LessThan(data.Length));
                 }
 
                 conn.ExecuteNonQuery("TRUNCATE data");
 
-                using (var outStream = conn.BeginRawBinaryCopy("COPY data (field_text, field_int4) FROM STDIN BINARY"))
+                using (var inStream = conn.BeginRawBinaryCopy("COPY data (field_text, field_int4) FROM STDIN BINARY"))
                 {
                     StateAssertions(conn);
 
-                    outStream.Write(data, 0, len);
+                    inStream.Write(data, 0, len);
                 }
 
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM DATA"), Is.EqualTo(iterations));
@@ -153,8 +153,8 @@ namespace Npgsql.Tests
             {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (blob BYTEA)");
 
-                var data = new byte[conn.BufferSize + 10];
-                var dump = new byte[conn.BufferSize + 200];
+                var data = new byte[conn.Settings.WriteBufferSize + 10];
+                var dump = new byte[conn.Settings.WriteBufferSize + 200];
                 var len = 0;
 
                 // Insert a blob with a regular insert
@@ -197,7 +197,7 @@ namespace Npgsql.Tests
             using (var conn = OpenConnection())
             {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER)");
-                var longString = new StringBuilder(conn.BufferSize + 50).Append('a').ToString();
+                var longString = new StringBuilder(conn.Settings.WriteBufferSize + 50).Append('a').ToString();
 
                 using (var writer = conn.BeginBinaryImport("COPY data (field_text, field_int2) FROM STDIN BINARY"))
                 {
@@ -303,13 +303,12 @@ namespace Npgsql.Tests
             {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (field TEXT)");
 
-                var data = new string('a', conn.BufferSize);
+                var data = new string('a', conn.Settings.WriteBufferSize);
                 using (var writer = conn.BeginBinaryImport("COPY data (field) FROM STDIN BINARY"))
                 {
                     writer.StartRow();
                     writer.Write(data, NpgsqlDbType.Text);
                 }
-                Assert.That(conn.Connector.WriteBuffer.UsableSize, Is.EqualTo(conn.Connector.WriteBuffer.Size));
                 Assert.That(conn.ExecuteScalar("SELECT field FROM data"), Is.EqualTo(data));
             }
         }
@@ -323,8 +322,8 @@ namespace Npgsql.Tests
 
                 using (var writer = conn.BeginBinaryImport("COPY data (blob) FROM STDIN BINARY"))
                 {
-                    // Big value - triggers use of the direct buffer optimization
-                    var data = new byte[conn.BufferSize + 10];
+                    // Big value - triggers use of the direct write optimization
+                    var data = new byte[conn.Settings.WriteBufferSize + 10];
 
                     writer.StartRow();
                     writer.Write(data);
@@ -342,7 +341,7 @@ namespace Npgsql.Tests
             {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (blob BYTEA)");
 
-                var data = new byte[conn.BufferSize + 10];
+                var data = new byte[conn.Settings.WriteBufferSize + 10];
 
                 var writer = conn.BeginBinaryImport("COPY data (blob) FROM STDIN BINARY");
 
@@ -452,7 +451,7 @@ namespace Npgsql.Tests
                 conn.ExecuteNonQuery("TRUNCATE data");
 
                 // Long (multi-buffer) write
-                var iterations = WriteBuffer.MinimumBufferSize/line.Length + 100;
+                var iterations = WriteBuffer.MinimumSize/line.Length + 100;
                 writer = conn.BeginTextImport("COPY data (field_text, field_int4) FROM STDIN");
                 for (var i = 0; i < iterations; i++)
                     writer.Write(line);
@@ -642,7 +641,7 @@ namespace Npgsql.Tests
             Assert.That(conn.Connector.State, Is.EqualTo(ConnectorState.Copy));
             Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open | ConnectionState.Fetching));
-            Assert.That(() => conn.ExecuteScalar("SELECT 1"), Throws.Exception.TypeOf<InvalidOperationException>());
+            Assert.That(() => conn.ExecuteScalar("SELECT 1"), Throws.Exception.TypeOf<NpgsqlOperationInProgressException>());
         }
 
         #endregion

@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"
+     xmlns:util="http://schemas.microsoft.com/wix/UtilExtension"
+  >
+  
+  <Product Id="*"
+           Name="Npgsql $(var.Version)"
+           Language="1033"
+           Version="$(var.Version)"
+           Manufacturer="The Npgsql Development Team"
+           UpgradeCode="df971e89-5e78-4142-9ed2-179c0255a800">
+
+    <Package InstallerVersion="200"
+             Compressed="yes"
+             InstallScope="perMachine"
+             ShortNames="no" />
+
+    <Icon Id="postgresql.ico" SourceFile="postgresql.ico"/>
+    <Property Id="ARPPRODUCTICON" Value="postgresql.ico" />
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+
+    <MediaTemplate EmbedCab="yes" />
+
+    <Feature Id="NpgsqlPerformanceCounters"
+             Title="Npgsql Performance Counters"
+             Level="1"
+             Description="Sets up the Npgsql performance counters, allowing you to track connections in applications."
+             Absent="allow"
+             AllowAdvertise="no"
+             Display="expand" >
+      <ComponentRef Id="PerformanceCounters" />
+    </Feature>
+
+    <Feature Id="Npgsql"
+             Title="Npgsql GAC Installation"
+             Level="32767"
+             Description="Installs Npgsql into the GAC and adds it to your machine.config. This is not the recommended way to use Npgsql (use nuget instead)."
+             Absent="allow"
+             AllowAdvertise="no"
+             Display="expand" >
+      <ComponentRef Id="Npgsql" />
+      <ComponentRef Id="Microsoft.Extensions.Logging.Abstractions" />
+      <ComponentRef Id="Microsoft.Extensions.Logging" />
+      <ComponentRef Id="System.Threading.Tasks.Extensions" />
+      <ComponentRef Id="MachineConfig_x86" />
+      <ComponentRef Id="MachineConfig_x64" />
+      
+    </Feature>
+
+    <UIRef Id="WixUI_FeatureTree" />
+
+    <WixVariable Id="WixUILicenseRtf" Value="License.rtf" />
+
+    <Directory Id="TARGETDIR" Name="SourceDir" />
+
+    <DirectoryRef Id="TARGETDIR">
+      <Component Id="PerformanceCounters" Guid="6091f777-8198-4872-88fe-bb3add625b09">
+        <util:PerformanceCategory Id="NpgsqlPerformanceCountersCategory"
+                                  Name=".NET Data Provider for PostgreSQL (Npgsql)"
+                                  MultiInstance="yes"
+                                  Help="Counters for Npgsql">
+
+          <util:PerformanceCounter Name="HardConnectsPerSecond"
+                                   Type="rateOfCountsPerSecond32"
+                                   Help="The number of connections per second that are being made to a database server." />
+          <util:PerformanceCounter Name="HardDisconnectsPerSecond"
+                                   Type="rateOfCountsPerSecond32"
+                                   Help="The number of disconnects per second that are being made to a database server." />
+          <util:PerformanceCounter Name="NumberOfActiveConnectionPools"
+                                   Type="numberOfItems32"
+                                   Help="The total number of connection pools." />
+          <util:PerformanceCounter Name="NumberOfActiveConnections"
+                                   Type="numberOfItems32"
+                                   Help="The number of (pooled) active connections that are currently in use." />
+          <util:PerformanceCounter Name="NumberOfFreeConnections"
+                                   Type="numberOfItems32"
+                                   Help="The number of connections available for use in the connection pools." />
+          <util:PerformanceCounter Name="NumberOfNonPooledConnections"
+                                   Type="numberOfItems32"
+                                   Help="The number of active connections that are not pooled." />
+          <util:PerformanceCounter Name="NumberOfPooledConnections"
+                                   Type="numberOfItems32"
+                                   Help="The number of active connections that are being managed by the connection pooling infrastructure." />
+          <util:PerformanceCounter Name="SoftConnectsPerSecond"
+                                   Type="rateOfCountsPerSecond32"
+                                   Help="The number of active connections being pulled from the connection pool. Not enabled by default." />
+          <util:PerformanceCounter Name="SoftDisconnectsPerSecond"
+                                   Type="rateOfCountsPerSecond32"
+                                   Help="The number of active connections that are being returned to the connection pool. Not enabled by default." />
+        </util:PerformanceCategory>
+
+        <!-- Required for .NET performance counters, see https://sourceforge.net/p/wix/mailman/message/24010508/ -->
+        <RegistryKey Root="HKLM" Key="SYSTEM\CurrentControlSet\services\.NET Data Provider for PostgreSQL (Npgsql)\Performance">
+          <RegistryValue Name="CategoryOptions" Type="integer" Value="3" />
+        </RegistryKey>
+      </Component>
+    </DirectoryRef>
+
+
+        <!-- ICE Reference
+          http://technet.microsoft.com/ja-jp/events/aa369206 
+          -->
+    <!-- http://blogs.msdn.com/b/heaths/archive/2006/09/20/installing-assemblies-for-runtime-and-design_2d00_time-use.aspx -->
+    <!-- http://stackoverflow.com/questions/17090689/wix-deploy-two-assemblies-to-gac -->
+    <DirectoryRef Id="TARGETDIR">
+      <Directory Id="Npgsql" Name="GAC">
+        <Component Id="Npgsql" Guid="f842fa5e-5623-41aa-80aa-6d2e5bf97435">
+          <File Id="Npgsql"
+                Name="Npgsql.dll"
+                Source="..\npgsql\bin\$(var.Configuration)\net451\Npgsql.dll"
+                KeyPath="yes"
+                Assembly=".net" />
+        </Component>
+        <Component Id="Microsoft.Extensions.Logging.Abstractions" Guid="94a955b9-732c-48cd-b070-91954029b59c">
+          <File Id="Microsoft.Extensions.Logging.Abstractions"
+                Name="Microsoft.Extensions.Logging.Abstractions.dll"
+                Source="..\npgsql\bin\$(var.Configuration)\net451\Microsoft.Extensions.Logging.Abstractions.dll"
+                KeyPath="yes"
+                Assembly=".net" />
+        </Component>
+        <Component Id="Microsoft.Extensions.Logging" Guid="01ae68d2-6161-4516-8ddf-0ffb66fa5831">
+          <File Id="Microsoft.Extensions.Logging"
+                Name="Microsoft.Extensions.Logging.dll"
+                Source="..\npgsql\bin\$(var.Configuration)\net451\Microsoft.Extensions.Logging.dll"
+                KeyPath="yes"
+                Assembly=".net" />
+        </Component>
+        <Component Id="System.Threading.Tasks.Extensions" Guid="d978c06f-7e7f-4865-858e-b9eee77d7470">
+          <File Id="System.Threading.Tasks.Extensions"
+                Name="System.Threading.Tasks.Extensions.dll"
+                Source="..\npgsql\bin\$(var.Configuration)\net451\System.Threading.Tasks.Extensions.dll"
+                KeyPath="yes"
+                Assembly=".net" />
+        </Component>
+      </Directory>
+
+      <!-- http://stackoverflow.com/questions/791455/how-do-i-modify-machine-config-via-an-msi-package -->
+      <!-- http://wixtoolset.org/documentation/manual/v3/xsd/util/xmlconfig.html -->
+      
+      <!-- 
+        XmlConfig cannot do:
+        - remove all 'add' elements. Only one element can be removed.
+        - select last 'add' element. XmlConfig uses obsoleted XSLPattern. last() isn't supported.
+        
+        So we have to add 'remove' invariant='Npgsql' element.
+        
+        http://stackoverflow.com/questions/8224918/adding-xml-nodes-with-similar-names-using-wix/8265578#8265578
+        -->
+
+      <Directory Id="WindowsFolder">
+        <Directory Id="Dir_Microsoft.NET" Name="Microsoft.NET">
+          <Directory Id="Dir_Framework" Name="Framework">
+            <Directory Id="Dir_v4.0.30319" Name="v4.0.30319">
+              <Directory Id="Dir_CONFIG" Name="CONFIG">
+                <Component Id="MachineConfig_x86" Guid="faf79467-d78b-4535-9f0f-86ff446a4294">
+                  <CreateFolder/>
+
+                  <?define MachineConfigPath86 = "[WindowsFolder]Microsoft.NET\Framework\v4.0.30319\CONFIG\machine.config" ?>
+
+                  <util:XmlConfig Id="DeletePreviousAddElement32" File="$(var.MachineConfigPath86)" Action="delete" On="install" ElementPath="//configuration/system.data/DbProviderFactories" VerifyPath="//configuration/system.data/DbProviderFactories/add[\[]@invariant='Npgsql'[\]]" Node="element" Sequence="1"/>
+
+                  <util:XmlConfig Id="CreateAddElement32" File="$(var.MachineConfigPath86)" Action="create" On="install" ElementPath="//configuration/system.data/DbProviderFactories" Name="add" Node="element" VerifyPath="//configuration/system.data/DbProviderFactories/add[\[]@invariant='Npgsql'[\]]" Sequence="1">
+                    <util:XmlConfig Id="NameAttribute32" ElementId="CreateAddElement32" Name="name" Value="Npgsql Data Provider" File="$(var.MachineConfigPath86)" />
+                    <util:XmlConfig Id="InvariantAttribute32" ElementId="CreateAddElement32" Name="invariant" Value="Npgsql" File="$(var.MachineConfigPath86)" />
+                    <util:XmlConfig Id="DescriptionAttribute32" ElementId="CreateAddElement32" Name="description" Value=".NET Data Provider for PostgreSQL" File="$(var.MachineConfigPath86)" />
+                    <util:XmlConfig Id="TypeAttribute32" ElementId="CreateAddElement32" Name="type" Value="Npgsql.NpgsqlFactory, Npgsql, Version=$(var.FullVersion), Culture=neutral, PublicKeyToken=$(var.AssemblyPublicKeyToken)" File="$(var.MachineConfigPath86)" />
+                  </util:XmlConfig>
+
+                  <util:XmlConfig Id="DeleteAddElement32" File="$(var.MachineConfigPath86)" Action="delete" On="uninstall" ElementPath="//configuration/system.data/DbProviderFactories" VerifyPath="//configuration/system.data/DbProviderFactories/add[\[]@invariant='Npgsql'[\]]" Node="element" Sequence="1"/>
+
+                </Component>
+              </Directory>
+            </Directory>
+          </Directory>
+          
+          <Directory Id="Dir_Framework_x64" Name="Framework64">
+            <Directory Id="Dir_v4.0.30319_x64" Name="v4.0.30319">
+              <Directory Id="Dir_CONFIG_x64" Name="CONFIG">
+                <Component Id="MachineConfig_x64" Guid="68e3c228-18c3-4481-8b02-088e3d0186ff">
+                  <Condition>VersionNT64</Condition>
+                  <CreateFolder/>
+
+                  <?define MachineConfigPath64 = "[WindowsFolder]Microsoft.NET\Framework64\v4.0.30319\CONFIG\machine.config" ?>
+
+                  <util:XmlConfig Id="DeletePreviousAddElement64" File="$(var.MachineConfigPath64)" Action="delete" On="install" ElementPath="//configuration/system.data/DbProviderFactories" VerifyPath="//configuration/system.data/DbProviderFactories/add[\[]@invariant='Npgsql'[\]]" Node="element" Sequence="1"/>
+
+                  <util:XmlConfig Id="CreateAddElement64" File="$(var.MachineConfigPath64)" Action="create" On="install" ElementPath="//configuration/system.data/DbProviderFactories" Name="add" Node="element" VerifyPath="//configuration/system.data/DbProviderFactories/add[\[]@invariant='Npgsql'[\]]" Sequence="1">
+                    <util:XmlConfig Id="NameAttribute64" ElementId="CreateAddElement64" Name="name" Value="Npgsql Data Provider" File="$(var.MachineConfigPath64)" />
+                    <util:XmlConfig Id="InvariantAttribute64" ElementId="CreateAddElement64" Name="invariant" Value="Npgsql" File="$(var.MachineConfigPath64)" />
+                    <util:XmlConfig Id="DescriptionAttribute64" ElementId="CreateAddElement64" Name="description" Value=".NET Data Provider for PostgreSQL" File="$(var.MachineConfigPath64)" />
+                    <util:XmlConfig Id="TypeAttribute64" ElementId="CreateAddElement64" Name="type" Value="Npgsql.NpgsqlFactory, Npgsql, Version=$(var.FullVersion), Culture=neutral, PublicKeyToken=$(var.AssemblyPublicKeyToken)" File="$(var.MachineConfigPath64)" />
+                  </util:XmlConfig>
+
+                  <util:XmlConfig Id="DeleteAddElement64" File="$(var.MachineConfigPath64)" Action="delete" On="uninstall" ElementPath="//configuration/system.data/DbProviderFactories" VerifyPath="//configuration/system.data/DbProviderFactories/add[\[]@invariant='Npgsql'[\]]" Node="element" Sequence="1"/>
+                  
+                </Component>
+              </Directory>
+            </Directory>
+          </Directory>
+        </Directory>
+      </Directory>
+    </DirectoryRef>
+  </Product>
+</Wix>

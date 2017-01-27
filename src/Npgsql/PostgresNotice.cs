@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -23,7 +23,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Text;
 using Npgsql.BackendMessages;
@@ -38,7 +37,7 @@ namespace Npgsql
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/protocol-flow.html#PROTOCOL-ASYNC
     /// </remarks>
-    public class PostgresNotice
+    public sealed class PostgresNotice
     {
         readonly ErrorOrNoticeMessage _msg;
 
@@ -179,12 +178,12 @@ namespace Npgsql
     /// <summary>
     /// Provides data for a notice event.
     /// </summary>
-    public class NpgsqlNoticeEventArgs : EventArgs
+    public sealed class NpgsqlNoticeEventArgs : EventArgs
     {
         /// <summary>
         /// The Notice that was sent from the database.
         /// </summary>
-        public PostgresNotice Notice { get; private set; }
+        public PostgresNotice Notice { get; }
 
         internal NpgsqlNoticeEventArgs(PostgresNotice notice)
         {

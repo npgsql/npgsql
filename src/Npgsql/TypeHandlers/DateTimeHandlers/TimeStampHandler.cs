@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -25,6 +25,7 @@ using System;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
+using Npgsql.PostgresTypes;
 
 namespace Npgsql.TypeHandlers.DateTimeHandlers
 {
@@ -32,7 +33,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-datetime.html
     /// </remarks>
     [TypeMapping("timestamp", NpgsqlDbType.Timestamp, new[] { DbType.DateTime, DbType.DateTime2 }, new [] { typeof(NpgsqlDateTime), typeof(DateTime) }, DbType.DateTime)]
-    internal class TimeStampHandler : SimpleTypeHandlerWithPsv<DateTime, NpgsqlDateTime>
+    class TimeStampHandler : SimpleTypeHandlerWithPsv<DateTime, NpgsqlDateTime>
     {
         /// <summary>
         /// A deprecated compile-time option of PostgreSQL switches to a floating-point representation of some date/time
@@ -44,26 +45,26 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         /// Whether to convert positive and negative infinity values to DateTime.{Max,Min}Value when
         /// a DateTime is requested
         /// </summary>
-        protected readonly bool _convertInfinityDateTime;
+        protected readonly bool ConvertInfinityDateTime;
 
-        internal TimeStampHandler(IBackendType backendType, TypeHandlerRegistry registry)
-            : base(backendType)
+        internal TimeStampHandler(PostgresType postgresType, TypeHandlerRegistry registry)
+            : base(postgresType)
         {
             // Check for the legacy floating point timestamps feature, defaulting to integer timestamps
             string s;
             _integerFormat = !registry.Connector.BackendParams.TryGetValue("integer_datetimes", out s) || s == "on";
-            _convertInfinityDateTime = registry.Connector.ConvertInfinityDateTime;
+            ConvertInfinityDateTime = registry.Connector.ConvertInfinityDateTime;
         }
 
-        public override DateTime Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
+        public override DateTime Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             // TODO: Convert directly to DateTime without passing through NpgsqlTimeStamp?
             var ts = ReadTimeStamp(buf, len, fieldDescription);
             try
             {
                 if (ts.IsFinite)
-                    return ts.DateTime;
-                if (!_convertInfinityDateTime)
+                    return ts.ToDateTime();
+                if (!ConvertInfinityDateTime)
                     throw new InvalidCastException("Can't convert infinite timestamp values to DateTime");
                 if (ts.IsInfinity)
                     return DateTime.MaxValue;
@@ -75,12 +76,10 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             }
         }
 
-        internal override NpgsqlDateTime ReadPsv(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return ReadTimeStamp(buf, len, fieldDescription);
-        }
+        internal override NpgsqlDateTime ReadPsv(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+            => ReadTimeStamp(buf, len, fieldDescription);
 
-        protected NpgsqlDateTime ReadTimeStamp(ReadBuffer buf, int len, FieldDescription fieldDescription)
+        protected NpgsqlDateTime ReadTimeStamp(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             if (!_integerFormat) {
                 throw new NotSupportedException("Old floating point representation for timestamps not supported");
@@ -114,25 +113,22 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             }
         }
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
         {
             if (!(value is DateTime) && !(value is NpgsqlDateTime) && !(value is DateTimeOffset))
             {
                 var converted = Convert.ToDateTime(value);
                 if (parameter == null)
-                {
                     throw CreateConversionButNoParamException(value.GetType());
-                }
                 parameter.ConvertedValue = converted;
             }
             return 8;
         }
 
-        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
+        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
         {
-            if (parameter != null && parameter.ConvertedValue != null) {
+            if (parameter?.ConvertedValue != null)
                 value = parameter.ConvertedValue;
-            }
 
             NpgsqlDateTime ts;
             if (value is NpgsqlDateTime) {
@@ -141,45 +137,41 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                 {
                     if (ts.IsInfinity)
                     {
-                        buf.WriteInt64(Int64.MaxValue);
+                        buf.WriteInt64(long.MaxValue);
                         return;
                     }
 
                     if (ts.IsNegativeInfinity)
                     {
-                        buf.WriteInt64(Int64.MinValue);
+                        buf.WriteInt64(long.MinValue);
                         return;
                     }
 
-                    throw PGUtil.ThrowIfReached();
+                    throw new InvalidOperationException("Internal Npgsql bug, please report.");
                 }
             }
             else if (value is DateTime)
             {
                 var dt = (DateTime)value;
-                if (_convertInfinityDateTime)
+                if (ConvertInfinityDateTime)
                 {
                     if (dt == DateTime.MaxValue)
                     {
-                        buf.WriteInt64(Int64.MaxValue);
+                        buf.WriteInt64(long.MaxValue);
                         return;
                     }
-                    else if (dt == DateTime.MinValue)
+                    if (dt == DateTime.MinValue)
                     {
-                        buf.WriteInt64(Int64.MinValue);
+                        buf.WriteInt64(long.MinValue);
                         return;
                     }
                 }
                 ts = new NpgsqlDateTime(dt);
             }
             else if (value is DateTimeOffset)
-            {
                 ts = new NpgsqlDateTime(((DateTimeOffset)value).DateTime);
-            }
             else
-            {
-                throw PGUtil.ThrowIfReached();
-            }
+                throw new InvalidOperationException("Internal Npgsql bug, please report.");
 
             var uSecsTime = ts.Time.Ticks / 10;
 

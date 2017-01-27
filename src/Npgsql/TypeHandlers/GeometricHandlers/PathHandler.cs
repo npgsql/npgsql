@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -22,13 +22,10 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
-using System.Diagnostics.Contracts;
-using System.Globalization;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers.GeometricHandlers
@@ -40,61 +37,37 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-geometric.html
     /// </remarks>
     [TypeMapping("path", NpgsqlDbType.Path, typeof(NpgsqlPath))]
-    internal class PathHandler : ChunkingTypeHandler<NpgsqlPath>
+    class PathHandler : ChunkingTypeHandler<NpgsqlPath>
     {
-        #region State
-
-        NpgsqlPath _value;
-        ReadBuffer _readBuf;
-        WriteBuffer _writeBuf;
-        int _index;
-
-        #endregion
-
-        internal PathHandler(IBackendType backendType) : base(backendType) { }
+        internal PathHandler(PostgresType postgresType) : base(postgresType) { }
 
         #region Read
 
-        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription)
+        public override async ValueTask<NpgsqlPath> Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
         {
-            _readBuf = buf;
-            _index = -1;
-        }
-
-        public override bool Read(out NpgsqlPath result)
-        {
-            result = default(NpgsqlPath);
-
-            if (_index == -1)
+            await buf.Ensure(5, async);
+            bool open;
+            var openByte = buf.ReadByte();
+            switch (openByte)
             {
-                if (_readBuf.ReadBytesLeft < 5) { return false; }
-
-                bool open;
-                var openByte = _readBuf.ReadByte();
-                switch (openByte) {
-                    case 1:
-                        open = false;
-                        break;
-                    case 0:
-                        open = true;
-                        break;
-                    default:
-                        throw new Exception("Error decoding binary geometric path: bad open byte");
-                }
-                var numPoints = _readBuf.ReadInt32();
-                _value = new NpgsqlPath(numPoints, open);
-                _index = 0;
+            case 1:
+                open = false;
+                break;
+            case 0:
+                open = true;
+                break;
+            default:
+                throw new Exception("Error decoding binary geometric path: bad open byte");
             }
 
-            for (; _index < _value.Capacity; _index++)
+            var numPoints = buf.ReadInt32();
+            var result = new NpgsqlPath(numPoints, open);
+            for (var i = 0; i < numPoints; i++)
             {
-                if (_readBuf.ReadBytesLeft < 16) { return false; }
-                _value.Add(new NpgsqlPoint(_readBuf.ReadDouble(), _readBuf.ReadDouble()));
+                await buf.Ensure(16, async);
+                result.Add(new NpgsqlPoint(buf.ReadDouble(), buf.ReadDouble()));
             }
-            result = _value;
-            _value = default(NpgsqlPath);
-            _readBuf = null;
-            return true;
+            return result;
         }
 
         #endregion
@@ -108,33 +81,23 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
             return 5 + ((NpgsqlPath)value).Count * 16;
         }
 
-        public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
+        protected override async Task Write(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter,
+            bool async, CancellationToken cancellationToken)
         {
-            _writeBuf = buf;
-            _value = (NpgsqlPath)value;
-            _index = -1;
-        }
+            var path = (NpgsqlPath)value;
 
-        public override bool Write(ref DirectBuffer directBuf)
-        {
-            if (_index == -1)
-            {
-                if (_writeBuf.WriteSpaceLeft < 5) { return false; }
-                _writeBuf.WriteByte((byte)(_value.Open ? 0 : 1));
-                _writeBuf.WriteInt32(_value.Count);
-                _index = 0;
-            }
+            if (buf.WriteSpaceLeft < 5)
+                await buf.Flush(async, cancellationToken);
+            buf.WriteByte((byte)(path.Open ? 0 : 1));
+            buf.WriteInt32(path.Count);
 
-            for (; _index < _value.Count; _index++)
+            foreach (var p in path)
             {
-                if (_writeBuf.WriteSpaceLeft < 16) { return false; }
-                var p = _value[_index];
-                _writeBuf.WriteDouble(p.X);
-                _writeBuf.WriteDouble(p.Y);
+                if (buf.WriteSpaceLeft < 16)
+                    await buf.Flush(async, cancellationToken);
+                buf.WriteDouble(p.X);
+                buf.WriteDouble(p.Y);
             }
-            _writeBuf = null;
-            _value = default(NpgsqlPath);
-            return true;
         }
 
         #endregion

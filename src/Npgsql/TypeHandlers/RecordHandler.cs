@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -22,8 +22,11 @@
 #endregion
 
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 
 namespace Npgsql.TypeHandlers
 {
@@ -40,85 +43,35 @@ namespace Npgsql.TypeHandlers
     /// * The column data encoded as binary
     /// </remarks>
     [TypeMapping("record")]
-    internal class RecordHandler : ChunkingTypeHandler<object[]>
+    class RecordHandler : ChunkingTypeHandler<object[]>
     {
         readonly TypeHandlerRegistry _registry;
-        ReadBuffer _readBuf;
 
-        int _fieldIndex, _fieldCount, _fieldLen;
-        TypeHandler _fieldHandler;
-        object[] _value;
-
-        public RecordHandler(IBackendType backendType, TypeHandlerRegistry registry)
-            : base(backendType)
+        public RecordHandler(PostgresType postgresType, TypeHandlerRegistry registry)
+            : base(postgresType)
         {
             _registry = registry;
         }
 
         #region Read
 
-        public override void PrepareRead(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override async ValueTask<object[]> Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
         {
-            _readBuf = buf;
-            _fieldIndex = _fieldCount = - 1;
-            _fieldLen = -1;
-        }
+            await buf.Ensure(4, async);
+            var fieldCount = buf.ReadInt32();
+            var result = new object[fieldCount];
 
-        public override bool Read([CanBeNull] out object[] result)
-        {
-            result = null;
-
-            if (_fieldIndex == -1)
+            for (var i = 0; i < fieldCount; i++)
             {
-                if (_readBuf.ReadBytesLeft < 4) { return false; }
-                _fieldCount = _readBuf.ReadInt32();
-                _value = new object[_fieldCount];
-                _fieldIndex = 0;
+                await buf.Ensure(8, async);
+                var typeOID = buf.ReadUInt32();
+                var fieldLen = buf.ReadInt32();
+                if (fieldLen == -1)  // Null field, simply skip it and leave at default
+                    continue;
+                result[i] = await _registry[typeOID].ReadAsObject(buf, fieldLen, async);
             }
 
-            for (; _fieldIndex < _fieldCount; _fieldIndex++)
-            {
-                // Not yet started reading the field.
-                // Read the type OID, then the length.
-                if (_fieldLen == -1)
-                {
-                    if (_readBuf.ReadBytesLeft < 8) { return false; }
-                    var typeOID = _readBuf.ReadUInt32();
-                    _fieldLen = _readBuf.ReadInt32();
-                    if (_fieldLen == -1)
-                    {
-                        // Null field, simply skip it and leave at default
-                        continue;
-                    }
-                    _fieldHandler = _registry[typeOID];
-                }
-
-                // Get the field's type handler and read the value
-                object fieldValue;
-                if (_fieldHandler is ISimpleTypeHandler)
-                {
-                    var asSimpleReader = (ISimpleTypeHandler)_fieldHandler;
-                    if (_readBuf.ReadBytesLeft < _fieldLen) { return false; }
-                    fieldValue = asSimpleReader.ReadAsObject(_readBuf, _fieldLen);
-                }
-                else if (_fieldHandler is IChunkingTypeHandler)
-                {
-                    var asChunkingReader = (IChunkingTypeHandler)_fieldHandler;
-                    asChunkingReader.PrepareRead(_readBuf, _fieldLen);
-                    if (!asChunkingReader.ReadAsObject(out fieldValue))
-                    {
-                        return false;
-                    }
-                }
-                else throw PGUtil.ThrowIfReached();
-
-                _value[_fieldIndex] = fieldValue;
-                _fieldLen = -1;
-            }
-
-            result = _value;
-            _fieldHandler = null;
-            return true;
+            return result;
         }
 
         #endregion
@@ -126,19 +79,10 @@ namespace Npgsql.TypeHandlers
         #region Write (unsupported)
 
         public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter)
-        {
-            throw new NotSupportedException("Can't write record types");
-        }
+            => throw new NotSupportedException("Can't write record types");
 
-        public override void PrepareWrite(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter)
-        {
-            throw new NotSupportedException("Can't write record types");
-        }
-
-        public override bool Write(ref DirectBuffer directBuf)
-        {
-            throw new NotSupportedException("Can't write record types");
-        }
+        protected override Task Write(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter, bool async, CancellationToken cancellationToken)
+            => throw new NotSupportedException("Can't write record types");
 
         #endregion
     }

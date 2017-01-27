@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -22,11 +22,8 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using System.Text;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers.NumericHandlers
@@ -38,34 +35,29 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     [TypeMapping("xid", NpgsqlDbType.Xid)]
     [TypeMapping("cid", NpgsqlDbType.Cid)]
     [TypeMapping("regtype", NpgsqlDbType.Regtype)]
-    internal class UInt32Handler : SimpleTypeHandler<uint>
+    class UInt32Handler : SimpleTypeHandler<uint>
     {
-        internal UInt32Handler(IBackendType backendType) : base(backendType) { }
+        internal UInt32Handler(PostgresType postgresType) : base(postgresType) { }
 
-        public override uint Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return (uint)buf.ReadInt32();
-        }
+        public override uint Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+            => (uint)buf.ReadInt32();
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
         {
             if (!(value is uint))
             {
                 var converted = Convert.ToUInt32(value);
                 if (parameter == null)
-                {
                     throw CreateConversionButNoParamException(value.GetType());
-                }
                 parameter.ConvertedValue = converted;
             }
             return 4;
         }
 
-        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
+        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
         {
-            if (parameter?.ConvertedValue != null) {
+            if (parameter?.ConvertedValue != null)
                 value = parameter.ConvertedValue;
-            }
             buf.WriteInt32((int)(uint)value);
         }
     }

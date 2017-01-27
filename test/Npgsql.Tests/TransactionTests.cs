@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -74,7 +74,7 @@ namespace Npgsql.Tests
                 cmd.ExecuteNonQuery();
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(1));
                 tx.Rollback();
-                Assert.That(tx.Connection, Is.Null);
+                Assert.That(tx.IsCompleted);
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
             }
         }
@@ -92,7 +92,7 @@ namespace Npgsql.Tests
                 cmd.ExecuteNonQuery();
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(1));
                 await tx.RollbackAsync();
-                Assert.That(tx.Connection, Is.Null);
+                Assert.That(tx.IsCompleted);
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
             }
         }
@@ -106,7 +106,7 @@ namespace Npgsql.Tests
                 var tx = conn.BeginTransaction();
                 conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('X')", tx: tx);
                 tx.Dispose();
-                Assert.That(tx.Connection, Is.Null);
+                Assert.That(tx.IsCompleted);
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
             }
         }
@@ -114,7 +114,7 @@ namespace Npgsql.Tests
         [Test]
         public void RollbackOnClose()
         {
-            var tableName = TestUtil.GetUniqueIdentifier(nameof(RollbackOnClose));
+            var tableName = nameof(RollbackOnClose);
             using (var conn1 = OpenConnection())
             {
                 conn1.ExecuteNonQuery($"DROP TABLE IF EXISTS {tableName}");
@@ -126,8 +126,9 @@ namespace Npgsql.Tests
                     tx = conn2.BeginTransaction();
                     conn2.ExecuteNonQuery($"INSERT INTO {tableName} (name) VALUES ('X')", tx);
                 }
-                Assert.That(tx.Connection, Is.Null);
+                Assert.That(tx.IsCompleted);
                 Assert.That(conn1.ExecuteScalar($"SELECT COUNT(*) FROM {tableName}"), Is.EqualTo(0));
+                conn1.ExecuteNonQuery($"DROP TABLE {tableName}");
             }
         }
 
@@ -141,7 +142,7 @@ namespace Npgsql.Tests
                 conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('X')", tx: tx);
                 Assert.That(() => conn.ExecuteNonQuery("BAD QUERY"), Throws.Exception.TypeOf<PostgresException>());
                 tx.Rollback();
-                Assert.That(tx.Connection, Is.Null);
+                Assert.That(tx.IsCompleted);
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
             }
         }
@@ -232,6 +233,23 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        public void Nested()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.BeginTransaction();
+                Assert.That(() => conn.BeginTransaction(), Throws.TypeOf<NotSupportedException>());
+            }
+        }
+
+        [Test]
+        public void BeginTransactionBeforeOpen()
+        {
+            using (var conn = new NpgsqlConnection())
+                Assert.That(() => conn.BeginTransaction(), Throws.Exception.TypeOf<InvalidOperationException>());
+        }
+
+        [Test]
         public void RollbackFailedTransactionWithTimeout()
         {
             using (var conn = OpenConnection())
@@ -286,8 +304,11 @@ namespace Npgsql.Tests
         [IssueLink("https://github.com/npgsql/npgsql/issues/719")]
         public void FailedTransactionOnCloseWithCustom()
         {
-            var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Pooling = true };
-            using (var conn = new NpgsqlConnection(csb))
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Pooling = true
+            }.ToString();
+            using (var conn = new NpgsqlConnection(connString))
             {
                 conn.Open();
                 var backendProcessId = conn.ProcessID;
@@ -355,35 +376,6 @@ namespace Npgsql.Tests
             using (var conn = OpenConnection())
             using (var tx = conn.BeginTransaction())
                 Assert.That(() => tx.Save("a;b"), Throws.Exception.TypeOf<ArgumentException>());
-        }
-
-        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/765")]
-        public void PrependedRollbackWhileStartingNewTransaction()
-        {
-            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) {
-                CommandTimeout = 600,
-                InternalCommandTimeout = 30
-            };
-
-            int backendId;
-            using (var conn = new NpgsqlConnection(connString))
-            {
-                conn.Open();
-                backendId = conn.Connector.BackendProcessId;
-                conn.BeginTransaction();
-                conn.ExecuteNonQuery("SELECT 1");
-            }
-            // Connector is back in the pool with a queued ROLLBACK
-            using (var conn = new NpgsqlConnection(connString))
-            {
-                conn.Open();
-                Assert.That(conn.Connector.BackendProcessId, Is.EqualTo(backendId));
-                var tx = conn.BeginTransaction();
-                // We've captured the transaction instance, a new begin transaction is now enqueued after the rollback
-                conn.ExecuteNonQuery("SELECT 1");
-                Assert.That(tx.Connection, Is.SameAs(conn));
-                Assert.That(conn.Connector.Transaction, Is.SameAs(tx));
-            }
         }
 
         [Test, Description("Check IsCompleted before, during and after a normal committed transaction")]

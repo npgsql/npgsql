@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -21,9 +21,10 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using NpgsqlTypes;
+using Microsoft.Extensions.Logging;
 using Npgsql.Logging;
-using Npgsql.TypeHandlers.NumericHandlers;
+using NpgsqlTypes;
+using Npgsql.PostgresTypes;
 
 namespace Npgsql.TypeHandlers.InternalTypesHandlers
 {
@@ -32,20 +33,17 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
     /// be 0 (we send 1 for regular arrays).
     /// </summary>
     [TypeMapping("int2vector", NpgsqlDbType.Int2Vector)]
-    internal class Int2VectorHandler : ArrayHandler<short>
+    class Int2VectorHandler : ArrayHandler<short>
     {
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
-
-        public Int2VectorHandler(IBackendType backendType, TypeHandlerRegistry registry)
-            : base(backendType, null, 0)
+        public Int2VectorHandler(PostgresType postgresType, TypeHandlerRegistry registry)
+            : base(postgresType, null, 0)
         {
-
             // The pg_type SQL query makes sure that the int2 type comes before int2vector, so we can
             // depend on it already being in the registry
             var shortHandler = registry[NpgsqlDbType.Smallint];
             if (shortHandler == registry.UnrecognizedTypeHandler)
             {
-                Log.Warn("smallint type not present when setting up int2vector type. int2vector will not work.");
+                Log.Logger.LogWarning("smallint type not present when setting up int2vector type. int2vector will not work.");
                 return;
             }
             ElementHandler = shortHandler;

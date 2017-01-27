@@ -1,7 +1,7 @@
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -25,7 +25,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data.Common;
-using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Reflection;
 using JetBrains.Annotations;
@@ -33,6 +32,8 @@ using Npgsql.BackendMessages;
 #if NET45 || NET451
 using System.Runtime.Serialization;
 #endif
+
+#pragma warning disable CA1032
 
 namespace Npgsql
 {

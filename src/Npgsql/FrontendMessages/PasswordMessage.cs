@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -32,7 +32,9 @@ namespace Npgsql.FrontendMessages
 {
     class PasswordMessage : SimpleFrontendMessage
     {
-        internal byte[] Password { get; set; }
+        internal byte[] Payload { get; private set; }
+        internal int PayloadOffset { get; private set; }
+        internal int PayloadLength { get; private set; }
 
         const byte Code = (byte)'p';
 
@@ -62,9 +64,8 @@ namespace Npgsql.FrontendMessages
 
             var sb = new StringBuilder();
             var hashResult = md5.ComputeHash(cryptBuf);
-            foreach (var b in hashResult) {
+            foreach (var b in hashResult)
                 sb.Append(b.ToString("x2"));
-            }
 
             var prehash = sb.ToString();
 
@@ -78,9 +79,8 @@ namespace Npgsql.FrontendMessages
 
             sb = new StringBuilder("md5");
             hashResult = md5.ComputeHash(cryptBuf);
-            foreach (var b in hashResult) {
+            foreach (var b in hashResult)
                 sb.Append(b.ToString("x2"));
-            }
 
             var resultString = sb.ToString();
             var result = new byte[Encoding.UTF8.GetByteCount(resultString) + 1];
@@ -90,20 +90,32 @@ namespace Npgsql.FrontendMessages
             return new PasswordMessage(result);
         }
 
-        internal PasswordMessage(byte[] password)
+        internal PasswordMessage() {}
+
+        PasswordMessage(byte[] payload)
         {
-            Password = password;
+            Payload = payload;
+            PayloadOffset = 0;
+            PayloadLength = payload.Length;
         }
 
-        internal override int Length => 1 + 4 + Password.Length;
+        internal PasswordMessage Populate(byte[] payload, int offset, int count)
+        {
+            Payload = payload;
+            PayloadOffset = offset;
+            PayloadLength = count;
+            return this;
+        }
+
+        internal override int Length => 1 + 4 + PayloadLength;
 
         internal override void WriteFully(WriteBuffer buf)
         {
             buf.WriteByte(Code);
             buf.WriteInt32(Length - 1);
-            buf.WriteBytes(Password, 0, Password.Length);
+            buf.WriteBytes(Payload, PayloadOffset, Payload.Length);
         }
 
-        public override string ToString() { return "[Password]"; }
+        public override string ToString() =>  "[Password]";
     }
 }

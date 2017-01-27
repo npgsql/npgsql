@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -144,7 +144,7 @@ namespace Npgsql.Tests
         }
 
         // ReSharper disable once InconsistentNaming
-        [Test, Ignore("https://github.com/npgsql/npgsql/issues/1092")]
+        [Test]
         public void AllowDBNull()
         {
             using (var conn = OpenConnection())

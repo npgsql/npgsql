@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -159,7 +159,7 @@ namespace Npgsql.Tests.Types
                 conn.MapEnum<Mood>("mood3");
                 const Mood expected = Mood.Ok;
                 var cmd = new NpgsqlCommand("SELECT @p1::MOOD3, @p2::MOOD3", conn);
-                var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Enum) {SpecificType = typeof (Mood), Value = expected};
+                var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Enum) {SpecificType = typeof(Mood), Value = expected};
                 var p2 = new NpgsqlParameter {ParameterName = "p2", Value = expected};
                 cmd.Parameters.Add(p1);
                 cmd.Parameters.Add(p2);
@@ -168,7 +168,7 @@ namespace Npgsql.Tests.Types
 
                 for (var i = 0; i < cmd.Parameters.Count; i++)
                 {
-                    Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof (Mood)));
+                    Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(Mood)));
                     Assert.That(reader.GetFieldValue<Mood>(i), Is.EqualTo(expected));
                     Assert.That(reader.GetValue(i), Is.EqualTo(expected));
                 }
@@ -188,7 +188,7 @@ namespace Npgsql.Tests.Types
                 var cmd = new NpgsqlCommand("SELECT @p1", conn);
                 var expected = new[] {Mood.Ok, Mood.Sad};
                 var p = new NpgsqlParameter("p1", NpgsqlDbType.Enum | NpgsqlDbType.Array) {
-                    SpecificType = typeof (Mood),
+                    SpecificType = typeof(Mood),
                     Value = expected
                 };
                 cmd.Parameters.Add(p);
@@ -216,7 +216,7 @@ namespace Npgsql.Tests.Types
                         {
                             reader.Read();
 
-                            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof (Mood)));
+                            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Mood)));
                             Assert.That(reader.GetFieldValue<Mood>(0), Is.EqualTo(expected));
                             Assert.That(reader.GetValue(0), Is.EqualTo(expected));
                         }
@@ -241,7 +241,7 @@ namespace Npgsql.Tests.Types
                 using (var cmd = new NpgsqlCommand("SELECT @p1::MOOD6[], @p2::MOOD6[]", conn))
                 {
                     var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Enum | NpgsqlDbType.Array) {
-                        SpecificType = typeof (Mood),
+                        SpecificType = typeof(Mood),
                         Value = expected
                     };
                     var p2 = new NpgsqlParameter {ParameterName = "p2", Value = expected};
@@ -253,7 +253,7 @@ namespace Npgsql.Tests.Types
 
                         for (var i = 0; i < cmd.Parameters.Count; i++)
                         {
-                            Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof (Array)));
+                            Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(Array)));
                             Assert.That(reader.GetFieldValue<Mood[]>(i), Is.EqualTo(expected));
                             Assert.That(reader.GetValue(i), Is.EqualTo(expected));
                         }

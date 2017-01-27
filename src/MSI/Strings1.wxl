@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<WixLocalization Culture="en-us" xmlns="http://schemas.microsoft.com/wix/2006/localization">
+  <String Id="WelcomeDlgDescription">Welcome to the Npgsql setup wizard. This will install Npgsql performance counters, and optionally install Npgsql into your GAC and modify your machines.config.&#x0a;&#x0a;You should normally use Nuget to install Npgsql - only install into the GAC if you know what you're doing!</String>
+</WixLocalization>

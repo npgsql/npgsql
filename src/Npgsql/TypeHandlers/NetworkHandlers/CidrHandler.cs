@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -21,14 +21,9 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Diagnostics.Contracts;
-using System.Linq;
-using System.Net;
-using System.Text;
+using JetBrains.Annotations;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers.NetworkHandlers
@@ -37,28 +32,20 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-net-types.html
     /// </remarks>
     [TypeMapping("cidr", NpgsqlDbType.Cidr)]
-    internal class CidrHandler : SimpleTypeHandler<NpgsqlInet>, ISimpleTypeHandler<string>
+    class CidrHandler : SimpleTypeHandler<NpgsqlInet>, ISimpleTypeHandler<string>
     {
-        internal CidrHandler(IBackendType backendType) : base(backendType) { }
+        internal CidrHandler(PostgresType postgresType) : base(postgresType) { }
 
-        public override NpgsqlInet Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return InetHandler.DoRead(buf, fieldDescription, len, true);
-        }
+        public override NpgsqlInet Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+            => InetHandler.DoRead(buf, fieldDescription, len, true);
 
-        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return Read(buf, len, fieldDescription).ToString();
-        }
+        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => Read(buf, len, fieldDescription).ToString();
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
-        {
-            return InetHandler.DoValidateAndGetLength(value);
-        }
+        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
+            => InetHandler.DoValidateAndGetLength(value);
 
-        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
-        {
-            InetHandler.DoWrite(value, buf, true);
-        }
+        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
+            => InetHandler.DoWrite(value, buf, true);
     }
 }

@@ -1,7 +1,7 @@
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -22,8 +22,9 @@
 #endregion
 
 using System;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Npgsql
@@ -31,7 +32,7 @@ namespace Npgsql
     /// <summary>
     /// Base class for all classes which represent a message sent by the PostgreSQL backend.
     /// </summary>
-    internal interface IBackendMessage
+    interface IBackendMessage
     {
         BackendMessageCode Code { get; }
     }
@@ -40,14 +41,22 @@ namespace Npgsql
     /// Base class for all classes which represent a message sent to the PostgreSQL backend.
     /// Concrete classes which directly inherit this represent arbitrary-length messages which can chunked.
     /// </summary>
-    internal abstract class FrontendMessage
+    abstract class FrontendMessage
     {
         /// <param name="buf">the buffer into which to write the message.</param>
+        /// <param name="async"></param>
+        /// <param name="cancellationToken"></param>
         /// <returns>
         /// Whether there was enough space in the buffer to contain the entire message.
         /// If false, the buffer should be flushed and write should be called again.
         /// </returns>
-        internal abstract bool Write(WriteBuffer buf);
+        internal abstract Task Write(WriteBuffer buf, bool async, CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Returns how many messages PostgreSQL is expected to send in response to this message.
+        /// Used for message prepending.
+        /// </summary>
+        internal virtual int ResponseMessageCount => 1;
     }
 
     /// <summary>
@@ -55,7 +64,7 @@ namespace Npgsql
     /// the write buffer. The message is first queries for the number of bytes it requires,
     /// and then writes itself out.
     /// </summary>
-    internal abstract class SimpleFrontendMessage : FrontendMessage
+    abstract class SimpleFrontendMessage : FrontendMessage
     {
         /// <summary>
         /// Returns the number of bytes needed to write this message.
@@ -67,17 +76,24 @@ namespace Npgsql
         /// </summary>
         internal abstract void WriteFully(WriteBuffer buf);
 
-        internal sealed override bool Write(WriteBuffer buf)
+        internal sealed override Task Write(WriteBuffer buf, bool async, CancellationToken cancellationToken)
         {
-            Contract.Assume(Length < buf.UsableSize, $"Message of type {GetType().Name} has length {Length} which is bigger than the buffer ({buf.UsableSize})");
             if (buf.WriteSpaceLeft < Length)
-                return false;
+                return FlushAndWrite(buf, async, cancellationToken);
+            Debug.Assert(Length <= buf.WriteSpaceLeft, $"Message of type {GetType().Name} has length {Length} which is bigger than the buffer ({buf.WriteSpaceLeft})");
             WriteFully(buf);
-            return true;
+            return PGUtil.CompletedTask;
+        }
+
+        async Task FlushAndWrite(WriteBuffer buf, bool async, CancellationToken cancellationToken)
+        {
+            await buf.Flush(async, cancellationToken);
+            Debug.Assert(Length <= buf.WriteSpaceLeft, $"Message of type {GetType().Name} has length {Length} which is bigger than the buffer ({buf.WriteSpaceLeft})");
+            WriteFully(buf);
         }
     }
 
-    internal enum BackendMessageCode : byte
+    enum BackendMessageCode : byte
     {
         AuthenticationRequest = (byte)'R',
         BackendKeyData        = (byte)'K',
@@ -179,9 +195,11 @@ namespace Npgsql
         public PasswordPropertyTextAttribute(bool password) {}
     }
 
+#pragma warning disable CA1717
     enum RefreshProperties {
         All
     }
+#pragma warning restore CA1717
 
     [AttributeUsage(AttributeTargets.Property)]
     sealed class RefreshPropertiesAttribute : Attribute

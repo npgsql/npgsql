@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -118,7 +118,7 @@ namespace Npgsql.Tests.Types
         {
             using (var conn = OpenConnection())
             {
-                var expected = new int[conn.BufferSize/4 + 100];
+                var expected = new int[conn.Settings.WriteBufferSize/4 + 100];
                 for (var i = 0; i < expected.Length; i++)
                     expected[i] = i;
                 using (var cmd = new NpgsqlCommand("SELECT @p", conn))
@@ -139,7 +139,7 @@ namespace Npgsql.Tests.Types
         {
             using (var conn = OpenConnection())
             {
-                var len = conn.BufferSize/2 + 100;
+                var len = conn.Settings.WriteBufferSize/2 + 100;
                 var expected = new int[2, len];
                 for (var i = 0; i < len; i++)
                     expected[0, i] = i;
@@ -164,7 +164,7 @@ namespace Npgsql.Tests.Types
             using (var conn = OpenConnection())
             {
                 var largeString = new StringBuilder();
-                largeString.Append('a', conn.BufferSize);
+                largeString.Append('a', conn.Settings.WriteBufferSize);
                 var expected = new[] {"value1", null, largeString.ToString(), "val3"};
                 using (var cmd = new NpgsqlCommand("SELECT @p", conn))
                 {
@@ -274,8 +274,8 @@ namespace Npgsql.Tests.Types
                     reader.Read();
                     Assert.That(reader.GetValue(0), Is.EqualTo(expected));
                     Assert.That(reader.GetFieldValue<byte[][]>(0), Is.EqualTo(expected));
-                    Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof (Array)));
-                    Assert.That(reader.GetProviderSpecificFieldType(0), Is.EqualTo(typeof (Array)));
+                    Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
+                    Assert.That(reader.GetProviderSpecificFieldType(0), Is.EqualTo(typeof(Array)));
                 }
             }
         }
@@ -359,5 +359,34 @@ namespace Npgsql.Tests.Types
                     .With.Message.Contains("jagged"));
             }
         }
+
+        [Test, Description("Checks that IList<T>s are properly serialized as arrays of their underlying types")]
+        public void ListTypeResolution()
+        {
+            using (var conn = OpenConnection(ConnectionString))
+            {
+                AssertIListRoundtrips(conn, new[] { 1, 2, 3 });
+                AssertIListRoundtrips(conn, new IntList() { 1, 2, 3 });
+                AssertIListRoundtrips(conn, new MisleadingIntList<string>() { 1, 2, 3 });
+            }
+        }
+
+        void AssertIListRoundtrips<TElement>(NpgsqlConnection conn, IEnumerable<TElement> value)
+        {
+            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+            {
+                cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Value = value });
+
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo("_int4"));
+                    Assert.That(reader[0], Is.EqualTo(value.ToArray()));
+                }
+            }
+        }
+
+        class IntList : List<int> { }
+        class MisleadingIntList<T> : List<int> { }
     }
 }

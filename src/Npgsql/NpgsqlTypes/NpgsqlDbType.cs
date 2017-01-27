@@ -1,7 +1,7 @@
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -23,6 +23,8 @@
 
 using System;
 using Npgsql;
+
+#pragma warning disable CA1720
 
 // ReSharper disable once CheckNamespace
 namespace NpgsqlTypes
@@ -250,7 +252,7 @@ namespace NpgsqlTypes
         /// Corresponds to the obsolete PostgreSQL "abstime" type.
         /// </summary>
         /// <remarks>See http://www.postgresql.org/docs/current/static/datatype-datetime.html</remarks>
-        [Obsolete]
+        [Obsolete("The PostgreSQL abstime time is obsolete.")]
         Abstime = 33,
 
         #endregion

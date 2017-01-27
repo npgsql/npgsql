@@ -1,7 +1,7 @@
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -22,29 +22,29 @@
 #endregion
 
 using System;
-using System.IO;
 
 namespace Npgsql
 {
     /// <summary>
     /// EventArgs class to send Notification parameters.
     /// </summary>
-    public class NpgsqlNotificationEventArgs : EventArgs
+    public sealed class NpgsqlNotificationEventArgs : EventArgs
     {
         /// <summary>
         /// Process ID of the PostgreSQL backend that sent this notification.
         /// </summary>
-        public readonly int PID;
+        // ReSharper disable once InconsistentNaming
+        public int PID { get; }
 
         /// <summary>
         /// Condition that triggered that notification.
         /// </summary>
-        public readonly string Condition;
+        public string Condition { get; }
 
         /// <summary>
         /// Additional information.
         /// </summary>
-        public readonly string AdditionalInformation;
+        public string AdditionalInformation { get; }
 
         internal NpgsqlNotificationEventArgs(ReadBuffer buf)
         {

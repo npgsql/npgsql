@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -23,12 +23,10 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Globalization;
-using System.Linq;
-using System.Text;
+using JetBrains.Annotations;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandlers;
-using NpgsqlTypes;
 
 namespace Npgsql.BackendMessages
 {
@@ -38,9 +36,9 @@ namespace Npgsql.BackendMessages
     /// <remarks>
     /// See http://www.postgresql.org/docs/current/static/protocol-message-formats.html
     /// </remarks>
-    internal sealed class RowDescriptionMessage : IBackendMessage
+    sealed class RowDescriptionMessage : IBackendMessage
     {
-        public List<FieldDescription> Fields { get; private set; }
+        public List<FieldDescription> Fields { get; }
         readonly Dictionary<string, int> _nameIndex;
         readonly Dictionary<string, int> _caseInsensitiveNameIndex;
 
@@ -114,38 +112,34 @@ namespace Npgsql.BackendMessages
 
         static readonly CompareInfo CompareInfo = CultureInfo.InvariantCulture.CompareInfo;
 
-        private sealed class KanaWidthInsensitiveComparer : IEqualityComparer<string>
+        sealed class KanaWidthInsensitiveComparer : IEqualityComparer<string>
         {
             public static readonly KanaWidthInsensitiveComparer Instance = new KanaWidthInsensitiveComparer();
-            private KanaWidthInsensitiveComparer() { }
-            public bool Equals(string x, string y)
-            {
-                return CompareInfo.Compare(x, y, CompareOptions.IgnoreWidth) == 0;
-            }
-            public int GetHashCode(string obj)
+            KanaWidthInsensitiveComparer() { }
+            public bool Equals([NotNull] string x, [NotNull] string y)
+                => CompareInfo.Compare(x, y, CompareOptions.IgnoreWidth) == 0;
+            public int GetHashCode([NotNull] string o)
             {
 #if NET45 || NET451
-                return CompareInfo.GetSortKey(obj, CompareOptions.IgnoreWidth).GetHashCode();
+                return CompareInfo.GetSortKey(o, CompareOptions.IgnoreWidth).GetHashCode();
 #else
-                return CompareInfo.GetHashCode(obj, CompareOptions.IgnoreWidth);
+                return CompareInfo.GetHashCode(o, CompareOptions.IgnoreWidth);
 #endif
             }
         }
 
-        private sealed class KanaWidthCaseInsensitiveComparer : IEqualityComparer<string>
+        sealed class KanaWidthCaseInsensitiveComparer : IEqualityComparer<string>
         {
             public static readonly KanaWidthCaseInsensitiveComparer Instance = new KanaWidthCaseInsensitiveComparer();
-            private KanaWidthCaseInsensitiveComparer() { }
-            public bool Equals(string x, string y)
-            {
-                return CompareInfo.Compare(x, y, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase) == 0;
-            }
-            public int GetHashCode(string obj)
+            KanaWidthCaseInsensitiveComparer() { }
+            public bool Equals([NotNull] string x, [NotNull] string y)
+                => CompareInfo.Compare(x, y, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase) == 0;
+            public int GetHashCode([NotNull] string o)
             {
 #if NET45 || NET451
-                return CompareInfo.GetSortKey(obj, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase).GetHashCode();
+                return CompareInfo.GetSortKey(o, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase).GetHashCode();
 #else
-                return CompareInfo.GetHashCode(obj, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase);
+                return CompareInfo.GetHashCode(o, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase);
 #endif
             }
         }
@@ -157,7 +151,7 @@ namespace Npgsql.BackendMessages
     /// A descriptive record on a single field received from PostgreSQL.
     /// See RowDescription in http://www.postgresql.org/docs/current/static/protocol-message-formats.html
     /// </summary>
-    internal sealed class FieldDescription
+    sealed class FieldDescription
     {
         internal void Populate(
             TypeHandlerRegistry typeHandlerRegistry, string name, uint tableOID, short columnAttributeNumber,
@@ -185,7 +179,7 @@ namespace Npgsql.BackendMessages
         /// <summary>
         /// The object ID of the field's data type.
         /// </summary>
-        internal uint TypeOID { get; set; }
+        internal uint TypeOID { get; private set; }
 
         /// <summary>
         /// The data type size (see pg_type.typlen). Note that negative values denote variable-width types.
@@ -226,7 +220,7 @@ namespace Npgsql.BackendMessages
 
         /// <summary>
         /// The Npgsql type handler assigned to handle this field.
-        /// Returns <see cref="UnrecognizedTypeHandler"/> for fields with format text.
+        /// Returns <see cref="UnknownTypeHandler"/> for fields with format text.
         /// </summary>
         internal TypeHandler Handler { get; private set; }
 
@@ -235,7 +229,7 @@ namespace Npgsql.BackendMessages
         /// </summary>
         internal TypeHandler RealHandler { get; private set; }
 
-        public string DataTypeName => RealHandler.PgDisplayName;
+        internal PostgresType PostgresType => RealHandler.PostgresType;
         public Type FieldType => Handler.GetFieldType(this);
 
         void ResolveHandler()

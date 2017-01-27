@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -24,10 +24,10 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using Microsoft.Extensions.Logging;
 
 namespace Npgsql.Logging
 {
@@ -39,21 +39,24 @@ namespace Npgsql.Logging
         /// <summary>
         /// The logging provider used for logging in Npgsql.
         /// </summary>
-        public static INpgsqlLoggingProvider Provider
+        public static ILoggerFactory LoggerFactory
         {
             get
             {
-                _providerRetrieved = true;
-                return _provider;
+                _factoryRetrieved = true;
+                return _factory;
             }
             set
             {
-                if (_providerRetrieved)
+                if (_factoryRetrieved)
                     throw new InvalidOperationException("The logging provider must be set before any Npgsql action is taken");
 
-                _provider = value;
+                _factory = value;
             }
         }
+
+        static ILogger _npgsqlLogger;
+        internal static ILogger Logger => _npgsqlLogger ?? (_npgsqlLogger = _factory.CreateLogger("Npgsql"));
 
         /// <summary>
         /// Determines whether parameter contents will be logged alongside SQL statements - this may reveal sensitive information.
@@ -61,53 +64,12 @@ namespace Npgsql.Logging
         /// </summary>
         public static bool IsParameterLoggingEnabled { get; set; }
 
-        static INpgsqlLoggingProvider _provider;
-        static bool _providerRetrieved;
-
-        internal static NpgsqlLogger CreateLogger(string name)
-        {
-            return Provider.CreateLogger(name);
-        }
-
-        internal static NpgsqlLogger GetCurrentClassLogger()
-        {
-            return CreateLogger(GetClassFullName());
-        }
-
-        // Copied from NLog
-        static string GetClassFullName()
-        {
-#if NET45 || NET451
-            string className;
-            Type declaringType;
-            int framesToSkip = 2;
-
-            do {
-#if SILVERLIGHT
-                StackFrame frame = new StackTrace().GetFrame(framesToSkip);
-#else
-                StackFrame frame = new StackFrame(framesToSkip, false);
-#endif
-                MethodBase method = frame.GetMethod();
-                declaringType = method.DeclaringType;
-                if (declaringType == null) {
-                    className = method.Name;
-                    break;
-                }
-
-                framesToSkip++;
-                className = declaringType.FullName;
-            } while (declaringType.Module.Name.Equals("mscorlib.dll", StringComparison.OrdinalIgnoreCase));
-
-            return className;
-#else
-            return "<UNKNOWN>";
-#endif
-        }
+        static ILoggerFactory _factory;
+        static bool _factoryRetrieved;
 
         static NpgsqlLogManager()
         {
-            Provider = new NoOpLoggingProvider();
+            LoggerFactory = new LoggerFactory();
         }
     }
 }

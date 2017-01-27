@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -25,6 +25,7 @@ using System;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
+using Npgsql.PostgresTypes;
 
 namespace Npgsql.TypeHandlers
 {
@@ -34,7 +35,7 @@ namespace Npgsql.TypeHandlers
     [TypeMapping("void")]
     class VoidHandler : SimpleTypeHandler<DBNull>
     {
-        internal VoidHandler(IBackendType backendType) : base(backendType) {}
+        internal VoidHandler(PostgresType postgresType) : base(postgresType) {}
 
         public override DBNull Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => DBNull.Value;
@@ -44,7 +45,7 @@ namespace Npgsql.TypeHandlers
             throw new NotSupportedException();
         }
 
-        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
+        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
         {
             throw new NotSupportedException();
         }

@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -23,21 +23,23 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using JetBrains.Annotations;
 
 namespace Npgsql.BackendMessages
 {
     class DataRowNonSequentialMessage : DataRowMessage
     {
-        List<int> _columnOffsets;
+        readonly List<int> _columnOffsets = new List<int>();
         int _endOffset;
         /// <summary>
         /// List of all streams that have been opened on this row, and need to be disposed of when the row
         /// is consumed.
         /// </summary>
+        [CanBeNull]
         List<IDisposable> _streams;
 
         internal override DataRowMessage Load(ReadBuffer buf)
@@ -47,8 +49,8 @@ namespace Npgsql.BackendMessages
             Column = -1;
             ColumnLen = -1;
             PosInColumn = 0;
-            // TODO: Recycle message objects rather than recreating for each row
-            _columnOffsets = new List<int>(NumColumns);
+            // TODO: One big row with many columns will make the DataRow's _columnOffsets big forever...
+            _columnOffsets.Clear();
             for (var i = 0; i < NumColumns; i++)
             {
                 _columnOffsets.Add(buf.ReadPosition);
@@ -62,7 +64,7 @@ namespace Npgsql.BackendMessages
             return this;
         }
 
-        internal override void SeekToColumn(int column)
+        internal override Task SeekToColumn(int column, bool async)
         {
             CheckColumnIndex(column);
 
@@ -73,15 +75,11 @@ namespace Npgsql.BackendMessages
                 ColumnLen = Buffer.ReadInt32();
                 PosInColumn = 0;
             }
-        }
 
-        internal override Task SeekToColumnAsync(int column, CancellationToken cancellationToken)
-        {
-            SeekToColumn(column);
             return PGUtil.CompletedTask;
         }
 
-        internal override void SeekInColumn(int posInColumn)
+        internal override Task SeekInColumn(int posInColumn, bool async)
         {
             if (posInColumn > ColumnLen) {
                 posInColumn = ColumnLen;
@@ -89,11 +87,12 @@ namespace Npgsql.BackendMessages
 
             Buffer.Seek(_columnOffsets[Column] + 4 + posInColumn, SeekOrigin.Begin);
             PosInColumn = posInColumn;
+            return PGUtil.CompletedTask;
         }
 
         internal override Stream GetStream()
         {
-            Contract.Requires(PosInColumn == 0);
+            Debug.Assert(PosInColumn == 0);
             var s = Buffer.GetMemoryStream(ColumnLen);
             if (_streams == null) {
                 _streams = new List<IDisposable>();
@@ -102,7 +101,7 @@ namespace Npgsql.BackendMessages
             return s;
         }
 
-        internal override void Consume()
+        internal override Task Consume(bool async)
         {
             Buffer.Seek(_endOffset, SeekOrigin.Begin);
             if (_streams != null)
@@ -112,11 +111,6 @@ namespace Npgsql.BackendMessages
                 }
                 _streams.Clear();
             }
-        }
-
-        internal override Task ConsumeAsync(CancellationToken cancellationToken)
-        {
-            Consume();
             return PGUtil.CompletedTask;
         }
     }

@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -49,13 +49,13 @@ namespace Npgsql.Tests
         [TestCase(true,  TestName = "RejectSelfSignedCertificateWithSslStream")]
         public void RejectSelfSignedCertificate(bool useSslStream)
         {
-            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 SslMode = SslMode.Require,
                 UseSslStream = useSslStream
-            };
+            }.ToString();
 
-            using (var conn = new NpgsqlConnection(csb))
+            using (var conn = new NpgsqlConnection(connString))
             {
                 // The following is necessary since a pooled connector may exist from a previous
                 // SSL test
@@ -90,7 +90,7 @@ namespace Npgsql.Tests
                 Assert.That(conn.IsSecure, Is.False);
         }
 
-        [Test, LinuxIgnore("No integrated security on Linux (yet)")]
+        [Test, LinuxIgnore("Needs to be run explicitly with Kerberos credentials")]
         public void IntegratedSecurityWithUsername()
         {
             var username = Environment.GetEnvironmentVariable("USERNAME") ??
@@ -98,12 +98,12 @@ namespace Npgsql.Tests
             if (username == null)
                 throw new Exception("Could find username");
 
-            var csb = new NpgsqlConnectionStringBuilder(ConnectionString) {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) {
                 IntegratedSecurity = true,
                 Username = username,
-                Password = null,
-            };
-            using (var conn = new NpgsqlConnection(csb))
+                Password = null
+            }.ToString();
+            using (var conn = new NpgsqlConnection(connString))
             {
                 try
                 {
@@ -119,16 +119,16 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test, LinuxIgnore("No integrated security on Linux (yet)")]
+        [Test, LinuxIgnore("Needs to be run explicitly with Kerberos credentials")]
         public void IntegratedSecurityWithoutUsername()
         {
-            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 IntegratedSecurity = true,
                 Username = null,
-                Password = null,
-            };
-            using (var conn = new NpgsqlConnection(csb))
+                Password = null
+            }.ToString();
+            using (var conn = new NpgsqlConnection(connString))
             {
                 try
                 {
@@ -141,6 +141,33 @@ namespace Npgsql.Tests
                     Console.WriteLine(e);
                     Assert.Ignore("Integrated security (GSS/SSPI) doesn't seem to be set up");
                 }
+            }
+        }
+
+        [Test, LinuxIgnore("Needs to be run explicitly with Kerberos credentials")]
+        public void ConnectionDatabasePopulatedOnConnect()
+        {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                IntegratedSecurity = true,
+                Username = null,
+                Password = null,
+                Database = null
+            }.ToString();
+            using (var conn = new NpgsqlConnection(connString))
+            {
+                try
+                {
+                    conn.Open();
+                }
+                catch (Exception e)
+                {
+                    if (TestUtil.IsOnBuildServer)
+                        throw;
+                    Console.WriteLine(e);
+                    Assert.Ignore("Integrated security (GSS/SSPI) doesn't seem to be set up");
+                }
+                Assert.That(conn.Database, Is.Not.Null);
             }
         }
 

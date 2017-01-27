@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -22,7 +22,9 @@
 #endregion
 
 using System;
+using JetBrains.Annotations;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers.DateTimeHandlers
@@ -31,13 +33,13 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-datetime.html
     /// </remarks>
     [TypeMapping("timetz", NpgsqlDbType.TimeTZ)]
-    internal class TimeTzHandler : SimpleTypeHandler<DateTimeOffset>, ISimpleTypeHandler<DateTime>, ISimpleTypeHandler<TimeSpan>
+    class TimeTzHandler : SimpleTypeHandler<DateTimeOffset>, ISimpleTypeHandler<DateTime>, ISimpleTypeHandler<TimeSpan>
     {
         // Binary Format: int64 expressing microseconds, int32 expressing timezone in seconds, negative
 
-        internal TimeTzHandler(IBackendType backendType) : base(backendType) { }
+        internal TimeTzHandler(PostgresType postgresType) : base(postgresType) { }
 
-        public override DateTimeOffset Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
+        public override DateTimeOffset Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             // Adjust from 1 microsecond to 100ns. Time zone (in seconds) is inverted.
             var ticks = buf.ReadInt64() * 10;
@@ -45,26 +47,20 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             return new DateTimeOffset(ticks, offset);
         }
 
-        DateTime ISimpleTypeHandler<DateTime>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return Read(buf, len, fieldDescription).LocalDateTime;
-        }
+        DateTime ISimpleTypeHandler<DateTime>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => Read(buf, len, fieldDescription).LocalDateTime;
 
-        TimeSpan ISimpleTypeHandler<TimeSpan>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return Read(buf, len, fieldDescription).LocalDateTime.TimeOfDay;
-        }
+        TimeSpan ISimpleTypeHandler<TimeSpan>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => Read(buf, len, fieldDescription).LocalDateTime.TimeOfDay;
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
         {
             if (!(value is DateTimeOffset) && !(value is DateTime) && !(value is TimeSpan))
-            {
                 throw CreateConversionException(value.GetType());
-            }
             return 12;
         }
 
-        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
+        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
         {
             if (value is DateTimeOffset)
             {
@@ -91,7 +87,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                     buf.WriteInt32(-(int)(TimeZoneInfo.Local.BaseUtcOffset.Ticks / TimeSpan.TicksPerSecond));
                     break;
                 default:
-                    throw PGUtil.ThrowIfReached();
+                    throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {dt.Kind} of enum {nameof(DateTimeKind)}. Please file a bug.");
                 }
 
                 return;
@@ -105,7 +101,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                 return;
             }
 
-            throw PGUtil.ThrowIfReached();
+            throw new InvalidOperationException("Internal Npgsql bug, please report.");
         }
     }
 }

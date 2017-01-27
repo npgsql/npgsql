@@ -1,7 +1,7 @@
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -25,23 +25,18 @@ using System;
 using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
 using JetBrains.Annotations;
 using NpgsqlTypes;
-
-#if WITHDESIGN
-using Npgsql.Design;
-#endif
 
 namespace Npgsql
 {
     ///<summary>
     /// This class represents a parameter to a command that will be sent to server
     ///</summary>
-#if WITHDESIGN
-    [TypeConverter(typeof(NpgsqlParameterConverter))]
-#endif
 #if NETSTANDARD1_3
     public sealed class NpgsqlParameter : DbParameter
 #else
@@ -68,6 +63,7 @@ namespace Npgsql
         /// </summary>
         internal object ConvertedValue { get; set; }
 
+        [CanBeNull]
         internal LengthCache LengthCache { get; private set; }
 
         internal TypeHandler Handler { get; private set; }
@@ -382,9 +378,7 @@ namespace Npgsql
             set
             {
                 if (value < -1)
-                    throw new ArgumentException(
-                        $"Invalid parameter Size value '{value}'. The value must be greater than or equal to 0.");
-                Contract.EndContractBlock();
+                    throw new ArgumentException($"Invalid parameter Size value '{value}'. The value must be greater than or equal to 0.");
 
                 _size = value;
                 ClearBind();
@@ -449,13 +443,10 @@ namespace Npgsql
             }
             set
             {
-                if (value == NpgsqlDbType.Array) {
+                if (value == NpgsqlDbType.Array)
                     throw new ArgumentOutOfRangeException(nameof(value), "Cannot set NpgsqlDbType to just Array, Binary-Or with the element type (e.g. Array of Box is NpgsqlDbType.Array | NpgsqlDbType.Box).");
-                }
-                if (value == NpgsqlDbType.Range) {
+                if (value == NpgsqlDbType.Range)
                     throw new ArgumentOutOfRangeException(nameof(value), "Cannot set NpgsqlDbType to just Range, Binary-Or with the element type (e.g. Range of integer is NpgsqlDbType.Range | NpgsqlDbType.Integer)");
-                }
-                Contract.EndContractBlock();
 
                 ClearBind();
                 _npgsqlDbType = value;
@@ -619,34 +610,25 @@ namespace Npgsql
         {
             ResolveHandler(registry);
 
-            Contract.Assert(Handler != null);
+            Debug.Assert(Handler != null);
             FormatCode = Handler.PreferTextWrite ? FormatCode.Text : FormatCode.Binary;
         }
 
         internal int ValidateAndGetLength()
         {
-            if (_value == null) {
+            if (_value == null)
                 throw new InvalidCastException($"Parameter {ParameterName} must be set");
-            }
-
-            if (_value is DBNull) {
+            if (_value is DBNull)
                 return 0;
-            }
 
-            // No length caching for simple types
-            var asSimpleWriter = Handler as ISimpleTypeHandler;
-            if (asSimpleWriter != null) {
-                return asSimpleWriter.ValidateAndGetLength(Value, this);
-            }
-
-            var asChunkingWriter = Handler as IChunkingTypeHandler;
-            Contract.Assert(asChunkingWriter != null,
-                $"Handler {Handler.GetType().Name} doesn't implement either ISimpleTypeWriter or IChunkingTypeWriter");
             var lengthCache = LengthCache;
-            var len = asChunkingWriter.ValidateAndGetLength(Value, ref lengthCache, this);
+            var len = Handler.ValidateAndGetLength(Value, ref lengthCache, this);
             LengthCache = lengthCache;
             return len;
         }
+
+        internal Task WriteWithLength(WriteBuffer buf, bool async, CancellationToken cancellationToken)
+            => Handler.WriteWithLength(Value, buf, LengthCache, this, async, cancellationToken);
 
         void ClearBind()
         {

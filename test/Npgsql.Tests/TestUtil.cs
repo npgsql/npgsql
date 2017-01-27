@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -144,7 +144,7 @@ namespace Npgsql.Tests
     }
 
     /// <summary>
-    /// Causes the test to be ignored on mono
+    /// Causes the test to be ignored on Linux
     /// </summary>
     [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class | AttributeTargets.Assembly, AllowMultiple = false)]
     public class LinuxIgnore : Attribute, ITestAction
@@ -169,13 +169,39 @@ namespace Npgsql.Tests
         public ActionTargets Targets => ActionTargets.Test;
     }
 
+    /// <summary>
+    /// Causes the test to be ignored on Windows
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class | AttributeTargets.Assembly, AllowMultiple = false)]
+    public class WindowsIgnore : Attribute, ITestAction
+    {
+        readonly string _ignoreText;
+
+        public WindowsIgnore(string ignoreText = null) { _ignoreText = ignoreText; }
+
+        public void BeforeTest([NotNull] ITest test)
+        {
+            var osEnvVar = Environment.GetEnvironmentVariable("OS");
+            if (osEnvVar == "Windows_NT")
+            {
+                var msg = "Ignored on Windows";
+                if (_ignoreText != null)
+                    msg += ": " + _ignoreText;
+                Assert.Ignore(msg);
+            }
+        }
+
+        public void AfterTest([NotNull] ITest test) { }
+        public ActionTargets Targets => ActionTargets.Test;
+    }
+
     public enum PrepareOrNot
     {
         Prepared,
         NotPrepared
     }
 
-#if NETCOREAPP1_0
+#if NETCOREAPP1_1
     // When using netcoreapp, we use NUnit's portable library which doesn't include TimeoutAttribute
     // (probably because it can't enforce it). So we define it here to allow us to compile, once there's
     // proper support for netcoreapp this should be removed.

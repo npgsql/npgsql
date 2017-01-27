@@ -1,7 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using System.Collections.Generic;
+using System.Diagnostics;
+using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 
 namespace Npgsql
@@ -17,19 +16,12 @@ namespace Npgsql
     /// Users can retrieve instances from <see cref="NpgsqlDataReader.Statements"/>
     /// and access information about statement execution (e.g. affected rows).
     /// </summary>
-    public class NpgsqlStatement
+    public sealed class NpgsqlStatement
     {
-        internal NpgsqlStatement(string sql, List<NpgsqlParameter> inputParameters, string preparedStatementName = null)
-        {
-            SQL = sql;
-            InputParameters = inputParameters;
-            PreparedStatementName = preparedStatementName;
-        }
-
         /// <summary>
         /// The SQL text of the statement.
         /// </summary>
-        public string SQL { get; }
+        public string SQL { get; set; } = string.Empty;
 
         /// <summary>
         /// Specifies the type of query, e.g. SELECT.
@@ -51,21 +43,77 @@ namespace Npgsql
         /// </summary>
         public uint OID { get; internal set; }
 
-        internal readonly List<NpgsqlParameter> InputParameters;
+        internal List<NpgsqlParameter> InputParameters { get; } = new List<NpgsqlParameter>();
 
         /// <summary>
         /// The RowDescription message for this query. If null, the query does not return rows (e.g. INSERT)
         /// </summary>
-        internal RowDescriptionMessage Description;
+        [CanBeNull]
+        internal RowDescriptionMessage Description
+        {
+            get { return PreparedStatement == null ? _description : PreparedStatement.Description; }
+            set
+            {
+                if (PreparedStatement == null)
+                    _description = value;
+                else
+                    PreparedStatement.Description = value;
+            }
+        }
+
+        [CanBeNull]
+        RowDescriptionMessage _description;
 
         /// <summary>
-        /// For prepared statements, holds the server-side prepared statement name.
+        /// If this statement has been automatically prepared, references the <see cref="PreparedStatement"/>.
+        /// Null otherwise.
         /// </summary>
-        internal string PreparedStatementName;
+        [CanBeNull]
+        internal PreparedStatement PreparedStatement
+        {
+            get
+            {
+                if (_preparedStatement != null && _preparedStatement.State == PreparedState.Unprepared)
+                    _preparedStatement = null;
+                return _preparedStatement;
+            }
+            set { _preparedStatement = value; }
+        }
+
+        [CanBeNull]
+        PreparedStatement _preparedStatement;
+
+        /// <summary>
+        /// Holds the server-side (prepared) statement name. Empty string for non-prepared statements.
+        /// </summary>
+        internal string StatementName => PreparedStatement?.Name ?? "";
+
+        /// <summary>
+        /// Whether this statement has already been prepared (including automatic preparation).
+        /// </summary>
+        internal bool IsPrepared => PreparedStatement?.IsPrepared == true;
+
+        internal void Reset()
+        {
+            SQL = string.Empty;
+            StatementType = StatementType.Select;
+            _description = null;
+            Rows = 0;
+            OID = 0;
+            InputParameters.Clear();
+            PreparedStatement = null;
+        }
+
+        internal void ApplyCommandComplete(CommandCompleteMessage msg)
+        {
+            StatementType = msg.StatementType;
+            Rows = msg.Rows;
+            OID = msg.OID;
+        }
 
         /// <summary>
         /// Returns the SQL text of the statement.
         /// </summary>
-        public override string ToString() { return SQL; }
+        public override string ToString() => SQL ?? "<none>";
     }
 }

@@ -1,7 +1,7 @@
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -27,7 +27,7 @@ using System;
 using System.Data;
 using System.Data.Common;
 using JetBrains.Annotations;
-using Npgsql.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace Npgsql
 {
@@ -62,8 +62,6 @@ namespace Npgsql
         /// </summary>
         public event NpgsqlRowUpdatingEventHandler RowUpdating;
 
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
-
         /// <summary>
         /// Default constructor.
         /// </summary>
@@ -75,7 +73,6 @@ namespace Npgsql
         /// <param name="selectCommand"></param>
         public NpgsqlDataAdapter(NpgsqlCommand selectCommand)
         {
-            Log.Trace("Create NpgsqlDataAdapter");
             SelectCommand = selectCommand;
         }
 
@@ -102,7 +99,6 @@ namespace Npgsql
                                                                      System.Data.StatementType statementType,
                                                                      [NotNull] DataTableMapping tableMapping)
         {
-            Log.Trace("CreateRowUpdatedEvent");
             return new NpgsqlRowUpdatedEventArgs(dataRow, command, statementType, tableMapping);
         }
 
@@ -113,7 +109,6 @@ namespace Npgsql
                                                                        System.Data.StatementType statementType,
                                                                        [NotNull] DataTableMapping tableMapping)
         {
-            Log.Trace("CreateRowUpdatingEvent");
             return new NpgsqlRowUpdatingEventArgs(dataRow, command, statementType, tableMapping);
         }
 
@@ -123,7 +118,6 @@ namespace Npgsql
         /// <param name="value"></param>
         protected override void OnRowUpdated([NotNull] RowUpdatedEventArgs value)
         {
-            Log.Trace("OnRowUpdated");
             //base.OnRowUpdated(value);
             if (RowUpdated != null && value is NpgsqlRowUpdatedEventArgs)
                 RowUpdated(this, (NpgsqlRowUpdatedEventArgs)value);
@@ -135,7 +129,6 @@ namespace Npgsql
         /// <param name="value"></param>
         protected override void OnRowUpdating([NotNull] RowUpdatingEventArgs value)
         {
-            Log.Trace("OnRowUpdating");
             if (RowUpdating != null && value is NpgsqlRowUpdatingEventArgs)
                 RowUpdating(this, (NpgsqlRowUpdatingEventArgs) value);
         }

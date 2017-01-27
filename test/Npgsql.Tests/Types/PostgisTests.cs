@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -133,14 +133,15 @@ namespace Npgsql.Tests.Types
                 cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Geometry,a.Geom);
                 a.Geom.SRID = 0;
                 cmd.CommandText = "Select st_asewkb(:p1) = st_asewkb(" + a.SQL + ")";
-                try
-                {
-                    Assert.IsTrue((bool)cmd.ExecuteScalar(),"Error on comparison of " + a.Geom);
+                bool areEqual;
+                try {
+                    areEqual = (bool)cmd.ExecuteScalar();
                 }
-                catch (Exception)
+                catch (Exception e)
                 {
-                    Assert.Fail("Exception caught on " + a.Geom);
+                    throw new Exception("Exception caught on " + a.Geom, e);
                 }
+                Assert.IsTrue(areEqual, "Error on comparison of " + a.Geom);
             }
         }
 
@@ -362,6 +363,33 @@ namespace Npgsql.Tests.Types
                 reader.Read();
                 Assert.That(reader.GetFieldValue<PostgisPoint>(0), Is.EqualTo(new PostgisPoint(1, 1)));
                 Assert.That(() => reader.GetFieldValue<PostgisPolygon>(0), Throws.Exception.TypeOf<InvalidCastException>());
+            }
+        }
+
+        [Test]
+        public void Bug1381()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+            {
+                cmd.Parameters.Add("p", NpgsqlTypes.NpgsqlDbType.Geometry).Value = new PostgisMultiPolygon(new[]
+                {
+                    new PostgisPolygon(new[]
+                        {
+                            new[]
+                            {
+                                new Coordinate2D(-0.555701, 46.42473701),
+                                new Coordinate2D(-0.549486, 46.42707801),
+                                new Coordinate2D(-0.549843, 46.42749901),
+                                new Coordinate2D(-0.555524, 46.42533901),
+                                new Coordinate2D(-0.555701, 46.42473701)
+                            }
+                        })
+                        // This is the problem:
+                        { SRID = 4326 }
+                }) { SRID = 4326 };
+
+                cmd.ExecuteNonQuery();
             }
         }
 

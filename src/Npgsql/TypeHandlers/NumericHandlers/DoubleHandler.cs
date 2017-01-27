@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -22,13 +22,10 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using System.Text;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
+using Npgsql.PostgresTypes;
 
 namespace Npgsql.TypeHandlers.NumericHandlers
 {
@@ -36,34 +33,29 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-numeric.html
     /// </remarks>
     [TypeMapping("float8", NpgsqlDbType.Double, DbType.Double, typeof(double))]
-    internal class DoubleHandler : SimpleTypeHandler<double>
+    class DoubleHandler : SimpleTypeHandler<double>
     {
-        internal DoubleHandler(IBackendType backendType) : base(backendType) { }
+        internal DoubleHandler(PostgresType postgresType) : base(postgresType) { }
 
-        public override double Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return buf.ReadDouble();
-        }
+        public override double Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+            => buf.ReadDouble();
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
         {
             if (!(value is double))
             {
                 var converted = Convert.ToDouble(value);
                 if (parameter == null)
-                {
                     throw CreateConversionButNoParamException(value.GetType());
-                }
                 parameter.ConvertedValue = converted;
             }
             return 8;
         }
 
-        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
+        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
         {
-            if (parameter?.ConvertedValue != null) {
+            if (parameter?.ConvertedValue != null)
                 value = parameter.ConvertedValue;
-            }
             buf.WriteDouble((double)value);
         }
     }

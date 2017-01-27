@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -69,7 +69,7 @@ namespace Npgsql.Tests.Types
                         for (var i = 0; i < cmd.Parameters.Count; i++)
                         {
                             // Regular type (DateTime)
-                            Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof (DateTime)));
+                            Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(DateTime)));
                             Assert.That(reader.GetDateTime(i), Is.EqualTo(dateTime));
                             Assert.That(reader.GetFieldValue<DateTime>(i), Is.EqualTo(dateTime));
                             Assert.That(reader[i], Is.EqualTo(dateTime));
@@ -77,7 +77,7 @@ namespace Npgsql.Tests.Types
 
                             // Provider-specific type (NpgsqlDate)
                             Assert.That(reader.GetDate(i), Is.EqualTo(npgsqlDate));
-                            Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof (NpgsqlDate)));
+                            Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof(NpgsqlDate)));
                             Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(npgsqlDate));
                             Assert.That(reader.GetFieldValue<NpgsqlDate>(i), Is.EqualTo(npgsqlDate));
                         }
@@ -149,7 +149,7 @@ namespace Npgsql.Tests.Types
 
                         for (var i = 0; i < cmd.Parameters.Count; i++)
                         {
-                            Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof (TimeSpan)));
+                            Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(TimeSpan)));
                             Assert.That(reader.GetTimeSpan(i), Is.EqualTo(expected));
                             Assert.That(reader.GetFieldValue<TimeSpan>(i), Is.EqualTo(expected));
                             Assert.That(reader[i], Is.EqualTo(expected));
@@ -255,7 +255,7 @@ namespace Npgsql.Tests.Types
                         for (var i = 0; i < cmd.Parameters.Count; i++)
                         {
                             // Regular type (DateTime)
-                            Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof (DateTime)));
+                            Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(DateTime)));
                             Assert.That(reader.GetDateTime(i), Is.EqualTo(dateTime));
                             Assert.That(reader.GetDateTime(i).Kind, Is.EqualTo(DateTimeKind.Unspecified));
                             Assert.That(reader.GetFieldValue<DateTime>(i), Is.EqualTo(dateTime));
@@ -264,7 +264,7 @@ namespace Npgsql.Tests.Types
 
                             // Provider-specific type (NpgsqlTimeStamp)
                             Assert.That(reader.GetTimeStamp(i), Is.EqualTo(npgsqlTimeStamp));
-                            Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof (NpgsqlDateTime)));
+                            Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof(NpgsqlDateTime)));
                             Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(npgsqlTimeStamp));
                             Assert.That(reader.GetFieldValue<NpgsqlDateTime>(i), Is.EqualTo(npgsqlTimeStamp));
 
@@ -420,7 +420,7 @@ namespace Npgsql.Tests.Types
                         reader.Read();
 
                         // Regular type (TimeSpan)
-                        Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof (TimeSpan)));
+                        Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(TimeSpan)));
                         Assert.That(reader.GetTimeSpan(0), Is.EqualTo(expectedTimeSpan));
                         Assert.That(reader.GetFieldValue<TimeSpan>(0), Is.EqualTo(expectedTimeSpan));
                         Assert.That(reader[0], Is.EqualTo(expectedTimeSpan));
@@ -428,7 +428,7 @@ namespace Npgsql.Tests.Types
 
                         // Provider-specific type (NpgsqlInterval)
                         Assert.That(reader.GetInterval(0), Is.EqualTo(expectedNpgsqlInterval));
-                        Assert.That(reader.GetProviderSpecificFieldType(0), Is.EqualTo(typeof (NpgsqlTimeSpan)));
+                        Assert.That(reader.GetProviderSpecificFieldType(0), Is.EqualTo(typeof(NpgsqlTimeSpan)));
                         Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(expectedNpgsqlInterval));
                         Assert.That(reader.GetFieldValue<NpgsqlTimeSpan>(0), Is.EqualTo(expectedNpgsqlInterval));
                     }

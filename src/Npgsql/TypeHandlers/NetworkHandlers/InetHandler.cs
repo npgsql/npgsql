@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -22,13 +22,12 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
-using System.Diagnostics.Contracts;
-using System.Linq;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
+using JetBrains.Annotations;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers.NetworkHandlers
@@ -37,24 +36,24 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-net-types.html
     /// </remarks>
     [TypeMapping("inet", NpgsqlDbType.Inet, new[] { typeof(NpgsqlInet), typeof(IPAddress) })]
-    internal class InetHandler : SimpleTypeHandlerWithPsv<IPAddress, NpgsqlInet>, ISimpleTypeHandler<string>
+    class InetHandler : SimpleTypeHandlerWithPsv<IPAddress, NpgsqlInet>, ISimpleTypeHandler<string>
     {
+        // ReSharper disable InconsistentNaming
         const byte IPv4 = 2;
         const byte IPv6 = 3;
+        // ReSharper restore InconsistentNaming
 
-        internal InetHandler(IBackendType backendType) : base(backendType) { }
+        internal InetHandler(PostgresType postgresType) : base(postgresType) { }
 
-        public override IPAddress Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return ((ISimpleTypeHandler<NpgsqlInet>)this).Read(buf, len, fieldDescription).Address;
-        }
+        public override IPAddress Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+            => ((ISimpleTypeHandler<NpgsqlInet>)this).Read(buf, len, fieldDescription).Address;
 
-        internal static NpgsqlInet DoRead(ReadBuffer buf, FieldDescription fieldDescription, int len, bool isCidrHandler)
+        internal static NpgsqlInet DoRead(ReadBuffer buf, [CanBeNull] FieldDescription fieldDescription, int len, bool isCidrHandler)
         {
             buf.ReadByte();  // addressFamily
             var mask = buf.ReadByte();
             var isCidr = buf.ReadByte() == 1;
-            Contract.Assume(isCidrHandler == isCidr);
+            Debug.Assert(isCidrHandler == isCidr);
             var numBytes = buf.ReadByte();
             var bytes = new byte[numBytes];
             for (var i = 0; i < numBytes; i++) {
@@ -63,26 +62,21 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             return new NpgsqlInet(new IPAddress(bytes), mask);
         }
 
-        internal override NpgsqlInet ReadPsv(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return DoRead(buf, fieldDescription, len, false);
-        }
+        internal override NpgsqlInet ReadPsv(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+            => DoRead(buf, fieldDescription, len, false);
 
-        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return ((ISimpleTypeHandler<NpgsqlInet>)this).Read(buf, len, fieldDescription).ToString();
-        }
+        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => ((ISimpleTypeHandler<NpgsqlInet>)this).Read(buf, len, fieldDescription).ToString();
 
-        static internal int DoValidateAndGetLength(object value)
+        internal static int DoValidateAndGetLength(object value)
         {
             IPAddress ip;
-            if (value is NpgsqlInet) {
+            if (value is NpgsqlInet)
                 ip = ((NpgsqlInet)value).Address;
-            } else {
+            else {
                 ip = value as IPAddress;
-                if (ip == null) {
+                if (ip == null)
                     throw new InvalidCastException($"Can't send type {value.GetType()} as inet");
-                }
             }
 
             switch (ip.AddressFamily) {
@@ -91,15 +85,12 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             case AddressFamily.InterNetworkV6:
                 return 20;
             default:
-                throw new InvalidCastException(
-                    $"Can't handle IPAddress with AddressFamily {ip.AddressFamily}, only InterNetwork or InterNetworkV6!");
+                throw new InvalidCastException($"Can't handle IPAddress with AddressFamily {ip.AddressFamily}, only InterNetwork or InterNetworkV6!");
             }
         }
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
-        {
-            return DoValidateAndGetLength(value);
-        }
+        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
+            => DoValidateAndGetLength(value);
 
         internal static void DoWrite(object value, WriteBuffer buf, bool isCidrHandler)
         {
@@ -142,9 +133,7 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             buf.WriteBytes(bytes, 0, bytes.Length);
         }
 
-        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
-        {
-            DoWrite(value, buf, false);
-        }
+        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
+            => DoWrite(value, buf, false);
     }
 }

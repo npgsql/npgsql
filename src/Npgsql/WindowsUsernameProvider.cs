@@ -2,26 +2,23 @@
 using System;
 using System.Collections.Generic;
 using System.DirectoryServices;
-using System.Linq;
 using System.Security.Principal;
-using System.Text;
-using System.Threading.Tasks;
 using JetBrains.Annotations;
 
 namespace Npgsql
 {
-    internal static class WindowsUsernameProvider
+    static class WindowsUsernameProvider
     {
         class CachedUpn
         {
-            public string Upn;
-            public DateTime ExpiryTimeUtc;
+            internal string Upn;
+            internal DateTime ExpiryTimeUtc;
         }
 
         static readonly Dictionary<SecurityIdentifier, CachedUpn> CachedUpns = new Dictionary<SecurityIdentifier, CachedUpn>();
 
         [CanBeNull]
-        internal static string GetUserName(bool includeRealm)
+        internal static string GetUsername(bool includeRealm)
         {
             // Side note: This maintains the hack fix mentioned before for https://github.com/npgsql/Npgsql/issues/133.
             // In a nutshell, starting with .NET 4.5 WindowsIdentity inherits from ClaimsIdentity
@@ -31,10 +28,8 @@ namespace Npgsql
 
             // Gets the current user's username for integrated security purposes
             var identity = WindowsIdentity.GetCurrent();
-            if (identity?.User == null)
-            {
+            if (identity.User == null)
                 return null;
-            }
             CachedUpn cachedUpn;
             string upn = null;
 
@@ -117,7 +112,7 @@ namespace Npgsql
 
         static string GetWindowsIdentityUserName(bool includeRealm)
         {
-            var s = WindowsIdentity.GetCurrent()?.Name;
+            var s = WindowsIdentity.GetCurrent().Name;
             if (s == null)
                 return string.Empty;
             var machineAndUser = s.Split('\\');

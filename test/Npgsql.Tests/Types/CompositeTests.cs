@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -183,7 +183,7 @@ namespace Npgsql.Tests.Types
                 {
                     cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.Composite) {
                         Value = expected,
-                        SpecificType = typeof (SomeComposite)
+                        SpecificType = typeof(SomeComposite)
                     });
                     cmd.Parameters.AddWithValue("p2", expected);
                     using (var reader = cmd.ExecuteReader())
@@ -310,7 +310,7 @@ namespace Npgsql.Tests.Types
                 {
                     cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.Array | NpgsqlDbType.Composite) {
                         Value = expected,
-                        SpecificType = typeof (SomeComposite)
+                        SpecificType = typeof(SomeComposite)
                     });
                     cmd.Parameters.AddWithValue("p2", expected); // Infer
                     using (var reader = cmd.ExecuteReader())

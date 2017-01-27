@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -22,23 +22,20 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
-using AsyncRewriter;
-using Npgsql;
+using JetBrains.Annotations;
 using Npgsql.TypeHandlers;
 
 namespace Npgsql.BackendMessages
 {
-    partial class DataRowSequentialMessage : DataRowMessage
+    class DataRowSequentialMessage : DataRowMessage
     {
         /// <summary>
         /// A stream that has been opened on this colun, and needs to be disposed of when the column is consumed.
         /// </summary>
+        [CanBeNull]
         IDisposable _stream;
 
         internal override DataRowMessage Load(ReadBuffer buf)
@@ -56,28 +53,20 @@ namespace Npgsql.BackendMessages
         /// Places our position at the beginning of the given column, after the 4-byte length.
         /// The length is available in ColumnLen.
         /// </summary>
-        [RewriteAsync(withOverride: true)]
-        internal override void SeekToColumn(int column)
+        internal override async Task SeekToColumn(int column, bool async)
         {
             CheckColumnIndex(column);
 
             if (column < Column)
-            {
-                throw new InvalidOperationException(
-                    $"Invalid attempt to read from column ordinal '{column}'. With CommandBehavior.SequentialAccess, you may only read from column ordinal '{Column}' or greater.");
-            }
+                throw new InvalidOperationException($"Invalid attempt to read from column ordinal '{column}'. With CommandBehavior.SequentialAccess, you may only read from column ordinal '{Column}' or greater.");
 
             if (column == Column)
-            {
                 return;
-            }
 
             // Skip to end of column if needed
             var remainingInColumn = (ColumnLen == -1 ? 0 : ColumnLen - PosInColumn);
             if (remainingInColumn > 0)
-            {
-                Buffer.Skip(remainingInColumn);
-            }
+                await Buffer.Skip(remainingInColumn, async);
 
             // Shut down any streaming going on on the colun
             if (_stream != null)
@@ -89,67 +78,57 @@ namespace Npgsql.BackendMessages
             // Skip over unwanted fields
             for (; Column < column - 1; Column++)
             {
-                Buffer.Ensure(4);
+                await Buffer.Ensure(4, async);
                 var len = Buffer.ReadInt32();
                 if (len != -1)
-                {
-                    Buffer.Skip(len);
-                }
+                    await Buffer.Skip(len, async);
             }
 
-            Buffer.Ensure(4);
+            await Buffer.Ensure(4, async);
             ColumnLen = Buffer.ReadInt32();
             PosInColumn = 0;
             Column = column;
         }
 
-        internal override void SeekInColumn(int posInColumn)
+        internal override async Task SeekInColumn(int posInColumn, bool async)
         {
             if (posInColumn < PosInColumn)
-            {
                 throw new InvalidOperationException("Attempt to read a position in the column which has already been read");
-            }
 
-            if (posInColumn > ColumnLen) {
+            if (posInColumn > ColumnLen)
                 posInColumn = ColumnLen;
-            }
 
             if (posInColumn > PosInColumn)
             {
-                Buffer.Skip(posInColumn - PosInColumn);
+                await Buffer.Skip(posInColumn - PosInColumn, async);
                 PosInColumn = posInColumn;
             }
         }
 
         internal override Stream GetStream()
         {
-            Contract.Requires(PosInColumn == 0);
-            if (_stream != null) {
+            Debug.Assert(PosInColumn == 0);
+            if (_stream != null)
                 throw new InvalidOperationException("Attempt to read a position in the column which has already been read");
-            }
             var stream = new SequentialByteaStream(this);
             _stream = stream;
             return stream;
         }
 
-        [RewriteAsync(withOverride: true)]
-        internal override void Consume()
+        internal override async Task Consume(bool async)
         {
             // Skip to end of column if needed
-            var remainingInColumn = (ColumnLen == -1 ? 0 : ColumnLen - PosInColumn);
+            var remainingInColumn = ColumnLen == -1 ? 0 : ColumnLen - PosInColumn;
             if (remainingInColumn > 0)
-            {
-                Buffer.Skip(remainingInColumn);
-            }
+                await Buffer.Skip(remainingInColumn, async);
 
             // Skip over the remaining columns in the row
             for (; Column < NumColumns - 1; Column++)
             {
-                Buffer.Ensure(4);
+                await Buffer.Ensure(4, async);
                 var len = Buffer.ReadInt32();
-                if (len != -1) {
-                    Buffer.Skip(len);
-                }
+                if (len != -1)
+                    await Buffer.Skip(len, async);
             }
         }
     }

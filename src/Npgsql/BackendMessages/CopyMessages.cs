@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -23,8 +23,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace Npgsql.BackendMessages
 {
@@ -34,7 +32,7 @@ namespace Npgsql.BackendMessages
 
         internal bool IsBinary { get; private set; }
         internal short NumColumns { get; private set; }
-        internal List<FormatCode> ColumnFormatCodes { get; private set; }
+        internal List<FormatCode> ColumnFormatCodes { get; }
 
         internal CopyResponseMessageBase()
         {

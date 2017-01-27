@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -23,9 +23,10 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using JetBrains.Annotations;
 
 namespace Npgsql.FrontendMessages
 {
@@ -33,6 +34,7 @@ namespace Npgsql.FrontendMessages
     {
         const byte Code = (byte)'f';
 
+        [CanBeNull]
         readonly string _errorMessage;
         readonly int _errorMessageLen;
 
@@ -40,9 +42,8 @@ namespace Npgsql.FrontendMessages
 
         internal CopyFailMessage(string errorMessage="")
         {
-            if (errorMessage.Length > 1024) {
+            if (errorMessage.Length > 1024)
                 throw new ArgumentException("CopyFail message must be 1024 characters or less");
-            }
             _errorMessage = errorMessage;
             _errorMessageLen = PGUtil.UTF8Encoding.GetByteCount(_errorMessage);
         }
@@ -53,16 +54,11 @@ namespace Npgsql.FrontendMessages
         {
             buf.WriteByte(Code);
             buf.WriteInt32(Length - 1);
-            if (_errorMessageLen == 0)
-            {
-                buf.WriteByte(0);
-            }
-            else
-            {
-                buf.WriteBytesNullTerminated(PGUtil.UTF8Encoding.GetBytes(_errorMessage));
-            }
+            // Error message not supported for now
+            Debug.Assert(_errorMessage == null);
+            buf.WriteByte(0);
         }
 
-        public override string ToString() { return "[CopyFail]"; }
+        public override string ToString() => "[CopyFail]";
     }
 }

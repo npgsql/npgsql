@@ -1,7 +1,7 @@
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -24,7 +24,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
+using System.Data;
 using System.Globalization;
 using System.IO;
 using System.Net;
@@ -32,7 +32,6 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using AsyncRewriter;
 
 namespace Npgsql
 {
@@ -84,44 +83,13 @@ namespace Npgsql
             return (val << shift) | (val >> (sizeof (int) - shift));
         }
 
-        /// <summary>
-        /// Creates a Task&lt;TResult&gt; that's completed successfully with the specified result.
-        /// </summary>
-        /// <remarks>
-        /// In .NET 4.5 Task provides this. In .NET 4.0 with BCL.Async, TaskEx provides this. This
-        /// method wraps the two.
-        /// </remarks>
-        /// <typeparam name="TResult">The type of the result returned by the task.</typeparam>
-        /// <param name="result">The result to store into the completed task.</param>
-        /// <returns>The successfully completed task.</returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static Task<TResult> TaskFromResult<TResult>(TResult result)
-        {
-            return Task.FromResult(result);
-        }
-
-        internal static readonly Task CompletedTask = TaskFromResult(0);
+        internal static readonly Task CompletedTask = Task.FromResult(0);
 
 #if NET45 || NET451
         internal static StringComparer InvariantCaseIgnoringStringComparer => StringComparer.InvariantCultureIgnoreCase;
 #else
         internal static StringComparer InvariantCaseIgnoringStringComparer => CultureInfo.InvariantCulture.CompareInfo.GetStringComparer(CompareOptions.IgnoreCase);
 #endif
-
-        /// <summary>
-        /// Throws an exception with the given string and also invokes a contract failure, allowing the static checker
-        /// to detect scenarios leading up to this error.
-        ///
-        /// See http://blogs.msdn.com/b/francesco/archive/2014/09/12/how-to-use-cccheck-to-prove-no-case-is-forgotten.aspx
-        /// </summary>
-        /// <param name="message">the exception message</param>
-        /// <returns>an exception to be thrown</returns>
-        [ContractVerification(false)]
-        public static Exception ThrowIfReached(string message = null)
-        {
-            Contract.Requires(false);
-            return message == null ? new Exception("An internal Npgsql occured, please open an issue in http://github.com/npgsql/npgsql with this exception's stack trace") : new Exception(message);
-        }
 
         internal static bool IsWindows =>
 #if NET45 || NET451
@@ -159,7 +127,7 @@ namespace Npgsql
         {
             _expiration = expiration == TimeSpan.Zero
                 ? DateTime.MaxValue
-                : DateTime.Now + expiration;
+                : DateTime.UtcNow + expiration;
         }
 
         internal void Check()
@@ -170,12 +138,12 @@ namespace Npgsql
 
         internal bool IsSet => _expiration != DateTime.MaxValue;
 
-        internal bool HasExpired => DateTime.Now >= Expiration;
+        internal bool HasExpired => DateTime.UtcNow >= Expiration;
 
-        internal TimeSpan TimeLeft => IsSet ? Expiration - DateTime.Now : Timeout.InfiniteTimeSpan;
+        internal TimeSpan TimeLeft => IsSet ? Expiration - DateTime.UtcNow : Timeout.InfiniteTimeSpan;
     }
 
-    class CultureSetter : IDisposable
+    sealed class CultureSetter : IDisposable
     {
         readonly CultureInfo _oldCulture;
 
@@ -196,6 +164,37 @@ namespace Npgsql
 #else
             CultureInfo.CurrentCulture = _oldCulture;
 #endif
+        }
+    }
+
+    /// <summary>
+    /// This mechanism is used to temporarily set the current synchronization context to null while
+    /// executing Npgsql code, making all await continuations execute on the thread pool. This replaces
+    /// the need to place ConfigureAwait(false) everywhere, and should be used in all surface async methods,
+    /// without exception.
+    /// </summary>
+    /// <remarks>
+    /// http://stackoverflow.com/a/28307965/640325
+    /// </remarks>
+    static class NoSynchronizationContextScope
+    {
+        internal static Disposable Enter()
+        {
+            var sc = SynchronizationContext.Current;
+            SynchronizationContext.SetSynchronizationContext(null);
+            return new Disposable(sc);
+        }
+
+        internal struct Disposable : IDisposable
+        {
+            readonly SynchronizationContext _synchronizationContext;
+
+            internal Disposable(SynchronizationContext synchronizationContext)
+            {
+                _synchronizationContext = synchronizationContext;
+            }
+
+            public void Dispose() => SynchronizationContext.SetSynchronizationContext(_synchronizationContext);
         }
     }
 }

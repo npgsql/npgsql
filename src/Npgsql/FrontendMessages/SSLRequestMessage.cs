@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -42,6 +42,6 @@ namespace Npgsql.FrontendMessages
             buf.WriteInt32(80877103);
         }
 
-        public override string ToString() { return "[SSLRequest]"; }
+        public override string ToString() => "[SSLRequest]";
     }
 }

@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -23,7 +23,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 
@@ -46,7 +46,7 @@ namespace Npgsql.FrontendMessages
 
         internal override void WriteFully(WriteBuffer buf)
         {
-            Contract.Requires(BackendProcessId != 0);
+            Debug.Assert(BackendProcessId != 0);
 
             buf.WriteInt32(Length);
             buf.WriteInt32(CancelRequestCode);
@@ -54,9 +54,6 @@ namespace Npgsql.FrontendMessages
             buf.WriteInt32(BackendSecretKey);
         }
 
-        public override string ToString()
-        {
-            return $"[CancelRequest(BackendProcessId={BackendProcessId})]";
-        }
+        public override string ToString() => $"[CancelRequest(BackendProcessId={BackendProcessId})]";
     }
 }

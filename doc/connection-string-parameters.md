@@ -6,7 +6,7 @@ Parameter keywords are case-insensitive.
 
 | Parameter | Description                                                             | Default          |
 |-----------|-------------------------------------------------------------------------|------------------|
-| Host      | The hostname or IP address of the PostgreSQL server to connect to.      | *Required*       |
+| Host      | Specifies the host name of the machine on which the server is running. If the value begins with a slash, it is used as the directory for the Unix-domain socket. | *Required*       |
 | Port      | The TCP port of the PostgreSQL server.                                  | 5432             |
 | Database  | The PostgreSQL database to connect to.                                  | Same as Username |
 | Username  | The username to connect with. Not required if using IntegratedSecurity. |                  |
@@ -19,6 +19,7 @@ Parameter keywords are case-insensitive.
 | SSL Mode                 | Controls whether SSL is used, depending on server support. Can be `Require`, `Disable`, or `Prefer`. [See docs for more info](security.md). | Disable |
 | Trust Server Certificate | Whether to trust the server certificate without validating it. [See docs for more info](security.md). | false |
 | Use SSL Stream           | Npgsql uses its own internal implementation of TLS/SSL. Turn this on to use .NET SslStream instead. | false |
+| Check Certificate Revocation | Whether to check the certificate revocation list during authentication. False by default. | false |
 | Integrated Security      | Whether to use integrated security to log in (GSS/SSPI), currently supported on Windows only. [See docs for more info](security.md). | false |
 | Persist Security Info    | Gets or sets a Boolean value that indicates if security-sensitive information, such as the password, is not returned as part of the connection if the connection is open or has ever been in an open state. Since 3.1 only. | false |
 | Kerberos Service Name    | The Kerberos service name to be used for authentication. [See docs for more info](security.md). | postgres |
@@ -45,9 +46,14 @@ Parameter keywords are case-insensitive.
 
 ## Performance
 
-| Parameter                | Description                                                  | Default                      |
-|--------------------------|--------------------------------------------------------------|------------------------------|
-| Buffer Size              | Determines the size of the internal buffer Npgsql uses when reading or writing. Increasing may improve performance if transferring large values from the database. | 8192 |
+| Parameter                  | Description                                                  | Default                      |
+|----------------------------|--------------------------------------------------------------|------------------------------|
+| Max Auto Prepare           | The maximum number SQL statements that can be automatically prepared at any given point. Beyond this number the least-recently-used statement will be recycled. Zero disables automatic preparation. | 0 |
+| Auto Prepare Min Usages    | The minimum number of usages an SQL statement is used before it's automatically prepared. | 5 |
+| Read Buffer Size           | Determines the size of the internal buffer Npgsql uses when reading. Increasing may improve performance if transferring large values from the database. | 8192 |
+| Write Buffer Size          | Determines the size of the internal buffer Npgsql uses when writing. Increasing may improve performance if transferring large values to the database. | 8192 |
+| Socket Receive Buffer Size | Determines the size of socket receive buffer. | System-dependent |
+| Socket Send Buffer Size    | Determines the size of socket send buffer. | System-dependent |
 
 ## Misc
 

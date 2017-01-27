@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -22,13 +22,12 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
-using System.Text;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
+using JetBrains.Annotations;
+using Npgsql.PostgresTypes;
 
 namespace Npgsql.TypeHandlers.NumericHandlers
 {
@@ -36,7 +35,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-numeric.html
     /// </remarks>
     [TypeMapping("numeric", NpgsqlDbType.Numeric, new[] { DbType.Decimal, DbType.VarNumeric }, typeof(decimal), DbType.Decimal)]
-    internal class NumericHandler : SimpleTypeHandler<decimal>,
+    class NumericHandler : SimpleTypeHandler<decimal>,
         ISimpleTypeHandler<byte>, ISimpleTypeHandler<short>, ISimpleTypeHandler<int>, ISimpleTypeHandler<long>,
         ISimpleTypeHandler<float>, ISimpleTypeHandler<double>,
         ISimpleTypeHandler<string>
@@ -59,25 +58,23 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             10000000000000000000000000000M
         };
 
-        internal NumericHandler(IBackendType backendType) : base(backendType) { }
+        internal NumericHandler(PostgresType postgresType) : base(postgresType) { }
 
-        public override decimal Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
+        public override decimal Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             var numGroups = (ushort)buf.ReadInt16();
             var weightFirstGroup = buf.ReadInt16(); // 10000^weight
             var sign = (ushort)buf.ReadInt16(); // 0x0000 = positive, 0x4000 = negative, 0xC000 = NaN
             buf.ReadInt16(); // dcsale. Number of digits (in base 10) to print after decimal separator
 
-            bool overflow = false;
+            var overflow = false;
 
             var result = 0M;
             for (int i = 0, weight = weightFirstGroup + 7; i < numGroups; i++, weight--)
             {
                 var group = (ushort)buf.ReadInt16();
                 if (weight < 0 || weight >= Decimals.Length)
-                {
                     overflow = true;
-                }
                 else
                 {
                     try
@@ -100,40 +97,26 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             return sign == 0x4000 ? -result : result;
         }
 
-        byte ISimpleTypeHandler<byte>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return (byte)Read(buf, len, fieldDescription);
-        }
+        byte ISimpleTypeHandler<byte>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => (byte)Read(buf, len, fieldDescription);
 
-        short ISimpleTypeHandler<short>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return (short)Read(buf, len, fieldDescription);
-        }
+        short ISimpleTypeHandler<short>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => (short)Read(buf, len, fieldDescription);
 
-        int ISimpleTypeHandler<int>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return (int)Read(buf, len, fieldDescription);
-        }
+        int ISimpleTypeHandler<int>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => (int)Read(buf, len, fieldDescription);
 
-        long ISimpleTypeHandler<long>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return (long)Read(buf, len, fieldDescription);
-        }
+        long ISimpleTypeHandler<long>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => (long)Read(buf, len, fieldDescription);
 
-        float ISimpleTypeHandler<float>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return (float)Read(buf, len, fieldDescription);
-        }
+        float ISimpleTypeHandler<float>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => (float)Read(buf, len, fieldDescription);
 
-        double ISimpleTypeHandler<double>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return (double)Read(buf, len, fieldDescription);
-        }
+        double ISimpleTypeHandler<double>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => (double)Read(buf, len, fieldDescription);
 
-        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return Read(buf, len, fieldDescription).ToString();
-        }
+        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => Read(buf, len, fieldDescription).ToString();
 
         void GetNumericHeader(decimal num, out int numGroups, out int weight, out int fractionDigits)
         {
@@ -161,13 +144,11 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             numGroups = integerGroups + fractionGroups;
         }
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
         {
             decimal num;
             if (value is decimal)
-            {
                 num = (decimal)value;
-            }
             else
             {
                 num = Convert.ToDecimal(value);
@@ -181,7 +162,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             if (num == 0M)
                 return 4 * sizeof(short) + 0;
 
-            bool negative = num < 0;
+            var negative = num < 0;
             if (negative)
                 num = -num;
 
@@ -191,16 +172,14 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             return 4 * sizeof(short) + numGroups * sizeof(short);
         }
 
-        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
+        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
         {
             var num = (decimal) (parameter?.ConvertedValue ?? value);
             if (num == 0M)
-            {
                 buf.WriteInt64(0);
-            }
             else
             {
-                bool negative = num < 0;
+                var negative = num < 0;
                 if (negative)
                     num = -num;
 

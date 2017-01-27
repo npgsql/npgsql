@@ -1,0 +1,221 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<DataViewSupport xmlns="http://schemas.microsoft.com/VisualStudio/2007/07/Data/DataViewSupport">
+  
+  <Define name="Columns">
+    <Selection type="Column" restrictions="{Table.table_catalog}, {Table.table_schema},{Table.table_name}">
+      <SelectionNode>
+        <DisplayName>{column_name}</DisplayName>
+        <Icon when="{InPrimaryKey} = true" name="PrimaryKey" assembly="" />
+        <Icon name="Column" />
+        <PropertiesRef name="Column Properties"/>
+      </SelectionNode>
+    </Selection>
+  </Define>
+
+  <Define name="Constraints">
+    <Selection type="Constraint" restrictions="{Table.table_catalog},{Table.table_schema},{Table.table_name}">
+      <SelectionNode>
+        <DisplayName>{constraint_name}</DisplayName>
+        <Icon name="PrimaryKey" when="{constraint_type} = 'PRIMARY KEY'" />
+        <Icon name="UniqueKey" when="{constraint_type} = 'UNIQUE'" />
+        <Icon name="ForeignKey" when="{constraint_type} = 'FOREIGN KEY'" />
+        <Icon name="CheckConstraint" when="{constraint_type} = 'CHECK'" />
+        <PropertiesRef name="Constraint Properties"/>
+      </SelectionNode>
+    </Selection>
+  </Define>
+
+  <Define name="Table Properties">
+    <Properties>
+      <Property name="table_name">
+        <DisplayName>Name</DisplayName>
+      </Property>
+      <Property name="table_schema">
+        <DisplayName>Schema</DisplayName>
+      </Property>
+    </Properties>
+  </Define>
+
+  <Define name="Column Properties">
+    <Properties>
+      <Property name="column_name">
+        <DisplayName>Name</DisplayName>
+      </Property>
+      <Property name="table_name">
+        <DisplayName>Table Name</DisplayName>
+      </Property>
+      <Property name="table_schema">
+        <DisplayName>Table Schema</DisplayName>
+      </Property>
+      <Property name="character_maximum_length">
+        <DisplayName>Character Max Length</DisplayName>
+      </Property>
+      <Property name="character_octet_length">
+        <DisplayName>Character Octet Length</DisplayName>
+      </Property>
+      <Property name="column_default">
+        <DisplayName>Default</DisplayName>
+      </Property>
+      <Property name="data_type">
+        <DisplayName>Data Type</DisplayName>
+      </Property>
+      <Property name="datetime_precision">
+        <DisplayName>Precision</DisplayName>
+        <Category>Date/Time</Category>
+      </Property>
+      <Property name="is_nullable">
+        <DisplayName>Nullable?</DisplayName>
+      </Property>
+      <Property name="numeric_precision">
+        <DisplayName>Precision</DisplayName>
+        <Category>Numeric</Category>
+      </Property>
+      <Property name="numeric_precision_radix">
+        <DisplayName>Precision Radix</DisplayName>
+        <Category>Numeric</Category>
+      </Property>
+      <Property name="numeric_scale">
+        <DisplayName>Scale</DisplayName>
+        <Category>Numeric</Category>
+      </Property>
+      <Property name="ordinal_position">
+        <DisplayName>Ordinal Position</DisplayName>
+      </Property>
+    </Properties>
+  </Define>
+
+  <Define name="Constraint Properties">
+    <Properties>
+      <Property name="CONSTRAINT_NAME">
+        <DisplayName>Name</DisplayName>
+      </Property>
+      <Property name="TABLE_NAME">
+        <DisplayName>Name</DisplayName>
+      </Property>
+      <Property name="TABLE_SCHEMA">
+        <DisplayName>Schema</DisplayName>
+      </Property>
+      <Property name="CONSTRAINT_TYPE">
+        <DisplayName>Type</DisplayName>
+      </Property>
+      <Property name="INITIALLY_DEFERRED">
+        <DisplayName>Initially Deferred</DisplayName>
+      </Property>
+      <Property name="IS_DEFERRABLE">
+        <DisplayName>Is Deferrable?</DisplayName>
+      </Property>
+    </Properties>
+  </Define>
+
+  <Define name="Global New Query Command">
+    <Command guid="501822E1-B5AF-11d0-B4DC-00A0C91506EF" cmdid="0x3528" provider="884DD964-5327-461f-9F06-6484DD540F8F" />
+  </Define>
+
+  <Define name="Retrieve Data Command">
+    <Command guid="501822E1-B5AF-11d0-B4DC-00A0C91506EF" cmdid="0x3060" provider="884DD964-5327-461f-9F06-6484DD540F8F" />
+  </Define>
+
+  <Views>
+    <View name="ByType">
+      <DisplayName>By Type</DisplayName>
+      <GlobalCommands>
+        <CommandRef name="Global New Query Command" />
+      </GlobalCommands>
+      <ConnectionNode>
+        <InitialDisplayName>{Root.Database}</InitialDisplayName>
+        <Children>
+
+          <StaticNode nodeId="tables">
+            <DisplayName>Tables</DisplayName>
+            <Children>
+              <Selection type="table" filter="table_schema NOT IN ('pg_catalog', 'information_schema')">
+                <SelectionNode nodeId="Table">
+                  <DisplayName when="{table_schema} = 'public'">{table_name}</DisplayName>
+                  <DisplayName when="NOT ({table_schema} = 'public')">{table_schema}.{table_name}</DisplayName>
+                  <Icon name="Table" />
+                  <PropertiesRef name="Table Properties"/>
+                  <Commands>
+                    <CommandRef name="Retrieve Data Command" />
+                  </Commands>
+                  <Children>
+                    <ChildListRef name="Columns" />
+                    <ChildListRef name="Constraints" />
+                  </Children>
+                </SelectionNode>
+              </Selection>
+            </Children>
+          </StaticNode>
+
+          <StaticNode nodeId="views">
+            <DisplayName>Views</DisplayName>
+            <Children>
+              <Selection type="view" filter="table_schema NOT IN ('pg_catalog', 'information_schema')">
+                <SelectionNode nodeId="Table">
+                  <DisplayName when="{table_schema} = 'public'">{table_name}</DisplayName>
+                  <DisplayName when="NOT ({table_schema} = 'public')">{table_schema}.{table_name}</DisplayName>
+                  <Icon name="View" />
+                  <PropertiesRef name="Table Properties"/>
+                  <Commands>
+                    <CommandRef name="Retrieve Data Command" />
+                  </Commands>
+                  <Children>
+                    <ChildListRef name="Columns" />
+                  </Children>
+                </SelectionNode>
+              </Selection>
+            </Children>
+          </StaticNode>
+
+        </Children>
+      </ConnectionNode>
+    </View>  <!-- ByType -->
+
+    <View name="BySchema">
+      <DisplayName>By Schema</DisplayName>
+      <ConnectionNode>
+        <InitialDisplayName>{Root.Database}</InitialDisplayName>
+        <Children>
+          <Selection type="Schema" filter="schema_name NOT LIKE 'pg_%' AND schema_name &lt;&gt; 'information_schema'">
+            <SelectionNode nodeId="Schema">
+              <DisplayName>{schema_name}</DisplayName>
+              <Icon name="Schema" />
+              <Children>
+                
+                <Selection type="table" restrictions="{Root.Database},{Schema.schema_name}">
+                  <SelectionNode nodeId="Table">
+                    <DisplayName>{table_name}</DisplayName>
+                    <Icon name="Table" />
+                    <PropertiesRef name="Table Properties"/>
+                    <Commands>
+                      <CommandRef name="Retrieve Data Command" />
+                    </Commands>
+                    <Children>
+                      <ChildListRef name="Columns" />
+                      <ChildListRef name="Constraints" />
+                    </Children>
+                  </SelectionNode>
+                </Selection>
+
+                <Selection type="view" restrictions="{Root.Database},{Schema.schema_name}">
+                  <SelectionNode nodeId="Table">
+                    <DisplayName>{table_name}</DisplayName>
+                    <Icon name="Table" />
+                    <PropertiesRef name="Table Properties"/>
+                    <Commands>
+                      <CommandRef name="Retrieve Data Command" />
+                    </Commands>
+                    <Children>
+                      <ChildListRef name="Columns" />
+                    </Children>
+                  </SelectionNode>
+                </Selection>
+                
+              </Children>
+            </SelectionNode>
+          </Selection>
+        </Children>
+      </ConnectionNode>
+    </View>  <!-- BySchema-->
+    
+  </Views>
+</DataViewSupport>

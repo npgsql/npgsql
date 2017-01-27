@@ -1,7 +1,7 @@
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -25,19 +25,16 @@ using System;
 using System.Data;
 using System.IO;
 using System.Linq;
-using NLog.Config;
-using NLog.Targets;
-using NLog;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Console;
 using Npgsql.Logging;
-
+using Npgsql.Tests.Util.Logging;
 using NUnit.Framework;
 
 namespace Npgsql.Tests
 {
     public abstract class TestBase
     {
-        static readonly Logger _log = LogManager.GetCurrentClassLogger();
-
         /// <summary>
         /// The connection string that will be used when opening the connection to the tests database.
         /// May be overridden in fixtures, e.g. to set special connection parameters
@@ -48,26 +45,7 @@ namespace Npgsql.Tests
         string _connectionString;
 
         static bool _loggingSetUp;
-
-        /// <summary>
-        /// New ConectionString property crafted to change the database name from original TestBase.ConnectionString to append a "_ef" suffix.
-        /// i.e.: the TestBase.ConnectionString database is npgsql_tests. Entity Framework database will be npgsql_tests_ef.
-        /// </summary>
-        protected virtual string ConnectionStringEF
-        {
-            get
-            {
-                if (connectionStringEF == null)
-                {
-                    //Reuse all strings just add _ef at end of database name for
-                    var connectionSB = new NpgsqlConnectionStringBuilder(ConnectionString);
-                    connectionSB.Database += "_ef";
-                    connectionStringEF = connectionSB.ConnectionString;
-                }
-                return connectionStringEF;
-            }
-        }
-        string connectionStringEF;
+        protected static TestLoggerSink TestLoggerSink { get; } = new TestLoggerSink();
 
         /// <summary>
         /// Unless the NPGSQL_TEST_DB environment variable is defined, this is used as the connection string for the
@@ -77,33 +55,35 @@ namespace Npgsql.Tests
 
         #region Setup / Teardown
 
+        [SetUp]
+        public void Setup()
+        {
+            TestLoggerSink.Clear();
+        }
+
         [OneTimeSetUp]
         public virtual void TestFixtureSetup()
         {
-            SetupLogging();
-            _log.Debug("Connection string is: " + ConnectionString);
+            if (!_loggingSetUp)
+                SetupLogging();
         }
 
         protected virtual void SetupLogging()
         {
-#if LOGGING_ENABLED
-            var config = new LoggingConfiguration();
-            var consoleTarget = new ConsoleTarget
-            {
-                Layout = @"${message} ${exception:format=tostring}"
-            };
-            config.AddTarget("console", consoleTarget);
-            var rule = new LoggingRule("*", LogLevel.Debug, consoleTarget);
-            config.LoggingRules.Add(rule);
-            NLog.LogManager.Configuration = config;
+            NpgsqlLogManager.LoggerFactory = new LoggerFactory();
+            NpgsqlLogManager.LoggerFactory.AddProvider(new TestLoggerProvider(TestLoggerSink));
 
-            if (!_loggingSetUp)
+            var logLevelText = Environment.GetEnvironmentVariable("NPGSQL_TEST_LOGGING");
+            if (logLevelText != null)
             {
-                NpgsqlLogManager.Provider = new NLogLoggingProvider();
+                LogLevel logLevel;
+                if (!Enum.TryParse(logLevelText, true, out logLevel))
+                    throw new ArgumentOutOfRangeException($"Invalid loglevel in NPGSQL_TEST_LOGGING: {logLevelText}");
+                NpgsqlLogManager.LoggerFactory.AddConsole((text, level) => level >= logLevel);
                 NpgsqlLogManager.IsParameterLoggingEnabled = true;
-                _loggingSetUp = true;
             }
-#endif
+
+            _loggingSetUp = true;
         }
 
         #endregion
@@ -138,16 +118,10 @@ namespace Npgsql.Tests
         protected static bool IsSequential(CommandBehavior behavior)
             => (behavior & CommandBehavior.SequentialAccess) != 0;
 
-        /// <summary>
-        /// In PG under 9.1 you can't do SELECT pg_sleep(2) in binary because that function returns void and PG doesn't know
-        /// how to transfer that. So cast to text server-side.
-        /// </summary>
-        /// <param name="seconds"></param>
-        /// <returns></returns>
-        protected static NpgsqlCommand CreateSleepCommand(NpgsqlConnection conn, int seconds)
-        {
-            return new NpgsqlCommand(string.Format("SELECT pg_sleep({0}){1}", seconds, conn.PostgreSqlVersion < new Version(9, 1, 0) ? "::TEXT" : ""), conn);
-        }
+        // In PG under 9.1 you can't do SELECT pg_sleep(2) in binary because that function returns void and PG doesn't know
+        // how to transfer that. So cast to text server-side.
+        protected static NpgsqlCommand CreateSleepCommand(NpgsqlConnection conn, int seconds = 1000)
+            => new NpgsqlCommand($"SELECT pg_sleep({seconds}){(conn.PostgreSqlVersion < new Version(9, 1, 0) ? "::TEXT" : "")}", conn);
 
         #endregion
     }

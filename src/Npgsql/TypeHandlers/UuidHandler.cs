@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -22,17 +22,11 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Diagnostics;
-using System.Diagnostics.Contracts;
-using System.Globalization;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
+using JetBrains.Annotations;
+using Npgsql.PostgresTypes;
 
 namespace Npgsql.TypeHandlers
 {
@@ -40,13 +34,12 @@ namespace Npgsql.TypeHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-uuid.html
     /// </remarks>
     [TypeMapping("uuid", NpgsqlDbType.Uuid, DbType.Guid, typeof(Guid))]
-    internal class UuidHandler : SimpleTypeHandler<Guid>, ISimpleTypeHandler<string>
+    class UuidHandler : SimpleTypeHandler<Guid>, ISimpleTypeHandler<string>
     {
-        internal UuidHandler(IBackendType backendType) : base(backendType) { }
+        internal UuidHandler(PostgresType postgresType) : base(postgresType) { }
 
-        public override Guid Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
+        public override Guid Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
-            buf.Ensure(16);
             var a = buf.ReadInt32();
             var b = buf.ReadInt16();
             var c = buf.ReadInt16();
@@ -55,37 +48,30 @@ namespace Npgsql.TypeHandlers
             return new Guid(a, b, c, d);
         }
 
-        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            return Read(buf, len, fieldDescription).ToString();
-        }
+        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => Read(buf, len, fieldDescription).ToString();
 
         #region Write
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
         {
             var asString = value as string;
             if (value is string)
             {
                 var converted = Guid.Parse(asString);
                 if (parameter == null)
-                {
                     throw CreateConversionButNoParamException(value.GetType());
-                }
                 parameter.ConvertedValue = converted;
             }
             else if (!(value is Guid))
-            {
                 throw CreateConversionException(value.GetType());
-            }
             return 16;
         }
 
-        public override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
+        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
         {
-            if (parameter?.ConvertedValue != null) {
+            if (parameter?.ConvertedValue != null)
                 value = parameter.ConvertedValue;
-            }
 
             var bytes = ((Guid)value).ToByteArray();
 

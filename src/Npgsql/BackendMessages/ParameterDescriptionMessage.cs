@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -28,9 +28,10 @@ using System.Text;
 
 namespace Npgsql.BackendMessages
 {
-    internal class ParameterDescriptionMessage : IBackendMessage
+    class ParameterDescriptionMessage : IBackendMessage
     {
-        internal List<uint> TypeOIDs { get; private set; }
+        // ReSharper disable once InconsistentNaming
+        internal List<uint> TypeOIDs { get; }
 
         internal ParameterDescriptionMessage()
         {
@@ -41,9 +42,8 @@ namespace Npgsql.BackendMessages
         {
             var numParams = buf.ReadInt16();
             TypeOIDs.Clear();
-            for (var i = 0; i < numParams; i++) {
+            for (var i = 0; i < numParams; i++)
                 TypeOIDs.Add(buf.ReadUInt32());
-            }
             return this;
         }
 

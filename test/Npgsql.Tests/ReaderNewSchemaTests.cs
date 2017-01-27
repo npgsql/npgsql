@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2016 The Npgsql Development Team
+// Copyright (C) 2017 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -471,6 +471,24 @@ namespace Npgsql.Tests
                     var columns = reader.GetColumnSchema();
                     Assert.That(columns[0].UdtAssemblyQualifiedName, Is.Null);
                     Assert.That(columns[1].UdtAssemblyQualifiedName, Is.Null);
+                }
+            }
+        }
+
+        [Test]
+        public void PostgresType()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo INTEGER)");
+
+                using (var cmd = new NpgsqlCommand("SELECT foo,8 FROM data", conn))
+                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                {
+                    var columns = reader.GetColumnSchema();
+                    var intType = columns[0].PostgresType;
+                    Assert.That(columns[1].PostgresType, Is.SameAs(intType));
+                    Assert.That(intType.Name, Is.EqualTo("int4"));
                 }
             }
         }
