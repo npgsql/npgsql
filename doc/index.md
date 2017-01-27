@@ -44,8 +44,7 @@ In some cases you'll want to install Npgsql into your [Global Assembly Cache (GA
 
 ## Visual Studio Integration
 
-If you'd like to have Visual Studio Design-Time support, you can try our [experimental DDEX installer](https://github.com/npgsql/npgsql/releases).
-Follow the [instructions](ddex.md) in the documentation.
+If you'd like to have Visual Studio Design-Time support, give our [VSIX extension a try](ddex.md).
 
 ## Unstable Packages
 

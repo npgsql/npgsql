@@ -1,6 +1,6 @@
 # Visual Studio Integration
 
-Npgsql has a Visual Studio extension (VSIX) which integrates PostgreSQL access into Visual Studio. It allows connecting to PostgreSQL from within Visual Studio's Server Explorer, create an Entity Framework 6 model from an existing database, etc.
+Npgsql has a Visual Studio extension (VSIX) which integrates PostgreSQL access into Visual Studio. It allows connecting to PostgreSQL from within Visual Studio's Server Explorer, create an Entity Framework 6 model from an existing database, etc. The extension can be installed directly from [the Visual Studio Marketplace page](https://marketplace.visualstudio.com/vsgallery/258be600-452d-4387-9a2f-89ae10e84ae0).
 
 # Visual Studio Compatibility
 
