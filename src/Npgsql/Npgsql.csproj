@@ -23,12 +23,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="**\*.cs" Exclude="bin\**;obj\**" />
     <EmbeddedResource Include="NpgsqlMetaData.xml" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="NETStandard.Library" Version="1.6.1" />
     <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.3.0" />
     <PackageReference Include="Microsoft.ApiDesignGuidelines.Analyzers" Version="1.2.0-beta2" PrivateAssets="All" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="1.1.0" />
