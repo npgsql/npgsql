@@ -142,7 +142,7 @@ namespace Npgsql
                 Monitor.Exit(this);
                 try
                 {
-                    WaitForTask(tcs.Task, timeout.TimeLeft);
+                    WaitForTask(tcs.Task, timeout);
                 }
                 catch
                 {
@@ -366,20 +366,31 @@ namespace Npgsql
             return PGUtil.CompletedTask;
         }
 
-        void WaitForTask(Task task, TimeSpan timeout)
+        void WaitForTask(Task task, NpgsqlTimeout timeout)
         {
-            if (!task.Wait(timeout))
-                throw new NpgsqlException($"The connection pool has been exhausted, either raise MaxPoolSize (currently {_max}) or Timeout (currently {ConnectionString.Timeout} seconds)");
+            if (timeout.IsSet)
+            {
+                var timeLeft = timeout.TimeLeft;
+                if (timeLeft <= TimeSpan.Zero || !task.Wait(timeLeft))
+                    throw new NpgsqlException($"The connection pool has been exhausted, either raise MaxPoolSize (currently {_max}) or Timeout (currently {ConnectionString.Timeout} seconds)");
+            }
+            else
+                task.Wait();
         }
 
-        async Task WaitForTaskAsync(Task task, TimeSpan timeout, CancellationToken cancellationToken)
+        async Task WaitForTaskAsync(Task task, NpgsqlTimeout timeout, CancellationToken cancellationToken)
         {
-            var timeoutTask = Task.Delay(timeout, cancellationToken);
-            if (task != await Task.WhenAny(task, timeoutTask).ConfigureAwait(false))
+            if (timeout.IsSet)
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                throw new NpgsqlException($"The connection pool has been exhausted, either raise MaxPoolSize (currently {_max}) or Timeout (currently {ConnectionString.Timeout} seconds)");
+                var timeLeft = timeout.TimeLeft;
+                if (timeLeft <= TimeSpan.Zero || task != await Task.WhenAny(task, Task.Delay(timeLeft)).ConfigureAwait(false))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    throw new NpgsqlException($"The connection pool has been exhausted, either raise MaxPoolSize (currently {_max}) or Timeout (currently {ConnectionString.Timeout} seconds)");
+                }
             }
+            else
+                await task.ConfigureAwait(false);
         }
 
         public override string ToString() => $"[{Busy} busy, {Idle.Count} idle, {Waiting.Count} waiting]";
