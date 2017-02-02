@@ -405,10 +405,19 @@ namespace Npgsql
 
                 await Authenticate(username, timeout, async, cancellationToken);
 
-                var keyDataMsg = await ReadExpecting<BackendKeyDataMessage>(async);
-                BackendProcessId = keyDataMsg.BackendProcessId;
-                _backendSecretKey = keyDataMsg.BackendSecretKey;
-                await ReadExpecting<ReadyForQueryMessage>(async);
+                // We treat BackendKeyData as optional because some PostgreSQL-like database
+                // don't send it (e.g. CockroachDB)
+                var msg = await ReadMessage(async);
+                if (msg.Code == BackendMessageCode.BackendKeyData)
+                {
+                    var keyDataMsg = (BackendKeyDataMessage)msg;
+                    BackendProcessId = keyDataMsg.BackendProcessId;
+                    _backendSecretKey = keyDataMsg.BackendSecretKey;
+                    msg = await ReadMessage(async);
+                }
+                if (msg.Code != BackendMessageCode.ReadyForQuery)
+                    throw new NpgsqlException($"Received backend message {msg.Code} while expecting ReadyForQuery. Please file a bug.");
+
                 State = ConnectorState.Ready;
 
                 await TypeHandlerRegistry.Setup(this, timeout, async);
@@ -1170,6 +1179,8 @@ namespace Npgsql
         /// </summary>
         internal void CancelRequest()
         {
+            if (BackendProcessId == 0)
+                throw new NpgsqlException("Cancellation not supported on this database (no BackendKeyData was received during connection)");
             Log.Cancel(Id);
             lock (CancelLock)
             {
