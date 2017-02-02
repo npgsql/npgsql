@@ -43,7 +43,10 @@ namespace Npgsql
         /// </summary>
         public uint OID { get; internal set; }
 
-        internal List<NpgsqlParameter> InputParameters { get; } = new List<NpgsqlParameter>();
+        /// <summary>
+        /// The input parameters sent with this statement.
+        /// </summary>
+        public List<NpgsqlParameter> InputParameters { get; } = new List<NpgsqlParameter>();
 
         /// <summary>
         /// The RowDescription message for this query. If null, the query does not return rows (e.g. INSERT)
