@@ -83,10 +83,7 @@ namespace Npgsql
 
         UpdateRowSource _updateRowSource = UpdateRowSource.Both;
 
-        /// <summary>
-        /// Indicates whether the CommandText has already been parsed into statements.
-        /// </summary>
-        bool _isParsed;
+        bool IsExplicitlyPrepared => _connectorPreparedOn != null;
 
         static readonly SingleThreadSynchronizationContext SingleThreadSynchronizationContext = new SingleThreadSynchronizationContext("NpgsqlRemainingAsyncSendWorker");
 
@@ -156,7 +153,8 @@ namespace Npgsql
                     throw new ArgumentNullException(nameof(value));
 
                 _commandText = value;
-                Invalidate();
+                ResetExplicitPreparation();
+                // TODO: Technically should do this also if the parameter list (or type) changes
             }
         }
 
@@ -350,11 +348,7 @@ namespace Npgsql
             }
         }
 
-        void Invalidate()
-        {
-            _isParsed = false;
-            _statements.Clear();
-        }
+        void ResetExplicitPreparation() => _connectorPreparedOn = null;
 
         #endregion State management
 
@@ -581,8 +575,6 @@ namespace Npgsql
             foreach (var s in _statements)
                 if (s.InputParameters.Count > 65535)
                     throw new Exception("A statement cannot have more than 65535 parameters");
-
-            _isParsed = true;
         }
 
         #endregion
@@ -609,14 +601,16 @@ namespace Npgsql
             var connector = Connection.Connector;
             Debug.Assert(connector != null);
 
-            if (_isParsed)
+            if (IsExplicitlyPrepared)
             {
-                if (_connectorPreparedOn != null && _connectorPreparedOn != Connection.Connector)
+                Debug.Assert(_connectorPreparedOn != null);
+                if (_connectorPreparedOn != Connection.Connector)
                 {
                     // The command was prepared, but since then the connector has changed. Detach all prepared statements.
                     foreach (var s in _statements)
                         s.PreparedStatement = null;
-                    _connectorPreparedOn = null;
+                    ResetExplicitPreparation();
+                    ProcessRawQuery();
                 }
             }
             else

@@ -1004,5 +1004,34 @@ namespace Npgsql.Tests
                 }
             }
         }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1429")]
+        public void SameCommandDifferentParamValues()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+            {
+                cmd.Parameters.AddWithValue("p", 8);
+                cmd.ExecuteNonQuery();
+
+                cmd.Parameters[0].Value = 9;
+                Assert.That(cmd.ExecuteScalar(), Is.EqualTo(9));
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1429")]
+        public void SameCommandDifferentParamInstances()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+            {
+                cmd.Parameters.AddWithValue("p", 8);
+                cmd.ExecuteNonQuery();
+
+                cmd.Parameters.RemoveAt(0);
+                cmd.Parameters.AddWithValue("p", 9);
+                Assert.That(cmd.ExecuteScalar(), Is.EqualTo(9));
+            }
+        }
     }
 }
