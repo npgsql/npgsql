@@ -421,7 +421,7 @@ namespace Npgsql
                 State = ConnectorState.Ready;
 
                 await TypeHandlerRegistry.Setup(this, timeout, async);
-                if (Settings.Pooling)
+                if (Settings.Pooling && SupportsDiscard)
                     GenerateResetMessage();
                 Counters.HardConnectsPerSecond.Increment();
                 Log.OpenedConnection(Id, Host, Port);
@@ -1443,7 +1443,7 @@ namespace Npgsql
                 throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {TransactionStatus} of enum {nameof(TransactionStatus)}. Please file a bug.");
             }
 
-            if (!Settings.NoResetOnClose)
+            if (!Settings.NoResetOnClose && SupportsDiscard)
             {
                 if (PreparedStatementManager.NumPrepared > 0)
                 {
@@ -1822,6 +1822,7 @@ namespace Npgsql
         bool SupportsDiscardSequences => ServerVersion >= new Version(9, 4, 0);
         bool SupportsUnlisten => ServerVersion >= new Version(6, 4, 0) && !IsRedshift;
         bool SupportsDiscardTemp => ServerVersion >= new Version(8, 3, 0);
+        bool SupportsDiscard => ServerVersion >= new Version(8, 3, 0); // Redshift is 8.0.2
         internal bool SupportsRangeTypes => ServerVersion >= new Version(9, 2, 0);
         internal bool UseConformantStrings { get; private set; }
         internal bool SupportsEStringPrefix => ServerVersion >= new Version(8, 1, 0);
