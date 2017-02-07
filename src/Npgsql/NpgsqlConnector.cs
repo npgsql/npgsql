@@ -1616,7 +1616,14 @@ namespace Npgsql
             catch (Exception e)
             {
                 Log.Logger.LogError(NpgsqlEventId.KeepaliveFailure, e, "[{ConnectorId}] Keepalive failure", Id);
-                Break();
+                try
+                {
+                    Break();
+                }
+                catch (Exception e2)
+                {
+                    Log.Logger.LogError(NpgsqlEventId.KeepaliveFailure, e2, "[{ConnectorId}] Further exception while breaking connector on keepalive failure", Id);
+                }
             }
         }
 
