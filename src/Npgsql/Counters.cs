@@ -62,19 +62,26 @@ namespace Npgsql
             }
             catch (Exception e)
             {
-                Log.Logger.LogDebug("Exception while checking for performance country category (counters will be disabled)", e);
+                Log.Logger.LogDebug("Exception while checking for performance counter category (counters will be disabled)", e);
             }
 #endif
 
-            HardConnectsPerSecond         = new Counter(enabled, nameof(HardConnectsPerSecond));
-            HardDisconnectsPerSecond      = new Counter(enabled, nameof(HardDisconnectsPerSecond));
-            NumberOfActiveConnectionPools = new Counter(enabled, nameof(NumberOfActiveConnectionPools));
-            NumberOfNonPooledConnections  = new Counter(enabled, nameof(NumberOfNonPooledConnections));
-            NumberOfPooledConnections     = new Counter(enabled, nameof(NumberOfPooledConnections));
-            SoftConnectsPerSecond         = new Counter(expensiveEnabled, nameof(SoftConnectsPerSecond));
-            SoftDisconnectsPerSecond      = new Counter(expensiveEnabled, nameof(SoftDisconnectsPerSecond));
-            NumberOfActiveConnections     = new Counter(expensiveEnabled, nameof(NumberOfActiveConnections));
-            NumberOfFreeConnections       = new Counter(expensiveEnabled, nameof(NumberOfFreeConnections));
+            try
+            {
+                HardConnectsPerSecond = new Counter(enabled, nameof(HardConnectsPerSecond));
+                HardDisconnectsPerSecond = new Counter(enabled, nameof(HardDisconnectsPerSecond));
+                NumberOfActiveConnectionPools = new Counter(enabled, nameof(NumberOfActiveConnectionPools));
+                NumberOfNonPooledConnections = new Counter(enabled, nameof(NumberOfNonPooledConnections));
+                NumberOfPooledConnections = new Counter(enabled, nameof(NumberOfPooledConnections));
+                SoftConnectsPerSecond = new Counter(expensiveEnabled, nameof(SoftConnectsPerSecond));
+                SoftDisconnectsPerSecond = new Counter(expensiveEnabled, nameof(SoftDisconnectsPerSecond));
+                NumberOfActiveConnections = new Counter(expensiveEnabled, nameof(NumberOfActiveConnections));
+                NumberOfFreeConnections = new Counter(expensiveEnabled, nameof(NumberOfFreeConnections));
+            }
+            catch (Exception e)
+            {
+                Log.Logger.LogDebug("Exception while setting up performance counter (counters will be disabled)", e);
+            }
         }
     }
 
