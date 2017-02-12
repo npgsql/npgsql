@@ -1340,10 +1340,7 @@ namespace Npgsql
                 // SemaphoreSlim.Dispose() isn't threadsafe - we shouldn't invoke it while the keepalive timer is
                 // trying to wait on it. So we need a standard lock to protect it.
                 lock (_keepAliveDisposeLock)
-                {
                     _keepAliveLock.Dispose();
-                    _keepAliveLock = null;
-                }
             }
         }
 
