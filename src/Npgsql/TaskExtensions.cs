@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace Npgsql
 {
-    internal static class TaskExtensions
+    static class TaskExtensions
     {
         /// <summary>
         /// Utility that simplifies awaiting a task with a timeout. If the given task does not
@@ -22,10 +22,9 @@ namespace Npgsql
             if (!timeout.IsSet)
                 return await task;
             var timeLeft = timeout.TimeLeft;
-            if (timeLeft < TimeSpan.Zero)
+            if (timeLeft <= TimeSpan.Zero)
                 throw new TimeoutException();
-            var timeoutTask = Task.Delay(timeLeft);
-            if (task != await Task.WhenAny(task, timeoutTask))
+            if (task != await Task.WhenAny(task, Task.Delay(timeLeft)))
                 throw new TimeoutException();
             return await task;
         }
@@ -45,10 +44,9 @@ namespace Npgsql
                 return;
             }
             var timeLeft = timeout.TimeLeft;
-            if (timeLeft < TimeSpan.Zero)
+            if (timeLeft <= TimeSpan.Zero)
                 throw new TimeoutException();
-            var timeoutTask = Task.Delay(timeLeft);
-            if (task != await Task.WhenAny(task, timeoutTask))
+            if (task != await Task.WhenAny(task, Task.Delay(timeLeft)))
                 throw new TimeoutException();
             await task;
         }

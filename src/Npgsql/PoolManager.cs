@@ -172,18 +172,25 @@ namespace Npgsql
                 {
                     if (async)
                     {
-                        // TODO: Async cancellation
-                        var timeoutTask = Task.Delay(timeout.TimeLeft);
-                        if (tcs.Task != await Task.WhenAny(tcs.Task, timeoutTask))
+                        if (timeout.IsSet)
                         {
-                            //cancellationToken.ThrowIfCancellationRequested();
-                            throw new NpgsqlException($"The connection pool has been exhausted, either raise MaxPoolSize (currently {_max}) or Timeout (currently {Settings.Timeout} seconds)");
+                            var timeLeft = timeout.TimeLeft;
+                            if (timeLeft <= TimeSpan.Zero || tcs.Task != await Task.WhenAny(tcs.Task, Task.Delay(timeLeft)))
+                                throw new NpgsqlException($"The connection pool has been exhausted, either raise MaxPoolSize (currently {_max}) or Timeout (currently {Settings.Timeout} seconds)");
                         }
+                        else
+                            await tcs.Task;
                     }
                     else
                     {
-                        if (!tcs.Task.Wait(timeout.TimeLeft))
-                            throw new NpgsqlException($"The connection pool has been exhausted, either raise MaxPoolSize (currently {_max}) or Timeout (currently {Settings.Timeout} seconds)");
+                        if (timeout.IsSet)
+                        {
+                            var timeLeft = timeout.TimeLeft;
+                            if (timeLeft <= TimeSpan.Zero || !tcs.Task.Wait(timeLeft))
+                                throw new NpgsqlException($"The connection pool has been exhausted, either raise MaxPoolSize (currently {_max}) or Timeout (currently {Settings.Timeout} seconds)");
+                        }
+                        else
+                            tcs.Task.Wait();
                     }
                 }
                 catch

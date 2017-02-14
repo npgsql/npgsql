@@ -405,14 +405,23 @@ namespace Npgsql
 
                 await Authenticate(username, timeout, async, cancellationToken);
 
-                var keyDataMsg = await ReadExpecting<BackendKeyDataMessage>(async);
-                BackendProcessId = keyDataMsg.BackendProcessId;
-                _backendSecretKey = keyDataMsg.BackendSecretKey;
-                await ReadExpecting<ReadyForQueryMessage>(async);
+                // We treat BackendKeyData as optional because some PostgreSQL-like database
+                // don't send it (e.g. CockroachDB)
+                var msg = await ReadMessage(async);
+                if (msg.Code == BackendMessageCode.BackendKeyData)
+                {
+                    var keyDataMsg = (BackendKeyDataMessage)msg;
+                    BackendProcessId = keyDataMsg.BackendProcessId;
+                    _backendSecretKey = keyDataMsg.BackendSecretKey;
+                    msg = await ReadMessage(async);
+                }
+                if (msg.Code != BackendMessageCode.ReadyForQuery)
+                    throw new NpgsqlException($"Received backend message {msg.Code} while expecting ReadyForQuery. Please file a bug.");
+
                 State = ConnectorState.Ready;
 
                 await TypeHandlerRegistry.Setup(this, timeout, async);
-                if (Settings.Pooling)
+                if (Settings.Pooling && SupportsDiscard)
                     GenerateResetMessage();
                 Counters.HardConnectsPerSecond.Increment();
                 Log.OpenedConnection(Id, Host, Port);
@@ -1170,6 +1179,8 @@ namespace Npgsql
         /// </summary>
         internal void CancelRequest()
         {
+            if (BackendProcessId == 0)
+                throw new NpgsqlException("Cancellation not supported on this database (no BackendKeyData was received during connection)");
             Log.Cancel(Id);
             lock (CancelLock)
             {
@@ -1329,10 +1340,7 @@ namespace Npgsql
                 // SemaphoreSlim.Dispose() isn't threadsafe - we shouldn't invoke it while the keepalive timer is
                 // trying to wait on it. So we need a standard lock to protect it.
                 lock (_keepAliveDisposeLock)
-                {
                     _keepAliveLock.Dispose();
-                    _keepAliveLock = null;
-                }
             }
         }
 
@@ -1432,7 +1440,7 @@ namespace Npgsql
                 throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {TransactionStatus} of enum {nameof(TransactionStatus)}. Please file a bug.");
             }
 
-            if (!Settings.NoResetOnClose)
+            if (!Settings.NoResetOnClose && SupportsDiscard)
             {
                 if (PreparedStatementManager.NumPrepared > 0)
                 {
@@ -1605,7 +1613,14 @@ namespace Npgsql
             catch (Exception e)
             {
                 Log.Logger.LogError(NpgsqlEventId.KeepaliveFailure, e, "[{ConnectorId}] Keepalive failure", Id);
-                Break();
+                try
+                {
+                    Break();
+                }
+                catch (Exception e2)
+                {
+                    Log.Logger.LogError(NpgsqlEventId.KeepaliveFailure, e2, "[{ConnectorId}] Further exception while breaking connector on keepalive failure", Id);
+                }
             }
         }
 
@@ -1811,6 +1826,7 @@ namespace Npgsql
         bool SupportsDiscardSequences => ServerVersion >= new Version(9, 4, 0);
         bool SupportsUnlisten => ServerVersion >= new Version(6, 4, 0) && !IsRedshift;
         bool SupportsDiscardTemp => ServerVersion >= new Version(8, 3, 0);
+        bool SupportsDiscard => ServerVersion >= new Version(8, 3, 0); // Redshift is 8.0.2
         internal bool SupportsRangeTypes => ServerVersion >= new Version(9, 2, 0);
         internal bool UseConformantStrings { get; private set; }
         internal bool SupportsEStringPrefix => ServerVersion >= new Version(8, 1, 0);

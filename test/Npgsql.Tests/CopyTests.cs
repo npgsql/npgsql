@@ -429,6 +429,24 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1440")]
+        public void ErrorDuringImport()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo INT, CONSTRAINT uq UNIQUE(foo))");
+                var writer = conn.BeginBinaryImport("COPY DATA (foo) FROM STDIN BINARY");
+                writer.StartRow();
+                writer.Write(8);
+                writer.StartRow();
+                writer.Write(8);
+                Assert.That(() => writer.Dispose(), Throws.Exception
+                    .TypeOf<PostgresException>()
+                    .With.Property(nameof(PostgresException.SqlState)).EqualTo("23505"));
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+            }
+        }
+
         #endregion
 
         #region Text
