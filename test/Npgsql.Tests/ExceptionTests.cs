@@ -23,6 +23,9 @@
 
 using System;
 using System.Data;
+using System.IO;
+using System.Runtime.Serialization;
+using System.Runtime.Serialization.Formatters.Binary;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using NUnit.Framework.Constraints;
@@ -162,5 +165,28 @@ namespace Npgsql.Tests
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
             }
         }
+
+#if NET451
+        [Test]
+        public void Serialization()
+        {
+            var e = new PostgresException
+            {
+                Severity = "High",
+                TableName = "foo",
+                Position = 18
+            };
+
+            var formatter = new BinaryFormatter();
+            var stream = new MemoryStream();
+            formatter.Serialize(stream, e);
+            stream.Seek(0, SeekOrigin.Begin);
+            var e2 = (PostgresException)formatter.Deserialize(stream);
+
+            Assert.That(e2.Severity, Is.EqualTo(e.Severity));
+            Assert.That(e2.TableName, Is.EqualTo(e.TableName));
+            Assert.That(e2.Position, Is.EqualTo(e.Position));
+        }
+#endif
     }
 }

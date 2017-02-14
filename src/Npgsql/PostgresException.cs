@@ -54,7 +54,7 @@ namespace Npgsql
 #endif
     public sealed class PostgresException : NpgsqlException
     {
-        readonly ErrorOrNoticeMessage _msg;
+        [CanBeNull]
         Dictionary<string, object> _data;
 
         #region Message Fields
@@ -64,7 +64,7 @@ namespace Npgsql
         /// Always present.
         /// </summary>
         [PublicAPI]
-        public string Severity => _msg.Severity;
+        public string Severity { get; set; }
 
         /// <summary>
         /// The SQLSTATE code for the error.
@@ -74,7 +74,7 @@ namespace Npgsql
         /// See http://www.postgresql.org/docs/current/static/errcodes-appendix.html
         /// </remarks>
         [PublicAPI]
-        public string SqlState => _msg.Code;
+        public string SqlState { get; set; }
 
         /// <summary>
         /// The SQLSTATE code for the error.
@@ -84,7 +84,7 @@ namespace Npgsql
         /// See http://www.postgresql.org/docs/current/static/errcodes-appendix.html
         /// </remarks>
         [PublicAPI, Obsolete("Use SqlState instead")]
-        public string Code => _msg.Code;
+        public string Code => SqlState;
 
         /// <summary>
         /// The primary human-readable error message. This should be accurate but terse.
@@ -93,14 +93,14 @@ namespace Npgsql
         /// Always present.
         /// </remarks>
         [PublicAPI]
-        public string MessageText => _msg.Message;
+        public string MessageText { get; set; }
 
         /// <summary>
         /// An optional secondary error message carrying more detail about the problem.
         /// May run to multiple lines.
         /// </summary>
         [PublicAPI]
-        public string Detail => _msg.Detail;
+        public string Detail { get; set; }
 
         /// <summary>
         /// An optional suggestion what to do about the problem.
@@ -108,7 +108,7 @@ namespace Npgsql
         /// May run to multiple lines.
         /// </summary>
         [PublicAPI]
-        public string Hint => _msg.Hint;
+        public string Hint { get; set; }
 
         /// <summary>
         /// The field value is a decimal ASCII integer, indicating an error cursor position as an index into the original query string.
@@ -116,7 +116,7 @@ namespace Npgsql
         /// 0 means not provided.
         /// </summary>
         [PublicAPI]
-        public int Position => _msg.Position;
+        public int Position { get; set; }
 
         /// <summary>
         /// This is defined the same as the <see cref="Position"/> field, but it is used when the cursor position refers to an internally generated command rather than the one submitted by the client.
@@ -124,14 +124,14 @@ namespace Npgsql
         /// 0 means not provided.
         /// </summary>
         [PublicAPI]
-        public int InternalPosition => _msg.InternalPosition;
+        public int InternalPosition { get; set; }
 
         /// <summary>
         /// The text of a failed internally-generated command.
         /// This could be, for example, a SQL query issued by a PL/pgSQL function.
         /// </summary>
         [PublicAPI]
-        public string InternalQuery => _msg.InternalQuery;
+        public string InternalQuery { get; set; }
 
         /// <summary>
         /// An indication of the context in which the error occurred.
@@ -139,14 +139,14 @@ namespace Npgsql
         /// The trace is one entry per line, most recent first.
         /// </summary>
         [PublicAPI]
-        public string Where => _msg.Where;
+        public string Where { get; set; }
 
         /// <summary>
         /// If the error was associated with a specific database object, the name of the schema containing that object, if any.
         /// </summary>
         /// <remarks>PostgreSQL 9.3 and up.</remarks>
         [PublicAPI]
-        public string SchemaName => _msg.SchemaName;
+        public string SchemaName { get; set; }
 
         /// <summary>
         /// Table name: if the error was associated with a specific table, the name of the table.
@@ -154,7 +154,7 @@ namespace Npgsql
         /// </summary>
         /// <remarks>PostgreSQL 9.3 and up.</remarks>
         [PublicAPI]
-        public string TableName => _msg.TableName;
+        public string TableName { get; set; }
 
         /// <summary>
         /// If the error was associated with a specific table column, the name of the column.
@@ -162,7 +162,7 @@ namespace Npgsql
         /// </summary>
         /// <remarks>PostgreSQL 9.3 and up.</remarks>
         [PublicAPI]
-        public string ColumnName => _msg.ColumnName;
+        public string ColumnName { get; set; }
 
         /// <summary>
         /// If the error was associated with a specific data type, the name of the data type.
@@ -170,7 +170,7 @@ namespace Npgsql
         /// </summary>
         /// <remarks>PostgreSQL 9.3 and up.</remarks>
         [PublicAPI]
-        public string DataTypeName => _msg.DataTypeName;
+        public string DataTypeName { get; set; }
 
         /// <summary>
         /// If the error was associated with a specific constraint, the name of the constraint.
@@ -179,32 +179,54 @@ namespace Npgsql
         /// </summary>
         /// <remarks>PostgreSQL 9.3 and up.</remarks>
         [PublicAPI]
-        public string ConstraintName => _msg.ConstraintName;
+        public string ConstraintName { get; set; }
 
         /// <summary>
         /// The file name of the source-code location where the error was reported.
         /// </summary>
         /// <remarks>PostgreSQL 9.3 and up.</remarks>
         [PublicAPI]
-        public string File => _msg.File;
+        public string File { get; set; }
 
         /// <summary>
         /// The line number of the source-code location where the error was reported.
         /// </summary>
         [PublicAPI]
-        public string Line => _msg.Line;
+        public string Line { get; set; }
 
         /// <summary>
         /// The name of the source-code routine reporting the error.
         /// </summary>
         [PublicAPI]
-        public string Routine => _msg.Routine;
+        public string Routine { get; set; }
 
         #endregion
 
+        /// <summary>
+        /// Creates a new instance.
+        /// </summary>
+        public PostgresException() {}
+
         internal PostgresException(ReadBuffer buf)
         {
-            _msg = new ErrorOrNoticeMessage(buf);
+            var msg = new ErrorOrNoticeMessage(buf);
+            Severity = msg.Severity;
+            SqlState = msg.Code;
+            MessageText = msg.Message;
+            Detail = msg.Detail;
+            Hint = msg.Hint;
+            Position = msg.Position;
+            InternalPosition = msg.InternalPosition;
+            InternalQuery = msg.InternalQuery;
+            Where = msg.Where;
+            SchemaName = msg.SchemaName;
+            TableName = msg.TableName;
+            ColumnName = msg.ColumnName;
+            DataTypeName = msg.DataTypeName;
+            ConstraintName = msg.ConstraintName;
+            File = msg.File;
+            Line = msg.Line;
+            Routine = msg.Routine;
         }
 
         /// <summary>
@@ -242,7 +264,23 @@ namespace Npgsql
 #if NET45 || NET451
         PostgresException(SerializationInfo info, StreamingContext context) : base(info, context)
         {
-            _msg = (ErrorOrNoticeMessage)info.GetValue("msg", typeof(ErrorOrNoticeMessage));
+            Severity         = (string)info.GetValue("Severity",         typeof(string));
+            SqlState         = (string)info.GetValue("SqlState",         typeof(string));
+            MessageText      = (string)info.GetValue("MessageText",      typeof(string));
+            Detail           = (string)info.GetValue("Detail",           typeof(string));
+            Hint             = (string)info.GetValue("Hint",             typeof(string));
+            Position         = (int)   info.GetValue("Position",         typeof(int));
+            InternalPosition = (int)   info.GetValue("InternalPosition", typeof(int));
+            InternalQuery    = (string)info.GetValue("InternalQuery",    typeof(string));
+            Where            = (string)info.GetValue("Where",            typeof(string));
+            SchemaName       = (string)info.GetValue("SchemaName",       typeof(string));
+            TableName        = (string)info.GetValue("TableName",        typeof(string));
+            ColumnName       = (string)info.GetValue("ColumnName",       typeof(string));
+            DataTypeName     = (string)info.GetValue("DataTypeName",     typeof(string));
+            ConstraintName   = (string)info.GetValue("ConstraintName",   typeof(string));
+            File             = (string)info.GetValue("File",             typeof(string));
+            Line             = (string)info.GetValue("Line",             typeof(string));
+            Routine          = (string)info.GetValue("Routine",          typeof(string));
         }
 
         /// <summary>
@@ -253,7 +291,23 @@ namespace Npgsql
         public override void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             base.GetObjectData(info, context);
-            info.AddValue("msg", _msg);
+            info.AddValue("Severity", Severity);
+            info.AddValue("SqlState", SqlState);
+            info.AddValue("MessageText", MessageText);
+            info.AddValue("Detail", Detail);
+            info.AddValue("Hint", Hint);
+            info.AddValue("Position", Position);
+            info.AddValue("InternalPosition", InternalPosition);
+            info.AddValue("InternalQuery", InternalQuery);
+            info.AddValue("Where", Where);
+            info.AddValue("SchemaName", SchemaName);
+            info.AddValue("TableName", TableName);
+            info.AddValue("ColumnName", ColumnName);
+            info.AddValue("DataTypeName", DataTypeName);
+            info.AddValue("ConstraintName", ConstraintName);
+            info.AddValue("File", File);
+            info.AddValue("Line", Line);
+            info.AddValue("Routine", Routine);
         }
 #endif
         #endregion

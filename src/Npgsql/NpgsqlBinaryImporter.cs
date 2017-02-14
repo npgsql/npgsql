@@ -344,7 +344,11 @@ namespace Npgsql
                 _connector.Break();
                 throw new NpgsqlException("Expected ErrorResponse when cancelling COPY but got: " + msg.Code);
             } catch (PostgresException e) {
-                if (e.SqlState == "57014") { return; }
+                if (e.SqlState == "57014")
+                {
+                    _connector.CurrentCopyOperation = null;
+                    return;
+                }
                 throw;
             }
         }
@@ -367,13 +371,16 @@ namespace Npgsql
             }
             WriteTrailer();
 
-            _connector.SendMessage(CopyDoneMessage.Instance);
-            _connector.ReadExpecting<CommandCompleteMessage>();
-            _connector.ReadExpecting<ReadyForQueryMessage>();
-            _connector.CurrentCopyOperation = null;
-            _connector.EndUserAction();
-
-            Cleanup();
+            try
+            {
+                _connector.SendMessage(CopyDoneMessage.Instance);
+                _connector.ReadExpecting<CommandCompleteMessage>();
+                _connector.ReadExpecting<ReadyForQueryMessage>();
+            } finally {
+                _connector.CurrentCopyOperation = null;
+                _connector.EndUserAction();
+                Cleanup();
+            }
         }
 
         void Cleanup()

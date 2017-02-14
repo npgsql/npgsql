@@ -1,5 +1,6 @@
 {
-  "version": "3.1.9",
+  "version": "3.1.10-ci-*",
+  "description": "Npgsql is the open source .NET data provider for PostgreSQL.",
   "packOptions": {
     "owners": [
       "Shay Rojansky",
@@ -22,7 +23,6 @@
       "Brar Piening",
       "Hiroshi Saito"
     ],
-    "description": "Npgsql is a .NET data provider for PostgreSQL, 100% implemented in C# code. PostgreSQL 9.x and above is officially supported, other versions may work.",
     "iconUrl": "http://www.npgsql.org/img/postgresql.gif",
     "licenseUrl": "https://raw.githubusercontent.com/npgsql/npgsql/develop/LICENSE.txt",
     "repository": {

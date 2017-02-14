@@ -22,10 +22,9 @@ namespace Npgsql
             if (!timeout.IsSet)
                 return await task.ConfigureAwait(false);
             var timeLeft = timeout.TimeLeft;
-            if (timeLeft < TimeSpan.Zero)
+            if (timeLeft <= TimeSpan.Zero)
                 throw new TimeoutException();
-            var timeoutTask = Task.Delay(timeLeft);
-            if (task != await Task.WhenAny(task, timeoutTask).ConfigureAwait(false))
+            if (task != await Task.WhenAny(task, Task.Delay(timeLeft)).ConfigureAwait(false))
                 throw new TimeoutException();
             return await task.ConfigureAwait(false);
         }
@@ -45,10 +44,9 @@ namespace Npgsql
                 return;
             }
             var timeLeft = timeout.TimeLeft;
-            if (timeLeft < TimeSpan.Zero)
+            if (timeLeft <= TimeSpan.Zero)
                 throw new TimeoutException();
-            var timeoutTask = Task.Delay(timeLeft);
-            if (task != await Task.WhenAny(task, timeoutTask).ConfigureAwait(false))
+            if (task != await Task.WhenAny(task, Task.Delay(timeLeft)).ConfigureAwait(false))
                 throw new TimeoutException();
             await task.ConfigureAwait(false);
         }

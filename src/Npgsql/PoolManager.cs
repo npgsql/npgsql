@@ -15,7 +15,8 @@ namespace Npgsql
         /// <summary>
         /// Holds connector pools indexed by their connection strings.
         /// </summary>
-        internal static ConcurrentDictionary<NpgsqlConnectionStringBuilder, ConnectorPool> Pools { get; }
+        internal static Dictionary<NpgsqlConnectionStringBuilder, ConnectorPool> Pools { get; }
+            = new Dictionary<NpgsqlConnectionStringBuilder, ConnectorPool>();
 
         /// <summary>
         /// Maximum number of possible connections in the pool.
@@ -24,8 +25,6 @@ namespace Npgsql
 
         static PoolManager()
         {
-            Pools = new ConcurrentDictionary<NpgsqlConnectionStringBuilder, ConnectorPool>();
-
 #if NET45 || NET451
             // When the appdomain gets unloaded (e.g. web app redeployment) attempt to nicely
             // close idle connectors to prevent errors in PostgreSQL logs (#491).
@@ -39,12 +38,15 @@ namespace Npgsql
             Contract.Requires(connString != null);
             Contract.Ensures(Contract.Result<ConnectorPool>() != null);
 
-            return Pools.GetOrAdd(connString, cs =>
+            lock (Pools)
             {
-                if (cs.MaxPoolSize < cs.MinPoolSize)
-                    throw new ArgumentException($"Connection can't have MaxPoolSize {cs.MaxPoolSize} under MinPoolSize {cs.MinPoolSize}");
-                return new ConnectorPool(cs);
-            });
+                ConnectorPool pool;
+                if (Pools.TryGetValue(connString, out pool))
+                    return pool;
+                if (connString.MaxPoolSize < connString.MinPoolSize)
+                    throw new ArgumentException($"Connection can't have MaxPoolSize {connString.MaxPoolSize} under MinPoolSize {connString.MinPoolSize}");
+                return Pools[connString.Clone()] = new ConnectorPool(connString);
+            }
         }
 
         internal static ConnectorPool Get(NpgsqlConnectionStringBuilder connString)
@@ -52,13 +54,19 @@ namespace Npgsql
             Contract.Requires(connString != null);
             Contract.Ensures(Contract.Result<ConnectorPool>() != null);
 
-            return Pools[connString];
+            lock (Pools)
+            {
+                return Pools[connString];
+            }
         }
 
         internal static void ClearAll()
         {
-            foreach (var pool in Pools.Values)
-                pool.Clear();
+            lock (Pools)
+            {
+                foreach (var kvp in Pools)
+                    kvp.Value.Clear();
+            }
         }
     }
 
@@ -134,7 +142,7 @@ namespace Npgsql
                 Monitor.Exit(this);
                 try
                 {
-                    WaitForTask(tcs.Task, timeout.TimeLeft);
+                    WaitForTask(tcs.Task, timeout);
                 }
                 catch
                 {
@@ -358,20 +366,31 @@ namespace Npgsql
             return PGUtil.CompletedTask;
         }
 
-        void WaitForTask(Task task, TimeSpan timeout)
+        void WaitForTask(Task task, NpgsqlTimeout timeout)
         {
-            if (!task.Wait(timeout))
-                throw new NpgsqlException($"The connection pool has been exhausted, either raise MaxPoolSize (currently {_max}) or Timeout (currently {ConnectionString.Timeout} seconds)");
+            if (timeout.IsSet)
+            {
+                var timeLeft = timeout.TimeLeft;
+                if (timeLeft <= TimeSpan.Zero || !task.Wait(timeLeft))
+                    throw new NpgsqlException($"The connection pool has been exhausted, either raise MaxPoolSize (currently {_max}) or Timeout (currently {ConnectionString.Timeout} seconds)");
+            }
+            else
+                task.Wait();
         }
 
-        async Task WaitForTaskAsync(Task task, TimeSpan timeout, CancellationToken cancellationToken)
+        async Task WaitForTaskAsync(Task task, NpgsqlTimeout timeout, CancellationToken cancellationToken)
         {
-            var timeoutTask = Task.Delay(timeout, cancellationToken);
-            if (task != await Task.WhenAny(task, timeoutTask).ConfigureAwait(false))
+            if (timeout.IsSet)
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                throw new NpgsqlException($"The connection pool has been exhausted, either raise MaxPoolSize (currently {_max}) or Timeout (currently {ConnectionString.Timeout} seconds)");
+                var timeLeft = timeout.TimeLeft;
+                if (timeLeft <= TimeSpan.Zero || task != await Task.WhenAny(task, Task.Delay(timeLeft)).ConfigureAwait(false))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    throw new NpgsqlException($"The connection pool has been exhausted, either raise MaxPoolSize (currently {_max}) or Timeout (currently {ConnectionString.Timeout} seconds)");
+                }
             }
+            else
+                await task.ConfigureAwait(false);
         }
 
         public override string ToString() => $"[{Busy} busy, {Idle.Count} idle, {Waiting.Count} waiting]";

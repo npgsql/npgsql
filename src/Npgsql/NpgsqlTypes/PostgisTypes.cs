@@ -80,13 +80,13 @@ namespace NpgsqlTypes
         protected abstract int GetLenHelper();
         internal abstract WkbIdentifier Identifier { get;}
 
-        internal int GetLen()
+        internal int GetLen(bool isTopLevel=false)
         {
             // header =
             //      1 byte for the endianness of the structure
             //    + 4 bytes for the type identifier
             //   (+ 4 bytes for the SRID if present)
-            return 5 + (SRID == 0 ? 0 : 4) + GetLenHelper();
+            return 5 + (SRID == 0 || !isTopLevel ? 0 : 4) + GetLenHelper();
         }
 
         /// <summary>

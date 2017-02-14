@@ -491,7 +491,7 @@ namespace Npgsql
                             if (!UseSslStream)
                             {
                                 var sslStream = new TlsClientStream.TlsClientStream(_stream);
-                                sslStream.PerformInitialHandshake(Host, clientCertificates, certificateValidationCallback, false);
+                                sslStream.PerformInitialHandshake(Host, clientCertificates, certificateValidationCallback, _settings.CheckCertificateRevocation);
                                 _stream = sslStream;
                             }
                             else
@@ -500,9 +500,9 @@ namespace Npgsql
 #if NETSTANDARD1_3
                             // CoreCLR removed sync methods from SslStream, see https://github.com/dotnet/corefx/pull/4868.
                             // Consider exactly what to do here.
-                            sslStream.AuthenticateAsClientAsync(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, false).Wait();
+                            sslStream.AuthenticateAsClientAsync(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, _settings.CheckCertificateRevocation).Wait();
 #else
-                                sslStream.AuthenticateAsClient(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, false);
+                                sslStream.AuthenticateAsClient(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, _settings.CheckCertificateRevocation);
 #endif
                                 _stream = sslStream;
                             }
@@ -1428,7 +1428,7 @@ namespace Npgsql
                 Monitor.Exit(this);
                 try
                 {
-                    await WaitForTaskAsync(tcs.Task, timeout.TimeLeft, cancellationToken).ConfigureAwait(false);
+                    await WaitForTaskAsync(tcs.Task, timeout, cancellationToken).ConfigureAwait(false);
                 }
                 catch
                 {
@@ -1505,7 +1505,8 @@ namespace Npgsql
             }
             // We have a special case when reading async notifications - a timeout may be normal
             // shouldn't be fatal
-            catch (IOException e)when (dontBreakOnTimeouts && (e.InnerException as SocketException)?.SocketErrorCode == SocketError.TimedOut)
+            // Note that mono throws SocketException with the wrong error (see #1330)
+            catch (IOException e)when (dontBreakOnTimeouts && (e.InnerException as SocketException)?.SocketErrorCode == (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock))
             {
                 throw new TimeoutException("Timeout while reading from stream");
             }
