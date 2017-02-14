@@ -371,13 +371,16 @@ namespace Npgsql
             }
             WriteTrailer();
 
-            _connector.SendMessage(CopyDoneMessage.Instance);
-            _connector.ReadExpecting<CommandCompleteMessage>();
-            _connector.ReadExpecting<ReadyForQueryMessage>();
-            _connector.CurrentCopyOperation = null;
-            _connector.EndUserAction();
-
-            Cleanup();
+            try
+            {
+                _connector.SendMessage(CopyDoneMessage.Instance);
+                _connector.ReadExpecting<CommandCompleteMessage>();
+                _connector.ReadExpecting<ReadyForQueryMessage>();
+            } finally {
+                _connector.CurrentCopyOperation = null;
+                _connector.EndUserAction();
+                Cleanup();
+            }
         }
 
         void Cleanup()
