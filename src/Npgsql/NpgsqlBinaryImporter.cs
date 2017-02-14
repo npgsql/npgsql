@@ -277,10 +277,16 @@ namespace Npgsql
 
             var connector = _connector;
             connector.SendMessage(CopyDoneMessage.Instance);
-            connector.ReadExpecting<CommandCompleteMessage>();
-            connector.ReadExpecting<ReadyForQueryMessage>();
-            Cleanup();
-            connector.EndUserAction();
+            try
+            {
+                connector.ReadExpecting<CommandCompleteMessage>();
+                connector.ReadExpecting<ReadyForQueryMessage>();
+            }
+            finally
+            {
+                Cleanup();
+                connector.EndUserAction();
+            }
         }
 
         void Cleanup()
