@@ -1,5 +1,5 @@
 {
-  "version": "3.1.10-ci-*",
+  "version": "3.1.10",
   "description": "Npgsql is the open source .NET data provider for PostgreSQL.",
   "packOptions": {
     "owners": [

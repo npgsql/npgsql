@@ -18,4 +18,4 @@ using System.Resources;
 // The following version attributes get rewritten by GitVersion as part of the build
 [assembly: AssemblyVersion("3.1.10")]
 [assembly: AssemblyFileVersion("3.1.10")]
-[assembly: AssemblyInformationalVersion("3.1.10-ci")]
+[assembly: AssemblyInformationalVersion("3.1.10")]
