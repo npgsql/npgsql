@@ -26,6 +26,7 @@ using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Text;
+using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 
 namespace Npgsql
@@ -40,15 +41,14 @@ namespace Npgsql
     /// </remarks>
     public class PostgresNotice
     {
-        readonly ErrorOrNoticeMessage _msg;
-
         #region Message Fields
 
         /// <summary>
         /// Severity of the error or notice.
         /// Always present.
         /// </summary>
-        public string Severity => _msg.Severity;
+        [PublicAPI]
+        public string Severity { get; set; }
 
         /// <summary>
         /// The SQLSTATE code for the error.
@@ -57,7 +57,8 @@ namespace Npgsql
         /// Always present.
         /// See http://www.postgresql.org/docs/current/static/errcodes-appendix.html
         /// </remarks>
-        public string SqlState => _msg.Code;
+        [PublicAPI]
+        public string SqlState { get; set; }
 
         /// <summary>
         /// The SQLSTATE code for the error.
@@ -66,8 +67,8 @@ namespace Npgsql
         /// Always present.
         /// See http://www.postgresql.org/docs/current/static/errcodes-appendix.html
         /// </remarks>
-        [Obsolete("Use SqlState instead")]
-        public string Code => _msg.Code;
+        [PublicAPI, Obsolete("Use SqlState instead")]
+        public string Code => SqlState;
 
         /// <summary>
         /// The primary human-readable error message. This should be accurate but terse.
@@ -75,74 +76,85 @@ namespace Npgsql
         /// <remarks>
         /// Always present.
         /// </remarks>
-        public string MessageText => _msg.Message;
+        [PublicAPI]
+        public string MessageText { get; set; }
 
         /// <summary>
         /// An optional secondary error message carrying more detail about the problem.
         /// May run to multiple lines.
         /// </summary>
-        public string Detail => _msg.Detail;
+        [PublicAPI]
+        public string Detail { get; set; }
 
         /// <summary>
         /// An optional suggestion what to do about the problem.
         /// This is intended to differ from Detail in that it offers advice (potentially inappropriate) rather than hard facts.
         /// May run to multiple lines.
         /// </summary>
-        public string Hint => _msg.Hint;
+        [PublicAPI]
+        public string Hint { get; set; }
 
         /// <summary>
         /// The field value is a decimal ASCII integer, indicating an error cursor position as an index into the original query string.
         /// The first character has index 1, and positions are measured in characters not bytes.
         /// 0 means not provided.
         /// </summary>
-        public int Position => _msg.Position;
+        [PublicAPI]
+        public int Position { get; set; }
 
         /// <summary>
         /// This is defined the same as the <see cref="Position"/> field, but it is used when the cursor position refers to an internally generated command rather than the one submitted by the client.
         /// The <see cref="InternalQuery" /> field will always appear when this field appears.
         /// 0 means not provided.
         /// </summary>
-        public int InternalPosition => _msg.InternalPosition;
+        [PublicAPI]
+        public int InternalPosition { get; set; }
 
         /// <summary>
         /// The text of a failed internally-generated command.
         /// This could be, for example, a SQL query issued by a PL/pgSQL function.
         /// </summary>
-        public string InternalQuery => _msg.InternalQuery;
+        [PublicAPI]
+        public string InternalQuery { get; set; }
 
         /// <summary>
         /// An indication of the context in which the error occurred.
         /// Presently this includes a call stack traceback of active PL functions.
         /// The trace is one entry per line, most recent first.
         /// </summary>
-        public string Where => _msg.Where;
+        [PublicAPI]
+        public string Where { get; set; }
 
         /// <summary>
         /// If the error was associated with a specific database object, the name of the schema containing that object, if any.
         /// </summary>
         /// <remarks>PostgreSQL 9.3 and up.</remarks>
-        public string SchemaName => _msg.SchemaName;
+        [PublicAPI]
+        public string SchemaName { get; set; }
 
         /// <summary>
         /// Table name: if the error was associated with a specific table, the name of the table.
         /// (Refer to the schema name field for the name of the table's schema.)
         /// </summary>
         /// <remarks>PostgreSQL 9.3 and up.</remarks>
-        public string TableName => _msg.TableName;
+        [PublicAPI]
+        public string TableName { get; set; }
 
         /// <summary>
         /// If the error was associated with a specific table column, the name of the column.
         /// (Refer to the schema and table name fields to identify the table.)
         /// </summary>
         /// <remarks>PostgreSQL 9.3 and up.</remarks>
-        public string ColumnName => _msg.ColumnName;
+        [PublicAPI]
+        public string ColumnName { get; set; }
 
         /// <summary>
         /// If the error was associated with a specific data type, the name of the data type.
         /// (Refer to the schema name field for the name of the data type's schema.)
         /// </summary>
         /// <remarks>PostgreSQL 9.3 and up.</remarks>
-        public string DataTypeName => _msg.DataTypeName;
+        [PublicAPI]
+        public string DataTypeName { get; set; }
 
         /// <summary>
         /// If the error was associated with a specific constraint, the name of the constraint.
@@ -150,29 +162,55 @@ namespace Npgsql
         /// (For this purpose, indexes are treated as constraints, even if they weren't created with constraint syntax.)
         /// </summary>
         /// <remarks>PostgreSQL 9.3 and up.</remarks>
-        public string ConstraintName => _msg.ConstraintName;
+        [PublicAPI]
+        public string ConstraintName { get; set; }
 
         /// <summary>
         /// The file name of the source-code location where the error was reported.
         /// </summary>
         /// <remarks>PostgreSQL 9.3 and up.</remarks>
-        public string File => _msg.File;
+        [PublicAPI]
+        public string File { get; set; }
 
         /// <summary>
         /// The line number of the source-code location where the error was reported.
         /// </summary>
-        public string Line => _msg.Line;
+        [PublicAPI]
+        public string Line { get; set; }
 
         /// <summary>
         /// The name of the source-code routine reporting the error.
         /// </summary>
-        public string Routine => _msg.Routine;
+        [PublicAPI]
+        public string Routine { get; set; }
 
         #endregion
 
+        /// <summary>
+        /// Creates a new instance.
+        /// </summary>
+        public PostgresNotice() { }
+
         internal PostgresNotice(ReadBuffer buf)
         {
-            _msg = new ErrorOrNoticeMessage(buf);
+            var msg = new ErrorOrNoticeMessage(buf);
+            Severity = msg.Severity;
+            SqlState = msg.Code;
+            MessageText = msg.Message;
+            Detail = msg.Detail;
+            Hint = msg.Hint;
+            Position = msg.Position;
+            InternalPosition = msg.InternalPosition;
+            InternalQuery = msg.InternalQuery;
+            Where = msg.Where;
+            SchemaName = msg.SchemaName;
+            TableName = msg.TableName;
+            ColumnName = msg.ColumnName;
+            DataTypeName = msg.DataTypeName;
+            ConstraintName = msg.ConstraintName;
+            File = msg.File;
+            Line = msg.Line;
+            Routine = msg.Routine;
         }
     }
 
