@@ -108,6 +108,8 @@ namespace Npgsql
         /// </summary>
         internal const int TimeoutLimit = 1024;
 
+        static bool _countersInitialized;
+
         #endregion Fields
 
         #region Constructors / Init / Open
@@ -167,6 +169,12 @@ namespace Npgsql
                 {
                     // Connection string hasn't been seen before. Parse it.
                     Settings = new NpgsqlConnectionStringBuilder(_connectionString);
+
+                    if (!_countersInitialized)
+                    {
+                        _countersInitialized = true;
+                        Counters.Initialize(Settings.UsePerfCounters);
+                    }
 
                     // Maybe pooling is off
                     if (Settings.Pooling)
