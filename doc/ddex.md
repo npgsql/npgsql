@@ -2,6 +2,8 @@
 
 Npgsql has a Visual Studio extension (VSIX) which integrates PostgreSQL access into Visual Studio. It allows connecting to PostgreSQL from within Visual Studio's Server Explorer, create an Entity Framework 6 model from an existing database, etc. The extension can be installed directly from [the Visual Studio Marketplace page](https://marketplace.visualstudio.com/vsgallery/258be600-452d-4387-9a2f-89ae10e84ae0).
 
+The VSIX doesn't automatically add Npgsql to your GAC, `App.config`, `machines.config` or any other project or system-wide resource. It only allows accessing PostgreSQL from Visual Studio itself.
+
 ## Visual Studio Compatibility
 
 The VSIX extension has been tested and works on Visual Studio 2015 and 2017. It is probably compatible with versions all the way back to 2012, but these haven't been tested. Note that installing into pre-2015 versions will display a warning, although it should be safe to proceed.

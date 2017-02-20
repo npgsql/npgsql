@@ -1010,6 +1010,24 @@ namespace Npgsql
         int _autoPrepareMinUsages;
 
         /// <summary>
+        /// Writes connection performance information to performance counters.
+        /// </summary>
+        [Category("Advanced")]
+        [Description("Writes connection performance information to performance counters.")]
+        [DisplayName("Use Perf Counters")]
+        [NpgsqlConnectionStringProperty]
+        public bool UsePerfCounters
+        {
+            get { return _usePerfCounters; }
+            set
+            {
+                _usePerfCounters = value;
+                SetValue(nameof(UsePerfCounters), value);
+            }
+        }
+        bool _usePerfCounters;
+
+        /// <summary>
         /// If set to true, a pool connection's state won't be reset when it is closed (improves performance).
         /// Do not specify this unless you know what you're doing.
         /// </summary>

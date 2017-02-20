@@ -11,32 +11,45 @@ Npgsql aims to be fully ADO.NET-compatible, its API should feel almost identical
 Here's a basic code snippet to get you started.
 
 ```c#
-using (var conn = new NpgsqlConnection("Host=myserver;Username=mylogin;Password=mypass;Database=mydatabase"))
+var connString = "Host=myserver;Username=mylogin;Password=mypass;Database=mydatabase";
+
+using (var conn = new NpgsqlConnection(connString))
 {
     conn.Open();
+
+    // Insert some data
     using (var cmd = new NpgsqlCommand())
     {
         cmd.Connection = conn;
-
-        // Insert some data
-        cmd.CommandText = "INSERT INTO data (some_field) VALUES ('Hello world')";
+        cmd.CommandText = "INSERT INTO data (some_field) VALUES (@p)";
+        cmd.Parameters.AddWithValue("p", "Hello world");
         cmd.ExecuteNonQuery();
-
-        // Retrieve all rows
-        cmd.CommandText = "SELECT some_field FROM data";
-        using (var reader = cmd.ExecuteReader())
-        {
-            while (reader.Read())
-            {
-                Console.WriteLine(reader.GetString(0));
-            }
-        }
     }
+
+    // Retrieve all rows
+    using (var cmd = new NpgsqlCommand("SELECT some_field FROM data", conn))
+    using (var reader = cmd.ExecuteReader())
+        while (reader.Read())
+            Console.WriteLine(reader.GetString(0));
 }
 ```
 
 You can find more info about the ADO.NET API in the [MSDN docs](https://msdn.microsoft.com/en-us/library/h43ks021(v=vs.110).aspx)
 or in many tutorials on the Internet.
+
+## DbProviderFactory
+
+The example above involves some Npgsql-specific types (`NpgsqlConnection`, `NpgsqlCommand`...), which makes your application Npgsql-specific. If your code needs to be database-portable, you should use the ADO.NET `DbProviderFactory` API instead ([see this tutorial](https://msdn.microsoft.com/en-us/library/dd0w4a2z%28v=vs.110%29.aspx?f=255&MSPPError=-21472173960)). In a nutshell, you register Npgsql's provider factory in your application's `App.config` (or `machines.config`) file, and then obtain it in your code without referencing any Npgsql-specific types. You can then use the factory to create a `DbConnection` (which `NpgsqlConnection` extends), and from there a `DbCommand` and so on.
+
+To do this, add the following to your `App.config`:
+
+```xml
+<system.data>
+  <DbProviderFactories>
+    <add name="Npgsql Data Provider" invariant="Npgsql" description=".Net Data Provider for PostgreSQL" type="Npgsql.NpgsqlFactory, Npgsql, Culture=neutral, PublicKeyToken=5d8b90d52f46fda7"/>
+  </DbProviderFactories>
+</system.data>
+```
 
 ## GAC Installation
 
