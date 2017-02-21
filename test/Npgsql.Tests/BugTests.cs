@@ -48,6 +48,21 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1450")]
+        public void Bug1450()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand())
+            {
+                cmd.Connection = conn;
+                cmd.CommandText = "CREATE TEMP TABLE a (a1 int); CREATE TEMP TABLE b (b1 int);";
+                cmd.ExecuteNonQuery();
+
+                cmd.CommandText = "CREATE TEMP TABLE c (c1 int);";
+                cmd.ExecuteNonQuery();
+            }
+        }
+
         #region Bug1285
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1285")]

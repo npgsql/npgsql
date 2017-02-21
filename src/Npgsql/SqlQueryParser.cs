@@ -401,6 +401,8 @@ namespace Npgsql
                     MoveToNextStatement();
                 goto None;
             }
+            if (statements.Count > _statementIndex + 1)
+                statements.RemoveRange(_statementIndex + 1, statements.Count - (_statementIndex + 1));
             return;
 
         Finish:
