@@ -2,10 +2,10 @@
 
 Npgsql uses Microsoft.Extensions.Logging to emit log events that can be routed to your logging library of choice - see [their docs](https://docs.microsoft.com/en-us/aspnet/core/fundamentals/logging) for more information. Note that Microsoft.Extensions.Logging support replaced Npgsql's own custom logging wrapper in 3.2.
 
-Since Npgsql is an ADO.NET provider and does not support dependency injection, you must manually inject your ILoggingFactory by including the following code *before* starting to use any of Npgsql's other APIs:
+Since Npgsql is an ADO.NET provider and does not support dependency injection, you must manually inject your ILoggingFactory by including the following code *before* starting to use any of Npgsql's other APIs. For example, to log to the console, install `Microsoft.Extensions.Logging.Console` and add the following code:
 
 ```c#
-NpgsqlLogManager.Provider = new LoggerFactory
+NpgsqlLogManager.LoggerFactory = new LoggerFactory()
     .AddConsole((text, logLevel) => logLevel >= LogLevel.Debug);
 ```
 
