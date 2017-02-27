@@ -27,6 +27,7 @@ namespace Npgsql.Logging
         public const int Breaking = 14;
         public const int Keepalive = 15;
         public const int KeepaliveFailure = 16;
+        public const int Notice = 17;
 
         // Command processing
         public const int ExecuteCommand = 100;

@@ -958,7 +958,9 @@ namespace Npgsql
                     HandleParameterStatus(buf.ReadNullTerminatedString(), buf.ReadNullTerminatedString());
                     return null;
                 case BackendMessageCode.NoticeResponse:
-                    Connection?.OnNotice(new PostgresNotice(buf));
+                    var notice = new PostgresNotice(buf);
+                    Log.Notice(Id, notice);
+                    Connection?.OnNotice(notice);
                     return null;
                 case BackendMessageCode.NotificationResponse:
                     Connection?.OnNotification(new NpgsqlNotificationEventArgs(buf));
