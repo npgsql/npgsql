@@ -709,16 +709,17 @@ namespace Npgsql
             if (_state != ReaderState.Consumed)
                 Consume(false).GetAwaiter().GetResult();
 
-            // Make sure the send task for this command, which may have executed asynchronously and in
-            // parallel with the reading, has completed, throwing any exceptions it generated.
-            _sendTask.GetAwaiter().GetResult();
-
             Cleanup(connectionClosing);
         }
 
         internal void Cleanup(bool connectionClosing=false)
         {
             Log.ReaderCleanup(_connector.Id);
+
+            // Make sure the send task for this command, which may have executed asynchronously and in
+            // parallel with the reading, has completed, throwing any exceptions it generated.
+            _sendTask.GetAwaiter().GetResult();
+
             _state = ReaderState.Closed;
             Command.State = CommandState.Idle;
             _connector.CurrentReader = null;
