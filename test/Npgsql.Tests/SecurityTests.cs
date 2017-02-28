@@ -22,6 +22,7 @@
 #endregion
 
 using System;
+using System.Threading.Tasks;
 using NUnit.Framework;
 
 namespace Npgsql.Tests
@@ -168,6 +169,32 @@ namespace Npgsql.Tests
                     Assert.Ignore("Integrated security (GSS/SSPI) doesn't seem to be set up");
                 }
                 Assert.That(conn.Database, Is.Not.Null);
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1454")]
+        [Ignore("For Emil")]
+        public async Task Bug1454()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                SslMode = SslMode.Require,
+                TrustServerCertificate = true,
+                UseSslStream = false
+            };
+
+            for (var i = 0; i < 100; i++)
+            {
+                using (var conn = new NpgsqlConnection(csb.ToString()))
+                {
+                    await conn.OpenAsync().ConfigureAwait(false);
+                    using (conn.BeginTransaction())
+                    {
+                        var cmd = new NpgsqlCommand("SELECT relname FROM pg_class", conn);
+                        using (var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false))
+                            while (await reader.ReadAsync().ConfigureAwait(false)) {}
+                    }
+                }
             }
         }
 
