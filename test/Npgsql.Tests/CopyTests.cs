@@ -631,18 +631,20 @@ namespace Npgsql.Tests
         {
             using (var conn = OpenConnection())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo INT)");
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo1 INT, foo2 UUID)");
 
-                using (var writer = conn.BeginBinaryImport("COPY data (foo) FROM STDIN BINARY"))
+                using (var writer = conn.BeginBinaryImport("COPY data (foo1, foo2) FROM STDIN BINARY"))
                 {
                     writer.StartRow();
                     writer.Write(DBNull.Value, NpgsqlDbType.Integer);
+                    writer.Write((string)null, NpgsqlDbType.Uuid);
                 }
-                using (var cmd = new NpgsqlCommand("SELECT foo FROM data", conn))
+                using (var cmd = new NpgsqlCommand("SELECT foo1,foo2 FROM data", conn))
                 using (var reader = cmd.ExecuteReader())
                 {
                     Assert.That(reader.Read(), Is.True);
                     Assert.That(reader.IsDBNull(0), Is.True);
+                    Assert.That(reader.IsDBNull(1), Is.True);
                 }
             }
         }
