@@ -1091,73 +1091,73 @@ namespace Npgsql
         #region Properties - Obsolete
 
         /// <summary>
-        /// Obsolete, see http://www.npgsql.org/doc/3.1/migration.html
+        /// Obsolete, see http://www.npgsql.org/doc/migration/3.1.html
         /// </summary>
         [Category("Obsolete")]
-        [Description("Obsolete, see http://www.npgsql.org/doc/3.1/migration.html")]
+        [Description("Obsolete, see http://www.npgsql.org/doc/migration/3.1.html")]
         [DisplayName("Connection Lifetime")]
         [NpgsqlConnectionStringProperty]
         [Obsolete("The ConnectionLifeTime parameter is no longer supported")]
         public int ConnectionLifeTime
         {
             get { return 0; }
-            set { throw new NotSupportedException("The ConnectionLifeTime parameter is no longer supported. Please see http://www.npgsql.org/doc/3.1/migration.html"); }
+            set { throw new NotSupportedException("The ConnectionLifeTime parameter is no longer supported. Please see http://www.npgsql.org/doc/migration/3.1.html"); }
         }
 
         /// <summary>
-        /// Obsolete, see http://www.npgsql.org/doc/3.1/migration.html
+        /// Obsolete, see http://www.npgsql.org/doc/migration/3.1.html
         /// </summary>
         [Category("Obsolete")]
-        [Description("Obsolete, see http://www.npgsql.org/doc/3.1/migration.html")]
+        [Description("Obsolete, see http://www.npgsql.org/doc/migration/3.1.html")]
         [DisplayName("Continuous Processing")]
         [NpgsqlConnectionStringProperty]
         [Obsolete("The ContinuousProcessing parameter is no longer supported.")]
         public bool ContinuousProcessing
         {
             get { return false; }
-            set { throw new NotSupportedException("The ContinuousProcessing parameter is no longer supported. Please see http://www.npgsql.org/doc/3.1/migration.html"); }
+            set { throw new NotSupportedException("The ContinuousProcessing parameter is no longer supported. Please see http://www.npgsql.org/doc/migration/3.1.html"); }
         }
 
         /// <summary>
-        /// Obsolete, see http://www.npgsql.org/doc/3.1/migration.html
+        /// Obsolete, see http://www.npgsql.org/doc/migration/3.1.html
         /// </summary>
         [Category("Obsolete")]
-        [Description("Obsolete, see http://www.npgsql.org/doc/3.1/migration.html")]
+        [Description("Obsolete, see http://www.npgsql.org/doc/migration/3.1.html")]
         [DisplayName("Backend Timeouts")]
         [NpgsqlConnectionStringProperty]
         [Obsolete("The BackendTimeouts parameter is no longer supported")]
         public bool BackendTimeouts
         {
             get { return false; }
-            set { throw new NotSupportedException("The BackendTimeouts parameter is no longer supported. Please see http://www.npgsql.org/doc/3.1/migration.html"); }
+            set { throw new NotSupportedException("The BackendTimeouts parameter is no longer supported. Please see http://www.npgsql.org/doc/migration/3.1.html"); }
         }
 
         /// <summary>
-        /// Obsolete, see http://www.npgsql.org/doc/3.0/migration.html
+        /// Obsolete, see http://www.npgsql.org/doc/migration/3.0.html
         /// </summary>
         [Category("Obsolete")]
-        [Description("Obsolete, see http://www.npgsql.org/doc/3.0/migration.html")]
+        [Description("Obsolete, see http://www.npgsql.org/doc/migration/3.0.html")]
         [DisplayName("Preload Reader")]
         [NpgsqlConnectionStringProperty]
         [Obsolete("The PreloadReader parameter is no longer supported")]
         public bool PreloadReader
         {
             get { return false; }
-            set { throw new NotSupportedException("The PreloadReader parameter is no longer supported. Please see http://www.npgsql.org/doc/3.0/migration.html"); }
+            set { throw new NotSupportedException("The PreloadReader parameter is no longer supported. Please see http://www.npgsql.org/doc/migration/3.0.html"); }
         }
 
         /// <summary>
-        /// Obsolete, see http://www.npgsql.org/doc/3.0/migration.html
+        /// Obsolete, see http://www.npgsql.org/doc/migration/3.0.html
         /// </summary>
         [Category("Obsolete")]
-        [Description("Obsolete, see http://www.npgsql.org/doc/3.0/migration.html")]
+        [Description("Obsolete, see http://www.npgsql.org/doc/migration/3.0.html")]
         [DisplayName("Use Extended Types")]
         [NpgsqlConnectionStringProperty]
         [Obsolete("The UseExtendedTypes parameter is no longer supported")]
         public bool UseExtendedTypes
         {
             get { return false; }
-            set { throw new NotSupportedException("The UseExtendedTypes parameter is no longer supported. Please see http://www.npgsql.org/doc/3.0/migration.html"); }
+            set { throw new NotSupportedException("The UseExtendedTypes parameter is no longer supported. Please see http://www.npgsql.org/doc/migration/3.0.html"); }
         }
 
         #endregion
