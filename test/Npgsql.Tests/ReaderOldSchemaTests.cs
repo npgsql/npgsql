@@ -197,6 +197,56 @@ namespace Npgsql.Tests
                     reader.GetSchemaTable();
             }
         }
+
+        [Test]
+        public void PrecisionAndScale()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT 1::NUMERIC AS result", conn))
+            using (var reader = cmd.ExecuteReader())
+            {
+                var schemaTable = reader.GetSchemaTable();
+                foreach (DataRow myField in schemaTable.Rows)
+                {
+                    Console.WriteLine(reader.GetDataTypeName(0));
+                    Assert.That(myField["NumericScale"], Is.EqualTo(0));
+                    Assert.That(myField["NumericPrecision"], Is.EqualTo(0));
+                }
+            }
+        }
+
+        [Test]
+        public void SchemaOnly([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
+                using (var cmd = new NpgsqlCommand(
+                    "SELECT 1 AS some_column;" +
+                    "UPDATE data SET name='yo' WHERE 1=0;" +
+                    "SELECT 1 AS some_other_column",
+                    conn))
+                {
+                    if (prepare == PrepareOrNot.Prepared)
+                        cmd.Prepare();
+                    using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                    {
+                        Assert.That(reader.Read(), Is.False);
+                        var t = reader.GetSchemaTable();
+                        Assert.That(t.Rows[0]["ColumnName"], Is.EqualTo("some_column"));
+                        Assert.That(reader.NextResult(), Is.True);
+                        Assert.That(reader.Read(), Is.False);
+                        t = reader.GetSchemaTable();
+                        Assert.That(t.Rows[0]["ColumnName"], Is.EqualTo("some_other_column"));
+                        Assert.That(reader.NextResult(), Is.False);
+                    }
+
+                    // Close reader in the middle
+                    using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                        reader.Read();
+                }
+            }
+        }
     }
 }
 

@@ -26,6 +26,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Data.Common;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -38,90 +39,59 @@ namespace Npgsql.Tests
     public class SchemaTests : TestBase
     {
         [Test]
-        public void SchemaOnly([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
+        public void MetaDataCollectionNames()
         {
             using (var conn = OpenConnection())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
-                using (var cmd = new NpgsqlCommand(
-                    "SELECT 1 AS some_column;" +
-                    "UPDATE data SET name='yo' WHERE 1=0;" +
-                    "SELECT 1 AS some_other_column",
-                    conn))
-                {
-                    if (prepare == PrepareOrNot.Prepared)
-                        cmd.Prepare();
-                    using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
-                    {
-                        Assert.That(reader.Read(), Is.False);
-                        var t = reader.GetSchemaTable();
-                        Assert.That(t.Rows[0]["ColumnName"], Is.EqualTo("some_column"));
-                        Assert.That(reader.NextResult(), Is.True);
-                        Assert.That(reader.Read(), Is.False);
-                        t = reader.GetSchemaTable();
-                        Assert.That(t.Rows[0]["ColumnName"], Is.EqualTo("some_other_column"));
-                        Assert.That(reader.NextResult(), Is.False);
-                    }
-
-                    // Close reader in the middle
-                    using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
-                        reader.Read();
-                }
-            }
-        }
-
-        [Test]
-        public void GetSchema()
-        {
-            using (var conn = OpenConnection())
-            {
-                DataTable metaDataCollections = conn.GetSchema();
-                Assert.IsTrue(metaDataCollections.Rows.Count > 0, "There should be one or more metadatacollections returned. No connectionstring is required.");
-            }
-        }
-
-        [Test]
-        public void GetSchemaWithDbMetaDataCollectionNames()
-        {
-            using (var conn = OpenConnection())
-            {
-                DataTable metaDataCollections = conn.GetSchema(System.Data.Common.DbMetaDataCollectionNames.MetaDataCollections);
-                Assert.IsTrue(metaDataCollections.Rows.Count > 0, "There should be one or more metadatacollections returned.");
+                var metaDataCollections = conn.GetSchema(DbMetaDataCollectionNames.MetaDataCollections);
+                Assert.That(metaDataCollections.Rows, Has.Count.GreaterThan(0));
                 foreach (DataRow row in metaDataCollections.Rows)
                 {
                     var collectionName = (string)row["CollectionName"];
-                    //checking this collection
-                    if (collectionName != System.Data.Common.DbMetaDataCollectionNames.MetaDataCollections)
-                    {
-                        var collection = conn.GetSchema(collectionName);
-                        Assert.IsNotNull(collection, "Each of the advertised metadata collections should work");
-                    }
+                    Assert.That(conn.GetSchema(collectionName), Is.Not.Null, $"Collection {collectionName} advertise in MetaDataCollections but is null");
                 }
             }
         }
 
-        [Test]
-        public void GetSchemaWithRestrictions()
+        [Test, Description("Calling GetSchema() without a parameter should be the same as passing MetaDataCollections")]
+        public void NoParameter()
         {
             using (var conn = OpenConnection())
             {
-                DataTable metaDataCollections = conn.GetSchema(System.Data.Common.DbMetaDataCollectionNames.Restrictions);
-                Assert.IsTrue(metaDataCollections.Rows.Count > 0, "There should be one or more Restrictions returned.");
+                var collections1 = conn.GetSchema().Rows
+                    .Cast<DataRow>()
+                    .Select(r => (string)r["CollectionName"])
+                    .ToList();
+                var collections2 = conn.GetSchema(DbMetaDataCollectionNames.MetaDataCollections).Rows
+                    .Cast<DataRow>()
+                    .Select(r => (string)r["CollectionName"])
+                    .ToList();
+                Assert.That(collections1, Is.EquivalentTo(collections2));
             }
         }
 
         [Test]
-        public void GetSchemaWithReservedWords()
+        public void Restrictions()
         {
             using (var conn = OpenConnection())
             {
-                DataTable metaDataCollections = conn.GetSchema(System.Data.Common.DbMetaDataCollectionNames.ReservedWords);
-                Assert.IsTrue(metaDataCollections.Rows.Count > 0, "There should be one or more ReservedWords returned.");
+                var restrictions = conn.GetSchema(DbMetaDataCollectionNames.Restrictions);
+                Assert.That(restrictions.Rows, Has.Count.GreaterThan(0));
             }
         }
 
         [Test]
-        public void GetSchemaForeignKeys()
+        public void ReservedWords()
+        {
+            using (var conn = OpenConnection())
+            {
+                var reservedWords = conn.GetSchema(DbMetaDataCollectionNames.ReservedWords);
+                Assert.That(reservedWords.Rows, Has.Count.GreaterThan(0));
+            }
+        }
+
+        [Test]
+        public void ForeignKeys()
         {
             using (var conn = OpenConnection())
             {
@@ -131,11 +101,11 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void GetSchemaParameterMarkerFormats()
+        public void ParameterMarkerFormats()
         {
             using (var conn = OpenConnection())
             {
-                conn.ExecuteNonQuery("DROP TABLE IF EXISTS data; CREATE TABLE data (int INTEGER);");
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (int INTEGER)");
                 conn.ExecuteNonQuery("INSERT INTO data (int) VALUES (4)");
                 var dt = conn.GetSchema("DataSourceInformation");
                 var parameterMarkerFormat = (string)dt.Rows[0]["ParameterMarkerFormat"];
@@ -145,7 +115,7 @@ namespace Npgsql.Tests
                     conn2.Open();
                     using (var command = conn2.CreateCommand())
                     {
-                        const String parameterName = "@p_int";
+                        const string parameterName = "@p_int";
                         command.CommandText = "SELECT * FROM data WHERE int=" +
                                               String.Format(parameterMarkerFormat, parameterName);
                         command.Parameters.Add(new NpgsqlParameter(parameterName, 4));
@@ -156,6 +126,37 @@ namespace Npgsql.Tests
                         }
                     }
                 }
+            }
+        }
+
+        [Test]
+        public void PrecisionAndScale()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery(@"CREATE TEMP TABLE data (explicit_both NUMERIC(10,2), explicit_precision NUMERIC(10), implicit_both NUMERIC, integer INTEGER, text TEXT)");
+                var rows = conn.GetSchema("Columns").Rows.Cast<DataRow>().ToList();
+
+                var explicitBoth = rows.Single(r => (string)r["column_name"] == "explicit_both");
+                Assert.That(explicitBoth["numeric_precision"], Is.EqualTo(10));
+                Assert.That(explicitBoth["numeric_scale"], Is.EqualTo(2));
+
+                var explicitPrecision = rows.Single(r => (string)r["column_name"] == "explicit_precision");
+                Assert.That(explicitPrecision["numeric_precision"], Is.EqualTo(10));
+                Assert.That(explicitPrecision["numeric_scale"], Is.EqualTo(0)); // Not good
+
+                // Consider exposing actual precision/scale even for implicit
+                var implicitBoth = rows.Single(r => (string)r["column_name"] == "implicit_both");
+                Assert.That(implicitBoth["numeric_precision"], Is.EqualTo(DBNull.Value));
+                Assert.That(implicitBoth["numeric_scale"], Is.EqualTo(DBNull.Value));
+
+                var integer = rows.Single(r => (string)r["column_name"] == "integer");
+                Assert.That(integer["numeric_precision"], Is.EqualTo(32));
+                Assert.That(integer["numeric_scale"], Is.EqualTo(0));
+
+                var text = rows.Single(r => (string)r["column_name"] == "text");
+                Assert.That(text["numeric_precision"], Is.EqualTo(DBNull.Value));
+                Assert.That(text["numeric_scale"], Is.EqualTo(DBNull.Value));
             }
         }
     }

@@ -1421,8 +1421,8 @@ namespace Npgsql
                 row["IsRowVersion"] = false;
                 row["IsHidden"] = column.IsHidden == true;
                 row["IsLong"] = column.IsLong == true;
-                row["NumericPrecision"] = column.NumericPrecision ?? 255;
-                row["NumericScale"] = column.NumericScale ?? 255;
+                row["NumericPrecision"] = column.NumericPrecision ?? 0;
+                row["NumericScale"] = column.NumericScale ?? 0;
 
                 table.Rows.Add(row);
             }
