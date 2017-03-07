@@ -208,7 +208,6 @@ namespace Npgsql.Tests
                 var schemaTable = reader.GetSchemaTable();
                 foreach (DataRow myField in schemaTable.Rows)
                 {
-                    Console.WriteLine(reader.GetDataTypeName(0));
                     Assert.That(myField["NumericScale"], Is.EqualTo(0));
                     Assert.That(myField["NumericPrecision"], Is.EqualTo(0));
                 }
