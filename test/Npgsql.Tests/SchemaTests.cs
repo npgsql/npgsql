@@ -105,25 +105,21 @@ namespace Npgsql.Tests
         {
             using (var conn = OpenConnection())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (int INTEGER)");
-                conn.ExecuteNonQuery("INSERT INTO data (int) VALUES (4)");
                 var dt = conn.GetSchema("DataSourceInformation");
                 var parameterMarkerFormat = (string)dt.Rows[0]["ParameterMarkerFormat"];
 
-                using (var conn2 = new NpgsqlConnection(ConnectionString))
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (int INTEGER)");
+                conn.ExecuteNonQuery("INSERT INTO data (int) VALUES (4)");
+                using (var command = conn.CreateCommand())
                 {
-                    conn2.Open();
-                    using (var command = conn2.CreateCommand())
+                    const string parameterName = "@p_int";
+                    command.CommandText = "SELECT * FROM data WHERE int=" +
+                                            String.Format(parameterMarkerFormat, parameterName);
+                    command.Parameters.Add(new NpgsqlParameter(parameterName, 4));
+                    using (var reader = command.ExecuteReader())
                     {
-                        const string parameterName = "@p_int";
-                        command.CommandText = "SELECT * FROM data WHERE int=" +
-                                              String.Format(parameterMarkerFormat, parameterName);
-                        command.Parameters.Add(new NpgsqlParameter(parameterName, 4));
-                        using (var reader = command.ExecuteReader())
-                        {
-                            Assert.IsTrue(reader.Read());
-                            // This is OK, when no exceptions are occurred.
-                        }
+                        Assert.IsTrue(reader.Read());
+                        // This is OK, when no exceptions are occurred.
                     }
                 }
             }
