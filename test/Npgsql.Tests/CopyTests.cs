@@ -611,40 +611,26 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("http://stackoverflow.com/questions/37431054/08p01-insufficient-data-left-in-message-for-nullable-datetime/37431464")]
-        public void WriteDbNullWithoutNpgsqlDbType()
+        public void WriteNullValues()
         {
             using (var conn = OpenConnection())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo INT)");
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo1 INT, foo2 UUID, foo3 INT, foo4 UUID)");
 
-                using (var writer = conn.BeginBinaryImport("COPY data (foo) FROM STDIN BINARY"))
-                {
-                    writer.StartRow();
-                    Assert.That(() => writer.Write(DBNull.Value), Throws.ArgumentException);
-                    writer.Cancel();
-                }
-            }
-        }
-
-        [Test, IssueLink("http://stackoverflow.com/questions/37431054/08p01-insufficient-data-left-in-message-for-nullable-datetime/37431464")]
-        public void WriteDbNullWithNpgsqlDbType()
-        {
-            using (var conn = OpenConnection())
-            {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo1 INT, foo2 UUID)");
-
-                using (var writer = conn.BeginBinaryImport("COPY data (foo1, foo2) FROM STDIN BINARY"))
+                using (var writer = conn.BeginBinaryImport("COPY data (foo1, foo2, foo3, foo4) FROM STDIN BINARY"))
                 {
                     writer.StartRow();
                     writer.Write(DBNull.Value, NpgsqlDbType.Integer);
                     writer.Write((string)null, NpgsqlDbType.Uuid);
+                    writer.Write(DBNull.Value);
+                    writer.Write((string)null);
                 }
-                using (var cmd = new NpgsqlCommand("SELECT foo1,foo2 FROM data", conn))
+                using (var cmd = new NpgsqlCommand("SELECT foo1,foo2,foo3,foo4 FROM data", conn))
                 using (var reader = cmd.ExecuteReader())
                 {
                     Assert.That(reader.Read(), Is.True);
-                    Assert.That(reader.IsDBNull(0), Is.True);
-                    Assert.That(reader.IsDBNull(1), Is.True);
+                    for (var i = 0; i < reader.FieldCount; i++)
+                        Assert.That(reader.IsDBNull(i), Is.True);
                 }
             }
         }
