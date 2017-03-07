@@ -716,8 +716,7 @@ namespace Npgsql.Tls
                 // TODO: IDN Unicode -> Punycode
 
                 // NOTE: IP addresses should not use SNI extension, per specification.
-                System.Net.IPAddress ip;
-                if (!System.Net.IPAddress.TryParse(_hostName, out ip))
+                if (!System.Net.IPAddress.TryParse(_hostName, out var ip))
                 {
                     offset += Utils.WriteUInt16(_buf, offset, (ushort)ExtensionType.ServerName);
                     var byteLen = Encoding.ASCII.GetBytes(_hostName, 0, _hostName.Length, _buf, offset + 7);
@@ -1297,8 +1296,7 @@ namespace Npgsql.Tls
             var Qay = new EllipticCurve.BigInt(pkKey, 1 + curve.curveByteLen, curve.curveByteLen);
 
             byte[] preMasterSecret;
-            EllipticCurve.Affine publicPoint;
-            curve.Ecdh(Qax, Qay, _rng, out preMasterSecret, out publicPoint);
+            curve.Ecdh(Qax, Qay, _rng, out preMasterSecret, out var publicPoint);
 
             SetMasterSecret(preMasterSecret);
             _buf[offset++] = (byte)(1 + 2 * curve.curveByteLen); // Point length
@@ -1319,9 +1317,7 @@ namespace Npgsql.Tls
                 SendAlertFatal(AlertDescription.UnexpectedMessage);
             }
 
-            byte[] preMasterSecret;
-            EllipticCurve.Affine publicPoint;
-            ec.Ecdh(_handshakeData.EcX, _handshakeData.EcY, _rng, out preMasterSecret, out publicPoint);
+            ec.Ecdh(_handshakeData.EcX, _handshakeData.EcY, _rng, out var preMasterSecret, out var publicPoint);
             SetMasterSecret(preMasterSecret);
 
             var byteLen = ec.curveByteLen;

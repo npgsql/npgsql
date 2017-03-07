@@ -148,10 +148,8 @@ namespace Npgsql
         {
             get
             {
-                object value;
-                if (!TryGetValue(keyword, out value)) {
+                if (!TryGetValue(keyword, out var value))
                     throw new ArgumentException("Keyword not supported: " + keyword, nameof(keyword));
-                }
                 return value;
             }
             set
@@ -238,17 +236,14 @@ namespace Npgsql
         /// <returns><b>true</b> if the <see cref="NpgsqlConnectionStringBuilder"/> contains the entry; otherwise <b>false</b>.</returns>
         public bool Contains(KeyValuePair<string, object> item)
         {
-            object value;
-            return TryGetValue(item.Key, out value) &&
+            return TryGetValue(item.Key, out var value) &&
                 ((value == null && item.Value == null) || (value != null && value.Equals(item.Value)));
         }
 
         PropertyInfo GetProperty(string keyword)
         {
-            PropertyInfo p;
-            if (!PropertiesByKeyword.TryGetValue(keyword.ToUpperInvariant(), out p)) {
+            if (!PropertiesByKeyword.TryGetValue(keyword.ToUpperInvariant(), out var p))
                 throw new ArgumentException("Keyword not supported: " + keyword, nameof(keyword));
-            }
             return p;
         }
 
@@ -263,8 +258,7 @@ namespace Npgsql
             if (keyword == null)
                 throw new ArgumentNullException(nameof(keyword));
 
-            PropertyInfo p;
-            if (!PropertiesByKeyword.TryGetValue(keyword.ToUpperInvariant(), out p))
+            if (!PropertiesByKeyword.ContainsKey(keyword.ToUpperInvariant()))
             {
                 value = null;
                 return false;

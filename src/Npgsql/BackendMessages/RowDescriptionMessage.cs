@@ -91,8 +91,7 @@ namespace Npgsql.BackendMessages
         /// </summary>
         internal int GetFieldIndex(string name)
         {
-            int ret;
-            if (_nameIndex.TryGetValue(name, out ret) || _caseInsensitiveNameIndex.TryGetValue(name, out ret))
+            if (_nameIndex.TryGetValue(name, out var ret) || _caseInsensitiveNameIndex.TryGetValue(name, out ret))
                 return ret;
             throw new IndexOutOfRangeException("Field not found in row: " + name);
         }
@@ -101,10 +100,8 @@ namespace Npgsql.BackendMessages
         /// Given a string name, returns the field's ordinal index in the row.
         /// </summary>
         internal bool TryGetFieldIndex(string name, out int fieldIndex)
-        {
-            return _nameIndex.TryGetValue(name, out fieldIndex) ||
-                   _caseInsensitiveNameIndex.TryGetValue(name, out fieldIndex);
-        }
+            => _nameIndex.TryGetValue(name, out fieldIndex) ||
+               _caseInsensitiveNameIndex.TryGetValue(name, out fieldIndex);
 
         public BackendMessageCode Code => BackendMessageCode.RowDescription;
 

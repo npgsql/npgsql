@@ -387,6 +387,7 @@ namespace Npgsql
                     return retIndex;
                 }
 
+
                 return -1;
             }
 

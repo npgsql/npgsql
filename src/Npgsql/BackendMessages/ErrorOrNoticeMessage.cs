@@ -80,8 +80,7 @@ namespace Npgsql.BackendMessages
                     break;
                 case ErrorFieldTypeCode.Position:
                     var positionStr = buf.ReadNullTerminatedString();
-                    int position;
-                    if (!int.TryParse(positionStr, out position)) {
+                    if (!int.TryParse(positionStr, out var position)) {
                         Log.Logger.LogWarning("Non-numeric position in ErrorResponse: " + positionStr);
                         continue;
                     }
@@ -89,8 +88,7 @@ namespace Npgsql.BackendMessages
                     break;
                 case ErrorFieldTypeCode.InternalPosition:
                     var internalPositionStr = buf.ReadNullTerminatedString();
-                    int internalPosition;
-                    if (!Int32.TryParse(internalPositionStr, out internalPosition)) {
+                    if (!Int32.TryParse(internalPositionStr, out var internalPosition)) {
                         Log.Logger.LogWarning("Non-numeric position in ErrorResponse: " + internalPositionStr);
                         continue;
                     }

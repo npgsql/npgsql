@@ -144,8 +144,7 @@ namespace Npgsql
             var taken = new List<int>();
             foreach (var p in Command.Parameters.Where(p => p.IsOutputDirection))
             {
-                int idx;
-                if (_rowDescription.TryGetFieldIndex(p.CleanName, out idx))
+                if (_rowDescription.TryGetFieldIndex(p.CleanName, out var idx))
                 {
                     // TODO: Provider-specific check?
                     p.Value = GetValue(idx);

@@ -155,8 +155,7 @@ namespace Npgsql
                 int? port = null;
                 if (parts[1] != null)
                 {
-                    int tempPort;
-                    if (!int.TryParse(parts[1], out tempPort))
+                    if (!int.TryParse(parts[1], out var tempPort))
                         throw new FormatException("pgpass entry was not formatted correctly. Port must be a valid integer.");
                     port = tempPort;
                 }

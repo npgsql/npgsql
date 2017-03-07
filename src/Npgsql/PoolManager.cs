@@ -446,8 +446,7 @@ namespace Npgsql
         {
             lock (_pendingEnlistedConnectors)
             {
-                List<NpgsqlConnector> list;
-                if (!_pendingEnlistedConnectors.TryGetValue(transaction, out list))
+                if (!_pendingEnlistedConnectors.TryGetValue(transaction, out var list))
                     list = _pendingEnlistedConnectors[transaction] = new List<NpgsqlConnector>();
                 list.Add(connector);
             }
@@ -464,8 +463,7 @@ namespace Npgsql
         {
             lock (_pendingEnlistedConnectors)
             {
-                List<NpgsqlConnector> list;
-                if (!_pendingEnlistedConnectors.TryGetValue(transaction, out list))
+                if (!_pendingEnlistedConnectors.TryGetValue(transaction, out var list))
                     return null;
                 var connector = list[list.Count - 1];
                 list.RemoveAt(list.Count - 1);
