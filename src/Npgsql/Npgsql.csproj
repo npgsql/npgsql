@@ -14,6 +14,7 @@
     <AssemblyOriginatorKeyFile>../../Npgsql.snk</AssemblyOriginatorKeyFile>
     <SignAssembly>true</SignAssembly>
     <PublicSign Condition=" '$(OS)' != 'Windows_NT' ">true</PublicSign>
+    <PackageProjectUrl>http://www.npgsql.org</PackageProjectUrl>
     <PackageIconUrl>http://www.npgsql.org/img/postgresql.gif</PackageIconUrl>
     <PackageLicenseUrl>https://raw.githubusercontent.com/npgsql/npgsql/develop/LICENSE.txt</PackageLicenseUrl>
     <RepositoryType>git</RepositoryType>
