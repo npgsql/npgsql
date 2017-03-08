@@ -3,7 +3,7 @@
   <PropertyGroup>
     <Description>Npgsql is the open source .NET data provider for PostgreSQL.</Description>
     <Authors>Shay Rojansky;Emil Lenngren;Francisco Figueiredo Jr.;Kenji Uno</Authors>
-    <Copyright>Copyright 2017 &#169; The Npgsql Development Team</Copyright>
+    <Copyright>Copyright 2017 © The Npgsql Development Team</Copyright>
     <Company>Npgsql</Company>
     <PackageTags>npgsql postgresql postgres ado ado.net database sql</PackageTags>
     <VersionPrefix>3.2.2</VersionPrefix>
@@ -29,7 +29,7 @@
   <ItemGroup>
     <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.3.0" />
     <PackageReference Include="Microsoft.ApiDesignGuidelines.Analyzers" Version="1.2.0-beta2" PrivateAssets="All" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="1.1.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="1.1.1" />
   </ItemGroup>
 
   <ItemGroup Condition=" '$(TargetFramework)' == 'net45' ">
