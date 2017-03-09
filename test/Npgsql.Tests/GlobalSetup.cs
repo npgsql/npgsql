@@ -35,7 +35,8 @@ public class GlobalSetup
     [OneTimeSetUp]
     public void Setup()
     {
-        Console.Error.WriteLine("Running tests on: " + TestBase.ConnectionString);
+        if (TestUtil.IsOnBuildServer)
+            Console.Error.WriteLine("Running tests on: " + TestBase.ConnectionString);
         SetupLogging();
     }
 
