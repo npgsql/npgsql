@@ -18,9 +18,9 @@ sed -i 's/<VersionPrefix>[^<]*<\/VersionPrefix>/<VersionPrefix>'$v'<\/VersionPre
 sed -i 's/\(<Identity .*Version=\)"[^"]*"/\1"'$v'"/' src/VSIX/source.extension.vsixmanifest
 sed -i 's/.*ProvideBindingRedirection.*/[assembly: ProvideBindingRedirection(AssemblyName = "Npgsql", NewVersion = "'$v'.0", OldVersionLowerBound = "0.0.0.0", OldVersionUpperBound = "'$v'.0")]/' src/VSIX/Properties/AssemblyInfo.cs
 
-echo "echo ##teamcity[buildNumber '$v-%1']" > teamcity_set_version.cmd
+echo "echo ##teamcity[buildNumber '$v-%1']" > .teamcity/set_build_number.cmd
 
-git add teamcity_set_version.cmd
+git add .teamcity/set_build_number.cmd
 git add src/Npgsql/Npgsql.csproj
 git add src/VSIX/source.extension.vsixmanifest
 git add src/VSIX/Properties/AssemblyInfo.cs
