@@ -106,6 +106,9 @@ namespace Npgsql.Tls
         bool _eof;
         bool _closed;
 
+        // Used in Flush method to enforce critical section
+        readonly SemaphoreSlim flushLock = new SemaphoreSlim(1);
+
         /// <summary>
         /// Creates a new TlsClientStream with the given underlying stream.
         /// The handshake must be manually initiated with the method PerformInitialHandshake.
@@ -1858,43 +1861,60 @@ namespace Npgsql.Tls
         async Task Flush(bool async)
         {
             CheckNotClosed();
-            if (_writePos > _connState.WriteStartPos)
-            {
-                try
-                {
-                    _buf[0] = (byte)ContentType.ApplicationData;
-                    Utils.WriteUInt16(_buf, 1, (ushort)_connState.TlsVersion);
 
-                    int offset;
-                    if (_connState.TlsVersion == TlsVersion.TLSv1_0)
-                    {
-                        // To avoid the BEAST attack, we add an empty application data record
-                        offset = Encrypt(0, 0);
-                        _buf[offset] = (byte)ContentType.ApplicationData;
-                        Utils.WriteUInt16(_buf, offset + 1, (ushort)_connState.TlsVersion);
-                    }
-                    else
-                    {
-                        offset = 0;
-                    }
-                    int endPos = Encrypt(offset, _writePos - offset - 5 - _connState.IvLen);
-                    if (async)
-                    {
-                        await _baseStream.WriteAsync(_buf, 0, endPos);
-                        await _baseStream.FlushAsync();
-                    }
-                    else
-                    {
-                        _baseStream.Write(_buf, 0, endPos);
-                        _baseStream.Flush();
-                    }
-                    ResetWritePos();
-                }
-                catch (ClientAlertException e)
+            if (async)
+            {
+                await flushLock.WaitAsync();
+            }
+            else
+            {
+                flushLock.Wait();
+            }
+
+            try
+            {
+                if (_writePos > _connState.WriteStartPos)
                 {
-                    await WriteAlertFatal(e.Description, async);
-                    throw new IOException(e.ToString(), e);
+                    try
+                    {
+                        _buf[0] = (byte)ContentType.ApplicationData;
+                        Utils.WriteUInt16(_buf, 1, (ushort)_connState.TlsVersion);
+
+                        int offset;
+                        if (_connState.TlsVersion == TlsVersion.TLSv1_0)
+                        {
+                            // To avoid the BEAST attack, we add an empty application data record
+                            offset = Encrypt(0, 0);
+                            _buf[offset] = (byte)ContentType.ApplicationData;
+                            Utils.WriteUInt16(_buf, offset + 1, (ushort)_connState.TlsVersion);
+                        }
+                        else
+                        {
+                            offset = 0;
+                        }
+                        int endPos = Encrypt(offset, _writePos - offset - 5 - _connState.IvLen);
+                        if (async)
+                        {
+                            await _baseStream.WriteAsync(_buf, 0, endPos);
+                            await _baseStream.FlushAsync();
+                        }
+                        else
+                        {
+                            _baseStream.Write(_buf, 0, endPos);
+                            _baseStream.Flush();
+                        }
+                        ResetWritePos();
+                    }
+                    catch (ClientAlertException e)
+                    {
+                        await WriteAlertFatal(e.Description, async);
+                        throw new IOException(e.ToString(), e);
+                    }
                 }
+            }
+            finally
+            {
+                flushLock.Release();
             }
         }
 
@@ -2123,6 +2143,7 @@ namespace Npgsql.Tls
             if (disposing)
             {
                 _rng.Dispose();
+                flushLock.Dispose();
             }
             base.Dispose(disposing);
         }
