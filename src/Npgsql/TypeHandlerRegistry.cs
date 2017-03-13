@@ -109,7 +109,7 @@ namespace Npgsql
 
         internal static async Task Setup(NpgsqlConnector connector, NpgsqlTimeout timeout, bool async)
         {
-            // Note that there's a chicken and egg problem here - LoadBackendTypes below needs a functional 
+            // Note that there's a chicken and egg problem here - LoadBackendTypes below needs a functional
             // connector to load the types, hence the strange initialization code here
             connector.TypeHandlerRegistry = new TypeHandlerRegistry(connector);
 
