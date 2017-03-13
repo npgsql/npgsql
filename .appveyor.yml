@@ -11,8 +11,9 @@ cache:
   - '%USERPROFILE%\.nuget\packages -> **\*.csproj'
   - 'C:\projects\npgsql\packages -> **\*.csproj'  # For VSIX
 shallow_clone: true
+install:
+  - ps: $env:padded_build_number = $env:appveyor_build_number.PadLeft(5, '0')
 before_build:
-  - .appveyor\set_padded_build_number.cmd
   - appveyor-retry dotnet restore -v Minimal
   - appveyor-retry nuget restore Npgsql.sln   # For VSIX
 build_script:
