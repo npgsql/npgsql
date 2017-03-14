@@ -148,11 +148,9 @@ namespace Npgsql
                 if (currCharOfs >= end || !IsParamNameChar(ch = sql[currCharOfs])) {
                     var paramName = sql.Substring(currTokenBeg, currCharOfs - currTokenBeg);
 
-                    int index;
-                    if (!_paramIndexMap.TryGetValue(paramName, out index)) {
+                    if (!_paramIndexMap.TryGetValue(paramName, out var index)) {
                         // Parameter hasn't been seen before in this query
-                        NpgsqlParameter parameter;
-                        if (!parameters.TryGetValue(paramName, out parameter))
+                        if (!parameters.TryGetValue(paramName, out var parameter))
                         {
                             _rewrittenSql.Append(paramName);
                             currTokenBeg = currCharOfs;

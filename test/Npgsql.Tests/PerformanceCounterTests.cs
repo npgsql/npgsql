@@ -163,7 +163,7 @@ namespace Npgsql.Tests
         }
 
         [SetUp]
-        public new void Setup()
+        public void Setup()
         {
             NpgsqlConnection.ClearAllPools();
         }

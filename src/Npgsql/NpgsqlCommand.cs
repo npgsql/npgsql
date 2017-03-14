@@ -670,11 +670,11 @@ namespace Npgsql
                     sendTask.GetAwaiter().GetResult();
 
                 var reader = new NpgsqlDataReader(this, behavior, _statements, sendTask);
+                connector.CurrentReader = reader;
                 if (async)
                     await reader.NextResultAsync(cancellationToken);
                 else
                     reader.NextResult();
-                connector.CurrentReader = reader;
                 return reader;
             }
             catch

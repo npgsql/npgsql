@@ -423,8 +423,7 @@ namespace Npgsql
             charsSkipped = bytesSkipped = 0;
             while (charsSkipped < charCount && bytesSkipped < byteCount)
             {
-                int bSkipped, cSkipped;
-                ReadAllChars(_tempCharBuf, 0, Math.Min(charCount, _tempCharBuf.Length), byteCount, out bSkipped, out cSkipped);
+                ReadAllChars(_tempCharBuf, 0, Math.Min(charCount, _tempCharBuf.Length), byteCount, out var bSkipped, out var cSkipped);
                 charsSkipped += cSkipped;
                 bytesSkipped += bSkipped;
             }

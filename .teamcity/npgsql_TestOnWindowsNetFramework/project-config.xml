@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" parent-id="npgsql" uuid="997f09a7-c849-4dd0-a639-34e4adddb043" xsi:noNamespaceSchemaLocation="http://www.jetbrains.com/teamcity/schemas/10.0/project-config.xsd">
-  <name>Test on Windows/.NET Framework</name>
-  <parameters />
-  <cleanup />
-</project>
-

@@ -1,0 +1,44 @@
+image: Visual Studio 2017
+version: 3.2.2-{build}
+services:
+  - postgresql
+environment:
+  global:
+    DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+    DOTNET_CLI_TELEMETRY_OPTOUT: 1
+    NPGSQL_TEST_DB: Host=localhost;Database=postgres;Username=postgres;Password=Password12!
+cache:
+  - '%USERPROFILE%\.nuget\packages -> **\*.csproj'
+  - 'C:\projects\npgsql\packages -> **\*.csproj'  # For VSIX
+shallow_clone: true
+install:
+  - ps: $env:padded_build_number = $env:appveyor_build_number.PadLeft(5, '0')
+before_build:
+  - appveyor-retry dotnet restore -v Minimal
+  - appveyor-retry nuget restore Npgsql.sln   # For VSIX
+build_script:
+  - dotnet build "src\Npgsql" -c ReleaseOptimizedCryptography
+  - dotnet build "test\Npgsql.Tests" -c Debug
+  - dotnet pack src\Npgsql\Npgsql.csproj -c ReleaseOptimizedCryptography --version-suffix ci-%PADDED_BUILD_NUMBER%
+  - msbuild src\VSIX\VSIX.csproj /p:Configuration=Release
+  - msbuild src\MSI\MSI.wixproj /p:Configuration=Release
+test:
+  assemblies:
+    - test\Npgsql.Tests\bin\Debug\net451\Npgsql.Tests.exe
+artifacts:
+  - path: 'src\Npgsql\bin\**\*.nupkg'
+    name: Nuget
+  - path: 'src\VSIX\bin\**\*.vsix'
+    name: Visual Studio Extension
+  - path: 'src\MSI\bin\**\*.msi'
+    name: MSI Installer
+deploy:
+  - provider: NuGet
+    server: https://www.myget.org/F/npgsql-unstable/api/v2/package
+    api_key:
+      secure: kiMn9uBvgMa5EtEmTIhNBFUfyatiATnhkgx5Xj/1EsmKTtEkUv+hJAQs0L3VGzPw
+    artifact: /.*\.nupkg/
+    skip_symbols: true
+    #skip_symbols: false
+    #symbol_server: https://your.symbol.server/feed
+

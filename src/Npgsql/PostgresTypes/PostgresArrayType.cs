@@ -56,8 +56,7 @@ namespace Npgsql.PostgresTypes
 
         internal override TypeHandler Activate(TypeHandlerRegistry registry)
         {
-            TypeHandler elementHandler;
-            if (!registry.TryGetByOID(Element.OID, out elementHandler))
+            if (!registry.TryGetByOID(Element.OID, out var elementHandler))
             {
                 // Element type hasn't been set up yet, do it now
                 elementHandler = Element.Activate(registry);

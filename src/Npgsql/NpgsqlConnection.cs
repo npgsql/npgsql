@@ -140,7 +140,7 @@ namespace Npgsql
         /// Opens a database connection with the property settings specified by the
         /// <see cref="ConnectionString">ConnectionString</see>.
         /// </summary>
-        public override void Open() => Open(false).GetAwaiter().GetResult();
+        public override void Open() => Open(false, CancellationToken.None).GetAwaiter().GetResult();
 
         /// <summary>
         /// This is the asynchronous version of <see cref="Open()"/>.
@@ -153,7 +153,7 @@ namespace Npgsql
         public override async Task OpenAsync(CancellationToken cancellationToken)
         {
             using (NoSynchronizationContextScope.Enter())
-                await Open(true);
+                await Open(true, cancellationToken);
         }
 
         void GetPoolAndSettings()
@@ -197,7 +197,7 @@ namespace Npgsql
             }
         }
 
-        async Task Open(bool async)
+        async Task Open(bool async, CancellationToken cancellationToken)
         {
             CheckConnectionClosed();
 
@@ -217,7 +217,7 @@ namespace Npgsql
                         _userFacingConnectionString = Settings.ToStringWithoutPassword();
 
                     Connector = new NpgsqlConnector(this);
-                    await Connector.Open(timeout, async, CancellationToken.None);
+                    await Connector.Open(timeout, async, cancellationToken);
                     Counters.NumberOfNonPooledConnections.Increment();
                 }
                 else
@@ -237,11 +237,11 @@ namespace Npgsql
                                 EnlistedTransaction = Transaction.Current;
                         }
                         if (Connector == null)
-                            Connector = await _pool.Allocate(this, timeout, async);
+                            Connector = await _pool.Allocate(this, timeout, async, cancellationToken);
                     }
                     else  // No enlist
 #endif
-                        Connector = await _pool.Allocate(this, timeout, async);
+                        Connector = await _pool.Allocate(this, timeout, async, cancellationToken);
 
                     Counters.SoftConnectsPerSecond.Increment();
 

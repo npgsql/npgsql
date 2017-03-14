@@ -19,6 +19,8 @@ namespace Npgsql.Logging
         internal static bool IsEnabled(LogLevel level) => Logger.IsEnabled(level);
 
         // ReSharper disable InconsistentNaming
+
+        // Connection
         static readonly Action<ILogger, Exception> _openingConnection = LoggerMessage.Define(LogLevel.Trace, NpgsqlEventId.OpeningConnection, "Opening connection...");
         static readonly Action<ILogger, Exception> _usingPgpassFile = LoggerMessage.Define(LogLevel.Trace, NpgsqlEventId.UsingPgpassFile, "Taking password from pgpass file");
         static readonly Action<ILogger, int, Exception> _connectionOpened = LoggerMessage.Define<int>(LogLevel.Debug, NpgsqlEventId.ConnectionOpened, "[{ConnectorId}] Connection opened");
@@ -33,7 +35,9 @@ namespace Npgsql.Logging
         static readonly Action<ILogger, EndPoint, Exception> _failedToConnect = LoggerMessage.Define<EndPoint>(LogLevel.Trace, NpgsqlEventId.FailedToConnect, "Failed to connect to {Endpoint}");
         static readonly Action<ILogger, int, Exception> _authenticating = LoggerMessage.Define<int>(LogLevel.Trace, NpgsqlEventId.Authenticating, "[{ConnectorId}] Authenticating...");
         static readonly Action<ILogger, int, Exception> _keepalive = LoggerMessage.Define<int>(LogLevel.Trace, NpgsqlEventId.Keepalive, "[{ConnectorId}] Performed keepalive");
+        static readonly Action<ILogger, int, string, Exception> _notice = LoggerMessage.Define<int, string>(LogLevel.Debug, NpgsqlEventId.Notice, "[{ConnectorId}] Received notice: {Notice}");
 
+        // Command processing
         static readonly Action<ILogger, int, Exception> _cancel = LoggerMessage.Define<int>(LogLevel.Debug, NpgsqlEventId.Cancel, "[{ConnectorId}] Sending cancellation...");
         static readonly Action<ILogger, int, Exception> _cleanup = LoggerMessage.Define<int>(LogLevel.Trace, NpgsqlEventId.Cleanup, "[{ConnectorId}] Cleaning up connector");
         static readonly Action<ILogger, int, Exception> _startUserAction = LoggerMessage.Define<int>(LogLevel.Trace, NpgsqlEventId.StartUserAction, "[{ConnectorId}] Start user action");
@@ -76,6 +80,7 @@ namespace Npgsql.Logging
 
         // ReSharper restore InconsistentNaming
 
+        // Connection
         internal static void OpeningConnection() => _openingConnection(Logger, null);
         internal static void UsingPgpassFile() => _usingPgpassFile(Logger, null);
         internal static void ConnectionOpened(int connectorId) => _connectionOpened(Logger, connectorId, null);
@@ -90,7 +95,9 @@ namespace Npgsql.Logging
         internal static void FailedToConnect(EndPoint ep) => _failedToConnect(Logger, ep, null);
         internal static void Authenticating(int connectorId) => _authenticating(Logger, connectorId, null);
         internal static void Keepalive(int connectorId) => _keepalive(Logger, connectorId, null);
+        internal static void Notice(int connectorId, PostgresNotice notice) => _notice(Logger, connectorId, notice.MessageText, null);
 
+        // Command processing
         internal static void Cancel(int connectorId) => _cancel(Logger, connectorId, null);
         internal static void Cleanup(int connectorId) => _cleanup(Logger, connectorId, null);
         internal static void StartUserAction(int connectorId) => _startUserAction(Logger, connectorId, null);

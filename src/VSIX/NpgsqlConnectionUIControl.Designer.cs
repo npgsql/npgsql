@@ -62,7 +62,7 @@
             this.hostTextBox.Name = "hostTextBox";
             this.hostTextBox.Size = new System.Drawing.Size(388, 26);
             this.hostTextBox.TabIndex = 1;
-            this.hostTextBox.TextChanged += new System.EventHandler(this.SetHost);
+            this.hostTextBox.TextChanged += new System.EventHandler(this.SetProperty);
             // 
             // windowsAuthCheckbox
             // 
@@ -73,7 +73,7 @@
             this.windowsAuthCheckbox.TabIndex = 4;
             this.windowsAuthCheckbox.Text = "Windows Authentication";
             this.windowsAuthCheckbox.UseVisualStyleBackColor = true;
-            this.windowsAuthCheckbox.CheckedChanged += new System.EventHandler(this.SetWindowsAuth);
+            this.windowsAuthCheckbox.CheckedChanged += new System.EventHandler(this.SetProperty);
             // 
             // credentialsGroupBox
             // 
@@ -97,7 +97,7 @@
             this.passwordTextBox.PasswordChar = '*';
             this.passwordTextBox.Size = new System.Drawing.Size(188, 26);
             this.passwordTextBox.TabIndex = 6;
-            this.passwordTextBox.TextChanged += new System.EventHandler(this.SetPassword);
+            this.passwordTextBox.TextChanged += new System.EventHandler(this.SetProperty);
             // 
             // passwordLabel
             // 
@@ -123,7 +123,7 @@
             this.usernameTextBox.Name = "usernameTextBox";
             this.usernameTextBox.Size = new System.Drawing.Size(188, 26);
             this.usernameTextBox.TabIndex = 5;
-            this.usernameTextBox.TextChanged += new System.EventHandler(this.SetUsername);
+            this.usernameTextBox.TextChanged += new System.EventHandler(this.SetProperty);
             // 
             // connectionGroupBox
             // 
@@ -146,7 +146,7 @@
             this.databaseTextBox.Name = "databaseTextBox";
             this.databaseTextBox.Size = new System.Drawing.Size(388, 26);
             this.databaseTextBox.TabIndex = 3;
-            this.databaseTextBox.TextChanged += new System.EventHandler(this.SetDatabase);
+            this.databaseTextBox.TextChanged += new System.EventHandler(this.SetProperty);
             // 
             // label1
             // 
@@ -173,7 +173,7 @@
             0,
             0,
             0});
-            this.portNumericUpDown.ValueChanged += new System.EventHandler(this.SetPort);
+            this.portNumericUpDown.ValueChanged += new System.EventHandler(this.SetProperty);
             // 
             // portLabel
             // 
@@ -193,7 +193,7 @@
             this.savePasswordCheckBox.TabIndex = 7;
             this.savePasswordCheckBox.Text = "Save my password";
             this.savePasswordCheckBox.UseVisualStyleBackColor = true;
-            this.savePasswordCheckBox.CheckedChanged += new System.EventHandler(this.SetSavePassword);
+            this.savePasswordCheckBox.CheckedChanged += new System.EventHandler(this.SetProperty);
             // 
             // NpgsqlConnectionUIControl
             // 

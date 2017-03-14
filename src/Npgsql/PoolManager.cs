@@ -135,7 +135,7 @@ namespace Npgsql
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal ValueTask<NpgsqlConnector> Allocate(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
+        internal ValueTask<NpgsqlConnector> Allocate(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
         {
             Monitor.Enter(this);
 
@@ -153,11 +153,12 @@ namespace Npgsql
             }
 
             // No idle connectors available. Have to actually open a new connector or wait for one.
-            return AllocateLong(conn, timeout, async);
+            return AllocateLong(conn, timeout, async, cancellationToken);
         }
 
-        internal async ValueTask<NpgsqlConnector> AllocateLong(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
+        internal async ValueTask<NpgsqlConnector> AllocateLong(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
         {
+            Debug.Assert(Monitor.IsEntered(this));
             NpgsqlConnector connector;
 
             Debug.Assert(Busy <= _max);
@@ -167,7 +168,7 @@ namespace Npgsql
                 var tcs = new TaskCompletionSource<NpgsqlConnector>();
                 _waiting.Enqueue(new WaitingOpenAttempt { TaskCompletionSource = tcs, IsAsync = async });
                 Monitor.Exit(this);
-                
+
                 try
                 {
                     if (async)
@@ -218,7 +219,7 @@ namespace Npgsql
             try
             {
                 connector = new NpgsqlConnector(conn) { ClearCounter = _clearCounter };
-                await connector.Open(timeout, async, CancellationToken.None);
+                await connector.Open(timeout, async, cancellationToken);
                 Counters.NumberOfPooledConnections.Increment();
                 EnsureMinPoolSize(conn);
                 return connector;
@@ -446,8 +447,7 @@ namespace Npgsql
         {
             lock (_pendingEnlistedConnectors)
             {
-                List<NpgsqlConnector> list;
-                if (!_pendingEnlistedConnectors.TryGetValue(transaction, out list))
+                if (!_pendingEnlistedConnectors.TryGetValue(transaction, out var list))
                     list = _pendingEnlistedConnectors[transaction] = new List<NpgsqlConnector>();
                 list.Add(connector);
             }
@@ -464,8 +464,7 @@ namespace Npgsql
         {
             lock (_pendingEnlistedConnectors)
             {
-                List<NpgsqlConnector> list;
-                if (!_pendingEnlistedConnectors.TryGetValue(transaction, out list))
+                if (!_pendingEnlistedConnectors.TryGetValue(transaction, out var list))
                     return null;
                 var connector = list[list.Count - 1];
                 list.RemoveAt(list.Count - 1);

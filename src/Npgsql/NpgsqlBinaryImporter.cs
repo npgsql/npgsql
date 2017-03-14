@@ -144,8 +144,12 @@ namespace Npgsql
             CheckDisposed();
             if (_column == -1)
                 throw new InvalidOperationException("A row hasn't been started");
-            if (typeof(T) == typeof(DBNull))
-                throw new ArgumentException($"Can't write DBValue.Null, use {nameof(WriteNull)}() or the overload that accepts an NpgsqlDbType");
+
+            if (value == null || typeof(T) == typeof(DBNull))
+            {
+                WriteNull();
+                return;
+            }
 
             var handler = _registry[value];
             DoWrite(handler, value);
@@ -168,7 +172,7 @@ namespace Npgsql
             if (_column == -1)
                 throw new InvalidOperationException("A row hasn't been started");
 
-            if (typeof(T) == typeof(DBNull))
+            if (value == null || typeof(T) == typeof(DBNull))
             {
                 WriteNull();
                 return;

@@ -25,8 +25,6 @@ using System;
 using System.Data;
 using System.IO;
 using System.Linq;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Console;
 using Npgsql.Logging;
 using Npgsql.Tests.Util.Logging;
 using NUnit.Framework;
@@ -39,54 +37,14 @@ namespace Npgsql.Tests
         /// The connection string that will be used when opening the connection to the tests database.
         /// May be overridden in fixtures, e.g. to set special connection parameters
         /// </summary>
-        protected virtual string ConnectionString =>
-            _connectionString ?? (_connectionString = Environment.GetEnvironmentVariable("NPGSQL_TEST_DB") ?? DefaultConnectionString);
-
-        string _connectionString;
-
-        static bool _loggingSetUp;
-        protected static TestLoggerSink TestLoggerSink { get; } = new TestLoggerSink();
+        public static string ConnectionString =>
+            Environment.GetEnvironmentVariable("NPGSQL_TEST_DB") ?? DefaultConnectionString;
 
         /// <summary>
         /// Unless the NPGSQL_TEST_DB environment variable is defined, this is used as the connection string for the
         /// test database.
         /// </summary>
         const string DefaultConnectionString = "Server=localhost;User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests";
-
-        #region Setup / Teardown
-
-        [SetUp]
-        public void Setup()
-        {
-            TestLoggerSink.Clear();
-        }
-
-        [OneTimeSetUp]
-        public virtual void TestFixtureSetup()
-        {
-            if (!_loggingSetUp)
-                SetupLogging();
-        }
-
-        protected virtual void SetupLogging()
-        {
-            NpgsqlLogManager.LoggerFactory = new LoggerFactory();
-            NpgsqlLogManager.LoggerFactory.AddProvider(new TestLoggerProvider(TestLoggerSink));
-
-            var logLevelText = Environment.GetEnvironmentVariable("NPGSQL_TEST_LOGGING");
-            if (logLevelText != null)
-            {
-                LogLevel logLevel;
-                if (!Enum.TryParse(logLevelText, true, out logLevel))
-                    throw new ArgumentOutOfRangeException($"Invalid loglevel in NPGSQL_TEST_LOGGING: {logLevelText}");
-                NpgsqlLogManager.LoggerFactory.AddConsole((text, level) => level >= logLevel);
-                NpgsqlLogManager.IsParameterLoggingEnabled = true;
-            }
-
-            _loggingSetUp = true;
-        }
-
-        #endregion
 
         #region Utilities for use by tests
 

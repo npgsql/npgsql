@@ -55,8 +55,8 @@ namespace Npgsql
         {
             var sql = statement.SQL;
 
-            PreparedStatement pStatement, statementBeingReplaced=null;
-            if (BySql.TryGetValue(sql, out pStatement))
+            PreparedStatement statementBeingReplaced=null;
+            if (BySql.TryGetValue(sql, out var pStatement))
             {
                 Debug.Assert(pStatement.State != PreparedState.Unprepared);
                 if (pStatement.IsExplicit)
@@ -99,8 +99,7 @@ namespace Npgsql
             Debug.Assert(_candidates != null);
 
             var sql = statement.SQL;
-            PreparedStatement pStatement;
-            if (!BySql.TryGetValue(sql, out pStatement))
+            if (!BySql.TryGetValue(sql, out var pStatement))
             {
                 // New candidate. Find an empty candidate slot or eject a least-used one.
                 int slotIndex = -1, leastUsages = int.MaxValue;

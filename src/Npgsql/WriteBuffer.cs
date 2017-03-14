@@ -322,9 +322,7 @@ namespace Npgsql
                 var charPos = 0;
                 while (true)
                 {
-                    int charsUsed;
-                    bool completed;
-                    WriteStringChunked(s, charPos, charLen - charPos, true, out charsUsed, out completed);
+                    WriteStringChunked(s, charPos, charLen - charPos, true, out var charsUsed, out var completed);
                     if (completed)
                         break;
                     await Flush(async);
@@ -412,9 +410,8 @@ namespace Npgsql
                 return;
             }
 
-            int bytesUsed;
             _textEncoder.Convert(chars, charIndex, charCount, _buf, _writePosition, WriteSpaceLeft,
-                                 flush, out charsUsed, out bytesUsed, out completed);
+                                 flush, out charsUsed, out var bytesUsed, out completed);
             _writePosition += bytesUsed;
         }
 
