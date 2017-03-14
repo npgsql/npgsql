@@ -17,5 +17,4 @@ artifacts/
 # Roslyn cache directories
 *.ide/
 .vs/
-.build
 TestResult.xml

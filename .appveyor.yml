@@ -1,27 +1,34 @@
 image: Visual Studio 2017
 version: 3.2.2-{build}
-services:
-  - postgresql
 environment:
   global:
     DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
     DOTNET_CLI_TELEMETRY_OPTOUT: 1
     NPGSQL_TEST_DB: Host=localhost;Database=postgres;Username=postgres;Password=Password12!
+    PGUSER: postgres
+    PGPASSWORD: Password12!
+    POSTGIS_EXE: postgis-bundle-pg95x64-setup-2.3.2-1.exe
 cache:
   - '%USERPROFILE%\.nuget\packages -> **\*.csproj'
   - 'C:\projects\npgsql\packages -> **\*.csproj'  # For VSIX
+  - $(POSTGIS_EXE)
 shallow_clone: true
 install:
-  - ps: $env:padded_build_number = $env:appveyor_build_number.PadLeft(5, '0')
+  - powershell .build\setup-pg.ps1
+services:
+  - postgresql
 before_build:
+  - '"C:\Program Files\PostgreSQL\9.5\bin\psql" -c "CREATE EXTENSION postgis"'
   - appveyor-retry dotnet restore -v Minimal
   - appveyor-retry nuget restore Npgsql.sln   # For VSIX
 build_script:
   - dotnet build "src\Npgsql" -c ReleaseOptimizedCryptography
   - dotnet build "test\Npgsql.Tests" -c Debug
-  - dotnet pack src\Npgsql\Npgsql.csproj -c ReleaseOptimizedCryptography --version-suffix ci-%PADDED_BUILD_NUMBER%
   - msbuild src\VSIX\VSIX.csproj /p:Configuration=Release
   - msbuild src\MSI\MSI.wixproj /p:Configuration=Release
+after_build:
+  - ps: $env:padded_build_number = $env:appveyor_build_number.PadLeft(5, '0')
+  - dotnet pack src\Npgsql\Npgsql.csproj -c ReleaseOptimizedCryptography --version-suffix ci-%PADDED_BUILD_NUMBER%
 test:
   assemblies:
     - test\Npgsql.Tests\bin\Debug\net451\Npgsql.Tests.exe
