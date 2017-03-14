@@ -1341,7 +1341,7 @@ namespace Npgsql
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        T ReadColumn<T>(int ordinal) => ReadColumn<T>(ordinal, true).Result;
+        T ReadColumn<T>(int ordinal) => ReadColumn<T>(ordinal, false).Result;
 
         #region New (CoreCLR) schema API
 
