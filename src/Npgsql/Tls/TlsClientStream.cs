@@ -45,10 +45,13 @@ namespace Npgsql.Tls
         const int MaxEncryptedRecordLen = (1 << 14) /* data */ + 16 + 64 + 256 /* iv + mac + padding (accept long CBC mode padding) */;
 
         // Buffer data
-        byte[] _buf = new byte[5 /* header */ + MaxEncryptedRecordLen];
+        byte[] _readBuf = new byte[5 /* header */ + MaxEncryptedRecordLen];
+        byte[] _writeBuf = new byte[5 /* header */ + 8192 /* Data */ + 16 /* iv */ + 64 /* mac */ + 16 /* padding */];
         int _readStart;
         int _readEnd;
-        int _packetLen;
+        int _readPacketLen;
+
+        SemaphoreSlim _writeLock = new SemaphoreSlim(1);
 
         readonly Stream _baseStream;
 
@@ -61,15 +64,17 @@ namespace Npgsql.Tls
 
         readonly RandomNumberGenerator _rng = RandomNumberGenerator.Create();
 
-        // Info about the current message in the buffer
+        // Info about the current message in the read buffer
         ContentType _contentType;
         int _plaintextLen;
         int _plaintextStart;
 
-        // Temp buffer to hold sequence number
-        readonly byte[] _tempBuf8 = new byte[8];
+        // Temp buffers to hold sequence number
+        readonly byte[] _tempBuf8_1 = new byte[8];
+        readonly byte[] _tempBuf8_2 = new byte[8];
         // Temp buffer for GCM
-        byte[] _temp512;
+        byte[] _temp512_1;
+        byte[] _temp512_2;
 
         // Holds buffered handshake messages that will be dequeued as soon as a proper final message has been received (ServerHelloDone or Finished)
         readonly HandshakeMessagesBuffer _handshakeMessagesBuffer = new HandshakeMessagesBuffer();
@@ -84,9 +89,6 @@ namespace Npgsql.Tls
 
         bool _waitingForChangeCipherSpec;
         bool _waitingForFinished;
-
-        // When renegotiating we use another buffer to avoid overwriting the normal one
-        byte[] _renegotiationTempWriteBuf;
 
         // Used in Read and Write methods to keep track of position
         int _writePos;
@@ -133,7 +135,7 @@ namespace Npgsql.Tls
                 if (packetLength == -1 && _readEnd - _readStart >= 5)
                 {
                     // We have at least a header in our buffer, so extract the length
-                    packetLength = (_buf[_readStart + 3] << 8) | _buf[_readStart + 4];
+                    packetLength = (_readBuf[_readStart + 3] << 8) | _readBuf[_readStart + 4];
                     if (packetLength > MaxEncryptedRecordLen)
                     {
                         SendAlertFatal(AlertDescription.RecordOverflow);
@@ -142,14 +144,14 @@ namespace Npgsql.Tls
                 if (packetLength != -1 && 5 + packetLength <= _readEnd - _readStart)
                 {
                     // The whole record fits in the buffer. We are done.
-                    _packetLen = packetLength;
+                    _readPacketLen = packetLength;
                     return true;
                 }
                 if (_readEnd - _readStart > 0 && _readStart > 0)
                 {
                     // We only have a partial record in the buffer,
                     // move that to the beginning to be able to read as much as possible from the network.
-                    Buffer.BlockCopy(_buf, _readStart, _buf, 0, _readEnd - _readStart);
+                    Buffer.BlockCopy(_readBuf, _readStart, _readBuf, 0, _readEnd - _readStart);
                     _readEnd -= _readStart;
                     _readStart = 0;
                 }
@@ -162,8 +164,8 @@ namespace Npgsql.Tls
                         _readEnd = 0;
                     }
                     int read = async
-                        ? await _baseStream.ReadAsync(_buf, _readEnd, _buf.Length - _readEnd)
-                        : _baseStream.Read(_buf, _readEnd, _buf.Length - _readEnd);
+                        ? await _baseStream.ReadAsync(_readBuf, _readEnd, _readBuf.Length - _readEnd)
+                        : _baseStream.Read(_readBuf, _readEnd, _readBuf.Length - _readEnd);
                     if (read == 0)
                     {
                         return false;
@@ -177,36 +179,36 @@ namespace Npgsql.Tls
         // Sets _contentType, _plaintextStart and _plaintextLength, and increments _readStart
         void Decrypt()
         {
-            _contentType = (ContentType)_buf[_readStart];
+            _contentType = (ContentType)_readBuf[_readStart];
             if (_readConnState.CipherSuite == null)
             {
                 _plaintextStart = _readStart + 5;
-                _plaintextLen = _packetLen;
+                _plaintextLen = _readPacketLen;
             }
             else if (_readConnState.CipherSuite.AesMode == AesMode.CBC)
             {
                 var minPlaintextBytes = _readConnState.MacLen + 1;
                 var minEncryptedBlocks = (minPlaintextBytes + _readConnState.BlockLen - 1) / _readConnState.BlockLen;
                 var minEncryptedBytes = minEncryptedBlocks * _readConnState.BlockLen;
-                if (_packetLen < _readConnState.IvLen + minEncryptedBytes || (_packetLen - _readConnState.IvLen) % _readConnState.BlockLen != 0)
+                if (_readPacketLen < _readConnState.IvLen + minEncryptedBytes || (_readPacketLen - _readConnState.IvLen) % _readConnState.BlockLen != 0)
                     SendAlertFatal(AlertDescription.BadRecordMac);
-                Buffer.BlockCopy(_buf, _readStart + 5, _readConnState.ReadIv, 0, _readConnState.IvLen);
+                Buffer.BlockCopy(_readBuf, _readStart + 5, _readConnState.ReadIv, 0, _readConnState.IvLen);
 
                 _readConnState.ReadAes.IV = _readConnState.ReadIv;
                 int cipherStartPos = _readStart + 5 + _readConnState.IvLen;
-                int cipherLen = _packetLen - _readConnState.IvLen;
+                int cipherLen = _readPacketLen - _readConnState.IvLen;
 
                 if (_readConnState.TlsVersion == TlsVersion.TLSv1_0)
                 {
                     // Save the last ciphertext block to become the IV for the next record
-                    Buffer.BlockCopy(_buf, cipherStartPos + cipherLen - _readConnState.BlockLen, _readConnState.ReadIv, 0, _readConnState.BlockLen);
+                    Buffer.BlockCopy(_readBuf, cipherStartPos + cipherLen - _readConnState.BlockLen, _readConnState.ReadIv, 0, _readConnState.BlockLen);
                 }
 
                 using (var decryptor = _readConnState.ReadAes.CreateDecryptor())
                 {
-                    decryptor.TransformBlock(_buf, cipherStartPos, cipherLen, _buf, cipherStartPos);
+                    decryptor.TransformBlock(_readBuf, cipherStartPos, cipherLen, _readBuf, cipherStartPos);
                 }
-                int paddingLen = _buf[cipherStartPos + cipherLen - 1];
+                int paddingLen = _readBuf[cipherStartPos + cipherLen - 1];
                 bool paddingFail = false;
                 if (paddingLen > cipherLen - 1 - _readConnState.MacLen)
                 {
@@ -218,25 +220,25 @@ namespace Npgsql.Tls
                 int plaintextLen = cipherLen - 1 - paddingLen - _readConnState.MacLen;
 
                 // We don't need the IV anymore in the buffer, so overwrite it with seq_num + header to calculate MAC
-                /*Buffer.BlockCopy(_buf, _readStart, _buf, cipherStartPos - 5, 3);
-                Utils.WriteUInt16(_buf, cipherStartPos - 2, (ushort)plaintextLen);
-                Utils.WriteUInt64(_buf, cipherStartPos - 5 - 8, _readConnState.ReadSeqNum);*/
+                /*Buffer.BlockCopy(_readBuf, _readStart, _readBuf, cipherStartPos - 5, 3);
+                Utils.WriteUInt16(_readBuf, cipherStartPos - 2, (ushort)plaintextLen);
+                Utils.WriteUInt64(_readBuf, cipherStartPos - 5 - 8, _readConnState.ReadSeqNum);*/
 
                 // We should use the plaintext len, not the encrypted len for the MAC
                 //_readConnState.ReadMac.Initialize();
-                Utils.WriteUInt64(_tempBuf8, 0, _readConnState.ReadSeqNum);
-                _readConnState.ReadMac.AppendData(_tempBuf8, 0, 8);
-                Utils.WriteUInt16(_buf, _readStart + 3, (ushort)plaintextLen);
-                _readConnState.ReadMac.AppendData(_buf, _readStart, 5);
-                _readConnState.ReadMac.AppendData(_buf, cipherStartPos, plaintextLen);
+                Utils.WriteUInt64(_tempBuf8_1, 0, _readConnState.ReadSeqNum);
+                _readConnState.ReadMac.AppendData(_tempBuf8_1, 0, 8);
+                Utils.WriteUInt16(_readBuf, _readStart + 3, (ushort)plaintextLen);
+                _readConnState.ReadMac.AppendData(_readBuf, _readStart, 5);
+                _readConnState.ReadMac.AppendData(_readBuf, cipherStartPos, plaintextLen);
                 var hmac = _readConnState.ReadMac.GetHashAndReset();
 
-                if (!Utils.ArraysEqual(hmac, 0, _buf, cipherStartPos + plaintextLen, hmac.Length))
+                if (!Utils.ArraysEqual(hmac, 0, _readBuf, cipherStartPos + plaintextLen, hmac.Length))
                     SendAlertFatal(AlertDescription.BadRecordMac);
 
                 // Verify that the padding bytes contain the correct value (paddingLen)
                 for (int i = 0; i < paddingLen; i++)
-                    if (_buf[cipherStartPos + cipherLen - 2 - i] != paddingLen)
+                    if (_readBuf[cipherStartPos + cipherLen - 2 - i] != paddingLen)
                         SendAlertFatal(AlertDescription.BadRecordMac);
 
                 // Very unlikely MAC didn't catch this
@@ -248,18 +250,18 @@ namespace Npgsql.Tls
             }
             else if (_readConnState.CipherSuite.AesMode == AesMode.GCM)
             {
-                Buffer.BlockCopy(_buf, _readStart + 5, _readConnState.ReadIv, 4, _readConnState.IvLen);
+                Buffer.BlockCopy(_readBuf, _readStart + 5, _readConnState.ReadIv, 4, _readConnState.IvLen);
                 var cipherStartPos = _readStart + 5 + _readConnState.IvLen;
-                var plaintextLen = _packetLen - 16 - _readConnState.IvLen;
+                var plaintextLen = _readPacketLen - 16 - _readConnState.IvLen;
                 if (plaintextLen < 0)
                     SendAlertFatal(AlertDescription.BadRecordMac);
-                var ok = GaloisCounterMode.GCMAD(_readConnState.ReadAesECB, _readConnState.ReadIv, _buf, cipherStartPos, plaintextLen, _readConnState.ReadSeqNum, (byte)_contentType, _readConnState.ReadGCMTable, _temp512);
+                var ok = GaloisCounterMode.GCMAD(_readConnState.ReadAesECB, _readConnState.ReadIv, _readBuf, cipherStartPos, plaintextLen, _readConnState.ReadSeqNum, (byte)_contentType, _readConnState.ReadGCMTable, _temp512_1);
                 if (!ok)
                     SendAlertFatal(AlertDescription.BadRecordMac);
                 _plaintextStart = cipherStartPos;
                 _plaintextLen = plaintextLen;
             }
-            _readStart += 5 + _packetLen;
+            _readStart += 5 + _readPacketLen;
             _readConnState.ReadSeqNum++;
         }
 
@@ -278,57 +280,57 @@ namespace Npgsql.Tls
             if (_connState.CipherSuite != null && _connState.CipherSuite.AesMode == AesMode.CBC)
             {
                 // Update length first with plaintext length
-                Utils.WriteUInt16(_buf, startPos + 3, (ushort)len);
+                Utils.WriteUInt16(_writeBuf, startPos + 3, (ushort)len);
 
-                Utils.WriteUInt64(_tempBuf8, 0, _connState.WriteSeqNum++);
+                Utils.WriteUInt64(_tempBuf8_2, 0, _connState.WriteSeqNum++);
 
                 //_connState.WriteMac.Initialize();
-                _connState.WriteMac.AppendData(_tempBuf8, 0, 8);
-                _connState.WriteMac.AppendData(_buf, startPos, 5);
-                _connState.WriteMac.AppendData(_buf, startPos + 5 + _connState.IvLen, len);
+                _connState.WriteMac.AppendData(_tempBuf8_2, 0, 8);
+                _connState.WriteMac.AppendData(_writeBuf, startPos, 5);
+                _connState.WriteMac.AppendData(_writeBuf, startPos + 5 + _connState.IvLen, len);
                 var mac = _connState.WriteMac.GetHashAndReset();
 
-                Buffer.BlockCopy(mac, 0, _buf, startPos + 5 + _connState.IvLen + len, mac.Length);
+                Buffer.BlockCopy(mac, 0, _writeBuf, startPos + 5 + _connState.IvLen + len, mac.Length);
                 Utils.ClearArray(mac);
 
                 var paddingLen = _connState.BlockLen - (len + _connState.MacLen + 1) % _connState.BlockLen;
                 for (var i = 0; i < paddingLen + 1; i++)
-                    _buf[startPos + 5 + _connState.IvLen + len + _connState.MacLen + i] = (byte)paddingLen;
+                    _writeBuf[startPos + 5 + _connState.IvLen + len + _connState.MacLen + i] = (byte)paddingLen;
 
                 int encryptedLen = len + _connState.MacLen + paddingLen + 1;
 
                 // Update length now with encrypted length
-                Utils.WriteUInt16(_buf, startPos + 3, (ushort)(_connState.IvLen + encryptedLen));
+                Utils.WriteUInt16(_writeBuf, startPos + 3, (ushort)(_connState.IvLen + encryptedLen));
 
                 if (_connState.TlsVersion != TlsVersion.TLSv1_0)
                 {
                     _rng.GetBytes(_connState.WriteIv);
-                    Buffer.BlockCopy(_connState.WriteIv, 0, _buf, startPos + 5, _connState.WriteIv.Length);
+                    Buffer.BlockCopy(_connState.WriteIv, 0, _writeBuf, startPos + 5, _connState.WriteIv.Length);
                 }
                 _connState.WriteAes.IV = _connState.WriteIv;
                 using (var encryptor = _connState.WriteAes.CreateEncryptor())
                 {
-                    encryptor.TransformBlock(_buf, startPos + 5 + _connState.IvLen, encryptedLen, _buf, startPos + 5 + _connState.IvLen);
+                    encryptor.TransformBlock(_writeBuf, startPos + 5 + _connState.IvLen, encryptedLen, _writeBuf, startPos + 5 + _connState.IvLen);
                 }
                 if (_connState.TlsVersion == TlsVersion.TLSv1_0)
                 {
                     // Save last ciphertext block as the next IV
-                    Buffer.BlockCopy(_buf, startPos + 5 + encryptedLen - _connState.BlockLen, _connState.WriteIv, 0, _connState.BlockLen);
+                    Buffer.BlockCopy(_writeBuf, startPos + 5 + encryptedLen - _connState.BlockLen, _connState.WriteIv, 0, _connState.BlockLen);
                 }
                 return startPos + 5 + _connState.IvLen + encryptedLen;
             }
             else if (_connState.CipherSuite != null && _connState.CipherSuite.AesMode == AesMode.GCM)
             {
                 Utils.WriteUInt64(_connState.WriteIv, 4, _connState.WriteSeqNum);
-                Utils.WriteUInt64(_buf, startPos + 5, _connState.WriteSeqNum);
-                GaloisCounterMode.GCMAE(_connState.WriteAesECB, _connState.WriteIv, _buf, startPos + 5 + _connState.IvLen, len, _connState.WriteSeqNum++, _buf[startPos], _connState.WriteGCMTable, _temp512);
-                Utils.WriteUInt16(_buf, startPos + 3, (ushort)(_connState.IvLen + len + 16));
+                Utils.WriteUInt64(_writeBuf, startPos + 5, _connState.WriteSeqNum);
+                GaloisCounterMode.GCMAE(_connState.WriteAesECB, _connState.WriteIv, _writeBuf, startPos + 5 + _connState.IvLen, len, _connState.WriteSeqNum++, _writeBuf[startPos], _connState.WriteGCMTable, _temp512_2);
+                Utils.WriteUInt16(_writeBuf, startPos + 3, (ushort)(_connState.IvLen + len + 16));
                 return startPos + 5 + _connState.IvLen + len + 16;
             }
             else // Null cipher
             {
                 // Update length
-                Utils.WriteUInt16(_buf, startPos + 3, (ushort)len);
+                Utils.WriteUInt16(_writeBuf, startPos + 3, (ushort)len);
                 return startPos + 5 + len;
             }
         }
@@ -364,7 +366,7 @@ namespace Npgsql.Tls
                         await HandleAlertMessage(async);
                         break;
                     case ContentType.Handshake:
-                        _handshakeMessagesBuffer.AddBytes(_buf, _plaintextStart, _plaintextLen, HandshakeMessagesBuffer.IgnoreHelloRequestsSetting.IgnoreHelloRequests);
+                        _handshakeMessagesBuffer.AddBytes(_readBuf, _plaintextStart, _plaintextLen, HandshakeMessagesBuffer.IgnoreHelloRequestsSetting.IgnoreHelloRequests);
                         if (_handshakeMessagesBuffer.Messages.Count > 5)
                         {
                             // There can never be more than 5 handshake messages in a handshake
@@ -382,8 +384,16 @@ namespace Npgsql.Tls
 
             var responseLen = TraverseHandshakeMessages();
 
-            _baseStream.Write(_buf, 0, responseLen);
-            _baseStream.Flush();
+            if (async)
+            {
+                await _baseStream.WriteAsync(_writeBuf, 0, responseLen);
+                await _baseStream.FlushAsync();
+            }
+            else
+            {
+                _baseStream.Write(_writeBuf, 0, responseLen);
+                _baseStream.Flush();
+            }
             ResetWritePos();
             _waitingForChangeCipherSpec = true;
         }
@@ -535,8 +545,11 @@ namespace Npgsql.Tls
                 _pendingConnState.ReadAesECB = _pendingConnState.ReadAes.CreateEncryptor(readKey, null);
                 _pendingConnState.WriteGCMTable = GaloisCounterMode.GetH(_pendingConnState.WriteAesECB);
                 _pendingConnState.ReadGCMTable = GaloisCounterMode.GetH(_pendingConnState.ReadAesECB);
-                if (_temp512 == null)
-                    _temp512 = new byte[512];
+                if (_temp512_1 == null)
+                {
+                    _temp512_1 = new byte[512];
+                    _temp512_2 = new byte[512];
+                }
             }
             Utils.ClearArray(writeMac);
             Utils.ClearArray(readMac);
@@ -559,10 +572,10 @@ namespace Npgsql.Tls
             int start = offset;
             int messageStart = start + 5 + ivLen;
 
-            _buf[offset++] = (byte)ContentType.Handshake;
+            _writeBuf[offset++] = (byte)ContentType.Handshake;
 
             // Highest version supported
-            offset += Utils.WriteUInt16(_buf, offset, (ushort)_connState.TlsVersion);
+            offset += Utils.WriteUInt16(_writeBuf, offset, (ushort)_connState.TlsVersion);
 
             // Record length to be filled in later
             offset += 2;
@@ -576,10 +589,10 @@ namespace Npgsql.Tls
 
             var handshakeType = func(ref offset);
             var messageLen = offset - (handshakeTypePos + 4);
-            _buf[handshakeTypePos] = (byte)handshakeType;
-            Utils.WriteUInt24(_buf, handshakeTypePos + 1, messageLen);
+            _writeBuf[handshakeTypePos] = (byte)handshakeType;
+            Utils.WriteUInt24(_writeBuf, handshakeTypePos + 1, messageLen);
 
-            UpdateHandshakeHash(_buf, messageStart, offset - messageStart);
+            UpdateHandshakeHash(_writeBuf, messageStart, offset - messageStart);
 
             offset = Encrypt(start, offset - messageStart);
         }
@@ -620,7 +633,7 @@ namespace Npgsql.Tls
                 }
                 else
                 {
-                    _handshakeMessagesBuffer.AddBytes(_buf, _plaintextStart, _plaintextLen, HandshakeMessagesBuffer.IgnoreHelloRequestsSetting.IgnoreHelloRequestsUntilFinished);
+                    _handshakeMessagesBuffer.AddBytes(_readBuf, _plaintextStart, _plaintextLen, HandshakeMessagesBuffer.IgnoreHelloRequestsSetting.IgnoreHelloRequestsUntilFinished);
                 }
             }
 
@@ -655,7 +668,7 @@ namespace Npgsql.Tls
             };
 
             // Highest version supported
-            offset += Utils.WriteUInt16(_buf, offset, (ushort)HighestTlsVersionSupported);
+            offset += Utils.WriteUInt16(_writeBuf, offset, (ushort)HighestTlsVersionSupported);
 
             // Client random
             var timestamp = (uint)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
@@ -663,11 +676,11 @@ namespace Npgsql.Tls
             _rng.GetBytes(_pendingConnState.ClientRandom);
             Utils.WriteUInt32(_pendingConnState.ClientRandom, 0, timestamp);
 
-            Buffer.BlockCopy(_pendingConnState.ClientRandom, 0, _buf, offset, 32);
+            Buffer.BlockCopy(_pendingConnState.ClientRandom, 0, _writeBuf, offset, 32);
             offset += 32;
 
             // No session id
-            _buf[offset++] = 0;
+            _writeBuf[offset++] = 0;
 
             // Cipher suites
             var supportedCipherSuites = CipherSuiteInfo.Supported;
@@ -675,39 +688,39 @@ namespace Npgsql.Tls
             if (HighestTlsVersionSupported != TlsVersion.TLSv1_2)
                 supportedCipherSuites = supportedCipherSuites.Where(cs => cs.IsAllowedBefore1_2).ToArray();
             */
-            offset += Utils.WriteUInt16(_buf, offset, (ushort)(supportedCipherSuites.Length * sizeof(ushort)));
+            offset += Utils.WriteUInt16(_writeBuf, offset, (ushort)(supportedCipherSuites.Length * sizeof(ushort)));
             foreach (var suite in supportedCipherSuites)
             {
-                offset += Utils.WriteUInt16(_buf, offset, (ushort)suite.Id);
+                offset += Utils.WriteUInt16(_writeBuf, offset, (ushort)suite.Id);
             }
 
             // Compression methods
-            _buf[offset++] = 1; // Length
-            _buf[offset++] = 0; // "null" compression method
+            _writeBuf[offset++] = 1; // Length
+            _writeBuf[offset++] = 0; // "null" compression method
 
             // Extensions length, fill in later
             var extensionLengthOffset = offset;
             offset += 2;
 
             // Renegotiation extension
-            offset += Utils.WriteUInt16(_buf, offset, (ushort)ExtensionType.RenegotiationInfo);
+            offset += Utils.WriteUInt16(_writeBuf, offset, (ushort)ExtensionType.RenegotiationInfo);
             if (_connState.SecureRenegotiation)
             {
                 // Extension length
-                offset += Utils.WriteUInt16(_buf, offset, 13);
+                offset += Utils.WriteUInt16(_writeBuf, offset, 13);
 
                 // Renegotiated connection length
-                _buf[offset++] = 12;
+                _writeBuf[offset++] = 12;
                 // Renegotiated connection data
-                Buffer.BlockCopy(_connState.ClientVerifyData, 0, _buf, offset, 12);
+                Buffer.BlockCopy(_connState.ClientVerifyData, 0, _writeBuf, offset, 12);
                 offset += 12;
             }
             else
             {
                 // Extension length
-                offset += Utils.WriteUInt16(_buf, offset, 1);
+                offset += Utils.WriteUInt16(_writeBuf, offset, 1);
                 // Renegotiated connection length
-                _buf[offset++] = 0;
+                _writeBuf[offset++] = 0;
             }
 
             // SNI extension
@@ -718,12 +731,12 @@ namespace Npgsql.Tls
                 // NOTE: IP addresses should not use SNI extension, per specification.
                 if (!System.Net.IPAddress.TryParse(_hostName, out var ip))
                 {
-                    offset += Utils.WriteUInt16(_buf, offset, (ushort)ExtensionType.ServerName);
-                    var byteLen = Encoding.ASCII.GetBytes(_hostName, 0, _hostName.Length, _buf, offset + 7);
-                    offset += Utils.WriteUInt16(_buf, offset, (ushort)(5 + byteLen));
-                    offset += Utils.WriteUInt16(_buf, offset, (ushort)(3 + byteLen));
-                    _buf[offset++] = 0; // host_name
-                    offset += Utils.WriteUInt16(_buf, offset, (ushort)byteLen);
+                    offset += Utils.WriteUInt16(_writeBuf, offset, (ushort)ExtensionType.ServerName);
+                    var byteLen = Encoding.ASCII.GetBytes(_hostName, 0, _hostName.Length, _writeBuf, offset + 7);
+                    offset += Utils.WriteUInt16(_writeBuf, offset, (ushort)(5 + byteLen));
+                    offset += Utils.WriteUInt16(_writeBuf, offset, (ushort)(3 + byteLen));
+                    _writeBuf[offset++] = 0; // host_name
+                    offset += Utils.WriteUInt16(_writeBuf, offset, (ushort)byteLen);
                     offset += byteLen;
                 }
             }
@@ -732,50 +745,50 @@ namespace Npgsql.Tls
             {
                 // Signature algorithms extension. At least IIS 7.5 needs this or it immediately resets the connection.
                 // Used to specify what kind of server certificate hash/signature algorithms we can use to verify it.
-                offset += Utils.WriteUInt16(_buf, offset, (ushort)ExtensionType.SignatureAlgorithms);
-                offset += Utils.WriteUInt16(_buf, offset, 20);
-                offset += Utils.WriteUInt16(_buf, offset, 18);
-                _buf[offset++] = (byte)TlsHashAlgorithm.SHA1;
-                _buf[offset++] = (byte)SignatureAlgorithm.ECDSA;
-                _buf[offset++] = (byte)TlsHashAlgorithm.SHA256;
-                _buf[offset++] = (byte)SignatureAlgorithm.ECDSA;
-                _buf[offset++] = (byte)TlsHashAlgorithm.SHA384;
-                _buf[offset++] = (byte)SignatureAlgorithm.ECDSA;
-                _buf[offset++] = (byte)TlsHashAlgorithm.SHA512;
-                _buf[offset++] = (byte)SignatureAlgorithm.ECDSA;
-                _buf[offset++] = (byte)TlsHashAlgorithm.SHA1;
-                _buf[offset++] = (byte)SignatureAlgorithm.RSA;
-                _buf[offset++] = (byte)TlsHashAlgorithm.SHA256;
-                _buf[offset++] = (byte)SignatureAlgorithm.RSA;
-                _buf[offset++] = (byte)TlsHashAlgorithm.SHA384;
-                _buf[offset++] = (byte)SignatureAlgorithm.RSA;
-                _buf[offset++] = (byte)TlsHashAlgorithm.SHA512;
-                _buf[offset++] = (byte)SignatureAlgorithm.RSA;
-                _buf[offset++] = (byte)TlsHashAlgorithm.SHA1;
-                _buf[offset++] = (byte)SignatureAlgorithm.DSA;
+                offset += Utils.WriteUInt16(_writeBuf, offset, (ushort)ExtensionType.SignatureAlgorithms);
+                offset += Utils.WriteUInt16(_writeBuf, offset, 20);
+                offset += Utils.WriteUInt16(_writeBuf, offset, 18);
+                _writeBuf[offset++] = (byte)TlsHashAlgorithm.SHA1;
+                _writeBuf[offset++] = (byte)SignatureAlgorithm.ECDSA;
+                _writeBuf[offset++] = (byte)TlsHashAlgorithm.SHA256;
+                _writeBuf[offset++] = (byte)SignatureAlgorithm.ECDSA;
+                _writeBuf[offset++] = (byte)TlsHashAlgorithm.SHA384;
+                _writeBuf[offset++] = (byte)SignatureAlgorithm.ECDSA;
+                _writeBuf[offset++] = (byte)TlsHashAlgorithm.SHA512;
+                _writeBuf[offset++] = (byte)SignatureAlgorithm.ECDSA;
+                _writeBuf[offset++] = (byte)TlsHashAlgorithm.SHA1;
+                _writeBuf[offset++] = (byte)SignatureAlgorithm.RSA;
+                _writeBuf[offset++] = (byte)TlsHashAlgorithm.SHA256;
+                _writeBuf[offset++] = (byte)SignatureAlgorithm.RSA;
+                _writeBuf[offset++] = (byte)TlsHashAlgorithm.SHA384;
+                _writeBuf[offset++] = (byte)SignatureAlgorithm.RSA;
+                _writeBuf[offset++] = (byte)TlsHashAlgorithm.SHA512;
+                _writeBuf[offset++] = (byte)SignatureAlgorithm.RSA;
+                _writeBuf[offset++] = (byte)TlsHashAlgorithm.SHA1;
+                _writeBuf[offset++] = (byte)SignatureAlgorithm.DSA;
             }
 
             if (supportedCipherSuites.Any(s => s.KeyExchange == KeyExchange.ECDHE_RSA || s.KeyExchange == KeyExchange.ECDHE_ECDSA))
             {
                 // Supported Elliptic Curves Extension
 
-                offset += Utils.WriteUInt16(_buf, offset, (ushort)ExtensionType.SupportedEllipticCurves);
-                offset += Utils.WriteUInt16(_buf, offset, 8);
-                offset += Utils.WriteUInt16(_buf, offset, 6);
-                offset += Utils.WriteUInt16(_buf, offset, (ushort)NamedCurve.secp256r1);
-                offset += Utils.WriteUInt16(_buf, offset, (ushort)NamedCurve.secp384r1);
-                offset += Utils.WriteUInt16(_buf, offset, (ushort)NamedCurve.secp521r1);
+                offset += Utils.WriteUInt16(_writeBuf, offset, (ushort)ExtensionType.SupportedEllipticCurves);
+                offset += Utils.WriteUInt16(_writeBuf, offset, 8);
+                offset += Utils.WriteUInt16(_writeBuf, offset, 6);
+                offset += Utils.WriteUInt16(_writeBuf, offset, (ushort)NamedCurve.secp256r1);
+                offset += Utils.WriteUInt16(_writeBuf, offset, (ushort)NamedCurve.secp384r1);
+                offset += Utils.WriteUInt16(_writeBuf, offset, (ushort)NamedCurve.secp521r1);
 
                 // Supported Point Formats Extension
 
-                offset += Utils.WriteUInt16(_buf, offset, (ushort)ExtensionType.SupportedPointFormats);
-                offset += Utils.WriteUInt16(_buf, offset, 2);
-                _buf[offset++] = 1; // Length
-                _buf[offset++] = 0; // Uncompressed
+                offset += Utils.WriteUInt16(_writeBuf, offset, (ushort)ExtensionType.SupportedPointFormats);
+                offset += Utils.WriteUInt16(_writeBuf, offset, 2);
+                _writeBuf[offset++] = 1; // Length
+                _writeBuf[offset++] = 0; // Uncompressed
             }
 
 
-            Utils.WriteUInt16(_buf, extensionLengthOffset, (ushort)(offset - (extensionLengthOffset + 2)));
+            Utils.WriteUInt16(_writeBuf, extensionLengthOffset, (ushort)(offset - (extensionLengthOffset + 2)));
 
             return HandshakeType.ClientHello;
         }
@@ -1036,8 +1049,8 @@ namespace Npgsql.Tls
             SetMasterSecret(preMasterSecret);
 
             // Message content
-            offset += Utils.WriteUInt16(_buf, offset, (ushort)encryptedPreMasterSecret.Length);
-            Buffer.BlockCopy(encryptedPreMasterSecret, 0, _buf, offset, encryptedPreMasterSecret.Length);
+            offset += Utils.WriteUInt16(_writeBuf, offset, (ushort)encryptedPreMasterSecret.Length);
+            Buffer.BlockCopy(encryptedPreMasterSecret, 0, _writeBuf, offset, encryptedPreMasterSecret.Length);
             offset += encryptedPreMasterSecret.Length;
 
             return HandshakeType.ClientKeyExchange;
@@ -1276,8 +1289,8 @@ namespace Npgsql.Tls
             SetMasterSecret(Z);
 
             // Yc
-            offset += Utils.WriteUInt16(_buf, offset, (ushort)Yc.Length);
-            Buffer.BlockCopy(Yc, 0, _buf, offset, Yc.Length);
+            offset += Utils.WriteUInt16(_writeBuf, offset, (ushort)Yc.Length);
+            Buffer.BlockCopy(Yc, 0, _writeBuf, offset, Yc.Length);
             offset += Yc.Length;
 
             return HandshakeType.ClientKeyExchange;
@@ -1299,10 +1312,10 @@ namespace Npgsql.Tls
             curve.Ecdh(Qax, Qay, _rng, out preMasterSecret, out var publicPoint);
 
             SetMasterSecret(preMasterSecret);
-            _buf[offset++] = (byte)(1 + 2 * curve.curveByteLen); // Point length
-            _buf[offset++] = 4; // Uncompressed
-            offset += publicPoint.x.ExportToBigEndian(_buf, offset, curve.curveByteLen);
-            offset += publicPoint.y.ExportToBigEndian(_buf, offset, curve.curveByteLen);
+            _writeBuf[offset++] = (byte)(1 + 2 * curve.curveByteLen); // Point length
+            _writeBuf[offset++] = 4; // Uncompressed
+            offset += publicPoint.x.ExportToBigEndian(_writeBuf, offset, curve.curveByteLen);
+            offset += publicPoint.y.ExportToBigEndian(_writeBuf, offset, curve.curveByteLen);
             publicPoint.Clear();
 
             return HandshakeType.ClientKeyExchange;
@@ -1322,10 +1335,10 @@ namespace Npgsql.Tls
 
             var byteLen = ec.curveByteLen;
 
-            _buf[offset++] = (byte)(1 + 2 * byteLen); // Point length
-            _buf[offset++] = 4; // Uncompressed
-            offset += publicPoint.x.ExportToBigEndian(_buf, offset, byteLen);
-            offset += publicPoint.y.ExportToBigEndian(_buf, offset, byteLen);
+            _writeBuf[offset++] = (byte)(1 + 2 * byteLen); // Point length
+            _writeBuf[offset++] = 4; // Uncompressed
+            offset += publicPoint.x.ExportToBigEndian(_writeBuf, offset, byteLen);
+            offset += publicPoint.y.ExportToBigEndian(_writeBuf, offset, byteLen);
             publicPoint.Clear();
 
             return HandshakeType.ClientKeyExchange;
@@ -1404,7 +1417,7 @@ namespace Npgsql.Tls
             if (selected == null)
             {
                 // Did not find any good certificate, send an empty list...
-                offset += Utils.WriteUInt24(_buf, offset, 0);
+                offset += Utils.WriteUInt24(_writeBuf, offset, 0);
             }
             else
             {
@@ -1414,12 +1427,12 @@ namespace Npgsql.Tls
                 {
                     byteEncoded[i] = selected.ChainElements[i].Certificate.Export(X509ContentType.Cert);
                 }
-                offset += Utils.WriteUInt24(_buf, offset, byteEncoded.Sum(a => 3 + a.Length));
+                offset += Utils.WriteUInt24(_writeBuf, offset, byteEncoded.Sum(a => 3 + a.Length));
 
                 foreach (var arr in byteEncoded)
                 {
-                    offset += Utils.WriteUInt24(_buf, offset, arr.Length);
-                    Buffer.BlockCopy(arr, 0, _buf, offset, arr.Length);
+                    offset += Utils.WriteUInt24(_writeBuf, offset, arr.Length);
+                    Buffer.BlockCopy(arr, 0, _writeBuf, offset, arr.Length);
                     offset += arr.Length;
                 }
             }
@@ -1475,8 +1488,8 @@ namespace Npgsql.Tls
 
                 if (_pendingConnState.TlsVersion == TlsVersion.TLSv1_2)
                 {
-                    _buf[offset++] = (byte)TlsHashAlgorithm.SHA1;
-                    _buf[offset++] = (byte)SignatureAlgorithm.DSA;
+                    _writeBuf[offset++] = (byte)TlsHashAlgorithm.SHA1;
+                    _writeBuf[offset++] = (byte)SignatureAlgorithm.DSA;
                 }
             }
             else
@@ -1523,8 +1536,8 @@ namespace Npgsql.Tls
 
                     if (_pendingConnState.TlsVersion == TlsVersion.TLSv1_2)
                     {
-                        _buf[offset++] = (byte)TlsHashAlgorithm.SHA1;
-                        _buf[offset++] = (byte)SignatureAlgorithm.RSA;
+                        _writeBuf[offset++] = (byte)TlsHashAlgorithm.SHA1;
+                        _writeBuf[offset++] = (byte)SignatureAlgorithm.RSA;
                     }
                 }
             }
@@ -1544,8 +1557,8 @@ namespace Npgsql.Tls
             key.Dispose();
 #endif
 
-            offset += Utils.WriteUInt16(_buf, offset, (ushort)signature.Length);
-            Buffer.BlockCopy(signature, 0, _buf, offset, signature.Length);
+            offset += Utils.WriteUInt16(_writeBuf, offset, (ushort)signature.Length);
+            Buffer.BlockCopy(signature, 0, _writeBuf, offset, signature.Length);
             offset += signature.Length;
 
             return HandshakeType.CertificateVerify;
@@ -1553,9 +1566,9 @@ namespace Npgsql.Tls
 
         void SendChangeCipherSpec(ref int offset, int ivLen)
         {
-            _buf[offset++] = (byte)ContentType.ChangeCipherSpec;
+            _writeBuf[offset++] = (byte)ContentType.ChangeCipherSpec;
 
-            offset += Utils.WriteUInt16(_buf, offset, (ushort)_connState.TlsVersion);
+            offset += Utils.WriteUInt16(_writeBuf, offset, (ushort)_connState.TlsVersion);
 
             // Length
             offset += 2;
@@ -1563,14 +1576,14 @@ namespace Npgsql.Tls
             offset += ivLen;
 
             // Content
-            _buf[offset++] = 1;
+            _writeBuf[offset++] = 1;
         }
 
         HandshakeType SendFinished(ref int offset)
         {
             byte[] inputHash = _handshakeData.HandshakeHash1.Final();
             byte[] hash = Utils.PRF(_connState.PRFAlgorithm, _connState.MasterSecret, "client finished", inputHash, 12);
-            Buffer.BlockCopy(hash, 0, _buf, offset, 12);
+            Buffer.BlockCopy(hash, 0, _writeBuf, offset, 12);
             offset += 12;
             if (_connState.SecureRenegotiation)
                 _connState.ClientVerifyData = hash;
@@ -1586,7 +1599,7 @@ namespace Npgsql.Tls
 
         void ParseChangeCipherSpec()
         {
-            if (_plaintextLen != 1 || _buf[_plaintextStart] != 1)
+            if (_plaintextLen != 1 || _readBuf[_plaintextStart] != 1)
                 SendAlertFatal(AlertDescription.IllegalParameter);
             if (_pendingConnState != _connState)
                 SendAlertFatal(AlertDescription.UnexpectedMessage);
@@ -1623,48 +1636,73 @@ namespace Npgsql.Tls
 
         async Task WriteAlertFatal(AlertDescription description, bool async)
         {
-            _buf[0] = (byte)ContentType.Alert;
-            Utils.WriteUInt16(_buf, 1, (ushort)_connState.TlsVersion);
-            _buf[5 + _connState.IvLen] = (byte)AlertLevel.Fatal;
-            _buf[5 + _connState.IvLen + 1] = (byte)description;
-            int endPos = Encrypt(0, 2);
-
             if (async)
-            {
-                await _baseStream.WriteAsync(_buf, 0, endPos);
-                await _baseStream.FlushAsync();
-            }
+                await _writeLock.WaitAsync();
             else
+                _writeLock.Wait();
+            try
             {
-                _baseStream.Write(_buf, 0, endPos);
-                _baseStream.Flush();
-            }
+                _writeBuf[0] = (byte)ContentType.Alert;
+                Utils.WriteUInt16(_writeBuf, 1, (ushort)_connState.TlsVersion);
+                _writeBuf[5 + _connState.IvLen] = (byte)AlertLevel.Fatal;
+                _writeBuf[5 + _connState.IvLen + 1] = (byte)description;
+                int endPos = Encrypt(0, 2);
 
-            _baseStream.Dispose();
-            _eof = true;
-            _closed = true;
-            _connState.Dispose();
-            _pendingConnState?.Dispose();
-            if (_temp512 != null)
-                Utils.ClearArray(_temp512);
+                if (async)
+                {
+                    await _baseStream.WriteAsync(_writeBuf, 0, endPos);
+                    await _baseStream.FlushAsync();
+                }
+                else
+                {
+                    _baseStream.Write(_writeBuf, 0, endPos);
+                    _baseStream.Flush();
+                }
+
+                _baseStream.Dispose();
+                _eof = true;
+                _closed = true;
+                _connState.Dispose();
+                _pendingConnState?.Dispose();
+                if (_temp512_1 != null)
+                {
+                    Utils.ClearArray(_temp512_1);
+                    Utils.ClearArray(_temp512_2);
+                }
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
         }
 
         async Task SendClosureAlert(bool async)
         {
-            _buf[0] = (byte)ContentType.Alert;
-            Utils.WriteUInt16(_buf, 1, (ushort)_connState.TlsVersion);
-            _buf[5 + _connState.IvLen] = (byte)AlertLevel.Warning;
-            _buf[5 + _connState.IvLen + 1] = (byte)AlertDescription.CloseNotify;
-            int endPos = Encrypt(0, 2);
             if (async)
-            {
-                await _baseStream.WriteAsync(_buf, 0, endPos);
-                await _baseStream.FlushAsync();
-            }
+                await _writeLock.WaitAsync();
             else
+                _writeLock.Wait();
+            try
             {
-                _baseStream.Write(_buf, 0, endPos);
-                _baseStream.Flush();
+                _writeBuf[0] = (byte)ContentType.Alert;
+                Utils.WriteUInt16(_writeBuf, 1, (ushort)_connState.TlsVersion);
+                _writeBuf[5 + _connState.IvLen] = (byte)AlertLevel.Warning;
+                _writeBuf[5 + _connState.IvLen + 1] = (byte)AlertDescription.CloseNotify;
+                int endPos = Encrypt(0, 2);
+                if (async)
+                {
+                    await _baseStream.WriteAsync(_writeBuf, 0, endPos);
+                    await _baseStream.FlushAsync();
+                }
+                else
+                {
+                    _baseStream.Write(_writeBuf, 0, endPos);
+                    _baseStream.Flush();
+                }
+            }
+            finally
+            {
+                _writeLock.Release();
             }
         }
 
@@ -1673,8 +1711,8 @@ namespace Npgsql.Tls
             if (_plaintextLen != 2)
                 SendAlertFatal(AlertDescription.DecodeError);
 
-            var alertLevel = (AlertLevel)_buf[_plaintextStart];
-            var alertDescription = (AlertDescription)_buf[_plaintextStart + 1];
+            var alertLevel = (AlertLevel)_readBuf[_plaintextStart];
+            var alertDescription = (AlertDescription)_readBuf[_plaintextStart + 1];
 
             switch (alertDescription)
             {
@@ -1693,9 +1731,9 @@ namespace Npgsql.Tls
                     // We read 0 bytes to find out. If end of stream, it will just return 0, otherwise an exception will be thrown, as we want.
                     // TODO: what to do with _closed? (_eof is true)
                     if (async)
-                        await _baseStream.ReadAsync(_buf, 0, 0);
+                        await _baseStream.ReadAsync(_readBuf, 0, 0);
                     else
-                        _baseStream.Read(_buf, 0, 0);
+                        _baseStream.Read(_readBuf, 0, 0);
 
                     _baseStream.Dispose();
                     break;
@@ -1717,15 +1755,7 @@ namespace Npgsql.Tls
         {
             _writePos = _connState.WriteStartPos;
         }
-
-        void CheckCanWrite()
-        {
-            if (_readStart != _readEnd || _decryptedReadPos != _decryptedReadEnd)
-            {
-                throw new IOException("Cannot write data until everything buffered has been read");
-            }
-            _readStart = _readEnd = 0;
-        }
+	
         void CheckNotClosed()
         {
             if (_closed)
@@ -1744,7 +1774,7 @@ namespace Npgsql.Tls
                 if (_lenBufferedReadData + _plaintextLen <= MaxBufferedReadData)
                 {
                     var bytes = new byte[_plaintextLen];
-                    Buffer.BlockCopy(_buf, _plaintextStart, bytes, 0, _plaintextLen);
+                    Buffer.BlockCopy(_readBuf, _plaintextStart, bytes, 0, _plaintextLen);
                     _bufferedReadData.Enqueue(bytes);
                     return;
                 }
@@ -1771,8 +1801,16 @@ namespace Npgsql.Tls
             {
                 int offset = 0;
                 SendHandshakeMessage(SendClientHello, ref offset, 0);
-                _baseStream.Write(_buf, 0, offset);
-                _baseStream.Flush();
+                if (async)
+                {
+                    await _baseStream.WriteAsync(_writeBuf, 0, offset);
+                    await _baseStream.FlushAsync();
+                }
+                else
+                {
+                    _baseStream.Write(_writeBuf, 0, offset);
+                    _baseStream.Flush();
+                }
                 await GetInitialHandshakeMessages(async);
 
                 var keyExchange = _connState.CipherSuite.KeyExchange;
@@ -1790,7 +1828,7 @@ namespace Npgsql.Tls
             }
         }
 
-        int WriteSpaceLeft => (1 << 14) + _connState.WriteStartPos - _writePos;
+        int WriteSpaceLeft => 8192 + _connState.WriteStartPos - _writePos;
 
         #region Stream overrides
 
@@ -1812,28 +1850,22 @@ namespace Npgsql.Tls
                 throw new ArgumentOutOfRangeException("len");
 #endif
 
-            CheckNotClosed();
-            if (_connState.CipherSuite == null)
-            {
-                throw new InvalidOperationException("Must perform initial handshake before writing application data");
-            }
-
+            if (async)
+                await _writeLock.WaitAsync();
+            else
+                _writeLock.Wait();
             try
             {
-                if (_pendingConnState != null && !_waitingForChangeCipherSpec)
+                CheckNotClosed();
+                if (_connState.CipherSuite == null)
                 {
-                    // OpenSSL violates TLS 1.2 spec by not allowing interleaved application data and handshake data,
-                    // so we wait for the handshake to complete
-                    await GetInitialHandshakeMessages(true, async);
-
-                    // For simplicity, don't try to do a "false start" here, so wait until Finished has been received
-                    await WaitForHandshakeCompleted(false, async);
+                    throw new InvalidOperationException("Must perform initial handshake before writing application data");
                 }
-                CheckCanWrite();
-                for (; ; )
+                
+                for (;;)
                 {
                     int toWrite = Math.Min(WriteSpaceLeft, len);
-                    Buffer.BlockCopy(buffer, offset, _buf, _writePos, toWrite);
+                    Buffer.BlockCopy(buffer, offset, _writeBuf, _writePos, toWrite);
                     _writePos += toWrite;
                     offset += toWrite;
                     len -= toWrite;
@@ -1841,60 +1873,73 @@ namespace Npgsql.Tls
                     {
                         return;
                     }
-                    Flush();
+                    await Flush(async);
                 }
             }
-            catch (ClientAlertException e)
+            finally
             {
-                await WriteAlertFatal(e.Description, async);
-                throw new IOException(e.ToString(), e);
+                _writeLock.Release();
             }
         }
 
-        public override void Flush() => Flush(false).GetAwaiter().GetResult();
+        public override void Flush()
+        {
+            _writeLock.Wait();
+            try
+            {
+                Flush(false).GetAwaiter().GetResult();
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
+        }
 
-        public override Task FlushAsync(CancellationToken cancellataionToken) => Flush(true);
+        public override async Task FlushAsync(CancellationToken cancellataionToken)
+        {
+            await _writeLock.WaitAsync();
+            try
+            {
+                await Flush(true);
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
+        }
 
         async Task Flush(bool async)
         {
             CheckNotClosed();
             if (_writePos > _connState.WriteStartPos)
             {
-                try
-                {
-                    _buf[0] = (byte)ContentType.ApplicationData;
-                    Utils.WriteUInt16(_buf, 1, (ushort)_connState.TlsVersion);
+                _writeBuf[0] = (byte)ContentType.ApplicationData;
+                Utils.WriteUInt16(_writeBuf, 1, (ushort)_connState.TlsVersion);
 
-                    int offset;
-                    if (_connState.TlsVersion == TlsVersion.TLSv1_0)
-                    {
-                        // To avoid the BEAST attack, we add an empty application data record
-                        offset = Encrypt(0, 0);
-                        _buf[offset] = (byte)ContentType.ApplicationData;
-                        Utils.WriteUInt16(_buf, offset + 1, (ushort)_connState.TlsVersion);
-                    }
-                    else
-                    {
-                        offset = 0;
-                    }
-                    int endPos = Encrypt(offset, _writePos - offset - 5 - _connState.IvLen);
-                    if (async)
-                    {
-                        await _baseStream.WriteAsync(_buf, 0, endPos);
-                        await _baseStream.FlushAsync();
-                    }
-                    else
-                    {
-                        _baseStream.Write(_buf, 0, endPos);
-                        _baseStream.Flush();
-                    }
-                    ResetWritePos();
-                }
-                catch (ClientAlertException e)
+                int offset;
+                if (_connState.TlsVersion == TlsVersion.TLSv1_0)
                 {
-                    await WriteAlertFatal(e.Description, async);
-                    throw new IOException(e.ToString(), e);
+                    // To avoid the BEAST attack, we add an empty application data record
+                    offset = Encrypt(0, 0);
+                    _writeBuf[offset] = (byte)ContentType.ApplicationData;
+                    Utils.WriteUInt16(_writeBuf, offset + 1, (ushort)_connState.TlsVersion);
                 }
+                else
+                {
+                    offset = 0;
+                }
+                int endPos = Encrypt(offset, _writePos - offset - 5 - _connState.IvLen);
+                if (async)
+                {
+                    await _baseStream.WriteAsync(_writeBuf, 0, endPos);
+                    await _baseStream.FlushAsync();
+                }
+                else
+                {
+                    _baseStream.Write(_writeBuf, 0, endPos);
+                    _baseStream.Flush();
+                }
+                ResetWritePos();
             }
         }
 
@@ -1914,8 +1959,7 @@ namespace Npgsql.Tls
             if (len < 0 || len > buffer.Length - offset)
                 throw new ArgumentOutOfRangeException("len");
 #endif
-
-            await Flush(async);
+            
             try
             {
                 for (; ; )
@@ -1942,24 +1986,37 @@ namespace Npgsql.Tls
                                 {
                                     SendAlertFatal(AlertDescription.UnexpectedMessage);
                                 }
-                                _renegotiationTempWriteBuf = new byte[_buf.Length];
-                                byte[] bufSaved = _buf;
-                                _buf = _renegotiationTempWriteBuf;
-                                int writeOffset = 0;
-                                SendHandshakeMessage(SendClientHello, ref writeOffset, _connState.IvLen);
                                 if (async)
-                                {
-                                    await _baseStream.WriteAsync(_buf, 0, writeOffset);
-                                    await _baseStream.FlushAsync();
-                                }
+                                    await _writeLock.WaitAsync();
                                 else
+                                    _writeLock.Wait();
+                                try
                                 {
-                                    _baseStream.Write(_buf, 0, writeOffset);
-                                    _baseStream.Flush();
-                                }
-                                _buf = bufSaved;
+                                    await Flush(async);
+                                    int writeOffset = 0;
+                                    SendHandshakeMessage(SendClientHello, ref writeOffset, _connState.IvLen);
+                                    if (async)
+                                    {
+                                        await _baseStream.WriteAsync(_writeBuf, 0, writeOffset);
+                                        await _baseStream.FlushAsync();
+                                    }
+                                    else
+                                    {
+                                        _baseStream.Write(_writeBuf, 0, writeOffset);
+                                        _baseStream.Flush();
+                                    }
 
-                                _handshakeMessagesBuffer.ClearMessages();
+                                    _handshakeMessagesBuffer.ClearMessages();
+
+                                    // OpenSSL violates TLS 1.2 spec by not allowing interleaved application data and handshake data,
+                                    // so we wait for the ServerHello + ... + ServerHelloDone messages and then send the rest of our handshake messages.
+                                    await GetInitialHandshakeMessages(async, true);
+                                    // Now we do a "false start" regardless of Cipher Suite
+                                }
+                                finally
+                                {
+                                    _writeLock.Release();
+                                }
                             }
                             else
                             {
@@ -1968,28 +2025,6 @@ namespace Npgsql.Tls
                                 if (_waitingForChangeCipherSpec)
                                 {
                                     SendAlertFatal(AlertDescription.UnexpectedMessage);
-                                }
-                                if (_handshakeMessagesBuffer.HasServerHelloDone)
-                                {
-                                    byte[] bufSaved = _buf;
-                                    _buf = _renegotiationTempWriteBuf;
-                                    var responseLen = TraverseHandshakeMessages();
-
-                                    if (async)
-                                    {
-                                        await _baseStream.WriteAsync(_buf, 0, responseLen);
-                                        await _baseStream.FlushAsync();
-                                    }
-                                    else
-                                    {
-                                        _baseStream.Write(_buf, 0, responseLen);
-                                        _baseStream.Flush();
-                                    }
-                                    ResetWritePos();
-                                    _waitingForChangeCipherSpec = true;
-
-                                    _buf = bufSaved;
-                                    _renegotiationTempWriteBuf = null;
                                 }
                             }
                         }
@@ -2037,7 +2072,7 @@ namespace Npgsql.Tls
                         if (_decryptedReadPos < _decryptedReadEnd)
                         {
                             var toRead = Math.Min(_decryptedReadEnd - _decryptedReadPos, len);
-                            Buffer.BlockCopy(_buf, _decryptedReadPos, buffer, offset, toRead);
+                            Buffer.BlockCopy(_readBuf, _decryptedReadPos, buffer, offset, toRead);
                             _decryptedReadPos += toRead;
                             return toRead;
                         }
@@ -2069,12 +2104,12 @@ namespace Npgsql.Tls
                     }
                     else if (_contentType == ContentType.Handshake)
                     {
-                        _handshakeMessagesBuffer.AddBytes(_buf, _plaintextStart, _plaintextLen, _pendingConnState != null ?
+                        _handshakeMessagesBuffer.AddBytes(_readBuf, _plaintextStart, _plaintextLen, _pendingConnState != null ?
                             HandshakeMessagesBuffer.IgnoreHelloRequestsSetting.IgnoreHelloRequestsUntilFinished :
                             HandshakeMessagesBuffer.IgnoreHelloRequestsSetting.IncludeHelloRequests);
-                        if (_handshakeMessagesBuffer.Messages.Count > 5)
+                        if (_handshakeMessagesBuffer.Messages.Count > 2)
                         {
-                            // There can never be more than 5 handshake messages in a handshake
+                            // There can never be more than 2 handshake messages (finished + hello request)
                             SendAlertFatal(AlertDescription.UnexpectedMessage);
                         }
                         // The handshake message(s) will be processed in the loop's next iteration
@@ -2116,8 +2151,11 @@ namespace Npgsql.Tls
                     _closed = true;
                     _connState.Dispose();
                     _pendingConnState?.Dispose();
-                    if (_temp512 != null)
-                        Utils.ClearArray(_temp512);
+                    if (_temp512_1 != null)
+                    {
+                        Utils.ClearArray(_temp512_1);
+                        Utils.ClearArray(_temp512_2);
+                    }
                 }
             }
             if (disposing)
@@ -2180,12 +2218,12 @@ namespace Npgsql.Tls
             int pos = _readStart;
             while (pos < _readEnd)
             {
-                if ((ContentType)_buf[pos] == ContentType.ApplicationData)
+                if ((ContentType)_readBuf[pos] == ContentType.ApplicationData)
                     return true;
                 if (pos + 5 >= _readEnd)
                     break;
                 pos += 3;
-                int recordLen = Utils.ReadUInt16(_buf, ref pos);
+                int recordLen = Utils.ReadUInt16(_readBuf, ref pos);
                 pos += recordLen;
             }
 

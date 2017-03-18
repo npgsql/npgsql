@@ -173,7 +173,7 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1454")]
-        [Ignore("For Emil")]
+        //[Ignore("For Emil")]
         public async Task Bug1454()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
