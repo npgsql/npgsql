@@ -158,8 +158,6 @@ namespace Npgsql
 
         void GetPoolAndSettings()
         {
-            Debug.Assert(_pool == null);
-
             var pools = PoolManager.Pools;
             lock (pools)
             {
