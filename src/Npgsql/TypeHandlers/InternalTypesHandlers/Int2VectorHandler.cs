@@ -21,7 +21,6 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using Microsoft.Extensions.Logging;
 using Npgsql.Logging;
 using NpgsqlTypes;
 using Npgsql.PostgresTypes;
@@ -35,6 +34,8 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
     [TypeMapping("int2vector", NpgsqlDbType.Int2Vector)]
     class Int2VectorHandler : ArrayHandler<short>
     {
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+
         public Int2VectorHandler(PostgresType postgresType, TypeHandlerRegistry registry)
             : base(postgresType, null, 0)
         {
@@ -43,7 +44,7 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
             var shortHandler = registry[NpgsqlDbType.Smallint];
             if (shortHandler == registry.UnrecognizedTypeHandler)
             {
-                Log.Logger.LogWarning("smallint type not present when setting up int2vector type. int2vector will not work.");
+                Log.Warn("smallint type not present when setting up int2vector type. int2vector will not work.");
                 return;
             }
             ElementHandler = shortHandler;

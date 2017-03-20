@@ -2,7 +2,7 @@
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"
      xmlns:util="http://schemas.microsoft.com/wix/UtilExtension"
   >
-  
+
   <Product Id="*"
            Name="Npgsql $(var.Version)"
            Language="1033"
@@ -40,12 +40,10 @@
              AllowAdvertise="no"
              Display="expand" >
       <ComponentRef Id="Npgsql" />
-      <ComponentRef Id="Microsoft.Extensions.Logging.Abstractions" />
-      <ComponentRef Id="Microsoft.Extensions.Logging" />
       <ComponentRef Id="System.Threading.Tasks.Extensions" />
       <ComponentRef Id="MachineConfig_x86" />
       <ComponentRef Id="MachineConfig_x64" />
-      
+
     </Feature>
 
     <UIRef Id="WixUI_FeatureTree" />
@@ -99,7 +97,7 @@
 
 
         <!-- ICE Reference
-          http://technet.microsoft.com/ja-jp/events/aa369206 
+          http://technet.microsoft.com/ja-jp/events/aa369206
           -->
     <!-- http://blogs.msdn.com/b/heaths/archive/2006/09/20/installing-assemblies-for-runtime-and-design_2d00_time-use.aspx -->
     <!-- http://stackoverflow.com/questions/17090689/wix-deploy-two-assemblies-to-gac -->
@@ -109,20 +107,6 @@
           <File Id="Npgsql"
                 Name="Npgsql.dll"
                 Source="..\npgsql\bin\$(var.Configuration)\net451\Npgsql.dll"
-                KeyPath="yes"
-                Assembly=".net" />
-        </Component>
-        <Component Id="Microsoft.Extensions.Logging.Abstractions" Guid="94a955b9-732c-48cd-b070-91954029b59c">
-          <File Id="Microsoft.Extensions.Logging.Abstractions"
-                Name="Microsoft.Extensions.Logging.Abstractions.dll"
-                Source="..\npgsql\bin\$(var.Configuration)\net451\Microsoft.Extensions.Logging.Abstractions.dll"
-                KeyPath="yes"
-                Assembly=".net" />
-        </Component>
-        <Component Id="Microsoft.Extensions.Logging" Guid="01ae68d2-6161-4516-8ddf-0ffb66fa5831">
-          <File Id="Microsoft.Extensions.Logging"
-                Name="Microsoft.Extensions.Logging.dll"
-                Source="..\npgsql\bin\$(var.Configuration)\net451\Microsoft.Extensions.Logging.dll"
                 KeyPath="yes"
                 Assembly=".net" />
         </Component>
@@ -137,14 +121,14 @@
 
       <!-- http://stackoverflow.com/questions/791455/how-do-i-modify-machine-config-via-an-msi-package -->
       <!-- http://wixtoolset.org/documentation/manual/v3/xsd/util/xmlconfig.html -->
-      
-      <!-- 
+
+      <!--
         XmlConfig cannot do:
         - remove all 'add' elements. Only one element can be removed.
         - select last 'add' element. XmlConfig uses obsoleted XSLPattern. last() isn't supported.
-        
+
         So we have to add 'remove' invariant='Npgsql' element.
-        
+
         http://stackoverflow.com/questions/8224918/adding-xml-nodes-with-similar-names-using-wix/8265578#8265578
         -->
 
@@ -173,7 +157,7 @@
               </Directory>
             </Directory>
           </Directory>
-          
+
           <Directory Id="Dir_Framework_x64" Name="Framework64">
             <Directory Id="Dir_v4.0.30319_x64" Name="v4.0.30319">
               <Directory Id="Dir_CONFIG_x64" Name="CONFIG">
@@ -193,7 +177,7 @@
                   </util:XmlConfig>
 
                   <util:XmlConfig Id="DeleteAddElement64" File="$(var.MachineConfigPath64)" Action="delete" On="uninstall" ElementPath="//configuration/system.data/DbProviderFactories" VerifyPath="//configuration/system.data/DbProviderFactories/add[\[]@invariant='Npgsql'[\]]" Node="element" Sequence="1"/>
-                  
+
                 </Component>
               </Directory>
             </Directory>

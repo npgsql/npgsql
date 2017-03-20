@@ -70,6 +70,8 @@ namespace Npgsql
         /// </summary>
         readonly NpgsqlParameter _dummyParam;
 
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+
         #endregion
 
         #region Construction / Initialization
@@ -295,7 +297,7 @@ namespace Npgsql
 
         void Cleanup()
         {
-            Log.EndCopy(_connector.Id);
+            Log.Debug("COPY operation ended", _connector.Id);
             _connector.CurrentCopyOperation = null;
             _connector = null;
             _registry = null;

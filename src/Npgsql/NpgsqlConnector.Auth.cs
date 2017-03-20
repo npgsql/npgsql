@@ -17,7 +17,7 @@ namespace Npgsql
     {
         async Task Authenticate(string username, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
         {
-            Log.Authenticating(Id);
+            Log.Trace("Authenticating...", Id);
 
             var msg = await ReadExpecting<AuthenticationRequestMessage>(async);
             timeout.Check();
@@ -57,7 +57,7 @@ namespace Npgsql
                 var matchingEntry = PgPassFile.LoadDefaultFile()?.GetFirstMatchingEntry(Settings.Host, Settings.Port, Settings.Database, Settings.Username);
                 if (matchingEntry != null)
                 {
-                    Log.UsingPgpassFile();
+                    Log.Trace("Taking password from pgpass file");
                     passwd = matchingEntry.Password;
                 }
             }
@@ -81,7 +81,7 @@ namespace Npgsql
                 var matchingEntry = PgPassFile.LoadDefaultFile()?.GetFirstMatchingEntry(Settings.Host, Settings.Port, Settings.Database, Settings.Username);
                 if (matchingEntry != null)
                 {
-                    Log.UsingPgpassFile();
+                    Log.Trace("Taking password from pgpass file");
                     passwd = matchingEntry.Password;
                 }
             }

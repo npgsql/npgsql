@@ -3,7 +3,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using JetBrains.Annotations;
-using Microsoft.Extensions.Logging;
 using Npgsql.BackendMessages;
 using Npgsql.Logging;
 
@@ -51,6 +50,8 @@ namespace Npgsql
         static bool _initialized;
         static readonly object InitLock = new object();
 
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+
         internal static void Initialize(bool usePerfCounters)
         {
             lock (InitLock)
@@ -68,7 +69,7 @@ namespace Npgsql
                     {
                         enabled = PerformanceCounterCategory.Exists(Counter.DiagnosticsCounterCategory);
                         if (!enabled)
-                            Log.Logger.LogWarning($"{nameof(NpgsqlConnectionStringBuilder.UsePerfCounters)} was specified but the Performance Counter category wasn't found. You probably need to install the Npgsql MSI.");
+                            Log.Warn($"{nameof(NpgsqlConnectionStringBuilder.UsePerfCounters)} was specified but the Performance Counter category wasn't found. You probably need to install the Npgsql MSI.");
                         var perfCtrSwitch = new TraceSwitch("ConnectionPoolPerformanceCounterDetail",
                             "level of detail to track with connection pool performance counters");
                         expensiveEnabled = enabled && perfCtrSwitch.Level == TraceLevel.Verbose;
@@ -76,7 +77,7 @@ namespace Npgsql
                 }
                 catch (Exception e)
                 {
-                    Log.Logger.LogDebug("Exception while checking for performance counter category (counters will be disabled)", e);
+                    Log.Debug("Exception while checking for performance counter category (counters will be disabled)", e);
                 }
 #endif
 
@@ -94,7 +95,7 @@ namespace Npgsql
                 }
                 catch (Exception e)
                 {
-                    Log.Logger.LogDebug("Exception while setting up performance counter (counters will be disabled)", e);
+                    Log.Debug("Exception while setting up performance counter (counters will be disabled)", e);
                 }
             }
         }
@@ -192,7 +193,7 @@ namespace Npgsql
             if (result.Length > CounterInstanceNameMaxLength)
             {
                 // Replacing the middle part with "[...]"
-                // For example: if path is c:\long_path\very_(Ax200)_long__path\perftest.exe and process ID is 1234 than the resulted instance name will be: 
+                // For example: if path is c:\long_path\very_(Ax200)_long__path\perftest.exe and process ID is 1234 than the resulted instance name will be:
                 // c:\long_path\very_(AxM)[...](AxN)_long__path\perftest.exe[1234]
                 // while M and N are adjusted to make each part before and after the [...] = 61 (making the total = 61 + 5 + 61 = 127)
                 const string insertString = "[...]";

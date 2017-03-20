@@ -26,7 +26,6 @@ using System.Data;
 using System.IO;
 using System.Linq;
 using Npgsql.Logging;
-using Npgsql.Tests.Util.Logging;
 using NUnit.Framework;
 
 namespace Npgsql.Tests

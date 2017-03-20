@@ -35,7 +35,6 @@ using System.Threading.Tasks;
 using System.Globalization;
 using System.Net.Sockets;
 using JetBrains.Annotations;
-using Microsoft.Extensions.Logging;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
 using Npgsql.Logging;
@@ -86,6 +85,8 @@ namespace Npgsql
         bool IsExplicitlyPrepared => _connectorPreparedOn != null;
 
         static readonly SingleThreadSynchronizationContext SingleThreadSynchronizationContext = new SingleThreadSynchronizationContext("NpgsqlRemainingAsyncSendWorker");
+
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         #endregion Fields
 
@@ -400,8 +401,7 @@ namespace Npgsql
                         throw new InvalidOperationException("The Prepare method requires all parameters to have an explicitly set type.");
 
                 ProcessRawQuery();
-
-                Log.Preparing(connector.Id, CommandText);
+                Log.Debug($"Preparing: {CommandText}", connector.Id);
 
                 var needToPrepare = false;
                 foreach (var statement in _statements)
@@ -472,7 +472,7 @@ namespace Npgsql
                 return;
 
             var connector = CheckReadyAndGetConnector();
-            Log.ClosingCommandPreparedStatements(connector.Id);
+            Log.Debug("Closing command's prepared statements", connector.Id);
             using (connector.StartUserAction())
             {
                 var sendTask = SendClose(false, CancellationToken.None);
@@ -621,7 +621,8 @@ namespace Npgsql
             State = CommandState.InProgress;
             try
             {
-                Log.ExecuteCommand(connector.Id, this);
+                if (Log.IsEnabled(NpgsqlLogLevel.Debug))
+                    LogCommand();
                 Task sendTask;
 
                 // If a cancellation is in progress, wait for it to "complete" before proceeding (#615)
@@ -797,7 +798,7 @@ namespace Npgsql
                     .Write(buf, async, cancellationToken);
                 wroteSomething = true;
             }
-            
+
             if (wroteSomething)
             {
                 await SyncMessage.Instance.Write(buf, async, cancellationToken);
@@ -1107,6 +1108,23 @@ namespace Npgsql
         {
             for (var i = 0; i < rowDescription.NumFields; i++)
                 rowDescription[i].FormatCode = (UnknownResultTypeList == null || !isFirst ? AllResultTypesAreUnknown : UnknownResultTypeList[i]) ? FormatCode.Text : FormatCode.Binary;
+        }
+
+        void LogCommand()
+        {
+            var sb = new StringBuilder();
+            sb.Append("Executing statement(s):");
+            foreach (var s in _statements)
+                sb.AppendLine().Append("\t").Append(s.SQL);
+
+            if (NpgsqlLogManager.IsParameterLoggingEnabled && Parameters.Any())
+            {
+                sb.AppendLine().AppendLine("Parameters:");
+                for (var i = 0; i < Parameters.Count; i++)
+                    sb.Append("\t$").Append(i + 1).Append(": ").Append(Convert.ToString(Parameters[i].Value, CultureInfo.InvariantCulture));
+            }
+
+            Log.Debug(sb.ToString(), Connection.Connector.Id);
         }
 
 #if NET45 || NET451

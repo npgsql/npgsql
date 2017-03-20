@@ -107,6 +107,8 @@ namespace Npgsql
         bool IsSequential => (_behavior & CommandBehavior.SequentialAccess) != 0;
         bool IsSchemaOnly => (_behavior & CommandBehavior.SchemaOnly) != 0;
 
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+
         internal NpgsqlDataReader(NpgsqlCommand command, CommandBehavior behavior, List<NpgsqlStatement> statements, Task sendTask)
         {
             Command = command;
@@ -713,7 +715,7 @@ namespace Npgsql
 
         internal void Cleanup(bool connectionClosing=false)
         {
-            Log.ReaderCleanup(_connector.Id);
+            Log.Trace("Cleaning up reader", _connector.Id);
 
             // Make sure the send task for this command, which may have executed asynchronously and in
             // parallel with the reading, has completed, throwing any exceptions it generated.

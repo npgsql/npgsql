@@ -21,7 +21,6 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using Microsoft.Extensions.Logging;
 using Npgsql.Logging;
 using NpgsqlTypes;
 using Npgsql.PostgresTypes;
@@ -35,6 +34,8 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
     [TypeMapping("oidvector", NpgsqlDbType.Oidvector)]
     class OIDVectorHandler : ArrayHandler<uint>
     {
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+
         public OIDVectorHandler(PostgresType postgresType, TypeHandlerRegistry registry)
             : base(postgresType, null, 0)
         {
@@ -43,7 +44,7 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
             var oidHandler = registry[NpgsqlDbType.Oid];
             if (oidHandler == registry.UnrecognizedTypeHandler)
             {
-                Log.Logger.LogWarning("oid type not present when setting up oidvector type. oidvector will not work.");
+                Log.Warn("oid type not present when setting up oidvector type. oidvector will not work.");
                 return;
             }
             ElementHandler = oidHandler;

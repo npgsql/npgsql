@@ -22,8 +22,10 @@
 #endregion
 
 using System;
-using Microsoft.Extensions.Logging;
 using NUnit.Framework;
+using NLog.Config;
+using NLog.Targets;
+using NLog;
 using Npgsql.Logging;
 using Npgsql.Tests;
 
@@ -42,16 +44,23 @@ public class GlobalSetup
 
     protected void SetupLogging()
     {
-        NpgsqlLogManager.LoggerFactory = new LoggerFactory();
-
         var logLevelText = Environment.GetEnvironmentVariable("NPGSQL_TEST_LOGGING");
-        if (logLevelText != null)
+        if (logLevelText == null)
+            return;
+        if (!Enum.TryParse(logLevelText, true, out NpgsqlLogLevel logLevel))
+            throw new ArgumentOutOfRangeException($"Invalid loglevel in NPGSQL_TEST_LOGGING: {logLevelText}");
+
+        var config = new LoggingConfiguration();
+        var consoleTarget = new ColoredConsoleTarget
         {
-            LogLevel logLevel;
-            if (!Enum.TryParse(logLevelText, true, out logLevel))
-                throw new ArgumentOutOfRangeException($"Invalid loglevel in NPGSQL_TEST_LOGGING: {logLevelText}");
-            NpgsqlLogManager.LoggerFactory.AddConsole((text, level) => level >= logLevel);
-            NpgsqlLogManager.IsParameterLoggingEnabled = true;
-        }
+            Layout = @"${message} ${exception:format=tostring}"
+        };
+        config.AddTarget("console", consoleTarget);
+        var rule = new LoggingRule("*", LogLevel.Debug, consoleTarget);
+        config.LoggingRules.Add(rule);
+        LogManager.Configuration = config;
+
+        NpgsqlLogManager.Provider = new NLogLoggingProvider();
+        NpgsqlLogManager.IsParameterLoggingEnabled = true;
     }
 }

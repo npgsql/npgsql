@@ -81,6 +81,8 @@ namespace Npgsql
         }
         readonly IsolationLevel _isolationLevel;
 
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+
         const IsolationLevel DefaultIsolationLevel = IsolationLevel.ReadCommitted;
 
         #endregion
@@ -95,7 +97,7 @@ namespace Npgsql
 
             Connection = conn;
             _connector = Connection.CheckReadyAndGetConnector();
-            Log.BeginningTransaction(_connector.Id, isolationLevel);
+            Log.Debug($"Beginning transaction with isolation level {isolationLevel}", _connector.Id);
             _connector.Transaction = this;
             _connector.TransactionStatus = TransactionStatus.Pending;
 
@@ -143,7 +145,7 @@ namespace Npgsql
             CheckReady();
             using (_connector.StartUserAction())
             {
-                Log.Committing(_connector.Id);
+                Log.Debug("Committing transaction", _connector.Id);
                 await _connector.ExecuteInternalCommand(PregeneratedMessage.CommitTransaction, async, cancellationToken);
                 Clear();
             }
@@ -218,7 +220,7 @@ namespace Npgsql
             CheckReady();
             using (_connector.StartUserAction())
             {
-                Log.CreatingSavepoint(_connector.Id, name);
+                Log.Debug($"Creating savepoint {name}", _connector.Id);
                 _connector.ExecuteInternalCommand($"SAVEPOINT {name}");
             }
         }
@@ -238,7 +240,7 @@ namespace Npgsql
             CheckReady();
             using (_connector.StartUserAction())
             {
-                Log.RollingBackSavepoint(_connector.Id, name);
+                Log.Debug($"Rolling back savepoint {name}", _connector.Id);
                 _connector.ExecuteInternalCommand($"ROLLBACK TO SAVEPOINT {name}");
             }
         }
@@ -258,7 +260,7 @@ namespace Npgsql
             CheckReady();
             using (_connector.StartUserAction())
             {
-                Log.ReleasingSavepoint(_connector.Id, name);
+                Log.Debug($"Releasing savepoint {name}", _connector.Id);
                 _connector.ExecuteInternalCommand($"RELEASE SAVEPOINT {name}");
             }
         }

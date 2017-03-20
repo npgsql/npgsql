@@ -3,7 +3,6 @@ using System.Data;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
 using Npgsql.Logging;
 using NUnit.Framework;
 

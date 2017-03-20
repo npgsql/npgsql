@@ -6,7 +6,6 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
-using Microsoft.Extensions.Logging;
 using Npgsql.Logging;
 using NpgsqlTypes;
 
@@ -34,6 +33,8 @@ namespace Npgsql
         internal string NextPreparedStatementName() => "_p" + (++_preparedStatementIndex);
         ulong _preparedStatementIndex;
 
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+
         internal const int CandidateCount = 100;
 
         internal PreparedStatementManager(NpgsqlConnector connector)
@@ -44,7 +45,7 @@ namespace Npgsql
             if (MaxAutoPrepared > 0)
             {
                 if (MaxAutoPrepared > 256)
-                    Log.Logger.LogWarning("[{ConnectorId}] " + nameof(MaxAutoPrepared) + " is over 256, performance degradation may occur. Please report via an issue.", connector.Id);
+                    Log.Warn($"{nameof(MaxAutoPrepared)} is over 256, performance degradation may occur. Please report via an issue.", connector.Id);
                 _autoPrepared = new PreparedStatement[MaxAutoPrepared];
                 _candidates = new PreparedStatement[CandidateCount];
             }
@@ -154,7 +155,7 @@ namespace Npgsql
             }
 
             // Bingo, we've just passed the usage threshold, statement should get prepared
-            Log.AutoPreparing(_connector.Id, sql);
+            Log.Trace($"Automatically preparing statement: {sql}", _connector.Id);
 
             RemoveCandidate(pStatement);
 
