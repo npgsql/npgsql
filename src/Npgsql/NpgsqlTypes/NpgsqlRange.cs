@@ -124,8 +124,8 @@ namespace NpgsqlTypes
 
         public static bool operator ==(NpgsqlRange<T> x, NpgsqlRange<T> y)
             => x.IsEmpty == y.IsEmpty &&
-               x.LowerBound.Equals(y.LowerBound) &&
-               x.UpperBound.Equals(y.UpperBound) &&
+               (x.LowerBoundInfinite || y.LowerBoundInfinite || x.LowerBound.Equals(y.LowerBound)) &&
+               (x.UpperBoundInfinite || y.UpperBoundInfinite || x.UpperBound.Equals(y.UpperBound)) &&
                x.LowerBoundIsInclusive == y.LowerBoundIsInclusive &&
                x.UpperBoundIsInclusive == y.UpperBoundIsInclusive &&
                x.LowerBoundInfinite == y.LowerBoundInfinite &&

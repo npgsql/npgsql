@@ -50,8 +50,7 @@ namespace Npgsql
             {
                 while (true)
                 {
-                    CallbackAndState callbackAndState;
-                    var taken = _tasks.TryTake(out callbackAndState, ThreadStayAliveMs);
+                    var taken = _tasks.TryTake(out var callbackAndState, ThreadStayAliveMs);
                     if (!taken)
                         return;
                     callbackAndState.Callback(callbackAndState.State);

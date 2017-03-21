@@ -96,8 +96,7 @@ namespace Npgsql.TypeHandlers
         public override TEnum Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             var str = buf.ReadString(len);
-            TEnum value;
-            var success = _labelToEnum.TryGetValue(str, out value);
+            var success = _labelToEnum.TryGetValue(str, out var value);
 
             if (!success)
                 throw new SafeReadException(new InvalidCastException($"Received enum value '{str}' from database which wasn't found on enum {typeof(TEnum)}"));
@@ -114,9 +113,8 @@ namespace Npgsql.TypeHandlers
             if (!(value is TEnum))
                 throw CreateConversionException(value.GetType());
 
-            string str;
             var asEnum = (TEnum)value;
-            if (!_enumToLabel.TryGetValue(asEnum, out str))
+            if (!_enumToLabel.TryGetValue(asEnum, out var str))
                 throw new InvalidCastException($"Can't write value {asEnum} as enum {typeof(TEnum)}");
 
             return Encoding.UTF8.GetByteCount(str);

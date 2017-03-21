@@ -57,10 +57,9 @@ namespace Npgsql.Tests
         [Test]
         public void TryGetValue()
         {
-            object value;
             Builder.ConnectionString = "Host=myhost";
 
-            Assert.That(Builder.TryGetValue("Host", out value), Is.True);
+            Assert.That(Builder.TryGetValue("Host", out var value), Is.True);
             Assert.That(value, Is.EqualTo("myhost"));
 
             Assert.That(Builder.TryGetValue("SomethingUnknown", out value), Is.False);

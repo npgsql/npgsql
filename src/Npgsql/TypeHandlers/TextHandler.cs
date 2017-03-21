@@ -150,8 +150,7 @@ namespace Npgsql.TypeHandlers
                 // Note: Getting the length of a text column means decoding the entire field,
                 // very inefficient and also consumes the column in sequential mode. But this seems to
                 // be SqlClient's behavior as well.
-                int bytesSkipped, charsSkipped;
-                row.Buffer.SkipChars(int.MaxValue, row.ColumnLen - row.PosInColumn, out bytesSkipped, out charsSkipped);
+                row.Buffer.SkipChars(int.MaxValue, row.ColumnLen - row.PosInColumn, out var bytesSkipped, out var charsSkipped);
                 Debug.Assert(bytesSkipped == row.ColumnLen - row.PosInColumn);
                 row.PosInColumn += bytesSkipped;
                 _charPos += charsSkipped;
@@ -176,8 +175,7 @@ namespace Npgsql.TypeHandlers
                 }
             }
 
-            int bytesRead, charsRead;
-            row.Buffer.ReadAllChars(output, outputOffset, charsCount, row.ColumnLen - row.PosInColumn, out bytesRead, out charsRead);
+            row.Buffer.ReadAllChars(output, outputOffset, charsCount, row.ColumnLen - row.PosInColumn, out var bytesRead, out var charsRead);
             row.PosInColumn += bytesRead;
             _charPos += charsRead;
             return charsRead;

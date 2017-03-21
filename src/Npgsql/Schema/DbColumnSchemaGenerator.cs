@@ -196,8 +196,7 @@ ORDER BY attnum";
         /// </summary>
         void ColumnPostConfig(NpgsqlDbColumn column, int typeModifier)
         {
-            TypeHandler handler;
-            column.DataType = _connection.Connector.TypeHandlerRegistry.TryGetByOID(column.TypeOID, out handler)
+            column.DataType = _connection.Connector.TypeHandlerRegistry.TryGetByOID(column.TypeOID, out var handler)
                 ? handler.GetFieldType()
                 : null;
 

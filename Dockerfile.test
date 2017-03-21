@@ -1,6 +1,0 @@
-FROM microsoft/aspnet:1.0.0-rc1-update1-coreclr
-COPY . /app/
-WORKDIR /app
-RUN dnu restore --parallel -s NuGet --runtime coreclr50 src/Npgsql/project.json src/EntityFramework7.Npgsql/project.json test/EntityFramework7.Npgsql.Tests/project.json
-RUN dnu build --framework dnxcore50 src/Npgsql/project.json src/EntityFramework7.Npgsql/project.json
-ENTRYPOINT dnx -p test/EntityFramework7.Npgsql.Tests/project.json test

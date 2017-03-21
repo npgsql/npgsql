@@ -148,11 +148,9 @@ namespace Npgsql
                 if (currCharOfs >= end || !IsParamNameChar(ch = sql[currCharOfs])) {
                     var paramName = sql.Substring(currTokenBeg, currCharOfs - currTokenBeg);
 
-                    int index;
-                    if (!_paramIndexMap.TryGetValue(paramName, out index)) {
+                    if (!_paramIndexMap.TryGetValue(paramName, out var index)) {
                         // Parameter hasn't been seen before in this query
-                        NpgsqlParameter parameter;
-                        if (!parameters.TryGetValue(paramName, out parameter))
+                        if (!parameters.TryGetValue(paramName, out var parameter))
                         {
                             _rewrittenSql.Append(paramName);
                             currTokenBeg = currCharOfs;
@@ -401,6 +399,8 @@ namespace Npgsql
                     MoveToNextStatement();
                 goto None;
             }
+            if (statements.Count > _statementIndex + 1)
+                statements.RemoveRange(_statementIndex + 1, statements.Count - (_statementIndex + 1));
             return;
 
         Finish:
@@ -428,24 +428,16 @@ namespace Npgsql
         }
 
         static bool IsLetter(char ch)
-        {
-            return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z';
-        }
+            => 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z';
 
         static bool IsIdentifierStart(char ch)
-        {
-            return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || ch == '_' || 128 <= ch && ch <= 255;
-        }
+            => 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || ch == '_' || 128 <= ch && ch <= 255;
 
         static bool IsDollarTagIdentifier(char ch)
-        {
-            return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || '0' <= ch && ch <= '9' || ch == '_' || 128 <= ch && ch <= 255;
-        }
+            => 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || '0' <= ch && ch <= '9' || ch == '_' || 128 <= ch && ch <= 255;
 
         static bool IsIdentifier(char ch)
-        {
-            return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || '0' <= ch && ch <= '9' || ch == '_' || ch == '$' || 128 <= ch && ch <= 255;
-        }
+            => 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || '0' <= ch && ch <= '9' || ch == '_' || ch == '$' || 128 <= ch && ch <= 255;
 
         static bool IsParamNameChar(char ch)
             => char.IsLetterOrDigit(ch) || ch == '_' || ch == '.';  // why dot??

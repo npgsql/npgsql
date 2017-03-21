@@ -6,7 +6,6 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
-using Microsoft.Extensions.Logging;
 using Npgsql.Logging;
 #if NET45 || NET451
 using System.Transactions;
@@ -99,6 +98,8 @@ namespace Npgsql
         readonly TimeSpan _pruningInterval;
         readonly List<NpgsqlConnector> _prunedConnectors;
 
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+
         #endregion
 
         internal ConnectorPool(NpgsqlConnectionStringBuilder settings, string connString)
@@ -135,7 +136,7 @@ namespace Npgsql
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal ValueTask<NpgsqlConnector> Allocate(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
+        internal ValueTask<NpgsqlConnector> Allocate(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
         {
             Monitor.Enter(this);
 
@@ -153,11 +154,12 @@ namespace Npgsql
             }
 
             // No idle connectors available. Have to actually open a new connector or wait for one.
-            return AllocateLong(conn, timeout, async);
+            return AllocateLong(conn, timeout, async, cancellationToken);
         }
 
-        internal async ValueTask<NpgsqlConnector> AllocateLong(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
+        internal async ValueTask<NpgsqlConnector> AllocateLong(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
         {
+            Debug.Assert(Monitor.IsEntered(this));
             NpgsqlConnector connector;
 
             Debug.Assert(Busy <= _max);
@@ -167,7 +169,7 @@ namespace Npgsql
                 var tcs = new TaskCompletionSource<NpgsqlConnector>();
                 _waiting.Enqueue(new WaitingOpenAttempt { TaskCompletionSource = tcs, IsAsync = async });
                 Monitor.Exit(this);
-                
+
                 try
                 {
                     if (async)
@@ -218,7 +220,7 @@ namespace Npgsql
             try
             {
                 connector = new NpgsqlConnector(conn) { ClearCounter = _clearCounter };
-                await connector.Open(timeout, async, CancellationToken.None);
+                await connector.Open(timeout, async, cancellationToken);
                 Counters.NumberOfPooledConnections.Increment();
                 EnsureMinPoolSize(conn);
                 return connector;
@@ -243,7 +245,7 @@ namespace Npgsql
                 }
                 catch (Exception e)
                 {
-                    Log.Logger.LogWarning(NpgsqlEventId.ExceptionClosingOutdatedConnector, e, "[{ConnectorId}] Exception while closing outdated connector", connector.Id);
+                    Log.Warn("Exception while closing outdated connector", e, connector.Id);
                 }
 
                 lock (this)
@@ -345,7 +347,7 @@ namespace Npgsql
                 {
                     lock (this)
                         Busy -= missing;
-                    Log.Logger.LogWarning(NpgsqlEventId.ExceptionEnsuringMinPoolSize, e, "Connection error while attempting to ensure MinPoolSize");
+                    Log.Warn("Connection error while attempting to ensure MinPoolSize", e);
                     return;
                 }
             }
@@ -404,7 +406,7 @@ namespace Npgsql
                     try { connector.Close(); }
                     catch (Exception e)
                     {
-                        Log.Logger.LogWarning(NpgsqlEventId.ExceptionClosingPrunedConnector, e, "[{ConnectorId}] Exception while closing pruned connector", connector.Id);
+                        Log.Warn("Exception while closing pruned connector", e, connector.Id);
                     }
                 }
 
@@ -433,7 +435,7 @@ namespace Npgsql
                 try { connector.Close(); }
                 catch (Exception e)
                 {
-                    Log.Logger.LogWarning(NpgsqlEventId.ExceptionClearingConnector, e, "[{ConnectorId}] Exception while closing connector during clear", connector.Id);
+                    Log.Warn("Exception while closing connector during clear", e, connector.Id);
                 }
             }
             _clearCounter++;
@@ -446,8 +448,7 @@ namespace Npgsql
         {
             lock (_pendingEnlistedConnectors)
             {
-                List<NpgsqlConnector> list;
-                if (!_pendingEnlistedConnectors.TryGetValue(transaction, out list))
+                if (!_pendingEnlistedConnectors.TryGetValue(transaction, out var list))
                     list = _pendingEnlistedConnectors[transaction] = new List<NpgsqlConnector>();
                 list.Add(connector);
             }
@@ -464,8 +465,7 @@ namespace Npgsql
         {
             lock (_pendingEnlistedConnectors)
             {
-                List<NpgsqlConnector> list;
-                if (!_pendingEnlistedConnectors.TryGetValue(transaction, out list))
+                if (!_pendingEnlistedConnectors.TryGetValue(transaction, out var list))
                     return null;
                 var connector = list[list.Count - 1];
                 list.RemoveAt(list.Count - 1);

@@ -27,7 +27,6 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
-using Microsoft.Extensions.Logging;
 using Npgsql.BackendMessages;
 using Npgsql.Logging;
 using Npgsql.PostgresTypes;
@@ -59,13 +58,15 @@ namespace Npgsql.TypeHandlers
         [CanBeNull]
         readonly ByteaHandler _byteaHandler;
 
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+
         internal PostgisGeometryHandler(PostgresType postgresType, TypeHandlerRegistry registry)
             : base(postgresType)
         {
             var byteaHandler = registry[NpgsqlDbType.Bytea];
             if (_byteaHandler == registry.UnrecognizedTypeHandler)
             {
-                Log.Logger.LogWarning("bytea type not present when setting up postgis geometry type. Writing as bytea will not work.");
+                Log.Warn("bytea type not present when setting up postgis geometry type. Writing as bytea will not work.");
                 return;
             }
             _byteaHandler = (ByteaHandler)byteaHandler;
@@ -401,7 +402,7 @@ namespace Npgsql.TypeHandlers
                 foreach (var x in coll)
                     await Write(x, buf, lengthCache, null, async, cancellationToken);
                 return;
-                 
+
             default:
                 throw new InvalidOperationException("Unknown Postgis identifier.");
             }

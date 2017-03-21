@@ -38,7 +38,6 @@ using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
-using Microsoft.Extensions.Logging;
 using Npgsql.Logging;
 #if NET45 || NET451
 using System.Transactions;
@@ -108,6 +107,10 @@ namespace Npgsql
         /// </summary>
         internal const int TimeoutLimit = 1024;
 
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+
+        static bool _countersInitialized;
+
         #endregion Fields
 
         #region Constructors / Init / Open
@@ -138,7 +141,7 @@ namespace Npgsql
         /// Opens a database connection with the property settings specified by the
         /// <see cref="ConnectionString">ConnectionString</see>.
         /// </summary>
-        public override void Open() => Open(false).GetAwaiter().GetResult();
+        public override void Open() => Open(false, CancellationToken.None).GetAwaiter().GetResult();
 
         /// <summary>
         /// This is the asynchronous version of <see cref="Open()"/>.
@@ -151,13 +154,11 @@ namespace Npgsql
         public override async Task OpenAsync(CancellationToken cancellationToken)
         {
             using (NoSynchronizationContextScope.Enter())
-                await Open(true);
+                await Open(true, cancellationToken);
         }
 
         void GetPoolAndSettings()
         {
-            Debug.Assert(_pool == null);
-
             var pools = PoolManager.Pools;
             lock (pools)
             {
@@ -167,6 +168,12 @@ namespace Npgsql
                 {
                     // Connection string hasn't been seen before. Parse it.
                     Settings = new NpgsqlConnectionStringBuilder(_connectionString);
+
+                    if (!_countersInitialized)
+                    {
+                        _countersInitialized = true;
+                        Counters.Initialize(Settings.UsePerfCounters);
+                    }
 
                     // Maybe pooling is off
                     if (Settings.Pooling)
@@ -189,11 +196,11 @@ namespace Npgsql
             }
         }
 
-        async Task Open(bool async)
+        async Task Open(bool async, CancellationToken cancellationToken)
         {
             CheckConnectionClosed();
 
-            Log.OpeningConnection();
+            Log.Trace("Opening connection...");
 
             _wasBroken = false;
 
@@ -209,7 +216,7 @@ namespace Npgsql
                         _userFacingConnectionString = Settings.ToStringWithoutPassword();
 
                     Connector = new NpgsqlConnector(this);
-                    await Connector.Open(timeout, async, CancellationToken.None);
+                    await Connector.Open(timeout, async, cancellationToken);
                     Counters.NumberOfNonPooledConnections.Increment();
                 }
                 else
@@ -229,11 +236,11 @@ namespace Npgsql
                                 EnlistedTransaction = Transaction.Current;
                         }
                         if (Connector == null)
-                            Connector = await _pool.Allocate(this, timeout, async);
+                            Connector = await _pool.Allocate(this, timeout, async, cancellationToken);
                     }
                     else  // No enlist
 #endif
-                        Connector = await _pool.Allocate(this, timeout, async);
+                        Connector = await _pool.Allocate(this, timeout, async, cancellationToken);
 
                     Counters.SoftConnectsPerSecond.Increment();
 
@@ -253,7 +260,7 @@ namespace Npgsql
                 Connector = null;
                 throw;
             }
-            Log.ConnectionOpened(Connector.Id);
+            Log.Debug("Connection opened", Connector.Id);
             OnStateChange(new StateChangeEventArgs(ConnectionState.Closed, ConnectionState.Open));
         }
 
@@ -520,7 +527,7 @@ namespace Npgsql
             // distributed transactions aren't supported.
 
             transaction.EnlistVolatile(new VolatileResourceManager(this, transaction), EnlistmentOptions.None);
-            Log.Enlisted(connector.Id, transaction.TransactionInformation.LocalIdentifier);
+            Log.Debug($"Enlisted volatile resource manager (localid={transaction.TransactionInformation.LocalIdentifier})", connector.Id);
         }
 #endif
 
@@ -539,7 +546,7 @@ namespace Npgsql
             if (Connector == null)
                 return;
             var connectorId = Connector.Id;
-            Log.ClosingConnection(connectorId);
+            Log.Trace("Closing connection...", connectorId);
             _wasBroken = wasBroken;
 
             CloseOngoingOperations();
@@ -565,7 +572,7 @@ namespace Npgsql
             }
 #endif
 
-            Log.ConnectionClosed(connectorId);
+            Log.Debug("Connection closed", connectorId);
 
             Connector = null;
 
@@ -602,7 +609,7 @@ namespace Npgsql
                     }
                     catch (Exception e)
                     {
-                        Log.Logger.LogWarning(0, e, "[{ConnectorId}] Error while cancelling COPY on connector close", Connector.Id);
+                        Log.Warn("Error while cancelling COPY on connector close", e, Connector.Id);
                     }
                 }
 
@@ -612,7 +619,7 @@ namespace Npgsql
                 }
                 catch (Exception e)
                 {
-                    Log.Logger.LogWarning(0, e, "[{ConnectorId}] Error while disposing cancelled COPY on connector close", Connector.Id);
+                    Log.Warn("Error while disposing cancelled COPY on connector close", e, Connector.Id);
                 }
             }
         }
@@ -656,7 +663,7 @@ namespace Npgsql
             catch (Exception ex)
             {
                 // Block all exceptions bubbling up from the user's event handler
-                Log.Logger.LogError(0, ex, "User exception caught when emitting notice event");
+                Log.Error("User exception caught when emitting notice event", ex);
             }
         }
 
@@ -669,7 +676,7 @@ namespace Npgsql
             catch (Exception ex)
             {
                 // Block all exceptions bubbling up from the user's event handler
-                Log.Logger.LogError(0, ex, "User exception caught when emitting notification event");
+                Log.Error("User exception caught when emitting notification event", ex);
             }
         }
 
@@ -802,7 +809,7 @@ namespace Npgsql
                 throw new ArgumentException("Must contain a COPY FROM STDIN command!", nameof(copyFromCommand));
 
             var connector = CheckReadyAndGetConnector();
-            Log.StartingBinaryImport(connector.Id);
+            Log.Debug("Starting binary import", connector.Id);
             connector.StartUserAction(ConnectorState.Copy);
             try
             {
@@ -833,7 +840,7 @@ namespace Npgsql
                 throw new ArgumentException("Must contain a COPY TO STDOUT command!", nameof(copyToCommand));
 
             var connector = CheckReadyAndGetConnector();
-            Log.StartingBinaryExport(connector.Id);
+            Log.Debug("Starting binary export", connector.Id);
             connector.StartUserAction(ConnectorState.Copy);
             try
             {
@@ -867,7 +874,7 @@ namespace Npgsql
                 throw new ArgumentException("Must contain a COPY FROM STDIN command!", nameof(copyFromCommand));
 
             var connector = CheckReadyAndGetConnector();
-            Log.StartingTextImport(connector.Id);
+            Log.Debug("Starting text import", connector.Id);
             connector.StartUserAction(ConnectorState.Copy);
             try
             {
@@ -901,7 +908,7 @@ namespace Npgsql
                 throw new ArgumentException("Must contain a COPY TO STDOUT command!", nameof(copyToCommand));
 
             var connector = CheckReadyAndGetConnector();
-            Log.StartingTextExport(connector.Id);
+            Log.Debug("Starting text export", connector.Id);
             connector.StartUserAction(ConnectorState.Copy);
             try
             {
@@ -935,7 +942,7 @@ namespace Npgsql
                 throw new ArgumentException("Must contain a COPY TO STDOUT OR COPY FROM STDIN command!", nameof(copyCommand));
 
             var connector = CheckReadyAndGetConnector();
-            Log.StartingRawCopy(connector.Id);
+            Log.Debug("Starting raw COPY operation", connector.Id);
             connector.StartUserAction(ConnectorState.Copy);
             try
             {
@@ -1159,7 +1166,7 @@ namespace Npgsql
 
             CheckConnectionOpen();
             Debug.Assert(Connector != null);
-            Log.StartingSyncWait(Connector.Id, timeout);
+            Log.Debug($"Starting to wait (timeout={timeout})...", Connector.Id);
 
             return Connector.Wait(timeout);
         }
@@ -1196,7 +1203,7 @@ namespace Npgsql
         {
             CheckConnectionOpen();
             Debug.Assert(Connector != null);
-            Log.StartingAsyncWait(Connector.Id);
+            Log.Debug("Starting to wait asynchronously...", Connector.Id);
 
             return Connector.WaitAsync(cancellationToken);
         }

@@ -25,7 +25,6 @@ using System;
 using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
-using Microsoft.Extensions.Logging;
 using Npgsql.Logging;
 
 namespace Npgsql.BackendMessages

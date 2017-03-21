@@ -36,7 +36,6 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
-using Microsoft.Extensions.Logging;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
 using Npgsql.Logging;
@@ -190,16 +189,7 @@ namespace Npgsql
         /// <summary>
         /// A lock that's taken while a user action is in progress, e.g. a command being executed.
         /// </summary>
-        readonly SemaphoreSlim _userLock;
-
-        /// <summary>
-        /// A lock that's taken while a connection keepalive is in progress. Used to make sure
-        /// keepalives and user actions don't interfere with one another.
-        /// </summary>
-        [CanBeNull]
-        SemaphoreSlim _keepAliveLock;
-
-        readonly object _keepAliveDisposeLock = new object();
+        SemaphoreSlim _userLock;
 
         /// <summary>
         /// A lock that's taken while a cancellation is being delivered; new queries are blocked until the
@@ -223,6 +213,8 @@ namespace Npgsql
         internal DateTime ReleaseTimestamp { get; set; } = DateTime.MaxValue;
 
         internal int ClearCounter { get; set; }
+
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         #endregion
 
@@ -288,10 +280,8 @@ namespace Npgsql
             _userLock = new SemaphoreSlim(1, 1);
             CancelLock = new object();
 
-            if (IsKeepAliveEnabled) {
+            if (IsKeepAliveEnabled)
                 _keepAliveTimer = new Timer(PerformKeepAlive, null, Timeout.Infinite, Timeout.Infinite);
-                _keepAliveLock = new SemaphoreSlim(1, 1);
-            }
 
             // TODO: Not just for automatic preparation anymore...
             PreparedStatementManager = new PreparedStatementManager(this);
@@ -424,7 +414,7 @@ namespace Npgsql
                 if (Settings.Pooling && SupportsDiscard)
                     GenerateResetMessage();
                 Counters.HardConnectsPerSecond.Increment();
-                Log.OpenedConnection(Id, Host, Port);
+                Log.Trace($"Opened connection to {Host}:{Port}");
             }
             catch
             {
@@ -575,12 +565,12 @@ namespace Npgsql
                         ReadBuffer.Underlying = _stream;
                         WriteBuffer.Underlying = _stream;
                         IsSecure = true;
-                        Log.SslNegotiationSuccessful();
+                        Log.Trace("SSL negotiation successful");
                         break;
                     }
                 }
 
-                Log.SocketConnected(Host, Port);
+                Log.Trace($"Socket connected to {Host}:{Port}");
             }
             catch
             {
@@ -630,7 +620,7 @@ namespace Npgsql
             for (var i = 0; i < endpoints.Length; i++)
             {
                 var endpoint = endpoints[i];
-                Log.AttemptingToConnectTo(endpoint);
+                Log.Trace($"Attempting to connect to {endpoint}");
                 var protocolType = endpoint.AddressFamily == AddressFamily.InterNetwork ? ProtocolType.Tcp : ProtocolType.IP;
                 var socket = new Socket(endpoint.AddressFamily, SocketType.Stream, protocolType)
                 {
@@ -656,7 +646,7 @@ namespace Npgsql
                         throw new SocketException(errorCode);
                     if (!write.Any())
                     {
-                        Log.TimeoutConnecting(new TimeSpan(perEndpointTimeout*10).TotalSeconds, endpoint);
+                        Log.Trace($"Timeout after {new TimeSpan(perEndpointTimeout * 10).TotalSeconds} seconds when connecting to {endpoint}");
                         try { socket.Dispose(); }
                         catch
                         {
@@ -685,7 +675,7 @@ namespace Npgsql
                         // ignored
                     }
 
-                    Log.FailedToConnect(endpoint);
+                    Log.Trace("Failed to connect to {endpoint}");
 
                     if (i == endpoints.Length - 1)
                         throw;
@@ -714,7 +704,7 @@ namespace Npgsql
             for (var i = 0; i < endpoints.Length; i++)
             {
                 var endpoint = endpoints[i];
-                Log.AttemptingToConnectTo(endpoint);
+                Log.Trace($"Attempting to connect to {endpoint}");
                 var protocolType = endpoint.AddressFamily == AddressFamily.InterNetwork ? ProtocolType.Tcp : ProtocolType.IP;
                 var socket = new Socket(endpoint.AddressFamily, SocketType.Stream, protocolType);
 #if NETSTANDARD1_3
@@ -738,7 +728,7 @@ namespace Npgsql
 
                         if (timeout.HasExpired)
                         {
-                            Log.TimeoutConnecting(perIpTimespan.TotalSeconds, endpoint);
+                            Log.Trace($"Timeout after {perIpTimespan.TotalSeconds} seconds when connecting to {endpoint}");
                             if (i == endpoints.Length - 1)
                             {
                                 throw new TimeoutException();
@@ -769,7 +759,7 @@ namespace Npgsql
                         // ignored
                     }
 
-                    Log.FailedToConnect(endpoint);
+                    Log.Trace($"Failed to connect to {endpoint}");
 
                     if (i == endpoints.Length - 1)
                     {
@@ -958,7 +948,9 @@ namespace Npgsql
                     HandleParameterStatus(buf.ReadNullTerminatedString(), buf.ReadNullTerminatedString());
                     return null;
                 case BackendMessageCode.NoticeResponse:
-                    Connection?.OnNotice(new PostgresNotice(buf));
+                    var notice = new PostgresNotice(buf);
+                    Log.Debug($"Received notice: {notice}", Id);
+                    Connection?.OnNotice(notice);
                     return null;
                 case BackendMessageCode.NotificationResponse:
                     Connection?.OnNotification(new NpgsqlNotificationEventArgs(buf));
@@ -1102,7 +1094,7 @@ namespace Npgsql
 
         internal Task Rollback(bool async, CancellationToken cancellationToken)
         {
-            Log.RollingBack(Id);
+            Log.Debug("Rolling back transaction", Id);
             using (StartUserAction())
                 return ExecuteInternalCommand(PregeneratedMessage.RollbackTransaction, async, cancellationToken);
         }
@@ -1181,7 +1173,7 @@ namespace Npgsql
         {
             if (BackendProcessId == 0)
                 throw new NpgsqlException("Cancellation not supported on this database (no BackendKeyData was received during connection)");
-            Log.Cancel(Id);
+            Log.Debug("Sending cancellation...", Id);
             lock (CancelLock)
             {
                 try
@@ -1193,7 +1185,7 @@ namespace Npgsql
                 {
                     var socketException = e.InnerException as SocketException;
                     if (socketException == null || socketException.SocketErrorCode != SocketError.ConnectionReset)
-                        Log.Logger.LogDebug(NpgsqlEventId.ExceptionWhileCancellingConnector, e, "[{ConnectorId}] Exception caught while attempting to cancel command", Id);
+                        Log.Debug("Exception caught while attempting to cancel command", e, Id);
                 }
             }
         }
@@ -1214,11 +1206,12 @@ namespace Npgsql
                 // actually being delivered before we continue with the user's logic.
                 var count = _stream.Read(ReadBuffer.Buffer, 0, 1);
                 if (count != -1)
-                    Log.Logger.LogError(NpgsqlEventId.ResponseAfterCancel, "Received response after sending cancel request, shouldn\'t happen! First byte: " + ReadBuffer.Buffer[0]);
+                    Log.Error("Received response after sending cancel request, shouldn't happen! First byte: " + ReadBuffer.Buffer[0]);
             }
             finally
             {
-                Cleanup();
+                lock (this)
+                    Cleanup();
             }
         }
 
@@ -1228,29 +1221,35 @@ namespace Npgsql
 
         internal void Close()
         {
-            Log.ConnectorClosing(Id);
-
-            if (IsReady)
+            lock (this)
             {
-                try { SendMessage(TerminateMessage.Instance); }
-                catch (Exception e)
+                Log.Trace("Closing connector", Id);
+
+                if (IsReady)
                 {
-                    Log.Logger.LogError(NpgsqlEventId.ExceptionWhileClosing, e, "[{ConnectorId}] Exception while closing connector", Id);
-                    Debug.Assert(IsBroken);
+                    try
+                    {
+                        SendMessage(TerminateMessage.Instance);
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Error("Exception while closing connector", e, Id);
+                        Debug.Assert(IsBroken);
+                    }
                 }
-            }
 
-            switch (State)
-            {
-            case ConnectorState.Broken:
-            case ConnectorState.Closed:
-                return;
-            }
+                switch (State)
+                {
+                case ConnectorState.Broken:
+                case ConnectorState.Closed:
+                    return;
+                }
 
-            State = ConnectorState.Closed;
-            Counters.NumberOfNonPooledConnections.Decrement();
-            Counters.HardDisconnectsPerSecond.Increment();
-            Cleanup();
+                State = ConnectorState.Closed;
+                Counters.NumberOfNonPooledConnections.Decrement();
+                Counters.HardDisconnectsPerSecond.Increment();
+                Cleanup();
+            }
         }
 
         public void Dispose() => Close();
@@ -1274,26 +1273,29 @@ namespace Npgsql
         {
             Debug.Assert(!IsClosed);
 
-            if (State == ConnectorState.Broken)
-                return;
-
-            Log.Logger.LogError(NpgsqlEventId.Breaking, "[{ConnectorId}] Breaking connector", Id);
-            var prevState = State;
-            State = ConnectorState.Broken;
-            var conn = Connection;
-            Cleanup();
-
-            // We have no connection if we're broken by a keepalive occuring while the connector is in the pool
-            if (conn != null)
+            lock (this)
             {
-                // When we break, we normally need to call into NpgsqlConnection to reset its state.
-                // The exception to this is when we're connecting, in which case the try/catch in NpgsqlConnection.Open
-                // will handle things.
-                // Note also that the connection's full state is usually calculated from the connector's, but in
-                // states closed/broken the connector is null. We therefore need a way to distinguish between
-                // Closed and Broken on the connection.
-                if (prevState != ConnectorState.Connecting)
-                    conn.Close(true);
+                if (State == ConnectorState.Broken)
+                    return;
+
+                Log.Error("Breaking connector", Id);
+                var prevState = State;
+                State = ConnectorState.Broken;
+                var conn = Connection;
+                Cleanup();
+
+                // We have no connection if we're broken by a keepalive occuring while the connector is in the pool
+                if (conn != null)
+                {
+                    // When we break, we normally need to call into NpgsqlConnection to reset its state.
+                    // The exception to this is when we're connecting, in which case the try/catch in NpgsqlConnection.Open
+                    // will handle things.
+                    // Note also that the connection's full state is usually calculated from the connector's, but in
+                    // states closed/broken the connector is null. We therefore need a way to distinguish between
+                    // Closed and Broken on the connection.
+                    if (prevState != ConnectorState.Connecting)
+                        conn.Close(true);
+                }
             }
         }
 
@@ -1302,18 +1304,27 @@ namespace Npgsql
         /// </summary>
         void Cleanup()
         {
-            Log.Cleanup(Id);
+            Debug.Assert(Monitor.IsEntered(this));
+
+            Log.Trace("Cleaning up connector", Id);
             try
             {
                 _stream?.Dispose();
             }
-            catch {
+            catch
+            {
                 // ignored
             }
 
-            if (CurrentReader != null) {
+            if (CurrentReader != null)
+            {
                 CurrentReader.Command.State = CommandState.Idle;
-                try { CurrentReader.Close(); } catch {
+                try
+                {
+                    CurrentReader.Close();
+                }
+                catch
+                {
                     // ignored
                 }
                 CurrentReader = null;
@@ -1329,18 +1340,13 @@ namespace Npgsql
             ServerVersion = null;
             _currentCommand = null;
 
-            // Disposing SemaphoreSlim leaves CurrentCount at 0, so increment back to 1 if needed
-            if (_userLock.CurrentCount == 0)
-                _userLock.Release();
             _userLock.Dispose();
+            _userLock = null;
 
             if (IsKeepAliveEnabled)
             {
                 _keepAliveTimer.Change(Timeout.Infinite, Timeout.Infinite);
-                // SemaphoreSlim.Dispose() isn't threadsafe - we shouldn't invoke it while the keepalive timer is
-                // trying to wait on it. So we need a standard lock to protect it.
-                lock (_keepAliveDisposeLock)
-                    _keepAliveLock.Dispose();
+                _keepAliveTimer.Dispose();
             }
         }
 
@@ -1473,78 +1479,74 @@ namespace Npgsql
 
         internal UserAction StartUserAction(ConnectorState newState=ConnectorState.Executing, NpgsqlCommand command=null)
         {
-            if (!_userLock.Wait(0))
+            lock (this)
             {
-                throw _currentCommand == null
-                    ? new NpgsqlOperationInProgressException(State)
-                    : new NpgsqlOperationInProgressException(_currentCommand);
+                if (!_userLock.Wait(0))
+                {
+                    throw _currentCommand == null
+                        ? new NpgsqlOperationInProgressException(State)
+                        : new NpgsqlOperationInProgressException(_currentCommand);
+                }
+
+                try
+                {
+                    // Disable keepalive, it will be restarted at the end of the user action
+                    if (IsKeepAliveEnabled)
+                        _keepAliveTimer.Change(Timeout.Infinite, Timeout.Infinite);
+
+                    // We now have both locks and are sure nothing else is running.
+                    // Check that the connector is ready.
+                    switch (State)
+                    {
+                    case ConnectorState.Ready:
+                        break;
+                    case ConnectorState.Closed:
+                    case ConnectorState.Broken:
+                        throw new InvalidOperationException("Connection is not open");
+                    case ConnectorState.Executing:
+                    case ConnectorState.Fetching:
+                    case ConnectorState.Waiting:
+                    case ConnectorState.Connecting:
+                    case ConnectorState.Copy:
+                        throw new InvalidOperationException("Internal Npgsql error, please report: acquired both locks and connector is in state " + State);
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(State), State, "Invalid connector state: " + State);
+                    }
+
+                    Debug.Assert(IsReady);
+                    Log.Trace("Start user action", Id);
+                    State = newState;
+                    _currentCommand = command;
+                    return new UserAction(this);
+                }
+                catch
+                {
+                    _userLock.Release();
+                    throw;
+                }
             }
-
-            // We now have the user lock, no user operation may be in progress but a keepalive might be
-
-            if (IsKeepAliveEnabled)
-            {
-                // If keepalive happens to be in progress wait until it's done
-                _keepAliveLock.Wait();
-
-                // Disable keepalive, it will be restarted at the end of the user action
-                if (KeepAlive > 0)
-                    _keepAliveTimer.Change(Timeout.Infinite, Timeout.Infinite);
-            }
-
-            // We now have both locks and are sure nothing else is running.
-            // Check that the connector is ready.
-            switch (State)
-            {
-            case ConnectorState.Ready:
-                break;
-            case ConnectorState.Closed:
-            case ConnectorState.Broken:
-                // The keepalive or the last user operation caused the connector to close/break
-                _keepAliveLock?.Release();
-                _userLock.Release();
-                throw new InvalidOperationException("Connection is not open");
-            case ConnectorState.Executing:
-            case ConnectorState.Fetching:
-            case ConnectorState.Waiting:
-            case ConnectorState.Connecting:
-            case ConnectorState.Copy:
-                throw new InvalidOperationException("Internal Npgsql error, please report: acquired both locks and connector is in state " + State);
-            default:
-                throw new ArgumentOutOfRangeException(nameof(State), State, "Invalid connector state: " + State);
-            }
-
-            Debug.Assert(IsReady);
-            Log.StartUserAction(Id);
-            State = newState;
-            _currentCommand = command;
-            return new UserAction(this);
         }
 
         internal void EndUserAction()
         {
             Debug.Assert(CurrentReader == null);
 
-            // Allows us to call EndUserAction twice. This makes it easier to write code that
-            // always ends the user action with using(), whether an exception was thrown or not.
-            if (!IsInUserAction)
-                return;
-
-            // A breaking exception was thrown or the connector was closed
-            if (!IsConnected)
-                return;
-
-            if (KeepAlive > 0)
+            lock (this)
             {
-                var keepAlive = KeepAlive*1000;
-                _keepAliveTimer.Change(keepAlive, keepAlive);
-            }
+                if (IsReady || !IsConnected)
+                    return;
 
-            Log.EndUserAction(Id);
-            State = ConnectorState.Ready;
-            _currentCommand = null;
-            _keepAliveLock?.Release();
-            _userLock.Release();
+                if (IsKeepAliveEnabled)
+                {
+                    var keepAlive = KeepAlive * 1000;
+                    _keepAliveTimer.Change(keepAlive, keepAlive);
+                }
+
+                Log.Trace("End user action", Id);
+                _currentCommand = null;
+                _userLock.Release();
+                State = ConnectorState.Ready;
+            }
         }
 
         bool IsInUserAction => _userLock.CurrentCount == 0;
@@ -1574,53 +1576,34 @@ namespace Npgsql
 
             // SemaphoreSlim.Dispose() isn't threadsafe - it may be in progress so we shouldn't try to wait on it;
             // we need a standard lock to protect it.
-            lock (_keepAliveDisposeLock)
-            {
-                if (_keepAliveLock == null)
-                {
-                    Log.Logger.LogDebug("[{ConnectorId}] Connector already closed, aborting keepalive", Id);
-                    return;
-                }
-
-                if (!_keepAliveLock.Wait(0))
-                {
-                    // The async semaphore has already been acquired, either by a user action,
-                    // or, improbably, by a previous keepalive.
-                    // Whatever the case, exit immediately, no need to perform a keepalive.
-                    return;
-                }
-            }
-
-            if (!IsConnected)
+            if (!Monitor.TryEnter(this))
                 return;
 
             try
             {
+                // There may already be a user action, or the connector may be closed etc.
+                if (!IsReady)
+                    return;
+
+                Log.Trace("Performed keepalive", Id);
                 SendMessage(PregeneratedMessage.KeepAlive);
                 SkipUntil(BackendMessageCode.ReadyForQuery, false).GetAwaiter().GetResult();
-                lock (_keepAliveDisposeLock)
-                {
-                    if (_keepAliveLock == null)
-                    {
-                        Log.Logger.LogDebug("[{ConnectorId}] Connector already closed during or after keepalive", Id);
-                        return;
-                    }
-
-                    _keepAliveLock.Release();
-                }
-                Log.Keepalive(Id);
             }
             catch (Exception e)
             {
-                Log.Logger.LogError(NpgsqlEventId.KeepaliveFailure, e, "[{ConnectorId}] Keepalive failure", Id);
+                Log.Error("Keepalive failure", e, Id);
                 try
                 {
                     Break();
                 }
                 catch (Exception e2)
                 {
-                    Log.Logger.LogError(NpgsqlEventId.KeepaliveFailure, e2, "[{ConnectorId}] Further exception while breaking connector on keepalive failure", Id);
+                    Log.Error("Further exception while breaking connector on keepalive failure", e2, Id);
                 }
+            }
+            finally
+            {
+                Monitor.Exit(this);
             }
         }
 
@@ -1630,6 +1613,9 @@ namespace Npgsql
 
         public bool Wait(int timeout)
         {
+            if ((timeout == 0 || timeout == -1) && IsSecure)
+                throw new NotSupportedException("Wait() with timeout isn't supported when SSL is used, see https://github.com/npgsql/npgsql/issues/1501");
+
             using (StartUserAction(ConnectorState.Waiting))
             {
                 // We may have prepended messages in the connection's write buffer - these need to be flushed now.
@@ -1689,7 +1675,7 @@ namespace Npgsql
                         case BackendMessageCode.ReadyForQuery:
                             break;
                         }
-                        Log.Keepalive(Id);
+                        Log.Trace("Performed keepalive", Id);
 
                         if (receivedNotification)
                             return true; // Notification was received during the keepalive
@@ -1792,7 +1778,7 @@ namespace Npgsql
                                     continue;
                                 }
 
-                                Log.Keepalive(Id);
+                                Log.Trace("Performed keepalive", Id);
 
                                 if (receivedNotification)
                                     return; // Notification was received during the keepalive
@@ -1863,7 +1849,7 @@ namespace Npgsql
             Debug.Assert(message is QueryMessage || message is PregeneratedMessage);
             Debug.Assert(_userLock.CurrentCount == 0, "Forgot to start a user action...");
 
-            Log.ExecutingInternalCommand(Id, message);
+            Log.Trace($"Executing internal command: {message}", Id);
 
             await message.Write(WriteBuffer, async, cancellationToken);
             await WriteBuffer.Flush(async);

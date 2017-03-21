@@ -26,7 +26,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using JetBrains.Annotations;
-using Microsoft.Extensions.Logging;
 using Npgsql.Logging;
 
 namespace Npgsql
@@ -40,6 +39,8 @@ namespace Npgsql
         static bool _performedDetection;
         static string _principalWithRealm;
         static string _principalWithoutRealm;
+
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         [CanBeNull]
         internal static string GetUsername(bool includeRealm)
@@ -57,7 +58,7 @@ namespace Npgsql
             var klistPath = FindInPath("klist");
             if (klistPath == null)
             {
-                Log.Logger.LogDebug("klist not found in PATH, skipping Kerberos username detection");
+                Log.Debug("klist not found in PATH, skipping Kerberos username detection");
                 return;
             }
 
@@ -72,7 +73,7 @@ namespace Npgsql
             process.WaitForExit();
             if (process.ExitCode != 0)
             {
-                Log.Logger.LogDebug($"klist exited with code {process.ExitCode}: {process.StandardError.ReadToEnd()}");
+                Log.Debug($"klist exited with code {process.ExitCode}: {process.StandardError.ReadToEnd()}");
                 return;
             }
 
@@ -80,14 +81,14 @@ namespace Npgsql
             for (var i = 0; i < 2; i++)
                 if ((line = process.StandardOutput.ReadLine()) == null)
                 {
-                    Log.Logger.LogDebug("Unexpected output from klist, aborting Kerberos username detection");
+                    Log.Debug("Unexpected output from klist, aborting Kerberos username detection");
                     return;
                 }
 
             var components = line.Split(':');
             if (components.Length != 2)
             {
-                Log.Logger.LogDebug("Unexpected output from klist, aborting Kerberos username detection");
+                Log.Debug("Unexpected output from klist, aborting Kerberos username detection");
                 return;
             }
 
@@ -95,7 +96,7 @@ namespace Npgsql
             components = principalWithRealm.Split('@');
             if (components.Length != 2)
             {
-                Log.Logger.LogDebug($"Badly-formed default principal {principalWithRealm} from klist, aborting Kerberos username detection");
+                Log.Debug($"Badly-formed default principal {principalWithRealm} from klist, aborting Kerberos username detection");
                 return;
             }
 

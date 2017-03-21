@@ -107,6 +107,8 @@ namespace Npgsql
         bool IsSequential => (_behavior & CommandBehavior.SequentialAccess) != 0;
         bool IsSchemaOnly => (_behavior & CommandBehavior.SchemaOnly) != 0;
 
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+
         internal NpgsqlDataReader(NpgsqlCommand command, CommandBehavior behavior, List<NpgsqlStatement> statements, Task sendTask)
         {
             Command = command;
@@ -144,8 +146,7 @@ namespace Npgsql
             var taken = new List<int>();
             foreach (var p in Command.Parameters.Where(p => p.IsOutputDirection))
             {
-                int idx;
-                if (_rowDescription.TryGetFieldIndex(p.CleanName, out idx))
+                if (_rowDescription.TryGetFieldIndex(p.CleanName, out var idx))
                 {
                     // TODO: Provider-specific check?
                     p.Value = GetValue(idx);
@@ -709,16 +710,17 @@ namespace Npgsql
             if (_state != ReaderState.Consumed)
                 Consume(false).GetAwaiter().GetResult();
 
-            // Make sure the send task for this command, which may have executed asynchronously and in
-            // parallel with the reading, has completed, throwing any exceptions it generated.
-            _sendTask.GetAwaiter().GetResult();
-
             Cleanup(connectionClosing);
         }
 
         internal void Cleanup(bool connectionClosing=false)
         {
-            Log.ReaderCleanup(_connector.Id);
+            Log.Trace("Cleaning up reader", _connector.Id);
+
+            // Make sure the send task for this command, which may have executed asynchronously and in
+            // parallel with the reading, has completed, throwing any exceptions it generated.
+            _sendTask.GetAwaiter().GetResult();
+
             _state = ReaderState.Closed;
             Command.State = CommandState.Idle;
             _connector.CurrentReader = null;
@@ -1341,7 +1343,7 @@ namespace Npgsql
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        T ReadColumn<T>(int ordinal) => ReadColumn<T>(ordinal, true).Result;
+        T ReadColumn<T>(int ordinal) => ReadColumn<T>(ordinal, false).Result;
 
         #region New (CoreCLR) schema API
 
@@ -1420,8 +1422,8 @@ namespace Npgsql
                 row["IsRowVersion"] = false;
                 row["IsHidden"] = column.IsHidden == true;
                 row["IsLong"] = column.IsLong == true;
-                row["NumericPrecision"] = column.NumericPrecision ?? 255;
-                row["NumericScale"] = column.NumericScale ?? 255;
+                row["NumericPrecision"] = column.NumericPrecision ?? 0;
+                row["NumericScale"] = column.NumericScale ?? 0;
 
                 table.Rows.Add(row);
             }

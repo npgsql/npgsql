@@ -135,6 +135,55 @@ namespace Npgsql.Tests.Types
             }
         }
 
+        [Test]
+        public void RangeEquality_FiniteRange()
+        {
+           var r1 = new NpgsqlRange<int>(0, true, false, 1, false, false);
+
+           //different bounds
+           var r2 = new NpgsqlRange<int>(1, true, false, 2, false, false);
+           Assert.IsFalse(r1 == r2);
+
+           //lower bound is not inclusive
+           var r3 = new NpgsqlRange<int>(0, false, false, 1, false, false);
+           Assert.IsFalse(r1 == r3);
+           
+           //upper bound is inclusive
+           var r4 = new NpgsqlRange<int>(0, true, false, 1, true, false);
+           Assert.IsFalse(r1 == r4);
+
+           var r5 = new NpgsqlRange<int>(0, true, false, 1, false, false);
+           Assert.IsTrue(r1 == r5);
+
+            //check some other combinations while we are here
+           Assert.IsFalse(r2 == r3);
+           Assert.IsFalse(r2 == r4);
+           Assert.IsFalse(r3 == r4);
+        }
+
+        [Test]
+        public void RangeEquality_InfiniteRange()
+        {
+           var r1 = new NpgsqlRange<int>(0, false, true, 1, false, false);
+
+           //different upper bound (lower bound shoulnd't matter since it is infinite)
+           var r2 = new NpgsqlRange<int>(1, false, true, 2, false, false);
+           Assert.IsFalse(r1 == r2);
+
+           //upper bound is inclusive
+           var r3 = new NpgsqlRange<int>(0, false, true, 1, true, false);
+           Assert.IsFalse(r1 == r3);
+           
+           //value of lower bound shoulnd't matter since it is infinite
+           var r4 = new NpgsqlRange<int>(10, false, true, 1, false, false);
+           Assert.IsTrue(r1 == r4);
+
+            //check some other combinations while we are here
+           Assert.IsFalse(r2 == r3);
+           Assert.IsFalse(r2 == r4);
+           Assert.IsFalse(r3 == r4);
+        }
+
         [OneTimeSetUp]
         public void OneTimeSetUp()
         {

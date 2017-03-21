@@ -28,7 +28,6 @@ using System.Diagnostics;
 using System.Threading;
 using System.Transactions;
 using JetBrains.Annotations;
-using Microsoft.Extensions.Logging;
 using Npgsql.Logging;
 
 namespace Npgsql
@@ -50,6 +49,8 @@ namespace Npgsql
         bool IsPrepared => _preparedTxName != null;
         bool _isDisposed;
 
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+
         const int MaximumRollbackAttempts = 20;
 
         internal VolatileResourceManager(NpgsqlConnection connection, [NotNull] Transaction transaction)
@@ -69,7 +70,7 @@ namespace Npgsql
             Debug.Assert(_localTx != null, "No local transaction");
             Debug.Assert(_connector != null, "No connector");
 
-            Log.SinglePhaseCommit(_connector.Id, _txId);
+            Log.Debug($"Single Phase Commit (localid={_txId})", _connector.Id);
 
             try
             {
@@ -93,7 +94,7 @@ namespace Npgsql
             Debug.Assert(_localTx != null, "No local transaction");
             Debug.Assert(_connector != null, "No connector");
 
-            Log.TwoPhasePrepare(_connector.Id, _txId);
+            Log.Debug($"Two-phase transaction prepare (localid={_txId}", _connector.Id);
 
             // The PostgreSQL prepared transaction name is the distributed GUID + our connection's process ID, for uniqueness
             _preparedTxName = $"{_transaction.TransactionInformation.DistributedIdentifier}/{_connector.BackendProcessId}";
@@ -117,7 +118,7 @@ namespace Npgsql
             Debug.Assert(_transaction != null, "No transaction");
             Debug.Assert(_connector != null, "No connector");
 
-            Log.TwoPhaseCommit(_connector.Id, _txId);
+            Log.Debug($"Two-phase transaction commit (localid={_txId}", _connector.Id);
 
             try
             {
@@ -126,7 +127,7 @@ namespace Npgsql
             }
             catch (Exception e)
             {
-                Log.Logger.LogError(NpgsqlEventId.TwoPhaseCommitException, e, "[{ConnectorId}] Exception during two-phase transaction commit (localid={TransactionId}", _connector.Id, _txId);
+                Log.Error("Exception during two-phase transaction commit (localid={TransactionId}", e, _connector.Id);
             }
             finally
             {
@@ -146,20 +147,20 @@ namespace Npgsql
                 if (IsPrepared)
                 {
                     // This only occurs if we've started a two-phase commit but one of the commits has failed.
-                    Log.TwoPhaseRollback(_connector.Id, _txId);
+                    Log.Debug($"Two-phase transaction rollback (localid={_txId}", _connector.Id);
                     using (_connector.StartUserAction())
                         _connector.ExecuteInternalCommand($"ROLLBACK PREPARED '{_preparedTxName}'");
                 }
                 else
                 {
-                    Log.SinglePhaseRollback(_connector.Id, _txId);
+                    Log.Debug($"Single-phase transaction rollback (localid={_txId}", _connector.Id);
                     Debug.Assert(_localTx != null);
                     RollbackLocal();
                 }
             }
             catch (Exception e)
             {
-                Log.Logger.LogError(NpgsqlEventId.RollbackException, e, "[{ConnectorId}] Exception during transaction rollback (localid={TransactionId}", _connector.Id, _txId);
+                Log.Error($"Exception during transaction rollback (localid={_txId}", e, _connector.Id);
             }
             finally
             {
@@ -173,7 +174,7 @@ namespace Npgsql
             Debug.Assert(_transaction != null, "No transaction");
             Debug.Assert(_connector != null, "No connector");
 
-            Log.TransactionInDoubt(_connector.Id, _txId);
+            Log.Warn($"Two-phase transaction in doubt (localid={_txId}", _connector.Id);
 
             // TODO: Is this the correct behavior?
             try
@@ -182,7 +183,7 @@ namespace Npgsql
             }
             catch (Exception e)
             {
-                Log.Logger.LogError(NpgsqlEventId.RollbackException, e, "[{ConnectorId}] Exception during transaction rollback (localid={TransactionId}", _connector.Id, _txId);
+                Log.Error($"Exception during transaction rollback (localid={_txId}", e, _connector.Id);
             }
             finally
             {
@@ -213,7 +214,7 @@ namespace Npgsql
                     if (attempt++ == MaximumRollbackAttempts)
                         throw new Exception($"Could not roll back after {MaximumRollbackAttempts} attempts, aborting. Transaction is in an unknown state.");
 
-                    Log.Logger.LogWarning(NpgsqlEventId.ConnectionInUseDuringRollback, "[{ConnectorId}] Connection in use while trying to rollback, will cancel and retry (localid={TransactionId}", _connector.Id, _txId);
+                    Log.Warn($"Connection in use while trying to rollback, will cancel and retry (localid={_txId}", _connector.Id);
                     _connector.CancelRequest();
                     // Cancellations are asynchronous, give it some time
                     Thread.Sleep(500);
@@ -230,7 +231,7 @@ namespace Npgsql
             Debug.Assert(_transaction != null, "No transaction");
             Debug.Assert(_connector != null, "No connector");
 
-            Log.CleaningUpResourceManager(_connector.Id, _txId);
+            Log.Trace($"Cleaning up resource manager (localid={_txId}", _connector.Id);
             if (_localTx != null)
             {
                 _localTx.Dispose();

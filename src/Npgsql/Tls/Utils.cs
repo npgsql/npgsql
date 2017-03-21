@@ -265,8 +265,7 @@ namespace Npgsql.Tls
                                 var ipBytes = new byte[itemLen];
                                 Buffer.BlockCopy(bytes, offset, ipBytes, 0, itemLen);
                                 var ip = new System.Net.IPAddress(ipBytes);
-                                System.Net.IPAddress hostIp;
-                                if (System.Net.IPAddress.TryParse(hostname, out hostIp) && ip.Equals(hostIp))
+                                if (System.Net.IPAddress.TryParse(hostname, out var hostIp) && ip.Equals(hostIp))
                                     return true;
                                 break;
                             default: // Other types are not checked according to rfc2818, so skip

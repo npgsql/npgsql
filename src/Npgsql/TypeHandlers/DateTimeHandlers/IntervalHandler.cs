@@ -44,8 +44,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             : base(postgresType)
         {
             // Check for the legacy floating point timestamps feature, defaulting to integer timestamps
-            string s;
-            _integerFormat = !registry.Connector.BackendParams.TryGetValue("integer_datetimes", out s) || s == "on";
+            _integerFormat = !registry.Connector.BackendParams.TryGetValue("integer_datetimes", out var s) || s == "on";
         }
 
         public override TimeSpan Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)

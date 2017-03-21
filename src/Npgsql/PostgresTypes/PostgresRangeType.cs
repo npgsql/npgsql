@@ -53,8 +53,7 @@ namespace Npgsql.PostgresTypes
 
         internal override TypeHandler Activate(TypeHandlerRegistry registry)
         {
-            TypeHandler subtypeHandler;
-            if (!registry.TryGetByOID(Subtype.OID, out subtypeHandler))
+            if (!registry.TryGetByOID(Subtype.OID, out var subtypeHandler))
             {
                 // Subtype hasn't been set up yet, do it now
                 subtypeHandler = Subtype.Activate(registry);

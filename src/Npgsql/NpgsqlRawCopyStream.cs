@@ -70,6 +70,8 @@ namespace Npgsql
             (byte)'\n', 255, (byte)'\r', (byte)'\n', 0
         };
 
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+
         #endregion
 
         #region Constructor
@@ -271,7 +273,7 @@ namespace Npgsql
 
         void Cleanup()
         {
-            Log.EndCopy(_connector.Id);
+            Log.Debug("COPY operation ended", _connector.Id);
             _connector.CurrentCopyOperation = null;
             _connector = null;
             _readBuf = null;

@@ -445,6 +445,17 @@ namespace Npgsql.Tests
                 Assert.That(conn.DataSource, Is.EqualTo($"tcp://{conn.Host}:{conn.Port}"));
         }
 
+        [Test]
+        public void SetConnectionString()
+        {
+            using (var conn = new NpgsqlConnection())
+            {
+                conn.ConnectionString = ConnectionString;
+                conn.Open();
+                Assert.That(() => conn.ConnectionString = "", Throws.Exception.TypeOf<InvalidOperationException>());
+            }
+        }
+
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/703")]
         public void NoDatabaseDefaultsToUsername()
         {

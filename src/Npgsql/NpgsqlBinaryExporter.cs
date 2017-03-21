@@ -54,6 +54,8 @@ namespace Npgsql
         /// </summary>
         internal int NumColumns { get; }
 
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+
         #endregion
 
         #region Construction / Initialization
@@ -323,7 +325,7 @@ namespace Npgsql
 
         void Cleanup()
         {
-            Log.EndCopy(_connector.Id);
+            Log.Debug("COPY operation ended", _connector.Id);
             _connector = null;
             _registry = null;
             _buf = null;
