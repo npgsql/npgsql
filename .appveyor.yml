@@ -7,7 +7,7 @@ environment:
     NPGSQL_TEST_DB: Host=localhost;Database=postgres;Username=postgres;Password=Password12!
     PGUSER: postgres
     PGPASSWORD: Password12!
-    POSTGIS_EXE: postgis-bundle-pg95x64-setup-2.3.2-1.exe
+    POSTGIS_EXE: postgis-bundle-pg96x64-setup-2.3.2-1.exe
 cache:
   - '%USERPROFILE%\.nuget\packages -> **\*.csproj'
   - 'C:\projects\npgsql\packages -> **\*.csproj'  # For VSIX
@@ -18,7 +18,7 @@ install:
 services:
   - postgresql
 before_build:
-  - '"C:\Program Files\PostgreSQL\9.5\bin\psql" -c "CREATE EXTENSION postgis"'
+  - '"C:\Program Files\PostgreSQL\9.6\bin\psql" -c "CREATE EXTENSION postgis"'
   - appveyor-retry dotnet restore -v Minimal
   - appveyor-retry nuget restore Npgsql.sln   # For VSIX
 build_script:
