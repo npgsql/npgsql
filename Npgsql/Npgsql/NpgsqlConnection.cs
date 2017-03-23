@@ -151,7 +151,7 @@ namespace Npgsql
         // Connector being used for the active connection.
         private NpgsqlConnector connector = null;
 
-        private NpgsqlPromotableSinglePhaseNotification promotable = null;
+        internal Transaction EnlistedTransaction = null;
 
         // A cached copy of the result of `settings.ConnectionString`
         private string _connectionString;
@@ -179,8 +179,6 @@ namespace Npgsql
             // Fix authentication problems. See https://bugzilla.novell.com/show_bug.cgi?id=MONO77559 and
             // http://pgfoundry.org/forum/message.php?msg_id=1002377 for more info.
             RSACryptoServiceProvider.UseMachineKeyStore = true;
-
-            promotable = new NpgsqlPromotableSinglePhaseNotification(this);
         }
 
         /// <summary>
@@ -529,6 +527,18 @@ namespace Npgsql
             }
         }
 
+        internal Int32 pid
+        {
+            get
+            {
+                if (connector == null)
+                {
+                    throw new InvalidOperationException("connector is null");
+                }
+                return connector.BackEndKeyData.ProcessID;
+            }
+        }
+
         /// <summary>
         /// Report whether the backend is expecting standard conformant strings.
         /// In version 8.1, Postgres began reporting this value (false), but did not actually support standard conformant strings.
@@ -681,7 +691,7 @@ namespace Npgsql
 
             if (Enlist)
             {
-                Promotable.Enlist(Transaction.Current);
+                EnlistTransaction(Transaction.Current);
             }
 
             OpenCounter++;
@@ -737,7 +747,7 @@ namespace Npgsql
             if (connector == null)
                 return;
 
-            if (promotable != null && promotable.InLocalTransaction)
+            if (EnlistedTransaction != null)
             {
                 _postponingClose = true;
                 return;
@@ -751,8 +761,8 @@ namespace Npgsql
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ReallyClose");
             _postponingClose = false;
 
-            // clear the way for another promotable transaction
-            promotable = null;
+            if (EnlistedTransaction != null)
+                throw new InvalidOperationException("EnlistedTransaction should be cleared before ReallyClose()");
 
             connector.Notification -= NotificationDelegate;
             connector.Notice -= NoticeDelegate;
@@ -788,12 +798,12 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// When a connection is closed within an enclosing TransactionScope and the transaction
-        /// hasn't been promoted, we defer the actual closing until the scope ends.
+        /// When a connection is closed within an enclosing TransactionScope,
+        /// we defer the actual closing until the scope ends.
         /// </summary>
-        internal void PromotableLocalTransactionEnded()
+        internal void EnlistedTransactionEnded()
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "PromotableLocalTransactionEnded");
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "EnlistedTransactionEnded");
             if (_postponingDispose)
                 Dispose(true);
             else if (_postponingClose)
@@ -1060,11 +1070,6 @@ namespace Npgsql
         // Private methods and properties
         //
 
-        private NpgsqlPromotableSinglePhaseNotification Promotable
-        {
-            get { return promotable ?? (promotable = new NpgsqlPromotableSinglePhaseNotification(this)); }
-        }
-
         /// <summary>
         /// Write each key/value pair in the connection string to the log.
         /// </summary>
@@ -1262,7 +1267,14 @@ namespace Npgsql
         /// <param name="transaction"></param>
         public override void EnlistTransaction(Transaction transaction)
         {
-            Promotable.Enlist(transaction);
+            if (transaction == null)
+                throw new ArgumentNullException("NpgsqlConnection.EnlistTransaction: transaction should not be null");
+            if (EnlistedTransaction == transaction)
+                return;
+            if (EnlistedTransaction != null)
+                throw new InvalidOperationException("NpgsqlConnection: connection already enlisted");
+            EnlistedTransaction = transaction;
+            transaction.EnlistVolatile(new VolatileResourceManager(this, transaction), EnlistmentOptions.None);
         }
 
 #if NET35
