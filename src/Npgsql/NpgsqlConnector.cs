@@ -33,6 +33,7 @@ using System.Runtime.CompilerServices;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
@@ -1817,19 +1818,13 @@ namespace Npgsql
         internal bool UseConformantStrings { get; private set; }
         internal bool SupportsEStringPrefix => ServerVersion >= new Version(8, 1, 0);
 
+        private static readonly Regex _versionRegex = new Regex(@"^\s*(\d+)(?:\.(\d+)(?:\.(\d+))?)?", RegexOptions.Compiled);
+
         void ProcessServerVersion(string value)
         {
-            var versionString = value.Trim();
-            for (var idx = 0; idx != versionString.Length; ++idx)
-            {
-                var c = value[idx];
-                if (!char.IsDigit(c) && c != '.')
-                {
-                    versionString = versionString.Substring(0, idx);
-                    break;
-                }
-            }
-            ServerVersion = new Version(versionString);
+            var groups = _versionRegex.Match(value).Groups;
+            int Parse(Group g, int _default=0) => g.Success ? int.Parse(g.Value) : _default;
+            ServerVersion = new Version(Parse(groups[1], 99), Parse(groups[2]), Parse(groups[3]));
         }
 
         /// <summary>
