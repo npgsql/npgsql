@@ -456,8 +456,12 @@ namespace Npgsql
 
         internal void RemovePendingEnlistedConnector(NpgsqlConnector connector, Transaction transaction)
         {
-            lock (_pendingEnlistedConnectors)
-                _pendingEnlistedConnectors[transaction].Remove(connector);
+            lock (_pendingEnlistedConnectors) {
+                var list = _pendingEnlistedConnectors[transaction];
+                list.Remove(connector);
+                if (list.Count == 0)
+                    _pendingEnlistedConnectors.Remove(transaction);
+            }
         }
 
         [CanBeNull]
@@ -469,6 +473,8 @@ namespace Npgsql
                     return null;
                 var connector = list[list.Count - 1];
                 list.RemoveAt(list.Count - 1);
+                if (list.Count == 0)
+                    _pendingEnlistedConnectors.Remove(transaction);
                 return connector;
             }
         }
