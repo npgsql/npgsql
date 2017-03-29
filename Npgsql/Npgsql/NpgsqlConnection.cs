@@ -38,6 +38,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Transactions;
 using Mono.Security.Protocol.Tls;
 using IsolationLevel = System.Data.IsolationLevel;
+using System.Threading;
 
 #if WITHDESIGN
 
@@ -152,6 +153,7 @@ namespace Npgsql
         private NpgsqlConnector connector = null;
 
         internal Transaction EnlistedTransaction = null;
+        private volatile bool enlistedInProgress = false;
 
         // A cached copy of the result of `settings.ConnectionString`
         private string _connectionString;
@@ -689,7 +691,7 @@ namespace Npgsql
                 connector.AddNotificationThread();
             }
 
-            if (Enlist)
+            if (Enlist && Transaction.Current != null)
             {
                 EnlistTransaction(Transaction.Current);
             }
@@ -742,18 +744,21 @@ namespace Npgsql
         /// </summary>
         public override void Close()
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Close");
-
-            if (connector == null)
-                return;
-
-            if (EnlistedTransaction != null)
+            using (LockIfEnlisted())
             {
-                _postponingClose = true;
-                return;
-            }
+                NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Close");
 
-            ReallyClose();
+                if (connector == null)
+                    return;
+
+                if (EnlistedTransaction != null)
+                {
+                    _postponingClose = true;
+                    return;
+                }
+
+                ReallyClose();
+            }
         }
 
         private void ReallyClose()
@@ -804,10 +809,16 @@ namespace Npgsql
         internal void EnlistedTransactionEnded()
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "EnlistedTransactionEnded");
-            if (_postponingDispose)
-                Dispose(true);
-            else if (_postponingClose)
-                ReallyClose();
+            lock (this)
+            {
+                connector.DecPossibleConcurrency();
+                EnlistedTransaction = null;
+                if (_postponingDispose)
+                    ReallyDispose();
+                else if (_postponingClose)
+                    ReallyClose();
+                enlistedInProgress = false;
+            }
         }
 
         /// <summary>
@@ -844,23 +855,40 @@ namespace Npgsql
         {
             if (disposed)
                 return;
-
-            _postponingDispose = false;
             if (disposing)
             {
-                NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Dispose");
-                Close();
-                if (_postponingClose)
+                using (LockIfEnlisted())
                 {
-                    _postponingDispose = true;
-                    return;
+                    if (disposed)
+                        return;
+                    _postponingDispose = false;
+                    NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Dispose");
+                    Close();
+                    if (_postponingClose)
+                    {
+                        _postponingDispose = true;
+                        return;
+                    }
                 }
             }
-
             base.Dispose(disposing);
             disposed = true;
         }
 
+        /// <summary>
+        /// Releases all resources used by the
+        /// <see cref="Npgsql.NpgsqlConnection">NpgsqlConnection</see>.
+        /// </summary>
+        private void ReallyDispose()
+        {
+            if (disposed)
+                throw new Exception("NpgsqlConenction disposed incosistently");
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ReallyDispose");
+            _postponingDispose = false;
+            ReallyClose();
+            base.Dispose(true);
+            disposed = true;
+        }
         /// <summary>
         /// Create a new connection based on this one.
         /// </summary>
@@ -1274,7 +1302,32 @@ namespace Npgsql
             if (EnlistedTransaction != null)
                 throw new InvalidOperationException("NpgsqlConnection: connection already enlisted");
             EnlistedTransaction = transaction;
+            enlistedInProgress = true;
+            connector.IncPossibleConcurrency();
             transaction.EnlistVolatile(new VolatileResourceManager(this, transaction), EnlistmentOptions.None);
+        }
+
+        private IDisposable LockIfEnlisted()
+        {
+            return new EnlistedLock(enlistedInProgress ? this : null);
+        }
+
+        private class EnlistedLock : IDisposable
+        {
+            private NpgsqlConnection _conn;
+            public EnlistedLock(NpgsqlConnection conn)
+            {
+                _conn = conn;
+                if (conn != null)
+                    Monitor.Enter(conn);
+            }
+            public void Dispose()
+            {
+                var conn = _conn;
+                _conn = null;
+                if (conn != null)
+                    Monitor.Exit(conn);
+            }
         }
 
 #if NET35

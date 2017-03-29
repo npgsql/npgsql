@@ -59,7 +59,7 @@ namespace Npgsql
         internal static void ExecuteBlind(NpgsqlConnector connector, NpgsqlQuery query)
         {
             // Block the notification thread before writing anything to the wire.
-            using (var blocker = connector.BlockNotificationThread())
+            using (var blocker = connector.BlockConcurrentAccess())
             {
                 // Set statement timeout as needed.
                 connector.SetBackendCommandTimeout(20);
@@ -81,7 +81,7 @@ namespace Npgsql
         internal static void ExecuteBlindSuppressTimeout(NpgsqlConnector connector, NpgsqlQuery query)
         {
             // Block the notification thread before writing anything to the wire.
-            using (var blocker = connector.BlockNotificationThread())
+            using (var blocker = connector.BlockConcurrentAccess())
             {
                 // Write the Query message to the wire.
                 connector.Query(query);
@@ -240,7 +240,7 @@ namespace Npgsql
             CheckConnectionState();
 
             // Block the notification thread before writing anything to the wire.
-            using (m_Connector.BlockNotificationThread())
+            using (m_Connector.BlockConcurrentAccess())
             {
                 IEnumerable<IServerResponseObject> responseEnum;
                 ForwardsOnlyDataReader reader;
@@ -280,7 +280,7 @@ namespace Npgsql
                         responseEnum,
                         cb,
                         this,
-                        m_Connector.BlockNotificationThread()
+                        m_Connector.BlockConcurrentAccess()
                     );
 
                     if (
@@ -324,7 +324,7 @@ namespace Npgsql
                             responseEnum,
                             cb,
                             this,
-                            m_Connector.BlockNotificationThread()
+                            m_Connector.BlockConcurrentAccess()
                         );
                     }
                 }
@@ -349,7 +349,7 @@ namespace Npgsql
                         responseEnum,
                         cb,
                         this,
-                        m_Connector.BlockNotificationThread(),
+                        m_Connector.BlockConcurrentAccess(),
                         true,
                         currentRowDescription
                     );

@@ -107,14 +107,14 @@ namespace Npgsql
             }
             else
             {
-                _preparedTxName = string.Format("{0}/{1}", _transaction.TransactionInformation.LocalIdentifier, _connection.pid);
+                _preparedTxName = string.Format("{0}/{1}", _txId, _connection.pid);
             }
             try
             {
-                NpgsqlCommand.ExecuteBlind(_connection.Connector, string.Format("PREPARE TRANSACTION '{0}'", _preparedTxName));
                 _localTx.Cancel();
                 _localTx.Dispose();
                 _localTx = null;
+                NpgsqlCommand.ExecuteBlind(_connection.Connector, string.Format("PREPARE TRANSACTION '{0}'", _preparedTxName));
                 preparingEnlistment.Prepared();
             }
             catch (Exception e)
@@ -215,8 +215,23 @@ namespace Npgsql
             Debug.Assert(_connection != null, "No connector");
             Debug.Assert(_localTx != null, "No local transaction");
 
-            _localTx.Rollback();
-            // TODO: fix rollback for timeout triggered rollback
+            var connector = _connection.Connector;
+            if (connector == null)
+                return;
+            var socket = connector.Socket;
+            if (!Monitor.TryEnter(socket, 100))
+            {
+                connector.CancelRequest();
+                Monitor.Enter(socket);
+            }
+            try
+            {
+                _localTx.Rollback();
+            }
+            finally
+            {
+                Monitor.Exit(socket);
+            }
             return;
         }
 
@@ -226,21 +241,19 @@ namespace Npgsql
         {
             if (_isDisposed)
                 return;
+            _isDisposed = true;
             Debug.Assert(_transaction != null, "No transaction");
             Debug.Assert(_connection != null, "No connector");
             Debug.Assert(_connection.EnlistedTransaction == _transaction, "enlisted transaction mismatch");
-            _connection.EnlistedTransaction = null;
 
             if (_localTx != null)
             {
                 _localTx.Dispose();
                 _localTx = null;
             }
-           _connection.EnlistedTransactionEnded();
-
+            _connection.EnlistedTransactionEnded();
             _connection = null;
             _transaction = null;
-            _isDisposed = true;
         }
 
         void CheckDisposed()

@@ -998,7 +998,7 @@ namespace Npgsql
         private long? _nextInsertOID = null;
         internal bool _cleanedUp = false;
         private bool _hasRows = false;
-        private readonly NpgsqlConnector.NotificationThreadBlock _threadBlock;
+        private readonly NpgsqlConnector.ConcurrentAccessBlock _threadBlock;
 
         //Unfortunately we sometimes don't know we're going to be dealing with
         //a description until it comes when we look for a row or a message, and
@@ -1012,7 +1012,7 @@ namespace Npgsql
         private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
 
         internal ForwardsOnlyDataReader(IEnumerable<IServerResponseObject> dataEnumeration, CommandBehavior behavior,
-                                        NpgsqlCommand command, NpgsqlConnector.NotificationThreadBlock threadBlock,
+                                        NpgsqlCommand command, NpgsqlConnector.ConcurrentAccessBlock threadBlock,
                                         bool preparedStatement = false, NpgsqlRowDescription rowDescription = null)
             : base(command, behavior)
         {

@@ -164,7 +164,9 @@ namespace Npgsql
         private Thread _notificationThread;
 
         // Counter of notification thread start/stop requests in order to
-        internal Int16 _notificationThreadStopCount;
+        internal Int32 _possibleConcurrencyCount;
+        internal Int32 _concurrencyLockCount;
+        private Boolean _isNotificationThreadRunning;
 
         private Exception _notificationException;
 
@@ -216,7 +218,9 @@ namespace Npgsql
             _NativeToBackendTypeConverterOptions = NativeToBackendTypeConverterOptions.Default.Clone(new NpgsqlBackendTypeMapping());
             _planIndex = 0;
             _portalIndex = 0;
-            _notificationThreadStopCount = 1;
+            _possibleConcurrencyCount = 0;
+            _concurrencyLockCount = 0;
+            _isNotificationThreadRunning = false;
         }
 
 
@@ -942,6 +946,16 @@ namespace Npgsql
             return _planNamePrefix + (++_planIndex).ToString();
         }
 
+        internal void IncPossibleConcurrency()
+        {
+            _possibleConcurrencyCount++;
+        }
+
+        internal void DecPossibleConcurrency()
+        {
+            _possibleConcurrencyCount--;
+        }
+
         internal void RemoveNotificationThread()
         {
             // Wait notification thread finish its work.
@@ -950,16 +964,13 @@ namespace Npgsql
                 // Kill notification thread.
                 _notificationThread.Abort();
                 _notificationThread = null;
-
-                // Special case in order to not get problems with thread synchronization.
-                // It will be turned to 0 when synch thread is created.
-                _notificationThreadStopCount = 1;
+                _possibleConcurrencyCount--;
             }
         }
 
         internal void AddNotificationThread()
         {
-            _notificationThreadStopCount = 0;
+            _possibleConcurrencyCount++;
 
             NpgsqlContextHolder contextHolder = new NpgsqlContextHolder(this, CurrentState);
 
@@ -980,31 +991,35 @@ namespace Npgsql
         //cleaned up), and can act as the sole gate-way
         //to the code in question, guaranteeing that using code can't be written
         //so that the "undoing" is forgotten.
-        internal class NotificationThreadBlock : IDisposable
+        internal class ConcurrentAccessBlock : IDisposable
         {
             private NpgsqlConnector _connector;
 
-            public NotificationThreadBlock(NpgsqlConnector connector)
+            public ConcurrentAccessBlock(NpgsqlConnector connector)
             {
-                (_connector = connector).StopNotificationThread();
+                _connector = connector;
+                if (connector != null)
+                {
+                    connector.StopConcurrentAccess();
+                }
             }
 
             public void Dispose()
             {
                 if (_connector != null)
                 {
-                    _connector.ResumeNotificationThread();
+                    _connector.ResumeConcurrentAccess();
                 }
                 _connector = null;
             }
         }
 
-        internal NotificationThreadBlock BlockNotificationThread()
+        internal ConcurrentAccessBlock BlockConcurrentAccess()
         {
-            return new NotificationThreadBlock(this);
+            return new ConcurrentAccessBlock(_possibleConcurrencyCount > 0 ? this : null);
         }
 
-        private void StopNotificationThread()
+        private void StopConcurrentAccess()
         {
             // first check to see if an exception has
             // been thrown by the notification thread.
@@ -1013,28 +1028,17 @@ namespace Npgsql
                 throw _notificationException;
             }
 
-            _notificationThreadStopCount++;
-
-            if (_notificationThreadStopCount == 1) // If this call was the first to increment.
-            {
-                Monitor.Enter(_socket);
-            }
+            Monitor.Enter(_socket);
         }
 
-        private void ResumeNotificationThread()
+        private void ResumeConcurrentAccess()
         {
-            _notificationThreadStopCount--;
-
-            if (_notificationThreadStopCount == 0)
-            {
-                // Release the synchronization handle.
-                Monitor.Exit(_socket);
-            }
+            Monitor.Exit(_socket);
         }
 
         internal Boolean IsNotificationThreadRunning
         {
-            get { return _notificationThreadStopCount <= 0; }
+            get { return _isNotificationThreadRunning; }
         }
 
         internal class NpgsqlContextHolder
@@ -1063,10 +1067,18 @@ namespace Npgsql
 
                         lock (connector._socket)
                         {
-                            // 20 millisecond timeout
-                            if (this.connector.Socket.Poll(20000, SelectMode.SelectRead))
+                            try
                             {
-                                this.connector.ProcessAndDiscardBackendResponses();
+                                connector._isNotificationThreadRunning = true;
+                                // 20 millisecond timeout
+                                if (this.connector.Socket.Poll(20000, SelectMode.SelectRead))
+                                {
+                                    this.connector.ProcessAndDiscardBackendResponses();
+                                }
+                            }
+                            finally
+                            {
+                                connector._isNotificationThreadRunning = false;
                             }
                         }
                     }
