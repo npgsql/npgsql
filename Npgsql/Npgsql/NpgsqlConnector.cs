@@ -127,9 +127,9 @@ namespace Npgsql
 
         private NativeToBackendTypeConverterOptions _NativeToBackendTypeConverterOptions;
 
-        private Thread _notificationThread;
+        private NpgsqlContextHolder _notificationContextHolder;
 
-        // Counter of notification thread start/stop requests in order to
+        // Open concurrent accesses: notification thread, DTC enlistment
         internal Int32 _possibleConcurrencyCount;
         private Boolean _isNotificationThreadRunning;
 
@@ -915,11 +915,9 @@ namespace Npgsql
         internal void RemoveNotificationThread()
         {
             // Wait notification thread finish its work.
+            _notificationContextHolder.Stop();
             lock (_socket)
             {
-                // Kill notification thread.
-                _notificationThread.Abort();
-                _notificationThread = null;
                 _possibleConcurrencyCount--;
             }
         }
@@ -928,11 +926,10 @@ namespace Npgsql
         {
             _possibleConcurrencyCount++;
 
-            NpgsqlContextHolder contextHolder = new NpgsqlContextHolder(this, CurrentState);
+            _notificationContextHolder = new NpgsqlContextHolder(this, CurrentState);
 
-            _notificationThread = new Thread(new ThreadStart(contextHolder.ProcessServerMessages));
-
-            _notificationThread.Start();
+            var notificationThread = new Thread(new ThreadStart(_notificationContextHolder.ProcessServerMessages));
+            notificationThread.Start();
         }
 
         //Use with using(){} to perform the sentry pattern
@@ -1001,40 +998,49 @@ namespace Npgsql
         {
             private readonly NpgsqlConnector connector;
             private readonly NpgsqlState state;
+            private volatile bool stop;
 
             internal NpgsqlContextHolder(NpgsqlConnector connector, NpgsqlState state)
             {
                 this.connector = connector;
                 this.state = state;
+                this.stop = false;
             }
 
             internal void ProcessServerMessages()
             {
                 try
                 {
-                    while (true)
+                    lock (this)
                     {
-                        // Mono's implementation of System.Threading.Monitor does not appear to give threads
-                        // priority on a first come/first serve basis, as does Microsoft's.  As a result, 
-                        // under mono, this loop may execute many times even after another thread has attempted
-                        // to lock on _socket.  A short Sleep() seems to solve the problem effectively.
-                        // Note that Sleep(0) does not work.
-                        Thread.Sleep(1);
-
-                        lock (connector._socket)
+                        while (!stop)
                         {
-                            try
+                            // Mono's implementation of System.Threading.Monitor does not appear to give threads
+                            // priority on a first come/first serve basis, as does Microsoft's.  As a result, 
+                            // under mono, this loop may execute many times even after another thread has attempted
+                            // to lock on _socket.  A short Sleep() seems to solve the problem effectively.
+                            // Note that Sleep(0) does not work.
+                            Thread.Sleep(1);
+                            if (stop)
+                                break;
+
+                            lock (connector._socket)
                             {
-                                connector._isNotificationThreadRunning = true;
-                                // 20 millisecond timeout
-                                if (this.connector.Socket.Poll(20000, SelectMode.SelectRead))
+                                if (stop)
+                                    break;
+                                try
                                 {
-                                    this.connector.ProcessAndDiscardBackendResponses();
+                                    connector._isNotificationThreadRunning = true;
+                                    // 20 millisecond timeout
+                                    if (this.connector.Socket.Poll(20000, SelectMode.SelectRead))
+                                    {
+                                        this.connector.ProcessAndDiscardBackendResponses();
+                                    }
                                 }
-                            }
-                            finally
-                            {
-                                connector._isNotificationThreadRunning = false;
+                                finally
+                                {
+                                    connector._isNotificationThreadRunning = false;
+                                }
                             }
                         }
                     }
@@ -1043,7 +1049,12 @@ namespace Npgsql
                 {
                     this.connector._notificationException = ex;
                 }
+            }
 
+            internal void Stop()
+            {
+                stop = true;
+                lock (this) { }
             }
         }
 
@@ -1077,6 +1088,8 @@ namespace Npgsql
 
         internal void EnlistTransaction(Transaction transaction)
         {
+            if (settings.SyncNotification)
+                throw new InvalidOperationException("Should not use connection with SyncNotification in distributed transaction");
             if (transaction == null)
                 throw new ArgumentNullException("NpgsqlConnection.EnlistTransaction: transaction should not be null");
             if (EnlistedTransaction == transaction)
