@@ -161,6 +161,7 @@
     <Compile Include="NpgsqlTypes\NpgsqlTypes.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlTypesHelper.cs" />
     <Compile Include="Npgsql\NpgsqlQuery.cs" />
+    <Compile Include="Npgsql\VolatileResourceManager.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Npgsql\Cache.cs" />
     <Compile Include="Npgsql\BackendEncoding.cs" />
@@ -220,9 +221,7 @@
     <Compile Include="Npgsql\NpgsqlParameterStatus.cs" />
     <Compile Include="Npgsql\NpgsqlParse.cs" />
     <Compile Include="Npgsql\NpgsqlPasswordPacket.cs" />
-    <Compile Include="Npgsql\NpgsqlPromotableSinglePhaseNotification.cs" />
     <Compile Include="Npgsql\NpgsqlReadyState.cs" />
-    <Compile Include="Npgsql\NpgsqlResourceManager.cs" />
     <Compile Include="Npgsql\NpgsqlRow.cs" />
     <Compile Include="Npgsql\NpgsqlRowDescription.cs" />
     <Compile Include="Npgsql\NpgsqlSchema.cs" />
@@ -231,7 +230,6 @@
     <Compile Include="Npgsql\NpgsqlState.cs" />
     <Compile Include="Npgsql\NpgsqlSync.cs" />
     <Compile Include="Npgsql\NpgsqlTransaction.cs" />
-    <Compile Include="Npgsql\NpgsqlTransactionCallbacks.cs" />
     <Compile Include="Npgsql\PGUtil.cs" />
     <Compile Include="Npgsql\SSPIHandler.cs" />
     <Compile Include="..\CommonAssemblyInfo.cs">

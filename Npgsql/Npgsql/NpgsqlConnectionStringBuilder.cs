@@ -234,6 +234,7 @@ namespace Npgsql
             valueDescriptions.Add(Keywords.Compatible, new ValueDescription(THIS_VERSION));
             valueDescriptions.Add(Keywords.ApplicationName, new ValueDescription(typeof(string)));
             valueDescriptions.Add(Keywords.AlwaysPrepare, new ValueDescription(typeof(bool)));
+            valueDescriptions.Add(Keywords.SerializableAs, new ValueDescription(typeof(SerializableAs)));
         }
 
         public NpgsqlConnectionStringBuilder()
@@ -288,6 +289,18 @@ namespace Npgsql
             else
             {
                 return (SslMode) Enum.Parse(typeof (SslMode), value.ToString(), true);
+            }
+        }
+
+        private static SerializableAs ToSerializableAs(object value)
+        {
+            if (value is SerializableAs)
+            {
+                return (SerializableAs) value;
+            }
+            else
+            {
+                return (SerializableAs) Enum.Parse(typeof (SerializableAs), value.ToString(), true);
             }
         }
 
@@ -622,6 +635,21 @@ namespace Npgsql
         {
             get { return _sslmode; }
             set { SetValue(GetKeyName(Keywords.SslMode), Keywords.SslMode, value); }
+        }
+
+        private SerializableAs _serializableAs = SerializableAs.Default;
+        /// <summary>
+        /// Gets or sets a way transaction treats Serializable isolation level
+        /// Possible values:
+        /// - Default (use global value, if global is Default, then treat it as Serializable)
+        /// - Serializable (force preserving Serializable isolation level)
+        /// - RepeatableRead (force treating Serializable as RepeatableRead for compatibility with Oracle)
+        /// </summary>
+        [Browsable(false)]
+        public SerializableAs SerializableAs
+        {
+            get { return _serializableAs; }
+            set { SetValue(GetKeyName(Keywords.SerializableAs), Keywords.SerializableAs, value); }
         }
 
         private int _timeout;
@@ -984,6 +1012,8 @@ namespace Npgsql
                     return Keywords.ApplicationName;
                 case "ALWAYSPREPARE":
                     return Keywords.AlwaysPrepare;
+                case "SERIALIZABLE AS":
+                    return Keywords.SerializableAs;
                 default:
                     throw new ArgumentException(resman.GetString("Exception_WrongKeyVal"), key);
             }
@@ -1049,6 +1079,8 @@ namespace Npgsql
                     return "APPLICATIONNAME";
                 case Keywords.AlwaysPrepare:
                     return "ALWAYSPREPARE";
+                case Keywords.SerializableAs:
+                    return "SERIALIZABLE AS";
                 default:
                     return keyword.ToString().ToUpperInvariant();
             }
@@ -1173,6 +1205,8 @@ namespace Npgsql
                         return this._ssl = ToBoolean(value);
                     case Keywords.SslMode:
                         return this._sslmode = ToSslMode(value);
+                    case Keywords.SerializableAs:
+                        return this._serializableAs = ToSerializableAs(value);
 #pragma warning disable 618
                     case Keywords.Encoding:
                         return Encoding;
@@ -1326,6 +1360,8 @@ namespace Npgsql
                     return this._application_name;
                 case Keywords.AlwaysPrepare:
                     return this._always_prepare;
+                case Keywords.SerializableAs:
+                    return this._serializableAs;
                 default:
                     return null;
 
@@ -1420,6 +1456,7 @@ namespace Npgsql
         ApplicationName,
         AlwaysPrepare,
         IncludeRealm,
+        SerializableAs,
     }
 
     public enum SslMode
@@ -1428,6 +1465,13 @@ namespace Npgsql
         Allow = 1 << 1,
         Prefer = 1 << 2,
         Require = 1 << 3
+    }
+
+    public enum SerializableAs
+    {
+        Default = 0,
+        Serializable = 1,
+        RepeatableRead = 2,
     }
 }
 

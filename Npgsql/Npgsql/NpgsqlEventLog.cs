@@ -124,7 +124,7 @@ namespace Npgsql
         /// </remarks>
         /// <param name="message">The message to write to the event log</param>
         /// <param name="msglevel">The minimum <see cref="Npgsql.LogLevel">LogLevel</see> for which this message should be logged.</param>
-        private static void LogMsg(String message, LogLevel msglevel)
+        internal static void LogMsg(String message, LogLevel msglevel)
         {
             if (msglevel > Level)
             {

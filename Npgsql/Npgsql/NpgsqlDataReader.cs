@@ -978,6 +978,11 @@ namespace Npgsql
         {
             return new DbEnumerator(this);
         }
+
+        internal virtual void Close(bool connectionClosing)
+        {
+            throw new NotImplementedException();
+        }
     }
 
     /// <summary>
@@ -998,7 +1003,7 @@ namespace Npgsql
         private long? _nextInsertOID = null;
         internal bool _cleanedUp = false;
         private bool _hasRows = false;
-        private readonly NpgsqlConnector.NotificationThreadBlock _threadBlock;
+        private readonly NpgsqlConnector.ConcurrentAccessBlock _threadBlock;
 
         //Unfortunately we sometimes don't know we're going to be dealing with
         //a description until it comes when we look for a row or a message, and
@@ -1012,7 +1017,7 @@ namespace Npgsql
         private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
 
         internal ForwardsOnlyDataReader(IEnumerable<IServerResponseObject> dataEnumeration, CommandBehavior behavior,
-                                        NpgsqlCommand command, NpgsqlConnector.NotificationThreadBlock threadBlock,
+                                        NpgsqlCommand command, NpgsqlConnector.ConcurrentAccessBlock threadBlock,
                                         bool preparedStatement = false, NpgsqlRowDescription rowDescription = null)
             : base(command, behavior)
         {
@@ -1350,20 +1355,18 @@ namespace Npgsql
                 }
                 _cleanedUp = true;
             }
-            if (!finishedMessages)
+            try
             {
-                do
+                if (!finishedMessages)
                 {
-                    if ((Thread.CurrentThread.ThreadState & (ThreadState.Aborted | ThreadState.AbortRequested)) != 0)
-                    {
-                        _connection.EmergencyClose();
-                        return;
-                    }
+                    while (GetNextResponseObject(true) != null) { }
                 }
-                while (GetNextResponseObject(true) != null);
             }
-            _connector.CurrentReader = null;
-            _threadBlock.Dispose();
+            finally
+            {
+                _connector.CurrentReader = null;
+                _threadBlock.Dispose();
+            }
         }
 
         /// <summary>
@@ -1371,8 +1374,13 @@ namespace Npgsql
         /// </summary>
         public override void Close()
         {
+            Close(false);
+        }
+
+        internal override void Close(bool closingConnection)
+        {
             CleanUp(false);
-            if ((_behavior & CommandBehavior.CloseConnection) == CommandBehavior.CloseConnection)
+            if ((_behavior & CommandBehavior.CloseConnection) == CommandBehavior.CloseConnection && !closingConnection)
             {
                 _connection.Close();
             }
@@ -1634,7 +1642,12 @@ namespace Npgsql
 
         public override void Close()
         {
-            if ((_behavior & CommandBehavior.CloseConnection) == CommandBehavior.CloseConnection)
+            Close(false);
+        }
+
+        internal override void Close(bool closingConnection)
+        {
+            if ((_behavior & CommandBehavior.CloseConnection) == CommandBehavior.CloseConnection && !closingConnection)
             {
                 _connection.Close();
             }

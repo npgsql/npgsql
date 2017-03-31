@@ -36,6 +36,7 @@ using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
+using System.Transactions;
 using Mono.Security.Protocol.Tls;
 using NpgsqlTypes;
 using System.Text;
@@ -66,42 +67,7 @@ namespace Npgsql
     internal class NpgsqlConnector
     {
         // Immutable.
-        private readonly NpgsqlConnectionStringBuilder settings;
-
-        /// <summary>
-        /// Occurs on NoticeResponses from the PostgreSQL backend.
-        /// </summary>
-        internal event NoticeEventHandler Notice;
-
-        /// <summary>
-        /// Occurs on NotificationResponses from the PostgreSQL backend.
-        /// </summary>
-        internal event NotificationEventHandler Notification;
-
-        /// <summary>
-        /// Called to provide client certificates for SSL handshake.
-        /// </summary>
-        internal event ProvideClientCertificatesCallback ProvideClientCertificatesCallback;
-
-        /// <summary>
-        /// Mono.Security.Protocol.Tls.CertificateSelectionCallback delegate.
-        /// </summary>
-        internal event CertificateSelectionCallback CertificateSelectionCallback;
-
-        /// <summary>
-        /// Mono.Security.Protocol.Tls.CertificateValidationCallback delegate.
-        /// </summary>
-        internal event CertificateValidationCallback CertificateValidationCallback;
-
-        /// <summary>
-        /// Mono.Security.Protocol.Tls.PrivateKeySelectionCallback delegate.
-        /// </summary>
-        internal event PrivateKeySelectionCallback PrivateKeySelectionCallback;
-
-        /// <summary>
-        /// Called to validate server's certificate during SSL handshake
-        /// </summary>
-        internal event ValidateRemoteCertificateCallback ValidateRemoteCertificateCallback;
+        internal readonly NpgsqlConnectionStringBuilder settings;
 
         private ConnectionState _connection_state;
 
@@ -161,10 +127,11 @@ namespace Npgsql
 
         private NativeToBackendTypeConverterOptions _NativeToBackendTypeConverterOptions;
 
-        private Thread _notificationThread;
+        private NpgsqlContextHolder _notificationContextHolder;
 
-        // Counter of notification thread start/stop requests in order to
-        internal Int16 _notificationThreadStopCount;
+        // Open concurrent accesses: notification thread, DTC enlistment
+        internal Int32 _possibleConcurrencyCount;
+        private Boolean _isNotificationThreadRunning;
 
         private Exception _notificationException;
 
@@ -182,6 +149,24 @@ namespace Npgsql
 
         private string initQueries;
 
+        internal Transaction EnlistedTransaction { get; set; }
+        private NpgsqlConnection _connection;
+        internal NpgsqlConnection Connection
+        {
+            get
+            {
+                return _connection;
+            }
+            set
+            {
+                if (value != null)
+                    _possibleConcurrencyCount++;
+                if (_connection != null)
+                    _possibleConcurrencyCount--;
+                _connection = value;
+            }
+        }
+
 #if WINDOWS && UNMANAGED
 
         private SSPIHandler _sspi;
@@ -196,7 +181,9 @@ namespace Npgsql
 
         public NpgsqlConnector(NpgsqlConnection Connection)
             : this(Connection.CopyConnectionStringBuilder(), Connection.Pooling, false)
-        {}
+        {
+            this.Connection = Connection;
+        }
 
         /// <summary>
         /// Constructor.
@@ -216,7 +203,8 @@ namespace Npgsql
             _NativeToBackendTypeConverterOptions = NativeToBackendTypeConverterOptions.Default.Clone(new NpgsqlBackendTypeMapping());
             _planIndex = 0;
             _portalIndex = 0;
-            _notificationThreadStopCount = 1;
+            _possibleConcurrencyCount = 0;
+            _isNotificationThreadRunning = false;
         }
 
 
@@ -269,11 +257,6 @@ namespace Npgsql
         }
 
         internal static Boolean UseSslStream = true;
-
-        internal Boolean UseMonoSsl
-        {
-            get { return ValidateRemoteCertificateCallback == null; }
-        }
 
         internal Int32 ConnectionTimeout
         {
@@ -492,11 +475,11 @@ namespace Npgsql
 
         internal void FireNotice(NpgsqlError e)
         {
-            if (Notice != null)
+            if (Connection != null)
             {
                 try
                 {
-                    Notice(this, new NpgsqlNoticeEventArgs(e));
+                    Connection.OnNotice(this, new NpgsqlNoticeEventArgs(e));
                 }
                 catch
                 {
@@ -506,11 +489,11 @@ namespace Npgsql
 
         internal void FireNotification(NpgsqlNotificationEventArgs e)
         {
-            if (Notification != null)
+            if (Connection != null)
             {
                 try
                 {
-                    Notification(this, e);
+                    Connection.OnNotification(this, e);
                 }
                 catch
                 {
@@ -525,14 +508,10 @@ namespace Npgsql
                                                                      X509Certificate serverCertificate, string targetHost,
                                                                      X509CertificateCollection serverRequestedCertificates)
         {
-            if (CertificateSelectionCallback != null)
-            {
-                return CertificateSelectionCallback(clientCertificates, serverCertificate, targetHost, serverRequestedCertificates);
-            }
+            if (Connection != null)
+                return Connection.DefaultCertificateSelectionCallback(clientCertificates, serverCertificate, targetHost, serverRequestedCertificates);
             else
-            {
                 return null;
-            }
         }
 
         /// <summary>
@@ -540,14 +519,10 @@ namespace Npgsql
         /// </summary>
         internal bool DefaultCertificateValidationCallback(X509Certificate certificate, int[] certificateErrors)
         {
-            if (CertificateValidationCallback != null)
-            {
-                return CertificateValidationCallback(certificate, certificateErrors);
-            }
+            if (Connection != null)
+                return Connection.DefaultCertificateValidationCallback(certificate, certificateErrors);
             else
-            {
                 return true;
-            }
         }
 
         /// <summary>
@@ -555,14 +530,10 @@ namespace Npgsql
         /// </summary>
         internal AsymmetricAlgorithm DefaultPrivateKeySelectionCallback(X509Certificate certificate, string targetHost)
         {
-            if (PrivateKeySelectionCallback != null)
-            {
-                return PrivateKeySelectionCallback(certificate, targetHost);
-            }
+            if (Connection != null)
+                return Connection.DefaultPrivateKeySelectionCallback(certificate, targetHost);
             else
-            {
                 return null;
-            }
         }
 
         /// <summary>
@@ -570,10 +541,8 @@ namespace Npgsql
         /// </summary>
         internal void DefaultProvideClientCertificatesCallback(X509CertificateCollection certificates)
         {
-            if (ProvideClientCertificatesCallback != null)
-            {
-                ProvideClientCertificatesCallback(certificates);
-            }
+            if (Connection != null)
+                Connection.DefaultProvideClientCertificatesCallback(certificates);
         }
 
         /// <summary>
@@ -581,14 +550,10 @@ namespace Npgsql
         /// </summary>
         internal bool DefaultValidateRemoteCertificateCallback(object sender, X509Certificate cert, X509Chain chain, SslPolicyErrors errors)
         {
-            if (ValidateRemoteCertificateCallback != null)
-            {
-                return ValidateRemoteCertificateCallback(cert, chain, errors);
-            }
+            if (Connection != null)
+                return Connection.DefaultValidateRemoteCertificateCallback(cert, chain, errors);
             else
-            {
                 return false;
-            }
         }
 
         /// <summary>
@@ -739,6 +704,11 @@ namespace Npgsql
         internal Boolean SupportsLcMonetary
         {
             get { return _supportsLcMonetary; }
+        }
+
+        internal Int32 pid
+        {
+            get { return BackEndKeyData.ProcessID; }
         }
 
         /// <summary>
@@ -945,27 +915,21 @@ namespace Npgsql
         internal void RemoveNotificationThread()
         {
             // Wait notification thread finish its work.
+            _notificationContextHolder.Stop();
             lock (_socket)
             {
-                // Kill notification thread.
-                _notificationThread.Abort();
-                _notificationThread = null;
-
-                // Special case in order to not get problems with thread synchronization.
-                // It will be turned to 0 when synch thread is created.
-                _notificationThreadStopCount = 1;
+                _possibleConcurrencyCount--;
             }
         }
 
         internal void AddNotificationThread()
         {
-            _notificationThreadStopCount = 0;
+            _possibleConcurrencyCount++;
 
-            NpgsqlContextHolder contextHolder = new NpgsqlContextHolder(this, CurrentState);
+            _notificationContextHolder = new NpgsqlContextHolder(this, CurrentState);
 
-            _notificationThread = new Thread(new ThreadStart(contextHolder.ProcessServerMessages));
-
-            _notificationThread.Start();
+            var notificationThread = new Thread(new ThreadStart(_notificationContextHolder.ProcessServerMessages));
+            notificationThread.Start();
         }
 
         //Use with using(){} to perform the sentry pattern
@@ -980,31 +944,35 @@ namespace Npgsql
         //cleaned up), and can act as the sole gate-way
         //to the code in question, guaranteeing that using code can't be written
         //so that the "undoing" is forgotten.
-        internal class NotificationThreadBlock : IDisposable
+        internal class ConcurrentAccessBlock : IDisposable
         {
             private NpgsqlConnector _connector;
 
-            public NotificationThreadBlock(NpgsqlConnector connector)
+            public ConcurrentAccessBlock(NpgsqlConnector connector)
             {
-                (_connector = connector).StopNotificationThread();
+                _connector = connector;
+                if (connector != null)
+                {
+                    connector.StopConcurrentAccess();
+                }
             }
 
             public void Dispose()
             {
                 if (_connector != null)
                 {
-                    _connector.ResumeNotificationThread();
+                    _connector.ResumeConcurrentAccess();
                 }
                 _connector = null;
             }
         }
 
-        internal NotificationThreadBlock BlockNotificationThread()
+        internal ConcurrentAccessBlock BlockConcurrentAccess()
         {
-            return new NotificationThreadBlock(this);
+            return new ConcurrentAccessBlock(_possibleConcurrencyCount > 1 ? this : null);
         }
 
-        private void StopNotificationThread()
+        private void StopConcurrentAccess()
         {
             // first check to see if an exception has
             // been thrown by the notification thread.
@@ -1013,60 +981,66 @@ namespace Npgsql
                 throw _notificationException;
             }
 
-            _notificationThreadStopCount++;
-
-            if (_notificationThreadStopCount == 1) // If this call was the first to increment.
-            {
-                Monitor.Enter(_socket);
-            }
+            Monitor.Enter(_socket);
         }
 
-        private void ResumeNotificationThread()
+        private void ResumeConcurrentAccess()
         {
-            _notificationThreadStopCount--;
-
-            if (_notificationThreadStopCount == 0)
-            {
-                // Release the synchronization handle.
-                Monitor.Exit(_socket);
-            }
+            Monitor.Exit(_socket);
         }
 
         internal Boolean IsNotificationThreadRunning
         {
-            get { return _notificationThreadStopCount <= 0; }
+            get { return _isNotificationThreadRunning; }
         }
 
         internal class NpgsqlContextHolder
         {
             private readonly NpgsqlConnector connector;
             private readonly NpgsqlState state;
+            private volatile bool stop;
 
             internal NpgsqlContextHolder(NpgsqlConnector connector, NpgsqlState state)
             {
                 this.connector = connector;
                 this.state = state;
+                this.stop = false;
             }
 
             internal void ProcessServerMessages()
             {
                 try
                 {
-                    while (true)
+                    lock (this)
                     {
-                        // Mono's implementation of System.Threading.Monitor does not appear to give threads
-                        // priority on a first come/first serve basis, as does Microsoft's.  As a result, 
-                        // under mono, this loop may execute many times even after another thread has attempted
-                        // to lock on _socket.  A short Sleep() seems to solve the problem effectively.
-                        // Note that Sleep(0) does not work.
-                        Thread.Sleep(1);
-
-                        lock (connector._socket)
+                        while (!stop)
                         {
-                            // 20 millisecond timeout
-                            if (this.connector.Socket.Poll(20000, SelectMode.SelectRead))
+                            // Mono's implementation of System.Threading.Monitor does not appear to give threads
+                            // priority on a first come/first serve basis, as does Microsoft's.  As a result, 
+                            // under mono, this loop may execute many times even after another thread has attempted
+                            // to lock on _socket.  A short Sleep() seems to solve the problem effectively.
+                            // Note that Sleep(0) does not work.
+                            Thread.Sleep(1);
+                            if (stop)
+                                break;
+
+                            lock (connector._socket)
                             {
-                                this.connector.ProcessAndDiscardBackendResponses();
+                                if (stop)
+                                    break;
+                                try
+                                {
+                                    connector._isNotificationThreadRunning = true;
+                                    // 20 millisecond timeout
+                                    if (this.connector.Socket.Poll(20000, SelectMode.SelectRead))
+                                    {
+                                        this.connector.ProcessAndDiscardBackendResponses();
+                                    }
+                                }
+                                finally
+                                {
+                                    connector._isNotificationThreadRunning = false;
+                                }
                             }
                         }
                     }
@@ -1075,7 +1049,12 @@ namespace Npgsql
                 {
                     this.connector._notificationException = ex;
                 }
+            }
 
+            internal void Stop()
+            {
+                stop = true;
+                lock (this) { }
             }
         }
 
@@ -1105,6 +1084,58 @@ namespace Npgsql
         public IDictionary<string, NpgsqlParameterStatus> ServerParameters
         {
             get { return new NpgsqlReadOnlyDictionary<string, NpgsqlParameterStatus>(_serverParameters); }
+        }
+
+        internal void EnlistTransaction(Transaction transaction)
+        {
+            if (settings.SyncNotification)
+                throw new InvalidOperationException("Should not use connection with SyncNotification in distributed transaction");
+            if (transaction == null)
+                throw new ArgumentNullException("NpgsqlConnection.EnlistTransaction: transaction should not be null");
+            if (EnlistedTransaction == transaction)
+                return;
+            if (EnlistedTransaction != null)
+                throw new InvalidOperationException("NpgsqlConnection: connection already enlisted");
+            EnlistedTransaction = transaction;
+            _possibleConcurrencyCount++;
+            transaction.EnlistVolatile(new VolatileResourceManager(this, transaction), EnlistmentOptions.None);
+        }
+
+        internal void EnlistedTransactionEnded()
+        {
+            lock (_socket)
+            {
+                if (Connection == null)
+                    NpgsqlConnectorPool.ConnectorPoolMgr.RemoveEnlistedConnector(this);
+                EnlistedTransaction = null;
+                _possibleConcurrencyCount--;
+                if (Connection == null)
+                    Release();
+            }
+        }
+
+        internal void Release()
+        {
+            if (EnlistedTransaction != null)
+            {
+                NpgsqlConnectorPool.ConnectorPoolMgr.PutEnlistedConnector(this);
+            }
+            else if (_pooled)
+            {
+                if (_possibleConcurrencyCount != 0)
+                    throw new Exception("_possibleConcurrencyCount should be 0 in Release");
+                NpgsqlConnectorPool.ConnectorPoolMgr.ReleaseConnector(this);
+            }
+            else
+            {
+                if (_possibleConcurrencyCount != 0)
+                    throw new Exception("_possibleConcurrencyCount should be 0 in Release");
+                if (Transaction != null)
+                {
+                    Transaction.Cancel();
+                }
+                Close();
+            }
         }
     }
 }

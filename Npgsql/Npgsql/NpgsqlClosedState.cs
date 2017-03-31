@@ -180,7 +180,6 @@ namespace Npgsql
                         //trigger the callback to fetch some certificates
                         context.DefaultProvideClientCertificatesCallback(clientCertificates);
 
-                        //if (context.UseMonoSsl)
                         if (!NpgsqlConnector.UseSslStream)
                         {
                             SslClientStream sslStreamPriv;
