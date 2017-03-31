@@ -297,6 +297,23 @@ namespace NpgsqlTests
         }
 
         [Test]
+        public void DistributedTransactionCommit2()
+        {
+            int field_serial1;
+            int field_serial2;
+            var connectionString = ConnectionString + ";enlist=true;Serializable As=RepeatableRead";
+            using (var scope = new TransactionScope())
+            {
+                CommonTestSequence(connectionString, out field_serial1, out field_serial2);
+                scope.Complete();
+            }
+            AssertNoPreparedTransactions();
+            // ensure they are existing now
+            AssertRowExist("field_text", field_serial1);
+            AssertRowExist("field_int4", field_serial2);
+        }
+
+        [Test]
         public void TwoDistributedInSequence()
         {
             DistributedTransactionRollback();

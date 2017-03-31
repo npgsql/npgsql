@@ -1140,6 +1140,52 @@ namespace Npgsql
             connector.EnlistTransaction(transaction);
         }
 
+        internal static SerializableAs _defaultSerializableAs = SerializableAs.Serializable;
+
+        /// <summary>
+        /// Default treatement of Serializable isolaction level
+        /// - SerializableAs.Default or SerializableAs.Serializable - don't change meaning of Serializable
+        /// - SerializableAs.RepeatableRead - treat Serializable as RepeatableRead
+        /// </summary>
+        public static SerializableAs DefaultSerializableAs
+        {
+            get
+            {
+                return _defaultSerializableAs;
+            }
+            set
+            {
+                if (value == SerializableAs.RepeatableRead)
+                    _defaultSerializableAs = SerializableAs.RepeatableRead;
+                else
+                    _defaultSerializableAs = SerializableAs.Serializable;
+            }
+        }
+
+        /// <summary>
+        /// Default treatement of Serializable isolaction level
+        /// - SerializableAs.Default - use NpgsqlConnection.GlobalSerializableAs
+        /// - SerializableAs.Serializable - don't change meaning of Serializable
+        /// - SerializableAs.RepeatableRead - treat Serializable as RepeatableRead
+        /// </summary>
+        public SerializableAs SerializableAs
+        {
+            get
+            {
+                return settings.SerializableAs != SerializableAs.Default ? settings.SerializableAs : DefaultSerializableAs;
+            }
+            set
+            {
+                if (connector != null)
+                    throw new InvalidOperationException("NpgsqlConnection could not change SerializableAs if already opened");
+                settings = settings.Clone();
+                settings.SerializableAs = value;
+            }
+        }
+
+        /// <summary>
+        ///  Treat Serializable isolation level
+        /// </summary>
 #if NET35
         /// <summary>
         /// DB provider factory.

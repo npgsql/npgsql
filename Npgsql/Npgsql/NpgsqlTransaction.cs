@@ -62,14 +62,16 @@ namespace Npgsql
             _connector = _conn.Connector;
             _isolation = isolation;
 
-            if (isolation == IsolationLevel.RepeatableRead)
+            if (isolation == IsolationLevel.RepeatableRead || isolation == IsolationLevel.Snapshot)
             {
                 NpgsqlCommand.ExecuteBlind(_connector, NpgsqlQuery.BeginTransRepeatableRead);
             }
-            else if ((isolation == IsolationLevel.Serializable) ||
-                (isolation == IsolationLevel.Snapshot))
+            else if (isolation == IsolationLevel.Serializable)
             {
-                NpgsqlCommand.ExecuteBlind(_connector, NpgsqlQuery.BeginTransSerializable);
+                if (conn.SerializableAs != SerializableAs.RepeatableRead)
+                    NpgsqlCommand.ExecuteBlind(_connector, NpgsqlQuery.BeginTransSerializable);
+                else
+                    NpgsqlCommand.ExecuteBlind(_connector, NpgsqlQuery.BeginTransRepeatableRead);
             }
             else
             {
