@@ -82,21 +82,15 @@ namespace Npgsql
         /// </summary>
         public event NoticeEventHandler Notice;
 
-        internal NoticeEventHandler NoticeDelegate;
-
         /// <summary>
         /// Occurs on NotificationResponses from the PostgreSQL backend.
         /// </summary>
         public event NotificationEventHandler Notification;
 
-        internal NotificationEventHandler NotificationDelegate;
-
         /// <summary>
         /// Called to provide client certificates for SSL handshake.
         /// </summary>
         public event ProvideClientCertificatesCallback ProvideClientCertificatesCallback;
-
-        internal ProvideClientCertificatesCallback ProvideClientCertificatesCallbackDelegate;
 
         /// <summary>
         /// Mono.Security.Protocol.Tls.CertificateSelectionCallback delegate.
@@ -104,15 +98,11 @@ namespace Npgsql
         [Obsolete("CertificateSelectionCallback, CertificateValidationCallback and PrivateKeySelectionCallback have been replaced with ValidateRemoteCertificateCallback.")]
         public event CertificateSelectionCallback CertificateSelectionCallback;
 
-        internal CertificateSelectionCallback CertificateSelectionCallbackDelegate;
-
         /// <summary>
         /// Mono.Security.Protocol.Tls.CertificateValidationCallback delegate.
         /// </summary>
         [Obsolete("CertificateSelectionCallback, CertificateValidationCallback and PrivateKeySelectionCallback have been replaced with ValidateRemoteCertificateCallback.")]
         public event CertificateValidationCallback CertificateValidationCallback;
-
-        internal CertificateValidationCallback CertificateValidationCallbackDelegate;
 
         /// <summary>
         /// Mono.Security.Protocol.Tls.PrivateKeySelectionCallback delegate.
@@ -120,24 +110,13 @@ namespace Npgsql
         [Obsolete("CertificateSelectionCallback, CertificateValidationCallback and PrivateKeySelectionCallback have been replaced with ValidateRemoteCertificateCallback.")]
         public event PrivateKeySelectionCallback PrivateKeySelectionCallback;
 
-        internal PrivateKeySelectionCallback PrivateKeySelectionCallbackDelegate;
-
         /// <summary>
         /// Called to validate server's certificate during SSL handshake
         /// </summary>
         public event ValidateRemoteCertificateCallback ValidateRemoteCertificateCallback;
 
-        internal ValidateRemoteCertificateCallback ValidateRemoteCertificateCallbackDelegate;
-
         // Set this when disposed is called.
         private bool disposed = false;
-
-        // Used when we closed the connector due to an error, but are pretending it's open.
-        private bool _fakingOpen;
-        // Used when the connection is closed but an TransactionScope is still active
-        // (the actual close is postponed until the scope ends)
-        private bool _postponingClose;
-        private bool _postponingDispose;
 
         /// <summary>
         /// A counter that gets incremented every time the connection is (re-)opened.
@@ -147,16 +126,10 @@ namespace Npgsql
         internal int OpenCounter { get; private set; }
 
         // Strong-typed ConnectionString values
-        private NpgsqlConnectionStringBuilder settings;
+        internal NpgsqlConnectionStringBuilder settings;
 
         // Connector being used for the active connection.
         private NpgsqlConnector connector = null;
-
-        internal Transaction EnlistedTransaction = null;
-        private volatile bool enlistedInProgress = false;
-
-        // A cached copy of the result of `settings.ConnectionString`
-        private string _connectionString;
 
         /// <summary>
         /// Initializes a new instance of the
@@ -169,15 +142,6 @@ namespace Npgsql
 
         private void Init()
         {
-            NoticeDelegate = new NoticeEventHandler(OnNotice);
-            NotificationDelegate = new NotificationEventHandler(OnNotification);
-
-            ProvideClientCertificatesCallbackDelegate = new ProvideClientCertificatesCallback(DefaultProvideClientCertificatesCallback);
-            CertificateValidationCallbackDelegate = new CertificateValidationCallback(DefaultCertificateValidationCallback);
-            CertificateSelectionCallbackDelegate = new CertificateSelectionCallback(DefaultCertificateSelectionCallback);
-            PrivateKeySelectionCallbackDelegate = new PrivateKeySelectionCallback(DefaultPrivateKeySelectionCallback);
-            ValidateRemoteCertificateCallbackDelegate = new ValidateRemoteCertificateCallback(DefaultValidateRemoteCertificateCallback);
-
             // Fix authentication problems. See https://bugzilla.novell.com/show_bug.cgi?id=MONO77559 and
             // http://pgfoundry.org/forum/message.php?msg_id=1002377 for more info.
             RSACryptoServiceProvider.UseMachineKeyStore = true;
@@ -282,8 +246,6 @@ namespace Npgsql
         {
             get
             {
-                if (string.IsNullOrEmpty(_connectionString))
-                    RefreshConnectionString();
                 return settings.ConnectionString;
             }
             set
@@ -644,11 +606,6 @@ namespace Npgsql
         /// </summary>
         public override void Open()
         {
-            // If we're postponing a close (see doc on this variable), the connection is already
-            // open and can be silently reused
-            if (_postponingClose)
-                return;
-
             CheckConnectionClosed();
 
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Open");
@@ -665,35 +622,35 @@ namespace Npgsql
                                             Keywords.UserName.ToString());
             }
 
-            // Get a Connector, either from the pool or creating one ourselves.
-            if (Pooling)
-            {
-                connector = NpgsqlConnectorPool.ConnectorPoolMgr.RequestConnector(this);
-            }
-            else
-            {
-                connector = new NpgsqlConnector(this);
-
-                connector.ProvideClientCertificatesCallback += ProvideClientCertificatesCallbackDelegate;
-                connector.CertificateSelectionCallback += CertificateSelectionCallbackDelegate;
-                connector.CertificateValidationCallback += CertificateValidationCallbackDelegate;
-                connector.PrivateKeySelectionCallback += PrivateKeySelectionCallbackDelegate;
-                connector.ValidateRemoteCertificateCallback += ValidateRemoteCertificateCallbackDelegate;
-
-                connector.Open();
-            }
-
-            connector.Notice += NoticeDelegate;
-            connector.Notification += NotificationDelegate;
-
-            if (SyncNotification)
-            {
-                connector.AddNotificationThread();
-            }
-
             if (Enlist && Transaction.Current != null)
             {
-                EnlistTransaction(Transaction.Current);
+                connector = NpgsqlConnectorPool.ConnectorPoolMgr.TryGetEnlisted(this, Transaction.Current);
+            }
+
+            // Get a Connector, either from the pool or creating one ourselves.
+            if (connector == null)
+            {
+                if (Pooling)
+                {
+                    connector = NpgsqlConnectorPool.ConnectorPoolMgr.RequestConnector(this);
+                }
+                else
+                {
+                    connector = new NpgsqlConnector(this);
+                    connector.Open();
+                }
+            }
+            using (connector.BlockConcurrentAccess())
+            {
+                connector.Connection = this;
+                if (SyncNotification)
+                {
+                    connector.AddNotificationThread();
+                }
+                if (Enlist && Transaction.Current != null)
+                {
+                    EnlistTransaction(Transaction.Current);
+                }
             }
 
             OpenCounter++;
@@ -728,14 +685,8 @@ namespace Npgsql
             // Mutating the current `settings` object would invalidate the cached instance, so work on a copy instead.
             settings = settings.Clone();
             settings[Keywords.Database] = dbName;
-            _connectionString = null;
 
             Open();
-        }
-
-        internal void EmergencyClose()
-        {
-            _fakingOpen = true;
         }
 
         /// <summary>
@@ -744,81 +695,25 @@ namespace Npgsql
         /// </summary>
         public override void Close()
         {
-            using (LockIfEnlisted())
-            {
-                NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Close");
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Close");
 
-                if (connector == null)
-                    return;
+            if (connector == null)
+                return;
 
-                if (EnlistedTransaction != null)
-                {
-                    _postponingClose = true;
-                    return;
-                }
-
-                ReallyClose();
-            }
-        }
-
-        private void ReallyClose()
-        {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ReallyClose");
-            _postponingClose = false;
-
-            if (EnlistedTransaction != null)
-                throw new InvalidOperationException("EnlistedTransaction should be cleared before ReallyClose()");
-
-            connector.Notification -= NotificationDelegate;
-            connector.Notice -= NoticeDelegate;
-
-            if (SyncNotification)
-            {
-                connector.RemoveNotificationThread();
-            }
-
-            if (Pooling)
-            {
-                NpgsqlConnectorPool.ConnectorPoolMgr.ReleaseConnector(this, connector);
-            }
-            else
-            {
-                Connector.ProvideClientCertificatesCallback -= ProvideClientCertificatesCallbackDelegate;
-                Connector.CertificateSelectionCallback -= CertificateSelectionCallbackDelegate;
-                Connector.CertificateValidationCallback -= CertificateValidationCallbackDelegate;
-                Connector.PrivateKeySelectionCallback -= PrivateKeySelectionCallbackDelegate;
-                Connector.ValidateRemoteCertificateCallback -= ValidateRemoteCertificateCallbackDelegate;
-
-                if (Connector.Transaction != null)
-                {
-                    Connector.Transaction.Cancel();
-                }
-
-                Connector.Close();
-            }
-
+            var conn = connector;
             connector = null;
+            using (conn.BlockConcurrentAccess())
+            {
+                if (SyncNotification)
+                {
+                    conn.RemoveNotificationThread();
+                }
+
+                conn.Connection = null;
+                conn.Release();
+            }
 
             this.OnStateChange (new StateChangeEventArgs(ConnectionState.Open, ConnectionState.Closed));
-        }
-
-        /// <summary>
-        /// When a connection is closed within an enclosing TransactionScope,
-        /// we defer the actual closing until the scope ends.
-        /// </summary>
-        internal void EnlistedTransactionEnded()
-        {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "EnlistedTransactionEnded");
-            lock (this)
-            {
-                connector.DecPossibleConcurrency();
-                EnlistedTransaction = null;
-                if (_postponingDispose)
-                    ReallyDispose();
-                else if (_postponingClose)
-                    ReallyClose();
-                enlistedInProgress = false;
-            }
         }
 
         /// <summary>
@@ -856,39 +751,11 @@ namespace Npgsql
             if (disposed)
                 return;
             if (disposing)
-            {
-                using (LockIfEnlisted())
-                {
-                    if (disposed)
-                        return;
-                    _postponingDispose = false;
-                    NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Dispose");
-                    Close();
-                    if (_postponingClose)
-                    {
-                        _postponingDispose = true;
-                        return;
-                    }
-                }
-            }
+                Close();
             base.Dispose(disposing);
             disposed = true;
         }
 
-        /// <summary>
-        /// Releases all resources used by the
-        /// <see cref="Npgsql.NpgsqlConnection">NpgsqlConnection</see>.
-        /// </summary>
-        private void ReallyDispose()
-        {
-            if (disposed)
-                throw new Exception("NpgsqlConenction disposed incosistently");
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ReallyDispose");
-            _postponingDispose = false;
-            ReallyClose();
-            base.Dispose(true);
-            disposed = true;
-        }
         /// <summary>
         /// Create a new connection based on this one.
         /// </summary>
@@ -1141,16 +1008,7 @@ namespace Npgsql
             if (settings.IntegratedSecurity)
                settings.UserName = settings.UserName;
 
-            RefreshConnectionString();
             LogConnectionString();
-        }
-
-        /// <summary>
-        /// Refresh the cached _connectionString whenever the builder settings change
-        /// </summary>
-        private void RefreshConnectionString()
-        {
-            _connectionString = settings.ConnectionString;
         }
 
         private void CheckConnectionOpen()
@@ -1160,23 +1018,7 @@ namespace Npgsql
                 throw new ObjectDisposedException(CLASSNAME);
             }
 
-            if (_fakingOpen)
-            {
-                if (connector != null)
-                {
-                    try
-                    {
-                        Close();
-                    }
-                    catch
-                    {
-                    }
-                }
-                Open();
-                _fakingOpen = false;
-            }
-
-            if (_postponingClose || connector == null)
+            if (connector == null)
             {
                 throw new InvalidOperationException(resman.GetString("Exception_ConnNotOpen"));
             }
@@ -1295,39 +1137,7 @@ namespace Npgsql
         /// <param name="transaction"></param>
         public override void EnlistTransaction(Transaction transaction)
         {
-            if (transaction == null)
-                throw new ArgumentNullException("NpgsqlConnection.EnlistTransaction: transaction should not be null");
-            if (EnlistedTransaction == transaction)
-                return;
-            if (EnlistedTransaction != null)
-                throw new InvalidOperationException("NpgsqlConnection: connection already enlisted");
-            EnlistedTransaction = transaction;
-            enlistedInProgress = true;
-            connector.IncPossibleConcurrency();
-            transaction.EnlistVolatile(new VolatileResourceManager(this, transaction), EnlistmentOptions.None);
-        }
-
-        private IDisposable LockIfEnlisted()
-        {
-            return new EnlistedLock(enlistedInProgress ? this : null);
-        }
-
-        private class EnlistedLock : IDisposable
-        {
-            private NpgsqlConnection _conn;
-            public EnlistedLock(NpgsqlConnection conn)
-            {
-                _conn = conn;
-                if (conn != null)
-                    Monitor.Enter(conn);
-            }
-            public void Dispose()
-            {
-                var conn = _conn;
-                _conn = null;
-                if (conn != null)
-                    Monitor.Exit(conn);
-            }
+            connector.EnlistTransaction(transaction);
         }
 
 #if NET35

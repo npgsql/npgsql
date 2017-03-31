@@ -978,6 +978,11 @@ namespace Npgsql
         {
             return new DbEnumerator(this);
         }
+
+        internal virtual void Close(bool connectionClosing)
+        {
+            throw new NotImplementedException();
+        }
     }
 
     /// <summary>
@@ -1350,20 +1355,18 @@ namespace Npgsql
                 }
                 _cleanedUp = true;
             }
-            if (!finishedMessages)
+            try
             {
-                do
+                if (!finishedMessages)
                 {
-                    if ((Thread.CurrentThread.ThreadState & (ThreadState.Aborted | ThreadState.AbortRequested)) != 0)
-                    {
-                        _connection.EmergencyClose();
-                        return;
-                    }
+                    while (GetNextResponseObject(true) != null) { }
                 }
-                while (GetNextResponseObject(true) != null);
             }
-            _connector.CurrentReader = null;
-            _threadBlock.Dispose();
+            finally
+            {
+                _connector.CurrentReader = null;
+                _threadBlock.Dispose();
+            }
         }
 
         /// <summary>
@@ -1371,8 +1374,13 @@ namespace Npgsql
         /// </summary>
         public override void Close()
         {
+            Close(false);
+        }
+
+        internal override void Close(bool closingConnection)
+        {
             CleanUp(false);
-            if ((_behavior & CommandBehavior.CloseConnection) == CommandBehavior.CloseConnection)
+            if ((_behavior & CommandBehavior.CloseConnection) == CommandBehavior.CloseConnection && !closingConnection)
             {
                 _connection.Close();
             }
@@ -1634,7 +1642,12 @@ namespace Npgsql
 
         public override void Close()
         {
-            if ((_behavior & CommandBehavior.CloseConnection) == CommandBehavior.CloseConnection)
+            Close(false);
+        }
+
+        internal override void Close(bool closingConnection)
+        {
+            if ((_behavior & CommandBehavior.CloseConnection) == CommandBehavior.CloseConnection && !closingConnection)
             {
                 _connection.Close();
             }

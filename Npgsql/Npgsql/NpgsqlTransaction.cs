@@ -45,6 +45,7 @@ namespace Npgsql
         private static readonly ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
 
         private NpgsqlConnection _conn = null;
+        private NpgsqlConnector _connector = null;
         private readonly IsolationLevel _isolation = IsolationLevel.ReadCommitted;
         private bool _disposed = false;
 
@@ -58,25 +59,26 @@ namespace Npgsql
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME);
 
             _conn = conn;
+            _connector = _conn.Connector;
             _isolation = isolation;
 
             if (isolation == IsolationLevel.RepeatableRead)
             {
-                NpgsqlCommand.ExecuteBlind(conn.Connector, NpgsqlQuery.BeginTransRepeatableRead);
+                NpgsqlCommand.ExecuteBlind(_connector, NpgsqlQuery.BeginTransRepeatableRead);
             }
             else if ((isolation == IsolationLevel.Serializable) ||
                 (isolation == IsolationLevel.Snapshot))
             {
-                NpgsqlCommand.ExecuteBlind(conn.Connector, NpgsqlQuery.BeginTransSerializable);
+                NpgsqlCommand.ExecuteBlind(_connector, NpgsqlQuery.BeginTransSerializable);
             }
             else
             {
                 // Set isolation level default to read committed.
                 _isolation = IsolationLevel.ReadCommitted;
-                NpgsqlCommand.ExecuteBlind(conn.Connector, NpgsqlQuery.BeginTransReadCommitted);
+                NpgsqlCommand.ExecuteBlind(_connector, NpgsqlQuery.BeginTransReadCommitted);
             }
 
-            _conn.Connector.Transaction = this;
+            _connector.Transaction = this;
         }
 
         /// <summary>
@@ -123,27 +125,13 @@ namespace Npgsql
         /// <param name="disposing"></param>
         protected override void Dispose(bool disposing)
         {
-            if (disposing && this._conn != null)
+            if (_disposed)
+                return;
+            if (disposing && _connector != null)
             {
-                if (_conn.Connector != null && _conn.Connector.Transaction != null)
-                {
-                    if ((Thread.CurrentThread.ThreadState & (ThreadState.Aborted | ThreadState.AbortRequested)) != 0)
-                    {
-                        // can't count on Rollback working if the thread has been aborted
-                        // need to copy since Cancel will set it to null
-                        NpgsqlConnection conn = _conn;
-                        Cancel();
-                        // must close connection since transaction hasn't been rolled back
-                        conn.Close();
-                    }
-                    else
-                    {
-                        this.Rollback();
-                    }
-                }
-
-                this._disposed = true;
+                this.Rollback();
             }
+            _disposed = true;
             base.Dispose(disposing);
         }
 
@@ -154,7 +142,7 @@ namespace Npgsql
         {
             CheckDisposed();
 
-            if (_conn == null)
+            if (_connector == null)
             {
                 throw new InvalidOperationException(resman.GetString("Exception_NoTransaction"));
             }
@@ -163,12 +151,11 @@ namespace Npgsql
 
             try
             {
-                NpgsqlCommand.ExecuteBlind(_conn.Connector, NpgsqlQuery.CommitTransaction);
+                NpgsqlCommand.ExecuteBlind(_connector, NpgsqlQuery.CommitTransaction);
             }
             finally
             {
-                _conn.Connector.Transaction = null;
-                _conn = null;
+                Clear();
             }
         }
 
@@ -179,16 +166,20 @@ namespace Npgsql
         {
             CheckDisposed();
 
-            if (_conn == null)
+            if (_connector == null)
             {
                 throw new InvalidOperationException(resman.GetString("Exception_NoTransaction"));
             }
 
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Rollback");
-
-            NpgsqlCommand.ExecuteBlindSuppressTimeout(_conn.Connector, NpgsqlQuery.RollbackTransaction);
-            _conn.Connector.Transaction = null;
-            _conn = null;
+            try
+            {
+                NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Rollback");
+                NpgsqlCommand.ExecuteBlindSuppressTimeout(_connector, NpgsqlQuery.RollbackTransaction);
+            }
+            finally
+            {
+                Clear();
+            }
         }
 
         /// <summary>
@@ -204,7 +195,7 @@ namespace Npgsql
                 throw new InvalidOperationException(resman.GetString("Exception_NoTransaction"));
             }
 
-            if (!_conn.Connector.SupportsSavepoint)
+            if (!_connector.SupportsSavepoint)
             {
                 throw new InvalidOperationException(resman.GetString("Exception_SavePointNotSupported"));
             }
@@ -215,7 +206,7 @@ namespace Npgsql
 
             }
 
-            NpgsqlCommand.ExecuteBlindSuppressTimeout(_conn.Connector, string.Format("ROLLBACK TO SAVEPOINT {0}", savePointName));
+            NpgsqlCommand.ExecuteBlindSuppressTimeout(_connector, string.Format("ROLLBACK TO SAVEPOINT {0}", savePointName));
         }
 
         /// <summary>
@@ -231,7 +222,7 @@ namespace Npgsql
                 throw new InvalidOperationException(resman.GetString("Exception_NoTransaction"));
             }
 
-            if (!_conn.Connector.SupportsSavepoint)
+            if (!_connector.SupportsSavepoint)
             {
                 throw new InvalidOperationException(resman.GetString("Exception_SavePointNotSupported"));
             }
@@ -242,7 +233,7 @@ namespace Npgsql
 
             }
 
-            NpgsqlCommand.ExecuteBlind(_conn.Connector, string.Format("SAVEPOINT {0}", savePointName));
+            NpgsqlCommand.ExecuteBlind(_connector, string.Format("SAVEPOINT {0}", savePointName));
 
         }
 
@@ -253,12 +244,14 @@ namespace Npgsql
         internal void Cancel()
         {
             CheckDisposed();
+            Clear();
+        }
 
-            if (_conn != null)
-            {
-                _conn.Connector.Transaction = null;
-                _conn = null;
-            }
+        internal void Clear()
+        {
+            _connector.Transaction = null;
+            _connector = null;
+            _conn = null;
         }
 
         internal bool Disposed

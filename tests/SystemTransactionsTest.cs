@@ -64,8 +64,9 @@ namespace NpgsqlTests
             Assert.That(ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(0));
         }
 
-        private void CommonTestSequence(string connectionString, out int field_serial1, out int field_serial2)
+        private void CommonTestSequence(string connectionString, out int field_serial1, out int field_serial2, bool sameConn = false)
         {
+            object result1, result2;
             //UseStringParameterWithNoNpgsqlDbType
             using (var connection = new NpgsqlConnection(connectionString))
             {
@@ -74,39 +75,48 @@ namespace NpgsqlTests
                 command.Parameters.Add(new NpgsqlParameter("p0", "test"));
                 Assert.AreEqual(command.Parameters[0].NpgsqlDbType, NpgsqlDbType.Text);
                 Assert.AreEqual(command.Parameters[0].DbType, DbType.String);
-                object result = command.ExecuteNonQuery();
-                Assert.AreEqual(1, result);
+                result1 = command.ExecuteNonQuery();
+                Assert.AreEqual(1, result1);
 
                 field_serial1 = (int)new NpgsqlCommand("select max(field_serial) from data", connection).ExecuteScalar();
                 var command2 = new NpgsqlCommand("select field_text from data where field_serial = (select max(field_serial) from data)", connection);
-                result = command2.ExecuteScalar();
-                Assert.AreEqual("test", result);
+                result1 = command2.ExecuteScalar();
+                Assert.AreEqual("test", result1);
             }
             //UseIntegerParameterWithNoNpgsqlDbType
-            using (var connection = new NpgsqlConnection(connectionString))
+            using (var connection = new NpgsqlConnection(connectionString + (sameConn ? "" : ";Timeout = 20")))
             {
                 connection.Open();
                 var command = new NpgsqlCommand("insert into data(field_int4) values (:p0)", connection);
                 command.Parameters.Add(new NpgsqlParameter("p0", 5));
                 Assert.AreEqual(command.Parameters[0].NpgsqlDbType, NpgsqlDbType.Integer);
                 Assert.AreEqual(command.Parameters[0].DbType, DbType.Int32);
-                Object result = command.ExecuteNonQuery();
-                Assert.AreEqual(1, result);
+                result2 = command.ExecuteNonQuery();
+                Assert.AreEqual(1, result2);
 
                 field_serial2 = (int)new NpgsqlCommand("select max(field_serial) from data", connection).ExecuteScalar();
                 var command2 = new NpgsqlCommand("select field_int4 from data where field_serial = (select max(field_serial) from data)", connection);
-                result = command2.ExecuteScalar();
-                Assert.AreEqual(5, result);
+                result2 = command2.ExecuteScalar();
+                Assert.AreEqual(5, result2);
 
                 // using new connection here... make sure we can't see previous results even though
                 // it is the same distributed transaction
                 var command3 = new NpgsqlCommand("select field_text from data where field_serial = :p0", connection);
                 command3.Parameters.Add(new NpgsqlParameter("p0", field_serial1));
-                result = command3.ExecuteScalar();
+                result2 = command3.ExecuteScalar();
 
-                // won't see value of "test" since that's
-                // another connection
-                Assert.AreEqual(null, result);
+                if (!sameConn)
+                {
+                    // won't see value of "test" since that's
+                    // another connection
+                    Assert.AreEqual(null, result2);
+                }
+                else
+                {
+
+                    Assert.AreEqual(result1, result2);
+                }
+                
             }
         }
 
@@ -126,7 +136,7 @@ namespace NpgsqlTests
                 field_serial1 = (int)new NpgsqlCommand("select max(field_serial) from data", connection).ExecuteScalar();
             }
             //UseIntegerParameterWithNoNpgsqlDbType
-            using (var connection = new NpgsqlConnection(connectionString))
+            using (var connection = new NpgsqlConnection(connectionString + ";Timeout = 20"))
             {
                 connection.Open();
                 var command = new NpgsqlCommand("insert into data(field_int4) values (:p0)", connection);
@@ -368,11 +378,50 @@ namespace NpgsqlTests
                 using (var connection = new NpgsqlConnection(connectionString))
                 {
                     connection.Open();
+                    var processId = connection.ProcessID;
                     connection.Close();
                     connection.Open();
+                    Assert.AreEqual(processId, connection.ProcessID);
                     connection.Close();
                 }
             }
+        }
+
+        [Test]
+        public void ReuseConnection2()
+        {
+            var connectionString = ConnectionString + ";enlist=true";
+            using (var scope = new TransactionScope())
+            {
+                int processId;
+                using (var connection = new NpgsqlConnection(connectionString))
+                {
+                    connection.Open();
+                    processId = connection.ProcessID;
+                }
+                using (var connection = new NpgsqlConnection(connectionString))
+                {
+                    connection.Open();
+                    Assert.AreEqual(processId, connection.ProcessID);
+                }
+            }
+        }
+
+        [Test]
+        public void ReuseConnection3()
+        {
+            int field_serial1;
+            int field_serial2;
+            var connectionString = ConnectionString + ";enlist=true";
+            using (var scope = new TransactionScope())
+            {
+                CommonTestSequence(connectionString, out field_serial1, out field_serial2, true);
+                scope.Complete();
+            }
+            AssertNoPreparedTransactions();
+            // ensure they are existing now
+            AssertRowExist("field_text", field_serial1);
+            AssertRowExist("field_int4", field_serial2);
         }
 
         #region Setup
