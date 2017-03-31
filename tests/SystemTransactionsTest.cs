@@ -359,6 +359,55 @@ namespace NpgsqlTests
             }
         }
 
+        [Test]
+        public void DistributedWithTimeout()
+        {
+            var err = Assert.Catch<NpgsqlException>(() =>
+            {
+                using (var ts = new TransactionScope(TransactionScopeOption.Required, TimeSpan.FromSeconds(1)))
+                {
+                    using (var connection = new NpgsqlConnection(ConnectionString + ";enlist=true;Timeout = 20"))
+                    {
+                        connection.Open();
+                    }
+                    using (var connection = new NpgsqlConnection(ConnectionString + ";enlist=true"))
+                    {
+                        connection.Open();
+                        var command = new NpgsqlCommand("select pg_sleep(2)", connection);
+                        command.CommandType = CommandType.Text;
+                        command.ExecuteNonQuery();
+                    }
+                    using (var connection = new NpgsqlConnection(ConnectionString + ";enlist=true;Timeout = 30"))
+                    {
+                        connection.Open();
+                    }
+                    ts.Complete();
+                }
+            });
+            Assert.AreEqual(err.Code, "57014");
+
+            Assert.Catch<TransactionAbortedException>(() =>
+            {
+                using (var ts = new TransactionScope(TransactionScopeOption.Required, TimeSpan.FromSeconds(1)))
+                {
+                    using (var connection = new NpgsqlConnection(ConnectionString + ";enlist=true;Timeout = 20"))
+                    {
+                        connection.Open();
+                    }
+                    using (var connection = new NpgsqlConnection(ConnectionString + ";enlist=true"))
+                    {
+                        connection.Open();
+                        var command = new NpgsqlCommand("select pg_sleep(2)", connection);
+                        command.CommandType = CommandType.Text;
+                        var exc = Assert.Catch<NpgsqlException>(() => command.ExecuteNonQuery());
+                        Assert.AreEqual(exc.Code, "57014");
+                    }
+                    ts.Complete();
+                }
+            });
+        }
+
+
         private void AssertNoPreparedTransactions()
         {
             using (var cmd = new NpgsqlCommand("select count(*) from pg_prepared_xacts where database = :database", Conn))
