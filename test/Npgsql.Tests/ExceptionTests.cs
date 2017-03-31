@@ -168,6 +168,46 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test]
+        public void NpgsqlExceptionIsTransientWithInnerIOException()
+        {
+            var npgsqlException = new NpgsqlException("This is a test", new System.IO.IOException());
+
+            Assert.True(npgsqlException.IsTransient);
+        }
+
+        [Test]
+        public void NpgsqlExceptionNotTransientWithNoInnerException()
+        {
+            var npgsqlException = new NpgsqlException();
+
+            Assert.False (npgsqlException.IsTransient);
+        }
+
+        [Test]
+        public void NpgsqlExceptionNotTransientWithInnerSystemException()
+        {
+            var npgsqlException = new NpgsqlException("This is a test", new System.Exception("Inner Exception"));
+
+            Assert.False(npgsqlException.IsTransient);
+        }
+
+        [Test]
+        public void PostgresExceptionIsTransientWithProperSqlState()
+        {
+            var pgException = new PostgresException { SqlState = "53300" };
+
+            Assert.True(pgException.IsTransient);
+        }
+
+        [Test]
+        public void PostgresExceptionNotTransientWithNonTransientSqlState()
+        {
+            var pgException = new PostgresException { SqlState = "0" };
+
+            Assert.False(pgException.IsTransient);
+        }
+
 #if NET451
         [Test]
         public void Serialization()

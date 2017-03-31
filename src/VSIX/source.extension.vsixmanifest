@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
   <Metadata>
-    <Identity Id="Npgsql.VSIX.07074491-d0c6-4138-9d44-ea3f8920e84b" Version="3.2.2" Language="en-US" Publisher="npgsql" />
+    <Identity Id="Npgsql.VSIX.07074491-d0c6-4138-9d44-ea3f8920e84b" Version="3.2.3" Language="en-US" Publisher="npgsql" />
     <DisplayName>Npgsql PostgreSQL Integration</DisplayName>
     <Description xml:space="preserve">Allows you to connect to PostgreSQL from within Visual Studio via Server Explorer, create EF6 model from existing database, etc.</Description>
     <MoreInfo>http://www.npgsql.org/doc/ddex.html</MoreInfo>
