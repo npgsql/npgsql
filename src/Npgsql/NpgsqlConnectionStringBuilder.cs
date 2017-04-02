@@ -902,7 +902,7 @@ namespace Npgsql
         int _readBufferSize;
 
         /// <summary>
-        /// Determines the size of the internal buffer Npgsql uses when reading. Increasing may improve performance if transferring large values from the database.
+        /// Determines the size of the internal buffer Npgsql uses when writing. Increasing may improve performance if transferring large values to the database.
         /// </summary>
         [Category("Advanced")]
         [Description("Determines the size of the internal buffer Npgsql uses when writing. Increasing may improve performance if transferring large values to the database.")]
