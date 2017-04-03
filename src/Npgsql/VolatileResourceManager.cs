@@ -77,6 +77,10 @@ namespace Npgsql
                 _localTx.Commit();
                 singlePhaseEnlistment.Committed();
             }
+            catch (PostgresException e)
+            {
+                singlePhaseEnlistment.Aborted(e);
+            }
             catch (Exception e)
             {
                 singlePhaseEnlistment.InDoubt(e);
