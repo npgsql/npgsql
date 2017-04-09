@@ -479,11 +479,8 @@ WHERE a.typtype = 'b' AND b.typname = @name{(withSchema ? " AND ns.nspname = @sc
         /// <returns>A type handler that can be used to encode and decode values.</returns>
         internal TypeHandler this[uint oid]
         {
-            get
-            {
-                return TryGetByOID(oid, out var result) ? result : UnrecognizedTypeHandler;
-            }
-            set { ByOID[oid] = value; }
+            get => TryGetByOID(oid, out var result) ? result : UnrecognizedTypeHandler;
+            set => ByOID[oid] = value;
         }
 
         internal bool TryGetByOID(uint oid, out TypeHandler handler)

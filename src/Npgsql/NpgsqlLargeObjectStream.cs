@@ -202,10 +202,7 @@ namespace Npgsql
                 CheckDisposed();
                 return _pos;
             }
-            set
-            {
-                Seek(value, SeekOrigin.Begin);
-            }
+            set => Seek(value, SeekOrigin.Begin);
         }
 
         /// <summary>

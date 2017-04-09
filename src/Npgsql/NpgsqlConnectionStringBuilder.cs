@@ -293,7 +293,7 @@ namespace Npgsql
         [CanBeNull]
         public string Host
         {
-            get { return _host; }
+            get => _host;
             set
             {
                 _host = value;
@@ -312,7 +312,7 @@ namespace Npgsql
         [DefaultValue(NpgsqlConnection.DefaultPort)]
         public int Port
         {
-            get { return _port; }
+            get => _port;
             set
             {
                 if (value <= 0)
@@ -334,7 +334,7 @@ namespace Npgsql
         [CanBeNull]
         public string Database
         {
-            get { return _database; }
+            get => _database;
             set
             {
                 _database = value;
@@ -353,7 +353,7 @@ namespace Npgsql
         [CanBeNull]
         public string Username
         {
-            get { return _username; }
+            get => _username;
             set
             {
                 _username = value;
@@ -373,7 +373,7 @@ namespace Npgsql
         [CanBeNull]
         public string Password
         {
-            get { return _password; }
+            get => _password;
             set
             {
                 _password = value;
@@ -391,7 +391,7 @@ namespace Npgsql
         [NpgsqlConnectionStringProperty]
         public string ApplicationName
         {
-            get { return _applicationName; }
+            get => _applicationName;
             set
             {
                 _applicationName = value;
@@ -409,7 +409,7 @@ namespace Npgsql
         [NpgsqlConnectionStringProperty]
         public bool Enlist
         {
-            get { return _enlist; }
+            get => _enlist;
             set
             {
                 _enlist = value;
@@ -427,7 +427,7 @@ namespace Npgsql
         [NpgsqlConnectionStringProperty]
         public string SearchPath
         {
-            get { return _searchpath; }
+            get => _searchpath;
             set
             {
                 _searchpath = value;
@@ -446,7 +446,7 @@ namespace Npgsql
         [CanBeNull]
         public string ClientEncoding
         {
-            get { return _clientEncoding; }
+            get => _clientEncoding;
             set
             {
                 _clientEncoding = value;
@@ -465,7 +465,7 @@ namespace Npgsql
         [NpgsqlConnectionStringProperty]
         public string Encoding
         {
-            get { return _encoding; }
+            get => _encoding;
             set
             {
                 _encoding = value;
@@ -487,7 +487,7 @@ namespace Npgsql
         [NpgsqlConnectionStringProperty]
         public SslMode SslMode
         {
-            get { return _sslmode; }
+            get => _sslmode;
             set
             {
                 _sslmode = value;
@@ -505,7 +505,7 @@ namespace Npgsql
         [NpgsqlConnectionStringProperty]
         public bool TrustServerCertificate
         {
-            get { return _trustServerCertificate; }
+            get => _trustServerCertificate;
             set
             {
                 _trustServerCertificate = value;
@@ -524,7 +524,7 @@ namespace Npgsql
         [NpgsqlConnectionStringProperty]
         public bool CheckCertificateRevocation
         {
-            get { return _checkCertificateRevocation; }
+            get => _checkCertificateRevocation;
             set
             {
                 _checkCertificateRevocation = value;
@@ -542,7 +542,7 @@ namespace Npgsql
         [NpgsqlConnectionStringProperty]
         public bool UseSslStream
         {
-            get { return _useSslStream; }
+            get => _useSslStream;
             set
             {
                 _useSslStream = value;
@@ -560,7 +560,7 @@ namespace Npgsql
         [NpgsqlConnectionStringProperty]
         public bool IntegratedSecurity
         {
-            get { return _integratedSecurity; }
+            get => _integratedSecurity;
             set
             {
                 // No integrated security if we're on mono and .NET 4.5 because of ClaimsIdentity,
@@ -583,7 +583,7 @@ namespace Npgsql
         [DefaultValue("postgres")]
         public string KerberosServiceName
         {
-            get { return _kerberosServiceName; }
+            get => _kerberosServiceName;
             set
             {
                 _kerberosServiceName = value;
@@ -601,7 +601,7 @@ namespace Npgsql
         [NpgsqlConnectionStringProperty]
         public bool IncludeRealm
         {
-            get { return _includeRealm; }
+            get => _includeRealm;
             set
             {
                 _includeRealm = value;
@@ -619,7 +619,7 @@ namespace Npgsql
         [NpgsqlConnectionStringProperty]
         public bool PersistSecurityInfo
         {
-            get { return _persistSecurityInfo; }
+            get => _persistSecurityInfo;
             set
             {
                 _persistSecurityInfo = value;
@@ -642,7 +642,7 @@ namespace Npgsql
         [DefaultValue(true)]
         public bool Pooling
         {
-            get { return _pooling; }
+            get => _pooling;
             set
             {
                 _pooling = value;
@@ -661,7 +661,7 @@ namespace Npgsql
         [DefaultValue(0)]
         public int MinPoolSize
         {
-            get { return _minPoolSize; }
+            get => _minPoolSize;
             set
             {
                 if (value < 0 || value > PoolManager.PoolSizeLimit)
@@ -683,7 +683,7 @@ namespace Npgsql
         [DefaultValue(100)]
         public int MaxPoolSize
         {
-            get { return _maxPoolSize; }
+            get => _maxPoolSize;
             set
             {
                 if (value < 0 || value > PoolManager.PoolSizeLimit)
@@ -707,7 +707,7 @@ namespace Npgsql
         [DefaultValue(300)]
         public int ConnectionIdleLifetime
         {
-            get { return _connectionIdleLifetime; }
+            get => _connectionIdleLifetime;
             set
             {
                 _connectionIdleLifetime = value;
@@ -728,7 +728,7 @@ namespace Npgsql
         [DefaultValue(10)]
         public int ConnectionPruningInterval
         {
-            get { return _connectionPruningInterval; }
+            get => _connectionPruningInterval;
             set
             {
                 _connectionPruningInterval = value;
@@ -752,7 +752,7 @@ namespace Npgsql
         [DefaultValue(15)]
         public int Timeout
         {
-            get { return _timeout; }
+            get => _timeout;
             set
             {
                 if (value < 0 || value > NpgsqlConnection.TimeoutLimit)
@@ -775,7 +775,7 @@ namespace Npgsql
         [DefaultValue(NpgsqlCommand.DefaultTimeout)]
         public int CommandTimeout
         {
-            get { return _commandTimeout; }
+            get => _commandTimeout;
             set
             {
                 if (value < 0)
@@ -797,7 +797,7 @@ namespace Npgsql
         [DefaultValue(-1)]
         public int InternalCommandTimeout
         {
-            get { return _internalCommandTimeout; }
+            get => _internalCommandTimeout;
             set
             {
                 if (value != 0 && value != -1 && value < NpgsqlConnector.MinimumInternalCommandTimeout)
@@ -827,7 +827,7 @@ namespace Npgsql
         [NpgsqlConnectionStringProperty]
         public string EntityTemplateDatabase
         {
-            get { return _entityTemplateDatabase; }
+            get => _entityTemplateDatabase;
             set
             {
                 _entityTemplateDatabase = value;
@@ -847,7 +847,7 @@ namespace Npgsql
         [NpgsqlConnectionStringProperty]
         public string EntityAdminDatabase
         {
-            get { return _entityAdminDatabase; }
+            get => _entityAdminDatabase;
             set
             {
                 _entityAdminDatabase = value;
@@ -870,7 +870,7 @@ namespace Npgsql
         [NpgsqlConnectionStringProperty]
         public int KeepAlive
         {
-            get { return _keepAlive; }
+            get => _keepAlive;
             set
             {
                 if (value < 0)
@@ -892,7 +892,7 @@ namespace Npgsql
         [DefaultValue(ReadBuffer.DefaultSize)]
         public int ReadBufferSize
         {
-            get { return _readBufferSize; }
+            get => _readBufferSize;
             set
             {
                 _readBufferSize = value;
@@ -911,7 +911,7 @@ namespace Npgsql
         [DefaultValue(WriteBuffer.DefaultSize)]
         public int WriteBufferSize
         {
-            get { return _writeBufferSize; }
+            get => _writeBufferSize;
             set
             {
                 _writeBufferSize = value;
@@ -930,7 +930,7 @@ namespace Npgsql
         [CanBeNull]
         public int SocketReceiveBufferSize
         {
-            get { return _socketReceiveBufferSize; }
+            get => _socketReceiveBufferSize;
             set
             {
                 _socketReceiveBufferSize = value;
@@ -948,7 +948,7 @@ namespace Npgsql
         [NpgsqlConnectionStringProperty]
         public int SocketSendBufferSize
         {
-            get { return _socketSendBufferSize; }
+            get => _socketSendBufferSize;
             set
             {
                 _socketSendBufferSize = value;
@@ -968,7 +968,7 @@ namespace Npgsql
         [NpgsqlConnectionStringProperty]
         public int MaxAutoPrepare
         {
-            get { return _maxAutoPrepare; }
+            get => _maxAutoPrepare;
             set
             {
                 if (value < 0)
@@ -991,7 +991,7 @@ namespace Npgsql
         [DefaultValue(5)]
         public int AutoPrepareMinUsages
         {
-            get { return _autoPrepareMinUsages; }
+            get => _autoPrepareMinUsages;
             set
             {
                 if (value < 1)
@@ -1012,7 +1012,7 @@ namespace Npgsql
         [NpgsqlConnectionStringProperty]
         public bool UsePerfCounters
         {
-            get { return _usePerfCounters; }
+            get => _usePerfCounters;
             set
             {
                 _usePerfCounters = value;
@@ -1031,7 +1031,7 @@ namespace Npgsql
         [NpgsqlConnectionStringProperty]
         public bool NoResetOnClose
         {
-            get { return _noResetOnClose; }
+            get => _noResetOnClose;
             set
             {
                 _noResetOnClose = value;
@@ -1053,7 +1053,7 @@ namespace Npgsql
         [NpgsqlConnectionStringProperty]
         public ServerCompatibilityMode ServerCompatibilityMode
         {
-            get { return _serverCompatibilityMode; }
+            get => _serverCompatibilityMode;
             set
             {
                 _serverCompatibilityMode = value;
@@ -1071,7 +1071,7 @@ namespace Npgsql
         [NpgsqlConnectionStringProperty]
         public bool ConvertInfinityDateTime
         {
-            get { return _convertInfinityDateTime; }
+            get => _convertInfinityDateTime;
             set
             {
                 _convertInfinityDateTime = value;
@@ -1094,8 +1094,8 @@ namespace Npgsql
         [Obsolete("The ConnectionLifeTime parameter is no longer supported")]
         public int ConnectionLifeTime
         {
-            get { return 0; }
-            set { throw new NotSupportedException("The ConnectionLifeTime parameter is no longer supported. Please see http://www.npgsql.org/doc/migration/3.1.html"); }
+            get => 0;
+            set => throw new NotSupportedException("The ConnectionLifeTime parameter is no longer supported. Please see http://www.npgsql.org/doc/migration/3.1.html");
         }
 
         /// <summary>
@@ -1108,8 +1108,8 @@ namespace Npgsql
         [Obsolete("The ContinuousProcessing parameter is no longer supported.")]
         public bool ContinuousProcessing
         {
-            get { return false; }
-            set { throw new NotSupportedException("The ContinuousProcessing parameter is no longer supported. Please see http://www.npgsql.org/doc/migration/3.1.html"); }
+            get => false;
+            set => throw new NotSupportedException("The ContinuousProcessing parameter is no longer supported. Please see http://www.npgsql.org/doc/migration/3.1.html");
         }
 
         /// <summary>
@@ -1122,8 +1122,8 @@ namespace Npgsql
         [Obsolete("The BackendTimeouts parameter is no longer supported")]
         public bool BackendTimeouts
         {
-            get { return false; }
-            set { throw new NotSupportedException("The BackendTimeouts parameter is no longer supported. Please see http://www.npgsql.org/doc/migration/3.1.html"); }
+            get => false;
+            set => throw new NotSupportedException("The BackendTimeouts parameter is no longer supported. Please see http://www.npgsql.org/doc/migration/3.1.html");
         }
 
         /// <summary>
@@ -1136,8 +1136,8 @@ namespace Npgsql
         [Obsolete("The PreloadReader parameter is no longer supported")]
         public bool PreloadReader
         {
-            get { return false; }
-            set { throw new NotSupportedException("The PreloadReader parameter is no longer supported. Please see http://www.npgsql.org/doc/migration/3.0.html"); }
+            get => false;
+            set => throw new NotSupportedException("The PreloadReader parameter is no longer supported. Please see http://www.npgsql.org/doc/migration/3.0.html");
         }
 
         /// <summary>
@@ -1150,8 +1150,8 @@ namespace Npgsql
         [Obsolete("The UseExtendedTypes parameter is no longer supported")]
         public bool UseExtendedTypes
         {
-            get { return false; }
-            set { throw new NotSupportedException("The UseExtendedTypes parameter is no longer supported. Please see http://www.npgsql.org/doc/migration/3.0.html"); }
+            get => false;
+            set => throw new NotSupportedException("The UseExtendedTypes parameter is no longer supported. Please see http://www.npgsql.org/doc/migration/3.0.html");
         }
 
         #endregion

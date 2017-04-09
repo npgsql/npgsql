@@ -111,7 +111,7 @@ namespace Npgsql
         [PublicAPI]
         public new NpgsqlParameter this[int index]
         {
-            get { return _internalList[index]; }
+            get => _internalList[index];
             set
             {
                 var oldValue = _internalList[index];

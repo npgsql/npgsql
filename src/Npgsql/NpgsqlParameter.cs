@@ -288,7 +288,7 @@ namespace Npgsql
         [TypeConverter(typeof(StringConverter))]
         public object NpgsqlValue
         {
-            get { return _npgsqlValue; }
+            get => _npgsqlValue;
             set {
                 ClearBind();
                 _value = value;
@@ -374,7 +374,7 @@ namespace Npgsql
         [Category("Data")]
         public override int Size
         {
-            get { return _size; }
+            get => _size;
             set
             {
                 if (value < -1)
@@ -462,7 +462,7 @@ namespace Npgsql
         [DefaultValue("")]
         public override string ParameterName
         {
-            get { return _name; }
+            get => _name;
             set
             {
                 _name = value;
@@ -518,8 +518,8 @@ namespace Npgsql
         [PublicAPI]
         public Type EnumType
         {
-            get { return SpecificType; }
-            set { SpecificType = value; }
+            get => SpecificType;
+            set => SpecificType = value;
         }
 
         /// <summary>
@@ -544,7 +544,7 @@ namespace Npgsql
                 }
                 return null;
             }
-            set { _specificType = value; }
+            set => _specificType = value;
         }
 
         /// <summary>

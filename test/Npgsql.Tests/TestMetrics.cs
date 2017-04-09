@@ -113,10 +113,7 @@ namespace Npgsql.Tests
         /// <summary>
         /// Report whether ElapsedClockTime has met or exceeded the maximum run time.
         /// </summary>
-        public bool TimesUp
-        {
-            get { return (stopwatch.Elapsed >= allowedTime); }
-        }
+        public bool TimesUp => (stopwatch.Elapsed >= allowedTime);
 
         /// <summary>
         /// Calculate the number of iterations accumulated per the time span provided.
@@ -162,10 +159,7 @@ namespace Npgsql.Tests
         /// <summary>
         /// Elapsed time since start.
         /// </summary>
-        public TimeSpan ElapsedClockTime
-        {
-            get { return stopwatch.Elapsed; }
-        }
+        public TimeSpan ElapsedClockTime => stopwatch.Elapsed;
 
         /// <summary>
         /// Elapsed system CPU time since start.
@@ -206,9 +200,6 @@ namespace Npgsql.Tests
         /// <summary>
         /// Elapsed total (system + user) CPU time since start.
         /// </summary>
-        public TimeSpan ElapsedTotalCPUTime
-        {
-            get { return ElapsedSystemCPUTime + ElapsedUserCPUTime; }
-        }
+        public TimeSpan ElapsedTotalCPUTime => ElapsedSystemCPUTime + ElapsedUserCPUTime;
     }
 }

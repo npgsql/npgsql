@@ -2171,19 +2171,10 @@ namespace Npgsql.Tls
         }
         public override long Position
         {
-            get
-            {
-                throw new NotSupportedException();
-            }
-            set
-            {
-                throw new NotSupportedException();
-            }
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
         }
-        public override long Length
-        {
-            get { throw new NotSupportedException(); }
-        }
+        public override long Length => throw new NotSupportedException();
         public override bool CanRead => !_closed && _connState.IsAuthenticated && _baseStream.CanRead;
         public override bool CanWrite => !_closed && _connState.IsAuthenticated && _baseStream.CanWrite;
 

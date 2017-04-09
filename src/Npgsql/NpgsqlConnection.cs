@@ -22,8 +22,6 @@
 #endregion
 
 using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
@@ -32,7 +30,6 @@ using System.IO;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Reflection;
-using System.Resources;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
@@ -278,7 +275,7 @@ namespace Npgsql
         [CanBeNull]
         public override string ConnectionString
         {
-            get { return _userFacingConnectionString; }
+            get => _userFacingConnectionString;
             set
             {
                 CheckConnectionClosed();
@@ -1285,10 +1282,8 @@ namespace Npgsql
         /// <returns>The collection specified.</returns>
         public override DataTable GetSchema([CanBeNull] string collectionName, [CanBeNull] string[] restrictions)
         {
-            if (String.IsNullOrEmpty(collectionName))
-            {
+            if (string.IsNullOrEmpty(collectionName))
                 throw new ArgumentException("Collection name cannot be null or empty", nameof(collectionName));
-            }
 
             switch (collectionName.ToUpperInvariant())
             {
@@ -1447,7 +1442,7 @@ namespace Npgsql
     /// </summary>
     /// <param name="sender">The source of the event.</param>
     /// <param name="e">A <see cref="NpgsqlNoticeEventArgs">NpgsqlNoticeEventArgs</see> that contains the event data.</param>
-    public delegate void NoticeEventHandler(Object sender, NpgsqlNoticeEventArgs e);
+    public delegate void NoticeEventHandler(object sender, NpgsqlNoticeEventArgs e);
 
     /// <summary>
     /// Represents the method that handles the <see cref="NpgsqlConnection.Notification">Notification</see> events.

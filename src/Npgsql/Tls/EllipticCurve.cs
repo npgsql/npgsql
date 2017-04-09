@@ -284,14 +284,8 @@ namespace Npgsql.Tls
 
             internal uint this[int i]
             {
-                get
-                {
-                    return _bits[i];
-                }
-                set
-                {
-                    _bits[i] = value;
-                }
+                get => _bits[i];
+                set => _bits[i] = value;
             }
 
             public static bool operator >=(BigInt a, BigInt o)

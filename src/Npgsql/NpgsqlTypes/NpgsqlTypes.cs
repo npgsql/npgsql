@@ -277,8 +277,8 @@ namespace NpgsqlTypes
 
         public NpgsqlPoint this[int index]
         {
-            get { return _points[index]; }
-            set { _points[index] = value; }
+            get => _points[index];
+            set => _points[index] = value;
         }
 
         public int Capacity => _points.Capacity;
@@ -393,8 +393,8 @@ namespace NpgsqlTypes
 
         public NpgsqlPoint this[int index]
         {
-            get { return _points[index]; }
-            set { _points[index] = value; }
+            get => _points[index];
+            set => _points[index] = value;
         }
 
         public int Capacity => _points.Capacity;
@@ -504,7 +504,7 @@ namespace NpgsqlTypes
 
         public NpgsqlPoint Center
         {
-            get { return new NpgsqlPoint(X, Y); }
+            get => new NpgsqlPoint(X, Y);
             set
             {
                 X = value.X;

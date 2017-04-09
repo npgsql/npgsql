@@ -147,7 +147,7 @@ namespace Npgsql
         [Category("Data")]
         public override string CommandText
         {
-            get { return _commandText; }
+            get => _commandText;
             set
             {
                 if (value == null)
@@ -166,10 +166,7 @@ namespace Npgsql
         [DefaultValue(DefaultTimeout)]
         public override int CommandTimeout
         {
-            get
-            {
-                return _timeout ?? (_connection?.CommandTimeout ?? DefaultTimeout);
-            }
+            get => _timeout ?? (_connection?.CommandTimeout ?? DefaultTimeout);
             set
             {
                 if (value < 0) {
@@ -194,8 +191,8 @@ namespace Npgsql
         /// </summary>
         protected override DbConnection DbConnection
         {
-            get { return Connection; }
-            set { Connection = (NpgsqlConnection)value; }
+            get => Connection;
+            set => Connection = (NpgsqlConnection)value;
         }
 
         /// <summary>
@@ -208,7 +205,7 @@ namespace Npgsql
         [CanBeNull]
         public new NpgsqlConnection Connection
         {
-            get { return _connection; }
+            get => _connection;
             set
             {
                 if (_connection == value)
@@ -280,7 +277,7 @@ namespace Npgsql
         /// </summary>
         public bool AllResultTypesAreUnknown
         {
-            get { return _allResultTypesAreUnknown; }
+            get => _allResultTypesAreUnknown;
             set
             {
                 // TODO: Check that this isn't modified after calling prepare
@@ -305,7 +302,7 @@ namespace Npgsql
         /// </remarks>
         public bool[] UnknownResultTypeList
         {
-            get { return _unknownResultTypeList; }
+            get => _unknownResultTypeList;
             set
             {
                 // TODO: Check that this isn't modified after calling prepare
@@ -1031,8 +1028,8 @@ namespace Npgsql
         /// </summary>
         protected override DbTransaction DbTransaction
         {
-            get { return Transaction; }
-            set { Transaction = (NpgsqlTransaction) value; }
+            get => Transaction;
+            set => Transaction = (NpgsqlTransaction) value;
         }
 
         /// <summary>
@@ -1051,7 +1048,7 @@ namespace Npgsql
                 }
                 return _transaction;
             }
-            set { _transaction = value; }
+            set => _transaction = value;
         }
 
         #endregion Transactions

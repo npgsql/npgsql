@@ -326,7 +326,7 @@ namespace Npgsql
         /// </summary>
         internal ConnectorState State
         {
-            get { return (ConnectorState)_state; }
+            get => (ConnectorState)_state;
             set
             {
                 var newState = (int)value;

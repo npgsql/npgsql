@@ -205,7 +205,7 @@ namespace Npgsql.BackendMessages
         /// </summary>
         internal FormatCode FormatCode
         {
-            get { return _formatCode; }
+            get => _formatCode;
             set
             {
                 _formatCode = value;
