@@ -41,7 +41,7 @@ artifacts:
     name: MSI Installer
 deploy:
   - provider: NuGet
-    server: https://www.myget.org/F/npgsql-unstable/api/v2/package
+    server: https://www.myget.org/F/npgsql/api/v2/package
     api_key:
       secure: kiMn9uBvgMa5EtEmTIhNBFUfyatiATnhkgx5Xj/1EsmKTtEkUv+hJAQs0L3VGzPw
     artifact: /.*\.nupkg/
