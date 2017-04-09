@@ -35,7 +35,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="message">The error message that explains the reason for the exception.</param>
         /// <param name="innerException">The exception that is the cause of the current exception, or a null reference (<string>Nothing</string> in Visual Basic) if no inner exception is specified.</param>
-        public NpgsqlException(string message, Exception innerException) 
+        public NpgsqlException(string message, Exception innerException)
             : base(message, innerException) {}
 
         /// <summary>
@@ -44,6 +44,9 @@ namespace Npgsql
         /// <param name="message">The message that describes the error.</param>
         public NpgsqlException(string message)
             : base(message) { }
+
+        public virtual bool IsTransient => InnerException != null && (InnerException is System.IO.IOException || InnerException is System.Net.Sockets.SocketException);
+
 
         #region Serialization
 #if NET45 || NET451
