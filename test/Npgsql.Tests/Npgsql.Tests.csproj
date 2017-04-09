@@ -4,7 +4,6 @@
     <TargetFrameworks>net451;netcoreapp1.1</TargetFrameworks>
     <DebugType>portable</DebugType>
     <AssemblyName>Npgsql.Tests</AssemblyName>
-    <OutputType>Exe</OutputType>
     <AssemblyOriginatorKeyFile>../../Npgsql.snk</AssemblyOriginatorKeyFile>
     <SignAssembly>true</SignAssembly>
     <PublicSign Condition=" '$(OS)' != 'Windows_NT' ">true</PublicSign>
