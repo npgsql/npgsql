@@ -520,7 +520,7 @@ namespace Npgsql
                 sb.Append("SELECT * FROM ");
                 sb.Append(CommandText);
                 sb.Append('(');
-                bool hasWrittenFirst = false;
+                var hasWrittenFirst = false;
                 for (var i = 1; i <= numInput; i++) {
                     var param = inputList[i - 1];
                     if (param.AutoAssignedName || param.CleanName == "")

@@ -102,8 +102,8 @@ namespace Npgsql
 
             CheckDisposed();
 
-            int chunkCount = Math.Min(count, _manager.MaxTransferBlockSize);
-            int read = 0;
+            var chunkCount = Math.Min(count, _manager.MaxTransferBlockSize);
+            var read = 0;
 
             while (read < count)
             {
@@ -157,7 +157,7 @@ namespace Npgsql
             if (!_writeable)
                 throw new NotSupportedException("Write cannot be called on a stream opened with no write permissions");
 
-            int totalWritten = 0;
+            var totalWritten = 0;
 
             while (totalWritten < count)
             {
@@ -225,8 +225,8 @@ namespace Npgsql
         async Task<long> GetLength(bool async)
         {
             CheckDisposed();
-            long old = _pos;
-            long retval = await Seek(0, SeekOrigin.End, async);
+            var old = _pos;
+            var retval = await Seek(0, SeekOrigin.End, async);
             if (retval != old)
                 await Seek(old, SeekOrigin.Begin, async);
             return retval;

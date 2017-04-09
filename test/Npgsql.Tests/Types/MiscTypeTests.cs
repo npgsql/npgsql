@@ -679,7 +679,7 @@ namespace Npgsql.Tests.Types
                 var command = new NpgsqlCommand(createTable, conn);
                 command.ExecuteNonQuery();
 
-                NpgsqlParameter uuidDbParam = new NpgsqlParameter(":param1", NpgsqlDbType.Uuid);
+                var uuidDbParam = new NpgsqlParameter(":param1", NpgsqlDbType.Uuid);
                 uuidDbParam.Value = Guid.NewGuid();
 
                 command = new NpgsqlCommand(@"INSERT INTO person (person_uuid) VALUES (:param1);", conn);

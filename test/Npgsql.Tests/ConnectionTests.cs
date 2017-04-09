@@ -700,7 +700,7 @@ namespace Npgsql.Tests
         {
             // Test created to PR #164
 
-            NpgsqlConnection c = new NpgsqlConnection();
+            var c = new NpgsqlConnection();
             c.Dispose();
             Assert.AreEqual(ConnectionState.Closed, c.State);
         }
@@ -709,7 +709,7 @@ namespace Npgsql.Tests
         public void ChangeApplicationNameWithConnectionStringBuilder()
         {
             // Test for issue #165 on github.
-            NpgsqlConnectionStringBuilder builder = new NpgsqlConnectionStringBuilder();
+            var builder = new NpgsqlConnectionStringBuilder();
             builder.ApplicationName = "test";
         }
 

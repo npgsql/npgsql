@@ -566,7 +566,7 @@ namespace Npgsql
         {
             get
             {
-                string name = ParameterName;
+                var name = ParameterName;
                 if (name.Length > 0 && (name[0] == ':' || name[0] == '@'))
                 {
                     return name.Substring(1);

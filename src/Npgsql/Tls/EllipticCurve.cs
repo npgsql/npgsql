@@ -169,7 +169,7 @@ namespace Npgsql.Tls
             {
                 var littleEndian = bi.ToByteArray();
                 _bits = new uint[size];
-                for (int i = 0; i < littleEndian.Length; i++)
+                for (var i = 0; i < littleEndian.Length; i++)
                 {
                     if (littleEndian[i] != 0)
                         _bits[i >> 2] |= (uint)littleEndian[i] << ((i & 3) << 3);
@@ -185,7 +185,7 @@ namespace Npgsql.Tls
 
             internal void Clear()
             {
-                for (int i = 0; i < _bits.Length; i++)
+                for (var i = 0; i < _bits.Length; i++)
                     _bits[i] = 0;
             }
 
@@ -209,7 +209,7 @@ namespace Npgsql.Tls
 
             internal byte[] ExportToBigEndian(int byteLen)
             {
-                byte[] output = new byte[byteLen];
+                var output = new byte[byteLen];
                 ExportToBigEndian(output, 0, byteLen);
                 return output;
             }
@@ -217,7 +217,7 @@ namespace Npgsql.Tls
             {
                 for (int i = 0, shift = 0; i < byteLen; i++)
                 {
-                    int pos = offset + (byteLen - 1 - i);
+                    var pos = offset + (byteLen - 1 - i);
                     buf[pos] = (byte)((_bits[i >> 2] >> shift) & 0xff);
                     shift = (shift + 8) & 31;
                 }
@@ -238,7 +238,7 @@ namespace Npgsql.Tls
 
             internal bool IsZero()
             {
-                for (int i = 0; i < Length; i++)
+                for (var i = 0; i < Length; i++)
                     if (_bits[i] != 0)
                         return false;
                 return true;
@@ -247,7 +247,7 @@ namespace Npgsql.Tls
             {
                 if (_bits[0] != 1)
                     return false;
-                for (int i = 1; i < Length; i++)
+                for (var i = 1; i < Length; i++)
                     if (_bits[i] != 0)
                         return false;
                 return true;
@@ -295,7 +295,7 @@ namespace Npgsql.Tls
                 if (a.Length == o.Length + 1 && a._bits[a.Length - 1] != 0)
                     return true;
 
-                for (int i = o.Length - 1; i >= 0; i--) {
+                for (var i = o.Length - 1; i >= 0; i--) {
                     if (a._bits[i] > o._bits[i])
                         return true;
                     if (a._bits[i] < o._bits[i])
@@ -314,7 +314,7 @@ namespace Npgsql.Tls
                 uint carry = 0;
                 for (var i = 0; i < a.Length; i++)
                 {
-                    ulong add = (ulong)a[i] + o[i] + carry;
+                    var add = (ulong)a[i] + o[i] + carry;
                     r[i] = (uint)add;
                     carry = (uint)(add >> 32);
                 }
@@ -324,8 +324,8 @@ namespace Npgsql.Tls
             // output can be input
             internal static void TwosComplement(uint[] input, uint[] output)
             {
-                bool carry = true;
-                for (int i = 0; i < input.Length; i++)
+                var carry = true;
+                for (var i = 0; i < input.Length; i++)
                 {
                     output[i] = ~input[i];
                     if (carry)
@@ -385,10 +385,10 @@ namespace Npgsql.Tls
             internal BigInt Mul(BigInt o)
             {
                 var ret = Create(Length * 2);
-                for (int i = 0; i < Length; i++)
+                for (var i = 0; i < Length; i++)
                 {
                     uint carry = 0;
-                    for (int j = 0; j < Length; j++)
+                    for (var j = 0; j < Length; j++)
                     {
                         var mul = (ulong)_bits[i] * o._bits[j] + ret._bits[i + j] + carry;
                         carry = (uint)(mul >> 32);
@@ -444,13 +444,13 @@ namespace Npgsql.Tls
                 var d3 = new BigInt { _bits = new uint[] { a[13], a[14], a[15], a[8], a[9], a[10], 0, a[12] } };
                 var d4 = new BigInt { _bits = new uint[] { a[14], a[15], 0, a[9], a[10], a[11], 0, a[13] } };
 
-                bool extraAddD1 = d1 >= p;
+                var extraAddD1 = d1 >= p;
                 BigInt.TwosComplement(d1._bits, d1._bits);
                 BigInt.AddRaw(d1._bits, p._bits, d1._bits);
                 if (extraAddD1)
                     BigInt.AddRaw(d1._bits, p._bits, d1._bits);
 
-                bool extraAddD2 = d2 >= p;
+                var extraAddD2 = d2 >= p;
                 BigInt.TwosComplement(d2._bits, d2._bits);
                 BigInt.AddRaw(d2._bits, p._bits, d2._bits);
                 if (extraAddD2)
@@ -786,7 +786,7 @@ namespace Npgsql.Tls
             {
                 return s.Clone();
             }
-            Projective r = EcAdd(s, t);
+            var r = EcAdd(s, t);
             if (r.x.IsZero() && r.y.IsZero() && r.z.IsZero())
             {
                 return EcDouble(s);
@@ -1021,15 +1021,15 @@ namespace Npgsql.Tls
 
         internal static bool? VerifySignature(byte[] pkParameters, byte[] pkKey, byte[] hash, byte[] signature)
         {
-            EllipticCurve curve = GetCurveFromParameters(pkParameters);
+            var curve = GetCurveFromParameters(pkParameters);
             if (curve == null)
                 return null;
 
             // We must decode the signature from DER format to raw format (to coordinates on the curve)
-            int offset = 1; // Skip tag 0x30
+            var offset = 1; // Skip tag 0x30
             Utils.GetASNLength(signature, ref offset); // P521 requires 2 bytes to specify the length
             offset += 1; // 0x02
-            int len1 = Utils.GetASNLength(signature, ref offset);
+            var len1 = Utils.GetASNLength(signature, ref offset);
 
             var rBytes = new byte[len1];
             for (var i = 0; i < len1; i++)
@@ -1037,7 +1037,7 @@ namespace Npgsql.Tls
 
             offset += len1;
             offset += 1; // 0x02
-            int len2 = Utils.GetASNLength(signature, ref offset);
+            var len2 = Utils.GetASNLength(signature, ref offset);
 
             var sBytes = new byte[len2];
             for (var i = 0; i < len2; i++)
@@ -1095,7 +1095,7 @@ namespace Npgsql.Tls
             if (res >= curve.q)
                 res -= curve.q;
 
-            bool ok = res == r;
+            var ok = res == r;
 
             return ok;
         }

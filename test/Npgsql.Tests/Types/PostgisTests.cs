@@ -279,7 +279,7 @@ namespace Npgsql.Tests.Types
                 try
                 {
                     using (var writer = c.BeginBinaryImport($"COPY testcopybin (g) FROM STDIN (FORMAT BINARY)"))
-                        for (int i = 0; i < 1000; i++)
+                        for (var i = 0; i < 1000; i++)
                             writer.WriteRow(a.Geom);
                 }
                 catch(Exception e)
@@ -291,7 +291,7 @@ namespace Npgsql.Tests.Types
                 {
                     using (var rdr = c.BeginBinaryExport($"COPY testcopybin (g) TO STDOUT (FORMAT BINARY) "))
                     {
-                        for (int i =0; i < 1000; i++)
+                        for (var i =0; i < 1000; i++)
                         {
                             rdr.StartRow();
                             Assert.IsTrue(a.Geom.Equals(rdr.Read<PostgisGeometry>()));
@@ -317,7 +317,7 @@ namespace Npgsql.Tests.Types
                 try
                 {
                     using (var writer = c.BeginBinaryImport("COPY testcopybinarray (g) FROM STDIN (FORMAT BINARY)"))
-                        for (int i = 0; i < 1000; i++)
+                        for (var i = 0; i < 1000; i++)
                             writer.WriteRow(new[] {t});
                 }
                 catch(Exception e)
@@ -328,7 +328,7 @@ namespace Npgsql.Tests.Types
                 try
                 {
                     using (var rdr = c.BeginBinaryExport("COPY testcopybinarray (g) TO STDOUT (FORMAT BINARY)"))
-                        for (int i = 0; i < 1000; i++)
+                        for (var i = 0; i < 1000; i++)
                         {
                             rdr.StartRow();
                             Assert.IsTrue(t.SequenceEqual(rdr.Read<PostgisGeometry[]>()));

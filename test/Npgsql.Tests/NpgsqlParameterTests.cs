@@ -697,7 +697,7 @@ namespace Npgsql.Tests
             using (var command = new NpgsqlCommand())
             {
                 // Put plenty of parameters in the collection to turn on hash lookup functionality.
-                for (int i = 0 ; i < 10 ; i++)
+                for (var i = 0 ; i < 10 ; i++)
                 {
                     command.Parameters.AddWithValue(string.Format("p{0:00}", i + 1), NpgsqlDbType.Text, string.Format("String parameter value {0}", i + 1));
                 }

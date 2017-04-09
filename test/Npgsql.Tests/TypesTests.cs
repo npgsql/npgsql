@@ -473,7 +473,7 @@ namespace Npgsql.Tests
             var p = new NpgsqlParameter();
             p.NpgsqlDbType = NpgsqlDbType.Time;
             p.Value = DateTime.Now;
-            Object o = p.Value;
+            var o = p.Value;
         }
 
         [Test]

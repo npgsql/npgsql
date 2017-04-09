@@ -316,7 +316,7 @@ namespace NpgsqlTypes
 
         public override int GetHashCode()
         {
-            int ret = 266370105;//seed with something other than zero to make paths of all zeros hash differently.
+            var ret = 266370105;//seed with something other than zero to make paths of all zeros hash differently.
             foreach (var point in this)
             {
                 //The ideal amount to shift each value is one that would evenly spread it throughout
@@ -432,7 +432,7 @@ namespace NpgsqlTypes
 
         public override int GetHashCode()
         {
-            int ret = 266370105;//seed with something other than zero to make paths of all zeros hash differently.
+            var ret = 266370105;//seed with something other than zero to make paths of all zeros hash differently.
             foreach (var point in this)
             {
                 //The ideal amount to shift each value is one that would evenly spread it throughout

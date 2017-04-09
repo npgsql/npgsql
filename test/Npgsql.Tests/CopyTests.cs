@@ -65,7 +65,7 @@ namespace Npgsql.Tests
                 }
 
                 var data = new byte[10000];
-                int len = 0;
+                var len = 0;
                 using (var outStream = conn.BeginRawBinaryCopy("COPY data (field_text, field_int4) TO STDIN BINARY"))
                 {
                     StateAssertions(conn);

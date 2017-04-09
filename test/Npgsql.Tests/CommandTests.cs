@@ -323,7 +323,7 @@ namespace Npgsql.Tests
                     for (var x = 0; x < 5; x++)
                         conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('X')");
 
-                    Int32 i = 0;
+                    var i = 0;
                     var command = new NpgsqlCommand("DECLARE TE CURSOR FOR SELECT * FROM DATA", conn);
                     command.ExecuteNonQuery();
                     command.CommandText = "FETCH FORWARD 3 IN TE";
@@ -357,7 +357,7 @@ namespace Npgsql.Tests
                 var command = new NpgsqlCommand("DECLARE curs CURSOR FOR SELECT * FROM (VALUES (1), (2), (3)) as t", connection);
                 command.ExecuteNonQuery();
                 command.CommandText = "MOVE FORWARD ALL IN curs";
-                int count = command.ExecuteNonQuery();
+                var count = command.ExecuteNonQuery();
                 Assert.AreEqual(3, count);
             }
         }
@@ -599,11 +599,11 @@ namespace Npgsql.Tests
                 catch
                 {
                 }
-                string cmdTxt = "select :par";
+                var cmdTxt = "select :par";
                 var command = new NpgsqlCommand(cmdTxt, conn);
                 var arrCommand = new NpgsqlCommand(cmdTxt, conn);
-                string testStrPar = "This string has a single quote: ', a double quote: \", and a backslash: \\";
-                string[,] testArrPar = new string[,] {{testStrPar, ""}, {testStrPar, testStrPar}};
+                var testStrPar = "This string has a single quote: ', a double quote: \", and a backslash: \\";
+                var testArrPar = new string[,] {{testStrPar, ""}, {testStrPar, testStrPar}};
                 command.Parameters.AddWithValue(":par", testStrPar);
                 using (var rdr = command.ExecuteReader())
                 {
@@ -759,7 +759,7 @@ namespace Npgsql.Tests
                 Assert.IsNotNull(da.SelectCommand);
                 Assert.IsNotNull(cmdBuilder.DataAdapter);
 
-                NpgsqlCommand updateCommand = cmdBuilder.GetUpdateCommand();
+                var updateCommand = cmdBuilder.GetUpdateCommand();
                 Assert.AreEqual(UpdateRowSource.None, updateCommand.UpdatedRowSource);
             }
         }

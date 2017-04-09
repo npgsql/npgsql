@@ -97,7 +97,7 @@ namespace Npgsql.FrontendMessages
             buf.WriteByte(0); // Null terminator for the query
             buf.WriteInt16((short)ParameterTypeOIDs.Count);
 
-            foreach (uint t in ParameterTypeOIDs)
+            foreach (var t in ParameterTypeOIDs)
             {
                 if (buf.WriteSpaceLeft < 4)
                     await buf.Flush(async, cancellationToken);

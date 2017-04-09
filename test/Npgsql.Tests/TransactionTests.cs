@@ -435,16 +435,16 @@ namespace Npgsql.Tests
         [Test]
         public void Bug184RollbackFailsOnAbortedTransaction()
         {
-            NpgsqlConnectionStringBuilder csb = new NpgsqlConnectionStringBuilder(ConnectionString);
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString);
             csb.CommandTimeout = 100000;
 
-            using (NpgsqlConnection connTimeoutChanged = new NpgsqlConnection(csb.ToString())) {
+            using (var connTimeoutChanged = new NpgsqlConnection(csb.ToString())) {
                 connTimeoutChanged.Open();
                 using (var t = connTimeoutChanged.BeginTransaction()) {
                     try {
                         var command = new NpgsqlCommand("select count(*) from dta", connTimeoutChanged);
                         command.Transaction = t;
-                        Object result = command.ExecuteScalar();
+                        var result = command.ExecuteScalar();
 
 
                     } catch (Exception) {

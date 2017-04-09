@@ -447,7 +447,7 @@ namespace Npgsql.Tests
                 var param = new NpgsqlParameter("some_param", NpgsqlDbType.Varchar);
                 param.Direction = ParameterDirection.Output;
                 command.Parameters.Add(param);
-                using (NpgsqlDataReader dr = command.ExecuteReader())
+                using (var dr = command.ExecuteReader())
                     Assert.IsFalse(dr.NextResult());
             }
         }

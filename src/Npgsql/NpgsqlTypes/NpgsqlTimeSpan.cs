@@ -711,13 +711,13 @@ namespace NpgsqlTypes
             }
             str = str.Replace('s', ' '); //Quick and easy way to catch plurals.
             try {
-                int years = 0;
-                int months = 0;
-                int days = 0;
-                int hours = 0;
-                int minutes = 0;
-                decimal seconds = 0m;
-                int idx = str.IndexOf("year");
+                var years = 0;
+                var months = 0;
+                var days = 0;
+                var hours = 0;
+                var minutes = 0;
+                var seconds = 0m;
+                var idx = str.IndexOf("year");
                 if (idx > 0) {
                     years = int.Parse(str.Substring(0, idx));
                     str = SafeSubstring(str, idx + 5);
@@ -733,8 +733,8 @@ namespace NpgsqlTypes
                     str = SafeSubstring(str, idx + 4).Trim();
                 }
                 if (str.Length > 0) {
-                    bool isNegative = str[0] == '-';
-                    string[] parts = str.Split(':');
+                    var isNegative = str[0] == '-';
+                    var parts = str.Split(':');
                     switch (parts.Length) //One of those times that fall-through would actually be good.
                     {
                     case 1:
@@ -755,7 +755,7 @@ namespace NpgsqlTypes
                         seconds *= -1;
                     }
                 }
-                long ticks = hours * TicksPerHour + minutes * TicksPerMinute + (long)(seconds * TicksPerSecond);
+                var ticks = hours * TicksPerHour + minutes * TicksPerMinute + (long)(seconds * TicksPerSecond);
                 return new NpgsqlTimeSpan(years * MonthsPerYear + months, days, ticks);
             } catch (OverflowException) {
                 throw;
@@ -804,7 +804,7 @@ namespace NpgsqlTypes
         /// <returns>The <see cref="String"/> representation.</returns>
         public override string ToString()
         {
-            StringBuilder sb = new StringBuilder();
+            var sb = new StringBuilder();
             if (Months != 0) {
                 sb.Append(Months).Append(Math.Abs(Months) == 1 ? " mon " : " mons ");
             }
@@ -821,7 +821,7 @@ namespace NpgsqlTypes
                     sb.Append('+');
                 }
                 // calculate total seconds and then subtract total whole minutes in seconds to get just the seconds and fractional part
-                decimal seconds = _ticks / (decimal)TicksPerSecond - (_ticks / TicksPerMinute) * 60;
+                var seconds = _ticks / (decimal)TicksPerSecond - (_ticks / TicksPerMinute) * 60;
                 sb.Append(Math.Abs(Hours).ToString("D2")).Append(':').Append(Math.Abs(Minutes).ToString("D2")).Append(':').Append(Math.Abs(seconds).ToString("0#.######", System.Globalization.CultureInfo.InvariantCulture.NumberFormat));
 
             }

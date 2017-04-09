@@ -143,21 +143,21 @@ namespace NpgsqlTypes
 
             str = str.Trim();
             try {
-                int idx = str.IndexOf('-');
+                var idx = str.IndexOf('-');
                 if (idx == -1) {
                     throw new FormatException();
                 }
-                int year = int.Parse(str.Substring(0, idx));
-                int idxLast = idx + 1;
+                var year = int.Parse(str.Substring(0, idx));
+                var idxLast = idx + 1;
                 if ((idx = str.IndexOf('-', idxLast)) == -1) {
                     throw new FormatException();
                 }
-                int month = int.Parse(str.Substring(idxLast, idx - idxLast));
+                var month = int.Parse(str.Substring(idxLast, idx - idxLast));
                 idxLast = idx + 1;
                 if ((idx = str.IndexOf(' ', idxLast)) == -1) {
                     idx = str.Length;
                 }
-                int day = int.Parse(str.Substring(idxLast, idx - idxLast));
+                var day = int.Parse(str.Substring(idxLast, idx - idxLast));
                 if (str.Contains("BC")) {
                     year = -year;
                 }
@@ -207,9 +207,9 @@ namespace NpgsqlTypes
         {
             get
             {
-                int i = 1;
-                int target = DayOfYear;
-                int[] array = IsLeapYear ? LeapYearDays : CommonYearDays;
+                var i = 1;
+                var target = DayOfYear;
+                var array = IsLeapYear ? LeapYearDays : CommonYearDays;
                 while (target > array[i])
                 {
                     ++i;
@@ -252,7 +252,7 @@ namespace NpgsqlTypes
         static int DaysForYears(int years)
         {
             //Number of years after 1CE (0 for 1CE, -1 for 1BCE, 1 for 2CE).
-            int calcYear = years < 1 ? years : years - 1;
+            var calcYear = years < 1 ? years : years - 1;
 
             return calcYear / 400 * DaysIn4Centuries //Blocks of 400 years with their leap and common years
                    + calcYear % 400 / 100 * DaysInCentury //Remaining blocks of 100 years with their leap and common years
@@ -307,7 +307,7 @@ namespace NpgsqlTypes
                 throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {_type} of enum {nameof(NpgsqlDate)}.{nameof(InternalType)}. Please file a bug.");
             }
 
-            int newYear = Year + years;
+            var newYear = Year + years;
             if (newYear >= 0 && _daysSinceEra < 0) //cross 1CE/1BCE divide going up
             {
                 ++newYear;
@@ -333,8 +333,8 @@ namespace NpgsqlTypes
                 throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {_type} of enum {nameof(NpgsqlDate)}.{nameof(InternalType)}. Please file a bug.");
             }
 
-            int newYear = Year;
-            int newMonth = Month + months;
+            var newYear = Year;
+            var newMonth = Month + months;
 
             while (newMonth > 12)
             {

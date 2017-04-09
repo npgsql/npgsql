@@ -85,14 +85,14 @@ namespace Npgsql
             }
             set
             {
-                int index = IndexOf(parameterName);
+                var index = IndexOf(parameterName);
 
                 if (index == -1)
                 {
                     throw new ArgumentException("Parameter not found");
                 }
 
-                NpgsqlParameter oldValue = _internalList[index];
+                var oldValue = _internalList[index];
 
                 if (value.CleanName != oldValue.CleanName)
                 {
@@ -458,7 +458,7 @@ namespace Npgsql
                 throw new ArgumentNullException(nameof(oValue));
 
             CheckType(oValue);
-            NpgsqlParameter value = oValue as NpgsqlParameter;
+            var value = oValue as NpgsqlParameter;
             Debug.Assert(value != null);
             if (value.Collection != null)
             {
@@ -524,7 +524,7 @@ namespace Npgsql
         [ContractAnnotation("=>true,parameter:notnull; =>false,parameter:null")]
         public bool TryGetValue(string parameterName, [CanBeNull] out NpgsqlParameter parameter)
         {
-            int index = IndexOf(parameterName);
+            var index = IndexOf(parameterName);
 
             if (index != -1)
             {

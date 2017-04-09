@@ -98,7 +98,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
                 await buf.Flush(async, cancellationToken);
             buf.WriteInt32(vector.Count);
 
-            foreach (NpgsqlTsVector.Lexeme lexeme in vector)
+            foreach (var lexeme in vector)
             {
                 if (buf.WriteSpaceLeft < MaxSingleLexemeBytes)
                     await buf.Flush(async, cancellationToken);
