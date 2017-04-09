@@ -54,7 +54,7 @@ namespace Npgsql
         NpgsqlDbType? _npgsqlDbType;
         DbType? _dbType;
         Type _specificType;
-        string _name = String.Empty;
+        string _name = string.Empty;
         object _value;
         object _npgsqlValue;
 
@@ -80,7 +80,7 @@ namespace Npgsql
         /// </summary>
         public NpgsqlParameter()
         {
-            SourceColumn = String.Empty;
+            SourceColumn = string.Empty;
             Direction = ParameterDirection.Input;
 #if NET45 || NET451
             SourceVersion = DataRowVersion.Current;
@@ -101,7 +101,7 @@ namespace Npgsql
         /// This happens when calling this constructor passing an int 0 and the compiler thinks you are passing a value of DbType.
         /// Use <code> Convert.ToInt32(value) </code> for example to have compiler calling the correct constructor.</p>
         /// </remarks>
-        public NpgsqlParameter(String parameterName, object value) : this()
+        public NpgsqlParameter(string parameterName, object value) : this()
         {
             ParameterName = parameterName;
             Value = value;
@@ -114,7 +114,7 @@ namespace Npgsql
         /// <param name="parameterName">The name of the parameter to map.</param>
         /// <param name="parameterType">One of the <see cref="System.Data.DbType">DbType</see> values.</param>
         public NpgsqlParameter(string parameterName, NpgsqlDbType parameterType)
-            : this(parameterName, parameterType, 0, String.Empty)
+            : this(parameterName, parameterType, 0, string.Empty)
         {
         }
 
@@ -124,7 +124,7 @@ namespace Npgsql
         /// <param name="parameterName">The name of the parameter to map.</param>
         /// <param name="parameterType">One of the <see cref="System.Data.DbType">DbType</see> values.</param>
         public NpgsqlParameter(string parameterName, DbType parameterType)
-            : this(parameterName, parameterType, 0, String.Empty)
+            : this(parameterName, parameterType, 0, string.Empty)
         {
         }
 
@@ -135,7 +135,7 @@ namespace Npgsql
         /// <param name="parameterType">One of the <see cref="NpgsqlTypes.NpgsqlDbType">NpgsqlDbType</see> values.</param>
         /// <param name="size">The length of the parameter.</param>
         public NpgsqlParameter(string parameterName, NpgsqlDbType parameterType, int size)
-            : this(parameterName, parameterType, size, String.Empty)
+            : this(parameterName, parameterType, size, string.Empty)
         {
         }
 
@@ -146,7 +146,7 @@ namespace Npgsql
         /// <param name="parameterType">One of the <see cref="System.Data.DbType">DbType</see> values.</param>
         /// <param name="size">The length of the parameter.</param>
         public NpgsqlParameter(string parameterName, DbType parameterType, int size)
-            : this(parameterName, parameterType, size, String.Empty)
+            : this(parameterName, parameterType, size, string.Empty)
         {
         }
 
@@ -321,7 +321,7 @@ namespace Npgsql
         /// <see cref="NpgsqlParameter.Value">Value</see> property.
         /// The default value is 0, which indicates that the data provider
         /// sets the precision for <b>Value</b>.</value>
-        [DefaultValue((Byte)0)]
+        [DefaultValue((byte)0)]
         [Category("Data")]
 #if NET45
 // In mono .NET 4.5 is actually a later version, meaning that virtual Precision and Scale already exist in DbParameter
@@ -346,7 +346,7 @@ namespace Npgsql
         /// </summary>
         /// <value>The number of decimal places to which
         /// <see cref="NpgsqlParameter.Value">Value</see> is resolved. The default is 0.</value>
-        [DefaultValue((Byte)0)]
+        [DefaultValue((byte)0)]
         [Category("Data")]
 #if NET45
 // In mono .NET 4.5 is actually a later version, meaning that virtual Precision and Scale already exist in DbParameter
@@ -468,7 +468,7 @@ namespace Npgsql
                 _name = value;
                 if (value == null)
                 {
-                    _name = String.Empty;
+                    _name = string.Empty;
                 }
                 // no longer prefix with : so that The name returned is The name set
 
@@ -492,7 +492,7 @@ namespace Npgsql
         /// The default is an empty string.</value>
         [DefaultValue("")]
         [Category("Data")]
-        public override String SourceColumn { get; set; }
+        public override string SourceColumn { get; set; }
 
 #if NET45 || NET451
         /// <summary>

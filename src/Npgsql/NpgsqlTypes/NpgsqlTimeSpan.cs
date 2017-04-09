@@ -49,7 +49,7 @@ namespace NpgsqlTypes
     /// with them a call to <see cref="System.Data.IDataRecord.GetValue(int)"/> on a field containing an
     /// <see cref="NpgsqlTimeSpan"/> value will return a <see cref="TimeSpan"/> rather than an
     /// <see cref="NpgsqlTimeSpan"/>. If you need the extra functionality of <see cref="NpgsqlTimeSpan"/>
-    /// then use <see cref="NpgsqlDataReader.GetInterval(Int32)"/>.</para>
+    /// then use <see cref="NpgsqlDataReader.GetInterval(int)"/>.</para>
     /// </remarks>
     /// <seealso cref="Ticks"/>
     /// <seealso cref="JustifyDays"/>
@@ -614,7 +614,7 @@ namespace NpgsqlTypes
         /// Returns true if another object is an <see cref="NpgsqlTimeSpan"/>, that is exactly the same as
         /// this instance
         /// </summary>
-        /// <param name="obj">An <see cref="Object"/> for comparison.</param>
+        /// <param name="obj">An <see cref="object"/> for comparison.</param>
         /// <returns>true if the argument is an <see cref="NpgsqlTimeSpan"/> and is exactly the same
         /// as this one, false otherwise.</returns>
         public override bool Equals([CanBeNull] object obj)
@@ -696,10 +696,10 @@ namespace NpgsqlTypes
         #region String Conversions
 
         /// <summary>
-        /// Parses a <see cref="String"/> and returns a <see cref="NpgsqlTimeSpan"/> instance.
+        /// Parses a <see cref="string"/> and returns a <see cref="NpgsqlTimeSpan"/> instance.
         /// Designed to use the formats generally returned by PostgreSQL.
         /// </summary>
-        /// <param name="str">The <see cref="String"/> to parse.</param>
+        /// <param name="str">The <see cref="string"/> to parse.</param>
         /// <returns>An <see cref="NpgsqlTimeSpan"/> represented by the argument.</returns>
         /// <exception cref="ArgumentNullException">The string was null.</exception>
         /// <exception cref="OverflowException">A value obtained from parsing the string exceeded the values allowed for the relevant component.</exception>
@@ -773,9 +773,9 @@ namespace NpgsqlTypes
         }
 
         /// <summary>
-        /// Attempt to parse a <see cref="String"/> to produce an <see cref="NpgsqlTimeSpan"/>.
+        /// Attempt to parse a <see cref="string"/> to produce an <see cref="NpgsqlTimeSpan"/>.
         /// </summary>
-        /// <param name="str">The <see cref="String"/> to parse.</param>
+        /// <param name="str">The <see cref="string"/> to parse.</param>
         /// <param name="result">(out) The <see cref="NpgsqlTimeSpan"/> produced, or <see cref="Zero"/> if the parsing failed.</param>
         /// <returns>true if the parsing succeeded, false otherwise.</returns>
         public static bool TryParse(string str, out NpgsqlTimeSpan result)
@@ -790,7 +790,7 @@ namespace NpgsqlTypes
         }
 
         /// <summary>
-        /// Create a <see cref="String"/> representation of the <see cref="NpgsqlTimeSpan"/> instance.
+        /// Create a <see cref="string"/> representation of the <see cref="NpgsqlTimeSpan"/> instance.
         /// The format returned is of the form:
         /// [M mon[s]] [d day[s]] [HH:mm:ss[.f[f[f[f[f[f[f[f[f]]]]]]]]]]
         /// A zero <see cref="NpgsqlTimeSpan"/> is represented as 00:00:00
@@ -801,7 +801,7 @@ namespace NpgsqlTypes
         /// and also makes this ToString() more applicable to any other use-case.
         /// </remarks>
         /// </summary>
-        /// <returns>The <see cref="String"/> representation.</returns>
+        /// <returns>The <see cref="string"/> representation.</returns>
         public override string ToString()
         {
             var sb = new StringBuilder();

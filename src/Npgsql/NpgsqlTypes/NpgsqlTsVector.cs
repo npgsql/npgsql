@@ -121,7 +121,7 @@ namespace NpgsqlTypes
             WaitWord:
             if (pos >= value.Length)
                 goto Finish;
-            if (Char.IsWhiteSpace(value[pos]))
+            if (char.IsWhiteSpace(value[pos]))
             {
                 pos++;
                 goto WaitWord;
@@ -147,7 +147,7 @@ namespace NpgsqlTypes
             goto WaitEndWord;
 
             WaitEndWord:
-            if (pos >= value.Length || Char.IsWhiteSpace(value[pos]))
+            if (pos >= value.Length || char.IsWhiteSpace(value[pos]))
             {
                 lexemes.Add(new Lexeme(sb.ToString()));
                 if (pos >= value.Length)
@@ -237,7 +237,7 @@ namespace NpgsqlTypes
             goto WaitPosDelim;
 
             WaitPosDelim:
-            if (pos >= value.Length || Char.IsWhiteSpace(value[pos]))
+            if (pos >= value.Length || char.IsWhiteSpace(value[pos]))
             {
                 if (pos < value.Length)
                     pos++;

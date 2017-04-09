@@ -476,7 +476,7 @@ namespace Npgsql.Tests.Types
         {
             var hex = new StringBuilder(@"E'\\x", buf.Count * 2 + 3);
             foreach (var b in buf) {
-                hex.Append(String.Format("{0:x2}", b));
+                hex.Append($"{b:x2}");
             }
             hex.Append("'");
             return hex.ToString();

@@ -518,7 +518,7 @@ namespace Npgsql.Tests
                 var reader = conn.BeginTextExport("COPY data (field_text, field_int4) TO STDIN");
                 StateAssertions(conn);
                 Assert.That(reader.Read(chars, 0, chars.Length), Is.EqualTo(8));
-                Assert.That(new String(chars, 0, 8), Is.EqualTo("HELLO\t1\n"));
+                Assert.That(new string(chars, 0, 8), Is.EqualTo("HELLO\t1\n"));
                 Assert.That(reader.Read(chars, 0, chars.Length), Is.EqualTo(0));
                 Assert.That(reader.Read(chars, 0, chars.Length), Is.EqualTo(0));
                 reader.Dispose();

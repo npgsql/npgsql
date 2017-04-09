@@ -1449,7 +1449,7 @@ namespace Npgsql
     /// </summary>
     /// <param name="sender">The source of the event.</param>
     /// <param name="e">A <see cref="NpgsqlNotificationEventArgs">NpgsqlNotificationEventArgs</see> that contains the event data.</param>
-    public delegate void NotificationEventHandler(Object sender, NpgsqlNotificationEventArgs e);
+    public delegate void NotificationEventHandler(object sender, NpgsqlNotificationEventArgs e);
 
     /// <summary>
     /// Represents the method that allows the application to provide a certificate collection to be used for SSL client authentication

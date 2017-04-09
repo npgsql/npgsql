@@ -197,7 +197,7 @@ namespace Npgsql.Tests
         [Test]
         public void Constructor2_Value_Null()
         {
-            var p = new NpgsqlParameter("address", (Object) null);
+            var p = new NpgsqlParameter("address", (object) null);
             Assert.AreEqual(DbType.Object, p.DbType, "A:DbType");
             Assert.AreEqual(ParameterDirection.Input, p.Direction, "A:Direction");
             Assert.IsFalse(p.IsNullable, "A:IsNullable");
@@ -403,10 +403,10 @@ namespace Npgsql.Tests
         {
             var notsupported = new object[]
                                         {
-                                            UInt16.MaxValue,
-                                            UInt32.MaxValue,
-                                            UInt64.MaxValue,
-                                            SByte.MaxValue,
+                                            ushort.MaxValue,
+                                            uint.MaxValue,
+                                            ulong.MaxValue,
+                                            sbyte.MaxValue,
                                             new NpgsqlParameter()
                                         };
 

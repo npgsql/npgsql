@@ -536,17 +536,17 @@ namespace Npgsql.Tests.Types
             {
                 var expectedValue = 8.99m;
                 command.Parameters.Add("moneyvalue", NpgsqlDbType.Money).Value = expectedValue;
-                var result = (Decimal) command.ExecuteScalar();
+                var result = (decimal) command.ExecuteScalar();
                 Assert.AreEqual(expectedValue, result);
 
                 expectedValue = 100m;
                 command.Parameters[0].Value = expectedValue;
-                result = (Decimal) command.ExecuteScalar();
+                result = (decimal) command.ExecuteScalar();
                 Assert.AreEqual(expectedValue, result);
 
                 expectedValue = 72.25m;
                 command.Parameters[0].Value = expectedValue;
-                result = (Decimal) command.ExecuteScalar();
+                result = (decimal) command.ExecuteScalar();
                 Assert.AreEqual(expectedValue, result);
             }
         }
