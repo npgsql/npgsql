@@ -103,11 +103,11 @@ namespace Npgsql
 
             switch (isolationLevel) {
                 case IsolationLevel.RepeatableRead:
+                case IsolationLevel.Snapshot:
                     _connector.PrependInternalMessage(PregeneratedMessage.BeginTrans);
                     _connector.PrependInternalMessage(PregeneratedMessage.SetTransRepeatableRead);
                     break;
                 case IsolationLevel.Serializable:
-                case IsolationLevel.Snapshot:
                     _connector.PrependInternalMessage(PregeneratedMessage.BeginTrans);
                     _connector.PrependInternalMessage(PregeneratedMessage.SetTransSerializable);
                     break;
