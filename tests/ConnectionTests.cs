@@ -498,5 +498,130 @@ namespace NpgsqlTests
             DataTable metaDataCollections = Conn.GetSchema(System.Data.Common.DbMetaDataCollectionNames.ReservedWords);
             Assert.IsTrue(metaDataCollections.Rows.Count > 0, "There should be one or more ReservedWords returned.");
         }
+
+        [Test]
+        [ExpectedException(typeof(ArgumentException))]
+        public void InternalCommandTimeoutIsNotIntegerException()
+        {
+            // Test for issue #1366 on github.
+            using (var connection = new NpgsqlConnection(ConnectionString + ";InternalCommandTimeout=adc"))
+            {
+                connection.Open();
+            }
+        }
+
+        [Test]
+        [ExpectedException(typeof(ArgumentOutOfRangeException))]
+        public void InternalCommandTimeoutIsNegativeException()
+        {
+            // Test for issue #1366 on github.
+            using (var connection = new NpgsqlConnection(ConnectionString + ";InternalCommandTimeout=-3"))
+            {
+                connection.Open();
+            }
+        }
+
+        private void InternalCommandTimeoutTestHelper(NpgsqlConnection connection)
+        {
+            using (var transaction = connection.BeginTransaction())
+            {
+                using (var command = new NpgsqlCommand(
+@"DROP SCHEMA IF EXISTS issue_1366 CASCADE;
+CREATE SCHEMA issue_1366;
+CREATE TABLE issue_1366.section
+(
+  id bigint NOT NULL,
+  section_name character varying NOT NULL,
+  CONSTRAINT section_pkey PRIMARY KEY (id)
+);
+CREATE TABLE issue_1366.section_items
+(
+  id bigint NOT NULL,
+  section_id bigint NOT NULL,
+  item_name character varying NOT NULL,
+  previous_item bigint,
+  CONSTRAINT section_items_pkey PRIMARY KEY (id),
+  CONSTRAINT section_items_previous_item_fkey FOREIGN KEY (previous_item)
+	  REFERENCES issue_1366.section_items (id) MATCH SIMPLE
+	  ON UPDATE NO ACTION ON DELETE NO ACTION DEFERRABLE INITIALLY DEFERRED,
+  CONSTRAINT section_items_section_id_fkey FOREIGN KEY (section_id)
+	  REFERENCES issue_1366.section (id) MATCH SIMPLE
+	  ON UPDATE RESTRICT ON DELETE CASCADE,
+  CONSTRAINT section_items_section_id_excl EXCLUDE 
+  USING btree (section_id WITH =) WHERE (previous_item IS NULL)
+  DEFERRABLE INITIALLY DEFERRED,
+  CONSTRAINT section_items_section_id_previous_item_key UNIQUE (section_id, previous_item),
+  CONSTRAINT section_items_check CHECK (id <> previous_item)
+);"
+                    , connection))
+                {
+                    command.ExecuteNonQuery();
+                }
+
+                transaction.Commit();
+            }
+
+            using (var transaction = connection.BeginTransaction())
+            {
+                using (var command = new NpgsqlCommand(
+@"-- Delete all data
+TRUNCATE TABLE issue_1366.section CASCADE;
+
+-- We need just one section
+INSERT INTO issue_1366.section(id, section_name)
+VALUES(1, 'Section1');
+
+-- Let's add the list of items
+INSERT INTO issue_1366.section_items(id, section_id, item_name, previous_item)
+SELECT id, 1, 'Item' || id, CASE WHEN id <= 1 THEN NULL ELSE id - 1 END FROM generate_series(1, 50000) AS s(id);"
+                    , connection))
+                {
+                    command.ExecuteNonQuery();
+                }
+
+                transaction.Commit();
+            }
+
+            using (var transaction = connection.BeginTransaction())
+            {
+                using (var command = new NpgsqlCommand(
+@"-- Let's remove every second item...
+DELETE FROM issue_1366.section_items WHERE id % 2 = 0;
+
+-- ...and update positions of items in the list
+UPDATE issue_1366.section_items SET previous_item = previous_item - 1 WHERE previous_item IS NOT NULL;"
+                    , connection))
+                {
+                    command.ExecuteNonQuery();
+                }
+
+                transaction.Commit();
+            }
+        }
+
+        [Test]
+        public void SetInternalCommandTimeoutToInfinity()
+        {
+            // Test for issue #1366 on github.
+            using (var connection = new NpgsqlConnection(ConnectionString + ";CommandTimeout=3;InternalCommandTimeout=0"))
+            {
+                connection.Open();
+
+                InternalCommandTimeoutTestHelper(connection);
+            }
+        }
+
+        [Test]
+        [ExpectedException(typeof(NpgsqlException))]
+        public void SetInternalCommandTimeoutToSmallValueException()
+        {
+            // Test for issue #1366 on github.
+            using (var connection = new NpgsqlConnection(ConnectionString + ";CommandTimeout=3;InternalCommandTimeout=3"))
+            {
+                connection.Open();
+
+                InternalCommandTimeoutTestHelper(connection);
+            }
+        }
     }
 }
