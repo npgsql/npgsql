@@ -62,7 +62,7 @@ namespace Npgsql
             using (var blocker = connector.BlockNotificationThread())
             {
                 // Set statement timeout as needed.
-                connector.SetBackendCommandTimeout(20);
+                connector.SetBackendCommandTimeout(connector.DefaultInternalCommandTimeout);
 
                 // Write the Query message to the wire.
                 connector.Query(query);

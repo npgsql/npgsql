@@ -255,6 +255,12 @@
   <data name="ConnectionProperty_Display_CommandTimeout" xml:space="preserve">
     <value>CommandTimeout</value>
   </data>
+  <data name="ConnectionProperty_Display_InternalCommandTimeout" xml:space="preserve">
+    <value>InternalCommandTimeout</value>
+  </data>
+  <data name="ConnectionProperty_Description_InternalCommandTimeout" xml:space="preserve">
+    <value>InternalCommandTimeout</value>
+  </data>
   <data name="ConnectionProperty_Description_Enlist" xml:space="preserve">
     <value>Enlist</value>
   </data>
