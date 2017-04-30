@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -62,6 +63,24 @@ namespace Npgsql.Tests
                 cmd.ExecuteNonQuery();
             }
         }
+
+#if NET451
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1497")]
+        public void Bug1497()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (id INT4)");
+                conn.ExecuteNonQuery("INSERT INTO data (id) VALUES (NULL)");
+                using (var cmd = new NpgsqlCommand("SELECT * FROM data", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    var dt = new DataTable();
+                    dt.Load(reader);
+                }
+            }
+        }
+#endif
 
         #region Bug1285
 
