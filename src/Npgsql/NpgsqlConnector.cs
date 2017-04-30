@@ -949,7 +949,7 @@ namespace Npgsql
                     return null;
                 case BackendMessageCode.NoticeResponse:
                     var notice = new PostgresNotice(buf);
-                    Log.Debug($"Received notice: {notice}", Id);
+                    Log.Debug($"Received notice: {notice.MessageText}", Id);
                     Connection?.OnNotice(notice);
                     return null;
                 case BackendMessageCode.NotificationResponse:
