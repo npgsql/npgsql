@@ -548,26 +548,26 @@ namespace Npgsql
 
             CloseOngoingOperations();
 
-#if NET45 || NET451
-            if (EnlistedTransaction == null)
-            {
-#endif
-                if (Settings.Pooling)
-                    _pool.Release(Connector);
-                else
-                    Connector.Close();
-#if NET45 || NET451
-            }
+            if (!Settings.Pooling)
+                Connector.Close();
             else
             {
-                // A System.Transactions transaction is still in progress, we need to wait for it to complete.
-                // Close the connection and disconnect it from the resource manager but leave the connector
-                // in a enlisted pending list in the pool.
-                _pool.AddPendingEnlistedConnector(Connector, EnlistedTransaction);
-                Connector.Connection = null;
-                EnlistedTransaction = null;
-            }
+#if NET45 || NET451
+                if (EnlistedTransaction == null)
+                    _pool.Release(Connector);
+                else
+                {
+                    // A System.Transactions transaction is still in progress, we need to wait for it to complete.
+                    // Close the connection and disconnect it from the resource manager but leave the connector
+                    // in a enlisted pending list in the pool.
+                    _pool.AddPendingEnlistedConnector(Connector, EnlistedTransaction);
+                    Connector.Connection = null;
+                    EnlistedTransaction = null;
+                }
+#else
+                _pool.Release(Connector);
 #endif
+            }
 
             Log.Debug("Connection closed", connectorId);
 
