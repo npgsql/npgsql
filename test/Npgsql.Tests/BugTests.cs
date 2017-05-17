@@ -5,6 +5,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using NUnit.Framework;
+#if NET451
+using System.Transactions;
+#endif
 
 namespace Npgsql.Tests
 {
@@ -78,6 +81,23 @@ namespace Npgsql.Tests
                     var dt = new DataTable();
                     dt.Load(reader);
                 }
+            }
+        }
+#endif
+
+#if NET451
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1558")]
+        public void Bug1558()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Pooling = false,
+                Enlist = true
+            };
+            using (var tx = new TransactionScope())
+            using (var conn = new NpgsqlConnection(csb.ToString()))
+            {
+                conn.Open();
             }
         }
 #endif
