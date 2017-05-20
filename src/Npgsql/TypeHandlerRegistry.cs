@@ -706,6 +706,10 @@ WHERE a.typtype = 'b' AND b.typname = @name{(withSchema ? " AND ns.nspname = @sc
 
             var typeInfo = type.GetTypeInfo();
 
+            var ilist = typeInfo.ImplementedInterfaces.FirstOrDefault(x => x.GetTypeInfo().IsGenericType && x.GetGenericTypeDefinition() == typeof(IList<>));
+            if (ilist != null)
+                return NpgsqlDbType.Array | ToNpgsqlDbType(ilist.GetGenericArguments()[0]);
+
             if (typeInfo.IsEnum)
                 return NpgsqlDbType.Enum;
 

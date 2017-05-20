@@ -371,6 +371,17 @@ namespace Npgsql.Tests.Types
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1546")]
+        public void GenericListGetNpgsqlDbType()
+        {
+            var p = new NpgsqlParameter
+            {
+                ParameterName = "p1",
+                Value = new List<int> { 1, 2, 3 }
+            };
+            Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Array | NpgsqlDbType.Integer));
+        }
+
         void AssertIListRoundtrips<TElement>(NpgsqlConnection conn, IEnumerable<TElement> value)
         {
             using (var cmd = new NpgsqlCommand("SELECT @p", conn))
