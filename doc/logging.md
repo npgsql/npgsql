@@ -1,6 +1,6 @@
 # Logging
 
-*Note:* Npgsql 3.2.0 and 3.2.1 siginifiantly changed logging to use Microsoft.Extensions.Logging. After several complaints and issues (see [#1504](https://github.com/npgsql/npgsql/issues/1504)), this feature was rolled back. Starting with Npgsql 3.2.2, logging support is identical to Npgsql 3.1.
+*Note:* Npgsql 3.2.0 and 3.2.1 significantly changed logging to use Microsoft.Extensions.Logging. After several complaints and issues (see [#1504](https://github.com/npgsql/npgsql/issues/1504)), this feature was rolled back. Starting with Npgsql 3.2.2, logging support is identical to Npgsql 3.1.
 
 Npgsql includes a built-in feature for outputting logging events which can help debug issues.
 
