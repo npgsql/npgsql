@@ -587,7 +587,7 @@ namespace Npgsql
                 return;
 
             Debug.Assert(Connector != null);
-            Connector.CurrentReader?.Close(true);
+            Connector.CurrentReader?.Close(true, false);
             var currentCopyOperation = Connector.CurrentCopyOperation;
             if (currentCopyOperation != null)
             {

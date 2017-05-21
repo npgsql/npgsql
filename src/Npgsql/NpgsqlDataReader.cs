@@ -680,16 +680,21 @@ namespace Npgsql
         protected override void Dispose(bool disposing) => Close();
 
         /// <summary>
-        /// Closes the <see cref="NpgsqlDataReader"/> object.
+        /// Closes the <see cref="NpgsqlDataReader"/> reader, allowing a new command to be executed.
         /// </summary>
 #if NET45 || NET451
         public override void Close()
 #else
         public void Close()
 #endif
-            => Close(false);
+            => Close(false, false).GetAwaiter().GetResult();
 
-        internal void Close(bool connectionClosing)
+        /// <summary>
+        /// Closes the <see cref="NpgsqlDataReader"/> reader, allowing a new command to be executed.
+        /// </summary>
+        public Task CloseAsync() => Close(false, true);
+
+        internal async Task Close(bool connectionClosing, bool async)
         {
             if (_state == ReaderState.Closed)
                 return;
@@ -708,18 +713,21 @@ namespace Npgsql
             }
 
             if (_state != ReaderState.Consumed)
-                Consume(false).GetAwaiter().GetResult();
+                await Consume(async);
 
-            Cleanup(connectionClosing);
+            await Cleanup(async, connectionClosing);
         }
 
-        internal void Cleanup(bool connectionClosing=false)
+        internal async Task Cleanup(bool async, bool connectionClosing=false)
         {
             Log.Trace("Cleaning up reader", _connector.Id);
 
             // Make sure the send task for this command, which may have executed asynchronously and in
             // parallel with the reading, has completed, throwing any exceptions it generated.
-            _sendTask.GetAwaiter().GetResult();
+            if (async)
+                await _sendTask;
+            else
+                _sendTask.GetAwaiter().GetResult();
 
             _state = ReaderState.Closed;
             Command.State = CommandState.Idle;
