@@ -21,6 +21,8 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
+using JetBrains.Annotations;
+
 namespace Npgsql.PostgresTypes
 {
     /// <summary>
@@ -28,7 +30,7 @@ namespace Npgsql.PostgresTypes
     /// </summary>
     /// <remarks>
     /// See https://www.postgresql.org/docs/current/static/sql-createdomain.html.
-    /// 
+    ///
     /// When PostgreSQL returns a RowDescription for a domain type, the type OID is the base type's
     /// (so fetching a domain type over text returns a RowDescription for text).
     /// However, when a composite type is returned, the type OID there is that of the domain,
@@ -36,24 +38,28 @@ namespace Npgsql.PostgresTypes
     /// </remarks>
     public class PostgresDomainType : PostgresType
     {
-        readonly PostgresType _basePostgresType;
+        /// <summary>
+        /// The PostgreSQL data type of the base type, i.e. the type this domain is based on.
+        /// </summary>
+        [PublicAPI]
+        public PostgresType BaseType { get; }
 
         /// <summary>
         /// Constructs a representation of a PostgreSQL domain data type.
         /// </summary>
-        protected internal PostgresDomainType(string ns, string name, uint oid, PostgresType basePostgresType)
+        protected internal PostgresDomainType(string ns, string name, uint oid, PostgresType baseType)
             : base(ns, name, oid)
         {
-            _basePostgresType = basePostgresType;
+            BaseType = baseType;
         }
 
         internal override TypeHandler Activate(TypeHandlerRegistry registry)
         {
             TypeHandler baseTypeHandler;
-            if (!registry.TryGetByOID(_basePostgresType.OID, out baseTypeHandler))
+            if (!registry.TryGetByOID(BaseType.OID, out baseTypeHandler))
             {
                 // Base type hasn't been set up yet, do it now
-                baseTypeHandler = _basePostgresType.Activate(registry);
+                baseTypeHandler = BaseType.Activate(registry);
             }
 
             // Make the domain type OID point to the base type's type handler, the wire encoding
