@@ -393,6 +393,37 @@ namespace Npgsql.Tests.Types
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1557")]
+        public void SubGeometriesWithSRID()
+        {
+            var point = new PostgisPoint(1, 1)
+            {
+                SRID = 4326
+            };
+
+            var lineString = new PostgisLineString(new[] { new Coordinate2D(2, 2), new Coordinate2D(3, 3) })
+            {
+                SRID = 4326
+            };
+
+            var polygon = new PostgisPolygon(new[] { new[] { new Coordinate2D(4, 4), new Coordinate2D(5, 5), new Coordinate2D(6, 6), new Coordinate2D(4, 4) } })
+            {
+                SRID = 4326
+            };
+
+            var collection = new PostgisGeometryCollection(new PostgisGeometry[] { point, lineString, polygon })
+            {
+                SRID = 4326
+            };
+
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT :p", conn))
+            {
+                cmd.Parameters.AddWithValue("p", collection);
+                cmd.ExecuteNonQuery();
+            }
+        }
+
         [OneTimeSetUp]
         public void SetUp()
         {
