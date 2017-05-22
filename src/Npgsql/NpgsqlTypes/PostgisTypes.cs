@@ -89,13 +89,13 @@ namespace NpgsqlTypes
         protected abstract int GetLenHelper();
         internal abstract WkbIdentifier Identifier { get;}
 
-        internal int GetLen(bool isTopLevel=false)
+        internal int GetLen(bool includeSRID)
         {
             // header =
             //      1 byte for the endianness of the structure
             //    + 4 bytes for the type identifier
-            //   (+ 4 bytes for the SRID if present)
-            return 5 + (SRID == 0 || !isTopLevel ? 0 : 4) + GetLenHelper();
+            //   (+ 4 bytes for the SRID if present and included)
+            return 5 + (SRID == 0 || !includeSRID ? 0 : 4) + GetLenHelper();
         }
 
         /// <summary>
@@ -346,7 +346,7 @@ namespace NpgsqlTypes
         {
             var n = 4;
             for (var i = 0; i < _lineStrings.Length; i++)
-                n += _lineStrings[i].GetLen();
+                n += _lineStrings[i].GetLen(false);
             return n;
         }
 
@@ -461,7 +461,7 @@ namespace NpgsqlTypes
         {
             var n = 4;
             for (var i = 0; i < _polygons.Length; i++)
-                n += _polygons[i].GetLen();
+                n += _polygons[i].GetLen(false);
             return n;
         }
 
@@ -524,7 +524,7 @@ namespace NpgsqlTypes
         {
             var n = 4;
             for (var i = 0; i < _geometries.Length; i++)
-                n += _geometries[i].GetLen();
+                n += _geometries[i].GetLen(true);
             return n;
         }
 
