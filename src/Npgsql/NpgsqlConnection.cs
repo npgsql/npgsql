@@ -36,12 +36,13 @@ using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.Logging;
-#if NET45 || NET451
-using System.Transactions;
-#endif
 using NpgsqlTypes;
 using IsolationLevel = System.Data.IsolationLevel;
 using ThreadState = System.Threading.ThreadState;
+
+#if !NETSTANDARD1_3
+using System.Transactions;
+#endif
 
 namespace Npgsql
 {
@@ -89,7 +90,7 @@ namespace Npgsql
 
         bool _wasBroken;
 
-#if NET45 || NET451
+#if !NETSTANDARD1_3
         [CanBeNull]
         internal Transaction EnlistedTransaction { get; set; }
 #endif
@@ -127,7 +128,7 @@ namespace Npgsql
             GC.SuppressFinalize(this);
             ConnectionString = connectionString;
 
-#if NET45 || NET451
+#if !NETSTANDARD1_3
             // Fix authentication problems. See https://bugzilla.novell.com/show_bug.cgi?id=MONO77559 and
             // http://pgfoundry.org/forum/message.php?msg_id=1002377 for more info.
             RSACryptoServiceProvider.UseMachineKeyStore = true;
@@ -220,7 +221,7 @@ namespace Npgsql
                 {
                     _userFacingConnectionString = _pool.UserFacingConnectionString;
 
-#if NET45 || NET451
+#if !NETSTANDARD1_3
                     if (Settings.Enlist)
                     {
                         if (Transaction.Current != null)
@@ -237,7 +238,7 @@ namespace Npgsql
                     }
                     else  // No enlist
 #endif
-                        Connector = await _pool.Allocate(this, timeout, async, cancellationToken);
+                    Connector = await _pool.Allocate(this, timeout, async, cancellationToken);
 
                     Counters.SoftConnectsPerSecond.Increment();
 
@@ -246,7 +247,7 @@ namespace Npgsql
                     Connector.TypeHandlerRegistry.ActivateGlobalMappings();
                 }
 
-#if NET45 || NET451
+#if !NETSTANDARD1_3
                 // We may have gotten an already enlisted pending connector above, no need to enlist in that case
                 if (Settings.Enlist && Transaction.Current != null && EnlistedTransaction == null)
                     EnlistTransaction(Transaction.Current);
@@ -498,7 +499,7 @@ namespace Npgsql
             }
         }
 
-#if NET45 || NET451
+#if !NETSTANDARD1_3
         /// <summary>
         /// Enlist transation.
         /// </summary>
@@ -552,7 +553,9 @@ namespace Npgsql
                 Connector.Close();
             else
             {
-#if NET45 || NET451
+#if NETSTANDARD1_3
+                _pool.Release(Connector);
+#else
                 if (EnlistedTransaction == null)
                     _pool.Release(Connector);
                 else
@@ -564,8 +567,6 @@ namespace Npgsql
                     Connector.Connection = null;
                     EnlistedTransaction = null;
                 }
-#else
-                _pool.Release(Connector);
 #endif
             }
 
@@ -1252,7 +1253,7 @@ namespace Npgsql
         #endregion State checks
 
         #region Schema operations
-#if NET45 || NET451
+#if !NETSTANDARD1_3
         /// <summary>
         /// Returns the supported collections
         /// </summary>
@@ -1334,7 +1335,7 @@ namespace Npgsql
         /// <summary>
         /// Creates a closed connection with the connection string and authentication details of this message.
         /// </summary>
-#if NET45 || NET451
+#if !NETSTANDARD1_3
         object ICloneable.Clone()
 #else
         public NpgsqlConnection Clone()
@@ -1392,7 +1393,7 @@ namespace Npgsql
             Open();
         }
 
-#if NET45 || NET451
+#if !NETSTANDARD1_3
         /// <summary>
         /// DB provider factory.
         /// </summary>

@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using NUnit.Framework;
-#if NET451
+#if !NETCOREAPP1_1
 using System.Transactions;
 #endif
 
@@ -67,7 +67,7 @@ namespace Npgsql.Tests
             }
         }
 
-#if NET451
+#if !NETCOREAPP1_1
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1497")]
         public void Bug1497()
         {
@@ -85,7 +85,7 @@ namespace Npgsql.Tests
         }
 #endif
 
-#if NET451
+#if !NETCOREAPP1_1
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1558")]
         public void Bug1558()
         {

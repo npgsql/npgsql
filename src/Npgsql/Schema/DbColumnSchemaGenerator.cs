@@ -9,7 +9,7 @@ using System.Linq;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandlers;
-#if NET45 || NET451
+#if !NETSTANDARD1_3
 using System.Transactions;
 #endif
 
@@ -86,11 +86,11 @@ ORDER BY attnum";
             {
                 var query = string.Format(GetColumnsQuery, columnFieldFilter);
 
-#if NET45 || NET451
+#if NETSTANDARD1_3
+                using (var connection = _connection.Clone())
+#else
                 using (new TransactionScope(TransactionScopeOption.Suppress))
                 using (var connection = (NpgsqlConnection)((ICloneable)_connection).Clone())
-#else
-                using (var connection = _connection.Clone())
 #endif
                 {
                     connection.Open();

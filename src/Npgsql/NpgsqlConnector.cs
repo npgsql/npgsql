@@ -472,7 +472,7 @@ namespace Npgsql
                     return username;
             }
 
-#if NET45 || NET451
+#if !NETSTANDARD1_3
             username = Environment.UserName;
             if (!string.IsNullOrEmpty(username))
                 return username;
@@ -603,13 +603,13 @@ namespace Npgsql
             }
             else
             {
-#if NET45 || NET451
+#if NETSTANDARD1_3
+                // .NET Standard 1.3 didn't have sync DNS methods
+                endpoints = Dns.GetHostAddressesAsync(Host).Result.Select(a => new IPEndPoint(a, Port)).ToArray();
+#else
                 // Note that there aren't any timeoutable DNS methods, and we want to use sync-only
                 // methods (not to rely on any TP threads etc.)
                 endpoints = Dns.GetHostAddresses(Host).Select(a => new IPEndPoint(a, Port)).ToArray();
-#else
-                // .NET Core doesn't appear to have sync DNS methods (yet?)
-                endpoints = Dns.GetHostAddressesAsync(Host).Result.Select(a => new IPEndPoint(a, Port)).ToArray();
 #endif
                 timeout.Check();
             }

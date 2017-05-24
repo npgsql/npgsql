@@ -25,16 +25,11 @@ using System;
 using System.Data;
 using System.IO;
 using System.Net.Sockets;
-using System.Threading.Tasks;
 using NUnit.Framework;
-using NUnit.Framework.Constraints;
-using Npgsql;
-using NpgsqlTypes;
 
-#if NET451
+#if !NETCOREAPP1_1
 using System.Runtime.Serialization.Formatters.Binary;
 #endif
-
 
 namespace Npgsql.Tests
 {
@@ -185,7 +180,7 @@ namespace Npgsql.Tests
             Assert.False(new PostgresException { SqlState = "0" }.IsTransient);
         }
 
-#if NET451
+#if !NETCOREAPP1_1
         [Test]
         public void Serialization()
         {

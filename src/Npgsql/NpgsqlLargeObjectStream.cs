@@ -318,10 +318,10 @@ namespace Npgsql
         /// <summary>
         /// Releases resources at the backend allocated for this stream.
         /// </summary>
-#if NET45 || NET451
-        public override void Close()
-#else
+#if NETSTANDARD1_3
         void Close()
+#else
+        public override void Close()
 #endif
         {
             if (!_disposed)

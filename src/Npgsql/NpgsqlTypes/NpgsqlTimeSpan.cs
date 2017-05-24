@@ -55,7 +55,7 @@ namespace NpgsqlTypes
     /// <seealso cref="JustifyDays"/>
     /// <seealso cref="JustifyMonths"/>
     /// <seealso cref="Canonicalize()"/>
-#if NET45 || NET451
+#if !NETSTANDARD1_3
     [Serializable]
 #endif
     public struct NpgsqlTimeSpan : IComparable, IComparer, IEquatable<NpgsqlTimeSpan>, IComparable<NpgsqlTimeSpan>,
