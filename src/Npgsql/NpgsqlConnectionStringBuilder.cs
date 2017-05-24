@@ -406,6 +406,7 @@ namespace Npgsql
         [Category("Connection")]
         [Description("Whether to enlist in an ambient TransactionScope.")]
         [DisplayName("Enlist")]
+        [DefaultValue(true)]
         [NpgsqlConnectionStringProperty]
         public bool Enlist
         {
