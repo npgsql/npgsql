@@ -1100,7 +1100,7 @@ namespace Npgsql.Tls
             return ok;
         }
 
-#if OPTIMIZED_CRYPTOGRAPHY && !NETSTANDARD1_3
+#if OPTIMIZED_CRYPTOGRAPHY && (NET45 || NET451)
         internal static bool? VerifySignatureCng(byte[] pkParameters, byte[] pkKey, byte[] hash, byte[] signature)
         {
             EllipticCurve curve = null;
