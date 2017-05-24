@@ -109,7 +109,7 @@ namespace Npgsql.Tests
 #if NET_2_0
             Assert.IsFalse(p.SourceColumnNullMapping, "SourceColumnNullMapping");
 #endif
-#if NET451
+#if !NETCOREAPP1_1
             Assert.AreEqual(DataRowVersion.Current, p.SourceVersion, "SourceVersion");
 #endif
             Assert.AreEqual(NpgsqlDbType.Unknown, p.NpgsqlDbType, "NpgsqlDbType");
@@ -144,7 +144,7 @@ namespace Npgsql.Tests
 #if NET_2_0
             Assert.IsFalse(p.SourceColumnNullMapping, "B:SourceColumnNullMapping");
 #endif
-#if NET451
+#if !NETCOREAPP1_1
             Assert.AreEqual(DataRowVersion.Current, p.SourceVersion, "B:SourceVersion");
 #endif
             Assert.AreEqual(NpgsqlDbType.Timestamp, p.NpgsqlDbType, "B:NpgsqlDbType");
@@ -178,7 +178,7 @@ namespace Npgsql.Tests
 #if NET_2_0
             Assert.IsFalse(p.SourceColumnNullMapping, "B:SourceColumnNullMapping");
 #endif
-#if NET451
+#if !NETCOREAPP1_1
             Assert.AreEqual(DataRowVersion.Current, p.SourceVersion, "B:SourceVersion");
 #endif
             Assert.AreEqual(NpgsqlDbType.Unknown, p.NpgsqlDbType, "B:NpgsqlDbType");
@@ -212,7 +212,7 @@ namespace Npgsql.Tests
 #if NET_2_0
             Assert.IsFalse(p.SourceColumnNullMapping, "A:SourceColumnNullMapping");
 #endif
-#if NET451
+#if !NETCOREAPP1_1
             Assert.AreEqual(DataRowVersion.Current, p.SourceVersion, "A:SourceVersion");
 #endif
             Assert.AreEqual(NpgsqlDbType.Unknown, p.NpgsqlDbType, "A:NpgsqlDbType");
@@ -228,7 +228,7 @@ namespace Npgsql.Tests
         }
 
 #if NET_2_0
-#if NET451
+#if !NETCOREAPP1_1
         [Test]
         //.ctor (String, NpgsqlDbType, Int32, String, ParameterDirection, bool, byte, byte, DataRowVersion, object)
         public void Constructor7()
@@ -737,7 +737,7 @@ namespace Npgsql.Tests
             param.IsNullable = true;
             param.ParameterName = "parameterName";
             param.SourceColumn = "source_column";
-#if NET451
+#if !NETCOREAPP1_1
             param.SourceVersion = DataRowVersion.Current;
 #endif
             param.NpgsqlValue = 5;
@@ -753,7 +753,7 @@ namespace Npgsql.Tests
             Assert.AreEqual(param.IsNullable, newParam.IsNullable);
             Assert.AreEqual(param.ParameterName, newParam.ParameterName);
             Assert.AreEqual(param.SourceColumn, newParam.SourceColumn);
-#if NET451
+#if !NETCOREAPP1_1
             Assert.AreEqual(param.SourceVersion, newParam.SourceVersion);
 #endif
             Assert.AreEqual(param.NpgsqlValue, newParam.NpgsqlValue);

@@ -66,7 +66,7 @@ namespace Npgsql
         /// </summary>
         public NpgsqlConnectionStringBuilder() { Init(); }
 
-#if NET45 || NET451
+#if !NETSTANDARD1_3
         /// <summary>
         /// Initializes a new instance of the NpgsqlConnectionStringBuilder class, optionally using ODBC rules for quoting values.
         /// </summary>
@@ -1223,7 +1223,7 @@ namespace Npgsql
                 yield return new KeyValuePair<string, object>(k, this[k]);
         }
 
-#if !(NET45 || NET451)
+#if NETSTANDARD1_3
         /// <summary>
         /// Gets a value indicating whether the ICollection{T} is read-only.
         /// </summary>
@@ -1233,7 +1233,7 @@ namespace Npgsql
 
         #region ICustomTypeDescriptor
 
-#if NET45 || NET451
+#if !NETSTANDARD1_3
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
         protected override void GetProperties(Hashtable propertyDescriptors)
         {

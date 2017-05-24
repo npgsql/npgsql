@@ -2,7 +2,7 @@
 using JetBrains.Annotations;
 using Npgsql.PostgresTypes;
 
-#if NETSTANDARD1_3
+#if NETSTANDARD1_3 || NETSTANDARD2_0
 using System.Data.Common;
 #endif
 

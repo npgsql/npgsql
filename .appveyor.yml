@@ -23,7 +23,7 @@ before_build:
   - appveyor-retry nuget restore Npgsql.sln   # For VSIX
 build_script:
   - dotnet build "src\Npgsql" -c ReleaseOptimizedCryptography
-  - dotnet build "test\Npgsql.Tests" -c Debug
+  - dotnet build "test\Npgsql.Tests" -c Debug -f net451
   - msbuild src\VSIX\VSIX.csproj /p:Configuration=Release
   - msbuild src\MSI\MSI.wixproj /p:Configuration=Release
 after_build:

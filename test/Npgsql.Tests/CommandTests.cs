@@ -743,7 +743,7 @@ namespace Npgsql.Tests
             }
         }
 
-#if NET451
+#if !NETCOREAPP1_1
         [Test]
         public void Bug1010788UpdateRowSource()
         {

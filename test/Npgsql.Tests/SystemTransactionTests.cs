@@ -21,6 +21,7 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
+// TransactionScope exists in netstandard20, but distributed transactions do not
 #if NET451
 
 using System;

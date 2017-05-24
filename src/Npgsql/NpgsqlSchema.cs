@@ -1,4 +1,3 @@
-#if NET45 || NET451
 #region License
 // The PostgreSQL License
 //
@@ -21,6 +20,8 @@
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
+
+#if !NETSTANDARD1_3
 
 using System;
 using System.Data;

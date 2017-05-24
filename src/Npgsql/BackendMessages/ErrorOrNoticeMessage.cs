@@ -23,13 +23,13 @@
 
 using System;
 using Npgsql.Logging;
-#if NET45 || NET451
+#if !NETSTANDARD1_3
 using System.Runtime.Serialization;
 #endif
 
 namespace Npgsql.BackendMessages
 {
-#if NET45 || NET451
+#if !NETSTANDARD1_3
     [Serializable]
 #endif
     class ErrorOrNoticeMessage

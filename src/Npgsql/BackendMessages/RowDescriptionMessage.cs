@@ -117,10 +117,10 @@ namespace Npgsql.BackendMessages
                 => CompareInfo.Compare(x, y, CompareOptions.IgnoreWidth) == 0;
             public int GetHashCode([NotNull] string o)
             {
-#if NET45 || NET451
-                return CompareInfo.GetSortKey(o, CompareOptions.IgnoreWidth).GetHashCode();
-#else
+#if NETSTANDARD1_3
                 return CompareInfo.GetHashCode(o, CompareOptions.IgnoreWidth);
+#else
+                return CompareInfo.GetSortKey(o, CompareOptions.IgnoreWidth).GetHashCode();
 #endif
             }
         }
@@ -133,10 +133,10 @@ namespace Npgsql.BackendMessages
                 => CompareInfo.Compare(x, y, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase) == 0;
             public int GetHashCode([NotNull] string o)
             {
-#if NET45 || NET451
-                return CompareInfo.GetSortKey(o, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase).GetHashCode();
-#else
+#if NETSTANDARD1_3
                 return CompareInfo.GetHashCode(o, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase);
+#else
+                return CompareInfo.GetSortKey(o, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase).GetHashCode();
 #endif
             }
         }

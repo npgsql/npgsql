@@ -21,7 +21,7 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-#if NET45 || NET451
+#if !NETSTANDARD1_3
 
 using System;
 using System.Data;

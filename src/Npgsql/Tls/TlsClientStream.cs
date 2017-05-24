@@ -1191,11 +1191,11 @@ namespace Npgsql.Tls
                 bool? res;
 
                 // .NET Framework has an optimized native implementation here, but it doesn't
-                // exist in CoreCLR (netstandard13) or on mono.
+                // exist in CoreCLR or on mono.
                 // We include two checks - one compile-time and one runtime - to allow everyone
                 // to be happy. The OPTIMIZED_CRYPTOGRAPHY define is only enabled explicitly
                 // at the build server
-#if OPTIMIZED_CRYPTOGRAPHY && !NETSTANDARD1_3
+#if OPTIMIZED_CRYPTOGRAPHY && (NET45 || NET451)
                 if (Type.GetType("Mono.Runtime") != null)
                     res = EllipticCurve.VerifySignature(pkParameters, pkKey, hash, signature);
                 else
