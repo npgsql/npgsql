@@ -3,6 +3,24 @@ layout: doc
 title: Documentation
 ---
 
+<p id="badges">
+  <a href="https://www.nuget.org/packages/Npgsql/">
+    <img src="https://img.shields.io/nuget/v/Npgsql.svg?label=Stable&amp;style=plastic;maxAge=600" />
+  </a>
+
+  <a href="https://www.myget.org/gallery/npgsql-unstable">
+    <img src="https://img.shields.io/myget/npgsql-unstable/vpre/npgsql.svg?label=Unstable&amp;style=plastic;maxAge=600" />
+  </a>
+
+  <a href="https://ci.appveyor.com/project/roji/npgsql">
+    <img src="https://img.shields.io/appveyor/ci/roji/npgsql.svg" />
+  </a>
+
+  <a href="https://gitter.im/npgsql/npgsql">
+    <img src="https://img.shields.io/badge/GITTER-JOIN%20CHAT-brightgreen.svg?style=plastic;maxAge=600" />
+  </a>
+</p>
+
 ## Getting Started
 
 The best way to use Npgsql is to install its [nuget package](https://www.nuget.org/packages/Npgsql/).
