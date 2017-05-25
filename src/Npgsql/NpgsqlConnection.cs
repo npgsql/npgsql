@@ -964,53 +964,7 @@ namespace Npgsql
 
         #region Replication
 
-        public NpgsqlRawReplicationStream TEMP_BeginReplicationCommand(string replicationCommand)
-        {
-            if (replicationCommand == null)
-                throw new ArgumentNullException(nameof(replicationCommand));
-
-            var connector = CheckReadyAndGetConnector();
-            Log.Debug("Starting raw COPY operation", connector.Id);
-            connector.StartUserAction(ConnectorState.Copy);
-            try
-            {
-                var stream = new NpgsqlRawReplicationStream(connector, replicationCommand);
-                //if (!stream.IsBinary)
-                //{
-                //    // TODO: Stop the COPY operation gracefully, no breaking
-                //    connector.Break();
-                //    throw new ArgumentException("copyToCommand triggered a text transfer, only binary is allowed", nameof(replicationCommand));
-                //}
-                //connector.CurrentCopyOperation = stream;
-                return stream;
-            }
-            catch
-            {
-                connector.EndUserAction();
-                throw;
-            }
-        }
-
-        public NpgsqlLogicalReplicationSlotReader OpenReplicationSlot(string slotName)
-        {
-            switch (Settings.ReplicationMode)
-            {
-                case ReplicationMode.Logical:
-                    break;
-
-                case ReplicationMode.None:
-                    throw new InvalidOperationException("The connection is not in a replication mode.");
-
-                default:
-                    throw new InvalidOperationException("Unknown replication mode.");
-            }
-
-
-            var connector = CheckReadyAndGetConnector();
-            connector.StartUserAction(new NpgsqlCommand($"CREATE_REPLICATION_SLOT {slotName} LOGICAL test_decoding"));
-            var query = $"START_REPLICATION SLOT {slotName}";
-            return new NpgsqlLogicalReplicationSlotReader();
-        }
+        // TODO: replication
 
         #endregion
 
