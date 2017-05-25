@@ -400,8 +400,14 @@ namespace Npgsql
                         }
                     }
 
-                    await _connector.ReadExpecting<ParseCompleteMessage>(async);
-                    await _connector.ReadExpecting<BindCompleteMessage>(async);
+                    if (_connector.Settings.ReplicationMode == ReplicationMode.None)
+                    {
+                        await _connector.ReadExpecting<ParseCompleteMessage>(async);
+                        await _connector.ReadExpecting<BindCompleteMessage>(async);
+                    }
+                    else
+                        Debug.Assert(pStatement == null);
+
                     var msg = await _connector.ReadMessage(async);
                     switch (msg.Code)
                     {
@@ -412,6 +418,13 @@ namespace Npgsql
                         // We have a resultset
                         _rowDescription = statement.Description = (RowDescriptionMessage)msg;
                         break;
+                    case BackendMessageCode.CompletedResponse:
+                        if (_connector.Settings.ReplicationMode != ReplicationMode.None)
+                        {
+                            _rowDescription = statement.Description = null;
+                            break;
+                        }
+                        goto default;
                     default:
                         throw _connector.UnexpectedMessageReceived(msg.Code);
                     }

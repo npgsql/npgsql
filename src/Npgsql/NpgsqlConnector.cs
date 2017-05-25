@@ -442,6 +442,8 @@ namespace Npgsql
                 startupMessage["search_path"] = Settings.SearchPath;
             if (IsSecure && !IsRedshift)
                 startupMessage["ssl_renegotiation_limit"] = "0";
+            if (Settings.ReplicationMode == ReplicationMode.Logical)
+                startupMessage["replication"] = "database";
 
             // Should really never happen, just in case
             if (startupMessage.Length > WriteBuffer.Size)

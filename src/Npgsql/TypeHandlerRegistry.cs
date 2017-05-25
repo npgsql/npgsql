@@ -115,7 +115,27 @@ namespace Npgsql
             connector.TypeHandlerRegistry = new TypeHandlerRegistry(connector);
 
             if (!BackendTypeCache.TryGetValue(connector.ConnectionString, out var types))
-                types = BackendTypeCache[connector.ConnectionString] = await LoadBackendTypes(connector, timeout, async);
+            {
+                if (connector.Settings.ReplicationMode == ReplicationMode.None)
+                    types = BackendTypeCache[connector.ConnectionString] = await LoadBackendTypes(connector, timeout, async);
+                else
+                {
+                    // Even more strange initialization code here
+
+                    // Connection in the replication mode supports only limited set of commands.
+                    // Reopen connection in the regular mode
+                    var settingsCopy = connector.Settings.Clone();
+                    settingsCopy.ReplicationMode = ReplicationMode.None;
+                    using (var connection = new NpgsqlConnection(settingsCopy.ConnectionString))
+                    {
+                        connection.Open();
+                        Debug.Assert(connection.Connector != null);
+
+                        types = connection.Connector.TypeHandlerRegistry.PostgresTypes;
+                        BackendTypeCache[connection.ConnectionString] = types;
+                    }
+                }
+            }
 
             connector.TypeHandlerRegistry.PostgresTypes = types;
             connector.TypeHandlerRegistry.ActivateGlobalMappings();

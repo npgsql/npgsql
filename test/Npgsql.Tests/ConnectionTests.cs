@@ -1057,6 +1057,59 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test]
+        public void ReplicationCommands()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ReplicationMode = ReplicationMode.Logical
+            };
+            const string testSlotName = "npgsql_repl_test";
+            // default logical decoding plugin
+            const string testPlugin = "test_decoding";
+            const string createCmd = "CREATE_REPLICATION_SLOT " + testSlotName + " LOGICAL " + testPlugin;
+            const string dropCmd = "DROP_REPLICATION_SLOT " + testSlotName;
+            using (var connection = OpenConnection(csb))
+            {
+                connection.ExecuteNonQuery(createCmd);
+                connection.ExecuteNonQuery(dropCmd);
+
+                var res = connection.ExecuteScalar(createCmd);
+                try
+                {
+                    Assert.That(res, Is.EqualTo(testSlotName));
+                }
+                finally
+                {
+                    connection.ExecuteNonQuery(dropCmd);
+                }
+
+                var cmd = connection.CreateCommand();
+                cmd.CommandText = createCmd;
+
+                NpgsqlDataReader reader = null;
+                bool atLeastOneRow = false;
+                try
+                {
+                    reader = cmd.ExecuteReader();
+                    atLeastOneRow = reader.Read();
+                    Assert.IsTrue(atLeastOneRow);
+                    Assert.That(reader.FieldCount, Is.EqualTo(4));
+                    Assert.That(reader.GetString(0), Is.EqualTo(testSlotName));
+                    var lsnStr = reader.GetString(1);
+                    Assert.That(NpgsqlLsn.TryParse(lsnStr, out _));
+                    Assert.That(reader.GetString(3), Is.EqualTo(testPlugin));
+                    Assert.IsFalse(reader.Read());
+                }
+                finally
+                {
+                    reader?.Dispose();
+                    if (atLeastOneRow)
+                        connection.ExecuteNonQuery(dropCmd);
+                }
+            }
+        }
+
         #region pgpass
 
         [Test]

@@ -627,7 +627,11 @@ namespace Npgsql
 
                 connector.UserTimeout = CommandTimeout * 1000;
 
-                if ((behavior & CommandBehavior.SchemaOnly) == 0)
+                if (connector.Settings.ReplicationMode != ReplicationMode.None)
+                {
+                    sendTask = SendReplication(async, cancellationToken);
+                }
+                else if ((behavior & CommandBehavior.SchemaOnly) == 0)
                 {
                     if (connector.Settings.MaxAutoPrepare > 0)
                     {
@@ -801,6 +805,34 @@ namespace Npgsql
                 await SyncMessage.Instance.Write(buf, async, cancellationToken);
                 await buf.Flush(async, cancellationToken);
             }
+            CleanupSend();
+        }
+
+        async Task SendReplication(bool async, CancellationToken cancellationToken)
+        {
+            if (_statements.Count = 0)
+                return;
+
+            if (_statements.Count != 1)
+                throw new InvalidOperationException("Multiple statements are not supported in the replication mode.");
+
+            var statement = _statements[0];
+            if (statement.InputParameters.Count > 0)
+                throw new InvalidOperationException("Input parameters are not supported in the replication mode.");
+
+            BeginSend();
+
+            var connector = Connection?.Connector;
+            Debug.Assert(connector != null);
+
+            var buff = connector.WriteBuffer;
+
+            await connector.QueryMessage
+                .Populate(statement.SQL)
+                .Write(buff, async, cancellationToken);
+
+            await buff.Flush(async, cancellationToken);
+
             CleanupSend();
         }
 

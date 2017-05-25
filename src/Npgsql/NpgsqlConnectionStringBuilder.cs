@@ -474,6 +474,25 @@ namespace Npgsql
         }
         string _encoding;
 
+        /// <summary>
+        /// Gets or sets the replication mode.
+        /// </summary>
+        [Category("Connection")]
+        [Description("Gets or sets the replication mode.")]
+        [DisplayName("Replication Mode")]
+        [DefaultValue(ReplicationMode.None)]
+        [NpgsqlConnectionStringProperty]
+        public ReplicationMode ReplicationMode
+        {
+            get => _replicationMode;
+            set
+            {
+                _replicationMode = value;
+                SetValue(nameof(ReplicationMode), value);
+            }
+        }
+        ReplicationMode _replicationMode;
+
         #endregion
 
         #region Properties - Security
@@ -1340,6 +1359,27 @@ namespace Npgsql
         /// Fail the connection if the server doesn't suppotr SSL.
         /// </summary>
         Require,
+    }
+
+    /// <summary>
+    /// Specifies one of possible replication modes.
+    /// </summary>
+    /// <remarks>https://www.postgresql.org/docs/current/static/protocol-replication.html"</remarks>
+    [PublicAPI]
+    public enum ReplicationMode
+    {
+        /// <summary>
+        /// Not a replication connection.
+        /// </summary>
+        None,
+
+        /// <summary>
+        /// Connection should be openned in the logical replication mode (database replication).
+        /// </summary>
+        /// <remarks>replication=database</remarks>
+        Logical
+
+        //TODO: add 'true' for physical replication
     }
 
     #endregion
