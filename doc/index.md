@@ -13,7 +13,7 @@ title: Documentation
   </a>
 
   <a href="https://ci.appveyor.com/project/roji/npgsql">
-    <img src="https://img.shields.io/appveyor/ci/roji/npgsql.svg" />
+    <img src="https://img.shields.io/appveyor/ci/roji/npgsql/dev.svg" />
   </a>
 
   <a href="https://gitter.im/npgsql/npgsql">
