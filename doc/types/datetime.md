@@ -56,10 +56,7 @@ DateTime(Kind=Local)       | timestamptz           | Convert to UTC locally befo
 DateTime(Kind=Unspecified) | timestamptz           | Send as-is
 DateTimeOffset             | timestamptz (default) | Convert to UTC locally before sending
                            |                       |
-DateTime(Kind=UTC)         | time                  | Send as-is
-DateTime(Kind=Local)       | time                  | Send as-is
-DateTime(Kind=Unspecified) | time                  | Send as-is
-DateTimeOffset             | time                  | Strip offset, send as-is
+TimeSpan                   | time                  | Send as-is
                            |                       |
 DateTime(Kind=UTC)         | timetz                | Send time and UTC timezone
 DateTime(Kind=Local)       | timetz                | Send time and local system timezone
