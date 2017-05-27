@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Npgsql
+namespace Npgsql.NameTranslation
 {
     /// <summary>
     /// A name translator which converts standard CLR names (e.g. SomeClass) to snake-case database

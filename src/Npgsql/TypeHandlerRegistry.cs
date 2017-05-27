@@ -33,6 +33,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.Logging;
+using Npgsql.NameTranslation;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandlers;
 using NpgsqlTypes;
