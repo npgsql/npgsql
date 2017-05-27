@@ -45,14 +45,16 @@ namespace Npgsql.Tests
                 using (var scope = new TransactionScope())
                 {
                     conn.EnlistTransaction(Transaction.Current);
-                    Assert.That(conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test')"), Is.EqualTo(1));
+                    Assert.That(conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test')"), Is.EqualTo(1),
+                        "Unexpected insert rowcount");
                     AssertNoPreparedTransactions();
                     scope.Complete();
                 }
                 AssertNoPreparedTransactions();
                 using (var tx = conn.BeginTransaction())
                 {
-                    Assert.That(conn.ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(1));
+                    Assert.That(conn.ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(1),
+                        "Unexpected data count");
                     tx.Rollback();
                 }
             }
@@ -65,13 +67,15 @@ namespace Npgsql.Tests
             using (var scope = new TransactionScope())
             {
                 conn.Open();
-                Assert.That(conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test')"), Is.EqualTo(1));
+                Assert.That(conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test')"), Is.EqualTo(1),
+                    "Unexpected insert rowcount");
                 AssertNoPreparedTransactions();
                 scope.Complete();
             }
             using (var tx = conn.BeginTransaction())
             {
-                Assert.That(conn.ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(1));
+                Assert.That(conn.ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(1),
+                    "Unexpected data count");
                 tx.Rollback();
             }
         }
@@ -84,29 +88,54 @@ namespace Npgsql.Tests
             using (var conn2 = OpenConnection(ConnectionStringEnlistOff))
             {
                 Assert.That(conn1.EnlistedTransaction, Is.Null);
-                Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test')"), Is.EqualTo(1));
-                Assert.That(conn2.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(1));
+                Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test')"), Is.EqualTo(1),
+                    "Unexpected insert rowcount");
+                Assert.That(conn2.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(1),
+                    "Unexpected data count");
+            }
+
+            // Scope disposed and not completed => rollback, but no enlistment, so changes should still be there.
+            using (var conn3 = OpenConnection(ConnectionStringEnlistOff))
+            {
+                Assert.That(conn3.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(1), "Insert unexpectedly rollback-ed");
             }
         }
 
-        [Test, Description("Single connection rollback")]
-        public void Rollback()
+        [Test, Description("Single connection enlisting explicitly, rollback")]
+        public void RollbackExplicitEnlist()
         {
             using (var conn = OpenConnection())
             {
                 using (new TransactionScope())
                 {
                     conn.EnlistTransaction(Transaction.Current);
-                    Assert.That(conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test')"), Is.EqualTo(1));
+                    Assert.That(conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test')"), Is.EqualTo(1),
+                        "Unexpected insert rowcount");
                     // No commit
                 }
                 AssertNoPreparedTransactions();
                 using (var tx = conn.BeginTransaction())
                 {
-                    Assert.That(conn.ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(0));
+                    Assert.That(conn.ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(0),
+                        "Unexpected data count");
                     tx.Rollback();
                 }
             }
+        }
+
+        [Test, Description("Single connection enlisting implicitly, rollback")]
+        public void RollbackImplicitEnlist()
+        {
+            using (new TransactionScope())
+            using (var conn = OpenConnection(ConnectionStringEnlistOn))
+            {
+                Assert.That(conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test')"), Is.EqualTo(1),
+                    "Unexpected insert rowcount");
+                AssertNoPreparedTransactions();
+                // No commit
+            }
+
+            AssertNumberOfRows(0);
         }
 
         [Test]
@@ -120,13 +149,41 @@ namespace Npgsql.Tests
                     conn1.EnlistTransaction(Transaction.Current);
                     conn2.EnlistTransaction(Transaction.Current);
 
-                    Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1));
-                    Assert.That(conn2.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test2')"), Is.EqualTo(1));
+                    Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1),
+                        "Unexpected first insert rowcount");
+                    Assert.That(conn2.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test2')"), Is.EqualTo(1),
+                        "Unexpected second insert rowcount");
+
                     scope.Complete();
                 }
             }
             // TODO: There may be a race condition here, where the prepared transaction above still hasn't committed.
             AssertNoPreparedTransactions();
+            AssertNumberOfRows(2);
+        }
+
+        [Test]
+        public void TwoConsecutiveConnections()
+        {
+            using (var scope = new TransactionScope())
+            {
+                using (var conn1 = OpenConnection(ConnectionStringEnlistOn))
+                {
+                    Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1),
+                        "Unexpected first insert rowcount");
+                }
+
+                using (var conn2 = OpenConnection(ConnectionStringEnlistOn))
+                {
+                    Assert.That(conn2.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test2')"), Is.EqualTo(1),
+                        "Unexpected second insert rowcount");
+                }
+
+                // Consecutive connections used in same scope should not promote the
+                // transaction to distributed.
+                AssertNoPreparedTransactions();
+                scope.Complete();
+            }
             AssertNumberOfRows(2);
         }
 
@@ -137,12 +194,72 @@ namespace Npgsql.Tests
             using (var conn1 = OpenConnection(ConnectionStringEnlistOn))
             using (var conn2 = OpenConnection(ConnectionStringEnlistOn))
             {
-                Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1));
-                Assert.That(conn2.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test2')"), Is.EqualTo(1));
+                Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1),
+                    "Unexpected first insert rowcount");
+                Assert.That(conn2.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test2')"), Is.EqualTo(1),
+                    "Unexpected second insert rowcount");
             }
             // TODO: There may be a race condition here, where the prepared transaction above still hasn't committed.
             AssertNoPreparedTransactions();
             AssertNumberOfRows(0);
+        }
+
+        [Test]
+        public void DistributedRollback()
+        {
+            var disposedCalled = false;
+            var tx = new TransactionScope();
+            try
+            {
+                using (var conn1 = OpenConnection(ConnectionStringEnlistOn))
+                {
+                    Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1),
+                        "Unexpected first insert rowcount");
+
+                    ForceEscalationToDistributedTx.Escalate(true);
+                    tx.Complete();
+                }
+                disposedCalled = true;
+                Assert.That(() => tx.Dispose(), Throws.TypeOf<TransactionAbortedException>());
+                // TODO: There may be a race condition here, where the prepared transaction above still hasn't completed.
+                AssertNoPreparedTransactions();
+                AssertNumberOfRows(0);
+            }
+            finally
+            {
+                if (!disposedCalled)
+                    tx.Dispose();
+            }
+        }
+
+        [Test, Explicit("Failing test and 100 iteration loop.")]
+        public void DistributedRace()
+        {
+            var i = 0;
+            while (i < 100)
+            {
+                i++;
+                try
+                {
+                    using (var tx = new TransactionScope())
+                    using (var conn1 = OpenConnection(ConnectionStringEnlistOn))
+                    {
+                        Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1),
+                            "Unexpected first insert rowcount");
+
+                        ForceEscalationToDistributedTx.Escalate();
+                        tx.Complete();
+                    }
+                    // TODO: There may be a race condition here, where the prepared transaction above still hasn't completed.
+                    // Failure Dodge-able with System.Threading.Thread.Sleep(100);
+                    // Call to AssertNoPreparedTransactions(); tends to hide the trouble, at least for first iteration.
+                    AssertNumberOfRows(i);
+                }
+                catch (Exception ex)
+                {
+                    Assert.Fail("Failed at iteration {0}: {1}", i, ex);
+                }
+            }
         }
 
         [Test]
@@ -155,17 +272,47 @@ namespace Npgsql.Tests
                 conn1.EnlistTransaction(Transaction.Current);
                 conn2.EnlistTransaction(Transaction.Current);
 
-                Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1));
-                Assert.That(conn2.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test2')"), Is.EqualTo(1));
+                Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1),
+                    "Unexpected first insert rowcount");
+                Assert.That(conn2.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test2')"), Is.EqualTo(1),
+                    "Unexpected second insert rowcount");
+
                 conn1.ExecuteNonQuery($"SELECT pg_terminate_backend({conn2.ProcessID})");
                 scope.Complete();
                 Assert.That(() => scope.Dispose(), Throws.Exception.TypeOf<TransactionAbortedException>());
+
                 AssertNoPreparedTransactions();
                 using (var tx = conn1.BeginTransaction())
                 {
-                    Assert.That(conn1.ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(0));
+                    Assert.That(conn1.ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(0),
+                        "Unexpected data count");
                     tx.Rollback();
                 }
+            }
+        }
+
+        [Test]
+        public void ConnectionReuseAfterDistributedTransaction()
+        {
+            using (var conn1 = OpenConnection(ConnectionStringEnlistOff))
+            using (var conn2 = OpenConnection(ConnectionStringEnlistOff))
+            {
+                using (var scope = new TransactionScope())
+                {
+                    conn1.EnlistTransaction(Transaction.Current);
+                    conn2.EnlistTransaction(Transaction.Current);
+
+                    Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1),
+                        "Unexpected first insert rowcount");
+                    Assert.That(conn2.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test2')"), Is.EqualTo(1),
+                        "Unexpected second insert rowcount");
+
+                    scope.Complete();
+                }
+
+                // TODO: There may be a race condition here, where the prepared transaction above still hasn't committed
+                // and un-enlist from connections.
+                Assert.DoesNotThrow(() => conn1.ExecuteScalar(@"SELECT COUNT(*) FROM data"));
             }
         }
 
@@ -179,7 +326,8 @@ namespace Npgsql.Tests
             using (var scope = new TransactionScope())
             using (var conn = OpenConnection(connString))
             {
-                Assert.That(conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test')"), Is.EqualTo(1));
+                Assert.That(conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test')"), Is.EqualTo(1),
+                    "Unexpected insert rowcount");
                 conn.Close();
                 AssertNoPreparedTransactions();
                 scope.Complete();
@@ -270,7 +418,7 @@ namespace Npgsql.Tests
         [Test]
         public void ReuseConnectionRollback()
         {
-            using (var scope = new TransactionScope())
+            using (new TransactionScope())
             using (var conn = new NpgsqlConnection(ConnectionStringEnlistOn))
             {
                 conn.Open();
@@ -283,9 +431,9 @@ namespace Npgsql.Tests
                 conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test2')");
                 conn.Close();
 
-                scope.Complete();
+                // No commit
             }
-            AssertNumberOfRows(2);
+            AssertNumberOfRows(0);
         }
 
         [Test]
@@ -297,7 +445,7 @@ namespace Npgsql.Tests
                 {
                     conn1.Open();
                     var processId = conn1.ProcessID;
-                    using (var conn2 = new NpgsqlConnection(ConnectionStringEnlistOn)) {}
+                    using (new NpgsqlConnection(ConnectionStringEnlistOn)) { }
                     conn1.Close();
 
                     conn1.Open();
@@ -361,7 +509,7 @@ namespace Npgsql.Tests
         }
 
         void AssertNoPreparedTransactions()
-            => Assert.That(GetNumberOfPreparedTransactions(), Is.EqualTo(0));
+            => Assert.That(GetNumberOfPreparedTransactions(), Is.EqualTo(0), "Prepared transactions found");
 
         int GetNumberOfPreparedTransactions()
         {
@@ -374,13 +522,58 @@ namespace Npgsql.Tests
         }
 
         void AssertNumberOfRows(int expected)
-          => Assert.That(_controlConn.ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(expected));
+          => Assert.That(_controlConn.ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(expected),
+              "Unexpected data count");
 
         public static string ConnectionStringEnlistOn =
             new NpgsqlConnectionStringBuilder(ConnectionString) { Enlist = true }.ToString();
 
         public static string ConnectionStringEnlistOff =
             new NpgsqlConnectionStringBuilder(ConnectionString) { Enlist = false }.ToString();
+
+        // Idea from NHibernate test project, DtcFailuresFixture
+        public class ForceEscalationToDistributedTx : IEnlistmentNotification
+        {
+            readonly bool _shouldRollBack;
+
+            public static void Escalate(bool shouldRollBack = false)
+            {
+                var force = new ForceEscalationToDistributedTx(shouldRollBack);
+                Transaction.Current.EnlistDurable(Guid.NewGuid(), force, EnlistmentOptions.None);
+            }
+
+            ForceEscalationToDistributedTx(bool shouldRollBack)
+            {
+                _shouldRollBack = shouldRollBack;
+            }
+
+            public void Prepare(PreparingEnlistment preparingEnlistment)
+            {
+                if (_shouldRollBack)
+                {
+                    preparingEnlistment.ForceRollback();
+                }
+                else
+                {
+                    preparingEnlistment.Prepared();
+                }
+            }
+
+            public void Commit(Enlistment enlistment)
+            {
+                enlistment.Done();
+            }
+
+            public void Rollback(Enlistment enlistment)
+            {
+                enlistment.Done();
+            }
+
+            public void InDoubt(Enlistment enlistment)
+            {
+                enlistment.Done();
+            }
+        }
 
         #region Setup
 
@@ -450,9 +643,9 @@ namespace Npgsql.Tests
         class FakePromotableSinglePhaseNotification : IPromotableSinglePhaseNotification
         {
             public byte[] Promote() { return null; }
-            public void Initialize() {}
-            public void SinglePhaseCommit(SinglePhaseEnlistment singlePhaseEnlistment) {}
-            public void Rollback(SinglePhaseEnlistment singlePhaseEnlistment) {}
+            public void Initialize() { }
+            public void SinglePhaseCommit(SinglePhaseEnlistment singlePhaseEnlistment) { }
+            public void Rollback(SinglePhaseEnlistment singlePhaseEnlistment) { }
         }
 
         #endregion
