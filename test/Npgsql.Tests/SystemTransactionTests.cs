@@ -345,7 +345,7 @@ namespace Npgsql.Tests
 
         int GetNumberOfPreparedTransactions()
         {
-            using (var conn = OpenConnection())
+            using (var conn = OpenConnection(ConnectionStringEnlistOff))
             using (var cmd = new NpgsqlCommand("SELECT COUNT(*) FROM pg_prepared_xacts WHERE database = @database", conn))
             {
                 cmd.Parameters.Add(new NpgsqlParameter("database", conn.Database));
