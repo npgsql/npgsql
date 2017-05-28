@@ -726,12 +726,18 @@ namespace Npgsql.Tests
                         LANGUAGE 'plpgsql';
                 ");
 
+                var mre = new ManualResetEvent(false);
                 PostgresNotice notice = null;
-                NoticeEventHandler action = (sender, args) => notice = args.Notice;
+                NoticeEventHandler action = (sender, args) =>
+                {
+                    notice = args.Notice;
+                    mre.Set();
+                };
                 conn.Notice += action;
                 try
                 {
                     conn.ExecuteNonQuery("SELECT pg_temp.emit_notice()::TEXT"); // See docs for CreateSleepCommand
+                    mre.WaitOne(5000);
                     Assert.That(notice, Is.Not.Null, "No notice was emitted");
                     Assert.That(notice.MessageText, Is.EqualTo("testnotice"));
                     Assert.That(notice.Severity, Is.EqualTo("NOTICE"));
