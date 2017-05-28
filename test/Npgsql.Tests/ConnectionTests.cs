@@ -275,7 +275,7 @@ namespace Npgsql.Tests
         {
             var unknownIp = Environment.GetEnvironmentVariable("NPGSQL_UNKNOWN_IP");
             if (unknownIp == null)
-                TestUtil.IgnoreExceptOnBuildServer("NPGSQL_UNKNOWN_IP isn't defined and is required for connection timeout tests");
+                Assert.Ignore("NPGSQL_UNKNOWN_IP isn't defined and is required for connection timeout tests");
 
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString) {
                 Host = unknownIp,
@@ -298,7 +298,7 @@ namespace Npgsql.Tests
         {
             var unknownIp = Environment.GetEnvironmentVariable("NPGSQL_UNKNOWN_IP");
             if (unknownIp == null)
-                TestUtil.IgnoreExceptOnBuildServer("NPGSQL_UNKNOWN_IP isn't defined and is required for connection timeout tests");
+                Assert.Ignore("NPGSQL_UNKNOWN_IP isn't defined and is required for connection timeout tests");
 
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
@@ -319,7 +319,7 @@ namespace Npgsql.Tests
         {
             var unknownIp = Environment.GetEnvironmentVariable("NPGSQL_UNKNOWN_IP");
             if (unknownIp == null)
-                TestUtil.IgnoreExceptOnBuildServer("NPGSQL_UNKNOWN_IP isn't defined and is required for connection cancellation tests");
+                Assert.Ignore("NPGSQL_UNKNOWN_IP isn't defined and is required for connection cancellation tests");
 
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
