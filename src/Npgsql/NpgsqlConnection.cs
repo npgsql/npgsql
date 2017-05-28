@@ -36,6 +36,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.Logging;
+using Npgsql.NameTranslation;
 #if NET45 || NET451
 using System.Transactions;
 #endif
