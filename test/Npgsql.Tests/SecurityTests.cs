@@ -91,7 +91,7 @@ namespace Npgsql.Tests
                 Assert.That(conn.IsSecure, Is.False);
         }
 
-        [Test, LinuxIgnore("Needs to be run explicitly with Kerberos credentials")]
+        [Test, Explicit("Needs to be set up (and run with with Kerberos credentials on Linux)")]
         public void IntegratedSecurityWithUsername()
         {
             var username = Environment.GetEnvironmentVariable("USERNAME") ??
@@ -120,7 +120,7 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test, LinuxIgnore("Needs to be run explicitly with Kerberos credentials")]
+        [Test, Explicit("Needs to be set up (and run with with Kerberos credentials on Linux)")]
         public void IntegratedSecurityWithoutUsername()
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
@@ -145,7 +145,7 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test, LinuxIgnore("Needs to be run explicitly with Kerberos credentials")]
+        [Test, Explicit("Needs to be set up (and run with with Kerberos credentials on Linux)")]
         public void ConnectionDatabasePopulatedOnConnect()
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
