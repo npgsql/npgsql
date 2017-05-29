@@ -16,6 +16,10 @@ title: Documentation
     <img src="https://img.shields.io/appveyor/ci/roji/npgsql/dev.svg" />
   </a>
 
+  <a href="https://travis-ci.org/npgsql/npgsql" >
+    <img src="https://img.shields.io/travis/npgsql/npgsql.svg" />
+  </a>
+
   <a href="https://gitter.im/npgsql/npgsql">
     <img src="https://img.shields.io/badge/GITTER-JOIN%20CHAT-brightgreen.svg?style=plastic;maxAge=600" />
   </a>
