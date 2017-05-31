@@ -964,7 +964,27 @@ namespace Npgsql
 
         #region Replication
 
-        // TODO: replication
+        public NpgsqlRawReplicationStream BeginReplication(string replicationCommand)
+        {
+            if (replicationCommand == null)
+                throw new ArgumentNullException(nameof(replicationCommand));
+            if (!replicationCommand.TrimStart().ToUpper().StartsWith("START_REPLICATION"))
+                throw new ArgumentException("Must contain a START_REPLICATION command!", nameof(replicationCommand));
+
+            var connector = CheckReadyAndGetConnector();
+            Log.Debug("Starting raw START_REPLICATION operation", connector.Id);
+            connector.StartUserAction(ConnectorState.Copy);
+            try
+            {
+                var stream = new NpgsqlRawReplicationStream(connector, replicationCommand);
+                return stream;
+            }
+            catch
+            {
+                connector.EndUserAction();
+                throw;
+            }
+        }
 
         #endregion
 

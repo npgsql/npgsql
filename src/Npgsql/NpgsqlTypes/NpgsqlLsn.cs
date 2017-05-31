@@ -22,10 +22,6 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 #pragma warning disable 1591
 
@@ -40,87 +36,14 @@ namespace NpgsqlTypes
 
         public uint Lower => (uint)(Value % ((ulong)uint.MaxValue + 1));
 
-        public NpgsqlLsn(uint lower, uint upper)
+        public NpgsqlLsn(uint upper, uint lower)
         {
             Value = upper * ((ulong)uint.MaxValue + 1) + lower;
         }
 
-        public static NpgsqlLsn Parse(string str)
+        public override string ToString()
         {
-            if (!TryParse(str, out NpgsqlLsn value))
-                throw new InvalidCastException($"The string \"{str}\" is not a valid log sequence number.");
-
-            return value;
-        }
-
-        public static bool TryParse(string str, out NpgsqlLsn value)
-        {
-            if (string.IsNullOrEmpty(str))
-            {
-                value = default(NpgsqlLsn);
-                return false;
-            }
-
-            uint lower = 0, upper = 0;
-            var counter = 0;
-            var readUpper = false;
-            foreach (var ch in str)
-            {
-                uint hex;
-                if (ch >= '0' && ch <= '9')
-                {
-                    hex = (uint)(ch - '0');
-                }
-                else if (ch >= 'a' && ch <= 'f')
-                {
-                    hex = (uint)(ch - 'a' + 10);
-                }
-                else if (ch >= 'A' && ch <= 'F')
-                {
-                    hex = (uint)(ch - 'A' + 10);
-                }
-                else if (ch == '/' && counter > 0)
-                {
-                    readUpper = true;
-                    counter = 0;
-                    continue;
-                }
-                else
-                {
-                    readUpper = false;
-                    break;
-                }
-
-                if (counter >= 8)
-                {
-                    readUpper = false;
-                    break;
-                }
-
-                if (readUpper)
-                {
-                    if (counter > 0)
-                        upper <<= 4;
-                    upper += hex;
-                }
-                else
-                {
-                    if (counter > 0)
-                        lower <<= 4;
-                    lower += hex;
-                }
-
-                ++counter;
-            }
-
-            if (readUpper && counter > 0)
-            {
-                value = new NpgsqlLsn(lower, upper);
-                return true;
-            }
-
-            value = default(NpgsqlLsn);
-            return false;
+            return string.Format("{0:X}/{1:X}", Upper, Lower);
         }
 
         public bool Equals(NpgsqlLsn other)
@@ -148,6 +71,84 @@ namespace NpgsqlTypes
         public static bool operator !=(NpgsqlLsn x, NpgsqlLsn y)
         {
             return x.Value != y.Value;
+        }
+
+        public static NpgsqlLsn Parse(string str)
+        {
+            if (!TryParse(str, out NpgsqlLsn value))
+                throw new InvalidCastException($"The string \"{str}\" is not a valid log sequence number.");
+
+            return value;
+        }
+
+        public static bool TryParse(string str, out NpgsqlLsn value)
+        {
+            if (string.IsNullOrEmpty(str))
+            {
+                value = default(NpgsqlLsn);
+                return false;
+            }
+
+            uint lower = 0, upper = 0;
+            var counter = 0;
+            var readingLower = false;
+            foreach (var ch in str)
+            {
+                uint hex;
+                if (ch >= '0' && ch <= '9')
+                {
+                    hex = (uint)(ch - '0');
+                }
+                else if (ch >= 'a' && ch <= 'f')
+                {
+                    hex = (uint)(ch - 'a' + 0xa);
+                }
+                else if (ch >= 'A' && ch <= 'F')
+                {
+                    hex = (uint)(ch - 'A' + 0xA);
+                }
+                else if (ch == '/' && counter > 0)
+                {
+                    readingLower = true;
+                    counter = 0;
+                    continue;
+                }
+                else
+                {
+                    readingLower = false;
+                    break;
+                }
+
+                if (counter >= 8)
+                {
+                    readingLower = false;
+                    break;
+                }
+
+                if (readingLower)
+                {
+                    if (counter > 0)
+                        lower <<= 4;
+                    lower += hex;
+                }
+                else
+                {
+                    if (counter > 0)
+                        upper <<= 4;
+                    upper += hex;
+                }
+
+                ++counter;
+            }
+
+            if (readingLower && counter > 0)
+            {
+                value = new NpgsqlLsn(upper, lower);
+                return true;
+            }
+
+            value = default(NpgsqlLsn);
+            return false;
         }
     }
 }

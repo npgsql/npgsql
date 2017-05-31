@@ -1088,7 +1088,7 @@ namespace Npgsql.Tests
                 cmd.CommandText = createCmd;
 
                 NpgsqlDataReader reader = null;
-                bool atLeastOneRow = false;
+                var atLeastOneRow = false;
                 try
                 {
                     reader = cmd.ExecuteReader();
@@ -1106,6 +1106,75 @@ namespace Npgsql.Tests
                     reader?.Dispose();
                     if (atLeastOneRow)
                         connection.ExecuteNonQuery(dropCmd);
+                }
+            }
+        }
+
+        [Test]
+        public void ReplicationStream()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ReplicationMode = ReplicationMode.Logical
+            };
+
+            const string testSlotName = "npgsql_repl_test";
+            // default logical decoding plugin
+            const string testPlugin = "test_decoding";
+
+            using (var connection = new NpgsqlConnection(csb.ToString()))
+            {
+                connection.Open();
+
+                try
+                {
+                    connection.ExecuteNonQuery("DROP_REPLICATION_SLOT " + testSlotName);
+                }
+                catch
+                {
+                    
+                }
+
+                try
+                {
+                    var cmd = connection.CreateCommand();
+                    cmd.CommandText = "CREATE_REPLICATION_SLOT " + testSlotName + " LOGICAL " + testPlugin;
+                    NpgsqlLsn lsn;
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        Assert.IsTrue(reader.Read());
+                        lsn = NpgsqlLsn.Parse(reader.GetString(1));
+                        Assert.IsFalse(reader.Read());
+                    }
+
+                    csb.ReplicationMode = ReplicationMode.None;
+                    using (var normalConnection = new NpgsqlConnection(csb.ToString()))
+                    {
+                        normalConnection.Open();
+                        normalConnection.ExecuteNonQuery("CREATE TABLE repl_table (id int NOT NULL PRIMARY KEY, value text NULL)");
+                        for (var i = 0; i < 5; i++)
+                        {
+                            normalConnection.ExecuteNonQuery($"INSERT INTO repl_table (id, value) VALUES({i+1}, 'str{i}')");
+                        }
+                        normalConnection.ExecuteNonQuery("DROP TABLE repl_table");
+                    }
+
+                    using (var stream = connection.BeginReplication("START_REPLICATION SLOT " + testSlotName + " LOGICAL " + lsn))
+                    using (var reader = new StreamReader(stream))
+                    {
+                        var counter = 0;
+                        while (stream.FetchNext())
+                        {
+                            var str = reader.ReadToEnd();
+                            Trace.Write(str);
+                            counter++;
+                        }
+                        Assert.That(counter, Is.EqualTo(21));
+                    }
+                }
+                finally
+                {
+                    connection.ExecuteNonQuery("DROP_REPLICATION_SLOT " + testSlotName);
                 }
             }
         }

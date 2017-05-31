@@ -249,9 +249,10 @@ namespace Npgsql
 
 
         // Since COPY is rarely used, allocate these lazily
-        CopyInResponseMessage  _copyInResponseMessage;
-        CopyOutResponseMessage _copyOutResponseMessage;
-        CopyDataMessage        _copyDataMessage;
+        CopyInResponseMessage   _copyInResponseMessage;
+        CopyOutResponseMessage  _copyOutResponseMessage;
+        CopyDataMessage         _copyDataMessage;
+        CopyBothResponseMessage _copyBothResponseMessage;
 
         #endregion
 
@@ -442,8 +443,19 @@ namespace Npgsql
                 startupMessage["search_path"] = Settings.SearchPath;
             if (IsSecure && !IsRedshift)
                 startupMessage["ssl_renegotiation_limit"] = "0";
-            if (Settings.ReplicationMode == ReplicationMode.Logical)
+            switch (Settings.ReplicationMode)
+            {
+            case ReplicationMode.Physical:
+                startupMessage["replication"] = "true";
+                break;
+            case ReplicationMode.Logical:
                 startupMessage["replication"] = "database";
+                break;
+            case ReplicationMode.None:
+                break;
+            default:
+                throw new NotSupportedException($"The specified replication mode \"{Settings.ReplicationMode}\" not supported.");
+            }
 
             // Should really never happen, just in case
             if (startupMessage.Length > WriteBuffer.Size)
@@ -993,6 +1005,12 @@ namespace Npgsql
                     }
                     return _copyOutResponseMessage.Load(ReadBuffer);
 
+                case BackendMessageCode.CopyBothResponse:
+                    if (_copyBothResponseMessage == null){
+                        _copyBothResponseMessage=new CopyBothResponseMessage();
+                    }
+                    return _copyBothResponseMessage.Load(ReadBuffer);
+
                 case BackendMessageCode.CopyData:
                     if (_copyDataMessage == null) {
                         _copyDataMessage = new CopyDataMessage();
@@ -1001,6 +1019,10 @@ namespace Npgsql
 
                 case BackendMessageCode.CopyDone:
                     return CopyDoneMessage.Instance;
+
+                case BackendMessageCode.WalData:
+                case BackendMessageCode.PrimaryKeepAlive:
+                    throw new InvalidOperationException($"Internal Npgsql bug: unexpected replication message {code}. It may indicate an error in the replication stream reader. Please file a bug.");
 
                 case BackendMessageCode.PortalSuspended:
                     throw new NpgsqlException("Unimplemented message: " + code);

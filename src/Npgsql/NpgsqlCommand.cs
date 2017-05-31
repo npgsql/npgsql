@@ -810,7 +810,7 @@ namespace Npgsql
 
         async Task SendReplication(bool async, CancellationToken cancellationToken)
         {
-            if (_statements.Count = 0)
+            if (_statements.Count == 0)
                 return;
 
             if (_statements.Count != 1)

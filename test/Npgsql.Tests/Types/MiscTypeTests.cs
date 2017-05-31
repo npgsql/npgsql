@@ -510,7 +510,7 @@ namespace Npgsql.Tests.Types
         [Test]
         public void Lsn()
         {
-            var expected = new NpgsqlLsn(42, 23);
+            var expected = new NpgsqlLsn(23, 42);
             Assert.That(expected.Lower, Is.EqualTo(42));
             Assert.That(expected.Upper, Is.EqualTo(23));
             Assert.That(expected.Value, Is.EqualTo(98784247850));
@@ -528,8 +528,8 @@ namespace Npgsql.Tests.Types
                     Assert.AreEqual(expected.Upper, reader.GetFieldValue<NpgsqlLsn>(0).Upper);
                     Assert.AreEqual(expected.Lower, reader.GetFieldValue<NpgsqlLsn>(1).Lower);
                     Assert.AreEqual(expected.Upper, reader.GetFieldValue<NpgsqlLsn>(1).Upper);
-                    Assert.AreEqual(0x7FFFFFF, reader.GetFieldValue<NpgsqlLsn>(2).Lower);
-                    Assert.AreEqual(0xF4240, reader.GetFieldValue<NpgsqlLsn>(2).Upper);
+                    Assert.AreEqual(0x7FFFFFF, reader.GetFieldValue<NpgsqlLsn>(2).Upper);
+                    Assert.AreEqual(0xF4240, reader.GetFieldValue<NpgsqlLsn>(2).Lower);
                 }
             }
 
@@ -541,9 +541,11 @@ namespace Npgsql.Tests.Types
 
             NpgsqlLsn parsed;
             Assert.IsTrue(NpgsqlLsn.TryParse("10000000/1", out parsed));
-            Assert.That(parsed.Lower, Is.EqualTo(0x10000000));
-            Assert.That(parsed.Upper, Is.EqualTo(1));
-            Assert.That(parsed.Value, Is.EqualTo(0x110000000));
+            Assert.That(parsed.Upper, Is.EqualTo(0x1000_0000));
+            Assert.That(parsed.Lower, Is.EqualTo(1));
+            Assert.That(parsed.Value, Is.EqualTo(0x1000_0000_0000_0001));
+
+            Assert.That(NpgsqlLsn.Parse(parsed.ToString()), Is.EqualTo(parsed));
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1138")]

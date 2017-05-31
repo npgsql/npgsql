@@ -70,8 +70,10 @@ namespace Npgsql
             case BackendMessageCode.ParseComplete:
             case BackendMessageCode.PasswordPacket:
             case BackendMessageCode.PortalSuspended:
+            case BackendMessageCode.PrimaryKeepAlive:
             case BackendMessageCode.ReadyForQuery:
             case BackendMessageCode.RowDescription:
+            case BackendMessageCode.WalData:
                 return;
             default:
                 throw new NpgsqlException("Unknown message code: " + code);

@@ -1364,7 +1364,7 @@ namespace Npgsql
     /// <summary>
     /// Specifies one of possible replication modes.
     /// </summary>
-    /// <remarks>https://www.postgresql.org/docs/current/static/protocol-replication.html"</remarks>
+    /// <remarks>https://www.postgresql.org/docs/current/static/protocol-replication.html</remarks>
     [PublicAPI]
     public enum ReplicationMode
     {
@@ -1374,12 +1374,23 @@ namespace Npgsql
         None,
 
         /// <summary>
-        /// Connection should be openned in the logical replication mode (database replication).
+        /// Physical replication mode. This parameter tells the backend to go
+        /// into walsender mode, wherein a small set of replication commands
+        /// can be issued instead of SQL statements. Only the simple query
+        /// protocol can be used in walsender mode.
+        /// </summary>
+        /// <remarks>replication=true</remarks>
+        Physical,
+
+        /// <summary>
+        /// Logical replication mode. Similar to the physical replication mode,
+        /// but instructs walsender to connect to the specified database. Note that a
+        /// <a href="https://www.postgresql.org/docs/current/static/logicaldecoding-output-plugin.html">logical decoding output plugin</a>
+        /// is required to transform the data from the write-ahead log's internal representation
+        /// into the format the consumer of a replication slot desires.
         /// </summary>
         /// <remarks>replication=database</remarks>
         Logical
-
-        //TODO: add 'true' for physical replication
     }
 
     #endregion
