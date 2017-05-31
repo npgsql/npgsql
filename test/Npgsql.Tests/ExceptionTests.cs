@@ -24,6 +24,7 @@
 using System;
 using System.Data;
 using System.IO;
+using System.Net.Sockets;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using NUnit.Framework.Constraints;
@@ -166,6 +167,22 @@ namespace Npgsql.Tests
                 // Just in case, anything but a PostgresException would trigger the connection breaking, check that
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
             }
+        }
+
+        [Test]
+        public void NpgsqlExceptionTransience()
+        {
+            Assert.True(new NpgsqlException("", new IOException()).IsTransient);
+            Assert.True(new NpgsqlException("", new SocketException()).IsTransient);
+            Assert.False(new NpgsqlException().IsTransient);
+            Assert.False(new NpgsqlException("", new Exception("Inner Exception")).IsTransient);
+        }
+
+        [Test]
+        public void PostgresExceptionTransience()
+        {
+            Assert.True(new PostgresException { SqlState = "53300" }.IsTransient);
+            Assert.False(new PostgresException { SqlState = "0" }.IsTransient);
         }
 
 #if NET451

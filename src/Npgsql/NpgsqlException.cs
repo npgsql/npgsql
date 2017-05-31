@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data.Common;
+using System.IO;
 using System.Linq;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
@@ -44,6 +46,13 @@ namespace Npgsql
         /// <param name="message">The message that describes the error.</param>
         public NpgsqlException(string message)
             : base(message) { }
+
+        /// <summary>
+        /// Specifies whether the exception is considered transient, that is, whether retrying to operation could
+        /// succeed (e.g. a network error).
+        /// </summary>
+        public virtual bool IsTransient =>
+            InnerException is IOException || InnerException is SocketException;
 
         #region Serialization
 #if NET45 || NET451
