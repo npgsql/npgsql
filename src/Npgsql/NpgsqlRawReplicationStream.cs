@@ -1,10 +1,9 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
+using Npgsql.FrontendMessages;
 using NpgsqlTypes;
 
 namespace Npgsql
@@ -13,20 +12,29 @@ namespace Npgsql
     {
         readonly NpgsqlConnector _connector;
         readonly ReadBuffer _buffer;
-        readonly WalDataResponseMessage _dataMessage;
-        readonly PrimaryKeepAliveResponseMessage _keepAlive;
+
+        // Backend messages
+        readonly WalDataResponseMessage _walDataResponse;
+
+        readonly PrimaryKeepAliveResponseMessage _primaryKeepAliveResponse;
+
+        // Frontend messages
+        readonly StandbyStatusUpdateMessage _standbyStatusUpdateRequest;
 
         int _bytesLeft;
-        int _position;
-        bool _isConsumed;
+        int _length;
 
+        /// <inheritdoc />
         public override bool CanRead => true;
 
+        /// <inheritdoc />
         public override bool CanSeek => false;
 
+        /// <inheritdoc />
         public override bool CanWrite => false;
 
-        public override long Length => throw new NotSupportedException("The length of the stream is unknown.");
+        /// <inheritdoc />
+        public override long Length => _length;
 
         [PublicAPI]
         public NpgsqlLsn CurrentLsn { get; private set; }
@@ -37,11 +45,17 @@ namespace Npgsql
         [PublicAPI]
         public long SystemClock { get; private set; }
 
+        /// <inheritdoc />
         public override long Position
         {
-            get => throw new NotSupportedException("The stream does not support seeking.");
+            get => _length - _bytesLeft;
             set => Seek(value, SeekOrigin.Begin);
         }
+
+        /// <summary>
+        /// Indicates that the stream is reached the end and the server expecting next query.
+        /// </summary>
+        public bool EndOfStream { get; private set; }
 
         internal NpgsqlRawReplicationStream([NotNull] NpgsqlConnector connector, string replicationCommand)
         {
@@ -50,56 +64,69 @@ namespace Npgsql
 
             _connector = connector;
             _buffer = _connector.ReadBuffer;
-            _dataMessage = new WalDataResponseMessage(connector.Settings.ReplicationMode);
-            _keepAlive = new PrimaryKeepAliveResponseMessage();
+            _walDataResponse = new WalDataResponseMessage(connector.Settings.ReplicationMode);
+            _primaryKeepAliveResponse = new PrimaryKeepAliveResponseMessage();
+            _standbyStatusUpdateRequest = new StandbyStatusUpdateMessage();
 
-            _connector.SendQuery(replicationCommand);
-            _isConsumed = true;
+            _connector.StartUserAction(ConnectorState.Replication);
+            try
+            {
+                _connector.SendQuery(replicationCommand);
+                _connector.ReadExpecting<CopyBothResponseMessage>();
+            }
+            catch
+            {
+                _connector.EndUserAction();
+                throw;
+            }
         }
 
         public bool FetchNext()
         {
-            while (_bytesLeft > 0)
-            {
-                if (_buffer.ReadBytesLeft == 0)
-                {
-                    _buffer.ReadMore(false).GetAwaiter().GetResult();
-                }
-                Debug.Assert(_buffer.ReadBytesLeft > 0);
+            return FetchNext(false);
+        }
 
-                var bytesSkip = Math.Min(_buffer.ReadBytesLeft, _bytesLeft);
-                _buffer.Skip(bytesSkip);
-                _bytesLeft -= bytesSkip;
-            }
+        bool FetchNext(bool waitCompletionConfirmation)
+        {
+            if (_bytesLeft > 0)
+                Skip(_bytesLeft);
 
-            if (_isConsumed)
-            {
-                _connector.ReadExpecting<CopyBothResponseMessage>();
-                _isConsumed = false;
-            }
+            if (EndOfStream)
+                return false;
 
+            var dontWait = !waitCompletionConfirmation;
+            var copyDone = false;
             while (true)
             {
                 if (_bytesLeft < 0)
                     throw new InvalidOperationException($"Internal Npgsql bug: the state of {nameof(NpgsqlRawReplicationStream)} is corrupted. Please file a bug.");
                 if (_bytesLeft == 0)
                 {
-                    //if (_buffer.ReadBytesLeft == 0)
-                    //{
-                    //    var realStream = _buffer.Underlying;
-                    //    _buffer.ReadMore(false).GetAwaiter().GetResult();
-                    //    if (_buffer.ReadBytesLeft == 0)
-                    //        return false;
-                    //}
+                    if (dontWait && !_connector.CanReadMore())
+                    {
+                        // There are no more pending incoming messages.
+                        return false;
+                    }
 
                     var msg = _connector.ReadMessage();
                     switch (msg.Code)
                     {
                     case BackendMessageCode.CopyData:
                         _bytesLeft = ((CopyDataMessage)msg).Length;
+                        _length = _bytesLeft;
                         break;
                     case BackendMessageCode.CopyDone:
-                        _isConsumed = true;
+                        copyDone = true;
+                        dontWait = false;
+                        continue;
+                    case BackendMessageCode.CompletedResponse:
+                        Debug.Assert(copyDone);
+                        _connector.ReadExpecting<CommandCompleteMessage>();
+                        _connector.ReadExpecting<ReadyForQueryMessage>();
+                        
+                        Debug.Assert(_connector.State == ConnectorState.Replication);
+                        EndOfStream = true;
+                        _connector.EndUserAction();
                         return false;
                     default:
                         throw _connector.UnexpectedMessageReceived(msg.Code);
@@ -112,15 +139,29 @@ namespace Npgsql
                 switch (msgCode)
                 {
                 case BackendMessageCode.WalData:
-                    _dataMessage.Load(_buffer);
-                    _bytesLeft -= _dataMessage.MessageLength;
-                    _position = 0;
+                    _walDataResponse.Load(_buffer);
+                    _bytesLeft -= _walDataResponse.MessageLength;
+                    EndLsn = _walDataResponse.EndLsn;
+                    SystemClock = _walDataResponse.SystemClock;
+                    if (copyDone)
+                    {
+                        // CopyDone was recieved. Waiting for the completion confirmation.
+                        Skip(_bytesLeft);
+                        continue;
+                    }
+                    CurrentLsn = _walDataResponse.StartLsn;
                     return true;
+
                 case BackendMessageCode.PrimaryKeepAlive:
-                    _keepAlive.Load(_buffer);
-                    _bytesLeft -= _keepAlive.MessageLength;
+                    _primaryKeepAliveResponse.Load(_buffer);
+                    _bytesLeft -= _primaryKeepAliveResponse.MessageLength;
+                    EndLsn = _primaryKeepAliveResponse.EndLsn;
+                    SystemClock = _primaryKeepAliveResponse.SystemClock;
+                    if (_primaryKeepAliveResponse.ReplyImmediately && !copyDone)
+                        Flush();
                     Debug.Assert(_bytesLeft == 0);
                     continue;
+
                 default:
                     throw _connector.UnexpectedMessageReceived(msgCode);
                 }
@@ -129,6 +170,10 @@ namespace Npgsql
 
         public override void Flush()
         {
+            if (EndOfStream)
+                return;
+
+            // TODO: send keep alive
         }
 
         public override int Read(byte[] buffer, int offset, int count)
@@ -137,25 +182,106 @@ namespace Npgsql
                 return 0;
 
             var bytesRead = _buffer.ReadAllBytes(buffer, offset, Math.Min(_bytesLeft, count), false, false).Result;
-            _position += bytesRead;
             _bytesLeft -= bytesRead;
 
             return bytesRead;
         }
 
+        /// <summary>
+        /// This stream can seek only forward.
+        /// </summary>
         public override long Seek(long offset, SeekOrigin origin)
         {
-            throw new NotSupportedException("The stream does not support seeking.");
+            var position = Position;
+            long newPosition;
+            switch (origin)
+            {
+            case SeekOrigin.Begin:
+                newPosition = offset;
+                break;
+            case SeekOrigin.Current:
+                newPosition = position + offset;
+                break;
+            case SeekOrigin.End:
+                newPosition = Length + offset;
+                break;
+            default:
+                throw new ArgumentException($"The origin {origin} not supported.", nameof(origin));
+            }
+            if (newPosition < position)
+                throw new NotSupportedException("The stream does not support backward seeking.");
+
+            Skip((int)(newPosition - position));
+            return Position;
         }
 
+        /// <summary>
+        /// This method is not supported.
+        /// </summary>
         public override void SetLength(long value)
         {
             throw new NotSupportedException("The stream is read-only.");
         }
 
+        /// <summary>
+        /// This method is not supported.
+        /// </summary>
         public override void Write(byte[] buffer, int offset, int count)
         {
             throw new NotSupportedException("The stream is read-only.");
+        }
+
+
+#if NET45 || NET451
+        /// <inheritdoc />
+        public override void Close()
+#else
+        protected override void Dispose(bool disposing)
+        {
+            Close();
+            base.Dispose(disposing);
+        }
+        
+        public void Close()
+#endif
+        {
+            if (_connector.State != ConnectorState.Replication)
+                return;
+
+            _connector.SendMessage(CopyDoneMessage.Instance);
+            while (FetchNext(true))
+            {
+                // Recieving and skipping all pending messages.
+            }
+
+
+#if NET45 || NET451
+            base.Close();
+#endif
+        }
+
+        int Skip(int bytes)
+        {
+            if (bytes < 0)
+                throw new ArgumentException("The number of bytes is negative.", nameof(bytes));
+
+            var result = Math.Min(bytes, _bytesLeft);
+            var skipBytesLeft = result;
+            while (skipBytesLeft > 0)
+            {
+                if (_buffer.ReadBytesLeft == 0)
+                {
+                    _buffer.ReadMore(false).GetAwaiter().GetResult();
+                }
+                Debug.Assert(_buffer.ReadBytesLeft > 0);
+
+                var skip = Math.Min(_buffer.ReadBytesLeft, skipBytesLeft);
+                _buffer.Skip(skip);
+                skipBytesLeft -= skip;
+                _bytesLeft -= skip;
+            }
+
+            return result;
         }
     }
 }

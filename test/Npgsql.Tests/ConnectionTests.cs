@@ -1125,16 +1125,6 @@ namespace Npgsql.Tests
             using (var connection = new NpgsqlConnection(csb.ToString()))
             {
                 connection.Open();
-
-                try
-                {
-                    connection.ExecuteNonQuery("DROP_REPLICATION_SLOT " + testSlotName);
-                }
-                catch
-                {
-                    
-                }
-
                 try
                 {
                     var cmd = connection.CreateCommand();
@@ -1169,7 +1159,7 @@ namespace Npgsql.Tests
                             Trace.Write(str);
                             counter++;
                         }
-                        Assert.That(counter, Is.EqualTo(21));
+                        Assert.That(counter, Is.EqualTo(19));
                     }
                 }
                 finally

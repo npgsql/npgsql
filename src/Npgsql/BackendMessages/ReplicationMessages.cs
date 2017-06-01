@@ -78,18 +78,18 @@ namespace Npgsql.BackendMessages
         /// <summary>
         /// Indicates that the client should reply to this message as soon as possible, to avoid a timeout disconnect.
         /// </summary>
-        internal bool ReplyAsap { get; private set; }
+        internal bool ReplyImmediately { get; private set; }
 
         internal int MessageLength =>
             1    // Code
             + 8  // EndLsn
             + 8  // SystemClock
-            + 1; // ReplyAsap
+            + 1; // ReplyImmediately
 
         internal void Load(ReadBuffer buffer)
         {
-            var lower = buffer.ReadUInt32();
             var upper = buffer.ReadUInt32();
+            var lower = buffer.ReadUInt32();
             EndLsn = new NpgsqlLsn(upper, lower);
 
             SystemClock = buffer.ReadInt64();
@@ -98,13 +98,13 @@ namespace Npgsql.BackendMessages
             switch (replyAsap)
             {
             case 0:
-                ReplyAsap = false;
+                ReplyImmediately = false;
                 break;
             case 1:
-                ReplyAsap = true;
+                ReplyImmediately = true;
                 break;
             default:
-                throw new Exception("Invalid \"reply as soon as posible\" indicator in PrimaryKeepAliveResponse message: " + replyAsap);
+                throw new Exception("Invalid \"reply immediately\" indicator in PrimaryKeepAliveResponse message: " + replyAsap);
             }
         }
     }

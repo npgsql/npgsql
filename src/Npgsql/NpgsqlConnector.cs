@@ -351,6 +351,7 @@ namespace Npgsql
                     case ConnectorState.Fetching:
                     case ConnectorState.Waiting:
                     case ConnectorState.Copy:
+                    case ConnectorState.Replication:
                         return true;
                     case ConnectorState.Closed:
                     case ConnectorState.Connecting:
@@ -1433,6 +1434,7 @@ namespace Npgsql
             case ConnectorState.Fetching:
             case ConnectorState.Copy:
             case ConnectorState.Waiting:
+            case ConnectorState.Replication:
                 throw new InvalidOperationException("Reset() called on connector with state " + State);
             default:
                 throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {State} of enum {nameof(ConnectorState)}. Please file a bug.");
@@ -1903,6 +1905,31 @@ namespace Npgsql
             }
         }
 
+        /// <summary>
+        /// Check if there is at least one byte either in the ReadBuffer or in the underlying stream.
+        /// This method does not perform reading.
+        /// </summary>
+        /// <returns></returns>
+        internal bool CanReadMore()
+        {
+            if (ReadBuffer.ReadBytesLeft > 0)
+                return true;
+
+            if (_stream is Tls.TlsClientStream tlsStream)
+            {
+                if (!tlsStream.HasBufferedReadData(false))
+                    return _baseStream.DataAvailable;
+                return true;
+            }
+
+            if (ReferenceEquals(_stream, _baseStream))
+            {
+                return _baseStream.DataAvailable;
+            }
+
+            throw new NotSupportedException($"Unexpected type of the underlying stream: {_stream.GetType()}.");
+        }
+
         #endregion Misc
     }
 
@@ -1953,6 +1980,11 @@ namespace Npgsql
         /// The connector is engaged in a COPY operation.
         /// </summary>
         Copy,
+
+        /// <summary>
+        /// The connector is either fetching or waiting for a replication message.
+        /// </summary>
+        Replication,
     }
 
 #pragma warning disable CA1717

@@ -973,17 +973,8 @@ namespace Npgsql
 
             var connector = CheckReadyAndGetConnector();
             Log.Debug("Starting raw START_REPLICATION operation", connector.Id);
-            connector.StartUserAction(ConnectorState.Copy);
-            try
-            {
-                var stream = new NpgsqlRawReplicationStream(connector, replicationCommand);
-                return stream;
-            }
-            catch
-            {
-                connector.EndUserAction();
-                throw;
-            }
+            var stream = new NpgsqlRawReplicationStream(connector, replicationCommand);
+            return stream;
         }
 
         #endregion
