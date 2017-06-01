@@ -326,7 +326,7 @@ namespace Npgsql
         /// </summary>
         internal ConnectorState State
         {
-            get { return (ConnectorState)_state; }
+            get => (ConnectorState)_state;
             set
             {
                 var newState = (int)value;
@@ -472,7 +472,7 @@ namespace Npgsql
                     return username;
             }
 
-#if NET45 || NET451
+#if !NETSTANDARD1_3
             username = Environment.UserName;
             if (!string.IsNullOrEmpty(username))
                 return username;
@@ -603,13 +603,13 @@ namespace Npgsql
             }
             else
             {
-#if NET45 || NET451
+#if NETSTANDARD1_3
+                // .NET Standard 1.3 didn't have sync DNS methods
+                endpoints = Dns.GetHostAddressesAsync(Host).Result.Select(a => new IPEndPoint(a, Port)).ToArray();
+#else
                 // Note that there aren't any timeoutable DNS methods, and we want to use sync-only
                 // methods (not to rely on any TP threads etc.)
                 endpoints = Dns.GetHostAddresses(Host).Select(a => new IPEndPoint(a, Port)).ToArray();
-#else
-                // .NET Core doesn't appear to have sync DNS methods (yet?)
-                endpoints = Dns.GetHostAddressesAsync(Host).Result.Select(a => new IPEndPoint(a, Port)).ToArray();
 #endif
                 timeout.Check();
             }
@@ -821,7 +821,7 @@ namespace Npgsql
                 if (CurrentReader != null)
                 {
                     // The reader cleanup will call EndUserAction
-                    CurrentReader.Cleanup();
+                    await CurrentReader.Cleanup(async);
                 }
                 else
                 {
@@ -949,7 +949,7 @@ namespace Npgsql
                     return null;
                 case BackendMessageCode.NoticeResponse:
                     var notice = new PostgresNotice(buf);
-                    Log.Debug($"Received notice: {notice}", Id);
+                    Log.Debug($"Received notice: {notice.MessageText}", Id);
                     Connection?.OnNotice(notice);
                     return null;
                 case BackendMessageCode.NotificationResponse:
@@ -1829,6 +1829,8 @@ namespace Npgsql
                     break;
                 }
             }
+            if (!versionString.Contains('.'))
+                versionString += ".0";
             ServerVersion = new Version(versionString);
         }
 

@@ -146,7 +146,7 @@ namespace Npgsql.Tests
         [OneTimeSetUp]
         public void OneTimeSetup()
         {
-            bool countersExist = false;
+            var countersExist = false;
             try
             {
                 countersExist = PerformanceCounterCategory.Exists(Counter.DiagnosticsCounterCategory);

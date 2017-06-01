@@ -43,12 +43,8 @@ namespace System.Net
         }
 
         public string Filename {
-            get {
-                return _filename;
-            }
-            set {
-                _filename = value;
-            }
+            get => _filename;
+            set => _filename = value;
         }
 
         public override AddressFamily AddressFamily => AddressFamily.Unix;

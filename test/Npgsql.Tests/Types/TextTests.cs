@@ -181,7 +181,7 @@ namespace Npgsql.Tests.Types
                 var actual = new char[expected.Length];
                 //ExecuteNonQuery(String.Format(@"INSERT INTO data (field_text) VALUES ('{0}')", str));
 
-                string queryText = $@"SELECT '{str}', 'foo'";
+                var queryText = $@"SELECT '{str}', 'foo'";
                 using (var cmd = new NpgsqlCommand(queryText, conn))
                 using (var reader = cmd.ExecuteReader(behavior))
                 {
@@ -358,14 +358,14 @@ namespace Npgsql.Tests.Types
                 {
                     reader.Read();
                     var expected = new char[] { 'a', (char)(256 - 3), 'b', (char)66, (char)230 };
-                    for (int i = 0; i < expected.Length; i++)
+                    for (var i = 0; i < expected.Length; i++)
                     {
                         Assert.AreEqual(expected[i], reader.GetChar(i));
                     }
                     var arr = (char[])reader.GetValue(5);
                     var arr2 = (char[])reader.GetValue(6);
                     Assert.AreEqual(testArr.Length, arr.Length);
-                    for (int i = 0; i < arr.Length; i++)
+                    for (var i = 0; i < arr.Length; i++)
                     {
                         Assert.AreEqual(testArr[i], arr[i]);
                         Assert.AreEqual(testArr2[i], arr2[i]);

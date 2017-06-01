@@ -66,8 +66,8 @@ namespace NpgsqlTypes
             // Only when a .NET user wants to print the sort order.
             _lexemes.Sort((a, b) => a.Text.CompareTo(b.Text));
 
-            int res = 0;
-            int pos = 1;
+            var res = 0;
+            var pos = 1;
             while (pos < _lexemes.Count)
             {
                 if (_lexemes[pos].Text != _lexemes[res].Text)
@@ -112,16 +112,16 @@ namespace NpgsqlTypes
             if (value == null)
                 throw new ArgumentNullException(nameof(value));
 
-            List<Lexeme> lexemes = new List<Lexeme>();
-            int pos = 0;
-            int wordPos = 0;
-            StringBuilder sb = new StringBuilder();
+            var lexemes = new List<Lexeme>();
+            var pos = 0;
+            var wordPos = 0;
+            var sb = new StringBuilder();
             List<Lexeme.WordEntryPos> wordEntryPositions;
 
             WaitWord:
             if (pos >= value.Length)
                 goto Finish;
-            if (Char.IsWhiteSpace(value[pos]))
+            if (char.IsWhiteSpace(value[pos]))
             {
                 pos++;
                 goto WaitWord;
@@ -147,7 +147,7 @@ namespace NpgsqlTypes
             goto WaitEndWord;
 
             WaitEndWord:
-            if (pos >= value.Length || Char.IsWhiteSpace(value[pos]))
+            if (pos >= value.Length || char.IsWhiteSpace(value[pos]))
             {
                 lexemes.Add(new Lexeme(sb.ToString()));
                 if (pos >= value.Length)
@@ -205,7 +205,7 @@ namespace NpgsqlTypes
             goto InPosInfo;
 
             InPosInfo:
-            int digitPos = pos;
+            var digitPos = pos;
             while (pos < value.Length && value[pos] >= '0' && value[pos] <= '9')
                 pos++;
             if (digitPos == pos)
@@ -225,7 +225,7 @@ namespace NpgsqlTypes
                 }
                 if (value[pos] >= 'B' && value[pos] <= 'D' || value[pos] >= 'b' && value[pos] <= 'd')
                 {
-                    char weight = value[pos];
+                    var weight = value[pos];
                     if (weight >= 'b' && weight <= 'd')
                         weight = (char)(weight - ('b' - 'B'));
                     wordEntryPositions.Add(new Lexeme.WordEntryPos(wordPos, Lexeme.Weight.D + ('D' - weight)));
@@ -237,7 +237,7 @@ namespace NpgsqlTypes
             goto WaitPosDelim;
 
             WaitPosDelim:
-            if (pos >= value.Length || Char.IsWhiteSpace(value[pos]))
+            if (pos >= value.Length || char.IsWhiteSpace(value[pos]))
             {
                 if (pos < value.Length)
                     pos++;
@@ -339,7 +339,7 @@ namespace NpgsqlTypes
             {
                 if (list == null)
                     return null;
-                bool needsProcessing = false;
+                var needsProcessing = false;
                 for (var i = 1; i < list.Count; i++)
                 {
                     if (list[i - 1].Pos >= list[i].Pos)
@@ -356,8 +356,8 @@ namespace NpgsqlTypes
 
                 list.Sort((x, y) => x.Pos.CompareTo(y.Pos));
 
-                int a = 0;
-                for (int b = 1; b < list.Count; b++)
+                var a = 0;
+                for (var b = 1; b < list.Count; b++)
                 {
                     if (list[a].Pos != list[b].Pos)
                     {

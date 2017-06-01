@@ -536,17 +536,17 @@ namespace Npgsql.Tests.Types
             {
                 var expectedValue = 8.99m;
                 command.Parameters.Add("moneyvalue", NpgsqlDbType.Money).Value = expectedValue;
-                var result = (Decimal) command.ExecuteScalar();
+                var result = (decimal) command.ExecuteScalar();
                 Assert.AreEqual(expectedValue, result);
 
                 expectedValue = 100m;
                 command.Parameters[0].Value = expectedValue;
-                result = (Decimal) command.ExecuteScalar();
+                result = (decimal) command.ExecuteScalar();
                 Assert.AreEqual(expectedValue, result);
 
                 expectedValue = 72.25m;
                 command.Parameters[0].Value = expectedValue;
-                result = (Decimal) command.ExecuteScalar();
+                result = (decimal) command.ExecuteScalar();
                 Assert.AreEqual(expectedValue, result);
             }
         }
@@ -679,7 +679,7 @@ namespace Npgsql.Tests.Types
                 var command = new NpgsqlCommand(createTable, conn);
                 command.ExecuteNonQuery();
 
-                NpgsqlParameter uuidDbParam = new NpgsqlParameter(":param1", NpgsqlDbType.Uuid);
+                var uuidDbParam = new NpgsqlParameter(":param1", NpgsqlDbType.Uuid);
                 uuidDbParam.Value = Guid.NewGuid();
 
                 command = new NpgsqlCommand(@"INSERT INTO person (person_uuid) VALUES (:param1);", conn);

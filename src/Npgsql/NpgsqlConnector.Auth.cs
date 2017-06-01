@@ -110,12 +110,10 @@ namespace Npgsql
                     var targetName = $"{KerberosServiceName}/{Host}";
                     // AuthenticateAsClientAsync doesn't exist in .NET 4.5/4.5.1 (only introduced in 4.6)
                     // Conversely, no sync in .NET Standard 1.3 :/
-#if NET45 || NET451
-                    negotiateStream.AuthenticateAsClient(CredentialCache.DefaultNetworkCredentials, targetName);
-#elif NETSTANDARD1_3
+#if NETSTANDARD1_3
                     await negotiateStream.AuthenticateAsClientAsync(CredentialCache.DefaultNetworkCredentials, targetName);
 #else
-#error Missing platform
+                    negotiateStream.AuthenticateAsClient(CredentialCache.DefaultNetworkCredentials, targetName);
 #endif
                 }
                 catch (AuthenticationCompleteException)
@@ -235,12 +233,12 @@ namespace Npgsql
             public override bool CanRead => true;
             public override bool CanWrite => true;
             public override bool CanSeek => false;
-            public override long Length { get { throw new NotSupportedException(); } }
+            public override long Length => throw new NotSupportedException();
 
             public override long Position
             {
-                get { throw new NotSupportedException(); }
-                set { throw new NotSupportedException(); }
+                get => throw new NotSupportedException();
+                set => throw new NotSupportedException();
             }
         }
 

@@ -85,14 +85,14 @@ namespace Npgsql
             }
             set
             {
-                int index = IndexOf(parameterName);
+                var index = IndexOf(parameterName);
 
                 if (index == -1)
                 {
                     throw new ArgumentException("Parameter not found");
                 }
 
-                NpgsqlParameter oldValue = _internalList[index];
+                var oldValue = _internalList[index];
 
                 if (value.CleanName != oldValue.CleanName)
                 {
@@ -111,7 +111,7 @@ namespace Npgsql
         [PublicAPI]
         public new NpgsqlParameter this[int index]
         {
-            get { return _internalList[index]; }
+            get => _internalList[index];
             set
             {
                 var oldValue = _internalList[index];
@@ -427,7 +427,7 @@ namespace Npgsql
 
         #region IList Member
 
-#if NET45 || NET451
+#if !NETSTANDARD1_3
         /// <summary>
         /// Report whether the collection is read only.  Always false.
         /// </summary>
@@ -458,7 +458,7 @@ namespace Npgsql
                 throw new ArgumentNullException(nameof(oValue));
 
             CheckType(oValue);
-            NpgsqlParameter value = oValue as NpgsqlParameter;
+            var value = oValue as NpgsqlParameter;
             Debug.Assert(value != null);
             if (value.Collection != null)
             {
@@ -524,7 +524,7 @@ namespace Npgsql
         [ContractAnnotation("=>true,parameter:notnull; =>false,parameter:null")]
         public bool TryGetValue(string parameterName, [CanBeNull] out NpgsqlParameter parameter)
         {
-            int index = IndexOf(parameterName);
+            var index = IndexOf(parameterName);
 
             if (index != -1)
             {
@@ -581,7 +581,7 @@ namespace Npgsql
             return Count - 1;
         }
 
-#if NET45 || NET451
+#if !NETSTANDARD1_3
         /// <summary>
         /// Report whether the collection is fixed size.  Always false.
         /// </summary>
@@ -592,7 +592,7 @@ namespace Npgsql
 
         #region ICollection Member
 
-#if NET45 || NET451
+#if !NETSTANDARD1_3
         /// <summary>
         /// Report whether the collection is synchronized.
         /// </summary>

@@ -109,7 +109,7 @@ namespace Npgsql.Tests
 #if NET_2_0
             Assert.IsFalse(p.SourceColumnNullMapping, "SourceColumnNullMapping");
 #endif
-#if NET451
+#if !NETCOREAPP1_1
             Assert.AreEqual(DataRowVersion.Current, p.SourceVersion, "SourceVersion");
 #endif
             Assert.AreEqual(NpgsqlDbType.Unknown, p.NpgsqlDbType, "NpgsqlDbType");
@@ -144,7 +144,7 @@ namespace Npgsql.Tests
 #if NET_2_0
             Assert.IsFalse(p.SourceColumnNullMapping, "B:SourceColumnNullMapping");
 #endif
-#if NET451
+#if !NETCOREAPP1_1
             Assert.AreEqual(DataRowVersion.Current, p.SourceVersion, "B:SourceVersion");
 #endif
             Assert.AreEqual(NpgsqlDbType.Timestamp, p.NpgsqlDbType, "B:NpgsqlDbType");
@@ -178,7 +178,7 @@ namespace Npgsql.Tests
 #if NET_2_0
             Assert.IsFalse(p.SourceColumnNullMapping, "B:SourceColumnNullMapping");
 #endif
-#if NET451
+#if !NETCOREAPP1_1
             Assert.AreEqual(DataRowVersion.Current, p.SourceVersion, "B:SourceVersion");
 #endif
             Assert.AreEqual(NpgsqlDbType.Unknown, p.NpgsqlDbType, "B:NpgsqlDbType");
@@ -197,7 +197,7 @@ namespace Npgsql.Tests
         [Test]
         public void Constructor2_Value_Null()
         {
-            var p = new NpgsqlParameter("address", (Object) null);
+            var p = new NpgsqlParameter("address", (object) null);
             Assert.AreEqual(DbType.Object, p.DbType, "A:DbType");
             Assert.AreEqual(ParameterDirection.Input, p.Direction, "A:Direction");
             Assert.IsFalse(p.IsNullable, "A:IsNullable");
@@ -212,7 +212,7 @@ namespace Npgsql.Tests
 #if NET_2_0
             Assert.IsFalse(p.SourceColumnNullMapping, "A:SourceColumnNullMapping");
 #endif
-#if NET451
+#if !NETCOREAPP1_1
             Assert.AreEqual(DataRowVersion.Current, p.SourceVersion, "A:SourceVersion");
 #endif
             Assert.AreEqual(NpgsqlDbType.Unknown, p.NpgsqlDbType, "A:NpgsqlDbType");
@@ -228,7 +228,7 @@ namespace Npgsql.Tests
         }
 
 #if NET_2_0
-#if NET451
+#if !NETCOREAPP1_1
         [Test]
         //.ctor (String, NpgsqlDbType, Int32, String, ParameterDirection, bool, byte, byte, DataRowVersion, object)
         public void Constructor7()
@@ -403,10 +403,10 @@ namespace Npgsql.Tests
         {
             var notsupported = new object[]
                                         {
-                                            UInt16.MaxValue,
-                                            UInt32.MaxValue,
-                                            UInt64.MaxValue,
-                                            SByte.MaxValue,
+                                            ushort.MaxValue,
+                                            uint.MaxValue,
+                                            ulong.MaxValue,
+                                            sbyte.MaxValue,
                                             new NpgsqlParameter()
                                         };
 
@@ -697,7 +697,7 @@ namespace Npgsql.Tests
             using (var command = new NpgsqlCommand())
             {
                 // Put plenty of parameters in the collection to turn on hash lookup functionality.
-                for (int i = 0 ; i < 10 ; i++)
+                for (var i = 0 ; i < 10 ; i++)
                 {
                     command.Parameters.AddWithValue(string.Format("p{0:00}", i + 1), NpgsqlDbType.Text, string.Format("String parameter value {0}", i + 1));
                 }
@@ -737,7 +737,7 @@ namespace Npgsql.Tests
             param.IsNullable = true;
             param.ParameterName = "parameterName";
             param.SourceColumn = "source_column";
-#if NET451
+#if !NETCOREAPP1_1
             param.SourceVersion = DataRowVersion.Current;
 #endif
             param.NpgsqlValue = 5;
@@ -753,7 +753,7 @@ namespace Npgsql.Tests
             Assert.AreEqual(param.IsNullable, newParam.IsNullable);
             Assert.AreEqual(param.ParameterName, newParam.ParameterName);
             Assert.AreEqual(param.SourceColumn, newParam.SourceColumn);
-#if NET451
+#if !NETCOREAPP1_1
             Assert.AreEqual(param.SourceVersion, newParam.SourceVersion);
 #endif
             Assert.AreEqual(param.NpgsqlValue, newParam.NpgsqlValue);

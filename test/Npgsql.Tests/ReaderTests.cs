@@ -169,15 +169,17 @@ namespace Npgsql.Tests
             {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
                 const string text = "Random text";
-                conn.ExecuteNonQuery(String.Format(@"INSERT INTO data (name) VALUES ('{0}')", text));
+                conn.ExecuteNonQuery($@"INSERT INTO data (name) VALUES ('{text}')");
 
                 var command = new NpgsqlCommand("SELECT name FROM data WHERE name = :value;", conn);
-                var param = new NpgsqlParameter();
-                param.ParameterName = "value";
-                param.DbType = DbType.String;
+                var param = new NpgsqlParameter
+                {
+                    ParameterName = "value",
+                    DbType = DbType.String,
+                    Size = text.Length,
+                    Value = text
+                };
                 //param.NpgsqlDbType = NpgsqlDbType.Text;
-                param.Size = text.Length;
-                param.Value = text;
                 command.Parameters.Add(param);
 
                 using (var dr = command.ExecuteReader())
@@ -447,7 +449,7 @@ namespace Npgsql.Tests
                 var param = new NpgsqlParameter("some_param", NpgsqlDbType.Varchar);
                 param.Direction = ParameterDirection.Output;
                 command.Parameters.Add(param);
-                using (NpgsqlDataReader dr = command.ExecuteReader())
+                using (var dr = command.ExecuteReader())
                     Assert.IsFalse(dr.NextResult());
             }
         }

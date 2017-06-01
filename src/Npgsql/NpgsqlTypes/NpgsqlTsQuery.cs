@@ -275,7 +275,7 @@ namespace NpgsqlTypes
         /// </summary>
         public string Text
         {
-            get { return _text; }
+            get => _text;
             set
             {
                 if (string.IsNullOrEmpty(value))
@@ -292,10 +292,7 @@ namespace NpgsqlTypes
         /// </summary>
         public Weight Weights
         {
-            get
-            {
-                return _weights;
-            }
+            get => _weights;
             set
             {
                 if (((byte)value >> 4) != 0)

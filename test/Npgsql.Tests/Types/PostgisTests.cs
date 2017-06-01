@@ -279,7 +279,7 @@ namespace Npgsql.Tests.Types
                 try
                 {
                     using (var writer = c.BeginBinaryImport($"COPY testcopybin (g) FROM STDIN (FORMAT BINARY)"))
-                        for (int i = 0; i < 1000; i++)
+                        for (var i = 0; i < 1000; i++)
                             writer.WriteRow(a.Geom);
                 }
                 catch(Exception e)
@@ -291,7 +291,7 @@ namespace Npgsql.Tests.Types
                 {
                     using (var rdr = c.BeginBinaryExport($"COPY testcopybin (g) TO STDOUT (FORMAT BINARY) "))
                     {
-                        for (int i =0; i < 1000; i++)
+                        for (var i =0; i < 1000; i++)
                         {
                             rdr.StartRow();
                             Assert.IsTrue(a.Geom.Equals(rdr.Read<PostgisGeometry>()));
@@ -317,7 +317,7 @@ namespace Npgsql.Tests.Types
                 try
                 {
                     using (var writer = c.BeginBinaryImport("COPY testcopybinarray (g) FROM STDIN (FORMAT BINARY)"))
-                        for (int i = 0; i < 1000; i++)
+                        for (var i = 0; i < 1000; i++)
                             writer.WriteRow(new[] {t});
                 }
                 catch(Exception e)
@@ -328,7 +328,7 @@ namespace Npgsql.Tests.Types
                 try
                 {
                     using (var rdr = c.BeginBinaryExport("COPY testcopybinarray (g) TO STDOUT (FORMAT BINARY)"))
-                        for (int i = 0; i < 1000; i++)
+                        for (var i = 0; i < 1000; i++)
                         {
                             rdr.StartRow();
                             Assert.IsTrue(t.SequenceEqual(rdr.Read<PostgisGeometry[]>()));
@@ -389,6 +389,37 @@ namespace Npgsql.Tests.Types
                         { SRID = 4326 }
                 }) { SRID = 4326 };
 
+                cmd.ExecuteNonQuery();
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1557")]
+        public void SubGeometriesWithSRID()
+        {
+            var point = new PostgisPoint(1, 1)
+            {
+                SRID = 4326
+            };
+
+            var lineString = new PostgisLineString(new[] { new Coordinate2D(2, 2), new Coordinate2D(3, 3) })
+            {
+                SRID = 4326
+            };
+
+            var polygon = new PostgisPolygon(new[] { new[] { new Coordinate2D(4, 4), new Coordinate2D(5, 5), new Coordinate2D(6, 6), new Coordinate2D(4, 4) } })
+            {
+                SRID = 4326
+            };
+
+            var collection = new PostgisGeometryCollection(new PostgisGeometry[] { point, lineString, polygon })
+            {
+                SRID = 4326
+            };
+
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT :p", conn))
+            {
+                cmd.Parameters.AddWithValue("p", collection);
                 cmd.ExecuteNonQuery();
             }
         }

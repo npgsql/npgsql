@@ -117,7 +117,7 @@ namespace Npgsql.Tls
 
         public static ushort ReadUInt16(byte[] buf, ref int offset)
         {
-            ushort res = (ushort)((buf[offset] << 8) | buf[offset + 1]);
+            var res = (ushort)((buf[offset] << 8) | buf[offset + 1]);
             offset += 2;
             return res;
         }
@@ -162,8 +162,8 @@ namespace Npgsql.Tls
             Encoding.ASCII.GetBytes(label, 0, label.Length, a, 0);
             Buffer.BlockCopy(seed, 0, a, labelLen, seed.Length);
 
-            byte[] ret = new byte[rounds * blockSize];
-            byte[] input = new byte[blockSize + a.Length];
+            var ret = new byte[rounds * blockSize];
+            var input = new byte[blockSize + a.Length];
             Buffer.BlockCopy(a, 0, input, blockSize, a.Length);
 
             for (var i = 0; i < rounds; i++)
@@ -172,7 +172,7 @@ namespace Npgsql.Tls
                 ClearArray(a);
                 a = aNew;
                 Buffer.BlockCopy(a, 0, input, 0, blockSize);
-                byte[] temp = hmac.ComputeHash(input);
+                var temp = hmac.ComputeHash(input);
                 Buffer.BlockCopy(temp, 0, ret, i * blockSize, blockSize);
                 ClearArray(temp);
             }
@@ -180,7 +180,7 @@ namespace Npgsql.Tls
             ClearArray(input);
             if (bytesNeeded == ret.Length)
                 return ret;
-            byte[] retTruncated = new byte[bytesNeeded];
+            var retTruncated = new byte[bytesNeeded];
             Buffer.BlockCopy(ret, 0, retTruncated, 0, bytesNeeded);
             ClearArray(ret);
             return retTruncated;
@@ -230,7 +230,7 @@ namespace Npgsql.Tls
             var lenLen = buf[offset++] & ~0x80;
             if (lenLen > 3)
                 throw new NotSupportedException("ASN sequences longer than 2^24 bytes not supported.");
-            int len = 0;
+            var len = 0;
             for (var i = 0; i < lenLen; i++)
             {
                 len <<= 8;
@@ -320,7 +320,7 @@ namespace Npgsql.Tls
             Utils.GetASNLength(signature, ref offset);
             offset += 1; // 0x02 (INTEGER)
 
-            int len1 = Utils.GetASNLength(signature, ref offset);
+            var len1 = Utils.GetASNLength(signature, ref offset);
             if (integerLength == len1 - 1)
             {
                 // Remove sign byte
@@ -331,7 +331,7 @@ namespace Npgsql.Tls
             Buffer.BlockCopy(signature, offset, decodedSignature, integerLength - len1, len1);
             offset += len1;
             offset += 1; // 0x02 (INTEGER)
-            int len2 = Utils.GetASNLength(signature, ref offset);
+            var len2 = Utils.GetASNLength(signature, ref offset);
             if (integerLength == len2 - 1)
             {
                 // Remove sign byte

@@ -24,16 +24,12 @@
 using System;
 using System.Data;
 using System.IO;
-using System.Threading.Tasks;
+using System.Net.Sockets;
 using NUnit.Framework;
-using NUnit.Framework.Constraints;
-using Npgsql;
-using NpgsqlTypes;
 
-#if NET451
+#if !NETCOREAPP1_1
 using System.Runtime.Serialization.Formatters.Binary;
 #endif
-
 
 namespace Npgsql.Tests
 {
@@ -168,7 +164,23 @@ namespace Npgsql.Tests
             }
         }
 
-#if NET451
+        [Test]
+        public void NpgsqlExceptionTransience()
+        {
+            Assert.True(new NpgsqlException("", new IOException()).IsTransient);
+            Assert.True(new NpgsqlException("", new SocketException()).IsTransient);
+            Assert.False(new NpgsqlException().IsTransient);
+            Assert.False(new NpgsqlException("", new Exception("Inner Exception")).IsTransient);
+        }
+
+        [Test]
+        public void PostgresExceptionTransience()
+        {
+            Assert.True(new PostgresException { SqlState = "53300" }.IsTransient);
+            Assert.False(new PostgresException { SqlState = "0" }.IsTransient);
+        }
+
+#if !NETCOREAPP1_1
         [Test]
         public void Serialization()
         {

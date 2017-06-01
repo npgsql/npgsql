@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data.Common;
+using System.IO;
 using System.Linq;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
-#if NET45 || NET451
+#if !NETSTANDARD1_3
 using System.Runtime.Serialization;
 #endif
 
@@ -20,7 +22,7 @@ namespace Npgsql
     /// Purely Npgsql-related issues which aren't related to the server will be raised
     /// via the standard CLR exceptions (e.g. ArgumentException).
     /// </remarks>
-#if NET45 || NET451
+#if !NETSTANDARD1_3
     [Serializable]
 #endif
     public class NpgsqlException : DbException
@@ -45,8 +47,15 @@ namespace Npgsql
         public NpgsqlException(string message)
             : base(message) { }
 
+        /// <summary>
+        /// Specifies whether the exception is considered transient, that is, whether retrying to operation could
+        /// succeed (e.g. a network error).
+        /// </summary>
+        public virtual bool IsTransient =>
+            InnerException is IOException || InnerException is SocketException;
+
         #region Serialization
-#if NET45 || NET451
+#if !NETSTANDARD1_3
         /// <summary>
         /// Initializes a new instance of the <see cref="NpgsqlException"/> class with serialized data.
         /// </summary>

@@ -70,7 +70,7 @@ namespace Npgsql.Tls
                     while (offset + 4 <= end)
                     {
                         // We can read at least the header
-                        int start = offset;
+                        var start = offset;
                         offset++;
                         var messageLen = Utils.ReadUInt24(buffer, ref offset);
                         offset += messageLen;

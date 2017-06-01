@@ -80,7 +80,7 @@ namespace Npgsql
                     _preparedStatement = null;
                 return _preparedStatement;
             }
-            set { _preparedStatement = value; }
+            set => _preparedStatement = value;
         }
 
         [CanBeNull]

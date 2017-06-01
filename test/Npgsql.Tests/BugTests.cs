@@ -1,9 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using NUnit.Framework;
+#if !NETCOREAPP1_1
+using System.Transactions;
+#endif
 
 namespace Npgsql.Tests
 {
@@ -62,6 +66,41 @@ namespace Npgsql.Tests
                 cmd.ExecuteNonQuery();
             }
         }
+
+#if !NETCOREAPP1_1
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1497")]
+        public void Bug1497()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (id INT4)");
+                conn.ExecuteNonQuery("INSERT INTO data (id) VALUES (NULL)");
+                using (var cmd = new NpgsqlCommand("SELECT * FROM data", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    var dt = new DataTable();
+                    dt.Load(reader);
+                }
+            }
+        }
+#endif
+
+#if !NETCOREAPP1_1
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1558")]
+        public void Bug1558()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Pooling = false,
+                Enlist = true
+            };
+            using (var tx = new TransactionScope())
+            using (var conn = new NpgsqlConnection(csb.ToString()))
+            {
+                conn.Open();
+            }
+        }
+#endif
 
         #region Bug1285
 

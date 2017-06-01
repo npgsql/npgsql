@@ -102,8 +102,8 @@ namespace Npgsql
 
             CheckDisposed();
 
-            int chunkCount = Math.Min(count, _manager.MaxTransferBlockSize);
-            int read = 0;
+            var chunkCount = Math.Min(count, _manager.MaxTransferBlockSize);
+            var read = 0;
 
             while (read < count)
             {
@@ -157,7 +157,7 @@ namespace Npgsql
             if (!_writeable)
                 throw new NotSupportedException("Write cannot be called on a stream opened with no write permissions");
 
-            int totalWritten = 0;
+            var totalWritten = 0;
 
             while (totalWritten < count)
             {
@@ -202,10 +202,7 @@ namespace Npgsql
                 CheckDisposed();
                 return _pos;
             }
-            set
-            {
-                Seek(value, SeekOrigin.Begin);
-            }
+            set => Seek(value, SeekOrigin.Begin);
         }
 
         /// <summary>
@@ -228,8 +225,8 @@ namespace Npgsql
         async Task<long> GetLength(bool async)
         {
             CheckDisposed();
-            long old = _pos;
-            long retval = await Seek(0, SeekOrigin.End, async);
+            var old = _pos;
+            var retval = await Seek(0, SeekOrigin.End, async);
             if (retval != old)
                 await Seek(old, SeekOrigin.Begin, async);
             return retval;
@@ -321,10 +318,10 @@ namespace Npgsql
         /// <summary>
         /// Releases resources at the backend allocated for this stream.
         /// </summary>
-#if NET45 || NET451
-        public override void Close()
-#else
+#if NETSTANDARD1_3
         void Close()
+#else
+        public override void Close()
 #endif
         {
             if (!_disposed)

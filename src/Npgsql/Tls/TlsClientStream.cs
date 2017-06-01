@@ -129,7 +129,7 @@ namespace Npgsql.Tls
         /// <returns>True on success, false on End Of Stream.</returns>
         async Task<bool> ReadRecord(bool async)
         {
-            int packetLength = -1;
+            var packetLength = -1;
             while (true)
             {
                 if (packetLength == -1 && _readEnd - _readStart >= 5)
@@ -163,7 +163,7 @@ namespace Npgsql.Tls
                         _readStart = 0;
                         _readEnd = 0;
                     }
-                    int read = async
+                    var read = async
                         ? await _baseStream.ReadAsync(_readBuf, _readEnd, _readBuf.Length - _readEnd)
                         : _baseStream.Read(_readBuf, _readEnd, _readBuf.Length - _readEnd);
                     if (read == 0)
@@ -195,8 +195,8 @@ namespace Npgsql.Tls
                 Buffer.BlockCopy(_readBuf, _readStart + 5, _readConnState.ReadIv, 0, _readConnState.IvLen);
 
                 _readConnState.ReadAes.IV = _readConnState.ReadIv;
-                int cipherStartPos = _readStart + 5 + _readConnState.IvLen;
-                int cipherLen = _readPacketLen - _readConnState.IvLen;
+                var cipherStartPos = _readStart + 5 + _readConnState.IvLen;
+                var cipherLen = _readPacketLen - _readConnState.IvLen;
 
                 if (_readConnState.TlsVersion == TlsVersion.TLSv1_0)
                 {
@@ -209,7 +209,7 @@ namespace Npgsql.Tls
                     decryptor.TransformBlock(_readBuf, cipherStartPos, cipherLen, _readBuf, cipherStartPos);
                 }
                 int paddingLen = _readBuf[cipherStartPos + cipherLen - 1];
-                bool paddingFail = false;
+                var paddingFail = false;
                 if (paddingLen > cipherLen - 1 - _readConnState.MacLen)
                 {
                     // We have found illegal padding. Instead of just send fatal alert directly,
@@ -217,7 +217,7 @@ namespace Npgsql.Tls
                     paddingLen = 0;
                     paddingFail = true;
                 }
-                int plaintextLen = cipherLen - 1 - paddingLen - _readConnState.MacLen;
+                var plaintextLen = cipherLen - 1 - paddingLen - _readConnState.MacLen;
 
                 // We don't need the IV anymore in the buffer, so overwrite it with seq_num + header to calculate MAC
                 /*Buffer.BlockCopy(_readBuf, _readStart, _readBuf, cipherStartPos - 5, 3);
@@ -237,7 +237,7 @@ namespace Npgsql.Tls
                     SendAlertFatal(AlertDescription.BadRecordMac);
 
                 // Verify that the padding bytes contain the correct value (paddingLen)
-                for (int i = 0; i < paddingLen; i++)
+                for (var i = 0; i < paddingLen; i++)
                     if (_readBuf[cipherStartPos + cipherLen - 2 - i] != paddingLen)
                         SendAlertFatal(AlertDescription.BadRecordMac);
 
@@ -297,7 +297,7 @@ namespace Npgsql.Tls
                 for (var i = 0; i < paddingLen + 1; i++)
                     _writeBuf[startPos + 5 + _connState.IvLen + len + _connState.MacLen + i] = (byte)paddingLen;
 
-                int encryptedLen = len + _connState.MacLen + paddingLen + 1;
+                var encryptedLen = len + _connState.MacLen + paddingLen + 1;
 
                 // Update length now with encrypted length
                 Utils.WriteUInt16(_writeBuf, startPos + 3, (ushort)(_connState.IvLen + encryptedLen));
@@ -401,15 +401,15 @@ namespace Npgsql.Tls
         int TraverseHandshakeMessages()
         {
             HandshakeType lastType = 0;
-            int responseLen = 0;
+            var responseLen = 0;
 
             for (var i = 0; i < _handshakeMessagesBuffer.Messages.Count; i++)
             {
-                int pos = 0;
+                var pos = 0;
                 var buf = _handshakeMessagesBuffer.Messages[i];
                 UpdateHandshakeHash(buf, 0, buf.Length);
-                HandshakeType msgType = (HandshakeType)buf[pos++];
-                int msgLen = Utils.ReadUInt24(buf, ref pos);
+                var msgType = (HandshakeType)buf[pos++];
+                var msgLen = Utils.ReadUInt24(buf, ref pos);
 
                 switch (msgType)
                 {
@@ -569,8 +569,8 @@ namespace Npgsql.Tls
 
         void SendHandshakeMessage(SendHandshakeMessageDelegate func, ref int offset, int ivLen)
         {
-            int start = offset;
-            int messageStart = start + 5 + ivLen;
+            var start = offset;
+            var messageStart = start + 5 + ivLen;
 
             _writeBuf[offset++] = (byte)ContentType.Handshake;
 
@@ -582,7 +582,7 @@ namespace Npgsql.Tls
 
             offset += ivLen;
 
-            int handshakeTypePos = offset;
+            var handshakeTypePos = offset;
 
             // Type and length filled in below
             offset += 4;
@@ -959,7 +959,7 @@ namespace Npgsql.Tls
             if (totalLen == 0)
                 SendAlertFatal(AlertDescription.IllegalParameter);
 
-            int endPos = pos + totalLen;
+            var endPos = pos + totalLen;
             while (pos < endPos)
             {
                 var certLen = Utils.ReadUInt24(buf, ref pos);
@@ -1000,7 +1000,7 @@ namespace Npgsql.Tls
                 errors |= System.Net.Security.SslPolicyErrors.RemoteCertificateChainErrors;
             }
 
-            bool success = _remoteCertificationValidationCallback != null
+            var success = _remoteCertificationValidationCallback != null
                 ? _remoteCertificationValidationCallback(this, _handshakeData.CertList[0], _handshakeData.CertChain, errors)
                 : errors == System.Net.Security.SslPolicyErrors.None;
 
@@ -1036,14 +1036,14 @@ namespace Npgsql.Tls
 
         HandshakeType SendClientKeyExchangeRsa(ref int offset)
         {
-            byte[] preMasterSecret = new byte[48];
+            var preMasterSecret = new byte[48];
 
             _rng.GetBytes(preMasterSecret);
 
             // Highest version supported
             Utils.WriteUInt16(preMasterSecret, 0, (ushort)HighestTlsVersionSupported);
 
-            byte[] encryptedPreMasterSecret = Utils.EncryptPkcsPadding(_handshakeData.CertList[0], preMasterSecret);
+            var encryptedPreMasterSecret = Utils.EncryptPkcsPadding(_handshakeData.CertList[0], preMasterSecret);
             /*var rsa = (RSACryptoServiceProvider)_handshakeData.CertList[0].PublicKey.Key;
             var encryptedPreMasterSecret = rsa.Encrypt(preMasterSecret, false);*/
             SetMasterSecret(preMasterSecret);
@@ -1153,7 +1153,7 @@ namespace Npgsql.Tls
             }
 
             var signatureLen = Utils.ReadUInt16(buf, ref pos);
-            byte[] signature = new byte[signatureLen];
+            var signature = new byte[signatureLen];
             Buffer.BlockCopy(buf, pos, signature, 0, signatureLen);
             pos += signatureLen;
 
@@ -1191,11 +1191,11 @@ namespace Npgsql.Tls
                 bool? res;
 
                 // .NET Framework has an optimized native implementation here, but it doesn't
-                // exist in CoreCLR (netstandard13) or on mono.
+                // exist in CoreCLR or on mono.
                 // We include two checks - one compile-time and one runtime - to allow everyone
                 // to be happy. The OPTIMIZED_CRYPTOGRAPHY define is only enabled explicitly
                 // at the build server
-#if OPTIMIZED_CRYPTOGRAPHY && !NETSTANDARD1_3
+#if OPTIMIZED_CRYPTOGRAPHY && (NET45 || NET451)
                 if (Type.GetType("Mono.Runtime") != null)
                     res = EllipticCurve.VerifySignature(pkParameters, pkKey, hash, signature);
                 else
@@ -1221,7 +1221,7 @@ namespace Npgsql.Tls
                 var dsa = pubKey as DSACryptoServiceProvider;
                 if (signatureAlgorithm == SignatureAlgorithm.RSA && rsa != null)
                 {
-                    bool ok = _pendingConnState.TlsVersion == TlsVersion.TLSv1_2 ?
+                    var ok = _pendingConnState.TlsVersion == TlsVersion.TLSv1_2 ?
                         rsa.VerifyHash(hash, Utils.HashNameToOID[hashAlgorithm.ToString()], signature) :
                         RsaPKCS1.VerifyRsaPKCS1(rsa, signature, hash, _pendingConnState.TlsVersion == TlsVersion.TLSv1_0 && _pendingConnState.CipherSuite.KeyExchange == KeyExchange.DHE_RSA);
 
@@ -1245,7 +1245,7 @@ namespace Npgsql.Tls
                     SendAlertFatal(AlertDescription.IllegalParameter);
                 }
 #else
-                bool ok = false;
+                var ok = false;
                 if (signatureAlgorithm == SignatureAlgorithm.RSA)
                 {
                     using (var rsa = _handshakeData.CertList[0].GetRSAPublicKey())
@@ -1275,7 +1275,7 @@ namespace Npgsql.Tls
                 SendAlertFatal(AlertDescription.UnexpectedMessage);
             }
 
-            byte[] Xc = new byte[33]; // Use a 256-bit exponent
+            var Xc = new byte[33]; // Use a 256-bit exponent
             _rng.GetBytes(Xc);
             Xc[Xc.Length - 1] = 0; // Set last byte to 0 to force a positive number.
             var gBig = new BigInteger(_handshakeData.G);
@@ -1581,8 +1581,8 @@ namespace Npgsql.Tls
 
         HandshakeType SendFinished(ref int offset)
         {
-            byte[] inputHash = _handshakeData.HandshakeHash1.Final();
-            byte[] hash = Utils.PRF(_connState.PRFAlgorithm, _connState.MasterSecret, "client finished", inputHash, 12);
+            var inputHash = _handshakeData.HandshakeHash1.Final();
+            var hash = Utils.PRF(_connState.PRFAlgorithm, _connState.MasterSecret, "client finished", inputHash, 12);
             Buffer.BlockCopy(hash, 0, _writeBuf, offset, 12);
             offset += 12;
             if (_connState.SecureRenegotiation)
@@ -1616,7 +1616,7 @@ namespace Npgsql.Tls
 
         void ParseFinishedMessage(byte[] buf)
         {
-            byte[] hash = Utils.PRF(_connState.PRFAlgorithm, _connState.MasterSecret, "server finished", _handshakeData.HandshakeHash2.Final(), 12);
+            var hash = Utils.PRF(_connState.PRFAlgorithm, _connState.MasterSecret, "server finished", _handshakeData.HandshakeHash2.Final(), 12);
             if (buf.Length != 4 + 12 || !hash.SequenceEqual(buf.Skip(4)))
                 SendAlertFatal(AlertDescription.DecryptError);
             if (_connState.SecureRenegotiation)
@@ -1646,7 +1646,7 @@ namespace Npgsql.Tls
                 Utils.WriteUInt16(_writeBuf, 1, (ushort)_connState.TlsVersion);
                 _writeBuf[5 + _connState.IvLen] = (byte)AlertLevel.Fatal;
                 _writeBuf[5 + _connState.IvLen + 1] = (byte)description;
-                int endPos = Encrypt(0, 2);
+                var endPos = Encrypt(0, 2);
 
                 if (async)
                 {
@@ -1688,7 +1688,7 @@ namespace Npgsql.Tls
                 Utils.WriteUInt16(_writeBuf, 1, (ushort)_connState.TlsVersion);
                 _writeBuf[5 + _connState.IvLen] = (byte)AlertLevel.Warning;
                 _writeBuf[5 + _connState.IvLen + 1] = (byte)AlertDescription.CloseNotify;
-                int endPos = Encrypt(0, 2);
+                var endPos = Encrypt(0, 2);
                 if (async)
                 {
                     await _baseStream.WriteAsync(_writeBuf, 0, endPos);
@@ -1799,7 +1799,7 @@ namespace Npgsql.Tls
 
             try
             {
-                int offset = 0;
+                var offset = 0;
                 SendHandshakeMessage(SendClientHello, ref offset, 0);
                 if (async)
                 {
@@ -1864,7 +1864,7 @@ namespace Npgsql.Tls
                 
                 for (;;)
                 {
-                    int toWrite = Math.Min(WriteSpaceLeft, len);
+                    var toWrite = Math.Min(WriteSpaceLeft, len);
                     Buffer.BlockCopy(buffer, offset, _writeBuf, _writePos, toWrite);
                     _writePos += toWrite;
                     offset += toWrite;
@@ -1928,7 +1928,7 @@ namespace Npgsql.Tls
                 {
                     offset = 0;
                 }
-                int endPos = Encrypt(offset, _writePos - offset - 5 - _connState.IvLen);
+                var endPos = Encrypt(offset, _writePos - offset - 5 - _connState.IvLen);
                 if (async)
                 {
                     await _baseStream.WriteAsync(_writeBuf, 0, endPos);
@@ -1993,7 +1993,7 @@ namespace Npgsql.Tls
                                 try
                                 {
                                     await Flush(async);
-                                    int writeOffset = 0;
+                                    var writeOffset = 0;
                                     SendHandshakeMessage(SendClientHello, ref writeOffset, _connState.IvLen);
                                     if (async)
                                     {
@@ -2171,19 +2171,10 @@ namespace Npgsql.Tls
         }
         public override long Position
         {
-            get
-            {
-                throw new NotSupportedException();
-            }
-            set
-            {
-                throw new NotSupportedException();
-            }
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
         }
-        public override long Length
-        {
-            get { throw new NotSupportedException(); }
-        }
+        public override long Length => throw new NotSupportedException();
         public override bool CanRead => !_closed && _connState.IsAuthenticated && _baseStream.CanRead;
         public override bool CanWrite => !_closed && _connState.IsAuthenticated && _baseStream.CanWrite;
 
@@ -2215,7 +2206,7 @@ namespace Npgsql.Tls
                 return false;
 
             // Otherwise there may be buffered unprocessed packets. We check if any of them is application data.
-            int pos = _readStart;
+            var pos = _readStart;
             while (pos < _readEnd)
             {
                 if ((ContentType)_readBuf[pos] == ContentType.ApplicationData)

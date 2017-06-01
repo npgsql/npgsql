@@ -280,7 +280,7 @@ namespace Npgsql.Tests.Types
             }
         }
 
-#if NET451
+#if !NETCOREAPP1_1
         [Test, Description("Roundtrips a non-generic IList as an array")]
         // ReSharper disable once InconsistentNaming
         public void IListNonGeneric()
@@ -328,7 +328,7 @@ namespace Npgsql.Tests.Types
             }
         }
 
-#if NET451
+#if !NETCOREAPP1_1
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/960")]
         public void MixedElementTypes()
         {
@@ -369,6 +369,17 @@ namespace Npgsql.Tests.Types
                 AssertIListRoundtrips(conn, new IntList() { 1, 2, 3 });
                 AssertIListRoundtrips(conn, new MisleadingIntList<string>() { 1, 2, 3 });
             }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1546")]
+        public void GenericListGetNpgsqlDbType()
+        {
+            var p = new NpgsqlParameter
+            {
+                ParameterName = "p1",
+                Value = new List<int> { 1, 2, 3 }
+            };
+            Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Array | NpgsqlDbType.Integer));
         }
 
         void AssertIListRoundtrips<TElement>(NpgsqlConnection conn, IEnumerable<TElement> value)

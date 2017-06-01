@@ -277,8 +277,8 @@ namespace NpgsqlTypes
 
         public NpgsqlPoint this[int index]
         {
-            get { return _points[index]; }
-            set { _points[index] = value; }
+            get => _points[index];
+            set => _points[index] = value;
         }
 
         public int Capacity => _points.Capacity;
@@ -316,7 +316,7 @@ namespace NpgsqlTypes
 
         public override int GetHashCode()
         {
-            int ret = 266370105;//seed with something other than zero to make paths of all zeros hash differently.
+            var ret = 266370105;//seed with something other than zero to make paths of all zeros hash differently.
             foreach (var point in this)
             {
                 //The ideal amount to shift each value is one that would evenly spread it throughout
@@ -393,8 +393,8 @@ namespace NpgsqlTypes
 
         public NpgsqlPoint this[int index]
         {
-            get { return _points[index]; }
-            set { _points[index] = value; }
+            get => _points[index];
+            set => _points[index] = value;
         }
 
         public int Capacity => _points.Capacity;
@@ -432,7 +432,7 @@ namespace NpgsqlTypes
 
         public override int GetHashCode()
         {
-            int ret = 266370105;//seed with something other than zero to make paths of all zeros hash differently.
+            var ret = 266370105;//seed with something other than zero to make paths of all zeros hash differently.
             foreach (var point in this)
             {
                 //The ideal amount to shift each value is one that would evenly spread it throughout
@@ -504,7 +504,7 @@ namespace NpgsqlTypes
 
         public NpgsqlPoint Center
         {
-            get { return new NpgsqlPoint(X, Y); }
+            get => new NpgsqlPoint(X, Y);
             set
             {
                 X = value.X;
@@ -527,9 +527,9 @@ namespace NpgsqlTypes
                 throw new FormatException("Not a valid circle: " + s);
 
             return new NpgsqlCircle(
-                Double.Parse(m.Groups[1].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat),
-                Double.Parse(m.Groups[2].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat),
-                Double.Parse(m.Groups[3].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat)
+                double.Parse(m.Groups[1].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat),
+                double.Parse(m.Groups[2].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat),
+                double.Parse(m.Groups[3].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat)
             );
         }
 

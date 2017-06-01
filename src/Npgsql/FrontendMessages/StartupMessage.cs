@@ -37,7 +37,7 @@ namespace Npgsql.FrontendMessages
 
         internal string this[string key]
         {
-            set { _parameters[key] = value; }
+            set => _parameters[key] = value;
         }
 
         internal override int Length

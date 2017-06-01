@@ -79,7 +79,7 @@ namespace Npgsql.Tests.Types
             using (var cmd = new NpgsqlCommand("SELECT @p::BYTEA", conn))
             {
                 var expected = new byte[conn.Settings.WriteBufferSize + 100];
-                for (int i = 0; i < expected.Length; i++)
+                for (var i = 0; i < expected.Length; i++)
                     expected[i] = 8;
                 cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType.Bytea) { Value = expected });
                 var reader = cmd.ExecuteReader();
@@ -475,8 +475,8 @@ namespace Npgsql.Tests.Types
         static string EncodeHex(ICollection<byte> buf)
         {
             var hex = new StringBuilder(@"E'\\x", buf.Count * 2 + 3);
-            foreach (byte b in buf) {
-                hex.Append(String.Format("{0:x2}", b));
+            foreach (var b in buf) {
+                hex.Append($"{b:x2}");
             }
             hex.Append("'");
             return hex.ToString();

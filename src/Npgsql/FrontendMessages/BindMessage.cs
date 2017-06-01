@@ -120,7 +120,7 @@ namespace Npgsql.FrontendMessages
             }
             else if (formatCodeListLength > 1)
             {
-                foreach (NpgsqlParameter p in InputParameters)
+                foreach (var p in InputParameters)
                 {
                     if (buf.WriteSpaceLeft < 2)
                         await buf.Flush(async, cancellationToken);

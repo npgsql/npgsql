@@ -34,8 +34,8 @@ namespace Npgsql.Tls
         // Slow multiplication
         static void Mul(ulong h1, ulong h2, ulong y1, ulong y2, ulong x1, ulong x2, ref ulong ynext1, ref ulong ynext2)
         {
-            ulong left1 = y1 ^ x1;
-            ulong left2 = y2 ^ x2;
+            var left1 = y1 ^ x1;
+            var left2 = y2 ^ x2;
             ulong z1 = 0;
             ulong z2 = 0;
             for (var i = 63; i >= 0; i--)
@@ -71,8 +71,8 @@ namespace Npgsql.Tls
         // Faster multiplication
         static void MulWithTable(ulong[] tbl, ulong y1, ulong y2, ulong x1, ulong x2, ref ulong ynext1, ref ulong ynext2)
         {
-            ulong left1 = y1 ^ x1;
-            ulong left2 = y2 ^ x2;
+            var left1 = y1 ^ x1;
+            var left2 = y2 ^ x2;
             ulong z1 = 0;
             ulong z2 = 0;
             for (int i = 60, j = 31 * 16; i >= 0; i -= 4, j -= 16)
@@ -311,13 +311,13 @@ namespace Npgsql.Tls
 
         public static bool GCMAD(ICryptoTransform key, byte[] iv, byte[] data, int offset, int len, ulong seqNum, byte contentType, ulong[] h, byte[] temp512)
         {
-            int tOffset = offset + len;
-            ulong s1 = Utils.ReadUInt64(data, ref tOffset);
-            ulong s2 = Utils.ReadUInt64(data, ref tOffset);
+            var tOffset = offset + len;
+            var s1 = Utils.ReadUInt64(data, ref tOffset);
+            var s2 = Utils.ReadUInt64(data, ref tOffset);
             CalcHash(key, iv, data, offset, len, seqNum, GetHeader(contentType, len), h, temp512);
             tOffset = offset + len;
-            ulong s1p = Utils.ReadUInt64(data, ref tOffset);
-            ulong s2p = Utils.ReadUInt64(data, ref tOffset);
+            var s1p = Utils.ReadUInt64(data, ref tOffset);
+            var s2p = Utils.ReadUInt64(data, ref tOffset);
             if (s1 != s1p || s2 != s2p)
                 return false;
             Encrypt(data, offset, len, key, iv, 2, temp512);
@@ -328,7 +328,7 @@ namespace Npgsql.Tls
         {
             var bytes = new byte[16];
             key.TransformBlock(bytes, 0, 16, bytes, 0);
-            int offset = 0;
+            var offset = 0;
             var h1 = Utils.ReadUInt64(bytes, ref offset);
             var h2 = Utils.ReadUInt64(bytes, ref offset);
             Utils.ClearArray(bytes);

@@ -7,7 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.Logging;
-#if NET45 || NET451
+#if !NETSTANDARD1_3
 using System.Transactions;
 #endif
 
@@ -28,7 +28,7 @@ namespace Npgsql
 
         static PoolManager()
         {
-#if NET45 || NET451
+#if !NETSTANDARD1_3
             // When the appdomain gets unloaded (e.g. web app redeployment) attempt to nicely
             // close idle connectors to prevent errors in PostgreSQL logs (#491).
             AppDomain.CurrentDomain.DomainUnload += (sender, args) => ClearAll();
@@ -324,10 +324,10 @@ namespace Npgsql
 
                 try
                 {
-#if NET45 || NET451
-                    var connector = new NpgsqlConnector((NpgsqlConnection) ((ICloneable) conn).Clone())
-#else
+#if NETSTANDARD1_3
                     var connector = new NpgsqlConnector(conn.Clone())
+#else
+                    var connector = new NpgsqlConnector((NpgsqlConnection) ((ICloneable) conn).Clone())
 #endif
                     {
                         ClearCounter = _clearCounter
@@ -443,7 +443,7 @@ namespace Npgsql
 
         #region Pending Enlisted Connections
 
-#if NET45 || NET451
+#if !NETSTANDARD1_3
         internal void AddPendingEnlistedConnector(NpgsqlConnector connector, Transaction transaction)
         {
             lock (_pendingEnlistedConnectors)
@@ -456,8 +456,12 @@ namespace Npgsql
 
         internal void RemovePendingEnlistedConnector(NpgsqlConnector connector, Transaction transaction)
         {
-            lock (_pendingEnlistedConnectors)
-                _pendingEnlistedConnectors[transaction].Remove(connector);
+            lock (_pendingEnlistedConnectors) {
+                var list = _pendingEnlistedConnectors[transaction];
+                list.Remove(connector);
+                if (list.Count == 0)
+                    _pendingEnlistedConnectors.Remove(transaction);
+            }
         }
 
         [CanBeNull]
@@ -469,6 +473,8 @@ namespace Npgsql
                     return null;
                 var connector = list[list.Count - 1];
                 list.RemoveAt(list.Count - 1);
+                if (list.Count == 0)
+                    _pendingEnlistedConnectors.Remove(transaction);
                 return connector;
             }
         }

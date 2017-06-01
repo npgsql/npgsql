@@ -7,7 +7,11 @@ using System.Data.Common;
 using System.Diagnostics;
 using System.Linq;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandlers;
+#if !NETSTANDARD1_3
+using System.Transactions;
+#endif
 
 namespace Npgsql.Schema
 {
@@ -26,7 +30,8 @@ namespace Npgsql.Schema
 
         const string GetColumnsQuery = @"
 SELECT
-     typ.oid AS typoid, nspname, relname, attname, typname, attrelid, attnum, atttypmod, attnotnull,
+     typ.oid AS typoid, nspname, relname, attname, typ.typname, attrelid, attnum, attnotnull,
+     CASE WHEN typ.typtype = 'd' THEN typ.typtypmod ELSE atttypmod END AS typmod,
      CASE WHEN atthasdef THEN (SELECT pg_get_expr(adbin, cls.oid) FROM pg_attrdef WHERE adrelid = cls.oid AND adnum = attr.attnum) ELSE NULL END AS default,
      CASE WHEN col.is_updatable = 'YES' THEN true ELSE false END AS is_updatable,
      EXISTS (
@@ -81,10 +86,11 @@ ORDER BY attnum";
             {
                 var query = string.Format(GetColumnsQuery, columnFieldFilter);
 
-#if NET45 || NET451
-                using (var connection = (NpgsqlConnection)((ICloneable)_connection).Clone())
-#else
+#if NETSTANDARD1_3
                 using (var connection = _connection.Clone())
+#else
+                using (new TransactionScope(TransactionScopeOption.Suppress))
+                using (var connection = (NpgsqlConnection)((ICloneable)_connection).Clone())
 #endif
                 {
                     connection.Open();
@@ -94,13 +100,10 @@ ORDER BY attnum";
                     {
                         for (; reader.Read(); populatedColumns++)
                         {
-                            var column = LoadColumnDefinition(reader);
+                            var column = LoadColumnDefinition(reader, _connection.Connector.TypeHandlerRegistry);
 
                             var ordinal = fields.FindIndex(f => f.TableOID == column.TableOID && f.ColumnAttributeNumber - 1 == column.ColumnAttributeNumber);
                             Debug.Assert(ordinal >= 0);
-                            var field = fields[ordinal];
-
-                            column.PostgresType = field.PostgresType;
 
                             // The column's ordinal is with respect to the resultset, not its table
                             column.ColumnOrdinal = ordinal;
@@ -136,7 +139,7 @@ ORDER BY attnum";
             return result.AsReadOnly();
         }
 
-        NpgsqlDbColumn LoadColumnDefinition(NpgsqlDataReader reader)
+        NpgsqlDbColumn LoadColumnDefinition(NpgsqlDataReader reader, TypeHandlerRegistry registry)
         {
             var columnName = reader.GetString(reader.GetOrdinal("attname"));
             var column = new NpgsqlDbColumn
@@ -159,12 +162,14 @@ ORDER BY attnum";
                 TypeOID = reader.GetFieldValue<uint>(reader.GetOrdinal("typoid"))
             };
 
+            column.PostgresType = registry.PostgresTypes.ByOID[column.TypeOID];
+
             var defaultValueOrdinal = reader.GetOrdinal("default");
             column.DefaultValue = reader.IsDBNull(defaultValueOrdinal) ? null : reader.GetString(defaultValueOrdinal);
 
             column.IsAutoIncrement = column.DefaultValue != null && column.DefaultValue.StartsWith("nextval(");
 
-            ColumnPostConfig(column, reader.GetInt32(reader.GetOrdinal("atttypmod")));
+            ColumnPostConfig(column, reader.GetInt32(reader.GetOrdinal("typmod")));
 
             return column;
         }
@@ -211,7 +216,11 @@ ORDER BY attnum";
             if (typeModifier == -1)
                 return;
 
-            switch (column.DataTypeName)
+            // If the column's type is a domain, use its base data type to interpret the typmod
+            var dataTypeName = column.PostgresType is PostgresDomainType
+                ? ((PostgresDomainType)column.PostgresType).BaseType.Name
+                : column.DataTypeName;
+            switch (dataTypeName)
             {
             case "bpchar":
             case "char":

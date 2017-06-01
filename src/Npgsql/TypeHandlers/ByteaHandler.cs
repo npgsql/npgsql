@@ -184,7 +184,7 @@ namespace Npgsql.TypeHandlers
                 CheckDisposed();
                 return _row.PosInColumn;
             }
-            set { throw new NotSupportedException(); }
+            set => throw new NotSupportedException();
         }
 
         protected override void Dispose(bool disposing)

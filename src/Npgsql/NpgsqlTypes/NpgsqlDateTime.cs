@@ -36,7 +36,7 @@ namespace NpgsqlTypes
     /// DateTime is capable of storing values from year 1 to 9999 at 100-nanosecond precision,
     /// while PostgreSQL's timestamps store values from 4713BC to 5874897AD with 1-microsecond precision.
     /// </summary>
-#if NET45 || NET451
+#if !NETSTANDARD1_3
     [Serializable]
 #endif
     public struct NpgsqlDateTime : IEquatable<NpgsqlDateTime>, IComparable<NpgsqlDateTime>, IComparable,
@@ -266,16 +266,16 @@ namespace NpgsqlTypes
                 return NegativeInfinity;
             default:
                 try {
-                    int idxSpace = str.IndexOf(' ');
-                    string datePart = str.Substring(0, idxSpace);
+                    var idxSpace = str.IndexOf(' ');
+                    var datePart = str.Substring(0, idxSpace);
                     if (str.Contains("bc")) {
                         datePart += " BC";
                     }
-                    int idxSecond = str.IndexOf(' ', idxSpace + 1);
+                    var idxSecond = str.IndexOf(' ', idxSpace + 1);
                     if (idxSecond == -1) {
                         idxSecond = str.Length;
                     }
-                    string timePart = str.Substring(idxSpace + 1, idxSecond - idxSpace - 1);
+                    var timePart = str.Substring(idxSpace + 1, idxSecond - idxSpace - 1);
                     return new NpgsqlDateTime(NpgsqlDate.Parse(datePart), TimeSpan.Parse(timePart));
                 } catch (OverflowException) {
                     throw;
@@ -330,7 +330,7 @@ namespace NpgsqlTypes
                 case InternalType.NegativeInfinity:
                     return 1;
                 default:
-                    int cmp = _date.CompareTo(other._date);
+                    var cmp = _date.CompareTo(other._date);
                     return cmp == 0 ? _time.CompareTo(_time) : cmp;
                 }
             }

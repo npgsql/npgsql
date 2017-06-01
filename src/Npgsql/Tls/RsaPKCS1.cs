@@ -47,7 +47,7 @@ namespace Npgsql.Tls
 
             if (allowNoPadding && decryptedArr.Length <= hash.Length)
             {
-                int zeros = hash.Length - decryptedArr.Length;
+                var zeros = hash.Length - decryptedArr.Length;
                 for (var i = 0; i < zeros; i++)
                 {
                     if (hash[i] != 0)

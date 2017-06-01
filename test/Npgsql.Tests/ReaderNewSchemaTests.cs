@@ -26,6 +26,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
+using Npgsql.PostgresTypes;
 using NUnit.Framework;
 
 namespace Npgsql.Tests
@@ -543,6 +544,33 @@ namespace Npgsql.Tests
                     Assert.That(columns[0].BaseTableName, Is.EqualTo("data1"));
                     Assert.That(columns[1].ColumnName, Is.EqualTo("foo"));
                     Assert.That(columns[1].BaseTableName, Is.EqualTo("data2"));
+                }
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1553")]
+        public void DomainTypes()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("DROP DOMAIN IF EXISTS mydomain; CREATE DOMAIN mydomain AS varchar(2)");
+                try
+                {
+                    conn.ReloadTypes();
+                    conn.ExecuteNonQuery("CREATE TEMP TABLE data (domain mydomain)");
+                    using (var cmd = new NpgsqlCommand("SELECT domain FROM data", conn))
+                    using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
+                    {
+                        var domainSchema = reader.GetColumnSchema().Single(c => c.ColumnName == "domain");
+                        Assert.That(domainSchema.ColumnSize, Is.EqualTo(2));
+                        var pgType = domainSchema.PostgresType;
+                        Assert.That(pgType, Is.InstanceOf<PostgresDomainType>());
+                        Assert.That(((PostgresDomainType)pgType).BaseType.Name, Is.EqualTo("varchar"));
+                    }
+                }
+                finally
+                {
+                    conn.ExecuteNonQuery("DROP TABLE data; DROP DOMAIN mydomain");
                 }
             }
         }

@@ -21,7 +21,7 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-#if NET451
+#if !NETCOREAPP1_1
 
 using System;
 using System.Collections.Generic;
@@ -67,6 +67,55 @@ namespace Npgsql.Tests
                     .Select(r => (string)r["CollectionName"])
                     .ToList();
                 Assert.That(collections1, Is.EquivalentTo(collections2));
+            }
+        }
+
+        [Test, Description("Calling GetSchema(collectionName [, restrictions]) case insensive collectionName can be used")]
+        public void CaseInsensitiveCollectionName()
+        {
+            using (var conn = OpenConnection())
+            {
+                var collections1 = conn.GetSchema(DbMetaDataCollectionNames.MetaDataCollections).Rows
+                    .Cast<DataRow>()
+                    .Select(r => (string)r["CollectionName"])
+                    .ToList();
+
+                var collections2 = conn.GetSchema("METADATACOLLECTIONS").Rows
+                    .Cast<DataRow>()
+                    .Select(r => (string)r["CollectionName"])
+                    .ToList();
+
+                var collections3 = conn.GetSchema("metadatacollections").Rows
+                    .Cast<DataRow>()
+                    .Select(r => (string)r["CollectionName"])
+                    .ToList();
+
+                var collections4 = conn.GetSchema("MetaDataCollections").Rows
+                    .Cast<DataRow>()
+                    .Select(r => (string)r["CollectionName"])
+                    .ToList();
+
+                var collections5 = conn.GetSchema("METADATACOLLECTIONS", null).Rows
+                    .Cast<DataRow>()
+                    .Select(r => (string)r["CollectionName"])
+                    .ToList();
+
+                var collections6 = conn.GetSchema("metadatacollections", null).Rows
+                    .Cast<DataRow>()
+                    .Select(r => (string)r["CollectionName"])
+                    .ToList();
+
+                var collections7 = conn.GetSchema("MetaDataCollections", null).Rows
+                    .Cast<DataRow>()
+                    .Select(r => (string)r["CollectionName"])
+                    .ToList();
+
+                Assert.That(collections1, Is.EquivalentTo(collections2));
+                Assert.That(collections1, Is.EquivalentTo(collections3));
+                Assert.That(collections1, Is.EquivalentTo(collections4));
+                Assert.That(collections1, Is.EquivalentTo(collections5));
+                Assert.That(collections1, Is.EquivalentTo(collections6));
+                Assert.That(collections1, Is.EquivalentTo(collections7));
             }
         }
 

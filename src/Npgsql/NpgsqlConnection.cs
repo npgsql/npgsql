@@ -22,8 +22,6 @@
 #endregion
 
 using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
@@ -32,19 +30,19 @@ using System.IO;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Reflection;
-using System.Resources;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.Logging;
-#if NET45 || NET451
-using System.Transactions;
-#endif
 using NpgsqlTypes;
 using IsolationLevel = System.Data.IsolationLevel;
 using ThreadState = System.Threading.ThreadState;
+
+#if !NETSTANDARD1_3
+using System.Transactions;
+#endif
 
 namespace Npgsql
 {
@@ -92,7 +90,7 @@ namespace Npgsql
 
         bool _wasBroken;
 
-#if NET45 || NET451
+#if !NETSTANDARD1_3
         [CanBeNull]
         internal Transaction EnlistedTransaction { get; set; }
 #endif
@@ -130,7 +128,7 @@ namespace Npgsql
             GC.SuppressFinalize(this);
             ConnectionString = connectionString;
 
-#if NET45 || NET451
+#if !NETSTANDARD1_3
             // Fix authentication problems. See https://bugzilla.novell.com/show_bug.cgi?id=MONO77559 and
             // http://pgfoundry.org/forum/message.php?msg_id=1002377 for more info.
             RSACryptoServiceProvider.UseMachineKeyStore = true;
@@ -223,7 +221,7 @@ namespace Npgsql
                 {
                     _userFacingConnectionString = _pool.UserFacingConnectionString;
 
-#if NET45 || NET451
+#if !NETSTANDARD1_3
                     if (Settings.Enlist)
                     {
                         if (Transaction.Current != null)
@@ -240,7 +238,7 @@ namespace Npgsql
                     }
                     else  // No enlist
 #endif
-                        Connector = await _pool.Allocate(this, timeout, async, cancellationToken);
+                    Connector = await _pool.Allocate(this, timeout, async, cancellationToken);
 
                     Counters.SoftConnectsPerSecond.Increment();
 
@@ -249,7 +247,7 @@ namespace Npgsql
                     Connector.TypeHandlerRegistry.ActivateGlobalMappings();
                 }
 
-#if NET45 || NET451
+#if !NETSTANDARD1_3
                 // We may have gotten an already enlisted pending connector above, no need to enlist in that case
                 if (Settings.Enlist && Transaction.Current != null && EnlistedTransaction == null)
                     EnlistTransaction(Transaction.Current);
@@ -278,7 +276,7 @@ namespace Npgsql
         [CanBeNull]
         public override string ConnectionString
         {
-            get { return _userFacingConnectionString; }
+            get => _userFacingConnectionString;
             set
             {
                 CheckConnectionClosed();
@@ -501,7 +499,7 @@ namespace Npgsql
             }
         }
 
-#if NET45 || NET451
+#if !NETSTANDARD1_3
         /// <summary>
         /// Enlist transation.
         /// </summary>
@@ -551,26 +549,26 @@ namespace Npgsql
 
             CloseOngoingOperations();
 
-#if NET45 || NET451
-            if (EnlistedTransaction == null)
-            {
-#endif
-                if (Settings.Pooling)
-                    _pool.Release(Connector);
-                else
-                    Connector.Close();
-#if NET45 || NET451
-            }
+            if (!Settings.Pooling)
+                Connector.Close();
             else
             {
-                // A System.Transactions transaction is still in progress, we need to wait for it to complete.
-                // Close the connection and disconnect it from the resource manager but leave the connector
-                // in a enlisted pending list in the pool.
-                _pool.AddPendingEnlistedConnector(Connector, EnlistedTransaction);
-                Connector.Connection = null;
-                EnlistedTransaction = null;
-            }
+#if NETSTANDARD1_3
+                _pool.Release(Connector);
+#else
+                if (EnlistedTransaction == null)
+                    _pool.Release(Connector);
+                else
+                {
+                    // A System.Transactions transaction is still in progress, we need to wait for it to complete.
+                    // Close the connection and disconnect it from the resource manager but leave the connector
+                    // in a enlisted pending list in the pool.
+                    _pool.AddPendingEnlistedConnector(Connector, EnlistedTransaction);
+                    Connector.Connection = null;
+                    EnlistedTransaction = null;
+                }
 #endif
+            }
 
             Log.Debug("Connection closed", connectorId);
 
@@ -590,7 +588,7 @@ namespace Npgsql
                 return;
 
             Debug.Assert(Connector != null);
-            Connector.CurrentReader?.Close(true);
+            Connector.CurrentReader?.Close(true, false);
             var currentCopyOperation = Connector.CurrentCopyOperation;
             if (currentCopyOperation != null)
             {
@@ -1255,7 +1253,7 @@ namespace Npgsql
         #endregion State checks
 
         #region Schema operations
-#if NET45 || NET451
+#if !NETSTANDARD1_3
         /// <summary>
         /// Returns the supported collections
         /// </summary>
@@ -1285,41 +1283,44 @@ namespace Npgsql
         /// <returns>The collection specified.</returns>
         public override DataTable GetSchema([CanBeNull] string collectionName, [CanBeNull] string[] restrictions)
         {
-            switch (collectionName)
+            if (string.IsNullOrEmpty(collectionName))
+                throw new ArgumentException("Collection name cannot be null or empty", nameof(collectionName));
+
+            switch (collectionName.ToUpperInvariant())
             {
-                case "MetaDataCollections":
+                case "METADATACOLLECTIONS":
                     return NpgsqlSchema.GetMetaDataCollections();
-                case "Restrictions":
+                case "RESTRICTIONS":
                     return NpgsqlSchema.GetRestrictions();
-                case "DataSourceInformation":
+                case "DATASOURCEINFORMATION":
                     return NpgsqlSchema.GetDataSourceInformation();
-                case "DataTypes":
+                case "DATATYPES":
                     throw new NotSupportedException();
-                case "ReservedWords":
+                case "RESERVEDWORDS":
                     return NpgsqlSchema.GetReservedWords();
-                    // custom collections for npgsql
-                case "Databases":
+                // custom collections for npgsql
+                case "DATABASES":
                     return NpgsqlSchema.GetDatabases(this, restrictions);
-                case "Schemata":
+                case "SCHEMATA":
                     return NpgsqlSchema.GetSchemata(this, restrictions);
-                case "Tables":
+                case "TABLES":
                     return NpgsqlSchema.GetTables(this, restrictions);
-                case "Columns":
+                case "COLUMNS":
                     return NpgsqlSchema.GetColumns(this, restrictions);
-                case "Views":
+                case "VIEWS":
                     return NpgsqlSchema.GetViews(this, restrictions);
-                case "Users":
+                case "USERS":
                     return NpgsqlSchema.GetUsers(this, restrictions);
-                case "Indexes":
+                case "INDEXES":
                     return NpgsqlSchema.GetIndexes(this, restrictions);
-                case "IndexColumns":
+                case "INDEXCOLUMNS":
                     return NpgsqlSchema.GetIndexColumns(this, restrictions);
-                case "Constraints":
-                case "PrimaryKey":
-                case "UniqueKeys":
-                case "ForeignKeys":
+                case "CONSTRAINTS":
+                case "PRIMARYKEY":
+                case "UNIQUEKEYS":
+                case "FOREIGNKEYS":
                     return NpgsqlSchema.GetConstraints(this, restrictions, collectionName);
-                case "ConstraintColumns":
+                case "CONSTRAINTCOLUMNS":
                     return NpgsqlSchema.GetConstraintColumns(this, restrictions);
                 default:
                     throw new ArgumentOutOfRangeException(nameof(collectionName), collectionName, "Invalid collection name");
@@ -1334,7 +1335,7 @@ namespace Npgsql
         /// <summary>
         /// Creates a closed connection with the connection string and authentication details of this message.
         /// </summary>
-#if NET45 || NET451
+#if !NETSTANDARD1_3
         object ICloneable.Clone()
 #else
         public NpgsqlConnection Clone()
@@ -1392,7 +1393,7 @@ namespace Npgsql
             Open();
         }
 
-#if NET45 || NET451
+#if !NETSTANDARD1_3
         /// <summary>
         /// DB provider factory.
         /// </summary>
@@ -1442,14 +1443,14 @@ namespace Npgsql
     /// </summary>
     /// <param name="sender">The source of the event.</param>
     /// <param name="e">A <see cref="NpgsqlNoticeEventArgs">NpgsqlNoticeEventArgs</see> that contains the event data.</param>
-    public delegate void NoticeEventHandler(Object sender, NpgsqlNoticeEventArgs e);
+    public delegate void NoticeEventHandler(object sender, NpgsqlNoticeEventArgs e);
 
     /// <summary>
     /// Represents the method that handles the <see cref="NpgsqlConnection.Notification">Notification</see> events.
     /// </summary>
     /// <param name="sender">The source of the event.</param>
     /// <param name="e">A <see cref="NpgsqlNotificationEventArgs">NpgsqlNotificationEventArgs</see> that contains the event data.</param>
-    public delegate void NotificationEventHandler(Object sender, NpgsqlNotificationEventArgs e);
+    public delegate void NotificationEventHandler(object sender, NpgsqlNotificationEventArgs e);
 
     /// <summary>
     /// Represents the method that allows the application to provide a certificate collection to be used for SSL client authentication

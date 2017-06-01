@@ -680,16 +680,21 @@ namespace Npgsql
         protected override void Dispose(bool disposing) => Close();
 
         /// <summary>
-        /// Closes the <see cref="NpgsqlDataReader"/> object.
+        /// Closes the <see cref="NpgsqlDataReader"/> reader, allowing a new command to be executed.
         /// </summary>
-#if NET45 || NET451
-        public override void Close()
-#else
+#if NETSTANDARD1_3
         public void Close()
+#else
+        public override void Close()
 #endif
-            => Close(false);
+            => Close(false, false).GetAwaiter().GetResult();
 
-        internal void Close(bool connectionClosing)
+        /// <summary>
+        /// Closes the <see cref="NpgsqlDataReader"/> reader, allowing a new command to be executed.
+        /// </summary>
+        public Task CloseAsync() => Close(false, true);
+
+        internal async Task Close(bool connectionClosing, bool async)
         {
             if (_state == ReaderState.Closed)
                 return;
@@ -708,18 +713,21 @@ namespace Npgsql
             }
 
             if (_state != ReaderState.Consumed)
-                Consume(false).GetAwaiter().GetResult();
+                await Consume(async);
 
-            Cleanup(connectionClosing);
+            await Cleanup(async, connectionClosing);
         }
 
-        internal void Cleanup(bool connectionClosing=false)
+        internal async Task Cleanup(bool async, bool connectionClosing=false)
         {
             Log.Trace("Cleaning up reader", _connector.Id);
 
             // Make sure the send task for this command, which may have executed asynchronously and in
             // parallel with the reading, has completed, throwing any exceptions it generated.
-            _sendTask.GetAwaiter().GetResult();
+            if (async)
+                await _sendTask;
+            else
+                _sendTask.GetAwaiter().GetResult();
 
             _state = ReaderState.Closed;
             Command.State = CommandState.Idle;
@@ -1312,10 +1320,10 @@ namespace Npgsql
         /// <returns>An <see cref="IEnumerator"/> that can be used to iterate through the rows in the data reader.</returns>
         public override IEnumerator GetEnumerator()
         {
-#if NET45 || NET451
-            return new DbEnumerator(this);
-#else
+#if NETSTANDARD1_3
             throw new NotSupportedException("GetEnumerator not yet supported in .NET Core");
+#else
+            return new DbEnumerator(this);
 #endif
         }
 
@@ -1363,7 +1371,7 @@ namespace Npgsql
         #endregion
 
         #region Schema metadata table
-#if NET45 || NET451
+#if !NETSTANDARD1_3
 
         /// <summary>
         /// Returns a System.Data.DataTable that describes the column metadata of the DataReader.
@@ -1404,7 +1412,7 @@ namespace Npgsql
             {
                 var row = table.NewRow();
 
-                row["AllowDBNull"] = column.AllowDBNull == true;
+                row["AllowDBNull"] = (object)column.AllowDBNull ?? DBNull.Value;
                 row["BaseColumnName"] = column.BaseColumnName;
                 row["BaseCatalogName"] = column.BaseCatalogName;
                 row["BaseSchemaName"] = column.BaseSchemaName;

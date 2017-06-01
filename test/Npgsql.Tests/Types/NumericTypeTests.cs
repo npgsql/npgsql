@@ -364,7 +364,7 @@ namespace Npgsql.Tests.Types
             using (var command = new NpgsqlCommand("select :field_float8", conn))
             {
                 command.Parameters.Add(new NpgsqlParameter(":field_float8", NpgsqlDbType.Double));
-                double x = 1d/7d;
+                var x = 1d/7d;
                 command.Parameters[0].Value = x;
                 var valueReturned = command.ExecuteScalar();
                 Assert.That(valueReturned, Is.EqualTo(x).Within(100).Ulps);

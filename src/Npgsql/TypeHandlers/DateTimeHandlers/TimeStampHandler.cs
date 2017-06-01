@@ -90,8 +90,8 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             if (value == long.MinValue)
                 return NpgsqlDateTime.NegativeInfinity;
             if (value >= 0) {
-                int date = (int)(value / 86400000000L);
-                long time = value % 86400000000L;
+                var date = (int)(value / 86400000000L);
+                var time = value % 86400000000L;
 
                 date += 730119; // 730119 = days since era (0001-01-01) for 2000-01-01
                 time *= 10; // To 100ns
@@ -99,8 +99,8 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                 return new NpgsqlDateTime(new NpgsqlDate(date), new TimeSpan(time));
             } else {
                 value = -value;
-                int date = (int)(value / 86400000000L);
-                long time = value % 86400000000L;
+                var date = (int)(value / 86400000000L);
+                var time = value % 86400000000L;
                 if (time != 0) {
                     ++date;
                     time = 86400000000L - time;

@@ -61,7 +61,7 @@ namespace Npgsql
         [CanBeNull]
         internal Dictionary<Type, TypeHandler> ArrayHandlerByType { get; set; }
 
-        AvailablePostgresTypes _postgresTypes;
+        internal AvailablePostgresTypes PostgresTypes { get; private set; }
 
         /// <summary>
         /// A counter that is updated when this registry activates its global mappings.
@@ -117,14 +117,14 @@ namespace Npgsql
             if (!BackendTypeCache.TryGetValue(connector.ConnectionString, out var types))
                 types = BackendTypeCache[connector.ConnectionString] = await LoadBackendTypes(connector, timeout, async);
 
-            connector.TypeHandlerRegistry._postgresTypes = types;
+            connector.TypeHandlerRegistry.PostgresTypes = types;
             connector.TypeHandlerRegistry.ActivateGlobalMappings();
         }
 
         TypeHandlerRegistry(NpgsqlConnector connector)
         {
             Connector = connector;
-            _postgresTypes = EmptyPostgresTypes;
+            PostgresTypes = EmptyPostgresTypes;
             UnrecognizedTypeHandler = new UnknownTypeHandler(this);
             ByOID = new Dictionary<uint, TypeHandler>();
             ByDbType = new Dictionary<DbType, TypeHandler>();
@@ -393,8 +393,8 @@ WHERE a.typtype = 'b' AND b.typname = @name{(withSchema ? " AND ns.nspname = @sc
         {
             // First check if the composite type definition has already been loaded from the database
             if (pgName.IndexOf('.') == -1
-                ? _postgresTypes.ByName.TryGetValue(pgName, out var postgresType)
-                : _postgresTypes.ByFullName.TryGetValue(pgName, out postgresType))
+                ? PostgresTypes.ByName.TryGetValue(pgName, out var postgresType)
+                : PostgresTypes.ByFullName.TryGetValue(pgName, out postgresType))
             {
                 var asComposite = postgresType as PostgresCompositeType;
                 if (asComposite == null)
@@ -449,7 +449,7 @@ WHERE a.typtype = 'b' AND b.typname = @name{(withSchema ? " AND ns.nspname = @sc
                         fields.Add(new RawCompositeField { PgName = reader.GetString(0), TypeOID = reader.GetFieldValue<uint>(1) });
 
                     var compositeType = new PostgresCompositeType(ns, name, oid, fields);
-                    compositeType.AddTo(_postgresTypes);
+                    compositeType.AddTo(PostgresTypes);
 
                     reader.NextResult();  // Load the array type
 
@@ -459,7 +459,7 @@ WHERE a.typtype = 'b' AND b.typname = @name{(withSchema ? " AND ns.nspname = @sc
                         var arrayName = reader.GetString(1);
                         var arrayOID = reader.GetFieldValue<uint>(2);
 
-                        new PostgresArrayType(arrayNs, arrayName, arrayOID, compositeType).AddTo(_postgresTypes);
+                        new PostgresArrayType(arrayNs, arrayName, arrayOID, compositeType).AddTo(PostgresTypes);
                     } else
                         Log.Warn($"Could not find array type corresponding to composite {pgName}");
 
@@ -479,18 +479,15 @@ WHERE a.typtype = 'b' AND b.typname = @name{(withSchema ? " AND ns.nspname = @sc
         /// <returns>A type handler that can be used to encode and decode values.</returns>
         internal TypeHandler this[uint oid]
         {
-            get
-            {
-                return TryGetByOID(oid, out var result) ? result : UnrecognizedTypeHandler;
-            }
-            set { ByOID[oid] = value; }
+            get => TryGetByOID(oid, out var result) ? result : UnrecognizedTypeHandler;
+            set => ByOID[oid] = value;
         }
 
         internal bool TryGetByOID(uint oid, out TypeHandler handler)
         {
             if (ByOID.TryGetValue(oid, out handler))
                 return true;
-            if (!_postgresTypes.ByOID.TryGetValue(oid, out var postgresType))
+            if (!PostgresTypes.ByOID.TryGetValue(oid, out var postgresType))
                 return false;
 
             handler = postgresType.Activate(this);
@@ -528,7 +525,7 @@ WHERE a.typtype = 'b' AND b.typname = @name{(withSchema ? " AND ns.nspname = @sc
                     throw new InvalidCastException($"When specifying NpgsqlDbType.{nameof(NpgsqlDbType.Enum)}, {nameof(NpgsqlParameter.SpecificType)} must be specified as well");
 
                 // Base, range or array of base/range
-                if (_postgresTypes.ByNpgsqlDbType.TryGetValue(npgsqlDbType, out var postgresType))
+                if (PostgresTypes.ByNpgsqlDbType.TryGetValue(npgsqlDbType, out var postgresType))
                     return postgresType.Activate(this);
 
                 // We don't have a backend type for this NpgsqlDbType. This could be because it's not yet supported by
@@ -546,7 +543,7 @@ WHERE a.typtype = 'b' AND b.typname = @name{(withSchema ? " AND ns.nspname = @sc
             {
                 if (ByDbType.TryGetValue(dbType, out var handler))
                     return handler;
-                if (_postgresTypes.ByDbType.TryGetValue(dbType, out var postgresType))
+                if (PostgresTypes.ByDbType.TryGetValue(dbType, out var postgresType))
                     return postgresType.Activate(this);
                 throw new NotSupportedException("This DbType is not supported in Npgsql: " + dbType);
             }
@@ -585,7 +582,7 @@ WHERE a.typtype = 'b' AND b.typname = @name{(withSchema ? " AND ns.nspname = @sc
                     return handler;
 
                 // Try to find the backend type by a simple lookup on the given CLR type, this will handle base types.
-                if (_postgresTypes.ByClrType.TryGetValue(type, out var postgresType))
+                if (PostgresTypes.ByClrType.TryGetValue(type, out var postgresType))
                     return postgresType.Activate(this);
 
                 // Try to see if it is an array type
@@ -608,13 +605,13 @@ WHERE a.typtype = 'b' AND b.typname = @name{(withSchema ? " AND ns.nspname = @sc
                     // Special check for byte[] - bytea not array of int2
                     if (type == typeof(byte[]))
                     {
-                        if (!_postgresTypes.ByClrType.TryGetValue(typeof(byte[]), out var byteaPostgresType))
+                        if (!PostgresTypes.ByClrType.TryGetValue(typeof(byte[]), out var byteaPostgresType))
                             throw new NpgsqlException("The PostgreSQL 'bytea' type is missing");
                         return byteaPostgresType.Activate(this);
                     }
 
                     // Get the elements backend type and activate its array backend type
-                    if (!_postgresTypes.ByClrType.TryGetValue(arrayElementType, out var elementPostgresType))
+                    if (!PostgresTypes.ByClrType.TryGetValue(arrayElementType, out var elementPostgresType))
                     {
                         if (arrayElementType.GetTypeInfo().IsEnum)
                             throw new NotSupportedException($"The CLR enum type {arrayElementType.Name} must be mapped with Npgsql before usage, please refer to the documentation.");
@@ -631,7 +628,7 @@ WHERE a.typtype = 'b' AND b.typname = @name{(withSchema ? " AND ns.nspname = @sc
                 // Range type which hasn't yet been set up
                 if (type.GetTypeInfo().IsGenericType && type.GetGenericTypeDefinition() == typeof(NpgsqlRange<>))
                 {
-                    if (!_postgresTypes.ByClrType.TryGetValue(type.GetGenericArguments()[0], out var subtypePostgresType) ||
+                    if (!PostgresTypes.ByClrType.TryGetValue(type.GetGenericArguments()[0], out var subtypePostgresType) ||
                         subtypePostgresType.Range == null)
                     {
                         throw new NpgsqlException($"The .NET range type {type.Name} isn't supported in your PostgreSQL, use CREATE TYPE AS RANGE");
@@ -708,6 +705,10 @@ WHERE a.typtype = 'b' AND b.typname = @name{(withSchema ? " AND ns.nspname = @sc
             }
 
             var typeInfo = type.GetTypeInfo();
+
+            var ilist = typeInfo.ImplementedInterfaces.FirstOrDefault(x => x.GetTypeInfo().IsGenericType && x.GetGenericTypeDefinition() == typeof(IList<>));
+            if (ilist != null)
+                return NpgsqlDbType.Array | ToNpgsqlDbType(ilist.GetGenericArguments()[0]);
 
             if (typeInfo.IsEnum)
                 return NpgsqlDbType.Enum;
@@ -853,7 +854,7 @@ WHERE a.typtype = 'b' AND b.typname = @name{(withSchema ? " AND ns.nspname = @sc
             if (i == -1)
             {
                 // No dot, this is a partial type name
-                if (!_postgresTypes.ByName.TryGetValue(pgName, out postgresType))
+                if (!PostgresTypes.ByName.TryGetValue(pgName, out postgresType))
                     throw new NpgsqlException($"A PostgreSQL type with the name {pgName} was not found in the database");
                 if (postgresType == null)
                     throw new NpgsqlException($"More than one PostgreSQL type was found with the name {pgName}, please specify a full name including schema");
@@ -861,7 +862,7 @@ WHERE a.typtype = 'b' AND b.typname = @name{(withSchema ? " AND ns.nspname = @sc
             }
 
             // Full type name with namespace
-            if (!_postgresTypes.ByFullName.TryGetValue(pgName, out postgresType))
+            if (!PostgresTypes.ByFullName.TryGetValue(pgName, out postgresType))
                 throw new Exception($"A PostgreSQL type with the name {pgName} was not found in the database");
             return postgresType;
         }

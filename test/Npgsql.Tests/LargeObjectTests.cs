@@ -40,7 +40,7 @@ namespace Npgsql.Tests
             using (var transaction = conn.BeginTransaction())
             {
                 var manager = new NpgsqlLargeObjectManager(conn);
-                uint oid = manager.Create();
+                var oid = manager.Create();
                 using (var stream = manager.OpenReadWrite(oid))
                 {
                     var buf = Encoding.UTF8.GetBytes("Hello");

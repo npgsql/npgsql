@@ -1,5 +1,5 @@
 image: Visual Studio 2017
-version: 3.2.2-{build}
+version: 3.2.3-{build}
 environment:
   global:
     DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
@@ -23,7 +23,7 @@ before_build:
   - appveyor-retry nuget restore Npgsql.sln   # For VSIX
 build_script:
   - dotnet build "src\Npgsql" -c ReleaseOptimizedCryptography
-  - dotnet build "test\Npgsql.Tests" -c Debug
+  - dotnet build "test\Npgsql.Tests" -c Debug -f net451
   - msbuild src\VSIX\VSIX.csproj /p:Configuration=Release
   - msbuild src\MSI\MSI.wixproj /p:Configuration=Release
 after_build:
@@ -31,7 +31,7 @@ after_build:
   - dotnet pack src\Npgsql\Npgsql.csproj -c ReleaseOptimizedCryptography --version-suffix ci-%PADDED_BUILD_NUMBER%
 test:
   assemblies:
-    - test\Npgsql.Tests\bin\Debug\net451\Npgsql.Tests.exe
+    - test\Npgsql.Tests\bin\Debug\net451\Npgsql.Tests.dll
 artifacts:
   - path: 'src\Npgsql\bin\**\*.nupkg'
     name: Nuget
@@ -41,7 +41,7 @@ artifacts:
     name: MSI Installer
 deploy:
   - provider: NuGet
-    server: https://www.myget.org/F/npgsql-unstable/api/v2/package
+    server: https://www.myget.org/F/npgsql/api/v2/package
     api_key:
       secure: kiMn9uBvgMa5EtEmTIhNBFUfyatiATnhkgx5Xj/1EsmKTtEkUv+hJAQs0L3VGzPw
     artifact: /.*\.nupkg/

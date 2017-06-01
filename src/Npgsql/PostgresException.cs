@@ -29,7 +29,7 @@ using System.Linq;
 using System.Reflection;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
-#if NET45 || NET451
+#if !NETSTANDARD1_3
 using System.Runtime.Serialization;
 #endif
 
@@ -50,7 +50,7 @@ namespace Npgsql
     /// See http://www.postgresql.org/docs/current/static/errcodes-appendix.html,
     /// http://www.postgresql.org/docs/current/static/protocol-error-fields.html
     /// </remarks>
-#if NET45 || NET451
+#if !NETSTANDARD1_3
     [Serializable]
 #endif
     public sealed class PostgresException : NpgsqlException
@@ -236,6 +236,41 @@ namespace Npgsql
         public override string Message => SqlState + ": " + MessageText;
 
         /// <summary>
+        /// Specifies whether the exception is considered transient, that is, whether retrying to operation could
+        /// succeed (e.g. a network error). Check <see cref="SqlState"/>.
+        /// </summary>
+        public override bool IsTransient
+        {
+            get
+            {
+                switch (SqlState)
+                {
+                case "53000":   //insufficient_resources
+                case "53100":   //disk_full
+                case "53200":   //out_of_memory
+                case "53300":   //too_many_connections
+                case "53400":   //configuration_limit_exceeded
+                case "57P03":   //cannot_connect_now
+                case "58000":   //system_error
+                case "58030":   //io_error
+                case "40001":   //serialization_error
+                case "55P03":   //lock_not_available
+                case "55006":   //object_in_use
+                case "55000":   //object_not_in_prerequisite_state
+                case "08000":   //connection_exception
+                case "08003":   //connection_does_not_exist
+                case "08006":   //connection_failure
+                case "08001":   //sqlclient_unable_to_establish_sqlconnection
+                case "08004":   //sqlserver_rejected_establishment_of_sqlconnection
+                case "08007":   //transaction_resolution_unknown
+                    return true;
+                default:
+                    return false;
+                }
+            }
+        }
+
+        /// <summary>
         /// Returns the statement which triggered this exception.
         /// </summary>
         public NpgsqlStatement Statement { get; internal set; }
@@ -262,7 +297,7 @@ namespace Npgsql
         }
 
         #region Serialization
-#if NET45 || NET451
+#if !NETSTANDARD1_3
         PostgresException(SerializationInfo info, StreamingContext context) : base(info, context)
         {
             Severity         = (string)info.GetValue("Severity",         typeof(string));
