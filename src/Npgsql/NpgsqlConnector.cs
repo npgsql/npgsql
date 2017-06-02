@@ -624,7 +624,7 @@ namespace Npgsql
                 var protocolType = endpoint.AddressFamily == AddressFamily.InterNetwork ? ProtocolType.Tcp : ProtocolType.IP;
                 var socket = new Socket(endpoint.AddressFamily, SocketType.Stream, protocolType)
                 {
-                    Blocking = false
+                    Blocking = true
                 };
 
                 try
