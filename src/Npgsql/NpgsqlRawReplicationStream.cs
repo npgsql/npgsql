@@ -4,18 +4,23 @@ using System.IO;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
+using Npgsql.Logging;
 using NpgsqlTypes;
 
 namespace Npgsql
 {
-    public class NpgsqlRawReplicationStream : Stream
+    public class NpgsqlRawReplicationStream : Stream, ICancelable
     {
+        static readonly DateTime ReplicationEraStart = new DateTime(2000, 1, 1);
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+
+        readonly object _writeSyncObject = new object();
+
         readonly NpgsqlConnector _connector;
         readonly ReadBuffer _buffer;
 
         // Backend messages
         readonly WalDataResponseMessage _walDataResponse;
-
         readonly PrimaryKeepAliveResponseMessage _primaryKeepAliveResponse;
 
         // Frontend messages
@@ -23,6 +28,11 @@ namespace Npgsql
 
         int _bytesLeft;
         int _length;
+
+        volatile bool _disposed;
+
+        /// <inheritdoc />
+        public bool CancellationRequired => true;
 
         /// <inheritdoc />
         public override bool CanRead => true;
@@ -64,18 +74,20 @@ namespace Npgsql
 
             _connector = connector;
             _buffer = _connector.ReadBuffer;
-            _walDataResponse = new WalDataResponseMessage(connector.Settings.ReplicationMode);
+            _walDataResponse = new WalDataResponseMessage();
             _primaryKeepAliveResponse = new PrimaryKeepAliveResponseMessage();
             _standbyStatusUpdateRequest = new StandbyStatusUpdateMessage();
 
             _connector.StartUserAction(ConnectorState.Replication);
             try
             {
+                _connector.CurrentCancelableOperation = this;
                 _connector.SendQuery(replicationCommand);
                 _connector.ReadExpecting<CopyBothResponseMessage>();
             }
             catch
             {
+                _connector.CurrentCancelableOperation = null;
                 _connector.EndUserAction();
                 throw;
             }
@@ -108,6 +120,7 @@ namespace Npgsql
                         return false;
                     }
 
+                    CheckDisposed();
                     var msg = _connector.ReadMessage();
                     switch (msg.Code)
                     {
@@ -145,7 +158,7 @@ namespace Npgsql
                     SystemClock = _walDataResponse.SystemClock;
                     if (copyDone)
                     {
-                        // CopyDone was recieved. Waiting for the completion confirmation.
+                        // CopyDone was received. Waiting for the completion confirmation.
                         Skip(_bytesLeft);
                         continue;
                     }
@@ -158,7 +171,14 @@ namespace Npgsql
                     EndLsn = _primaryKeepAliveResponse.EndLsn;
                     SystemClock = _primaryKeepAliveResponse.SystemClock;
                     if (_primaryKeepAliveResponse.ReplyImmediately && !copyDone)
-                        Flush();
+                    {
+                        if (_standbyStatusUpdateRequest.SystemClock > 0)
+                        {
+                            // Repeating the last status update message.
+                            Flush(_standbyStatusUpdateRequest.LastWrittenLsn, _standbyStatusUpdateRequest.LastFlushedLsn, _standbyStatusUpdateRequest.LastAppliedLsn);
+                        }
+                        // TODO: autoflush mode
+                    }
                     Debug.Assert(_bytesLeft == 0);
                     continue;
 
@@ -170,10 +190,29 @@ namespace Npgsql
 
         public override void Flush()
         {
+            var nextLsn = new NpgsqlLsn(CurrentLsn.Value + 1);
+            Flush(nextLsn, nextLsn, nextLsn);
+        }
+
+        public void Flush(NpgsqlLsn lastWrittenLsn, NpgsqlLsn lastFlushedLsn, NpgsqlLsn lastAppliedLsn)
+        {
             if (EndOfStream)
                 return;
 
-            // TODO: send keep alive
+            CheckDisposed();
+
+            _standbyStatusUpdateRequest.LastWrittenLsn = lastWrittenLsn;
+            _standbyStatusUpdateRequest.LastFlushedLsn = lastFlushedLsn;
+            _standbyStatusUpdateRequest.LastAppliedLsn = lastAppliedLsn;
+
+            var ticks = (DateTime.Now - ReplicationEraStart).Ticks;
+            _standbyStatusUpdateRequest.SystemClock = (long)(ticks / (TimeSpan.TicksPerMillisecond / 1000d));
+
+            lock (_writeSyncObject)
+            {
+                CheckDisposed();
+                _connector.SendMessage(_standbyStatusUpdateRequest);
+            }
         }
 
         public override int Read(byte[] buffer, int offset, int count)
@@ -231,33 +270,77 @@ namespace Npgsql
             throw new NotSupportedException("The stream is read-only.");
         }
 
-
+        /// <summary>
+        /// Send CopyDone request and wait for confirmation.
+        /// </summary>
 #if NET45 || NET451
-        /// <inheritdoc />
         public override void Close()
 #else
-        protected override void Dispose(bool disposing)
-        {
-            Close();
-            base.Dispose(disposing);
-        }
-        
+        [PublicAPI]
         public void Close()
 #endif
         {
-            if (_connector.State != ConnectorState.Replication)
+            Close(true);
+        }
+
+        void Close(bool waitForConfirmation)
+        {
+            if (_disposed)
                 return;
 
-            _connector.SendMessage(CopyDoneMessage.Instance);
-            while (FetchNext(true))
+            try
             {
-                // Recieving and skipping all pending messages.
+                lock (_writeSyncObject)
+                {
+                    if (_disposed)
+                        return;
+
+                    _connector.SendMessage(CopyDoneMessage.Instance);
+                    if (!waitForConfirmation)
+                    {
+                        if (_connector.State == ConnectorState.Replication)
+                            _connector.EndUserAction();
+                        Cleanup();
+                        return;
+                    }
+                }
+
+                while (FetchNext(true))
+                {
+                    // Receiving and skipping all pending messages.
+                }
+                Cleanup();
             }
+            catch
+            {
+                Cleanup();
+            }
+        }
 
+        void Cleanup()
+        {
+            Log.Debug("REPLICATION operation ended", _connector.Id);
+            _bytesLeft = 0;
+            _length = 0;
+            _disposed = true;
+            _connector.CurrentCancelableOperation = null;
+        }
 
-#if NET45 || NET451
-            base.Close();
-#endif
+        /// <inheritdoc />
+        protected override void Dispose(bool disposing)
+        {
+            Close(disposing);
+        }
+
+        void ICancelable.Cancel()
+        {
+            Close(false);
+        }
+
+        void CheckDisposed()
+        {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(NpgsqlRawReplicationStream));
         }
 
         int Skip(int bytes)
@@ -271,6 +354,7 @@ namespace Npgsql
             {
                 if (_buffer.ReadBytesLeft == 0)
                 {
+                    CheckDisposed();
                     _buffer.ReadMore(false).GetAwaiter().GetResult();
                 }
                 Debug.Assert(_buffer.ReadBytesLeft > 0);

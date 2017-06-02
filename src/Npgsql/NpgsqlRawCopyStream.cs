@@ -61,6 +61,8 @@ namespace Npgsql
         public override bool CanWrite => _canWrite;
         public override bool CanRead => _canRead;
 
+        public bool CancellationRequired => CanWrite;
+
         /// <summary>
         /// The copy binary format header signature
         /// </summary>
@@ -274,7 +276,7 @@ namespace Npgsql
         void Cleanup()
         {
             Log.Debug("COPY operation ended", _connector.Id);
-            _connector.CurrentCopyOperation = null;
+            _connector.CurrentCancelableOperation = null;
             _connector = null;
             _readBuf = null;
             _writeBuf = null;
@@ -323,6 +325,8 @@ namespace Npgsql
     /// </remarks>
     public sealed class NpgsqlCopyTextWriter : StreamWriter, ICancelable
     {
+        public bool CancellationRequired => true;
+
         internal NpgsqlCopyTextWriter(NpgsqlRawCopyStream underlying) : base(underlying)
         {
             if (underlying.IsBinary)
@@ -346,6 +350,8 @@ namespace Npgsql
     /// </remarks>
     public sealed class NpgsqlCopyTextReader : StreamReader, ICancelable
     {
+        public bool CancellationRequired => false;
+
         internal NpgsqlCopyTextReader(NpgsqlRawCopyStream underlying) : base(underlying)
         {
             if (underlying.IsBinary)

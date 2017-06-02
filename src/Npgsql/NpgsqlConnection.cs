@@ -588,7 +588,7 @@ namespace Npgsql
 
             Debug.Assert(Connector != null);
             Connector.CurrentReader?.Close(true, false);
-            var currentCopyOperation = Connector.CurrentCopyOperation;
+            var currentCopyOperation = Connector.CurrentCancelableOperation;
             if (currentCopyOperation != null)
             {
                 // TODO: There's probably a race condition as the COPY operation may finish on its own during the next few lines
@@ -596,9 +596,7 @@ namespace Npgsql
                 // Note: we only want to cancel import operations, since in these cases cancel is safe.
                 // Export cancellations go through the PostgreSQL "asynchronous" cancel mechanism and are
                 // therefore vulnerable to the race condition in #615.
-                if (currentCopyOperation is NpgsqlBinaryImporter ||
-                    currentCopyOperation is NpgsqlCopyTextWriter ||
-                    (currentCopyOperation is NpgsqlRawCopyStream && ((NpgsqlRawCopyStream)currentCopyOperation).CanWrite))
+                if (currentCopyOperation.CancellationRequired)
                 {
                     try
                     {
@@ -811,7 +809,7 @@ namespace Npgsql
             try
             {
                 var importer = new NpgsqlBinaryImporter(connector, copyFromCommand);
-                connector.CurrentCopyOperation = importer;
+                connector.CurrentCancelableOperation = importer;
                 return importer;
             }
             catch
@@ -842,7 +840,7 @@ namespace Npgsql
             try
             {
                 var exporter = new NpgsqlBinaryExporter(Connector, copyToCommand);
-                Connector.CurrentCopyOperation = exporter;
+                Connector.CurrentCancelableOperation = exporter;
                 return exporter;
             }
             catch
@@ -876,7 +874,7 @@ namespace Npgsql
             try
             {
                 var writer = new NpgsqlCopyTextWriter(new NpgsqlRawCopyStream(connector, copyFromCommand));
-                connector.CurrentCopyOperation = writer;
+                connector.CurrentCancelableOperation = writer;
                 return writer;
             }
             catch
@@ -910,7 +908,7 @@ namespace Npgsql
             try
             {
                 var reader = new NpgsqlCopyTextReader(new NpgsqlRawCopyStream(connector, copyToCommand));
-                connector.CurrentCopyOperation = reader;
+                connector.CurrentCancelableOperation = reader;
                 return reader;
             }
             catch
@@ -950,7 +948,7 @@ namespace Npgsql
                     connector.Break();
                     throw new ArgumentException("copyToCommand triggered a text transfer, only binary is allowed", nameof(copyCommand));
                 }
-                connector.CurrentCopyOperation = stream;
+                connector.CurrentCancelableOperation = stream;
                 return stream;
             }
             catch

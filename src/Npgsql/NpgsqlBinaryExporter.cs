@@ -54,6 +54,9 @@ namespace Npgsql
         /// </summary>
         internal int NumColumns { get; }
 
+        /// <inheritdoc />
+        public bool CancellationRequired => false;
+
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         #endregion

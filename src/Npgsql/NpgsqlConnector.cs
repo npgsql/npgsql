@@ -150,10 +150,10 @@ namespace Npgsql
         internal PreparedStatementManager PreparedStatementManager;
 
         /// <summary>
-        /// If the connector is currently in COPY mode, holds a reference to the importer/exporter object.
+        /// If the connector is currently in COPY or REPLICATION mode, holds a reference to the importer/exporter object.
         /// Otherwise null.
         /// </summary>
-        internal ICancelable CurrentCopyOperation;
+        internal ICancelable CurrentCancelableOperation;
 
         /// <summary>
         /// Holds all run-time parameters received from the backend (via ParameterStatus messages)
@@ -446,9 +446,6 @@ namespace Npgsql
                 startupMessage["ssl_renegotiation_limit"] = "0";
             switch (Settings.ReplicationMode)
             {
-            case ReplicationMode.Physical:
-                startupMessage["replication"] = "true";
-                break;
             case ReplicationMode.Logical:
                 startupMessage["replication"] = "database";
                 break;

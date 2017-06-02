@@ -41,6 +41,11 @@ namespace NpgsqlTypes
             Value = upper * ((ulong)uint.MaxValue + 1) + lower;
         }
 
+        public NpgsqlLsn(ulong value)
+        {
+            Value = value;
+        }
+
         public override string ToString()
         {
             return string.Format("{0:X}/{1:X}", Upper, Lower);

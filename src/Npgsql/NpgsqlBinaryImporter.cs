@@ -238,6 +238,8 @@ namespace Npgsql
 
         #region Cancel / Close / Dispose
 
+        bool ICancelable.CancellationRequired => true;
+
         /// <summary>
         /// Cancels and terminates an ongoing import. Any data already written will be discarded.
         /// </summary>
@@ -298,7 +300,7 @@ namespace Npgsql
         void Cleanup()
         {
             Log.Debug("COPY operation ended", _connector.Id);
-            _connector.CurrentCopyOperation = null;
+            _connector.CurrentCancelableOperation = null;
             _connector = null;
             _registry = null;
             _buf = null;

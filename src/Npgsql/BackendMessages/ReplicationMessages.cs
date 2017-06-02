@@ -10,8 +10,6 @@ namespace Npgsql.BackendMessages
     /// </summary>
     class WalDataResponseMessage : IBackendMessage
     {
-        readonly ReplicationMode _replicationMode;
-
         public BackendMessageCode Code => BackendMessageCode.WalData;
 
         /// <summary>
@@ -35,11 +33,6 @@ namespace Npgsql.BackendMessages
             + 8  // EndLsn
             + 8; // SystemClock
 
-        internal WalDataResponseMessage(ReplicationMode replicationMode)
-        {
-            _replicationMode = replicationMode;
-        }
-
         internal void Load(ReadBuffer buffer)
         {
             var upper = buffer.ReadUInt32();
@@ -51,13 +44,6 @@ namespace Npgsql.BackendMessages
             EndLsn = new NpgsqlLsn(upper, lower);
 
             SystemClock = buffer.ReadInt64();
-            switch (_replicationMode)
-            {
-            case ReplicationMode.Physical:
-                throw new NotImplementedException("Not implemented yet.");
-            case ReplicationMode.Logical:
-                break;
-            }
         }
     }
 
