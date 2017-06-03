@@ -31,7 +31,7 @@ To prepare your commands, simply use the following standard ADO.NET code:
 
 ```c#
 var cmd = new NpgsqlCommand(...);
-cmd.Parameters.Add("param", NpgsqlDbType.In
+cmd.Parameters.Add("param", NpgsqlDbType.Integer);
 cmd.Prepare();
 // Set parameters
 cmd.ExecuteNonQuery();
