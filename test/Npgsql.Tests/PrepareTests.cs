@@ -221,6 +221,33 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        public void OneCommandSameSqlTwiceWithParams()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT @p1; SELECT @p2", conn))
+            {
+                cmd.Parameters.Add("p1", NpgsqlDbType.Integer);
+                cmd.Parameters.Add("p2", NpgsqlDbType.Integer);
+                cmd.Prepare();
+                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1));
+
+                cmd.Parameters[0].Value = 8;
+                cmd.Parameters[1].Value = 9;
+                using (var reader = cmd.ExecuteReader())
+                {
+                    Assert.That(reader.Read(), Is.True);
+                    Assert.That(reader.GetInt32(0), Is.EqualTo(8));
+                    Assert.That(reader.NextResult(), Is.True);
+                    Assert.That(reader.Read(), Is.True);
+                    Assert.That(reader.GetInt32(0), Is.EqualTo(9));
+                    Assert.That(reader.NextResult(), Is.False);
+                }
+
+                cmd.Unprepare();
+            }
+        }
+
+        [Test]
         public void UnprepareViaDifferentCommand()
         {
             using (var conn = OpenConnection())
