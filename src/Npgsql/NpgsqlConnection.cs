@@ -962,6 +962,12 @@ namespace Npgsql
 
         #region Replication
 
+        /// <summary>
+        /// Instructs server to start streaming WAL. Note that this method could be used only if the connection
+        /// is opened in the <see cref="ReplicationMode">replication mode</see>.
+        /// </summary>
+        /// <param name="replicationCommand">START_REPLICATION command</param>
+        /// <remarks>See <a href="">https://www.postgresql.org/docs/current/static/protocol-replication.html</a>.</remarks>
         public NpgsqlRawReplicationStream BeginReplication(string replicationCommand)
         {
             if (replicationCommand == null)

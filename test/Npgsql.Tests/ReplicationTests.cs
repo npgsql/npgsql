@@ -1,6 +1,5 @@
 ﻿using System.Diagnostics;
 using System.IO;
-using System.Security.Cryptography;
 using System.Threading;
 using NpgsqlTypes;
 using NUnit.Framework;
@@ -11,6 +10,7 @@ namespace Npgsql.Tests
     public class ReplicationTests : TestBase
     {
         const string TestSlotName = "npgsql_repl_test";
+
         /// <summary>
         /// default logical decoding plugin
         /// </summary>
@@ -142,7 +142,7 @@ namespace Npgsql.Tests
             }
         }
 
-       [OneTimeSetUp]
+        [OneTimeSetUp]
         public void OneTimeSetup()
         {
             using (var connection = OpenConnection())
