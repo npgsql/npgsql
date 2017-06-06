@@ -238,7 +238,7 @@ namespace Npgsql
         /// </remarks>
         public override void Flush()
         {
-            if (_walDataResponse.SystemClock == 0)
+            if (CurrentLsn.Value == 0)
                 return;
 
             var nextLsn = new NpgsqlLsn(CurrentLsn.Value + 1);
@@ -269,6 +269,10 @@ namespace Npgsql
             lock (_writeSyncObject)
             {
                 CheckDisposed();
+                // CopyData message code...
+                _connector.WriteBuffer.WriteByte((byte) BackendMessageCode.CopyData);
+                // .. and the length of the message
+                _connector.WriteBuffer.WriteInt32(_standbyStatusUpdateRequest.Length + 4);
                 _connector.SendMessage(_standbyStatusUpdateRequest);
             }
         }
