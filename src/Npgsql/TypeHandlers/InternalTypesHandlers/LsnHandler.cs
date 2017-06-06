@@ -45,8 +45,8 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
         {
             Debug.Assert(len == 8);
 
-            var lower = buf.ReadUInt32();
             var upper = buf.ReadUInt32();
+            var lower = buf.ReadUInt32();
 
             return new NpgsqlLsn(upper, lower);
         }
@@ -69,8 +69,8 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
             else
                 lsn = (NpgsqlLsn)value;
 
-            buf.WriteUInt32(lsn.Lower);
             buf.WriteUInt32(lsn.Upper);
+            buf.WriteUInt32(lsn.Lower);
         }
     }
 }

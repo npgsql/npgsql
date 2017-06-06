@@ -518,18 +518,19 @@ namespace Npgsql.Tests.Types
             using (var conn = OpenConnection())
             using (var cmd = conn.CreateCommand())
             {
-                cmd.CommandText = "SELECT '2A/17'::pg_lsn, @p1, @p2";
+                cmd.CommandText = "SELECT '2A/17'::pg_lsn, @p1, @p2, @p1::TEXT";
                 cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Lsn, expected);
                 cmd.Parameters.AddWithValue("p2", NpgsqlDbType.Lsn, "7FFFFFF/F4240");
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();
-                    Assert.AreEqual(expected.Lower, reader.GetFieldValue<NpgsqlLsn>(0).Lower);
-                    Assert.AreEqual(expected.Upper, reader.GetFieldValue<NpgsqlLsn>(0).Upper);
+                    Assert.AreEqual(0x17, reader.GetFieldValue<NpgsqlLsn>(0).Lower);
+                    Assert.AreEqual(0x2A, reader.GetFieldValue<NpgsqlLsn>(0).Upper);
                     Assert.AreEqual(expected.Lower, reader.GetFieldValue<NpgsqlLsn>(1).Lower);
                     Assert.AreEqual(expected.Upper, reader.GetFieldValue<NpgsqlLsn>(1).Upper);
                     Assert.AreEqual(0x7FFFFFF, reader.GetFieldValue<NpgsqlLsn>(2).Upper);
                     Assert.AreEqual(0xF4240, reader.GetFieldValue<NpgsqlLsn>(2).Lower);
+                    Assert.AreEqual(expected.ToString(), reader.GetString(3));
                 }
             }
 
