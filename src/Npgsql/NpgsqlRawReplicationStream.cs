@@ -258,22 +258,11 @@ namespace Npgsql
                 return;
 
             CheckDisposed();
-
-            _standbyStatusUpdateRequest.LastWrittenLsn = lastWrittenLsn;
-            _standbyStatusUpdateRequest.LastFlushedLsn = lastFlushedLsn;
-            _standbyStatusUpdateRequest.LastAppliedLsn = lastAppliedLsn;
-
-            var ticks = (DateTime.Now - ReplicationEraStart).Ticks;
-            _standbyStatusUpdateRequest.SystemClock = (long)(ticks / (TimeSpan.TicksPerMillisecond / 1000d));
-
+            
             lock (_writeSyncObject)
             {
                 CheckDisposed();
-                // CopyData message code...
-                _connector.WriteBuffer.WriteByte((byte) BackendMessageCode.CopyData);
-                // .. and the length of the message
-                _connector.WriteBuffer.WriteInt32(_standbyStatusUpdateRequest.Length + 4);
-                _connector.SendMessage(_standbyStatusUpdateRequest);
+                SendStandbyStatusUpdateRequest(lastWrittenLsn, lastFlushedLsn, lastAppliedLsn, false);
             }
         }
 
@@ -345,6 +334,26 @@ namespace Npgsql
         }
 
         /// <summary>
+        /// This method can be called only if <see cref="_writeSyncObject"/> is locked.
+        /// </summary>
+        void SendStandbyStatusUpdateRequest(NpgsqlLsn lastWrittenLsn, NpgsqlLsn lastFlushedLsn, NpgsqlLsn lastAppliedLsn, bool replyImmediately)
+        {
+            _standbyStatusUpdateRequest.LastWrittenLsn = lastWrittenLsn;
+            _standbyStatusUpdateRequest.LastFlushedLsn = lastFlushedLsn;
+            _standbyStatusUpdateRequest.LastAppliedLsn = lastAppliedLsn;
+            _standbyStatusUpdateRequest.ReplyImmediately = replyImmediately;
+
+            var ticks = (DateTime.Now - ReplicationEraStart).Ticks;
+            _standbyStatusUpdateRequest.SystemClock = (long)(ticks / (TimeSpan.TicksPerMillisecond / 1000d));
+
+            // CopyData message code...
+            _connector.WriteBuffer.WriteByte((byte)BackendMessageCode.CopyData);
+            // .. and the length of the message
+            _connector.WriteBuffer.WriteInt32(_standbyStatusUpdateRequest.Length + 4);
+            _connector.SendMessage(_standbyStatusUpdateRequest);
+        }
+
+        /// <summary>
         /// Send CopyDone request and wait for confirmation.
         /// </summary>
 #if NET45 || NET451
@@ -362,33 +371,32 @@ namespace Npgsql
             if (_disposed)
                 return;
 
-            try
+            lock (_writeSyncObject)
             {
-                lock (_writeSyncObject)
-                {
-                    if (_disposed)
-                        return;
+                if (_disposed)
+                    return;
 
-                    _connector.SendMessage(CopyDoneMessage.Instance);
-                    if (!waitForConfirmation)
-                    {
-                        if (_connector.State == ConnectorState.Replication)
-                            _connector.EndUserAction();
-                        Cleanup();
-                        return;
-                    }
+                if (waitForConfirmation && _standbyStatusUpdateRequest.SystemClock > 0)
+                {
+                    // Repeating the last flush message with the confirmation request
+                    SendStandbyStatusUpdateRequest(_standbyStatusUpdateRequest.LastWrittenLsn, _standbyStatusUpdateRequest.LastFlushedLsn, _standbyStatusUpdateRequest.LastAppliedLsn, true);
                 }
 
-                while (FetchNext(true, false).Result)
+                _connector.SendMessage(CopyDoneMessage.Instance);
+                if (!waitForConfirmation)
                 {
-                    // Receiving and skipping all pending messages.
+                    if (_connector.State == ConnectorState.Replication)
+                        _connector.EndUserAction();
+                    Cleanup();
+                    return;
                 }
-                Cleanup();
             }
-            catch
+
+            while (FetchNext(true, false).Result)
             {
-                Cleanup();
+                // Receiving and skipping all pending messages.
             }
+            Cleanup();
         }
 
         void Cleanup()
@@ -403,7 +411,15 @@ namespace Npgsql
         /// <inheritdoc />
         protected override void Dispose(bool disposing)
         {
-            Close(disposing);
+            try
+            {
+                Close(disposing);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("START_REPLICATION operation completed with an error", ex, _connector.Id);
+                Cleanup();
+            }
         }
 
         void ICancelable.Cancel()
