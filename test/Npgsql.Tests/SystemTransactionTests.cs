@@ -341,6 +341,25 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1594")]
+        public void Bug1594()
+        {
+            using (new TransactionScope())
+            {
+                using (var conn = OpenConnection(ConnectionStringEnlistOn))
+                using (var innerScope1 = new TransactionScope())
+                {
+                    conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')");
+                    innerScope1.Complete();
+                }
+                using (OpenConnection(ConnectionStringEnlistOn))
+                using (new TransactionScope())
+                {
+                    // Don't complete, triggering rollback
+                }
+            }
+        }
+
         void AssertNoPreparedTransactions()
             => Assert.That(GetNumberOfPreparedTransactions(), Is.EqualTo(0));
 
