@@ -454,10 +454,12 @@ namespace Npgsql
             }
         }
 
-        internal void RemovePendingEnlistedConnector(NpgsqlConnector connector, Transaction transaction)
+        internal void TryRemovePendingEnlistedConnector(NpgsqlConnector connector, Transaction transaction)
         {
-            lock (_pendingEnlistedConnectors) {
-                var list = _pendingEnlistedConnectors[transaction];
+            lock (_pendingEnlistedConnectors)
+            {
+                if (!_pendingEnlistedConnectors.TryGetValue(transaction, out var list))
+                    return;
                 list.Remove(connector);
                 if (list.Count == 0)
                     _pendingEnlistedConnectors.Remove(transaction);
