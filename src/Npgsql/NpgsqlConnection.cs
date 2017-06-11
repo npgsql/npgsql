@@ -150,11 +150,8 @@ namespace Npgsql
         /// </remarks>
         /// <param name="cancellationToken">The cancellation instruction.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
-        public override async Task OpenAsync(CancellationToken cancellationToken)
-        {
-            using (NoSynchronizationContextScope.Enter())
-                await Open(true, cancellationToken);
-        }
+        public override Task OpenAsync(CancellationToken cancellationToken)
+            => SynchronizationContextSwitcher.NoContext(async () => await Open(true, cancellationToken));
 
         void GetPoolAndSettings()
         {
