@@ -25,8 +25,10 @@
 #if NET451
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
+using System.Text;
 using System.Transactions;
 using JetBrains.Annotations;
 using NUnit.Framework;
@@ -46,9 +48,11 @@ namespace Npgsql.Tests
                 {
                     conn.EnlistTransaction(Transaction.Current);
                     Assert.That(conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test')"), Is.EqualTo(1), "Unexpected insert rowcount");
+                    AssertNoDistributedIdentifier();
                     AssertNoPreparedTransactions();
                     scope.Complete();
                 }
+                AssertNoDistributedIdentifier();
                 AssertNoPreparedTransactions();
                 using (var tx = conn.BeginTransaction())
                 {
@@ -66,6 +70,7 @@ namespace Npgsql.Tests
             {
                 conn.Open();
                 Assert.That(conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test')"), Is.EqualTo(1), "Unexpected insert rowcount");
+                AssertNoDistributedIdentifier();
                 AssertNoPreparedTransactions();
                 scope.Complete();
             }
@@ -106,6 +111,7 @@ namespace Npgsql.Tests
                     Assert.That(conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test')"), Is.EqualTo(1), "Unexpected insert rowcount");
                     // No commit
                 }
+                AssertNoDistributedIdentifier();
                 AssertNoPreparedTransactions();
                 using (var tx = conn.BeginTransaction())
                 {
@@ -122,6 +128,7 @@ namespace Npgsql.Tests
             using (var conn = OpenConnection(ConnectionStringEnlistOn))
             {
                 Assert.That(conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test')"), Is.EqualTo(1), "Unexpected insert rowcount");
+                AssertNoDistributedIdentifier();
                 AssertNoPreparedTransactions();
                 // No commit
             }
@@ -147,6 +154,7 @@ namespace Npgsql.Tests
                 }
             }
             // TODO: There may be a race condition here, where the prepared transaction above still hasn't committed.
+            AssertNoDistributedIdentifier();
             AssertNoPreparedTransactions();
             AssertNumberOfRows(2);
         }
@@ -168,6 +176,7 @@ namespace Npgsql.Tests
 
                 // Consecutive connections used in same scope should not promote the
                 // transaction to distributed.
+                AssertNoDistributedIdentifier();
                 AssertNoPreparedTransactions();
                 scope.Complete();
             }
@@ -185,6 +194,7 @@ namespace Npgsql.Tests
                 Assert.That(conn2.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test2')"), Is.EqualTo(1), "Unexpected second insert rowcount");
             }
             // TODO: There may be a race condition here, where the prepared transaction above still hasn't committed.
+            AssertNoDistributedIdentifier();
             AssertNoPreparedTransactions();
             AssertNumberOfRows(0);
         }
@@ -200,12 +210,14 @@ namespace Npgsql.Tests
                 {
                     Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1), "Unexpected first insert rowcount");
 
-                    ForceEscalationToDistributedTx.Escalate(true);
+                    EnlistResource.EscalateToDistributed(true);
+                    AssertHasDistributedIdentifier();
                     tx.Complete();
                 }
                 disposedCalled = true;
                 Assert.That(() => tx.Dispose(), Throws.TypeOf<TransactionAbortedException>());
                 // TODO: There may be a race condition here, where the prepared transaction above still hasn't completed.
+                AssertNoDistributedIdentifier();
                 AssertNoPreparedTransactions();
                 AssertNumberOfRows(0);
             }
@@ -221,24 +233,74 @@ namespace Npgsql.Tests
         {
             for (var i = 1; i <= 100; i++)
             {
+                var eventQueue = new ConcurrentQueue<TransactionEvent>();
                 try
                 {
                     using (var tx = new TransactionScope())
                     using (var conn1 = OpenConnection(ConnectionStringEnlistOn))
                     {
+                        eventQueue.Enqueue(new TransactionEvent("Scope started, connection enlisted"));
                         Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1), "Unexpected first insert rowcount");
+                        eventQueue.Enqueue(new TransactionEvent("Insert done"));
 
-                        ForceEscalationToDistributedTx.Escalate();
+                        EnlistResource.EscalateToDistributed(eventQueue);
+                        AssertHasDistributedIdentifier();
                         tx.Complete();
+                        eventQueue.Enqueue(new TransactionEvent("Scope completed"));
                     }
+                    eventQueue.Enqueue(new TransactionEvent("Scope disposed", true));
                     // TODO: There may be a race condition here, where the prepared transaction above still hasn't completed.
                     // Failure dodge-able with System.Threading.Thread.Sleep(100);
+                    AssertNoDistributedIdentifier();
                     // Call to AssertNoPreparedTransactions(); tends to hide the trouble, at least for first iteration.
                     AssertNumberOfRows(i);
+                    AssertEventQueueCoherent(eventQueue);
                 }
                 catch (Exception ex)
                 {
-                    Assert.Fail("Failed at iteration {0}: {1}", i, ex);
+                    Assert.Fail(
+                        @"Failed at iteration {0}.
+Events:
+{1}
+Exception {2}",
+                        i, FormatEventQueue(eventQueue), ex);
+                }
+            }
+        }
+
+        [Test, Explicit("100 iteration loop.")]
+        public void NonDistributedRace()
+        {
+            for (var i = 1; i <= 100; i++)
+            {
+                var eventQueue = new ConcurrentQueue<TransactionEvent>();
+                try
+                {
+                    using (var tx = new TransactionScope())
+                    using (var conn1 = OpenConnection(ConnectionStringEnlistOn))
+                    {
+                        eventQueue.Enqueue(new TransactionEvent("Scope started, connection enlisted"));
+                        Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1), "Unexpected first insert rowcount");
+                        eventQueue.Enqueue(new TransactionEvent("Insert done"));
+
+                        EnlistResource.EnlistVolatile(eventQueue);
+                        AssertNoDistributedIdentifier();
+                        tx.Complete();
+                        eventQueue.Enqueue(new TransactionEvent("Scope completed"));
+                    }
+                    eventQueue.Enqueue(new TransactionEvent("Scope disposed", true));
+                    AssertNoDistributedIdentifier();
+                    AssertNumberOfRows(i);
+                    AssertEventQueueCoherent(eventQueue);
+                }
+                catch (Exception ex)
+                {
+                    Assert.Fail(
+                        @"Failed at iteration {0}.
+Events:
+{1}
+Exception {2}",
+                        i, FormatEventQueue(eventQueue), ex);
                 }
             }
         }
@@ -260,6 +322,7 @@ namespace Npgsql.Tests
                 scope.Complete();
                 Assert.That(() => scope.Dispose(), Throws.Exception.TypeOf<TransactionAbortedException>());
 
+                AssertNoDistributedIdentifier();
                 AssertNoPreparedTransactions();
                 using (var tx = conn1.BeginTransaction())
                 {
@@ -274,28 +337,83 @@ namespace Npgsql.Tests
         {
             for (var i = 1; i <= 100; i++)
             {
+                var eventQueue = new ConcurrentQueue<TransactionEvent>();
                 try
                 {
                     using (var conn1 = OpenConnection(ConnectionStringEnlistOff))
-                {
-                    using (var scope = new TransactionScope())
                     {
-                        conn1.EnlistTransaction(Transaction.Current);
-                        ForceEscalationToDistributedTx.Escalate();
+                        using (var scope = new TransactionScope())
+                        {
+                            conn1.EnlistTransaction(Transaction.Current);
+                            eventQueue.Enqueue(new TransactionEvent("Scope started, connection enlisted"));
+                            EnlistResource.EscalateToDistributed(eventQueue);
+                            AssertHasDistributedIdentifier();
 
-                        Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1), "Unexpected first insert rowcount");
+                            Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1), "Unexpected first insert rowcount");
+                            eventQueue.Enqueue(new TransactionEvent("Insert done"));
 
-                        scope.Complete();
-                    }
+                            scope.Complete();
+                            eventQueue.Enqueue(new TransactionEvent("Scope completed"));
+                        }
+                        eventQueue.Enqueue(new TransactionEvent("Scope disposed", true));
 
-                    // TODO: There may be a race condition here, where the prepared transaction above still hasn't committed
-                    // and un-enlist from connections.
-                    Assert.DoesNotThrow(() => conn1.ExecuteScalar(@"SELECT COUNT(*) FROM data"));
+                        // TODO: There may be a race condition here, where the prepared transaction above still hasn't committed
+                        // and un-enlist from connections.
+                        Assert.DoesNotThrow(() => conn1.ExecuteScalar(@"SELECT COUNT(*) FROM data"));
+                        AssertEventQueueCoherent(eventQueue);
                     }
                 }
                 catch (Exception ex)
                 {
-                    Assert.Fail("Failed at iteration {0}: {1}", i, ex);
+                    Assert.Fail(
+                        @"Failed at iteration {0}.
+Events:
+{1}
+Exception {2}",
+                        i, FormatEventQueue(eventQueue), ex);
+                }
+            }
+        }
+
+        [Test, Explicit("100 iteration loop.")]
+        public void ConnectionReuseRaceAfterNonDistributedTransaction()
+        {
+            for (var i = 1; i <= 100; i++)
+            {
+                var eventQueue = new ConcurrentQueue<TransactionEvent>();
+                try
+                {
+                    using (var conn1 = OpenConnection(ConnectionStringEnlistOff))
+                    {
+                        using (var scope = new TransactionScope())
+                        {
+                            conn1.EnlistTransaction(Transaction.Current);
+                            eventQueue.Enqueue(new TransactionEvent("Scope started, connection enlisted"));
+                            EnlistResource.EnlistVolatile(eventQueue);
+                            AssertNoDistributedIdentifier();
+
+                            Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1), "Unexpected first insert rowcount");
+                            eventQueue.Enqueue(new TransactionEvent("Insert done"));
+
+                            scope.Complete();
+                            eventQueue.Enqueue(new TransactionEvent("Scope completed"));
+                        }
+                        eventQueue.Enqueue(new TransactionEvent("Scope disposed", true));
+
+                        // TODO: There may be a race condition here, where the prepared transaction above still hasn't committed
+                        // and un-enlist from connections.
+                        Assert.DoesNotThrow(() => conn1.ExecuteScalar(@"SELECT COUNT(*) FROM data"));
+                        AssertEventQueueCoherent(eventQueue);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Assert.Fail(
+                        @"Failed at iteration {0}.
+Events:
+{1}
+Exception {2}",
+                        i, FormatEventQueue(eventQueue), ex);
                 }
             }
         }
@@ -312,6 +430,7 @@ namespace Npgsql.Tests
             {
                 Assert.That(conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test')"), Is.EqualTo(1), "Unexpected insert rowcount");
                 conn.Close();
+                AssertNoDistributedIdentifier();
                 AssertNoPreparedTransactions();
                 scope.Complete();
             }
@@ -428,7 +547,7 @@ namespace Npgsql.Tests
                 {
                     conn1.Open();
                     var processId = conn1.ProcessID;
-                    using (new NpgsqlConnection(ConnectionStringEnlistOn)) {}
+                    using (new NpgsqlConnection(ConnectionStringEnlistOn)) { }
                     conn1.Close();
 
                     conn1.Open();
@@ -466,6 +585,7 @@ namespace Npgsql.Tests
                 using (var reader = cmd.ExecuteReader(CommandBehavior.KeyInfo))
                 {
                     reader.GetColumnSchema();
+                    AssertNoDistributedIdentifier();
                     AssertNoPreparedTransactions();
                     tran.Complete();
                 }
@@ -507,30 +627,90 @@ namespace Npgsql.Tests
         void AssertNumberOfRows(int expected)
           => Assert.That(_controlConn.ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(expected), "Unexpected data count");
 
+        static void AssertNoDistributedIdentifier()
+            => Assert.That(Transaction.Current?.TransactionInformation.DistributedIdentifier ?? Guid.Empty, Is.EqualTo(Guid.Empty), "Distributed identifier found");
+
+        static void AssertHasDistributedIdentifier()
+            => Assert.That(Transaction.Current?.TransactionInformation.DistributedIdentifier ?? Guid.Empty, Is.Not.EqualTo(Guid.Empty), "Distributed identifier not found");
+
         public static string ConnectionStringEnlistOn =
             new NpgsqlConnectionStringBuilder(ConnectionString) { Enlist = true }.ToString();
 
         public static string ConnectionStringEnlistOff =
             new NpgsqlConnectionStringBuilder(ConnectionString) { Enlist = false }.ToString();
 
+        static string FormatEventQueue(ConcurrentQueue<TransactionEvent> eventQueue)
+        {
+            var eventsMessage = new StringBuilder();
+            foreach (var evt in eventQueue)
+            {
+                eventsMessage.AppendLine(evt.Message);
+            }
+            return eventsMessage.ToString();
+        }
+
+        static void AssertEventQueueCoherent(ConcurrentQueue<TransactionEvent> eventQueue)
+        {
+            var tranCompletedFound = false;
+            var disposedFound = false;
+            foreach (var evt in eventQueue)
+            {
+                if (evt.IsScopeDisposed)
+                {
+                    Assert.That(tranCompletedFound, Is.EqualTo(true),
+                        "Found dispose event before transaction completion ({0})", evt.Message);
+                    disposedFound = true;
+                }
+                else
+                {
+                    Assert.That(disposedFound, Is.EqualTo(false), "Found an event after disposal: {0}", evt.Message);
+                    if (evt.IsTransactionCompleted)
+                        tranCompletedFound = true;
+                }
+            }
+        }
+
         // Idea from NHibernate test project, DtcFailuresFixture
-        public class ForceEscalationToDistributedTx : IEnlistmentNotification
+        public class EnlistResource : IEnlistmentNotification
         {
             readonly bool _shouldRollBack;
+            readonly string _name;
+            readonly ConcurrentQueue<TransactionEvent> _eventQueue;
 
-            public static void Escalate(bool shouldRollBack = false)
+            public static void EnlistVolatile(ConcurrentQueue<TransactionEvent> eventQueue)
+                => EnlistVolatile(false, eventQueue);
+
+            public static void EnlistVolatile(bool shouldRollBack = false, ConcurrentQueue<TransactionEvent> eventQueue = null)
+                => Enlist(false, shouldRollBack, eventQueue);
+
+            public static void EscalateToDistributed(ConcurrentQueue<TransactionEvent> eventQueue)
+                => EscalateToDistributed(false, eventQueue);
+
+            public static void EscalateToDistributed(bool shouldRollBack= false, ConcurrentQueue<TransactionEvent> eventQueue = null)
+                => Enlist(true, shouldRollBack, eventQueue);
+
+            static void Enlist(bool durable, bool shouldRollBack, ConcurrentQueue<TransactionEvent> eventQueue)
             {
-                var force = new ForceEscalationToDistributedTx(shouldRollBack);
-                Transaction.Current.EnlistDurable(Guid.NewGuid(), force, EnlistmentOptions.None);
+                var name = $"{(durable ? "Durable" : "Volatile")} resource";
+                var resource = new EnlistResource(shouldRollBack, name, eventQueue);
+                if (durable)
+                    Transaction.Current.EnlistDurable(Guid.NewGuid(), resource, EnlistmentOptions.None);
+                else
+                    Transaction.Current.EnlistVolatile(resource, EnlistmentOptions.None);
+
+                eventQueue?.Enqueue(new TransactionEvent(name + ": enlisted"));
             }
 
-            ForceEscalationToDistributedTx(bool shouldRollBack)
+            EnlistResource(bool shouldRollBack, string name, ConcurrentQueue<TransactionEvent> eventQueue)
             {
                 _shouldRollBack = shouldRollBack;
+                _name = name;
+                _eventQueue = eventQueue;
             }
 
             public void Prepare(PreparingEnlistment preparingEnlistment)
             {
+                _eventQueue?.Enqueue(new TransactionEvent(_name + ": prepare phase"));
                 if (_shouldRollBack)
                 {
                     preparingEnlistment.ForceRollback();
@@ -543,18 +723,34 @@ namespace Npgsql.Tests
 
             public void Commit(Enlistment enlistment)
             {
+                _eventQueue?.Enqueue(new TransactionEvent(_name + ": commit phase") { IsTransactionCompleted = true });
                 enlistment.Done();
             }
 
             public void Rollback(Enlistment enlistment)
             {
+                _eventQueue?.Enqueue(new TransactionEvent(_name + ": rollback phase") { IsTransactionCompleted = true });
                 enlistment.Done();
             }
 
             public void InDoubt(Enlistment enlistment)
             {
+                _eventQueue?.Enqueue(new TransactionEvent(_name + ": in-doubt phase") { IsTransactionCompleted = true });
                 enlistment.Done();
             }
+        }
+
+        public class TransactionEvent
+        {
+            public TransactionEvent(string message, bool isScopeDisposed = false)
+            {
+                IsScopeDisposed = isScopeDisposed;
+                Message = message;
+            }
+
+            public bool IsScopeDisposed { get; }
+            public bool IsTransactionCompleted { get; set; }
+            public string Message { get; }
         }
 
         #region Setup
@@ -610,10 +806,7 @@ namespace Npgsql.Tests
         }
 
         [SetUp]
-        public void SetUp()
-        {
-            _controlConn.ExecuteNonQuery("TRUNCATE data");
-        }
+        public void SetUp() => _controlConn.ExecuteNonQuery("TRUNCATE data");
 
         [OneTimeTearDown]
         public void OneTimeTearDown()
@@ -624,10 +817,9 @@ namespace Npgsql.Tests
 
         class FakePromotableSinglePhaseNotification : IPromotableSinglePhaseNotification
         {
-            public byte[] Promote() { return null; }
-            public void Initialize() {}
-            public void SinglePhaseCommit(SinglePhaseEnlistment singlePhaseEnlistment) {}
-            public void Rollback(SinglePhaseEnlistment singlePhaseEnlistment) {}
+            public byte[] Promote() => null; public void Initialize() { }
+            public void SinglePhaseCommit(SinglePhaseEnlistment singlePhaseEnlistment) { }
+            public void Rollback(SinglePhaseEnlistment singlePhaseEnlistment) { }
         }
 
         #endregion
