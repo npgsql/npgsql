@@ -221,6 +221,25 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        public void OneCommandSameSqlAutoPrepare()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                MaxAutoPrepare = 5,
+                AutoPrepareMinUsages = 2
+            };
+            using (var conn = OpenConnectionAndUnprepare(csb))
+            {
+                var sql = new StringBuilder();
+                for (var i = 0; i < 2 + 1; i++)
+                    sql.Append("SELECT 1;");
+                using (var cmd = new NpgsqlCommand(sql.ToString(), conn))
+                    cmd.ExecuteNonQuery();
+                AssertNumPreparedStatements(conn, 1);
+            }
+        }
+
+        [Test]
         public void UnprepareViaDifferentCommand()
         {
             using (var conn = OpenConnectionAndUnprepare())

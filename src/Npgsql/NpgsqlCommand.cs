@@ -406,8 +406,11 @@ namespace Npgsql
                     if (statement.IsPrepared)
                         continue;
                     statement.PreparedStatement = connector.PreparedStatementManager.GetOrAddExplicit(statement);
-                    if (statement.PreparedStatement?.State == PreparedState.NotYetPrepared)
+                    if (statement.PreparedStatement?.State == PreparedState.NotPrepared)
+                    {
+                        statement.PreparedStatement.State = PreparedState.ToBePrepared;
                         needToPrepare = true;
+                    }
                 }
 
                 // It's possible the command was already prepared, or that presistent prepared statements were found for
@@ -722,7 +725,7 @@ namespace Npgsql
                 var statement = _statements[i];
                 var pStatement = statement.PreparedStatement;
 
-                if (pStatement == null || pStatement.State == PreparedState.NotYetPrepared)
+                if (pStatement == null || pStatement.State == PreparedState.ToBePrepared)
                 {
                     if (pStatement?.StatementBeingReplaced != null)
                     {
@@ -745,7 +748,7 @@ namespace Npgsql
                     bind.UnknownResultTypeList = UnknownResultTypeList;
                 await connector.BindMessage.Write(buf, async, cancellationToken);
 
-                if (pStatement == null || pStatement.State == PreparedState.NotYetPrepared)
+                if (pStatement == null || pStatement.State == PreparedState.ToBePrepared)
                 {
                     await connector.DescribeMessage
                         .Populate(StatementOrPortal.Portal)
@@ -826,7 +829,7 @@ namespace Npgsql
 
                 // A statement may be already prepared, already in preparation (i.e. same statement twice
                 // in the same command), or we can't prepare (overloaded SQL)
-                if (pStatement?.State != PreparedState.NotYetPrepared)
+                if (pStatement?.State != PreparedState.ToBePrepared)
                     continue;
 
                 var statementToClose = pStatement.StatementBeingReplaced;
