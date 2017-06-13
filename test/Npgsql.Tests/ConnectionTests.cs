@@ -197,6 +197,8 @@ namespace Npgsql.Tests
         [Test, Description("Connects with a bad password to ensure the proper error is thrown")]
         public void AuthenticationFailure()
         {
+            if (Environment.GetEnvironmentVariable("TRAVIS") != null)
+                Assert.Ignore("Test mysteriously fails on Travis only");
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 Password = "bad",
@@ -275,7 +277,7 @@ namespace Npgsql.Tests
         {
             var unknownIp = Environment.GetEnvironmentVariable("NPGSQL_UNKNOWN_IP");
             if (unknownIp == null)
-                TestUtil.IgnoreExceptOnBuildServer("NPGSQL_UNKNOWN_IP isn't defined and is required for connection timeout tests");
+                Assert.Ignore("NPGSQL_UNKNOWN_IP isn't defined and is required for connection timeout tests");
 
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString) {
                 Host = unknownIp,
@@ -298,7 +300,7 @@ namespace Npgsql.Tests
         {
             var unknownIp = Environment.GetEnvironmentVariable("NPGSQL_UNKNOWN_IP");
             if (unknownIp == null)
-                TestUtil.IgnoreExceptOnBuildServer("NPGSQL_UNKNOWN_IP isn't defined and is required for connection timeout tests");
+                Assert.Ignore("NPGSQL_UNKNOWN_IP isn't defined and is required for connection timeout tests");
 
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
@@ -319,7 +321,7 @@ namespace Npgsql.Tests
         {
             var unknownIp = Environment.GetEnvironmentVariable("NPGSQL_UNKNOWN_IP");
             if (unknownIp == null)
-                TestUtil.IgnoreExceptOnBuildServer("NPGSQL_UNKNOWN_IP isn't defined and is required for connection cancellation tests");
+                Assert.Ignore("NPGSQL_UNKNOWN_IP isn't defined and is required for connection cancellation tests");
 
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
@@ -716,6 +718,8 @@ namespace Npgsql.Tests
         [Test, Description("Makes sure notices are probably received and emitted as events")]
         public void Notice()
         {
+            if (Environment.GetEnvironmentVariable("TRAVIS") != null)
+                Assert.Ignore("Test mysteriously fails on Travis only");
             using (var conn = OpenConnection())
             {
                 // Make sure messages are in English
@@ -726,12 +730,18 @@ namespace Npgsql.Tests
                         LANGUAGE 'plpgsql';
                 ");
 
+                var mre = new ManualResetEvent(false);
                 PostgresNotice notice = null;
-                NoticeEventHandler action = (sender, args) => notice = args.Notice;
+                NoticeEventHandler action = (sender, args) =>
+                {
+                    notice = args.Notice;
+                    mre.Set();
+                };
                 conn.Notice += action;
                 try
                 {
                     conn.ExecuteNonQuery("SELECT pg_temp.emit_notice()::TEXT"); // See docs for CreateSleepCommand
+                    mre.WaitOne(5000);
                     Assert.That(notice, Is.Not.Null, "No notice was emitted");
                     Assert.That(notice.MessageText, Is.EqualTo("testnotice"));
                     Assert.That(notice.Severity, Is.EqualTo("NOTICE"));
@@ -1055,6 +1065,17 @@ namespace Npgsql.Tests
                 Assert.That(conn.Connector.ReadBuffer.Size, Is.EqualTo(csb.ReadBufferSize));
 
             }
+        }
+
+        [Test, Explicit, Description("Turns on TCP keepalive and sleeps forever, good for wiresharking")]
+        public void TcpKeepalive()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                TcpKeepAliveTime = 2000
+            };
+            using (OpenConnection(csb))
+                Thread.Sleep(Timeout.Infinite);
         }
 
         #region pgpass

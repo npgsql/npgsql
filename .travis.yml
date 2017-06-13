@@ -1,0 +1,27 @@
+language: csharp
+dist: trusty
+sudo: false
+mono: none
+dotnet: 1.0.4
+
+services:
+  - postgresql
+addons:
+  postgresql: "9.6"
+
+env:
+  - NPGSQL_TEST_DB: '"Host=localhost;Database=npgsql_tests;Username=npgsql_tests;Password=npgsql_tests"'
+
+before_script:
+  - psql -U postgres -c "CREATE USER npgsql_tests PASSWORD 'npgsql_tests' SUPERUSER"
+  - psql -U postgres -c "CREATE DATABASE npgsql_tests OWNER npgsql_tests"
+  - psql -U postgres -c "CREATE EXTENSION postgis" npgsql_tests
+  - dotnet restore -v Minimal
+script:
+  - dotnet build "test/Npgsql.Tests" -c Debug -f netcoreapp1.1
+  - dotnet test "test/Npgsql.Tests/Npgsql.Tests.csproj" -c Debug -f netcoreapp1.1
+
+cache:
+  directories:
+    - $HOME/.nuget/packages
+

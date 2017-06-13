@@ -82,12 +82,13 @@ namespace Npgsql
         /// <param name="count">The maximum number of bytes that should be read.</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>How many bytes actually read, or 0 if end of file was already reached.</returns>
-        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            using (NoSynchronizationContextScope.Enter())
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count,
+            CancellationToken cancellationToken)
+            => SynchronizationContextSwitcher.NoContext(async () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
                 return await Read(buffer, offset, count, true);
-        }
+            });
 
         async Task<int> Read(byte[] buffer, int offset, int count, bool async)
         {
@@ -134,12 +135,12 @@ namespace Npgsql
         /// <param name="offset">The offset in the buffer at which to begin copying bytes.</param>
         /// <param name="count">The number of bytes to write.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            using (NoSynchronizationContextScope.Enter())
+        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+            => SynchronizationContextSwitcher.NoContext(async () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
                 await Write(buffer, offset, count, true);
-        }
+            });
 
         async Task Write(byte[] buffer, int offset, int count, bool async)
         {
@@ -215,11 +216,8 @@ namespace Npgsql
         /// <summary>
         /// Gets the length of the large object. This internally seeks to the end of the stream to retrieve the length, and then back again.
         /// </summary>
-        public async Task<long> GetLengthAsync()
-        {
-            using (NoSynchronizationContextScope.Enter())
-                return await GetLength(true);
-        }
+        public Task<long> GetLengthAsync()
+            => SynchronizationContextSwitcher.NoContext(async () => await GetLength(true));
 
 #pragma warning disable CA1721 
         async Task<long> GetLength(bool async)
@@ -249,12 +247,12 @@ namespace Npgsql
         /// <param name="origin">A value of type SeekOrigin indicating the reference point used to obtain the new position.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns></returns>
-        public async Task<long> SeekAsync(long offset, SeekOrigin origin, CancellationToken cancellationToken)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            using (NoSynchronizationContextScope.Enter())
+        public Task<long> SeekAsync(long offset, SeekOrigin origin, CancellationToken cancellationToken)
+            => SynchronizationContextSwitcher.NoContext(async () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
                 return await Seek(offset, origin, true);
-        }
+            });
 
         async Task<long> Seek(long offset, SeekOrigin origin, bool async)
         {
@@ -290,12 +288,12 @@ namespace Npgsql
         /// </summary>
         /// <param name="value">Number of bytes to either truncate or enlarge the large object.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        public async Task SetLength(long value, CancellationToken cancellationToken)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            using (NoSynchronizationContextScope.Enter())
+        public Task SetLength(long value, CancellationToken cancellationToken)
+            => SynchronizationContextSwitcher.NoContext(async () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested()            ;
                 await SetLength(value, true);
-        }
+            });
 
         async Task SetLength(long value, bool async)
         {

@@ -73,7 +73,7 @@ namespace Npgsql
                 // We've found an autoprepare statement (candidate or otherwise)
                 switch (pStatement.State)
                 {
-                case PreparedState.NotYetPrepared:
+                case PreparedState.NotPrepared:
                     // Found a candidate for autopreparation. Remove it and prepare explicitly.
                     RemoveCandidate(pStatement);
                     break;
@@ -136,9 +136,12 @@ namespace Npgsql
                 pStatement = BySql[sql] = _candidates[slotIndex] = PreparedStatement.CreateAutoPrepareCandidate(this, sql);
             }
 
-            if (pStatement.IsPrepared)
+            switch (pStatement.State)
             {
-                // The statement has already been prepared (explicitly or automatically).
+                case PreparedState.Prepared:
+                case PreparedState.ToBePrepared:
+                // The statement has already been prepared (explicitly or automatically), or has been selected
+                // for preparation (earlier identical statement in the same command).
                 // We just need to check that the parameter types correspond, since prepared statements are
                 // only keyed by SQL (to prevent pointless allocations). If we have a mismatch, simply run unprepared.
                 return pStatement.DoParametersMatch(statement.InputParameters)
@@ -156,6 +159,7 @@ namespace Npgsql
 
             // Bingo, we've just passed the usage threshold, statement should get prepared
             Log.Trace($"Automatically preparing statement: {sql}", _connector.Id);
+            pStatement.State = PreparedState.ToBePrepared;
 
             RemoveCandidate(pStatement);
 

@@ -155,12 +155,12 @@ namespace Npgsql
         /// Commits the database transaction.
         /// </summary>
         [PublicAPI]
-        public async Task CommitAsync(CancellationToken cancellationToken)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            using (NoSynchronizationContextScope.Enter())
+        public Task CommitAsync(CancellationToken cancellationToken)
+            => SynchronizationContextSwitcher.NoContext(async () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
                 await Commit(true, cancellationToken);
-        }
+            });
 
         /// <summary>
         /// Commits the database transaction.
@@ -188,12 +188,12 @@ namespace Npgsql
         /// Rolls back a transaction from a pending state.
         /// </summary>
         [PublicAPI]
-        public async Task RollbackAsync(CancellationToken cancellationToken)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            using (NoSynchronizationContextScope.Enter())
+        public Task RollbackAsync(CancellationToken cancellationToken)
+            => SynchronizationContextSwitcher.NoContext(async () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
                 await Rollback(true, cancellationToken);
-        }
+            });
 
         /// <summary>
         /// Rolls back a transaction from a pending state.

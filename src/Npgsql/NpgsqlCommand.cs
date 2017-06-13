@@ -406,8 +406,11 @@ namespace Npgsql
                     if (statement.IsPrepared)
                         continue;
                     statement.PreparedStatement = connector.PreparedStatementManager.GetOrAddExplicit(statement);
-                    if (statement.PreparedStatement?.State == PreparedState.NotYetPrepared)
+                    if (statement.PreparedStatement?.State == PreparedState.NotPrepared)
+                    {
+                        statement.PreparedStatement.State = PreparedState.ToBePrepared;
                         needToPrepare = true;
+                    }
                 }
 
                 // It's possible the command was already prepared, or that presistent prepared statements were found for
@@ -722,7 +725,7 @@ namespace Npgsql
                 var statement = _statements[i];
                 var pStatement = statement.PreparedStatement;
 
-                if (pStatement == null || pStatement.State == PreparedState.NotYetPrepared)
+                if (pStatement == null || pStatement.State == PreparedState.ToBePrepared)
                 {
                     if (pStatement?.StatementBeingReplaced != null)
                     {
@@ -745,7 +748,7 @@ namespace Npgsql
                     bind.UnknownResultTypeList = UnknownResultTypeList;
                 await connector.BindMessage.Write(buf, async, cancellationToken);
 
-                if (pStatement == null || pStatement.State == PreparedState.NotYetPrepared)
+                if (pStatement == null || pStatement.State == PreparedState.ToBePrepared)
                 {
                     await connector.DescribeMessage
                         .Populate(StatementOrPortal.Portal)
@@ -826,7 +829,7 @@ namespace Npgsql
 
                 // A statement may be already prepared, already in preparation (i.e. same statement twice
                 // in the same command), or we can't prepare (overloaded SQL)
-                if (pStatement?.State != PreparedState.NotYetPrepared)
+                if (pStatement?.State != PreparedState.ToBePrepared)
                     continue;
 
                 var statementToClose = pStatement.StatementBeingReplaced;
@@ -895,13 +898,13 @@ namespace Npgsql
         /// </summary>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
         /// <returns>A task representing the asynchronous operation, with the number of rows affected if known; -1 otherwise.</returns>
-        public override async Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            using (NoSynchronizationContextScope.Enter())
-            using (cancellationToken.Register(Cancel))
-                return await ExecuteNonQuery(true, cancellationToken);
-        }
+        public override Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken)
+            => SynchronizationContextSwitcher.NoContext(async () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                using (cancellationToken.Register(Cancel))
+                    return await ExecuteNonQuery(true, cancellationToken);
+            });
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         async Task<int> ExecuteNonQuery(bool async, CancellationToken cancellationToken)
@@ -936,13 +939,13 @@ namespace Npgsql
         /// <returns>A task representing the asynchronous operation, with the first column of the
         /// first row in the result set, or a null reference if the result set is empty.</returns>
         [ItemCanBeNull]
-        public override async Task<object> ExecuteScalarAsync(CancellationToken cancellationToken)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            using (NoSynchronizationContextScope.Enter())
-            using (cancellationToken.Register(Cancel))
-                return await ExecuteScalar(true, cancellationToken);
-        }
+        public override Task<object> ExecuteScalarAsync(CancellationToken cancellationToken)
+            => SynchronizationContextSwitcher.NoContext(async () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested()            ;
+                using (cancellationToken.Register(Cancel))
+                    return await ExecuteScalar(true, cancellationToken);
+            });
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [ItemCanBeNull]
@@ -985,13 +988,13 @@ namespace Npgsql
         /// <param name="behavior">An instance of <see cref="CommandBehavior"/>.</param>
         /// <param name="cancellationToken">A task representing the operation.</param>
         /// <returns></returns>
-        protected override async Task<DbDataReader> ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            using (NoSynchronizationContextScope.Enter())
-            using (cancellationToken.Register(Cancel))
-                return await ExecuteDbDataReader(behavior, true, cancellationToken);
-        }
+        protected override Task<DbDataReader> ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
+            => SynchronizationContextSwitcher.NoContext(async () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                using (cancellationToken.Register(Cancel))
+                    return await ExecuteDbDataReader(behavior, true, cancellationToken);
+            });
 
         /// <summary>
         /// Executes the command text against the connection.
@@ -1000,7 +1003,7 @@ namespace Npgsql
         protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior) => ExecuteDbDataReader(behavior, false, CancellationToken.None).GetAwaiter().GetResult();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        async ValueTask<NpgsqlDataReader> ExecuteDbDataReader(CommandBehavior behavior, bool async, CancellationToken cancellationToken)
+        async ValueTask<DbDataReader> ExecuteDbDataReader(CommandBehavior behavior, bool async, CancellationToken cancellationToken)
         {
             var connector = CheckReadyAndGetConnector();
             connector.StartUserAction(this);
