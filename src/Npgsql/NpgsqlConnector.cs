@@ -30,6 +30,7 @@ using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
@@ -663,12 +664,7 @@ namespace Npgsql
                         continue;
                     }
                     socket.Blocking = true;
-                    if (socket.AddressFamily == AddressFamily.InterNetwork)
-                        socket.NoDelay = true;
-                    if (Settings.SocketReceiveBufferSize > 0)
-                        socket.ReceiveBufferSize = Settings.SocketReceiveBufferSize;
-                    if (Settings.SocketSendBufferSize > 0)
-                        socket.SendBufferSize = Settings.SocketSendBufferSize;
+                    SetSocketOptions(socket);
                     _socket = socket;
                     return;
                 }
@@ -746,12 +742,7 @@ namespace Npgsql
                         throw;
                     }
 
-                    if (socket.AddressFamily == AddressFamily.InterNetwork)
-                        socket.NoDelay = true;
-                    if (Settings.SocketReceiveBufferSize > 0)
-                        socket.ReceiveBufferSize = Settings.SocketReceiveBufferSize;
-                    if (Settings.SocketSendBufferSize > 0)
-                        socket.SendBufferSize = Settings.SocketSendBufferSize;
+                    SetSocketOptions(socket);
                     _socket = socket;
                     return;
                 }
@@ -772,6 +763,41 @@ namespace Npgsql
                         throw;
                     }
                 }
+            }
+        }
+
+        void SetSocketOptions(Socket socket)
+        {
+            if (socket.AddressFamily == AddressFamily.InterNetwork)
+                socket.NoDelay = true;
+            if (Settings.SocketReceiveBufferSize > 0)
+                socket.ReceiveBufferSize = Settings.SocketReceiveBufferSize;
+            if (Settings.SocketSendBufferSize > 0)
+                socket.SendBufferSize = Settings.SocketSendBufferSize;
+
+            if (Settings.TcpKeepAliveInterval > 0 && Settings.TcpKeepAliveTime == 0)
+                throw new ArgumentException("If TcpKeepAliveInterval is defined, TcpKeepAliveTime must be defined as well");
+            if (Settings.TcpKeepAliveTime > 0)
+            {
+                if (!PGUtil.IsWindows)
+                    throw new PlatformNotSupportedException(
+                        "Npgsql management of TCP keepalive is supported only on Windows. " +
+                        "TCP keepalives can still be used on other systems but are configured globally for the machine, see the relevant docs.");
+
+                var time = Settings.TcpKeepAliveTime;
+                var interval = Settings.TcpKeepAliveInterval > 0
+                    ? Settings.TcpKeepAliveInterval
+                    : Settings.TcpKeepAliveTime;
+
+                // For the following see https://msdn.microsoft.com/en-us/library/dd877220.aspx
+                var dummy = 0u;
+                var inOptionValues = new byte[Marshal.SizeOf(dummy) * 3];
+                BitConverter.GetBytes((uint)1).CopyTo(inOptionValues, 0);
+                BitConverter.GetBytes((uint)time).CopyTo(inOptionValues, Marshal.SizeOf(dummy));
+                BitConverter.GetBytes((uint)interval).CopyTo(inOptionValues, Marshal.SizeOf(dummy) * 2);
+                var result = socket.IOControl(IOControlCode.KeepAliveValues, inOptionValues, null);
+                if (result != 0)
+                    throw new NpgsqlException($"Got non-zero value when trying to set TCP keepalive: {result}");
             }
         }
 
