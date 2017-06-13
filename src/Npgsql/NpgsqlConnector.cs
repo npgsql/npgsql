@@ -440,6 +440,12 @@ namespace Npgsql
                 startupMessage["application_name"] = Settings.ApplicationName;
             if (!string.IsNullOrEmpty(Settings.SearchPath))
                 startupMessage["search_path"] = Settings.SearchPath;
+
+            // SSL renegotiation support has been dropped in recent versions of PostgreSQL
+            // (OpenSSL implementations were buggy etc.), but disable them for older unpatched
+            // versions which turns it on by default.
+            // Amazon Redshift doesn't recognize the ssl_renegotiation_limit parameter and bombs
+            // (https://forums.aws.amazon.com/thread.jspa?messageID=721898&#721898)
             if (IsSecure && !IsRedshift)
                 startupMessage["ssl_renegotiation_limit"] = "0";
 
