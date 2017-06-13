@@ -206,6 +206,8 @@ namespace Npgsql.Tests
         [Test]
         public void ColumnSize()
         {
+            if (IsRedshift)
+                Assert.Ignore("Column size is never unlimited on Redshift");
             using (var conn = OpenConnection())
             {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (bounded VARCHAR(30), unbounded VARCHAR)");
@@ -225,6 +227,8 @@ namespace Npgsql.Tests
         [Test]
         public void IsAutoIncrement()
         {
+            if (IsRedshift)
+                Assert.Ignore("Serial columns not support on Redshift");
             using (var conn = OpenConnection())
             {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (inc SERIAL, non_inc INT)");
@@ -243,6 +247,8 @@ namespace Npgsql.Tests
         [Test]
         public void IsKey()
         {
+            if (IsRedshift)
+                Assert.Ignore("Key not supported in reader schema on Redshift");
             using (var conn = OpenConnection())
             {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (id INT PRIMARY KEY, non_id INT, uniq INT UNIQUE)");
@@ -267,6 +273,8 @@ namespace Npgsql.Tests
         [Test]
         public void IsKeyComposite()
         {
+            if (IsRedshift)
+                Assert.Ignore("Key not supported in reader schema on Redshift");
             using (var conn = OpenConnection())
             {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (id1 INT, id2 INT, PRIMARY KEY (id1, id2))");
@@ -284,6 +292,8 @@ namespace Npgsql.Tests
         [Test]
         public void IsLong()
         {
+            if (IsRedshift)
+                Assert.Ignore("bytea not supported on Redshift");
             using (var conn = OpenConnection())
             {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (long BYTEA, non_long INT)");
@@ -340,6 +350,8 @@ namespace Npgsql.Tests
         [Test]
         public void IsUnique()
         {
+            if (IsRedshift)
+                Assert.Ignore("Unique not supported in reader schema on Redshift");
             using (var conn = OpenConnection())
             {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (id INT PRIMARY KEY, non_id INT, uniq INT UNIQUE)");
@@ -359,6 +371,8 @@ namespace Npgsql.Tests
         [Test]
         public void NumericPrecision()
         {
+            if (IsRedshift)
+                Assert.Ignore("Precision is never unlimited on Redshift");
             using (var conn = OpenConnection())
             {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (a NUMERIC(8), b NUMERIC, c INTEGER)");
@@ -378,6 +392,8 @@ namespace Npgsql.Tests
         [Test]
         public void NumericScale()
         {
+            if (IsRedshift)
+                Assert.Ignore("Scale is never unlimited on Redshift");
             using (var conn = OpenConnection())
             {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (a NUMERIC(8,5), b NUMERIC, c INTEGER)");
@@ -433,6 +449,8 @@ namespace Npgsql.Tests
         [Test]
         public void DataTypeWithComposite()
         {
+            if (IsRedshift)
+                Assert.Ignore("Composite types not support on Redshift");
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 ApplicationName = nameof(DataTypeWithComposite),  // Prevent backend type caching in TypeHandlerRegistry
@@ -551,6 +569,8 @@ namespace Npgsql.Tests
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1553")]
         public void DomainTypes()
         {
+            if (IsRedshift)
+                Assert.Ignore("Domain types not support on Redshift");
             using (var conn = OpenConnection())
             {
                 conn.ExecuteNonQuery("DROP DOMAIN IF EXISTS mydomain; CREATE DOMAIN mydomain AS varchar(2)");

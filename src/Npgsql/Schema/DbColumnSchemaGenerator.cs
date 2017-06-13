@@ -28,8 +28,10 @@ namespace Npgsql.Schema
             _fetchAdditionalInfo = fetchAdditionalInfo;
         }
 
-        const string GetColumnsQuery = @"
-SELECT
+        #region Columns queries
+
+        static string GenerateColumnsQuery(string columnFieldFilter) =>
+$@"SELECT
      typ.oid AS typoid, nspname, relname, attname, typ.typname, attrelid, attnum, attnotnull,
      CASE WHEN typ.typtype = 'd' THEN typ.typtypmod ELSE atttypmod END AS typmod,
      CASE WHEN atthasdef THEN (SELECT pg_get_expr(adbin, cls.oid) FROM pg_attrdef WHERE adrelid = cls.oid AND adnum = attr.attnum) ELSE NULL END AS default,
@@ -38,13 +40,13 @@ SELECT
        SELECT * FROM pg_index
        WHERE pg_index.indrelid = cls.oid AND
              pg_index.indisprimary AND
-             attnum = ANY (pg_index.indkey)
+             attnum = ANY (indkey)
      ) AS isprimarykey,
      EXISTS (
        SELECT * FROM pg_index
        WHERE pg_index.indrelid = cls.oid AND
              pg_index.indisunique AND
-             attnum = ANY (pg_index.indkey)
+             attnum = ANY (indkey)
      ) AS isunique
 FROM pg_attribute AS attr
 JOIN pg_type AS typ ON attr.atttypid = typ.oid
@@ -59,8 +61,37 @@ WHERE
      NOT attisdropped AND
      nspname NOT IN ('pg_catalog', 'information_schema') AND
      attnum > 0 AND
-     ({0})
+     ({columnFieldFilter})
 ORDER BY attnum";
+
+        /// <summary>
+        /// Stripped-down version of <see cref="GenerateColumnsQuery"/>, mainly to support Amazon Redshift.
+        /// </summary>
+        static string GenerateOldColumnsQuery(string columnFieldFilter) =>
+            $@"SELECT
+     typ.oid AS typoid, nspname, relname, attname, typ.typname, attrelid, attnum, attnotnull,
+     CASE WHEN typ.typtype = 'd' THEN typ.typtypmod ELSE atttypmod END AS typmod,
+     CASE WHEN atthasdef THEN (SELECT pg_get_expr(adbin, cls.oid) FROM pg_attrdef WHERE adrelid = cls.oid AND adnum = attr.attnum) ELSE NULL END AS default,
+     TRUE AS is_updatable,  /* Supported only since PG 8.2 */
+     FALSE AS isprimarykey, /* Can't do ANY() on pg_index.indkey which is int2vector */
+     FALSE AS isunique      /* Can't do ANY() on pg_index.indkey which is int2vector */
+FROM pg_attribute AS attr
+JOIN pg_type AS typ ON attr.atttypid = typ.oid
+JOIN pg_class AS cls ON cls.oid = attr.attrelid
+JOIN pg_namespace AS ns ON ns.oid = cls.relnamespace
+LEFT OUTER JOIN information_schema.columns AS col ON col.table_schema = nspname AND
+     col.table_name = relname AND
+     col.column_name = attname
+WHERE
+     atttypid <> 0 AND
+     relkind IN ('r', 'v', 'm') AND
+     NOT attisdropped AND
+     nspname NOT IN ('pg_catalog', 'information_schema') AND
+     attnum > 0 AND
+     ({columnFieldFilter})
+ORDER BY attnum";
+
+        #endregion Column queries
 
         internal ReadOnlyCollection<NpgsqlDbColumn> GetColumnSchema()
         {
@@ -84,7 +115,9 @@ ORDER BY attnum";
 
             if (_fetchAdditionalInfo && columnFieldFilter != "")
             {
-                var query = string.Format(GetColumnsQuery, columnFieldFilter);
+                var query = _connection.PostgreSqlVersion >= new Version(8, 2)
+                    ? GenerateColumnsQuery(columnFieldFilter)
+                    : GenerateOldColumnsQuery(columnFieldFilter);
 
 #if NETSTANDARD1_3
                 using (var connection = _connection.Clone())
