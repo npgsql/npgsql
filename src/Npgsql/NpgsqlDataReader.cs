@@ -1044,6 +1044,27 @@ namespace Npgsql
             return handler.GetTextReader(row.GetStream());
         }
 
+        /// <summary>
+        /// Retrieves data as a <see cref="TextReader"/>.
+        /// </summary>
+        /// <param name="ordinal">The zero-based column ordinal.</param>
+        /// <returns>The returned object.</returns>
+        public async Task<TextReader> GetTextReaderAsync(int ordinal)
+        {
+            CheckRowAndOrdinal(ordinal);
+
+            var fieldDescription = _rowDescription[ordinal];
+            var handler = fieldDescription.Handler as ITextReaderHandler;
+            if (handler == null)
+                throw new InvalidCastException("GetTextReader() not supported for type " + fieldDescription.Handler.PgDisplayName);
+
+            var row = Row;
+            await row.SeekToColumnStart(ordinal, false);
+            row.CheckNotNull();
+
+            return handler.GetTextReader(row.GetStream());
+        }
+
         #endregion
 
         #region IsDBNull
