@@ -989,6 +989,26 @@ namespace Npgsql
             return row.GetStream();
         }
 
+        /// <summary>
+        /// Retrieves data as a <see cref="Stream"/>.
+        /// </summary>
+        /// <param name="ordinal">The zero-based column ordinal.</param>
+        /// <returns>The returned object.</returns>
+        public async Task<Stream> GetStreamAsync(int ordinal)
+        {
+            CheckRowAndOrdinal(ordinal);
+
+            var fieldDescription = _rowDescription[ordinal];
+            var handler = fieldDescription.Handler as ByteaHandler;
+            if (handler == null)
+                throw new InvalidCastException("GetStream() not supported for type " + fieldDescription.Handler.PgDisplayName);
+
+            var row = Row;
+            await row.SeekToColumnStart(ordinal, false);
+            row.CheckNotNull();
+            return row.GetStream();
+        }
+
         #endregion
 
         #region Special text getters
