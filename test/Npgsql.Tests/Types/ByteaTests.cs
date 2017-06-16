@@ -27,6 +27,7 @@ using System.Data;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using Npgsql;
 using NpgsqlTypes;
 using NUnit.Framework;
@@ -180,8 +181,10 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public void GetStream([Values(CommandBehavior.Default, CommandBehavior.SequentialAccess)] CommandBehavior behavior)
+        public async Task GetStream([Values(CommandBehavior.Default, CommandBehavior.SequentialAccess)] CommandBehavior behavior, [Values(true, false)] bool isAsync)
         {
+            var streamGetter = BuildStreamGetter(isAsync);
+            
             using (var conn = OpenConnection())
             {
                 // TODO: This is too small to actually test any interesting sequential behavior
@@ -195,7 +198,7 @@ namespace Npgsql.Tests.Types
                 {
                     reader.Read();
 
-                    var stream = reader.GetStream(0);
+                    var stream = await streamGetter(reader, 0);
                     Assert.That(stream.CanSeek, Is.EqualTo(behavior == CommandBehavior.Default));
                     Assert.That(stream.Length, Is.EqualTo(expected.Length));
                     stream.Read(actual, 0, 2);
@@ -203,7 +206,7 @@ namespace Npgsql.Tests.Types
                     Assert.That(actual[1], Is.EqualTo(expected[1]));
                     if (behavior == CommandBehavior.Default)
                     {
-                        var stream2 = reader.GetStream(0);
+                        var stream2 = await streamGetter(reader, 0);
                         var actual2 = new byte[2];
                         stream2.Read(actual2, 0, 2);
                         Assert.That(actual2[0], Is.EqualTo(expected[0]));
@@ -211,7 +214,7 @@ namespace Npgsql.Tests.Types
                     }
                     else
                     {
-                        Assert.That(() => reader.GetStream(0), Throws.Exception.TypeOf<InvalidOperationException>(), "Sequential stream twice on same column");
+                        Assert.That(async () => await streamGetter(reader, 0), Throws.Exception.TypeOf<InvalidOperationException>(), "Sequential stream twice on same column");
                     }
                     stream.Read(actual, 2, 1);
                     Assert.That(actual[2], Is.EqualTo(expected[2]));
@@ -230,8 +233,10 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public void GetNull([Values(CommandBehavior.Default, CommandBehavior.SequentialAccess)] CommandBehavior behavior)
+        public async Task GetNull([Values(CommandBehavior.Default, CommandBehavior.SequentialAccess)] CommandBehavior behavior, [Values(true, false)] bool isAsync)
         {
+            var streamGetter = BuildStreamGetter(isAsync);
+            
             using (var conn = OpenConnection())
             {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (bytes BYTEA)");
@@ -242,7 +247,7 @@ namespace Npgsql.Tests.Types
                     reader.Read();
                     Assert.That(reader.IsDBNull(0), Is.True);
                     Assert.That(() => reader.GetBytes(0, 0, buf, 0, 1), Throws.Exception.TypeOf<InvalidCastException>(), "GetBytes");
-                    Assert.That(() => reader.GetStream(0), Throws.Exception.TypeOf<InvalidCastException>(), "GetStream");
+                    Assert.That(async () => await streamGetter(reader,0), Throws.Exception.TypeOf<InvalidCastException>(), "GetStream");
                     Assert.That(() => reader.GetBytes(0, 0, null, 0, 0), Throws.Exception.TypeOf<InvalidCastException>(), "GetBytes with null buffer");
                 }
             }
@@ -263,8 +268,10 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, Description("In sequential mode, checks that moving to the next column disposes a currently open stream")]
-        public void StreamDisposeOnSequentialColumn()
+        public async Task StreamDisposeOnSequentialColumn([Values(true, false)] bool isAsync)
         {
+            var streamGetter = BuildStreamGetter(isAsync);
+            
             using (var conn = OpenConnection())
             using (var cmd = new NpgsqlCommand(@"SELECT @p, @p", conn))
             {
@@ -273,7 +280,7 @@ namespace Npgsql.Tests.Types
                 using (var reader = cmd.ExecuteReader(CommandBehavior.SequentialAccess))
                 {
                     reader.Read();
-                    var stream = reader.GetStream(0);
+                    var stream = await streamGetter(reader,0);
                     // ReSharper disable once UnusedVariable
                     var v = reader.GetValue(1);
                     Assert.That(() => stream.ReadByte(), Throws.Exception.TypeOf<ObjectDisposedException>());
@@ -282,8 +289,10 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, Description("In non-sequential mode, checks that moving to the next row disposes all currently open streams")]
-        public void StreamDisposeOnNonSequentialRow()
+        public async Task StreamDisposeOnNonSequentialRow([Values(true, false)] bool isAsync)
         {
+            var streamGetter = BuildStreamGetter(isAsync);
+
             using (var conn = OpenConnection())
             using (var cmd = new NpgsqlCommand(@"SELECT @p", conn))
             {
@@ -292,8 +301,8 @@ namespace Npgsql.Tests.Types
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();
-                    var s1 = reader.GetStream(0);
-                    var s2 = reader.GetStream(0);
+                    var s1 = await streamGetter(reader, 0);
+                    var s2 = await streamGetter(reader, 0);
                     reader.Read();
                     Assert.That(() => s1.ReadByte(), Throws.Exception.TypeOf<ObjectDisposedException>());
                     Assert.That(() => s2.ReadByte(), Throws.Exception.TypeOf<ObjectDisposedException>());
@@ -365,6 +374,7 @@ namespace Npgsql.Tests.Types
                 Assert.AreEqual(inVal[1], retVal[1]);
             }
         }
+
 
         // Older tests from here
 
@@ -467,6 +477,16 @@ namespace Npgsql.Tests.Types
         }
 
         #region Utilities
+
+        static Func<NpgsqlDataReader, int, Task<Stream>> BuildStreamGetter(bool isAsync)
+        {
+            if (isAsync)
+            {
+                return (r, index) => r.GetStreamAsync(index);
+            }
+
+            return (r, index) => Task.FromResult(r.GetStream(index));
+        }
 
         /// <summary>
         /// Utility to encode a byte array in Postgresql hex format
