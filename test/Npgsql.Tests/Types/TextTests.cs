@@ -25,8 +25,10 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
+using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using Npgsql;
 using NpgsqlTypes;
 using NUnit.Framework;
@@ -171,8 +173,18 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public void GetTextReader([Values(CommandBehavior.Default, CommandBehavior.SequentialAccess)] CommandBehavior behavior)
+        public async Task GetTextReader([Values(CommandBehavior.Default, CommandBehavior.SequentialAccess)] CommandBehavior behavior, [Values(true,false)] bool isAsync)
         {
+            Func<NpgsqlDataReader, int, Task<TextReader>> textReaderGetter;
+            if (isAsync)
+            {
+                textReaderGetter = (r, index) => r.GetTextReaderAsync(index);
+            }
+            else
+            {
+                textReaderGetter = (r, index) => Task.FromResult(r.GetTextReader(index));
+            }
+
             using (var conn = OpenConnection())
             {
                 // TODO: This is too small to actually test any interesting sequential behavior
@@ -187,27 +199,31 @@ namespace Npgsql.Tests.Types
                 {
                     reader.Read();
 
-                    var textReader = reader.GetTextReader(0);
+                    var textReader = await textReaderGetter(reader, 0);
                     textReader.Read(actual, 0, 2);
                     Assert.That(actual[0], Is.EqualTo(expected[0]));
                     Assert.That(actual[1], Is.EqualTo(expected[1]));
                     if (behavior == CommandBehavior.Default)
                     {
-                        var textReader2 = reader.GetTextReader(0);
+                        var textReader2 = await textReaderGetter(reader, 0);
                         var actual2 = new char[2];
                         textReader2.Read(actual2, 0, 2);
                         Assert.That(actual2[0], Is.EqualTo(expected[0]));
                         Assert.That(actual2[1], Is.EqualTo(expected[1]));
                     }
-                    else {
-                        Assert.That(() => reader.GetTextReader(0), Throws.Exception.TypeOf<InvalidOperationException>(), "Sequential text reader twice on same column");
+                    else
+                    {
+                        Assert.That(async () => await textReaderGetter(reader, 0),
+                            Throws.Exception.TypeOf<InvalidOperationException>(),
+                            "Sequential text reader twice on same column");
                     }
                     textReader.Read(actual, 2, 1);
                     Assert.That(actual[2], Is.EqualTo(expected[2]));
                     textReader.Dispose();
 
                     if (IsSequential(behavior))
-                        Assert.That(() => reader.GetChars(0, 0, actual, 4, 1), Throws.Exception.TypeOf<InvalidOperationException>(), "Seek back sequential");
+                        Assert.That(() => reader.GetChars(0, 0, actual, 4, 1),
+                            Throws.Exception.TypeOf<InvalidOperationException>(), "Seek back sequential");
                     else
                     {
                         Assert.That(reader.GetChars(0, 0, actual, 4, 1), Is.EqualTo(1));
