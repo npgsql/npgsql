@@ -851,6 +851,29 @@ LANGUAGE plpgsql VOLATILE";
             }
         }
 
+        [Test]
+        public void InvalidCast()
+        {
+            using (var conn = OpenConnection())
+            {
+                // Chunking type handler
+                using (var cmd = new NpgsqlCommand("SELECT 'foo'", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(() => reader.GetInt32(0), Throws.Exception.TypeOf<InvalidCastException>());
+                }
+                // Simple type handler
+                using (var cmd = new NpgsqlCommand("SELECT 1", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(() => reader.GetDate(0), Throws.Exception.TypeOf<InvalidCastException>());
+                }
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+            }
+        }
+
 #if DEBUG
         [Test, Description("Tests that everything goes well when a type handler generates a SafeReadException")]
         [Timeout(5000)]
