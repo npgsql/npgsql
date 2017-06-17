@@ -189,10 +189,13 @@ namespace Npgsql
 
             var asTypedHandler = this as ISimpleTypeHandler<T2>;
             if (asTypedHandler == null)
-                throw new InvalidCastException(fieldDescription == null
+            {
+                buf.Skip(len);  // Perform this in sync for performance
+                throw new SafeReadException(new InvalidCastException(fieldDescription == null
                     ? "Can't cast database type to " + typeof(T2).Name
                     : $"Can't cast database type {fieldDescription.Handler.PgDisplayName} to {typeof(T2).Name}"
-                );
+                ));
+            }
 
             return asTypedHandler.Read(buf, len, fieldDescription);
         }
@@ -268,10 +271,13 @@ namespace Npgsql
         {
             var asTypedHandler = this as IChunkingTypeHandler<T2>;
             if (asTypedHandler == null)
-                throw new InvalidCastException(fieldDescription == null
+            {
+                buf.Skip(len);  // Perform this in sync for performance
+                throw new SafeReadException(new InvalidCastException(fieldDescription == null
                     ? "Can't cast database type to " + typeof(T2).Name
                     : $"Can't cast database type {fieldDescription.Handler.PgDisplayName} to {typeof(T2).Name}"
-                );
+                ));
+            }
 
             return asTypedHandler.Read(buf, len, async, fieldDescription);
         }
