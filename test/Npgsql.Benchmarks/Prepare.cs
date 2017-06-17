@@ -24,8 +24,8 @@ namespace Npgsql.Benchmarks
         [Params(0, 1, 2, 5, 10)]
         public int TablesToJoin { get; set; }
 
-        [Setup]
-        public void Setup()
+        [GlobalSetup]
+        public void GlobalSetup()
         {
             _conn = BenchmarkEnvironment.OpenConnection();
             _autoPreparingConn = new NpgsqlConnection(new NpgsqlConnectionStringBuilder(BenchmarkEnvironment.ConnectionString)
@@ -53,8 +53,8 @@ INSERT INTO table{i} (id, data) VALUES (1, {i});
             _preparedCmd.Prepare();
         }
 
-        [Cleanup]
-        public void Cleanup()
+        [GlobalCleanup]
+        public void GlobalCleanup()
         {
             _conn.Dispose();            
         }

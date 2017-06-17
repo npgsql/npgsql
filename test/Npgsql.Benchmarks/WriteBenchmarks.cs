@@ -35,7 +35,7 @@ namespace Npgsql.Benchmarks.Types
             _text10000Cmd = BuildCommand("text", NpgsqlDbType.Text, new string('x', 10000));
         }
 
-        [Setup]
+        [GlobalSetup]
         public void Setup()
         {
             using (var cmd = new NpgsqlCommand("TRUNCATE foo", _conn))

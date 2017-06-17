@@ -16,8 +16,8 @@ namespace Npgsql.Benchmarks
         [Params(1, 100, 1000, 10000)]
         public int BatchSize { get; set; }
 
-        [Setup]
-        public void Setup()
+        [GlobalSetup]
+        public void GlobalSetup()
         {
             var connString = new NpgsqlConnectionStringBuilder(BenchmarkEnvironment.ConnectionString)
             {
@@ -32,8 +32,8 @@ namespace Npgsql.Benchmarks
             _truncateCmd = new NpgsqlCommand("TRUNCATE data", _conn);
         }
 
-        [Cleanup]
-        public void Cleanup()
+        [GlobalCleanup]
+        public void GlobalCleanup()
         {
             _conn.Close();
             _conn = null;
