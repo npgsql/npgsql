@@ -11,7 +11,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="BenchmarkDotNet" Version="0.10.3" />
+    <PackageReference Include="BenchmarkDotNet" Version="0.10.8" />
   </ItemGroup>
 
   <ItemGroup>
@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup Condition=" '$(TargetFramework)' == 'net46' ">
-    <PackageReference Include="BenchmarkDotNet.Diagnostics.Windows" Version="0.10.3" />
+    <PackageReference Include="BenchmarkDotNet.Diagnostics.Windows" Version="0.10.8" />
   </ItemGroup>
 
   <ItemGroup Condition=" '$(TargetFramework)' == 'netcoreapp1.1' ">
