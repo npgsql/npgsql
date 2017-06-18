@@ -29,6 +29,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
 using System.Text;
+using System.Threading;
 using System.Transactions;
 using JetBrains.Annotations;
 using NUnit.Framework;
@@ -228,8 +229,8 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test, Explicit("Failing test and 100 iteration loop.")]
-        public void DistributedRace()
+        [Test(Description = "Transaction race, bool distributed"), Explicit("Failing test and 100 iteration loop.")]
+        public void TransactionRace([Values(false, true)] bool distributed)
         {
             for (var i = 1; i <= 100; i++)
             {
@@ -243,8 +244,17 @@ namespace Npgsql.Tests
                         Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1), "Unexpected first insert rowcount");
                         eventQueue.Enqueue(new TransactionEvent("Insert done"));
 
-                        EnlistResource.EscalateToDistributed(eventQueue);
-                        AssertHasDistributedIdentifier();
+                        if (distributed)
+                        {
+                            EnlistResource.EscalateToDistributed(eventQueue);
+                            AssertHasDistributedIdentifier();
+                        }
+                        else
+                        {
+                            EnlistResource.EnlistVolatile(eventQueue);
+                            AssertNoDistributedIdentifier();
+                        }
+
                         tx.Complete();
                         eventQueue.Enqueue(new TransactionEvent("Scope completed"));
                     }
@@ -253,43 +263,6 @@ namespace Npgsql.Tests
                     // Failure dodge-able with System.Threading.Thread.Sleep(100);
                     AssertNoDistributedIdentifier();
                     // Call to AssertNoPreparedTransactions(); tends to hide the trouble, at least for first iteration.
-                    AssertNumberOfRows(i);
-                    AssertEventQueueCoherent(eventQueue);
-                }
-                catch (Exception ex)
-                {
-                    Assert.Fail(
-                        @"Failed at iteration {0}.
-Events:
-{1}
-Exception {2}",
-                        i, FormatEventQueue(eventQueue), ex);
-                }
-            }
-        }
-
-        [Test, Explicit("100 iteration loop.")]
-        public void NonDistributedRace()
-        {
-            for (var i = 1; i <= 100; i++)
-            {
-                var eventQueue = new ConcurrentQueue<TransactionEvent>();
-                try
-                {
-                    using (var tx = new TransactionScope())
-                    using (var conn1 = OpenConnection(ConnectionStringEnlistOn))
-                    {
-                        eventQueue.Enqueue(new TransactionEvent("Scope started, connection enlisted"));
-                        Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1), "Unexpected first insert rowcount");
-                        eventQueue.Enqueue(new TransactionEvent("Insert done"));
-
-                        EnlistResource.EnlistVolatile(eventQueue);
-                        AssertNoDistributedIdentifier();
-                        tx.Complete();
-                        eventQueue.Enqueue(new TransactionEvent("Scope completed"));
-                    }
-                    eventQueue.Enqueue(new TransactionEvent("Scope disposed", true));
-                    AssertNoDistributedIdentifier();
                     AssertNumberOfRows(i);
                     AssertEventQueueCoherent(eventQueue);
                 }
@@ -332,8 +305,8 @@ Exception {2}",
             }
         }
 
-        [Test, Explicit("Failing test and 100 iteration loop.")]
-        public void ConnectionReuseRaceAfterDistributedTransaction()
+        [Test(Description = "Connection reuse race after transaction, bool distributed"), Explicit("Failing test and 100 iteration loop.")]
+        public void ConnectionReuseRaceAfterTransaction([Values(false, true)] bool distributed)
         {
             for (var i = 1; i <= 100; i++)
             {
@@ -346,8 +319,17 @@ Exception {2}",
                         {
                             conn1.EnlistTransaction(Transaction.Current);
                             eventQueue.Enqueue(new TransactionEvent("Scope started, connection enlisted"));
-                            EnlistResource.EscalateToDistributed(eventQueue);
-                            AssertHasDistributedIdentifier();
+
+                            if (distributed)
+                            {
+                                EnlistResource.EscalateToDistributed(eventQueue);
+                                AssertHasDistributedIdentifier();
+                            }
+                            else
+                            {
+                                EnlistResource.EnlistVolatile(eventQueue);
+                                AssertNoDistributedIdentifier();
+                            }
 
                             Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1), "Unexpected first insert rowcount");
                             eventQueue.Enqueue(new TransactionEvent("Insert done"));
@@ -375,8 +357,8 @@ Exception {2}",
             }
         }
 
-        [Test, Explicit("100 iteration loop.")]
-        public void ConnectionReuseRaceAfterNonDistributedTransaction()
+        [Test(Description = "Connection reuse race chaining transactions, bool distributed"), Explicit("Failing test and 100 iteration loop.")]
+        public void ConnectionReuseRaceChainingTransaction([Values(false, true)] bool distributed)
         {
             for (var i = 1; i <= 100; i++)
             {
@@ -387,22 +369,54 @@ Exception {2}",
                     {
                         using (var scope = new TransactionScope())
                         {
+                            eventQueue.Enqueue(new TransactionEvent("First scope started"));
                             conn1.EnlistTransaction(Transaction.Current);
-                            eventQueue.Enqueue(new TransactionEvent("Scope started, connection enlisted"));
-                            EnlistResource.EnlistVolatile(eventQueue);
-                            AssertNoDistributedIdentifier();
+                            eventQueue.Enqueue(new TransactionEvent("First scope, connection enlisted"));
+
+                            if (distributed)
+                            {
+                                EnlistResource.EscalateToDistributed(eventQueue);
+                                AssertHasDistributedIdentifier();
+                            }
+                            else
+                            {
+                                EnlistResource.EnlistVolatile(eventQueue);
+                                AssertNoDistributedIdentifier();
+                            }
 
                             Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1), "Unexpected first insert rowcount");
-                            eventQueue.Enqueue(new TransactionEvent("Insert done"));
+                            eventQueue.Enqueue(new TransactionEvent("First insert done"));
 
                             scope.Complete();
-                            eventQueue.Enqueue(new TransactionEvent("Scope completed"));
+                            eventQueue.Enqueue(new TransactionEvent("First scope completed"));
                         }
-                        eventQueue.Enqueue(new TransactionEvent("Scope disposed", true));
+                        eventQueue.Enqueue(new TransactionEvent("First scope disposed", true));
 
-                        // TODO: There may be a race condition here, where the prepared transaction above still hasn't committed
-                        // and un-enlist from connections.
-                        Assert.DoesNotThrow(() => conn1.ExecuteScalar(@"SELECT COUNT(*) FROM data"));
+                        using (var scope = new TransactionScope())
+                        {
+                            eventQueue.Enqueue(new TransactionEvent("Second scope started") { IsNewScope = true });
+                            conn1.EnlistTransaction(Transaction.Current);
+                            eventQueue.Enqueue(new TransactionEvent("Second scope, connection enlisted"));
+
+                            if (distributed)
+                            {
+                                EnlistResource.EscalateToDistributed(eventQueue);
+                                AssertHasDistributedIdentifier();
+                            }
+                            else
+                            {
+                                EnlistResource.EnlistVolatile(eventQueue);
+                                AssertNoDistributedIdentifier();
+                            }
+
+                            Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1), "Unexpected second insert rowcount");
+                            eventQueue.Enqueue(new TransactionEvent("Second insert done"));
+
+                            scope.Complete();
+                            eventQueue.Enqueue(new TransactionEvent("Second scope completed"));
+                        }
+                        eventQueue.Enqueue(new TransactionEvent("Second scope disposed", true));
+
                         AssertEventQueueCoherent(eventQueue);
                     }
                 }
@@ -641,6 +655,10 @@ Exception {2}",
 
         static string FormatEventQueue(ConcurrentQueue<TransactionEvent> eventQueue)
         {
+            eventQueue.Enqueue(new TransactionEvent(@"-------------
+Start formatting event queue, going to sleep a bit for late events
+-------------"));
+            Thread.Sleep(20);
             var eventsMessage = new StringBuilder();
             foreach (var evt in eventQueue)
             {
@@ -655,6 +673,11 @@ Exception {2}",
             var disposedFound = false;
             foreach (var evt in eventQueue)
             {
+                if (evt.IsNewScope)
+                {
+                    tranCompletedFound = false;
+                    disposedFound = false;
+                }
                 if (evt.IsScopeDisposed)
                 {
                     Assert.That(tranCompletedFound, Is.EqualTo(true),
@@ -673,6 +696,8 @@ Exception {2}",
         // Idea from NHibernate test project, DtcFailuresFixture
         public class EnlistResource : IEnlistmentNotification
         {
+            public static int Counter { get; set; }
+
             readonly bool _shouldRollBack;
             readonly string _name;
             readonly ConcurrentQueue<TransactionEvent> _eventQueue;
@@ -686,17 +711,21 @@ Exception {2}",
             public static void EscalateToDistributed(ConcurrentQueue<TransactionEvent> eventQueue)
                 => EscalateToDistributed(false, eventQueue);
 
-            public static void EscalateToDistributed(bool shouldRollBack= false, ConcurrentQueue<TransactionEvent> eventQueue = null)
+            public static void EscalateToDistributed(bool shouldRollBack = false, ConcurrentQueue<TransactionEvent> eventQueue = null)
                 => Enlist(true, shouldRollBack, eventQueue);
 
             static void Enlist(bool durable, bool shouldRollBack, ConcurrentQueue<TransactionEvent> eventQueue)
             {
-                var name = $"{(durable ? "Durable" : "Volatile")} resource";
+                Counter++;
+
+                var name = $"{(durable ? "Durable" : "Volatile")} resource {Counter}";
                 var resource = new EnlistResource(shouldRollBack, name, eventQueue);
                 if (durable)
                     Transaction.Current.EnlistDurable(Guid.NewGuid(), resource, EnlistmentOptions.None);
                 else
                     Transaction.Current.EnlistVolatile(resource, EnlistmentOptions.None);
+
+                Transaction.Current.TransactionCompleted += resource.Current_TransactionCompleted;
 
                 eventQueue?.Enqueue(new TransactionEvent(name + ": enlisted"));
             }
@@ -710,33 +739,59 @@ Exception {2}",
 
             public void Prepare(PreparingEnlistment preparingEnlistment)
             {
-                _eventQueue?.Enqueue(new TransactionEvent(_name + ": prepare phase"));
+                _eventQueue?.Enqueue(new TransactionEvent(_name + ": prepare phase start"));
+                Thread.Sleep(1);
                 if (_shouldRollBack)
                 {
+                    _eventQueue?.Enqueue(new TransactionEvent(_name + ": prepare phase, calling rollback-ed"));
                     preparingEnlistment.ForceRollback();
                 }
                 else
                 {
+                    _eventQueue?.Enqueue(new TransactionEvent(_name + ": prepare phase, calling prepared"));
                     preparingEnlistment.Prepared();
                 }
+                Thread.Sleep(1);
+                _eventQueue?.Enqueue(new TransactionEvent(_name + ": prepare phase end"));
             }
 
             public void Commit(Enlistment enlistment)
             {
-                _eventQueue?.Enqueue(new TransactionEvent(_name + ": commit phase") { IsTransactionCompleted = true });
+                _eventQueue?.Enqueue(new TransactionEvent(_name + ": commit phase start"));
+                Thread.Sleep(1);
+                _eventQueue?.Enqueue(new TransactionEvent(_name + ": commit phase, calling done") { IsTransactionCompleted = true });
                 enlistment.Done();
+                Thread.Sleep(1);
+                _eventQueue?.Enqueue(new TransactionEvent(_name + ": commit phase end") { IsTransactionCompleted = true });
             }
 
             public void Rollback(Enlistment enlistment)
             {
-                _eventQueue?.Enqueue(new TransactionEvent(_name + ": rollback phase") { IsTransactionCompleted = true });
+                _eventQueue?.Enqueue(new TransactionEvent(_name + ": rollback phase start") { IsTransactionCompleted = true });
+                Thread.Sleep(1);
+                _eventQueue?.Enqueue(new TransactionEvent(_name + ": rollback phase, calling done") { IsTransactionCompleted = true });
                 enlistment.Done();
+                Thread.Sleep(1);
+                _eventQueue?.Enqueue(new TransactionEvent(_name + ": rollback phase end") { IsTransactionCompleted = true });
             }
 
             public void InDoubt(Enlistment enlistment)
             {
-                _eventQueue?.Enqueue(new TransactionEvent(_name + ": in-doubt phase") { IsTransactionCompleted = true });
+                _eventQueue?.Enqueue(new TransactionEvent(_name + ": in-doubt phase start"));
+                Thread.Sleep(1);
+                _eventQueue?.Enqueue(new TransactionEvent(_name + ": in-doubt phase, calling done") { IsTransactionCompleted = true });
                 enlistment.Done();
+                Thread.Sleep(1);
+                _eventQueue?.Enqueue(new TransactionEvent(_name + ": in-doubt phase end") { IsTransactionCompleted = true });
+            }
+
+            void Current_TransactionCompleted(object sender, TransactionEventArgs e)
+            {
+                _eventQueue?.Enqueue(new TransactionEvent(_name + ": transaction completed start") { IsTransactionCompleted = true });
+                Thread.Sleep(1);
+                _eventQueue?.Enqueue(new TransactionEvent(_name + ": transaction completed middle") { IsTransactionCompleted = true });
+                Thread.Sleep(1);
+                _eventQueue?.Enqueue(new TransactionEvent(_name + ": transaction completed end") { IsTransactionCompleted = true });
             }
         }
 
@@ -745,11 +800,12 @@ Exception {2}",
             public TransactionEvent(string message, bool isScopeDisposed = false)
             {
                 IsScopeDisposed = isScopeDisposed;
-                Message = message;
+                Message = $"{message} (TId {Thread.CurrentThread.ManagedThreadId})";
             }
 
             public bool IsScopeDisposed { get; }
             public bool IsTransactionCompleted { get; set; }
+            public bool IsNewScope { get; set; }
             public string Message { get; }
         }
 
@@ -806,7 +862,11 @@ Exception {2}",
         }
 
         [SetUp]
-        public void SetUp() => _controlConn.ExecuteNonQuery("TRUNCATE data");
+        public void SetUp()
+        {
+            _controlConn.ExecuteNonQuery("TRUNCATE data");
+            EnlistResource.Counter = 0;
+        }
 
         [OneTimeTearDown]
         public void OneTimeTearDown()
@@ -817,9 +877,10 @@ Exception {2}",
 
         class FakePromotableSinglePhaseNotification : IPromotableSinglePhaseNotification
         {
-            public byte[] Promote() => null; public void Initialize() { }
-            public void SinglePhaseCommit(SinglePhaseEnlistment singlePhaseEnlistment) { }
-            public void Rollback(SinglePhaseEnlistment singlePhaseEnlistment) { }
+            public byte[] Promote() => null;
+            public void Initialize() {}
+            public void SinglePhaseCommit(SinglePhaseEnlistment singlePhaseEnlistment) {}
+            public void Rollback(SinglePhaseEnlistment singlePhaseEnlistment) {}
         }
 
         #endregion
