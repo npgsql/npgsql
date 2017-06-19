@@ -108,6 +108,17 @@ namespace Npgsql
             {
                 using (_connector.StartUserAction())
                     _connector.ExecuteInternalCommand($"PREPARE TRANSACTION '{_preparedTxName}'");
+
+                // The MSDTC, which manages escalated distributed transactions, performs the 2nd phase
+                // asynchronously - this means that TransactionScope.Dispose() will return before all
+                // resource managers have actually commit.
+                // If the same connection tries to enlist to a new TransactionScope immediately after
+                // disposing an old TransactionScope, its EnlistedTransaction must have been cleared
+                // (or we'll throw a double enlistment exception). This must be done here at the 1st phase
+                // (which is sync).
+                if (_connector.Connection != null)
+                    _connector.Connection.EnlistedTransaction = null;
+
                 preparingEnlistment.Prepared();
             }
             catch (Exception e)
@@ -127,8 +138,33 @@ namespace Npgsql
 
             try
             {
-                using (_connector.StartUserAction())
-                    _connector.ExecuteInternalCommand($"COMMIT PREPARED '{_preparedTxName}'");
+                if (_connector.Connection == null)
+                {
+                    // The connection has been closed before the TransactionScope was disposed.
+                    // The connector is unbound from its connection and is sitting in the pool's
+                    // pending enlisted connector list. Since there's no risk of the connector being
+                    // used by anyone we can executed the 2nd phase on it directly (see below).
+                    using (_connector.StartUserAction())
+                        _connector.ExecuteInternalCommand($"COMMIT PREPARED '{_preparedTxName}'");
+                }
+                else
+                {
+                    // The connection is still open and potentially will be reused by by the user.
+                    // The MSDTC, which manages escalated distributed transactions, performs the 2nd phase
+                    // asynchronously - this means that TransactionScope.Dispose() will return before all
+                    // resource managers have actually commit. This can cause a concurrent connection use scenario
+                    // if the user continues to use their connection after disposing the scope, and the MSDTC
+                    // requests a commit at that exact time.
+                    // To avoid this, we open a new connection for performing the 2nd phase.
+                    using (var conn2 = (NpgsqlConnection)((ICloneable)_connector.Connection).Clone())
+                    {
+                        conn2.Open();
+                        var connector = conn2.Connector;
+                        Debug.Assert(connector != null);
+                        using (connector.StartUserAction())
+                            connector.ExecuteInternalCommand($"COMMIT PREPARED '{_preparedTxName}'");
+                    }
+                }
             }
             catch (Exception e)
             {
@@ -150,18 +186,9 @@ namespace Npgsql
             try
             {
                 if (IsPrepared)
-                {
-                    // This only occurs if we've started a two-phase commit but one of the commits has failed.
-                    Log.Debug($"Two-phase transaction rollback (localid={_txId})", _connector.Id);
-                    using (_connector.StartUserAction())
-                        _connector.ExecuteInternalCommand($"ROLLBACK PREPARED '{_preparedTxName}'");
-                }
+                    RollbackTwoPhase();
                 else
-                {
-                    Log.Debug($"Single-phase transaction rollback (localid={_txId})", _connector.Id);
-                    Debug.Assert(_localTx != null);
                     RollbackLocal();
-                }
             }
             catch (Exception e)
             {
@@ -184,7 +211,7 @@ namespace Npgsql
             // TODO: Is this the correct behavior?
             try
             {
-                _connector.ExecuteInternalCommand($"ROLLBACK PREPARED '{_preparedTxName}'");
+                RollbackTwoPhase();
             }
             catch (Exception e)
             {
@@ -197,13 +224,12 @@ namespace Npgsql
             }
         }
 
-        /// <summary>
-        /// Repeatedly attempts to rollback, to support timeout-triggered rollbacks that occur while the connection is busy.
-        /// </summary>
         void RollbackLocal()
         {
             Debug.Assert(_connector != null, "No connector");
             Debug.Assert(_localTx != null, "No local transaction");
+
+            Log.Debug($"Single-phase transaction rollback (localid={_txId})", _connector.Id);
 
             var attempt = 0;
             while (true)
@@ -215,6 +241,9 @@ namespace Npgsql
                 }
                 catch (NpgsqlOperationInProgressException)
                 {
+                    // Repeatedly attempts to rollback, to support timeout-triggered rollbacks that occur
+                    // while the connection is busy.
+
                     // This really shouldn't be necessary, but just in case
                     if (attempt++ == MaximumRollbackAttempts)
                         throw new Exception($"Could not roll back after {MaximumRollbackAttempts} attempts, aborting. Transaction is in an unknown state.");
@@ -223,6 +252,40 @@ namespace Npgsql
                     _connector.CancelRequest();
                     // Cancellations are asynchronous, give it some time
                     Thread.Sleep(500);
+                }
+            }
+        }
+
+        void RollbackTwoPhase()
+        {
+            // This only occurs if we've started a two-phase commit but one of the commits has failed.
+            Log.Debug($"Two-phase transaction rollback (localid={_txId})", _connector.Id);
+
+            if (_connector.Connection == null)
+            {
+                // The connection has been closed before the TransactionScope was disposed.
+                // The connector is unbound from its connection and is sitting in the pool's
+                // pending enlisted connector list. Since there's no risk of the connector being
+                // used by anyone we can executed the 2nd phase on it directly (see below).
+                using (_connector.StartUserAction())
+                    _connector.ExecuteInternalCommand($"ROLLBACK PREPARED '{_preparedTxName}'");
+            }
+            else
+            {
+                // The connection is still open and potentially will be reused by by the user.
+                // The MSDTC, which manages escalated distributed transactions, performs the 2nd phase
+                // asynchronously - this means that TransactionScope.Dispose() will return before all
+                // resource managers have actually commit. This can cause a concurrent connection use scenario
+                // if the user continues to use their connection after disposing the scope, and the MSDTC
+                // requests a commit at that exact time.
+                // To avoid this, we open a new connection for performing the 2nd phase.
+                using (var conn2 = (NpgsqlConnection)((ICloneable)_connector.Connection).Clone())
+                {
+                    conn2.Open();
+                    var connector = conn2.Connector;
+                    Debug.Assert(connector != null);
+                    using (connector.StartUserAction())
+                        connector.ExecuteInternalCommand($"ROLLBACK PREPARED '{_preparedTxName}'");
                 }
             }
         }
