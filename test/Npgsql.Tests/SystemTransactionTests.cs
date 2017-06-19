@@ -265,7 +265,7 @@ namespace Npgsql.Tests
                         // There may be a race condition here, where the prepared transaction above still hasn't completed.
                         // This is by design of MS DTC. Giving it up to 100ms to complete. If it proves flaky, raise
                         // maxLoop.
-                        const int maxLoop = 10;
+                        const int maxLoop = 20;
                         for (var j = 0; j < maxLoop; j++)
                         {
                             Thread.Sleep(10);
