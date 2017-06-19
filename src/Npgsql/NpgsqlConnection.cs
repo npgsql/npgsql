@@ -503,18 +503,28 @@ namespace Npgsql
         /// </summary>
         public override void EnlistTransaction(Transaction transaction)
         {
-            if (transaction == null)
-                throw new ArgumentNullException(nameof(transaction));
-
-            if (EnlistedTransaction == transaction)
-                return;
-
             if (EnlistedTransaction != null)
-                throw new InvalidOperationException($"Already enlisted to transaction (localid={EnlistedTransaction.TransactionInformation.LocalIdentifier})");
+            {
+                if (EnlistedTransaction.Equals(transaction))
+                    return;
+                try
+                {
+                    if (EnlistedTransaction.TransactionInformation.Status == System.Transactions.TransactionStatus.Active)
+                        throw new InvalidOperationException($"Already enlisted to transaction (localid={EnlistedTransaction.TransactionInformation.LocalIdentifier})");
+                }
+                catch (ObjectDisposedException)
+                {
+                    // The MSDTC 2nd phase is asynchronous, so we may end up checking the TransactionInformation on
+                    // a disposed transaction. To be extra safe we catch that, and understand that the transaction
+                    // has ended - no problem for reenlisting.
+                }
+            }
 
             var connector = CheckReadyAndGetConnector();
 
             EnlistedTransaction = transaction;
+            if (transaction == null)
+                return;
 
             // Until #1378 is implemented, we have no recovery, and so no need to enlist as a durable resource manager
             // (or as promotable single phase).
