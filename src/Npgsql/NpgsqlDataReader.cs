@@ -994,7 +994,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The returned object.</returns>
-        public async Task<Stream> GetStreamAsync(int ordinal)
+        public Task<Stream> GetStreamAsync(int ordinal)
         {
             CheckRowAndOrdinal(ordinal);
 
@@ -1003,10 +1003,13 @@ namespace Npgsql
             if (handler == null)
                 throw new InvalidCastException("GetStream() not supported for type " + fieldDescription.Handler.PgDisplayName);
 
-            var row = Row;
-            await row.SeekToColumnStart(ordinal, false);
-            row.CheckNotNull();
-            return row.GetStream();
+            return SynchronizationContextSwitcher.NoContext(async () =>
+            {
+                var row = Row;
+                await row.SeekToColumnStart(ordinal, false);
+                row.CheckNotNull();
+                return row.GetStream();
+            });
         }
 
         #endregion
@@ -1069,7 +1072,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The returned object.</returns>
-        public async Task<TextReader> GetTextReaderAsync(int ordinal)
+        public Task<TextReader> GetTextReaderAsync(int ordinal)
         {
             CheckRowAndOrdinal(ordinal);
 
@@ -1078,11 +1081,13 @@ namespace Npgsql
             if (handler == null)
                 throw new InvalidCastException("GetTextReader() not supported for type " + fieldDescription.Handler.PgDisplayName);
 
-            var row = Row;
-            await row.SeekToColumnStart(ordinal, false);
-            row.CheckNotNull();
-
-            return handler.GetTextReader(row.GetStream());
+            return SynchronizationContextSwitcher.NoContext(async () =>
+            {
+                var row = Row;
+                await row.SeekToColumnStart(ordinal, false);
+                row.CheckNotNull();
+                return handler.GetTextReader(row.GetStream());
+            });
         }
 
         #endregion
