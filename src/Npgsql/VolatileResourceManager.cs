@@ -99,7 +99,7 @@ namespace Npgsql
             Debug.Assert(_localTx != null, "No local transaction");
             Debug.Assert(_connector != null, "No connector");
 
-            Log.Debug($"Two-phase transaction prepare (localid={_txId}", _connector.Id);
+            Log.Debug($"Two-phase transaction prepare (localid={_txId})", _connector.Id);
 
             // The PostgreSQL prepared transaction name is the distributed GUID + our connection's process ID, for uniqueness
             _preparedTxName = $"{_transaction.TransactionInformation.DistributedIdentifier}/{_connector.BackendProcessId}";
@@ -123,7 +123,7 @@ namespace Npgsql
             Debug.Assert(_transaction != null, "No transaction");
             Debug.Assert(_connector != null, "No connector");
 
-            Log.Debug($"Two-phase transaction commit (localid={_txId}", _connector.Id);
+            Log.Debug($"Two-phase transaction commit (localid={_txId})", _connector.Id);
 
             try
             {
@@ -132,7 +132,7 @@ namespace Npgsql
             }
             catch (Exception e)
             {
-                Log.Error("Exception during two-phase transaction commit (localid={TransactionId}", e, _connector.Id);
+                Log.Error("Exception during two-phase transaction commit (localid={TransactionId})", e, _connector.Id);
             }
             finally
             {
@@ -152,20 +152,20 @@ namespace Npgsql
                 if (IsPrepared)
                 {
                     // This only occurs if we've started a two-phase commit but one of the commits has failed.
-                    Log.Debug($"Two-phase transaction rollback (localid={_txId}", _connector.Id);
+                    Log.Debug($"Two-phase transaction rollback (localid={_txId})", _connector.Id);
                     using (_connector.StartUserAction())
                         _connector.ExecuteInternalCommand($"ROLLBACK PREPARED '{_preparedTxName}'");
                 }
                 else
                 {
-                    Log.Debug($"Single-phase transaction rollback (localid={_txId}", _connector.Id);
+                    Log.Debug($"Single-phase transaction rollback (localid={_txId})", _connector.Id);
                     Debug.Assert(_localTx != null);
                     RollbackLocal();
                 }
             }
             catch (Exception e)
             {
-                Log.Error($"Exception during transaction rollback (localid={_txId}", e, _connector.Id);
+                Log.Error($"Exception during transaction rollback (localid={_txId})", e, _connector.Id);
             }
             finally
             {
@@ -179,7 +179,7 @@ namespace Npgsql
             Debug.Assert(_transaction != null, "No transaction");
             Debug.Assert(_connector != null, "No connector");
 
-            Log.Warn($"Two-phase transaction in doubt (localid={_txId}", _connector.Id);
+            Log.Warn($"Two-phase transaction in doubt (localid={_txId})", _connector.Id);
 
             // TODO: Is this the correct behavior?
             try
@@ -188,7 +188,7 @@ namespace Npgsql
             }
             catch (Exception e)
             {
-                Log.Error($"Exception during transaction rollback (localid={_txId}", e, _connector.Id);
+                Log.Error($"Exception during transaction rollback (localid={_txId})", e, _connector.Id);
             }
             finally
             {
