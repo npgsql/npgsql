@@ -59,7 +59,8 @@ namespace Npgsql
         /// <summary>
         /// Used for internal temporary purposes
         /// </summary>
-        readonly char[] _tempCharBuf;
+        [CanBeNull]
+        char[] _tempCharBuf;
 
         /// <summary>
         /// The minimum buffer size possible.
@@ -83,7 +84,6 @@ namespace Npgsql
             Buffer = new byte[Size];
             TextEncoding = textEncoding;
             _textDecoder = TextEncoding.GetDecoder();
-            _tempCharBuf = new char[1024];
             _workspace = new byte[8];
         }
 
@@ -420,6 +420,8 @@ namespace Npgsql
         /// <returns>the number of bytes read</returns>
         internal void SkipChars(int charCount, int byteCount, out int bytesSkipped, out int charsSkipped)
         {
+            if (_tempCharBuf == null)
+                _tempCharBuf = new char[1024];
             charsSkipped = bytesSkipped = 0;
             while (charsSkipped < charCount && bytesSkipped < byteCount)
             {
