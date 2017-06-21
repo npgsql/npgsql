@@ -165,21 +165,9 @@ namespace Npgsql
 
             try
             {
-                while (true)
-                {
-                    var msg = await ReadMessage(async);
-                    switch (ProcessMessage(msg))
-                    {
-                    case ReadResult.RowRead:
-                        return true;
-                    case ReadResult.RowNotRead:
-                        return false;
-                    case ReadResult.ReadAgain:
-                        throw new Exception("Shouldn't actually happen..");
-                    default:
-                        throw new ArgumentOutOfRangeException();
-                    }
-                }
+                var msg = await ReadMessage(async);
+                ProcessMessage(msg);
+                return msg.Code == BackendMessageCode.DataRow;
             }
             catch (PostgresException)
             {
@@ -188,7 +176,7 @@ namespace Npgsql
             }
         }
 
-        ReadResult ProcessMessage(IBackendMessage msg)
+        void ProcessMessage(IBackendMessage msg)
         {
             Debug.Assert(msg != null);
 
@@ -213,7 +201,7 @@ namespace Npgsql
                 default:
                     throw Connector.UnexpectedMessageReceived(BackendMessageCode.DataRow);
                 }
-                return ReadResult.RowRead;
+                return;
 
             case BackendMessageCode.CompletedResponse:
                 var completed = (CommandCompleteMessage) msg;
@@ -231,20 +219,15 @@ namespace Npgsql
                 }
 
                 _statements[StatementIndex].ApplyCommandComplete(completed);
-
                 goto case BackendMessageCode.EmptyQueryResponse;
 
             case BackendMessageCode.EmptyQueryResponse:
                 State = ReaderState.BetweenResults;
-                return ReadResult.RowNotRead;
+                return;
 
             case BackendMessageCode.ReadyForQuery:
                 State = ReaderState.Consumed;
-                return ReadResult.RowNotRead;
-
-            case BackendMessageCode.BindComplete:
-            case BackendMessageCode.CloseComplete:
-                return ReadResult.ReadAgain;
+                return;
 
             default:
                 throw new Exception("Received unexpected backend message of type " + msg.Code);
@@ -1307,13 +1290,6 @@ namespace Npgsql
         }
 
         #endregion
-
-        enum ReadResult
-        {
-            RowRead,
-            RowNotRead,
-            ReadAgain,
-        }
     }
 
     enum ReaderState
