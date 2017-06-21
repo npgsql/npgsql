@@ -71,6 +71,19 @@ namespace Npgsql.Tests
             => prefix + Interlocked.Increment(ref _counter);
 
         static int _counter;
+
+        /// <summary>
+        /// Utility to generate a bytea literal in Postgresql hex format
+        /// See http://www.postgresql.org/docs/current/static/datatype-binary.html
+        /// </summary>
+        internal static string EncodeByteaHex(ICollection<byte> buf)
+        {
+            var hex = new StringBuilder(@"E'\\x", buf.Count * 2 + 3);
+            foreach (var b in buf)
+                hex.Append($"{b:x2}");
+            hex.Append("'");
+            return hex.ToString();
+        }
     }
 
     public static class NpgsqlConnectionExtensions

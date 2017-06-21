@@ -23,6 +23,7 @@
 
 using System;
 using System.Data;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -894,6 +895,369 @@ LANGUAGE plpgsql VOLATILE";
                 Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
             }
         }
+
+        #region GetBytes / GetStream
+
+        [Test]
+        public void GetBytes()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (bytes BYTEA)");
+
+                // TODO: This is too small to actually test any interesting sequential behavior
+                byte[] expected = { 1, 2, 3, 4, 5 };
+                var actual = new byte[expected.Length];
+                conn.ExecuteNonQuery($"INSERT INTO data (bytes) VALUES ({TestUtil.EncodeByteaHex(expected)})");
+
+                const string queryText = @"SELECT bytes, 'foo', bytes, 'bar', bytes, bytes FROM data";
+                using (var cmd = new NpgsqlCommand(queryText, conn))
+                using (var reader = cmd.ExecuteReader(Behavior))
+                {
+                    reader.Read();
+
+                    Assert.That(reader.GetBytes(0, 0, actual, 0, 2), Is.EqualTo(2));
+                    Assert.That(actual[0], Is.EqualTo(expected[0]));
+                    Assert.That(actual[1], Is.EqualTo(expected[1]));
+                    Assert.That(reader.GetBytes(0, 0, null, 0, 0), Is.EqualTo(expected.Length), "Bad column length");
+                    if (IsSequential)
+                        Assert.That(() => reader.GetBytes(0, 0, actual, 4, 1),
+                            Throws.Exception.TypeOf<InvalidOperationException>(), "Seek back sequential");
+                    else
+                    {
+                        Assert.That(reader.GetBytes(0, 0, actual, 4, 1), Is.EqualTo(1));
+                        Assert.That(actual[4], Is.EqualTo(expected[0]));
+                    }
+                    Assert.That(reader.GetBytes(0, 2, actual, 2, 3), Is.EqualTo(3));
+                    Assert.That(actual, Is.EqualTo(expected));
+                    Assert.That(reader.GetBytes(0, 0, null, 0, 0), Is.EqualTo(expected.Length), "Bad column length");
+
+                    Assert.That(() => reader.GetBytes(1, 0, null, 0, 0), Throws.Exception.TypeOf<InvalidCastException>(),
+                        "GetBytes on non-bytea");
+                    Assert.That(() => reader.GetBytes(1, 0, actual, 0, 1),
+                        Throws.Exception.TypeOf<InvalidCastException>(),
+                        "GetBytes on non-bytea");
+                    Assert.That(reader.GetString(1), Is.EqualTo("foo"));
+                    reader.GetBytes(2, 0, actual, 0, 2);
+                    // Jump to another column from the middle of the column
+                    reader.GetBytes(4, 0, actual, 0, 2);
+                    Assert.That(reader.GetBytes(4, expected.Length - 1, actual, 0, 2), Is.EqualTo(1),
+                        "Length greater than data length");
+                    Assert.That(actual[0], Is.EqualTo(expected[expected.Length - 1]), "Length greater than data length");
+                    Assert.That(() => reader.GetBytes(4, 0, actual, 0, actual.Length + 1),
+                        Throws.Exception.TypeOf<IndexOutOfRangeException>(), "Length great than output buffer length");
+                    // Close in the middle of a column
+                    reader.GetBytes(5, 0, actual, 0, 2);
+                }
+
+                //var result = (byte[]) cmd.ExecuteScalar();
+                //Assert.AreEqual(2, result.Length);
+            }
+        }
+
+        [Test]
+        public async Task GetStream([Values(true, false)] bool isAsync)
+        {
+            var streamGetter = BuildStreamGetter(isAsync);
+
+            using (var conn = OpenConnection())
+            {
+                // TODO: This is too small to actually test any interesting sequential behavior
+                byte[] expected = { 1, 2, 3, 4, 5 };
+                var actual = new byte[expected.Length];
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (bytes BYTEA)");
+                conn.ExecuteNonQuery($"INSERT INTO data (bytes) VALUES ({TestUtil.EncodeByteaHex(expected)})");
+
+                using (var cmd = new NpgsqlCommand(@"SELECT bytes, 'foo' FROM data", conn))
+                using (var reader = cmd.ExecuteReader(Behavior))
+                {
+                    reader.Read();
+
+                    var stream = await streamGetter(reader, 0);
+                    Assert.That(stream.CanSeek, Is.EqualTo(Behavior == CommandBehavior.Default));
+                    Assert.That(stream.Length, Is.EqualTo(expected.Length));
+                    stream.Read(actual, 0, 2);
+                    Assert.That(actual[0], Is.EqualTo(expected[0]));
+                    Assert.That(actual[1], Is.EqualTo(expected[1]));
+                    if (Behavior == CommandBehavior.Default)
+                    {
+                        var stream2 = await streamGetter(reader, 0);
+                        var actual2 = new byte[2];
+                        stream2.Read(actual2, 0, 2);
+                        Assert.That(actual2[0], Is.EqualTo(expected[0]));
+                        Assert.That(actual2[1], Is.EqualTo(expected[1]));
+                    }
+                    else
+                    {
+                        Assert.That(async () => await streamGetter(reader, 0), Throws.Exception.TypeOf<InvalidOperationException>(), "Sequential stream twice on same column");
+                    }
+                    stream.Read(actual, 2, 1);
+                    Assert.That(actual[2], Is.EqualTo(expected[2]));
+                    stream.Dispose();
+
+                    if (IsSequential)
+                        Assert.That(() => reader.GetBytes(0, 0, actual, 4, 1), Throws.Exception.TypeOf<InvalidOperationException>(), "Seek back sequential");
+                    else
+                    {
+                        Assert.That(reader.GetBytes(0, 0, actual, 4, 1), Is.EqualTo(1));
+                        Assert.That(actual[4], Is.EqualTo(expected[0]));
+                    }
+                    Assert.That(reader.GetString(1), Is.EqualTo("foo"));
+                }
+            }
+        }
+
+        [Test]
+        public async Task OpenStreamWhenChangingColumns([Values(true, false)] bool isAsync)
+        {
+            var streamGetter = BuildStreamGetter(isAsync);
+
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand(@"SELECT @p, @p", conn))
+            {
+                var data = new byte[] { 1, 2, 3 };
+                cmd.Parameters.Add(new NpgsqlParameter("p", data));
+                using (var reader = cmd.ExecuteReader(Behavior))
+                {
+                    reader.Read();
+                    var stream = await streamGetter(reader, 0);
+                    // ReSharper disable once UnusedVariable
+                    var v = reader.GetValue(1);
+                    if (IsSequential)
+                        Assert.That(() => stream.ReadByte(), Throws.Exception.TypeOf<ObjectDisposedException>());
+                    else
+                        Assert.That(stream.ReadByte(), Is.EqualTo(1));
+                }
+            }
+        }
+
+        [Test]
+        public async Task OpenStreamWhenChangingRows([Values(true, false)] bool isAsync)
+        {
+            var streamGetter = BuildStreamGetter(isAsync);
+
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand(@"SELECT @p", conn))
+            {
+                var data = new byte[] { 1, 2, 3 };
+                cmd.Parameters.Add(new NpgsqlParameter("p", data));
+                using (var reader = cmd.ExecuteReader(Behavior))
+                {
+                    reader.Read();
+                    var s1 = await streamGetter(reader, 0);
+                    Stream s2 = null;
+
+                    if (IsSequential)
+                        Assert.That(async () => s2 = await streamGetter(reader, 0), Throws.Exception.TypeOf<InvalidOperationException>());
+                    else
+                        s2 = await streamGetter(reader, 0);
+
+                    reader.Read();
+                    Assert.That(() => s1.ReadByte(), Throws.Exception.TypeOf<ObjectDisposedException>());
+                    if (!IsSequential)
+                        Assert.That(() => s2.ReadByte(), Throws.Exception.TypeOf<ObjectDisposedException>());
+                }
+            }
+        }
+
+        [Test]
+        public async Task GetBytesWithNull([Values(true, false)] bool isAsync)
+        {
+            var streamGetter = BuildStreamGetter(isAsync);
+
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (bytes BYTEA)");
+                var buf = new byte[8];
+                conn.ExecuteNonQuery(@"INSERT INTO data (bytes) VALUES (NULL)");
+                using (var cmd = new NpgsqlCommand("SELECT bytes FROM data", conn))
+                using (var reader = cmd.ExecuteReader(Behavior))
+                {
+                    reader.Read();
+                    Assert.That(reader.IsDBNull(0), Is.True);
+                    Assert.That(() => reader.GetBytes(0, 0, buf, 0, 1), Throws.Exception.TypeOf<InvalidCastException>(), "GetBytes");
+                    Assert.That(async () => await streamGetter(reader, 0), Throws.Exception.TypeOf<InvalidCastException>(), "GetStream");
+                    Assert.That(() => reader.GetBytes(0, 0, null, 0, 0), Throws.Exception.TypeOf<InvalidCastException>(), "GetBytes with null buffer");
+                }
+            }
+        }
+
+        static Func<NpgsqlDataReader, int, Task<Stream>> BuildStreamGetter(bool isAsync)
+        {
+            if (isAsync)
+                return (r, index) => r.GetStreamAsync(index);
+            return (r, index) => Task.FromResult(r.GetStream(index));
+        }
+
+        #endregion GetBytes / GetStream
+
+        #region GetChars / GetTextReader
+
+        [Test]
+        public void GetChars()
+        {
+            using (var conn = OpenConnection())
+            {
+                // TODO: This is too small to actually test any interesting sequential behavior
+                const string str = "ABCDE";
+                var expected = str.ToCharArray();
+                var actual = new char[expected.Length];
+
+                var queryText = $@"SELECT '{str}', 3, '{str}', 4, '{str}', '{str}', '{str}'";
+                using (var cmd = new NpgsqlCommand(queryText, conn))
+                using (var reader = cmd.ExecuteReader(Behavior))
+                {
+                    reader.Read();
+
+                    Assert.That(reader.GetChars(0, 0, actual, 0, 2), Is.EqualTo(2));
+                    Assert.That(actual[0], Is.EqualTo(expected[0]));
+                    Assert.That(actual[1], Is.EqualTo(expected[1]));
+                    Assert.That(reader.GetChars(0, 0, null, 0, 0), Is.EqualTo(expected.Length), "Bad column length");
+                    // Note: Unlike with bytea, finding out the length of the column consumes it (variable-width
+                    // UTF8 encoding)
+                    Assert.That(reader.GetChars(2, 0, actual, 0, 2), Is.EqualTo(2));
+                    if (IsSequential)
+                        Assert.That(() => reader.GetChars(2, 0, actual, 4, 1), Throws.Exception.TypeOf<InvalidOperationException>(), "Seek back sequential");
+                    else
+                    {
+                        Assert.That(reader.GetChars(2, 0, actual, 4, 1), Is.EqualTo(1));
+                        Assert.That(actual[4], Is.EqualTo(expected[0]));
+                    }
+                    Assert.That(reader.GetChars(2, 2, actual, 2, 3), Is.EqualTo(3));
+                    Assert.That(actual, Is.EqualTo(expected));
+                    //Assert.That(reader.GetChars(2, 0, null, 0, 0), Is.EqualTo(expected.Length), "Bad column length");
+
+                    Assert.That(() => reader.GetChars(3, 0, null, 0, 0), Throws.Exception.TypeOf<InvalidCastException>(), "GetChars on non-text");
+                    Assert.That(() => reader.GetChars(3, 0, actual, 0, 1), Throws.Exception.TypeOf<InvalidCastException>(), "GetChars on non-text");
+                    Assert.That(reader.GetInt32(3), Is.EqualTo(4));
+                    reader.GetChars(4, 0, actual, 0, 2);
+                    // Jump to another column from the middle of the column
+                    reader.GetChars(5, 0, actual, 0, 2);
+                    Assert.That(reader.GetChars(5, expected.Length - 1, actual, 0, 2), Is.EqualTo(1), "Length greater than data length");
+                    Assert.That(actual[0], Is.EqualTo(expected[expected.Length - 1]), "Length greater than data length");
+                    Assert.That(() => reader.GetChars(5, 0, actual, 0, actual.Length + 1), Throws.Exception.TypeOf<IndexOutOfRangeException>(), "Length great than output buffer length");
+                    // Close in the middle of a column
+                    reader.GetChars(6, 0, actual, 0, 2);
+                }
+            }
+        }
+
+        [Test]
+        public async Task GetTextReader([Values(true, false)] bool isAsync)
+        {
+            Func<NpgsqlDataReader, int, Task<TextReader>> textReaderGetter;
+            if (isAsync)
+                textReaderGetter = (r, index) => r.GetTextReaderAsync(index);
+            else
+                textReaderGetter = (r, index) => Task.FromResult(r.GetTextReader(index));
+
+            using (var conn = OpenConnection())
+            {
+                // TODO: This is too small to actually test any interesting sequential behavior
+                const string str = "ABCDE";
+                var expected = str.ToCharArray();
+                var actual = new char[expected.Length];
+                //ExecuteNonQuery(String.Format(@"INSERT INTO data (field_text) VALUES ('{0}')", str));
+
+                var queryText = $@"SELECT '{str}', 'foo'";
+                using (var cmd = new NpgsqlCommand(queryText, conn))
+                using (var reader = cmd.ExecuteReader(Behavior))
+                {
+                    reader.Read();
+
+                    var textReader = await textReaderGetter(reader, 0);
+                    textReader.Read(actual, 0, 2);
+                    Assert.That(actual[0], Is.EqualTo(expected[0]));
+                    Assert.That(actual[1], Is.EqualTo(expected[1]));
+                    if (IsSequential)
+                    {
+                        Assert.That(async () => await textReaderGetter(reader, 0),
+                            Throws.Exception.TypeOf<InvalidOperationException>(),
+                            "Sequential text reader twice on same column");
+                    }
+                    else
+                    {
+                        var textReader2 = await textReaderGetter(reader, 0);
+                        var actual2 = new char[2];
+                        textReader2.Read(actual2, 0, 2);
+                        Assert.That(actual2[0], Is.EqualTo(expected[0]));
+                        Assert.That(actual2[1], Is.EqualTo(expected[1]));
+                    }
+                    textReader.Read(actual, 2, 1);
+                    Assert.That(actual[2], Is.EqualTo(expected[2]));
+                    textReader.Dispose();
+
+                    if (IsSequential)
+                        Assert.That(() => reader.GetChars(0, 0, actual, 4, 1),
+                            Throws.Exception.TypeOf<InvalidOperationException>(), "Seek back sequential");
+                    else
+                    {
+                        Assert.That(reader.GetChars(0, 0, actual, 4, 1), Is.EqualTo(1));
+                        Assert.That(actual[4], Is.EqualTo(expected[0]));
+                    }
+                    Assert.That(reader.GetString(1), Is.EqualTo("foo"));
+                }
+            }
+        }
+
+        [Test]
+        public void OpenTextReaderWhenChangingColumns()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand(@"SELECT 'some_text', 'some_text'", conn))
+            using (var reader = cmd.ExecuteReader(Behavior))
+            {
+                reader.Read();
+                var textReader = reader.GetTextReader(0);
+                // ReSharper disable once UnusedVariable
+                var v = reader.GetValue(1);
+                if (IsSequential)
+                    Assert.That(() => textReader.Peek(), Throws.Exception.TypeOf<ObjectDisposedException>());
+                else
+                    Assert.That(textReader.Peek(), Is.EqualTo('s'));
+            }
+        }
+
+        [Test]
+        public void OpenStreamWhenChangingRows()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand(@"SELECT 'some_text', 'some_text'", conn))
+            using (var reader = cmd.ExecuteReader(Behavior))
+            {
+                reader.Read();
+                var tr1 = reader.GetTextReader(0);
+                TextReader tr2 = null;
+
+                if (IsSequential)
+                    Assert.That(() => tr2 = reader.GetTextReader(0), Throws.Exception.TypeOf<InvalidOperationException>());
+                else
+                    tr2 = reader.GetTextReader(0);
+
+                reader.Read();
+                Assert.That(() => tr1.Peek(), Throws.Exception.TypeOf<ObjectDisposedException>());
+                if (!IsSequential)
+                    Assert.That(() => tr2.Peek(), Throws.Exception.TypeOf<ObjectDisposedException>());
+            }
+        }
+
+        [Test]
+        public void GetCharsWhenNull([Values(CommandBehavior.Default, CommandBehavior.SequentialAccess)] CommandBehavior behavior)
+        {
+            var buf = new char[8];
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT NULL::TEXT", conn))
+            using (var reader = cmd.ExecuteReader(behavior))
+            {
+                reader.Read();
+                Assert.That(reader.IsDBNull(0), Is.True);
+                Assert.That(() => reader.GetChars(0, 0, buf, 0, 1), Throws.Exception.TypeOf<InvalidCastException>(), "GetChars");
+                Assert.That(() => reader.GetTextReader(0), Throws.Exception.TypeOf<InvalidCastException>(), "GetTextReader");
+                Assert.That(() => reader.GetChars(0, 0, null, 0, 0), Throws.Exception.TypeOf<InvalidCastException>(), "GetChars with null buffer");
+            }
+        }
+
+        #endregion GetChars / GetTextReader
 
 #if DEBUG
         [Test, Description("Tests that everything goes well when a type handler generates a SafeReadException")]
