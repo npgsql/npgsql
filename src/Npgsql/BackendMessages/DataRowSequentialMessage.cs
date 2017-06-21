@@ -117,6 +117,12 @@ namespace Npgsql.BackendMessages
 
         internal override async Task Consume(bool async)
         {
+            if (_stream != null)
+            {
+                _stream.Dispose();
+                _stream = null;
+            }
+
             // Skip to end of column if needed
             var remainingInColumn = ColumnLen == -1 ? 0 : ColumnLen - PosInColumn;
             if (remainingInColumn > 0)
