@@ -245,12 +245,10 @@ namespace Npgsql
         readonly CommandCompleteMessage      _commandCompleteMessage      = new CommandCompleteMessage();
         readonly ReadyForQueryMessage        _readyForQueryMessage        = new ReadyForQueryMessage();
         readonly ParameterDescriptionMessage _parameterDescriptionMessage = new ParameterDescriptionMessage();
-        readonly DataRowSequentialMessage    _dataRowSequentialMessage    = new DataRowSequentialMessage();
-        readonly DataRowNonSequentialMessage _dataRowNonSequentialMessage = new DataRowNonSequentialMessage();
-
+        readonly DataRowMessage              _dataRowMessage              = new DataRowMessage();
 
         // Since COPY is rarely used, allocate these lazily
-        CopyInResponseMessage  _copyInResponseMessage;
+        CopyInResponseMessage _copyInResponseMessage;
         CopyOutResponseMessage _copyOutResponseMessage;
         CopyDataMessage        _copyDataMessage;
 
@@ -899,7 +897,7 @@ namespace Npgsql
                     await ReadBuffer.Ensure(len, async);
                 }
 
-                var msg = ParseServerMessage(ReadBuffer, messageCode, len, dataRowLoadingMode, isPrependedMessage);
+                var msg = ParseServerMessage(ReadBuffer, messageCode, len, isPrependedMessage);
 
                 switch (messageCode) {
                 case BackendMessageCode.ErrorResponse:
@@ -939,7 +937,7 @@ namespace Npgsql
         }
 
         [CanBeNull]
-        IBackendMessage ParseServerMessage(ReadBuffer buf, BackendMessageCode code, int len, DataRowLoadingMode dataRowLoadingMode, bool isPrependedMessage)
+        IBackendMessage ParseServerMessage(ReadBuffer buf, BackendMessageCode code, int len, bool isPrependedMessage)
         {
             switch (code)
             {
@@ -948,10 +946,7 @@ namespace Npgsql
                     var rowDescriptionMessage = new RowDescriptionMessage();
                     return rowDescriptionMessage.Load(buf, TypeHandlerRegistry);
                 case BackendMessageCode.DataRow:
-                    Debug.Assert(dataRowLoadingMode == DataRowLoadingMode.NonSequential || dataRowLoadingMode == DataRowLoadingMode.Sequential);
-                    return dataRowLoadingMode == DataRowLoadingMode.Sequential
-                        ? _dataRowSequentialMessage.Load(buf)
-                        : _dataRowNonSequentialMessage.Load(buf);
+                    return _dataRowMessage.Load(len);
                 case BackendMessageCode.CompletedResponse:
                     return _commandCompleteMessage.Load(buf, len);
                 case BackendMessageCode.ReadyForQuery:
@@ -1699,6 +1694,8 @@ namespace Npgsql
                             expectedMessageCode = BackendMessageCode.DataRow;
                             continue;
                         case BackendMessageCode.DataRow:
+                            // DataRow is usually consumed by a reader, here we have to skip it manually.
+                            ReadBuffer.Skip(((DataRowMessage)msg).Length);
                             expectedMessageCode = BackendMessageCode.CompletedResponse;
                             continue;
                         case BackendMessageCode.CompletedResponse:
@@ -1795,6 +1792,8 @@ namespace Npgsql
                                         expectedMessageCode = BackendMessageCode.DataRow;
                                         break;
                                     case BackendMessageCode.DataRow:
+                                        // DataRow is usually consumed by a reader, here we have to skip it manually.
+                                        await ReadBuffer.Skip(((DataRowMessage)msg).Length, true);
                                         expectedMessageCode = BackendMessageCode.CompletedResponse;
                                         break;
                                     case BackendMessageCode.CompletedResponse:

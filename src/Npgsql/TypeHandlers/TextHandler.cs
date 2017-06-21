@@ -142,6 +142,8 @@ namespace Npgsql.TypeHandlers
 
         public long GetChars(DataRowMessage row, int charOffset, [CanBeNull] char[] output, int outputOffset, int charsCount, FieldDescription field)
         {
+            throw new NotImplementedException();
+            /*
             if (row.PosInColumn == 0)
                 _charPos = 0;
 
@@ -179,6 +181,7 @@ namespace Npgsql.TypeHandlers
             row.PosInColumn += bytesRead;
             _charPos += charsRead;
             return charsRead;
+            */
         }
 
         #endregion

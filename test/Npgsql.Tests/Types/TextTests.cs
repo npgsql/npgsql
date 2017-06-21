@@ -108,7 +108,7 @@ namespace Npgsql.Tests.Types
                     var actual = reader[0];
                     Assert.That(actual, Is.EqualTo(expected));
 
-                    if (IsSequential(behavior))
+                    if (behavior.IsSequential())
                         Assert.That(() => reader[0], Throws.Exception.TypeOf<InvalidOperationException>(), "Seek back sequential");
                     else
                         Assert.That(reader[0], Is.EqualTo(expected));
@@ -131,12 +131,11 @@ namespace Npgsql.Tests.Types
                 const string str = "ABCDE";
                 var expected = str.ToCharArray();
                 var actual = new char[expected.Length];
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
-                conn.ExecuteNonQuery($@"INSERT INTO data (name) VALUES ('{str}')");
 
-                const string queryText = @"SELECT name, 3, name, 4, name, name, name FROM data";
+                var queryText = $@"SELECT '{str}', 3, '{str}', 4, '{str}', '{str}', '{str}'";
                 using (var cmd = new NpgsqlCommand(queryText, conn))
-                using (var reader = cmd.ExecuteReader(behavior)) {
+                using (var reader = cmd.ExecuteReader(behavior))
+                {
                     reader.Read();
 
                     Assert.That(reader.GetChars(0, 0, actual, 0, 2), Is.EqualTo(2));
@@ -146,7 +145,7 @@ namespace Npgsql.Tests.Types
                     // Note: Unlike with bytea, finding out the length of the column consumes it (variable-width
                     // UTF8 encoding)
                     Assert.That(reader.GetChars(2, 0, actual, 0, 2), Is.EqualTo(2));
-                    if (IsSequential(behavior))
+                    if (behavior.IsSequential())
                         Assert.That(() => reader.GetChars(2, 0, actual, 4, 1), Throws.Exception.TypeOf<InvalidOperationException>(), "Seek back sequential");
                     else
                     {
@@ -221,7 +220,7 @@ namespace Npgsql.Tests.Types
                     Assert.That(actual[2], Is.EqualTo(expected[2]));
                     textReader.Dispose();
 
-                    if (IsSequential(behavior))
+                    if (behavior.IsSequential())
                         Assert.That(() => reader.GetChars(0, 0, actual, 4, 1),
                             Throws.Exception.TypeOf<InvalidOperationException>(), "Seek back sequential");
                     else

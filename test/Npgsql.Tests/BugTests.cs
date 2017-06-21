@@ -13,6 +13,44 @@ namespace Npgsql.Tests
 {
     public class BugTests : TestBase
     {
+        #region Sequential reader bugs
+
+        [Test, Description("In sequential access, performing a null check on a non-first field would check the first field")]
+        public void SequentialNullCheckOnNonFirstField()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT 'X', NULL", conn))
+            using (var dr = cmd.ExecuteReader(CommandBehavior.SequentialAccess))
+            {
+                dr.Read();
+                Assert.That(dr.IsDBNull(1), Is.True);
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1034")]
+        public void SequentialSkipOverFirstRow()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT 1; SELECT 2", conn))
+            using (var reader = cmd.ExecuteReader(CommandBehavior.SequentialAccess))
+            {
+                Assert.That(reader.NextResult(), Is.True);
+                Assert.That(reader.Read(), Is.True);
+                Assert.That(reader.GetInt32(0), Is.EqualTo(2));
+            }
+        }
+
+        [Test]
+        public void SequentialConsumeWithNull()
+        {
+            using (var conn = OpenConnection())
+            using (var command = new NpgsqlCommand("SELECT 1, NULL", conn))
+            using (var reader = command.ExecuteReader(CommandBehavior.SequentialAccess))
+                reader.Read();
+        }
+
+        #endregion
+
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1210")]
         public void ManyParametersWithMixedFormatCode()
         {

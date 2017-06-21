@@ -129,15 +129,15 @@ namespace Npgsql.TypeHandlers
             return (b & 128) != 0;
         }
 
-        internal override object ReadAsObject(DataRowMessage row, FieldDescription fieldDescription = null)
+        internal override async ValueTask<object> ReadAsObject(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
             => fieldDescription?.TypeModifier == 1
-                ? (object) Read<bool>(row, row.ColumnLen, false, fieldDescription).Result
-                : Read<BitArray>(row, row.ColumnLen, false, fieldDescription).Result;
+                ? (object)await Read<bool>(buf, len, async, fieldDescription)
+                : await Read<BitArray>(buf, len, async, fieldDescription);
 
-        internal override object ReadPsvAsObject(DataRowMessage row, FieldDescription fieldDescription = null)
+        internal override object ReadAsObject(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => fieldDescription?.TypeModifier == 1
-                ? (object)Read<bool>(row, row.ColumnLen, false, fieldDescription).Result
-                : Read<BitArray>(row, row.ColumnLen, false, fieldDescription);
+                ? (object)Read<bool>(buf, len, false, fieldDescription).Result
+                : Read<BitArray>(buf, len, false, fieldDescription).Result;
 
         #endregion
 

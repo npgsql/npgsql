@@ -597,6 +597,8 @@ namespace Npgsql
         async ValueTask<NpgsqlDataReader> Execute(CommandBehavior behavior, bool async, CancellationToken cancellationToken)
         {
             ValidateParameters();
+            if ((behavior & CommandBehavior.SequentialAccess) != 0 && Parameters.HasOutputParameters)
+                throw new NotSupportedException("Output parameters aren't supported with SequentialAccess");
 
             var connector = Connection.Connector;
             Debug.Assert(connector != null);
@@ -670,7 +672,10 @@ namespace Npgsql
                 if (sendTask.IsFaulted)
                     sendTask.GetAwaiter().GetResult();
 
-                var reader = new NpgsqlDataReader(this, behavior, _statements, sendTask);
+                //var reader = new NpgsqlDataReader(this, behavior, _statements, sendTask);
+                var reader = (behavior & CommandBehavior.SequentialAccess) == 0
+                    ? (NpgsqlDataReader)new NpgsqlDefaultDataReader(this, behavior, _statements, sendTask)
+                    : new NpgsqlSequentialDataReader(this, behavior, _statements, sendTask);
                 connector.CurrentReader = reader;
                 if (async)
                     await reader.NextResultAsync(cancellationToken);
@@ -952,8 +957,11 @@ namespace Npgsql
         async ValueTask<object> ExecuteScalar(bool async, CancellationToken cancellationToken)
         {
             var connector = CheckReadyAndGetConnector();
+            var behavior = CommandBehavior.SingleRow;
+            if (!Parameters.HasOutputParameters)
+                behavior |= CommandBehavior.SequentialAccess;
             using (connector.StartUserAction(this))
-            using (var reader = await Execute(CommandBehavior.SequentialAccess | CommandBehavior.SingleRow, async, cancellationToken))
+            using (var reader = await Execute(behavior, async, cancellationToken))
                 return reader.Read() && reader.FieldCount != 0 ? reader.GetValue(0) : null;
         }
 

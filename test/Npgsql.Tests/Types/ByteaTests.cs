@@ -109,7 +109,7 @@ namespace Npgsql.Tests.Types
                     var actual = reader.GetFieldValue<byte[]>(0);
                     Assert.That(actual, Is.EqualTo(expected));
 
-                    if (IsSequential(behavior))
+                    if (behavior.IsSequential())
                         Assert.That(() => reader[0], Throws.Exception.TypeOf<InvalidOperationException>(), "Seek back sequential");
                     else
                         Assert.That(reader.GetFieldValue<byte[]>(0), Is.EqualTo(expected));
@@ -145,7 +145,7 @@ namespace Npgsql.Tests.Types
                     Assert.That(actual[0], Is.EqualTo(expected[0]));
                     Assert.That(actual[1], Is.EqualTo(expected[1]));
                     Assert.That(reader.GetBytes(0, 0, null, 0, 0), Is.EqualTo(expected.Length), "Bad column length");
-                    if (IsSequential(behavior))
+                    if (behavior.IsSequential())
                         Assert.That(() => reader.GetBytes(0, 0, actual, 4, 1),
                             Throws.Exception.TypeOf<InvalidOperationException>(), "Seek back sequential");
                     else
@@ -220,7 +220,7 @@ namespace Npgsql.Tests.Types
                     Assert.That(actual[2], Is.EqualTo(expected[2]));
                     stream.Dispose();
 
-                    if (IsSequential(behavior))
+                    if (behavior.IsSequential())
                         Assert.That(() => reader.GetBytes(0, 0, actual, 4, 1), Throws.Exception.TypeOf<InvalidOperationException>(), "Seek back sequential");
                     else
                     {

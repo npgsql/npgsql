@@ -23,6 +23,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -103,6 +104,12 @@ namespace Npgsql.Tests
             using (cmd)
                 return await cmd.ExecuteScalarAsync();
         }
+    }
+
+    public static class CommandBehaviorExtensions
+    {
+        public static bool IsSequential(this CommandBehavior behavior)
+            => (behavior & CommandBehavior.SequentialAccess) != 0;
     }
 
     /// <summary>

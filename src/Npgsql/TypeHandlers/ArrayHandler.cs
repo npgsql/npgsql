@@ -282,18 +282,11 @@ namespace Npgsql.TypeHandlers
         internal override Type GetElementPsvType(FieldDescription fieldDescription)
             => typeof(TPsv);
 
-        internal override object ReadPsvAsObject(DataRowMessage row, FieldDescription fieldDescription)
-        {
-            try
-            {
-                return Read<TPsv>(row.Buffer, false).Result;
-            }
-            finally
-            {
-                // Important in case a SafeReadException was thrown, position must still be updated
-                row.PosInColumn += row.ColumnLen;
-            }
-        }
+        internal override object ReadPsvAsObject(ReadBuffer buf, int len, FieldDescription fieldDescription)
+            => ReadPsvAsObject(buf, len, false, fieldDescription).Result;
+
+        internal override async ValueTask<object> ReadPsvAsObject(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+            => await Read<TPsv>(buf, async);
 
         public ArrayHandlerWithPsv(PostgresType postgresType, TypeHandler elementHandler)
             : base(postgresType, elementHandler) {}

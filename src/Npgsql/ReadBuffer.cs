@@ -192,6 +192,8 @@ namespace Npgsql
 
         internal short ReadInt16()
         {
+            if (ReadBytesLeft < sizeof(short))
+                Console.WriteLine("BOOM");
             Debug.Assert(ReadBytesLeft >= sizeof(short));
             var result = IPAddress.NetworkToHostOrder(BitConverter.ToInt16(Buffer, ReadPosition));
             ReadPosition += 2;
@@ -540,11 +542,6 @@ namespace Npgsql
             Debug.Assert(other.Size - other._filledBytes >= ReadBytesLeft);
             Array.Copy(Buffer, ReadPosition, other.Buffer, other._filledBytes, ReadBytesLeft);
             other._filledBytes += ReadBytesLeft;
-        }
-
-        internal MemoryStream GetMemoryStream(int len)
-        {
-            return new MemoryStream(Buffer, ReadPosition, len, false, false);
         }
 
         #endregion
