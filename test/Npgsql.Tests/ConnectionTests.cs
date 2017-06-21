@@ -555,22 +555,24 @@ namespace Npgsql.Tests
             else
                 csb.Pooling = false;
 
-            var conn = OpenConnection(csb);
-            var connectorId = conn.ProcessID;
-            using (var cmd = new NpgsqlCommand("SELECT 1", conn))
-            using (var reader = cmd.ExecuteReader())
+            using (var conn = OpenConnection(csb))
             {
-                reader.Read();
-                conn.Close();
-                Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
-                Assert.That(reader.IsClosed);
-            }
+                var connectorId = conn.ProcessID;
+                using (var cmd = new NpgsqlCommand("SELECT 1", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    conn.Close();
+                    Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
+                    Assert.That(reader.IsClosed);
+                }
 
-            conn.Open();
-            if (pooled)   // Make sure we can reuse the pooled connector
-                Assert.That(conn.ProcessID, Is.EqualTo(connectorId));
-            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
-            Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+                conn.Open();
+                if (pooled)   // Make sure we can reuse the pooled connector
+                    Assert.That(conn.ProcessID, Is.EqualTo(connectorId));
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+            }
         }
 
         [Test]
