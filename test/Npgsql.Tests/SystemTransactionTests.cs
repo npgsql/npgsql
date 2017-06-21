@@ -422,6 +422,7 @@ Exception {2}",
         }
 
         [Test(Description = "Connection reuse race chaining transactions, bool distributed")]
+        [Explicit]
         public void ConnectionReuseRaceChainingTransaction([Values(false, true)] bool distributed)
         {
             for (var i = 1; i <= 100; i++)
