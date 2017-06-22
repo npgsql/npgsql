@@ -25,3 +25,10 @@ cache:
   directories:
     - $HOME/.nuget/packages
 
+# The following is necessary because of https://github.com/travis-ci/travis-ci/issues/6972
+addons:
+  postgresql: 9.6
+  apt:
+    packages:
+    - postgresql-9.6-postgis-2.3
+
