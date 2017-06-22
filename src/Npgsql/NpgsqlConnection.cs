@@ -571,16 +571,17 @@ namespace Npgsql
         /// <summary>
         /// Enlist transation.
         /// </summary>
-        public override void EnlistTransaction(Transaction transaction)
+        public override void EnlistTransaction([CanBeNull]Transaction transaction)
         {
-            if (EnlistedTransaction != null)
+            var enlistedTransaction = EnlistedTransaction;
+            if (enlistedTransaction != null)
             {
-                if (EnlistedTransaction.Equals(transaction))
+                if (enlistedTransaction.Equals(transaction))
                     return;
                 try
                 {
-                    if (EnlistedTransaction.TransactionInformation.Status == System.Transactions.TransactionStatus.Active)
-                        throw new InvalidOperationException($"Already enlisted to transaction (localid={EnlistedTransaction.TransactionInformation.LocalIdentifier})");
+                    if (enlistedTransaction.TransactionInformation.Status == System.Transactions.TransactionStatus.Active)
+                        throw new InvalidOperationException($"Already enlisted to transaction (localid={enlistedTransaction.TransactionInformation.LocalIdentifier})");
                 }
                 catch (ObjectDisposedException)
                 {
@@ -591,6 +592,7 @@ namespace Npgsql
             }
 
             var connector = CheckReadyAndGetConnector();
+            connector.EnlistedResource?.WaitIfRequired();
 
             EnlistedTransaction = transaction;
             if (transaction == null)
@@ -602,7 +604,9 @@ namespace Npgsql
             // Note that even when #1378 is implemented in some way, we should check for mono and go volatile in any case -
             // distributed transactions aren't supported.
 
-            transaction.EnlistVolatile(new VolatileResourceManager(this, transaction), EnlistmentOptions.None);
+            var ressourceManager = new VolatileResourceManager(this, transaction);
+            connector.EnlistedResource = ressourceManager;
+            transaction.EnlistVolatile(ressourceManager, EnlistmentOptions.None);
             Log.Debug($"Enlisted volatile resource manager (localid={transaction.TransactionInformation.LocalIdentifier})", connector.Id);
         }
 

@@ -38,7 +38,7 @@ namespace Npgsql
     /// Note that a connection may be closed before its TransactionScope completes. In this case we close the NpgsqlConnection
     /// as usual but the connector in a special list in the pool; it will be closed only when the scope completes.
     /// </remarks>
-    class VolatileResourceManager : ISinglePhaseNotification
+    sealed class VolatileResourceManager : ISinglePhaseNotification, IDisposable
     {
         [CanBeNull] NpgsqlConnector _connector;
         [CanBeNull] Transaction _transaction;
@@ -47,6 +47,9 @@ namespace Npgsql
         [CanBeNull] string _preparedTxName;
         bool IsPrepared => _preparedTxName != null;
         bool _isDisposed;
+        readonly ThreadLocal<bool> _isRMCall = new ThreadLocal<bool>();
+        bool _secondPhaseEndedOrNotNeedingWait;
+        readonly SemaphoreSlim _secondPhaseLock = new SemaphoreSlim(0);
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
@@ -116,6 +119,8 @@ namespace Npgsql
                 // (which is sync).
                 if (_connector.Connection != null)
                     _connector.Connection.EnlistedTransaction = null;
+                _connector.EnlistedResource = null;
+                _secondPhaseEndedOrNotNeedingWait = true;
 
                 preparingEnlistment.Prepared();
             }
@@ -136,6 +141,7 @@ namespace Npgsql
 
             try
             {
+                _isRMCall.Value = true;
                 if (_connector.Connection == null)
                 {
                     // The connection has been closed before the TransactionScope was disposed.
@@ -183,6 +189,7 @@ namespace Npgsql
 
             try
             {
+                _isRMCall.Value = true;
                 if (IsPrepared)
                     RollbackTwoPhase();
                 else
@@ -209,6 +216,7 @@ namespace Npgsql
             // TODO: Is this the correct behavior?
             try
             {
+                _isRMCall.Value = true;
                 RollbackTwoPhase();
             }
             catch (Exception e)
@@ -220,6 +228,38 @@ namespace Npgsql
                 Dispose();
                 enlistment.Done();
             }
+        }
+
+        public void WaitIfRequired()
+        {
+            try
+            {
+                if (_secondPhaseEndedOrNotNeedingWait || _isRMCall.Value ||
+                    _transaction?.TransactionInformation.Status == System.Transactions.TransactionStatus.Active)
+                    return;
+            }
+            catch (ObjectDisposedException)
+            {
+                // Ignore. The transaction is already disposed, but the second phase is not ended.
+            }
+
+            bool waitSuccess;
+            try
+            {
+                waitSuccess = _secondPhaseLock.Wait(5000);
+            }
+            catch
+            {
+                // Likely a concurrent disposal, meaning we do not need to wait.
+                waitSuccess = true;
+            }
+            if (waitSuccess)
+                return;
+
+            // The transaction completion should not take long, there is probably a bug.
+            // Release the lock and throw.
+            _secondPhaseEndedOrNotNeedingWait = true;
+            throw new InvalidOperationException("Timeout waiting for second phase completion");
         }
 
         void RollbackLocal()
@@ -290,12 +330,21 @@ namespace Npgsql
 
         #region Dispose/Cleanup
 
-        void Dispose()
+        public void Dispose()
         {
             if (_isDisposed)
                 return;
             Debug.Assert(_transaction != null, "No transaction");
             Debug.Assert(_connector != null, "No connector");
+
+            // Avoid un-enlisting another RM in case the connection has been concurrently re-used in a new
+            // transaction.
+            if (_connector.EnlistedResource == this)
+                _connector.EnlistedResource = null;
+
+            _secondPhaseEndedOrNotNeedingWait = true;
+            // In normal usage we should only have one waiting thread at most, but just in case release more.
+            _secondPhaseLock.Release(100);
 
             Log.Trace($"Cleaning up resource manager (localid={_txId}", _connector.Id);
             if (_localTx != null)
@@ -320,6 +369,8 @@ namespace Npgsql
                 else
                     _connector.Close();
             }
+            _isRMCall.Dispose();
+            _secondPhaseLock.Dispose();
 
             _connector = null;
             _transaction = null;

@@ -141,6 +141,15 @@ namespace Npgsql
         [CanBeNull]
         internal NpgsqlConnection Connection { get; set; }
 
+#if !NETSTANDARD1_3
+        /// <summary>
+        /// The ressource manager actually using this connector. <see langword="null" /> if the
+        /// connector do not participate in a system transaction.
+        /// </summary>
+        [CanBeNull]
+        internal VolatileResourceManager EnlistedResource { get; set; }
+#endif
+
         /// <summary>
         /// The number of messages that were prepended to the current message chain, but not yet sent.
         /// Note that this only tracks messages which produce a ReadyForQuery message
@@ -1586,6 +1595,10 @@ namespace Npgsql
 
         internal UserAction StartUserAction(ConnectorState newState=ConnectorState.Executing, NpgsqlCommand command=null)
         {
+#if !NETSTANDARD1_3
+            EnlistedResource?.WaitIfRequired();
+#endif
+
             // If keepalive is enabled, we must protect state transitions with a SemaphoreSlim
             // (which itself must be protected by a lock, since its dispose isn't threadsafe).
             // This will make the keepalive abort safely if a user query is in progress, and make
