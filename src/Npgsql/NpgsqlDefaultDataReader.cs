@@ -15,7 +15,9 @@ namespace Npgsql
     /// <summary>
     /// The default, non-sequential reader, which buffers entire rows in memory.
     /// </summary>
-    class NpgsqlDefaultDataReader : NpgsqlDataReader
+#pragma warning disable CA1010
+    sealed class NpgsqlDefaultDataReader : NpgsqlDataReader
+#pragma warning restore CA1010
     {
         /// <summary>
         /// The number of columns in the current row

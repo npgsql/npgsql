@@ -60,7 +60,6 @@ namespace Npgsql.TypeHandlers
 
         #region State
 
-        int _charPos;
         readonly char[] _singleCharArray = new char[1];
 
         #endregion

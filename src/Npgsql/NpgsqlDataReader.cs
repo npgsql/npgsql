@@ -41,6 +41,8 @@ using Npgsql.Schema;
 using Npgsql.TypeHandlers;
 using NpgsqlTypes;
 
+#pragma warning disable CA2222 // Do not decrease inherited member visibility
+
 namespace Npgsql
 {
     /// <summary>
@@ -762,7 +764,7 @@ namespace Npgsql
         /// <remarks>
         /// PostgreSQL's date type represents dates from 4713 BC to 5874897 AD, while .NET's DateTime
         /// only supports years from 1 to 1999. If you require years outside this range use this accessor.
-        /// The standard <see cref="GetProviderSpecificValue"/> method will also return this type, but has
+        /// The standard <see cref="DbDataReader.GetProviderSpecificValue"/> method will also return this type, but has
         /// the disadvantage of boxing the value.
         /// See http://www.postgresql.org/docs/current/static/datatype-datetime.html
         /// </remarks>
@@ -792,7 +794,7 @@ namespace Npgsql
         /// -178000000 to 178000000 years, while .NET's TimeSpan has a resolution of 100 nanoseconds
         /// and ranges from roughly -29247 to 29247 years. If you require values from outside TimeSpan's
         /// range use this accessor.
-        /// The standard ADO.NET <see cref="GetProviderSpecificValue"/> method will also return this
+        /// The standard ADO.NET <see cref="DbDataReader.GetProviderSpecificValue"/> method will also return this
         /// type, but has the disadvantage of boxing the value.
         /// See http://www.postgresql.org/docs/current/static/datatype-datetime.html
         /// </remarks>
@@ -809,7 +811,7 @@ namespace Npgsql
         /// <remarks>
         /// PostgreSQL's timestamp type represents dates from 4713 BC to 5874897 AD, while .NET's DateTime
         /// only supports years from 1 to 1999. If you require years outside this range use this accessor.
-        /// The standard <see cref="GetProviderSpecificValue"/> method will also return this type, but has
+        /// The standard <see cref="DbDataReader.GetProviderSpecificValue"/> method will also return this type, but has
         /// the disadvantage of boxing the value.
         /// See http://www.postgresql.org/docs/current/static/datatype-datetime.html
         /// </remarks>

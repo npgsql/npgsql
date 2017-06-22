@@ -22,7 +22,9 @@ namespace Npgsql
     /// This reader is suitable in scenarios where a single row is very large, and holding
     /// it in memory is undesirable.
     /// </remarks>
-    public class NpgsqlSequentialDataReader : NpgsqlDataReader
+#pragma warning disable CA1010
+    public sealed class NpgsqlSequentialDataReader : NpgsqlDataReader
+#pragma warning restore CA1010
     {
         /// <summary>
         /// The number of columns in the current row
@@ -41,7 +43,7 @@ namespace Npgsql
         [CanBeNull]
         SequentialByteaStream _stream;
 
-        public NpgsqlSequentialDataReader(NpgsqlCommand command, CommandBehavior behavior, List<NpgsqlStatement> statements, Task sendTask)
+        internal NpgsqlSequentialDataReader(NpgsqlCommand command, CommandBehavior behavior, List<NpgsqlStatement> statements, Task sendTask)
             : base(command, behavior, statements, sendTask)
         {
             Debug.Assert(!command.Parameters.HasOutputParameters);
