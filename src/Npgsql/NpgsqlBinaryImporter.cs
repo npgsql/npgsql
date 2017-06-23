@@ -70,6 +70,9 @@ namespace Npgsql
         /// </summary>
         readonly NpgsqlParameter _dummyParam;
 
+        [ItemCanBeNull]
+        readonly TypeHandler[] _typeHandlerCache;
+
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         #endregion
@@ -94,6 +97,7 @@ namespace Npgsql
                 if (!copyInResponse.IsBinary)
                     throw new ArgumentException("copyFromCommand triggered a text transfer, only binary is allowed", nameof(copyFromCommand));
                 NumColumns = copyInResponse.NumColumns;
+                _typeHandlerCache = new TypeHandler[NumColumns];
                 _buf.StartCopyMode();
                 WriteHeader();
             }
@@ -153,7 +157,9 @@ namespace Npgsql
                 return;
             }
 
-            var handler = _registry[value];
+            var handler = _typeHandlerCache[_column];
+            if (handler == null)
+                handler = _typeHandlerCache[_column] = _registry[value];
             DoWrite(handler, value);
         }
 
@@ -180,7 +186,9 @@ namespace Npgsql
                 return;
             }
 
-            var handler = _registry[type];
+            var handler = _typeHandlerCache[_column];
+            if (handler == null)
+                handler = _typeHandlerCache[_column] = _registry[type];
             DoWrite(handler, value);
         }
 

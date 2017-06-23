@@ -25,6 +25,7 @@ using System;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
 using Npgsql.Logging;
@@ -54,6 +55,8 @@ namespace Npgsql
         /// </summary>
         internal int NumColumns { get; }
 
+        [ItemCanBeNull]
+        readonly TypeHandler[] _typeHandlerCache;
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         #endregion
@@ -78,6 +81,7 @@ namespace Npgsql
                     throw new ArgumentException("copyToCommand triggered a text transfer, only binary is allowed", nameof(copyToCommand));
                 }
                 NumColumns = copyOutResponse.NumColumns;
+                _typeHandlerCache = new TypeHandler[NumColumns];
                 ReadHeader();
             }
             catch
@@ -167,7 +171,9 @@ namespace Npgsql
             }
 
             var type = typeof(T);
-            var handler = _registry[type];
+            var handler = _typeHandlerCache[_column];
+            if (handler == null)
+                handler = _typeHandlerCache[_column] = _registry[type];
             return DoRead<T>(handler);
         }
 
@@ -191,7 +197,9 @@ namespace Npgsql
                 throw new InvalidOperationException("Not reading a row");
             }
 
-            var handler = _registry[type];
+            var handler = _typeHandlerCache[_column];
+            if (handler == null)
+                handler = _typeHandlerCache[_column] = _registry[type];
             return DoRead<T>(handler);
         }
 
