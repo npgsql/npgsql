@@ -62,6 +62,35 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        public void NoResultSet()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (id INT)");
+                using (var cmd = new NpgsqlCommand("INSERT INTO data VALUES (8)", conn))
+                using (var reader = cmd.ExecuteReader(Behavior))
+                {
+                    Assert.That(() => reader.GetOrdinal("foo"), Throws.Exception.TypeOf<InvalidOperationException>());
+                    Assert.That(reader.Read(), Is.False);
+                    Assert.That(() => reader.GetOrdinal("foo"), Throws.Exception.TypeOf<InvalidOperationException>());
+                    Assert.That(reader.FieldCount, Is.EqualTo(0));
+                    Assert.That(reader.NextResult(), Is.False);
+                    Assert.That(() => reader.GetOrdinal("foo"), Throws.Exception.TypeOf<InvalidOperationException>());
+                }
+
+                using (var cmd = new NpgsqlCommand("SELECT 1; INSERT INTO data VALUES (8)", conn))
+                using (var reader = cmd.ExecuteReader(Behavior))
+                {
+                    reader.NextResult();
+                    Assert.That(() => reader.GetOrdinal("foo"), Throws.Exception.TypeOf<InvalidOperationException>());
+                    Assert.That(reader.Read(), Is.False);
+                    Assert.That(() => reader.GetOrdinal("foo"), Throws.Exception.TypeOf<InvalidOperationException>());
+                    Assert.That(reader.FieldCount, Is.EqualTo(0));
+                }
+            }
+        }
+
+        [Test]
         public void EmptyResultSet()
         {
             using (var conn = OpenConnection())

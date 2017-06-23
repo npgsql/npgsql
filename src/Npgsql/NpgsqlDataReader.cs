@@ -1287,8 +1287,14 @@ namespace Npgsql
 
         void CheckResultSet()
         {
-            if (FieldCount == 0)
-                throw new InvalidOperationException("No resultset is currently being traversed");
+            switch (State)
+            {
+                case ReaderState.BeforeResult:
+                case ReaderState.InResult:
+                    return;
+                default:
+                    throw new InvalidOperationException("No resultset is currently being traversed");
+            }
         }
 
         #endregion
