@@ -139,50 +139,6 @@ namespace Npgsql.TypeHandlers
             return buf.TextEncoding.GetChars(tempBuf);
         }
 
-        public long GetChars(DataRowMessage row, int charOffset, [CanBeNull] char[] output, int outputOffset, int charsCount, FieldDescription field)
-        {
-            throw new NotImplementedException();
-            /*
-            if (row.PosInColumn == 0)
-                _charPos = 0;
-
-            if (output == null)
-            {
-                // Note: Getting the length of a text column means decoding the entire field,
-                // very inefficient and also consumes the column in sequential mode. But this seems to
-                // be SqlClient's behavior as well.
-                row.Buffer.SkipChars(int.MaxValue, row.ColumnLen - row.PosInColumn, out var bytesSkipped, out var charsSkipped);
-                Debug.Assert(bytesSkipped == row.ColumnLen - row.PosInColumn);
-                row.PosInColumn += bytesSkipped;
-                _charPos += charsSkipped;
-                return _charPos;
-            }
-
-            if (charOffset < _charPos) {
-                row.SeekInColumn(0, false).GetAwaiter().GetResult();
-                _charPos = 0;
-            }
-
-            if (charOffset > _charPos)
-            {
-                var charsToSkip = charOffset - _charPos;
-                int bytesSkipped, charsSkipped;
-                row.Buffer.SkipChars(charsToSkip, row.ColumnLen - row.PosInColumn, out bytesSkipped, out charsSkipped);
-                row.PosInColumn += bytesSkipped;
-                _charPos += charsSkipped;
-                if (charsSkipped < charsToSkip) {
-                    // TODO: What is the actual required behavior here?
-                    throw new IndexOutOfRangeException();
-                }
-            }
-
-            row.Buffer.ReadAllChars(output, outputOffset, charsCount, row.ColumnLen - row.PosInColumn, out var bytesRead, out var charsRead);
-            row.PosInColumn += bytesRead;
-            _charPos += charsRead;
-            return charsRead;
-            */
-        }
-
         #endregion
 
         #region Write
