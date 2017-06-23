@@ -1061,7 +1061,7 @@ LANGUAGE plpgsql VOLATILE";
         }
 
         [Test]
-        public async Task GetBytesWithNull([Values(true, false)] bool isAsync)
+        public void GetBytesWithNull([Values(true, false)] bool isAsync)
         {
             var streamGetter = BuildStreamGetter(isAsync);
 
