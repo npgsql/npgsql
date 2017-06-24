@@ -206,10 +206,18 @@ ORDER BY ord";
 
         static async Task<AvailablePostgresTypes> LoadBackendTypes(NpgsqlConnector connector, NpgsqlTimeout timeout, bool async)
         {
+            var commandTimeout = 0;  // Default to infinity
+            if (timeout.IsSet)
+            {
+                commandTimeout = (int)timeout.TimeLeft.TotalSeconds;
+                if (commandTimeout <= 0)
+                    throw new TimeoutException();
+            }
+
             var types = new AvailablePostgresTypes();
             using (var command = new NpgsqlCommand(connector.SupportsRangeTypes ? TypesQueryWithRange : TypesQueryWithoutRange, connector.Connection))
             {
-                command.CommandTimeout = timeout.IsSet ? (int)timeout.TimeLeft.TotalSeconds : 0;
+                command.CommandTimeout = commandTimeout;
                 command.AllResultTypesAreUnknown = true;
                 using (var reader = async ? await command.ExecuteReaderAsync() : command.ExecuteReader())
                 {
