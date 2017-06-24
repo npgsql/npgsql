@@ -94,11 +94,12 @@ namespace Npgsql.Tests
         public void EmptyResultSet()
         {
             using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT 1 WHERE FALSE", conn))
+            using (var cmd = new NpgsqlCommand("SELECT 1 AS foo WHERE FALSE", conn))
             using (var reader = cmd.ExecuteReader(Behavior))
             {
                 Assert.That(reader.Read(), Is.False);
                 Assert.That(reader.FieldCount, Is.EqualTo(1));
+                Assert.That(reader.GetOrdinal("foo"), Is.EqualTo(0));
                 Assert.That(() => reader[0], Throws.Exception.TypeOf<InvalidOperationException>());
             }
         }
