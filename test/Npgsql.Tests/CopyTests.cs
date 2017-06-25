@@ -385,6 +385,33 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test]
+        public void ExportLongString()
+        {
+            const int iterations = 100;
+            using (var conn = OpenConnection())
+            {
+                var len = conn.Settings.WriteBufferSize;
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo1 TEXT, foo2 TEXT, foo3 TEXT, foo4 TEXT, foo5 TEXT)");
+                using (var cmd = new NpgsqlCommand("INSERT INTO data VALUES (@p, @p, @p, @p, @p)", conn))
+                {
+                    cmd.Parameters.AddWithValue("p", new string('x', len));
+                    for (var i = 0; i < iterations; i++)
+                        cmd.ExecuteNonQuery();
+                }
+
+                using (var reader = conn.BeginBinaryExport("COPY data (foo1, foo2, foo3, foo4, foo5) TO STDIN BINARY"))
+                {
+                    for (var row = 0; row < iterations; row++)
+                    {
+                        Assert.That(reader.StartRow(), Is.EqualTo(5));
+                        for (var col = 0; col < 5; col++)
+                            Assert.That(reader.Read<string>().Length, Is.EqualTo(len));
+                    }
+                }
+            }
+        }
+
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1134")]
         public void ReadBitString()
         {
