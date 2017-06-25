@@ -93,7 +93,11 @@ namespace Npgsql
         #region I/O
 
         internal void Ensure(int count)
-            => Ensure(count, false).GetAwaiter().GetResult();
+        {
+            if (count <= ReadBytesLeft)
+                return;
+            Ensure(count, false).GetAwaiter().GetResult();
+        }
 
         internal Task Ensure(int count, bool async, bool dontBreakOnTimeouts = false)
             => count <= ReadBytesLeft ? PGUtil.CompletedTask : EnsureLong(count, async, dontBreakOnTimeouts);
