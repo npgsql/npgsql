@@ -26,6 +26,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
@@ -91,9 +92,16 @@ namespace Npgsql
 
         #region I/O
 
-        internal async Task Ensure(int count, bool async, bool dontBreakOnTimeouts=false)
+        internal void Ensure(int count)
+            => Ensure(count, false).GetAwaiter().GetResult();
+
+        internal Task Ensure(int count, bool async, bool dontBreakOnTimeouts = false)
+            => count <= ReadBytesLeft ? PGUtil.CompletedTask : EnsureLong(count, async, dontBreakOnTimeouts);
+
+        async Task EnsureLong(int count, bool async, bool dontBreakOnTimeouts=false)
         {
             Debug.Assert(count <= Size);
+            Debug.Assert(count > ReadBytesLeft);
             count -= ReadBytesLeft;
             if (count <= 0) { return; }
 
@@ -135,9 +143,6 @@ namespace Npgsql
                 throw new NpgsqlException("Exception while reading from stream", e);
             }
         }
-
-        internal void Ensure(int count)
-            => Ensure(count, false).GetAwaiter().GetResult();
 
         internal Task ReadMore(bool async) => Ensure(ReadBytesLeft + 1, async);
 
