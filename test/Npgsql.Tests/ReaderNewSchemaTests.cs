@@ -461,7 +461,7 @@ namespace Npgsql.Tests
             {
                 conn.ExecuteNonQuery("CREATE TYPE pg_temp.some_composite AS (foo int)");
                 conn.ReloadTypes();
-                conn.MapComposite<SomeComposite>();
+                conn.TypeMapper.MapComposite<SomeComposite>();
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (comp pg_temp.some_composite)");
 
                 using (var cmd = new NpgsqlCommand("SELECT comp,'(4)'::some_composite FROM data", conn))

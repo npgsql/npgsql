@@ -27,6 +27,7 @@ using NpgsqlTypes;
 using System.Data;
 using JetBrains.Annotations;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeMapping;
 
 namespace Npgsql.TypeHandlers
 {
@@ -36,9 +37,7 @@ namespace Npgsql.TypeHandlers
     [TypeMapping("uuid", NpgsqlDbType.Uuid, DbType.Guid, typeof(Guid))]
     class UuidHandler : SimpleTypeHandler<Guid>, ISimpleTypeHandler<string>
     {
-        internal UuidHandler(PostgresType postgresType) : base(postgresType) { }
-
-        public override Guid Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override Guid Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             var a = buf.ReadInt32();
             var b = buf.ReadInt16();
@@ -48,12 +47,12 @@ namespace Npgsql.TypeHandlers
             return new Guid(a, b, c, d);
         }
 
-        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        string ISimpleTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => Read(buf, len, fieldDescription).ToString();
 
         #region Write
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
+        protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
         {
             var asString = value as string;
             if (value is string)
@@ -68,7 +67,7 @@ namespace Npgsql.TypeHandlers
             return 16;
         }
 
-        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
+        protected override void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
         {
             if (parameter?.ConvertedValue != null)
                 value = parameter.ConvertedValue;

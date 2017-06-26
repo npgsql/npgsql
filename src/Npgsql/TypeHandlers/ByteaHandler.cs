@@ -30,6 +30,7 @@ using NpgsqlTypes;
 using System.Data;
 using JetBrains.Annotations;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeMapping;
 
 namespace Npgsql.TypeHandlers
 {
@@ -39,9 +40,7 @@ namespace Npgsql.TypeHandlers
     [TypeMapping("bytea", NpgsqlDbType.Bytea, DbType.Binary, new[] { typeof(byte[]), typeof(ArraySegment<byte>) })]
     class ByteaHandler : ChunkingTypeHandler<byte[]>
     {
-        internal ByteaHandler(PostgresType postgresType) : base(postgresType) {}
-
-        public override async ValueTask<byte[]> Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
+        public override async ValueTask<byte[]> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
         {
             var bytes = new byte[len];
             var pos = 0;
@@ -59,7 +58,7 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
+        protected internal override int ValidateAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             if (value is ArraySegment<byte>)
             {
@@ -78,7 +77,7 @@ namespace Npgsql.TypeHandlers
             throw CreateConversionException(value.GetType());
         }
 
-        protected override async Task Write(object value, WriteBuffer buf, LengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter,
+        protected override async Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter,
             bool async, CancellationToken cancellationToken)
         {
             ArraySegment<byte> segment;
@@ -111,7 +110,7 @@ namespace Npgsql.TypeHandlers
             buf.DirectWrite(segment.Array, segment.Offset, segment.Count);
         }
 
-        internal Task WriteInternal(object value, WriteBuffer buf, LengthCache lengthCache,
+        internal Task WriteInternal(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache,
                 [CanBeNull] NpgsqlParameter parameter,
                 bool async, CancellationToken cancellationToken)
             => Write(value, buf, lengthCache, parameter, async, cancellationToken);

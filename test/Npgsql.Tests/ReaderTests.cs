@@ -32,6 +32,7 @@ using NUnit.Framework.Constraints;
 using Npgsql;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
 namespace Npgsql.Tests
@@ -342,7 +343,6 @@ namespace Npgsql.Tests
                     Assert.That(intType.Name, Is.EqualTo("int4"));
                     Assert.That(intType.FullName, Is.EqualTo("pg_catalog.int4"));
                     Assert.That(intType.DisplayName, Is.EqualTo("int4"));
-                    Assert.That(intType.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Integer));
                 }
 
                 using (var cmd = new NpgsqlCommand(@"SELECT '{1}'::INT4[] AS some_column", conn))
@@ -353,7 +353,6 @@ namespace Npgsql.Tests
                     Assert.That(intArrayType.Name, Is.EqualTo("_int4"));
                     Assert.That(intArrayType.Element, Is.SameAs(intType));
                     Assert.That(intType.Array, Is.SameAs(intArrayType));
-                    Assert.That(intArrayType.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Integer | NpgsqlDbType.Array));
                 }
             }
         }
@@ -772,19 +771,23 @@ namespace Npgsql.Tests
         public void Null([Values(CommandBehavior.Default, CommandBehavior.SequentialAccess)] CommandBehavior behavior)
         {
             using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT @p::TEXT", conn))
+            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2::TEXT", conn))
             {
-                cmd.Parameters.Add(new NpgsqlParameter("p", DbType.String) { Value = DBNull.Value });
+                cmd.Parameters.Add(new NpgsqlParameter("p1", DbType.String) { Value = DBNull.Value });
+                cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p2", Value = DBNull.Value });
 
                 using (var reader = cmd.ExecuteReader(behavior))
                 {
                     reader.Read();
 
-                    Assert.That(reader.IsDBNull(0), Is.True);
-                    Assert.That(reader.IsDBNullAsync(0).Result, Is.True);
-                    Assert.That(reader.GetValue(0), Is.EqualTo(DBNull.Value));
-                    Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(DBNull.Value));
-                    Assert.That(() => reader.GetString(0), Throws.Exception.TypeOf<InvalidCastException>());
+                    for (var i = 0; i < cmd.Parameters.Count; i++)
+                    {
+                        Assert.That(reader.IsDBNull(i), Is.True);
+                        Assert.That(reader.IsDBNullAsync(i).Result, Is.True);
+                        Assert.That(reader.GetValue(i), Is.EqualTo(DBNull.Value));
+                        Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(DBNull.Value));
+                        Assert.That(() => reader.GetString(i), Throws.Exception.TypeOf<InvalidCastException>());
+                    }
                 }
             }
         }
@@ -1290,59 +1293,49 @@ LANGUAGE plpgsql VOLATILE";
         #endregion GetChars / GetTextReader
 
 #if DEBUG
-        [Test, Description("Tests that everything goes well when a type handler generates a SafeReadException")]
+        [Test, Description("Tests that everything goes well when a type handler generates a NpgsqlSafeReadException")]
         [Timeout(5000)]
         public void SafeReadException()
         {
             using (var conn = OpenConnection())
             {
                 // Temporarily reroute integer to go to a type handler which generates SafeReadExceptions
-                var registry = conn.Connector.TypeHandlerRegistry;
-                var intHandler = registry[typeof(int)];
-                registry.ByOID[intHandler.PostgresType.OID] = new SafeExceptionGeneratingHandler(intHandler.PostgresType);
-                try
+                conn.TypeMapper.AddMapping(new NpgsqlTypeMappingBuilder
                 {
-                    using (var cmd = new NpgsqlCommand(@"SELECT 1, 'hello'", conn))
-                    using (var reader = cmd.ExecuteReader(CommandBehavior.SequentialAccess))
-                    {
-                        reader.Read();
-                        Assert.That(() => reader.GetInt32(0),
-                            Throws.Exception.With.Message.EqualTo("Safe read exception as requested"));
-                        Assert.That(reader.GetString(1), Is.EqualTo("hello"));
-                    }
-                }
-                finally
+                    PgTypeName = "int4",
+                    TypeHandlerFactory = new ExplodingTypeHandlerFactory(true)
+                }.Build());
+                using (var cmd = new NpgsqlCommand(@"SELECT 1, 'hello'", conn))
+                using (var reader = cmd.ExecuteReader(CommandBehavior.SequentialAccess))
                 {
-                    registry.ByOID[intHandler.PostgresType.OID] = intHandler;
+                    reader.Read();
+                    Assert.That(() => reader.GetInt32(0),
+                        Throws.Exception.With.Message.EqualTo("Safe read exception as requested"));
+                    Assert.That(reader.GetString(1), Is.EqualTo("hello"));
                 }
             }
         }
 
-        [Test, Description("Tests that when a type handler generates an exception that isn't a SafeReadException, the connection is properly broken")]
+        [Test, Description("Tests that when a type handler generates an exception that isn't a NpgsqlSafeReadException, the connection is properly broken")]
         [Timeout(5000)]
         public void NonSafeReadException()
         {
             using (var conn = OpenConnection())
             {
                 // Temporarily reroute integer to go to a type handler which generates some exception
-                var registry = conn.Connector.TypeHandlerRegistry;
-                var intHandler = registry[typeof(int)];
-                registry.ByOID[intHandler.PostgresType.OID] = new NonSafeExceptionGeneratingHandler(intHandler.PostgresType);
-                try
+                conn.TypeMapper.AddMapping(new NpgsqlTypeMappingBuilder()
                 {
-                    using (var cmd = new NpgsqlCommand(@"SELECT 1, 'hello'", conn))
-                    using (var reader = cmd.ExecuteReader(CommandBehavior.SequentialAccess))
-                    {
-                        reader.Read();
-                        Assert.That(() => reader.GetInt32(0),
-                            Throws.Exception.With.Message.EqualTo("Non-safe read exception as requested"));
-                        Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
-                        Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
-                    }
-                }
-                finally
+                    PgTypeName = "int4",
+                    TypeHandlerFactory = new ExplodingTypeHandlerFactory(false)
+                }.Build());
+                using (var cmd = new NpgsqlCommand(@"SELECT 1, 'hello'", conn))
+                using (var reader = cmd.ExecuteReader(CommandBehavior.SequentialAccess))
                 {
-                    registry.ByOID[intHandler.PostgresType.OID] = intHandler;
+                    reader.Read();
+                    Assert.That(() => reader.GetInt32(0),
+                        Throws.Exception.With.Message.EqualTo("Non-safe read exception as requested"));
+                    Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+                    Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
                 }
             }
         }
@@ -1365,35 +1358,31 @@ LANGUAGE plpgsql VOLATILE";
     }
 
     #region Mock Type Handlers
-#if DEBUG
-    class SafeExceptionGeneratingHandler : SimpleTypeHandler<int>
-    {
-        internal SafeExceptionGeneratingHandler(PostgresType postgresType)
-            : base (postgresType) {}
 
-        public override int Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
+    class ExplodingTypeHandlerFactory : TypeHandlerFactory
+    {
+        readonly bool _safe;
+        internal ExplodingTypeHandlerFactory(bool safe) { _safe = safe; }
+        protected override TypeHandler Create(NpgsqlConnection conn)
+            => new ExplodingTypeHandler(_safe);
+    }
+
+    class ExplodingTypeHandler : SimpleTypeHandler<int>
+    {
+        readonly bool _safe;
+        internal ExplodingTypeHandler(bool safe) { _safe = safe; }
+
+        public override int Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             buf.ReadInt32();
-            throw new SafeReadException(new Exception("Safe read exception as requested"));
+            throw _safe
+                ? new NpgsqlSafeReadException(new Exception("Safe read exception as requested"))
+                : throw new Exception("Non-safe read exception as requested");
         }
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter) { throw new NotSupportedException(); }
-        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter) { throw new NotSupportedException(); }
+        protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter) { throw new NotSupportedException(); }
+        protected override void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter) { throw new NotSupportedException(); }
     }
 
-    class NonSafeExceptionGeneratingHandler : SimpleTypeHandler<int>
-    {
-        internal NonSafeExceptionGeneratingHandler(PostgresType postgresType)
-            : base (postgresType) { }
-
-        public override int Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            throw new Exception("Non-safe read exception as requested");
-        }
-
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter) { throw new NotSupportedException(); }
-        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter) { throw new NotSupportedException();}
-    }
-#endif
     #endregion
 }

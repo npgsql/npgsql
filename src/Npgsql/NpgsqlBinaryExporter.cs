@@ -30,6 +30,7 @@ using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
 using Npgsql.Logging;
 using Npgsql.TypeHandlers;
+using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
 namespace Npgsql
@@ -43,8 +44,8 @@ namespace Npgsql
         #region Fields and Properties
 
         NpgsqlConnector _connector;
-        ReadBuffer _buf;
-        TypeHandlerRegistry _registry;
+        NpgsqlReadBuffer _buf;
+        ConnectorTypeMapper _typeMapper;
         bool _isConsumed, _isDisposed;
         int _leftToReadInDataMsg, _columnLen;
 
@@ -67,7 +68,7 @@ namespace Npgsql
         {
             _connector = connector;
             _buf = connector.ReadBuffer;
-            _registry = connector.TypeHandlerRegistry;
+            _typeMapper = connector.TypeMapper;
             _columnLen = int.MinValue;   // Mark that the (first) column length hasn't been read yet
             _column = -1;
 
@@ -173,7 +174,7 @@ namespace Npgsql
             var type = typeof(T);
             var handler = _typeHandlerCache[_column];
             if (handler == null)
-                handler = _typeHandlerCache[_column] = _registry[type];
+                handler = _typeHandlerCache[_column] = _typeMapper[type];
             return DoRead<T>(handler);
         }
 
@@ -199,7 +200,7 @@ namespace Npgsql
 
             var handler = _typeHandlerCache[_column];
             if (handler == null)
-                handler = _typeHandlerCache[_column] = _registry[type];
+                handler = _typeHandlerCache[_column] = _typeMapper[type];
             return DoRead<T>(handler);
         }
 
@@ -342,7 +343,7 @@ namespace Npgsql
         {
             Log.Debug("COPY operation ended", _connector.Id);
             _connector = null;
-            _registry = null;
+            _typeMapper = null;
             _buf = null;
             _isDisposed = true;
         }

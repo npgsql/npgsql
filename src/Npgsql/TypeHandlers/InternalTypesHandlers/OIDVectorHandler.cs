@@ -24,30 +24,28 @@
 using Npgsql.Logging;
 using NpgsqlTypes;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeHandlers.NumericHandlers;
+using Npgsql.TypeMapping;
 
 namespace Npgsql.TypeHandlers.InternalTypesHandlers
 {
+    [TypeMapping("oidvector", NpgsqlDbType.Oidvector)]
+    class OIDectorHandlerFactory : TypeHandlerFactory
+    {
+        protected override TypeHandler Create(NpgsqlConnection conn)
+            => new OIDVectorHandler(conn.Connector.TypeMapper.DatabaseInfo.ByName["oid"]);
+    }
+
     /// <summary>
     /// An OIDVector is simply a regular array of uints, with the sole exception that its lower bound must
     /// be 0 (we send 1 for regular arrays).
     /// </summary>
-    [TypeMapping("oidvector", NpgsqlDbType.Oidvector)]
     class OIDVectorHandler : ArrayHandler<uint>
     {
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
-
-        public OIDVectorHandler(PostgresType postgresType, TypeHandlerRegistry registry)
-            : base(postgresType, null, 0)
+        public OIDVectorHandler(PostgresType postgresOIDType)
+            : base(null, 0)
         {
-            // The pg_type SQL query makes sure that the oid type comes before oidvector, so we can
-            // depend on it already being in the registry
-            var oidHandler = registry[NpgsqlDbType.Oid];
-            if (oidHandler == registry.UnrecognizedTypeHandler)
-            {
-                Log.Warn("oid type not present when setting up oidvector type. oidvector will not work.");
-                return;
-            }
-            ElementHandler = oidHandler;
+            ElementHandler = new UInt32Handler { PostgresType = postgresOIDType };
         }
     }
 }

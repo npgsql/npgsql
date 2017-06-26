@@ -28,6 +28,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Npgsql.TypeMapping;
 
 namespace Npgsql.FrontendMessages
 {
@@ -56,19 +57,19 @@ namespace Npgsql.FrontendMessages
             ParameterTypeOIDs = new List<uint>();
         }
 
-        internal ParseMessage Populate(string sql, string statementName, List<NpgsqlParameter> inputParameters, TypeHandlerRegistry typeHandlerRegistry)
+        internal ParseMessage Populate(string sql, string statementName, List<NpgsqlParameter> inputParameters, ConnectorTypeMapper typeMapper)
         {
             ParameterTypeOIDs.Clear();
             Query = sql;
             Statement = statementName;
             foreach (var inputParam in inputParameters) {
-                inputParam.ResolveHandler(typeHandlerRegistry);
+                inputParam.ResolveHandler(typeMapper);
                 ParameterTypeOIDs.Add(inputParam.Handler.PostgresType.OID);
             }
             return this;
         }
 
-        internal override async Task Write(WriteBuffer buf, bool async, CancellationToken cancellationToken)
+        internal override async Task Write(NpgsqlWriteBuffer buf, bool async, CancellationToken cancellationToken)
         {
             Debug.Assert(Statement != null && Statement.All(c => c < 128));
 

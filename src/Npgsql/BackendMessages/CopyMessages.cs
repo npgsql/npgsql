@@ -39,7 +39,7 @@ namespace Npgsql.BackendMessages
             ColumnFormatCodes = new List<FormatCode>();
         }
 
-        internal void Load(ReadBuffer buf)
+        internal void Load(NpgsqlReadBuffer buf)
         {
             ColumnFormatCodes.Clear();
 
@@ -65,7 +65,7 @@ namespace Npgsql.BackendMessages
     {
         public override BackendMessageCode Code => BackendMessageCode.CopyInResponse;
 
-        internal new CopyInResponseMessage Load(ReadBuffer buf)
+        internal new CopyInResponseMessage Load(NpgsqlReadBuffer buf)
         {
             base.Load(buf);
             return this;
@@ -76,7 +76,7 @@ namespace Npgsql.BackendMessages
     {
         public override BackendMessageCode Code => BackendMessageCode.CopyOutResponse;
 
-        internal new CopyOutResponseMessage Load(ReadBuffer buf)
+        internal new CopyOutResponseMessage Load(NpgsqlReadBuffer buf)
         {
             base.Load(buf);
             return this;
@@ -87,7 +87,7 @@ namespace Npgsql.BackendMessages
     {
         public override BackendMessageCode Code => BackendMessageCode.CopyBothResponse;
 
-        internal new CopyBothResponseMessage Load(ReadBuffer buf)
+        internal new CopyBothResponseMessage Load(NpgsqlReadBuffer buf)
         {
             base.Load(buf);
             return this;
@@ -122,7 +122,7 @@ namespace Npgsql.BackendMessages
 
         internal override int Length => 5;
 
-        internal override void WriteFully(WriteBuffer buf)
+        internal override void WriteFully(NpgsqlWriteBuffer buf)
         {
             buf.WriteByte((byte)BackendMessageCode.CopyDone);
             buf.WriteInt32(4);

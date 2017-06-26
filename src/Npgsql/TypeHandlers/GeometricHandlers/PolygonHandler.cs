@@ -25,6 +25,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers.GeometricHandlers
@@ -38,11 +39,9 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     [TypeMapping("polygon", NpgsqlDbType.Polygon, typeof(NpgsqlPolygon))]
     class PolygonHandler : ChunkingTypeHandler<NpgsqlPolygon>
     {
-        internal PolygonHandler(PostgresType postgresType) : base(postgresType) { }
-
         #region Read
 
-        public override async ValueTask<NpgsqlPolygon> Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
+        public override async ValueTask<NpgsqlPolygon> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
         {
             await buf.Ensure(4, async);
             var numPoints = buf.ReadInt32();
@@ -59,14 +58,14 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
 
         #region Write
 
-        public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter = null)
+        protected internal override int ValidateAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter = null)
         {
             if (!(value is NpgsqlPolygon))
                 throw CreateConversionException(value.GetType());
             return 4 + ((NpgsqlPolygon)value).Count * 16;
         }
 
-        protected override async Task Write(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter,
+        protected override async Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter,
             bool async, CancellationToken cancellationToken)
         {
             var polygon = (NpgsqlPolygon)value;

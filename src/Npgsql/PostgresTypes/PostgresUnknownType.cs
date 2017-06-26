@@ -38,10 +38,5 @@ namespace Npgsql.PostgresTypes
 #pragma warning disable CA2222 // Do not decrease inherited member visibility
         UnknownBackendType() : base("", "<unknown>", 0) { }
 #pragma warning restore CA2222 // Do not decrease inherited member visibility
-
-        internal override TypeHandler Activate(TypeHandlerRegistry registry)
-        {
-            throw new NotSupportedException("Cannot activate the unknown type");
-        }
     }
 }

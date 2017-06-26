@@ -47,7 +47,7 @@ namespace Npgsql.Tests
 
         #region Utilities for use by tests
 
-        protected NpgsqlConnection OpenConnection(string connectionString = null)
+        protected virtual NpgsqlConnection OpenConnection(string connectionString = null)
         {
             if (connectionString == null)
                 connectionString = ConnectionString;

@@ -26,6 +26,7 @@ using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeMapping;
 
 namespace Npgsql.TypeHandlers.NumericHandlers
 {
@@ -35,12 +36,10 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     [TypeMapping("money", NpgsqlDbType.Money, dbType: DbType.Currency)]
     class MoneyHandler : SimpleTypeHandler<decimal>
     {
-        internal MoneyHandler(PostgresType postgresType) : base(postgresType) { }
-
-        public override decimal Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override decimal Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => buf.ReadInt64() / 100m;
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
+        protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
         {
             decimal decimalValue;
             if (!(value is decimal))
@@ -60,7 +59,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             return 8;
         }
 
-        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
+        protected override void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
         {
             var v = (decimal)(parameter?.ConvertedValue ?? value);
             buf.WriteInt64((long)(Math.Round(v, 2, MidpointRounding.AwayFromZero) * 100m));

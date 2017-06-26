@@ -66,7 +66,7 @@ namespace Npgsql.FrontendMessages
             return this;
         }
 
-        internal override async Task Write(WriteBuffer buf, bool async, CancellationToken cancellationToken)
+        internal override async Task Write(NpgsqlWriteBuffer buf, bool async, CancellationToken cancellationToken)
         {
             Debug.Assert(Statement != null && Statement.All(c => c < 128));
             Debug.Assert(Portal != null && Portal.All(c => c < 128));

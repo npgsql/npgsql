@@ -21,33 +21,30 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using Npgsql.Logging;
 using NpgsqlTypes;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeHandlers.NumericHandlers;
+using Npgsql.TypeMapping;
 
 namespace Npgsql.TypeHandlers.InternalTypesHandlers
 {
+    [TypeMapping("int2vector", NpgsqlDbType.Int2Vector)]
+    class Int2VectorHandlerFactory : TypeHandlerFactory
+    {
+        protected override TypeHandler Create(NpgsqlConnection conn)
+            => new Int2VectorHandler(conn.Connector.TypeMapper.DatabaseInfo.ByName["int2"]);
+    }
+
     /// <summary>
     /// An int2vector is simply a regular array of shorts, with the sole exception that its lower bound must
     /// be 0 (we send 1 for regular arrays).
     /// </summary>
-    [TypeMapping("int2vector", NpgsqlDbType.Int2Vector)]
     class Int2VectorHandler : ArrayHandler<short>
     {
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
-
-        public Int2VectorHandler(PostgresType postgresType, TypeHandlerRegistry registry)
-            : base(postgresType, null, 0)
+        public Int2VectorHandler(PostgresType postgresShortType)
+            : base(null, 0)
         {
-            // The pg_type SQL query makes sure that the int2 type comes before int2vector, so we can
-            // depend on it already being in the registry
-            var shortHandler = registry[NpgsqlDbType.Smallint];
-            if (shortHandler == registry.UnrecognizedTypeHandler)
-            {
-                Log.Warn("smallint type not present when setting up int2vector type. int2vector will not work.");
-                return;
-            }
-            ElementHandler = shortHandler;
+            ElementHandler = new Int16Handler { PostgresType = postgresShortType };
         }
     }
 }

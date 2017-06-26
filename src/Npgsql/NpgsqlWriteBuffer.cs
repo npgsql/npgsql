@@ -33,7 +33,7 @@ using JetBrains.Annotations;
 
 namespace Npgsql
 {
-    class WriteBuffer
+    public class NpgsqlWriteBuffer
     {
         #region Fields and Properties
 
@@ -70,7 +70,7 @@ namespace Npgsql
 
         #region Constructors
 
-        internal WriteBuffer([CanBeNull] NpgsqlConnector connector, Stream stream, int size, Encoding textEncoding)
+        internal NpgsqlWriteBuffer([CanBeNull] NpgsqlConnector connector, Stream stream, int size, Encoding textEncoding)
         {
             if (size < MinimumSize)
                 throw new ArgumentOutOfRangeException(nameof(size), size, "Buffer size must be at least " + MinimumSize);
@@ -212,7 +212,7 @@ namespace Npgsql
             _writePosition = pos;
         }
 
-        internal void WriteUInt32(uint i)
+        public void WriteUInt32(uint i)
         {
             Debug.Assert(WriteSpaceLeft >= sizeof(uint));
             var pos = _writePosition;
@@ -290,10 +290,10 @@ namespace Npgsql
             _writePosition = pos;
         }
 
-        internal Task WriteString(string s, int byteLen, bool async, CancellationToken cancellationToken)
+        public Task WriteString(string s, int byteLen, bool async, CancellationToken cancellationToken)
             => WriteString(s, s.Length, byteLen, async, cancellationToken);
 
-        internal Task WriteString(string s, int charLen, int byteLen, bool async, CancellationToken cancellationToken)
+        public Task WriteString(string s, int charLen, int byteLen, bool async, CancellationToken cancellationToken)
         {
             if (byteLen <= WriteSpaceLeft)
             {
@@ -369,7 +369,7 @@ namespace Npgsql
             }
         }
 
-        internal void WriteString(string s, int len = 0)
+        public void WriteString(string s, int len = 0)
         {
             Debug.Assert(TextEncoding.GetByteCount(s) <= WriteSpaceLeft);
             _writePosition += TextEncoding.GetBytes(s, 0, len == 0 ? s.Length : len, _buf, _writePosition);

@@ -37,23 +37,23 @@ namespace Npgsql
     /// an array, once for the string within that array). This cache optimized that. Lengths are added
     /// to the cache, and then retrieved at the same order.
     /// </summary>
-    class LengthCache
+    public sealed class NpgsqlLengthCache
     {
         internal bool IsPopulated;
         internal int Position;
         internal List<int> Lengths;
 
-        internal LengthCache()
+        internal NpgsqlLengthCache()
         {
             Lengths = new List<int>();
         }
 
-        internal LengthCache(int capacity)
+        internal NpgsqlLengthCache(int capacity)
         {
             Lengths = new List<int>(capacity);
         }
 
-        internal int Set(int len)
+        public int Set(int len)
         {
             Debug.Assert(!IsPopulated);
             Lengths.Add(len);
@@ -61,7 +61,7 @@ namespace Npgsql
             return len;
         }
 
-        internal int Get()
+        public int Get()
         {
             Debug.Assert(IsPopulated);
             return Lengths[Position++];

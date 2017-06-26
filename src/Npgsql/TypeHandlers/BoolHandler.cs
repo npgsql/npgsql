@@ -26,6 +26,7 @@ using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeMapping;
 
 namespace Npgsql.TypeHandlers
 {
@@ -35,12 +36,10 @@ namespace Npgsql.TypeHandlers
     [TypeMapping("bool", NpgsqlDbType.Boolean, DbType.Boolean, typeof(bool))]
     class BoolHandler : SimpleTypeHandler<bool>
     {
-        internal BoolHandler(PostgresType postgresType) : base(postgresType) {}
-
-        public override bool Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override bool Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => buf.ReadByte() != 0;
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
+        protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
         {
             if (!(value is bool))
             {
@@ -52,7 +51,7 @@ namespace Npgsql.TypeHandlers
             return 1;
         }
 
-        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
+        protected override void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
         {
             if (parameter?.ConvertedValue != null)
                 value = parameter.ConvertedValue;

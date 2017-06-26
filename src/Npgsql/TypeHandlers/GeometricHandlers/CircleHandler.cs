@@ -24,6 +24,7 @@
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers.GeometricHandlers
@@ -37,22 +38,20 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     [TypeMapping("circle", NpgsqlDbType.Circle, typeof(NpgsqlCircle))]
     class CircleHandler : SimpleTypeHandler<NpgsqlCircle>, ISimpleTypeHandler<string>
     {
-        internal CircleHandler(PostgresType postgresType) : base(postgresType) { }
-
-        public override NpgsqlCircle Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override NpgsqlCircle Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => new NpgsqlCircle(buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble());
 
-        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        string ISimpleTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => Read(buf, len, fieldDescription).ToString();
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
+        protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
         {
             if (!(value is NpgsqlCircle))
                 throw CreateConversionException(value.GetType());
             return 24;
         }
 
-        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
+        protected override void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
         {
             var v = (NpgsqlCircle)value;
             buf.WriteDouble(v.X);

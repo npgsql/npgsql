@@ -588,7 +588,7 @@ namespace Npgsql
                 var p = Parameters[i];
                 if (!p.IsInputDirection)
                     continue;
-                p.Bind(Connection.Connector.TypeHandlerRegistry);
+                p.Bind(Connection.Connector.TypeMapper);
                 p.LengthCache?.Clear();
                 p.ValidateAndGetLength();
             }
@@ -741,7 +741,7 @@ namespace Npgsql
                     }
 
                     await connector.ParseMessage
-                        .Populate(statement.SQL, statement.StatementName, statement.InputParameters, connector.TypeHandlerRegistry)
+                        .Populate(statement.SQL, statement.StatementName, statement.InputParameters, connector.TypeMapper)
                         .Write(buf, async, cancellationToken);
                 }
 
@@ -795,7 +795,7 @@ namespace Npgsql
                 Debug.Assert(statement.PreparedStatement == null);
 
                 await connector.ParseMessage
-                    .Populate(statement.SQL, "", statement.InputParameters, connector.TypeHandlerRegistry)
+                    .Populate(statement.SQL, "", statement.InputParameters, connector.TypeMapper)
                     .Write(buf, async, cancellationToken);
 
                 await connector.DescribeMessage
@@ -847,7 +847,7 @@ namespace Npgsql
                 }
 
                 await connector.ParseMessage
-                    .Populate(statement.SQL, pStatement.Name, statement.InputParameters, connector.TypeHandlerRegistry)
+                    .Populate(statement.SQL, pStatement.Name, statement.InputParameters, connector.TypeMapper)
                     .Write(buf, async, cancellationToken);
 
                 await connector.DescribeMessage

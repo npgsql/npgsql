@@ -342,6 +342,16 @@ namespace Npgsql.Tests.Types
             }
         }
 
+        [Test]
+        public void Domain()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE DOMAIN pg_temp.text2 AS text");
+                Assert.That(conn.ExecuteScalar("SELECT 'foo'::text2"), Is.EqualTo("foo"));
+            }
+        }
+
         [Test, Description("Makes sure that setting DbType.Object makes Npgsql infer the type")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/694")]
         public void DbTypeCausesInference()
@@ -356,18 +366,13 @@ namespace Npgsql.Tests.Types
 
         #region Unrecognized types
 
-        static void CheckUnrecognizedType()
-        {
-            Assert.That(TypeHandlerRegistry.HandlerTypes.Values.All(x => x.Mapping.PgName != "regproc"), "Test requires an unrecognized type to work");
-        }
-
         [Test, Description("Attempts to retrieve an unrecognized type without marking it as unknown, triggering an exception")]
         public void UnrecognizedBinary()
         {
-            CheckUnrecognizedType();
             using (var conn = OpenConnection())
             {
-                using (var cmd = new NpgsqlCommand("SELECT typinput FROM pg_type WHERE typname='bool'", conn))
+                conn.TypeMapper.RemoveMapping("bool");
+                using (var cmd = new NpgsqlCommand("SELECT TRUE", conn))
                 using (var reader = cmd.ExecuteReader(CommandBehavior.SequentialAccess))
                 {
                     reader.Read();
@@ -380,20 +385,18 @@ namespace Npgsql.Tests.Types
         [Test, Description("Retrieves a type as an unknown type, i.e. untreated string")]
         public void AllResultTypesAreUnknown()
         {
-            CheckUnrecognizedType();
             using (var conn = OpenConnection())
             {
-                // Fetch as text to have something the value to assert against
-                var expected = (string)conn.ExecuteScalar("SELECT typinput::TEXT FROM pg_type WHERE typname='bool'");
+                conn.TypeMapper.RemoveMapping("bool");
 
-                using (var cmd = new NpgsqlCommand("SELECT typinput FROM pg_type WHERE typname='bool'", conn))
+                using (var cmd = new NpgsqlCommand("SELECT TRUE", conn))
                 {
                     cmd.AllResultTypesAreUnknown = true;
                     using (var reader = cmd.ExecuteReader())
                     {
                         reader.Read();
                         Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(string)));
-                        Assert.That(reader.GetString(0), Is.EqualTo(expected));
+                        Assert.That(reader.GetString(0), Is.EqualTo("t"));
                     }
                 }
             }
@@ -402,20 +405,18 @@ namespace Npgsql.Tests.Types
         [Test, Description("Mixes and matches an unknown type with a known type")]
         public void UnknownResultTypeList()
         {
-            CheckUnrecognizedType();
             using (var conn = OpenConnection())
             {
-                // Fetch as text to have something the value to assert against
-                var expected = (string) conn.ExecuteScalar("SELECT typinput::TEXT FROM pg_type WHERE typname='bool'");
+                conn.TypeMapper.RemoveMapping("bool");
 
-                using (var cmd = new NpgsqlCommand("SELECT typinput, 8 FROM pg_type WHERE typname='bool'", conn))
+                using (var cmd = new NpgsqlCommand("SELECT TRUE, 8", conn))
                 {
-                    cmd.UnknownResultTypeList = new[] {true, false};
+                    cmd.UnknownResultTypeList = new[] { true, false };
                     using (var reader = cmd.ExecuteReader())
                     {
                         reader.Read();
                         Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(string)));
-                        Assert.That(reader.GetString(0), Is.EqualTo(expected));
+                        Assert.That(reader.GetString(0), Is.EqualTo("t"));
                         Assert.That(reader.GetInt32(1), Is.EqualTo(8));
                     }
                 }

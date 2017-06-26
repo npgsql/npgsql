@@ -36,7 +36,6 @@ namespace Npgsql.TypeHandlers
 {
     abstract class ArrayHandler : ChunkingTypeHandler<Array>
     {
-        internal ArrayHandler(PostgresType postgresType) : base(postgresType) {}
         internal abstract Type GetElementFieldType(FieldDescription fieldDescription = null);
         internal abstract Type GetElementPsvType(FieldDescription fieldDescription = null);
     }
@@ -75,21 +74,20 @@ namespace Npgsql.TypeHandlers
         /// </summary>
         protected internal TypeHandler ElementHandler { get; protected set; }
 
-        public ArrayHandler(PostgresType postgresType, [CanBeNull] TypeHandler elementHandler, int lowerBound) : base(postgresType)
+        public ArrayHandler([CanBeNull] TypeHandler elementHandler, int lowerBound)
         {
             LowerBound = lowerBound;
             ElementHandler = elementHandler;
         }
 
-        public ArrayHandler(PostgresType postgresType, [CanBeNull] TypeHandler elementHandler)
-            : this(postgresType, elementHandler, 1) {}
+        public ArrayHandler([CanBeNull] TypeHandler elementHandler) : this(elementHandler, 1) {}
 
         #region Read
 
-        public override ValueTask<Array> Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
+        public override ValueTask<Array> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
             => Read<TElement>(buf, async);
 
-        protected async ValueTask<Array> Read<TElement2>(ReadBuffer buf, bool async)
+        protected async ValueTask<Array> Read<TElement2>(NpgsqlReadBuffer buf, bool async)
         {
             await buf.Ensure(12, async);
             var dimensions = buf.ReadInt32();
@@ -148,11 +146,11 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        protected override Task Write(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter,
+        protected override Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter,
             bool async, CancellationToken cancellationToken)
             => Write<TElement>(value, buf, lengthCache, parameter, async, cancellationToken);
 
-        public async Task Write<TElement2>(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter,
+        public async Task Write<TElement2>(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter,
             bool async, CancellationToken cancellationToken)
         {
             var asArray = value as Array;
@@ -192,19 +190,17 @@ namespace Npgsql.TypeHandlers
                 await ElementHandler.WriteWithLength(element, buf, lengthCache, null, async, cancellationToken);
         }
 
-        public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter = null)
-        {
-            return ValidateAndGetLength<TElement>(value, ref lengthCache, parameter);
-        }
+        protected internal override int ValidateAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter = null)
+            => ValidateAndGetLength<TElement>(value, ref lengthCache, parameter);
 
-        public int ValidateAndGetLength<TElement2>(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
+        public int ValidateAndGetLength<TElement2>(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             // Take care of single-dimensional arrays and generic IList<T>
             var asGenericList = value as IList<TElement2>;
             if (asGenericList != null)
             {
                 if (lengthCache == null)
-                    lengthCache = new LengthCache(1);
+                    lengthCache = new NpgsqlLengthCache(1);
                 if (lengthCache.IsPopulated)
                     return lengthCache.Get();
                 // Leave empty slot for the entire array length, and go ahead an populate the element slots
@@ -227,7 +223,7 @@ namespace Npgsql.TypeHandlers
             if (asNonGenericList != null)
             {
                 if (lengthCache == null)
-                    lengthCache = new LengthCache(1);
+                    lengthCache = new NpgsqlLengthCache(1);
                 if (lengthCache.IsPopulated)
                     return lengthCache.Get();
                 var asMultidimensional = value as Array;
@@ -251,7 +247,7 @@ namespace Npgsql.TypeHandlers
             throw new InvalidCastException($"Can't write type {value.GetType()} as an array of {typeof(TElement2)}");
         }
 
-        int GetSingleElementLength([CanBeNull] object element, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
+        int GetSingleElementLength([CanBeNull] object element, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             if (element == null || element is DBNull)
                 return 0;
@@ -282,13 +278,13 @@ namespace Npgsql.TypeHandlers
         internal override Type GetElementPsvType(FieldDescription fieldDescription)
             => typeof(TPsv);
 
-        internal override object ReadPsvAsObject(ReadBuffer buf, int len, FieldDescription fieldDescription)
+        internal override object ReadPsvAsObject(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription)
             => ReadPsvAsObject(buf, len, false, fieldDescription).Result;
 
-        internal override async ValueTask<object> ReadPsvAsObject(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        internal override async ValueTask<object> ReadPsvAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
             => await Read<TPsv>(buf, async);
 
-        public ArrayHandlerWithPsv(PostgresType postgresType, TypeHandler elementHandler)
-            : base(postgresType, elementHandler) {}
+        public ArrayHandlerWithPsv(TypeHandler elementHandler)
+            : base(elementHandler) {}
     }
 }

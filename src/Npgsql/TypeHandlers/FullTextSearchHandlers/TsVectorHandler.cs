@@ -31,6 +31,7 @@ using JetBrains.Annotations;
 using NpgsqlTypes;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeMapping;
 
 namespace Npgsql.TypeHandlers.FullTextSearchHandlers
 {
@@ -44,9 +45,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
         // 2 (num_pos) + sizeof(int16) * 256 (max_num_pos (positions/wegihts))
         const int MaxSingleLexemeBytes = 2561;
 
-        internal TsVectorHandler(PostgresType postgresType) : base(postgresType) { }
-
-        public override async ValueTask<NpgsqlTsVector> Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
+        public override async ValueTask<NpgsqlTsVector> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
         {
             await buf.Ensure(4, async);
             var numLexemes = buf.ReadInt32();
@@ -78,7 +77,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             return new NpgsqlTsVector(lexemes, true);
         }
 
-        public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
+        protected internal override int ValidateAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             // TODO: Implement length cache
             var vec = value as NpgsqlTsVector;
@@ -89,7 +88,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             return 4 + vec.Sum(l => Encoding.UTF8.GetByteCount(l.Text) + 1 + 2 + l.Count * 2);
         }
 
-        protected override async Task Write(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter,
+        protected override async Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter,
             bool async, CancellationToken cancellationToken)
         {
             var vector = (NpgsqlTsVector)value;

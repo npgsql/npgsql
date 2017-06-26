@@ -550,8 +550,6 @@ namespace Npgsql.Tests
                     cmd.CommandText = $"INSERT INTO data (name) VALUES ('{new string('x', conn.Settings.WriteBufferSize)}')";
                     Assert.That(cmd.ExecuteNonQuery(), Is.EqualTo(1));
 
-                    // A non-prepared non-parameterized ExecuteNonQuery uses the PG simple protocol as an
-                    // optimization. If we add a parameter we force the extended protocol path.
                     cmd.Parameters.AddWithValue("not_used", DBNull.Value);
                     Assert.That(cmd.ExecuteNonQuery(), Is.EqualTo(1));
                 }

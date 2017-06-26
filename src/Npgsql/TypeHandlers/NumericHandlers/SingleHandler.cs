@@ -27,6 +27,7 @@ using NpgsqlTypes;
 using System.Data;
 using JetBrains.Annotations;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeMapping;
 
 namespace Npgsql.TypeHandlers.NumericHandlers
 {
@@ -36,15 +37,13 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     [TypeMapping("float4", NpgsqlDbType.Real, DbType.Single, typeof(float))]
     class SingleHandler : SimpleTypeHandler<float>, ISimpleTypeHandler<double>
     {
-        internal SingleHandler(PostgresType postgresType) : base(postgresType) { }
-
-        public override float Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override float Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => buf.ReadSingle();
 
-        double ISimpleTypeHandler<double>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        double ISimpleTypeHandler<double>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => Read(buf, len, fieldDescription);
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
+        protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
         {
             if (!(value is float))
             {
@@ -56,7 +55,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             return 4;
         }
 
-        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
+        protected override void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
         {
             if (parameter?.ConvertedValue != null)
                 value = parameter.ConvertedValue;

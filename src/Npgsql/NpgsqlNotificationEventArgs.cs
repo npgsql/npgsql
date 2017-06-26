@@ -46,7 +46,7 @@ namespace Npgsql
         /// </summary>
         public string AdditionalInformation { get; }
 
-        internal NpgsqlNotificationEventArgs(ReadBuffer buf)
+        internal NpgsqlNotificationEventArgs(NpgsqlReadBuffer buf)
         {
             PID = buf.ReadInt32();
             Condition = buf.ReadNullTerminatedString();

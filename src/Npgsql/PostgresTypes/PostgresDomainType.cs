@@ -52,21 +52,5 @@ namespace Npgsql.PostgresTypes
         {
             BaseType = baseType;
         }
-
-        internal override TypeHandler Activate(TypeHandlerRegistry registry)
-        {
-            TypeHandler baseTypeHandler;
-            if (!registry.TryGetByOID(BaseType.OID, out baseTypeHandler))
-            {
-                // Base type hasn't been set up yet, do it now
-                baseTypeHandler = BaseType.Activate(registry);
-            }
-
-            // Make the domain type OID point to the base type's type handler, the wire encoding
-            // is the same
-            registry.ByOID[OID] = baseTypeHandler;
-
-            return baseTypeHandler;
-        }
     }
 }

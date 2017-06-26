@@ -851,9 +851,9 @@ namespace Npgsql.Tests
             {
                 Assert.That(conn.ExecuteScalar("SELECT EXISTS (SELECT * FROM pg_type WHERE typname='reload_types_enum')"), Is.False);
                 conn.ExecuteNonQuery("CREATE TYPE pg_temp.reload_types_enum AS ENUM ('First', 'Second')");
-                Assert.That(() => conn.MapEnum<ReloadTypesEnum>(), Throws.Exception.TypeOf<NpgsqlException>());
+                Assert.That(() => conn.TypeMapper.MapEnum<ReloadTypesEnum>(), Throws.Exception.TypeOf<NpgsqlException>());
                 conn.ReloadTypes();
-                conn.MapEnum<ReloadTypesEnum>();
+                conn.TypeMapper.MapEnum<ReloadTypesEnum>();
             }
         }
         enum ReloadTypesEnum { First, Second };

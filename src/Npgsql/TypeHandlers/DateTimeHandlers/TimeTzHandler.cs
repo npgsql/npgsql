@@ -25,6 +25,7 @@ using System;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers.DateTimeHandlers
@@ -37,9 +38,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     {
         // Binary Format: int64 expressing microseconds, int32 expressing timezone in seconds, negative
 
-        internal TimeTzHandler(PostgresType postgresType) : base(postgresType) { }
-
-        public override DateTimeOffset Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override DateTimeOffset Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             // Adjust from 1 microsecond to 100ns. Time zone (in seconds) is inverted.
             var ticks = buf.ReadInt64() * 10;
@@ -47,20 +46,20 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             return new DateTimeOffset(ticks, offset);
         }
 
-        DateTime ISimpleTypeHandler<DateTime>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        DateTime ISimpleTypeHandler<DateTime>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => Read(buf, len, fieldDescription).LocalDateTime;
 
-        TimeSpan ISimpleTypeHandler<TimeSpan>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        TimeSpan ISimpleTypeHandler<TimeSpan>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => Read(buf, len, fieldDescription).LocalDateTime.TimeOfDay;
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
+        protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
         {
             if (!(value is DateTimeOffset) && !(value is DateTime) && !(value is TimeSpan))
                 throw CreateConversionException(value.GetType());
             return 12;
         }
 
-        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
+        protected override void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
         {
             if (value is DateTimeOffset)
             {

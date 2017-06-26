@@ -63,7 +63,7 @@ namespace Npgsql
 
         internal ReaderState State;
 
-        internal ReadBuffer Buffer;
+        internal NpgsqlReadBuffer Buffer;
 
         /// <summary>
         /// Holds the list of statements being executed by this reader.

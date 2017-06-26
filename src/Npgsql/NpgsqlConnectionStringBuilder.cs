@@ -936,7 +936,7 @@ namespace Npgsql
         [Description("Determines the size of the internal buffer Npgsql uses when reading. Increasing may improve performance if transferring large values from the database.")]
         [DisplayName("Read Buffer Size")]
         [NpgsqlConnectionStringProperty]
-        [DefaultValue(ReadBuffer.DefaultSize)]
+        [DefaultValue(NpgsqlReadBuffer.DefaultSize)]
         public int ReadBufferSize
         {
             get => _readBufferSize;
@@ -955,7 +955,7 @@ namespace Npgsql
         [Description("Determines the size of the internal buffer Npgsql uses when writing. Increasing may improve performance if transferring large values to the database.")]
         [DisplayName("Write Buffer Size")]
         [NpgsqlConnectionStringProperty]
-        [DefaultValue(WriteBuffer.DefaultSize)]
+        [DefaultValue(NpgsqlWriteBuffer.DefaultSize)]
         public int WriteBufferSize
         {
             get => _writeBufferSize;

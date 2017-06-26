@@ -33,7 +33,7 @@ using JetBrains.Annotations;
 
 namespace Npgsql
 {
-    class ReadBuffer
+    public class NpgsqlReadBuffer
     {
         #region Fields and Properties
 
@@ -73,7 +73,7 @@ namespace Npgsql
 
         #region Constructors
 
-        internal ReadBuffer([CanBeNull] NpgsqlConnector connector, Stream stream, int size, Encoding textEncoding)
+        internal NpgsqlReadBuffer([CanBeNull] NpgsqlConnector connector, Stream stream, int size, Encoding textEncoding)
         {
             if (size < MinimumSize) {
                 throw new ArgumentOutOfRangeException(nameof(size), size, "Buffer size must be at least " + MinimumSize);
@@ -92,6 +92,8 @@ namespace Npgsql
 
         #region I/O
 
+        public Task Ensure(int count, bool async) => Ensure(count, async, false);
+
         internal void Ensure(int count)
         {
             if (count <= ReadBytesLeft)
@@ -99,7 +101,7 @@ namespace Npgsql
             Ensure(count, false).GetAwaiter().GetResult();
         }
 
-        internal Task Ensure(int count, bool async, bool dontBreakOnTimeouts = false)
+        internal Task Ensure(int count, bool async, bool dontBreakOnTimeouts)
             => count <= ReadBytesLeft ? PGUtil.CompletedTask : EnsureLong(count, async, dontBreakOnTimeouts);
 
         async Task EnsureLong(int count, bool async, bool dontBreakOnTimeouts=false)
@@ -150,10 +152,10 @@ namespace Npgsql
 
         internal Task ReadMore(bool async) => Ensure(ReadBytesLeft + 1, async);
 
-        internal ReadBuffer AllocateOversize(int count)
+        internal NpgsqlReadBuffer AllocateOversize(int count)
         {
             Debug.Assert(count > Size);
-            var tempBuf = new ReadBuffer(Connector, Underlying, count, TextEncoding);
+            var tempBuf = new NpgsqlReadBuffer(Connector, Underlying, count, TextEncoding);
             CopyTo(tempBuf);
             Clear();
             return tempBuf;
@@ -193,13 +195,13 @@ namespace Npgsql
 
         #region Read Simple
 
-        internal byte ReadByte()
+        public byte ReadByte()
         {
             Debug.Assert(ReadBytesLeft >= sizeof(byte));
             return Buffer[ReadPosition++];
         }
 
-        internal short ReadInt16()
+        public short ReadInt16()
         {
             Debug.Assert(ReadBytesLeft >= sizeof(short));
             var result = IPAddress.NetworkToHostOrder(BitConverter.ToInt16(Buffer, ReadPosition));
@@ -207,7 +209,7 @@ namespace Npgsql
             return result;
         }
 
-        internal ushort ReadUInt16()
+        public ushort ReadUInt16()
         {
             Debug.Assert(ReadBytesLeft >= sizeof(short));
             var result = (ushort)IPAddress.NetworkToHostOrder(BitConverter.ToInt16(Buffer, ReadPosition));
@@ -215,7 +217,7 @@ namespace Npgsql
             return result;
         }
 
-        internal int ReadInt32()
+        public int ReadInt32()
         {
             Debug.Assert(ReadBytesLeft >= sizeof(int));
             var result = IPAddress.NetworkToHostOrder(BitConverter.ToInt32(Buffer, ReadPosition));
@@ -223,7 +225,7 @@ namespace Npgsql
             return result;
         }
 
-        internal uint ReadUInt32()
+        public uint ReadUInt32()
         {
             Debug.Assert(ReadBytesLeft >= sizeof(int));
             var result = (uint)IPAddress.NetworkToHostOrder(BitConverter.ToInt32(Buffer, ReadPosition));
@@ -231,7 +233,7 @@ namespace Npgsql
             return result;
         }
 
-        internal long ReadInt64()
+        public long ReadInt64()
         {
             Debug.Assert(ReadBytesLeft >= sizeof(long));
             var result = IPAddress.NetworkToHostOrder(BitConverter.ToInt64(Buffer, ReadPosition));
@@ -239,7 +241,7 @@ namespace Npgsql
             return result;
         }
 
-        internal float ReadSingle()
+        public  float ReadSingle()
         {
             Debug.Assert(ReadBytesLeft >= sizeof(float));
             if (BitConverter.IsLittleEndian)
@@ -258,7 +260,7 @@ namespace Npgsql
             }
         }
 
-        internal double ReadDouble()
+        public double ReadDouble()
         {
             Debug.Assert(ReadBytesLeft >= sizeof(double));
             if (BitConverter.IsLittleEndian)
@@ -281,7 +283,7 @@ namespace Npgsql
             }
         }
 
-        internal string ReadString(int byteLen)
+        public string ReadString(int byteLen)
         {
             Debug.Assert(byteLen <= ReadBytesLeft);
             var result = TextEncoding.GetString(Buffer, ReadPosition, byteLen);
@@ -289,7 +291,7 @@ namespace Npgsql
             return result;
         }
 
-        internal char[] ReadChars(int byteLen)
+        public char[] ReadChars(int byteLen)
         {
             Debug.Assert(byteLen <= ReadBytesLeft);
             var result = TextEncoding.GetChars(Buffer, ReadPosition, byteLen);
@@ -297,7 +299,7 @@ namespace Npgsql
             return result;
         }
 
-        internal void ReadBytes(byte[] output, int outputOffset, int len)
+        public void ReadBytes(byte[] output, int outputOffset, int len)
         {
             Debug.Assert(len <= ReadBytesLeft);
             System.Buffer.BlockCopy(Buffer, ReadPosition, output, outputOffset, len);
@@ -348,10 +350,7 @@ namespace Npgsql
         /// Seeks the first null terminator (\0) and returns the string up to it. The buffer must already
         /// contain the entire string and its terminator.
         /// </summary>
-        internal string ReadNullTerminatedString()
-        {
-            return ReadNullTerminatedString(TextEncoding);
-        }
+        public string ReadNullTerminatedString() => ReadNullTerminatedString(TextEncoding);
 
         /// <summary>
         /// Seeks the first null terminator (\0) and returns the string up to it. The buffer must already
@@ -544,7 +543,7 @@ namespace Npgsql
             _filledBytes = 0;
         }
 
-        internal void CopyTo(ReadBuffer other)
+        internal void CopyTo(NpgsqlReadBuffer other)
         {
             Debug.Assert(other.Size - other._filledBytes >= ReadBytesLeft);
             Array.Copy(Buffer, ReadPosition, other.Buffer, other._filledBytes, ReadBytesLeft);

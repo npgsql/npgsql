@@ -109,7 +109,7 @@ namespace Npgsql.FrontendMessages
 
         internal override int Length => 1 + 4 + PayloadLength;
 
-        internal override void WriteFully(WriteBuffer buf)
+        internal override void WriteFully(NpgsqlWriteBuffer buf)
         {
             buf.WriteByte(Code);
             buf.WriteInt32(Length - 1);

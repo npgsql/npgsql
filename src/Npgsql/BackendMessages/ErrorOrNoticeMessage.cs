@@ -55,7 +55,7 @@ namespace Npgsql.BackendMessages
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         // ReSharper disable once FunctionComplexityOverflow
-        internal ErrorOrNoticeMessage(ReadBuffer buf)
+        internal ErrorOrNoticeMessage(NpgsqlReadBuffer buf)
         {
             while (true)
             {

@@ -29,11 +29,18 @@ using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers
 {
     [TypeMapping("hstore", NpgsqlDbType.Hstore, new[] { typeof(Dictionary<string, string>), typeof(IDictionary<string, string>) })]
+    class HstoreHandlerFactory : TypeHandlerFactory
+    {
+        protected override TypeHandler Create(NpgsqlConnection conn)
+            => new HstoreHandler(conn);
+    }
+
     class HstoreHandler : ChunkingTypeHandler<Dictionary<string, string>>,
         IChunkingTypeHandler<IDictionary<string, string>>, IChunkingTypeHandler<string>
     {
@@ -42,21 +49,21 @@ namespace Npgsql.TypeHandlers
         /// </summary>
         readonly TextHandler _textHandler;
 
-        internal HstoreHandler(PostgresType postgresType, TypeHandlerRegistry registry) : base(postgresType)
+        internal HstoreHandler(NpgsqlConnection connection)
         {
-            _textHandler = new TextHandler(postgresType, registry);
+            _textHandler = new TextHandler(connection);
         }
 
         #region Write
 
-        public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter = null)
+        protected internal override int ValidateAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter = null)
         {
             var asDict = value as IDictionary<string, string>;
             if (asDict == null)
                 throw CreateConversionException(value.GetType());
 
             if (lengthCache == null)
-                lengthCache = new LengthCache(1);
+                lengthCache = new NpgsqlLengthCache(1);
             if (lengthCache.IsPopulated)
                 return lengthCache.Get();
 
@@ -78,7 +85,7 @@ namespace Npgsql.TypeHandlers
             return lengthCache.Lengths[pos] = totalLen;
         }
 
-        protected override async Task Write(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter,
+        protected override async Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter,
             bool async, CancellationToken cancellationToken)
         {
             var asDict = (IDictionary<string, string>)value;
@@ -100,7 +107,7 @@ namespace Npgsql.TypeHandlers
 
         #region Read
 
-        public override async ValueTask<Dictionary<string, string>> Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        public override async ValueTask<Dictionary<string, string>> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
         {
             await buf.Ensure(4, async);
             var numElements = buf.ReadInt32();
@@ -123,10 +130,10 @@ namespace Npgsql.TypeHandlers
             return hstore;
         }
 
-        ValueTask<IDictionary<string, string>> IChunkingTypeHandler<IDictionary<string, string>>.Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        ValueTask<IDictionary<string, string>> IChunkingTypeHandler<IDictionary<string, string>>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
             => new ValueTask<IDictionary<string, string>>(Read(buf, len, async, fieldDescription).Result);
 
-        async ValueTask<string> IChunkingTypeHandler<string>.Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        async ValueTask<string> IChunkingTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
         {
             var dict = await Read(buf, len, async, fieldDescription);
             var sb = new StringBuilder();

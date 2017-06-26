@@ -133,7 +133,7 @@ ORDER BY attnum";
                     {
                         for (; reader.Read(); populatedColumns++)
                         {
-                            var column = LoadColumnDefinition(reader, _connection.Connector.TypeHandlerRegistry);
+                            var column = LoadColumnDefinition(reader, _connection.Connector.TypeMapper.DatabaseInfo);
 
                             var ordinal = fields.FindIndex(f => f.TableOID == column.TableOID && f.ColumnAttributeNumber - 1 == column.ColumnAttributeNumber);
                             Debug.Assert(ordinal >= 0);
@@ -172,7 +172,7 @@ ORDER BY attnum";
             return result.AsReadOnly();
         }
 
-        NpgsqlDbColumn LoadColumnDefinition(NpgsqlDataReader reader, TypeHandlerRegistry registry)
+        NpgsqlDbColumn LoadColumnDefinition(NpgsqlDataReader reader, DatabaseInfo databaseInfo)
         {
             var columnName = reader.GetString(reader.GetOrdinal("attname"));
             var column = new NpgsqlDbColumn
@@ -195,7 +195,7 @@ ORDER BY attnum";
                 TypeOID = reader.GetFieldValue<uint>(reader.GetOrdinal("typoid"))
             };
 
-            column.PostgresType = registry.PostgresTypes.ByOID[column.TypeOID];
+            column.PostgresType = databaseInfo.ByOID[column.TypeOID];
 
             var defaultValueOrdinal = reader.GetOrdinal("default");
             column.DefaultValue = reader.IsDBNull(defaultValueOrdinal) ? null : reader.GetString(defaultValueOrdinal);
@@ -234,7 +234,7 @@ ORDER BY attnum";
         /// </summary>
         void ColumnPostConfig(NpgsqlDbColumn column, int typeModifier)
         {
-            column.DataType = _connection.Connector.TypeHandlerRegistry.TryGetByOID(column.TypeOID, out var handler)
+            column.DataType = _connection.Connector.TypeMapper.TryGetByOID(column.TypeOID, out var handler)
                 ? handler.GetFieldType()
                 : null;
 

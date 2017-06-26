@@ -39,46 +39,25 @@ namespace Npgsql.PostgresTypes
         /// Holds the name and OID for all fields.
         /// Populated on the first activation of the composite.
         /// </summary>
-        internal List<RawCompositeField> RawFields { get; }
+        internal List<Field> Fields { get; }
 
         /// <summary>
         /// Constructs a representation of a PostgreSQL array data type.
         /// </summary>
 #pragma warning disable CA2222 // Do not decrease inherited member visibility
-        internal PostgresCompositeType(string ns, string name, uint oid, List<RawCompositeField> rawFields)
+        internal PostgresCompositeType(string ns, string name, uint oid, List<Field> fields)
 #pragma warning restore CA2222 // Do not decrease inherited member visibility
             : base(ns, name, oid)
         {
-            NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Composite;
-            RawFields = rawFields;
+            Fields = fields;
         }
 
-        internal override void AddTo(TypeHandlerRegistry.AvailablePostgresTypes types)
+        internal struct Field
         {
-            base.AddTo(types);
-            types.ByFullName[FullName] = this;
-            types.ByName[Name] = types.ByName.ContainsKey(Name)
-                ? null
-                : this;
-        }
+            internal string PgName;
+            internal uint TypeOID;
 
-        internal override TypeHandler Activate(TypeHandlerRegistry registry)
-        {
-            // Composites need to be mapped by the user with an explicit mapping call (MapComposite or MapCompositeGlobally).
-            // If we're here the enum hasn't been mapped to a CLR type and we should activate it as text.
-            throw new Exception($"Composite PostgreSQL type {Name} must be mapped before use");
-        }
-
-        internal void Activate(TypeHandlerRegistry registry, ICompositeHandlerFactory factory)
-            => Activate(registry, factory.Create(this, RawFields, registry));
-
-        internal void Activate(TypeHandlerRegistry registry, ICompositeHandler compositeHandler)
-        {
-            var handler = (TypeHandler)compositeHandler;
-
-            registry.ByOID[OID] = handler;
-            registry.ByType[compositeHandler.CompositeType] = handler;
-            Array?.Activate(registry);
+            public override string ToString() => $"{PgName} => {TypeOID}";
         }
     }
 }

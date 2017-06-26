@@ -74,7 +74,7 @@ namespace Npgsql
             {
                 return await fieldDescription.Handler.Read<T>(Buffer, ColumnLen, async, fieldDescription);
             }
-            catch (SafeReadException e)
+            catch (NpgsqlSafeReadException e)
             {
                 throw e.InnerException;
             }
@@ -85,7 +85,7 @@ namespace Npgsql
             }
             finally
             {
-                // Important in case a SafeReadException was thrown, position must still be updated
+                // Important in case a NpgsqlSafeReadException was thrown, position must still be updated
                 PosInColumn += ColumnLen;
             }
         }
@@ -114,7 +114,7 @@ namespace Npgsql
                 result = fieldDescription.Handler.ReadAsObject(Buffer, ColumnLen, false, fieldDescription)
                     .GetAwaiter().GetResult();
             }
-            catch (SafeReadException e)
+            catch (NpgsqlSafeReadException e)
             {
                 throw e.InnerException;
             }
@@ -125,7 +125,7 @@ namespace Npgsql
             }
             finally
             {
-                // Important in case a SafeReadException was thrown, position must still be updated
+                // Important in case a NpgsqlSafeReadException was thrown, position must still be updated
                 PosInColumn += ColumnLen;
             }
 
@@ -161,7 +161,7 @@ namespace Npgsql
                 return fieldDescription.Handler.ReadPsvAsObject(Buffer, ColumnLen, false, fieldDescription)
                     .GetAwaiter().GetResult();
             }
-            catch (SafeReadException e)
+            catch (NpgsqlSafeReadException e)
             {
                 throw e.InnerException;
             }
@@ -172,7 +172,7 @@ namespace Npgsql
             }
             finally
             {
-                // Important in case a SafeReadException was thrown, position must still be updated
+                // Important in case a NpgsqlSafeReadException was thrown, position must still be updated
                 PosInColumn += ColumnLen;
             }
         }

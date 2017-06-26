@@ -24,6 +24,7 @@
 using System;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers.NumericHandlers
@@ -37,12 +38,10 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     [TypeMapping("regtype", NpgsqlDbType.Regtype)]
     class UInt32Handler : SimpleTypeHandler<uint>
     {
-        internal UInt32Handler(PostgresType postgresType) : base(postgresType) { }
-
-        public override uint Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override uint Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => (uint)buf.ReadInt32();
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
+        protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
         {
             if (!(value is uint))
             {
@@ -54,7 +53,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             return 4;
         }
 
-        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
+        protected override void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
         {
             if (parameter?.ConvertedValue != null)
                 value = parameter.ConvertedValue;

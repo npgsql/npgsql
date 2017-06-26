@@ -27,6 +27,7 @@ using System.Net.NetworkInformation;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers.NetworkHandlers
@@ -37,9 +38,7 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
     [TypeMapping("macaddr", NpgsqlDbType.MacAddr, typeof(PhysicalAddress))]
     class MacaddrHandler : SimpleTypeHandler<PhysicalAddress>, ISimpleTypeHandler<string>
     {
-        internal MacaddrHandler(PostgresType postgresType) : base(postgresType) { }
-
-        public override PhysicalAddress Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override PhysicalAddress Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             Debug.Assert(len == 6);
 
@@ -49,10 +48,10 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             return new PhysicalAddress(bytes);
         }
 
-        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        string ISimpleTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => Read(buf, len, fieldDescription).ToString();
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
+        protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
         {
             var address = value as PhysicalAddress;
             if (address == null)
@@ -62,7 +61,7 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             return 6;
         }
 
-        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
+        protected override void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
             => buf.WriteBytes(((PhysicalAddress)value).GetAddressBytes(), 0, 6);
     }
 }

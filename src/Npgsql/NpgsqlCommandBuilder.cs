@@ -76,7 +76,7 @@ namespace Npgsql
             // TODO: Why should it be possible to remove the QuotePrefix?
             set
             {
-                if (String.IsNullOrEmpty(value))
+                if (string.IsNullOrEmpty(value))
                 {
                     base.QuotePrefix = value;
                 }
@@ -102,7 +102,7 @@ namespace Npgsql
             // TODO: Why should it be possible to remove the QuoteSuffix?
             set
             {
-                if (String.IsNullOrEmpty(value))
+                if (string.IsNullOrEmpty(value))
                 {
                     base.QuoteSuffix = value;
                 }
@@ -195,10 +195,20 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     var param = new NpgsqlParameter();
 
                     // TODO: Fix enums, composite types
-                    var npgsqlDbType = c.Connection.Connector.TypeHandlerRegistry[types[i]].PostgresType.NpgsqlDbType;
-                    if (!npgsqlDbType.HasValue)
+                    //var npgsqlDbType = c.Connection.Connector.TypeMapper[types[i]].PostgresType.NpgsqlDbType;
+                    var typeMapper = c.Connection.Connector.TypeMapper;
+                    if (!typeMapper.DatabaseInfo.ByOID.TryGetValue(types[i], out var pgType))
+                    {
+                        throw new InvalidOperationException($"Couldn't find PostgreSQL type with OID {types[i]}");
+                    }
+                    if (!typeMapper.Mappings.TryGetValue(pgType.Name, out var mapping) &&
+                        !typeMapper.Mappings.TryGetValue(pgType.FullName, out mapping))
+                    {
+                        throw new InvalidOperationException($"No mapping found for PostgreSQL type {pgType.DisplayName}");
+                    }
+                    if (!mapping.NpgsqlDbType.HasValue)
                         throw new InvalidOperationException($"Invalid parameter type: {types[i]}");
-                    param.NpgsqlDbType = npgsqlDbType.Value;
+                    param.NpgsqlDbType = mapping.NpgsqlDbType.Value;
 
                     if (names != null && i < names.Length)
                         param.ParameterName = ":" + names[i];
@@ -259,7 +269,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// </returns>
         public new NpgsqlCommand GetInsertCommand(bool useColumnsForParameterNames)
         {
-            NpgsqlCommand cmd = (NpgsqlCommand) base.GetInsertCommand(useColumnsForParameterNames);
+            var cmd = (NpgsqlCommand) base.GetInsertCommand(useColumnsForParameterNames);
             cmd.UpdatedRowSource = UpdateRowSource.None;
             return cmd;
         }
@@ -289,7 +299,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// </returns>
         public new NpgsqlCommand GetUpdateCommand(bool useColumnsForParameterNames)
         {
-            NpgsqlCommand cmd = (NpgsqlCommand)base.GetUpdateCommand(useColumnsForParameterNames);
+            var cmd = (NpgsqlCommand)base.GetUpdateCommand(useColumnsForParameterNames);
             cmd.UpdatedRowSource = UpdateRowSource.None;
             return cmd;
         }
@@ -319,7 +329,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// </returns>
         public new NpgsqlCommand GetDeleteCommand(bool useColumnsForParameterNames)
         {
-            NpgsqlCommand cmd = (NpgsqlCommand) base.GetDeleteCommand(useColumnsForParameterNames);
+            var cmd = (NpgsqlCommand) base.GetDeleteCommand(useColumnsForParameterNames);
             cmd.UpdatedRowSource = UpdateRowSource.None;
             return cmd;
         }
@@ -347,13 +357,13 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         }
 */
 
-        /// <summary>
-        /// Applies the parameter information.
-        /// </summary>
-        /// <param name="p">The parameter.</param>
-        /// <param name="row">The row.</param>
-        /// <param name="statementType">Type of the statement.</param>
-        /// <param name="whereClause">if set to <c>true</c> [where clause].</param>
+                /// <summary>
+                /// Applies the parameter information.
+                /// </summary>
+                /// <param name="p">The parameter.</param>
+                /// <param name="row">The row.</param>
+                /// <param name="statementType">Type of the statement.</param>
+                /// <param name="whereClause">if set to <c>true</c> [where clause].</param>
         protected override void ApplyParameterInfo(DbParameter p, DataRow row, System.Data.StatementType statementType, bool whereClause)
         {
             // TODO: We may need to set NpgsqlDbType, as well as other properties, on p
@@ -368,7 +378,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// </returns>
         protected override string GetParameterName(int parameterOrdinal)
         {
-            return String.Format(CultureInfo.InvariantCulture, "@p{0}", parameterOrdinal);
+            return string.Format(CultureInfo.InvariantCulture, "@p{0}", parameterOrdinal);
         }
 
         /// <summary>
@@ -380,7 +390,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// </returns>
         protected override string GetParameterName(string parameterName)
         {
-            return String.Format(CultureInfo.InvariantCulture, "@{0}", parameterName);
+            return string.Format(CultureInfo.InvariantCulture, "@{0}", parameterName);
         }
 
         /// <summary>

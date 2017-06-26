@@ -190,7 +190,7 @@ namespace Npgsql
         /// </summary>
         public PostgresNotice() { }
 
-        internal PostgresNotice(ReadBuffer buf)
+        internal PostgresNotice(NpgsqlReadBuffer buf)
         {
             var msg = new ErrorOrNoticeMessage(buf);
             Severity = msg.Severity;

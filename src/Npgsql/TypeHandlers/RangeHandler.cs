@@ -23,11 +23,9 @@
 
 using Npgsql.BackendMessages;
 using System;
-using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using NpgsqlTypes;
-using JetBrains.Annotations;
 using Npgsql.PostgresTypes;
 
 namespace Npgsql.TypeHandlers
@@ -47,8 +45,7 @@ namespace Npgsql.TypeHandlers
         /// </summary>
         public TypeHandler ElementHandler { get; }
 
-        public RangeHandler(PostgresType postgresType, TypeHandler<TElement> elementHandler)
-            : base(postgresType)
+        public RangeHandler(TypeHandler<TElement> elementHandler)
         {
             ElementHandler = elementHandler;
         }
@@ -60,7 +57,7 @@ namespace Npgsql.TypeHandlers
 
         #region Read
 
-        public override async ValueTask<NpgsqlRange<TElement>> Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
+        public override async ValueTask<NpgsqlRange<TElement>> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
         {
             await buf.Ensure(1, async);
             var flags = (RangeFlags)buf.ReadByte();
@@ -79,7 +76,7 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter = null)
+        protected internal override int ValidateAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter = null)
         {
             if (!(value is NpgsqlRange<TElement>))
                 throw CreateConversionException(value.GetType());
@@ -104,7 +101,7 @@ namespace Npgsql.TypeHandlers
             return totalLen;
         }
 
-        protected override async Task Write(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter,
+        protected override async Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter,
             bool async, CancellationToken cancellationToken)
         {
             var range = (NpgsqlRange<TElement>)value;

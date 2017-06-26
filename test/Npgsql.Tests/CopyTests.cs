@@ -496,7 +496,7 @@ namespace Npgsql.Tests
                 conn.ExecuteNonQuery("TRUNCATE data");
 
                 // Long (multi-buffer) write
-                var iterations = WriteBuffer.MinimumSize/line.Length + 100;
+                var iterations = NpgsqlWriteBuffer.MinimumSize/line.Length + 100;
                 writer = conn.BeginTextImport("COPY data (field_text, field_int4) FROM STDIN");
                 for (var i = 0; i < iterations; i++)
                     writer.Write(line);

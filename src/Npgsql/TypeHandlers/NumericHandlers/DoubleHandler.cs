@@ -26,6 +26,7 @@ using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeMapping;
 
 namespace Npgsql.TypeHandlers.NumericHandlers
 {
@@ -35,12 +36,10 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     [TypeMapping("float8", NpgsqlDbType.Double, DbType.Double, typeof(double))]
     class DoubleHandler : SimpleTypeHandler<double>
     {
-        internal DoubleHandler(PostgresType postgresType) : base(postgresType) { }
-
-        public override double Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override double Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => buf.ReadDouble();
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
+        protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
         {
             if (!(value is double))
             {
@@ -52,7 +51,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             return 8;
         }
 
-        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
+        protected override void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
         {
             if (parameter?.ConvertedValue != null)
                 value = parameter.ConvertedValue;

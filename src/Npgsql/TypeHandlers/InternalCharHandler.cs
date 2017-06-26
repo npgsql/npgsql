@@ -26,6 +26,7 @@ using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using JetBrains.Annotations;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeMapping;
 
 namespace Npgsql.TypeHandlers
 {
@@ -39,30 +40,28 @@ namespace Npgsql.TypeHandlers
     class InternalCharHandler : SimpleTypeHandler<char>,
         ISimpleTypeHandler<byte>, ISimpleTypeHandler<short>, ISimpleTypeHandler<int>, ISimpleTypeHandler<long>
     {
-        internal InternalCharHandler(PostgresType postgresType) : base(postgresType) { }
-
         #region Read
 
-        public override char Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override char Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => (char)buf.ReadByte();
 
-        byte ISimpleTypeHandler<byte>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        byte ISimpleTypeHandler<byte>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => buf.ReadByte();
 
-        short ISimpleTypeHandler<short>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        short ISimpleTypeHandler<short>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => buf.ReadByte();
 
-        int ISimpleTypeHandler<int>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        int ISimpleTypeHandler<int>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => buf.ReadByte();
 
-        long ISimpleTypeHandler<long>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        long ISimpleTypeHandler<long>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => buf.ReadByte();
 
         #endregion
 
         #region Write
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
+        protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
         {
             if (!(value is byte))
             {
@@ -72,7 +71,7 @@ namespace Npgsql.TypeHandlers
             return 1;
         }
 
-        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
+        protected override void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
         {
             buf.WriteByte(value as byte? ?? Convert.ToByte(value));
         }

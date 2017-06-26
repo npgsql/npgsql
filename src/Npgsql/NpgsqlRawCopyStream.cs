@@ -47,8 +47,8 @@ namespace Npgsql
         #region Fields and Properties
 
         NpgsqlConnector _connector;
-        ReadBuffer _readBuf;
-        WriteBuffer _writeBuf;
+        NpgsqlReadBuffer _readBuf;
+        NpgsqlWriteBuffer _writeBuf;
 
         int _leftToReadInDataMsg;
         bool _isDisposed, _isConsumed;

@@ -37,6 +37,7 @@ using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.Logging;
 using Npgsql.NameTranslation;
+using Npgsql.TypeMapping;
 using NpgsqlTypes;
 using IsolationLevel = System.Data.IsolationLevel;
 using ThreadState = System.Threading.ThreadState;
@@ -96,6 +97,26 @@ namespace Npgsql
         internal Transaction EnlistedTransaction { get; set; }
 #endif
 
+        /// <summary>
+        /// The global type mapper, which contains defaults used by all new connections.
+        /// Modify mappings on this mapper to affect your entire application.
+        /// </summary>
+        public static INpgsqlTypeMapper GlobalTypeMapper => TypeMapping.GlobalTypeMapper.Instance;
+
+        /// <summary>
+        /// The connection-specific type mapper - all modifications affect this connection only,
+        /// and are lost when it is closed.
+        /// </summary>
+        public INpgsqlTypeMapper TypeMapper
+        {
+            get
+            {
+                CheckConnectionOpen();
+                return Connector.TypeMapper;
+            }
+        }
+
+        ///
         /// <summary>
         /// The default TCP/IP port for PostgreSQL.
         /// </summary>
@@ -240,9 +261,14 @@ namespace Npgsql
 
                     Counters.SoftConnectsPerSecond.Increment();
 
-                    // Since this pooled connector was opened, global enum/composite mappings may have
+                    // Since this pooled connector was opened, global mappings may have
                     // changed. Bring this up to date if needed.
-                    Connector.TypeHandlerRegistry.ActivateGlobalMappings();
+                    var mapper = Connector.TypeMapper;
+                    if (mapper.IsModified ||
+                        mapper.ChangeCounter != TypeMapping.GlobalTypeMapper.Instance.ChangeCounter)
+                    {
+                        mapper.Reset();
+                    }
                 }
 
 #if !NETSTANDARD1_3
@@ -795,6 +821,22 @@ namespace Npgsql
             }
         }
 
+        /// <summary>
+        /// Reports whether the backend uses the newer integer timestamp representation.
+        /// Note that the old floating point representation is not supported.
+        /// </summary>
+        [Browsable(false)]
+        [PublicAPI]
+        public bool HasIntegerDateTimes
+        {
+            get
+            {
+                CheckConnectionOpen();
+                Debug.Assert(Connector != null);
+                return Connector.IntegerDateTimes;
+            }
+        }
+
         #endregion Backend version and capabilities
 
         #region Copy
@@ -998,18 +1040,9 @@ namespace Npgsql
         /// </param>
         /// <typeparam name="TEnum">The .NET enum type to be mapped</typeparam>
         [PublicAPI]
+        [Obsolete("Use NpgsqlConnection.TypeMapper.MapEnum() instead")]
         public void MapEnum<TEnum>(string pgName = null, INpgsqlNameTranslator nameTranslator = null) where TEnum : struct
-        {
-            if (!typeof(TEnum).GetTypeInfo().IsEnum)
-                throw new ArgumentException("An enum type must be provided");
-            if (pgName != null && pgName.Trim() == "")
-                throw new ArgumentException("pgName can't be empty", nameof(pgName));
-            if (State != ConnectionState.Open)
-                throw new InvalidOperationException("Connection must be open and idle to perform registration");
-
-            Debug.Assert(Connector != null);
-            Connector.TypeHandlerRegistry.MapEnum<TEnum>(pgName, nameTranslator);
-        }
+            => TypeMapper.MapEnum<TEnum>(pgName, nameTranslator);
 
         /// <summary>
         /// Maps a CLR enum to a PostgreSQL enum type for use with all connections created from now on. Existing connections aren't affected.
@@ -1034,15 +1067,9 @@ namespace Npgsql
         /// </param>
         /// <typeparam name="TEnum">The .NET enum type to be mapped</typeparam>
         [PublicAPI]
+        [Obsolete("Use NpgsqlConnection.GlobalTypeMapper.MapEnum() instead")]
         public static void MapEnumGlobally<TEnum>(string pgName = null, INpgsqlNameTranslator nameTranslator = null) where TEnum : struct
-        {
-            if (!typeof(TEnum).GetTypeInfo().IsEnum)
-                throw new ArgumentException("An enum type must be provided");
-            if (pgName != null && pgName.Trim() == "")
-                throw new ArgumentException("pgName can't be empty", nameof(pgName));
-
-            TypeHandlerRegistry.MapEnumGlobally<TEnum>(pgName, nameTranslator);
-        }
+            => NpgsqlConnection.GlobalTypeMapper.MapEnum<TEnum>(pgName, nameTranslator);
 
         /// <summary>
         /// Removes a previous global enum mapping.
@@ -1055,15 +1082,9 @@ namespace Npgsql
         /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
         /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
+        [Obsolete("Use NpgsqlConnection.GlobalTypeMapper.UnmapEnum() instead")]
         public static void UnmapEnumGlobally<TEnum>(string pgName = null, INpgsqlNameTranslator nameTranslator = null) where TEnum : struct
-        {
-            if (!typeof(TEnum).GetTypeInfo().IsEnum)
-                throw new ArgumentException("An enum type must be provided");
-            if (pgName != null && pgName.Trim() == "")
-                throw new ArgumentException("pgName can't be empty", nameof(pgName));
-
-            TypeHandlerRegistry.UnmapEnumGlobally<TEnum>(pgName, nameTranslator);
-        }
+            => NpgsqlConnection.GlobalTypeMapper.UnmapEnum<TEnum>(pgName, nameTranslator);
 
         #endregion
 
@@ -1093,16 +1114,9 @@ namespace Npgsql
         /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
         /// <typeparam name="T">The .NET type to be mapped</typeparam>
+        [Obsolete("Use NpgsqlConnection.TypeMapper.MapComposite() instead")]
         public void MapComposite<T>(string pgName = null, INpgsqlNameTranslator nameTranslator = null) where T : new()
-        {
-            if (pgName != null && pgName.Trim() == "")
-                throw new ArgumentException("pgName can't be empty", nameof(pgName));
-            if (State != ConnectionState.Open)
-                throw new InvalidOperationException("Connection must be open and idle to perform registration");
-
-            Debug.Assert(Connector != null);
-            Connector.TypeHandlerRegistry.MapComposite<T>(pgName, nameTranslator);
-        }
+            => TypeMapper.MapComposite<T>(pgName, nameTranslator);
 
         /// <summary>
         /// Maps a CLR type to a PostgreSQL composite type for use with all connections created from now on. Existing connections aren't affected.
@@ -1126,13 +1140,9 @@ namespace Npgsql
         /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
         /// <typeparam name="T">The .NET type to be mapped</typeparam>
+        [Obsolete("Use NpgsqlConnection.GlobalTypeMapper.MapComposite() instead")]
         public static void MapCompositeGlobally<T>(string pgName = null, INpgsqlNameTranslator nameTranslator = null) where T : new()
-        {
-            if (pgName != null && pgName.Trim() == "")
-                throw new ArgumentException("pgName can't be empty", nameof(pgName));
-
-            TypeHandlerRegistry.MapCompositeGlobally<T>(pgName, nameTranslator);
-        }
+            => NpgsqlConnection.GlobalTypeMapper.MapComposite<T>(pgName, nameTranslator);
 
         /// <summary>
         /// Removes a previous global enum mapping.
@@ -1145,10 +1155,9 @@ namespace Npgsql
         /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
         /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
+        [Obsolete("Use NpgsqlConnection.GlobalTypeMapper.UnmapComposite() instead")]
         public static void UnmapCompositeGlobally<T>(string pgName, INpgsqlNameTranslator nameTranslator = null) where T : new()
-        {
-            TypeHandlerRegistry.UnmapCompositeGlobally<T>(pgName, nameTranslator);
-        }
+            => NpgsqlConnection.GlobalTypeMapper.UnmapComposite<T>(pgName, nameTranslator);
 
         #endregion
 
@@ -1436,8 +1445,8 @@ namespace Npgsql
         public void ReloadTypes()
         {
             var conn = CheckReadyAndGetConnector();
-            TypeHandlerRegistry.ClearBackendTypeCache(_connectionString);
-            TypeHandlerRegistry.Setup(conn, new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout)), false)
+            DatabaseInfo.Cache.TryRemove(_connectionString, out var _);
+            ConnectorTypeMapper.Bind(conn, new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout)), false)
                 .GetAwaiter().GetResult();
         }
 

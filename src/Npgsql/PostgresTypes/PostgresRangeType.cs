@@ -46,25 +46,7 @@ namespace Npgsql.PostgresTypes
             : base(ns, name, oid)
         {
             Subtype = subtypePostgresType;
-            if (subtypePostgresType.NpgsqlDbType.HasValue)
-                NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Range | subtypePostgresType.NpgsqlDbType;
             Subtype.Range = this;
-        }
-
-        internal override TypeHandler Activate(TypeHandlerRegistry registry)
-        {
-            if (!registry.TryGetByOID(Subtype.OID, out var subtypeHandler))
-            {
-                // Subtype hasn't been set up yet, do it now
-                subtypeHandler = Subtype.Activate(registry);
-            }
-
-            var handler = subtypeHandler.CreateRangeHandler(this);
-            registry.ByOID[OID] = handler;
-            if (NpgsqlDbType.HasValue)
-                registry.ByNpgsqlDbType.Add(NpgsqlDbType.Value, handler);
-            registry.ByType[handler.GetFieldType()] = handler;
-            return handler;
         }
     }
 }

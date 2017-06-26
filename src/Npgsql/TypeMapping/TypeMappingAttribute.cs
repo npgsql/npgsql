@@ -1,13 +1,34 @@
-﻿using System;
-using System.Collections.Generic;
+﻿#region License
+// The PostgreSQL License
+//
+// Copyright (C) 2017 The Npgsql Development Team
+//
+// Permission to use, copy, modify, and distribute this software and its
+// documentation for any purpose, without fee, and without a written
+// agreement is hereby granted, provided that the above copyright notice
+// and this paragraph and the following two paragraphs appear in all copies.
+//
+// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
+// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
+// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
+// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
+// THE POSSIBILITY OF SUCH DAMAGE.
+//
+// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
+// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
+// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+#endregion
+
+using System;
 using System.Data;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using JetBrains.Annotations;
 using NpgsqlTypes;
 
-namespace Npgsql
+namespace Npgsql.TypeMapping
 {
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
     [MeansImplicitUse]
@@ -103,11 +124,11 @@ namespace Npgsql
             : this(pgName, null, null, null, null)
         { }
 
-        internal string PgName { get; private set; }
-        internal NpgsqlDbType? NpgsqlDbType { get; private set; }
-        internal DbType[] DbTypes { get; private set; }
-        internal Type[] ClrTypes { get; private set; }
-        internal DbType? InferredDbType { get; private set; }
+        internal string PgName { get; }
+        internal NpgsqlDbType? NpgsqlDbType { get; }
+        internal DbType[] DbTypes { get; }
+        internal Type[] ClrTypes { get; }
+        internal DbType? InferredDbType { get; }
 
         /// <summary>
         /// Returns a string that represents the current object.

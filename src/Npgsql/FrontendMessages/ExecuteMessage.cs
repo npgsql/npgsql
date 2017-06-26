@@ -49,7 +49,7 @@ namespace Npgsql.FrontendMessages
 
         internal override int Length => 1 + 4 + 1 + 4;
 
-        internal override void WriteFully(WriteBuffer buf)
+        internal override void WriteFully(NpgsqlWriteBuffer buf)
         {
             Debug.Assert(Portal != null && Portal.All(c => c < 128));
 

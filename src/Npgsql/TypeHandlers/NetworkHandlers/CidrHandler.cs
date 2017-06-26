@@ -24,6 +24,7 @@
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers.NetworkHandlers
@@ -34,18 +35,16 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
     [TypeMapping("cidr", NpgsqlDbType.Cidr)]
     class CidrHandler : SimpleTypeHandler<NpgsqlInet>, ISimpleTypeHandler<string>
     {
-        internal CidrHandler(PostgresType postgresType) : base(postgresType) { }
-
-        public override NpgsqlInet Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override NpgsqlInet Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => InetHandler.DoRead(buf, fieldDescription, len, true);
 
-        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        string ISimpleTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => Read(buf, len, fieldDescription).ToString();
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
+        protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
             => InetHandler.DoValidateAndGetLength(value);
 
-        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
+        protected override void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
             => InetHandler.DoWrite(value, buf, true);
     }
 }

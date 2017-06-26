@@ -56,11 +56,11 @@ namespace Npgsql.Tests
         public void SetUp()
         {
             Underlying = new MemoryStream();
-            WriteBuffer = new WriteBuffer(null, Underlying, ReadBuffer.DefaultSize, PGUtil.UTF8Encoding);
+            WriteBuffer = new NpgsqlWriteBuffer(null, Underlying, NpgsqlReadBuffer.DefaultSize, PGUtil.UTF8Encoding);
         }
 
         // ReSharper disable once InconsistentNaming
-        WriteBuffer WriteBuffer;
+        NpgsqlWriteBuffer WriteBuffer;
         // ReSharper disable once InconsistentNaming
         MemoryStream Underlying;
     }

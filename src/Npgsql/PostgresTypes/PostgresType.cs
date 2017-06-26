@@ -21,7 +21,6 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using System;
 using JetBrains.Annotations;
 using NpgsqlTypes;
 
@@ -89,11 +88,6 @@ namespace Npgsql.PostgresTypes
         public string DisplayName => Namespace == "pg_catalog" || Namespace == "" ? Name : FullName;
 
         /// <summary>
-        /// The <see cref="NpgsqlDbType"/> associated with this backend type, if any.
-        /// </summary>
-        public NpgsqlDbType? NpgsqlDbType { get; protected set; }
-
-        /// <summary>
         /// If a PostgreSQL array type exists for this type, it will be referenced here.
         /// Otherwise null.
         /// </summary>
@@ -108,22 +102,6 @@ namespace Npgsql.PostgresTypes
         public PostgresRangeType Range { get; internal set; }
 
         #endregion
-
-        /// <summary>
-        /// For base types, contains the handler type.
-        /// If null, this backend type isn't supported by Npgsql.
-        /// </summary>
-        [CanBeNull]
-        protected Type HandlerType;
-
-        internal virtual void AddTo(TypeHandlerRegistry.AvailablePostgresTypes types)
-        {
-            types.ByOID[OID] = this;
-            if (NpgsqlDbType != null)
-                types.ByNpgsqlDbType[NpgsqlDbType.Value] = this;
-        }
-
-        internal abstract TypeHandler Activate(TypeHandlerRegistry registry);
 
         /// <summary>
         /// Returns a string that represents the current object.

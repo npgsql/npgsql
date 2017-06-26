@@ -35,7 +35,7 @@ namespace Npgsql.BackendMessages
         internal uint OID { get; private set; }
         internal uint Rows { get; private set; }
 
-        internal CommandCompleteMessage Load(ReadBuffer buf, int len)
+        internal CommandCompleteMessage Load(NpgsqlReadBuffer buf, int len)
         {
             Rows = 0;
             OID = 0;

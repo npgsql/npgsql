@@ -38,7 +38,7 @@ namespace Npgsql.BackendMessages
             TypeOIDs = new List<uint>();
         }
 
-        internal ParameterDescriptionMessage Load(ReadBuffer buf)
+        internal ParameterDescriptionMessage Load(NpgsqlReadBuffer buf)
         {
             var numParams = buf.ReadInt16();
             TypeOIDs.Clear();

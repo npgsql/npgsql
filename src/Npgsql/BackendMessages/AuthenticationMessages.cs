@@ -59,7 +59,7 @@ namespace Npgsql.BackendMessages
 
         internal byte[] Salt { get; private set; }
 
-        internal static AuthenticationMD5PasswordMessage Load(ReadBuffer buf)
+        internal static AuthenticationMD5PasswordMessage Load(NpgsqlReadBuffer buf)
         {
             var salt = new byte[4];
             buf.ReadBytes(salt, 0, 4);
@@ -94,7 +94,7 @@ namespace Npgsql.BackendMessages
 
         internal byte[] AuthenticationData { get; private set; }
 
-        internal static AuthenticationGSSContinueMessage Load(ReadBuffer buf, int len)
+        internal static AuthenticationGSSContinueMessage Load(NpgsqlReadBuffer buf, int len)
         {
             len -= 4;   // The AuthRequestType code
             var authenticationData = new byte[len];

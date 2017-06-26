@@ -24,6 +24,7 @@
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers.GeometricHandlers
@@ -37,22 +38,20 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     [TypeMapping("lseg", NpgsqlDbType.LSeg, typeof(NpgsqlLSeg))]
     class LineSegmentHandler : SimpleTypeHandler<NpgsqlLSeg>, ISimpleTypeHandler<string>
     {
-        internal LineSegmentHandler(PostgresType postgresType) : base(postgresType) { }
-
-        public override NpgsqlLSeg Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override NpgsqlLSeg Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => new NpgsqlLSeg(buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble());
 
-        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        string ISimpleTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => Read(buf, len, fieldDescription).ToString();
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
+        protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
         {
             if (!(value is NpgsqlLSeg))
                 throw CreateConversionException(value.GetType());
             return 32;
         }
 
-        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
+        protected override void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
         {
             var v = (NpgsqlLSeg)value;
             buf.WriteDouble(v.Start.X);

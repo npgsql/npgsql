@@ -30,8 +30,6 @@ using System.Text;
 using Npgsql;
 using Npgsql.NameTranslation;
 using NpgsqlTypes;
-using NUnit.Framework.Internal;
-
 
 namespace Npgsql.Tests.Types
 {
@@ -52,7 +50,7 @@ namespace Npgsql.Tests.Types
             using (var conn = OpenConnection(csb))
             {
                 conn.ExecuteNonQuery("CREATE TYPE pg_temp.mood1 AS ENUM ('sad', 'ok', 'happy')");
-                NpgsqlConnection.MapEnumGlobally<Mood>("mood1");
+                NpgsqlConnection.GlobalTypeMapper.MapEnum<Mood>("mood1");
                 try
                 {
                     conn.ReloadTypes();
@@ -92,7 +90,7 @@ namespace Npgsql.Tests.Types
                 }
                 finally
                 {
-                    NpgsqlConnection.UnmapEnumGlobally<Mood>("mood1");
+                    NpgsqlConnection.GlobalTypeMapper.UnmapEnum<Mood>("mood1");
                 }
             }
         }
@@ -112,7 +110,7 @@ namespace Npgsql.Tests.Types
 
                 // Resolve type by NpgsqlDbType
                 conn.ReloadTypes();
-                conn.MapEnum<Mood>("mood2");
+                conn.TypeMapper.MapEnum<Mood>("mood2");
                 using (var cmd = new NpgsqlCommand("SELECT @p", conn))
                 {
                     cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType.Enum) { SpecificType = typeof(Mood), Value = DBNull.Value });
@@ -126,7 +124,7 @@ namespace Npgsql.Tests.Types
 
                 // Resolve type by ClrType (type inference)
                 conn.ReloadTypes();
-                conn.MapEnum<Mood>("mood2");
+                conn.TypeMapper.MapEnum<Mood>("mood2");
                 using (var cmd = new NpgsqlCommand("SELECT @p", conn))
                 {
                     cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Value = Mood.Ok });
@@ -139,7 +137,7 @@ namespace Npgsql.Tests.Types
 
                 // Resolve type by OID (read)
                 conn.ReloadTypes();
-                conn.MapEnum<Mood>("mood2");
+                conn.TypeMapper.MapEnum<Mood>("mood2");
                 using (var cmd = new NpgsqlCommand("SELECT 'happy'::MOOD2", conn))
                 using (var reader = cmd.ExecuteReader())
                 {
@@ -156,7 +154,7 @@ namespace Npgsql.Tests.Types
             {
                 conn.ExecuteNonQuery("CREATE TYPE pg_temp.mood3 AS ENUM ('sad', 'ok', 'happy')");
                 conn.ReloadTypes();
-                conn.MapEnum<Mood>("mood3");
+                conn.TypeMapper.MapEnum<Mood>("mood3");
                 const Mood expected = Mood.Ok;
                 var cmd = new NpgsqlCommand("SELECT @p1::MOOD3, @p2::MOOD3", conn);
                 var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Enum) {SpecificType = typeof(Mood), Value = expected};
@@ -183,10 +181,10 @@ namespace Npgsql.Tests.Types
                 conn.ExecuteNonQuery("CREATE TYPE pg_temp.mood4 AS ENUM ('sad', 'ok', 'happy')");
                 conn.ExecuteNonQuery("CREATE TYPE pg_temp.test_enum AS ENUM ('label1', 'label2', 'label3')");
                 conn.ReloadTypes();
-                conn.MapEnum<Mood>("mood4");
-                conn.MapEnum<TestEnum>("test_enum");
+                conn.TypeMapper.MapEnum<Mood>("mood4");
+                conn.TypeMapper.MapEnum<TestEnum>("test_enum");
                 var cmd = new NpgsqlCommand("SELECT @p1", conn);
-                var expected = new[] {Mood.Ok, Mood.Sad};
+                var expected = new[] { Mood.Ok, Mood.Sad };
                 var p = new NpgsqlParameter("p1", NpgsqlDbType.Enum | NpgsqlDbType.Array) {
                     SpecificType = typeof(Mood),
                     Value = expected
@@ -200,17 +198,18 @@ namespace Npgsql.Tests.Types
         [Test]
         public void GlobalMapping()
         {
-            using (var conn = OpenConnection())
+            try
             {
-                conn.ExecuteNonQuery("CREATE TYPE pg_temp.mood5 AS ENUM ('sad', 'ok', 'happy')");
-                NpgsqlConnection.MapEnumGlobally<Mood>("mood5");
-                try
+                using (var conn = OpenConnection())
                 {
+                    conn.ExecuteNonQuery("DROP TYPE IF EXISTS mood5");
+                    conn.ExecuteNonQuery("CREATE TYPE mood5 AS ENUM ('sad', 'ok', 'happy')");
+                    NpgsqlConnection.GlobalTypeMapper.MapEnum<Mood>("mood5");
                     conn.ReloadTypes();
                     const Mood expected = Mood.Ok;
                     using (var cmd = new NpgsqlCommand("SELECT @p::MOOD5", conn))
                     {
-                        var p = new NpgsqlParameter {ParameterName = "p", Value = expected};
+                        var p = new NpgsqlParameter { ParameterName = "p", Value = expected };
                         cmd.Parameters.Add(p);
                         using (var reader = cmd.ExecuteReader())
                         {
@@ -222,10 +221,20 @@ namespace Npgsql.Tests.Types
                         }
                     }
                 }
-                finally
+
+                // Unmap
+                NpgsqlConnection.GlobalTypeMapper.UnmapEnum<Mood>("mood5");
+
+                using (var conn = OpenConnection())
                 {
-                    NpgsqlConnection.UnmapEnumGlobally<Mood>("mood5");
+                    // Enum should have been unmapped and so will return as text
+                    Assert.That(conn.ExecuteScalar("SELECT 'ok'::MOOD5"), Is.EqualTo("ok"));
                 }
+            }
+            finally
+            {
+                using (var conn = OpenConnection())
+                    conn.ExecuteNonQuery("DROP TYPE IF EXISTS mood5");
             }
         }
 
@@ -236,7 +245,7 @@ namespace Npgsql.Tests.Types
             {
                 conn.ExecuteNonQuery("CREATE TYPE pg_temp.mood6 AS ENUM ('sad', 'ok', 'happy')");
                 conn.ReloadTypes();
-                conn.MapEnum<Mood>("mood6");
+                conn.TypeMapper.MapEnum<Mood>("mood6");
                 var expected = new[] {Mood.Ok, Mood.Happy};
                 using (var cmd = new NpgsqlCommand("SELECT @p1::MOOD6[], @p2::MOOD6[]", conn))
                 {
@@ -325,7 +334,7 @@ namespace Npgsql.Tests.Types
             {
                 conn.ExecuteNonQuery("CREATE TYPE pg_temp.name_translation_enum AS ENUM ('simple', 'two_words', 'some_database_name')");
                 conn.ReloadTypes();
-                conn.MapEnum<NameTranslationEnum>();
+                conn.TypeMapper.MapEnum<NameTranslationEnum>();
                 using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", conn))
                 {
                     cmd.Parameters.AddWithValue("p1", NameTranslationEnum.Simple);
@@ -341,7 +350,7 @@ namespace Npgsql.Tests.Types
                 }
             }
             // Global mapping
-            NpgsqlConnection.MapEnumGlobally<NameTranslationEnum>();
+            NpgsqlConnection.GlobalTypeMapper.MapEnum<NameTranslationEnum>();
             try
             {
                 using (var conn = OpenConnection())
@@ -365,7 +374,7 @@ namespace Npgsql.Tests.Types
             }
             finally
             {
-                NpgsqlConnection.UnmapEnumGlobally<NameTranslationEnum>();
+                NpgsqlConnection.GlobalTypeMapper.UnmapEnum<NameTranslationEnum>();
             }
         }
 
@@ -377,7 +386,7 @@ namespace Npgsql.Tests.Types
             {
                 conn.ExecuteNonQuery(@"CREATE TYPE pg_temp.""NameTranslationEnum"" AS ENUM ('Simple', 'TwoWords', 'some_database_name')");
                 conn.ReloadTypes();
-                conn.MapEnum<NameTranslationEnum>(nameTranslator: new NpgsqlNullNameTranslator());
+                conn.TypeMapper.MapEnum<NameTranslationEnum>(nameTranslator: new NpgsqlNullNameTranslator());
                 using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", conn))
                 {
                     cmd.Parameters.AddWithValue("p1", NameTranslationEnum.Simple);
@@ -416,9 +425,9 @@ namespace Npgsql.Tests.Types
                     conn.ExecuteNonQuery("CREATE TYPE a.my_enum AS ENUM ('one')");
                     conn.ExecuteNonQuery("CREATE TYPE b.my_enum AS ENUM ('alpha')");
                     conn.ReloadTypes();
-                    // Per-connection mapping
-                    conn.MapEnum<Enum1>("a.my_enum");
-                    conn.MapEnum<Enum2>("b.my_enum");
+                    conn.TypeMapper
+                        .MapEnum<Enum1>("a.my_enum")
+                        .MapEnum<Enum2>("b.my_enum");
                     using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn))
                     {
                         cmd.Parameters.AddWithValue("p1", Enum1.One);
@@ -435,8 +444,8 @@ namespace Npgsql.Tests.Types
                 }
 
                 // Global mapping
-                NpgsqlConnection.MapEnumGlobally<Enum1>("a.my_enum");
-                NpgsqlConnection.MapEnumGlobally<Enum2>("b.my_enum");
+                NpgsqlConnection.GlobalTypeMapper.MapEnum<Enum1>("a.my_enum");
+                NpgsqlConnection.GlobalTypeMapper.MapEnum<Enum2>("b.my_enum");
                 using (var conn = OpenConnection())
                 {
                     using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn))
@@ -456,8 +465,8 @@ namespace Npgsql.Tests.Types
             }
             finally
             {
-                NpgsqlConnection.UnmapEnumGlobally<Enum1>("a.my_enum");
-                NpgsqlConnection.UnmapEnumGlobally<Enum2>("b.my_enum");
+                NpgsqlConnection.GlobalTypeMapper.UnmapEnum<Enum1>("a.my_enum");
+                NpgsqlConnection.GlobalTypeMapper.UnmapEnum<Enum2>("b.my_enum");
                 using (var conn = OpenConnection())
                     conn.ExecuteNonQuery("DROP SCHEMA IF EXISTS a CASCADE; DROP SCHEMA IF EXISTS b CASCADE");
             }
@@ -484,7 +493,7 @@ namespace Npgsql.Tests.Types
             // At this point the backend type for the enum is loaded, but no global mapping
             // has been made. Reopening the same pooled connector should learn about the new
             // global mapping
-            NpgsqlConnection.MapEnumGlobally<Mood>("mood9");
+            NpgsqlConnection.GlobalTypeMapper.MapEnum<Mood>("mood9");
             try
             {
                 using (var conn = OpenConnection(csb))
@@ -497,7 +506,7 @@ namespace Npgsql.Tests.Types
             {
                 using (var conn = OpenConnection(csb))
                     conn.ExecuteNonQuery("DROP TYPE IF EXISTS mood9");
-                NpgsqlConnection.UnmapEnumGlobally<Mood>("mood9");
+                NpgsqlConnection.GlobalTypeMapper.UnmapEnum<Mood>("mood1");
             }
         }
 
@@ -508,7 +517,7 @@ namespace Npgsql.Tests.Types
             {
                 conn.ExecuteNonQuery("CREATE TYPE pg_temp.test_enum2 AS ENUM ('label1', 'label2', 'label3')");
                 conn.ReloadTypes();
-                conn.MapEnum<TestEnum>("test_enum2");
+                conn.TypeMapper.MapEnum<TestEnum>("test_enum2");
                 using (var cmd = conn.CreateCommand())
                 {
                     cmd.CommandText = "Select :p1, :p2, :p3, :p4, :p5";

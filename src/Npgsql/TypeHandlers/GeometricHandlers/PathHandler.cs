@@ -26,6 +26,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers.GeometricHandlers
@@ -39,11 +40,9 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     [TypeMapping("path", NpgsqlDbType.Path, typeof(NpgsqlPath))]
     class PathHandler : ChunkingTypeHandler<NpgsqlPath>
     {
-        internal PathHandler(PostgresType postgresType) : base(postgresType) { }
-
         #region Read
 
-        public override async ValueTask<NpgsqlPath> Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
+        public override async ValueTask<NpgsqlPath> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
         {
             await buf.Ensure(5, async);
             bool open;
@@ -74,14 +73,14 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
 
         #region Write
 
-        public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
+        protected internal override int ValidateAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             if (!(value is NpgsqlPath))
                     throw CreateConversionException(value.GetType());
             return 5 + ((NpgsqlPath)value).Count * 16;
         }
 
-        protected override async Task Write(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter,
+        protected override async Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter,
             bool async, CancellationToken cancellationToken)
         {
             var path = (NpgsqlPath)value;

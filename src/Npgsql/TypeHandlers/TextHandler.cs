@@ -33,24 +33,31 @@ using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeMapping;
 
 namespace Npgsql.TypeHandlers
 {
-    [TypeMapping("text",      NpgsqlDbType.Text,
-      new[] { DbType.String, DbType.StringFixedLength, DbType.AnsiString, DbType.AnsiStringFixedLength },
-      new[] { typeof(string), typeof(char[]), typeof(char), typeof(ArraySegment<char>) },
-      DbType.String
+    [TypeMapping("text", NpgsqlDbType.Text,
+        new[] { DbType.String, DbType.StringFixedLength, DbType.AnsiString, DbType.AnsiStringFixedLength },
+        new[] { typeof(string), typeof(char[]), typeof(char), typeof(ArraySegment<char>) },
+        DbType.String
     )]
-    [TypeMapping("xml",       NpgsqlDbType.Xml, dbType: DbType.Xml)]
+    [TypeMapping("xml", NpgsqlDbType.Xml, dbType: DbType.Xml)]
 
-    [TypeMapping("varchar",   NpgsqlDbType.Varchar,            inferredDbType: DbType.String)]
-    [TypeMapping("bpchar",    NpgsqlDbType.Char,               inferredDbType: DbType.String)]
-    [TypeMapping("name",      NpgsqlDbType.Name,               inferredDbType: DbType.String)]
-    [TypeMapping("json",      NpgsqlDbType.Json,               inferredDbType: DbType.String)]
-    [TypeMapping("refcursor", NpgsqlDbType.Refcursor,          inferredDbType: DbType.String)]
-    [TypeMapping("citext",    NpgsqlDbType.Citext,             inferredDbType: DbType.String)]
+    [TypeMapping("varchar", NpgsqlDbType.Varchar, inferredDbType: DbType.String)]
+    [TypeMapping("bpchar", NpgsqlDbType.Char, inferredDbType: DbType.String)]
+    [TypeMapping("name", NpgsqlDbType.Name, inferredDbType: DbType.String)]
+    [TypeMapping("json", NpgsqlDbType.Json, inferredDbType: DbType.String)]
+    [TypeMapping("refcursor", NpgsqlDbType.Refcursor, inferredDbType: DbType.String)]
+    [TypeMapping("citext", NpgsqlDbType.Citext, inferredDbType: DbType.String)]
     [TypeMapping("unknown")]
-    class TextHandler : ChunkingTypeHandler<string>, IChunkingTypeHandler<char[]>, ITextReaderHandler
+    public class TextHandlerFactory : TypeHandlerFactory
+    {
+        protected override TypeHandler Create(NpgsqlConnection conn)
+            => new TextHandler(conn);
+    }
+
+    public class TextHandler : ChunkingTypeHandler<string>, IChunkingTypeHandler<char[]>, ITextReaderHandler
     {
         // Text types are handled a bit more efficiently when sent as text than as binary
         // see https://github.com/npgsql/npgsql/issues/1210#issuecomment-235641670
@@ -64,21 +71,21 @@ namespace Npgsql.TypeHandlers
 
         #endregion
 
-        internal TextHandler(PostgresType postgresType, TypeHandlerRegistry registry) : base(postgresType)
+        protected internal TextHandler(NpgsqlConnection connection)
         {
-            _encoding = registry.Connector.TextEncoding;
+            _encoding = connection.Connector.TextEncoding;
         }
 
         #region Read
 
-        public override ValueTask<string> Read(ReadBuffer buf, int byteLen, bool async, FieldDescription fieldDescription = null)
+        public override ValueTask<string> Read(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription fieldDescription = null)
         {
             if (buf.ReadBytesLeft >= byteLen)
                 return new ValueTask<string>(buf.ReadString(byteLen));
             return ReadLong(buf, byteLen, async);
         }
 
-        async ValueTask<string> ReadLong(ReadBuffer buf, int byteLen, bool async)
+        async ValueTask<string> ReadLong(NpgsqlReadBuffer buf, int byteLen, bool async)
         {
             if (byteLen <= buf.Size)
             {
@@ -111,7 +118,7 @@ namespace Npgsql.TypeHandlers
             return buf.TextEncoding.GetString(tempBuf);
         }
 
-        async ValueTask<char[]> IChunkingTypeHandler<char[]>.Read(ReadBuffer buf, int byteLen, bool async, FieldDescription fieldDescription)
+        async ValueTask<char[]> IChunkingTypeHandler<char[]>.Read(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription fieldDescription)
         {
             if (byteLen <= buf.Size)
             {
@@ -143,10 +150,10 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        public override unsafe int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter = null)
+        protected internal override unsafe int ValidateAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter = null)
         {
             if (lengthCache == null)
-                lengthCache = new LengthCache(1);
+                lengthCache = new NpgsqlLengthCache(1);
             if (lengthCache.IsPopulated)
                 return lengthCache.Get();
 
@@ -199,7 +206,7 @@ namespace Npgsql.TypeHandlers
                 return lengthCache.Set(_encoding.GetByteCount(p, parameter.Size));
         }
 
-        protected override Task Write(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter,
+        protected override Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter,
             bool async, CancellationToken cancellationToken)
         {
             if (parameter?.ConvertedValue != null)
@@ -236,7 +243,7 @@ namespace Npgsql.TypeHandlers
             return WriteString(Convert.ToString(value), buf, lengthCache, parameter, async, cancellationToken);
         }
 
-        Task WriteString(string str, WriteBuffer buf, LengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter,
+        Task WriteString(string str, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter,
             bool async, CancellationToken cancellationToken)
         {
             var charLen = parameter == null || parameter.Size <= 0 || parameter.Size >= str.Length

@@ -154,7 +154,7 @@ namespace Npgsql
             {
                 return fieldDescription.Handler.Read<T>(Buffer, ColumnLen, fieldDescription);
             }
-            catch (SafeReadException e)
+            catch (NpgsqlSafeReadException e)
             {
                 throw e.InnerException;
             }
@@ -184,7 +184,7 @@ namespace Npgsql
             {
                 result = fieldDescription.Handler.ReadAsObject(Buffer, ColumnLen, fieldDescription);
             }
-            catch (SafeReadException e)
+            catch (NpgsqlSafeReadException e)
             {
                 throw e.InnerException;
             }
@@ -227,7 +227,7 @@ namespace Npgsql
                 // maybe also text) to read without going through async...
                 result = fieldDescription.Handler.ReadPsvAsObject(Buffer, ColumnLen, fieldDescription);
             }
-            catch (SafeReadException e)
+            catch (NpgsqlSafeReadException e)
             {
                 throw e.InnerException;
             }

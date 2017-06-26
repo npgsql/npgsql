@@ -118,11 +118,11 @@ namespace Npgsql.Tests
         public void SetUp()
         {
             Underlying = new MemoryStream();
-            ReadBuffer = new ReadBuffer(null, Underlying, ReadBuffer.DefaultSize, PGUtil.UTF8Encoding);
+            ReadBuffer = new NpgsqlReadBuffer(null, Underlying, NpgsqlReadBuffer.DefaultSize, PGUtil.UTF8Encoding);
         }
 
         // ReSharper disable once InconsistentNaming
-        ReadBuffer ReadBuffer;
+        NpgsqlReadBuffer ReadBuffer;
         // ReSharper disable once InconsistentNaming
         MemoryStream Underlying;
     }

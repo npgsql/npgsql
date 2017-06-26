@@ -27,19 +27,27 @@ using NpgsqlTypes;
 using System.Data;
 using JetBrains.Annotations;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeMapping;
 
 namespace Npgsql.TypeHandlers.DateTimeHandlers
 {
+    [TypeMapping("timestamptz", NpgsqlDbType.TimestampTz, DbType.DateTimeOffset, typeof(DateTimeOffset))]
+    class TimestampTzHandlerFactory : TypeHandlerFactory
+    {
+        // Check for the legacy floating point timestamps feature
+        protected override TypeHandler Create(NpgsqlConnection conn)
+            => new TimestampTzHandler(conn.HasIntegerDateTimes, conn.Connector.ConvertInfinityDateTime);
+    }
+
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-datetime.html
     /// </remarks>
-    [TypeMapping("timestamptz", NpgsqlDbType.TimestampTz, DbType.DateTimeOffset, typeof(DateTimeOffset))]
     class TimestampTzHandler : TimestampHandler, ISimpleTypeHandler<DateTimeOffset>
     {
-        public TimestampTzHandler(PostgresType postgresType, TypeHandlerRegistry registry)
-            : base(postgresType, registry) {}
+        public TimestampTzHandler(bool integerFormat, bool convertInfinityDateTime)
+            : base(integerFormat, convertInfinityDateTime) {}
 
-        public override DateTime Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override DateTime Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             // TODO: Convert directly to DateTime without passing through NpgsqlTimeStamp?
             var ts = ReadTimeStamp(buf, len, fieldDescription);
@@ -53,27 +61,27 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                     return DateTime.MaxValue;
                 return DateTime.MinValue;
             } catch (Exception e) {
-                throw new SafeReadException(e);
+                throw new NpgsqlSafeReadException(e);
             }
         }
 
-        internal override NpgsqlDateTime ReadPsv(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        protected override NpgsqlDateTime ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             var ts = ReadTimeStamp(buf, len, fieldDescription);
             return new NpgsqlDateTime(ts.Date, ts.Time, DateTimeKind.Utc).ToLocalTime();
         }
 
-        DateTimeOffset ISimpleTypeHandler<DateTimeOffset>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        DateTimeOffset ISimpleTypeHandler<DateTimeOffset>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
         {
             try
             {
                 return new DateTimeOffset(ReadTimeStamp(buf, len, fieldDescription).ToDateTime(), TimeSpan.Zero);
             } catch (Exception e) {
-                throw new SafeReadException(e);
+                throw new NpgsqlSafeReadException(e);
             }
         }
 
-        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
+        protected override void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
         {
             if (parameter?.ConvertedValue != null)
                 value = parameter.ConvertedValue;

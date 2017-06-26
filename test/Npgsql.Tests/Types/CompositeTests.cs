@@ -73,7 +73,7 @@ namespace Npgsql.Tests.Types
             using (var conn = OpenConnection(csb))
             {
                 conn.ExecuteNonQuery("CREATE TYPE pg_temp.composite1 AS (x int, some_text text)");
-                NpgsqlConnection.MapCompositeGlobally<SomeComposite>("composite1");
+                NpgsqlConnection.GlobalTypeMapper.MapComposite<SomeComposite>("composite1");
                 try
                 {
                     conn.ReloadTypes();
@@ -113,7 +113,7 @@ namespace Npgsql.Tests.Types
                 }
                 finally
                 {
-                    NpgsqlConnection.UnmapCompositeGlobally<SomeComposite>("composite1");
+                    NpgsqlConnection.GlobalTypeMapper.UnmapComposite<SomeComposite>("composite1");
                 }
             }
         }
@@ -132,7 +132,7 @@ namespace Npgsql.Tests.Types
                 conn.ExecuteNonQuery("CREATE TYPE pg_temp.composite2 AS (x int, some_text text)");
                 // Resolve type by NpgsqlDbType
                 conn.ReloadTypes();
-                conn.MapComposite<SomeComposite>("composite2");
+                conn.TypeMapper.MapComposite<SomeComposite>("composite2");
                 using (var cmd = new NpgsqlCommand("SELECT @p", conn))
                 {
                     cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType.Composite) { SpecificType = typeof(SomeComposite), Value = DBNull.Value });
@@ -146,7 +146,7 @@ namespace Npgsql.Tests.Types
 
                 // Resolve type by ClrType (type inference)
                 conn.ReloadTypes();
-                conn.MapComposite<SomeComposite>("composite2");
+                conn.TypeMapper.MapComposite<SomeComposite>("composite2");
                 using (var cmd = new NpgsqlCommand("SELECT @p", conn))
                 {
                     cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Value = new SomeComposite { x = 8, SomeText = "foo" } });
@@ -159,7 +159,7 @@ namespace Npgsql.Tests.Types
 
                 // Resolve type by OID (read)
                 conn.ReloadTypes();
-                conn.MapComposite<SomeComposite>("composite2");
+                conn.TypeMapper.MapComposite<SomeComposite>("composite2");
                 using (var cmd = new NpgsqlCommand("SELECT ROW(1, 'foo')::COMPOSITE2", conn))
                 using (var reader = cmd.ExecuteReader())
                 {
@@ -176,7 +176,7 @@ namespace Npgsql.Tests.Types
             {
                 conn.ExecuteNonQuery("CREATE TYPE pg_temp.composite3 AS (x int, some_text text)");
                 conn.ReloadTypes();
-                conn.MapComposite<SomeComposite>("composite3");
+                conn.TypeMapper.MapComposite<SomeComposite>("composite3");
 
                 var expected = new SomeComposite {x = 8, SomeText = "foo"};
                 using (var cmd = new NpgsqlCommand("SELECT @p1::composite3, @p2::composite3", conn))
@@ -211,7 +211,7 @@ namespace Npgsql.Tests.Types
                     conn.ExecuteNonQuery("CREATE TYPE composite4 AS (x int, some_text text)");
                     conn.ReloadTypes();
                 }
-                NpgsqlConnection.MapCompositeGlobally<SomeComposite>("composite4");
+                NpgsqlConnection.GlobalTypeMapper.MapComposite<SomeComposite>("composite4");
                 using (var conn = OpenConnection())
                 {
                     var expected = new SomeComposite { x = 8, SomeText = "foo" };
@@ -227,10 +227,19 @@ namespace Npgsql.Tests.Types
                         }
                     }
                 }
+
+                // Unmap
+                NpgsqlConnection.GlobalTypeMapper.UnmapComposite<SomeComposite>("composite4");
+
+                using (var conn = OpenConnection())
+                {
+                    // Enum should have been unmapped and so will return as text
+                    Assert.That(() => conn.ExecuteScalar("SELECT '(8, \"foo\")'::composite4"), Throws.TypeOf<NotSupportedException>());
+                }
+
             }
             finally
             {
-                NpgsqlConnection.UnmapCompositeGlobally<SomeComposite>("composite4");
                 using (var conn = OpenConnection())
                     conn.ExecuteNonQuery("DROP TYPE IF EXISTS composite4");
             }
@@ -245,8 +254,8 @@ namespace Npgsql.Tests.Types
                 conn.ExecuteNonQuery("CREATE TYPE pg_temp.composite_container AS (a int, contained composite_contained)");
                 conn.ReloadTypes();
                 // Registration in inverse dependency order should work
-                conn.MapComposite<SomeCompositeContainer>("composite_container");
-                conn.MapComposite<SomeComposite>("composite_contained");
+                conn.TypeMapper.MapComposite<SomeCompositeContainer>("composite_container");
+                conn.TypeMapper.MapComposite<SomeComposite>("composite_contained");
 
                 var expected = new SomeCompositeContainer {
                     a = 4,
@@ -275,7 +284,7 @@ namespace Npgsql.Tests.Types
             {
                 conn.ExecuteNonQuery("CREATE TYPE pg_temp.composite_struct AS (x int, some_text text)");
                 conn.ReloadTypes();
-                conn.MapComposite<CompositeStruct>("composite_struct");
+                conn.TypeMapper.MapComposite<CompositeStruct>("composite_struct");
 
                 var expected = new CompositeStruct {x = 8, SomeText = "foo"};
                 using (var cmd = new NpgsqlCommand("SELECT @p::composite_struct", conn))
@@ -299,7 +308,7 @@ namespace Npgsql.Tests.Types
             {
                 conn.ExecuteNonQuery("CREATE TYPE pg_temp.composite5 AS (x int, some_text text)");
                 conn.ReloadTypes();
-                conn.MapComposite<SomeComposite>("composite5");
+                conn.TypeMapper.MapComposite<SomeComposite>("composite5");
 
                 var expected = new[] {
                     new SomeComposite {x = 8, SomeText = "foo"},
@@ -337,7 +346,7 @@ namespace Npgsql.Tests.Types
             {
                 conn.ExecuteNonQuery("CREATE TYPE pg_temp.name_translation_composite AS (simple int, two_words int, some_database_name int)");
                 conn.ReloadTypes();
-                conn.MapComposite<NameTranslationComposite>();
+                conn.TypeMapper.MapComposite<NameTranslationComposite>();
 
                 using (var cmd = new NpgsqlCommand("SELECT @p", conn))
                 {
@@ -379,7 +388,7 @@ CREATE TYPE address AS
             {
                 conn.ExecuteNonQuery(setupSql);
                 conn.ReloadTypes();
-                conn.MapComposite<Address>();
+                conn.TypeMapper.MapComposite<Address>();
 
                 var expected = new Address { PostalCode = "12345", Street = "Main St."};
                 using (var cmd = new NpgsqlCommand(@"SELECT @p", conn))
@@ -414,7 +423,7 @@ CREATE TYPE address AS
             {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE table_as_composite (foo int); INSERT INTO table_as_composite (foo) VALUES (8)");
                 conn.ReloadTypes();
-                conn.MapComposite<TableAsCompositeType>("table_as_composite");
+                conn.TypeMapper.MapComposite<TableAsCompositeType>("table_as_composite");
                 var value = (TableAsCompositeType)conn.ExecuteScalar(@"SELECT t.*::table_as_composite FROM table_as_composite AS t");
                 Assert.That(value.Foo, Is.EqualTo(8));
             }
@@ -430,7 +439,7 @@ CREATE TYPE address AS
                     ALTER TABLE table_as_composite DROP COLUMN bar;
                     INSERT INTO table_as_composite (foo) VALUES (8)");
                 conn.ReloadTypes();
-                conn.MapComposite<TableAsCompositeType>("table_as_composite");
+                conn.TypeMapper.MapComposite<TableAsCompositeType>("table_as_composite");
                 var value = (TableAsCompositeType)conn.ExecuteScalar(@"SELECT t.*::table_as_composite FROM table_as_composite AS t");
                 Assert.That(value.Foo, Is.EqualTo(8));
             }
@@ -443,7 +452,7 @@ CREATE TYPE address AS
             {
                 conn.ExecuteNonQuery("CREATE TYPE pg_temp.nullable_property_type AS (foo INT)");
                 conn.ReloadTypes();
-                conn.MapComposite<NullablePropertyType>();
+                conn.TypeMapper.MapComposite<NullablePropertyType>();
 
                 var expected1 = new NullablePropertyType { Foo = 8 };
                 var expected2 = new NullablePropertyType { Foo = null };
@@ -483,7 +492,7 @@ CREATE TYPE address AS
                 {
                     conn.ExecuteNonQuery("CREATE TYPE composite_schema.composite AS (foo int)");
                     conn.ReloadTypes();
-                    conn.MapComposite<Composite1>("composite_schema.composite");
+                    conn.TypeMapper.MapComposite<Composite1>("composite_schema.composite");
                     using (var cmd = new NpgsqlCommand("SELECT @p", conn))
                     {
                         cmd.Parameters.AddWithValue("p", new Composite1 { Foo = 8 });
@@ -522,11 +531,12 @@ CREATE TYPE address AS
                     conn.ExecuteNonQuery("CREATE TYPE composite_schema2.composite AS (bar int)");
                     conn.ReloadTypes();
                     // Attempting to map without a fully-qualified name should fail
-                    Assert.That(() => conn.MapComposite<Composite1>("composite"),
-                        Throws.Exception.TypeOf<NpgsqlException>()
+                    Assert.That(() => conn.TypeMapper.MapComposite<Composite1>("composite"),
+                        Throws.Exception.TypeOf<ArgumentException>()
                     );
-                    conn.MapComposite<Composite1>("composite_schema1.composite");
-                    conn.MapComposite<Composite2>("composite_schema2.composite");
+                    conn.TypeMapper
+                        .MapComposite<Composite1>("composite_schema1.composite")
+                        .MapComposite<Composite2>("composite_schema2.composite");
                     using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn))
                     {
                         cmd.Parameters.AddWithValue("p1", new Composite1 { Foo = 8 });
@@ -554,5 +564,38 @@ CREATE TYPE address AS
 
         class Composite1 { public int Foo { get; set; } }
         class Composite2 { public int Bar { get; set; } }
+        class Composite3 { public int Bar { get; set; } }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1612")]
+        public void LocalMappingDontLeak()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ApplicationName = nameof(LocalMappingDontLeak)
+            };
+            NpgsqlConnection.GlobalTypeMapper.MapComposite<Composite2>("composite");
+            try
+            {
+                using (var conn = OpenConnection(csb))
+                {
+                    conn.ExecuteNonQuery("CREATE TYPE composite AS (bar int)");
+                    conn.ReloadTypes();
+                    Assert.That(conn.ExecuteScalar("SELECT '(8)'::composite"), Is.TypeOf<Composite2>());
+                    conn.TypeMapper.MapComposite<Composite3>("composite");
+                    Assert.That(conn.ExecuteScalar("SELECT '(8)'::composite"), Is.TypeOf<Composite3>());
+                }
+                using (var conn = OpenConnection(csb))
+                    Assert.That(conn.ExecuteScalar("SELECT '(8)'::composite"), Is.TypeOf<Composite2>());
+            }
+            finally
+            {
+                NpgsqlConnection.GlobalTypeMapper.UnmapComposite<Composite2>("composite");
+                using (var conn = OpenConnection(csb))
+                {
+                    conn.ExecuteNonQuery("DROP TYPE IF EXISTS composite");
+                    NpgsqlConnection.ClearPool(conn);
+                }
+            }
+        }
     }
 }

@@ -44,7 +44,7 @@ namespace Npgsql.FrontendMessages
 
         internal override int Length => 16;
 
-        internal override void WriteFully(WriteBuffer buf)
+        internal override void WriteFully(NpgsqlWriteBuffer buf)
         {
             Debug.Assert(BackendProcessId != 0);
 

@@ -48,7 +48,7 @@ namespace Npgsql.FrontendMessages
         /// <param name="responseMessageCount">Returns how many messages PostgreSQL is expected to send in response to this message.</param>
         internal PregeneratedMessage(byte[] data, string description, int responseMessageCount)
         {
-            Debug.Assert(data.Length < WriteBuffer.MinimumSize);
+            Debug.Assert(data.Length < NpgsqlWriteBuffer.MinimumSize);
 
             _data = data;
             _description = description;
@@ -59,7 +59,7 @@ namespace Npgsql.FrontendMessages
 
         internal override int ResponseMessageCount { get; }
 
-        internal override void WriteFully(WriteBuffer buf)
+        internal override void WriteFully(NpgsqlWriteBuffer buf)
         {
             buf.WriteBytes(_data, 0, _data.Length);
         }
@@ -68,7 +68,7 @@ namespace Npgsql.FrontendMessages
 
         static PregeneratedMessage()
         {
-            var buf = new WriteBuffer(null, new MemoryStream(), WriteBuffer.MinimumSize, Encoding.ASCII);
+            var buf = new NpgsqlWriteBuffer(null, new MemoryStream(), NpgsqlWriteBuffer.MinimumSize, Encoding.ASCII);
             var message = new QueryMessage(PGUtil.UTF8Encoding);
 
             BeginTrans                = Generate(buf, message, "BEGIN");
@@ -83,7 +83,7 @@ namespace Npgsql.FrontendMessages
             DiscardAll                = Generate(buf, message, "DISCARD ALL");
         }
 
-        internal static PregeneratedMessage Generate(WriteBuffer buf, QueryMessage queryMessage, string query, int responseMessageCount=2)
+        internal static PregeneratedMessage Generate(NpgsqlWriteBuffer buf, QueryMessage queryMessage, string query, int responseMessageCount=2)
         {
             Debug.Assert(query != null && query.All(c => c < 128));
             queryMessage.Populate(query);

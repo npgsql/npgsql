@@ -26,6 +26,7 @@ using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeMapping;
 
 namespace Npgsql.TypeHandlers
 {
@@ -35,17 +36,15 @@ namespace Npgsql.TypeHandlers
     [TypeMapping("void")]
     class VoidHandler : SimpleTypeHandler<DBNull>
     {
-        internal VoidHandler(PostgresType postgresType) : base(postgresType) {}
-
-        public override DBNull Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override DBNull Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => DBNull.Value;
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
+        protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
         {
             throw new NotSupportedException();
         }
 
-        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
+        protected override void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
         {
             throw new NotSupportedException();
         }

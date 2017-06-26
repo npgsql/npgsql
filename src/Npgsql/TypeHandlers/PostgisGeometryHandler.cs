@@ -30,6 +30,7 @@ using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.Logging;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers
@@ -58,23 +59,14 @@ namespace Npgsql.TypeHandlers
         [CanBeNull]
         readonly ByteaHandler _byteaHandler;
 
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
-
-        internal PostgisGeometryHandler(PostgresType postgresType, TypeHandlerRegistry registry)
-            : base(postgresType)
+        public PostgisGeometryHandler()
         {
-            var byteaHandler = registry[NpgsqlDbType.Bytea];
-            if (_byteaHandler == registry.UnrecognizedTypeHandler)
-            {
-                Log.Warn("bytea type not present when setting up postgis geometry type. Writing as bytea will not work.");
-                return;
-            }
-            _byteaHandler = (ByteaHandler)byteaHandler;
+            _byteaHandler = new ByteaHandler();
         }
 
         #region Read
 
-        public override async ValueTask<PostgisGeometry> Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
+        public override async ValueTask<PostgisGeometry> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
         {
             await buf.Ensure(5, async);
             var bo = (ByteOrder)buf.ReadByte();
@@ -92,7 +84,7 @@ namespace Npgsql.TypeHandlers
             return geom;
         }
 
-        async ValueTask<PostgisGeometry> DoRead(ReadBuffer buf, WkbIdentifier id, ByteOrder bo, bool async)
+        async ValueTask<PostgisGeometry> DoRead(NpgsqlReadBuffer buf, WkbIdentifier id, ByteOrder bo, bool async)
         {
             switch (id)
             {
@@ -207,7 +199,7 @@ namespace Npgsql.TypeHandlers
             }
         }
 
-        ValueTask<byte[]> IChunkingTypeHandler<byte[]>.Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        ValueTask<byte[]> IChunkingTypeHandler<byte[]>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
         {
             Debug.Assert(_byteaHandler != null);
             return _byteaHandler.Read(buf, len, async, fieldDescription);
@@ -217,26 +209,26 @@ namespace Npgsql.TypeHandlers
 
         #region Read concrete types
 
-        async ValueTask<PostgisPoint> IChunkingTypeHandler<PostgisPoint>.Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        async ValueTask<PostgisPoint> IChunkingTypeHandler<PostgisPoint>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
             => (PostgisPoint)await Read(buf, len, async, fieldDescription);
-        async ValueTask<PostgisMultiPoint> IChunkingTypeHandler<PostgisMultiPoint>.Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        async ValueTask<PostgisMultiPoint> IChunkingTypeHandler<PostgisMultiPoint>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
             => (PostgisMultiPoint)await Read(buf, len, async, fieldDescription);
-        async ValueTask<PostgisLineString> IChunkingTypeHandler<PostgisLineString>.Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        async ValueTask<PostgisLineString> IChunkingTypeHandler<PostgisLineString>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
             => (PostgisLineString)await Read(buf, len, async, fieldDescription);
-        async ValueTask<PostgisMultiLineString> IChunkingTypeHandler<PostgisMultiLineString>.Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        async ValueTask<PostgisMultiLineString> IChunkingTypeHandler<PostgisMultiLineString>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
             => (PostgisMultiLineString)await Read(buf, len, async, fieldDescription);
-        async ValueTask<PostgisPolygon> IChunkingTypeHandler<PostgisPolygon>.Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        async ValueTask<PostgisPolygon> IChunkingTypeHandler<PostgisPolygon>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
             => (PostgisPolygon)await Read(buf, len, async, fieldDescription);
-        async ValueTask<PostgisMultiPolygon> IChunkingTypeHandler<PostgisMultiPolygon>.Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        async ValueTask<PostgisMultiPolygon> IChunkingTypeHandler<PostgisMultiPolygon>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
             => (PostgisMultiPolygon)await Read(buf, len, async, fieldDescription);
-        async ValueTask<PostgisGeometryCollection> IChunkingTypeHandler<PostgisGeometryCollection>.Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        async ValueTask<PostgisGeometryCollection> IChunkingTypeHandler<PostgisGeometryCollection>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
             => (PostgisGeometryCollection)await Read(buf, len, async, fieldDescription);
 
         #endregion
 
         #region Write
 
-        public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter = null)
+        protected internal override int ValidateAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter = null)
         {
             var asGeometry = value as PostgisGeometry;
             if (asGeometry != null)
@@ -249,7 +241,7 @@ namespace Npgsql.TypeHandlers
             throw new InvalidCastException("IGeometry type expected.");
         }
 
-        protected override Task Write(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter,
+        protected override Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter,
             bool async, CancellationToken cancellationToken)
         {
             var bytes = value as byte[];
@@ -263,7 +255,7 @@ namespace Npgsql.TypeHandlers
             return Write((PostgisGeometry)value, buf, lengthCache, parameter, async, cancellationToken);
         }
 
-        async Task Write(PostgisGeometry geom, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter,
+        async Task Write(PostgisGeometry geom, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter,
             bool async, CancellationToken cancellationToken)
         {
             // Common header

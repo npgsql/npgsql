@@ -54,7 +54,7 @@ namespace Npgsql.FrontendMessages
             return this;
         }
 
-        internal override async Task Write(WriteBuffer buf, bool async, CancellationToken cancellationToken)
+        internal override async Task Write(NpgsqlWriteBuffer buf, bool async, CancellationToken cancellationToken)
         {
             if (buf.WriteSpaceLeft < 1 + 4)
                 await buf.Flush(async, cancellationToken);

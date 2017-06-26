@@ -31,6 +31,7 @@ using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using JetBrains.Annotations;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeMapping;
 
 namespace Npgsql.TypeHandlers
 {
@@ -47,8 +48,6 @@ namespace Npgsql.TypeHandlers
     class BitStringHandler : ChunkingTypeHandler<BitArray>,
         IChunkingTypeHandler<BitVector32>, IChunkingTypeHandler<bool>
     {
-        internal BitStringHandler(PostgresType postgresType) : base(postgresType) {}
-
         internal override Type GetFieldType(FieldDescription fieldDescription = null)
             => fieldDescription != null && fieldDescription.TypeModifier == 1 ? typeof(bool) : typeof(BitArray);
 
@@ -57,11 +56,11 @@ namespace Npgsql.TypeHandlers
 
         // BitString requires a special array handler which returns bool or BitArray
         internal override ArrayHandler CreateArrayHandler(PostgresType backendType) =>
-            new BitStringArrayHandler(backendType, this);
+            new BitStringArrayHandler(this) { PostgresType = backendType };
 
         #region Read
 
-        public override async ValueTask<BitArray> Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
+        public override async ValueTask<BitArray> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
         {
             await buf.Ensure(4, async);
             var numBits = buf.ReadInt32();
@@ -98,12 +97,12 @@ namespace Npgsql.TypeHandlers
             return result;
         }
 
-        async ValueTask<BitVector32> IChunkingTypeHandler<BitVector32>.Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        async ValueTask<BitVector32> IChunkingTypeHandler<BitVector32>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
         {
             if (len > 4 + 4)
             {
                 buf.Skip(len);
-                throw new SafeReadException("Can't read PostgreSQL bitstring with more than 32 bits into BitVector32");
+                throw new NpgsqlSafeReadException("Can't read PostgreSQL bitstring with more than 32 bits into BitVector32");
             }
 
             await buf.Ensure(4 + 4, async);
@@ -114,7 +113,7 @@ namespace Npgsql.TypeHandlers
                 : new BitVector32(buf.ReadInt32());
         }
 
-        async ValueTask<bool> IChunkingTypeHandler<bool>.Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        async ValueTask<bool> IChunkingTypeHandler<bool>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
         {
             await buf.Ensure(5, async);
             var bitLen = buf.ReadInt32();
@@ -123,18 +122,18 @@ namespace Npgsql.TypeHandlers
                 // This isn't a single bit - error.
                 // Consume the rest of the value first so the connection is left in a good state.
                 buf.Skip(len - 4);
-                throw new SafeReadException(new InvalidCastException("Can't convert a BIT(N) type to bool, only BIT(1)"));
+                throw new NpgsqlSafeReadException(new InvalidCastException("Can't convert a BIT(N) type to bool, only BIT(1)"));
             }
             var b = buf.ReadByte();
             return (b & 128) != 0;
         }
 
-        internal override async ValueTask<object> ReadAsObject(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
+        internal override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
             => fieldDescription?.TypeModifier == 1
                 ? (object)await Read<bool>(buf, len, async, fieldDescription)
                 : await Read<BitArray>(buf, len, async, fieldDescription);
 
-        internal override object ReadAsObject(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        internal override object ReadAsObject(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => fieldDescription?.TypeModifier == 1
                 ? (object)Read<bool>(buf, len, false, fieldDescription).Result
                 : Read<BitArray>(buf, len, false, fieldDescription).Result;
@@ -143,7 +142,7 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
+        protected internal override int ValidateAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             var asBitArray = value as BitArray;
             if (asBitArray != null)
@@ -166,7 +165,7 @@ namespace Npgsql.TypeHandlers
             throw CreateConversionException(value.GetType());
         }
 
-        protected override Task Write(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter,
+        protected override Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter,
             bool async, CancellationToken cancellationToken)
         {
             var bitArray = value as BitArray;
@@ -186,7 +185,7 @@ namespace Npgsql.TypeHandlers
             throw new InvalidOperationException($"Bad type {value.GetType()} some made its way into BitStringHandler.Write()");
         }
 
-        async Task WriteBitArray(BitArray bitArray, WriteBuffer buf, bool async, CancellationToken cancellationToken)
+        async Task WriteBitArray(BitArray bitArray, NpgsqlWriteBuffer buf, bool async, CancellationToken cancellationToken)
         {
             // Initial bitlength byte
             if (buf.WriteSpaceLeft < 4)
@@ -213,7 +212,7 @@ namespace Npgsql.TypeHandlers
             }
         }
 
-        async Task WriteBitVector32(BitVector32 bitVector, WriteBuffer buf, bool async, CancellationToken cancellationToken)
+        async Task WriteBitVector32(BitVector32 bitVector, NpgsqlWriteBuffer buf, bool async, CancellationToken cancellationToken)
         {
             if (buf.WriteSpaceLeft < 8)
                 await buf.Flush(async, cancellationToken);
@@ -227,7 +226,7 @@ namespace Npgsql.TypeHandlers
             }
         }
 
-        async Task WriteBool(bool b, WriteBuffer buf, bool async, CancellationToken cancellationToken)
+        async Task WriteBool(bool b, NpgsqlWriteBuffer buf, bool async, CancellationToken cancellationToken)
         {
             if (buf.WriteSpaceLeft < 5)
                 await buf.Flush(async, cancellationToken);
@@ -235,7 +234,7 @@ namespace Npgsql.TypeHandlers
             buf.WriteByte(b ? (byte)0x80 : (byte)0);
         }
 
-        async Task WriteString(string str, WriteBuffer buf, bool async, CancellationToken cancellationToken)
+        async Task WriteString(string str, NpgsqlWriteBuffer buf, bool async, CancellationToken cancellationToken)
         {
             // Initial bitlength byte
             if (buf.WriteSpaceLeft < 4)
@@ -298,15 +297,15 @@ namespace Npgsql.TypeHandlers
         internal override Type GetElementPsvType(FieldDescription fieldDescription = null)
             => GetElementFieldType(fieldDescription);
 
-        public BitStringArrayHandler(PostgresType postgresType, BitStringHandler elementHandler)
-            : base(postgresType, elementHandler) {}
+        public BitStringArrayHandler(BitStringHandler elementHandler)
+            : base(elementHandler) {}
 
-        public override ValueTask<Array> Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
+        public override ValueTask<Array> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
             => fieldDescription?.TypeModifier == 1
                 ? Read<bool>(buf, async)
                 : Read<BitArray>(buf, async);
 
-        public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
+        protected internal override int ValidateAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             if (value is BitArray[])
                 return ValidateAndGetLength<BitArray>(value, ref lengthCache, parameter);
@@ -317,7 +316,7 @@ namespace Npgsql.TypeHandlers
             throw new InvalidCastException($"Can't write type {value.GetType()} as an bitstring array");
         }
 
-        protected override Task Write(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter,
+        protected override Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter,
             bool async, CancellationToken cancellationToken)
         {
             if (value is BitArray[])
