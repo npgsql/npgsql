@@ -750,22 +750,18 @@ WHERE a.typtype = 'b' AND b.typname = @name{(withSchema ? " AND ns.nspname = @sc
         {
             internal Dictionary<uint, PostgresType> ByOID { get; } = new Dictionary<uint, PostgresType>();
 
-#if !__MonoCS__
             /// <summary>
             /// Indexes backend types by their PostgreSQL name, including namespace (e.g. pg_catalog.int4).
             /// Only used for enums and composites.
             /// </summary>
-#endif
             internal Dictionary<string, PostgresType> ByFullName { get; } = new Dictionary<string, PostgresType>();
 
-#if !__MonoCS__
             /// <summary>
             /// Indexes backend types by their PostgreSQL name, not including namespace.
             /// If more than one type exists with the same name (i.e. in different namespaces) this
             /// table will contain an entry with a null value.
             /// Only used for enums and composites.
             /// </summary>
-#endif
             internal Dictionary<string, PostgresType> ByName { get; } = new Dictionary<string, PostgresType>();
             internal Dictionary<NpgsqlDbType, PostgresType> ByNpgsqlDbType { get; } = new Dictionary<NpgsqlDbType, PostgresType>();
             internal Dictionary<DbType, PostgresType> ByDbType { get; } = new Dictionary<DbType, PostgresType>();
