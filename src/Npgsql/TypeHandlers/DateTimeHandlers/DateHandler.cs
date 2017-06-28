@@ -53,8 +53,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
 
         public override DateTime Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
-            // TODO: Convert directly to DateTime without passing through NpgsqlDate?
-            var npgsqlDate = ((ISimpleTypeHandler<NpgsqlDate>) this).Read(buf, len, fieldDescription);
+            var npgsqlDate = ReadPsv(buf, len, fieldDescription);
             try {
                 if (npgsqlDate.IsFinite)
                     return (DateTime)npgsqlDate;
