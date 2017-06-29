@@ -33,10 +33,10 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-datetime.html
     /// </remarks>
-    [TypeMapping("timestamptz", NpgsqlDbType.TimestampTZ, DbType.DateTimeOffset, typeof(DateTimeOffset))]
-    class TimeStampTzHandler : TimeStampHandler, ISimpleTypeHandler<DateTimeOffset>
+    [TypeMapping("timestamptz", NpgsqlDbType.TimestampTz, DbType.DateTimeOffset, typeof(DateTimeOffset))]
+    class TimestampTzHandler : TimestampHandler, ISimpleTypeHandler<DateTimeOffset>
     {
-        public TimeStampTzHandler(PostgresType postgresType, TypeHandlerRegistry registry)
+        public TimestampTzHandler(PostgresType postgresType, TypeHandlerRegistry registry)
             : base(postgresType, registry) {}
 
         public override DateTime Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)

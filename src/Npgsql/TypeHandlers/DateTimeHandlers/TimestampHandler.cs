@@ -33,7 +33,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-datetime.html
     /// </remarks>
     [TypeMapping("timestamp", NpgsqlDbType.Timestamp, new[] { DbType.DateTime, DbType.DateTime2 }, new [] { typeof(NpgsqlDateTime), typeof(DateTime) }, DbType.DateTime)]
-    class TimeStampHandler : SimpleTypeHandlerWithPsv<DateTime, NpgsqlDateTime>
+    class TimestampHandler : SimpleTypeHandlerWithPsv<DateTime, NpgsqlDateTime>
     {
         /// <summary>
         /// A deprecated compile-time option of PostgreSQL switches to a floating-point representation of some date/time
@@ -47,7 +47,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         /// </summary>
         protected readonly bool ConvertInfinityDateTime;
 
-        internal TimeStampHandler(PostgresType postgresType, TypeHandlerRegistry registry)
+        internal TimestampHandler(PostgresType postgresType, TypeHandlerRegistry registry)
             : base(postgresType)
         {
             // Check for the legacy floating point timestamps feature, defaulting to integer timestamps
