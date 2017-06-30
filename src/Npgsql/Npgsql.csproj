@@ -8,6 +8,7 @@
     <PackageTags>npgsql postgresql postgres ado ado.net database sql</PackageTags>
     <VersionPrefix>3.3.0</VersionPrefix>
     <TargetFrameworks>net45;net451;netstandard1.3;netstandard2.0</TargetFrameworks>
+    <TargetFramework>netcoreapp1.1</TargetFramework>
     <WarningsAsErrors>true</WarningsAsErrors>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -65,7 +66,18 @@
     <PackageReference Include="System.Reflection.TypeExtensions" Version="4.3.0" />
     <PackageReference Include="System.Threading.Thread" Version="4.3.0" />
   </ItemGroup>
-
+   
+   <ItemGroup Condition=" '$(TargetFramework)' == 'netcoreapp1.1' ">
+     <PackageReference Include="System.Collections.Specialized" Version="4.3.0" />
+     <PackageReference Include="System.ComponentModel.TypeConverter" Version="4.3.0" />
+     <PackageReference Include="System.Data.Common" Version="4.3.0" />
+     <PackageReference Include="System.Net.Security" Version="4.3.1" />
+     <PackageReference Include="System.Net.NetworkInformation" Version="4.3.0" />
+   </ItemGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+     <DefineConstants>TRACE;DEBUG;NETCOREAPP1_1;NETSTANDARD1_3</DefineConstants>
+   </PropertyGroup>
+   
   <PropertyGroup Condition=" '$(Configuration)' == 'ReleaseOptimizedCryptography' ">
     <DefineConstants>$(DefineConstants);RELEASE;TRACE;OPTIMIZED_CRYPTOGRAPHY</DefineConstants>
     <Optimize>true</Optimize>
