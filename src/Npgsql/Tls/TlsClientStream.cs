@@ -1449,7 +1449,7 @@ namespace Npgsql.Tls
             var keyDsa = key as DSACryptoServiceProvider;
             var keyRsa = key as RSACryptoServiceProvider;
 #else
-            var keyRsa = (_clientCertificates[0] as X509Certificate2).GetRSAPrivateKey();
+            var keyRsa = ((X509Certificate2)_clientCertificates[0]).GetRSAPrivateKey();
 #endif
 
             byte[] signature = null, hash = null;
