@@ -567,13 +567,13 @@ WHERE a.typtype = 'b' AND b.typname = @name{(withSchema ? " AND ns.nspname = @sc
                 if (value is DateTime)
                 {
                     return ((DateTime) value).Kind == DateTimeKind.Utc
-                        ? this[NpgsqlDbType.TimestampTZ]
+                        ? this[NpgsqlDbType.TimestampTz]
                         : this[NpgsqlDbType.Timestamp];
                 }
 
                 if (value is NpgsqlDateTime) {
                     return ((NpgsqlDateTime)value).Kind == DateTimeKind.Utc
-                        ? this[NpgsqlDbType.TimestampTZ]
+                        ? this[NpgsqlDbType.TimestampTz]
                         : this[NpgsqlDbType.Timestamp];
                 }
 
@@ -687,14 +687,14 @@ WHERE a.typtype = 'b' AND b.typname = @name{(withSchema ? " AND ns.nspname = @sc
             if (value is DateTime)
             {
                 return ((DateTime)value).Kind == DateTimeKind.Utc
-                    ? NpgsqlDbType.TimestampTZ
+                    ? NpgsqlDbType.TimestampTz
                     : NpgsqlDbType.Timestamp;
             }
 
             if (value is NpgsqlDateTime)
             {
                 return ((NpgsqlDateTime)value).Kind == DateTimeKind.Utc
-                    ? NpgsqlDbType.TimestampTZ
+                    ? NpgsqlDbType.TimestampTz
                     : NpgsqlDbType.Timestamp;
             }
 

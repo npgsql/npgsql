@@ -183,11 +183,11 @@ namespace Npgsql.Tests.Types
 
                 using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4, @p5", conn))
                 {
-                    cmd.Parameters.AddWithValue("p1", NpgsqlDbType.TimeTZ, dto);
-                    cmd.Parameters.AddWithValue("p2", NpgsqlDbType.TimeTZ, dtUtc);
-                    cmd.Parameters.AddWithValue("p3", NpgsqlDbType.TimeTZ, dtLocal);
-                    cmd.Parameters.AddWithValue("p4", NpgsqlDbType.TimeTZ, dtUnspecified);
-                    cmd.Parameters.AddWithValue("p5", NpgsqlDbType.TimeTZ, ts);
+                    cmd.Parameters.AddWithValue("p1", NpgsqlDbType.TimeTz, dto);
+                    cmd.Parameters.AddWithValue("p2", NpgsqlDbType.TimeTz, dtUtc);
+                    cmd.Parameters.AddWithValue("p3", NpgsqlDbType.TimeTz, dtLocal);
+                    cmd.Parameters.AddWithValue("p4", NpgsqlDbType.TimeTz, dtUnspecified);
+                    cmd.Parameters.AddWithValue("p5", NpgsqlDbType.TimeTz, ts);
                     Assert.That(cmd.Parameters.All(p => p.DbType == DbType.Object));
 
                     using (var reader = cmd.ExecuteReader())
@@ -345,18 +345,18 @@ namespace Npgsql.Tests.Types
 
                 using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9", conn))
                 {
-                    cmd.Parameters.AddWithValue("p1", NpgsqlDbType.TimestampTZ, dateTimeUtc);
-                    cmd.Parameters.AddWithValue("p2", NpgsqlDbType.TimestampTZ, dateTimeLocal);
-                    cmd.Parameters.AddWithValue("p3", NpgsqlDbType.TimestampTZ, dateTimeUnspecified);
-                    cmd.Parameters.AddWithValue("p4", NpgsqlDbType.TimestampTZ, nDateTimeUtc);
-                    cmd.Parameters.AddWithValue("p5", NpgsqlDbType.TimestampTZ, nDateTimeLocal);
-                    cmd.Parameters.AddWithValue("p6", NpgsqlDbType.TimestampTZ, nDateTimeUnspecified);
+                    cmd.Parameters.AddWithValue("p1", NpgsqlDbType.TimestampTz, dateTimeUtc);
+                    cmd.Parameters.AddWithValue("p2", NpgsqlDbType.TimestampTz, dateTimeLocal);
+                    cmd.Parameters.AddWithValue("p3", NpgsqlDbType.TimestampTz, dateTimeUnspecified);
+                    cmd.Parameters.AddWithValue("p4", NpgsqlDbType.TimestampTz, nDateTimeUtc);
+                    cmd.Parameters.AddWithValue("p5", NpgsqlDbType.TimestampTz, nDateTimeLocal);
+                    cmd.Parameters.AddWithValue("p6", NpgsqlDbType.TimestampTz, nDateTimeUnspecified);
                     cmd.Parameters.AddWithValue("p7", dateTimeUtc);
-                    Assert.That(cmd.Parameters["p7"].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.TimestampTZ));
+                    Assert.That(cmd.Parameters["p7"].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.TimestampTz));
                     cmd.Parameters.AddWithValue("p8", nDateTimeUtc);
-                    Assert.That(cmd.Parameters["p8"].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.TimestampTZ));
+                    Assert.That(cmd.Parameters["p8"].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.TimestampTz));
                     cmd.Parameters.AddWithValue("p9", dateTimeOffset);
-                    Assert.That(cmd.Parameters["p9"].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.TimestampTZ));
+                    Assert.That(cmd.Parameters["p9"].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.TimestampTz));
 
                     using (var reader = cmd.ExecuteReader())
                     {
