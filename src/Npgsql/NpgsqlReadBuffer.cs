@@ -43,6 +43,8 @@ namespace Npgsql
     {
         #region Fields and Properties
 
+        public NpgsqlConnection Connection => Connector.Connection;
+
         internal readonly NpgsqlConnector Connector;
 
         internal Stream Underlying { private get; set; }

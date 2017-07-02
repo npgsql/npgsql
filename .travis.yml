@@ -19,7 +19,9 @@ before_script:
   - dotnet restore -v Minimal
 script:
   - dotnet build "test/Npgsql.Tests" -c Debug -f netcoreapp2.0
+  - dotnet build "test/Npgsql.PluginTests" -c Debug -f netcoreapp2.0
   - dotnet test "test/Npgsql.Tests/Npgsql.Tests.csproj" -c Debug -f netcoreapp2.0
+  - dotnet test "test/Npgsql.PluginTests/Npgsql.PluginTests.csproj" -c Debug -f netcoreapp2.0
 
 cache:
   directories:

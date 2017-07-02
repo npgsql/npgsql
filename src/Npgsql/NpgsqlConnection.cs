@@ -744,7 +744,7 @@ namespace Npgsql
 
         #endregion SSL
 
-        #region Backend version and capabilities
+        #region Backend version, capabilities, settings
 
         /// <summary>
         /// Version of the PostgreSQL backend.
@@ -785,6 +785,7 @@ namespace Npgsql
         /// <summary>
         /// Reports whether the backend uses the newer integer timestamp representation.
         /// Note that the old floating point representation is not supported.
+        /// Meant for use by type plugins (e.g. Nodatime)
         /// </summary>
         [Browsable(false)]
         [PublicAPI]
@@ -798,7 +799,22 @@ namespace Npgsql
             }
         }
 
-        #endregion Backend version and capabilities
+        /// <summary>
+        /// The connection's timezone as reported by PostgreSQL, in the IANA/Olson database format.
+        /// </summary>
+        [Browsable(false)]
+        [PublicAPI]
+        public string Timezone
+        {
+            get
+            {
+                CheckConnectionOpen();
+                Debug.Assert(Connector != null);
+                return Connector.Timezone;
+            }
+        }
+
+        #endregion Backend version, capabilities, settings
 
         #region Copy
 

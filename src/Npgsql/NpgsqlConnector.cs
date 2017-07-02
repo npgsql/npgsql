@@ -1859,7 +1859,7 @@ namespace Npgsql
 
         #endregion
 
-        #region Supported features
+        #region Supported features and PostgreSQL settings
 
         bool SupportsCloseAll => ServerVersion >= new Version(8, 3, 0);
         bool SupportsAdvisoryLocks => ServerVersion >= new Version(8, 2, 0);
@@ -1870,6 +1870,11 @@ namespace Npgsql
         internal bool SupportsRangeTypes => ServerVersion >= new Version(9, 2, 0);
         internal bool UseConformantStrings { get; private set; }
         internal bool IntegerDateTimes { get; private set; }
+
+        /// <summary>
+        /// The connection's timezone as reported by PostgreSQL, in the IANA/Olson database format.
+        /// </summary>
+        internal string Timezone { get; private set; }
 
         void ProcessServerVersion(string value)
         {
@@ -1893,7 +1898,7 @@ namespace Npgsql
         /// </summary>
         bool IsRedshift => Settings.ServerCompatibilityMode == ServerCompatibilityMode.Redshift;
 
-        #endregion Supported features
+        #endregion Supported features and PostgreSQL settings
 
         #region Execute internal command
 
@@ -1933,6 +1938,10 @@ namespace Npgsql
 
             case "integer_datetimes":
                 IntegerDateTimes = value == "on";
+                return;
+
+            case "TimeZone":
+                Timezone = value;
                 return;
             }
         }
