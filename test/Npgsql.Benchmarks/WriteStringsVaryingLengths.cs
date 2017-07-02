@@ -11,7 +11,7 @@ using NpgsqlTypes;
 namespace Npgsql.Benchmarks.Types
 {
     [Config(typeof(Config))]
-    public class WriteBenchmarks
+    public class WriteStringsVaryingLengths
     {
         readonly NpgsqlConnection _conn;
         NpgsqlCommand _intCmd;
@@ -22,7 +22,7 @@ namespace Npgsql.Benchmarks.Types
 
         #region Initialization
 
-        public WriteBenchmarks()
+        public WriteStringsVaryingLengths()
         {
             _conn = BenchmarkEnvironment.OpenConnection();
 
