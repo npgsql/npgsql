@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/Npgsql/Npgsql.csproj" />
+    <ProjectReference Include="../../src/Npgsql.Json.NET/Npgsql.Json.NET.csproj" />
   </ItemGroup>
 
   <ItemGroup>

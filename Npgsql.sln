@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.26228.4
+VisualStudioVersion = 15.0.26621.2
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{4A5A60DD-41B6-40BF-B677-227A921ECCC8}"
 	ProjectSection(SolutionItems) = preProject
@@ -22,6 +22,8 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Npgsql.Benchmarks", "test\Npgsql.Benchmarks\Npgsql.Benchmarks.csproj", "{8B4AE9B6-CDAC-44DD-A5CD-28A470D363B8}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VSIX", "src\VSIX\VSIX.csproj", "{ECFD8615-DEAD-4498-B262-85A4D0230229}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Npgsql.Json.NET", "src\Npgsql.Json.NET\Npgsql.Json.NET.csproj", "{9CBE603F-6746-411D-A5FD-CB2C948CD7D0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -71,6 +73,14 @@ Global
 		{ECFD8615-DEAD-4498-B262-85A4D0230229}.Release|Any CPU.Build.0 = Release|Any CPU
 		{ECFD8615-DEAD-4498-B262-85A4D0230229}.Release|x86.ActiveCfg = Release|Any CPU
 		{ECFD8615-DEAD-4498-B262-85A4D0230229}.Release|x86.Build.0 = Release|Any CPU
+		{9CBE603F-6746-411D-A5FD-CB2C948CD7D0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9CBE603F-6746-411D-A5FD-CB2C948CD7D0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9CBE603F-6746-411D-A5FD-CB2C948CD7D0}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{9CBE603F-6746-411D-A5FD-CB2C948CD7D0}.Debug|x86.Build.0 = Debug|Any CPU
+		{9CBE603F-6746-411D-A5FD-CB2C948CD7D0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9CBE603F-6746-411D-A5FD-CB2C948CD7D0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9CBE603F-6746-411D-A5FD-CB2C948CD7D0}.Release|x86.ActiveCfg = Release|Any CPU
+		{9CBE603F-6746-411D-A5FD-CB2C948CD7D0}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -81,6 +91,10 @@ Global
 		{3E9D78D3-C5D4-40E3-9FDD-AC91E19618AB} = {8537E50E-CF7F-49CB-B4EF-3E2A1B11F050}
 		{8B4AE9B6-CDAC-44DD-A5CD-28A470D363B8} = {ED612DB1-AB32-4603-95E7-891BACA71C39}
 		{ECFD8615-DEAD-4498-B262-85A4D0230229} = {8537E50E-CF7F-49CB-B4EF-3E2A1B11F050}
+		{9CBE603F-6746-411D-A5FD-CB2C948CD7D0} = {8537E50E-CF7F-49CB-B4EF-3E2A1B11F050}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C90AEECD-DB4C-4BE6-B506-16A449852FB8}
 	EndGlobalSection
 	GlobalSection(MonoDevelopProperties) = preSolution
 		StartupItem = Npgsql.csproj
