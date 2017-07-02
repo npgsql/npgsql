@@ -26,6 +26,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
@@ -38,7 +39,7 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-geometric.html
     /// </remarks>
     [TypeMapping("path", NpgsqlDbType.Path, typeof(NpgsqlPath))]
-    class PathHandler : ChunkingTypeHandler<NpgsqlPath>
+    class PathHandler : NpgsqlTypeHandler<NpgsqlPath>
     {
         #region Read
 
@@ -80,20 +81,19 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
             return 5 + ((NpgsqlPath)value).Count * 16;
         }
 
-        protected override async Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter,
-            bool async, CancellationToken cancellationToken)
+        protected override async Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
         {
             var path = (NpgsqlPath)value;
 
             if (buf.WriteSpaceLeft < 5)
-                await buf.Flush(async, cancellationToken);
+                await buf.Flush(async);
             buf.WriteByte((byte)(path.Open ? 0 : 1));
             buf.WriteInt32(path.Count);
 
             foreach (var p in path)
             {
                 if (buf.WriteSpaceLeft < 16)
-                    await buf.Flush(async, cancellationToken);
+                    await buf.Flush(async);
                 buf.WriteDouble(p.X);
                 buf.WriteDouble(p.Y);
             }

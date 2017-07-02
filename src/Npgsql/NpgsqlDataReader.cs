@@ -39,6 +39,7 @@ using Npgsql.Logging;
 using Npgsql.PostgresTypes;
 using Npgsql.Schema;
 using Npgsql.TypeHandlers;
+using Npgsql.TypeHandling;
 using NpgsqlTypes;
 
 #pragma warning disable CA2222 // Do not decrease inherited member visibility
@@ -1112,37 +1113,10 @@ namespace Npgsql
         {
             CheckRowAndOrdinal(ordinal);
 
-            var t = typeof(T);
-            if (!t.IsArray)
-            {
-                if (t == typeof(object))
-                    return new ValueTask<T>((T)GetValue(ordinal));  // TODO: Sync...
-                return ReadColumn<T>(ordinal, async);
-            }
-
-            // Getting an array
-
-            var fieldDescription = RowDescription[ordinal];
-            var handler = fieldDescription.Handler;
-
-            // If the type handler can simply return the requested array, call it as usual. This is the case
-            // of reading a string as char[], a bytea as a byte[]...
-            var tHandler = handler as ITypeHandler<T>;
-            if (tHandler != null)
-                return ReadColumn<T>(ordinal, async);
-
-            // We need to treat this as an actual array type, these need special treatment because of
-            // typing/generics reasons
-            var elementType = t.GetElementType();
-            var arrayHandler = handler as ArrayHandler;
-            if (arrayHandler == null)
-                throw new InvalidCastException($"Can't cast database type {fieldDescription.Handler.PgDisplayName} to {typeof(T).Name}");
-
-            if (arrayHandler.GetElementFieldType(fieldDescription) == elementType)
-                return new ValueTask<T>((T)GetValue(ordinal));
-            if (arrayHandler.GetElementPsvType(fieldDescription) == elementType)
-                return new ValueTask<T>((T)GetProviderSpecificValue(ordinal));
-            throw new InvalidCastException($"Can't cast database type {handler.PgDisplayName} to {typeof(T).Name}");
+            // TODO: Preposterous...
+            if (typeof(T) == typeof(object))
+                return new ValueTask<T>((T)GetValue(ordinal));  // TODO: Sync...
+            return ReadColumn<T>(ordinal, async);
         }
 
         /// <summary>

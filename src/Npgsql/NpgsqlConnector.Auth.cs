@@ -67,7 +67,7 @@ namespace Npgsql
 
             await PasswordMessage
                 .CreateClearText(passwd)
-                .Write(WriteBuffer, async, cancellationToken);
+                .Write(WriteBuffer, async);
             await WriteBuffer.Flush(async);
             await ReadExpecting<AuthenticationRequestMessage>(async);
         }
@@ -91,7 +91,7 @@ namespace Npgsql
 
             await PasswordMessage
                 .CreateMD5(passwd, username, salt)
-                .Write(WriteBuffer, async, cancellationToken);
+                .Write(WriteBuffer, async);
             await WriteBuffer.Flush(async);
             await ReadExpecting<AuthenticationRequestMessage>(async);
         }
@@ -185,7 +185,7 @@ namespace Npgsql
                 if (count > _leftToWrite)
                     throw new NpgsqlException($"NegotiateStream trying to write {count} bytes but according to frame header we only have {_leftToWrite} left!");
                 await _msg.Populate(buffer, offset, count)
-                    .Write(_connector.WriteBuffer, false, CancellationToken.None);
+                    .Write(_connector.WriteBuffer, false);
                 await _connector.WriteBuffer.Flush(async);
                 _leftToWrite -= count;
             }

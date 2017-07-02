@@ -27,6 +27,7 @@ using System.Globalization;
 using JetBrains.Annotations;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandlers;
+using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 
 namespace Npgsql.BackendMessages
@@ -220,12 +221,12 @@ namespace Npgsql.BackendMessages
         /// The Npgsql type handler assigned to handle this field.
         /// Returns <see cref="UnknownTypeHandler"/> for fields with format text.
         /// </summary>
-        internal TypeHandler Handler { get; private set; }
+        internal NpgsqlTypeHandler Handler { get; private set; }
 
         /// <summary>
         /// The type handler resolved for this field, regardless of whether it's binary or text.
         /// </summary>
-        internal TypeHandler RealHandler { get; private set; }
+        internal NpgsqlTypeHandler RealHandler { get; private set; }
 
         internal PostgresType PostgresType => RealHandler.PostgresType;
         internal Type FieldType => Handler.GetFieldType(this);
@@ -242,6 +243,9 @@ namespace Npgsql.BackendMessages
         internal bool IsBinaryFormat => FormatCode == FormatCode.Binary;
         internal bool IsTextFormat => FormatCode == FormatCode.Text;
 
+        /// <summary>
+        /// Returns a string that represents the current object.
+        /// </summary>
         public override string ToString() => Name + (Handler == null ? "" : $"({Handler.PgDisplayName})");
     }
 }

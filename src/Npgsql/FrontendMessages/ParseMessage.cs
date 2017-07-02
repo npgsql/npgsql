@@ -69,13 +69,13 @@ namespace Npgsql.FrontendMessages
             return this;
         }
 
-        internal override async Task Write(NpgsqlWriteBuffer buf, bool async, CancellationToken cancellationToken)
+        internal override async Task Write(NpgsqlWriteBuffer buf, bool async)
         {
             Debug.Assert(Statement != null && Statement.All(c => c < 128));
 
             var queryByteLen = _encoding.GetByteCount(Query);
             if (buf.WriteSpaceLeft < 1 + 4 + Statement.Length + 1)
-                await buf.Flush(async, cancellationToken);
+                await buf.Flush(async);
 
             var messageLength =
                 1 +                         // Message code
@@ -91,17 +91,17 @@ namespace Npgsql.FrontendMessages
             buf.WriteInt32(messageLength - 1);
             buf.WriteNullTerminatedString(Statement);
 
-            await buf.WriteString(Query, queryByteLen, async, cancellationToken);
+            await buf.WriteString(Query, queryByteLen, async);
 
             if (buf.WriteSpaceLeft < 1 + 2)
-                await buf.Flush(async, cancellationToken);
+                await buf.Flush(async);
             buf.WriteByte(0); // Null terminator for the query
             buf.WriteInt16((short)ParameterTypeOIDs.Count);
 
             foreach (var t in ParameterTypeOIDs)
             {
                 if (buf.WriteSpaceLeft < 4)
-                    await buf.Flush(async, cancellationToken);
+                    await buf.Flush(async);
                 buf.WriteInt32((int)t);
             }
         }

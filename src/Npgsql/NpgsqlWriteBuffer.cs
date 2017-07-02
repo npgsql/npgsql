@@ -27,13 +27,18 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
+
 namespace Npgsql
 {
-    public class NpgsqlWriteBuffer
+    /// <summary>
+    /// A buffer used by Npgsql to write data to the socket efficiently.
+    /// Provides methods which encode different values types and tracks the current position.
+    /// </summary>
+    public sealed class NpgsqlWriteBuffer
     {
         #region Fields and Properties
 
@@ -87,10 +92,7 @@ namespace Npgsql
 
         #region I/O
 
-        internal Task Flush(bool async)
-            => Flush(async, CancellationToken.None);
-
-        internal async Task Flush(bool async, CancellationToken cancellationToken)
+        internal async Task Flush(bool async)
         {
             if (_copyMode)
             {
@@ -290,20 +292,20 @@ namespace Npgsql
             _writePosition = pos;
         }
 
-        public Task WriteString(string s, int byteLen, bool async, CancellationToken cancellationToken)
-            => WriteString(s, s.Length, byteLen, async, cancellationToken);
+        public Task WriteString(string s, int byteLen, bool async)
+            => WriteString(s, s.Length, byteLen, async);
 
-        public Task WriteString(string s, int charLen, int byteLen, bool async, CancellationToken cancellationToken)
+        public Task WriteString(string s, int charLen, int byteLen, bool async)
         {
             if (byteLen <= WriteSpaceLeft)
             {
                 WriteString(s, charLen);
                 return PGUtil.CompletedTask;
             }
-            return WriteStringLong(s, charLen, byteLen, async, cancellationToken);
+            return WriteStringLong(s, charLen, byteLen, async);
         }
 
-        async Task WriteStringLong(string s, int charLen, int byteLen, bool async, CancellationToken cancellationToken)
+        async Task WriteStringLong(string s, int charLen, int byteLen, bool async)
         {
             Debug.Assert(byteLen > WriteSpaceLeft);
             if (byteLen <= Size)
@@ -316,7 +318,7 @@ namespace Npgsql
             else
             {
 #if NETSTANDARD1_3
-                await WriteChars(s.ToCharArray(), 0, charLen, byteLen, async, cancellationToken);
+                await WriteChars(s.ToCharArray(), 0, charLen, byteLen, async);
                 return;
 #else
                 var charPos = 0;
@@ -332,17 +334,17 @@ namespace Npgsql
             }
         }
 
-        internal Task WriteChars(char[] chars, int offset, int charLen, int byteLen, bool async, CancellationToken cancellationToken)
+        internal Task WriteChars(char[] chars, int offset, int charLen, int byteLen, bool async)
         {
             if (byteLen <= WriteSpaceLeft)
             {
                 WriteChars(chars, offset, charLen);
                 return PGUtil.CompletedTask;
             }
-            return WriteCharsLong(chars, offset, charLen, byteLen, async, cancellationToken);
+            return WriteCharsLong(chars, offset, charLen, byteLen, async);
         }
 
-        async Task WriteCharsLong(char[] chars, int offset, int charLen, int byteLen, bool async, CancellationToken cancellationToken)
+        async Task WriteCharsLong(char[] chars, int offset, int charLen, int byteLen, bool async)
         {
             Debug.Assert(byteLen > WriteSpaceLeft);
             if (byteLen <= Size)

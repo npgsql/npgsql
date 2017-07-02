@@ -23,21 +23,20 @@
 
 using System;
 using System.IO;
-using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
-using JetBrains.Annotations;
 using Npgsql.BackendMessages;
-using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
+
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
 namespace Npgsql.TypeHandlers
 {
     [TypeMapping("jsonb", NpgsqlDbType.Jsonb)]
-    public class JsonbHandlerFactory : TypeHandlerFactory
+    public class JsonbHandlerFactory : NpgsqlTypeHandlerFactory
     {
-        protected override TypeHandler Create(NpgsqlConnection conn) => new JsonbHandler(conn);
+        protected override NpgsqlTypeHandler Create(NpgsqlConnection conn) => new JsonbHandler(conn);
     }
 
     /// <summary>
@@ -67,13 +66,12 @@ namespace Npgsql.TypeHandlers
             return base.ValidateAndGetLength(value, ref lengthCache, parameter) + 1;
         }
 
-        protected override async Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter,
-            bool async, CancellationToken cancellationToken)
+        protected override async Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
         {
             if (buf.WriteSpaceLeft < 1)
-                await buf.Flush(async, cancellationToken);
+                await buf.Flush(async);
             buf.WriteByte(JsonbProtocolVersion);
-            await base.Write(value, buf, lengthCache, parameter, async, cancellationToken);
+            await base.Write(value, buf, lengthCache, parameter, async);
         }
 
         #endregion

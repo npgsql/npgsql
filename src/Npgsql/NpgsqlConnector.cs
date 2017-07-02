@@ -827,7 +827,7 @@ namespace Npgsql
         {
             _pendingPrependedResponses += msg.ResponseMessageCount;
 
-            var t = msg.Write(WriteBuffer, false, CancellationToken.None);
+            var t = msg.Write(WriteBuffer, false);
             Debug.Assert(t.IsCompleted, $"Could not fully write message of type {msg.GetType().Name} into the buffer");
         }
 
@@ -835,7 +835,7 @@ namespace Npgsql
 
         internal void SendMessage(FrontendMessage message)
         {
-            message.Write(WriteBuffer, false, CancellationToken.None).Wait();
+            message.Write(WriteBuffer, false).Wait();
             WriteBuffer.Flush();
         }
 
@@ -1904,7 +1904,7 @@ namespace Npgsql
 
             Log.Trace($"Executing internal command: {message}", Id);
 
-            await message.Write(WriteBuffer, async, cancellationToken);
+            await message.Write(WriteBuffer, async);
             await WriteBuffer.Flush(async);
             await ReadExpecting<CommandCompleteMessage>(async);
             await ReadExpecting<ReadyForQueryMessage>(async);

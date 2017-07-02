@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.TypeHandlers;
+using Npgsql.TypeHandling;
 
 namespace Npgsql
 {

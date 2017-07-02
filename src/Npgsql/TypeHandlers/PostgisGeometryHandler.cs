@@ -30,6 +30,7 @@ using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.Logging;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
@@ -49,12 +50,12 @@ namespace Npgsql.TypeHandlers
         typeof(PostgisMultiPolygon),
         typeof(PostgisGeometryCollection),
     })]
-    class PostgisGeometryHandler : ChunkingTypeHandler<PostgisGeometry>,
-        IChunkingTypeHandler<PostgisPoint>, IChunkingTypeHandler<PostgisMultiPoint>,
-        IChunkingTypeHandler<PostgisLineString>, IChunkingTypeHandler<PostgisMultiLineString>,
-        IChunkingTypeHandler<PostgisPolygon>, IChunkingTypeHandler<PostgisMultiPolygon>,
-        IChunkingTypeHandler<PostgisGeometryCollection>,
-        IChunkingTypeHandler<byte[]>
+    class PostgisGeometryHandler : NpgsqlTypeHandler<PostgisGeometry>,
+        INpgsqlTypeHandler<PostgisPoint>, INpgsqlTypeHandler<PostgisMultiPoint>,
+        INpgsqlTypeHandler<PostgisLineString>, INpgsqlTypeHandler<PostgisMultiLineString>,
+        INpgsqlTypeHandler<PostgisPolygon>, INpgsqlTypeHandler<PostgisMultiPolygon>,
+        INpgsqlTypeHandler<PostgisGeometryCollection>,
+        INpgsqlTypeHandler<byte[]>
     {
         [CanBeNull]
         readonly ByteaHandler _byteaHandler;
@@ -199,7 +200,7 @@ namespace Npgsql.TypeHandlers
             }
         }
 
-        ValueTask<byte[]> IChunkingTypeHandler<byte[]>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        ValueTask<byte[]> INpgsqlTypeHandler<byte[]>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
         {
             Debug.Assert(_byteaHandler != null);
             return _byteaHandler.Read(buf, len, async, fieldDescription);
@@ -209,19 +210,19 @@ namespace Npgsql.TypeHandlers
 
         #region Read concrete types
 
-        async ValueTask<PostgisPoint> IChunkingTypeHandler<PostgisPoint>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        async ValueTask<PostgisPoint> INpgsqlTypeHandler<PostgisPoint>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
             => (PostgisPoint)await Read(buf, len, async, fieldDescription);
-        async ValueTask<PostgisMultiPoint> IChunkingTypeHandler<PostgisMultiPoint>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        async ValueTask<PostgisMultiPoint> INpgsqlTypeHandler<PostgisMultiPoint>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
             => (PostgisMultiPoint)await Read(buf, len, async, fieldDescription);
-        async ValueTask<PostgisLineString> IChunkingTypeHandler<PostgisLineString>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        async ValueTask<PostgisLineString> INpgsqlTypeHandler<PostgisLineString>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
             => (PostgisLineString)await Read(buf, len, async, fieldDescription);
-        async ValueTask<PostgisMultiLineString> IChunkingTypeHandler<PostgisMultiLineString>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        async ValueTask<PostgisMultiLineString> INpgsqlTypeHandler<PostgisMultiLineString>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
             => (PostgisMultiLineString)await Read(buf, len, async, fieldDescription);
-        async ValueTask<PostgisPolygon> IChunkingTypeHandler<PostgisPolygon>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        async ValueTask<PostgisPolygon> INpgsqlTypeHandler<PostgisPolygon>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
             => (PostgisPolygon)await Read(buf, len, async, fieldDescription);
-        async ValueTask<PostgisMultiPolygon> IChunkingTypeHandler<PostgisMultiPolygon>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        async ValueTask<PostgisMultiPolygon> INpgsqlTypeHandler<PostgisMultiPolygon>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
             => (PostgisMultiPolygon)await Read(buf, len, async, fieldDescription);
-        async ValueTask<PostgisGeometryCollection> IChunkingTypeHandler<PostgisGeometryCollection>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        async ValueTask<PostgisGeometryCollection> INpgsqlTypeHandler<PostgisGeometryCollection>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
             => (PostgisGeometryCollection)await Read(buf, len, async, fieldDescription);
 
         #endregion
@@ -241,35 +242,33 @@ namespace Npgsql.TypeHandlers
             throw new InvalidCastException("IGeometry type expected.");
         }
 
-        protected override Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter,
-            bool async, CancellationToken cancellationToken)
+        protected override Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
         {
             var bytes = value as byte[];
             if (bytes != null)
             {
                 if (_byteaHandler == null)
                     throw new NpgsqlException("Bytea handler was not found during initialization of PostGIS handler");
-                return _byteaHandler.WriteInternal(bytes, buf, lengthCache, parameter, async, cancellationToken);
+                return _byteaHandler.WriteInternal(bytes, buf, lengthCache, parameter, async);
             }
 
-            return Write((PostgisGeometry)value, buf, lengthCache, parameter, async, cancellationToken);
+            return Write((PostgisGeometry)value, buf, lengthCache, parameter, async);
         }
 
-        async Task Write(PostgisGeometry geom, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter,
-            bool async, CancellationToken cancellationToken)
+        async Task Write(PostgisGeometry geom, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
         {
             // Common header
             if (geom.SRID == 0)
             {
                 if (buf.WriteSpaceLeft < 5)
-                    await buf.Flush(async, cancellationToken);
+                    await buf.Flush(async);
                 buf.WriteByte(0); // We choose to ouput only XDR structure
                 buf.WriteInt32((int)geom.Identifier);
             }
             else
             {
                 if (buf.WriteSpaceLeft < 9)
-                    await buf.Flush(async, cancellationToken);
+                    await buf.Flush(async);
                 buf.WriteByte(0);
                 buf.WriteInt32((int) ((uint)geom.Identifier | (uint)EwkbModifiers.HasSRID));
                 buf.WriteInt32((int) geom.SRID);
@@ -279,7 +278,7 @@ namespace Npgsql.TypeHandlers
             {
             case WkbIdentifier.Point:
                 if (buf.WriteSpaceLeft < 16)
-                    await buf.Flush(async, cancellationToken);
+                    await buf.Flush(async);
                 var p = (PostgisPoint)geom;
                 buf.WriteDouble(p.X);
                 buf.WriteDouble(p.Y);
@@ -288,12 +287,12 @@ namespace Npgsql.TypeHandlers
             case WkbIdentifier.LineString:
                 var l = (PostgisLineString)geom;
                 if (buf.WriteSpaceLeft < 4)
-                    await buf.Flush(async, cancellationToken);
+                    await buf.Flush(async);
                 buf.WriteInt32(l.PointCount);
                 for (var ipts = 0; ipts < l.PointCount; ipts++)
                 {
                     if (buf.WriteSpaceLeft < 16)
-                        await buf.Flush(async, cancellationToken);
+                        await buf.Flush(async);
                     buf.WriteDouble(l[ipts].X);
                     buf.WriteDouble(l[ipts].Y);
                 }
@@ -302,17 +301,17 @@ namespace Npgsql.TypeHandlers
             case WkbIdentifier.Polygon:
                 var pol = (PostgisPolygon)geom;
                 if (buf.WriteSpaceLeft < 4)
-                    await buf.Flush(async, cancellationToken);
+                    await buf.Flush(async);
                 buf.WriteInt32(pol.RingCount);
                 for (var irng = 0; irng < pol.RingCount; irng++)
                 {
                     if (buf.WriteSpaceLeft < 4)
-                        await buf.Flush(async, cancellationToken);
+                        await buf.Flush(async);
                     buf.WriteInt32(pol[irng].Length);
                     for (var ipts = 0; ipts < pol[irng].Length; ipts++)
                     {
                         if (buf.WriteSpaceLeft < 16)
-                            await buf.Flush(async, cancellationToken);
+                            await buf.Flush(async);
                         buf.WriteDouble(pol[irng][ipts].X);
                         buf.WriteDouble(pol[irng][ipts].Y);
                     }
@@ -322,12 +321,12 @@ namespace Npgsql.TypeHandlers
             case WkbIdentifier.MultiPoint:
                 var mp = (PostgisMultiPoint)geom;
                 if (buf.WriteSpaceLeft < 4)
-                    await buf.Flush(async, cancellationToken);
+                    await buf.Flush(async);
                 buf.WriteInt32(mp.PointCount);
                 for (var ipts = 0; ipts < mp.PointCount; ipts++)
                 {
                     if (buf.WriteSpaceLeft < 21)
-                        await buf.Flush(async, cancellationToken);
+                        await buf.Flush(async);
                     buf.WriteByte(0);
                     buf.WriteInt32((int)WkbIdentifier.Point);
                     buf.WriteDouble(mp[ipts].X);
@@ -338,19 +337,19 @@ namespace Npgsql.TypeHandlers
             case WkbIdentifier.MultiLineString:
                 var ml = (PostgisMultiLineString)geom;
                 if (buf.WriteSpaceLeft < 4)
-                    await buf.Flush(async, cancellationToken);
+                    await buf.Flush(async);
                 buf.WriteInt32(ml.LineCount);
                 for (var irng = 0; irng < ml.LineCount; irng++)
                 {
                     if (buf.WriteSpaceLeft < 9)
-                        await buf.Flush(async, cancellationToken);
+                        await buf.Flush(async);
                     buf.WriteByte(0);
                     buf.WriteInt32((int)WkbIdentifier.LineString);
                     buf.WriteInt32(ml[irng].PointCount);
                     for (var ipts = 0; ipts < ml[irng].PointCount; ipts++)
                     {
                         if (buf.WriteSpaceLeft < 16)
-                            await buf.Flush(async, cancellationToken);
+                            await buf.Flush(async);
                         buf.WriteDouble(ml[irng][ipts].X);
                         buf.WriteDouble(ml[irng][ipts].Y);
                     }
@@ -360,24 +359,24 @@ namespace Npgsql.TypeHandlers
             case WkbIdentifier.MultiPolygon:
                 var mpl = (PostgisMultiPolygon)geom;
                 if (buf.WriteSpaceLeft < 4)
-                    await buf.Flush(async, cancellationToken);
+                    await buf.Flush(async);
                 buf.WriteInt32(mpl.PolygonCount);
                 for (var ipol = 0; ipol < mpl.PolygonCount; ipol++)
                 {
                     if (buf.WriteSpaceLeft < 9)
-                        await buf.Flush(async, cancellationToken);
+                        await buf.Flush(async);
                     buf.WriteByte(0);
                     buf.WriteInt32((int)WkbIdentifier.Polygon);
                     buf.WriteInt32(mpl[ipol].RingCount);
                     for (var irng = 0; irng < mpl[ipol].RingCount; irng++)
                     {
                         if (buf.WriteSpaceLeft < 4)
-                            await buf.Flush(async, cancellationToken);
+                            await buf.Flush(async);
                         buf.WriteInt32(mpl[ipol][irng].Length);
                         for (var ipts = 0; ipts < mpl[ipol][irng].Length; ipts++)
                         {
                             if (buf.WriteSpaceLeft < 16)
-                                await buf.Flush(async, cancellationToken);
+                                await buf.Flush(async);
                             buf.WriteDouble(mpl[ipol][irng][ipts].X);
                             buf.WriteDouble(mpl[ipol][irng][ipts].Y);
                         }
@@ -388,11 +387,11 @@ namespace Npgsql.TypeHandlers
             case WkbIdentifier.GeometryCollection:
                 var coll = (PostgisGeometryCollection)geom;
                 if (buf.WriteSpaceLeft < 4)
-                    await buf.Flush(async, cancellationToken);
+                    await buf.Flush(async);
                 buf.WriteInt32(coll.GeometryCount);
 
                 foreach (var x in coll)
-                    await Write(x, buf, lengthCache, null, async, cancellationToken);
+                    await Write(x, buf, lengthCache, null, async);
                 return;
 
             default:

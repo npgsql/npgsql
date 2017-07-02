@@ -24,14 +24,15 @@
 using NpgsqlTypes;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandlers.NumericHandlers;
+using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 
 namespace Npgsql.TypeHandlers.InternalTypesHandlers
 {
     [TypeMapping("int2vector", NpgsqlDbType.Int2Vector)]
-    class Int2VectorHandlerFactory : TypeHandlerFactory
+    class Int2VectorHandlerFactory : NpgsqlTypeHandlerFactory
     {
-        protected override TypeHandler Create(NpgsqlConnection conn)
+        protected override NpgsqlTypeHandler Create(NpgsqlConnection conn)
             => new Int2VectorHandler(conn.Connector.TypeMapper.DatabaseInfo.ByName["int2"]);
     }
 

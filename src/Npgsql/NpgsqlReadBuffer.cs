@@ -31,9 +31,15 @@ using System.Text;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
+
 namespace Npgsql
 {
-    public class NpgsqlReadBuffer
+    /// <summary>
+    /// A buffer used by Npgsql to read data from the socket efficiently.
+    /// Provides methods which decode different values types and tracks the current position.
+    /// </summary>
+    public sealed class NpgsqlReadBuffer
     {
         #region Fields and Properties
 
@@ -92,6 +98,10 @@ namespace Npgsql
 
         #region I/O
 
+        /// <summary>
+        /// Ensures that <paramref name="count"/> bytes are available in the buffer, and if
+        /// not, reads from the socket until enough is available.
+        /// </summary>
         public Task Ensure(int count, bool async) => Ensure(count, async, false);
 
         internal void Ensure(int count)

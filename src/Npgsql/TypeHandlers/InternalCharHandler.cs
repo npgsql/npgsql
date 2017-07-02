@@ -26,6 +26,7 @@ using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using JetBrains.Annotations;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 
 namespace Npgsql.TypeHandlers
@@ -37,24 +38,24 @@ namespace Npgsql.TypeHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-character.html
     /// </remarks>
     [TypeMapping("char", NpgsqlDbType.InternalChar)]
-    class InternalCharHandler : SimpleTypeHandler<char>,
-        ISimpleTypeHandler<byte>, ISimpleTypeHandler<short>, ISimpleTypeHandler<int>, ISimpleTypeHandler<long>
+    class InternalCharHandler : NpgsqlSimpleTypeHandler<char>,
+        INpgsqlSimpleTypeHandler<byte>, INpgsqlSimpleTypeHandler<short>, INpgsqlSimpleTypeHandler<int>, INpgsqlSimpleTypeHandler<long>
     {
         #region Read
 
         public override char Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => (char)buf.ReadByte();
 
-        byte ISimpleTypeHandler<byte>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        byte INpgsqlSimpleTypeHandler<byte>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => buf.ReadByte();
 
-        short ISimpleTypeHandler<short>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        short INpgsqlSimpleTypeHandler<short>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => buf.ReadByte();
 
-        int ISimpleTypeHandler<int>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        int INpgsqlSimpleTypeHandler<int>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => buf.ReadByte();
 
-        long ISimpleTypeHandler<long>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        long INpgsqlSimpleTypeHandler<long>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => buf.ReadByte();
 
         #endregion

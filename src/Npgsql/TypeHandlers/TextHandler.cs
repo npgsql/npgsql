@@ -22,18 +22,17 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
-using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
+
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
 namespace Npgsql.TypeHandlers
 {
@@ -51,13 +50,13 @@ namespace Npgsql.TypeHandlers
     [TypeMapping("refcursor", NpgsqlDbType.Refcursor, inferredDbType: DbType.String)]
     [TypeMapping("citext", NpgsqlDbType.Citext, inferredDbType: DbType.String)]
     [TypeMapping("unknown")]
-    public class TextHandlerFactory : TypeHandlerFactory
+    public class TextHandlerFactory : NpgsqlTypeHandlerFactory
     {
-        protected override TypeHandler Create(NpgsqlConnection conn)
+        protected override NpgsqlTypeHandler Create(NpgsqlConnection conn)
             => new TextHandler(conn);
     }
 
-    public class TextHandler : ChunkingTypeHandler<string>, IChunkingTypeHandler<char[]>, ITextReaderHandler
+    public class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler<char[]>, ITextReaderHandler
     {
         // Text types are handled a bit more efficiently when sent as text than as binary
         // see https://github.com/npgsql/npgsql/issues/1210#issuecomment-235641670
@@ -118,7 +117,7 @@ namespace Npgsql.TypeHandlers
             return buf.TextEncoding.GetString(tempBuf);
         }
 
-        async ValueTask<char[]> IChunkingTypeHandler<char[]>.Read(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription fieldDescription)
+        async ValueTask<char[]> INpgsqlTypeHandler<char[]>.Read(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription fieldDescription)
         {
             if (byteLen <= buf.Size)
             {
@@ -206,8 +205,7 @@ namespace Npgsql.TypeHandlers
                 return lengthCache.Set(_encoding.GetByteCount(p, parameter.Size));
         }
 
-        protected override Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter,
-            bool async, CancellationToken cancellationToken)
+        protected override Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
         {
             if (parameter?.ConvertedValue != null)
                 value = parameter.ConvertedValue;
@@ -215,7 +213,7 @@ namespace Npgsql.TypeHandlers
             var str = value as string;
             if (str != null)
             {
-                return WriteString(str, buf, lengthCache, parameter, async, cancellationToken);
+                return WriteString(str, buf, lengthCache, parameter, async);
             }
 
             var chars = value as char[];
@@ -224,32 +222,30 @@ namespace Npgsql.TypeHandlers
                 var charLen = parameter == null || parameter.Size <= 0 || parameter.Size >= chars.Length
                     ? chars.Length
                     : parameter.Size;
-                return buf.WriteChars(chars, 0, charLen, lengthCache.GetLast(), async, cancellationToken);
+                return buf.WriteChars(chars, 0, charLen, lengthCache.GetLast(), async);
             }
 
             if (value is char)
             {
                 _singleCharArray[0] = (char)value;
-                return buf.WriteChars(_singleCharArray, 0, 1, lengthCache.GetLast(), async, cancellationToken);
+                return buf.WriteChars(_singleCharArray, 0, 1, lengthCache.GetLast(), async);
             }
 
             if (value is ArraySegment<char>)
             {
                 var segment = (ArraySegment<char>)value;
-                return buf.WriteChars(segment.Array, segment.Offset, segment.Count, lengthCache.GetLast(), async,
-                    cancellationToken);
+                return buf.WriteChars(segment.Array, segment.Offset, segment.Count, lengthCache.GetLast(), async);
             }
 
-            return WriteString(Convert.ToString(value), buf, lengthCache, parameter, async, cancellationToken);
+            return WriteString(Convert.ToString(value), buf, lengthCache, parameter, async);
         }
 
-        Task WriteString(string str, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter,
-            bool async, CancellationToken cancellationToken)
+        Task WriteString(string str, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter, bool async)
         {
             var charLen = parameter == null || parameter.Size <= 0 || parameter.Size >= str.Length
                 ? str.Length
                 : parameter.Size;
-            return buf.WriteString(str, charLen, lengthCache.GetLast(), async, cancellationToken);
+            return buf.WriteString(str, charLen, lengthCache.GetLast(), async);
         }
 
         #endregion

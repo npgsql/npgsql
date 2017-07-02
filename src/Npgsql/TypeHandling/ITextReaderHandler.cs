@@ -21,32 +21,19 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
-using Npgsql.PostgresTypes;
+using System.Data.Common;
+using System.IO;
 
-namespace Npgsql.TypeMapping
+namespace Npgsql.TypeHandling
 {
     /// <summary>
-    /// A type handler factory used to instantiate Npgsql's built-in type handlers.
+    /// Implemented by handlers which support <see cref="DbDataReader.GetTextReader"/>, returns a standard
+    /// TextReader given a binary Stream.
     /// </summary>
-    class DefaultTypeHandlerFactory : TypeHandlerFactory
+    interface ITextReaderHandler
     {
-        readonly Type _handlerType;
-
-        internal DefaultTypeHandlerFactory(Type handlerType)
-        {
-            if (handlerType.IsAssignableFrom(typeof(TypeHandler)))
-                throw new ArgumentException("Must be a subclass of TypeHandler", nameof(handlerType));
-            _handlerType = handlerType;
-        }
-
-        protected override TypeHandler Create(NpgsqlConnection conn)
-            => (TypeHandler)Activator.CreateInstance(_handlerType);
+        TextReader GetTextReader(Stream stream);
     }
+
+#pragma warning disable CA1032
 }

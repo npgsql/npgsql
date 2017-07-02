@@ -32,6 +32,7 @@ using NUnit.Framework.Constraints;
 using Npgsql;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
@@ -1359,15 +1360,15 @@ LANGUAGE plpgsql VOLATILE";
 
     #region Mock Type Handlers
 
-    class ExplodingTypeHandlerFactory : TypeHandlerFactory
+    class ExplodingTypeHandlerFactory : NpgsqlTypeHandlerFactory
     {
         readonly bool _safe;
         internal ExplodingTypeHandlerFactory(bool safe) { _safe = safe; }
-        protected override TypeHandler Create(NpgsqlConnection conn)
+        protected override NpgsqlTypeHandler Create(NpgsqlConnection conn)
             => new ExplodingTypeHandler(_safe);
     }
 
-    class ExplodingTypeHandler : SimpleTypeHandler<int>
+    class ExplodingTypeHandler : NpgsqlSimpleTypeHandler<int>
     {
         readonly bool _safe;
         internal ExplodingTypeHandler(bool safe) { _safe = safe; }

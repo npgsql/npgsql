@@ -25,6 +25,7 @@ using System;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
@@ -34,7 +35,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-datetime.html
     /// </remarks>
     [TypeMapping("timetz", NpgsqlDbType.TimeTz)]
-    class TimeTzHandler : SimpleTypeHandler<DateTimeOffset>, ISimpleTypeHandler<DateTime>, ISimpleTypeHandler<TimeSpan>
+    class TimeTzHandler : NpgsqlSimpleTypeHandler<DateTimeOffset>, INpgsqlSimpleTypeHandler<DateTime>, INpgsqlSimpleTypeHandler<TimeSpan>
     {
         // Binary Format: int64 expressing microseconds, int32 expressing timezone in seconds, negative
 
@@ -46,10 +47,10 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             return new DateTimeOffset(ticks, offset);
         }
 
-        DateTime ISimpleTypeHandler<DateTime>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        DateTime INpgsqlSimpleTypeHandler<DateTime>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => Read(buf, len, fieldDescription).LocalDateTime;
 
-        TimeSpan ISimpleTypeHandler<TimeSpan>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        TimeSpan INpgsqlSimpleTypeHandler<TimeSpan>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => Read(buf, len, fieldDescription).LocalDateTime.TimeOfDay;
 
         protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)

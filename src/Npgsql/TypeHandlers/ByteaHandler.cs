@@ -30,6 +30,7 @@ using NpgsqlTypes;
 using System.Data;
 using JetBrains.Annotations;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 
 namespace Npgsql.TypeHandlers
@@ -38,7 +39,7 @@ namespace Npgsql.TypeHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-binary.html
     /// </remarks>
     [TypeMapping("bytea", NpgsqlDbType.Bytea, DbType.Binary, new[] { typeof(byte[]), typeof(ArraySegment<byte>) })]
-    class ByteaHandler : ChunkingTypeHandler<byte[]>
+    class ByteaHandler : NpgsqlTypeHandler<byte[]>
     {
         public override async ValueTask<byte[]> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
         {
@@ -77,8 +78,7 @@ namespace Npgsql.TypeHandlers
             throw CreateConversionException(value.GetType());
         }
 
-        protected override async Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter,
-            bool async, CancellationToken cancellationToken)
+        protected override async Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter, bool async)
         {
             ArraySegment<byte> segment;
 
@@ -106,14 +106,12 @@ namespace Npgsql.TypeHandlers
 
             // The segment is larger than our buffer. Flush whatever is currently in the buffer and
             // write the array directly to the socket.
-            await buf.Flush(async, cancellationToken);
+            await buf.Flush(async);
             buf.DirectWrite(segment.Array, segment.Offset, segment.Count);
         }
 
-        internal Task WriteInternal(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache,
-                [CanBeNull] NpgsqlParameter parameter,
-                bool async, CancellationToken cancellationToken)
-            => Write(value, buf, lengthCache, parameter, async, cancellationToken);
+        internal Task WriteInternal(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter, bool async)
+            => Write(value, buf, lengthCache, parameter, async);
 
         #endregion
     }

@@ -27,14 +27,15 @@ using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 
 namespace Npgsql.TypeHandlers
 {
     [TypeMapping("record")]
-    class RecordHandlerFactory : TypeHandlerFactory
+    class RecordHandlerFactory : NpgsqlTypeHandlerFactory
     {
-        protected override TypeHandler Create(NpgsqlConnection conn)
+        protected override NpgsqlTypeHandler Create(NpgsqlConnection conn)
             => new RecordHandler(conn.Connector.TypeMapper);
     }
 
@@ -50,7 +51,7 @@ namespace Npgsql.TypeHandlers
     /// * The length of the column(32-bit integer), or -1 if null
     /// * The column data encoded as binary
     /// </remarks>
-    class RecordHandler : ChunkingTypeHandler<object[]>
+    class RecordHandler : NpgsqlTypeHandler<object[]>
     {
         readonly ConnectorTypeMapper _typeMapper;
 
@@ -87,7 +88,7 @@ namespace Npgsql.TypeHandlers
         protected internal override int ValidateAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
             => throw new NotSupportedException("Can't write record types");
 
-        protected override Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async, CancellationToken cancellationToken)
+        protected override Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
             => throw new NotSupportedException("Can't write record types");
 
         #endregion

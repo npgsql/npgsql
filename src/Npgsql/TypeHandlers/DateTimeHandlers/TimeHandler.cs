@@ -26,22 +26,23 @@ using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 
 namespace Npgsql.TypeHandlers.DateTimeHandlers
 {
     [TypeMapping("time", NpgsqlDbType.Time, new[] { DbType.Time })]
-    class TimeHandlerFactory : TypeHandlerFactory
+    class TimeHandlerFactory : NpgsqlTypeHandlerFactory
     {
         // Check for the legacy floating point timestamps feature
-        protected override TypeHandler Create(NpgsqlConnection conn)
+        protected override NpgsqlTypeHandler Create(NpgsqlConnection conn)
             => new TimeHandler(conn.HasIntegerDateTimes);
     }
 
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-datetime.html
     /// </remarks>
-    class TimeHandler : SimpleTypeHandler<TimeSpan>
+    class TimeHandler : NpgsqlSimpleTypeHandler<TimeSpan>
     {
         /// <summary>
         /// A deprecated compile-time option of PostgreSQL switches to a floating-point representation of some date/time

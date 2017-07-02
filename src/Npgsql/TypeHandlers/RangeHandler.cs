@@ -27,6 +27,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using NpgsqlTypes;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
 
 namespace Npgsql.TypeHandlers
 {
@@ -38,19 +39,19 @@ namespace Npgsql.TypeHandlers
     /// http://www.postgresql.org/docs/current/static/rangetypes.html
     /// </remarks>
     /// <typeparam name="TElement">the range subtype</typeparam>
-    class RangeHandler<TElement> : ChunkingTypeHandler<NpgsqlRange<TElement>>
+    class RangeHandler<TElement> : NpgsqlTypeHandler<NpgsqlRange<TElement>>
     {
         /// <summary>
         /// The type handler for the element that this range type holds
         /// </summary>
-        public TypeHandler ElementHandler { get; }
+        public NpgsqlTypeHandler ElementHandler { get; }
 
-        public RangeHandler(TypeHandler<TElement> elementHandler)
+        public RangeHandler(NpgsqlTypeHandler<TElement> elementHandler)
         {
             ElementHandler = elementHandler;
         }
 
-        internal override TypeHandler CreateRangeHandler(PostgresType backendType)
+        internal override NpgsqlTypeHandler CreateRangeHandler(PostgresType backendType)
         {
             throw new Exception("Can't create range handler of range types, this is an Npgsql bug, please report.");
         }
@@ -101,19 +102,18 @@ namespace Npgsql.TypeHandlers
             return totalLen;
         }
 
-        protected override async Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter,
-            bool async, CancellationToken cancellationToken)
+        protected override async Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
         {
             var range = (NpgsqlRange<TElement>)value;
             if (buf.WriteSpaceLeft < 1)
-                await buf.Flush(async, cancellationToken);
+                await buf.Flush(async);
             buf.WriteByte((byte)range.Flags);
             if (range.IsEmpty)
                 return;
             if (!range.LowerBoundInfinite)
-                await ElementHandler.WriteWithLength(range.LowerBound, buf, lengthCache, null, async, cancellationToken);
+                await ElementHandler.WriteWithLength(range.LowerBound, buf, lengthCache, null, async);
             if (!range.UpperBoundInfinite)
-                await ElementHandler.WriteWithLength(range.UpperBound, buf, lengthCache, null, async, cancellationToken);
+                await ElementHandler.WriteWithLength(range.UpperBound, buf, lengthCache, null, async);
         }
 
         #endregion

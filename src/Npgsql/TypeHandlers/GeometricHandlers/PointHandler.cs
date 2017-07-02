@@ -24,6 +24,7 @@
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
@@ -36,12 +37,12 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-geometric.html
     /// </remarks>
     [TypeMapping("point", NpgsqlDbType.Point, typeof(NpgsqlPoint))]
-    class PointHandler : SimpleTypeHandler<NpgsqlPoint>, ISimpleTypeHandler<string>
+    class PointHandler : NpgsqlSimpleTypeHandler<NpgsqlPoint>, INpgsqlSimpleTypeHandler<string>
     {
         public override NpgsqlPoint Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => new NpgsqlPoint(buf.ReadDouble(), buf.ReadDouble());
 
-        string ISimpleTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        string INpgsqlSimpleTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => Read(buf, len, fieldDescription).ToString();
 
         protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)

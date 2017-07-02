@@ -737,12 +737,12 @@ namespace Npgsql
                         // We have a prepared statement that replaces an existing statement - close the latter first.
                         await connector.CloseMessage
                             .Populate(StatementOrPortal.Statement, pStatement.StatementBeingReplaced.Name)
-                            .Write(buf, async, cancellationToken);
+                            .Write(buf, async);
                     }
 
                     await connector.ParseMessage
                         .Populate(statement.SQL, statement.StatementName, statement.InputParameters, connector.TypeMapper)
-                        .Write(buf, async, cancellationToken);
+                        .Write(buf, async);
                 }
 
                 var bind = connector.BindMessage;
@@ -751,21 +751,21 @@ namespace Npgsql
                     bind.AllResultTypesAreUnknown = AllResultTypesAreUnknown;
                 else if (i == 0 && UnknownResultTypeList != null)
                     bind.UnknownResultTypeList = UnknownResultTypeList;
-                await connector.BindMessage.Write(buf, async, cancellationToken);
+                await connector.BindMessage.Write(buf, async);
 
                 if (pStatement == null || pStatement.State == PreparedState.ToBePrepared)
                 {
                     await connector.DescribeMessage
                         .Populate(StatementOrPortal.Portal)
-                        .Write(buf, async, cancellationToken);
+                        .Write(buf, async);
                     if (statement.PreparedStatement != null)
                         statement.PreparedStatement.State = PreparedState.BeingPrepared;
                 }
 
-                await ExecuteMessage.DefaultExecute.Write(buf, async, cancellationToken);
+                await ExecuteMessage.DefaultExecute.Write(buf, async);
             }
-            await SyncMessage.Instance.Write(buf, async, cancellationToken);
-            await buf.Flush(async, cancellationToken);
+            await SyncMessage.Instance.Write(buf, async);
+            await buf.Flush(async);
             CleanupSend();
         }
 
@@ -796,18 +796,18 @@ namespace Npgsql
 
                 await connector.ParseMessage
                     .Populate(statement.SQL, "", statement.InputParameters, connector.TypeMapper)
-                    .Write(buf, async, cancellationToken);
+                    .Write(buf, async);
 
                 await connector.DescribeMessage
                     .Populate(StatementOrPortal.Statement, statement.StatementName)
-                    .Write(buf, async, cancellationToken);
+                    .Write(buf, async);
                 wroteSomething = true;
             }
 
             if (wroteSomething)
             {
-                await SyncMessage.Instance.Write(buf, async, cancellationToken);
-                await buf.Flush(async, cancellationToken);
+                await SyncMessage.Instance.Write(buf, async);
+                await buf.Flush(async);
             }
             CleanupSend();
         }
@@ -843,22 +843,22 @@ namespace Npgsql
                     // We have a prepared statement that replaces an existing statement - close the latter first.
                     await connector.CloseMessage
                         .Populate(StatementOrPortal.Statement, statementToClose.Name)
-                        .Write(buf, async, cancellationToken);
+                        .Write(buf, async);
                 }
 
                 await connector.ParseMessage
                     .Populate(statement.SQL, pStatement.Name, statement.InputParameters, connector.TypeMapper)
-                    .Write(buf, async, cancellationToken);
+                    .Write(buf, async);
 
                 await connector.DescribeMessage
                     .Populate(StatementOrPortal.Statement, pStatement.Name)
-                    .Write(buf, async, cancellationToken);
+                    .Write(buf, async);
 
                 pStatement.State = PreparedState.BeingPrepared;
             }
 
-            await SyncMessage.Instance.Write(buf, async, cancellationToken);
-            await buf.Flush(async, cancellationToken);
+            await SyncMessage.Instance.Write(buf, async);
+            await buf.Flush(async);
             CleanupSend();
         }
 
@@ -879,12 +879,12 @@ namespace Npgsql
 
                 await connector.CloseMessage
                     .Populate(StatementOrPortal.Statement, statement.StatementName)
-                    .Write(buf, async, cancellationToken);
+                    .Write(buf, async);
                 Debug.Assert(statement.PreparedStatement != null);
                 statement.PreparedStatement.State = PreparedState.BeingUnprepared;
             }
-            await SyncMessage.Instance.Write(buf, async, cancellationToken);
-            await buf.Flush(async, cancellationToken);
+            await SyncMessage.Instance.Write(buf, async);
+            await buf.Flush(async);
             CleanupSend();
         }
 

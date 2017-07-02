@@ -25,13 +25,14 @@ using System.Diagnostics;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers.InternalTypesHandlers
 {
     [TypeMapping("tid", NpgsqlDbType.Tid, typeof(NpgsqlTid))]
-    class TidHandler : SimpleTypeHandler<NpgsqlTid>, ISimpleTypeHandler<string>
+    class TidHandler : NpgsqlSimpleTypeHandler<NpgsqlTid>, INpgsqlSimpleTypeHandler<string>
     {
         public override NpgsqlTid Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
@@ -43,7 +44,7 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
             return new NpgsqlTid(blockNumber, offsetNumber);
         }
 
-        string ISimpleTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        string INpgsqlSimpleTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => Read(buf, len, fieldDescription).ToString();
 
         protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)

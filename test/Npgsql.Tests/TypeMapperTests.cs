@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandlers.NumericHandlers;
+using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 using NUnit.Framework;
@@ -141,9 +142,9 @@ CHECK
             }
         }
 
-        class DummyTypeHandlerFactory : TypeHandlerFactory
+        class DummyTypeHandlerFactory : NpgsqlTypeHandlerFactory
         {
-            protected override TypeHandler Create(NpgsqlConnection conn)
+            protected override NpgsqlTypeHandler Create(NpgsqlConnection conn)
                 => throw new Exception();
         }
 
@@ -184,11 +185,11 @@ CHECK
             return myFactory;
         }
 
-        class MyInt32HandlerFactory : TypeHandlerFactory
+        class MyInt32HandlerFactory : NpgsqlTypeHandlerFactory
         {
             internal int Reads, Writes;
 
-            protected override TypeHandler Create(NpgsqlConnection conn) 
+            protected override NpgsqlTypeHandler Create(NpgsqlConnection conn)
                 => new MyInt32Handler(this);
         }
 

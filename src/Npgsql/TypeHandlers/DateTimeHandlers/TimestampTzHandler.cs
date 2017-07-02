@@ -26,23 +26,23 @@ using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
 using JetBrains.Annotations;
-using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 
 namespace Npgsql.TypeHandlers.DateTimeHandlers
 {
     [TypeMapping("timestamptz", NpgsqlDbType.TimestampTz, DbType.DateTimeOffset, typeof(DateTimeOffset))]
-    class TimestampTzHandlerFactory : TypeHandlerFactory
+    class TimestampTzHandlerFactory : NpgsqlTypeHandlerFactory
     {
         // Check for the legacy floating point timestamps feature
-        protected override TypeHandler Create(NpgsqlConnection conn)
+        protected override NpgsqlTypeHandler Create(NpgsqlConnection conn)
             => new TimestampTzHandler(conn.HasIntegerDateTimes, conn.Connector.ConvertInfinityDateTime);
     }
 
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-datetime.html
     /// </remarks>
-    class TimestampTzHandler : TimestampHandler, ISimpleTypeHandler<DateTimeOffset>
+    class TimestampTzHandler : TimestampHandler, INpgsqlSimpleTypeHandler<DateTimeOffset>
     {
         public TimestampTzHandler(bool integerFormat, bool convertInfinityDateTime)
             : base(integerFormat, convertInfinityDateTime) {}
@@ -71,7 +71,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             return new NpgsqlDateTime(ts.Date, ts.Time, DateTimeKind.Utc).ToLocalTime();
         }
 
-        DateTimeOffset ISimpleTypeHandler<DateTimeOffset>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        DateTimeOffset INpgsqlSimpleTypeHandler<DateTimeOffset>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
         {
             try
             {

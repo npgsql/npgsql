@@ -24,6 +24,7 @@
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
@@ -33,12 +34,12 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-net-types.html
     /// </remarks>
     [TypeMapping("cidr", NpgsqlDbType.Cidr)]
-    class CidrHandler : SimpleTypeHandler<NpgsqlInet>, ISimpleTypeHandler<string>
+    class CidrHandler : NpgsqlSimpleTypeHandler<NpgsqlInet>, INpgsqlSimpleTypeHandler<string>
     {
         public override NpgsqlInet Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => InetHandler.DoRead(buf, fieldDescription, len, true);
 
-        string ISimpleTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        string INpgsqlSimpleTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => Read(buf, len, fieldDescription).ToString();
 
         protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)

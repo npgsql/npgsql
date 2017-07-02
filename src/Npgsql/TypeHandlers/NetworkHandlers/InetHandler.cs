@@ -28,6 +28,7 @@ using System.Net.Sockets;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
@@ -37,7 +38,7 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-net-types.html
     /// </remarks>
     [TypeMapping("inet", NpgsqlDbType.Inet, new[] { typeof(NpgsqlInet), typeof(IPAddress) })]
-    class InetHandler : SimpleTypeHandlerWithPsv<IPAddress, NpgsqlInet>, ISimpleTypeHandler<string>
+    class InetHandler : NpgsqlSimpleTypeHandlerWithPsv<IPAddress, NpgsqlInet>, INpgsqlSimpleTypeHandler<string>
     {
         // ReSharper disable InconsistentNaming
         const byte IPv4 = 2;
@@ -45,7 +46,7 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
         // ReSharper restore InconsistentNaming
 
         public override IPAddress Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
-            => ((ISimpleTypeHandler<NpgsqlInet>)this).Read(buf, len, fieldDescription).Address;
+            => ((INpgsqlSimpleTypeHandler<NpgsqlInet>)this).Read(buf, len, fieldDescription).Address;
 
         internal static NpgsqlInet DoRead(NpgsqlReadBuffer buf, [CanBeNull] FieldDescription fieldDescription, int len, bool isCidrHandler)
         {
@@ -64,8 +65,8 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
         protected override NpgsqlInet ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => DoRead(buf, fieldDescription, len, false);
 
-        string ISimpleTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
-            => ((ISimpleTypeHandler<NpgsqlInet>)this).Read(buf, len, fieldDescription).ToString();
+        string INpgsqlSimpleTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => ((INpgsqlSimpleTypeHandler<NpgsqlInet>)this).Read(buf, len, fieldDescription).ToString();
 
         internal static int DoValidateAndGetLength(object value)
         {

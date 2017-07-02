@@ -31,6 +31,7 @@ using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
@@ -60,7 +61,7 @@ namespace Npgsql.TypeHandlers
     /// * The column data encoded as binary
     /// </remarks>
     /// <typeparam name="T">the CLR type to map to the PostgreSQL composite type </typeparam>
-    class CompositeHandler<T> : ChunkingTypeHandler<T>, ICompositeHandler where T : new()
+    class CompositeHandler<T> : NpgsqlTypeHandler<T>, ICompositeHandler where T : new()
     {
         readonly ConnectorTypeMapper _typeMapper;
         readonly INpgsqlNameTranslator _nameTranslator;
@@ -143,15 +144,14 @@ namespace Npgsql.TypeHandlers
             return lengthCache.Lengths[pos] = totalLen;
         }
 
-        protected override async Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter,
-            bool async, CancellationToken cancellationToken)
+        protected override async Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
         {
             Debug.Assert(_members != null);
 
             var composite = (T)value;
 
             if (buf.WriteSpaceLeft < 4)
-                await buf.Flush(async, cancellationToken);
+                await buf.Flush(async);
             buf.WriteInt32(_members.Count);
 
             foreach (var fieldDescriptor in _members)
@@ -160,10 +160,10 @@ namespace Npgsql.TypeHandlers
                 var fieldValue = fieldDescriptor.GetValue(composite);
 
                 if (buf.WriteSpaceLeft < 4)
-                    await buf.Flush(async, cancellationToken);
+                    await buf.Flush(async);
 
                 buf.WriteUInt32(fieldDescriptor.OID);
-                await fieldHandler.WriteWithLength(fieldValue, buf, lengthCache, null, async, cancellationToken);
+                await fieldHandler.WriteWithLength(fieldValue, buf, lengthCache, null, async);
             }
         }
 
@@ -222,13 +222,13 @@ namespace Npgsql.TypeHandlers
             // ReSharper disable once MemberCanBePrivate.Local
             internal readonly string PgName;
             internal readonly uint OID;
-            internal readonly TypeHandler Handler;
+            internal readonly NpgsqlTypeHandler Handler;
             [CanBeNull]
             readonly PropertyInfo _property;
             [CanBeNull]
             readonly FieldInfo _field;
 
-            internal MemberDescriptor(string pgName, uint oid, TypeHandler handler, PropertyInfo property)
+            internal MemberDescriptor(string pgName, uint oid, NpgsqlTypeHandler handler, PropertyInfo property)
             {
                 PgName = pgName;
                 OID = oid;
@@ -237,7 +237,7 @@ namespace Npgsql.TypeHandlers
                 _field = null;
             }
 
-            internal MemberDescriptor(string pgName, uint oid, TypeHandler handler, FieldInfo field)
+            internal MemberDescriptor(string pgName, uint oid, NpgsqlTypeHandler handler, FieldInfo field)
             {
                 PgName = pgName;
                 OID = oid;
@@ -269,9 +269,9 @@ namespace Npgsql.TypeHandlers
         #endregion
     }
 
-    interface ICompositeTypeHandlerFactory {}
+    abstract class CompositeTypeHandlerFactory : NpgsqlTypeHandlerFactory { }
 
-    class CompositeTypeHandlerFactory<T> : TypeHandlerFactory, ICompositeTypeHandlerFactory
+    class CompositeTypeHandlerFactory<T> : CompositeTypeHandlerFactory
         where T : new()
     {
         readonly INpgsqlNameTranslator _nameTranslator;
@@ -281,7 +281,7 @@ namespace Npgsql.TypeHandlers
             _nameTranslator = nameTranslator;
         }
 
-        protected override TypeHandler Create(NpgsqlConnection conn)
+        protected override NpgsqlTypeHandler Create(NpgsqlConnection conn)
             => new CompositeHandler<T>(_nameTranslator, conn.Connector.TypeMapper);
 
     }

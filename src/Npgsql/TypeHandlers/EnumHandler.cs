@@ -30,6 +30,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 
 namespace Npgsql.TypeHandlers
@@ -45,7 +46,7 @@ namespace Npgsql.TypeHandlers
         Type EnumType { get; }
     }
 
-    class EnumHandler<TEnum> : SimpleTypeHandler<TEnum>, IEnumHandler where TEnum : struct
+    class EnumHandler<TEnum> : NpgsqlSimpleTypeHandler<TEnum>, IEnumHandler where TEnum : struct
     {
         readonly Dictionary<TEnum, string> _enumToLabel;
         readonly Dictionary<string, TEnum> _labelToEnum;
@@ -123,7 +124,7 @@ namespace Npgsql.TypeHandlers
         #endregion
     }
 
-    class EnumTypeHandlerFactory<TEnum> : TypeHandlerFactory where TEnum : struct
+    class EnumTypeHandlerFactory<TEnum> : NpgsqlTypeHandlerFactory where TEnum : struct
     {
         readonly Dictionary<TEnum, string> _enumToLabel = new Dictionary<TEnum, string>();
         readonly Dictionary<string, TEnum> _labelToEnum = new Dictionary<string, TEnum>();
@@ -142,7 +143,7 @@ namespace Npgsql.TypeHandlers
             }
         }
 
-        protected override TypeHandler Create(NpgsqlConnection conn)
+        protected override NpgsqlTypeHandler Create(NpgsqlConnection conn)
             => new EnumHandler<TEnum>(_enumToLabel, _labelToEnum);
     }
 }

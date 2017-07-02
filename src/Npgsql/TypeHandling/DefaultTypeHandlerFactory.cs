@@ -22,32 +22,25 @@
 #endregion
 
 using System;
-using Npgsql.BackendMessages;
-using NpgsqlTypes;
-using System.Data;
-using Npgsql.PostgresTypes;
-using Npgsql.TypeHandling;
-using Npgsql.TypeMapping;
+using System.Reflection;
 
-namespace Npgsql.TypeHandlers
+namespace Npgsql.TypeHandling
 {
-    /// <remarks>
-    /// http://www.postgresql.org/docs/current/static/datatype-boolean.html
-    /// </remarks>
-    [TypeMapping("void")]
-    class VoidHandler : NpgsqlSimpleTypeHandler<DBNull>
+    /// <summary>
+    /// A type handler factory used to instantiate Npgsql's built-in type handlers.
+    /// </summary>
+    class DefaultTypeHandlerFactory : NpgsqlTypeHandlerFactory
     {
-        public override DBNull Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
-            => DBNull.Value;
+        readonly Type _handlerType;
 
-        protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
+        internal DefaultTypeHandlerFactory(Type handlerType)
         {
-            throw new NotSupportedException();
+            if (handlerType.IsAssignableFrom(typeof(NpgsqlTypeHandler)))
+                throw new ArgumentException("Must be a subclass of NpgsqlTypeHandler", nameof(handlerType));
+            _handlerType = handlerType;
         }
 
-        protected override void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
-        {
-            throw new NotSupportedException();
-        }
+        protected override NpgsqlTypeHandler Create(NpgsqlConnection conn)
+            => (NpgsqlTypeHandler)Activator.CreateInstance(_handlerType);
     }
 }

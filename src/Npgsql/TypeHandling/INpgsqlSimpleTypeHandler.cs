@@ -21,27 +21,25 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using Npgsql.PostgresTypes;
+using Npgsql.BackendMessages;
 
-namespace Npgsql.TypeMapping
+namespace Npgsql.TypeHandling
 {
     /// <summary>
-    /// Base class for all type handler factories, which construct type handlers that know how
-    /// to read and write CLR types from/to PostgreSQL types. Type handler factories are set up
-    /// via <see cref="NpgsqlTypeMapping"/> in either the global or connection-specific type mapper.
+    /// Type handlers that wish to support reading other types in additional to the main one can
+    /// implement this interface for all those types.
     /// </summary>
-    /// <seealso cref="NpgsqlTypeMapping"/>
-    /// <seealso cref="NpgsqlConnection.GlobalTypeMapper"/>
-    /// <seealso cref="NpgsqlConnection.TypeMapper"/>
-    public abstract class TypeHandlerFactory
+    public interface INpgsqlSimpleTypeHandler<T>
     {
-        internal TypeHandler Create(PostgresType pgType, NpgsqlConnection conn)
-        {
-            var handler = Create(conn);
-            handler.PostgresType = pgType;
-            return handler;
-        }
-
-        protected abstract TypeHandler Create(NpgsqlConnection conn);
+        /// <summary>
+        /// Reads a value of type <typeparamref name="T"/> with the given length from the provided buffer,
+        /// with the assumption that it is entirely present in the provided memory buffer and no I/O will be
+        /// required. 
+        /// </summary>
+        /// <param name="buf">The buffer from which to read.</param>
+        /// <param name="len">The byte length of the value. The buffer might not contain the full length, requiring I/O to be performed.</param>
+        /// <param name="fieldDescription">Additional PostgreSQL information about the type, such as the length in varchar(30).</param>
+        /// <returns>The fully-read value.</returns>
+        T Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null);
     }
 }

@@ -33,6 +33,7 @@ using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
 using Npgsql.Logging;
+using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
@@ -72,7 +73,7 @@ namespace Npgsql
         readonly NpgsqlParameter _dummyParam;
 
         [ItemCanBeNull]
-        readonly TypeHandler[] _typeHandlerCache;
+        readonly NpgsqlTypeHandler[] _typeHandlerCache;
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
@@ -98,7 +99,7 @@ namespace Npgsql
                 if (!copyInResponse.IsBinary)
                     throw new ArgumentException("copyFromCommand triggered a text transfer, only binary is allowed", nameof(copyFromCommand));
                 NumColumns = copyInResponse.NumColumns;
-                _typeHandlerCache = new TypeHandler[NumColumns];
+                _typeHandlerCache = new NpgsqlTypeHandler[NumColumns];
                 _buf.StartCopyMode();
                 WriteHeader();
             }
@@ -193,7 +194,7 @@ namespace Npgsql
             DoWrite(handler, value);
         }
 
-        void DoWrite<T>(TypeHandler handler, [CanBeNull] T value)
+        void DoWrite<T>(NpgsqlTypeHandler handler, [CanBeNull] T value)
         {
             try
             {
@@ -203,7 +204,7 @@ namespace Npgsql
                 _lengthCache.Clear();
                 handler.ValidateAndGetLength(value, ref _lengthCache, _dummyParam);
                 _lengthCache.Rewind();
-                handler.WriteWithLength(value, _buf, _lengthCache, _dummyParam, false, CancellationToken.None);
+                handler.WriteWithLength(value, _buf, _lengthCache, _dummyParam, false);
                 _column++;
             }
             catch

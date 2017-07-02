@@ -29,6 +29,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Npgsql.TypeHandling;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeMapping
@@ -203,13 +204,13 @@ namespace Npgsql.TypeMapping
         void SetupGlobalTypeMapper()
         {
             // Look for TypeHandlerFactories with mappings in our assembly, set them up
-            foreach (var t in typeof(TypeMapperBase).GetTypeInfo().Assembly.GetTypes().Where(t => t.GetTypeInfo().IsSubclassOf(typeof(TypeHandlerFactory))))
+            foreach (var t in typeof(TypeMapperBase).GetTypeInfo().Assembly.GetTypes().Where(t => t.GetTypeInfo().IsSubclassOf(typeof(NpgsqlTypeHandlerFactory))))
             {
                 var mappingAttributes = t.GetTypeInfo().GetCustomAttributes(typeof(TypeMappingAttribute), false);
                 if (!mappingAttributes.Any())
                     continue;
 
-                var factory = (TypeHandlerFactory)Activator.CreateInstance(t);
+                var factory = (NpgsqlTypeHandlerFactory)Activator.CreateInstance(t);
 
                 foreach (TypeMappingAttribute m in mappingAttributes)
                 {
@@ -226,9 +227,9 @@ namespace Npgsql.TypeMapping
                 }
             }
 
-            // Look for TypeHandler classes with mappings in our assembly, set them up with the DefaultTypeHandlerFactory.
+            // Look for NpgsqlTypeHandler classes with mappings in our assembly, set them up with the DefaultTypeHandlerFactory.
             // This is a shortcut that allows us to not specify a factory for each and every type handler
-            foreach (var t in typeof(TypeMapperBase).GetTypeInfo().Assembly.GetTypes().Where(t => t.GetTypeInfo().IsSubclassOf(typeof(TypeHandler))))
+            foreach (var t in typeof(TypeMapperBase).GetTypeInfo().Assembly.GetTypes().Where(t => t.GetTypeInfo().IsSubclassOf(typeof(NpgsqlTypeHandler))))
             {
                 var mappingAttributes = t.GetTypeInfo().GetCustomAttributes(typeof(TypeMappingAttribute), false);
                 if (!mappingAttributes.Any())

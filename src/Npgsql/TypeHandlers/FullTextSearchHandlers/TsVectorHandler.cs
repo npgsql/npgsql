@@ -31,6 +31,7 @@ using JetBrains.Annotations;
 using NpgsqlTypes;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 
 namespace Npgsql.TypeHandlers.FullTextSearchHandlers
@@ -39,7 +40,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-textsearch.html
     /// </summary>
     [TypeMapping("tsvector", NpgsqlDbType.TsVector, typeof(NpgsqlTsVector))]
-    class TsVectorHandler : ChunkingTypeHandler<NpgsqlTsVector>
+    class TsVectorHandler : NpgsqlTypeHandler<NpgsqlTsVector>
     {
         // 2561 = 2046 (max length lexeme string) + (1) null terminator +
         // 2 (num_pos) + sizeof(int16) * 256 (max_num_pos (positions/wegihts))
@@ -88,19 +89,18 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             return 4 + vec.Sum(l => Encoding.UTF8.GetByteCount(l.Text) + 1 + 2 + l.Count * 2);
         }
 
-        protected override async Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter,
-            bool async, CancellationToken cancellationToken)
+        protected override async Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
         {
             var vector = (NpgsqlTsVector)value;
 
             if (buf.WriteSpaceLeft < 4)
-                await buf.Flush(async, cancellationToken);
+                await buf.Flush(async);
             buf.WriteInt32(vector.Count);
 
             foreach (var lexeme in vector)
             {
                 if (buf.WriteSpaceLeft < MaxSingleLexemeBytes)
-                    await buf.Flush(async, cancellationToken);
+                    await buf.Flush(async);
 
                 buf.WriteString(lexeme.Text);
                 buf.WriteByte(0);

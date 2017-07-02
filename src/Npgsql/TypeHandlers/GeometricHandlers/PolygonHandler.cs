@@ -25,6 +25,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
@@ -37,7 +38,7 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-geometric.html
     /// </remarks>
     [TypeMapping("polygon", NpgsqlDbType.Polygon, typeof(NpgsqlPolygon))]
-    class PolygonHandler : ChunkingTypeHandler<NpgsqlPolygon>
+    class PolygonHandler : NpgsqlTypeHandler<NpgsqlPolygon>
     {
         #region Read
 
@@ -65,19 +66,18 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
             return 4 + ((NpgsqlPolygon)value).Count * 16;
         }
 
-        protected override async Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter,
-            bool async, CancellationToken cancellationToken)
+        protected override async Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
         {
             var polygon = (NpgsqlPolygon)value;
 
             if (buf.WriteSpaceLeft < 4)
-                await buf.Flush(async, cancellationToken);
+                await buf.Flush(async);
             buf.WriteInt32(polygon.Count);
 
             foreach (var p in polygon)
             {
                 if (buf.WriteSpaceLeft < 16)
-                    await buf.Flush(async, cancellationToken);
+                    await buf.Flush(async);
                 buf.WriteDouble(p.X);
                 buf.WriteDouble(p.Y);
             }

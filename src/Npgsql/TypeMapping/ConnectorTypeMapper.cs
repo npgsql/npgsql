@@ -34,6 +34,7 @@ using JetBrains.Annotations;
 using Npgsql.Logging;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandlers;
+using Npgsql.TypeHandling;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeMapping
@@ -51,21 +52,21 @@ namespace Npgsql.TypeMapping
         /// </summary>
         internal DatabaseInfo DatabaseInfo { get; set; }
 
-        internal TypeHandler UnrecognizedTypeHandler { get; }
+        internal NpgsqlTypeHandler UnrecognizedTypeHandler { get; }
 
-        readonly Dictionary<uint, TypeHandler> _byOID = new Dictionary<uint, TypeHandler>();
-        readonly Dictionary<NpgsqlDbType, TypeHandler> _byNpgsqlDbType = new Dictionary<NpgsqlDbType, TypeHandler>();
-        readonly Dictionary<DbType, TypeHandler> _byDbType = new Dictionary<DbType, TypeHandler>();
+        readonly Dictionary<uint, NpgsqlTypeHandler> _byOID = new Dictionary<uint, NpgsqlTypeHandler>();
+        readonly Dictionary<NpgsqlDbType, NpgsqlTypeHandler> _byNpgsqlDbType = new Dictionary<NpgsqlDbType, NpgsqlTypeHandler>();
+        readonly Dictionary<DbType, NpgsqlTypeHandler> _byDbType = new Dictionary<DbType, NpgsqlTypeHandler>();
 
         /// <summary>
         /// Maps CLR types to their type handlers.
         /// </summary>
-        readonly Dictionary<Type, TypeHandler> _byClrType = new Dictionary<Type, TypeHandler>();
+        readonly Dictionary<Type, NpgsqlTypeHandler> _byClrType= new Dictionary<Type, NpgsqlTypeHandler>();
 
         /// <summary>
         /// Maps CLR types to their array handlers.
         /// </summary>
-        readonly Dictionary<Type, TypeHandler> _arrayHandlerByClrType = new Dictionary<Type, TypeHandler>();
+        readonly Dictionary<Type, NpgsqlTypeHandler> _arrayHandlerByClrType = new Dictionary<Type, NpgsqlTypeHandler>();
 
         /// <summary>
         /// Copy of <see cref="GlobalTypeMapper.ChangeCounter"/> at the time when this
@@ -101,13 +102,13 @@ namespace Npgsql.TypeMapping
         /// </summary>
         /// <param name="oid">A PostgreSQL type OID</param>
         /// <returns>A type handler that can be used to encode and decode values.</returns>
-        internal TypeHandler this[uint oid]
+        internal NpgsqlTypeHandler this[uint oid]
         {
             get => TryGetByOID(oid, out var result) ? result : UnrecognizedTypeHandler;
             set => _byOID[oid] = value;
         }
 
-        internal bool TryGetByOID(uint oid, out TypeHandler handler)
+        internal bool TryGetByOID(uint oid, out NpgsqlTypeHandler handler)
         {
             if (_byOID.TryGetValue(oid, out handler))
                 return true;
@@ -115,7 +116,7 @@ namespace Npgsql.TypeMapping
             return false;
         }
 
-        internal TypeHandler this[NpgsqlDbType npgsqlDbType, Type specificType = null]
+        internal NpgsqlTypeHandler this[NpgsqlDbType npgsqlDbType, Type specificType = null]
         {
             get
             {
@@ -151,7 +152,7 @@ namespace Npgsql.TypeMapping
             }
         }
 
-        internal TypeHandler this[DbType dbType]
+        internal NpgsqlTypeHandler this[DbType dbType]
         {
             get
             {
@@ -161,7 +162,7 @@ namespace Npgsql.TypeMapping
             }
         }
 
-        internal TypeHandler this[object value]
+        internal NpgsqlTypeHandler this[object value]
         {
             get
             {
@@ -186,7 +187,7 @@ namespace Npgsql.TypeMapping
         }
 
 #pragma warning disable CA1043
-        internal TypeHandler this[Type type]
+        internal NpgsqlTypeHandler this[Type type]
 #pragma warning restore CA1043
         {
             get
@@ -379,7 +380,7 @@ namespace Npgsql.TypeMapping
                 // Somewhat hacky. We don't eagerly load composite types into DatabaseInfo
                 // because there could be a great deal of them (#1126). So we check whether
                 // the mapping was for a composite and load it now if so
-                if (mapping.TypeHandlerFactory is ICompositeTypeHandlerFactory)
+                if (mapping.TypeHandlerFactory is CompositeTypeHandlerFactory)
                     pgType = DatabaseInfo.GetComposite(mapping.PgTypeName, connector.Connection);
                 else
                     throw new ArgumentException($"A PostgreSQL type with the name {mapping.PgTypeName} was not found in the database");
@@ -395,7 +396,7 @@ namespace Npgsql.TypeMapping
             BindType(handler, pgType, mapping.NpgsqlDbType, mapping.DbTypes, mapping.ClrTypes);
         }
 
-        void BindType(TypeHandler handler, PostgresType pgType, NpgsqlDbType? npgsqlDbType = null, DbType[] dbTypes = null, Type[] clrTypes = null)
+        void BindType(NpgsqlTypeHandler handler, PostgresType pgType, NpgsqlDbType? npgsqlDbType = null, DbType[] dbTypes = null, Type[] clrTypes = null)
         {
             _byOID[pgType.OID] = handler;
 
@@ -434,7 +435,7 @@ namespace Npgsql.TypeMapping
                 BindRangeType(handler, pgType.Range, npgsqlDbType, clrTypes);
         }
 
-        void BindArrayType(TypeHandler elementHandler, PostgresArrayType pgArrayType, NpgsqlDbType? elementNpgsqlDbType, Type[] elementClrTypes)
+        void BindArrayType(NpgsqlTypeHandler elementHandler, PostgresArrayType pgArrayType, NpgsqlDbType? elementNpgsqlDbType, Type[] elementClrTypes)
         {
             var arrayHandler = elementHandler.CreateArrayHandler(pgArrayType);
 
@@ -460,7 +461,7 @@ namespace Npgsql.TypeMapping
             }
         }
 
-        void BindRangeType(TypeHandler elementHandler, PostgresRangeType pgRangeType, NpgsqlDbType? elementNpgsqlDbType, Type[] elementClrTypes)
+        void BindRangeType(NpgsqlTypeHandler elementHandler, PostgresRangeType pgRangeType, NpgsqlDbType? elementNpgsqlDbType, Type[] elementClrTypes)
         {
             var rangeHandler = elementHandler.CreateRangeHandler(pgRangeType);
 

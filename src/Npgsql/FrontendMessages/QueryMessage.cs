@@ -54,10 +54,10 @@ namespace Npgsql.FrontendMessages
             return this;
         }
 
-        internal override async Task Write(NpgsqlWriteBuffer buf, bool async, CancellationToken cancellationToken)
+        internal override async Task Write(NpgsqlWriteBuffer buf, bool async)
         {
             if (buf.WriteSpaceLeft < 1 + 4)
-                await buf.Flush(async, cancellationToken);
+                await buf.Flush(async);
             var queryByteLen = _encoding.GetByteCount(_query);
 
             buf.WriteByte(Code);
@@ -65,9 +65,9 @@ namespace Npgsql.FrontendMessages
                            queryByteLen + // Query byte length
                            1);            // Null terminator
 
-            await buf.WriteString(_query, queryByteLen, async, cancellationToken);
+            await buf.WriteString(_query, queryByteLen, async);
             if (buf.WriteSpaceLeft < 1)
-                await buf.Flush(async, cancellationToken);
+                await buf.Flush(async);
             buf.WriteByte(0);
         }
 

@@ -21,12 +21,9 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
+using Npgsql.TypeHandling;
 
 namespace Npgsql
 {
@@ -53,6 +50,11 @@ namespace Npgsql
             Lengths = new List<int>(capacity);
         }
 
+        /// <summary>
+        /// Stores a length value in the cache, to be fetched later via <see cref="Get"/>.
+        /// Called at the <see cref="NpgsqlTypeHandler.ValidateAndGetLength"/> phase.
+        /// </summary>
+        /// <returns>The length parameter.</returns>
         public int Set(int len)
         {
             Debug.Assert(!IsPopulated);
@@ -61,6 +63,11 @@ namespace Npgsql
             return len;
         }
 
+        /// <summary>
+        /// Retrieves a length value previously stored in the cache via <see cref="Set(int)"/>.
+        /// Called at the <see cref="NpgsqlTypeHandler.Write"/> phase.
+        /// </summary>
+        /// <returns></returns>
         public int Get()
         {
             Debug.Assert(IsPopulated);

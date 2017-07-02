@@ -21,32 +21,26 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using Npgsql.Logging;
-using NpgsqlTypes;
-using Npgsql.PostgresTypes;
-using Npgsql.TypeHandlers.NumericHandlers;
-using Npgsql.TypeHandling;
-using Npgsql.TypeMapping;
+using System.Threading.Tasks;
+using Npgsql.BackendMessages;
 
-namespace Npgsql.TypeHandlers.InternalTypesHandlers
+namespace Npgsql.TypeHandling
 {
-    [TypeMapping("oidvector", NpgsqlDbType.Oidvector)]
-    class OIDectorHandlerFactory : NpgsqlTypeHandlerFactory
-    {
-        protected override NpgsqlTypeHandler Create(NpgsqlConnection conn)
-            => new OIDVectorHandler(conn.Connector.TypeMapper.DatabaseInfo.ByName["oid"]);
-    }
-
     /// <summary>
-    /// An OIDVector is simply a regular array of uints, with the sole exception that its lower bound must
-    /// be 0 (we send 1 for regular arrays).
+    /// Type handlers that wish to support reading other types in additional to the main one can
+    /// implement this interface for all those types.
     /// </summary>
-    class OIDVectorHandler : ArrayHandler<uint>
+    public interface INpgsqlTypeHandler<T>
     {
-        public OIDVectorHandler(PostgresType postgresOIDType)
-            : base(null, 0)
-        {
-            ElementHandler = new UInt32Handler { PostgresType = postgresOIDType };
-        }
+        /// <summary>
+        /// Reads a value of type <typeparamref name="T"/> with the given length from the provided buffer,
+        /// using either sync or async I/O.
+        /// </summary>
+        /// <param name="buf">The buffer from which to read.</param>
+        /// <param name="len">The byte length of the value. The buffer might not contain the full length, requiring I/O to be performed.</param>
+        /// <param name="async">If I/O is required to read the full length of the value, whether it should be performed synchronously or asynchronously.</param>
+        /// <param name="fieldDescription">Additional PostgreSQL information about the type, such as the length in varchar(30).</param>
+        /// <returns>The fully-read value.</returns>
+        ValueTask<T> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null);
     }
 }

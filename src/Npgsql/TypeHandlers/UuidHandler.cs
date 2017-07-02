@@ -27,6 +27,7 @@ using NpgsqlTypes;
 using System.Data;
 using JetBrains.Annotations;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 
 namespace Npgsql.TypeHandlers
@@ -35,7 +36,7 @@ namespace Npgsql.TypeHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-uuid.html
     /// </remarks>
     [TypeMapping("uuid", NpgsqlDbType.Uuid, DbType.Guid, typeof(Guid))]
-    class UuidHandler : SimpleTypeHandler<Guid>, ISimpleTypeHandler<string>
+    class UuidHandler : NpgsqlSimpleTypeHandler<Guid>, INpgsqlSimpleTypeHandler<string>
     {
         public override Guid Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
@@ -47,7 +48,7 @@ namespace Npgsql.TypeHandlers
             return new Guid(a, b, c, d);
         }
 
-        string ISimpleTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        string INpgsqlSimpleTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => Read(buf, len, fieldDescription).ToString();
 
         #region Write

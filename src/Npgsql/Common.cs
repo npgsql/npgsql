@@ -45,12 +45,11 @@ namespace Npgsql
     {
         /// <param name="buf">the buffer into which to write the message.</param>
         /// <param name="async"></param>
-        /// <param name="cancellationToken"></param>
         /// <returns>
         /// Whether there was enough space in the buffer to contain the entire message.
         /// If false, the buffer should be flushed and write should be called again.
         /// </returns>
-        internal abstract Task Write(NpgsqlWriteBuffer buf, bool async, CancellationToken cancellationToken);
+        internal abstract Task Write(NpgsqlWriteBuffer buf, bool async);
 
         /// <summary>
         /// Returns how many messages PostgreSQL is expected to send in response to this message.
@@ -76,18 +75,18 @@ namespace Npgsql
         /// </summary>
         internal abstract void WriteFully(NpgsqlWriteBuffer buf);
 
-        internal sealed override Task Write(NpgsqlWriteBuffer buf, bool async, CancellationToken cancellationToken)
+        internal sealed override Task Write(NpgsqlWriteBuffer buf, bool async)
         {
             if (buf.WriteSpaceLeft < Length)
-                return FlushAndWrite(buf, async, cancellationToken);
+                return FlushAndWrite(buf, async);
             Debug.Assert(Length <= buf.WriteSpaceLeft, $"Message of type {GetType().Name} has length {Length} which is bigger than the buffer ({buf.WriteSpaceLeft})");
             WriteFully(buf);
             return PGUtil.CompletedTask;
         }
 
-        async Task FlushAndWrite(NpgsqlWriteBuffer buf, bool async, CancellationToken cancellationToken)
+        async Task FlushAndWrite(NpgsqlWriteBuffer buf, bool async)
         {
-            await buf.Flush(async, cancellationToken);
+            await buf.Flush(async);
             Debug.Assert(Length <= buf.WriteSpaceLeft, $"Message of type {GetType().Name} has length {Length} which is bigger than the buffer ({buf.WriteSpaceLeft})");
             WriteFully(buf);
         }

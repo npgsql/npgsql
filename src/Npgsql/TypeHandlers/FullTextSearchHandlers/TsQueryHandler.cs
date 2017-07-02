@@ -30,6 +30,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 
 namespace Npgsql.TypeHandlers.FullTextSearchHandlers
@@ -41,7 +42,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
         typeof(NpgsqlTsQuery), typeof(NpgsqlTsQueryAnd), typeof(NpgsqlTsQueryEmpty),
         typeof(NpgsqlTsQueryLexeme), typeof(NpgsqlTsQueryNot), typeof(NpgsqlTsQueryOr), typeof(NpgsqlTsQueryBinOp) })
     ]
-    class TsQueryHandler : ChunkingTypeHandler<NpgsqlTsQuery>
+    class TsQueryHandler : NpgsqlTypeHandler<NpgsqlTsQuery>
     {
         // 1 (type) + 1 (weight) + 1 (is prefix search) + 2046 (max str len) + 1 (null terminator)
         const int MaxSingleTokenBytes = 2050;
@@ -165,14 +166,13 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             }
         }
 
-        protected override async Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter,
-            bool async, CancellationToken cancellationToken)
+        protected override async Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
         {
             var query = (NpgsqlTsQuery)value;
             var numTokens = GetTokenCount(query);
 
             if (buf.WriteSpaceLeft < 4)
-                await buf.Flush(async, cancellationToken);
+                await buf.Flush(async);
             buf.WriteInt32(numTokens);
 
             if (numTokens == 0)
@@ -183,10 +183,10 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             while (_stack.Count > 0)
             {
                 if (buf.WriteSpaceLeft < 2)
-                    await buf.Flush(async, cancellationToken);
+                    await buf.Flush(async);
 
                 if (_stack.Peek().Kind == NpgsqlTsQuery.NodeKind.Lexeme && buf.WriteSpaceLeft < MaxSingleTokenBytes)
-                    await buf.Flush(async, cancellationToken);
+                    await buf.Flush(async);
 
                 var node = _stack.Pop();
                 buf.WriteByte(node.Kind == NpgsqlTsQuery.NodeKind.Lexeme ? (byte)1 : (byte)2);

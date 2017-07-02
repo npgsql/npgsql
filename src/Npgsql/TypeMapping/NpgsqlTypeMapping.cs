@@ -23,6 +23,7 @@
 
 using System;
 using System.Data;
+using Npgsql.TypeHandling;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeMapping
@@ -72,7 +73,7 @@ namespace Npgsql.TypeMapping
         /// <summary>
         /// A factory for a type handler that will be used to read and write values for PostgreSQL type.
         /// </summary>
-        public TypeHandlerFactory TypeHandlerFactory { get; set; }
+        public NpgsqlTypeHandlerFactory TypeHandlerFactory { get; set; }
 
         /// <summary>
         /// Builds an <see cref="NpgsqlTypeMapping"/> that can be added to an <see cref="INpgsqlTypeMapper"/>.
@@ -99,7 +100,7 @@ namespace Npgsql.TypeMapping
         internal NpgsqlTypeMapping(
             string pgTypeName,
             NpgsqlDbType? npgsqlDbType, DbType[] dbTypes, Type[] clrTypes, DbType? inferredDbType,
-            TypeHandlerFactory typeHandlerFactory)
+            NpgsqlTypeHandlerFactory typeHandlerFactory)
         {
             PgTypeName = pgTypeName;
             NpgsqlDbType = npgsqlDbType;
@@ -149,7 +150,7 @@ namespace Npgsql.TypeMapping
         /// <summary>
         /// A factory for a type handler that will be used to read and write values for PostgreSQL type.
         /// </summary>
-        public TypeHandlerFactory TypeHandlerFactory { get; }
+        public NpgsqlTypeHandlerFactory TypeHandlerFactory { get; }
 
         /// <summary>
         /// Returns a string that represents the current object.

@@ -21,33 +21,32 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using System;
-using Npgsql.BackendMessages;
-using NpgsqlTypes;
-using System.Data;
 using Npgsql.PostgresTypes;
-using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 
-namespace Npgsql.TypeHandlers
+namespace Npgsql.TypeHandling
 {
-    /// <remarks>
-    /// http://www.postgresql.org/docs/current/static/datatype-boolean.html
-    /// </remarks>
-    [TypeMapping("void")]
-    class VoidHandler : NpgsqlSimpleTypeHandler<DBNull>
+    /// <summary>
+    /// Base class for all type handler factories, which construct type handlers that know how
+    /// to read and write CLR types from/to PostgreSQL types. Type handler factories are set up
+    /// via <see cref="NpgsqlTypeMapping"/> in either the global or connection-specific type mapper.
+    /// </summary>
+    /// <seealso cref="NpgsqlTypeMapping"/>
+    /// <seealso cref="NpgsqlConnection.GlobalTypeMapper"/>
+    /// <seealso cref="NpgsqlConnection.TypeMapper"/>
+    public abstract class NpgsqlTypeHandlerFactory
     {
-        public override DBNull Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
-            => DBNull.Value;
-
-        protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
+        internal NpgsqlTypeHandler Create(PostgresType pgType, NpgsqlConnection conn)
         {
-            throw new NotSupportedException();
+            var handler = Create(conn);
+            handler.PostgresType = pgType;
+            return handler;
         }
 
-        protected override void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
-        {
-            throw new NotSupportedException();
-        }
+        /// <summary>
+        /// Creates a type handler. The provided connection can be examined to modify type handler
+        /// behavior based on server settings, etc.
+        /// </summary>
+        protected abstract NpgsqlTypeHandler Create(NpgsqlConnection conn);
     }
 }

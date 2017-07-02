@@ -30,6 +30,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
+using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
@@ -69,7 +70,7 @@ namespace Npgsql
         internal NpgsqlLengthCache LengthCache { get; private set; }
 
         [CanBeNull]
-        internal TypeHandler Handler { get; private set; }
+        internal NpgsqlTypeHandler Handler { get; private set; }
         internal FormatCode FormatCode { get; private set; }
 
         internal bool AutoAssignedName;
@@ -630,8 +631,8 @@ namespace Npgsql
             return len;
         }
 
-        internal Task WriteWithLength(NpgsqlWriteBuffer buf, bool async, CancellationToken cancellationToken)
-            => Handler.WriteWithLength(Value, buf, LengthCache, this, async, cancellationToken);
+        internal Task WriteWithLength(NpgsqlWriteBuffer buf, bool async)
+            => Handler.WriteWithLength(Value, buf, LengthCache, this, async);
 
         void ClearBind()
         {
