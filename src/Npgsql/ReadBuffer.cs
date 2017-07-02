@@ -201,8 +201,6 @@ namespace Npgsql
 
         internal short ReadInt16()
         {
-            if (ReadBytesLeft < sizeof(short))
-                Console.WriteLine("BOOM");
             Debug.Assert(ReadBytesLeft >= sizeof(short));
             var result = IPAddress.NetworkToHostOrder(BitConverter.ToInt16(Buffer, ReadPosition));
             ReadPosition += 2;
