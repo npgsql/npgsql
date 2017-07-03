@@ -855,7 +855,8 @@ namespace Npgsql
         )
         {
             // First read the responses of any prepended messages.
-            await ReadPrependedMessages(async);
+            if (_pendingPrependedResponses > 0)
+                await ReadPrependedMessages(async);
 
             // Now read a non-prepended message
             try
@@ -1058,8 +1059,7 @@ namespace Npgsql
 
         async Task ReadPrependedMessages(bool async)
         {
-            if (_pendingPrependedResponses == 0)
-                return;
+            Debug.Assert(_pendingPrependedResponses > 0);
             try
             {
                 ReceiveTimeout = InternalCommandTimeout;
