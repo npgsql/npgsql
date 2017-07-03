@@ -239,8 +239,6 @@ namespace Npgsql
 
         internal abstract ValueTask<IBackendMessage> ReadMessage(bool async);
         internal abstract void ProcessDataMessage(DataRowMessage dataMsg);
-        internal abstract ValueTask<T> ReadColumn<T>(int column, bool async);
-        internal abstract T ReadColumn<T>(int column);
         internal abstract Task SeekToColumn(int column, bool async);
         internal abstract Task SeekInColumn(int posInColumn, bool async);
         internal abstract ValueTask<Stream> GetStreamInternal(int column, bool async);
@@ -651,84 +649,84 @@ namespace Npgsql
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        public override bool GetBoolean(int ordinal) => ReadColumn<bool>(ordinal);
+        public override bool GetBoolean(int ordinal) => GetFieldValue<bool>(ordinal);
 
         /// <summary>
         /// Gets the value of the specified column as a byte.
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        public override byte GetByte(int ordinal) => ReadColumn<byte>(ordinal);
+        public override byte GetByte(int ordinal) => GetFieldValue<byte>(ordinal);
 
         /// <summary>
         /// Gets the value of the specified column as a single character.
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        public override char GetChar(int ordinal) => ReadColumn<char>(ordinal);
+        public override char GetChar(int ordinal) => GetFieldValue<char>(ordinal);
 
         /// <summary>
         /// Gets the value of the specified column as a 16-bit signed integer.
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        public override short GetInt16(int ordinal) => ReadColumn<short>(ordinal);
+        public override short GetInt16(int ordinal) => GetFieldValue<short>(ordinal);
 
         /// <summary>
         /// Gets the value of the specified column as a 32-bit signed integer.
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        public override int GetInt32(int ordinal) => ReadColumn<int>(ordinal);
+        public override int GetInt32(int ordinal) => GetFieldValue<int>(ordinal);
 
         /// <summary>
         /// Gets the value of the specified column as a 64-bit signed integer.
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        public override long GetInt64(int ordinal) => ReadColumn<long>(ordinal);
+        public override long GetInt64(int ordinal) => GetFieldValue<long>(ordinal);
 
         /// <summary>
         /// Gets the value of the specified column as a <see cref="DateTime"/> object.
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        public override DateTime GetDateTime(int ordinal) => ReadColumn<DateTime>(ordinal);
+        public override DateTime GetDateTime(int ordinal) => GetFieldValue<DateTime>(ordinal);
 
         /// <summary>
         /// Gets the value of the specified column as an instance of <see cref="string"/>.
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        public override string GetString(int ordinal) => ReadColumn<string>(ordinal);
+        public override string GetString(int ordinal) => GetFieldValue<string>(ordinal);
 
         /// <summary>
         /// Gets the value of the specified column as a <see cref="decimal"/> object.
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        public override decimal GetDecimal(int ordinal) => ReadColumn<decimal>(ordinal);
+        public override decimal GetDecimal(int ordinal) => GetFieldValue<decimal>(ordinal);
 
         /// <summary>
         /// Gets the value of the specified column as a double-precision floating point number.
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        public override double GetDouble(int ordinal) => ReadColumn<double>(ordinal);
+        public override double GetDouble(int ordinal) => GetFieldValue<double>(ordinal);
 
         /// <summary>
         /// Gets the value of the specified column as a single-precision floating point number.
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        public override float GetFloat(int ordinal) => ReadColumn<float>(ordinal);
+        public override float GetFloat(int ordinal) => GetFieldValue<float>(ordinal);
 
         /// <summary>
         /// Gets the value of the specified column as a globally-unique identifier (GUID).
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        public override Guid GetGuid(int ordinal) => ReadColumn<Guid>(ordinal);
+        public override Guid GetGuid(int ordinal) => GetFieldValue<Guid>(ordinal);
 
         /// <summary>
         /// Populates an array of objects with the column values of the current row.
@@ -771,7 +769,7 @@ namespace Npgsql
         /// </remarks>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        public NpgsqlDate GetDate(int ordinal) => ReadColumn<NpgsqlDate>(ordinal);
+        public NpgsqlDate GetDate(int ordinal) => GetFieldValue<NpgsqlDate>(ordinal);
 
         /// <summary>
         /// Gets the value of the specified column as a TimeSpan,
@@ -784,7 +782,7 @@ namespace Npgsql
         /// </remarks>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        public TimeSpan GetTimeSpan(int ordinal) => ReadColumn<TimeSpan>(ordinal);
+        public TimeSpan GetTimeSpan(int ordinal) => GetFieldValue<TimeSpan>(ordinal);
 
         /// <summary>
         /// Gets the value of the specified column as an <see cref="NpgsqlTimeSpan"/>,
@@ -801,7 +799,7 @@ namespace Npgsql
         /// </remarks>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        public NpgsqlTimeSpan GetInterval(int ordinal) => ReadColumn<NpgsqlTimeSpan>(ordinal);
+        public NpgsqlTimeSpan GetInterval(int ordinal) => GetFieldValue<NpgsqlTimeSpan>(ordinal);
 
         /// <summary>
         /// Gets the value of the specified column as an <see cref="NpgsqlDateTime"/>,
@@ -818,7 +816,7 @@ namespace Npgsql
         /// </remarks>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        public NpgsqlDateTime GetTimeStamp(int ordinal) => ReadColumn<NpgsqlDateTime>(ordinal);
+        public NpgsqlDateTime GetTimeStamp(int ordinal) => GetFieldValue<NpgsqlDateTime>(ordinal);
 
         #endregion
 
@@ -1087,36 +1085,6 @@ namespace Npgsql
 
             var fieldDescription = RowDescription[ordinal];
             return fieldDescription.Handler.GetProviderSpecificFieldType(fieldDescription);
-        }
-
-        /// <summary>
-        /// Synchronously gets the value of the specified column as a type.
-        /// </summary>
-        /// <typeparam name="T">Synchronously gets the value of the specified column as a type.</typeparam>
-        /// <param name="ordinal">The column to be retrieved.</param>
-        /// <returns>The column to be retrieved.</returns>
-        public override T GetFieldValue<T>(int ordinal) => GetFieldValue<T>(ordinal, false).Result;
-
-        /// <summary>
-        /// Asynchronously gets the value of the specified column as a type.
-        /// The <paramref name="cancellationToken"/> parameter is currently ignored.
-        /// </summary>
-        /// <typeparam name="T">The type of the value to be returned.</typeparam>
-        /// <param name="ordinal">The column to be retrieved.</param>
-        /// <param name="cancellationToken">Currently ignored.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
-        public override Task<T> GetFieldValueAsync<T>(int ordinal, CancellationToken cancellationToken)
-            => SynchronizationContextSwitcher.NoContext(async () => await GetFieldValue<T>(ordinal, true));
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        ValueTask<T> GetFieldValue<T>(int ordinal, bool async)
-        {
-            CheckRowAndOrdinal(ordinal);
-
-            // TODO: Preposterous...
-            if (typeof(T) == typeof(object))
-                return new ValueTask<T>((T)GetValue(ordinal));  // TODO: Sync...
-            return ReadColumn<T>(ordinal, async);
         }
 
         /// <summary>

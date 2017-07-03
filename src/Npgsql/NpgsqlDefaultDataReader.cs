@@ -139,10 +139,11 @@ namespace Npgsql
             _endOffset = Buffer.ReadPosition;
         }
 
-        internal override ValueTask<T> ReadColumn<T>(int column, bool async)
-            => new ValueTask<T>(ReadColumn<T>(column));
+        // We know the entire row is buffered in memory (non-sequential reader), so no I/O will be performed
+        public override Task<T> GetFieldValueAsync<T>(int column, CancellationToken cancellationToken)
+            => Task.FromResult(GetFieldValue<T>(column));
 
-        internal override T ReadColumn<T>(int column)
+        public override T GetFieldValue<T>(int column)
         {
             CheckRowAndOrdinal(column);
 
@@ -153,7 +154,9 @@ namespace Npgsql
             var fieldDescription = RowDescription[column];
             try
             {
-                return fieldDescription.Handler.Read<T>(Buffer, ColumnLen, fieldDescription);
+                return typeof(T) == typeof(object)
+                    ? (T)fieldDescription.Handler.ReadAsObject(Buffer, ColumnLen, fieldDescription)
+                    : fieldDescription.Handler.Read<T>(Buffer, ColumnLen, fieldDescription);
             }
             catch (NpgsqlSafeReadException e)
             {

@@ -24,7 +24,7 @@ namespace Npgsql
     /// it in memory is undesirable.
     /// </remarks>
 #pragma warning disable CA1010
-    public sealed class NpgsqlSequentialDataReader : NpgsqlDataReader
+    sealed class NpgsqlSequentialDataReader : NpgsqlDataReader
 #pragma warning restore CA1010
     {
         /// <summary>
@@ -61,7 +61,13 @@ namespace Npgsql
             PosInColumn = 0;
         }
 
-        internal override async ValueTask<T> ReadColumn<T>(int column, bool async)
+        public override Task<T> GetFieldValueAsync<T>(int ordinal, CancellationToken cancellationToken)
+            => SynchronizationContextSwitcher.NoContext(async () => await GetFieldValue<T>(ordinal, true));
+
+        public override T GetFieldValue<T>(int column)
+            => GetFieldValue<T>(column, false).GetAwaiter().GetResult();
+
+        async ValueTask<T> GetFieldValue<T>(int column, bool async)
         {
             CheckRowAndOrdinal(column);
 
@@ -73,9 +79,18 @@ namespace Npgsql
             var fieldDescription = RowDescription[column];
             try
             {
-                return ColumnLen <= Buffer.ReadBytesLeft
-                    ? fieldDescription.Handler.Read<T>(Buffer, ColumnLen, fieldDescription)
-                    : await fieldDescription.Handler.Read<T>(Buffer, ColumnLen, async, fieldDescription);
+                if (typeof(T) == typeof(object))
+                {
+                    return ColumnLen <= Buffer.ReadBytesLeft
+                        ? (T)fieldDescription.Handler.ReadAsObject(Buffer, ColumnLen, fieldDescription)
+                        : (T)await fieldDescription.Handler.ReadAsObject(Buffer, ColumnLen, async, fieldDescription);
+                }
+                else
+                {
+                    return ColumnLen <= Buffer.ReadBytesLeft
+                        ? fieldDescription.Handler.Read<T>(Buffer, ColumnLen, fieldDescription)
+                        : await fieldDescription.Handler.Read<T>(Buffer, ColumnLen, async, fieldDescription);
+                }
             }
             catch (NpgsqlSafeReadException e)
             {
@@ -92,9 +107,6 @@ namespace Npgsql
                 PosInColumn += ColumnLen;
             }
         }
-
-        internal override T ReadColumn<T>(int column)
-            => ReadColumn<T>(column, false).GetAwaiter().GetResult();
 
         /// <summary>
         /// Gets the value of the specified column as an instance of <see cref="object"/>.
