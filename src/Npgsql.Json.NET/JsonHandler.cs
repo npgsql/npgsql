@@ -22,22 +22,16 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Npgsql.BackendMessages;
-using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
-using Npgsql.TypeMapping;
 
 namespace Npgsql.Json.NET
 {
-    class JsonHandlerFactory : NpgsqlTypeHandlerFactory
+    class JsonHandlerFactory : NpgsqlTypeHandlerFactory<string>
     {
-        protected override NpgsqlTypeHandler Create(NpgsqlConnection conn)
+        protected override NpgsqlTypeHandler<string> Create(NpgsqlConnection conn)
             => new JsonHandler(conn);
     }
 

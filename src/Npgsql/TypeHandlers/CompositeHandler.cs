@@ -269,9 +269,11 @@ namespace Npgsql.TypeHandlers
         #endregion
     }
 
-    abstract class CompositeTypeHandlerFactory : NpgsqlTypeHandlerFactory { }
+#pragma warning disable CA1040    // Avoid empty interfaces
+    interface ICompositeTypeHandlerFactory { }
+#pragma warning restore CA1040    // Avoid empty interfaces
 
-    class CompositeTypeHandlerFactory<T> : CompositeTypeHandlerFactory
+    class CompositeTypeHandlerFactory<T> : NpgsqlTypeHandlerFactory<T>, ICompositeTypeHandlerFactory
         where T : new()
     {
         readonly INpgsqlNameTranslator _nameTranslator;
@@ -281,7 +283,7 @@ namespace Npgsql.TypeHandlers
             _nameTranslator = nameTranslator;
         }
 
-        protected override NpgsqlTypeHandler Create(NpgsqlConnection conn)
+        protected override NpgsqlTypeHandler<T> Create(NpgsqlConnection conn)
             => new CompositeHandler<T>(_nameTranslator, conn.Connector.TypeMapper);
 
     }

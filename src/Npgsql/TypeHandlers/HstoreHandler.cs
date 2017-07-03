@@ -36,9 +36,9 @@ using NpgsqlTypes;
 namespace Npgsql.TypeHandlers
 {
     [TypeMapping("hstore", NpgsqlDbType.Hstore, new[] { typeof(Dictionary<string, string>), typeof(IDictionary<string, string>) })]
-    class HstoreHandlerFactory : NpgsqlTypeHandlerFactory
+    class HstoreHandlerFactory : NpgsqlTypeHandlerFactory<Dictionary<string, string>>
     {
-        protected override NpgsqlTypeHandler Create(NpgsqlConnection conn)
+        protected override NpgsqlTypeHandler<Dictionary<string, string>> Create(NpgsqlConnection conn)
             => new HstoreHandler(conn);
     }
 

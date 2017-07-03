@@ -380,7 +380,7 @@ namespace Npgsql.TypeMapping
                 // Somewhat hacky. We don't eagerly load composite types into DatabaseInfo
                 // because there could be a great deal of them (#1126). So we check whether
                 // the mapping was for a composite and load it now if so
-                if (mapping.TypeHandlerFactory is CompositeTypeHandlerFactory)
+                if (mapping.TypeHandlerFactory is ICompositeTypeHandlerFactory)
                     pgType = DatabaseInfo.GetComposite(mapping.PgTypeName, connector.Connection);
                 else
                     throw new ArgumentException($"A PostgreSQL type with the name {mapping.PgTypeName} was not found in the database");

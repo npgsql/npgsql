@@ -32,10 +32,10 @@ using Npgsql.TypeMapping;
 namespace Npgsql.TypeHandlers.DateTimeHandlers
 {
     [TypeMapping("timestamptz", NpgsqlDbType.TimestampTz, DbType.DateTimeOffset, typeof(DateTimeOffset))]
-    class TimestampTzHandlerFactory : NpgsqlTypeHandlerFactory
+    class TimestampTzHandlerFactory : NpgsqlTypeHandlerFactory<DateTime>
     {
         // Check for the legacy floating point timestamps feature
-        protected override NpgsqlTypeHandler Create(NpgsqlConnection conn)
+        protected override NpgsqlTypeHandler<DateTime> Create(NpgsqlConnection conn)
             => new TimestampTzHandler(conn.HasIntegerDateTimes, conn.Connector.ConvertInfinityDateTime);
     }
 

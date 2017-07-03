@@ -32,9 +32,9 @@ using Npgsql.TypeMapping;
 namespace Npgsql.TypeHandlers.DateTimeHandlers
 {
     [TypeMapping("date", NpgsqlDbType.Date, DbType.Date, typeof(NpgsqlDate))]
-    class DateHandlerFactory : NpgsqlTypeHandlerFactory
+    class DateHandlerFactory : NpgsqlTypeHandlerFactory<DateTime>
     {
-        protected override NpgsqlTypeHandler Create(NpgsqlConnection conn)
+        protected override NpgsqlTypeHandler<DateTime> Create(NpgsqlConnection conn)
             => new DateHandler(conn.Connector.ConvertInfinityDateTime);
     }
 

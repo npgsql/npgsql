@@ -124,7 +124,7 @@ namespace Npgsql.TypeHandlers
         #endregion
     }
 
-    class EnumTypeHandlerFactory<TEnum> : NpgsqlTypeHandlerFactory where TEnum : struct
+    class EnumTypeHandlerFactory<TEnum> : NpgsqlTypeHandlerFactory<TEnum> where TEnum : struct
     {
         readonly Dictionary<TEnum, string> _enumToLabel = new Dictionary<TEnum, string>();
         readonly Dictionary<string, TEnum> _labelToEnum = new Dictionary<string, TEnum>();
@@ -143,7 +143,7 @@ namespace Npgsql.TypeHandlers
             }
         }
 
-        protected override NpgsqlTypeHandler Create(NpgsqlConnection conn)
+        protected override NpgsqlTypeHandler<TEnum> Create(NpgsqlConnection conn)
             => new EnumHandler<TEnum>(_enumToLabel, _labelToEnum);
     }
 }

@@ -34,9 +34,9 @@ using NpgsqlTypes;
 namespace Npgsql.TypeHandlers
 {
     [TypeMapping("jsonb", NpgsqlDbType.Jsonb)]
-    public class JsonbHandlerFactory : NpgsqlTypeHandlerFactory
+    public class JsonbHandlerFactory : NpgsqlTypeHandlerFactory<string>
     {
-        protected override NpgsqlTypeHandler Create(NpgsqlConnection conn) => new JsonbHandler(conn);
+        protected override NpgsqlTypeHandler<string> Create(NpgsqlConnection conn) => new JsonbHandler(conn);
     }
 
     /// <summary>

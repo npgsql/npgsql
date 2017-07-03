@@ -31,9 +31,9 @@ using Npgsql.TypeMapping;
 
 namespace Npgsql.Json.NET
 {
-    class JsonbHandlerFactory : NpgsqlTypeHandlerFactory
+    class JsonbHandlerFactory : NpgsqlTypeHandlerFactory<string>
     {
-        protected override NpgsqlTypeHandler Create(NpgsqlConnection conn)
+        protected override NpgsqlTypeHandler<string> Create(NpgsqlConnection conn)
             => new JsonbHandler(conn);
     }
 

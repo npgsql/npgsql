@@ -50,9 +50,9 @@ namespace Npgsql.TypeHandlers
     [TypeMapping("refcursor", NpgsqlDbType.Refcursor, inferredDbType: DbType.String)]
     [TypeMapping("citext", NpgsqlDbType.Citext, inferredDbType: DbType.String)]
     [TypeMapping("unknown")]
-    public class TextHandlerFactory : NpgsqlTypeHandlerFactory
+    public class TextHandlerFactory : NpgsqlTypeHandlerFactory<string>
     {
-        protected override NpgsqlTypeHandler Create(NpgsqlConnection conn)
+        protected override NpgsqlTypeHandler<string> Create(NpgsqlConnection conn)
             => new TextHandler(conn);
     }
 

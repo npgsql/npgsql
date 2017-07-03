@@ -153,6 +153,12 @@ namespace Npgsql.TypeMapping
         public NpgsqlTypeHandlerFactory TypeHandlerFactory { get; }
 
         /// <summary>
+        /// The default CLR type that handlers produced by this factory will read and write.
+        /// Used by the EF Core provider (and possibly others in the future).
+        /// </summary>
+        internal Type DefaultClrType => TypeHandlerFactory.DefaultValueType;
+
+        /// <summary>
         /// Returns a string that represents the current object.
         /// </summary>
         public override string ToString() => $"{PgTypeName} => {TypeHandlerFactory.GetType().Name}";

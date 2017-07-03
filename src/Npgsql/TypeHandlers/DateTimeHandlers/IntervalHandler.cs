@@ -31,10 +31,10 @@ using NpgsqlTypes;
 namespace Npgsql.TypeHandlers.DateTimeHandlers
 {
     [TypeMapping("interval", NpgsqlDbType.Interval, new[] { typeof(TimeSpan), typeof(NpgsqlTimeSpan) })]
-    class IntervalHandlerFactory : NpgsqlTypeHandlerFactory
+    class IntervalHandlerFactory : NpgsqlTypeHandlerFactory<TimeSpan>
     {
         // Check for the legacy floating point timestamps feature
-        protected override NpgsqlTypeHandler Create(NpgsqlConnection conn)
+        protected override NpgsqlTypeHandler<TimeSpan> Create(NpgsqlConnection conn)
             => new IntervalHandler(conn.HasIntegerDateTimes);
     }
 

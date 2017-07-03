@@ -21,6 +21,7 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
+using System;
 using Npgsql.Logging;
 using NpgsqlTypes;
 using Npgsql.PostgresTypes;
@@ -31,9 +32,9 @@ using Npgsql.TypeMapping;
 namespace Npgsql.TypeHandlers.InternalTypesHandlers
 {
     [TypeMapping("oidvector", NpgsqlDbType.Oidvector)]
-    class OIDectorHandlerFactory : NpgsqlTypeHandlerFactory
+    class OIDectorHandlerFactory : NpgsqlTypeHandlerFactory<Array>
     {
-        protected override NpgsqlTypeHandler Create(NpgsqlConnection conn)
+        protected override NpgsqlTypeHandler<Array> Create(NpgsqlConnection conn)
             => new OIDVectorHandler(conn.Connector.TypeMapper.DatabaseInfo.ByName["oid"]);
     }
 

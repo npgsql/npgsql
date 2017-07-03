@@ -142,9 +142,9 @@ CHECK
             }
         }
 
-        class DummyTypeHandlerFactory : NpgsqlTypeHandlerFactory
+        class DummyTypeHandlerFactory : NpgsqlTypeHandlerFactory<int>
         {
-            protected override NpgsqlTypeHandler Create(NpgsqlConnection conn)
+            protected override NpgsqlTypeHandler<int> Create(NpgsqlConnection conn)
                 => throw new Exception();
         }
 
@@ -185,11 +185,11 @@ CHECK
             return myFactory;
         }
 
-        class MyInt32HandlerFactory : NpgsqlTypeHandlerFactory
+        class MyInt32HandlerFactory : NpgsqlTypeHandlerFactory<int>
         {
             internal int Reads, Writes;
 
-            protected override NpgsqlTypeHandler Create(NpgsqlConnection conn)
+            protected override NpgsqlTypeHandler<int> Create(NpgsqlConnection conn)
                 => new MyInt32Handler(this);
         }
 

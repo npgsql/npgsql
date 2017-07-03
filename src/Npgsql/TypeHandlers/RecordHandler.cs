@@ -33,9 +33,9 @@ using Npgsql.TypeMapping;
 namespace Npgsql.TypeHandlers
 {
     [TypeMapping("record")]
-    class RecordHandlerFactory : NpgsqlTypeHandlerFactory
+    class RecordHandlerFactory : NpgsqlTypeHandlerFactory<object[]>
     {
-        protected override NpgsqlTypeHandler Create(NpgsqlConnection conn)
+        protected override NpgsqlTypeHandler<object[]> Create(NpgsqlConnection conn)
             => new RecordHandler(conn.Connector.TypeMapper);
     }
 

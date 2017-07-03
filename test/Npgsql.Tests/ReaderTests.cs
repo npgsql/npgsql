@@ -1360,11 +1360,11 @@ LANGUAGE plpgsql VOLATILE";
 
     #region Mock Type Handlers
 
-    class ExplodingTypeHandlerFactory : NpgsqlTypeHandlerFactory
+    class ExplodingTypeHandlerFactory : NpgsqlTypeHandlerFactory<int>
     {
         readonly bool _safe;
         internal ExplodingTypeHandlerFactory(bool safe) { _safe = safe; }
-        protected override NpgsqlTypeHandler Create(NpgsqlConnection conn)
+        protected override NpgsqlTypeHandler<int> Create(NpgsqlConnection conn)
             => new ExplodingTypeHandler(_safe);
     }
 
