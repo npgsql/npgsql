@@ -36,7 +36,7 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests
 {
-    [Parallelizable(ParallelScope.None)]
+    [NonParallelizable]
     public class SystemTransactionTests : TestBase
     {
         [Test, Description("Single connection enlisting explicitly, committing")]

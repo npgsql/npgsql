@@ -33,7 +33,7 @@ using NpgsqlTypes;
 
 namespace Npgsql.Tests.Types
 {
-    [Parallelizable(ParallelScope.None)]
+    [NonParallelizable]
     class CompositeTests : TestBase
     {
         #region Test Types

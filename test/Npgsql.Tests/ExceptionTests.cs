@@ -117,7 +117,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        [Parallelizable(ParallelScope.None)]
+        [NonParallelizable]
         public void DataTypeNameExceptionFieldIsPopulated()
         {
             // On reading the source code for PostgreSQL9.3beta1, the only time that the

@@ -32,7 +32,7 @@ namespace Npgsql.Tests
     /// <summary>
     /// Tests for the Npgsql.Json.NET mapping plugin
     /// </summary>
-    [Parallelizable(ParallelScope.None)]
+    [NonParallelizable]
     [TestFixture(NpgsqlDbType.Jsonb)]
     [TestFixture(NpgsqlDbType.Json)]
     public class JsonNetTests : TestBase

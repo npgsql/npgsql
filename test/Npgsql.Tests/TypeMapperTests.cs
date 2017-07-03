@@ -14,7 +14,7 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests
 {
-    [Parallelizable(ParallelScope.None)]
+    [NonParallelizable]
     public class TypeMapperTests : TestBase
     {
         [Test]

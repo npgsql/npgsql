@@ -377,7 +377,7 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1065")]
-        [Parallelizable(ParallelScope.None)]
+        [NonParallelizable]
         public void ClientEncodingEnvVar()
         {
             using (var conn = OpenConnection())

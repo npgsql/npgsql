@@ -29,7 +29,7 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests
 {
-    [Parallelizable(ParallelScope.None)]
+    [NonParallelizable]
     [Explicit]
     public class PerformanceCounterTests : TestBase
     {
