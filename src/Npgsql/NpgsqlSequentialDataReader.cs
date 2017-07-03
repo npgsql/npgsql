@@ -73,7 +73,9 @@ namespace Npgsql
             var fieldDescription = RowDescription[column];
             try
             {
-                return await fieldDescription.Handler.Read<T>(Buffer, ColumnLen, async, fieldDescription);
+                return ColumnLen <= Buffer.ReadBytesLeft
+                    ? fieldDescription.Handler.Read<T>(Buffer, ColumnLen, fieldDescription)
+                    : await fieldDescription.Handler.Read<T>(Buffer, ColumnLen, async, fieldDescription);
             }
             catch (NpgsqlSafeReadException e)
             {
