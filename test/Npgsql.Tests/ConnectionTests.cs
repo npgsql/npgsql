@@ -981,7 +981,7 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/392")]
-        [LinuxIgnore]
+        [LinuxIgnore]  // TODO: Ignore on CoreCLR instead
         public void NonUTF8Encoding()
         {
             using (var adminConn = OpenConnection())

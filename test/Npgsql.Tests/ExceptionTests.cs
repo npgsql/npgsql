@@ -182,6 +182,7 @@ namespace Npgsql.Tests
 
 #if !NETCOREAPP1_1
         [Test]
+        [Ignore("DbException doesn't support serialization in .NET Core 2.0 (PlatformNotSupportedException)")]
         public void Serialization()
         {
             var e = new PostgresException
