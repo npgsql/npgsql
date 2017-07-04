@@ -204,17 +204,21 @@ ORDER BY ord";
             }
         }
 
-        internal PostgresCompositeType GetComposite(string pgName, NpgsqlConnection connection)
+        /// <summary>
+        /// Attempts to load the given type as a composite type. Composite types aren't eagerly loaded as the other
+        /// types.
+        /// </summary>
+        internal bool TryGetComposite(string pgName, NpgsqlConnection connection, out PostgresCompositeType compositeType)
         {
             // First check if the composite type definition has already been loaded from the database
             if (pgName.IndexOf('.') == -1
                 ? ByName.TryGetValue(pgName, out var postgresType)
                 : ByFullName.TryGetValue(pgName, out postgresType))
             {
-                var asComposite = postgresType as PostgresCompositeType;
-                if (asComposite == null)
+                compositeType = postgresType as PostgresCompositeType;
+                if (compositeType == null)
                     throw new ArgumentException($"Type {pgName} was found but is not a composite");
-                return asComposite;
+                return true;
             }
 
             // This is the first time the composite is mapped, the type definition needs to be loaded
@@ -239,7 +243,10 @@ ORDER BY ord";
                 using (var reader = cmd.ExecuteReader())
                 {
                     if (!reader.Read())
-                        throw new ArgumentException($"An PostgreSQL type with the name {pgName} was not found in the database");
+                    {
+                        compositeType = null;
+                        return false;
+                    }
 
                     // Load some info on the composite type itself, do some checks
                     var ns = reader.GetString(0);
@@ -269,7 +276,7 @@ ORDER BY ord";
                         });
                     }
 
-                    var compositeType = new PostgresCompositeType(ns, name, oid, fields);
+                    compositeType = new PostgresCompositeType(ns, name, oid, fields);
                     Add(ns, name, oid, compositeType);
 
                     reader.NextResult(); // Load the array type
@@ -286,7 +293,7 @@ ORDER BY ord";
                     else
                         Log.Warn($"Could not find array type corresponding to composite {pgName}");
 
-                    return compositeType;
+                    return true;
                 }
             }
         }
