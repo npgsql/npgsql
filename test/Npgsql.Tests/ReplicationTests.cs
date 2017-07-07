@@ -17,6 +17,21 @@ namespace Npgsql.Tests
         const string TestPlugin = "test_decoding";
 
         [Test]
+        public void IncorrectCommand()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ReplicationMode = ReplicationMode.Logical
+            };
+
+            const string incorrectCmdText = "START_REPLICATION SLOT " + TestSlotName + "42 LOGICAL 0/0";
+            using (var connection = OpenConnection(csb))
+            {
+                Assert.Throws<PostgresException>(() => connection.BeginReplication(incorrectCmdText));
+            }
+        }
+        
+        [Test]
         public void ReplicationCommands()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)

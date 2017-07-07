@@ -153,7 +153,28 @@ namespace Npgsql
                     }
 
                     CheckDisposed();
-                    var msg = await _connector.ReadMessage(async);
+                    IBackendMessage msg;
+                    try
+                    {
+                        msg = await _connector.ReadMessage(async);
+                    }
+                    catch (PostgresException)
+                    {
+                        if (_connector.State != ConnectorState.Ready)
+                            throw;
+                        
+                        if (!_disposed)
+                        {
+                            lock (_writeSyncObject)
+                            {
+                                if (!_disposed)
+                                    Cleanup();
+                            }
+                        }
+                        EndOfStream = true;
+                        throw;
+                    }
+                    
                     if (msg == null)
                     {
                         if (dontWait)
