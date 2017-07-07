@@ -498,7 +498,8 @@ namespace Npgsql
             switch (CommandType) {
             case CommandType.Text:
                 Debug.Assert(_connection?.Connector != null);
-                _connection.Connector.SqlParser.ParseRawQuery(CommandText, _connection == null || _connection.UseConformantStrings, _parameters, _statements);
+                var connector = _connection.Connector;
+                connector.SqlParser.ParseRawQuery(CommandText, connector.UseConformantStrings, _parameters, _statements);
                 if (_statements.Count > 1 && _parameters.HasOutputParameters)
                     throw new NotSupportedException("Commands with multiple queries cannot have out parameters");
                 break;

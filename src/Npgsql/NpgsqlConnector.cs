@@ -1864,7 +1864,6 @@ namespace Npgsql
         bool SupportsDiscardTemp => ServerVersion >= new Version(8, 3, 0);
         bool SupportsDiscard => ServerVersion >= new Version(8, 3, 0); // Redshift is 8.0.2
         internal bool SupportsRangeTypes => ServerVersion >= new Version(9, 2, 0);
-        internal bool SupportsEStringPrefix => ServerVersion >= new Version(8, 1, 0);
         internal bool UseConformantStrings { get; private set; }
         internal bool IntegerDateTimes { get; private set; }
 

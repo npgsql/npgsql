@@ -331,12 +331,6 @@ namespace Npgsql
         public int Port => Settings.Port;
 
         /// <summary>
-        /// If true, the connection will attempt to use SslStream instead of an internal TlsClientStream.
-        /// </summary>
-        [PublicAPI]
-        public bool UseSslStream => Settings.UseSslStream;
-
-        /// <summary>
         /// Gets the time to wait while trying to establish a connection
         /// before terminating the attempt and generating an error.
         /// </summary>
@@ -785,39 +779,6 @@ namespace Npgsql
                 CheckConnectionOpen();
                 Debug.Assert(Connector != null);
                 return Connector.BackendProcessId;
-            }
-        }
-
-        /// <summary>
-        /// Report whether the backend is expecting standard conformant strings.
-        /// In version 8.1, Postgres began reporting this value (false), but did not actually support standard conformant strings.
-        /// In version 8.2, Postgres began supporting standard conformant strings, but defaulted this flag to false.
-        /// As of version 9.1, this flag defaults to true.
-        /// </summary>
-        [Browsable(false)]
-        [PublicAPI]
-        public bool UseConformantStrings
-        {
-            get
-            {
-                CheckConnectionOpen();
-                Debug.Assert(Connector != null);
-                return Connector.UseConformantStrings;
-            }
-        }
-
-        /// <summary>
-        /// Report whether the backend understands the string literal E prefix (>= 8.1).
-        /// </summary>
-        [Browsable(false)]
-        [PublicAPI]
-        public bool SupportsEStringPrefix
-        {
-            get
-            {
-                CheckConnectionOpen();
-                Debug.Assert(Connector != null);
-                return Connector.SupportsEStringPrefix;
             }
         }
 
