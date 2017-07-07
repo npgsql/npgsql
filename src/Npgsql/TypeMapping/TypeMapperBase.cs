@@ -57,6 +57,9 @@ namespace Npgsql.TypeMapping
         }
 
         public virtual bool RemoveMapping(string pgTypeName) => Mappings.Remove(pgTypeName);
+
+        IEnumerable<NpgsqlTypeMapping> INpgsqlTypeMapper.Mappings => Mappings.Values;
+
         public abstract void Reset();
 
         #endregion Mapping management

@@ -52,6 +52,11 @@ namespace Npgsql.TypeMapping
         bool RemoveMapping(string pgTypeName);
 
         /// <summary>
+        /// Enumerates all mappings currently set up on this type mapper.
+        /// </summary>
+        IEnumerable<NpgsqlTypeMapping> Mappings { get; }
+
+        /// <summary>
         /// Maps a CLR enum to a PostgreSQL enum type.
         /// </summary>
         /// <remarks>
