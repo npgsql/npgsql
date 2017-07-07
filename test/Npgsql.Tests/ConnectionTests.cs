@@ -382,23 +382,16 @@ namespace Npgsql.Tests
         {
             using (var conn = OpenConnection())
                 Assert.That(conn.ExecuteScalar("SHOW client_encoding"), Is.Not.EqualTo("SQL_ASCII"));
-            var prevEnvVar = Environment.GetEnvironmentVariable("PGCLIENTENCODING");
-            Environment.SetEnvironmentVariable("PGCLIENTENCODING", "SQL_ASCII");
-            // Note that the pool is unaware of the environment variable, so if a connection is
-            // returned from the pool it may contain the wrong client_encoding
-            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            using (TestUtil.SetEnvironmentVariable("PGCLIENTENCODING", "SQL_ASCII"))
             {
-                ApplicationName = nameof(ClientEncodingEnvVar),
-                Pooling = false
-            };
-            try
-            {
+                // Note that the pool is unaware of the environment variable, so if a connection is
+                // returned from the pool it may contain the wrong client_encoding
+                var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+                {
+                    Pooling = false
+                };
                 using (var conn = OpenConnection(connString))
                     Assert.That(conn.ExecuteScalar("SHOW client_encoding"), Is.EqualTo("SQL_ASCII"));
-            }
-            finally
-            {
-                Environment.SetEnvironmentVariable("PGCLIENTENCODING", prevEnvVar);
             }
         }
 
@@ -415,7 +408,56 @@ namespace Npgsql.Tests
                 Assert.That(conn.ExecuteScalar("SHOW client_encoding"), Is.EqualTo("SQL_ASCII"));
         }
 
-        #endregion
+        #endregion Client Encoding
+
+        #region Timezone
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1634")]
+        [NonParallelizable]
+        public void TimezoneEnvVar()
+        {
+            string newTimezone;
+            using (var conn = OpenConnection())
+            {
+                newTimezone = (string)conn.ExecuteScalar("SHOW TIMEZONE") == "Africa/Bamako"
+                    ? "Africa/Lagos"
+                    : "Africa/Bamako";
+            }
+
+            using (TestUtil.SetEnvironmentVariable("PGTZ", newTimezone))
+            {
+                // Note that the pool is unaware of the environment variable, so if a connection is
+                // returned from the pool it may contain the wrong timezone
+                var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+                {
+                    Pooling = false
+                };
+                using (var conn = OpenConnection(connString))
+                    Assert.That(conn.ExecuteScalar("SHOW TIMEZONE"), Is.EqualTo(newTimezone));
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1634")]
+        public void TimezoneConnectionParam()
+        {
+            string newTimezone;
+            using (var conn = OpenConnection())
+            {
+                newTimezone = (string)conn.ExecuteScalar("SHOW TIMEZONE") == "Africa/Bamako"
+                    ? "Africa/Lagos"
+                    : "Africa/Bamako";
+            }
+
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Timezone = newTimezone,
+                Pooling = false
+            };
+            using (var conn = OpenConnection(connString))
+                Assert.That(conn.ExecuteScalar("SHOW TIMEZONE"), Is.EqualTo(newTimezone));
+        }
+
+        #endregion Timezone
 
         [Test, WindowsIgnore]
         public void UnixDomainSocket()

@@ -66,6 +66,7 @@ Parameter keywords are case-insensitive.
 | Enlist                   | Whether to enlist in an ambient TransactionScope.                                               | false     |
 | Search Path              | Sets the schema search path.                                                                    |           |
 | Client Encoding          | Gets or sets the client_encoding parameter. Since 3.1.                                          |           |
+| Timezone                 | Gets or sets the session timezone, PGTZ environment variable can be used instead. Since 3.3.    |           |
 | EF Template Database     | The database template to specify when creating a database in Entity Framework.                  | template1 |
 
 ## Compatibility

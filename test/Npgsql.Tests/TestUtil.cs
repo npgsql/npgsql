@@ -84,6 +84,29 @@ namespace Npgsql.Tests
             hex.Append("'");
             return hex.ToString();
         }
+
+        internal static IDisposable SetEnvironmentVariable(string name, string value)
+        {
+            var resetter = new EnvironmentVariableResetter(name, Environment.GetEnvironmentVariable(name));
+            Environment.SetEnvironmentVariable(name, value);
+            return resetter;
+        }
+
+        class EnvironmentVariableResetter : IDisposable
+        {
+            readonly string _name, _value;
+
+            internal EnvironmentVariableResetter(string name, string value)
+            {
+                _name = name;
+                _value = value;
+            }
+
+            public void Dispose()
+            {
+                Environment.SetEnvironmentVariable(_name, _value);
+            }
+        }
     }
 
     public static class NpgsqlConnectionExtensions

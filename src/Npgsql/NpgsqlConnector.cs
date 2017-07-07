@@ -450,6 +450,10 @@ namespace Npgsql
             if (IsSecure && !IsRedshift)
                 startupMessage["ssl_renegotiation_limit"] = "0";
 
+            var timezone = Settings.Timezone ?? Environment.GetEnvironmentVariable("PGTZ");
+            if (timezone != null)
+                startupMessage["TimeZone"] = timezone;
+
             // Should really never happen, just in case
             if (startupMessage.Length > WriteBuffer.Size)
                 throw new Exception("Startup message bigger than buffer");

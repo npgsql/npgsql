@@ -475,6 +475,25 @@ namespace Npgsql
         }
         string _encoding;
 
+        /// <summary>
+        /// Gets or sets the PostgreSQL session timezone, in Olson/IANA database format.
+        /// </summary>
+        [Category("Connection")]
+        [Description("Gets or sets the PostgreSQL session timezone, in Olson/IANA database format.")]
+        [DisplayName("Timezone")]
+        [NpgsqlConnectionStringProperty]
+        [CanBeNull]
+        public string Timezone
+        {
+            get => _timezone;
+            set
+            {
+                _timezone = value;
+                SetValue(nameof(Timezone), value);
+            }
+        }
+        string _timezone;
+
         #endregion
 
         #region Properties - Security
