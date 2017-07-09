@@ -25,7 +25,8 @@ using System;
 using NodaTime;
 using Npgsql.BackendMessages;
 using Npgsql.TypeHandling;
-using Npgsql.TypeMapping;
+
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
 namespace Npgsql.NodaTime
 {

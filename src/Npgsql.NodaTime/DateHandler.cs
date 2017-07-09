@@ -21,15 +21,15 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using System;
 using NodaTime;
 using Npgsql.BackendMessages;
 using Npgsql.TypeHandling;
-using Npgsql.TypeMapping;
+
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
 namespace Npgsql.NodaTime
 {
-    class DateHandlerFactory : NpgsqlTypeHandlerFactory<LocalDate>
+    public class DateHandlerFactory : NpgsqlTypeHandlerFactory<LocalDate>
     {
         protected override NpgsqlTypeHandler<LocalDate> Create(NpgsqlConnection conn)
         {

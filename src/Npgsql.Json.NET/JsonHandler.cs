@@ -27,9 +27,11 @@ using Newtonsoft.Json;
 using Npgsql.BackendMessages;
 using Npgsql.TypeHandling;
 
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
+
 namespace Npgsql.Json.NET
 {
-    class JsonHandlerFactory : NpgsqlTypeHandlerFactory<string>
+    public class JsonHandlerFactory : NpgsqlTypeHandlerFactory<string>
     {
         protected override NpgsqlTypeHandler<string> Create(NpgsqlConnection conn)
             => new JsonHandler(conn);

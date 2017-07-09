@@ -22,16 +22,16 @@
 #endregion
 
 using System;
-using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Npgsql.BackendMessages;
 using Npgsql.TypeHandling;
-using Npgsql.TypeMapping;
+
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
 namespace Npgsql.Json.NET
 {
-    class JsonbHandlerFactory : NpgsqlTypeHandlerFactory<string>
+    public class JsonbHandlerFactory : NpgsqlTypeHandlerFactory<string>
     {
         protected override NpgsqlTypeHandler<string> Create(NpgsqlConnection conn)
             => new JsonbHandler(conn);
