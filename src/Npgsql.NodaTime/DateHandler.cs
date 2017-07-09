@@ -32,16 +32,35 @@ namespace Npgsql.NodaTime
     class DateHandlerFactory : NpgsqlTypeHandlerFactory<LocalDate>
     {
         protected override NpgsqlTypeHandler<LocalDate> Create(NpgsqlConnection conn)
-          => new DateHandler();
+        {
+            var csb = new NpgsqlConnectionStringBuilder(conn.ConnectionString);
+            return new DateHandler(csb.ConvertInfinityDateTime);
+        }
     }
 
     sealed class DateHandler : NpgsqlSimpleTypeHandler<LocalDate>
     {
+        /// <summary>
+        /// Whether to convert positive and negative infinity values to Instant.{Max,Min}Value when
+        /// an Instant is requested
+        /// </summary>
+        readonly bool _convertInfinityDateTime;
+
+        internal DateHandler(bool convertInfinityDateTime)
+        {
+            _convertInfinityDateTime = convertInfinityDateTime;
+        }
+
         public override LocalDate Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             var value = buf.ReadInt32();
-            if (value == int.MaxValue || value == int.MinValue)
-                throw new NpgsqlSafeReadException(new NotSupportedException("Infinity values not yet supported for date"));
+            if (_convertInfinityDateTime)
+            {
+                if (value == int.MaxValue)
+                    return LocalDate.MaxIsoValue;
+                if (value == int.MinValue)
+                    return LocalDate.MinIsoValue;
+            }
             return new LocalDate().PlusDays(value + 730119);
         }
 
@@ -55,6 +74,21 @@ namespace Npgsql.NodaTime
         protected override void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
         {
             var date = (LocalDate)value;
+
+            if (_convertInfinityDateTime)
+            {
+                if (date == LocalDate.MaxIsoValue)
+                {
+                    buf.WriteInt32(int.MaxValue);
+                    return;
+                }
+                if (date == LocalDate.MinIsoValue)
+                {
+                    buf.WriteInt32(int.MinValue);
+                    return;
+                }
+            }
+
             var totalDaysSinceEra = Period.Between(default(LocalDate), date, PeriodUnits.Days).Days;
             buf.WriteInt32(totalDaysSinceEra - 730119);
         }

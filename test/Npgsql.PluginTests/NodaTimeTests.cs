@@ -232,6 +232,39 @@ namespace Npgsql.PluginTests
             }
         }
 
+        [Test, Description("Makes sure that when ConvertInfinityDateTime is true, infinity values are properly converted")]
+        public void DateConvertInfinity()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { ConvertInfinityDateTime = true };
+            using (var conn = OpenConnection(csb))
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (d1 DATE, d2 DATE)");
+
+                using (var cmd = new NpgsqlCommand("INSERT INTO data VALUES (@p1, @p2)", conn))
+                {
+                    cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Date, LocalDate.MaxIsoValue);
+                    cmd.Parameters.AddWithValue("p2", NpgsqlDbType.Date, LocalDate.MinIsoValue);
+                    cmd.ExecuteNonQuery();
+                }
+
+                using (var cmd = new NpgsqlCommand("SELECT d1::TEXT, d2::TEXT FROM data", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetValue(0), Is.EqualTo("infinity"));
+                    Assert.That(reader.GetValue(1), Is.EqualTo("-infinity"));
+                }
+
+                using (var cmd = new NpgsqlCommand("SELECT * FROM data", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetFieldValue<LocalDate>(0), Is.EqualTo(LocalDate.MaxIsoValue));
+                    Assert.That(reader.GetFieldValue<LocalDate>(1), Is.EqualTo(LocalDate.MinIsoValue));
+                }
+            }
+        }
+
         #endregion Date
 
         #region Time
