@@ -18,6 +18,7 @@
     <PackageLicenseUrl>https://raw.githubusercontent.com/npgsql/npgsql/develop/LICENSE.txt</PackageLicenseUrl>
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>git://github.com/npgsql/npgsql</RepositoryUrl>
+    <Deterministic>true</Deterministic>
   </PropertyGroup>
 
   <ItemGroup>

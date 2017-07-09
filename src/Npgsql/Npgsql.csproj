@@ -19,6 +19,7 @@
     <PackageLicenseUrl>https://raw.githubusercontent.com/npgsql/npgsql/develop/LICENSE.txt</PackageLicenseUrl>
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>git://github.com/npgsql/npgsql</RepositoryUrl>
+    <Deterministic>true</Deterministic>
     <!-- This is somehow important for Microsoft.ApiDesignGuidelines.Analyzers -->
     <Features>IOperation</Features>
   </PropertyGroup>
