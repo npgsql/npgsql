@@ -40,6 +40,27 @@ namespace Npgsql.PluginTests
     [TestFixture(NpgsqlDbType.Json)]
     public class JsonNetTests : TestBase
     {
+        public void Crap()
+        {
+            using (var conn = OpenConnection())
+            {
+                // Write arbitrary CLR types as JSON
+                using (var cmd = new NpgsqlCommand(@"INSERT INTO mytable (my_json_column JSONB)", conn))
+                {
+                    cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType.Jsonb) { Value = MyClrType });
+                    cmd.ExecuteNonQuery();
+                }
+
+                // Read arbitrary CLR types as JSON
+                using (var cmd = new NpgsqlCommand(@"SELECT my_json_column FROM mytable", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    var someValue = reader.GetFieldValue<MyClrType>(0);
+                }
+            }
+        }
+
         [Test]
         public void RoundtripObject()
         {

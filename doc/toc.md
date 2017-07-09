@@ -10,6 +10,8 @@
 # Types
 ## [Basic Type Mapping](types/basic.md)
 ## [Date and Time](types/datetime.md)
+## [NodaTime Plugin](types/nodatime.md)
+## [Json.NET Plugin](types/jsonnet.md)
 ## [Enums and Composites](types/enums_and_composites.md)
 # [Transactions](transactions.md)
 # [Performance](performance.md)
