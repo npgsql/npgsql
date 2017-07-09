@@ -94,7 +94,22 @@ namespace Npgsql.TypeHandling
 
         #region Write
 
-        internal override async Task WriteWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        internal override Task WriteWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        {
+            if (buf.WriteSpaceLeft < 4)
+                return WriteWithLengthLong(value, buf, lengthCache, parameter, async);
+
+            if (value == null || value is DBNull)
+            {
+                buf.WriteInt32(-1);
+                return PGUtil.CompletedTask;
+            }
+
+            buf.WriteInt32(ValidateAndGetLength(value, ref lengthCache, parameter));
+            return Write(value, buf, lengthCache, parameter, async);
+        }
+
+        async Task WriteWithLengthLong(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
         {
             if (buf.WriteSpaceLeft < 4)
                 await buf.Flush(async);

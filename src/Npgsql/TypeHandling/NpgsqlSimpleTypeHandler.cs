@@ -139,7 +139,25 @@ namespace Npgsql.TypeHandling
         /// </param>
         protected abstract void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null);
 
-        internal sealed override async Task WriteWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        internal sealed override Task WriteWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        {
+            if (value == null || value is DBNull)
+            {
+                if (buf.WriteSpaceLeft < 4)
+                    return WriteWithLengthLong(value, buf, parameter, async);
+                buf.WriteInt32(-1);
+                return PGUtil.CompletedTask;
+            }
+
+            var elementLen = ValidateAndGetLength(value, parameter);
+            if (buf.WriteSpaceLeft < 4 + elementLen)
+                return WriteWithLengthLong(value, buf, parameter, async);
+            buf.WriteInt32(elementLen);
+            Write(value, buf, parameter);
+            return PGUtil.CompletedTask;
+        }
+
+        async Task WriteWithLengthLong(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter, bool async)
         {
             if (value == null || value is DBNull)
             {

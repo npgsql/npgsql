@@ -215,7 +215,7 @@ namespace Npgsql
                 // If we know the entire column is already in memory, use the code path without async
                 var result = _columnLen <= _buf.ReadBytesLeft
                     ? handler.Read<T>(_buf, _columnLen)
-                    : handler.Read<T>(_buf, _columnLen, false).Result;
+                    : handler.Read<T>(_buf, _columnLen, false).GetAwaiter().GetResult();
 
                 _leftToReadInDataMsg -= _columnLen;
                 _columnLen = int.MinValue;   // Mark that the (next) column length hasn't been read yet
