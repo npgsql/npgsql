@@ -22,10 +22,12 @@
 #endregion
 
 using System;
+using Npgsql.Json.NET;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
-namespace Npgsql.Json.NET
+// ReSharper disable once CheckNamespace
+namespace Npgsql
 {
     /// <summary>
     /// Extension allowing adding the Json.NET plugin to an Npgsql type mapper.

@@ -25,7 +25,6 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 using NpgsqlTypes;
-using Npgsql.Json.NET;
 using Npgsql.Tests;
 
 // ReSharper disable AccessToModifiedClosure

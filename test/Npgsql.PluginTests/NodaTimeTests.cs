@@ -25,7 +25,6 @@ using System;
 using System.Data;
 using System.Globalization;
 using NodaTime;
-using Npgsql.NodaTime;
 using Npgsql.Tests;
 using NpgsqlTypes;
 using NUnit.Framework;

@@ -23,10 +23,12 @@
 
 using System.Data;
 using NodaTime;
+using Npgsql.NodaTime;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
-namespace Npgsql.NodaTime
+// ReSharper disable once CheckNamespace
+namespace Npgsql
 {
     public static class NpgsqlNodatimeExtensions
     {
