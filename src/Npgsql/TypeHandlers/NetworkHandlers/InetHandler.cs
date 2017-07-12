@@ -27,7 +27,6 @@ using System.Net;
 using System.Net.Sockets;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
-using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -44,6 +43,8 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
         const byte IPv4 = 2;
         const byte IPv6 = 3;
         // ReSharper restore InconsistentNaming
+
+        #region Read
 
         public override IPAddress Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => ((INpgsqlSimpleTypeHandler<NpgsqlInet>)this).Read(buf, len, fieldDescription).Address;
@@ -68,62 +69,43 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
         string INpgsqlSimpleTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => ((INpgsqlSimpleTypeHandler<NpgsqlInet>)this).Read(buf, len, fieldDescription).ToString();
 
-        internal static int DoValidateAndGetLength(object value)
+        #endregion Read
+
+        #region Write
+
+        public override int ValidateAndGetLength(IPAddress value, NpgsqlParameter parameter)
+            => GetLength(value);
+
+        public override int ValidateAndGetLength(NpgsqlInet value, NpgsqlParameter parameter)
+            => GetLength(value.Address);
+
+        public int ValidateAndGetLength(string value, NpgsqlParameter parameter)
+            => GetLength(IPAddress.Parse(value));
+
+        public override void Write(IPAddress value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => DoWrite(value, -1, buf, false);
+
+        public override void Write(NpgsqlInet value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => DoWrite(value.Address, value.Netmask, buf, false);
+
+        public void Write(string value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => DoWrite(IPAddress.Parse(value), -1, buf, false);
+
+        internal static void DoWrite(IPAddress ip, int mask, NpgsqlWriteBuffer buf, bool isCidrHandler)
         {
-            IPAddress ip;
-            if (value is NpgsqlInet)
-                ip = ((NpgsqlInet)value).Address;
-            else {
-                ip = value as IPAddress;
-                if (ip == null)
-                    throw new InvalidCastException($"Can't send type {value.GetType()} as inet");
-            }
-
-            switch (ip.AddressFamily) {
-            case AddressFamily.InterNetwork:
-                return 8;
-            case AddressFamily.InterNetworkV6:
-                return 20;
-            default:
-                throw new InvalidCastException($"Can't handle IPAddress with AddressFamily {ip.AddressFamily}, only InterNetwork or InterNetworkV6!");
-            }
-        }
-
-        protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
-            => DoValidateAndGetLength(value);
-
-        internal static void DoWrite(object value, NpgsqlWriteBuffer buf, bool isCidrHandler)
-        {
-            IPAddress ip;
-            int mask;
-            if (value is NpgsqlInet) {
-                var inet = ((NpgsqlInet)value);
-                ip = inet.Address;
-                mask = inet.Netmask;
-            } else {
-                ip = value as IPAddress;
-                if (ip == null) {
-                    throw new InvalidCastException($"Can't send type {value.GetType()} as inet");
-                }
-                mask = -1;
-            }
-
             switch (ip.AddressFamily) {
             case AddressFamily.InterNetwork:
                 buf.WriteByte(IPv4);
-                if (mask == -1) {
+                if (mask == -1)
                     mask = 32;
-                }
                 break;
             case AddressFamily.InterNetworkV6:
                 buf.WriteByte(IPv6);
-                if (mask == -1) {
+                if (mask == -1)
                     mask = 128;
-                }
                 break;
             default:
-                throw new InvalidCastException(
-                    $"Can't handle IPAddress with AddressFamily {ip.AddressFamily}, only InterNetwork or InterNetworkV6!");
+                throw new InvalidCastException($"Can't handle IPAddress with AddressFamily {ip.AddressFamily}, only InterNetwork or InterNetworkV6!");
             }
 
             buf.WriteByte((byte)mask);
@@ -133,7 +115,19 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             buf.WriteBytes(bytes, 0, bytes.Length);
         }
 
-        protected override void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
-            => DoWrite(value, buf, false);
+        internal static int GetLength(IPAddress value)
+        {
+            switch (value.AddressFamily)
+            {
+            case AddressFamily.InterNetwork:
+                return 8;
+            case AddressFamily.InterNetworkV6:
+                return 20;
+            default:
+                throw new InvalidCastException($"Can't handle IPAddress with AddressFamily {value.AddressFamily}, only InterNetwork or InterNetworkV6!");
+            }
+        }
+
+        #endregion Write
     }
 }

@@ -25,7 +25,6 @@ using System;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
-using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 
@@ -42,7 +41,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-datetime.html
     /// </remarks>
-    class TimestampHandler : NpgsqlSimpleTypeHandlerWithPsv<DateTime, NpgsqlDateTime>
+    class TimestampHandler : NpgsqlSimpleTypeHandlerWithPsv<DateTime, NpgsqlDateTime>, INpgsqlSimpleTypeHandler<DateTimeOffset>
     {
         /// <summary>
         /// A deprecated compile-time option of PostgreSQL switches to a floating-point representation of some date/time
@@ -62,6 +61,8 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             _integerFormat = integerFormat;
             ConvertInfinityDateTime = convertInfinityDateTime;
         }
+
+        #region Read
 
         public override DateTime Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
@@ -118,81 +119,87 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             }
         }
 
-        protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
+        protected virtual DateTimeOffset ReadDateTimeOffset(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        {
+            buf.Skip(len);
+            throw new NpgsqlSafeReadException(new InvalidCastException("Only writing of DateTimeOffset to PostgreSQL timestamp is supported, not reading."));
+        }
+
+        DateTimeOffset INpgsqlSimpleTypeHandler<DateTimeOffset>.Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription)
+            => ReadDateTimeOffset(buf, len, fieldDescription);
+
+        #endregion Read
+
+        #region Write
+
+        public override int ValidateAndGetLength(DateTime value, NpgsqlParameter parameter)
         {
             CheckIntegerFormat();
-
-            if (!(value is DateTime) && !(value is NpgsqlDateTime) && !(value is DateTimeOffset))
-            {
-                var converted = Convert.ToDateTime(value);
-                if (parameter == null)
-                    throw CreateConversionButNoParamException(value.GetType());
-                parameter.ConvertedValue = converted;
-            }
             return 8;
         }
 
-        protected override void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
+        public override int ValidateAndGetLength(NpgsqlDateTime value, NpgsqlParameter parameter)
         {
-            if (parameter?.ConvertedValue != null)
-                value = parameter.ConvertedValue;
+            CheckIntegerFormat();
+            return 8;
+        }
 
-            NpgsqlDateTime ts;
-            if (value is NpgsqlDateTime) {
-                ts = (NpgsqlDateTime)value;
-                if (!ts.IsFinite)
-                {
-                    if (ts.IsInfinity)
-                    {
-                        buf.WriteInt64(long.MaxValue);
-                        return;
-                    }
+        public int ValidateAndGetLength(DateTimeOffset value, NpgsqlParameter parameter)
+        {
+            CheckIntegerFormat();
+            return 8;
+        }
 
-                    if (ts.IsNegativeInfinity)
-                    {
-                        buf.WriteInt64(long.MinValue);
-                        return;
-                    }
-
-                    throw new InvalidOperationException("Internal Npgsql bug, please report.");
-                }
-            }
-            else if (value is DateTime)
+        public override void Write(NpgsqlDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        {
+            if (value.IsInfinity)
             {
-                var dt = (DateTime)value;
-                if (ConvertInfinityDateTime)
-                {
-                    if (dt == DateTime.MaxValue)
-                    {
-                        buf.WriteInt64(long.MaxValue);
-                        return;
-                    }
-                    if (dt == DateTime.MinValue)
-                    {
-                        buf.WriteInt64(long.MinValue);
-                        return;
-                    }
-                }
-                ts = new NpgsqlDateTime(dt);
+                buf.WriteInt64(long.MaxValue);
+                return;
             }
-            else if (value is DateTimeOffset)
-                ts = new NpgsqlDateTime(((DateTimeOffset)value).DateTime);
-            else
-                throw new InvalidOperationException("Internal Npgsql bug, please report.");
 
-            var uSecsTime = ts.Time.Ticks / 10;
-
-            if (ts >= new NpgsqlDateTime(2000, 1, 1, 0, 0, 0))
+            if (value.IsNegativeInfinity)
             {
-                var uSecsDate = (ts.Date.DaysSinceEra - 730119) * 86400000000L;
+                buf.WriteInt64(long.MinValue);
+                return;
+            }
+
+            var uSecsTime = value.Time.Ticks / 10;
+
+            if (value >= new NpgsqlDateTime(2000, 1, 1, 0, 0, 0))
+            {
+                var uSecsDate = (value.Date.DaysSinceEra - 730119) * 86400000000L;
                 buf.WriteInt64(uSecsDate + uSecsTime);
             }
             else
             {
-                var uSecsDate = (730119 - ts.Date.DaysSinceEra) * 86400000000L;
+                var uSecsDate = (730119 - value.Date.DaysSinceEra) * 86400000000L;
                 buf.WriteInt64(-(uSecsDate - uSecsTime));
             }
         }
+
+        public override void Write(DateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        {
+            if (ConvertInfinityDateTime)
+            {
+                if (value == DateTime.MaxValue)
+                {
+                    buf.WriteInt64(long.MaxValue);
+                    return;
+                }
+                if (value == DateTime.MinValue)
+                {
+                    buf.WriteInt64(long.MinValue);
+                    return;
+                }
+            }
+            Write(new NpgsqlDateTime(value), buf, parameter);
+        }
+
+        public virtual void Write(DateTimeOffset value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => Write(new NpgsqlDateTime(value.DateTime), buf, parameter);
+
+        #endregion Write
 
         void CheckIntegerFormat()
         {

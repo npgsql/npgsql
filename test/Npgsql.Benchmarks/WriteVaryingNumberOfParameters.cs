@@ -10,13 +10,14 @@ using NpgsqlTypes;
 
 namespace Npgsql.Benchmarks.Types
 {
-    [Config("columns=OperationPerSecond")]
+    [Config("columns=OperationPerSecond"), MemoryDiagnoser]
     public class WriteVaryingNumberOfParameters
     {
         NpgsqlConnection _conn;
         NpgsqlCommand _cmd;
 
-        [Params(0, 1, 10, 100)]
+        //[Params(0, 1, 10, 100)]
+        [Params(10)]
         public int NumParams { get; set; }
 
         [GlobalSetup]

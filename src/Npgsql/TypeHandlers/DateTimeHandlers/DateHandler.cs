@@ -57,6 +57,8 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             _convertInfinityDateTime = convertInfinityDateTime;
         }
 
+        #region Read
+
         public override DateTime Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             var npgsqlDate = ReadPsv(buf, len, fieldDescription);
@@ -91,50 +93,44 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             }
         }
 
-        protected override int ValidateAndGetLength(object value, [CanBeNull] NpgsqlParameter parameter)
-        {
-            if (!(value is DateTime) && !(value is NpgsqlDate))
-            {
-                var converted = Convert.ToDateTime(value);
-                if (parameter == null)
-                    throw CreateConversionButNoParamException(value.GetType());
-                parameter.ConvertedValue = converted;
-            }
-            return 4;
-        }
+        #endregion Read
 
-        protected override void Write(object value, NpgsqlWriteBuffer buf, [CanBeNull] NpgsqlParameter parameter)
-        {
-            if (parameter?.ConvertedValue != null)
-                value = parameter.ConvertedValue;
+        #region Write
 
-            NpgsqlDate date;
-            if (value is NpgsqlDate)
-                date = (NpgsqlDate)value;
-            else if (value is DateTime)
+        public override int ValidateAndGetLength(DateTime value, NpgsqlParameter parameter)
+            => 4;
+
+        public override int ValidateAndGetLength(NpgsqlDate value, NpgsqlParameter parameter)
+            => 4;
+
+        public override void Write(DateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        {
+            NpgsqlDate value2;
+            if (_convertInfinityDateTime)
             {
-                var dt = (DateTime)value;
-                if (_convertInfinityDateTime)
-                {
-                    if (dt == DateTime.MaxValue)
-                        date = NpgsqlDate.Infinity;
-                    else if (dt == DateTime.MinValue)
-                        date = NpgsqlDate.NegativeInfinity;
-                    else
-                        date = new NpgsqlDate(dt);
-                }
+                if (value == DateTime.MaxValue)
+                    value2 = NpgsqlDate.Infinity;
+                else if (value == DateTime.MinValue)
+                    value2 = NpgsqlDate.NegativeInfinity;
                 else
-                    date = new NpgsqlDate(dt);
+                    value2 = new NpgsqlDate(value);
             }
             else
-                throw new InvalidOperationException("Internal Npgsql bug, please report.");
+                value2 = new NpgsqlDate(value);
 
-            if (date == NpgsqlDate.NegativeInfinity)
+            Write(value2, buf, parameter);
+        }
+
+        public override void Write(NpgsqlDate value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        {
+            if (value == NpgsqlDate.NegativeInfinity)
                 buf.WriteInt32(int.MinValue);
-            else if (date == NpgsqlDate.Infinity)
+            else if (value == NpgsqlDate.Infinity)
                 buf.WriteInt32(int.MaxValue);
             else
-                buf.WriteInt32(date.DaysSinceEra - 730119);
+                buf.WriteInt32(value.DaysSinceEra - 730119);
         }
+
+        #endregion Write
     }
 }

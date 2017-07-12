@@ -74,23 +74,17 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
 
         #region Write
 
-        protected internal override int ValidateAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter=null)
-        {
-            if (!(value is NpgsqlPath))
-                    throw CreateConversionException(value.GetType());
-            return 5 + ((NpgsqlPath)value).Count * 16;
-        }
+        public override int ValidateAndGetLength(NpgsqlPath value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+            => 5 + value.Count * 16;
 
-        protected override async Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        public override async Task Write(NpgsqlPath value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
         {
-            var path = (NpgsqlPath)value;
-
             if (buf.WriteSpaceLeft < 5)
                 await buf.Flush(async);
-            buf.WriteByte((byte)(path.Open ? 0 : 1));
-            buf.WriteInt32(path.Count);
+            buf.WriteByte((byte)(value.Open ? 0 : 1));
+            buf.WriteInt32(value.Count);
 
-            foreach (var p in path)
+            foreach (var p in value)
             {
                 if (buf.WriteSpaceLeft < 16)
                     await buf.Flush(async);

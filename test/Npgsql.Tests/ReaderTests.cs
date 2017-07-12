@@ -1381,8 +1381,8 @@ LANGUAGE plpgsql VOLATILE";
                 : throw new Exception("Non-safe read exception as requested");
         }
 
-        protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter) { throw new NotSupportedException(); }
-        protected override void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter) { throw new NotSupportedException(); }
+        public override int ValidateAndGetLength(int value, NpgsqlParameter parameter) { throw new NotSupportedException(); }
+        public override void Write(int value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter) { throw new NotSupportedException(); }
     }
 
     #endregion

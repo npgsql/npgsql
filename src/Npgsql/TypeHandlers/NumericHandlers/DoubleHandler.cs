@@ -40,23 +40,10 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         public override double Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => buf.ReadDouble();
 
-        protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
-        {
-            if (!(value is double))
-            {
-                var converted = Convert.ToDouble(value);
-                if (parameter == null)
-                    throw CreateConversionButNoParamException(value.GetType());
-                parameter.ConvertedValue = converted;
-            }
-            return 8;
-        }
+        public override int ValidateAndGetLength(double value, NpgsqlParameter parameter)
+            => 8;
 
-        protected override void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
-        {
-            if (parameter?.ConvertedValue != null)
-                value = parameter.ConvertedValue;
-            buf.WriteDouble((double)value);
-        }
+        public override void Write(double value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => buf.WriteDouble(value);
     }
 }

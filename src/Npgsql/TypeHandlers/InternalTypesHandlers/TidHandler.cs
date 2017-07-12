@@ -21,6 +21,7 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
+using System;
 using System.Diagnostics;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
@@ -34,6 +35,8 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
     [TypeMapping("tid", NpgsqlDbType.Tid, typeof(NpgsqlTid))]
     class TidHandler : NpgsqlSimpleTypeHandler<NpgsqlTid>, INpgsqlSimpleTypeHandler<string>
     {
+        #region Read
+
         public override NpgsqlTid Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             Debug.Assert(len == 6);
@@ -47,18 +50,25 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
         string INpgsqlSimpleTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => Read(buf, len, fieldDescription).ToString();
 
-        protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
+        #endregion Read
+
+        #region Write
+
+        public override int ValidateAndGetLength(NpgsqlTid value, NpgsqlParameter parameter)
+            => 6;
+
+        public override void Write(NpgsqlTid value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
         {
-            if (!(value is NpgsqlTid))
-                throw CreateConversionException(value.GetType());
-            return 6;
+            buf.WriteUInt32(value.BlockNumber);
+            buf.WriteUInt16(value.OffsetNumber);
         }
 
-        protected override void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
-        {
-            var tid = (NpgsqlTid)value;
-            buf.WriteUInt32(tid.BlockNumber);
-            buf.WriteUInt16(tid.OffsetNumber);
-        }
+        public int ValidateAndGetLength(string value, NpgsqlParameter parameter)
+            => throw new NotSupportedException("Only reading PostgreSQL tid to string is supported, no writing.");
+
+        public void Write(string value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => throw new NotSupportedException("Only reading PostgreSQL tid to string is supported, no writing.");
+
+        #endregion Write
     }
 }

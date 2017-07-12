@@ -40,9 +40,9 @@ namespace Npgsql
     /// This class represents a parameter to a command that will be sent to server
     ///</summary>
 #if NETSTANDARD1_3
-    public sealed class NpgsqlParameter : DbParameter
+    public class NpgsqlParameter : DbParameter
 #else
-    public sealed class NpgsqlParameter : DbParameter, ICloneable
+    public class NpgsqlParameter : DbParameter, ICloneable
 #endif
     {
         #region Fields and Properties
@@ -53,10 +53,11 @@ namespace Npgsql
         int _size;
 
         // Fields to implement IDataParameter
-        NpgsqlDbType? _npgsqlDbType;
-        DbType? _dbType;
+        internal NpgsqlDbType? _npgsqlDbType;
+        internal DbType? _dbType;
         Type _specificType;
         string _name = string.Empty;
+        [CanBeNull]
         object _value;
         object _npgsqlValue;
 
@@ -67,10 +68,11 @@ namespace Npgsql
         public object ConvertedValue { get; set; }
 
         [CanBeNull]
-        internal NpgsqlLengthCache LengthCache { get; private set; }
+        internal NpgsqlLengthCache LengthCache { get; set; }
 
         [CanBeNull]
-        internal NpgsqlTypeHandler Handler { get; private set; }
+        internal NpgsqlTypeHandler Handler { get; set; }
+
         internal FormatCode FormatCode { get; private set; }
 
         internal bool AutoAssignedName;
@@ -555,7 +557,6 @@ namespace Npgsql
         /// The collection to which this parameter belongs, if any.
         /// </summary>
 #pragma warning disable CA2227
-        [CanBeNull]
         public NpgsqlParameterCollection Collection { get; set; }
 #pragma warning restore CA2227
 
@@ -586,39 +587,28 @@ namespace Npgsql
         /// </summary>
         internal bool IsTypeExplicitlySet => _npgsqlDbType.HasValue || _dbType.HasValue;
 
-        internal void ResolveHandler(ConnectorTypeMapper typeMapper)
+        internal virtual void ResolveHandler(ConnectorTypeMapper typeMapper)
         {
-            if (Handler != null) {
+            if (Handler != null)
                 return;
-            }
 
             if (_npgsqlDbType.HasValue)
-            {
                 Handler = typeMapper[_npgsqlDbType.Value, SpecificType];
-            }
             else if (_dbType.HasValue)
-            {
                 Handler = typeMapper[_dbType.Value];
-            }
             else if (_value != null)
-            {
                 Handler = typeMapper[_value];
-            }
             else
-            {
                 throw new InvalidOperationException($"Parameter '{ParameterName}' must have its value set");
-            }
         }
 
         internal void Bind(ConnectorTypeMapper typeMapper)
         {
             ResolveHandler(typeMapper);
-
-            Debug.Assert(Handler != null);
             FormatCode = Handler.PreferTextWrite ? FormatCode.Text : FormatCode.Binary;
         }
 
-        internal int ValidateAndGetLength()
+        internal virtual int ValidateAndGetLength()
         {
             if (_value == null)
                 throw new InvalidCastException($"Parameter {ParameterName} must be set");
@@ -626,13 +616,13 @@ namespace Npgsql
                 return 0;
 
             var lengthCache = LengthCache;
-            var len = Handler.ValidateAndGetLength(Value, ref lengthCache, this);
+            var len = Handler.ValidateObjectAndGetLength(Value, ref lengthCache, this);
             LengthCache = lengthCache;
             return len;
         }
 
-        internal Task WriteWithLength(NpgsqlWriteBuffer buf, bool async)
-            => Handler.WriteWithLength(Value, buf, LengthCache, this, async);
+        internal virtual Task WriteWithLength(NpgsqlWriteBuffer buf, bool async)
+            => Handler.WriteObjectWithLength(Value, buf, LengthCache, this, async);
 
         void ClearBind()
         {

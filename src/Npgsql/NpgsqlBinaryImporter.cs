@@ -202,9 +202,18 @@ namespace Npgsql
                 // followed by a write pass
                 _dummyParam.ConvertedValue = null;
                 _lengthCache.Clear();
-                handler.ValidateAndGetLength(value, ref _lengthCache, _dummyParam);
-                _lengthCache.Rewind();
-                handler.WriteWithLength(value, _buf, _lengthCache, _dummyParam, false);
+                if (typeof(T) == typeof(object))
+                {
+                    handler.ValidateObjectAndGetLength(value, ref _lengthCache, _dummyParam);
+                    _lengthCache.Rewind();
+                    handler.WriteObjectWithLength(value, _buf, _lengthCache, _dummyParam, false);
+                }
+                else
+                {
+                    handler.ValidateAndGetLength(value, ref _lengthCache, _dummyParam);
+                    _lengthCache.Rewind();
+                    handler.WriteWithLengthInternal(value, _buf, _lengthCache, _dummyParam, false);
+                }
                 _column++;
             }
             catch

@@ -40,23 +40,10 @@ namespace Npgsql.TypeHandlers
         public override bool Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => buf.ReadByte() != 0;
 
-        protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
-        {
-            if (!(value is bool))
-            {
-                var converted = Convert.ToBoolean(value);
-                if (parameter == null)
-                    throw CreateConversionButNoParamException(value.GetType());
-                parameter.ConvertedValue = converted;
-            }
-            return 1;
-        }
+        public override int ValidateAndGetLength(bool value, NpgsqlParameter parameter)
+            => 1;
 
-        protected override void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
-        {
-            if (parameter?.ConvertedValue != null)
-                value = parameter.ConvertedValue;
-            buf.WriteByte((bool)value ? (byte)1 : (byte)0);
-        }
+        public override void Write(bool value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => buf.WriteByte(value ? (byte)1 : (byte)0);
     }
 }

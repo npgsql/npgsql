@@ -40,30 +40,12 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         public override decimal Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => buf.ReadInt64() / 100m;
 
-        protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
-        {
-            decimal decimalValue;
-            if (!(value is decimal))
-            {
-                var converted = Convert.ToDecimal(value);
-                if (parameter == null)
-                    throw CreateConversionButNoParamException(value.GetType());
-                decimalValue = converted;
-                parameter.ConvertedValue = converted;
-            }
-            else
-                decimalValue = (decimal)value;
+        public override int ValidateAndGetLength(decimal value, NpgsqlParameter parameter)
+            => value < -92233720368547758.08M || value > 92233720368547758.07M
+                ? throw new OverflowException($"The supplied value ({value}) is outside the range for a PostgreSQL money value.")
+                : 8;
 
-            if (decimalValue < -92233720368547758.08M || decimalValue > 92233720368547758.07M)
-                throw new OverflowException("The supplied value (" + decimalValue + ") is outside the range for a PostgreSQL money value.");
-
-            return 8;
-        }
-
-        protected override void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
-        {
-            var v = (decimal)(parameter?.ConvertedValue ?? value);
-            buf.WriteInt64((long)(Math.Round(v, 2, MidpointRounding.AwayFromZero) * 100m));
-        }
+        public override void Write(decimal value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => buf.WriteInt64((long)(Math.Round(value, 2, MidpointRounding.AwayFromZero) * 100m));
     }
 }

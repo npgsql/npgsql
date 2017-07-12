@@ -71,24 +71,20 @@ namespace Npgsql.NodaTime
             }.Build().Normalize();
         }
 
-        protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
+        public override int ValidateAndGetLength(Period value, NpgsqlParameter parameter = null)
         {
             CheckIntegerFormat();
-            if (!(value is Period))
-                throw CreateConversionException(value.GetType());
             return 16;
         }
 
-        protected override void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
+        public override void Write(Period value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
         {
-            var period = (Period)value;
-
             var microsecondsInDay =
-                (((period.Hours * NodaConstants.MinutesPerHour + period.Minutes) * NodaConstants.SecondsPerMinute + period.Seconds) * NodaConstants.MillisecondsPerSecond + period.Milliseconds) * 1000 +
-                period.Nanoseconds / 1000;  // Take the microseconds, discard the nanosecond remainder
+                (((value.Hours * NodaConstants.MinutesPerHour + value.Minutes) * NodaConstants.SecondsPerMinute + value.Seconds) * NodaConstants.MillisecondsPerSecond + value.Milliseconds) * 1000 +
+                value.Nanoseconds / 1000;  // Take the microseconds, discard the nanosecond remainder
             buf.WriteInt64(microsecondsInDay);
-            buf.WriteInt32(period.Weeks * 7 + period.Days);     // days
-            buf.WriteInt32(period.Years * 12 + period.Months);  // months
+            buf.WriteInt32(value.Weeks * 7 + value.Days);     // days
+            buf.WriteInt32(value.Years * 12 + value.Months);  // months
         }
 
         void CheckIntegerFormat()

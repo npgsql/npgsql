@@ -55,7 +55,7 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        protected internal override int ValidateAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter=null)
+        public override int ValidateAndGetLength(string value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
         {
             if (lengthCache == null)
                 lengthCache = new NpgsqlLengthCache(1);
@@ -66,7 +66,26 @@ namespace Npgsql.TypeHandlers
             return base.ValidateAndGetLength(value, ref lengthCache, parameter) + 1;
         }
 
-        protected override async Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        public override int ValidateAndGetLength(char[] value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        {
+            if (lengthCache == null)
+                lengthCache = new NpgsqlLengthCache(1);
+            if (lengthCache.IsPopulated)
+                return lengthCache.Get() + 1;
+
+            // Add one byte for the prepended version number
+            return base.ValidateAndGetLength(value, ref lengthCache, parameter) + 1;
+        }
+
+        public override async Task Write(string value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        {
+            if (buf.WriteSpaceLeft < 1)
+                await buf.Flush(async);
+            buf.WriteByte(JsonbProtocolVersion);
+            await base.Write(value, buf, lengthCache, parameter, async);
+        }
+
+        public override async Task Write(char[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
         {
             if (buf.WriteSpaceLeft < 1)
                 await buf.Flush(async);

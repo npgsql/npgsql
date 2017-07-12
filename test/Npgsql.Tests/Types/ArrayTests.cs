@@ -91,13 +91,15 @@ namespace Npgsql.Tests.Types
         public void Ints()
         {
             using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn))
+            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", conn))
             {
                 var expected = new[] { 1, 5, 9 };
                 var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Array | NpgsqlDbType.Integer);
                 var p2 = new NpgsqlParameter { ParameterName = "p2", Value = expected };
+                var p3 = new NpgsqlParameter<int[]>("p3", expected);
                 cmd.Parameters.Add(p1);
                 cmd.Parameters.Add(p2);
+                cmd.Parameters.Add(p3);
                 p1.Value = expected;
                 var reader = cmd.ExecuteReader();
                 reader.Read();

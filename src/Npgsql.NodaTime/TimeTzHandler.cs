@@ -60,22 +60,18 @@ namespace Npgsql.NodaTime
             return new OffsetDateTime(dateTime, offset);
         }
 
-        protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
+        public override int ValidateAndGetLength(OffsetDateTime value, NpgsqlParameter parameter = null)
         {
             CheckIntegerFormat();
-            if (!(value is OffsetDateTime))
-                throw CreateConversionException(value.GetType());
-            var v = (OffsetDateTime)value;
-            if (v.Date != default(LocalDate))
+            if (value.Date != default(LocalDate))
                 throw new InvalidCastException("Date component must be empty for timetz");
             return 12;
         }
 
-        protected override void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
+        public override void Write(OffsetDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
         {
-            var v = (OffsetDateTime)value;
-            buf.WriteInt64(v.TickOfDay / 10);
-            buf.WriteInt32(-(int)(v.Offset.Ticks / NodaConstants.TicksPerSecond));
+            buf.WriteInt64(value.TickOfDay / 10);
+            buf.WriteInt32(-(int)(value.Offset.Ticks / NodaConstants.TicksPerSecond));
         }
 
         void CheckIntegerFormat()

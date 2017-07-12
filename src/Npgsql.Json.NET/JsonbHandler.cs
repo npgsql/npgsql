@@ -57,7 +57,18 @@ namespace Npgsql.Json.NET
             }
         }
 
-        protected override int ValidateAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter = null)
+        public override int ValidateAndGetLength<T2>(T2 value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+            => typeof(T2) == typeof(string)
+                ? base.ValidateAndGetLength(value, ref lengthCache, parameter)
+                : ValidateObjectAndGetLength(value, ref lengthCache, parameter);
+
+
+        protected override Task WriteWithLength<T2>(T2 value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+            => typeof(T2) == typeof(string)
+                ? base.WriteWithLength(value, buf, lengthCache, parameter, async)
+                : WriteObjectWithLength(value, buf, lengthCache, parameter, async);
+
+        protected override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
         {
             var s = value as string;
             if (s == null)
@@ -66,15 +77,15 @@ namespace Npgsql.Json.NET
                 if (parameter != null)
                     parameter.ConvertedValue = s;
             }
-            return base.ValidateAndGetLength(s, ref lengthCache, parameter);
+            return base.ValidateObjectAndGetLength(s, ref lengthCache, parameter);
         }
 
-        protected override Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        protected override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
         {
             if (parameter?.ConvertedValue != null)
                 value = parameter.ConvertedValue;
             var s = value as string ?? JsonConvert.SerializeObject(value);
-            return base.Write(s, buf, lengthCache, parameter, async);
+            return base.WriteObjectWithLength(s, buf, lengthCache, parameter, async);
         }
     }
 }

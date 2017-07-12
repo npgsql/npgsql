@@ -64,32 +64,26 @@ namespace Npgsql.NodaTime
             return new LocalDate().PlusDays(value + 730119);
         }
 
-        protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
-        {
-            if (!(value is LocalDate))
-                throw CreateConversionException(value.GetType());
-            return 4;
-        }
+        public override int ValidateAndGetLength(LocalDate value, NpgsqlParameter parameter = null)
+            => 4;
 
-        protected override void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
+        public override void Write(LocalDate value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
         {
-            var date = (LocalDate)value;
-
             if (_convertInfinityDateTime)
             {
-                if (date == LocalDate.MaxIsoValue)
+                if (value == LocalDate.MaxIsoValue)
                 {
                     buf.WriteInt32(int.MaxValue);
                     return;
                 }
-                if (date == LocalDate.MinIsoValue)
+                if (value == LocalDate.MinIsoValue)
                 {
                     buf.WriteInt32(int.MinValue);
                     return;
                 }
             }
 
-            var totalDaysSinceEra = Period.Between(default(LocalDate), date, PeriodUnits.Days).Days;
+            var totalDaysSinceEra = Period.Between(default(LocalDate), value, PeriodUnits.Days).Days;
             buf.WriteInt32(totalDaysSinceEra - 730119);
         }
     }

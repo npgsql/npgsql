@@ -23,7 +23,6 @@
 
 using Npgsql.BackendMessages;
 using System;
-using System.Threading;
 using System.Threading.Tasks;
 using NpgsqlTypes;
 using Npgsql.PostgresTypes;
@@ -77,21 +76,17 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        protected internal override int ValidateAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter = null)
+        public override int ValidateAndGetLength(NpgsqlRange<TElement> value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
         {
-            if (!(value is NpgsqlRange<TElement>))
-                throw CreateConversionException(value.GetType());
-
-            var range = (NpgsqlRange<TElement>)value;
             var totalLen = 1;
 
             var lengthCachePos = lengthCache?.Position ?? 0;
-            if (!range.IsEmpty)
+            if (!value.IsEmpty)
             {
-                if (!range.LowerBoundInfinite)
-                    totalLen += 4 + ElementHandler.ValidateAndGetLength(range.LowerBound, ref lengthCache);
-                if (!range.UpperBoundInfinite)
-                    totalLen += 4 + ElementHandler.ValidateAndGetLength(range.UpperBound, ref lengthCache);
+                if (!value.LowerBoundInfinite)
+                    totalLen += 4 + ElementHandler.ValidateAndGetLength(value.LowerBound, ref lengthCache, null);
+                if (!value.UpperBoundInfinite)
+                    totalLen += 4 + ElementHandler.ValidateAndGetLength(value.UpperBound, ref lengthCache, null);
             }
 
             // If we're traversing an already-populated length cache, rewind to first element slot so that
@@ -102,18 +97,17 @@ namespace Npgsql.TypeHandlers
             return totalLen;
         }
 
-        protected override async Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        public override async Task Write(NpgsqlRange<TElement> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
         {
-            var range = (NpgsqlRange<TElement>)value;
             if (buf.WriteSpaceLeft < 1)
                 await buf.Flush(async);
-            buf.WriteByte((byte)range.Flags);
-            if (range.IsEmpty)
+            buf.WriteByte((byte)value.Flags);
+            if (value.IsEmpty)
                 return;
-            if (!range.LowerBoundInfinite)
-                await ElementHandler.WriteWithLength(range.LowerBound, buf, lengthCache, null, async);
-            if (!range.UpperBoundInfinite)
-                await ElementHandler.WriteWithLength(range.UpperBound, buf, lengthCache, null, async);
+            if (!value.LowerBoundInfinite)
+                await ElementHandler.WriteWithLengthInternal(value.LowerBound, buf, lengthCache, null, async);
+            if (!value.UpperBoundInfinite)
+                await ElementHandler.WriteWithLengthInternal(value.UpperBound, buf, lengthCache, null, async);
         }
 
         #endregion

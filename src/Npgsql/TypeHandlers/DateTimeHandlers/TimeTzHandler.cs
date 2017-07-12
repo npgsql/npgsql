@@ -39,6 +39,8 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     {
         // Binary Format: int64 expressing microseconds, int32 expressing timezone in seconds, negative
 
+        #region Read
+
         public override DateTimeOffset Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             // Adjust from 1 microsecond to 100ns. Time zone (in seconds) is inverted.
@@ -53,55 +55,48 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         TimeSpan INpgsqlSimpleTypeHandler<TimeSpan>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => Read(buf, len, fieldDescription).LocalDateTime.TimeOfDay;
 
-        protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
+        #endregion Read
+
+        #region Write
+
+        public override int ValidateAndGetLength(DateTimeOffset value, NpgsqlParameter parameter)
+            => 12;
+        public int ValidateAndGetLength(TimeSpan value, NpgsqlParameter parameter)
+            => 12;
+        public int ValidateAndGetLength(DateTime value, NpgsqlParameter parameter)
+            => 12;
+
+        public override void Write(DateTimeOffset value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {
-            if (!(value is DateTimeOffset) && !(value is DateTime) && !(value is TimeSpan))
-                throw CreateConversionException(value.GetType());
-            return 12;
+            buf.WriteInt64(value.TimeOfDay.Ticks / 10);
+            buf.WriteInt32(-(int)(value.Offset.Ticks / TimeSpan.TicksPerSecond));
         }
 
-        protected override void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
+        public void Write(DateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {
-            if (value is DateTimeOffset)
+            buf.WriteInt64(value.TimeOfDay.Ticks / 10);
+
+            switch (value.Kind)
             {
-                var dto = (DateTimeOffset) value;
-                buf.WriteInt64(dto.TimeOfDay.Ticks / 10);
-                buf.WriteInt32(-(int)(dto.Offset.Ticks / TimeSpan.TicksPerSecond));
-                return;
-            }
-
-            if (value is DateTime)
-            {
-                var dt = (DateTime) value;
-
-                buf.WriteInt64(dt.TimeOfDay.Ticks / 10);
-
-                switch (dt.Kind)
-                {
-                case DateTimeKind.Utc:
-                    buf.WriteInt32(0);
-                    break;
-                case DateTimeKind.Unspecified:
-                    // Treat as local...
-                case DateTimeKind.Local:
-                    buf.WriteInt32(-(int)(TimeZoneInfo.Local.BaseUtcOffset.Ticks / TimeSpan.TicksPerSecond));
-                    break;
-                default:
-                    throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {dt.Kind} of enum {nameof(DateTimeKind)}. Please file a bug.");
-                }
-
-                return;
-            }
-
-            if (value is TimeSpan)
-            {
-                var ts = (TimeSpan)value;
-                buf.WriteInt64(ts.Ticks / 10);
+            case DateTimeKind.Utc:
+                buf.WriteInt32(0);
+                break;
+            case DateTimeKind.Unspecified:
+            // Treat as local...
+            case DateTimeKind.Local:
                 buf.WriteInt32(-(int)(TimeZoneInfo.Local.BaseUtcOffset.Ticks / TimeSpan.TicksPerSecond));
-                return;
+                break;
+            default:
+                throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {value.Kind} of enum {nameof(DateTimeKind)}. Please file a bug.");
             }
-
-            throw new InvalidOperationException("Internal Npgsql bug, please report.");
         }
+
+        public void Write(TimeSpan value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        {
+            buf.WriteInt64(value.Ticks / 10);
+            buf.WriteInt32(-(int)(TimeZoneInfo.Local.BaseUtcOffset.Ticks / TimeSpan.TicksPerSecond));
+        }
+
+        #endregion Write
     }
 }

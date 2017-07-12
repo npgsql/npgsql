@@ -63,30 +63,14 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             return new TimeSpan(buf.ReadInt64() * 10);
         }
 
-        protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
+        public override int ValidateAndGetLength(TimeSpan value, NpgsqlParameter parameter)
         {
             CheckIntegerFormat();
-
-            var asString = value as string;
-            if (asString != null)
-            {
-                var converted = TimeSpan.Parse(asString);
-                if (parameter == null)
-                    throw CreateConversionButNoParamException(value.GetType());
-                parameter.ConvertedValue = converted;
-            }
-            else if (!(value is TimeSpan))
-                throw CreateConversionException(value.GetType());
             return 8;
         }
 
-        protected override void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
-        {
-            if (parameter?.ConvertedValue != null)
-                value = parameter.ConvertedValue;
-
-            buf.WriteInt64(((TimeSpan)value).Ticks / 10);
-        }
+        public override void Write(TimeSpan value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => buf.WriteInt64(value.Ticks / 10);
 
         void CheckIntegerFormat()
         {

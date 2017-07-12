@@ -22,6 +22,9 @@
 #endregion
 
 using System;
+using System.Linq;
+using System.Linq.Expressions;
+using System.Reflection;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
@@ -114,6 +117,16 @@ namespace Npgsql.TypeHandling
         #region Write
 
         /// <summary>
+        /// Called to validate and get the length of a value of a generic <see cref="NpgsqlParameter{T}"/>.
+        /// </summary>
+        public abstract int ValidateAndGetLength<TAny>([CanBeNull] TAny value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter);
+
+        /// <summary>
+        /// Called to write the value of a generic <see cref="NpgsqlParameter{T}"/>.
+        /// </summary>
+        internal abstract Task WriteWithLengthInternal<TAny>([CanBeNull] TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async);
+
+        /// <summary>
         /// Responsible for validating that a value represents a value of the correct and which can be
         /// written for PostgreSQL - if the value cannot be written for any reason, an exception shold be thrown.
         /// Also returns the byte length needed to write the value.
@@ -128,7 +141,7 @@ namespace Npgsql.TypeHandling
         /// information relevant to the write process (e.g. <see cref="NpgsqlParameter.Size"/>).
         /// </param>
         /// <returns>The number of bytes required to write the value.</returns>
-        protected internal abstract int ValidateAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter = null);
+        protected internal abstract int ValidateObjectAndGetLength([CanBeNull] object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter = null);
 
         /// <summary>
         /// Writes a value to the provided buffer, using either sync or async I/O.
@@ -141,9 +154,7 @@ namespace Npgsql.TypeHandling
         /// information relevant to the write process (e.g. <see cref="NpgsqlParameter.Size"/>).
         /// </param>
         /// <param name="async">If I/O is required to read the full length of the value, whether it should be performed synchronously or asynchronously.</param>
-        protected abstract Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async);
-
-        internal abstract Task WriteWithLength([CanBeNull] object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async);
+        protected internal abstract Task WriteObjectWithLength([CanBeNull] object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async);
 
         #endregion Write
 
@@ -165,14 +176,6 @@ namespace Npgsql.TypeHandling
         internal abstract NpgsqlTypeHandler CreateRangeHandler(PostgresType rangeBackendType);
 
         /// <summary>
-        /// Used to create an exception when the provided type cannot be rewritten or read.
-        /// </summary>
-        /// <param name="wroteType"></param>
-        /// <returns></returns>
-        protected Exception CreateConversionException(Type wroteType)
-            => new InvalidCastException($"Can't convert .NET type {wroteType} to PostgreSQL {PgDisplayName}");
-
-        /// <summary>
         /// Used to create an exception when the provided type can be converted and written, but an
         /// instance of <see cref="NpgsqlParameter"/> is required for caching of the converted value
         /// (in <see cref="NpgsqlParameter.ConvertedValue"/>.
@@ -183,7 +186,70 @@ namespace Npgsql.TypeHandling
         internal string PgDisplayName => PostgresType.DisplayName;
 
         #endregion Misc
-    }
 
-#pragma warning disable CA1032
+        #region Code generation for non-generic writing
+
+        internal delegate Task NonGenericWriteWithLength(NpgsqlTypeHandler handler, object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async);
+
+        internal static NonGenericWriteWithLength GenerateNonGenericWriteMethod(Type handlerType, Type interfaceType)
+        {
+            var interfaces = handlerType.GetInterfaces().Where(i =>
+                i.GetTypeInfo().IsGenericType &&
+                i.GetGenericTypeDefinition() == interfaceType
+            ).Reverse().ToList();
+
+            Expression ifElseExpression = null;
+
+            // NpgsqlTypeHandler handler, object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async
+            var handlerParam = Expression.Parameter(typeof(NpgsqlTypeHandler), "handler");
+            var valueParam = Expression.Parameter(typeof(object), "value");
+            var bufParam = Expression.Parameter(typeof(NpgsqlWriteBuffer), "buf");
+            var lengthCacheParam = Expression.Parameter(typeof(NpgsqlLengthCache), "lengthCache");
+            var parameterParam = Expression.Parameter(typeof(NpgsqlParameter), "parameter");
+            var asyncParam = Expression.Parameter(typeof(bool), "async");
+
+            var resultVariable = Expression.Variable(typeof(Task), "result");
+
+            foreach (var i in interfaces)
+            {
+                var handledType = i.GenericTypeArguments[0];
+
+                ifElseExpression = Expression.IfThenElse(
+                    // Test whether the type of the value given to the delegate corresponds
+                    // to our current interface's handled type (i.e. the T in INpgsqlTypeHandler<T>)
+                    Expression.TypeEqual(valueParam, handledType),
+                    // If it corresponds, call the handler's Write method with the appropriate generic parameter
+                    Expression.Assign(
+                        resultVariable,
+                        Expression.Call(
+                            handlerParam,
+                            // Call the generic WriteWithLengthInternal<T2> with our handled type
+                            nameof(WriteWithLengthInternal),
+                            new[] { handledType },
+                            // Cast the value from object down to the interface's T
+                            Expression.Convert(valueParam, handledType),
+                            bufParam,
+                            lengthCacheParam,
+                            parameterParam,
+                            asyncParam
+                        )
+                    ),
+                    // If this is the first interface we're looking at, the else clause throws.
+                    // Note that this should never happen since we passed ValidateAndGetLength.
+                    // Otherwise we stick the previous interface's IfThenElse in our else clause
+                    ifElseExpression ?? Expression.Throw(Expression.New(typeof(InvalidCastException)))
+                );
+            }
+
+            return Expression.Lambda<NonGenericWriteWithLength>(
+                Expression.Block(
+                    new[] { resultVariable },
+                    ifElseExpression, resultVariable
+                ),
+                handlerParam, valueParam, bufParam, lengthCacheParam, parameterParam, asyncParam
+            ).Compile();
+        }
+
+        #endregion Code generation for non-generic writing
+    }
 }

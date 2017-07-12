@@ -25,6 +25,7 @@ using System;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
+using System.Diagnostics;
 using JetBrains.Annotations;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
@@ -41,6 +42,8 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         INpgsqlSimpleTypeHandler<float>, INpgsqlSimpleTypeHandler<double>, INpgsqlSimpleTypeHandler<decimal>,
         INpgsqlSimpleTypeHandler<string>
     {
+        #region Read
+
         public override int Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => buf.ReadInt32();
 
@@ -65,23 +68,47 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         string INpgsqlSimpleTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => Read(buf, len, fieldDescription).ToString();
 
-        protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
+        #endregion Read
+
+        #region Write
+
+        public override int ValidateAndGetLength(int value, NpgsqlParameter parameter) => 4;
+        public int ValidateAndGetLength(short value, NpgsqlParameter parameter)        => 4;
+        public int ValidateAndGetLength(long value, NpgsqlParameter parameter)         => 4;
+        public int ValidateAndGetLength(float value, NpgsqlParameter parameter)        => 4;
+        public int ValidateAndGetLength(double value, NpgsqlParameter parameter)       => 4;
+        public int ValidateAndGetLength(decimal value, NpgsqlParameter parameter)      => 4;
+        public int ValidateAndGetLength(byte value, NpgsqlParameter parameter)         => 4;
+
+        public int ValidateAndGetLength(string value, NpgsqlParameter parameter)
         {
-            if (!(value is int))
-            {
-                var converted = Convert.ToInt32(value);
-                if (parameter == null)
-                    throw CreateConversionButNoParamException(value.GetType());
-                parameter.ConvertedValue = converted;
-            }
+            var converted = Convert.ToInt32(value);
+            if (parameter == null)
+                throw CreateConversionButNoParamException(value.GetType());
+            parameter.ConvertedValue = converted;
             return 4;
         }
 
-        protected override void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
+        public override void Write(int value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => buf.WriteInt32(value);
+        public void Write(short value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => buf.WriteInt32(value);
+        public void Write(long value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => buf.WriteInt32((int)value);
+        public void Write(byte value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => buf.WriteInt32(value);
+        public void Write(float value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => buf.WriteInt32((int)value);
+        public void Write(double value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => buf.WriteInt32((int)value);
+        public void Write(decimal value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => buf.WriteInt32((int)value);
+        public void Write(string value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {
-            if (parameter?.ConvertedValue != null)
-                value = parameter.ConvertedValue;
-            buf.WriteInt32((int)value);
+            Debug.Assert(parameter != null);
+            buf.WriteInt32((int)parameter.ConvertedValue);
         }
+
+        #endregion Write
     }
 }

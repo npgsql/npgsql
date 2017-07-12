@@ -52,16 +52,14 @@ namespace Npgsql.Tests.Types
                 var dateTime = new DateTime(2002, 3, 4, 0, 0, 0, 0, DateTimeKind.Unspecified);
                 var npgsqlDate = new NpgsqlDate(dateTime);
 
-                using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", conn))
+                using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn))
                 {
                     var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Date) {Value = npgsqlDate};
-                    var p2 = new NpgsqlParameter("p2", DbType.Date) {Value = npgsqlDate.ToString()};
-                    var p3 = new NpgsqlParameter {ParameterName = "p3", Value = npgsqlDate};
-                    Assert.That(p3.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Date));
-                    Assert.That(p3.DbType, Is.EqualTo(DbType.Date));
+                    var p2 = new NpgsqlParameter {ParameterName = "p2", Value = npgsqlDate};
+                    Assert.That(p2.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Date));
+                    Assert.That(p2.DbType, Is.EqualTo(DbType.Date));
                     cmd.Parameters.Add(p1);
                     cmd.Parameters.Add(p2);
-                    cmd.Parameters.Add(p3);
                     using (var reader = cmd.ExecuteReader())
                     {
                         reader.Read();
@@ -228,7 +226,7 @@ namespace Npgsql.Tests.Types
                 var offset = TimeSpan.FromHours(2);
                 var dateTimeOffset = new DateTimeOffset(dateTime, offset);
 
-                using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4, @p5, @p6", conn))
+                using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4, @p5, @p6, @p7", conn))
                 {
                     var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Timestamp);
                     var p2 = new NpgsqlParameter("p2", DbType.DateTime);
@@ -236,6 +234,7 @@ namespace Npgsql.Tests.Types
                     var p4 = new NpgsqlParameter { ParameterName = "p4", Value = npgsqlTimeStamp };
                     var p5 = new NpgsqlParameter { ParameterName = "p5", Value = dateTime };
                     var p6 = new NpgsqlParameter("p6", NpgsqlDbType.Timestamp);
+                    var p7 = new NpgsqlParameter<DateTime> { ParameterName = "p7", TypedValue = dateTime };
                     Assert.That(p4.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Timestamp));
                     Assert.That(p4.DbType, Is.EqualTo(DbType.DateTime));
                     Assert.That(p5.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Timestamp));
@@ -246,6 +245,7 @@ namespace Npgsql.Tests.Types
                     cmd.Parameters.Add(p4);
                     cmd.Parameters.Add(p5);
                     cmd.Parameters.Add(p6);
+                    cmd.Parameters.Add(p7);
                     p1.Value = p2.Value = p3.Value = npgsqlTimeStamp;
                     p6.Value = dateTimeOffset;
                     using (var reader = cmd.ExecuteReader())
