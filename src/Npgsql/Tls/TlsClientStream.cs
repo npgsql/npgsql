@@ -1449,7 +1449,7 @@ namespace Npgsql.Tls
             var keyDsa = key as DSACryptoServiceProvider;
             var keyRsa = key as RSACryptoServiceProvider;
 #else
-            var keyRsa = new X509Certificate2(_clientCertificates[0].Export(X509ContentType.Cert)).GetRSAPrivateKey();
+            var keyRsa = ((X509Certificate2)_clientCertificates[0]).GetRSAPrivateKey();
 #endif
 
             byte[] signature = null, hash = null;
@@ -1543,7 +1543,7 @@ namespace Npgsql.Tls
             }
             else
             {
-                SendAlertFatal(AlertDescription.HandshakeFailure);
+                SendAlertFatal(AlertDescription.HandshakeFailure, "No private key in provided certificate");
             }
             _handshakeData.CertificateVerifyHash_SHA1.Dispose();
             _handshakeData.CertificateVerifyHash_SHA1 = null;
