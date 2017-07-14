@@ -28,7 +28,7 @@ using System;
 // ReSharper disable once CheckNamespace
 namespace NpgsqlTypes
 {
-    public struct NpgsqlLsn : IEquatable<NpgsqlLsn>
+    public struct NpgsqlLsn : IEquatable<NpgsqlLsn>, IComparable<NpgsqlLsn>
     {
         public ulong Value { get; }
 
@@ -51,6 +51,11 @@ namespace NpgsqlTypes
             return string.Format("{0:X}/{1:X}", Upper, Lower);
         }
 
+        public int CompareTo(NpgsqlLsn other)
+        {
+            return Value.CompareTo(other.Value);
+        }
+
         public bool Equals(NpgsqlLsn other)
         {
             return Value == other.Value;
@@ -63,20 +68,19 @@ namespace NpgsqlTypes
             return obj is NpgsqlLsn && Equals((NpgsqlLsn)obj);
         }
 
-        public override int GetHashCode()
-        {
-            return Value.GetHashCode();
-        }
+        public override int GetHashCode() => Value.GetHashCode();
 
-        public static bool operator ==(NpgsqlLsn x, NpgsqlLsn y)
-        {
-            return x.Value == y.Value;
-        }
+        public static bool operator ==(NpgsqlLsn x, NpgsqlLsn y) => x.Value == y.Value;
 
-        public static bool operator !=(NpgsqlLsn x, NpgsqlLsn y)
-        {
-            return x.Value != y.Value;
-        }
+        public static bool operator !=(NpgsqlLsn x, NpgsqlLsn y) => x.Value != y.Value;
+
+        public static bool operator >=(NpgsqlLsn x, NpgsqlLsn y) => x.Value >= y.Value;
+
+        public static bool operator <=(NpgsqlLsn x, NpgsqlLsn y) => x.Value <= y.Value;
+
+        public static bool operator >(NpgsqlLsn x, NpgsqlLsn y) => x.Value > y.Value;
+
+        public static bool operator <(NpgsqlLsn x, NpgsqlLsn y) => x.Value < y.Value;
 
         public static NpgsqlLsn Parse(string str)
         {

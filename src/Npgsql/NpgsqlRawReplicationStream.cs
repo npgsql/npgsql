@@ -59,13 +59,13 @@ namespace Npgsql
         /// The starting point of the WAL data in the last received message.
         /// </summary>
         [PublicAPI]
-        public NpgsqlLsn CurrentLsn { get; private set; }
+        public NpgsqlLsn? CurrentLsn { get; private set; }
 
         /// <summary>
         /// The current end of WAL on the server.
         /// </summary>
         [PublicAPI]
-        public NpgsqlLsn EndLsn { get; private set; }
+        public NpgsqlLsn? EndLsn { get; private set; }
 
         /// <summary>
         /// The server's system clock at the time of the last transmission, as microseconds since midnight on 2000-01-01.
@@ -259,10 +259,10 @@ namespace Npgsql
         /// </remarks>
         public override void Flush()
         {
-            if (CurrentLsn.Value == 0)
+            if (CurrentLsn == null)
                 return;
 
-            var nextLsn = new NpgsqlLsn(CurrentLsn.Value + 1);
+            var nextLsn = new NpgsqlLsn(CurrentLsn.Value.Value + 1);
             Flush(nextLsn, nextLsn, nextLsn);
         }
 
@@ -396,6 +396,12 @@ namespace Npgsql
             {
                 if (_disposed)
                     return;
+
+                if (_connector.IsBroken)
+                {
+                    Cleanup();
+                    return;
+                }
 
                 if (waitForConfirmation && _standbyStatusUpdateRequest.SystemClock > 0)
                 {

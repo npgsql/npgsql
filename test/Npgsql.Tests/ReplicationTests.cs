@@ -130,7 +130,8 @@ namespace Npgsql.Tests
                         {
                             while (stream.FetchNext())
                             {
-                                lastLsn = stream.CurrentLsn;
+                                Assert.That(stream.CurrentLsn, Is.Not.Null);
+                                lastLsn = stream.CurrentLsn.Value;
                                 var str = reader.ReadToEnd();
                                 Trace.WriteLine(str);
                                 counter++;
