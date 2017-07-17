@@ -105,8 +105,72 @@ namespace Npgsql.Tests
             }
         }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1466")]
+    public void Bug1466()
+    {
+        using (var conn = OpenConnection())
+        {
+            int[] intResult, intCompare;
+            var decimals = new decimal[] // test data is hardcoded
+            {
+                Decimal.MaxValue,
+                Decimal.MinValue,
+                0.1M,
+                0.01M,
+                0.001M,
+                0.0001M,
+                0.00001M,
+                0.000001M,
+                0.0000001M,
+                0.00000001M,
+                0.000000001M,
+                0.0000000001M,
+                0.00000000001M,
+                0.000000000001M,
+                0.0000000000001M,
+                0.00000000000001M,
+                0.000000000000001M,
+                0.0000000000000001M,
+                0.00000000000000001M,
+                0.000000000000000001M,
+                0.0000000000000000001M,
+                0.00000000000000000001M,
+                0.000000000000000000001M,
+                0.0000000000000000000001M,
+                0.00000000000000000000001M,
+                0.000000000000000000000001M,
+                0.0000000000000000000000001M,
+                0.00000000000000000000000001M,
+                0.000000000000000000000000001M,
+                0.0000000000000000000000000001M,
+            };
+
+            for (var i = 0; i < decimals.Length; i++)
+            {
+                using (var cmd = new NpgsqlCommand("SELECT @p1", conn))
+                {
+                    var p1 = new NpgsqlParameter { ParameterName = "p1", Value = decimals[i] };
+                    cmd.Parameters.Add(p1);
+
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        reader.Read();
+                        intResult = Decimal.GetBits(reader.GetDecimal(0)); // extract decimal returned by NumericHandler
+                        intCompare = Decimal.GetBits(decimals[i]); // extract decimal from variable decimals
+
+                        Assert.Multiple(() => {
+                            Assert.AreEqual(intCompare[0], intResult[0]); // comparing less significant 32-bit
+                            Assert.AreEqual(intCompare[1], intResult[1]); // comparing more significant 32-bit
+                            Assert.AreEqual(intCompare[2], intResult[2]); // comparing most significant 32-bit
+                        });
+                    }
+                }
+            }
+        }
+    }
+
 #if !NETCOREAPP1_1
-        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1497")]
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1497")]
         public void Bug1497()
         {
             using (var conn = OpenConnection())
