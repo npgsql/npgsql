@@ -221,7 +221,7 @@ namespace Npgsql.TypeHandlers
 
         int GetSingleElementLength<T2>([CanBeNull] T2 element, ref NpgsqlLengthCache lengthCache)
         {
-            if (element == null || element is DBNull)
+            if (element == null || typeof(T2) == typeof(DBNull))
                 return 0;
             try
             {

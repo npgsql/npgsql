@@ -180,7 +180,7 @@ namespace Npgsql.TypeHandling
         /// </summary>
         internal sealed override Task WriteWithLengthInternal<TAny>(TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
         {
-            if (value == null || value is DBNull)
+            if (value == null || typeof(TAny) == typeof(DBNull))
             {
                 if (buf.WriteSpaceLeft < 4)
                     return WriteWithLengthLong(value, buf, parameter, async);
@@ -204,7 +204,7 @@ namespace Npgsql.TypeHandling
             Debug.Assert(this is INpgsqlSimpleTypeHandler<TAny>);
             var typedHandler = (INpgsqlSimpleTypeHandler<TAny>)this;
 
-            if (value == null || value is DBNull)
+            if (value == null || typeof(TAny) == typeof(DBNull))
             {
                 if (buf.WriteSpaceLeft < 4)
                     await buf.Flush(async);

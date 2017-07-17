@@ -22,13 +22,6 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Security.Cryptography;
-using System.Text;
-using System.Threading;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
@@ -66,14 +59,8 @@ namespace Npgsql
         /// </summary>
         internal int NumColumns { get; }
 
-        /// <summary>
-        /// NpgsqlParameter instance needed in order to pass the <see cref="NpgsqlParameter.ConvertedValue"/> from
-        /// the validation phase to the writing phase.
-        /// </summary>
-        readonly NpgsqlParameter _dummyParam;
-
         [ItemCanBeNull]
-        readonly NpgsqlTypeHandler[] _typeHandlerCache;
+        readonly NpgsqlParameter[] _params;
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
@@ -88,7 +75,6 @@ namespace Npgsql
             _typeMapper = connector.TypeMapper;
             _lengthCache = new NpgsqlLengthCache();
             _column = -1;
-            _dummyParam = new NpgsqlParameter();
 
             try
             {
@@ -99,7 +85,7 @@ namespace Npgsql
                 if (!copyInResponse.IsBinary)
                     throw new ArgumentException("copyFromCommand triggered a text transfer, only binary is allowed", nameof(copyFromCommand));
                 NumColumns = copyInResponse.NumColumns;
-                _typeHandlerCache = new NpgsqlTypeHandler[NumColumns];
+                _params = new NpgsqlParameter[NumColumns];
                 _buf.StartCopyMode();
                 WriteHeader();
             }
@@ -147,72 +133,66 @@ namespace Npgsql
         /// corruption will occur. If in doubt, use <see cref="Write{T}(T, NpgsqlDbType)"/> to manually
         /// specify the type.
         /// </typeparam>
-        public void Write<T>(T value)
-        {
-            CheckDisposed();
-            if (_column == -1)
-                throw new InvalidOperationException("A row hasn't been started");
-
-            if (value == null || typeof(T) == typeof(DBNull))
-            {
-                WriteNull();
-                return;
-            }
-
-            var handler = _typeHandlerCache[_column];
-            if (handler == null)
-                handler = _typeHandlerCache[_column] = _typeMapper[value];
-            DoWrite(handler, value);
-        }
+        public void Write<T>(T value) => DoWrite(value, null);
 
         /// <summary>
-        /// Writes a single column in the current row as type <paramref name="type"/>.
+        /// Writes a single column in the current row as type <paramref name="npgsqlDbType"/>.
         /// </summary>
         /// <param name="value">The value to be written</param>
-        /// <param name="type">
+        /// <param name="npgsqlDbType">
         /// In some cases <typeparamref name="T"/> isn't enough to infer the data type to be written to
         /// the database. This parameter and be used to unambiguously specify the type. An example is
         /// the JSONB type, for which <typeparamref name="T"/> will be a simple string but for which
-        /// <paramref name="type"/> must be specified as <see cref="NpgsqlDbType.Jsonb"/>.
+        /// <paramref name="npgsqlDbType"/> must be specified as <see cref="NpgsqlDbType.Jsonb"/>.
         /// </param>
         /// <typeparam name="T">The .NET type of the column to be written.</typeparam>
-        public void Write<T>(T value, NpgsqlDbType type)
+        public void Write<T>(T value, NpgsqlDbType npgsqlDbType) => DoWrite(value, npgsqlDbType);
+
+        void DoWrite<T>([CanBeNull] T value, NpgsqlDbType? npgsqlDbType)
         {
             CheckDisposed();
             if (_column == -1)
                 throw new InvalidOperationException("A row hasn't been started");
 
-            if (value == null || typeof(T) == typeof(DBNull))
+            if (value == null || value is DBNull)
             {
                 WriteNull();
                 return;
             }
 
-            var handler = _typeHandlerCache[_column];
-            if (handler == null)
-                handler = _typeHandlerCache[_column] = _typeMapper[type];
-            DoWrite(handler, value);
-        }
-
-        void DoWrite<T>(NpgsqlTypeHandler handler, [CanBeNull] T value)
-        {
             try
             {
-                // We simulate the regular writing process with a validation/length calculation pass,
-                // followed by a write pass
-                _dummyParam.ConvertedValue = null;
-                _lengthCache.Clear();
+                var untypedParam = _params[_column];
+                if (untypedParam == null)
+                {
+                    // First row, create the parameter objects
+                    _params[_column] = untypedParam = typeof(T) == typeof(object)
+                            ? new NpgsqlParameter { Value = value }
+                            : new NpgsqlParameter<T> { TypedValue = value };
+                    if (npgsqlDbType.HasValue)
+                        untypedParam.NpgsqlDbType = npgsqlDbType.Value;
+                    untypedParam.ResolveHandler(_connector.TypeMapper);
+                }
+
                 if (typeof(T) == typeof(object))
                 {
-                    handler.ValidateObjectAndGetLength(value, ref _lengthCache, _dummyParam);
-                    _lengthCache.Rewind();
-                    handler.WriteObjectWithLength(value, _buf, _lengthCache, _dummyParam, false);
+                    untypedParam.Value = value;
+                    untypedParam.ValidateAndGetLength();
+                    untypedParam.LengthCache?.Rewind();
+                    untypedParam.WriteWithLength(_buf, false);
+                    untypedParam.LengthCache?.Clear();
                 }
                 else
                 {
-                    handler.ValidateAndGetLength(value, ref _lengthCache, _dummyParam);
-                    _lengthCache.Rewind();
-                    handler.WriteWithLengthInternal(value, _buf, _lengthCache, _dummyParam, false);
+                    var param = untypedParam as NpgsqlParameter<T>;
+                    if (param == null)
+                        throw new InvalidOperationException("Change of value type from one row to the other");
+
+                    param.TypedValue = value;
+                    param.ValidateAndGetLength();
+                    param.LengthCache?.Rewind();
+                    param.WriteWithLength(_buf, false);
+                    param.LengthCache?.Clear();
                 }
                 _column++;
             }

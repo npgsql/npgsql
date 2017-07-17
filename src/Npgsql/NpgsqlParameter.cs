@@ -272,13 +272,11 @@ namespace Npgsql
 #endif
         public override object Value
         {
-            get
-            {
-                return _value;
-            }
+            get => _value;
             set
             {
-                ClearBind();
+                if (_value == null || value == null || _value.GetType() != value.GetType())
+                    ClearBind();
                 _value = value;
                 _npgsqlValue = value;
                 ConvertedValue = null;
@@ -610,6 +608,8 @@ namespace Npgsql
 
         internal virtual int ValidateAndGetLength()
         {
+            Debug.Assert(Handler != null);
+
             if (_value == null)
                 throw new InvalidCastException($"Parameter {ParameterName} must be set");
             if (_value is DBNull)
@@ -622,7 +622,10 @@ namespace Npgsql
         }
 
         internal virtual Task WriteWithLength(NpgsqlWriteBuffer buf, bool async)
-            => Handler.WriteObjectWithLength(Value, buf, LengthCache, this, async);
+        {
+            Debug.Assert(Handler != null);
+            return Handler.WriteObjectWithLength(Value, buf, LengthCache, this, async);
+        }
 
         void ClearBind()
         {

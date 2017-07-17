@@ -151,7 +151,7 @@ namespace Npgsql.TypeHandling
             if (buf.WriteSpaceLeft < 4)
                 return WriteWithLengthLong(value, buf, lengthCache, parameter, async);
 
-            if (value == null || value is DBNull)
+            if (value == null || typeof(TAny) == typeof(DBNull))
             {
                 buf.WriteInt32(-1);
                 return PGUtil.CompletedTask;
@@ -165,7 +165,7 @@ namespace Npgsql.TypeHandling
             if (buf.WriteSpaceLeft < 4)
                 await buf.Flush(async);
 
-            if (value == null || value is DBNull)
+            if (value == null || typeof(TAny) == typeof(DBNull))
             {
                 buf.WriteInt32(-1);
                 return;

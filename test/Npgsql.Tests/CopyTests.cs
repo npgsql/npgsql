@@ -196,7 +196,7 @@ namespace Npgsql.Tests
         {
             using (var conn = OpenConnection())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER)");
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (field_text TEXT, field_int2 SMALLINT)");
                 var longString = new StringBuilder(conn.Settings.WriteBufferSize + 50).Append('a').ToString();
 
                 using (var writer = conn.BeginBinaryImport("COPY data (field_text, field_int2) FROM STDIN BINARY"))
@@ -205,9 +205,9 @@ namespace Npgsql.Tests
 
                     writer.StartRow();
                     writer.Write("Hello");
-                    writer.Write(8, NpgsqlDbType.Smallint);
+                    writer.Write((short)8, NpgsqlDbType.Smallint);
 
-                    writer.WriteRow("Something", (short) 9);
+                    writer.WriteRow("Something", (short)9);
 
                     writer.StartRow();
                     writer.Write(longString);

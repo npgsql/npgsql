@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Data;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -88,6 +89,8 @@ namespace Npgsql
 
         internal override int ValidateAndGetLength()
         {
+            Debug.Assert(Handler != null);
+
             if (TypedValue == null)
                 throw new InvalidCastException($"Parameter {ParameterName} must be set");
             // TODO: Why do it like this rather than a handler?
@@ -101,6 +104,9 @@ namespace Npgsql
         }
 
         internal override Task WriteWithLength(NpgsqlWriteBuffer buf, bool async)
-            => Handler.WriteWithLengthInternal(TypedValue, buf, LengthCache, this, async);
+        {
+            Debug.Assert(Handler != null);
+            return Handler.WriteWithLengthInternal(TypedValue, buf, LengthCache, this, async);
+        }
     }
 }
