@@ -68,7 +68,7 @@ namespace Npgsql.Json.NET
                 ? base.WriteWithLength(value, buf, lengthCache, parameter, async)
                 : WriteObjectWithLength(value, buf, lengthCache, parameter, async);
 
-        protected override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter = null)
+        protected override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
         {
             var s = value as string;
             if (s == null)

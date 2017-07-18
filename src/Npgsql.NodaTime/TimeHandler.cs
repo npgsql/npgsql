@@ -58,13 +58,13 @@ namespace Npgsql.NodaTime
             return LocalTime.FromTicksSinceMidnight(buf.ReadInt64() * 10);
         }
 
-        public override int ValidateAndGetLength(LocalTime value, NpgsqlParameter parameter = null)
+        public override int ValidateAndGetLength(LocalTime value, NpgsqlParameter parameter)
         {
             CheckIntegerFormat();
             return 8;
         }
 
-        public override void Write(LocalTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
+        public override void Write(LocalTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
             => buf.WriteInt64(value.TickOfDay / 10);
 
         void CheckIntegerFormat()

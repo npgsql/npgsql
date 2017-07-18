@@ -25,7 +25,6 @@ using System;
 using System.Diagnostics;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
-using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -57,7 +56,7 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
         public override int ValidateAndGetLength(NpgsqlTid value, NpgsqlParameter parameter)
             => 6;
 
-        public override void Write(NpgsqlTid value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
+        public override void Write(NpgsqlTid value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {
             buf.WriteUInt32(value.BlockNumber);
             buf.WriteUInt16(value.OffsetNumber);

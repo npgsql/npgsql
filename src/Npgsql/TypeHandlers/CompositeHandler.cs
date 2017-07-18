@@ -118,7 +118,7 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        public override int ValidateAndGetLength(T value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter = null)
+        public override int ValidateAndGetLength(T value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
         {
             ResolveFieldsIfNeeded();
             Debug.Assert(_members != null);
@@ -138,7 +138,7 @@ namespace Npgsql.TypeHandlers
                 var fieldValue = f.GetValue(value);
                 if (fieldValue == null)
                     continue;
-                totalLen += f.Handler.ValidateObjectAndGetLength(fieldValue, ref lengthCache);
+                totalLen += f.Handler.ValidateObjectAndGetLength(fieldValue, ref lengthCache, null);
             }
             return lengthCache.Lengths[pos] = totalLen;
         }

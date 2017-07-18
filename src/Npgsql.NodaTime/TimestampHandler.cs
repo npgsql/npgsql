@@ -115,19 +115,19 @@ namespace Npgsql.NodaTime
             }
         }
 
-        public override int ValidateAndGetLength(Instant value, NpgsqlParameter parameter = null)
+        public override int ValidateAndGetLength(Instant value, NpgsqlParameter parameter)
         {
             CheckIntegerFormat();
             return 8;
         }
 
-        int INpgsqlSimpleTypeHandler<LocalDateTime>.ValidateAndGetLength(LocalDateTime value, NpgsqlParameter parameter = null)
+        int INpgsqlSimpleTypeHandler<LocalDateTime>.ValidateAndGetLength(LocalDateTime value, NpgsqlParameter parameter)
         {
             CheckIntegerFormat();
             return 8;
         }
 
-        public override void Write(Instant value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
+        public override void Write(Instant value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {
             if (_convertInfinityDateTime)
             {
@@ -145,7 +145,7 @@ namespace Npgsql.NodaTime
             WriteDateTime(value.InUtc().LocalDateTime, buf);
         }
 
-        void INpgsqlSimpleTypeHandler<LocalDateTime>.Write(LocalDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
+        void INpgsqlSimpleTypeHandler<LocalDateTime>.Write(LocalDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
             => WriteDateTime(value, buf);
 
         internal static void WriteDateTime(LocalDateTime value, NpgsqlWriteBuffer buf)

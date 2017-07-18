@@ -64,10 +64,10 @@ namespace Npgsql.NodaTime
             return new LocalDate().PlusDays(value + 730119);
         }
 
-        public override int ValidateAndGetLength(LocalDate value, NpgsqlParameter parameter = null)
+        public override int ValidateAndGetLength(LocalDate value, NpgsqlParameter parameter)
             => 4;
 
-        public override void Write(LocalDate value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
+        public override void Write(LocalDate value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {
             if (_convertInfinityDateTime)
             {

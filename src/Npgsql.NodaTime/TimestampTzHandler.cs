@@ -81,22 +81,22 @@ namespace Npgsql.NodaTime
             }
         }
 
-        public override int ValidateAndGetLength(Instant value, NpgsqlParameter parameter = null)
+        public override int ValidateAndGetLength(Instant value, NpgsqlParameter parameter)
         {
             CheckIntegerFormat();
             return 8;
         }
 
-        int INpgsqlSimpleTypeHandler<ZonedDateTime>.ValidateAndGetLength(ZonedDateTime value, NpgsqlParameter parameter = null)
+        int INpgsqlSimpleTypeHandler<ZonedDateTime>.ValidateAndGetLength(ZonedDateTime value, NpgsqlParameter parameter)
         {
             CheckIntegerFormat();
             return 8;
         }
 
-        public override void Write(Instant value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
+        public override void Write(Instant value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
             => TimestampHandler.WriteDateTime(value.InUtc().LocalDateTime, buf);
 
-        void INpgsqlSimpleTypeHandler<ZonedDateTime>.Write(ZonedDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
+        void INpgsqlSimpleTypeHandler<ZonedDateTime>.Write(ZonedDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
             => TimestampHandler.WriteDateTime(value.WithZone(DateTimeZone.Utc).LocalDateTime, buf);
 
         void CheckIntegerFormat()

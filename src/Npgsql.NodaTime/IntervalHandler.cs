@@ -71,13 +71,13 @@ namespace Npgsql.NodaTime
             }.Build().Normalize();
         }
 
-        public override int ValidateAndGetLength(Period value, NpgsqlParameter parameter = null)
+        public override int ValidateAndGetLength(Period value, NpgsqlParameter parameter)
         {
             CheckIntegerFormat();
             return 16;
         }
 
-        public override void Write(Period value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
+        public override void Write(Period value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {
             var microsecondsInDay =
                 (((value.Hours * NodaConstants.MinutesPerHour + value.Minutes) * NodaConstants.SecondsPerMinute + value.Seconds) * NodaConstants.MillisecondsPerSecond + value.Milliseconds) * 1000 +

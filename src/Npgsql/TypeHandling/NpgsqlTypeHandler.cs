@@ -141,7 +141,7 @@ namespace Npgsql.TypeHandling
         /// information relevant to the write process (e.g. <see cref="NpgsqlParameter.Size"/>).
         /// </param>
         /// <returns>The number of bytes required to write the value.</returns>
-        protected internal abstract int ValidateObjectAndGetLength([CanBeNull] object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter = null);
+        protected internal abstract int ValidateObjectAndGetLength([CanBeNull] object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter);
 
         /// <summary>
         /// Writes a value to the provided buffer, using either sync or async I/O.

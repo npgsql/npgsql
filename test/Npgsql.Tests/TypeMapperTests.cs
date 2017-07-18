@@ -208,7 +208,7 @@ CHECK
                 return base.Read(buf, len, fieldDescription);
             }
 
-            public override void Write(int value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
+            public override void Write(int value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
             {
                 _factory.Writes++;
                 base.Write(value, buf, parameter);

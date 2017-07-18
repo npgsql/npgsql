@@ -60,7 +60,7 @@ namespace Npgsql.NodaTime
             return new OffsetDateTime(dateTime, offset);
         }
 
-        public override int ValidateAndGetLength(OffsetDateTime value, NpgsqlParameter parameter = null)
+        public override int ValidateAndGetLength(OffsetDateTime value, NpgsqlParameter parameter)
         {
             CheckIntegerFormat();
             if (value.Date != default(LocalDate))
@@ -68,7 +68,7 @@ namespace Npgsql.NodaTime
             return 12;
         }
 
-        public override void Write(OffsetDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
+        public override void Write(OffsetDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {
             buf.WriteInt64(value.TickOfDay / 10);
             buf.WriteInt32(-(int)(value.Offset.Ticks / NodaConstants.TicksPerSecond));
