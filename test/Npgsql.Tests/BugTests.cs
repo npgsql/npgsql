@@ -105,72 +105,73 @@ namespace Npgsql.Tests
             }
         }
 
-    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1466")]
-    public void Bug1466()
-    {
-        using (var conn = OpenConnection())
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1466")]
+        public void Bug1466()
         {
-            int[] intResult, intCompare;
-            var decimals = new decimal[] // test data is hardcoded
+            using (var conn = OpenConnection())
             {
-                Decimal.MaxValue,
-                Decimal.MinValue,
-                6.1M,
-                6.61M,
-                6.661M,
-                6.6661M,
-                6.66661M,
-                6.666661M,
-                6.6666661M,
-                6.66666661M,
-                6.666666661M,
-                6.6666666661M,
-                6.66666666661M,
-                6.666666666661M,
-                6.6666666666661M,
-                6.66666666666661M,
-                6.666666666666661M,
-                6.6666666666666661M,
-                6.66666666666666661M,
-                6.666666666666666661M,
-                6.6666666666666666661M,
-                6.66666666666666666661M,
-                6.666666666666666666661M,
-                6.6666666666666666666661M,
-                6.66666666666666666666661M,
-                6.666666666666666666666661M,
-                6.6666666666666666666666661M,
-                6.66666666666666666666666661M,
-                6.666666666666666666666666661M,
-                6.6666666666666666666666666661M
-            };
-
-            for (var i = 0; i < decimals.Length; i++)
-            {
-                using (var cmd = new NpgsqlCommand("SELECT @p1", conn))
+                int[] intResult, intCompare;
+                var decimals = new decimal[] // test data is hardcoded
                 {
-                    var p1 = new NpgsqlParameter { ParameterName = "p1", Value = decimals[i] };
-                    cmd.Parameters.Add(p1);
+                    Decimal.MaxValue,
+                    Decimal.MinValue,
+                    6.1M,
+                    6.61M,
+                    6.661M,
+                    6.6661M,
+                    6.66661M,
+                    6.666661M,
+                    6.6666661M,
+                    6.66666661M,
+                    6.666666661M,
+                    6.6666666661M,
+                    6.66666666661M,
+                    6.666666666661M,
+                    6.6666666666661M,
+                    6.66666666666661M,
+                    6.666666666666661M,
+                    6.6666666666666661M,
+                    6.66666666666666661M,
+                    6.666666666666666661M,
+                    6.6666666666666666661M,
+                    6.66666666666666666661M,
+                    6.666666666666666666661M,
+                    6.6666666666666666666661M,
+                    6.66666666666666666666661M,
+                    6.666666666666666666666661M,
+                    6.6666666666666666666666661M,
+                    6.66666666666666666666666661M,
+                    6.666666666666666666666666661M,
+                    6.6666666666666666666666666661M
+                };
 
-                    using (var reader = cmd.ExecuteReader())
+                for (var i = 0; i < decimals.Length; i++)
+                {
+                    using (var cmd = new NpgsqlCommand("SELECT @p1", conn))
                     {
-                        reader.Read();
-                        intResult = Decimal.GetBits(reader.GetDecimal(0)); // extract decimal returned by NumericHandler
-                        intCompare = Decimal.GetBits(decimals[i]); // extract decimal from variable decimals
+                        var p1 = new NpgsqlParameter { ParameterName = "p1", Value = decimals[i] };
+                        cmd.Parameters.Add(p1);
 
-                        Assert.Multiple(() => {
-                            Assert.AreEqual(intCompare[0], intResult[0]); // comparing less significant 32-bit
-                            Assert.AreEqual(intCompare[1], intResult[1]); // comparing more significant 32-bit
-                            Assert.AreEqual(intCompare[2], intResult[2]); // comparing most significant 32-bit
-                        });
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            reader.Read();
+                            intResult = Decimal.GetBits(reader.GetDecimal(0)); // extract decimal returned by NumericHandler
+                            intCompare = Decimal.GetBits(decimals[i]); // extract decimal from variable decimals
+
+                            Assert.Multiple(() =>
+                            {
+                                Assert.AreEqual(intCompare[0], intResult[0]); // comparing less significant 32-bit
+                                Assert.AreEqual(intCompare[1], intResult[1]); // comparing more significant 32-bit
+                                Assert.AreEqual(intCompare[2], intResult[2]); // comparing most significant 32-bit
+                            });
+                        }
                     }
                 }
             }
         }
-    }
 
 #if !NETCOREAPP1_1
-    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1497")]
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1497")]
         public void Bug1497()
         {
             using (var conn = OpenConnection())
