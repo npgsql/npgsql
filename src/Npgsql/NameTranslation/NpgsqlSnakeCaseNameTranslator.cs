@@ -30,21 +30,7 @@ namespace Npgsql.NameTranslation
 
         static string ClrToDatabaseName(string clrName)
         {
-            var sb = new StringBuilder();
-            for (var i = 0; i < clrName.Length; i++)
-            {
-                var c = clrName[i];
-                if (char.IsUpper(c))
-                {
-                    if (i > 0)
-                        sb.Append('_');
-                    sb.Append(char.ToLower(c));
-                    continue;
-                }
-
-                sb.Append(c);
-            }
-            return sb.ToString();
+             return string.Concat(clrName.Select((c, i) => i > 0 && char.IsUpper(c) ? "_" + c.ToString() : c.ToString())).ToLower();
         }
     }
 }
