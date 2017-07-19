@@ -959,7 +959,8 @@ namespace Npgsql
                 throw new IndexOutOfRangeException($"length must be between {0} and {buffer.Length - bufferOffset}");
 
             var fieldDescription = _rowDescription[ordinal];
-            var handler = fieldDescription.Handler as ByteaHandler;
+            var handler = fieldDescription.Handler as ByteaHandler ??
+                (fieldDescription.Handler as PostgisGeometryHandler)?.ByteaHandler;
             if (handler == null)
                 throw new InvalidCastException("GetBytes() not supported for type " + fieldDescription.Name);
 
