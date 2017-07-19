@@ -53,24 +53,6 @@ namespace Npgsql.TypeHandlers
 
         #region Construction
 
-        internal EnumHandler(INpgsqlNameTranslator nameTranslator)
-        {
-            Debug.Assert(typeof(TEnum).GetTypeInfo().IsEnum, "EnumHandler instantiated for non-enum type");
-            _enumToLabel = new Dictionary<TEnum, string>();
-            _labelToEnum = new Dictionary<string, TEnum>();
-
-            foreach (var field in typeof(TEnum).GetFields(BindingFlags.Static | BindingFlags.Public))
-            {
-                var attribute = (PgNameAttribute)field.GetCustomAttributes(typeof(PgNameAttribute), false).FirstOrDefault();
-                var enumName = attribute == null
-                    ? nameTranslator.TranslateMemberName(field.Name)
-                    : attribute.PgName;
-                var enumValue = (Enum)field.GetValue(null);
-                _enumToLabel[(TEnum)(object)enumValue] = enumName;
-                _labelToEnum[enumName] = (TEnum)(object)enumValue;
-            }
-        }
-
         internal EnumHandler(Dictionary<TEnum, string> enumToLabel, Dictionary<string, TEnum> labelToEnum)
         {
             Debug.Assert(typeof(TEnum).GetTypeInfo().IsEnum, "EnumHandler instantiated for non-enum type");
