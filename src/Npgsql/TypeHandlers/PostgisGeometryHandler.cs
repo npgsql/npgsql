@@ -53,6 +53,8 @@ namespace Npgsql.TypeHandlers
         INpgsqlTypeHandler<PostgisGeometryCollection>,
         INpgsqlTypeHandler<byte[]>
     {
+        internal ByteaHandler ByteaHandler => _byteaHandler;
+
         [CanBeNull]
         readonly ByteaHandler _byteaHandler;
 
