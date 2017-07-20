@@ -383,6 +383,26 @@ namespace Npgsql
         string _password;
 
         /// <summary>
+        /// Path to a PostgreSQL Password File (PGPASSFILE), from which the password would be taken.
+        /// </summary>
+        [Category("Connection")]
+        [Description("Path to a PostgreSQL Password File (PGPASSFILE), from which the password would be taken.")]
+        [DisplayName("PG Pass File")]
+        [NpgsqlConnectionStringProperty]
+        [CanBeNull]
+        public string PgPassFile
+        {
+            get => _pgPassFile;
+            set
+            {
+                _pgPassFile = value;
+                SetValue(nameof(PgPassFile), value);
+            }
+        }
+
+        string _pgPassFile;
+
+        /// <summary>
         /// The optional application name parameter to be sent to the backend during connection initiation.
         /// </summary>
         [Category("Connection")]
