@@ -66,35 +66,28 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             return new NpgsqlTimeSpan(month, day, ticks * 10);
         }
 
-        protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
+        public override int ValidateAndGetLength(TimeSpan value, NpgsqlParameter parameter)
         {
             CheckIntegerFormat();
-
-            var asString = value as string;
-            if (asString != null)
-            {
-                var converted = NpgsqlTimeSpan.Parse(asString);
-                if (parameter == null)
-                    throw CreateConversionButNoParamException(value.GetType());
-                parameter.ConvertedValue = converted;
-            }
-            else if (!(value is TimeSpan) && !(value is NpgsqlTimeSpan))
-                throw CreateConversionException(value.GetType());
-
             return 16;
         }
 
-        protected override void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
+        public override int ValidateAndGetLength(NpgsqlTimeSpan value, NpgsqlParameter parameter)
         {
-            if (parameter?.ConvertedValue != null)
-                value = parameter.ConvertedValue;
-
-            var interval = value as TimeSpan? ?? (NpgsqlTimeSpan)value;
-
-            buf.WriteInt64(interval.Ticks / 10); // TODO: round?
-            buf.WriteInt32(interval.Days);
-            buf.WriteInt32(interval.Months);
+            CheckIntegerFormat();
+            return 16;
         }
+
+        public override void Write(NpgsqlTimeSpan value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        {
+            buf.WriteInt64(value.Ticks / 10); // TODO: round?
+            buf.WriteInt32(value.Days);
+            buf.WriteInt32(value.Months);
+        }
+
+        // TODO: Can write directly from TimeSpan
+        public override void Write(TimeSpan value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => Write(value, buf, parameter);
 
         void CheckIntegerFormat()
         {

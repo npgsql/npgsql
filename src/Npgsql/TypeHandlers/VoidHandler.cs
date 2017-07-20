@@ -23,9 +23,6 @@
 
 using System;
 using Npgsql.BackendMessages;
-using NpgsqlTypes;
-using System.Data;
-using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 
@@ -40,14 +37,10 @@ namespace Npgsql.TypeHandlers
         public override DBNull Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => DBNull.Value;
 
-        protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
-        {
-            throw new NotSupportedException();
-        }
+        public override int ValidateAndGetLength(DBNull value, NpgsqlParameter parameter)
+            => throw new NotSupportedException();
 
-        protected override void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
-        {
-            throw new NotSupportedException();
-        }
+        public override void Write(DBNull value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => throw new NotSupportedException();
     }
 }

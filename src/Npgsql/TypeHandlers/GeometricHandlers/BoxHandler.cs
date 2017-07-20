@@ -21,9 +21,7 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using JetBrains.Annotations;
 using Npgsql.BackendMessages;
-using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -37,7 +35,7 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-geometric.html
     /// </remarks>
     [TypeMapping("box", NpgsqlDbType.Box, typeof(NpgsqlBox))]
-    class BoxHandler : NpgsqlSimpleTypeHandler<NpgsqlBox>, INpgsqlSimpleTypeHandler<string>
+    class BoxHandler : NpgsqlSimpleTypeHandler<NpgsqlBox>
     {
         public override NpgsqlBox Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => new NpgsqlBox(
@@ -45,23 +43,15 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
                 new NpgsqlPoint(buf.ReadDouble(), buf.ReadDouble())
             );
 
-        string INpgsqlSimpleTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
-            => Read(buf, len, fieldDescription).ToString();
+        public override int ValidateAndGetLength(NpgsqlBox value, NpgsqlParameter parameter)
+            => 32;
 
-        protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
+        public override void Write(NpgsqlBox value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {
-            if (!(value is NpgsqlBox))
-                throw CreateConversionException(value.GetType());
-            return 32;
-        }
-
-        protected override void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
-        {
-            var v = (NpgsqlBox)value;
-            buf.WriteDouble(v.Right);
-            buf.WriteDouble(v.Top);
-            buf.WriteDouble(v.Left);
-            buf.WriteDouble(v.Bottom);
+            buf.WriteDouble(value.Right);
+            buf.WriteDouble(value.Top);
+            buf.WriteDouble(value.Left);
+            buf.WriteDouble(value.Bottom);
         }
     }
 }

@@ -21,9 +21,7 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using JetBrains.Annotations;
 using Npgsql.BackendMessages;
-using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -37,28 +35,20 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-geometric.html
     /// </remarks>
     [TypeMapping("lseg", NpgsqlDbType.LSeg, typeof(NpgsqlLSeg))]
-    class LineSegmentHandler : NpgsqlSimpleTypeHandler<NpgsqlLSeg>, INpgsqlSimpleTypeHandler<string>
+    class LineSegmentHandler : NpgsqlSimpleTypeHandler<NpgsqlLSeg>
     {
         public override NpgsqlLSeg Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => new NpgsqlLSeg(buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble());
 
-        string INpgsqlSimpleTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
-            => Read(buf, len, fieldDescription).ToString();
+        public override int ValidateAndGetLength(NpgsqlLSeg value, NpgsqlParameter parameter)
+            => 32;
 
-        protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
+        public override void Write(NpgsqlLSeg value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {
-            if (!(value is NpgsqlLSeg))
-                throw CreateConversionException(value.GetType());
-            return 32;
-        }
-
-        protected override void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
-        {
-            var v = (NpgsqlLSeg)value;
-            buf.WriteDouble(v.Start.X);
-            buf.WriteDouble(v.Start.Y);
-            buf.WriteDouble(v.End.X);
-            buf.WriteDouble(v.End.Y);
+            buf.WriteDouble(value.Start.X);
+            buf.WriteDouble(value.Start.Y);
+            buf.WriteDouble(value.End.X);
+            buf.WriteDouble(value.End.Y);
         }
     }
 }

@@ -493,6 +493,27 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        public void GenericParameter()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3,@p4", conn))
+            {
+                cmd.Parameters.Add(new NpgsqlParameter<int>("p1", 8));
+                cmd.Parameters.Add(new NpgsqlParameter<short>("p2", 8) { NpgsqlDbType = NpgsqlDbType.Integer });
+                cmd.Parameters.Add(new NpgsqlParameter<string>("p3", "hello"));
+                cmd.Parameters.Add(new NpgsqlParameter<char[]>("p4", new[] { 'f', 'o', 'o' }));
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetInt32(0), Is.EqualTo(8));
+                    Assert.That(reader.GetInt32(1), Is.EqualTo(8));
+                    Assert.That(reader.GetString(2), Is.EqualTo("hello"));
+                    Assert.That(reader.GetString(3), Is.EqualTo("foo"));
+                }
+            }
+        }
+
+        [Test]
         public void EmptyQuery()
         {
             using (var conn = OpenConnection())

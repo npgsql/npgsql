@@ -25,8 +25,6 @@ using System;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
-using JetBrains.Annotations;
-using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 
@@ -48,33 +46,30 @@ namespace Npgsql.TypeHandlers
             return new Guid(a, b, c, d);
         }
 
-        string INpgsqlSimpleTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        string INpgsqlSimpleTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription)
             => Read(buf, len, fieldDescription).ToString();
 
         #region Write
 
-        protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
+        public override int ValidateAndGetLength(Guid value, NpgsqlParameter parameter)
+            => 16;
+
+        public int ValidateAndGetLength(string value, NpgsqlParameter parameter)
         {
-            var asString = value as string;
-            if (value is string)
-            {
-                var converted = Guid.Parse(asString);
-                if (parameter == null)
-                    throw CreateConversionButNoParamException(value.GetType());
-                parameter.ConvertedValue = converted;
-            }
-            else if (!(value is Guid))
-                throw CreateConversionException(value.GetType());
+            var converted = Guid.Parse(value);
+            if (parameter == null)
+                throw CreateConversionButNoParamException(value.GetType());
+            parameter.ConvertedValue = converted;
             return 16;
         }
 
-        protected override void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
+        public void Write(string value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => Write((Guid)parameter.ConvertedValue, buf, parameter);
+
+        public override void Write(Guid value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {
-            if (parameter?.ConvertedValue != null)
-                value = parameter.ConvertedValue;
-
-            var bytes = ((Guid)value).ToByteArray();
-
+            // TODO: Allocation... investigate alternatives?
+            var bytes = value.ToByteArray();
             buf.WriteInt32(BitConverter.ToInt32(bytes, 0));
             buf.WriteInt16(BitConverter.ToInt16(bytes, 4));
             buf.WriteInt16(BitConverter.ToInt16(bytes, 6));

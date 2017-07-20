@@ -118,7 +118,7 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        protected internal override int ValidateAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter = null)
+        public override int ValidateAndGetLength(T value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
         {
             ResolveFieldsIfNeeded();
             Debug.Assert(_members != null);
@@ -138,16 +138,14 @@ namespace Npgsql.TypeHandlers
                 var fieldValue = f.GetValue(value);
                 if (fieldValue == null)
                     continue;
-                totalLen += f.Handler.ValidateAndGetLength(fieldValue, ref lengthCache);
+                totalLen += f.Handler.ValidateObjectAndGetLength(fieldValue, ref lengthCache, null);
             }
             return lengthCache.Lengths[pos] = totalLen;
         }
 
-        protected override async Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        public override async Task Write(T value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
         {
             Debug.Assert(_members != null);
-
-            var composite = (T)value;
 
             if (buf.WriteSpaceLeft < 4)
                 await buf.Flush(async);
@@ -156,13 +154,13 @@ namespace Npgsql.TypeHandlers
             foreach (var fieldDescriptor in _members)
             {
                 var fieldHandler = fieldDescriptor.Handler;
-                var fieldValue = fieldDescriptor.GetValue(composite);
+                var fieldValue = fieldDescriptor.GetValue(value);
 
                 if (buf.WriteSpaceLeft < 4)
                     await buf.Flush(async);
 
                 buf.WriteUInt32(fieldDescriptor.OID);
-                await fieldHandler.WriteWithLength(fieldValue, buf, lengthCache, null, async);
+                await fieldHandler.WriteObjectWithLength(fieldValue, buf, lengthCache, null, async);
             }
         }
 
@@ -282,6 +280,5 @@ namespace Npgsql.TypeHandlers
 
         protected override NpgsqlTypeHandler<T> Create(NpgsqlConnection conn)
             => new CompositeHandler<T>(_nameTranslator, conn.Connector.TypeMapper);
-
     }
 }

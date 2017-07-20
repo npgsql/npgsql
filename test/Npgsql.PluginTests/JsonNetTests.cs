@@ -40,39 +40,23 @@ namespace Npgsql.PluginTests
     [TestFixture(NpgsqlDbType.Json)]
     public class JsonNetTests : TestBase
     {
-        public void Crap()
-        {
-            using (var conn = OpenConnection())
-            {
-                // Write arbitrary CLR types as JSON
-                using (var cmd = new NpgsqlCommand(@"INSERT INTO mytable (my_json_column JSONB)", conn))
-                {
-                    cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType.Jsonb) { Value = MyClrType });
-                    cmd.ExecuteNonQuery();
-                }
-
-                // Read arbitrary CLR types as JSON
-                using (var cmd = new NpgsqlCommand(@"SELECT my_json_column FROM mytable", conn))
-                using (var reader = cmd.ExecuteReader())
-                {
-                    reader.Read();
-                    var someValue = reader.GetFieldValue<MyClrType>(0);
-                }
-            }
-        }
-
         [Test]
         public void RoundtripObject()
         {
             var expected = new Foo { Bar = 8 };
             using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand(@"SELECT @p", conn))
+            using (var cmd = new NpgsqlCommand(@"SELECT @p1, @p2", conn))
             {
-                cmd.Parameters.Add(new NpgsqlParameter("p", _npgsqlDbType) { Value = expected });
+                cmd.Parameters.Add(new NpgsqlParameter("p1", _npgsqlDbType) { Value = expected });
+                cmd.Parameters.Add(new NpgsqlParameter<Foo>
+                {
+                    ParameterName = "p2", NpgsqlDbType = _npgsqlDbType, TypedValue = expected
+                });
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();
                     Assert.That(reader.GetFieldValue<Foo>(0), Is.EqualTo(expected));
+                    Assert.That(reader.GetFieldValue<Foo>(1), Is.EqualTo(expected));
                 }
             }
         }

@@ -4,6 +4,7 @@ using System.Data;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using NpgsqlTypes;
 using NUnit.Framework;
 #if !NETCOREAPP1_1
 using System.Transactions;
@@ -105,6 +106,7 @@ namespace Npgsql.Tests
             }
         }
 
+<<<<<<< HEAD
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1466")]
         public void Bug1466()
         {
@@ -167,6 +169,30 @@ namespace Npgsql.Tests
                         }
                     }
                 }
+=======
+        [Test]
+        public void Bug1645()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER)");
+                Assert.That(() =>
+                {
+                    using (var writer = conn.BeginBinaryImport("COPY data (field_text, field_int4) FROM STDIN BINARY"))
+                    {
+                        writer.StartRow();
+                        writer.Write("foo");
+                        writer.Write(8);
+
+                        writer.StartRow();
+                        throw new InvalidOperationException("Catch me outside the using statement if you can!");
+                    }
+                }, Throws.Exception
+                    .TypeOf<InvalidOperationException>()
+                    .With.Property(nameof(InvalidOperationException.Message)).EqualTo("Catch me outside the using statement if you can!")
+                );
+                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.Zero);
+>>>>>>> upstream/dev
             }
         }
 

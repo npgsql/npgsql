@@ -56,7 +56,8 @@ namespace Npgsql.TypeHandlers
             => new TextHandler(conn);
     }
 
-    public class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler<char[]>, ITextReaderHandler
+    public class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler<char[]>, INpgsqlTypeHandler<ArraySegment<char>>,
+        INpgsqlTypeHandler<char>, ITextReaderHandler
     {
         // Text types are handled a bit more efficiently when sent as text than as binary
         // see https://github.com/npgsql/npgsql/issues/1210#issuecomment-235641670
@@ -145,100 +146,81 @@ namespace Npgsql.TypeHandlers
             return buf.TextEncoding.GetChars(tempBuf);
         }
 
+        ValueTask<ArraySegment<char>> INpgsqlTypeHandler<ArraySegment<char>>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        {
+            buf.Skip(len);
+            throw new NpgsqlSafeReadException(new NotSupportedException("Only writing ArraySegment<char> to PostgreSQL text is supported, no reading."));
+        }
+
+        ValueTask<char> INpgsqlTypeHandler<char>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        {
+            buf.Skip(len);
+            throw new NpgsqlSafeReadException(new NotSupportedException("Only writing char to PostgreSQL text is supported, no reading."));
+        }
+
         #endregion
 
         #region Write
 
-        protected internal override unsafe int ValidateAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter = null)
+        public override unsafe int ValidateAndGetLength(string value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
         {
             if (lengthCache == null)
                 lengthCache = new NpgsqlLengthCache(1);
             if (lengthCache.IsPopulated)
                 return lengthCache.Get();
 
-            var asString = value as string;
-            if (asString != null)
-            {
-                if (parameter == null || parameter.Size <= 0 || parameter.Size >= asString.Length)
-                    return lengthCache.Set(_encoding.GetByteCount(asString));
-                fixed (char* p = asString)
-                    return lengthCache.Set(_encoding.GetByteCount(p, parameter.Size));
-            }
-
-            var asCharArray = value as char[];
-            if (asCharArray != null)
-            {
-                return lengthCache.Set(
-                    parameter == null || parameter.Size <= 0 || parameter.Size >= asCharArray.Length
-                  ? _encoding.GetByteCount(asCharArray)
-                  : _encoding.GetByteCount(asCharArray, 0, parameter.Size)
-                );
-            }
-
-            if (value is char)
-            {
-                _singleCharArray[0] = (char)value;
-                return lengthCache.Set(_encoding.GetByteCount(_singleCharArray));
-            }
-
-            if (value is ArraySegment<char>)
-            {
-                if (parameter?.Size > 0)
-                {
-                    var paramName = parameter.ParameterName;
-                    throw new ArgumentException($"Parameter {paramName} is of type ArraySegment<char> and should not have its Size set", paramName);
-                }
-
-                var segment = (ArraySegment<char>)value;
-                return lengthCache.Set(_encoding.GetByteCount(segment.Array, segment.Offset, segment.Count));
-            }
-
-            // Fallback - try to convert the value to string
-            var converted = Convert.ToString(value);
-            if (parameter == null)
-                throw CreateConversionButNoParamException(value.GetType());
-            parameter.ConvertedValue = converted;
-
-            if (parameter.Size <= 0 || parameter.Size >= converted.Length)
-                return lengthCache.Set(_encoding.GetByteCount(converted));
-            fixed (char* p = converted)
+            if (parameter == null || parameter.Size <= 0 || parameter.Size >= value.Length)
+                return lengthCache.Set(_encoding.GetByteCount(value));
+            fixed (char* p = value)
                 return lengthCache.Set(_encoding.GetByteCount(p, parameter.Size));
         }
 
-        protected override Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        public virtual int ValidateAndGetLength(char[] value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
         {
-            if (parameter?.ConvertedValue != null)
-                value = parameter.ConvertedValue;
+            if (lengthCache == null)
+                lengthCache = new NpgsqlLengthCache(1);
+            if (lengthCache.IsPopulated)
+                return lengthCache.Get();
 
-            var str = value as string;
-            if (str != null)
-            {
-                return WriteString(str, buf, lengthCache, parameter, async);
-            }
-
-            var chars = value as char[];
-            if (chars != null)
-            {
-                var charLen = parameter == null || parameter.Size <= 0 || parameter.Size >= chars.Length
-                    ? chars.Length
-                    : parameter.Size;
-                return buf.WriteChars(chars, 0, charLen, lengthCache.GetLast(), async);
-            }
-
-            if (value is char)
-            {
-                _singleCharArray[0] = (char)value;
-                return buf.WriteChars(_singleCharArray, 0, 1, lengthCache.GetLast(), async);
-            }
-
-            if (value is ArraySegment<char>)
-            {
-                var segment = (ArraySegment<char>)value;
-                return buf.WriteChars(segment.Array, segment.Offset, segment.Count, lengthCache.GetLast(), async);
-            }
-
-            return WriteString(Convert.ToString(value), buf, lengthCache, parameter, async);
+            return lengthCache.Set(
+                parameter == null || parameter.Size <= 0 || parameter.Size >= value.Length
+                    ? _encoding.GetByteCount(value)
+                    : _encoding.GetByteCount(value, 0, parameter.Size)
+            );
         }
+
+        public int ValidateAndGetLength(ArraySegment<char> value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        {
+            if (lengthCache == null)
+                lengthCache = new NpgsqlLengthCache(1);
+            if (lengthCache.IsPopulated)
+                return lengthCache.Get();
+
+            if (parameter?.Size > 0)
+                throw new ArgumentException($"Parameter {parameter.ParameterName} is of type ArraySegment<char> and should not have its Size set", parameter.ParameterName);
+
+            return lengthCache.Set(_encoding.GetByteCount(value.Array, value.Offset, value.Count));
+        }
+
+        public int ValidateAndGetLength(char value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        {
+            _singleCharArray[0] = value;
+            return _encoding.GetByteCount(_singleCharArray);
+        }
+
+        public override Task Write(string value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+            => WriteString(value, buf, lengthCache, parameter, async);
+
+        public virtual Task Write(char[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        {
+            var charLen = parameter == null || parameter.Size <= 0 || parameter.Size >= value.Length
+                ? value.Length
+                : parameter.Size;
+            return buf.WriteChars(value, 0, charLen, lengthCache.GetLast(), async);
+        }
+
+        public Task Write(ArraySegment<char> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+            => buf.WriteChars(value.Array, value.Offset, value.Count, lengthCache.GetLast(), async);
 
         Task WriteString(string str, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter, bool async)
         {
@@ -246,6 +228,13 @@ namespace Npgsql.TypeHandlers
                 ? str.Length
                 : parameter.Size;
             return buf.WriteString(str, charLen, lengthCache.GetLast(), async);
+        }
+
+        public Task Write(char value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        {
+            _singleCharArray[0] = value;
+            var len = _encoding.GetByteCount(_singleCharArray);
+            return buf.WriteChars(_singleCharArray, 0, 1, len, async);
         }
 
         #endregion

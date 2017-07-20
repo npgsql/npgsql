@@ -25,7 +25,6 @@ using System;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using JetBrains.Annotations;
-using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 
@@ -62,20 +61,26 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
-        {
-            if (!(value is byte))
-            {
-                // ReSharper disable once ReturnValueOfPureMethodIsNotUsed
-                Convert.ToByte(value);
-            }
-            return 1;
-        }
+        public override int ValidateAndGetLength(char value, NpgsqlParameter parameter) => 1;
+        public int ValidateAndGetLength(byte value, NpgsqlParameter parameter)          => 1;
+        public int ValidateAndGetLength(short value, NpgsqlParameter parameter)         => 1;
+        public int ValidateAndGetLength(int value, NpgsqlParameter parameter)           => 1;
+        public int ValidateAndGetLength(long value, NpgsqlParameter parameter)          => 1;
 
-        protected override void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
-        {
-            buf.WriteByte(value as byte? ?? Convert.ToByte(value));
-        }
+        public override void Write(char value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => buf.WriteByte((byte)value);
+
+        public void Write(byte value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => buf.WriteByte(value);
+
+        public void Write(short value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => buf.WriteByte((byte)value);
+
+        public void Write(int value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => buf.WriteByte((byte)value);
+
+        public void Write(long value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => buf.WriteByte((byte)value);
 
         #endregion
     }

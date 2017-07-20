@@ -25,11 +25,9 @@ using System;
 using System.Collections;
 using System.Collections.Specialized;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
-using JetBrains.Annotations;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
@@ -46,7 +44,8 @@ namespace Npgsql.TypeHandlers
     /// </remarks>
     [TypeMapping("varbit", NpgsqlDbType.Varbit, new[] { typeof(BitArray), typeof(BitVector32) })]
     [TypeMapping("bit", NpgsqlDbType.Bit)]
-    class BitStringHandler : NpgsqlTypeHandler<BitArray>, INpgsqlTypeHandler<BitVector32>, INpgsqlTypeHandler<bool>
+    class BitStringHandler : NpgsqlTypeHandler<BitArray>,
+        INpgsqlTypeHandler<BitVector32>, INpgsqlTypeHandler<bool>, INpgsqlTypeHandler<string>
     {
         internal override Type GetFieldType(FieldDescription fieldDescription = null)
             => fieldDescription != null && fieldDescription.TypeModifier == 1 ? typeof(bool) : typeof(BitArray);
@@ -130,6 +129,12 @@ namespace Npgsql.TypeHandlers
             return (b & 128) != 0;
         }
 
+        ValueTask<string> INpgsqlTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        {
+            buf.Skip(len);
+            throw new NpgsqlSafeReadException(new NotSupportedException("Only writing string to PostgreSQL bitstring is supported, no reading."));
+        }
+
         internal override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
             => fieldDescription?.TypeModifier == 1
                 ? (object)await Read<bool>(buf, len, async, fieldDescription)
@@ -144,56 +149,30 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        protected internal override int ValidateAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter=null)
+        public override int ValidateAndGetLength(BitArray value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+            => 4 + (value.Length + 7) / 8;
+
+        public int ValidateAndGetLength(BitVector32 value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+            => value.Data == 0 ? 4 : 8;
+
+        public int ValidateAndGetLength(bool value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+            => 5;
+
+        public int ValidateAndGetLength(string value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
         {
-            var asBitArray = value as BitArray;
-            if (asBitArray != null)
-                return 4 + (asBitArray.Length + 7) / 8;
-
-            if (value is BitVector32)
-                return ((BitVector32)value).Data == 0 ? 4 : 8;
-
-            if (value is bool)
-                return 5;
-
-            var asString = value as string;
-            if (asString != null)
-            {
-                if (asString.Any(c => c != '0' && c != '1'))
-                    throw new FormatException("Cannot interpret as ASCII BitString: " + asString);
-                return 4 + (asString.Length + 7)/8;
-            }
-
-            throw CreateConversionException(value.GetType());
+            if (value.Any(c => c != '0' && c != '1'))
+                throw new FormatException("Cannot interpret as ASCII BitString: " + value);
+            return 4 + (value.Length + 7) / 8;
         }
 
-        protected override Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-        {
-            var bitArray = value as BitArray;
-            if (bitArray != null)
-                return WriteBitArray(bitArray, buf, async);
-
-            if (value is BitVector32)
-                return WriteBitVector32((BitVector32)value, buf, async);
-
-            if (value is bool)
-                return WriteBool((bool)value, buf, async);
-
-            var str = value as string;
-            if (str != null)
-                return WriteString(str, buf, async);
-
-            throw new InvalidOperationException($"Bad type {value.GetType()} some made its way into BitStringHandler.Write()");
-        }
-
-        async Task WriteBitArray(BitArray bitArray, NpgsqlWriteBuffer buf, bool async)
+        public override async Task Write(BitArray value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
         {
             // Initial bitlength byte
             if (buf.WriteSpaceLeft < 4)
                 await buf.Flush(async);
-            buf.WriteInt32(bitArray.Length);
+            buf.WriteInt32(value.Length);
 
-            var byteLen = (bitArray.Length + 7) / 8;
+            var byteLen = (value.Length + 7) / 8;
             var pos = 0;
             while (true)
             {
@@ -202,8 +181,8 @@ namespace Npgsql.TypeHandlers
                 {
                     var bitPos = pos*8;
                     var b = 0;
-                    for (var i = 0; i < Math.Min(8, bitArray.Length - bitPos); i++)
-                        b += (bitArray[bitPos + i] ? 1 : 0) << (8 - i - 1);
+                    for (var i = 0; i < Math.Min(8, value.Length - bitPos); i++)
+                        b += (value[bitPos + i] ? 1 : 0) << (8 - i - 1);
                     buf.WriteByte((byte)b);
                 }
 
@@ -213,37 +192,37 @@ namespace Npgsql.TypeHandlers
             }
         }
 
-        async Task WriteBitVector32(BitVector32 bitVector, NpgsqlWriteBuffer buf, bool async)
+        public async Task Write(BitVector32 value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
         {
             if (buf.WriteSpaceLeft < 8)
                 await buf.Flush(async);
 
-            if (bitVector.Data == 0)
+            if (value.Data == 0)
                 buf.WriteInt32(0);
             else
             {
                 buf.WriteInt32(32);
-                buf.WriteInt32(bitVector.Data);
+                buf.WriteInt32(value.Data);
             }
         }
 
-        async Task WriteBool(bool b, NpgsqlWriteBuffer buf, bool async)
+        public async Task Write(bool value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
         {
             if (buf.WriteSpaceLeft < 5)
                 await buf.Flush(async);
             buf.WriteInt32(1);
-            buf.WriteByte(b ? (byte)0x80 : (byte)0);
+            buf.WriteByte(value ? (byte)0x80 : (byte)0);
         }
 
-        async Task WriteString(string str, NpgsqlWriteBuffer buf, bool async)
+        public async Task Write(string value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
         {
             // Initial bitlength byte
             if (buf.WriteSpaceLeft < 4)
                 await buf.Flush(async);
-            buf.WriteInt32(str.Length);
+            buf.WriteInt32(value.Length);
 
             var pos = 0;
-            var byteLen = (str.Length + 7) / 8;
+            var byteLen = (value.Length + 7) / 8;
             var bytePos = 0;
 
             while (true)
@@ -253,14 +232,14 @@ namespace Npgsql.TypeHandlers
                 for (; bytePos < endBytePos; bytePos++)
                 {
                     var b = 0;
-                    b += (str[pos++] - '0') << 7;
-                    b += (str[pos++] - '0') << 6;
-                    b += (str[pos++] - '0') << 5;
-                    b += (str[pos++] - '0') << 4;
-                    b += (str[pos++] - '0') << 3;
-                    b += (str[pos++] - '0') << 2;
-                    b += (str[pos++] - '0') << 1;
-                    b += (str[pos++] - '0');
+                    b += (value[pos++] - '0') << 7;
+                    b += (value[pos++] - '0') << 6;
+                    b += (value[pos++] - '0') << 5;
+                    b += (value[pos++] - '0') << 4;
+                    b += (value[pos++] - '0') << 3;
+                    b += (value[pos++] - '0') << 2;
+                    b += (value[pos++] - '0') << 1;
+                    b += (value[pos++] - '0');
                     buf.WriteByte((byte)b);
                 }
 
@@ -269,15 +248,15 @@ namespace Npgsql.TypeHandlers
                 await buf.Flush(async);
             }
 
-            if (pos < str.Length)
+            if (pos < value.Length)
             {
                 if (buf.WriteSpaceLeft < 1)
                     await buf.Flush(async);
 
-                var remainder = str.Length - pos;
+                var remainder = value.Length - pos;
                 var lastChunk = 0;
                 for (var i = 7; i >= 8 - remainder; i--)
-                    lastChunk += (str[pos++] - '0') << i;
+                    lastChunk += (value[pos++] - '0') << i;
                 buf.WriteByte((byte)lastChunk);
             }
         }
@@ -318,16 +297,5 @@ namespace Npgsql.TypeHandlers
             => fieldDescription?.TypeModifier == 1
                 ? await Read<bool>(buf, async)
                 : await Read<BitArray>(buf, async);
-
-        protected internal override int ValidateAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter=null)
-        {
-            if (value is BitArray[])
-                return ValidateAndGetLength<BitArray>(value, ref lengthCache, parameter);
-            if (value is bool[])
-                return ValidateAndGetLength<bool>(value, ref lengthCache, parameter);
-            if (value is string[])
-                return ValidateAndGetLength<string>(value, ref lengthCache, parameter);
-            throw new InvalidCastException($"Can't write type {value.GetType()} as an bitstring array");
-        }
     }
 }

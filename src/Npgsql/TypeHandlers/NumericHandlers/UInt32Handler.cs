@@ -21,9 +21,7 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using System;
 using Npgsql.BackendMessages;
-using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -42,23 +40,9 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         public override uint Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => (uint)buf.ReadInt32();
 
-        protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
-        {
-            if (!(value is uint))
-            {
-                var converted = Convert.ToUInt32(value);
-                if (parameter == null)
-                    throw CreateConversionButNoParamException(value.GetType());
-                parameter.ConvertedValue = converted;
-            }
-            return 4;
-        }
+        public override int ValidateAndGetLength(uint value, NpgsqlParameter parameter) => 4;
 
-        protected override void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
-        {
-            if (parameter?.ConvertedValue != null)
-                value = parameter.ConvertedValue;
-            buf.WriteInt32((int)(uint)value);
-        }
+        public override void Write(uint value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => buf.WriteInt32((int)value);
     }
 }

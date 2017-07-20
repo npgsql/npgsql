@@ -21,6 +21,7 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
+using System.Net;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
@@ -42,10 +43,16 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
         string INpgsqlSimpleTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => Read(buf, len, fieldDescription).ToString();
 
-        protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
-            => InetHandler.DoValidateAndGetLength(value);
+        public override int ValidateAndGetLength(NpgsqlInet value, NpgsqlParameter parameter)
+            => InetHandler.GetLength(value.Address);
 
-        protected override void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
-            => InetHandler.DoWrite(value, buf, true);
+        public int ValidateAndGetLength(string value, NpgsqlParameter parameter)
+            => InetHandler.GetLength(IPAddress.Parse(value));
+
+        public override void Write(NpgsqlInet value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => InetHandler.DoWrite(value.Address, value.Netmask, buf, true);
+
+        public void Write(string value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => InetHandler.DoWrite(IPAddress.Parse(value), -1, buf, true);
     }
 }

@@ -26,11 +26,9 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
-using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 
 namespace Npgsql.TypeHandlers
@@ -174,7 +172,122 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        protected override async Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        public override int ValidateAndGetLength<T2>(T2 value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+            => ValidateAndGetLength<TElement>(value, ref lengthCache, parameter);
+
+        protected internal override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter = null)
+            => ValidateAndGetLength<TElement>(value, ref lengthCache, parameter);
+
+        // We're required to override this but it will never be called
+        public override int ValidateAndGetLength(Array value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+            => throw new NotSupportedException();
+
+        public int ValidateAndGetLength<TElement2>(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter = null)
+        {
+            if (lengthCache == null)
+                lengthCache = new NpgsqlLengthCache(1);
+            if (lengthCache.IsPopulated)
+                return lengthCache.Get();
+
+            switch (value)
+            {
+            case IList<TElement2> asGeneric:
+                return ValidateAndGetLengthGeneric(asGeneric, ref lengthCache);
+            case IList asNonGeneric:
+                return ValidateAndGetLengthNonGeneric(asNonGeneric, ref lengthCache);
+            default:
+                throw new InvalidCastException($"Can't write type {value.GetType()} as an array of {typeof(TElement2)}");
+            }
+        }
+
+        /// <summary>
+        /// Handle single-dimensional arrays and generic IList
+        /// </summary>
+        int ValidateAndGetLengthGeneric<TElement2>(IList<TElement2> value, ref NpgsqlLengthCache lengthCache)
+        {
+            // Leave empty slot for the entire array length, and go ahead an populate the element slots
+            var pos = lengthCache.Position;
+            lengthCache.Set(0);
+            var lengthCache2 = lengthCache;
+            var len =
+                4 +       // dimensions
+                4 +       // has_nulls (unused)
+                4 +       // type OID
+                1 * 8 +   // number of dimensions (1) * (length + lower bound)
+                value.Sum(e => 4 + GetSingleElementLength(e, ref lengthCache2));
+            lengthCache = lengthCache2;
+            return lengthCache.Lengths[pos] = len;
+        }
+
+        int GetSingleElementLength<T2>([CanBeNull] T2 element, ref NpgsqlLengthCache lengthCache)
+        {
+            if (element == null || typeof(T2) == typeof(DBNull))
+                return 0;
+            try
+            {
+                return ElementHandler.ValidateAndGetLength(element, ref lengthCache, null);
+            }
+            catch (Exception e)
+            {
+                throw new Exception("While trying to write an array, one of its elements failed validation. You may be trying to mix types in a non-generic IList, or to write a jagged array.", e);
+            }
+        }
+
+        /// <summary>
+        /// Take care of multi-dimensional arrays and non-generic IList, we have no choice but to box/unbox
+        /// </summary>
+        int ValidateAndGetLengthNonGeneric(IList value, ref NpgsqlLengthCache lengthCache)
+        {
+            var asMultidimensional = value as Array;
+            var dimensions = asMultidimensional?.Rank ?? 1;
+
+            // Leave empty slot for the entire array length, and go ahead an populate the element slots
+            var pos = lengthCache.Position;
+            lengthCache.Set(0);
+            var lengthCache2 = lengthCache;
+            var len =
+                4 +       // dimensions
+                4 +       // has_nulls (unused)
+                4 +       // type OID
+                dimensions * 8 +  // number of dimensions * (length + lower bound)
+                value.Cast<object>().Sum(element => 4 + GetSingleElementObjectLength(element, ref lengthCache2));
+            lengthCache = lengthCache2;
+            lengthCache.Lengths[pos] = len;
+            return len;
+        }
+
+        int GetSingleElementObjectLength([CanBeNull] object element, ref NpgsqlLengthCache lengthCache)
+        {
+            if (element == null || element is DBNull)
+                return 0;
+            try
+            {
+                return ElementHandler.ValidateObjectAndGetLength(element, ref lengthCache, null);
+            }
+            catch (Exception e)
+            {
+                throw new Exception("While trying to write an array, one of its elements failed validation. You may be trying to mix types in a non-generic IList, or to write a jagged array.", e);
+            }
+        }
+
+        protected override Task WriteWithLength<T2>(T2 value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        {
+            buf.WriteInt32(ValidateAndGetLength<TElement>(value, ref lengthCache, parameter));
+            return Write(value, buf, lengthCache, async);
+        }
+
+        public override Task Write(Array value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+            => throw new NotSupportedException("ArrayHandler overrides Write<T2> so we shouldn't get here");
+
+        // The default WriteObjectWithLength casts the type handler to INpgsqlTypeHandler<T>, but that's not sufficient for
+        // us (need to handle many types of T, e.g. int[], int[,]...)
+        protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+            => value == null || value is DBNull
+                ? WriteWithLengthInternal<DBNull>(null, buf, lengthCache, parameter, async)
+                : WriteWithLengthInternal(value, buf, lengthCache, parameter, async);
+
+        // TODO: Implement WriteVector which writes arrays without boxing... (accept IList<T2>)
+        async Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, bool async)
         {
             var asArray = value as Array;
             var dimensions = asArray?.Rank ?? 1;
@@ -210,78 +323,7 @@ namespace Npgsql.TypeHandlers
             }
 
             foreach (var element in writeValue)
-                await ElementHandler.WriteWithLength(element, buf, lengthCache, null, async);
-        }
-
-        protected internal override int ValidateAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter = null)
-            => ValidateAndGetLength<TElement>(value, ref lengthCache, parameter);
-
-        public int ValidateAndGetLength<TElement2>(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter=null)
-        {
-            // Take care of single-dimensional arrays and generic IList<T>
-            var asGenericList = value as IList<TElement2>;
-            if (asGenericList != null)
-            {
-                if (lengthCache == null)
-                    lengthCache = new NpgsqlLengthCache(1);
-                if (lengthCache.IsPopulated)
-                    return lengthCache.Get();
-                // Leave empty slot for the entire array length, and go ahead an populate the element slots
-                var pos = lengthCache.Position;
-                lengthCache.Set(0);
-                var lengthCache2 = lengthCache;
-                var len =
-                    4 +       // dimensions
-                    4 +       // has_nulls (unused)
-                    4 +       // type OID
-                    1 * 8 +   // number of dimensions (1) * (length + lower bound)
-                    asGenericList.Sum(e => 4 + GetSingleElementLength(e, ref lengthCache2, parameter));
-                lengthCache = lengthCache2;
-                return lengthCache.Lengths[pos] = len;
-            }
-
-            // Take care of multi-dimensional arrays and non-generic IList, we have no choice but to do
-            // boxing/unboxing
-            var asNonGenericList = value as IList;
-            if (asNonGenericList != null)
-            {
-                if (lengthCache == null)
-                    lengthCache = new NpgsqlLengthCache(1);
-                if (lengthCache.IsPopulated)
-                    return lengthCache.Get();
-                var asMultidimensional = value as Array;
-                var dimensions = asMultidimensional?.Rank ?? 1;
-
-                // Leave empty slot for the entire array length, and go ahead an populate the element slots
-                var pos = lengthCache.Position;
-                lengthCache.Set(0);
-                var lengthCache2 = lengthCache;
-                var len =
-                    4 +       // dimensions
-                    4 +       // has_nulls (unused)
-                    4 +       // type OID
-                    dimensions * 8 +  // number of dimensions * (length + lower bound)
-                    asNonGenericList.Cast<object>().Sum(element => 4 + GetSingleElementLength(element, ref lengthCache2, parameter));
-                lengthCache = lengthCache2;
-                lengthCache.Lengths[pos] = len;
-                return len;
-            }
-
-            throw new InvalidCastException($"Can't write type {value.GetType()} as an array of {typeof(TElement2)}");
-        }
-
-        int GetSingleElementLength([CanBeNull] object element, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter=null)
-        {
-            if (element == null || element is DBNull)
-                return 0;
-            try
-            {
-                return ElementHandler.ValidateAndGetLength(element, ref lengthCache, parameter);
-            }
-            catch (Exception e)
-            {
-                throw new Exception("While trying to write an array, one of its elements failed validation. You may be trying to mix types in a non-generic IList, or to write a jagged array.", e);
-            }
+                await ElementHandler.WriteObjectWithLength(element, buf, lengthCache, null, async);
         }
 
         #endregion

@@ -37,26 +37,18 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-geometric.html
     /// </remarks>
     [TypeMapping("point", NpgsqlDbType.Point, typeof(NpgsqlPoint))]
-    class PointHandler : NpgsqlSimpleTypeHandler<NpgsqlPoint>, INpgsqlSimpleTypeHandler<string>
+    class PointHandler : NpgsqlSimpleTypeHandler<NpgsqlPoint>
     {
         public override NpgsqlPoint Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => new NpgsqlPoint(buf.ReadDouble(), buf.ReadDouble());
 
-        string INpgsqlSimpleTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
-            => Read(buf, len, fieldDescription).ToString();
+        public override int ValidateAndGetLength(NpgsqlPoint value, NpgsqlParameter parameter)
+            => 16;
 
-        protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
+        public override void Write(NpgsqlPoint value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {
-            if (!(value is NpgsqlPoint))
-                throw CreateConversionException(value.GetType());
-            return 16;
-        }
-
-        protected override void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
-        {
-            var v = (NpgsqlPoint)value;
-            buf.WriteDouble(v.X);
-            buf.WriteDouble(v.Y);
+            buf.WriteDouble(value.X);
+            buf.WriteDouble(value.Y);
         }
     }
 }

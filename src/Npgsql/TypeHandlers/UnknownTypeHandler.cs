@@ -47,6 +47,8 @@ namespace Npgsql.TypeHandlers
             PostgresType = UnknownBackendType.Instance;
         }
 
+        #region Read
+
         public override ValueTask<string> Read(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription fieldDescription = null)
         {
             if (fieldDescription == null)
@@ -58,11 +60,52 @@ namespace Npgsql.TypeHandlers
                 // requested text. Skip the data and throw.
                 buf.Skip(byteLen);
                 // At least get the name of the PostgreSQL type for the exception
-                if (_connector.TypeMapper.DatabaseInfo.ByOID.TryGetValue(fieldDescription.TypeOID, out var pgType))
-                    throw new NpgsqlSafeReadException(new NotSupportedException($"The field '{fieldDescription.Name}' has type '{pgType.DisplayName}', which is currently unknown to Npgsql. You can retrieve it as a string by marking it as unknown, please see the FAQ."));
-                throw new NpgsqlSafeReadException(new NotSupportedException($"The field '{fieldDescription.Name}' has a type currently unknown to Npgsql (OID {fieldDescription.TypeOID}). You can retrieve it as a string by marking it as unknown, please see the FAQ."));
+                throw new NpgsqlSafeReadException(new NotSupportedException(
+                    _connector.TypeMapper.DatabaseInfo.ByOID.TryGetValue(fieldDescription.TypeOID, out var pgType)
+                        ? $"The field '{fieldDescription.Name}' has type '{pgType.DisplayName}', which is currently unknown to Npgsql. You can retrieve it as a string by marking it as unknown, please see the FAQ."
+                        : $"The field '{fieldDescription.Name}' has a type currently unknown to Npgsql (OID {fieldDescription.TypeOID}). You can retrieve it as a string by marking it as unknown, please see the FAQ."
+                ));
             }
             return base.Read(buf, byteLen, async, fieldDescription);
         }
+
+        #endregion Read
+
+        #region Write
+
+        // Allow writing anything that is a string or can be converted to one via the unknown type handler
+
+        public override int ValidateAndGetLength<T2>(T2 value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+            => ValidateObjectAndGetLength(value, ref lengthCache, parameter);
+
+        //protected override Task Write<T2>(T2 value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        //    => WriteObjectWithLength(value, buf, lengthCache, parameter, async);
+
+        protected internal override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        {
+            if (value is string asString)
+                return base.ValidateAndGetLength(asString, ref lengthCache, parameter);
+
+            var converted = Convert.ToString(value);
+            if (parameter == null)
+                throw CreateConversionButNoParamException(value.GetType());
+            parameter.ConvertedValue = converted;
+            return base.ValidateAndGetLength(converted, ref lengthCache, parameter);
+        }
+
+        protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        {
+            if (value == null || value is DBNull)
+                return base.WriteObjectWithLength(value, buf, lengthCache, parameter, async);
+
+            buf.WriteInt32(ValidateObjectAndGetLength(value, ref lengthCache, parameter));
+            return base.Write(
+                value is string asString
+                    ? asString
+                    : (string)parameter.ConvertedValue,
+                buf, lengthCache, parameter, async);
+        }
+
+        #endregion Write
     }
 }

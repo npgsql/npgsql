@@ -54,7 +54,7 @@ namespace Npgsql
         bool _copyMode;
         internal Encoding TextEncoding { get; }
 
-        internal int WriteSpaceLeft => Size - _writePosition;
+        public int WriteSpaceLeft => Size - _writePosition;
 
         internal long TotalBytesFlushed { get; private set; }
 
@@ -92,7 +92,7 @@ namespace Npgsql
 
         #region I/O
 
-        internal async Task Flush(bool async)
+        public async Task Flush(bool async)
         {
             if (_copyMode)
             {

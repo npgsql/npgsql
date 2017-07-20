@@ -59,22 +59,16 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
 
         #region Write
 
-        protected internal override int ValidateAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter = null)
-        {
-            if (!(value is NpgsqlPolygon))
-                throw CreateConversionException(value.GetType());
-            return 4 + ((NpgsqlPolygon)value).Count * 16;
-        }
+        public override int ValidateAndGetLength(NpgsqlPolygon value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+            => 4 + value.Count * 16;
 
-        protected override async Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        public override async Task Write(NpgsqlPolygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
         {
-            var polygon = (NpgsqlPolygon)value;
-
             if (buf.WriteSpaceLeft < 4)
                 await buf.Flush(async);
-            buf.WriteInt32(polygon.Count);
+            buf.WriteInt32(value.Count);
 
-            foreach (var p in polygon)
+            foreach (var p in value)
             {
                 if (buf.WriteSpaceLeft < 16)
                     await buf.Flush(async);

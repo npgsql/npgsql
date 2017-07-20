@@ -25,10 +25,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
-using System.Net;
-using System.Net.NetworkInformation;
 using System.Text;
-using Npgsql;
 using NpgsqlTypes;
 using NUnit.Framework;
 
@@ -204,14 +201,18 @@ namespace Npgsql.Tests.Types
         public void Null()
         {
             using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT @p::INT4", conn))
+            using (var cmd = new NpgsqlCommand("SELECT @p1::TEXT, @p2::TEXT", conn))
             {
-                cmd.Parameters.AddWithValue("p", DBNull.Value);
+                cmd.Parameters.AddWithValue("p1", DBNull.Value);
+                cmd.Parameters.Add(new NpgsqlParameter<DBNull>("p2", DBNull.Value));
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();
-                    Assert.That(reader.IsDBNull(0));
-                    Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(int)));
+                    for (var i = 0; i < cmd.Parameters.Count; i++)
+                    {
+                        Assert.That(reader.IsDBNull(i));
+                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(string)));
+                    }
                 }
             }
         }
@@ -293,14 +294,12 @@ namespace Npgsql.Tests.Types
                             Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(Dictionary<string, string>)));
                             Assert.That(reader.GetFieldValue<Dictionary<string, string>>(i), Is.EqualTo(expected));
                             Assert.That(reader.GetFieldValue<IDictionary<string, string>>(i), Is.EqualTo(expected));
-                            Assert.That(reader.GetString(i), Is.EqualTo(@"""a""=>""3"",""b""=>NULL,""cd""=>""hello"""));
                         }
                         for (var i = 2; i < 4; i++)
                         {
                             Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(Dictionary<string, string>)));
                             Assert.That(reader.GetFieldValue<Dictionary<string, string>>(i), Is.EqualTo(expected2));
                             Assert.That(reader.GetFieldValue<IDictionary<string, string>>(i), Is.EqualTo(expected2));
-                            Assert.That(reader.GetString(i), Is.EqualTo(""));
                         }
                     }
                 }

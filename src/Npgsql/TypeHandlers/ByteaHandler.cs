@@ -22,14 +22,11 @@
 #endregion
 
 using System;
-using System.IO;
-using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
 using JetBrains.Annotations;
-using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 
@@ -39,7 +36,7 @@ namespace Npgsql.TypeHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-binary.html
     /// </remarks>
     [TypeMapping("bytea", NpgsqlDbType.Bytea, DbType.Binary, new[] { typeof(byte[]), typeof(ArraySegment<byte>) })]
-    class ByteaHandler : NpgsqlTypeHandler<byte[]>
+    class ByteaHandler : NpgsqlTypeHandler<byte[]>, INpgsqlTypeHandler<ArraySegment<byte>>
     {
         public override async ValueTask<byte[]> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
         {
@@ -57,61 +54,60 @@ namespace Npgsql.TypeHandlers
             return bytes;
         }
 
-        #region Write
-
-        protected internal override int ValidateAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter=null)
+        ValueTask<ArraySegment<byte>> INpgsqlTypeHandler<ArraySegment<byte>>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
         {
-            if (value is ArraySegment<byte>)
-            {
-                var arraySegment = (ArraySegment<byte>)value;
-                return parameter == null || parameter.Size <= 0 || parameter.Size >= arraySegment.Count
-                    ? arraySegment.Count
-                    : parameter.Size;
-            }
-
-            var asArray = value as byte[];
-            if (asArray != null)
-                return parameter == null || parameter.Size <= 0 || parameter.Size >= asArray.Length
-                    ? asArray.Length
-                    : parameter.Size;
-
-            throw CreateConversionException(value.GetType());
+            buf.Skip(len);
+            throw new NpgsqlSafeReadException(new NotSupportedException("Only writing ArraySegment<byte> to PostgreSQL bytea is supported, no reading."));
         }
 
-        protected override async Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter, bool async)
-        {
-            ArraySegment<byte> segment;
+        #region Write
 
-            if (value is ArraySegment<byte>)
-            {
-                segment = (ArraySegment<byte>)value;
-                if (!(parameter == null || parameter.Size <= 0 || parameter.Size >= segment.Count))
-                    segment = new ArraySegment<byte>(segment.Array, segment.Offset, parameter.Size);
-            }
-            else
-            {
-                var array = (byte[])value;
-                var len = parameter == null || parameter.Size <= 0 || parameter.Size >= array.Length
-                    ? array.Length
+        public override int ValidateAndGetLength(byte[] value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+            => parameter == null || parameter.Size <= 0 || parameter.Size >= value.Length
+                    ? value.Length
                     : parameter.Size;
-                segment = new ArraySegment<byte>(array, 0, len);
-            }
 
-            // The entire segment fits in our buffer, copy it as usual.
-            if (segment.Count <= buf.WriteSpaceLeft)
+        public int ValidateAndGetLength(ArraySegment<byte> value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+            => parameter == null || parameter.Size <= 0 || parameter.Size >= value.Count
+                ? value.Count
+                : parameter.Size;
+
+        public override async Task Write(byte[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter, bool async)
+        {
+            var len = parameter == null || parameter.Size <= 0 || parameter.Size >= value.Length
+                ? value.Length
+                : parameter.Size;
+
+            // The entire array fits in our buffer, copy it into the buffer as usual.
+            if (len <= buf.WriteSpaceLeft)
             {
-                buf.WriteBytes(segment.Array, segment.Offset, segment.Count);
+                buf.WriteBytes(value, 0, len);
                 return;
             }
 
             // The segment is larger than our buffer. Flush whatever is currently in the buffer and
             // write the array directly to the socket.
             await buf.Flush(async);
-            buf.DirectWrite(segment.Array, segment.Offset, segment.Count);
+            buf.DirectWrite(value, 0, len);
         }
 
-        internal Task WriteInternal(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter, bool async)
-            => Write(value, buf, lengthCache, parameter, async);
+        public async Task Write(ArraySegment<byte> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter, bool async)
+        {
+            if (!(parameter == null || parameter.Size <= 0 || parameter.Size >= value.Count))
+                value = new ArraySegment<byte>(value.Array, value.Offset, Math.Min(parameter.Size, value.Count));
+
+            // The entire segment fits in our buffer, copy it as usual.
+            if (value.Count <= buf.WriteSpaceLeft)
+            {
+                buf.WriteBytes(value.Array, value.Offset, value.Count);
+                return;
+            }
+
+            // The segment is larger than our buffer. Flush whatever is currently in the buffer and
+            // write the array directly to the socket.
+            await buf.Flush(async);
+            buf.DirectWrite(value.Array, value.Offset, value.Count);
+        }
 
         #endregion
     }

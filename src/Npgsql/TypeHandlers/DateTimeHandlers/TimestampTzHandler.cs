@@ -42,10 +42,12 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-datetime.html
     /// </remarks>
-    class TimestampTzHandler : TimestampHandler, INpgsqlSimpleTypeHandler<DateTimeOffset>
+    class TimestampTzHandler : TimestampHandler
     {
         public TimestampTzHandler(bool integerFormat, bool convertInfinityDateTime)
             : base(integerFormat, convertInfinityDateTime) {}
+
+        #region Read
 
         public override DateTime Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
@@ -71,7 +73,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             return new NpgsqlDateTime(ts.Date, ts.Time, DateTimeKind.Utc).ToLocalTime();
         }
 
-        DateTimeOffset INpgsqlSimpleTypeHandler<DateTimeOffset>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        protected override DateTimeOffset ReadDateTimeOffset(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
         {
             try
             {
@@ -81,54 +83,45 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             }
         }
 
-        protected override void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
+        #endregion Read
+
+        #region Write
+
+        public override void Write(NpgsqlDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {
-            if (parameter?.ConvertedValue != null)
-                value = parameter.ConvertedValue;
-
-            if (value is NpgsqlDateTime)
+            switch (value.Kind)
             {
-                var ts = (NpgsqlDateTime)value;
-                switch (ts.Kind)
-                {
-                case DateTimeKind.Unspecified:
-                case DateTimeKind.Utc:
-                    break;
-                case DateTimeKind.Local:
-                    ts = ts.ToUniversalTime();
-                    break;
-                default:
-                    throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {ts.Kind} of enum {nameof(DateTimeKind)}. Please file a bug.");
-                }
-                base.Write(ts, buf, parameter);
-                return;
+            case DateTimeKind.Unspecified:
+            case DateTimeKind.Utc:
+                break;
+            case DateTimeKind.Local:
+                value = value.ToUniversalTime();
+                break;
+            default:
+                throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {value.Kind} of enum {nameof(DateTimeKind)}. Please file a bug.");
             }
-
-            if (value is DateTime)
-            {
-                var dt = (DateTime)value;
-                switch (dt.Kind)
-                {
-                case DateTimeKind.Unspecified:
-                case DateTimeKind.Utc:
-                    break;
-                case DateTimeKind.Local:
-                    dt = dt.ToUniversalTime();
-                    break;
-                default:
-                    throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {dt.Kind} of enum {nameof(DateTimeKind)}. Please file a bug.");
-                }
-                base.Write(dt, buf, parameter);
-                return;
-            }
-
-            if (value is DateTimeOffset)
-            {
-                base.Write(((DateTimeOffset)value).ToUniversalTime(), buf, parameter);
-                return;
-            }
-
-            throw new InvalidOperationException("Internal Npgsql bug, please report.");
+            base.Write(value, buf, parameter);
         }
+
+        public override void Write(DateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        {
+            switch (value.Kind)
+            {
+            case DateTimeKind.Unspecified:
+            case DateTimeKind.Utc:
+                break;
+            case DateTimeKind.Local:
+                value = value.ToUniversalTime();
+                break;
+            default:
+                throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {value.Kind} of enum {nameof(DateTimeKind)}. Please file a bug.");
+            }
+            base.Write(value, buf, parameter);
+        }
+
+        public override void Write(DateTimeOffset value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => base.Write(value.ToUniversalTime(), buf, parameter);
+
+        #endregion Write
     }
 }

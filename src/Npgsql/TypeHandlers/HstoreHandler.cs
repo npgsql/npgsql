@@ -24,11 +24,8 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
-using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -42,8 +39,7 @@ namespace Npgsql.TypeHandlers
             => new HstoreHandler(conn);
     }
 
-    class HstoreHandler : NpgsqlTypeHandler<Dictionary<string, string>>,
-        INpgsqlTypeHandler<IDictionary<string, string>>, INpgsqlTypeHandler<string>
+    class HstoreHandler : NpgsqlTypeHandler<Dictionary<string, string>>, INpgsqlTypeHandler<IDictionary<string, string>>
     {
         /// <summary>
         /// The text handler to which we delegate encoding/decoding of the actual strings
@@ -57,12 +53,8 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        protected internal override int ValidateAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter = null)
+        public int ValidateAndGetLength(IDictionary<string, string> value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
         {
-            var asDict = value as IDictionary<string, string>;
-            if (asDict == null)
-                throw CreateConversionException(value.GetType());
-
             if (lengthCache == null)
                 lengthCache = new NpgsqlLengthCache(1);
             if (lengthCache.IsPopulated)
@@ -73,35 +65,39 @@ namespace Npgsql.TypeHandlers
             lengthCache.Set(0);
 
             var totalLen = 4;  // Number of key-value pairs
-            foreach (var kv in asDict)
+            foreach (var kv in value)
             {
                 totalLen += 8;   // Key length + value length
                 if (kv.Key == null)
                     throw new FormatException("HSTORE doesn't support null keys");
-                totalLen += _textHandler.ValidateAndGetLength(kv.Key, ref lengthCache);
+                totalLen += _textHandler.ValidateAndGetLength(kv.Key, ref lengthCache, null);
                 if (kv.Value != null)
-                    totalLen += _textHandler.ValidateAndGetLength(kv.Value, ref lengthCache);
+                    totalLen += _textHandler.ValidateAndGetLength(kv.Value, ref lengthCache, null);
             }
 
             return lengthCache.Lengths[pos] = totalLen;
         }
 
-        protected override async Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-        {
-            var asDict = (IDictionary<string, string>)value;
+        public override int ValidateAndGetLength(Dictionary<string, string> value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+            => ValidateAndGetLength(value, ref lengthCache, parameter);
 
+        public async Task Write(IDictionary<string, string> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        {
             if (buf.WriteSpaceLeft < 4)
                 await buf.Flush(async);
-            buf.WriteInt32(asDict.Count);
-            if (asDict.Count == 0)
+            buf.WriteInt32(value.Count);
+            if (value.Count == 0)
                 return;
 
-            foreach (var kv in asDict)
+            foreach (var kv in value)
             {
-                await _textHandler.WriteWithLength(kv.Key, buf, lengthCache, parameter, async);
-                await _textHandler.WriteWithLength(kv.Value, buf, lengthCache, parameter, async);
+                await _textHandler.WriteWithLengthInternal(kv.Key, buf, lengthCache, parameter, async);
+                await _textHandler.WriteWithLengthInternal(kv.Value, buf, lengthCache, parameter, async);
             }
         }
+
+        public override Task Write(Dictionary<string, string> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+            => Write(value, buf, lengthCache, parameter, async);
 
         #endregion
 
@@ -132,30 +128,6 @@ namespace Npgsql.TypeHandlers
 
         ValueTask<IDictionary<string, string>> INpgsqlTypeHandler<IDictionary<string, string>>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
             => new ValueTask<IDictionary<string, string>>(Read(buf, len, async, fieldDescription).Result);
-
-        async ValueTask<string> INpgsqlTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
-        {
-            var dict = await Read(buf, len, async, fieldDescription);
-            var sb = new StringBuilder();
-            var i = dict.Count;
-            foreach (var kv in dict)
-            {
-                sb.Append('"');
-                sb.Append(kv.Key);
-                sb.Append(@"""=>");
-                if (kv.Value == null)
-                    sb.Append("NULL");
-                else
-                {
-                    sb.Append('"');
-                    sb.Append(kv.Value);
-                    sb.Append('"');
-                }
-                if (--i > 0)
-                    sb.Append(',');
-            }
-            return sb.ToString();
-        }
 
         #endregion
     }

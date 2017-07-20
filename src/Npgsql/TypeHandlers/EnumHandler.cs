@@ -29,9 +29,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Text;
-using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
-using Npgsql.TypeMapping;
 
 namespace Npgsql.TypeHandlers
 {
@@ -54,24 +52,6 @@ namespace Npgsql.TypeHandlers
         public Type EnumType => typeof(TEnum);
 
         #region Construction
-
-        internal EnumHandler(INpgsqlNameTranslator nameTranslator)
-        {
-            Debug.Assert(typeof(TEnum).GetTypeInfo().IsEnum, "EnumHandler instantiated for non-enum type");
-            _enumToLabel = new Dictionary<TEnum, string>();
-            _labelToEnum = new Dictionary<string, TEnum>();
-
-            foreach (var field in typeof(TEnum).GetFields(BindingFlags.Static | BindingFlags.Public))
-            {
-                var attribute = (PgNameAttribute)field.GetCustomAttributes(typeof(PgNameAttribute), false).FirstOrDefault();
-                var enumName = attribute == null
-                    ? nameTranslator.TranslateMemberName(field.Name)
-                    : attribute.PgName;
-                var enumValue = (Enum)field.GetValue(null);
-                _enumToLabel[(TEnum)(object)enumValue] = enumName;
-                _labelToEnum[enumName] = (TEnum)(object)enumValue;
-            }
-        }
 
         internal EnumHandler(Dictionary<TEnum, string> enumToLabel, Dictionary<string, TEnum> labelToEnum)
         {
@@ -99,25 +79,15 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
+        public override int ValidateAndGetLength(TEnum value, NpgsqlParameter parameter = null)
+            => _enumToLabel.TryGetValue(value, out var str)
+                ? Encoding.UTF8.GetByteCount(str)
+                : throw new InvalidCastException($"Can't write value {value} as enum {typeof(TEnum)}");
+
+        public override void Write(TEnum value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
         {
-            if (!(value is TEnum))
-                throw CreateConversionException(value.GetType());
-
-            var asEnum = (TEnum)value;
-            if (!_enumToLabel.TryGetValue(asEnum, out var str))
-                throw new InvalidCastException($"Can't write value {asEnum} as enum {typeof(TEnum)}");
-
-            return Encoding.UTF8.GetByteCount(str);
-        }
-
-        protected override void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
-        {
-            string str;
-            var asEnum = (TEnum)value;
-            if (!_enumToLabel.TryGetValue(asEnum, out str))
-                throw new InvalidCastException($"Can't write value {asEnum} as enum {typeof(TEnum)}");
-
+            if (!_enumToLabel.TryGetValue(value, out var str))
+                throw new InvalidCastException($"Can't write value {value} as enum {typeof(TEnum)}");
             buf.WriteString(str);
         }
 

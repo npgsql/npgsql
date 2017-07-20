@@ -115,43 +115,38 @@ namespace Npgsql.NodaTime
             }
         }
 
-        protected override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
+        public override int ValidateAndGetLength(Instant value, NpgsqlParameter parameter)
         {
             CheckIntegerFormat();
-            if (!(value is Instant) && !(value is LocalDateTime))
-                throw CreateConversionException(value.GetType());
             return 8;
         }
 
-        protected override void Write(object value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
+        int INpgsqlSimpleTypeHandler<LocalDateTime>.ValidateAndGetLength(LocalDateTime value, NpgsqlParameter parameter)
         {
-            switch (value)
-            {
-            case Instant i:
-                if (_convertInfinityDateTime)
-                {
-                    if (i == Instant.MaxValue)
-                    {
-                        buf.WriteInt64(long.MaxValue);
-                        return;
-                    }
-                    if (i == Instant.MinValue)
-                    {
-                        buf.WriteInt64(long.MinValue);
-                        return;
-                    }
-                }
-                WriteDateTime(i.InUtc().LocalDateTime, buf);
-                return;
-
-            case LocalDateTime ldt:
-                WriteDateTime(ldt, buf);
-                return;
-
-            default:
-                throw new InvalidCastException();
-            }
+            CheckIntegerFormat();
+            return 8;
         }
+
+        public override void Write(Instant value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        {
+            if (_convertInfinityDateTime)
+            {
+                if (value == Instant.MaxValue)
+                {
+                    buf.WriteInt64(long.MaxValue);
+                    return;
+                }
+                if (value == Instant.MinValue)
+                {
+                    buf.WriteInt64(long.MinValue);
+                    return;
+                }
+            }
+            WriteDateTime(value.InUtc().LocalDateTime, buf);
+        }
+
+        void INpgsqlSimpleTypeHandler<LocalDateTime>.Write(LocalDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => WriteDateTime(value, buf);
 
         internal static void WriteDateTime(LocalDateTime value, NpgsqlWriteBuffer buf)
         {

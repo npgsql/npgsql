@@ -22,14 +22,10 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
-using Npgsql.Logging;
-using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -229,63 +225,64 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        protected internal override int ValidateAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter = null)
-        {
-            var asGeometry = value as PostgisGeometry;
-            if (asGeometry != null)
-                return asGeometry.GetLen(true);
+        public override int ValidateAndGetLength(PostgisGeometry value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+            => value.GetLen(true);
 
-            var asBytes = value as byte[];
-            if (asBytes != null)
-                return asBytes.Length;
+        public int ValidateAndGetLength(PostgisPoint value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+            => value.GetLen(true);
 
-            throw new InvalidCastException("IGeometry type expected.");
-        }
+        public int ValidateAndGetLength(PostgisMultiPoint value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+            => value.GetLen(true);
 
-        protected override Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-        {
-            var bytes = value as byte[];
-            if (bytes != null)
-            {
-                if (_byteaHandler == null)
-                    throw new NpgsqlException("Bytea handler was not found during initialization of PostGIS handler");
-                return _byteaHandler.WriteInternal(bytes, buf, lengthCache, parameter, async);
-            }
+        public int ValidateAndGetLength(PostgisPolygon value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+            => value.GetLen(true);
 
-            return Write((PostgisGeometry)value, buf, lengthCache, parameter, async);
-        }
+        public int ValidateAndGetLength(PostgisMultiPolygon value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+            => value.GetLen(true);
 
-        async Task Write(PostgisGeometry geom, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        public int ValidateAndGetLength(PostgisLineString value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+            => value.GetLen(true);
+
+        public int ValidateAndGetLength(PostgisMultiLineString value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+            => value.GetLen(true);
+
+        public int ValidateAndGetLength(PostgisGeometryCollection value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+            => value.GetLen(true);
+
+        public int ValidateAndGetLength(byte[] value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+            => value.Length;
+
+        public override async Task Write(PostgisGeometry value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
         {
             // Common header
-            if (geom.SRID == 0)
+            if (value.SRID == 0)
             {
                 if (buf.WriteSpaceLeft < 5)
                     await buf.Flush(async);
                 buf.WriteByte(0); // We choose to ouput only XDR structure
-                buf.WriteInt32((int)geom.Identifier);
+                buf.WriteInt32((int)value.Identifier);
             }
             else
             {
                 if (buf.WriteSpaceLeft < 9)
                     await buf.Flush(async);
                 buf.WriteByte(0);
-                buf.WriteInt32((int) ((uint)geom.Identifier | (uint)EwkbModifiers.HasSRID));
-                buf.WriteInt32((int) geom.SRID);
+                buf.WriteInt32((int) ((uint)value.Identifier | (uint)EwkbModifiers.HasSRID));
+                buf.WriteInt32((int) value.SRID);
             }
 
-            switch (geom.Identifier)
+            switch (value.Identifier)
             {
             case WkbIdentifier.Point:
                 if (buf.WriteSpaceLeft < 16)
                     await buf.Flush(async);
-                var p = (PostgisPoint)geom;
+                var p = (PostgisPoint)value;
                 buf.WriteDouble(p.X);
                 buf.WriteDouble(p.Y);
                 return;
 
             case WkbIdentifier.LineString:
-                var l = (PostgisLineString)geom;
+                var l = (PostgisLineString)value;
                 if (buf.WriteSpaceLeft < 4)
                     await buf.Flush(async);
                 buf.WriteInt32(l.PointCount);
@@ -299,7 +296,7 @@ namespace Npgsql.TypeHandlers
                 return;
 
             case WkbIdentifier.Polygon:
-                var pol = (PostgisPolygon)geom;
+                var pol = (PostgisPolygon)value;
                 if (buf.WriteSpaceLeft < 4)
                     await buf.Flush(async);
                 buf.WriteInt32(pol.RingCount);
@@ -319,7 +316,7 @@ namespace Npgsql.TypeHandlers
                 return;
 
             case WkbIdentifier.MultiPoint:
-                var mp = (PostgisMultiPoint)geom;
+                var mp = (PostgisMultiPoint)value;
                 if (buf.WriteSpaceLeft < 4)
                     await buf.Flush(async);
                 buf.WriteInt32(mp.PointCount);
@@ -335,7 +332,7 @@ namespace Npgsql.TypeHandlers
                 return;
 
             case WkbIdentifier.MultiLineString:
-                var ml = (PostgisMultiLineString)geom;
+                var ml = (PostgisMultiLineString)value;
                 if (buf.WriteSpaceLeft < 4)
                     await buf.Flush(async);
                 buf.WriteInt32(ml.LineCount);
@@ -357,7 +354,7 @@ namespace Npgsql.TypeHandlers
                 return;
 
             case WkbIdentifier.MultiPolygon:
-                var mpl = (PostgisMultiPolygon)geom;
+                var mpl = (PostgisMultiPolygon)value;
                 if (buf.WriteSpaceLeft < 4)
                     await buf.Flush(async);
                 buf.WriteInt32(mpl.PolygonCount);
@@ -385,7 +382,7 @@ namespace Npgsql.TypeHandlers
                 return;
 
             case WkbIdentifier.GeometryCollection:
-                var coll = (PostgisGeometryCollection)geom;
+                var coll = (PostgisGeometryCollection)value;
                 if (buf.WriteSpaceLeft < 4)
                     await buf.Flush(async);
                 buf.WriteInt32(coll.GeometryCount);
@@ -398,6 +395,32 @@ namespace Npgsql.TypeHandlers
                 throw new InvalidOperationException("Unknown Postgis identifier.");
             }
         }
+
+        public Task Write(PostgisPoint value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+            => Write((PostgisGeometry)value, buf, lengthCache, parameter, async);
+
+        public Task Write(PostgisMultiPoint value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+            => Write((PostgisGeometry)value, buf, lengthCache, parameter, async);
+
+        public Task Write(PostgisPolygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+            => Write((PostgisGeometry)value, buf, lengthCache, parameter, async);
+
+        public Task Write(PostgisMultiPolygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+            => Write((PostgisGeometry)value, buf, lengthCache, parameter, async);
+
+        public Task Write(PostgisLineString value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+            => Write((PostgisGeometry)value, buf, lengthCache, parameter, async);
+
+        public Task Write(PostgisMultiLineString value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+            => Write((PostgisGeometry)value, buf, lengthCache, parameter, async);
+
+        public Task Write(PostgisGeometryCollection value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+            => Write((PostgisGeometry)value, buf, lengthCache, parameter, async);
+
+        public Task Write(byte[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+            => _byteaHandler == null
+                ? throw new NpgsqlException("Bytea handler was not found during initialization of PostGIS handler")
+                : _byteaHandler.Write(value, buf, lengthCache, parameter, async);
 
         #endregion Write
     }

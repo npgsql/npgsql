@@ -22,11 +22,8 @@
 #endregion
 
 using System;
-using System.Threading;
 using System.Threading.Tasks;
-using JetBrains.Annotations;
 using Npgsql.BackendMessages;
-using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 
@@ -85,10 +82,10 @@ namespace Npgsql.TypeHandlers
 
         #region Write (unsupported)
 
-        protected internal override int ValidateAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(object[] value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
             => throw new NotSupportedException("Can't write record types");
 
-        protected override Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        public override Task Write(object[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
             => throw new NotSupportedException("Can't write record types");
 
         #endregion

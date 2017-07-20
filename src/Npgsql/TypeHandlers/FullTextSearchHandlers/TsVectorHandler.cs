@@ -25,12 +25,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
-using JetBrains.Annotations;
 using NpgsqlTypes;
 using Npgsql.BackendMessages;
-using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 
@@ -45,6 +42,8 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
         // 2561 = 2046 (max length lexeme string) + (1) null terminator +
         // 2 (num_pos) + sizeof(int16) * 256 (max_num_pos (positions/wegihts))
         const int MaxSingleLexemeBytes = 2561;
+
+        #region Read
 
         public override async ValueTask<NpgsqlTsVector> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
         {
@@ -78,21 +77,16 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             return new NpgsqlTsVector(lexemes, true);
         }
 
-        protected internal override int ValidateAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter=null)
+        #endregion Read
+
+        #region Write
+
+        // TODO: Implement length cache
+        public override int ValidateAndGetLength(NpgsqlTsVector value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+            => 4 + value.Sum(l => Encoding.UTF8.GetByteCount(l.Text) + 1 + 2 + l.Count * 2);
+
+        public override async Task Write(NpgsqlTsVector vector, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
         {
-            // TODO: Implement length cache
-            var vec = value as NpgsqlTsVector;
-            if (vec == null) {
-                throw CreateConversionException(value.GetType());
-            }
-
-            return 4 + vec.Sum(l => Encoding.UTF8.GetByteCount(l.Text) + 1 + 2 + l.Count * 2);
-        }
-
-        protected override async Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-        {
-            var vector = (NpgsqlTsVector)value;
-
             if (buf.WriteSpaceLeft < 4)
                 await buf.Flush(async);
             buf.WriteInt32(vector.Count);
@@ -109,5 +103,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
                     buf.WriteInt16(lexeme[i].Value);
             }
         }
+
+        #endregion Write
     }
 }

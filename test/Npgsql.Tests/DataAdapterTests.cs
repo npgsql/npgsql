@@ -199,7 +199,7 @@ namespace Npgsql.Tests
                 da.Fill(ds);
 
                 //## Insert a new row with id = 1
-                ds.Tables[0].Rows.Add(new Object[] {0.4, 0.5});
+                ds.Tables[0].Rows.Add(0.4, 0.5);
                 da.Update(ds);
 
                 //## change id from 1 to 2

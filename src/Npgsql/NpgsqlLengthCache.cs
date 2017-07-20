@@ -65,7 +65,7 @@ namespace Npgsql
 
         /// <summary>
         /// Retrieves a length value previously stored in the cache via <see cref="Set(int)"/>.
-        /// Called at the <see cref="NpgsqlTypeHandler.Write"/> phase.
+        /// Called at the writing phase, after validation has already occurred and the length cache is populated.
         /// </summary>
         /// <returns></returns>
         public int Get()

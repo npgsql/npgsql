@@ -22,14 +22,8 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
 using System.Data;
-using System.Data.Common;
-using System.IO;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
-using Npgsql;
 using NpgsqlTypes;
 using NUnit.Framework;
 
@@ -243,7 +237,7 @@ namespace Npgsql.Tests.Types
                 {
                     reader.Read();
                     Assert.That(reader.GetString(0), Is.EqualTo(expected.ToString()));
-                    Assert.That(() => reader.GetChar(0), Throws.Exception.TypeOf<InvalidCastException>());
+                    Assert.That(() => reader.GetChar(0), Throws.Exception.TypeOf<NotSupportedException>());
                 }
             }
         }
