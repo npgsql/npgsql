@@ -97,8 +97,6 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             if (sign == 0xC000)
                 throw new NpgsqlSafeReadException(new InvalidCastException("Numeric NaN not supported by System.Decimal"));
 
-            result = result / 1.000000000000000000000000000000000M; // remove trailing zeros
-
             return sign == 0x4000 ? -result : result;
         }
 
