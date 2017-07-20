@@ -50,14 +50,24 @@ namespace Npgsql
         async Task AuthenticateCleartext(bool async, CancellationToken cancellationToken)
         {
             var passwd = Settings.Password;
+            var pgPassFile = Settings.PgPassFile; // Creating a neat local variable
 
-            if (passwd == null)
+            // No password was provided. Attempt to pull the password from the pgpass file.
+            if (passwd == null && pgPassFile != null)
             {
-                // No password was provided. Attempt to pull the password from the pgpass file.
+                var matchingEntry = new PgPassFile(pgPassFile)?.GetFirstMatchingEntry(Settings.Host, Settings.Port, Settings.Database, Settings.Username);
+                if (matchingEntry != null)
+                {
+                    Log.Trace("Taking password from pgpass file (path is set)");
+                    passwd = matchingEntry.Password;
+                }
+            }
+            else if (passwd == null && pgPassFile == null) // This will be skipped if PgPassFile is set
+            {
                 var matchingEntry = PgPassFile.LoadDefaultFile()?.GetFirstMatchingEntry(Settings.Host, Settings.Port, Settings.Database, Settings.Username);
                 if (matchingEntry != null)
                 {
-                    Log.Trace("Taking password from pgpass file");
+                    Log.Trace("Taking password from pgpass file (default path)");
                     passwd = matchingEntry.Password;
                 }
             }
@@ -75,13 +85,24 @@ namespace Npgsql
         async Task AuthenticateMD5(string username, byte[] salt, bool async, CancellationToken cancellationToken)
         {
             var passwd = Settings.Password;
-            if (passwd == null)
+            var pgPassFile = Settings.PgPassFile; // Creating a neat local variable
+
+            // No password was provided. Attempt to pull the password from the pgpass file.
+            if (passwd == null && pgPassFile != null)
             {
-                // No password was provided. Attempt to pull the password from the pgpass file.
+                var matchingEntry = new PgPassFile(pgPassFile)?.GetFirstMatchingEntry(Settings.Host, Settings.Port, Settings.Database, Settings.Username);
+                if (matchingEntry != null)
+                {
+                    Log.Trace("Taking password from pgpass file (path is set)");
+                    passwd = matchingEntry.Password;
+                }
+            }
+            else if (passwd == null && pgPassFile == null) // This will be skipped if PgPassFile is set
+            {
                 var matchingEntry = PgPassFile.LoadDefaultFile()?.GetFirstMatchingEntry(Settings.Host, Settings.Port, Settings.Database, Settings.Username);
                 if (matchingEntry != null)
                 {
-                    Log.Trace("Taking password from pgpass file");
+                    Log.Trace("Taking password from pgpass file (default path)");
                     passwd = matchingEntry.Password;
                 }
             }
