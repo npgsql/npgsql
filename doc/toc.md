@@ -1,5 +1,6 @@
 ﻿# [Getting Started](index.md)
 # Migration Notes
+## [3.3](migration/3.3.md)
 ## [3.2](migration/3.2.md)
 ## [3.1](migration/3.1.md)
 ## [3.0](migration/3.0.md)

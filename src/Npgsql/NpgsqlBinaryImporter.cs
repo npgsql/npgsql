@@ -26,8 +26,6 @@ using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
 using Npgsql.Logging;
-using Npgsql.TypeHandling;
-using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
 namespace Npgsql
@@ -45,9 +43,8 @@ namespace Npgsql
 
         NpgsqlConnector _connector;
         NpgsqlWriteBuffer _buf;
-        ConnectorTypeMapper _typeMapper;
-        NpgsqlLengthCache _lengthCache;
-        bool _isDisposed;
+
+        ImporterState _state;
 
         /// <summary>
         /// The number of columns in the current (not-yet-written) row.
@@ -58,6 +55,8 @@ namespace Npgsql
         /// The number of columns, as returned from the backend in the CopyInResponse.
         /// </summary>
         internal int NumColumns { get; }
+
+        bool InMiddleOfRow => _column != -1 && _column != NumColumns;
 
         [ItemCanBeNull]
         readonly NpgsqlParameter[] _params;
@@ -72,8 +71,6 @@ namespace Npgsql
         {
             _connector = connector;
             _buf = connector.WriteBuffer;
-            _typeMapper = connector.TypeMapper;
-            _lengthCache = new NpgsqlLengthCache();
             _column = -1;
 
             try
@@ -112,7 +109,7 @@ namespace Npgsql
         /// </summary>
         public void StartRow()
         {
-            CheckDisposed();
+            CheckReady();
 
             if (_column != -1 && _column != NumColumns)
                 throw new InvalidOperationException("Row has already been started and must be finished");
@@ -150,7 +147,7 @@ namespace Npgsql
 
         void DoWrite<T>([CanBeNull] T value, NpgsqlDbType? npgsqlDbType)
         {
-            CheckDisposed();
+            CheckReady();
             if (_column == -1)
                 throw new InvalidOperationException("A row hasn't been started");
 
@@ -209,7 +206,7 @@ namespace Npgsql
         /// </summary>
         public void WriteNull()
         {
-            CheckDisposed();
+            CheckReady();
             if (_column == -1)
                 throw new InvalidOperationException("A row hasn't been started");
 
@@ -235,17 +232,56 @@ namespace Npgsql
 
         #endregion
 
-        #region Cancel / Close / Dispose
+        #region Commit / Cancel / Close / Dispose
 
         /// <summary>
-        /// Cancels and terminates an ongoing import. Any data already written will be discarded.
+        /// Commits the import operation. The writer is unusable after this operation.
         /// </summary>
-        public void Cancel()
+        public void Commit()
         {
-            _isDisposed = true;
+            CheckReady();
+
+            if (InMiddleOfRow)
+            {
+                Cancel();
+                throw new InvalidOperationException("Binary importer closed in the middle of a row, cancelling import.");
+            }
+
+            try
+            {
+                WriteTrailer();
+                _buf.Flush();
+                _buf.EndCopyMode();
+
+                _connector.SendMessage(CopyDoneMessage.Instance);
+                _connector.ReadExpecting<CommandCompleteMessage>();
+                _connector.ReadExpecting<ReadyForQueryMessage>();
+
+                _state = ImporterState.Committed;
+            }
+            catch
+            {
+                // An exception here will have already broken the connection etc.
+                Cleanup();
+                throw;
+            }
+        }
+
+        void ICancelable.Cancel() => Close();
+
+        /// <summary>
+        /// Completes that binary import and sets the connection back to idle state
+        /// </summary>
+        public void Dispose() => Close();
+
+        void Cancel()
+        {
+            _state = ImporterState.Cancelled;
+            _buf.Clear();
             _buf.EndCopyMode();
             _connector.SendMessage(new CopyFailMessage());
-            try {
+            try
+            {
                 var msg = _connector.ReadMessage();
                 // The CopyFail should immediately trigger an exception from the read above.
                 _connector.Break();
@@ -256,14 +292,7 @@ namespace Npgsql
                 if (e.SqlState != "57014")
                     throw;
             }
-            // Note that the exception has already ended the user action for us
-            Cleanup();
         }
-
-        /// <summary>
-        /// Completes that binary import and sets the connection back to idle state
-        /// </summary>
-        public void Dispose() => Close();
 
         /// <summary>
         /// Completes the import process and signals to the database to write everything.
@@ -271,33 +300,23 @@ namespace Npgsql
         [PublicAPI]
         public void Close()
         {
-            if (_isDisposed)
-                return;
-
-            if (_column != -1 && _column != NumColumns)
+            switch (_state)
             {
-                Log.Error("Binary importer closed in the middle of a row, cancelling import.");
-                _buf.Clear();
-                Cancel();
+            case ImporterState.Disposed:
                 return;
+            case ImporterState.Ready:
+                Cancel();
+                break;
+            case ImporterState.Cancelled:
+            case ImporterState.Committed:
+                break;
+            default:
+                throw new Exception("Invalid state: " + _state);
             }
-
-            WriteTrailer();
-            _buf.Flush();
-            _buf.EndCopyMode();
 
             var connector = _connector;
-            connector.SendMessage(CopyDoneMessage.Instance);
-            try
-            {
-                connector.ReadExpecting<CommandCompleteMessage>();
-                connector.ReadExpecting<ReadyForQueryMessage>();
-            }
-            finally
-            {
-                Cleanup();
-                connector.EndUserAction();
-            }
+            Cleanup();
+            connector.EndUserAction();
         }
 
         void Cleanup()
@@ -305,9 +324,8 @@ namespace Npgsql
             Log.Debug("COPY operation ended", _connector.Id);
             _connector.CurrentCopyOperation = null;
             _connector = null;
-            _typeMapper = null;
             _buf = null;
-            _isDisposed = true;
+            _state = ImporterState.Disposed;
         }
 
         void WriteTrailer()
@@ -317,12 +335,35 @@ namespace Npgsql
             _buf.WriteInt16(-1);
         }
 
-        void CheckDisposed()
+        void CheckReady()
         {
-            if (_isDisposed)
+            switch (_state)
+            {
+            case ImporterState.Ready:
+                return;
+            case ImporterState.Disposed:
                 throw new ObjectDisposedException(GetType().FullName, "The COPY operation has already ended.");
+            case ImporterState.Cancelled:
+                throw new InvalidOperationException("The COPY operation has already been cancelled.");
+            case ImporterState.Committed:
+                throw new InvalidOperationException("The COPY operation has already been committed.");
+            default:
+                throw new Exception("Invalid state: " + _state);
+            }
         }
 
         #endregion
+
+        #region Enums
+
+        enum ImporterState
+        {
+            Ready,
+            Committed,
+            Cancelled,
+            Disposed
+        }
+
+        #endregion Enums
     }
 }

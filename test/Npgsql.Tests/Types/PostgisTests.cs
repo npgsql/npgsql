@@ -279,10 +279,13 @@ namespace Npgsql.Tests.Types
                 try
                 {
                     using (var writer = c.BeginBinaryImport($"COPY testcopybin (g) FROM STDIN (FORMAT BINARY)"))
+                    {
                         for (var i = 0; i < 1000; i++)
                             writer.WriteRow(a.Geom);
+                        writer.Commit();
+                    }
                 }
-                catch(Exception e)
+                catch (Exception e)
                 {
                     Assert.Fail($"Copy from stdin failed with {e} at geometry {a.Geom}.");
                 }
@@ -317,8 +320,11 @@ namespace Npgsql.Tests.Types
                 try
                 {
                     using (var writer = c.BeginBinaryImport("COPY testcopybinarray (g) FROM STDIN (FORMAT BINARY)"))
+                    {
                         for (var i = 0; i < 1000; i++)
-                            writer.WriteRow(new[] {t});
+                            writer.WriteRow(new[] { t });
+                        writer.Commit();
+                    }
                 }
                 catch(Exception e)
                 {
