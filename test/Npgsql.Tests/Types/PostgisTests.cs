@@ -253,6 +253,12 @@ namespace Npgsql.Tests.Types
                 {
                     reader.Read();
                     bytes = reader.GetFieldValue<byte[]>(0);
+
+                    var length = (int)reader.GetBytes(0, 0, null, 0, 0);
+                    byte[] buffer = new byte[length];
+                    reader.GetBytes(0, 0, buffer, 0, length);
+
+                    Assert.AreEqual(bytes, buffer);
                 }
 
                 conn.ExecuteNonQuery("TRUNCATE data");
