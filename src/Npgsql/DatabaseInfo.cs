@@ -237,9 +237,11 @@ ORDER BY ord";
 
             using (var cmd = new NpgsqlCommand(GenerateLoadCompositeQuery(schema != null), connection))
             {
-                cmd.Parameters.AddWithValue("name", name);
+                // The "text" type handler (required for writing string parameters) may have not been loaded yet,
+                // so we send the name parameter as unknown.
+                cmd.Parameters.AddWithValue("name", NpgsqlDbType.Unknown, name);
                 if (schema != null)
-                    cmd.Parameters.AddWithValue("schema", schema);
+                    cmd.Parameters.AddWithValue("schema", NpgsqlDbType.Unknown, schema);
                 using (var reader = cmd.ExecuteReader())
                 {
                     if (!reader.Read())
