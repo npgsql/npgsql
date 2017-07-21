@@ -64,7 +64,7 @@ namespace Npgsql.TypeHandlers
             : base(postgresType)
         {
             var byteaHandler = registry[NpgsqlDbType.Bytea];
-            if (ByteaHandler == registry.UnrecognizedTypeHandler)
+            if (byteaHandler == registry.UnrecognizedTypeHandler)
             {
                 Log.Warn("bytea type not present when setting up postgis geometry type. Writing as bytea will not work.");
                 return;
