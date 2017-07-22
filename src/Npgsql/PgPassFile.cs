@@ -33,9 +33,9 @@ namespace Npgsql
         }
 
         [CanBeNull]
-        internal static PgPassFile LoadDefaultFile()
+        internal static PgPassFile Load(string pgPassFile)
         {
-            var path = GetSystemPgPassFilePath();
+            var path = (pgPassFile != null) ? pgPassFile : GetSystemPgPassFilePath();
             return path == null || !File.Exists(path) ? null : new PgPassFile(path);
         }
 
