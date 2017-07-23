@@ -27,7 +27,7 @@ namespace Npgsql
         /// Initializes a new instance of the <see cref="PgPassFile"/> class
         /// </summary>
         /// <param name="fileName"></param>
-        internal PgPassFile(string fileName)
+        private PgPassFile(string fileName)
         {
             FileName = fileName;
         }
@@ -35,7 +35,7 @@ namespace Npgsql
         [CanBeNull]
         internal static PgPassFile Load(string pgPassFile)
         {
-            var path = (pgPassFile != null) ? pgPassFile : GetSystemPgPassFilePath();
+            var path = pgPassFile ?? GetSystemPgPassFilePath();
             return path == null || !File.Exists(path) ? null : new PgPassFile(path);
         }
 
