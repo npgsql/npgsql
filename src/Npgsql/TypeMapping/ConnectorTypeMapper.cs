@@ -372,6 +372,10 @@ namespace Npgsql.TypeMapping
                 ? DatabaseInfo.ByName.TryGetValue(pgName, out var pgType)  // No dot, partial type name
                 : DatabaseInfo.ByFullName.TryGetValue(pgName, out pgType); // Full type name with namespace
 
+            // CrateDB does not support composite types.
+            if (!found && connector.IsCrateDB)
+                return;
+
             if (!found)
             {
                 // We didn't find the type.
