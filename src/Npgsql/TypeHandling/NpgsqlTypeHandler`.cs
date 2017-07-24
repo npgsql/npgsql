@@ -296,7 +296,12 @@ namespace Npgsql.TypeHandling
         internal override Type GetFieldType(FieldDescription fieldDescription = null) => typeof(TDefault);
         internal override Type GetProviderSpecificFieldType(FieldDescription fieldDescription = null) => typeof(TDefault);
 
-        internal override ArrayHandler CreateArrayHandler(PostgresType arrayBackendType)
+        /// <summary>
+        /// Creates a type handler for arrays of this handler's type.
+        /// </summary>
+        /// <param name="arrayBackendType"></param>
+        /// <returns></returns>
+        protected internal override ArrayHandler CreateArrayHandler(PostgresType arrayBackendType)
             => new ArrayHandler<TDefault>(this) { PostgresType = arrayBackendType };
 
         internal override NpgsqlTypeHandler CreateRangeHandler(PostgresType rangeBackendType)
