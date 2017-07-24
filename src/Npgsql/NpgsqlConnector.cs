@@ -143,7 +143,7 @@ namespace Npgsql
 
 #if !NETSTANDARD1_3
         /// <summary>
-        /// The ressource manager actually using this connector. <see langword="null" /> if the
+        /// The resource manager actually using this connector. <see langword="null" /> if the
         /// connector do not participate in a system transaction.
         /// </summary>
         [CanBeNull]

@@ -49,7 +49,8 @@ namespace Npgsql
         bool _isDisposed;
         readonly ThreadLocal<bool> _isRMCall = new ThreadLocal<bool>();
         bool _secondPhaseEndedOrNotNeedingWait;
-        readonly SemaphoreSlim _secondPhaseLock = new SemaphoreSlim(0);
+        // Not initially locked.
+        readonly ManualResetEventSlim _secondPhaseLock = new ManualResetEventSlim(true);
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
@@ -232,15 +233,29 @@ namespace Npgsql
 
         public void WaitIfRequired()
         {
+            if (
+                // Avoid locking the RM
+                _isRMCall.Value ||
+                // Shortcut, otherwise test this before enabling the lock below when !transactionStillActive && _secondPhaseLock.IsSet.
+                _secondPhaseEndedOrNotNeedingWait)
+                return;
+
+            var transactionNoMoreActive = true;
             try
             {
-                if (_secondPhaseEndedOrNotNeedingWait || _isRMCall.Value ||
-                    _transaction?.TransactionInformation.Status == System.Transactions.TransactionStatus.Active)
-                    return;
+                transactionNoMoreActive =
+                    _transaction?.TransactionInformation.Status != System.Transactions.TransactionStatus.Active;
             }
             catch (ObjectDisposedException)
             {
                 // Ignore. The transaction is already disposed, but the second phase is not ended.
+            }
+
+            if (transactionNoMoreActive && _secondPhaseLock.IsSet)
+            {
+                // The lock is not in place although needed (see first test above), we are probably in a rollback case, user code
+                // trying to use the connection before the rollback. Lock it.
+                _secondPhaseLock.Reset();
             }
 
             bool waitSuccess;
@@ -343,8 +358,7 @@ namespace Npgsql
                 _connector.EnlistedResource = null;
 
             _secondPhaseEndedOrNotNeedingWait = true;
-            // In normal usage we should only have one waiting thread at most, but just in case release more.
-            _secondPhaseLock.Release(100);
+            _secondPhaseLock.Set();
 
             Log.Trace($"Cleaning up resource manager (localid={_txId}", _connector.Id);
             if (_localTx != null)

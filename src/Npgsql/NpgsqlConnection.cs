@@ -604,9 +604,9 @@ namespace Npgsql
             // Note that even when #1378 is implemented in some way, we should check for mono and go volatile in any case -
             // distributed transactions aren't supported.
 
-            var ressourceManager = new VolatileResourceManager(this, transaction);
-            connector.EnlistedResource = ressourceManager;
-            transaction.EnlistVolatile(ressourceManager, EnlistmentOptions.None);
+            var resourceManager = new VolatileResourceManager(this, transaction);
+            connector.EnlistedResource = resourceManager;
+            transaction.EnlistVolatile(resourceManager, EnlistmentOptions.None);
             Log.Debug($"Enlisted volatile resource manager (localid={transaction.TransactionInformation.LocalIdentifier})", connector.Id);
         }
 
