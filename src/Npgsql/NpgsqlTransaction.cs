@@ -101,31 +101,35 @@ namespace Npgsql
             _connector.Transaction = this;
             _connector.TransactionStatus = TransactionStatus.Pending;
 
-            switch (isolationLevel) {
-                case IsolationLevel.RepeatableRead:
-                case IsolationLevel.Snapshot:
-                    _connector.PrependInternalMessage(PregeneratedMessage.BeginTrans);
-                    _connector.PrependInternalMessage(PregeneratedMessage.SetTransRepeatableRead);
-                    break;
-                case IsolationLevel.Serializable:
-                    _connector.PrependInternalMessage(PregeneratedMessage.BeginTrans);
-                    _connector.PrependInternalMessage(PregeneratedMessage.SetTransSerializable);
-                    break;
-                case IsolationLevel.ReadUncommitted:
-                    // PG doesn't really support ReadUncommitted, it's the same as ReadCommitted. But we still
-                    // send as if.
-                    _connector.PrependInternalMessage(PregeneratedMessage.BeginTrans);
-                    _connector.PrependInternalMessage(PregeneratedMessage.SetTransReadUncommitted);
-                    break;
-                case IsolationLevel.ReadCommitted:
-                    _connector.PrependInternalMessage(PregeneratedMessage.BeginTrans);
-                    _connector.PrependInternalMessage(PregeneratedMessage.SetTransReadCommitted);
-                    break;
-                case IsolationLevel.Unspecified:
-                    isolationLevel = DefaultIsolationLevel;
-                    goto case DefaultIsolationLevel;
-                default:
-                    throw new NotSupportedException("Isolation level not supported: " + isolationLevel);
+            if (!_connector.IsCrateDB)
+            {
+                switch (isolationLevel)
+                {
+                    case IsolationLevel.RepeatableRead:
+                    case IsolationLevel.Snapshot:
+                        _connector.PrependInternalMessage(PregeneratedMessage.BeginTrans);
+                        _connector.PrependInternalMessage(PregeneratedMessage.SetTransRepeatableRead);
+                        break;
+                    case IsolationLevel.Serializable:
+                        _connector.PrependInternalMessage(PregeneratedMessage.BeginTrans);
+                        _connector.PrependInternalMessage(PregeneratedMessage.SetTransSerializable);
+                        break;
+                    case IsolationLevel.ReadUncommitted:
+                        // PG doesn't really support ReadUncommitted, it's the same as ReadCommitted. But we still
+                        // send as if.
+                        _connector.PrependInternalMessage(PregeneratedMessage.BeginTrans);
+                        _connector.PrependInternalMessage(PregeneratedMessage.SetTransReadUncommitted);
+                        break;
+                    case IsolationLevel.ReadCommitted:
+                        _connector.PrependInternalMessage(PregeneratedMessage.BeginTrans);
+                        _connector.PrependInternalMessage(PregeneratedMessage.SetTransReadCommitted);
+                        break;
+                    case IsolationLevel.Unspecified:
+                        isolationLevel = DefaultIsolationLevel;
+                        goto case DefaultIsolationLevel;
+                    default:
+                        throw new NotSupportedException("Isolation level not supported: " + isolationLevel);
+                }
             }
 
             _isolationLevel = isolationLevel;
