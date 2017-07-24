@@ -47,8 +47,11 @@ namespace Npgsql
         [CanBeNull] string _preparedTxName;
         bool IsPrepared => _preparedTxName != null;
         bool _isDisposed;
+        // Sensitive to Asp.Net thread agility, using an AsyncLocal would be safer, but unavailable
+        // with fx 451. Still we would not have the RM deadlocked by itself because between setting this and testing
+        // this, it does not do any IO, which are required for triggering Asp.Net thread agility.
         readonly ThreadLocal<bool> _isRMCall = new ThreadLocal<bool>();
-        bool _secondPhaseEndedOrNotNeedingWait;
+        bool _secondPhaseEnded;
         // Not initially locked.
         readonly ManualResetEventSlim _secondPhaseLock = new ManualResetEventSlim(true);
 
@@ -121,7 +124,8 @@ namespace Npgsql
                 if (_connector.Connection != null)
                     _connector.Connection.EnlistedTransaction = null;
                 _connector.EnlistedResource = null;
-                _secondPhaseEndedOrNotNeedingWait = true;
+                // Lock connection usages for user.
+                _secondPhaseLock.Reset();
 
                 preparingEnlistment.Prepared();
             }
@@ -143,33 +147,8 @@ namespace Npgsql
             try
             {
                 _isRMCall.Value = true;
-                if (_connector.Connection == null)
-                {
-                    // The connection has been closed before the TransactionScope was disposed.
-                    // The connector is unbound from its connection and is sitting in the pool's
-                    // pending enlisted connector list. Since there's no risk of the connector being
-                    // used by anyone we can executed the 2nd phase on it directly (see below).
-                    using (_connector.StartUserAction())
-                        _connector.ExecuteInternalCommand($"COMMIT PREPARED '{_preparedTxName}'");
-                }
-                else
-                {
-                    // The connection is still open and potentially will be reused by by the user.
-                    // The MSDTC, which manages escalated distributed transactions, performs the 2nd phase
-                    // asynchronously - this means that TransactionScope.Dispose() will return before all
-                    // resource managers have actually commit. This can cause a concurrent connection use scenario
-                    // if the user continues to use their connection after disposing the scope, and the MSDTC
-                    // requests a commit at that exact time.
-                    // To avoid this, we open a new connection for performing the 2nd phase.
-                    using (var conn2 = (NpgsqlConnection)((ICloneable)_connector.Connection).Clone())
-                    {
-                        conn2.Open();
-                        var connector = conn2.Connector;
-                        Debug.Assert(connector != null);
-                        using (connector.StartUserAction())
-                            connector.ExecuteInternalCommand($"COMMIT PREPARED '{_preparedTxName}'");
-                    }
-                }
+                using (_connector.StartUserAction())
+                    _connector.ExecuteInternalCommand($"COMMIT PREPARED '{_preparedTxName}'");
             }
             catch (Exception e)
             {
@@ -237,7 +216,7 @@ namespace Npgsql
                 // Avoid locking the RM
                 _isRMCall.Value ||
                 // Shortcut, otherwise test this before enabling the lock below when !transactionStillActive && _secondPhaseLock.IsSet.
-                _secondPhaseEndedOrNotNeedingWait)
+                _secondPhaseEnded)
                 return;
 
             var transactionNoMoreActive = true;
@@ -273,7 +252,7 @@ namespace Npgsql
 
             // The transaction completion should not take long, there is probably a bug.
             // Release the lock and throw.
-            _secondPhaseEndedOrNotNeedingWait = true;
+            _secondPhaseEnded = true;
             throw new InvalidOperationException("Timeout waiting for second phase completion");
         }
 
@@ -314,33 +293,8 @@ namespace Npgsql
             // This only occurs if we've started a two-phase commit but one of the commits has failed.
             Log.Debug($"Two-phase transaction rollback (localid={_txId})", _connector.Id);
 
-            if (_connector.Connection == null)
-            {
-                // The connection has been closed before the TransactionScope was disposed.
-                // The connector is unbound from its connection and is sitting in the pool's
-                // pending enlisted connector list. Since there's no risk of the connector being
-                // used by anyone we can executed the 2nd phase on it directly (see below).
-                using (_connector.StartUserAction())
-                    _connector.ExecuteInternalCommand($"ROLLBACK PREPARED '{_preparedTxName}'");
-            }
-            else
-            {
-                // The connection is still open and potentially will be reused by by the user.
-                // The MSDTC, which manages escalated distributed transactions, performs the 2nd phase
-                // asynchronously - this means that TransactionScope.Dispose() will return before all
-                // resource managers have actually commit. This can cause a concurrent connection use scenario
-                // if the user continues to use their connection after disposing the scope, and the MSDTC
-                // requests a commit at that exact time.
-                // To avoid this, we open a new connection for performing the 2nd phase.
-                using (var conn2 = (NpgsqlConnection)((ICloneable)_connector.Connection).Clone())
-                {
-                    conn2.Open();
-                    var connector = conn2.Connector;
-                    Debug.Assert(connector != null);
-                    using (connector.StartUserAction())
-                        connector.ExecuteInternalCommand($"ROLLBACK PREPARED '{_preparedTxName}'");
-                }
-            }
+            using (_connector.StartUserAction())
+                _connector.ExecuteInternalCommand($"ROLLBACK PREPARED '{_preparedTxName}'");
         }
 
         #region Dispose/Cleanup
@@ -357,7 +311,7 @@ namespace Npgsql
             if (_connector.EnlistedResource == this)
                 _connector.EnlistedResource = null;
 
-            _secondPhaseEndedOrNotNeedingWait = true;
+            _secondPhaseEnded = true;
             _secondPhaseLock.Set();
 
             Log.Trace($"Cleaning up resource manager (localid={_txId}", _connector.Id);
