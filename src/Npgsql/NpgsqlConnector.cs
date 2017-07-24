@@ -1962,6 +1962,11 @@ namespace Npgsql
         /// </summary>
         bool IsRedshift => Settings.ServerCompatibilityMode == ServerCompatibilityMode.Redshift;
 
+        /// <summary>
+        /// Whether the backend is a CrateDB instance
+        /// </summary>
+        internal bool IsCrateDB => Settings.ServerCompatibilityMode == ServerCompatibilityMode.CrateDB;
+
         #endregion Supported features and PostgreSQL settings
 
         #region Execute internal command
