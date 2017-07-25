@@ -11,6 +11,7 @@ Parameter keywords are case-insensitive.
 | Database  | The PostgreSQL database to connect to.                                  | Same as Username |
 | Username  | The username to connect with. Not required if using IntegratedSecurity. |                  |
 | Password  | The password to connect with. Not required if using IntegratedSecurity. |                  |
+| PgPassFile | Path to a PostgreSQL Password File (PGPASSFILE), from which the password would be taken. |                  ||
 
 ## Security and Encryption
 

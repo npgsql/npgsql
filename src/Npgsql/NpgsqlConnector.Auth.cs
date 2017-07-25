@@ -51,10 +51,10 @@ namespace Npgsql
         {
             var passwd = Settings.Password;
 
+            // No password was provided. Attempt to pull the password from the pgpass file.
             if (passwd == null)
             {
-                // No password was provided. Attempt to pull the password from the pgpass file.
-                var matchingEntry = PgPassFile.LoadDefaultFile()?.GetFirstMatchingEntry(Settings.Host, Settings.Port, Settings.Database, Settings.Username);
+                var matchingEntry = PgPassFile.Load(Settings.PgPassFile)?.GetFirstMatchingEntry(Settings.Host, Settings.Port, Settings.Database, Settings.Username);
                 if (matchingEntry != null)
                 {
                     Log.Trace("Taking password from pgpass file");
@@ -75,10 +75,11 @@ namespace Npgsql
         async Task AuthenticateMD5(string username, byte[] salt, bool async, CancellationToken cancellationToken)
         {
             var passwd = Settings.Password;
+
+            // No password was provided. Attempt to pull the password from the pgpass file.
             if (passwd == null)
             {
-                // No password was provided. Attempt to pull the password from the pgpass file.
-                var matchingEntry = PgPassFile.LoadDefaultFile()?.GetFirstMatchingEntry(Settings.Host, Settings.Port, Settings.Database, Settings.Username);
+                var matchingEntry = PgPassFile.Load(Settings.PgPassFile)?.GetFirstMatchingEntry(Settings.Host, Settings.Port, Settings.Database, Settings.Username);
                 if (matchingEntry != null)
                 {
                     Log.Trace("Taking password from pgpass file");
