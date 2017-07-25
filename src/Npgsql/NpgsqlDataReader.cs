@@ -959,7 +959,8 @@ namespace Npgsql
                 throw new IndexOutOfRangeException($"length must be between {0} and {buffer.Length - bufferOffset}");
 
             var fieldDescription = _rowDescription[ordinal];
-            var handler = fieldDescription.Handler as ByteaHandler;
+            var handler = fieldDescription.Handler as ByteaHandler ??
+                (fieldDescription.Handler as PostgisGeometryHandler)?.ByteaHandler;
             if (handler == null)
                 throw new InvalidCastException("GetBytes() not supported for type " + fieldDescription.Name);
 
@@ -987,6 +988,29 @@ namespace Npgsql
             row.SeekToColumnStart(ordinal, false).GetAwaiter().GetResult();
             row.CheckNotNull();
             return row.GetStream();
+        }
+
+        /// <summary>
+        /// Retrieves data as a <see cref="Stream"/>.
+        /// </summary>
+        /// <param name="ordinal">The zero-based column ordinal.</param>
+        /// <returns>The returned object.</returns>
+        public Task<Stream> GetStreamAsync(int ordinal)
+        {
+            CheckRowAndOrdinal(ordinal);
+
+            var fieldDescription = _rowDescription[ordinal];
+            var handler = fieldDescription.Handler as ByteaHandler;
+            if (handler == null)
+                throw new InvalidCastException("GetStream() not supported for type " + fieldDescription.Handler.PgDisplayName);
+
+            return SynchronizationContextSwitcher.NoContext(async () =>
+            {
+                var row = Row;
+                await row.SeekToColumnStart(ordinal, false);
+                row.CheckNotNull();
+                return row.GetStream();
+            });
         }
 
         #endregion
@@ -1042,6 +1066,29 @@ namespace Npgsql
             row.CheckNotNull();
 
             return handler.GetTextReader(row.GetStream());
+        }
+
+        /// <summary>
+        /// Retrieves data as a <see cref="TextReader"/>.
+        /// </summary>
+        /// <param name="ordinal">The zero-based column ordinal.</param>
+        /// <returns>The returned object.</returns>
+        public Task<TextReader> GetTextReaderAsync(int ordinal)
+        {
+            CheckRowAndOrdinal(ordinal);
+
+            var fieldDescription = _rowDescription[ordinal];
+            var handler = fieldDescription.Handler as ITextReaderHandler;
+            if (handler == null)
+                throw new InvalidCastException("GetTextReader() not supported for type " + fieldDescription.Handler.PgDisplayName);
+
+            return SynchronizationContextSwitcher.NoContext(async () =>
+            {
+                var row = Row;
+                await row.SeekToColumnStart(ordinal, false);
+                row.CheckNotNull();
+                return handler.GetTextReader(row.GetStream());
+            });
         }
 
         #endregion

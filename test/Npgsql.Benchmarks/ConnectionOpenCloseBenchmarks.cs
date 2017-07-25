@@ -12,33 +12,33 @@ namespace Npgsql.Benchmarks
     {
         const string SqlClientConnectionString = @"Data Source=(localdb)\mssqllocaldb";
 
-        readonly NpgsqlCommand _noOpenCloseCmd;
+        NpgsqlCommand _noOpenCloseCmd;
 
         readonly string _openCloseConnString = new NpgsqlConnectionStringBuilder(BenchmarkEnvironment.ConnectionString) { ApplicationName = nameof(OpenClose) }.ToString();
         readonly NpgsqlCommand _openCloseCmd = new NpgsqlCommand("SET lock_timeout = 1000");
-
         readonly SqlCommand _sqlOpenCloseCmd = new SqlCommand("SET LOCK_TIMEOUT 1000");
 
-        readonly NpgsqlConnection _openCloseSameConn;
-        readonly NpgsqlCommand _openCloseSameCmd;
+        NpgsqlConnection _openCloseSameConn;
+        NpgsqlCommand _openCloseSameCmd;
 
-        readonly SqlConnection _sqlOpenCloseSameConn;
-        readonly SqlCommand _sqlOpenCloseSameCmd;
+        SqlConnection _sqlOpenCloseSameConn;
+        SqlCommand _sqlOpenCloseSameCmd;
 
-        readonly NpgsqlConnection _connWithPrepared;
-        readonly NpgsqlCommand _withPreparedCmd;
+        NpgsqlConnection _connWithPrepared;
+        NpgsqlCommand _withPreparedCmd;
 
-        readonly NpgsqlConnection _noResetConn;
-        readonly NpgsqlCommand _noResetCmd;
+        NpgsqlConnection _noResetConn;
+        NpgsqlCommand _noResetCmd;
 
-        readonly NpgsqlConnection _nonPooledConnection;
-        readonly NpgsqlCommand _nonPooledCmd;
+        NpgsqlConnection _nonPooledConnection;
+        NpgsqlCommand _nonPooledCmd;
 
         // ReSharper disable once UnusedAutoPropertyAccessor.Global
         [Params(0, 1, 5, 10)]
         public int StatementsToSend { get; set; }
 
-        public ConnectionOpenCloseBenchmarks()
+        [GlobalSetup]
+        public void GlobalSetup()
         {
             var csb = new NpgsqlConnectionStringBuilder(BenchmarkEnvironment.ConnectionString) { ApplicationName = nameof(NoOpenClose)};
             var noOpenCloseConn = new NpgsqlConnection(csb.ToString());
@@ -75,9 +75,10 @@ namespace Npgsql.Benchmarks
             _nonPooledCmd = new NpgsqlCommand("SET lock_timeout = 1000", _nonPooledConnection);
         }
 
-        [Cleanup]
-        public void Cleanup()
+        [GlobalCleanup]
+        public void GlobalCleanup()
         {
+            _noOpenCloseCmd.Connection?.Close();
             NpgsqlConnection.ClearAllPools();
             SqlConnection.ClearAllPools();
         }

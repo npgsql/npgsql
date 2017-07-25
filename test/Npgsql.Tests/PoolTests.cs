@@ -153,7 +153,7 @@ namespace Npgsql.Tests
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString) {
                 MaxPoolSize = 1,
-                Timeout = 1
+                Timeout = 2
             }.ToString();
 
             using (var conn1 = new NpgsqlConnection(connString))
@@ -174,7 +174,7 @@ namespace Npgsql.Tests
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 MaxPoolSize = 1,
-                Timeout = 1
+                Timeout = 2
             }.ToString();
 
             using (var conn1 = new NpgsqlConnection(connString))

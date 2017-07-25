@@ -6,7 +6,7 @@
     <Copyright>Copyright 2017 © The Npgsql Development Team</Copyright>
     <Company>Npgsql</Company>
     <PackageTags>npgsql postgresql postgres ado ado.net database sql</PackageTags>
-    <VersionPrefix>3.2.4.1</VersionPrefix>
+    <VersionPrefix>3.2.5</VersionPrefix>
     <TargetFrameworks>net45;net451;netstandard1.3;netstandard2.0</TargetFrameworks>
     <WarningsAsErrors>true</WarningsAsErrors>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -33,24 +33,13 @@
   </ItemGroup>
 
   <ItemGroup Condition=" '$(TargetFramework)' == 'net45' ">
-    <Reference Include="System.Transactions" />
-    <Reference Include="System.DirectoryServices" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Numerics" />
-    <Reference Include="System.Xml" />
-    <Reference Include="System" />
-    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Transactions" Pack="false" />
+    <Reference Include="System.DirectoryServices" Pack="false" />
   </ItemGroup>
 
   <ItemGroup Condition=" '$(TargetFramework)' == 'net451' ">
-    <Reference Include="System.Collections" />
-    <Reference Include="System.Transactions" />
-    <Reference Include="System.DirectoryServices" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Numerics" />
-    <Reference Include="System.Xml" />
-    <Reference Include="System" />
-    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Transactions" Pack="false" />
+    <Reference Include="System.DirectoryServices" Pack="false" />
   </ItemGroup>
 
   <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard1.3' ">

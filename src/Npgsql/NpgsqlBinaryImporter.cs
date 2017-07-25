@@ -276,7 +276,13 @@ namespace Npgsql
                 return;
 
             if (_column != -1 && _column != NumColumns)
-                throw new InvalidOperationException("Can't close writer, a row is still in progress, end it first");
+            {
+                Log.Error("Binary importer closed in the middle of a row, cancelling import.");
+                _buf.Clear();
+                Cancel();
+                return;
+            }
+
             WriteTrailer();
             _buf.Flush();
             _buf.EndCopyMode();

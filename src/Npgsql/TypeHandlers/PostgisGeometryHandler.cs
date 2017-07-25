@@ -56,7 +56,7 @@ namespace Npgsql.TypeHandlers
         IChunkingTypeHandler<byte[]>
     {
         [CanBeNull]
-        readonly ByteaHandler _byteaHandler;
+        internal ByteaHandler ByteaHandler { get; }
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
@@ -64,12 +64,12 @@ namespace Npgsql.TypeHandlers
             : base(postgresType)
         {
             var byteaHandler = registry[NpgsqlDbType.Bytea];
-            if (_byteaHandler == registry.UnrecognizedTypeHandler)
+            if (byteaHandler == registry.UnrecognizedTypeHandler)
             {
                 Log.Warn("bytea type not present when setting up postgis geometry type. Writing as bytea will not work.");
                 return;
             }
-            _byteaHandler = (ByteaHandler)byteaHandler;
+            ByteaHandler = (ByteaHandler)byteaHandler;
         }
 
         #region Read
@@ -209,8 +209,8 @@ namespace Npgsql.TypeHandlers
 
         ValueTask<byte[]> IChunkingTypeHandler<byte[]>.Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
         {
-            Debug.Assert(_byteaHandler != null);
-            return _byteaHandler.Read(buf, len, async, fieldDescription);
+            Debug.Assert(ByteaHandler != null);
+            return ByteaHandler.Read(buf, len, async, fieldDescription);
         }
 
         #endregion Read
@@ -255,9 +255,9 @@ namespace Npgsql.TypeHandlers
             var bytes = value as byte[];
             if (bytes != null)
             {
-                if (_byteaHandler == null)
+                if (ByteaHandler == null)
                     throw new NpgsqlException("Bytea handler was not found during initialization of PostGIS handler");
-                return _byteaHandler.WriteInternal(bytes, buf, lengthCache, parameter, async, cancellationToken);
+                return ByteaHandler.WriteInternal(bytes, buf, lengthCache, parameter, async, cancellationToken);
             }
 
             return Write((PostgisGeometry)value, buf, lengthCache, parameter, async, cancellationToken);

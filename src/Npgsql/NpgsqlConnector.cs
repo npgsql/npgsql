@@ -622,7 +622,14 @@ namespace Npgsql
             }
 
             // Give each endpoint an equal share of the remaining time
-            var perEndpointTimeout = timeout.IsSet ? (int)((timeout.TimeLeft.Ticks / endpoints.Length) / 10) : -1;
+            var perEndpointTimeout = -1;  // Default to infinity
+            if (timeout.IsSet)
+            {
+                var timeoutTicks = timeout.TimeLeft.Ticks;
+                if (timeoutTicks <= 0)
+                    throw new TimeoutException();
+                perEndpointTimeout = (int)(timeoutTicks / endpoints.Length / 10);
+            }
 
             for (var i = 0; i < endpoints.Length; i++)
             {
@@ -700,8 +707,16 @@ namespace Npgsql
             }
 
             // Give each IP an equal share of the remaining time
-            var perIpTimespan = timeout.IsSet ? new TimeSpan(timeout.TimeLeft.Ticks / endpoints.Length) : TimeSpan.Zero;
-            var perIpTimeout = timeout.IsSet ? new NpgsqlTimeout(perIpTimespan) : timeout;
+            var perIpTimespan = default(TimeSpan);
+            var perIpTimeout = timeout;
+            if (timeout.IsSet)
+            {
+                var timeoutTicks = timeout.TimeLeft.Ticks;
+                if (timeoutTicks <= 0)
+                    throw new TimeoutException();
+                perIpTimespan = new TimeSpan(timeoutTicks / endpoints.Length);
+                perIpTimeout = new NpgsqlTimeout(perIpTimespan);
+            }
 
             for (var i = 0; i < endpoints.Length; i++)
             {
