@@ -6,7 +6,7 @@
     <Copyright>Copyright 2017 © The Npgsql Development Team</Copyright>
     <Company>Npgsql</Company>
     <PackageTags>npgsql postgresql postgres ado ado.net database sql</PackageTags>
-    <VersionPrefix>3.2.5</VersionPrefix>
+    <VersionPrefix>3.2.6</VersionPrefix>
     <TargetFrameworks>net45;net451;netstandard1.3;netstandard2.0</TargetFrameworks>
     <WarningsAsErrors>true</WarningsAsErrors>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
