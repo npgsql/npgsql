@@ -168,12 +168,12 @@ namespace Npgsql
                             : new NpgsqlParameter<T> { TypedValue = value };
                     if (npgsqlDbType.HasValue)
                         untypedParam.NpgsqlDbType = npgsqlDbType.Value;
-                    untypedParam.ResolveHandler(_connector.TypeMapper);
                 }
 
                 if (typeof(T) == typeof(object))
                 {
                     untypedParam.Value = value;
+                    untypedParam.ResolveHandler(_connector.TypeMapper);
                     untypedParam.ValidateAndGetLength();
                     untypedParam.LengthCache?.Rewind();
                     untypedParam.WriteWithLength(_buf, false);
