@@ -54,7 +54,7 @@ namespace Npgsql
             // No password was provided. Attempt to pull the password from the pgpass file.
             if (passwd == null)
             {
-                var matchingEntry = PgPassFile.Load(Settings.PgPassFile)?.GetFirstMatchingEntry(Settings.Host, Settings.Port, Settings.Database, Settings.Username);
+                var matchingEntry = PgPassFile.Load(Settings.Passfile)?.GetFirstMatchingEntry(Settings.Host, Settings.Port, Settings.Database, Settings.Username);
                 if (matchingEntry != null)
                 {
                     Log.Trace("Taking password from pgpass file");
@@ -79,7 +79,7 @@ namespace Npgsql
             // No password was provided. Attempt to pull the password from the pgpass file.
             if (passwd == null)
             {
-                var matchingEntry = PgPassFile.Load(Settings.PgPassFile)?.GetFirstMatchingEntry(Settings.Host, Settings.Port, Settings.Database, Settings.Username);
+                var matchingEntry = PgPassFile.Load(Settings.Passfile)?.GetFirstMatchingEntry(Settings.Host, Settings.Port, Settings.Database, Settings.Username);
                 if (matchingEntry != null)
                 {
                     Log.Trace("Taking password from pgpass file");
