@@ -234,7 +234,12 @@ ORDER BY attnum";
         /// </summary>
         void ColumnPostConfig(NpgsqlDbColumn column, int typeModifier)
         {
-            column.DataType = _connection.Connector.TypeMapper.TryGetByOID(column.TypeOID, out var handler)
+            var typeMapper = _connection.Connector.TypeMapper;
+
+            if (typeMapper.Mappings.TryGetValue(column.DataTypeName, out var mapping))
+                column.NpgsqlDbType = mapping.NpgsqlDbType;
+
+            column.DataType = typeMapper.TryGetByOID(column.TypeOID, out var handler)
                 ? handler.GetFieldType()
                 : null;
 

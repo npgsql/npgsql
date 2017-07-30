@@ -595,6 +595,23 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test]
+        public void NpgsqlDbType()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo INTEGER)");
+
+                using (var cmd = new NpgsqlCommand("SELECT foo,8::INTEGER FROM data", conn))
+                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                {
+                    var columns = reader.GetColumnSchema();
+                    Assert.That(columns[0].NpgsqlDbType, Is.EqualTo(NpgsqlTypes.NpgsqlDbType.Integer));
+                    Assert.That(columns[1].NpgsqlDbType, Is.EqualTo(NpgsqlTypes.NpgsqlDbType.Integer));
+                }
+            }
+        }
+
         #region Not supported
 
         [Test]
