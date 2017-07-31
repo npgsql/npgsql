@@ -485,57 +485,6 @@ namespace Npgsql.TypeMapping
             BindType(rangeHandler, pgRangeType, rangeNpgsqlDbType, null, clrTypes);
         }
 
-#if MAPPING_FIRST
-        internal void BindTypes(NpgsqlConnector connector)
-        {
-            Debug.Assert(Database != null, "Attempting to activate the global type mapper");
-
-            // Array and range types get bound through their element types
-
-            foreach (var pgType in Database.BaseTypes)
-            {
-                if (!TryGetMapping(pgType, out var mapping))
-                    continue;  // Unmapped PostgreSQL type
-
-                var handler = mapping.TypeHandlerFactory.Create(pgType, connector.Connection);
-                BindType(handler, pgType, mapping.NpgsqlDbType, mapping.DbTypes, mapping.ClrTypes);
-            }
-
-            foreach (var pgType in Database.EnumTypes)
-            {
-                if (!TryGetMapping(pgType, out var mapping))
-                {
-                    // Unmapped enum, bind to TextHandler to allow retrieving values as text
-                    var textHandler = new TextHandler(pgType, connector.TextEncoding);
-                    BindType(textHandler, pgType);
-                    continue;
-                }
-
-                // Mapped enum
-                var handler = mapping.TypeHandlerFactory.Create(pgType, connector.Connection);
-                BindType(handler, pgType, null, null, mapping.ClrTypes);
-            }
-        }
-
-        bool TryGetMapping(PostgresType pgType, out TypeMapping mapping)
-        {
-            // Mapping with full name
-            if (_mappings.TryGetValue(pgType.FullName, out mapping))
-                return true;
-            if (!_mappings.TryGetValue(pgType.Name, out mapping))
-                return false;
-            // Found mapping with partial name, but make sure there's only one PG type that matches
-            if (Database.ByName[pgType.Name] == null)
-            {
-                Log.Error($"A mapping exists for PostgreSQL type {pgType.Name}, but multiple types match in different schemas." +
-                            "Skipping the mapping, use a fully-qualified name.");
-                return false;
-            }
-            Debug.Assert(Database.ByName[pgType.Name] == pgType);
-            return true;
-        }
-#endif
-
         #endregion Binding
     }
 }
