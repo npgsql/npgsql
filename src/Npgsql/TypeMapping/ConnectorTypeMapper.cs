@@ -361,7 +361,6 @@ namespace Npgsql.TypeMapping
                 if (throwOnError)
                     throw;
                 Log.Warn($"Exception while binding type {mapping.PgTypeName}", e);
-                return;
             }
         }
 

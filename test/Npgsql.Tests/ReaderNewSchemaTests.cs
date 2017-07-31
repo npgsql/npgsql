@@ -602,12 +602,14 @@ namespace Npgsql.Tests
             {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo INTEGER)");
 
-                using (var cmd = new NpgsqlCommand("SELECT foo,8::INTEGER FROM data", conn))
+                using (var cmd = new NpgsqlCommand("SELECT foo,8::INTEGER,NULL::GEOMETRY FROM data", conn))
                 using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
                 {
                     var columns = reader.GetColumnSchema();
                     Assert.That(columns[0].NpgsqlDbType, Is.EqualTo(NpgsqlTypes.NpgsqlDbType.Integer));
                     Assert.That(columns[1].NpgsqlDbType, Is.EqualTo(NpgsqlTypes.NpgsqlDbType.Integer));
+                    // The full datatype name for PostGIS is public.geometry (unlike int4 which is in pg_catalog).
+                    Assert.That(columns[2].NpgsqlDbType, Is.EqualTo(NpgsqlTypes.NpgsqlDbType.Geometry));
                 }
             }
         }

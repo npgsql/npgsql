@@ -238,6 +238,12 @@ ORDER BY attnum";
 
             if (typeMapper.Mappings.TryGetValue(column.DataTypeName, out var mapping))
                 column.NpgsqlDbType = mapping.NpgsqlDbType;
+            else if (
+                column.DataTypeName.Contains(".") &&
+                typeMapper.Mappings.TryGetValue(column.DataTypeName.Split('.')[1], out mapping)
+            ) {
+                column.NpgsqlDbType = mapping.NpgsqlDbType;
+            }
 
             column.DataType = typeMapper.TryGetByOID(column.TypeOID, out var handler)
                 ? handler.GetFieldType()
