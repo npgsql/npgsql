@@ -159,33 +159,33 @@ namespace Npgsql
 
             try
             {
-                var untypedParam = _params[_column];
-                if (untypedParam == null)
-                {
-                    // First row, create the parameter objects
-                    _params[_column] = untypedParam = typeof(T) == typeof(object)
-                            ? new NpgsqlParameter { Value = value }
-                            : new NpgsqlParameter<T> { TypedValue = value };
-                    if (npgsqlDbType.HasValue)
-                        untypedParam.NpgsqlDbType = npgsqlDbType.Value;
-                }
-
                 if (typeof(T) == typeof(object))
                 {
-                    untypedParam.Value = value;
-                    untypedParam.ResolveHandler(_connector.TypeMapper);
-                    untypedParam.ValidateAndGetLength();
-                    untypedParam.LengthCache?.Rewind();
-                    untypedParam.WriteWithLength(_buf, false);
-                    untypedParam.LengthCache?.Clear();
+                    var param = _params[_column];
+                    if (param == null)
+                    {
+                        _params[_column] = param = new NpgsqlParameter();
+                        if (npgsqlDbType.HasValue)
+                            param.NpgsqlDbType = npgsqlDbType.Value;
+                    }
+                    param.Value = value;
+                    param.ResolveHandler(_connector.TypeMapper);
+                    param.ValidateAndGetLength();
+                    param.LengthCache?.Rewind();
+                    param.WriteWithLength(_buf, false);
+                    param.LengthCache?.Clear();
                 }
                 else
                 {
-                    var param = untypedParam as NpgsqlParameter<T>;
+                    var param = _params[_column] as NpgsqlParameter<T>;
                     if (param == null)
-                        throw new InvalidOperationException("Change of value type from one row to the other");
-
+                    {
+                        _params[_column] = param = new NpgsqlParameter<T>();
+                        if (npgsqlDbType.HasValue)
+                            param.NpgsqlDbType = npgsqlDbType.Value;
+                    }
                     param.TypedValue = value;
+                    param.ResolveHandler(_connector.TypeMapper);
                     param.ValidateAndGetLength();
                     param.LengthCache?.Rewind();
                     param.WriteWithLength(_buf, false);
