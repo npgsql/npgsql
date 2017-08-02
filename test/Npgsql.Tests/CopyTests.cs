@@ -23,6 +23,7 @@
 
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Data;
 using System.IO;
 using System.Text;
@@ -378,6 +379,7 @@ namespace Npgsql.Tests
                         writer.StartRow();
                         writer.Write(data, NpgsqlDbType.Bytea);
                     }
+                    writer.Commit();
                 }
 
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(iterations));
@@ -732,6 +734,28 @@ namespace Npgsql.Tests
                     for (var i = 0; i < reader.FieldCount; i++)
                         Assert.That(reader.IsDBNull(i), Is.True);
                 }
+            }
+        }
+
+        [Test]
+        public void WriteDifferentTypes()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE dataa (foo INT, barr INT[])");
+
+                using (var writer = conn.BeginBinaryImport("COPY dataa (foo, barr) FROM STDIN BINARY"))
+                {
+		            Console.WriteLine("Huh?");
+                    writer.StartRow();
+                    writer.Write(3.0, NpgsqlDbType.Integer);
+                    writer.Write((object)new[] {1,2,3});
+                    writer.StartRow();
+                    writer.Write(3, NpgsqlDbType.Integer);
+                    writer.Write((object)new List<int>() {4,5,6});
+                    writer.Commit();
+                }
+		        Assert.That(1, Is.EqualTo(1));
             }
         }
 
