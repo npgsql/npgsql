@@ -23,6 +23,7 @@
 
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Data;
 using System.IO;
 using System.Text;
@@ -732,6 +733,27 @@ namespace Npgsql.Tests
                     for (var i = 0; i < reader.FieldCount; i++)
                         Assert.That(reader.IsDBNull(i), Is.True);
                 }
+            }
+        }
+
+        [Test]
+        public void WriteDifferentTypes()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo INT, bar INT[])");
+
+                using (var writer = conn.BeginBinaryImport("COPY data (foo, bar) FROM STDIN BINARY"))
+                {
+                    writer.StartRow();
+                    writer.Write(3.0, NpgsqlDbType.Integer);
+                    writer.Write((object)new[] { 1, 2, 3 });
+                    writer.StartRow();
+                    writer.Write(3, NpgsqlDbType.Integer);
+                    writer.Write((object)new List<int> { 4, 5, 6 });
+                    writer.Commit();
+                }
+                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(2));
             }
         }
 

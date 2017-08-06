@@ -157,48 +157,40 @@ namespace Npgsql
                 return;
             }
 
-            try
+            var untypedParam = _params[_column];
+            if (untypedParam == null)
             {
-                var untypedParam = _params[_column];
-                if (untypedParam == null)
-                {
-                    // First row, create the parameter objects
-                    _params[_column] = untypedParam = typeof(T) == typeof(object)
-                            ? new NpgsqlParameter { Value = value }
-                            : new NpgsqlParameter<T> { TypedValue = value };
-                    if (npgsqlDbType.HasValue)
-                        untypedParam.NpgsqlDbType = npgsqlDbType.Value;
-                    untypedParam.ResolveHandler(_connector.TypeMapper);
-                }
-
-                if (typeof(T) == typeof(object))
-                {
-                    untypedParam.Value = value;
-                    untypedParam.ValidateAndGetLength();
-                    untypedParam.LengthCache?.Rewind();
-                    untypedParam.WriteWithLength(_buf, false);
-                    untypedParam.LengthCache?.Clear();
-                }
-                else
-                {
-                    var param = untypedParam as NpgsqlParameter<T>;
-                    if (param == null)
-                        throw new InvalidOperationException("Change of value type from one row to the other");
-
-                    param.TypedValue = value;
-                    param.ValidateAndGetLength();
-                    param.LengthCache?.Rewind();
-                    param.WriteWithLength(_buf, false);
-                    param.LengthCache?.Clear();
-                }
-                _column++;
+                // First row, create the parameter objects
+                _params[_column] = untypedParam = typeof(T) == typeof(object)
+                    ? new NpgsqlParameter()
+                    : new NpgsqlParameter<T>();
+                if (npgsqlDbType.HasValue)
+                    untypedParam.NpgsqlDbType = npgsqlDbType.Value;
             }
-            catch
+
+            if (typeof(T) == typeof(object))
             {
-                _connector.Break();
-                Cleanup();
-                throw;
+                untypedParam.Value = value;
+                untypedParam.ResolveHandler(_connector.TypeMapper);
+                untypedParam.ValidateAndGetLength();
+                untypedParam.LengthCache?.Rewind();
+                untypedParam.WriteWithLength(_buf, false);
+                untypedParam.LengthCache?.Clear();
             }
+            else
+            {
+                var param = untypedParam as NpgsqlParameter<T>;
+                if (param == null)
+                    _params[_column] = param = new NpgsqlParameter<T>();
+
+                param.TypedValue = value;
+                param.ResolveHandler(_connector.TypeMapper);
+                param.ValidateAndGetLength();
+                param.LengthCache?.Rewind();
+                param.WriteWithLength(_buf, false);
+                param.LengthCache?.Clear();
+            }
+            _column++;
         }
 
         /// <summary>
