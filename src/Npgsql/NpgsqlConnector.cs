@@ -1925,13 +1925,13 @@ namespace Npgsql
 
         #region Supported features and PostgreSQL settings
 
-        bool SupportsCloseAll => ServerVersion >= new Version(8, 3, 0);
-        bool SupportsAdvisoryLocks => ServerVersion >= new Version(8, 2, 0);
-        bool SupportsDiscardSequences => ServerVersion >= new Version(9, 4, 0);
-        bool SupportsUnlisten => ServerVersion >= new Version(6, 4, 0) && !IsRedshift;
-        bool SupportsDiscardTemp => ServerVersion >= new Version(8, 3, 0);
-        bool SupportsDiscard => ServerVersion >= new Version(8, 3, 0); // Redshift is 8.0.2
-        internal bool SupportsRangeTypes => ServerVersion >= new Version(9, 2, 0);
+        bool SupportsCloseAll => ServerVersion >= new Version(8, 3, 0) && !IsCrateDB;
+        bool SupportsAdvisoryLocks => ServerVersion >= new Version(8, 2, 0) && !IsCrateDB;
+        bool SupportsDiscardSequences => ServerVersion >= new Version(9, 4, 0) && !IsCrateDB;
+        bool SupportsUnlisten => ServerVersion >= new Version(6, 4, 0) && !IsRedshift && !IsCrateDB;
+        bool SupportsDiscardTemp => ServerVersion >= new Version(8, 3, 0) && !IsCrateDB;
+        bool SupportsDiscard => ServerVersion >= new Version(8, 3, 0) && !IsCrateDB; // Redshift is 8.0.2
+        internal bool SupportsRangeTypes => ServerVersion >= new Version(9, 2, 0) && !IsCrateDB;
         internal bool UseConformantStrings { get; private set; }
         internal bool IntegerDateTimes { get; private set; }
 
