@@ -302,6 +302,8 @@ namespace Npgsql.TypeMapping
             ResetMappings();
             BindTypes();
             IsModified = false;
+
+            DatabaseInfo.AddVendorSpecificTypeMappings(this);
         }
 
         #endregion Mapping management
@@ -324,6 +326,8 @@ namespace Npgsql.TypeMapping
 
             mapper.DatabaseInfo = database;
             mapper.BindTypes();
+
+            database.AddVendorSpecificTypeMappings(mapper);
         }
 
         void BindTypes()
