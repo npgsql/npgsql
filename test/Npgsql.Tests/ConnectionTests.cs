@@ -462,8 +462,13 @@ namespace Npgsql.Tests
         public void NoDatabaseDefaultsToUsername()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Database = null };
-            using (var conn = OpenConnection(csb))
+            using (var conn = new NpgsqlConnection(csb.ToString()))
+            {
+                Assert.That(conn.Database, Is.EqualTo(csb.Username));
+                conn.Open();
                 Assert.That(conn.ExecuteScalar("SELECT current_database()"), Is.EqualTo(csb.Username));
+                Assert.That(conn.Database, Is.EqualTo(csb.Username));
+            }
         }
 
         [Test, Description("Breaks a connector while it's in the pool, with a keepalive and without")]
