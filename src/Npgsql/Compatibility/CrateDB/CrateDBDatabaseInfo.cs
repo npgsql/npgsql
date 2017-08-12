@@ -7,6 +7,7 @@ using Npgsql.TypeMapping;
 using NpgsqlTypes;
 using System.Data;
 using Npgsql.TypeHandlers;
+using Npgsql.PostgresTypes;
 
 namespace Npgsql.Compatibility.CrateDB
 {
@@ -62,6 +63,13 @@ where
                     }
                 }
             }
+        }
+
+        // CrateDB does not support composite types.
+        internal override bool TryGetComposite(string pgName, NpgsqlConnection connection, out PostgresCompositeType compositeType)
+        {
+            compositeType = null;
+            return false;
         }
 
         internal override void AddVendorSpecificTypeMappings(INpgsqlTypeMapper mapper)

@@ -207,7 +207,7 @@ ORDER BY ord";
         /// Attempts to load the given type as a composite type. Composite types aren't eagerly loaded as the other
         /// types.
         /// </summary>
-        internal bool TryGetComposite(string pgName, NpgsqlConnection connection, out PostgresCompositeType compositeType)
+        internal virtual bool TryGetComposite(string pgName, NpgsqlConnection connection, out PostgresCompositeType compositeType)
         {
             // First check if the composite type definition has already been loaded from the database
             if (pgName.IndexOf('.') == -1
