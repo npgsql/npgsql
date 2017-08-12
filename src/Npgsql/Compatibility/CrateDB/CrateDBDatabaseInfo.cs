@@ -11,8 +11,26 @@ using Npgsql.PostgresTypes;
 
 namespace Npgsql.Compatibility.CrateDB
 {
+    /// <summary>
+    /// Adapts type loading queries and type mappings for CrateDB.
+    /// </summary>
+    /// <remarks>
+    /// CrateDB contains support for the PostgreSQL wire protocol and it has a  
+    /// trimmed down pg_type table. But it does not have a pg_namespace-, pg_proc-,
+    /// pg_range- or pg_attribute-table. Further, the supported datatypes differ from PostgreSQL. 
+    /// See: https://crate.io/docs/crate/reference/en/latest/protocols/crate-postgres-sql.html for 
+    /// the main differences in implementation and dialect between CrateDB and PostgreSQL.
+    /// See: https://crate.io/docs/crate/reference/en/latest/protocols/postgres.html for more 
+    /// information about the support of the Postgres Wire Protocol in CrateDB.
+    /// </remarks>
     class CrateDBDatabaseInfo : DatabaseInfo
     {
+        /// <summary>
+        /// Creates an instance of the <see cref="CrateDBDatabaseInfo"/>-class.
+        /// </summary>
+        /// <param name="host"></param>
+        /// <param name="port"></param>
+        /// <param name="databaseName"></param>
         public CrateDBDatabaseInfo(string host, int port, string databaseName) 
             : base(host, port, databaseName)
         {
@@ -21,6 +39,9 @@ namespace Npgsql.Compatibility.CrateDB
         static readonly string CrateTypesQueryForBaseTypes = GenerateCrateTypesQuery(true);
         static readonly string CrateTypesQueryForArrayTypes = GenerateCrateTypesQuery(false);
 
+        // This generates simplified type loading queries for CrateDB as
+        // CrateDB has a trimmed down pg_type table and no pg_namespace-, 
+        // pg_proc- or pg_range-table.
         static string GenerateCrateTypesQuery(bool forBaseTypes)
         {
             return
@@ -34,6 +55,13 @@ where
     {(forBaseTypes ? "" : "not ")}typelem = 0";
         }
 
+        /// <summary>
+        /// Overrides DatabaseInfo.LoadBackendTypes to use type loading queries adapted for CrateDB. 
+        /// </summary>
+        /// <param name="connector"></param>
+        /// <param name="timeout"></param>
+        /// <param name="async"></param>
+        /// <returns></returns>
         protected override async Task LoadBackendTypes(NpgsqlConnector connector, NpgsqlTimeout timeout, bool async)
         {
             await LoadBackendTypes(connector, timeout, async, CrateTypesQueryForBaseTypes);
@@ -65,16 +93,28 @@ where
             }
         }
 
-        // CrateDB does not support composite types.
+        /// <summary>
+        /// Overrides DatabaseInfo.TryGetComposite as CrateDB does not support named composite types.
+        /// </summary>
+        /// <param name="pgName"></param>
+        /// <param name="connection"></param>
+        /// <param name="compositeType"></param>
+        /// <returns></returns>
         internal override bool TryGetComposite(string pgName, NpgsqlConnection connection, out PostgresCompositeType compositeType)
         {
             compositeType = null;
             return false;
         }
 
+        /// <summary>
+        /// Overrides DatabaseInfo.AddVendorSpecificTypeMappings to adapt 
+        /// the type mappings to the types supported by CrateDB.
+        /// </summary>
+        /// <param name="mapper"></param>
         internal override void AddVendorSpecificTypeMappings(INpgsqlTypeMapper mapper)
         {
-            // Map CrateDB varchar type to the Npgsql TextHandler.
+            // CrateDB does not have a text-datatype. Instead there is a varchar-datatype. 
+            // Therefore map string to varchar implicitly.
             mapper.AddMapping(new NpgsqlTypeMappingBuilder
             {
                 PgTypeName = "varchar",
@@ -86,7 +126,8 @@ where
             }
             .Build());
 
-            // Map CrateDB timestampz type to the CrateDBTimestampHandler.
+            // In CrateDB there is only a timestampz datatype.
+            // Therefore map DateTime to timestampz implicitly.
             mapper.AddMapping(new NpgsqlTypeMappingBuilder
             {
                 PgTypeName = "timestampz",
