@@ -168,6 +168,9 @@ namespace Npgsql
                     untypedParam.NpgsqlDbType = npgsqlDbType.Value;
             }
 
+            if (npgsqlDbType.HasValue && npgsqlDbType.Value != untypedParam.NpgsqlDbType)
+                throw new InvalidOperationException($"Can't change NpgsqlDbType from {untypedParam.NpgsqlDbType} to {npgsqlDbType.Value}");
+
             if (typeof(T) == typeof(object))
             {
                 untypedParam.Value = value;
@@ -181,7 +184,10 @@ namespace Npgsql
             {
                 var param = untypedParam as NpgsqlParameter<T>;
                 if (param == null)
+                {
                     _params[_column] = param = new NpgsqlParameter<T>();
+                    param.NpgsqlDbType = untypedParam.NpgsqlDbType;
+                }
 
                 param.TypedValue = value;
                 param.ResolveHandler(_connector.TypeMapper);
