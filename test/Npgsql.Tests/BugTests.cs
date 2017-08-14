@@ -711,5 +711,18 @@ CREATE TEMP TABLE ""OrganisatieQmo_Organisatie_QueryModelObjects_Imp""
   CONSTRAINT ""pk_OrganisatieQmo_Organisatie_QueryModelObjects_Imp"" PRIMARY KEY (""Id"")
 )";
         #endregion Bug1285
+
+        [Test]
+        public void TimeWithTimeZoneBeforeUtcZero()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT TIME WITH TIME ZONE '01:00:00+02'", conn))
+            using (var reader = cmd.ExecuteReader())
+            {
+                reader.Read();
+                var record = reader.GetFieldValue<DateTimeOffset>(0);
+                Assert.That(record, Is.EqualTo(new DateTimeOffset(1, 1, 2, 1, 0, 0, new TimeSpan(0, 2, 0, 0))));
+            }
+        }
     }
 }

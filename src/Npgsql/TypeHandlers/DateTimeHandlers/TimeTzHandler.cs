@@ -41,10 +41,21 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
 
         public override DateTimeOffset Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
-            // Adjust from 1 microsecond to 100ns. Time zone (in seconds) is inverted.
-            var ticks = buf.ReadInt64() * 10;
-            var offset = new TimeSpan(0, 0, -buf.ReadInt32());
-            return new DateTimeOffset(ticks, offset);
+            // Adjust from 1 microsecond to 100ns.
+            var timeTicks = buf.ReadInt64() * 10L;
+            // Invert time zone, adjust from seconds to 100ns.
+            var offsetTicks = buf.ReadInt32() * -10000000L;
+
+            var offset = new TimeSpan(offsetTicks);
+            if (timeTicks - offsetTicks < 0L)
+            {
+                // Utc time is before midnight, adjust by adding an extra day
+                // (This should only happen with "time with time zone" PostgreSQL types where
+                // the date is irrelevant)
+                timeTicks += new TimeSpan(1, 0, 0, 0).Ticks;
+            }
+
+            return new DateTimeOffset(timeTicks, offset);
         }
 
         DateTime ISimpleTypeHandler<DateTime>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
