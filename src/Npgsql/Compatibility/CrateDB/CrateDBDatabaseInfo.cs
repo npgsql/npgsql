@@ -125,18 +125,6 @@ where
                 TypeHandlerFactory = new TextHandlerFactory()
             }
             .Build());
-
-            // In CrateDB there is only a timestampz datatype.
-            // Therefore map DateTime to timestampz implicitly.
-            mapper.AddMapping(new NpgsqlTypeMappingBuilder
-            {
-                PgTypeName = "timestampz",
-                NpgsqlDbType = NpgsqlDbType.TimestampTz,
-                DbTypes = new[] { DbType.DateTime },
-                ClrTypes = new[] { typeof(DateTime) },
-                TypeHandlerFactory = new CrateDBTimestampHandlerFactory()
-            }
-            .Build());
         }
     }
 }
