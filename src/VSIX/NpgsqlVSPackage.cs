@@ -40,6 +40,7 @@ namespace Npgsql.VSIX
     [NpgsqlProviderRegistration]
     [Guid(NpgsqlVSPackage.PackageGuidString)]
     [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1650:ElementDocumentationMustBeSpelledCorrectly", Justification = "pkgdef, VS and vsixmanifest are valid VS terms")]
+    [ProvideAutoLoad(Microsoft.VisualStudio.Shell.Interop.UIContextGuids80.NoSolution)]
     public sealed class NpgsqlVSPackage : Package
     {
         /// <summary>
