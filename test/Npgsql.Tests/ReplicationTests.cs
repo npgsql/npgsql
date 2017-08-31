@@ -27,7 +27,7 @@ namespace Npgsql.Tests
             const string incorrectCmdText = "START_REPLICATION SLOT " + TestSlotName + "42 LOGICAL 0/0";
             using (var connection = OpenConnection(csb))
             {
-                Assert.Throws<PostgresException>(() => connection.BeginReplication(incorrectCmdText));
+                Assert.Throws<PostgresException>(() => connection.BeginReplication(incorrectCmdText, new NpgsqlLsn(0, 0)));
             }
         }
         
@@ -118,9 +118,10 @@ namespace Npgsql.Tests
                         normalConnection.ExecuteNonQuery("DROP TABLE repl_table");
                     }
 
-                    const int timeout = 60000;
+                    const int timeout = 60000, flushTimeout = 1000;
+                    var flushTime = 0;
                     var sw = Stopwatch.StartNew();
-                    using (var stream = connection.BeginReplication("START_REPLICATION SLOT " + TestSlotName + " LOGICAL " + lsn))
+                    using (var stream = connection.BeginReplication("START_REPLICATION SLOT " + TestSlotName + " LOGICAL " + lsn, lsn))
                     using (var reader = new StreamReader(stream))
                     {
                         var counter = 0;
@@ -131,13 +132,19 @@ namespace Npgsql.Tests
                             while (stream.FetchNext())
                             {
                                 Assert.That(stream.CurrentLsn, Is.Not.Null);
-                                lastLsn = stream.CurrentLsn.Value;
+                                lastLsn = stream.CurrentLsn;
                                 var str = reader.ReadToEnd();
                                 Trace.WriteLine(str);
                                 counter++;
                             }
                             if (counter == expectedMessages)
                                 break;
+
+                            if (sw.ElapsedMilliseconds > flushTime + flushTimeout)
+                            {
+                                stream.Flush();
+                                flushTime += flushTimeout;
+                            }
 
                             if (sw.ElapsedMilliseconds > timeout)
                                 Assert.Inconclusive($"Timeout expired. Messages expected: {expectedMessages}; received: {counter}.");

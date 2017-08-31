@@ -967,8 +967,9 @@ namespace Npgsql
         /// is opened in the <see cref="ReplicationMode">replication mode</see>.
         /// </summary>
         /// <param name="replicationCommand">START_REPLICATION command</param>
+        /// <param name="startLsn">The same LSN which is specified in the <see cref="replicationCommand">replication command</see></param>
         /// <remarks>See <a href="">https://www.postgresql.org/docs/current/static/protocol-replication.html</a>.</remarks>
-        public NpgsqlRawReplicationStream BeginReplication(string replicationCommand)
+        public NpgsqlRawReplicationStream BeginReplication(string replicationCommand, NpgsqlLsn startLsn)
         {
             if (replicationCommand == null)
                 throw new ArgumentNullException(nameof(replicationCommand));
@@ -977,7 +978,7 @@ namespace Npgsql
 
             var connector = CheckReadyAndGetConnector();
             Log.Debug("Starting raw START_REPLICATION operation", connector.Id);
-            var stream = new NpgsqlRawReplicationStream(connector, replicationCommand);
+            var stream = new NpgsqlRawReplicationStream(connector, replicationCommand, startLsn);
             return stream;
         }
 

@@ -59,7 +59,7 @@ namespace Npgsql
         /// The starting point of the WAL data in the last received message.
         /// </summary>
         [PublicAPI]
-        public NpgsqlLsn? CurrentLsn { get; private set; }
+        public NpgsqlLsn CurrentLsn { get; private set; }
 
         /// <summary>
         /// The current end of WAL on the server.
@@ -85,7 +85,7 @@ namespace Npgsql
         /// </summary>
         public bool EndOfStream { get; private set; }
 
-        internal NpgsqlRawReplicationStream([NotNull] NpgsqlConnector connector, string replicationCommand)
+        internal NpgsqlRawReplicationStream([NotNull] NpgsqlConnector connector, string replicationCommand, NpgsqlLsn startLsn)
         {
             if (connector == null)
                 throw new ArgumentNullException(nameof(connector));
@@ -95,6 +95,7 @@ namespace Npgsql
             _walDataResponse = new WalDataResponseMessage();
             _primaryKeepAliveResponse = new PrimaryKeepAliveResponseMessage();
             _standbyStatusUpdateRequest = new StandbyStatusUpdateMessage();
+            CurrentLsn = new NpgsqlLsn(startLsn.Value == 0 ? 0 : startLsn.Value - 1);
 
             _connector.StartUserAction(ConnectorState.Replication);
             try
@@ -193,7 +194,6 @@ namespace Npgsql
                         dontWait = false;
                         continue;
                     case BackendMessageCode.CompletedResponse:
-                        Debug.Assert(copyDone);
                         await _connector.ReadExpecting<CommandCompleteMessage>(async);
                         await _connector.ReadExpecting<ReadyForQueryMessage>(async);
                         
@@ -259,10 +259,7 @@ namespace Npgsql
         /// </remarks>
         public override void Flush()
         {
-            if (CurrentLsn == null)
-                return;
-
-            var nextLsn = new NpgsqlLsn(CurrentLsn.Value.Value + 1);
+            var nextLsn = new NpgsqlLsn(CurrentLsn.Value + 1);
             Flush(nextLsn, nextLsn, nextLsn);
         }
 
