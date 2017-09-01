@@ -967,7 +967,7 @@ namespace Npgsql
         /// is opened in the <see cref="ReplicationMode">replication mode</see>.
         /// </summary>
         /// <param name="replicationCommand">START_REPLICATION command</param>
-        /// <param name="startLsn">The same LSN which is specified in the <see cref="replicationCommand">replication command</see></param>
+        /// <param name="startLsn">The same LSN which is specified in the <paramref name="replicationCommand"/></param>
         /// <remarks>See <a href="">https://www.postgresql.org/docs/current/static/protocol-replication.html</a>.</remarks>
         public NpgsqlRawReplicationStream BeginReplication(string replicationCommand, NpgsqlLsn startLsn)
         {
