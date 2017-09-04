@@ -131,8 +131,8 @@ namespace Npgsql.Tests
                         {
                             while (stream.FetchNext())
                             {
-                                Assert.That(stream.CurrentLsn, Is.Not.Null);
-                                lastLsn = stream.CurrentLsn;
+                                Assert.That(stream.StartLsn, Is.Not.Null);
+                                lastLsn = stream.StartLsn;
                                 var str = reader.ReadToEnd();
                                 Trace.WriteLine(str);
                                 counter++;
@@ -154,7 +154,7 @@ namespace Npgsql.Tests
                         stream.Close();
 
                         Assert.IsTrue(stream.EndOfStream);
-                        Assert.That(stream.CurrentLsn, Is.EqualTo(lastLsn));
+                        Assert.That(stream.StartLsn, Is.EqualTo(lastLsn));
                     }
                 }
                 finally

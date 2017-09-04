@@ -56,10 +56,10 @@ namespace Npgsql
         public override long Length => _length;
 
         /// <summary>
-        /// The starting point of the WAL data in the last received message.
+        /// The starting point of the WAL data in the last received message (or the starting point of the WAL if the message is not yet recieved).
         /// </summary>
         [PublicAPI]
-        public NpgsqlLsn CurrentLsn { get; private set; }
+        public NpgsqlLsn StartLsn { get; private set; }
 
         /// <summary>
         /// The current end of WAL on the server.
@@ -94,8 +94,13 @@ namespace Npgsql
             _buffer = _connector.ReadBuffer;
             _walDataResponse = new WalDataResponseMessage();
             _primaryKeepAliveResponse = new PrimaryKeepAliveResponseMessage();
-            _standbyStatusUpdateRequest = new StandbyStatusUpdateMessage();
-            CurrentLsn = new NpgsqlLsn(startLsn.Value == 0 ? 0 : startLsn.Value - 1);
+            StartLsn = startLsn;
+            _standbyStatusUpdateRequest = new StandbyStatusUpdateMessage
+            {
+                LastAppliedLsn = startLsn,
+                LastWrittenLsn = startLsn,
+                LastFlushedLsn = startLsn
+            };
 
             _connector.StartUserAction(ConnectorState.Replication);
             try
@@ -224,7 +229,7 @@ namespace Npgsql
                         await Skip(_bytesLeft, async);
                         continue;
                     }
-                    CurrentLsn = _walDataResponse.StartLsn;
+                    StartLsn = _walDataResponse.StartLsn;
                     return true;
 
                 case BackendMessageCode.PrimaryKeepAlive:
@@ -235,11 +240,8 @@ namespace Npgsql
                     SystemClock = _primaryKeepAliveResponse.SystemClock;
                     if (_primaryKeepAliveResponse.ReplyImmediately && !copyDone)
                     {
-                        if (_standbyStatusUpdateRequest.SystemClock > 0)
-                        {
-                            // Repeat the last status update message.
-                            Flush(_standbyStatusUpdateRequest.LastWrittenLsn, _standbyStatusUpdateRequest.LastFlushedLsn, _standbyStatusUpdateRequest.LastAppliedLsn);
-                        }
+                        // Repeat the last status update message.
+                        Flush(_standbyStatusUpdateRequest.LastWrittenLsn, _standbyStatusUpdateRequest.LastFlushedLsn, _standbyStatusUpdateRequest.LastAppliedLsn);
                         // TODO: autoflush mode
                     }
                     Debug.Assert(_bytesLeft == 0);
@@ -259,8 +261,8 @@ namespace Npgsql
         /// </remarks>
         public override void Flush()
         {
-            var nextLsn = new NpgsqlLsn(CurrentLsn.Value + 1);
-            Flush(nextLsn, nextLsn, nextLsn);
+            var lsn = StartLsn;
+            Flush(lsn, lsn, lsn);
         }
 
         /// <summary>
@@ -400,7 +402,7 @@ namespace Npgsql
                     return;
                 }
 
-                if (waitForConfirmation && _standbyStatusUpdateRequest.SystemClock > 0)
+                if (waitForConfirmation)
                 {
                     // Repeating the last flush message with the confirmation request
                     SendStandbyStatusUpdateRequest(_standbyStatusUpdateRequest.LastWrittenLsn, _standbyStatusUpdateRequest.LastFlushedLsn, _standbyStatusUpdateRequest.LastAppliedLsn, true);
