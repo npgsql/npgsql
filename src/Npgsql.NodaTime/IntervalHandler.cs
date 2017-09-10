@@ -34,25 +34,17 @@ namespace Npgsql.NodaTime
     {
         // Check for the legacy floating point timestamps feature
         protected override NpgsqlTypeHandler<Period> Create(NpgsqlConnection conn)
-            => new IntervalHandler(conn.HasIntegerDateTimes);
+            => new IntervalHandler();
     }
 
     class IntervalHandler : NpgsqlSimpleTypeHandler<Period>
     {
-        /// <summary>
-        /// A deprecated compile-time option of PostgreSQL switches to a floating-point representation of some date/time
-        /// fields. Npgsql (currently) does not support this mode.
-        /// </summary>
-        readonly bool _integerFormat;
-
-        public IntervalHandler(bool integerFormat)
+        public IntervalHandler()
         {
-            _integerFormat = integerFormat;
         }
 
         public override Period Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
-            CheckIntegerFormat();
             var microsecondsInDay = buf.ReadInt64();
             var days = buf.ReadInt32();
             var totalMonths = buf.ReadInt32();
@@ -73,7 +65,6 @@ namespace Npgsql.NodaTime
 
         public override int ValidateAndGetLength(Period value, NpgsqlParameter parameter)
         {
-            CheckIntegerFormat();
             return 16;
         }
 
@@ -85,12 +76,6 @@ namespace Npgsql.NodaTime
             buf.WriteInt64(microsecondsInDay);
             buf.WriteInt32(value.Weeks * 7 + value.Days);     // days
             buf.WriteInt32(value.Years * 12 + value.Months);  // months
-        }
-
-        void CheckIntegerFormat()
-        {
-            if (!_integerFormat)
-                throw new NotSupportedException("Old floating point representation for timestamps not supported");
         }
     }
 }

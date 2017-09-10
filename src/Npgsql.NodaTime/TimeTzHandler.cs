@@ -34,26 +34,17 @@ namespace Npgsql.NodaTime
     {
         // Check for the legacy floating point timestamps feature
         protected override NpgsqlTypeHandler<OffsetDateTime> Create(NpgsqlConnection conn)
-            => new TimeTzHandler(conn.HasIntegerDateTimes);
+            => new TimeTzHandler();
     }
 
     class TimeTzHandler : NpgsqlSimpleTypeHandler<OffsetDateTime>
     {
-        /// <summary>
-        /// A deprecated compile-time option of PostgreSQL switches to a floating-point representation of some date/time
-        /// fields. Npgsql (currently) does not support this mode.
-        /// </summary>
-        readonly bool _integerFormat;
-
-        public TimeTzHandler(bool integerFormat)
+        public TimeTzHandler()
         {
-            _integerFormat = integerFormat;
         }
 
         public override OffsetDateTime Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
-            CheckIntegerFormat();
-
             // Adjust from 1 microsecond to 100ns. Time zone (in seconds) is inverted.
             var dateTime = new LocalDate() + LocalTime.FromTicksSinceMidnight(buf.ReadInt64() * 10);
             var offset = Offset.FromSeconds(-buf.ReadInt32());
@@ -62,7 +53,6 @@ namespace Npgsql.NodaTime
 
         public override int ValidateAndGetLength(OffsetDateTime value, NpgsqlParameter parameter)
         {
-            CheckIntegerFormat();
             if (value.Date != default(LocalDate))
                 throw new InvalidCastException("Date component must be empty for timetz");
             return 12;
@@ -72,12 +62,6 @@ namespace Npgsql.NodaTime
         {
             buf.WriteInt64(value.TickOfDay / 10);
             buf.WriteInt32(-(int)(value.Offset.Ticks / NodaConstants.TicksPerSecond));
-        }
-
-        void CheckIntegerFormat()
-        {
-            if (!_integerFormat)
-                throw new NotSupportedException("Old floating point representation for timestamps not supported");
         }
     }
 }

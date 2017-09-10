@@ -35,7 +35,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     {
         // Check for the legacy floating point timestamps feature
         protected override NpgsqlTypeHandler<TimeSpan> Create(NpgsqlConnection conn)
-            => new IntervalHandler(conn.HasIntegerDateTimes);
+            => new IntervalHandler();
     }
 
     /// <remarks>
@@ -43,15 +43,8 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// </remarks>
     class IntervalHandler : NpgsqlSimpleTypeHandlerWithPsv<TimeSpan, NpgsqlTimeSpan>
     {
-        /// <summary>
-        /// A deprecated compile-time option of PostgreSQL switches to a floating-point representation of some date/time
-        /// fields. Npgsql (currently) does not support this mode.
-        /// </summary>
-        readonly bool _integerFormat;
-
-        public IntervalHandler(bool integerFormat)
+        public IntervalHandler()
         {
-            _integerFormat = integerFormat;
         }
 
         public override TimeSpan Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
@@ -59,7 +52,6 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
 
         protected override NpgsqlTimeSpan ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
-            CheckIntegerFormat();
             var ticks = buf.ReadInt64();
             var day = buf.ReadInt32();
             var month = buf.ReadInt32();
@@ -68,13 +60,11 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
 
         public override int ValidateAndGetLength(TimeSpan value, NpgsqlParameter parameter)
         {
-            CheckIntegerFormat();
             return 16;
         }
 
         public override int ValidateAndGetLength(NpgsqlTimeSpan value, NpgsqlParameter parameter)
         {
-            CheckIntegerFormat();
             return 16;
         }
 
@@ -88,11 +78,5 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         // TODO: Can write directly from TimeSpan
         public override void Write(TimeSpan value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
             => Write(value, buf, parameter);
-
-        void CheckIntegerFormat()
-        {
-            if (!_integerFormat)
-                throw new NotSupportedException("Old floating point representation for timestamps not supported");
-        }
     }
 }

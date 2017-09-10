@@ -63,28 +63,51 @@ namespace Npgsql.NodaTime
 
         public override Instant Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
-            CheckIntegerFormat();
-            var value = buf.ReadInt64();
-            if (_convertInfinityDateTime)
+            if (_integerFormat)
             {
-                if (value == long.MaxValue)
-                    return Instant.MaxValue;
-                if (value == long.MinValue)
-                    return Instant.MinValue;
+                var value = buf.ReadInt64();
+                if (_convertInfinityDateTime)
+                {
+                    if (value == long.MaxValue)
+                        return Instant.MaxValue;
+                    if (value == long.MinValue)
+                        return Instant.MinValue;
+                }
+                return DecodeZonedDateTimeUsingIntegerFormat(value).ToInstant();
             }
-            return DecodeZonedDateTime(value).ToInstant();
+            else
+            {
+                var value = buf.ReadDouble();
+                if (_convertInfinityDateTime)
+                {
+                    if (value == double.PositiveInfinity)
+                        return Instant.MaxValue;
+                    if (value == double.NegativeInfinity)
+                        return Instant.MinValue;
+                }
+                return DecodeZonedDateTimeUsingFloatingPointFormat(value).ToInstant();
+            }
         }
 
         LocalDateTime INpgsqlSimpleTypeHandler<LocalDateTime>.Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription)
         {
-            CheckIntegerFormat();
-            var value = buf.ReadInt64();
-            if (value == long.MaxValue || value == long.MinValue)
-                throw new NpgsqlSafeReadException(new NotSupportedException("Infinity values not supported when reading ZonedDateTime, read as Instant instead"));
-            return DecodeZonedDateTime(value).LocalDateTime;
+            if (_integerFormat)
+            {
+                var value = buf.ReadInt64();
+                if (value == long.MaxValue || value == long.MinValue)
+                    throw new NpgsqlSafeReadException(new NotSupportedException("Infinity values not supported when reading ZonedDateTime, read as Instant instead"));
+                return DecodeZonedDateTimeUsingIntegerFormat(value).LocalDateTime;
+            }
+            else
+            {
+                var value = buf.ReadDouble();
+                if (value == double.PositiveInfinity || value == double.NegativeInfinity)
+                    throw new NpgsqlSafeReadException(new NotSupportedException("Infinity values not supported when reading ZonedDateTime, read as Instant instead"));
+                return DecodeZonedDateTimeUsingFloatingPointFormat(value).LocalDateTime;
+            }
         }
 
-        internal static ZonedDateTime DecodeZonedDateTime(long value)
+        internal static ZonedDateTime DecodeZonedDateTimeUsingIntegerFormat(long value)
         {
             Debug.Assert(value != long.MaxValue && value != long.MinValue);
 
@@ -114,41 +137,92 @@ namespace Npgsql.NodaTime
                 return new ZonedDateTime().Plus(Duration.FromDays(date) + Duration.FromNanoseconds(time));
             }
         }
+        
+        internal static ZonedDateTime DecodeZonedDateTimeUsingFloatingPointFormat(double value)
+        {
+            Debug.Assert(value != double.PositiveInfinity && value != double.NegativeInfinity);
+
+            if (value >= 0d)
+            {
+                var date = (int)value / 86400;
+                date += 730119; // 730119 = days since era (0001-01-01) for 2000-01-01
+                var microsecondOfDay = (long)((value % 86400d) * 1000000d);
+                
+                return new ZonedDateTime().Plus(Duration.FromDays(date) + Duration.FromNanoseconds(microsecondOfDay*1000));
+            }
+            else
+            {
+                value = -value;
+                var date = (int)value / 86400;
+                var microsecondOfDay = (long)((value % 86400d) * 1000000d);
+                if (microsecondOfDay != 0)
+                {
+                    ++date;
+                    microsecondOfDay = 86400000000L - microsecondOfDay;
+                }
+                date = 730119 - date; // 730119 = days since era (0001-01-01) for 2000-01-01
+
+                return new ZonedDateTime().Plus(Duration.FromDays(date) + Duration.FromNanoseconds(microsecondOfDay * 1000));
+            }
+        }
 
         public override int ValidateAndGetLength(Instant value, NpgsqlParameter parameter)
         {
-            CheckIntegerFormat();
             return 8;
         }
 
         int INpgsqlSimpleTypeHandler<LocalDateTime>.ValidateAndGetLength(LocalDateTime value, NpgsqlParameter parameter)
         {
-            CheckIntegerFormat();
             return 8;
         }
 
         public override void Write(Instant value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {
-            if (_convertInfinityDateTime)
+            if (_integerFormat)
             {
-                if (value == Instant.MaxValue)
+                if (_convertInfinityDateTime)
                 {
-                    buf.WriteInt64(long.MaxValue);
-                    return;
+                    if (value == Instant.MaxValue)
+                    {
+                        buf.WriteInt64(long.MaxValue);
+                        return;
+                    }
+                    if (value == Instant.MinValue)
+                    {
+                        buf.WriteInt64(long.MinValue);
+                        return;
+                    }
                 }
-                if (value == Instant.MinValue)
-                {
-                    buf.WriteInt64(long.MinValue);
-                    return;
-                }
+                WriteDateTimeUsingIntegerFormat(value.InUtc().LocalDateTime, buf);
             }
-            WriteDateTime(value.InUtc().LocalDateTime, buf);
+            else
+            {
+                if (_convertInfinityDateTime)
+                {
+                    if (value == Instant.MaxValue)
+                    {
+                        buf.WriteDouble(double.PositiveInfinity);
+                        return;
+                    }
+                    if (value == Instant.MinValue)
+                    {
+                        buf.WriteDouble(double.NegativeInfinity);
+                        return;
+                    }
+                }
+                WriteDateTimeUsingFloatingPointFormat(value.InUtc().LocalDateTime, buf);
+            }
         }
 
         void INpgsqlSimpleTypeHandler<LocalDateTime>.Write(LocalDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
-            => WriteDateTime(value, buf);
+        {
+            if (_integerFormat)
+                WriteDateTimeUsingIntegerFormat(value, buf);
+            else
+                WriteDateTimeUsingFloatingPointFormat(value, buf);
+        }
 
-        internal static void WriteDateTime(LocalDateTime value, NpgsqlWriteBuffer buf)
+        internal static void WriteDateTimeUsingIntegerFormat(LocalDateTime value, NpgsqlWriteBuffer buf)
         {
             var totalDaysSinceEra = Period.Between(default(LocalDateTime), value, PeriodUnits.Days).Days;
             var microsecondOfDay = value.NanosecondOfDay / 1000;
@@ -165,10 +239,21 @@ namespace Npgsql.NodaTime
             }
         }
 
-        void CheckIntegerFormat()
+        internal static void WriteDateTimeUsingFloatingPointFormat(LocalDateTime value, NpgsqlWriteBuffer buf)
         {
-            if (!_integerFormat)
-                throw new NotSupportedException("Old floating point representation for timestamps not supported");
+            var totalDaysSinceEra = Period.Between(default(LocalDateTime), value, PeriodUnits.Days).Days;
+            var secondOfDay = value.NanosecondOfDay / 1000000000d;
+
+            if (totalDaysSinceEra >= 730119)
+            {
+                var uSecsDate = (totalDaysSinceEra - 730119) * 86400d;
+                buf.WriteDouble(uSecsDate + secondOfDay);
+            }
+            else
+            {
+                var uSecsDate = (730119 - totalDaysSinceEra) * 86400d;
+                buf.WriteDouble(-(uSecsDate - secondOfDay));
+            }
         }
     }
 }

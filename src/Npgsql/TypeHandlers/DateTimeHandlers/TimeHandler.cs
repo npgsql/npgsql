@@ -36,7 +36,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     {
         // Check for the legacy floating point timestamps feature
         protected override NpgsqlTypeHandler<TimeSpan> Create(NpgsqlConnection conn)
-            => new TimeHandler(conn.HasIntegerDateTimes);
+            => new TimeHandler();
     }
 
     /// <remarks>
@@ -44,38 +44,22 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// </remarks>
     class TimeHandler : NpgsqlSimpleTypeHandler<TimeSpan>
     {
-        /// <summary>
-        /// A deprecated compile-time option of PostgreSQL switches to a floating-point representation of some date/time
-        /// fields. Npgsql (currently) does not support this mode.
-        /// </summary>
-        readonly bool _integerFormat;
-
-        public TimeHandler(bool integerFormat)
+        public TimeHandler()
         {
-            _integerFormat = integerFormat;
         }
 
         public override TimeSpan Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
-            CheckIntegerFormat();
-
             // PostgreSQL time resolution == 1 microsecond == 10 ticks
             return new TimeSpan(buf.ReadInt64() * 10);
         }
 
         public override int ValidateAndGetLength(TimeSpan value, NpgsqlParameter parameter)
         {
-            CheckIntegerFormat();
             return 8;
         }
 
         public override void Write(TimeSpan value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
             => buf.WriteInt64(value.Ticks / 10);
-
-        void CheckIntegerFormat()
-        {
-            if (!_integerFormat)
-                throw new NotSupportedException("Old floating point representation for timestamps not supported");
-        }
     }
 }

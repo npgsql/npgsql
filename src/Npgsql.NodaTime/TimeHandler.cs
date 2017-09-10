@@ -34,43 +34,27 @@ namespace Npgsql.NodaTime
     {
         // Check for the legacy floating point timestamps feature
         protected override NpgsqlTypeHandler<LocalTime> Create(NpgsqlConnection conn)
-            => new TimeHandler(conn.HasIntegerDateTimes);
+            => new TimeHandler();
     }
 
     class TimeHandler : NpgsqlSimpleTypeHandler<LocalTime>
     {
-        /// <summary>
-        /// A deprecated compile-time option of PostgreSQL switches to a floating-point representation of some date/time
-        /// fields. Npgsql (currently) does not support this mode.
-        /// </summary>
-        readonly bool _integerFormat;
-
-        public TimeHandler(bool integerFormat)
+        public TimeHandler()
         {
-            _integerFormat = integerFormat;
         }
 
         public override LocalTime Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
-            CheckIntegerFormat();
-
             // PostgreSQL time resolution == 1 microsecond == 10 ticks
             return LocalTime.FromTicksSinceMidnight(buf.ReadInt64() * 10);
         }
 
         public override int ValidateAndGetLength(LocalTime value, NpgsqlParameter parameter)
         {
-            CheckIntegerFormat();
             return 8;
         }
 
         public override void Write(LocalTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
             => buf.WriteInt64(value.TickOfDay / 10);
-
-        void CheckIntegerFormat()
-        {
-            if (!_integerFormat)
-                throw new NotSupportedException("Old floating point representation for timestamps not supported");
-        }
     }
 }
