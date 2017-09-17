@@ -113,8 +113,9 @@ where
         /// <param name="mapper"></param>
         internal override void AddVendorSpecificTypeMappings(INpgsqlTypeMapper mapper)
         {
-            // CrateDB does not have a text-datatype. Instead there is a varchar-datatype. 
-            // Therefore map string to varchar implicitly.
+            // CrateDB has a string-datatype listed in pg_type as 'varchar'.
+            // see https://crate.io/docs/crate/reference/sql/data_types.html#string
+            // Therefore map all string types to varchar and let the default TextHandler handle them.
             mapper.AddMapping(new NpgsqlTypeMappingBuilder
             {
                 PgTypeName = "varchar",
@@ -123,6 +124,21 @@ where
                 ClrTypes = new[] { typeof(string), typeof(char[]), typeof(char) },
                 InferredDbType = DbType.String,
                 TypeHandlerFactory = new TextHandlerFactory()
+            }
+            .Build());
+
+
+            // CrateDB has a timestamp datatype listed in pg_type as 'timestampz'. 
+            // Internally it maps to the UTC milliseconds since 1970-01-01T00:00:00Z stored as long.
+            // see https://crate.io/docs/crate/reference/sql/data_types.html#timestamp
+            // Therefore map all datetime types to timestampz and let the default TimestampTzHandler handle them.
+            mapper.AddMapping(new NpgsqlTypeMappingBuilder
+            {
+                PgTypeName = "timestampz",
+                NpgsqlDbType = NpgsqlDbType.TimestampTz,
+                DbTypes = new[] { DbType.DateTime, DbType.DateTime2, DbType.DateTimeOffset },
+                ClrTypes = new[] { typeof(NpgsqlDateTime), typeof(DateTime), typeof(DateTimeOffset) },
+                TypeHandlerFactory = new TypeHandlers.DateTimeHandlers.TimestampTzHandlerFactory()
             }
             .Build());
         }
