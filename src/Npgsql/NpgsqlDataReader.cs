@@ -1422,17 +1422,23 @@ namespace Npgsql
 
             var table = new DataTable("SchemaTable");
 
-            table.Columns.Add("AllowDBNull", typeof(bool));
+            // Note: column order is important to match SqlClient's, some ADO.NET users appear
+            // to assume ordering (see #1671)
+            table.Columns.Add("ColumnName", typeof(string));
+            table.Columns.Add("ColumnOrdinal", typeof(int));
+            table.Columns.Add("ColumnSize", typeof(int));
+            table.Columns.Add("NumericPrecision", typeof(int));
+            table.Columns.Add("NumericScale", typeof(int));
+            table.Columns.Add("IsUnique", typeof(bool));
+            table.Columns.Add("IsKey", typeof(bool));
+            table.Columns.Add("BaseServerName", typeof(string));
             table.Columns.Add("BaseCatalogName", typeof(string));
             table.Columns.Add("BaseColumnName", typeof(string));
             table.Columns.Add("BaseSchemaName", typeof(string));
             table.Columns.Add("BaseTableName", typeof(string));
-            table.Columns.Add("ColumnName", typeof(string));
-            table.Columns.Add("ColumnOrdinal", typeof(int));
-            table.Columns.Add("ColumnSize", typeof(int));
             table.Columns.Add("DataType", typeof(Type));
-            table.Columns.Add("IsUnique", typeof(bool));
-            table.Columns.Add("IsKey", typeof(bool));
+            table.Columns.Add("AllowDBNull", typeof(bool));
+            table.Columns.Add("ProviderType", typeof(Type));
             table.Columns.Add("IsAliased", typeof(bool));
             table.Columns.Add("IsExpression", typeof(bool));
             table.Columns.Add("IsIdentity", typeof(bool));
@@ -1441,35 +1447,35 @@ namespace Npgsql
             table.Columns.Add("IsHidden", typeof(bool));
             table.Columns.Add("IsLong", typeof(bool));
             table.Columns.Add("IsReadOnly", typeof(bool));
-            table.Columns.Add("NumericPrecision", typeof(int));
-            table.Columns.Add("NumericScale", typeof(int));
             table.Columns.Add("ProviderSpecificDataType", typeof(Type));
-            table.Columns.Add("ProviderType", typeof(Type));
+            table.Columns.Add("DataTypeName", typeof(string));
 
             foreach (var column in GetColumnSchema())
             {
                 var row = table.NewRow();
 
-                row["AllowDBNull"] = (object)column.AllowDBNull ?? DBNull.Value;
-                row["BaseColumnName"] = column.BaseColumnName;
-                row["BaseCatalogName"] = column.BaseCatalogName;
-                row["BaseSchemaName"] = column.BaseSchemaName;
-                row["BaseTableName"] = column.BaseTableName;
                 row["ColumnName"] = column.ColumnName;
                 row["ColumnOrdinal"] = column.ColumnOrdinal ?? -1;
                 row["ColumnSize"] = column.ColumnSize ?? -1;
-                row["DataType"] = row["ProviderType"] = column.DataType; // Non-standard
+                row["NumericPrecision"] = column.NumericPrecision ?? 0;
+                row["NumericScale"] = column.NumericScale ?? 0;
                 row["IsUnique"] = column.IsUnique == true;
                 row["IsKey"] = column.IsKey == true;
+                row["BaseServerName"] = "";
+                row["BaseCatalogName"] = column.BaseCatalogName;
+                row["BaseColumnName"] = column.BaseColumnName;
+                row["BaseSchemaName"] = column.BaseSchemaName;
+                row["BaseTableName"] = column.BaseTableName;
+                row["DataType"] = row["ProviderType"] = column.DataType; // Non-standard
+                row["AllowDBNull"] = (object)column.AllowDBNull ?? DBNull.Value;
                 row["IsAliased"] = column.IsAliased == true;
                 row["IsExpression"] = column.IsExpression == true;
-                row["IsAutoIncrement"] = column.IsAutoIncrement == true;
                 row["IsIdentity"] = column.IsIdentity == true;
+                row["IsAutoIncrement"] = column.IsAutoIncrement == true;
                 row["IsRowVersion"] = false;
                 row["IsHidden"] = column.IsHidden == true;
                 row["IsLong"] = column.IsLong == true;
-                row["NumericPrecision"] = column.NumericPrecision ?? 0;
-                row["NumericScale"] = column.NumericScale ?? 0;
+                row["DataTypeName"] = column.DataTypeName;
 
                 table.Rows.Add(row);
             }
