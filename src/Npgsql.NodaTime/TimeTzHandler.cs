@@ -34,19 +34,29 @@ namespace Npgsql.NodaTime
     {
         // Check for the legacy floating point timestamps feature
         protected override NpgsqlTypeHandler<OffsetDateTime> Create(NpgsqlConnection conn)
-            => new TimeTzHandler();
+            => new TimeTzHandler(conn.HasIntegerDateTimes);
     }
 
     class TimeTzHandler : NpgsqlSimpleTypeHandler<OffsetDateTime>
     {
-        public TimeTzHandler()
+        /// <summary>
+        /// A deprecated compile-time option of PostgreSQL switches to a floating-point representation of some date/time
+        /// fields. Some PostgreSQL-like databases (e.g. CrateDB) use floating-point representation by default and do not 
+        /// provide the option of switching to integer format.
+        /// </summary>
+        readonly bool _integerFormat;
+
+        public TimeTzHandler(bool integerFormat)
         {
+            _integerFormat = integerFormat;
         }
 
         public override OffsetDateTime Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             // Adjust from 1 microsecond to 100ns. Time zone (in seconds) is inverted.
-            var dateTime = new LocalDate() + LocalTime.FromTicksSinceMidnight(buf.ReadInt64() * 10);
+            var dateTime = _integerFormat ?
+                new LocalDate() + LocalTime.FromTicksSinceMidnight(buf.ReadInt64() * 10) :
+                new LocalDate() + LocalTime.FromTicksSinceMidnight((long)(buf.ReadDouble() * NodaConstants.TicksPerSecond));
             var offset = Offset.FromSeconds(-buf.ReadInt32());
             return new OffsetDateTime(dateTime, offset);
         }
@@ -60,7 +70,10 @@ namespace Npgsql.NodaTime
 
         public override void Write(OffsetDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {
-            buf.WriteInt64(value.TickOfDay / 10);
+            if (_integerFormat)
+                buf.WriteInt64(value.TickOfDay / 10);
+            else
+                buf.WriteDouble((double)value.TickOfDay / NodaConstants.TicksPerSecond);
             buf.WriteInt32(-(int)(value.Offset.Ticks / NodaConstants.TicksPerSecond));
         }
     }
