@@ -21,11 +21,8 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using System;
-using System.Collections.Generic;
 using System.Data;
 using System.Linq;
-using System.Threading.Tasks;
 using Npgsql.PostgresTypes;
 using NUnit.Framework;
 
@@ -162,6 +159,17 @@ namespace Npgsql.Tests
                     Assert.That(columns[2].ColumnName, Is.Null);
                     Assert.That(columns[3].ColumnName, Is.EqualTo("varchar"));
                 }
+            }
+
+            // See https://github.com/npgsql/npgsql/issues/1676
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (col text)");
+                var behavior = CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo;
+                //var behavior = CommandBehavior.SchemaOnly;
+                using (var command = new NpgsqlCommand("SELECT col AS col_alias FROM data", conn))
+                using (var reader = command.ExecuteReader(behavior))
+                    Assert.That(reader.GetColumnSchema()[0].ColumnName, Is.EqualTo("col_alias"));
             }
         }
 
