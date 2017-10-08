@@ -96,6 +96,11 @@ namespace Npgsql
                 IsBinary = copyOutResponse.IsBinary;
                 _canRead = true;
                 break;
+            case BackendMessageCode.CompletedResponse:
+                throw new InvalidOperationException(
+                    "This API only supports import/export from the client, i.e. COPY commands containing TO/FROM STDIN. " +
+                    "To import/export with files on your PostgreSQL machine, simply execute the command with ExecuteNonQuery. " +
+                    "Note that your data has been successfully imported/exported.");
             default:
                 throw _connector.UnexpectedMessageReceived(msg.Code);
             }
