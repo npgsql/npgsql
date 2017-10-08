@@ -457,6 +457,36 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test]
+        public void Enum()
+        {
+            var expected = Mood.Happy;
+
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TYPE pg_temp.mood AS ENUM ('sad', 'ok', 'happy')");
+                conn.ReloadTypes();
+                conn.TypeMapper.MapEnum<Mood>();
+
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (mymood mood)");
+
+                using (var writer = conn.BeginBinaryImport("COPY data (mymood) FROM STDIN BINARY"))
+                {
+                    writer.StartRow();
+                    writer.Write(expected);
+                    writer.Commit();
+                }
+
+                using (var reader = conn.BeginBinaryExport("COPY data (mymood) TO STDIN BINARY"))
+                {
+                    reader.StartRow();
+                    Assert.That(reader.Read<Mood>(), Is.EqualTo(expected));
+                }
+            }
+        }
+
+        enum Mood { Sad, Ok, Happy };
+
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1440")]
         public void ErrorDuringImport()
         {
