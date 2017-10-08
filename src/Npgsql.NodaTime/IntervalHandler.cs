@@ -72,9 +72,7 @@ namespace Npgsql.NodaTime
         }
 
         public override int ValidateAndGetLength(Period value, NpgsqlParameter parameter)
-        {
-            return 16;
-        }
+            => 16;
 
         public override void Write(Period value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {

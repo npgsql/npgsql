@@ -172,19 +172,13 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         #region Write
 
         public override int ValidateAndGetLength(DateTime value, NpgsqlParameter parameter)
-        {
-            return 8;
-        }
+            => 8;
 
         public override int ValidateAndGetLength(NpgsqlDateTime value, NpgsqlParameter parameter)
-        {
-            return 8;
-        }
+            => 8;
 
         public int ValidateAndGetLength(DateTimeOffset value, NpgsqlParameter parameter)
-        {
-            return 8;
-        }
+            => 8;
 
         public override void Write(NpgsqlDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {

@@ -77,14 +77,10 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         }
 
         public override int ValidateAndGetLength(TimeSpan value, NpgsqlParameter parameter)
-        {
-            return 16;
-        }
+            => 16;
 
         public override int ValidateAndGetLength(NpgsqlTimeSpan value, NpgsqlParameter parameter)
-        {
-            return 16;
-        }
+            => 16;
 
         public override void Write(NpgsqlTimeSpan value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {

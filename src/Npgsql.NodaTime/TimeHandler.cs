@@ -61,9 +61,7 @@ namespace Npgsql.NodaTime
         }
 
         public override int ValidateAndGetLength(LocalTime value, NpgsqlParameter parameter)
-        {
-            return 8;
-        }
+            => 8;
 
         public override void Write(LocalTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {
