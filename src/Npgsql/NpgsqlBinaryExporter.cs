@@ -77,11 +77,24 @@ namespace Npgsql
             {
                 _connector.SendQuery(copyToCommand);
 
-                // TODO: Failure will break the connection (e.g. if we get CopyOutResponse), handle more gracefully
-                var copyOutResponse = _connector.ReadExpecting<CopyOutResponseMessage>();
-                if (!copyOutResponse.IsBinary) {
-                    throw new ArgumentException("copyToCommand triggered a text transfer, only binary is allowed", nameof(copyToCommand));
+                CopyOutResponseMessage copyOutResponse;
+                var msg = _connector.ReadMessage();
+                switch (msg.Code)
+                {
+                case BackendMessageCode.CopyOutResponse:
+                    copyOutResponse = (CopyOutResponseMessage)msg;
+                    if (!copyOutResponse.IsBinary)
+                        throw new ArgumentException("copyToCommand triggered a text transfer, only binary is allowed", nameof(copyToCommand));
+                    break;
+                case BackendMessageCode.CompletedResponse:
+                    throw new InvalidOperationException(
+                        "This API only supports import/export from the client, i.e. COPY commands containing TO/FROM STDIN. " +
+                        "To import/export with files on your PostgreSQL machine, simply execute the command with ExecuteNonQuery. " +
+                        "Note that your data has been successfully imported/exported.");
+                default:
+                    throw _connector.UnexpectedMessageReceived(msg.Code);
                 }
+
                 NumColumns = copyOutResponse.NumColumns;
                 _typeHandlerCache = new NpgsqlTypeHandler[NumColumns];
                 ReadHeader();
