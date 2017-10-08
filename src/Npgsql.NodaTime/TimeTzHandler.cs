@@ -41,7 +41,8 @@ namespace Npgsql.NodaTime
     {
         /// <summary>
         /// A deprecated compile-time option of PostgreSQL switches to a floating-point representation of some date/time
-        /// fields. Npgsql (currently) does not support this mode.
+        /// fields. Some PostgreSQL-like databases (e.g. CrateDB) use floating-point representation by default and do not 
+        /// provide the option of switching to integer format.
         /// </summary>
         readonly bool _integerFormat;
 
@@ -52,17 +53,16 @@ namespace Npgsql.NodaTime
 
         public override OffsetDateTime Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
-            CheckIntegerFormat();
-
             // Adjust from 1 microsecond to 100ns. Time zone (in seconds) is inverted.
-            var dateTime = new LocalDate() + LocalTime.FromTicksSinceMidnight(buf.ReadInt64() * 10);
+            var dateTime = _integerFormat ?
+                new LocalDate() + LocalTime.FromTicksSinceMidnight(buf.ReadInt64() * 10) :
+                new LocalDate() + LocalTime.FromTicksSinceMidnight((long)(buf.ReadDouble() * NodaConstants.TicksPerSecond));
             var offset = Offset.FromSeconds(-buf.ReadInt32());
             return new OffsetDateTime(dateTime, offset);
         }
 
         public override int ValidateAndGetLength(OffsetDateTime value, NpgsqlParameter parameter)
         {
-            CheckIntegerFormat();
             if (value.Date != default(LocalDate))
                 throw new InvalidCastException("Date component must be empty for timetz");
             return 12;
@@ -70,14 +70,11 @@ namespace Npgsql.NodaTime
 
         public override void Write(OffsetDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {
-            buf.WriteInt64(value.TickOfDay / 10);
+            if (_integerFormat)
+                buf.WriteInt64(value.TickOfDay / 10);
+            else
+                buf.WriteDouble((double)value.TickOfDay / NodaConstants.TicksPerSecond);
             buf.WriteInt32(-(int)(value.Offset.Ticks / NodaConstants.TicksPerSecond));
-        }
-
-        void CheckIntegerFormat()
-        {
-            if (!_integerFormat)
-                throw new NotSupportedException("Old floating point representation for timestamps not supported");
         }
     }
 }

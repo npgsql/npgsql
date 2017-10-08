@@ -45,7 +45,8 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     {
         /// <summary>
         /// A deprecated compile-time option of PostgreSQL switches to a floating-point representation of some date/time
-        /// fields. Npgsql (currently) does not support this mode.
+        /// fields. Some PostgreSQL-like databases (e.g. CrateDB) use floating-point representation by default and do not 
+        /// provide the option of switching to integer format.
         /// </summary>
         readonly bool _integerFormat;
 
@@ -59,28 +60,39 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
 
         protected override NpgsqlTimeSpan ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
-            CheckIntegerFormat();
-            var ticks = buf.ReadInt64();
-            var day = buf.ReadInt32();
-            var month = buf.ReadInt32();
-            return new NpgsqlTimeSpan(month, day, ticks * 10);
+            if (_integerFormat)
+            {
+                var ticks = buf.ReadInt64();
+                var day = buf.ReadInt32();
+                var month = buf.ReadInt32();
+                return new NpgsqlTimeSpan(month, day, ticks * 10);
+            }
+            else
+            {
+                var seconds = buf.ReadDouble();
+                var day = buf.ReadInt32();
+                var month = buf.ReadInt32();
+                return new NpgsqlTimeSpan(month, day, (long)(seconds * TimeSpan.TicksPerSecond));
+            }
         }
 
         public override int ValidateAndGetLength(TimeSpan value, NpgsqlParameter parameter)
         {
-            CheckIntegerFormat();
             return 16;
         }
 
         public override int ValidateAndGetLength(NpgsqlTimeSpan value, NpgsqlParameter parameter)
         {
-            CheckIntegerFormat();
             return 16;
         }
 
         public override void Write(NpgsqlTimeSpan value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {
-            buf.WriteInt64(value.Ticks / 10); // TODO: round?
+            if (_integerFormat)
+                buf.WriteInt64(value.Ticks / 10); // TODO: round?
+            else
+                buf.WriteDouble(value.TotalSeconds - (value.Days * 86400) - (value.Months * NpgsqlTimeSpan.DaysPerMonth * 86400));
+
             buf.WriteInt32(value.Days);
             buf.WriteInt32(value.Months);
         }
@@ -88,11 +100,5 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         // TODO: Can write directly from TimeSpan
         public override void Write(TimeSpan value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
             => Write(value, buf, parameter);
-
-        void CheckIntegerFormat()
-        {
-            if (!_integerFormat)
-                throw new NotSupportedException("Old floating point representation for timestamps not supported");
-        }
     }
 }

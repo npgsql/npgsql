@@ -41,7 +41,8 @@ namespace Npgsql.NodaTime
     {
         /// <summary>
         /// A deprecated compile-time option of PostgreSQL switches to a floating-point representation of some date/time
-        /// fields. Npgsql (currently) does not support this mode.
+        /// fields. Some PostgreSQL-like databases (e.g. CrateDB) use floating-point representation by default and do not 
+        /// provide the option of switching to integer format.
         /// </summary>
         readonly bool _integerFormat;
 
@@ -52,25 +53,24 @@ namespace Npgsql.NodaTime
 
         public override LocalTime Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
-            CheckIntegerFormat();
-
-            // PostgreSQL time resolution == 1 microsecond == 10 ticks
-            return LocalTime.FromTicksSinceMidnight(buf.ReadInt64() * 10);
+            if (_integerFormat)
+                // PostgreSQL time resolution == 1 microsecond == 10 ticks
+                return LocalTime.FromTicksSinceMidnight(buf.ReadInt64() * 10);
+            else
+                return LocalTime.FromTicksSinceMidnight((long)(buf.ReadDouble() * NodaConstants.TicksPerSecond));
         }
 
         public override int ValidateAndGetLength(LocalTime value, NpgsqlParameter parameter)
         {
-            CheckIntegerFormat();
             return 8;
         }
 
         public override void Write(LocalTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
-            => buf.WriteInt64(value.TickOfDay / 10);
-
-        void CheckIntegerFormat()
         {
-            if (!_integerFormat)
-                throw new NotSupportedException("Old floating point representation for timestamps not supported");
+            if (_integerFormat)
+                buf.WriteInt64(value.TickOfDay / 10);
+            else
+                buf.WriteDouble((double)value.TickOfDay / NodaConstants.TicksPerSecond);
         }
     }
 }

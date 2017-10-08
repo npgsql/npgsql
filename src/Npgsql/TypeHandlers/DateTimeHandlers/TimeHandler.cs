@@ -46,7 +46,8 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     {
         /// <summary>
         /// A deprecated compile-time option of PostgreSQL switches to a floating-point representation of some date/time
-        /// fields. Npgsql (currently) does not support this mode.
+        /// fields. Some PostgreSQL-like databases (e.g. CrateDB) use floating-point representation by default and do not 
+        /// provide the option of switching to integer format.
         /// </summary>
         readonly bool _integerFormat;
 
@@ -57,25 +58,24 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
 
         public override TimeSpan Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
-            CheckIntegerFormat();
-
-            // PostgreSQL time resolution == 1 microsecond == 10 ticks
-            return new TimeSpan(buf.ReadInt64() * 10);
+            if (_integerFormat)
+                // PostgreSQL time resolution == 1 microsecond == 10 ticks
+                return new TimeSpan(buf.ReadInt64() * 10);
+            else
+                return TimeSpan.FromSeconds(buf.ReadDouble());
         }
 
         public override int ValidateAndGetLength(TimeSpan value, NpgsqlParameter parameter)
         {
-            CheckIntegerFormat();
             return 8;
         }
 
         public override void Write(TimeSpan value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
-            => buf.WriteInt64(value.Ticks / 10);
-
-        void CheckIntegerFormat()
         {
-            if (!_integerFormat)
-                throw new NotSupportedException("Old floating point representation for timestamps not supported");
+            if (_integerFormat)
+                buf.WriteInt64(value.Ticks / 10);
+            else
+                buf.WriteDouble(value.TotalSeconds);
         }
     }
 }
