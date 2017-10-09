@@ -481,7 +481,13 @@ namespace NpgsqlTypes
         /// <summary>
         /// The geometry type for postgresql spatial extension postgis.
         /// </summary>
-        Geometry = 50
+        Geometry = 50,
+
+        /// <summary>
+        /// The geography type for postgresql spatial extension postgis.
+        /// </summary>
+        Geography = 54
+         
 
         #endregion
     }
