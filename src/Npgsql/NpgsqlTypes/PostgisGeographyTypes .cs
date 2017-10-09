@@ -7,6 +7,8 @@ using Npgsql;
 
 #pragma warning disable CA1710
 
+#pragma warning disable CS1591
+
 // ReSharper disable once CheckNamespace
 namespace NpgsqlTypes
 {
