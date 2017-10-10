@@ -53,7 +53,7 @@ namespace Npgsql.TypeHandlers
         INpgsqlTypeHandler<PostgisGeometryCollection>
     {
 
-        #region Read
+        #region Template Methods
 
         protected override PostgisGeometry newPoint(double x, double y) => new PostgisPoint(x, y);
         protected override PostgisGeometry newLineString(Coordinate2D[] points) => new PostgisLineString(points);
@@ -63,26 +63,9 @@ namespace Npgsql.TypeHandlers
         protected override PostgisGeometry newMultiPolygon(Coordinate2D[][][] pols) => new PostgisMultiPolygon(pols);
         protected override PostgisGeometry newCollection(PostgisGeometry[] postGisTypes) => new PostgisGeometryCollection(postGisTypes);
 
+        protected override void setSRID(PostgisGeometry geom, uint srid) => geom.SRID = srid;
 
-        public override async ValueTask<PostgisGeometry> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
-        {
-            await buf.Ensure(5, async);
-            var bo = (ByteOrder)buf.ReadByte();
-            var id = buf.ReadUInt32(bo);
-
-            var srid = 0u;
-            if ((id & (uint)EwkbModifiers.HasSRID) != 0)
-            {
-                await buf.Ensure(4, async);
-                srid = buf.ReadUInt32(bo);
-            }
-
-            var geom = await DoRead(buf, (WkbIdentifier)(id & 7), bo, async);
-            geom.SRID = srid;
-            return geom;
-        }
-
-        #endregion Read
+        #endregion Template Methods
 
         #region Read concrete types
 

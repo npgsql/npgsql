@@ -53,25 +53,7 @@ namespace Npgsql.TypeHandlers
         INpgsqlTypeHandler<PostgisGeographyCollection>
     {
 
-        #region Read
-
-        public override async ValueTask<PostgisGeography> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
-        {
-            await buf.Ensure(5, async);
-            var bo = (ByteOrder)buf.ReadByte();
-            var id = buf.ReadUInt32(bo);
-
-            var srid = 0u;
-            if ((id & (uint)EwkbModifiers.HasSRID) != 0)
-            {
-                await buf.Ensure(4, async);
-                srid = buf.ReadUInt32(bo);
-            }
-
-            var geom = await DoRead(buf, (WkbIdentifier)(id & 7), bo, async);
-            geom.SRID = srid;
-            return geom;
-        }
+        #region Template Methods
 
         protected override PostgisGeography newPoint(double x, double y) => new PostgisGeographyPoint(x, y);
         protected override PostgisGeography newLineString(Coordinate2D[] points) => new PostgisGeographyLineString(points);
@@ -81,7 +63,9 @@ namespace Npgsql.TypeHandlers
         protected override PostgisGeography newMultiPolygon(Coordinate2D[][][] pols) => new PostgisGeographyMultiPolygon(pols);
         protected override PostgisGeography newCollection(PostgisGeography[] postGisTypes) => new PostgisGeographyCollection(postGisTypes);
 
-        #endregion Read
+        protected override void setSRID(PostgisGeography geom, uint srid) => geom.SRID = srid;
+
+        #endregion Template Methods
 
         #region Read concrete types
 

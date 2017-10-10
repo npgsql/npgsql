@@ -60,6 +60,7 @@ namespace Npgsql.TypeHandlers
                 : _byteaHandler.Write(value, buf, lengthCache, parameter, async);
         #endregion
 
+        #region Read
 
         // Template methods for creating appropriate types
         protected abstract T newPoint(double x, double y);
@@ -69,6 +70,9 @@ namespace Npgsql.TypeHandlers
         protected abstract T newMultiLineString(Coordinate2D[][] rings);
         protected abstract T newMultiPolygon(Coordinate2D[][][] pols);
         protected abstract T newCollection(T[] postGisTypes);
+
+        // Template method for updating SRID
+        protected abstract void setSRID(T geom, uint srid);
 
         protected async ValueTask<T> DoRead(NpgsqlReadBuffer buf, WkbIdentifier id, ByteOrder bo, bool async)
         {
@@ -184,6 +188,25 @@ namespace Npgsql.TypeHandlers
                 throw new InvalidOperationException("Unknown Postgis identifier.");
             }
         }
-    }
 
+        public override async ValueTask<T> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
+        {
+            await buf.Ensure(5, async);
+            var bo = (ByteOrder)buf.ReadByte();
+            var id = buf.ReadUInt32(bo);
+
+            var srid = 0u;
+            if ((id & (uint)EwkbModifiers.HasSRID) != 0)
+            {
+                await buf.Ensure(4, async);
+                srid = buf.ReadUInt32(bo);
+            }
+
+            var geom = await DoRead(buf, (WkbIdentifier)(id & 7), bo, async);
+            setSRID(geom, srid);
+            return geom;
+        }
+
+        #endregion Read
+    }
 }
