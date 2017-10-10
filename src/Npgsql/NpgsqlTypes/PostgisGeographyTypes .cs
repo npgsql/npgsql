@@ -13,7 +13,7 @@ using Npgsql;
 namespace NpgsqlTypes
 {
     /// <summary>
-    /// Represents an Postgis feature.
+    /// Represents an Postgis geography feature.
     /// </summary>
     public abstract class PostgisGeography
     {
@@ -40,7 +40,7 @@ namespace NpgsqlTypes
     }
 
     /// <summary>
-    /// Represents an Postgis 2D Point
+    /// Represents an Postgis geography 2D Point
     /// </summary>
     public class PostgisGeographyPoint : PostgisGeography, IEquatable<PostgisGeographyPoint>
     {
@@ -71,7 +71,7 @@ namespace NpgsqlTypes
     }
 
     /// <summary>
-    /// Represents an Ogc 2D LineString
+    /// Represents an Ogc geography 2D LineString
     /// </summary>
     public class PostgisGeographyLineString : PostgisGeography, IEquatable<PostgisGeographyLineString>, IEnumerable<Coordinate2D>
     {
@@ -130,7 +130,7 @@ namespace NpgsqlTypes
     }
 
     /// <summary>
-    /// Represents an Postgis 2D Polygon.
+    /// Represents an Postgis geography 2D Polygon.
     /// </summary>
     public class PostgisGeographyPolygon : PostgisGeography, IEquatable<PostgisGeographyPolygon>, IEnumerable<IEnumerable<Coordinate2D>>
     {
@@ -197,7 +197,7 @@ namespace NpgsqlTypes
     }
 
     /// <summary>
-    /// Represents a Postgis 2D MultiPoint
+    /// Represents a Postgis geography 2D MultiPoint
     /// </summary>
     public class PostgisGeographyMultiPoint : PostgisGeography, IEquatable<PostgisGeographyMultiPoint>, IEnumerable<Coordinate2D>
     {
@@ -261,7 +261,7 @@ namespace NpgsqlTypes
     }
 
     /// <summary>
-    /// Represents a Postgis 2D MultiLineString
+    /// Represents a Postgis geography 2D MultiLineString
     /// </summary>
     public sealed class PostgisGeographyMultiLineString : PostgisGeography,
         IEquatable<PostgisGeographyMultiLineString>, IEnumerable<PostgisGeographyLineString>
@@ -337,7 +337,7 @@ namespace NpgsqlTypes
     }
 
     /// <summary>
-    /// Represents a Postgis 2D MultiPolygon.
+    /// Represents a Postgis geography 2D MultiPolygon.
     /// </summary>
     public class PostgisGeographyMultiPolygon : PostgisGeography, IEquatable<PostgisGeographyMultiPolygon>, IEnumerable<PostgisGeographyPolygon>
     {
@@ -405,7 +405,7 @@ namespace NpgsqlTypes
     }
 
     /// <summary>
-    /// Represents a collection of Postgis feature.
+    /// Represents a collection of Postgis geography features.
     /// </summary>
     public class PostgisGeographyCollection : PostgisGeography, IEquatable<PostgisGeographyCollection>, IEnumerable<PostgisGeography>
     {
