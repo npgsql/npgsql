@@ -92,7 +92,7 @@ namespace NpgsqlTypes
     /// <summary>
     /// Class representing a 2D double precision floating point coordinate with X and Y axis.
     /// </summary>
-    public class Coordinate2D : IEquatable<Coordinate2D>
+    public struct Coordinate2D : IEquatable<Coordinate2D>
     {
         /// <summary>
         /// X coordinate.
@@ -131,8 +131,18 @@ namespace NpgsqlTypes
     /// <summary>
     /// Class representing a 3D double precision floating point coordinate with X, Y, and Z axis.
     /// </summary>
-    public class Coordinate3DZ : Coordinate2D, IEquatable<Coordinate3DZ>
+    public struct Coordinate3DZ : IEquatable<Coordinate3DZ>
     {
+        /// <summary>
+        /// X coordinate.
+        /// </summary>
+        public double X { get; }
+
+        /// <summary>
+        /// Y coordinate.
+        /// </summary>
+        public double Y { get; }
+
         /// <summary>
         /// Z coordinate.
         /// </summary>
@@ -144,7 +154,12 @@ namespace NpgsqlTypes
         /// <param name="x">X coordinate</param>
         /// <param name="y">Y coordinate</param>
         /// <param name="z">Z coordinate</param>
-        public Coordinate3DZ(double x, double y, double z) : base(x, y) => Z = z;
+        public Coordinate3DZ(double x, double y, double z)
+        {
+            X = x;
+            Y = y;
+            Z = z;
+        }
 
         // ReSharper disable CompareOfFloatsByEqualityOperator
         public bool Equals(Coordinate3DZ other)
@@ -167,8 +182,18 @@ namespace NpgsqlTypes
     /// <summary>
     /// Class representing a 3D double precision floating point coordinate with X, Y, and M axis.
     /// </summary>
-    public class Coordinate3DM : Coordinate2D, IEquatable<Coordinate3DM>
+    public struct Coordinate3DM : IEquatable<Coordinate3DM>
     {
+        /// <summary>
+        /// X coordinate.
+        /// </summary>
+        public double X { get; }
+
+        /// <summary>
+        /// Y coordinate.
+        /// </summary>
+        public double Y { get; }
+
         /// <summary>
         /// M coordinate.
         /// </summary>
@@ -180,7 +205,12 @@ namespace NpgsqlTypes
         /// <param name="x">X coordinate</param>
         /// <param name="y">Y coordinate</param>
         /// <param name="m">M coordinate</param>
-        public Coordinate3DM(double x, double y, double m) : base(x, y) => M = m;
+        public Coordinate3DM(double x, double y, double m)
+        {
+            X = x;
+            Y = y;
+            M = m;
+        }
 
         // ReSharper disable CompareOfFloatsByEqualityOperator
         public bool Equals(Coordinate3DM other)
@@ -203,8 +233,18 @@ namespace NpgsqlTypes
     /// <summary>
     /// Class representing a 4D double precision floating point coordinate with X, Y, Z, and M axis.
     /// </summary>
-    public class Coordinate4D : Coordinate2D, IEquatable<Coordinate4D>
+    public struct Coordinate4D : IEquatable<Coordinate4D>
     {
+        /// <summary>
+        /// X coordinate.
+        /// </summary>
+        public double X { get; }
+
+        /// <summary>
+        /// Y coordinate.
+        /// </summary>
+        public double Y { get; }
+
         /// <summary>
         /// Z coordinate.
         /// </summary>
@@ -222,7 +262,13 @@ namespace NpgsqlTypes
         /// <param name="y">Y coordinate</param>
         /// <param name="z">Z coordinate</param>
         /// <param name="m">M coordinate</param>
-        public Coordinate4D(double x, double y, double z, double m) : base(x, y) { Z = z; M = m; }
+        public Coordinate4D(double x, double y, double z, double m)
+        {
+            X = x;
+            Y = y;
+            Z = z;
+            M = m;
+        }
 
         // ReSharper disable CompareOfFloatsByEqualityOperator
         public bool Equals(Coordinate4D other)
@@ -278,7 +324,7 @@ namespace NpgsqlTypes
     /// PostGIS base Geometry type with specified coordinate system.
     /// </summary>
     /// <typeparam name="T">Coordinate type for Geometry</typeparam>
-    public abstract class PostgisGeometry<T> : PostgisGeometry where T : Coordinate2D
+    public abstract class PostgisGeometry<T> : PostgisGeometry
     {
     }
 
@@ -311,7 +357,8 @@ namespace NpgsqlTypes
 
         public static bool operator !=(PostgisPoint x, PostgisPoint y) => !(x == y);
 
-        public override int GetHashCode() => X.GetHashCode() ^ PGUtil.RotateShift(Y.GetHashCode(), sizeof(int) / 2);
+        public override int GetHashCode() => PGUtil.RotateShift(X.GetHashCode(), sizeof(int) / 2)
+            ^ PGUtil.RotateShift(Y.GetHashCode(), sizeof(int) / 2);
     }
 
     /// <summary>
@@ -341,7 +388,9 @@ namespace NpgsqlTypes
 
         public static bool operator !=(PostgisPointZ left, PostgisPointZ right) => !(left == right);
 
-        public override int GetHashCode() => Z.GetHashCode() ^ base.GetHashCode();
+        public override int GetHashCode() => PGUtil.RotateShift(X.GetHashCode(), sizeof(int) / 2)
+            ^ PGUtil.RotateShift(Y.GetHashCode(), sizeof(int) / 2)
+            ^ PGUtil.RotateShift(Z.GetHashCode(), sizeof(int) / 2);
     }
 
     /// <summary>
@@ -371,7 +420,9 @@ namespace NpgsqlTypes
 
         public static bool operator !=(PostgisPointM left, PostgisPointM right) => !(left == right);
 
-        public override int GetHashCode() => M.GetHashCode() ^ base.GetHashCode();
+        public override int GetHashCode() => PGUtil.RotateShift(X.GetHashCode(), sizeof(int) / 2)
+            ^ PGUtil.RotateShift(Y.GetHashCode(), sizeof(int) / 2)
+            ^ PGUtil.RotateShift(M.GetHashCode(), sizeof(int) / 2);
     }
 
     /// <summary>
@@ -402,7 +453,10 @@ namespace NpgsqlTypes
 
         public static bool operator !=(PostgisPointZM left, PostgisPointZM right) => !(left == right);
 
-        public override int GetHashCode() => Z.GetHashCode() ^ base.GetHashCode();
+        public override int GetHashCode() => PGUtil.RotateShift(X.GetHashCode(), sizeof(int) / 2)
+            ^ PGUtil.RotateShift(Y.GetHashCode(), sizeof(int) / 2)
+            ^ PGUtil.RotateShift(Z.GetHashCode(), sizeof(int) / 2)
+            ^ PGUtil.RotateShift(M.GetHashCode(), sizeof(int) / 2);
     }
 
     #endregion
@@ -413,7 +467,7 @@ namespace NpgsqlTypes
     /// Base PostGIS LineString type of specified coordinates system.
     /// </summary>
     /// <typeparam name="T">Coordinate type for Geometry</typeparam>
-    public abstract class PostgisLineString<T> : PostgisGeometry<T>, IEnumerable<T>, IEquatable<PostgisLineString<T>> where T : Coordinate2D
+    public abstract class PostgisLineString<T> : PostgisGeometry<T>, IEnumerable<T>, IEquatable<PostgisLineString<T>>
     {
         protected T[] _points;
 
@@ -511,7 +565,7 @@ namespace NpgsqlTypes
     /// Base PostGIS Polygon type of specified coordinates system.
     /// </summary>
     /// <typeparam name="T">Coordinate type for Geometry</typeparam>
-    public abstract class PostgisPolygon<T> : PostgisGeometry<T>, IEquatable<PostgisPolygon<T>>, IEnumerable<IEnumerable<T>> where T : Coordinate2D
+    public abstract class PostgisPolygon<T> : PostgisGeometry<T>, IEquatable<PostgisPolygon<T>>, IEnumerable<IEnumerable<T>>
     {
         protected T[][] _rings;
 
@@ -556,8 +610,8 @@ namespace NpgsqlTypes
         {
             var ret = 266370105;//seed with something other than zero to make paths of all zeros hash differently.
             for (var i = 0; i < _rings.Length; i++)
-            for (var j = 0; j < _rings[i].Length; j++)
-                ret ^= PGUtil.RotateShift(_rings[i][j].GetHashCode(), ret % sizeof(int));
+                for (var j = 0; j < _rings[i].Length; j++)
+                    ret ^= PGUtil.RotateShift(_rings[i][j].GetHashCode(), ret % sizeof(int));
             return ret;
         }
     }
@@ -622,7 +676,7 @@ namespace NpgsqlTypes
     /// Base PostGIS MultiPoint type of specified coordinates system.
     /// </summary>
     /// <typeparam name="T">Coordinate type for Geometry</typeparam>
-    public abstract class PostgisMultiPoint<T> : PostgisGeometry<T>, IEquatable<PostgisMultiPoint<T>>, IEnumerable<T> where T : Coordinate2D
+    public abstract class PostgisMultiPoint<T> : PostgisGeometry<T>, IEquatable<PostgisMultiPoint<T>>, IEnumerable<T>
     {
         protected T[] _points;
 
@@ -654,7 +708,7 @@ namespace NpgsqlTypes
 
         //seed with something other than zero to make paths of all zeros hash differently.
         public override int GetHashCode() =>
-            _points.Aggregate(266370105, (current, t) =>current ^ PGUtil.RotateShift(t.GetHashCode(), current % sizeof(int)));
+            _points.Aggregate(266370105, (current, t) => current ^ PGUtil.RotateShift(t.GetHashCode(), current % sizeof(int)));
 
         public int PointCount => _points.Length;
     }
@@ -739,7 +793,7 @@ namespace NpgsqlTypes
     /// Base PostGIS MultiLineString type of specified coordinates system.
     /// </summary>
     /// <typeparam name="T">Coordinate type for Geometry</typeparam>
-    public abstract class PostgisMultiLineString<T> : PostgisGeometry<T>, IEquatable<PostgisMultiLineString<T>>, IEnumerable<PostgisLineString<T>> where T : Coordinate2D
+    public abstract class PostgisMultiLineString<T> : PostgisGeometry<T>, IEquatable<PostgisMultiLineString<T>>, IEnumerable<PostgisLineString<T>>
     {
         protected PostgisLineString<T>[] _lineStrings;
 
@@ -869,7 +923,7 @@ namespace NpgsqlTypes
     /// Base PostGIS MultiPolygon type of specified coordinates system.
     /// </summary>
     /// <typeparam name="T">Coordinate type for Geometry</typeparam>
-    public abstract class PostgisMultiPolygon<T> : PostgisGeometry<T>, IEquatable<PostgisMultiPolygon<T>>, IEnumerable<PostgisPolygon<T>> where T : Coordinate2D
+    public abstract class PostgisMultiPolygon<T> : PostgisGeometry<T>, IEquatable<PostgisMultiPolygon<T>>, IEnumerable<PostgisPolygon<T>>
     {
         protected PostgisPolygon<T>[] _polygons;
 
@@ -973,7 +1027,7 @@ namespace NpgsqlTypes
     /// Base PostGIS GeometryCollection type of specified coordinates system.
     /// </summary>
     /// <typeparam name="T">Coordinate type for Geometry</typeparam>
-    public abstract class PostgisGeometryCollection<T> : PostgisGeometry<T>, IEquatable<PostgisGeometryCollection<T>>, IEnumerable<PostgisGeometry<T>> where T : Coordinate2D
+    public abstract class PostgisGeometryCollection<T> : PostgisGeometry<T>, IEquatable<PostgisGeometryCollection<T>>, IEnumerable<PostgisGeometry<T>>
     {
         protected PostgisGeometry<T>[] _geometries;
 
