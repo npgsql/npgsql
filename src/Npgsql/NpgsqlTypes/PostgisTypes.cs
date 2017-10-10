@@ -41,7 +41,6 @@ namespace NpgsqlTypes
     enum WKBGeometryType : uint
     {
         // 2D Geometry
-        Geometry = 0,
         Point = 1,
         LineString = 2,
         Polygon = 3,
@@ -50,7 +49,6 @@ namespace NpgsqlTypes
         MultiPolygon = 6,
         GeometryCollection = 7,
         // 3DZ Geometry
-        GeometryZ = 1000,
         PointZ = 1001,
         LineStringZ = 1002,
         PolygonZ = 1003,
@@ -59,7 +57,6 @@ namespace NpgsqlTypes
         MultiPolygonZ = 1006,
         GeometryCollectionZ = 1007,
         // 3DM Geometry
-        GeometryM = 2000,
         PointM = 2001,
         LineStringM = 2002,
         PolygonM = 2003,
