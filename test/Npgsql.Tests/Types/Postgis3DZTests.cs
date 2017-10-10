@@ -30,88 +30,87 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests.Types
 {
-    class PostgisTests : TestBase
+    class Postgis3DZTests : TestBase
     {
         public class TestAtt
         {
-            public PostgisGeometry Geom;
+            public PostgisGeometry<Coordinate3DZ> Geom;
             public string SQL;
         }
 
         static readonly TestAtt[] Tests =
         {
-            new TestAtt { Geom = new PostgisPoint(1D, 2500D), SQL = "st_makepoint(1,2500)" },
             new TestAtt {
-                Geom = new PostgisLineString(new[] { new Coordinate2D(1D, 1D), new Coordinate2D(1D, 2500D) }),
-                SQL = "st_makeline(st_makepoint(1,1),st_makepoint(1,2500))"
+                Geom = new PostgisPointZ(1D, 2500D, 42.3D),
+                SQL = "st_makepoint(1,2500,42.3)"
             },
             new TestAtt {
-                Geom = new PostgisPolygon(new[] { new[] {
-                    new Coordinate2D(1d,1d),
-                    new Coordinate2D(2d,2d),
-                    new Coordinate2D(3d,3d),
-                    new Coordinate2D(1d,1d)
+                Geom = new PostgisPolygonZ(new[] { new[] {
+                    new Coordinate3DZ(1d,1d,1d),
+                    new Coordinate3DZ(2d,2d,2d),
+                    new Coordinate3DZ(3d,3d,3d),
+                    new Coordinate3DZ(1d,1d,1d)
                 }}),
-                SQL = "st_makepolygon(st_makeline(ARRAY[st_makepoint(1,1),st_makepoint(2,2),st_makepoint(3,3),st_makepoint(1,1)]))"
+                SQL = "st_makepolygon(st_makeline(ARRAY[st_makepoint(1,1,1),st_makepoint(2,2,2),st_makepoint(3,3,3),st_makepoint(1,1,1)]))"
             },
             new TestAtt {
-                Geom = new PostgisMultiPoint(new[] { new Coordinate2D(1D, 1D) }),
-                SQL = "st_multi(st_makepoint(1,1))"
+                Geom = new PostgisMultiPointZ(new[] { new Coordinate3DZ(1D, 1D, 1D) }),
+                SQL = "st_multi(st_makepoint(1,1,1))"
             },
             new TestAtt {
-                Geom = new PostgisMultiLineString(new[] {
-                    new PostgisLineString(new[] {
-                        new Coordinate2D(1D, 1D),
-                        new Coordinate2D(1D, 2500D)
+                Geom = new PostgisMultiLineStringZ(new[] {
+                    new PostgisLineStringZ(new[] {
+                        new Coordinate3DZ(1D, 1D, 1D),
+                        new Coordinate3DZ(1D, 2500D, 2D)
                     })
                 }),
-                SQL = "st_multi(st_makeline(st_makepoint(1,1),st_makepoint(1,2500)))"
+                SQL = "st_multi(st_makeline(st_makepoint(1,1,1),st_makepoint(1,2500,2)))"
             },
             new TestAtt {
-                Geom = new PostgisMultiPolygon(new[] {
-                    new PostgisPolygon(new[] { new[] {
-                        new Coordinate2D(1d,1d),
-                        new Coordinate2D(2d,2d),
-                        new Coordinate2D(3d,3d),
-                        new Coordinate2D(1d,1d)
+                Geom = new PostgisMultiPolygonZ(new[] {
+                    new PostgisPolygonZ(new[] { new[] {
+                        new Coordinate3DZ(1d,1d,1d),
+                        new Coordinate3DZ(2d,2d,2d),
+                        new Coordinate3DZ(3d,3d,3d),
+                        new Coordinate3DZ(1d,1d,1d)
                     }})
                 }),
-                SQL = "st_multi(st_makepolygon(st_makeline(ARRAY[st_makepoint(1,1),st_makepoint(2,2),st_makepoint(3,3),st_makepoint(1,1)])))"
+                SQL = "st_multi(st_makepolygon(st_makeline(ARRAY[st_makepoint(1,1,1),st_makepoint(2,2,2),st_makepoint(3,3,3),st_makepoint(1,1,1)])))"
             },
             new TestAtt {
-                Geom = new PostgisGeometryCollection(new PostgisGeometry[] {
-                    new PostgisPoint(1,1),
-                    new PostgisMultiPolygon(new[] {
-                        new PostgisPolygon(new[] { new[] {
-                            new Coordinate2D(1d,1d),
-                            new Coordinate2D(2d,2d),
-                            new Coordinate2D(3d,3d),
-                            new Coordinate2D(1d,1d)
+                Geom = new PostgisGeometryCollectionZ(new PostgisGeometry<Coordinate3DZ>[] {
+                    new PostgisPointZ(1,1,1),
+                    new PostgisMultiPolygonZ(new[] {
+                        new PostgisPolygonZ(new[] { new[] {
+                            new Coordinate3DZ(1d,1d,1d),
+                            new Coordinate3DZ(2d,2d,2d),
+                            new Coordinate3DZ(3d,3d,3d),
+                            new Coordinate3DZ(1d,1d,1d)
                         }})
                     })
                 }),
-                SQL = "st_collect(st_makepoint(1,1),st_multi(st_makepolygon(st_makeline(ARRAY[st_makepoint(1,1),st_makepoint(2,2),st_makepoint(3,3),st_makepoint(1,1)]))))"
+                SQL = "st_collect(st_makepoint(1,1,1),st_multi(st_makepolygon(st_makeline(ARRAY[st_makepoint(1,1,1),st_makepoint(2,2,2),st_makepoint(3,3,3),st_makepoint(1,1,1)]))))"
             },
             new TestAtt {
-                Geom = new PostgisGeometryCollection(new PostgisGeometry[] {
-                    new PostgisPoint(1,1),
-                    new PostgisGeometryCollection(new PostgisGeometry[] {
-                        new PostgisPoint(1,1),
-                        new PostgisMultiPolygon(new[] {
-                            new PostgisPolygon(new[] { new[] {
-                                new Coordinate2D(1d,1d),
-                                new Coordinate2D(2d,2d),
-                                new Coordinate2D(3d,3d),
-                                new Coordinate2D(1d,1d)
+                Geom = new PostgisGeometryCollectionZ(new PostgisGeometry<Coordinate3DZ>[] {
+                    new PostgisPointZ(1,1,1),
+                    new PostgisGeometryCollectionZ(new PostgisGeometry<Coordinate3DZ>[] {
+                        new PostgisPointZ(1,1,1),
+                        new PostgisMultiPolygonZ(new[] {
+                            new PostgisPolygonZ(new[] { new[] {
+                                new Coordinate3DZ(1d,1d,1d),
+                                new Coordinate3DZ(2d,2d,2d),
+                                new Coordinate3DZ(3d,3d,3d),
+                                new Coordinate3DZ(1d,1d,1d)
                             }})
                         })
                     })
                 }),
-                SQL = "st_collect(st_makepoint(1,1),st_collect(st_makepoint(1,1),st_multi(st_makepolygon(st_makeline(ARRAY[st_makepoint(1,1),st_makepoint(2,2),st_makepoint(3,3),st_makepoint(1,1)])))))"
+                SQL = "st_collect(st_makepoint(1,1,1),st_collect(st_makepoint(1,1,1),st_multi(st_makepolygon(st_makeline(ARRAY[st_makepoint(1,1,1),st_makepoint(2,2,2),st_makepoint(3,3,3),st_makepoint(1,1,1)])))))"
             }
         };
 
-        [Test,TestCaseSource(nameof(Tests))]
+        [Test, TestCaseSource(nameof(Tests))]
         public void PostgisTestRead(TestAtt att)
         {
             using (var conn = OpenConnection())
@@ -130,11 +129,12 @@ namespace Npgsql.Tests.Types
             using (var conn = OpenConnection())
             using (var cmd = conn.CreateCommand())
             {
-                cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Geometry,a.Geom);
+                cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Geometry, a.Geom);
                 a.Geom.SRID = 0;
                 cmd.CommandText = "Select st_asewkb(:p1) = st_asewkb(" + a.SQL + ")";
                 bool areEqual;
-                try {
+                try
+                {
                     areEqual = (bool)cmd.ExecuteScalar();
                 }
                 catch (Exception e)
@@ -153,7 +153,7 @@ namespace Npgsql.Tests.Types
             {
                 cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Geometry, a.Geom);
                 a.Geom.SRID = 3942;
-                cmd.CommandText = "Select st_asewkb(:p1) = st_asewkb(st_setsrid("+ a.SQL + ",3942))";
+                cmd.CommandText = "Select st_asewkb(:p1) = st_asewkb(st_setsrid(" + a.SQL + ",3942))";
                 var p = (bool)cmd.ExecuteScalar();
                 Assert.IsTrue(p);
             }
@@ -168,7 +168,7 @@ namespace Npgsql.Tests.Types
                 cmd.CommandText = "Select st_setsrid(" + a.SQL + ",3942)";
                 var p = cmd.ExecuteScalar();
                 Assert.IsTrue(p.Equals(a.Geom));
-                Assert.IsTrue((p as PostgisGeometry).SRID == 3942);
+                Assert.IsTrue((p as PostgisGeometry<Coordinate3DZ>).SRID == 3942);
             }
         }
 
@@ -178,10 +178,10 @@ namespace Npgsql.Tests.Types
             using (var conn = OpenConnection())
             using (var cmd = conn.CreateCommand())
             {
-                cmd.CommandText = "Select ARRAY(select st_makepoint(1,1))";
+                cmd.CommandText = "Select ARRAY(select st_makepoint(1,1,1))";
                 var p = cmd.ExecuteScalar() as PostgisGeometry[];
-                var p2 = new PostgisPoint(1d, 1d);
-                Assert.IsTrue(p?[0] is PostgisPoint && p2 == (PostgisPoint)p[0]);
+                var p2 = new PostgisPointZ(1d, 1d, 1d);
+                Assert.IsTrue(p?[0] is PostgisPointZ && p2 == (PostgisPointZ)p[0]);
             }
         }
 
@@ -191,9 +191,9 @@ namespace Npgsql.Tests.Types
             using (var conn = OpenConnection())
             using (var cmd = conn.CreateCommand())
             {
-                var p = new PostgisPoint[1] { new PostgisPoint(1d, 1d) };
+                var p = new PostgisPointZ[1] { new PostgisPointZ(1d, 1d, 1d) };
                 cmd.Parameters.AddWithValue(":p1", NpgsqlDbType.Array | NpgsqlDbType.Geometry, p);
-                cmd.CommandText = "SELECT :p1 = array(select st_makepoint(1,1))";
+                cmd.CommandText = "SELECT :p1 = array(select st_makepoint(1,1,1))";
                 Assert.IsTrue((bool)cmd.ExecuteScalar());
             }
         }
@@ -201,29 +201,30 @@ namespace Npgsql.Tests.Types
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1022")]
         public void MultiPolygonWithMultiplePolygons()
         {
-            var geom2 = new PostgisMultiPolygon(new[]
+            var geom2 = new PostgisMultiPolygonZ(new[]
             {
-                new PostgisPolygon(new[] {
+                new PostgisPolygonZ(new[] {
                     new[]
                     {
-                        new Coordinate2D(40, 40),
-                        new Coordinate2D(20, 45),
-                        new Coordinate2D(45, 30),
-                        new Coordinate2D(40, 40)
+                        new Coordinate3DZ(40, 40, 0),
+                        new Coordinate3DZ(20, 45, 0),
+                        new Coordinate3DZ(45, 30, 0),
+                        new Coordinate3DZ(40, 40, 0)
                     }
                 }),
-                new PostgisPolygon(new[] {
+                new PostgisPolygonZ(new[] {
                     new[]
                     {
-                        new Coordinate2D(20, 35),
-                        new Coordinate2D(10, 30),
-                        new Coordinate2D(10, 10),
-                        new Coordinate2D(30, 5),
-                        new Coordinate2D(45, 20),
-                        new Coordinate2D(20, 35)
+                        new Coordinate3DZ(20, 35, 0),
+                        new Coordinate3DZ(10, 30, 0),
+                        new Coordinate3DZ(10, 10, 0),
+                        new Coordinate3DZ(30, 5, 0),
+                        new Coordinate3DZ(45, 20, 0),
+                        new Coordinate3DZ(20, 35, 0)
                     }
                 })
-            }) { SRID = 4326 };
+            })
+            { SRID = 4326 };
             using (var conn = OpenConnection())
             using (var command = conn.CreateCommand())
             {
@@ -239,7 +240,7 @@ namespace Npgsql.Tests.Types
             using (var conn = OpenConnection())
             {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo GEOMETRY)");
-                var point = new PostgisPoint(8, 8);
+                var point = new PostgisPointZ(8, 8, 0);
 
                 using (var cmd = new NpgsqlCommand("INSERT INTO data (foo) VALUES (@p)", conn))
                 {
@@ -300,14 +301,14 @@ namespace Npgsql.Tests.Types
                 {
                     using (var rdr = c.BeginBinaryExport($"COPY testcopybin (g) TO STDOUT (FORMAT BINARY) "))
                     {
-                        for (var i =0; i < 1000; i++)
+                        for (var i = 0; i < 1000; i++)
                         {
                             rdr.StartRow();
                             Assert.IsTrue(a.Geom.Equals(rdr.Read<PostgisGeometry>()));
                         }
                     }
                 }
-                catch(Exception e)
+                catch (Exception e)
                 {
                     Assert.Fail($"Copy from stdout failed with {e} at geometry {a.Geom}.");
                 }
@@ -332,7 +333,7 @@ namespace Npgsql.Tests.Types
                         writer.Commit();
                     }
                 }
-                catch(Exception e)
+                catch (Exception e)
                 {
                     Assert.Fail($"Copy from stdin failed with {e} at geometry {a.Geom}.");
                 }
@@ -346,7 +347,7 @@ namespace Npgsql.Tests.Types
                             Assert.IsTrue(t.SequenceEqual(rdr.Read<PostgisGeometry[]>()));
                         }
                 }
-                catch(Exception e)
+                catch (Exception e)
                 {
                     Assert.Fail($"Copy to stdout failed with {e} at geometry {a.Geom}.");
                 }
@@ -356,25 +357,25 @@ namespace Npgsql.Tests.Types
         [Test]
         public void TestPolygonEnumeration()
         {
-            var a = new Coordinate2D[2][] {
-                new Coordinate2D[4] { new Coordinate2D(0D, 0D), new Coordinate2D(0D, 1D),
-                                      new Coordinate2D(1D, 1D), new Coordinate2D(0D, 0D) },
-                new Coordinate2D[5] { new Coordinate2D(0D, 0D), new Coordinate2D(0D, 2D),
-                                      new Coordinate2D(2D, 2D),new Coordinate2D(2D, 0D),
-                                     new Coordinate2D(0D, 0D) } };
-            Assert.That(a.SequenceEqual(new PostgisPolygon(a)));
+            var a = new Coordinate3DZ[2][] {
+                new Coordinate3DZ[4] { new Coordinate3DZ(0D, 0D, 0D), new Coordinate3DZ(0D, 1D, 1D),
+                                      new Coordinate3DZ(1D, 1D, 1D), new Coordinate3DZ(0D, 0D, 2D) },
+                new Coordinate3DZ[5] { new Coordinate3DZ(0D, 0D, 0D), new Coordinate3DZ(0D, 2D, 8D),
+                                      new Coordinate3DZ(2D, 2D,2D),new Coordinate3DZ(2D, 0D, 3D),
+                                     new Coordinate3DZ(0D, 0D, 6D) } };
+            Assert.That(a.SequenceEqual(new PostgisPolygonZ(a)));
         }
 
         [Test]
         public void ReadAsConcreteType()
         {
             using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT st_makepoint(1, 1)", conn))
+            using (var cmd = new NpgsqlCommand("SELECT st_makepoint(1, 1, 1)", conn))
             using (var reader = cmd.ExecuteReader())
             {
                 reader.Read();
-                Assert.That(reader.GetFieldValue<PostgisPoint>(0), Is.EqualTo(new PostgisPoint(1, 1)));
-                Assert.That(() => reader.GetFieldValue<PostgisPolygon>(0), Throws.Exception.TypeOf<InvalidCastException>());
+                Assert.That(reader.GetFieldValue<PostgisPointZ>(0), Is.EqualTo(new PostgisPointZ(1, 1, 1)));
+                Assert.That(() => reader.GetFieldValue<PostgisPolygonZ>(0), Throws.Exception.TypeOf<InvalidCastException>());
             }
         }
 
@@ -384,22 +385,23 @@ namespace Npgsql.Tests.Types
             using (var conn = OpenConnection())
             using (var cmd = new NpgsqlCommand("SELECT @p", conn))
             {
-                cmd.Parameters.Add("p", NpgsqlTypes.NpgsqlDbType.Geometry).Value = new PostgisMultiPolygon(new[]
+                cmd.Parameters.Add("p", NpgsqlTypes.NpgsqlDbType.Geometry).Value = new PostgisMultiPolygonZ(new[]
                 {
-                    new PostgisPolygon(new[]
+                    new PostgisPolygonZ(new[]
                         {
                             new[]
                             {
-                                new Coordinate2D(-0.555701, 46.42473701),
-                                new Coordinate2D(-0.549486, 46.42707801),
-                                new Coordinate2D(-0.549843, 46.42749901),
-                                new Coordinate2D(-0.555524, 46.42533901),
-                                new Coordinate2D(-0.555701, 46.42473701)
+                                new Coordinate3DZ(-0.555701, 46.42473701, 18.215),
+                                new Coordinate3DZ(-0.549486, 46.42707801, 18.215),
+                                new Coordinate3DZ(-0.549843, 46.42749901, 18.215),
+                                new Coordinate3DZ(-0.555524, 46.42533901, 18.215),
+                                new Coordinate3DZ(-0.555701, 46.42473701, 18.215)
                             }
                         })
                         // This is the problem:
                         { SRID = 4326 }
-                }) { SRID = 4326 };
+                })
+                { SRID = 4326 };
 
                 cmd.ExecuteNonQuery();
             }
@@ -408,22 +410,22 @@ namespace Npgsql.Tests.Types
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1557")]
         public void SubGeometriesWithSRID()
         {
-            var point = new PostgisPoint(1, 1)
+            var point = new PostgisPointZ(1, 1, 1)
             {
                 SRID = 4326
             };
 
-            var lineString = new PostgisLineString(new[] { new Coordinate2D(2, 2), new Coordinate2D(3, 3) })
+            var lineString = new PostgisLineStringZ(new[] { new Coordinate3DZ(2, 2, 2), new Coordinate3DZ(3, 3, 3) })
             {
                 SRID = 4326
             };
 
-            var polygon = new PostgisPolygon(new[] { new[] { new Coordinate2D(4, 4), new Coordinate2D(5, 5), new Coordinate2D(6, 6), new Coordinate2D(4, 4) } })
+            var polygon = new PostgisPolygonZ(new[] { new[] { new Coordinate3DZ(4, 4, 4), new Coordinate3DZ(5, 5, 5), new Coordinate3DZ(6, 6, 6), new Coordinate3DZ(4, 4, 4) } })
             {
                 SRID = 4326
             };
 
-            var collection = new PostgisGeometryCollection(new PostgisGeometry[] { point, lineString, polygon })
+            var collection = new PostgisGeometryCollectionZ(new PostgisGeometry<Coordinate3DZ>[] { point, lineString, polygon })
             {
                 SRID = 4326
             };
