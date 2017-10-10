@@ -285,18 +285,9 @@ namespace NpgsqlTypes
     #region Points
 
     /// <summary>
-    /// PostGIS base Point type with specified coordinate system.
-    /// </summary>
-    /// <typeparam name="T">Coordinate type for Geometry</typeparam>
-    public abstract class PostgisPoint<T> : PostgisGeometry<T> where T : Coordinate2D
-    {
-        internal abstract Coordinate2D Coordinate { get; }
-    }
-
-    /// <summary>
     /// Represents a 2D PostGIS point.
     /// </summary>
-    public class PostgisPoint : PostgisPoint<Coordinate2D>, IEquatable<PostgisPoint>
+    public class PostgisPoint : PostgisGeometry<Coordinate2D>, IEquatable<PostgisPoint>
     {
         readonly Coordinate2D _coord;
 
@@ -307,7 +298,7 @@ namespace NpgsqlTypes
 
         public double X => _coord.X;
         public double Y => _coord.Y;
-        internal override Coordinate2D Coordinate => _coord;
+        internal Coordinate2D Coordinate => _coord;
 
 
         public bool Equals([CanBeNull] PostgisPoint other)
@@ -326,7 +317,7 @@ namespace NpgsqlTypes
     /// <summary>
     /// Represents an PostGIS 3DZ Point
     /// </summary>
-    public class PostgisPointZ : PostgisPoint<Coordinate3DZ>, IEquatable<PostgisPointZ>
+    public class PostgisPointZ : PostgisGeometry<Coordinate3DZ>, IEquatable<PostgisPointZ>
     {
         readonly Coordinate3DZ _coord;
 
@@ -338,7 +329,7 @@ namespace NpgsqlTypes
         public double X => _coord.X;
         public double Y => _coord.Y;
         public double Z => _coord.Z;
-        internal override Coordinate2D Coordinate => _coord;
+        internal Coordinate3DZ Coordinate => _coord;
 
         public bool Equals([CanBeNull] PostgisPointZ other)
             => !ReferenceEquals(other, null) && _coord.Equals(other._coord);
@@ -356,7 +347,7 @@ namespace NpgsqlTypes
     /// <summary>
     /// Represents an PostGIS 3DM Point
     /// </summary>
-    public class PostgisPointM : PostgisPoint<Coordinate3DM>, IEquatable<PostgisPointM>
+    public class PostgisPointM : PostgisGeometry<Coordinate3DM>, IEquatable<PostgisPointM>
     {
         readonly Coordinate3DM _coord;
 
@@ -368,7 +359,7 @@ namespace NpgsqlTypes
         public double X => _coord.X;
         public double Y => _coord.Y;
         public double M => _coord.M;
-        internal override Coordinate2D Coordinate => _coord;
+        internal Coordinate3DM Coordinate => _coord;
 
         public bool Equals([CanBeNull] PostgisPointM other)
             => !ReferenceEquals(other, null) && _coord.Equals(other._coord);
@@ -386,7 +377,7 @@ namespace NpgsqlTypes
     /// <summary>
     /// Represents a PostGIS 4D Point
     /// </summary>
-    public class PostgisPointZM : PostgisPoint<Coordinate4D>, IEquatable<PostgisPointZM>
+    public class PostgisPointZM : PostgisGeometry<Coordinate4D>, IEquatable<PostgisPointZM>
     {
         readonly Coordinate4D _coord;
 
@@ -399,7 +390,7 @@ namespace NpgsqlTypes
         public double Y => _coord.Y;
         public double Z => _coord.Z;
         public double M => _coord.M;
-        internal override Coordinate2D Coordinate => _coord;
+        internal Coordinate4D Coordinate => _coord;
 
         public bool Equals([CanBeNull] PostgisPointZM other)
             => !ReferenceEquals(other, null) && _coord.Equals(other._coord);
@@ -680,7 +671,7 @@ namespace NpgsqlTypes
 
         public PostgisMultiPoint(Coordinate2D[] points) => _points = points;
 
-        public PostgisMultiPoint(IEnumerable<PostgisPoint<Coordinate2D>> points) =>
+        public PostgisMultiPoint(IEnumerable<PostgisPoint> points) =>
             _points = points.Select(x => x.Coordinate).ToArray();
 
         public PostgisMultiPoint(IEnumerable<Coordinate2D> points) => _points = points.ToArray();
@@ -698,7 +689,7 @@ namespace NpgsqlTypes
 
         public PostgisMultiPointZ(Coordinate3DZ[] points) => _points = points;
 
-        public PostgisMultiPointZ(IEnumerable<PostgisPoint<Coordinate3DZ>> points) =>
+        public PostgisMultiPointZ(IEnumerable<PostgisPointZ> points) =>
             _points = points.Select(x => x.Coordinate).OfType<Coordinate3DZ>().ToArray();
 
         public PostgisMultiPointZ(IEnumerable<Coordinate3DZ> points) => _points = points.ToArray();
@@ -716,7 +707,7 @@ namespace NpgsqlTypes
 
         public PostgisMultiPointM(Coordinate3DM[] points) => _points = points;
 
-        public PostgisMultiPointM(IEnumerable<PostgisPoint<Coordinate3DM>> points) =>
+        public PostgisMultiPointM(IEnumerable<PostgisPointM> points) =>
             _points = points.Select(x => x.Coordinate).OfType<Coordinate3DM>().ToArray();
 
         public PostgisMultiPointM(IEnumerable<Coordinate3DM> points) => _points = points.ToArray();
@@ -734,7 +725,7 @@ namespace NpgsqlTypes
 
         public PostgisMultiPointZM(Coordinate4D[] points) => _points = points;
 
-        public PostgisMultiPointZM(IEnumerable<PostgisPoint<Coordinate4D>> points) =>
+        public PostgisMultiPointZM(IEnumerable<PostgisPointZM> points) =>
             _points = points.Select(x => x.Coordinate).OfType<Coordinate4D>().ToArray();
 
         public PostgisMultiPointZM(IEnumerable<Coordinate4D> points) => _points = points.ToArray();
