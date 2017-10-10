@@ -37,7 +37,7 @@ namespace Npgsql.TypeHandlers
     /// </summary>
     [TypeMapping("geometry", NpgsqlDbType.Geometry, new[]
     {
-        typeof(PostgisGeometry),
+        typeof(BasePostgisGeo),
         //2D Geometry
         typeof(PostgisPoint), typeof(PostgisMultiPoint), typeof(PostgisLineString),
         typeof(PostgisMultiLineString), typeof(PostgisPolygon), typeof(PostgisMultiPolygon),
@@ -55,7 +55,7 @@ namespace Npgsql.TypeHandlers
         typeof(PostgisMultiLineStringZM), typeof(PostgisPolygonZM), typeof(PostgisMultiPolygonZM),
         typeof(PostgisGeometryCollectionZM)
     })]
-    class PostgisGeometryHandler : NpgsqlTypeHandler<PostgisGeometry>,
+    class PostgisGeometryHandler : NpgsqlTypeHandler<BasePostgisGeo>,
         //2D Geometry
         INpgsqlTypeHandler<PostgisPoint>, INpgsqlTypeHandler<PostgisMultiPoint>,
         INpgsqlTypeHandler<PostgisLineString>, INpgsqlTypeHandler<PostgisMultiLineString>,
@@ -81,14 +81,11 @@ namespace Npgsql.TypeHandlers
         [CanBeNull]
         readonly ByteaHandler _byteaHandler;
 
-        public PostgisGeometryHandler()
-        {
-            _byteaHandler = new ByteaHandler();
-        }
+        public PostgisGeometryHandler() => _byteaHandler = new ByteaHandler();
 
         #region Read
 
-        public override async ValueTask<PostgisGeometry> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
+        public override async ValueTask<BasePostgisGeo> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
         {
             await buf.Ensure(5, async);
             var bo = (ByteOrder)buf.ReadByte();
@@ -101,7 +98,7 @@ namespace Npgsql.TypeHandlers
                 srid = buf.ReadUInt32(bo);
             }
 
-            PostgisGeometry geom;
+            BasePostgisGeo geom;
             if ((id & (uint)EwkbModifiers.HasZDim) != 0 && (id & (uint)EwkbModifiers.HasMDim) != 0)
                 geom = await DoReadXYZM(buf, (WKBGeometryType)((id & 7) + 3000), bo, async);
             else if ((id & (uint)EwkbModifiers.HasMDim) != 0)
@@ -654,7 +651,7 @@ namespace Npgsql.TypeHandlers
         #region Write
 
         //2D Geometry
-        public override int ValidateAndGetLength(PostgisGeometry value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(BasePostgisGeo value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
             => value.GetLen(true);
 
         public int ValidateAndGetLength(PostgisPoint value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
@@ -747,7 +744,7 @@ namespace Npgsql.TypeHandlers
         public int ValidateAndGetLength(byte[] value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
             => value.Length;
 
-        public override async Task Write(PostgisGeometry value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        public override async Task Write(BasePostgisGeo value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
         {
             // Common header
             if (value.SRID == 0)
@@ -1275,91 +1272,91 @@ namespace Npgsql.TypeHandlers
 
         //2D Geometry
         public Task Write(PostgisPoint value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-            => Write((PostgisGeometry<Coordinate2D>)value, buf, lengthCache, parameter, async);
+            => Write(value, buf, lengthCache, parameter, async);
 
         public Task Write(PostgisMultiPoint value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-            => Write((PostgisGeometry<Coordinate2D>)value, buf, lengthCache, parameter, async);
+            => Write(value, buf, lengthCache, parameter, async);
 
         public Task Write(PostgisPolygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-            => Write((PostgisGeometry<Coordinate2D>)value, buf, lengthCache, parameter, async);
+            => Write(value, buf, lengthCache, parameter, async);
 
         public Task Write(PostgisMultiPolygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-            => Write((PostgisGeometry<Coordinate2D>)value, buf, lengthCache, parameter, async);
+            => Write(value, buf, lengthCache, parameter, async);
 
         public Task Write(PostgisLineString value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-            => Write((PostgisGeometry<Coordinate2D>)value, buf, lengthCache, parameter, async);
+            => Write(value, buf, lengthCache, parameter, async);
 
         public Task Write(PostgisMultiLineString value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-            => Write((PostgisGeometry<Coordinate2D>)value, buf, lengthCache, parameter, async);
+            => Write(value, buf, lengthCache, parameter, async);
 
         public Task Write(PostgisGeometryCollection value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-            => Write((PostgisGeometry<Coordinate2D>)value, buf, lengthCache, parameter, async);
+            => Write(value, buf, lengthCache, parameter, async);
 
         //3DZ Geometry
         public Task Write(PostgisPointZ value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-            => Write((PostgisGeometry<Coordinate3DZ>)value, buf, lengthCache, parameter, async);
+            => Write(value, buf, lengthCache, parameter, async);
 
         public Task Write(PostgisMultiPointZ value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-            => Write((PostgisGeometry<Coordinate3DZ>)value, buf, lengthCache, parameter, async);
+            => Write(value, buf, lengthCache, parameter, async);
 
         public Task Write(PostgisLineStringZ value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-            => Write((PostgisGeometry<Coordinate3DZ>)value, buf, lengthCache, parameter, async);
+            => Write(value, buf, lengthCache, parameter, async);
 
         public Task Write(PostgisMultiLineStringZ value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-            => Write((PostgisGeometry<Coordinate3DZ>)value, buf, lengthCache, parameter, async);
+            => Write(value, buf, lengthCache, parameter, async);
 
         public Task Write(PostgisPolygonZ value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-            => Write((PostgisGeometry<Coordinate3DZ>)value, buf, lengthCache, parameter, async);
+            => Write(value, buf, lengthCache, parameter, async);
 
         public Task Write(PostgisMultiPolygonZ value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-            => Write((PostgisGeometry<Coordinate3DZ>)value, buf, lengthCache, parameter, async);
+            => Write(value, buf, lengthCache, parameter, async);
 
         public Task Write(PostgisGeometryCollectionZ value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-            => Write((PostgisGeometry<Coordinate3DZ>)value, buf, lengthCache, parameter, async);
+            => Write(value, buf, lengthCache, parameter, async);
 
         //3DM Geometry
         public Task Write(PostgisPointM value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-            => Write((PostgisGeometry<Coordinate3DM>)value, buf, lengthCache, parameter, async);
+            => Write(value, buf, lengthCache, parameter, async);
 
         public Task Write(PostgisMultiPointM value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-            => Write((PostgisGeometry<Coordinate3DM>)value, buf, lengthCache, parameter, async);
+            => Write(value, buf, lengthCache, parameter, async);
 
         public Task Write(PostgisLineStringM value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-            => Write((PostgisGeometry<Coordinate3DM>)value, buf, lengthCache, parameter, async);
+            => Write(value, buf, lengthCache, parameter, async);
 
         public Task Write(PostgisMultiLineStringM value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-            => Write((PostgisGeometry<Coordinate3DM>)value, buf, lengthCache, parameter, async);
+            => Write(value, buf, lengthCache, parameter, async);
 
         public Task Write(PostgisPolygonM value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-            => Write((PostgisGeometry<Coordinate3DM>)value, buf, lengthCache, parameter, async);
+            => Write(value, buf, lengthCache, parameter, async);
 
         public Task Write(PostgisMultiPolygonM value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-            => Write((PostgisGeometry<Coordinate3DM>)value, buf, lengthCache, parameter, async);
+            => Write(value, buf, lengthCache, parameter, async);
 
         public Task Write(PostgisGeometryCollectionM value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-            => Write((PostgisGeometry<Coordinate3DM>)value, buf, lengthCache, parameter, async);
+            => Write(value, buf, lengthCache, parameter, async);
 
         //4D Geometry
         public Task Write(PostgisPointZM value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-            => Write((PostgisGeometry<Coordinate4D>)value, buf, lengthCache, parameter, async);
+            => Write(value, buf, lengthCache, parameter, async);
 
         public Task Write(PostgisMultiPointZM value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-            => Write((PostgisGeometry<Coordinate4D>)value, buf, lengthCache, parameter, async);
+            => Write(value, buf, lengthCache, parameter, async);
 
         public Task Write(PostgisLineStringZM value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-            => Write((PostgisGeometry<Coordinate4D>)value, buf, lengthCache, parameter, async);
+            => Write(value, buf, lengthCache, parameter, async);
 
         public Task Write(PostgisMultiLineStringZM value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-            => Write((PostgisGeometry<Coordinate4D>)value, buf, lengthCache, parameter, async);
+            => Write(value, buf, lengthCache, parameter, async);
 
         public Task Write(PostgisPolygonZM value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-            => Write((PostgisGeometry<Coordinate4D>)value, buf, lengthCache, parameter, async);
+            => Write(value, buf, lengthCache, parameter, async);
 
         public Task Write(PostgisMultiPolygonZM value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-            => Write((PostgisGeometry<Coordinate4D>)value, buf, lengthCache, parameter, async);
+            => Write(value, buf, lengthCache, parameter, async);
 
         public Task Write(PostgisGeometryCollectionZM value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-            => Write((PostgisGeometry<Coordinate4D>)value, buf, lengthCache, parameter, async);
+            => Write(value, buf, lengthCache, parameter, async);
 
         public Task Write(byte[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
             => _byteaHandler == null

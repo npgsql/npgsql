@@ -291,9 +291,9 @@ namespace NpgsqlTypes
     #endregion
 
     /// <summary>
-    /// Base Geometry class for all PostGIS types.
+    /// Base class for all PostGIS Geometry and Geography types.
     /// </summary>
-    public abstract class PostgisGeometry
+    public abstract class BasePostgisGeo
     {
         /// <summary>
         /// returns the binary length of the data structure without header.
@@ -320,11 +320,23 @@ namespace NpgsqlTypes
         public uint SRID { get; set; }
     }
 
-    /// <summary>
-    /// PostGIS base Geometry type with specified coordinate system.
-    /// </summary>
-    /// <typeparam name="T">Coordinate type for Geometry</typeparam>
-    public abstract class PostgisGeometry<T> : PostgisGeometry
+    public abstract class PostgisGeometry<T> : BasePostgisGeo
+    {
+    }
+
+    public abstract class PostgisGeometry : PostgisGeometry<Coordinate2D>
+    {
+    }
+
+    public abstract class PostgisGeometryZ : PostgisGeometry<Coordinate3DZ>
+    {
+    }
+
+    public abstract class PostgisGeometryM : PostgisGeometry<Coordinate3DM>
+    {
+    }
+
+    public abstract class PostgisGeometryZM : PostgisGeometry<Coordinate4D>
     {
     }
 
@@ -333,7 +345,7 @@ namespace NpgsqlTypes
     /// <summary>
     /// Represents a 2D PostGIS point.
     /// </summary>
-    public class PostgisPoint : PostgisGeometry<Coordinate2D>, IEquatable<PostgisPoint>
+    public class PostgisPoint : PostgisGeometry, IEquatable<PostgisPoint>
     {
         readonly Coordinate2D _coord;
 
@@ -364,7 +376,7 @@ namespace NpgsqlTypes
     /// <summary>
     /// Represents an PostGIS 3DZ Point
     /// </summary>
-    public class PostgisPointZ : PostgisGeometry<Coordinate3DZ>, IEquatable<PostgisPointZ>
+    public class PostgisPointZ : PostgisGeometryZ, IEquatable<PostgisPointZ>
     {
         readonly Coordinate3DZ _coord;
 
@@ -396,7 +408,7 @@ namespace NpgsqlTypes
     /// <summary>
     /// Represents an PostGIS 3DM Point
     /// </summary>
-    public class PostgisPointM : PostgisGeometry<Coordinate3DM>, IEquatable<PostgisPointM>
+    public class PostgisPointM : PostgisGeometryM, IEquatable<PostgisPointM>
     {
         readonly Coordinate3DM _coord;
 
@@ -428,7 +440,7 @@ namespace NpgsqlTypes
     /// <summary>
     /// Represents a PostGIS 4D Point
     /// </summary>
-    public class PostgisPointZM : PostgisGeometry<Coordinate4D>, IEquatable<PostgisPointZM>
+    public class PostgisPointZM : PostgisGeometryZM, IEquatable<PostgisPointZM>
     {
         readonly Coordinate4D _coord;
 
@@ -1027,13 +1039,13 @@ namespace NpgsqlTypes
     /// Base PostGIS GeometryCollection type of specified coordinates system.
     /// </summary>
     /// <typeparam name="T">Coordinate type for Geometry</typeparam>
-    public abstract class PostgisGeometryCollection<T> : PostgisGeometry<T>, IEquatable<PostgisGeometryCollection<T>>, IEnumerable<PostgisGeometry<T>>
+    public abstract class PostgisGeometryCollection<T> : PostgisGeometry<T>, IEquatable<PostgisGeometryCollection<T>>, IEnumerable<BasePostgisGeo>
     {
-        protected PostgisGeometry<T>[] _geometries;
+        protected BasePostgisGeo[] _geometries;
 
-        public PostgisGeometry<T> this[int index] => _geometries[index];
+        public BasePostgisGeo this[int index] => _geometries[index];
 
-        public IEnumerator<PostgisGeometry<T>> GetEnumerator() => ((IEnumerable<PostgisGeometry<T>>)_geometries).GetEnumerator();
+        public IEnumerator<BasePostgisGeo> GetEnumerator() => ((IEnumerable<BasePostgisGeo>)_geometries).GetEnumerator();
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
         public bool Equals([CanBeNull] PostgisGeometryCollection<T> other)
@@ -1071,7 +1083,7 @@ namespace NpgsqlTypes
     {
         internal override WKBGeometryType GeometryType => WKBGeometryType.GeometryCollection;
 
-        public PostgisGeometryCollection(PostgisGeometry<Coordinate2D>[] geometries) => _geometries = geometries;
+        public PostgisGeometryCollection(PostgisGeometry[] geometries) => _geometries = geometries;
 
         public PostgisGeometryCollection(IEnumerable<PostgisGeometry<Coordinate2D>> geometries) => _geometries = geometries.ToArray();
     }
@@ -1083,7 +1095,7 @@ namespace NpgsqlTypes
     {
         internal override WKBGeometryType GeometryType => WKBGeometryType.GeometryCollectionZ;
 
-        public PostgisGeometryCollectionZ(PostgisGeometry<Coordinate3DZ>[] geometries) => _geometries = geometries;
+        public PostgisGeometryCollectionZ(PostgisGeometryZ[] geometries) => _geometries = geometries;
 
         public PostgisGeometryCollectionZ(IEnumerable<PostgisGeometry<Coordinate3DZ>> geometries) => _geometries = geometries.ToArray();
     }
@@ -1097,7 +1109,7 @@ namespace NpgsqlTypes
 
         public PostgisGeometryCollectionM(PostgisGeometry<Coordinate3DM>[] geometries) => _geometries = geometries;
 
-        public PostgisGeometryCollectionM(IEnumerable<PostgisGeometry<Coordinate3DM>> geometries) => _geometries = geometries.ToArray();
+        public PostgisGeometryCollectionM(IEnumerable<PostgisGeometryM> geometries) => _geometries = geometries.ToArray();
     }
 
     /// <summary>
@@ -1109,7 +1121,7 @@ namespace NpgsqlTypes
 
         public PostgisGeometryCollectionZM(PostgisGeometry<Coordinate4D>[] geometries) => _geometries = geometries;
 
-        public PostgisGeometryCollectionZM(IEnumerable<PostgisGeometry<Coordinate4D>> geometries) => _geometries = geometries.ToArray();
+        public PostgisGeometryCollectionZM(IEnumerable<PostgisGeometryZM> geometries) => _geometries = geometries.ToArray();
     }
 
     #endregion

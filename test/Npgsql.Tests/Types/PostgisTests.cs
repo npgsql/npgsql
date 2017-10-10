@@ -34,7 +34,7 @@ namespace Npgsql.Tests.Types
     {
         public class TestAtt
         {
-            public PostgisGeometry Geom;
+            public BasePostgisGeo Geom;
             public string SQL;
         }
 
@@ -528,7 +528,7 @@ namespace Npgsql.Tests.Types
                 using (var cmd = new NpgsqlCommand("CREATE TEMPORARY TABLE testcopybinarray (g geometry[3])", c))
                     cmd.ExecuteNonQuery();
 
-                var t = new PostgisGeometry[3] { a.Geom, a.Geom, a.Geom };
+                var t = new BasePostgisGeo[3] { a.Geom, a.Geom, a.Geom };
                 try
                 {
                     using (var writer = c.BeginBinaryImport("COPY testcopybinarray (g) FROM STDIN (FORMAT BINARY)"))
