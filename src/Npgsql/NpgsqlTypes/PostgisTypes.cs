@@ -206,6 +206,48 @@ namespace NpgsqlTypes
             => !Equals(left, right);
     }
 
+    /// <summary>
+    /// A structure representing a XYZM double precision floating point coordinate;
+    /// </summary>
+    public class Coordinate4D : Coordinate2D, IEquatable<Coordinate4D>
+    {
+        /// <summary>
+        /// Z coordinate.
+        /// </summary>
+        public double Z { get; }
+
+        /// <summary>
+        /// M coordinate.
+        /// </summary>
+        public double M { get; }
+
+        /// <summary>
+        /// Generates a new point with the specified coordinates.
+        /// </summary>
+        /// <param name="x">X coordinate</param>
+        /// <param name="y">Y coordinate</param>
+        /// <param name="z">Z coordinate</param>
+        /// <param name="m">M coordinate</param>
+        public Coordinate4D(double x, double y, double z, double m) : base(x, y) { Z = z; M = m; }
+
+        // ReSharper disable CompareOfFloatsByEqualityOperator
+        public bool Equals(Coordinate4D other)
+            => Z == other.Z && M == other.M && base.Equals(other);
+        // ReSharper restore CompareOfFloatsByEqualityOperator
+
+        public override int GetHashCode()
+            => M.GetHashCode() ^ base.GetHashCode();
+
+        public override bool Equals([CanBeNull] object obj)
+            => obj is Coordinate4D && Equals((Coordinate4D)obj);
+
+        public static bool operator ==(Coordinate4D left, Coordinate4D right)
+            => Equals(left, right);
+
+        public static bool operator !=(Coordinate4D left, Coordinate4D right)
+            => !Equals(left, right);
+    }
+
     public abstract class PostgisGeometry
     {
         /// <summary>
@@ -279,6 +321,39 @@ namespace NpgsqlTypes
     }
 
     /// <summary>
+    /// Represents an Postgis 3D Point
+    /// </summary>
+    public class PostgisPointZ : PostgisPoint<Coordinate3DZ>, IEquatable<PostgisPointZ>
+    {
+        Coordinate3DZ _coord;
+
+        internal override WkbIdentifier Identifier => WkbIdentifier.PointZ;
+        protected override int GetLenHelper() => 24;
+
+        public PostgisPointZ(double x, double y, double z)
+        {
+            _coord = new Coordinate3DZ(x, y, z);
+        }
+
+        public double X => _coord.X;
+        public double Y => _coord.Y;
+        public double Z => _coord.Z;
+        internal override ICoordinate Coordinate => _coord;
+
+        public bool Equals([CanBeNull] PostgisPointZ other)
+            => !ReferenceEquals(other, null) && _coord.Equals(other._coord);
+
+        public override bool Equals([CanBeNull] object obj) => Equals(obj as PostgisPointZ);
+
+        public static bool operator ==([CanBeNull] PostgisPointZ left, [CanBeNull] PostgisPointZ right)
+            => ReferenceEquals(left, null) ? ReferenceEquals(right, null) : left.Equals(right);
+
+        public static bool operator !=(PostgisPointZ left, PostgisPointZ right) => !(left == right);
+
+        public override int GetHashCode() => Z.GetHashCode() ^ base.GetHashCode();
+    }
+
+    /// <summary>
     /// Represents an Postgis 3D Point with M axis
     /// </summary>
     public class PostgisPointM : PostgisPoint<Coordinate3DM>, IEquatable<PostgisPointM>
@@ -312,34 +387,35 @@ namespace NpgsqlTypes
     }
 
     /// <summary>
-    /// Represents an Postgis 3D Point
+    /// Represents an Postgis 4D Point
     /// </summary>
-    public class PostgisPointZ : PostgisPoint<Coordinate3DZ>, IEquatable<PostgisPointZ>
+    public class PostgisPointZM : PostgisPoint<Coordinate4D>, IEquatable<PostgisPointZM>
     {
-        Coordinate3DZ _coord;
+        Coordinate4D _coord;
 
-        internal override WkbIdentifier Identifier => WkbIdentifier.PointZ;
-        protected override int GetLenHelper() => 24;
+        internal override WkbIdentifier Identifier => WkbIdentifier.PointZM;
+        protected override int GetLenHelper() => 32;
 
-        public PostgisPointZ(double x, double y, double z)
+        public PostgisPointZM(double x, double y, double z, double m)
         {
-            _coord = new Coordinate3DZ(x, y, z);
+            _coord = new Coordinate4D(x, y, z, m);
         }
 
         public double X => _coord.X;
         public double Y => _coord.Y;
         public double Z => _coord.Z;
+        public double M => _coord.M;
         internal override ICoordinate Coordinate => _coord;
 
-        public bool Equals([CanBeNull] PostgisPointZ other)
+        public bool Equals([CanBeNull] PostgisPointZM other)
             => !ReferenceEquals(other, null) && _coord.Equals(other._coord);
 
-        public override bool Equals([CanBeNull] object obj) => Equals(obj as PostgisPointZ);
+        public override bool Equals([CanBeNull] object obj) => Equals(obj as PostgisPointZM);
 
-        public static bool operator ==([CanBeNull] PostgisPointZ left, [CanBeNull] PostgisPointZ right)
+        public static bool operator ==([CanBeNull] PostgisPointZM left, [CanBeNull] PostgisPointZM right)
             => ReferenceEquals(left, null) ? ReferenceEquals(right, null) : left.Equals(right);
 
-        public static bool operator !=(PostgisPointZ left, PostgisPointZ right) => !(left == right);
+        public static bool operator !=(PostgisPointZM left, PostgisPointZM right) => !(left == right);
 
         public override int GetHashCode() => Z.GetHashCode() ^ base.GetHashCode();
     }
@@ -449,6 +525,25 @@ namespace NpgsqlTypes
         }
     }
 
+    /// <summary>
+    /// Represents a 4D LineString
+    /// </summary>
+    public class PostgisLineStringZM : PostgisLineString<Coordinate4D>
+    {
+        internal override WkbIdentifier Identifier => WkbIdentifier.LineStringZM;
+        protected override int GetLenHelper() => 4 + _points.Length * 32;
+
+        public PostgisLineStringZM(IEnumerable<Coordinate4D> points)
+        {
+            _points = points.ToArray();
+        }
+
+        public PostgisLineStringZM(Coordinate4D[] points)
+        {
+            _points = points;
+        }
+    }
+
     public abstract class PostgisPolygon<T> : PostgisGeometry<T>, IEquatable<PostgisPolygon<T>>, IEnumerable<IEnumerable<T>> where T : ICoordinate
     {
         protected T[][] _rings;
@@ -552,6 +647,25 @@ namespace NpgsqlTypes
         }
 
         public PostgisPolygonM(IEnumerable<IEnumerable<Coordinate3DM>> rings)
+        {
+            _rings = rings.Select(x => x.ToArray()).ToArray();
+        }
+    }
+
+    /// <summary>
+    /// Represents an Postgis 4D Polygon.
+    /// </summary>
+    public class PostgisPolygonZM : PostgisPolygon<Coordinate4D>
+    {
+        internal override WkbIdentifier Identifier => WkbIdentifier.PolygonZM;
+        protected override int GetLenHelper() => 4 + _rings.Length * 4 + TotalPointCount * 32;
+
+        public PostgisPolygonZM(Coordinate4D[][] rings)
+        {
+            _rings = rings;
+        }
+
+        public PostgisPolygonZM(IEnumerable<IEnumerable<Coordinate4D>> rings)
         {
             _rings = rings.Select(x => x.ToArray()).ToArray();
         }
@@ -671,6 +785,32 @@ namespace NpgsqlTypes
         }
 
         public PostgisMultiPointM(IEnumerable<Coordinate3DM> points)
+        {
+            _points = points.ToArray();
+        }
+    }
+
+    /// <summary>
+    /// Represents a Postgis 4D MultiPoint
+    /// </summary>
+    public class PostgisMultiPointZM : PostgisMultiPoint<Coordinate4D>
+    {
+        internal override WkbIdentifier Identifier => WkbIdentifier.MultiPointZM;
+
+        //each point of a multipoint is a postgispoint, not a building block point.
+        protected override int GetLenHelper() => 4 + _points.Length * 37;
+
+        public PostgisMultiPointZM(Coordinate4D[] points)
+        {
+            _points = points;
+        }
+
+        public PostgisMultiPointZM(IEnumerable<PostgisPoint<Coordinate4D>> points)
+        {
+            _points = points.Select(x => x.Coordinate).OfType<Coordinate4D>().ToArray();
+        }
+
+        public PostgisMultiPointZM(IEnumerable<Coordinate4D> points)
         {
             _points = points.ToArray();
         }
@@ -814,6 +954,36 @@ namespace NpgsqlTypes
         }
     }
 
+    /// <summary>
+    /// Represents a Postgis 4D MultiLineString
+    /// </summary>
+    public sealed class PostgisMultiLineStringZM : PostgisMultiLineString<Coordinate4D>
+    {
+        internal PostgisMultiLineStringZM(Coordinate4D[][] pointArray)
+        {
+            _lineStrings = new PostgisLineStringZM[pointArray.Length];
+            for (var i = 0; i < pointArray.Length; i++)
+                _lineStrings[i] = new PostgisLineStringZM(pointArray[i]);
+        }
+
+        internal override WkbIdentifier Identifier => WkbIdentifier.MultiLineStringZM;
+
+        public PostgisMultiLineStringZM(PostgisLineStringZM[] linestrings)
+        {
+            _lineStrings = linestrings;
+        }
+
+        public PostgisMultiLineStringZM(IEnumerable<PostgisLineStringZM> linestrings)
+        {
+            _lineStrings = linestrings.ToArray();
+        }
+
+        public PostgisMultiLineStringZM(IEnumerable<IEnumerable<Coordinate4D>> pointList)
+        {
+            _lineStrings = pointList.Select(x => new PostgisLineStringZM(x)).ToArray();
+        }
+    }
+
     public abstract class PostgisMultiPolygon<T> : PostgisGeometry<T>, IEquatable<PostgisMultiPolygon<T>>, IEnumerable<PostgisPolygon<T>> where T : ICoordinate
     {
         protected PostgisPolygon<T>[] _polygons;
@@ -931,6 +1101,29 @@ namespace NpgsqlTypes
         }
     }
 
+    /// <summary>
+    /// Represents a Postgis 4D MultiPolygon.
+    /// </summary>
+    public class PostgisMultiPolygonZM : PostgisMultiPolygon<Coordinate4D>
+    {
+        internal override WkbIdentifier Identifier => WkbIdentifier.MultiPolygonZM;
+
+        public PostgisMultiPolygonZM(PostgisPolygonZM[] polygons)
+        {
+            _polygons = polygons;
+        }
+
+        public PostgisMultiPolygonZM(IEnumerable<PostgisPolygonZM> polygons)
+        {
+            _polygons = polygons.ToArray();
+        }
+
+        public PostgisMultiPolygonZM(IEnumerable<IEnumerable<IEnumerable<Coordinate4D>>> ringList)
+        {
+            _polygons = ringList.Select(x => new PostgisPolygonZM(x)).ToArray();
+        }
+    }
+
     public abstract class PostgisGeometryCollection<T> : PostgisGeometry<T>, IEquatable<PostgisGeometryCollection<T>>, IEnumerable<PostgisGeometry<T>> where T : ICoordinate
     {
         protected PostgisGeometry<T>[] _geometries;
@@ -1027,6 +1220,24 @@ namespace NpgsqlTypes
         }
 
         public PostgisGeometryCollectionM(IEnumerable<PostgisGeometry<Coordinate3DM>> geometries)
+        {
+            _geometries = geometries.ToArray();
+        }
+    }
+
+    /// <summary>
+    /// Represents a collection of 4D Postgis feature.
+    /// </summary>
+    public class PostgisGeometryCollectionZM : PostgisGeometryCollection<Coordinate4D>
+    {
+        internal override WkbIdentifier Identifier => WkbIdentifier.GeometryCollectionZM;
+
+        public PostgisGeometryCollectionZM(PostgisGeometry<Coordinate4D>[] geometries)
+        {
+            _geometries = geometries;
+        }
+
+        public PostgisGeometryCollectionZM(IEnumerable<PostgisGeometry<Coordinate4D>> geometries)
         {
             _geometries = geometries.ToArray();
         }
