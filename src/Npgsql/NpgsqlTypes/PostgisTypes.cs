@@ -97,12 +97,12 @@ namespace NpgsqlTypes
         /// <summary>
         /// X coordinate.
         /// </summary>
-        public double X { get; }
+        public double X { get; set; }
 
         /// <summary>
         /// Y coordinate.
         /// </summary>
-        public double Y { get; }
+        public double Y { get; set; }
 
         /// <summary>
         /// Generates a new 2D point with the specified coordinates.
@@ -136,17 +136,17 @@ namespace NpgsqlTypes
         /// <summary>
         /// X coordinate.
         /// </summary>
-        public double X { get; }
+        public double X { get; set; }
 
         /// <summary>
         /// Y coordinate.
         /// </summary>
-        public double Y { get; }
+        public double Y { get; set; }
 
         /// <summary>
         /// Z coordinate.
         /// </summary>
-        public double Z { get; }
+        public double Z { get; set; }
 
         /// <summary>
         /// Generates a new BBpoint with the specified coordinates.
@@ -187,17 +187,17 @@ namespace NpgsqlTypes
         /// <summary>
         /// X coordinate.
         /// </summary>
-        public double X { get; }
+        public double X { get; set; }
 
         /// <summary>
         /// Y coordinate.
         /// </summary>
-        public double Y { get; }
+        public double Y { get; set; }
 
         /// <summary>
         /// M coordinate.
         /// </summary>
-        public double M { get; }
+        public double M { get; set; }
 
         /// <summary>
         /// Generates a new point with the specified coordinates.
@@ -238,22 +238,22 @@ namespace NpgsqlTypes
         /// <summary>
         /// X coordinate.
         /// </summary>
-        public double X { get; }
+        public double X { get; set; }
 
         /// <summary>
         /// Y coordinate.
         /// </summary>
-        public double Y { get; }
+        public double Y { get; set; }
 
         /// <summary>
         /// Z coordinate.
         /// </summary>
-        public double Z { get; }
+        public double Z { get; set; }
 
         /// <summary>
         /// M coordinate.
         /// </summary>
-        public double M { get; }
+        public double M { get; set; }
 
         /// <summary>
         /// Generates a new point with the specified coordinates.
@@ -289,6 +289,8 @@ namespace NpgsqlTypes
     }
 
     #endregion
+
+    #region Geometries
 
     /// <summary>
     /// Base class for all PostGIS Geometry and Geography types.
@@ -339,6 +341,8 @@ namespace NpgsqlTypes
     public abstract class PostgisGeometryZM : PostgisGeometry<Coordinate4D>
     {
     }
+
+    #endregion Geometries
 
     #region Points
 
